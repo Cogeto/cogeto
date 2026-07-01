@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────────
+# OS / editor junk
+# ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+# (note: .claude/ is intentionally tracked)
+
+# ─────────────────────────────────────────────
+# Secrets / environment
+# ─────────────────────────────────────────────
+.env
+.env.*
+*.pem
+*.key
+secrets/
+
+# ─────────────────────────────────────────────
+# Language / build artifacts
+# ─────────────────────────────────────────────
+node_modules/
+dist/
+build/
+__pycache__/
+*.pyc
+.venv/
+venv/
+target/
+
+# ─────────────────────────────────────────────
+# Tests — intentionally unused
+# Keep the folder marker only, ignore everything else
+# ─────────────────────────────────────────────
+/tests/*
+!/tests/.gitkeep
+
+# ─────────────────────────────────────────────
+# Local Claude settings
+# ─────────────────────────────────────────────
+.claude/settings.local.json

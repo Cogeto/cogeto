@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Cogeto — icon animation</title>
+<style>
+  :root{ --ink:#1C2150; --accent:#21C29A; --light:#EDEEFB; }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    display:grid;place-items:center;min-height:100vh;
+    background:
+      radial-gradient(60% 60% at 50% 42%, #1b2050 0%, #11142f 55%, #0b0e24 100%);
+    font-family:'Poppins',system-ui,sans-serif; overflow:hidden;
+  }
+  .stage{ width:min(70vmin,520px); aspect-ratio:1/1; display:grid;place-items:center; position:relative;}
+  .halo{
+    position:absolute; width:46%; aspect-ratio:1; left:59%; top:50%; transform:translate(-50%,-50%);
+    background:radial-gradient(circle, rgba(33,194,154,.42) 0%, rgba(33,194,154,0) 70%);
+    filter:blur(6px); pointer-events:none; opacity:.9;
+  }
+  svg{ width:100%; height:100%; overflow:visible; }
+  .ring{ fill:none; stroke:var(--light); stroke-width:11; stroke-linecap:round;
+          stroke-dasharray:100; stroke-dashoffset:100; }
+  .point{ fill:var(--accent); transform-box:fill-box; transform-origin:center;
+           filter:drop-shadow(0 0 5px rgba(33,194,154,.85)); opacity:0; }
+  .ctx{ fill:var(--accent); transform-box:fill-box; transform-origin:center; opacity:0; }
+  .ripple,.ripple2{ fill:none; stroke:var(--accent); stroke-width:2.4;
+           transform-box:fill-box; transform-origin:center; opacity:0; }
+  .cap{ position:absolute; bottom:7%; width:100%; text-align:center; letter-spacing:.34em;
+         text-transform:uppercase; font-size:12px; font-weight:500; color:#aeb4e6; opacity:.0; }
+</style></head>
+<body>
+  <div class="stage">
+    <div class="halo"></div>
+    <svg viewBox="0 0 120 120" aria-label="Cogeto icon">
+      <circle class="ripple"  cx="71.5" cy="60.0" r="8"/>
+      <circle class="ripple2" cx="71.5" cy="60.0" r="8"/>
+      <path class="ring" d="M87.032,78.928 A33,33 0 1 1 87.032,41.072" pathLength="100"/>
+      <circle class="ctx" data-i="0" cx="71.5" cy="60.0" r="2.6"/>
+      <circle class="ctx" data-i="1" cx="71.5" cy="60.0" r="2.2"/>
+      <circle class="ctx" data-i="2" cx="71.5" cy="60.0" r="2.0"/>
+      <circle class="point" cx="71.5" cy="60.0" r="6.2"/>
+    </svg>
+  </div>
+<script>
+
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const seg=(p,a,b)=>clamp((p-a)/(b-a),0,1);
+const easeOut=t=>1-Math.pow(1-t,3);
+const easeInOut=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+const easeOutBack=t=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2);};
+const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const ring=document.querySelector('.ring'),
+      point=document.querySelector('.point'),
+      r1=document.querySelector('.ripple'),
+      r2=document.querySelector('.ripple2'),
+      ctx=[...document.querySelectorAll('.ctx')];
+const scatter=[[-15,-13],[16,-9],[-6,17]];
+const T=4500;
+function frame(p){
+  const out=1-seg(p,0.90,0.99);
+  // ring draw
+  ring.style.strokeDashoffset=(1-easeOut(seg(p,0.02,0.20)))*100;
+  ring.style.opacity=Math.min(seg(p,0.02,0.06),1)*out;
+  // context dots converge
+  ctx.forEach((c,i)=>{
+    const l=seg(p,0.05,0.21), f=easeOut(l);
+    const dx=scatter[i][0]*(1-f), dy=scatter[i][1]*(1-f);
+    c.style.transform=`translate(${dx}px,${dy}px)`;
+    c.style.opacity=Math.sin(Math.min(l,1)*Math.PI)*0.85;
+  });
+  // point pop + breathe
+  let s,op;
+  if(p<0.15){s=0;op=0;}
+  else if(p<0.24){s=easeOutBack(seg(p,0.15,0.24));op=seg(p,0.15,0.20);}
+  else { s=1+0.06*Math.sin((p-0.24)*2*Math.PI*2.1); op=1; }
+  point.style.transform=`scale(${Math.max(s,0)})`;
+  point.style.opacity=op*out;
+  // ripples
+  const rp=(el,a,b)=>{const l=seg(p,a,b); el.style.transform=`scale(${0.35+easeOut(l)*2.0})`;
+        el.style.opacity=(l>0&&l<1?0.55*(1-l):0)*out;};
+  rp(r1,0.22,0.44); rp(r2,0.55,0.78);
+}
+let t0=null;
+function loop(now){ if(t0===null)t0=now; frame(((now-t0)%T)/T); requestAnimationFrame(loop); }
+if(reduce){ frame(0.5); } else { requestAnimationFrame(loop); }
+</script>
+</body></html>
