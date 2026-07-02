@@ -1,0 +1,272 @@
+# Cogeto per-tenant stack (Addendum §A.2: `docker compose up` is the contract).
+# Seven containers plus one-shot init jobs plus an optional redaction profile
+# (decision 0003 ruling 5). Works with zero configuration on a fresh clone;
+# every variable can be overridden via .env (see .env.example).
+
+name: cogeto
+
+services:
+  # ── Edge ────────────────────────────────────────────────────────────────────
+  caddy:
+    build:
+      context: .
+      dockerfile: project/infra/docker/Dockerfile
+      target: caddy
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:2019/config/']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    depends_on:
+      app:
+        condition: service_healthy
+      zitadel:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Application processes (same image, different commands) ─────────────────
+  app:
+    build:
+      context: .
+      dockerfile: project/infra/docker/Dockerfile
+      target: runtime
+    command: ['node', 'project/src/dist/entrypoints/app.js']
+    environment: &cogeto-env
+      COGETO_HTTP_PORT: 3000
+      COGETO_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-cogeto-dev-password}@postgres:5432/cogeto
+      COGETO_QDRANT_URL: http://qdrant:6333
+      COGETO_S3_URL: http://minio:9000
+      COGETO_OIDC_ISSUER: https://${COGETO_EXTERNAL_DOMAIN:-localhost}
+      COGETO_OIDC_INTERNAL_URL: http://zitadel:8080
+      COGETO_OIDC_EXTERNAL_DOMAIN: ${COGETO_EXTERNAL_DOMAIN:-localhost}
+      COGETO_WEB_CONFIG_FILE: /web-config/config.json
+      COGETO_LOG_LEVEL: ${COGETO_LOG_LEVEL:-info}
+    volumes:
+      - web-config:/web-config:ro
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health/live').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      zitadel:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      zitadel-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: project/infra/docker/Dockerfile
+      target: runtime
+    command: ['node', 'project/src/dist/entrypoints/worker.js']
+    environment: *cogeto-env
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "const s=require('fs').statSync('/tmp/worker-heartbeat');process.exit(Date.now()-s.mtimeMs<30000?0:1)"
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 15s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # ── One-shot init jobs ──────────────────────────────────────────────────────
+  migrate:
+    build:
+      context: .
+      dockerfile: project/infra/docker/Dockerfile
+      target: runtime
+    command: ['node', 'project/src/dist/entrypoints/migrate.js']
+    environment: *cogeto-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  minio-init:
+    image: minio/mc:latest
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - >-
+        mc alias set local http://minio:9000
+        "${MINIO_ROOT_USER:-cogeto}" "${MINIO_ROOT_PASSWORD:-cogeto-dev-password}" &&
+        mc mb --ignore-existing local/cogeto &&
+        echo "bucket cogeto ready"
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: 'no'
+
+  # The zitadel image runs as uid 1000; the fresh named volume it writes its
+  # bootstrap PAT into is root-owned. Hand it over before zitadel starts.
+  machinekey-init:
+    image: busybox:stable
+    command: ['chown', '-R', '1000:1000', '/machinekey']
+    volumes:
+      - zitadel-machinekey:/machinekey
+    restart: 'no'
+
+  zitadel-init:
+    image: node:22-alpine
+    command: ['node', '/init/init.mjs']
+    environment:
+      ZITADEL_INTERNAL_URL: http://zitadel:8080
+      ZITADEL_EXTERNAL_DOMAIN: ${COGETO_EXTERNAL_DOMAIN:-localhost}
+      COGETO_ISSUER: https://${COGETO_EXTERNAL_DOMAIN:-localhost}
+      COGETO_REDIRECT_URI: https://${COGETO_EXTERNAL_DOMAIN:-localhost}/callback
+      COGETO_POST_LOGOUT_URI: https://${COGETO_EXTERNAL_DOMAIN:-localhost}/
+      ZITADEL_PAT_FILE: /machinekey/pat.txt
+      COGETO_WEB_CONFIG_FILE: /web-config/config.json
+    volumes:
+      - ./project/infra/docker/zitadel-init:/init:ro
+      - zitadel-machinekey:/machinekey:ro
+      - web-config:/web-config
+    depends_on:
+      zitadel:
+        condition: service_healthy
+    restart: 'no'
+
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: cogeto
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cogeto-dev-password}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d cogeto']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:v1.14.0
+    volumes:
+      - qdrant-data:/qdrant/storage
+    healthcheck:
+      test: ['CMD-SHELL', "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    command: ['server', '/data']
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-cogeto}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-cogeto-dev-password}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://127.0.0.1:9000/minio/health/live']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  zitadel:
+    image: ghcr.io/zitadel/zitadel:v2.65.1
+    command: 'start-from-init --masterkey "${ZITADEL_MASTERKEY:-MasterkeyNeedsToHave32Characters}" --tlsMode external'
+    environment:
+      ZITADEL_DATABASE_POSTGRES_HOST: postgres
+      ZITADEL_DATABASE_POSTGRES_PORT: 5432
+      ZITADEL_DATABASE_POSTGRES_DATABASE: zitadel
+      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: zitadel
+      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: ${ZITADEL_DB_PASSWORD:-zitadel-dev-password}
+      ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE: disable
+      ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: postgres
+      ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: ${POSTGRES_PASSWORD:-cogeto-dev-password}
+      ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: disable
+      ZITADEL_EXTERNALDOMAIN: ${COGETO_EXTERNAL_DOMAIN:-localhost}
+      ZITADEL_EXTERNALPORT: 443
+      ZITADEL_EXTERNALSECURE: 'true'
+      # TLS terminates at Caddy; this also keeps the `zitadel ready` probe on HTTP.
+      ZITADEL_TLS_ENABLED: 'false'
+      ZITADEL_FIRSTINSTANCE_ORG_NAME: ${ZITADEL_ORG_NAME:-Cogeto}
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME: ${ZITADEL_ADMIN_USERNAME:-admin@cogeto.localhost}
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: ${ZITADEL_ADMIN_PASSWORD:-DevPassword1!}
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED: 'false'
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_FIRSTNAME: Cogeto
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_LASTNAME: Admin
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_EMAIL_ADDRESS: ${ZITADEL_ADMIN_USERNAME:-admin@cogeto.localhost}
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_EMAIL_VERIFIED: 'true'
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: cogeto-bootstrap
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: Cogeto Bootstrap
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE: '2030-01-01T00:00:00Z'
+      ZITADEL_FIRSTINSTANCE_PATPATH: /machinekey/pat.txt
+      # Instance-default branding: no "Powered by Zitadel" watermark on the login UI.
+      ZITADEL_DEFAULTINSTANCE_LABELPOLICY_DISABLEWATERMARK: 'true'
+    volumes:
+      - zitadel-machinekey:/machinekey
+    healthcheck:
+      test: ['CMD', '/app/zitadel', 'ready']
+      interval: 5s
+      timeout: 5s
+      retries: 36
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      machinekey-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # ── Profile placeholders (documented, no real services yet) ────────────────
+  # demo: seeds the Ana sandbox persona (§B.9) — arrives with the Notes slice.
+  demo-placeholder:
+    profiles: ['demo']
+    image: busybox:stable
+    command: ['echo', 'demo profile: the Ana sandbox seed arrives with the Notes vertical slice']
+    restart: 'no'
+
+  # redaction: local CPU NER pseudonymization (§B.8) — arrives with its feature.
+  redaction-placeholder:
+    profiles: ['redaction']
+    image: busybox:stable
+    command: ['echo', 'redaction profile: the Presidio NER sidecar arrives with redaction mode']
+    restart: 'no'
+
+volumes:
+  pg-data:
+  qdrant-data:
+  minio-data:
+  zitadel-machinekey:
+  web-config:
+  caddy-data:
+  caddy-config:

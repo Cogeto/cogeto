@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint (ESLint + Prettier)
+        run: npm run lint
+
+      - name: Module boundaries (dependency-cruiser, §A.1)
+        run: npm run boundaries
+
+      - name: Build (shared → server → web)
+        run: npm run build
+
+      - name: Test (Vitest)
+        run: npm run test

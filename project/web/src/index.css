@@ -1,0 +1,10 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Brand palette from assets/brand (navy + teal) — colors referenced, assets untouched. */
+  --color-brand-navy: #1c2150;
+  --color-brand-teal: #21c29a;
+  /* Background baked into cogeto-final-logo-dark.svg; dark surfaces use it so the
+     logo blends seamlessly (the asset may not be modified — TRADEMARK.md). */
+  --color-brand-navy-deep: #141833;
+}

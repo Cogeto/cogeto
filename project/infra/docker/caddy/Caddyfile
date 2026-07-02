@@ -1,0 +1,31 @@
+# Cogeto edge (decision 0002): TLS termination, SPA static files, reverse proxy.
+# Dev instances use Caddy's internal CA (self-signed for localhost); managed
+# instances swap this block for a real domain and ACME.
+
+{
+	local_certs
+}
+
+localhost {
+	encode gzip
+
+	# Zitadel paths on the shared origin (OIDC, login UI, console, APIs).
+	# NOTE: Zitadel's asset API is /assets/v1/* — the bare /assets/* prefix belongs
+	# to the SPA's Vite bundles and must NOT be proxied.
+	@zitadel path /.well-known/* /oauth/* /oidc/* /ui/* /idps/* /saml/* /assets/v1/* /auth/v1/* /management/v1/* /admin/v1/* /system/v1/* /device* /zitadel*
+	handle @zitadel {
+		reverse_proxy zitadel:8080
+	}
+
+	# The Cogeto API (app process).
+	handle /api/* {
+		reverse_proxy app:3000
+	}
+
+	# The SPA: static files with history-API fallback.
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

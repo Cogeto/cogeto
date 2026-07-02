@@ -4,7 +4,9 @@ Everything that turns the codebase into a running per-tenant instance.
 Governed by Addendum §A.2: **`docker compose up` is the contract** — one command on
 a fresh clone must reach a usable login, or the build is broken.
 
-- `docker/` — compose files, Dockerfiles, healthchecks, init containers.
+- `docker/` — Dockerfile, Caddyfile, init-container scripts. The
+  `docker-compose.yml` itself lives at the **repo root** so `docker compose up`
+  works on a fresh clone with zero steps (S1-A; see `docker/README.md`).
 
 Requirements (§A.2): healthchecks + `service_healthy` ordering; migrations as a
 one-shot init container (never on app boot); Zitadel bootstrapped by provisioning

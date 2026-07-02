@@ -11,9 +11,11 @@ over every other document.
 - [ ] Every memory row carries `owner_id` (NOT NULL), `scope` enum
       (`private`|`shared`, NOT NULL), provenance `source_type` + `source_id`
       (NOT NULL — user-typed facts point at their message/note row; no orphans,
-      ever), `status` enum of exactly seven states (`active`, `outdated`,
-      `contradicted`, `uncertain`, `replaced`, `user-approved`, `sensitive`;
-      default `active`), and a validity interval (`valid_from`, `valid_until`).
+      ever), `status` enum of exactly **six lifecycle states** (`active`,
+      `outdated`, `contradicted`, `uncertain`, `replaced`, `user_approved`;
+      default `active`) **plus an orthogonal `sensitive` boolean flag**
+      (NOT NULL DEFAULT false — decision 0003), and a validity interval
+      (`valid_from`, `valid_until`).
 - [ ] Status transitions are owned by the `Memory` aggregate: only reconciliation
       sets `contradicted`; only the user sets `user-approved`; only the deletion
       saga hard-deletes (§A.1 rule 4). Supersession closes intervals — it never
@@ -25,9 +27,11 @@ over every other document.
 
 - [ ] **No query path returns memories without scope filtering.** Unscoped queries
       must be unrepresentable in the retrieval module's API.
-- [ ] `scope` and `sensitive` are **hard gates** — WHERE-clause / Qdrant payload
-      pre-filters inside the vector query. App-side post-filtering of vector
-      results is forbidden. A demoted leak is still a leak.
+- [ ] `scope` and the `sensitive` flag are **hard gates** — WHERE-clause / Qdrant
+      payload pre-filters inside the vector query. App-side post-filtering of
+      vector results is forbidden. A demoted leak is still a leak. Sensitive
+      memories are excluded from default retrieval, returned only to their owner,
+      and only on explicit per-query opt-in (decision 0003).
 - [ ] Statuses are **score multipliers on top of the gates** (§A.5 table);
       `replaced` is excluded from default retrieval; temporal queries lift the
       `outdated`/`replaced` exclusion.

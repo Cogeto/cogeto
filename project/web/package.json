@@ -1,0 +1,27 @@
+{
+  "name": "@cogeto/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cogeto chat + dashboard SPA (static build served by Caddy)",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@cogeto/shared": "*",
+    "@tanstack/react-query": "^5.77.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.7",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.5.0",
+    "tailwindcss": "^4.1.7",
+    "vite": "^7.0.0"
+  }
+}

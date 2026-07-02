@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+docs/
+assets/
+*.md
+package-lock.json
+.claude/
+project/infra/docker/caddy/Caddyfile

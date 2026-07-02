@@ -1,0 +1,8 @@
+# Allowlist build context: only what the image build needs.
+*
+!package.json
+!package-lock.json
+!tsconfig.base.json
+!project
+project/**/node_modules
+project/**/dist

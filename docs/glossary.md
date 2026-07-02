@@ -19,12 +19,17 @@ name it in a decision record before coining a term in code.
 - **Scope** — visibility class of a memory: `private` (owner only) or `shared`
   (others in the same organization). Column: `scope` (enum, NOT NULL). A hard gate
   in retrieval, never a score factor.
-- **Status** — the memory-quality state. Exactly seven values; **schema and code
-  enum labels:** `active`, `outdated`, `contradicted`, `uncertain`, `replaced`,
-  `user_approved`, `sensitive` (underscore form — this is what migration 0001 and
-  all identifiers use). The hyphenated "user-approved" appears only in prose and
-  UI text. Column: `status` (enum, NOT NULL, default `active`). Statuses are score
-  multipliers in retrieval — except `sensitive`, which gates like scope.
+- **Status** — the memory lifecycle state. **Six lifecycle statuses plus an
+  orthogonal `sensitive` boolean flag** (decision 0003, ruling 3). Schema and code
+  enum labels: `active`, `outdated`, `contradicted`, `uncertain`, `replaced`,
+  `user_approved` (underscore form — this is what migration 0001 and all identifiers
+  use; the hyphenated "user-approved" appears only in prose and UI text). Column:
+  `status` (enum, NOT NULL, default `active`). Statuses are score multipliers in
+  retrieval; they never gate.
+- **Sensitive** — an orthogonal flag, not a status: `sensitive BOOLEAN NOT NULL
+  DEFAULT false` on `memory` (mirroring `file_metadata`). A hard gate in retrieval:
+  sensitive memories are excluded from default retrieval, returned only to their
+  owner, and only on explicit per-query opt-in (decision 0003).
 - **Provenance / source link** — the reference from every memory back to what
   produced it. Columns: `source_type` + `source_id` (both NOT NULL — "the user told
   me directly" is provenance too: `user_note` | `chat`). Preferred term: **source

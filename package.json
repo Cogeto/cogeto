@@ -1,0 +1,31 @@
+{
+  "name": "cogeto",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Private, EU-hosted AI command center with verifiable memory",
+  "license": "AGPL-3.0-only",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "project/shared",
+    "project/src",
+    "project/web"
+  ],
+  "scripts": {
+    "build": "npm run build -w @cogeto/shared && npm run build -w @cogeto/server && npm run build -w @cogeto/web",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "boundaries": "depcruise project/src project/shared project/web --config .dependency-cruiser.cjs",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.28.0",
+    "dependency-cruiser": "^16.10.0",
+    "eslint": "^9.28.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.33.0",
+    "vitest": "^3.1.4"
+  }
+}
