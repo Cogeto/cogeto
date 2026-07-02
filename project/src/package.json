@@ -10,9 +10,12 @@
   },
   "dependencies": {
     "@cogeto/shared": "*",
+    "@mistralai/mistralai": "^1.7.0",
     "@nestjs/common": "^11.1.0",
     "@nestjs/core": "^11.1.0",
     "@nestjs/platform-express": "^11.1.0",
+    "drizzle-orm": "^0.44.0",
+    "graphile-worker": "^0.16.6",
     "pg": "^8.16.0",
     "pino": "^9.7.0",
     "reflect-metadata": "^0.2.2",
@@ -20,6 +23,7 @@
     "zod": "^3.25.0"
   },
   "devDependencies": {
+    "@testcontainers/postgresql": "^10.25.0",
     "@types/express": "^5.0.0",
     "@types/node": "^22.15.0",
     "@types/pg": "^8.15.0"

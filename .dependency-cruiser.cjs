@@ -44,6 +44,37 @@ module.exports = {
       to: { path: '^project/src/(?!$1/)[^/]+/persistence/' },
     },
     {
+      name: 'infrastructure-imports-no-module',
+      comment:
+        'Shared infrastructure (outbox, queue, audit, db) is a leaf like the seams: ' +
+        'it imports no domain module and no seam.',
+      severity: 'error',
+      from: { path: '^project/src/infrastructure/' },
+      to: { path: `^project/src/(${DOMAIN_MODULES}|${SEAMS})/` },
+    },
+    {
+      name: 'only-identity-imports-oidc-clients',
+      comment: 'No module other than identity may reference Zitadel/OIDC client libraries (§4.5).',
+      severity: 'error',
+      from: { path: '^project/', pathNot: '^project/src/identity/' },
+      to: { path: 'node_modules/(openid-client|oidc-client|@zitadel)' },
+    },
+    {
+      name: 'only-model-gateway-imports-mistral',
+      comment:
+        'All model calls go through the gateway seam (§A.10); only it may import the client.',
+      severity: 'error',
+      from: { path: '^project/', pathNot: '^project/src/model-gateway/' },
+      to: { path: 'node_modules/@mistralai' },
+    },
+    {
+      name: 'testing-helpers-only-in-tests',
+      comment: 'The testing harness never leaks into production code.',
+      severity: 'error',
+      from: { path: '^project/src/', pathNot: '\\.spec\\.ts$|^project/src/testing/' },
+      to: { path: '^project/src/testing/' },
+    },
+    {
       name: 'shared-is-a-leaf',
       comment: 'project/shared holds cross-tier DTOs only; it depends on nothing in src or web.',
       severity: 'error',

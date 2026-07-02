@@ -25,12 +25,13 @@ export class HealthController {
 
   @Get()
   async health(): Promise<HealthReport> {
-    const [postgres, qdrant, minio] = await Promise.all([
+    const [postgres, qdrant, minio, migrations] = await Promise.all([
       this.checkPostgres(),
       this.checkHttp(`${this.config.qdrantUrl}/readyz`),
       this.checkHttp(`${this.config.s3Url}/minio/health/live`),
+      this.checkMigrations(),
     ]);
-    const checks = { postgres, qdrant, minio };
+    const checks = { postgres, qdrant, minio, migrations };
     return {
       status: Object.values(checks).every((c) => c.ok) ? 'ok' : 'degraded',
       checks,
@@ -42,6 +43,24 @@ export class HealthController {
     try {
       await this.pool.query('SELECT 1');
       return { ok: true, latencyMs: Date.now() - started };
+    } catch (error) {
+      return { ok: false, latencyMs: Date.now() - started, error: message(error) };
+    }
+  }
+
+  private async checkMigrations(): Promise<HealthCheck> {
+    const started = Date.now();
+    try {
+      const { rows } = await this.pool.query<{ name: string }>(
+        'SELECT name FROM cogeto_migrations ORDER BY id',
+      );
+      const latest = rows[rows.length - 1]?.name;
+      return {
+        ok: rows.length >= 2,
+        latencyMs: Date.now() - started,
+        detail: latest ? `${rows.length} applied, latest ${latest}` : 'none applied',
+        ...(rows.length >= 2 ? {} : { error: 'contractual core (0001/0002) not applied' }),
+      };
     } catch (error) {
       return { ok: false, latencyMs: Date.now() - started, error: message(error) };
     }

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { DatabaseModule } from '../infrastructure/index';
 import { IdentityModule } from '../identity/index';
 import { MemoryModule } from '../memory/index';
 import { RetrievalModule } from '../retrieval/index';
@@ -20,12 +21,13 @@ import { WebConfigController } from './web-config.controller';
 export function createAppRootModule(config: CogetoConfig): unknown {
   @Module({
     imports: [
+      DatabaseModule.register({ databaseUrl: config.databaseUrl }),
       IdentityModule.register({
         internalBaseUrl: config.oidc.internalUrl,
         externalDomain: config.oidc.externalDomain,
         cacheTtlSeconds: 60,
       }),
-      ModelGatewayModule,
+      ModelGatewayModule.register({ mistralApiKey: config.mistralApiKey }),
       MemoryModule,
       RetrievalModule,
       AgentsModule,

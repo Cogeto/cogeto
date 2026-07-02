@@ -46,6 +46,9 @@ services:
       COGETO_OIDC_INTERNAL_URL: http://zitadel:8080
       COGETO_OIDC_EXTERNAL_DOMAIN: ${COGETO_EXTERNAL_DOMAIN:-localhost}
       COGETO_WEB_CONFIG_FILE: /web-config/config.json
+      # Optional: without it the model gateway boots unconfigured and fails on use
+      # with a typed error. Model calls start with the Notes pipeline (Session 2).
+      COGETO_MISTRAL_API_KEY: ${COGETO_MISTRAL_API_KEY:-}
       COGETO_LOG_LEVEL: ${COGETO_LOG_LEVEL:-info}
     volumes:
       - web-config:/web-config:ro

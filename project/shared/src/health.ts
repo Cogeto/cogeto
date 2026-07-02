@@ -3,6 +3,8 @@ export interface HealthCheck {
   ok: boolean;
   latencyMs: number;
   error?: string;
+  /** Optional human-readable extra, e.g. "2 migrations applied". */
+  detail?: string;
 }
 
 export interface HealthReport {
@@ -11,5 +13,6 @@ export interface HealthReport {
     postgres: HealthCheck;
     qdrant: HealthCheck;
     minio: HealthCheck;
+    migrations: HealthCheck;
   };
 }

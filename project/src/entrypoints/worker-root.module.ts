@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { DatabaseModule } from '../infrastructure/index';
 import { MemoryModule } from '../memory/index';
 import { IngestionModule } from '../ingestion/index';
 import { AgentsModule } from '../agents/index';
@@ -17,7 +18,8 @@ import type { CogetoConfig } from './config';
 export function createWorkerRootModule(config: CogetoConfig): unknown {
   @Module({
     imports: [
-      ModelGatewayModule,
+      DatabaseModule.register({ databaseUrl: config.databaseUrl }),
+      ModelGatewayModule.register({ mistralApiKey: config.mistralApiKey }),
       MemoryModule,
       IngestionModule,
       AgentsModule,

@@ -21,6 +21,8 @@ const configSchema = z.object({
   }),
   /** Written by the zitadel-init bootstrap job; served as GET /api/config. */
   webConfigFile: z.string().min(1),
+  /** Optional: without it the gateway boots unconfigured and fails on use. */
+  mistralApiKey: z.string().min(1).optional(),
   logLevel: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
 });
 
@@ -38,6 +40,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
       externalDomain: env.COGETO_OIDC_EXTERNAL_DOMAIN,
     },
     webConfigFile: env.COGETO_WEB_CONFIG_FILE,
+    // Compose passes '' when unset; treat empty as absent.
+    mistralApiKey: env.COGETO_MISTRAL_API_KEY || env.MISTRAL_API_KEY || undefined,
     logLevel: env.COGETO_LOG_LEVEL,
   });
   if (!parsed.success) {

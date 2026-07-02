@@ -16,6 +16,7 @@ COPY tsconfig.base.json ./
 COPY project/shared project/shared
 COPY project/src project/src
 COPY project/web project/web
+COPY project/prompts project/prompts
 RUN npm run build
 
 # ── Stage 2: slim runtime — app, worker, and migrate run from this image ─────
@@ -28,6 +29,10 @@ COPY project/src/package.json project/src/package.json
 RUN npm ci -w @cogeto/server --omit=dev && npm cache clean --force
 COPY --from=build /repo/project/shared/dist project/shared/dist
 COPY --from=build /repo/project/src/dist project/src/dist
+# Reviewable SQL migrations (read by the migrate entrypoint) and versioned
+# prompt artifacts (read by the model-gateway prompt loader, §B.7).
+COPY --from=build /repo/project/src/migrations project/src/migrations
+COPY --from=build /repo/project/prompts project/prompts
 USER node
 # app is the default; worker and migrate override the command in compose
 CMD ["node", "project/src/dist/entrypoints/app.js"]

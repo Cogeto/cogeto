@@ -7,6 +7,7 @@ function CheckRow({ name, check }: { name: string; check: HealthCheck }) {
     <li className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
       <span className="text-sm font-medium text-slate-700">{name}</span>
       <span className="flex items-center gap-2 text-sm">
+        {check.detail && <span className="text-xs text-slate-400">{check.detail}</span>}
         <span className="text-slate-400">{check.latencyMs} ms</span>
         {check.ok ? (
           <span className="rounded-full bg-brand-teal/15 px-2 py-0.5 text-xs font-semibold text-brand-teal">
@@ -45,6 +46,7 @@ export function StatusPanel() {
           <CheckRow name="PostgreSQL" check={data.checks.postgres} />
           <CheckRow name="Qdrant" check={data.checks.qdrant} />
           <CheckRow name="MinIO" check={data.checks.minio} />
+          <CheckRow name="Migrations" check={data.checks.migrations} />
         </ul>
       )}
     </section>

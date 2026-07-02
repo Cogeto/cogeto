@@ -1,18 +1,22 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { writeFile } from 'node:fs/promises';
+import { Pool } from 'pg';
+import { run } from 'graphile-worker';
+import type { Runner } from 'graphile-worker';
 import { loadConfig } from './config';
 import { createLogger, PinoNestLogger } from './logger';
 import { createWorkerRootModule } from './worker-root.module';
+import { createDb } from '../infrastructure/index';
+import { buildTaskList } from './worker-tasks';
 
 const HEARTBEAT_FILE = '/tmp/worker-heartbeat';
 const HEARTBEAT_INTERVAL_MS = 10_000;
 
 /**
- * worker — the slow-path process (§A.1): boots a Nest application context
- * without HTTP. Graphile Worker job execution arrives in S1-B; for now the
- * process proves the composition root and emits a heartbeat for its
- * container healthcheck.
+ * worker — the slow-path process (§A.1): Graphile Worker runner over the
+ * Postgres queue (§A.3) plus the Nest application context for module services.
+ * No HTTP. Assumes migrations already ran (init container, §A.2).
  */
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -23,7 +27,16 @@ async function main(): Promise<void> {
     { logger: new PinoNestLogger(logger) },
   );
   context.enableShutdownHooks();
-  logger.info('cogeto worker started (job runner arrives in S1-B)');
+
+  const pool = new Pool({ connectionString: config.databaseUrl });
+  const db = createDb(pool);
+  const runner: Runner = await run({
+    pgPool: pool,
+    concurrency: 2,
+    taskList: buildTaskList(db),
+    noHandleSignals: true,
+  });
+  logger.info('cogeto worker started (graphile runner + task registry)');
 
   const heartbeat = setInterval(() => {
     void writeFile(HEARTBEAT_FILE, new Date().toISOString()).catch((error: unknown) => {
@@ -32,8 +45,13 @@ async function main(): Promise<void> {
   }, HEARTBEAT_INTERVAL_MS);
   await writeFile(HEARTBEAT_FILE, new Date().toISOString());
 
+  let stopping = false;
   const shutdown = async (): Promise<void> => {
+    if (stopping) return;
+    stopping = true;
     clearInterval(heartbeat);
+    await runner.stop();
+    await pool.end();
     await context.close();
     process.exit(0);
   };

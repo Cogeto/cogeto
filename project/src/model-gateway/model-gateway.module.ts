@@ -1,12 +1,34 @@
 import { Module } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
 import { ModelGateway } from './model-gateway.service';
+import { MistralModelGateway, UnconfiguredModelGateway } from './mistral.gateway';
+
+export interface ModelGatewayModuleOptions {
+  /** When absent the process boots normally; model calls fail with a typed error. */
+  mistralApiKey?: string;
+  model?: string;
+}
 
 /**
  * model-gateway — leaf seam for ALL model and embedding calls (§A.10).
- * No direct provider SDK/API usage anywhere else in the system.
+ * v1 routes everything to the Mistral API; no other module may import the
+ * Mistral client (dependency-cruiser rule).
  */
-@Module({
-  providers: [ModelGateway],
-  exports: [ModelGateway],
-})
-export class ModelGatewayModule {}
+@Module({})
+export class ModelGatewayModule {
+  static register(options: ModelGatewayModuleOptions = {}): DynamicModule {
+    return {
+      module: ModelGatewayModule,
+      providers: [
+        {
+          provide: ModelGateway,
+          useFactory: () =>
+            options.mistralApiKey
+              ? new MistralModelGateway({ apiKey: options.mistralApiKey, model: options.model })
+              : new UnconfiguredModelGateway(),
+        },
+      ],
+      exports: [ModelGateway],
+    };
+  }
+}
