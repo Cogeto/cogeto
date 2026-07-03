@@ -3,17 +3,23 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runOnce } from 'graphile-worker';
 import type { TaskList } from 'graphile-worker';
 import type { ZodType } from 'zod';
-import { startTestDatabase } from '../testing/index';
-import type { TestDatabase } from '../testing/index';
+import { fakeEmbedding, startTestDatabase, startTestQdrant } from '../testing/index';
+import type { TestDatabase, TestQdrant } from '../testing/index';
 import { idempotentTask, withTransactionalEnqueue } from '../infrastructure/index';
-import { MemoryStore } from '../memory/index';
+import { createMemoryStore } from '../memory/index';
+import type { MemoryStore } from '../memory/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import type { CandidateFact } from './domain/candidate-fact';
+import { EmbedStoreStage } from './pipeline/embed-store.stage';
 import { ExtractStage } from './pipeline/extract.stage';
 import { IngestionPipeline, INGESTION_PIPELINE_JOB_TYPE } from './pipeline/pipeline.service';
 import type { SourceItem, SourceReader } from './pipeline/source-reader';
 import { VerifyStage } from './pipeline/verify.stage';
+
+const DIMS = 8;
+const EMBED_MODEL = 'test-embed';
+const COLLECTION = 'memories';
 
 /**
  * The gateway mocked at the seam (ModelGateway) for determinism. Mirrors the
@@ -23,6 +29,7 @@ import { VerifyStage } from './pipeline/verify.stage';
 class ScriptedGateway extends ModelGateway {
   extractCalls = 0;
   verifyCalls = 0;
+  embedCalls = 0;
 
   constructor(
     private readonly extractOutput: () => unknown,
@@ -37,8 +44,12 @@ class ScriptedGateway extends ModelGateway {
   complete(): never {
     throw new Error('complete() is not used by the pipeline');
   }
-  embed(): never {
-    throw new Error('embed() arrives in S2-B');
+  async embed(texts: string[]): Promise<number[][]> {
+    this.embedCalls += texts.length;
+    return texts.map((text) => fakeEmbedding(text, DIMS));
+  }
+  embeddingModelId(): string {
+    return EMBED_MODEL;
   }
 
   async extractStructured<T>(schema: ZodType<T>, request: StructuredExtractionRequest): Promise<T> {
@@ -86,24 +97,30 @@ const fact = (claim: string, overrides: Partial<CandidateFact> = {}): CandidateF
   ...overrides,
 });
 
-describe('ingestion pipeline stages 1-4 (integration, real Postgres, scripted gateway)', () => {
+describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, scripted gateway)', () => {
   let tdb: TestDatabase;
-  let reader: FakeReader;
+  let qdrant: TestQdrant;
+  let store: MemoryStore;
 
   beforeAll(async () => {
-    tdb = await startTestDatabase();
-    reader = new FakeReader();
+    [tdb, qdrant] = await Promise.all([startTestDatabase(), startTestQdrant()]);
+    store = createMemoryStore({
+      db: tdb.db,
+      qdrant: { url: qdrant.url, embeddingModel: EMBED_MODEL, dimensions: DIMS },
+    });
+    await store.ensureIndexReady();
   });
   afterAll(async () => {
-    await tdb.stop();
+    await Promise.all([tdb.stop(), qdrant.stop()]);
   });
 
-  const buildPipeline = (gateway: ScriptedGateway): IngestionPipeline =>
+  const reader = new FakeReader();
+  const buildPipeline = (gateway: ScriptedGateway, memoryStore: MemoryStore = store) =>
     new IngestionPipeline(
       [reader],
       new ExtractStage(gateway),
       new VerifyStage(gateway),
-      new MemoryStore(tdb.db),
+      new EmbedStoreStage(gateway, memoryStore),
     );
 
   const count = async (sql: string, params: unknown[] = []): Promise<number> => {
@@ -111,10 +128,25 @@ describe('ingestion pipeline stages 1-4 (integration, real Postgres, scripted ga
     return Number(rows[0]?.n ?? 0);
   };
   const memoriesFor = (sourceId: string) =>
-    tdb.pool.query<{ content: string; status: string }>(
-      `SELECT content, status FROM memory WHERE source_type = 'user_note' AND source_id = $1`,
+    tdb.pool.query<{ content: string; status: string; embedding_model: string | null }>(
+      `SELECT content, status, embedding_model FROM memory
+       WHERE source_type = 'user_note' AND source_id = $1`,
       [sourceId],
     );
+  /** Points for a source, via plain REST (only memory may import the client). */
+  const pointsFor = async (sourceId: string): Promise<unknown[]> => {
+    const response = await fetch(`${qdrant.url}/collections/${COLLECTION}/points/scroll`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        limit: 100,
+        filter: { must: [{ key: 'source_id', match: { value: sourceId } }] },
+        with_payload: true,
+      }),
+    });
+    const body = (await response.json()) as { result: { points: unknown[] } };
+    return body.result.points;
+  };
   const enqueue = (sourceId: string) =>
     tdb.db.transaction((tx) =>
       withTransactionalEnqueue(
@@ -189,13 +221,15 @@ describe('ingestion pipeline stages 1-4 (integration, real Postgres, scripted ga
     );
     expect(summary.verdicts).toEqual({ supported: 1, partial: 1, unsupported: 1 });
     expect(summary.admitted).toEqual({ active: 1, uncertain: 2 });
+    expect(summary.embedded).toBe(3);
     expect(gateway.verifyCalls).toBe(3); // one gateway call per fact (§B.3)
 
     const { rows } = await memoriesFor(sourceId);
-    const byContent = new Map(rows.map((r) => [r.content, r.status]));
-    expect(byContent.get(supported)).toBe('active');
-    expect(byContent.get(partial)).toBe('uncertain');
-    expect(byContent.get(unsupported)).toBe('uncertain');
+    const byContent = new Map(rows.map((r) => [r.content, r]));
+    expect(byContent.get(supported)?.status).toBe('active');
+    expect(byContent.get(partial)?.status).toBe('uncertain');
+    expect(byContent.get(unsupported)?.status).toBe('uncertain');
+    for (const row of rows) expect(row.embedding_model).toBe(EMBED_MODEL);
 
     // The verdict, reason and prompt version are stored per admitted memory.
     const results = await tdb.pool.query<{ verdict: string; reason: string; pv: string }>(
@@ -212,6 +246,54 @@ describe('ingestion pipeline stages 1-4 (integration, real Postgres, scripted ga
       expect(row.reason.length).toBeGreaterThan(0);
       expect(row.pv).toBe('verification/v0001');
     }
+
+    // Stage 5 wrote one point per admitted memory (uncertain ones included —
+    // the status multiplier, not exclusion, handles them at retrieval time).
+    expect(await pointsFor(sourceId)).toHaveLength(3);
+  });
+
+  it('two_store_write_safe: a failed point write retries the job — one row, one point', async () => {
+    const claim = 'Ana will send the onboarding checklist to Dario.';
+    const gateway = new ScriptedGateway(() => ({ facts: [fact(claim)] }));
+
+    // First upsert attempt fails (simulated Qdrant outage); everything after
+    // succeeds. The Postgres writes share the job transaction, so attempt 1
+    // must leave NO row behind, and the retry must not duplicate anything.
+    let upsertFailures = 1;
+    const flakyStore = new Proxy(store, {
+      get(target, property, receiver) {
+        if (property === 'upsertVectors' && upsertFailures > 0) {
+          return async () => {
+            upsertFailures -= 1;
+            throw new Error('simulated qdrant outage');
+          };
+        }
+        const value = Reflect.get(target, property, receiver);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    }) as MemoryStore;
+    const pipeline = buildPipeline(gateway, flakyStore);
+    const sourceId = reader.add('Remember to send Dario the onboarding checklist.');
+
+    await enqueue(sourceId);
+    await runOnce({ pgPool: tdb.pool, taskList: taskListFor(pipeline) }); // attempt 1: point write fails
+
+    expect((await memoriesFor(sourceId)).rows).toHaveLength(0); // tx rolled back — no half-write
+    expect(await pointsFor(sourceId)).toHaveLength(0);
+    expect(
+      await count(`SELECT count(*)::text AS n FROM job_execution WHERE source_id = $1`, [sourceId]),
+    ).toBe(0);
+
+    await tdb.pool.query(`UPDATE graphile_worker._private_jobs SET run_at = now()`);
+    await runOnce({ pgPool: tdb.pool, taskList: taskListFor(pipeline) }); // attempt 2: succeeds
+
+    const { rows } = await memoriesFor(sourceId);
+    expect(rows).toHaveLength(1); // exactly one row —
+    expect(await pointsFor(sourceId)).toHaveLength(1); // — and exactly one point
+    expect(rows[0]?.embedding_model).toBe(EMBED_MODEL);
+    expect(
+      await count(`SELECT count(*)::text AS n FROM job_execution WHERE source_id = $1`, [sourceId]),
+    ).toBe(1);
   });
 
   it('abstention: an empty-content source stores zero memories and completes cleanly', async () => {
@@ -234,6 +316,7 @@ describe('ingestion pipeline stages 1-4 (integration, real Postgres, scripted ga
 
     expect(gateway.extractCalls).toBe(1);
     expect(gateway.verifyCalls).toBe(0);
+    expect(gateway.embedCalls).toBe(0);
     expect((await memoriesFor(dullId)).rows).toHaveLength(0);
     expect(
       await count(`SELECT count(*)::text AS n FROM job_execution WHERE source_id = $1`, [dullId]),

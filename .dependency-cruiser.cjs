@@ -68,6 +68,15 @@ module.exports = {
       to: { path: 'node_modules/@mistralai' },
     },
     {
+      name: 'only-memory-imports-qdrant',
+      comment:
+        'The memory module owns ALL storage access including the Qdrant client ' +
+        '(decision 0003 ruling 2); no other module may import it.',
+      severity: 'error',
+      from: { path: '^project/', pathNot: '^project/src/memory/' },
+      to: { path: 'node_modules/@qdrant' },
+    },
+    {
       name: 'testing-helpers-only-in-tests',
       comment: 'The testing harness never leaks into production code.',
       severity: 'error',

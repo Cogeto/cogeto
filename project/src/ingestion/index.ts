@@ -8,3 +8,5 @@ export type { SourceReader, SourceItem } from './pipeline/source-reader';
 export type { PipelineLog } from './pipeline/pipeline-log';
 export { ACTIVE_PROMPTS, EXTRACTION_PROMPT, VERIFICATION_PROMPT } from './prompt-versions';
 export type { PromptVersionRef } from './prompt-versions';
+export { runGoldenEval, evalConfigSchema } from './eval-harness';
+export type { EvalConfig, EvalMetrics, EvalRunResult } from './eval-harness';

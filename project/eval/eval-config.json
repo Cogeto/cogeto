@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "similarity_threshold": 0.72,
+  "entity_overlap_threshold": 0.5,
+  "reference_time": "2026-07-01T09:00:00.000Z"
+}

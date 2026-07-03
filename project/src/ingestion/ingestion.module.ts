@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule, ModuleMetadata, Type } from '@nestjs/common';
-import { MemoryModule } from '../memory/index';
+import { EmbedStoreStage } from './pipeline/embed-store.stage';
 import { ExtractStage } from './pipeline/extract.stage';
 import { IngestionPipeline } from './pipeline/pipeline.service';
 import { SOURCE_READERS } from './pipeline/source-reader';
@@ -25,10 +25,13 @@ export class IngestionModule {
   static register(options: IngestionModuleOptions): DynamicModule {
     return {
       module: IngestionModule,
-      imports: [MemoryModule, ...(options.imports ?? [])],
+      // MemoryStore and ModelGateway resolve from the global memory/seam
+      // modules registered by the composition root.
+      imports: [...(options.imports ?? [])],
       providers: [
         ExtractStage,
         VerifyStage,
+        EmbedStoreStage,
         IngestionPipeline,
         {
           provide: SOURCE_READERS,

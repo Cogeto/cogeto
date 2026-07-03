@@ -7,6 +7,7 @@ export interface ModelGatewayModuleOptions {
   /** When absent the process boots normally; model calls fail with a typed error. */
   mistralApiKey?: string;
   model?: string;
+  embedModel?: string;
 }
 
 /**
@@ -27,7 +28,11 @@ export class ModelGatewayModule {
           provide: ModelGateway,
           useFactory: () =>
             options.mistralApiKey
-              ? new MistralModelGateway({ apiKey: options.mistralApiKey, model: options.model })
+              ? new MistralModelGateway({
+                  apiKey: options.mistralApiKey,
+                  model: options.model,
+                  embedModel: options.embedModel,
+                })
               : new UnconfiguredModelGateway(),
         },
       ],

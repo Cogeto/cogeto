@@ -1,0 +1,41 @@
+{
+  "case_id": "en-0004",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Arkona Systems signed the SOW",
+      "kind": "fact",
+      "entities": ["Dario", "Arkona Systems"],
+      "condition": null,
+      "temporal": { "valid_from": "source_date" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "The Arkona Systems kickoff is on July 20 in Rijeka",
+      "kind": "fact",
+      "entities": ["Arkona Systems"],
+      "condition": null,
+      "temporal": { "valid_from": "2026-07-20" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Dario prefers weekly check-ins on Mondays",
+      "kind": "preference",
+      "entities": ["Dario"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "The user still owes Dario the onboarding checklist",
+      "kind": "open_loop",
+      "entities": ["Dario"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": ["that a call happened, as a fact on its own"],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

@@ -1,0 +1,28 @@
+{
+  "case_id": "hr-0008",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Na sastanku s Jadranom d.o.o. spominjao se iznos od oko 30.000 EUR za drugu fazu, bez dogovora",
+      "kind": "fact",
+      "entities": ["Jadran d.o.o."],
+      "condition": null,
+      "temporal": { "valid_from": "source_date" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Razgovor s Jadranom d.o.o. nastavlja se idući tjedan",
+      "kind": "open_loop",
+      "entities": ["Jadran d.o.o."],
+      "condition": null,
+      "temporal": {},
+      "must_extract": false
+    }
+  ],
+  "must_not_extract": [
+    "bilo kakav dogovor ili odluka o 30.000 EUR — izričito piše da ništa nije dogovoreno",
+    "da je druga faza ugovorena"
+  ],
+  "expected_relations": [],
+  "verification_expected": "unsupported"
+}

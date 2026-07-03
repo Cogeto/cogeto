@@ -1,0 +1,25 @@
+{
+  "case_id": "en-0006",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Helia's CFO prefers a one-page memo over slide decks",
+      "kind": "preference",
+      "entities": ["Helia"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Helia's CFO should never be scheduled before 10",
+      "kind": "preference",
+      "entities": ["Helia"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": false
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

@@ -1,6 +1,6 @@
 import { Mistral } from '@mistralai/mistralai';
 import { ZodError } from 'zod';
-import type { ZodType } from 'zod';
+import type { ZodType, ZodTypeDef } from 'zod';
 import { ModelGateway } from './model-gateway.service';
 import type {
   CompletionRequest,
@@ -18,6 +18,7 @@ export interface MistralGatewayOptions {
 
 const DEFAULT_MODEL = 'mistral-small-latest';
 const DEFAULT_EMBED_MODEL = 'mistral-embed';
+const EMBED_BATCH_SIZE = 128;
 
 /**
  * The only place in the system that touches the Mistral client (§A.10) —
@@ -49,7 +50,10 @@ export class MistralModelGateway extends ModelGateway {
     return { text: contentToText(response.choices?.[0]?.message?.content) };
   }
 
-  async extractStructured<T>(schema: ZodType<T>, request: StructuredExtractionRequest): Promise<T> {
+  async extractStructured<T>(
+    schema: ZodType<T, ZodTypeDef, unknown>,
+    request: StructuredExtractionRequest,
+  ): Promise<T> {
     const attempt = async (extraInstruction?: string): Promise<T> => {
       const response = await this.call(() =>
         this.client.chat.complete({
@@ -101,10 +105,29 @@ export class MistralModelGateway extends ModelGateway {
   }
 
   async embed(texts: string[]): Promise<number[][]> {
-    const response = await this.call(() =>
-      this.client.embeddings.create({ model: this.embedModel, inputs: texts }),
-    );
-    return (response.data ?? []).map((d) => d.embedding ?? []);
+    if (texts.length === 0) return [];
+    const vectors: number[][] = [];
+    // Batched: Mistral's embeddings endpoint caps inputs per request; chunking
+    // here keeps callers oblivious. Errors carry the retryable flag via call().
+    for (let start = 0; start < texts.length; start += EMBED_BATCH_SIZE) {
+      const batch = texts.slice(start, start + EMBED_BATCH_SIZE);
+      const response = await this.call(() =>
+        this.client.embeddings.create({ model: this.embedModel, inputs: batch }),
+      );
+      const data = response.data ?? [];
+      if (data.length !== batch.length) {
+        throw new ModelGatewayError(
+          `embedding batch returned ${data.length} vectors for ${batch.length} inputs`,
+          true,
+        );
+      }
+      for (const item of data) vectors.push(item.embedding ?? []);
+    }
+    return vectors;
+  }
+
+  embeddingModelId(): string {
+    return this.embedModel;
   }
 
   /** Maps provider/network failures to typed errors with a retryable flag. */
@@ -134,6 +157,9 @@ export class UnconfiguredModelGateway extends ModelGateway {
     throw new ModelGatewayNotConfiguredError();
   }
   embed(): Promise<number[][]> {
+    throw new ModelGatewayNotConfiguredError();
+  }
+  embeddingModelId(): string {
     throw new ModelGatewayNotConfiguredError();
   }
 }

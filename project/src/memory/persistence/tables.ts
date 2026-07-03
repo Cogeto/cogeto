@@ -43,6 +43,8 @@ export const memory = pgTable(
     supersededBy: uuid('superseded_by'),
     content: text('content'),
     contentEmbeddingRef: text('content_embedding_ref'),
+    /** Which embed model produced the Qdrant point; NULL = not embedded (0004). */
+    embeddingModel: text('embedding_model'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

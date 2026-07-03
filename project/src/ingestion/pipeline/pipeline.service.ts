@@ -1,11 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Tx } from '../../infrastructure/index';
-import { MemoryStore } from '../../memory/index';
-import { resolveTemporal } from '../domain/candidate-fact';
-import { verificationResult } from '../persistence/tables';
 import { chunkContent } from './chunk';
-import type { AdmittedMemory } from './embed-store.stub';
-import { embedAndStoreStub } from './embed-store.stub';
+import { EmbedStoreStage } from './embed-store.stage';
 import { ExtractStage } from './extract.stage';
 import { noopLog } from './pipeline-log';
 import type { PipelineLog } from './pipeline-log';
@@ -27,18 +23,20 @@ export interface PipelineSummary {
   extracted: number;
   verdicts: { supported: number; partial: number; unsupported: number };
   admitted: { active: number; uncertain: number };
+  embedded: number;
   skipped?: 'source_missing';
 }
 
 /**
  * One worker job per source item, orchestrating the six pipeline stages
  * (glossary): ingest → chunk → extract → verify → embed + store → reconcile.
- * S2-A implements stages 1–4; 5 and 6 are logging stubs (S2-B / Session 4).
+ * S2-B: stages 1–5 are real; stage 6 (reconcile) is a stub until Session 4.
  *
  * The whole run executes inside the job's idempotency transaction (`tx`), so
- * a retry after any failure — including malformed model output — leaves no
- * partial memories behind. Model calls hold the transaction open; acceptable
- * at worker concurrency 2 for note-sized sources, revisit for bulk connectors.
+ * a retry after any failure — malformed model output, a failed Qdrant write —
+ * leaves no partial rows behind (decision 0004 ruling 3; 0005 for the
+ * two-store ordering). Model calls hold the transaction open; acceptable at
+ * worker concurrency 2 for note-sized sources, revisit for bulk connectors.
  */
 @Injectable()
 export class IngestionPipeline {
@@ -46,7 +44,7 @@ export class IngestionPipeline {
     @Inject(SOURCE_READERS) private readonly readers: SourceReader[],
     private readonly extractStage: ExtractStage,
     private readonly verifyStage: VerifyStage,
-    private readonly memoryStore: MemoryStore,
+    private readonly embedStoreStage: EmbedStoreStage,
   ) {}
 
   async run(
@@ -61,7 +59,9 @@ export class IngestionPipeline {
       extracted: 0,
       verdicts: { supported: 0, partial: 0, unsupported: 0 },
       admitted: { active: 0, uncertain: 0 },
+      embedded: 0,
     };
+    const ref = { source_type: payload.source_type, source_id: payload.source_id };
 
     // Stage 1 — ingest: load the source through its connector's reader port.
     const reader = this.readers.find((r) => r.sourceType === payload.source_type);
@@ -72,7 +72,7 @@ export class IngestionPipeline {
     if (!source) {
       // The source vanished before processing (e.g. deleted). Complete cleanly.
       summary.skipped = 'source_missing';
-      log({ stage: 'ingest', ...refOf(summary), skipped: true }, 'source missing; nothing to do');
+      log({ stage: 'ingest', ...ref, skipped: true }, 'source missing; nothing to do');
       return summary;
     }
 
@@ -85,44 +85,26 @@ export class IngestionPipeline {
     const facts = await this.extractStage.run(source, chunks);
     summary.extracted = facts.length;
 
-    // Stage 4 — verify, then admit per the §B.3 rule: supported → active,
-    // partial/unsupported → uncertain, verdict + reason stored alongside.
+    // Stage 4 — verify: the independent §B.3 pass decides each fact's verdict.
     const verified = await this.verifyStage.run(chunks, facts);
-    const admitted: AdmittedMemory[] = [];
-    for (const { fact, verdict, reason, promptVersion } of verified) {
-      summary.verdicts[verdict] += 1;
-      const status = verdict === 'supported' ? 'active' : 'uncertain';
-      const row = await this.memoryStore.admitExtractedFact(tx, source.ownerId, {
-        content: fact.claim,
-        scope: 'private', // notes are private in v1 (S2-A §4)
-        sourceType: source.sourceType,
-        sourceId: source.sourceId,
-        sensitive: false,
-        ...resolveTemporal(fact.temporal),
-        initialStatus: status,
-      });
-      await tx.insert(verificationResult).values({
-        memoryId: row.id,
-        verdict,
-        reason,
-        promptVersion,
-      });
-      summary.admitted[status] += 1;
-      admitted.push({ memoryId: row.id, status });
-      // fact.entities are not persisted yet: entity storage lands with the
-      // retrieval work (trigram entity match) — recorded in docs/sessions/S2-A.md.
-    }
+    for (const { verdict } of verified) summary.verdicts[verdict] += 1;
     log(
-      { stage: 'verify', ...refOf(summary), extracted: summary.extracted, ...summary.verdicts },
+      { stage: 'verify', ...ref, extracted: summary.extracted, ...summary.verdicts },
       'verification pass complete',
     );
 
-    // Stage 5 — embed + store (stub: S2-B). Stage 6 — reconcile (stub: Session 4).
-    reconcileStub(embedAndStoreStub(admitted, log), log);
+    // Stage 5 — embed + store: batched embedding, Postgres rows (status per
+    // verdict), Qdrant points last.
+    const admitted = await this.embedStoreStage.run(tx, source, verified);
+    for (const { status } of admitted) summary.admitted[status] += 1;
+    summary.embedded = admitted.length;
+    log(
+      { stage: 'embed_store', ...ref, embedded: summary.embedded, ...summary.admitted },
+      'facts embedded and stored',
+    );
+
+    // Stage 6 — reconcile (stub: Session 4).
+    reconcileStub(admitted, log);
     return summary;
   }
-}
-
-function refOf(summary: PipelineSummary): Record<string, unknown> {
-  return { source_type: summary.sourceType, source_id: summary.sourceId };
 }

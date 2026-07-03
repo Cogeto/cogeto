@@ -1,0 +1,17 @@
+{
+  "case_id": "hr-0003",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Radionica s Adriatikom pomaknuta je na sljedeći utorak u 9",
+      "kind": "decision",
+      "entities": ["Adriatik"],
+      "condition": null,
+      "temporal": { "valid_from": "resolved relative to source_date (sljedeći utorak, 9h)" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": ["da je dvorana ista, kao zasebna činjenica"],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

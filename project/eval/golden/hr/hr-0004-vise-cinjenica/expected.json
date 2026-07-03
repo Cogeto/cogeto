@@ -1,0 +1,41 @@
+{
+  "case_id": "hr-0004",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Vesna iz Lumen Grupe potvrdila je proračun od 20.000 EUR za pilot",
+      "kind": "decision",
+      "entities": ["Vesna", "Lumen Grupa"],
+      "condition": null,
+      "temporal": { "valid_from": "source_date" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Pilot s Lumen Grupom kreće 1. rujna",
+      "kind": "fact",
+      "entities": ["Lumen Grupa"],
+      "condition": null,
+      "temporal": { "valid_from": "2026-09-01" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Vesna želi izvještaje na hrvatskom, ne na engleskom",
+      "kind": "preference",
+      "entities": ["Vesna"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Korisnik do petka mora Vesni poslati popis referenci",
+      "kind": "commitment",
+      "entities": ["Vesna"],
+      "condition": null,
+      "temporal": { "valid_until": "resolved relative to source_date (petak)" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": ["da je sastanak održan, kao zasebna činjenica"],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

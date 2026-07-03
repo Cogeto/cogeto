@@ -44,6 +44,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
             ...summary.verdicts,
             admitted_active: summary.admitted.active,
             admitted_uncertain: summary.admitted.uncertain,
+            embedded: summary.embedded,
             skipped: summary.skipped ?? null,
           },
           'ingestion pipeline completed',

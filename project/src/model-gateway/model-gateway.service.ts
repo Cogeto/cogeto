@@ -1,4 +1,4 @@
-import type { ZodType } from 'zod';
+import type { ZodType, ZodTypeDef } from 'zod';
 
 /**
  * Provider-neutral model seam (scope §5.1, §A.10): complete / extractStructured /
@@ -24,10 +24,20 @@ export interface StructuredExtractionRequest {
 
 export abstract class ModelGateway {
   abstract complete(request: CompletionRequest): Promise<CompletionResult>;
-  /** Requests JSON output, parses it, and validates it against the Zod schema. */
+  /**
+   * Requests JSON output, parses it, and validates it against the Zod schema.
+   * The input type is free so schemas may use .default() for omitted fields.
+   */
   abstract extractStructured<T>(
-    schema: ZodType<T>,
+    schema: ZodType<T, ZodTypeDef, unknown>,
     request: StructuredExtractionRequest,
   ): Promise<T>;
+  /** Batched; one vector per input text, in order. */
   abstract embed(texts: string[]): Promise<number[][]>;
+  /**
+   * The identifier of the model embed() uses — recorded per memory
+   * (embedding_model, migration 0004) so reindex knows when re-embedding
+   * is required.
+   */
+  abstract embeddingModelId(): string;
 }

@@ -1,0 +1,25 @@
+{
+  "case_id": "hr-0006",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "S Krešom je dogovoren dvomjesečni pilot umjesto punog ugovora, s početkom u listopadu",
+      "kind": "decision",
+      "entities": ["Krešo"],
+      "condition": null,
+      "temporal": { "valid_from": "2026-10-01" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Cijena pilota s Krešom još nije dogovorena",
+      "kind": "open_loop",
+      "entities": ["Krešo"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": false
+    }
+  ],
+  "must_not_extract": ["bilo kakva cijena pilota — cijena nije ni spomenuta brojkom"],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

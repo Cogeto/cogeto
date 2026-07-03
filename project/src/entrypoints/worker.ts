@@ -9,6 +9,7 @@ import { createLogger, PinoNestLogger } from './logger';
 import { createWorkerRootModule } from './worker-root.module';
 import { createDb } from '../infrastructure/index';
 import { ACTIVE_PROMPTS, IngestionPipeline } from '../ingestion/index';
+import { MemoryStore } from '../memory/index';
 import { loadPrompt, recordPromptVersion } from '../model-gateway/index';
 import { buildTaskList } from './worker-tasks';
 
@@ -43,6 +44,10 @@ async function main(): Promise<void> {
       'prompt version registered',
     );
   }
+
+  // Idempotent Qdrant collection + payload-index creation (§A.4).
+  await context.get(MemoryStore).ensureIndexReady();
+  logger.info('memory vector collection ready');
 
   const pipeline = context.get(IngestionPipeline);
   const runner: Runner = await run({

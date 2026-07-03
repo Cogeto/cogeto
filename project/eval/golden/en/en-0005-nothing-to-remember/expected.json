@@ -1,0 +1,11 @@
+{
+  "case_id": "en-0005",
+  "source_type": "user_note",
+  "expected_memories": [],
+  "must_not_extract": [
+    "pleasantries and small talk",
+    "that a coffee meeting happened",
+    "greetings to the family"
+  ],
+  "expected_relations": []
+}

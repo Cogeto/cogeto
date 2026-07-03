@@ -1,0 +1,17 @@
+{
+  "case_id": "en-0003",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "The user will draft the discovery workshop agenda by next Friday for Maja, before the Vertek kickoff",
+      "kind": "commitment",
+      "entities": ["Maja", "Vertek"],
+      "condition": null,
+      "temporal": { "valid_until": "resolved relative to source_date (next Friday)" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

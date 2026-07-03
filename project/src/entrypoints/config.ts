@@ -23,6 +23,8 @@ const configSchema = z.object({
   webConfigFile: z.string().min(1),
   /** Optional: without it the gateway boots unconfigured and fails on use. */
   mistralApiKey: z.string().min(1).optional(),
+  /** MISTRAL_EMBED_MODEL — recorded per memory; reindex re-embeds on change. */
+  mistralEmbedModel: z.string().min(1).default('mistral-embed'),
   logLevel: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
 });
 
@@ -42,6 +44,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
     webConfigFile: env.COGETO_WEB_CONFIG_FILE,
     // Compose passes '' when unset; treat empty as absent.
     mistralApiKey: env.COGETO_MISTRAL_API_KEY || env.MISTRAL_API_KEY || undefined,
+    mistralEmbedModel: env.COGETO_MISTRAL_EMBED_MODEL || env.MISTRAL_EMBED_MODEL || undefined,
     logLevel: env.COGETO_LOG_LEVEL,
   });
   if (!parsed.success) {

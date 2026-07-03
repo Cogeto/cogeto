@@ -1,0 +1,17 @@
+{
+  "case_id": "en-0007",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "The Novira engagement switches from hourly billing to a fixed-fee model from August, decided with Petra",
+      "kind": "decision",
+      "entities": ["Petra", "Novira"],
+      "condition": null,
+      "temporal": { "valid_from": "2026-08-01" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

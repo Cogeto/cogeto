@@ -9,25 +9,31 @@ import { z } from 'zod';
 export const FACT_KINDS = ['commitment', 'decision', 'preference', 'fact', 'open_loop'] as const;
 export type FactKind = (typeof FACT_KINDS)[number];
 
+// Absent-but-unambiguous fields default instead of failing the schema: a
+// missing entity array means "none", a missing condition means "none" — models
+// routinely omit empties, and rejecting the whole extraction for that is a
+// spurious retry. claim/kind/source_span stay strict.
 const temporalSchema = z.object({
   /** ISO date/datetime, resolved against the source timestamp; null if unresolvable. */
-  valid_from: z.string().nullable(),
-  valid_until: z.string().nullable(),
+  valid_from: z.string().nullable().default(null),
+  valid_until: z.string().nullable().default(null),
   /** False when the source contained relative anchors the model could not resolve. */
-  anchors_resolved: z.boolean(),
+  anchors_resolved: z.boolean().default(true),
 });
 
 export const candidateFactSchema = z.object({
   /** One self-contained sentence — proper nouns and qualifiers preserved. */
   claim: z.string().min(1),
   kind: z.enum(FACT_KINDS),
-  entities: z.object({
-    people: z.array(z.string()),
-    organizations: z.array(z.string()),
-    projects: z.array(z.string()),
-  }),
-  condition: z.string().nullable(),
-  temporal: temporalSchema,
+  entities: z
+    .object({
+      people: z.array(z.string()).default([]),
+      organizations: z.array(z.string()).default([]),
+      projects: z.array(z.string()).default([]),
+    })
+    .default({ people: [], organizations: [], projects: [] }),
+  condition: z.string().nullable().default(null),
+  temporal: temporalSchema.default({ valid_from: null, valid_until: null, anchors_resolved: true }),
   /** The exact substring of the source that motivated this fact. */
   source_span: z.string().min(1),
 });

@@ -1,4 +1,4 @@
-import type { AdmittedMemory } from './embed-store.stub';
+import type { AdmittedMemory } from './embed-store.stage';
 import type { PipelineLog } from './pipeline-log';
 
 /**

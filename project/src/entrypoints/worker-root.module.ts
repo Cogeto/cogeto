@@ -27,8 +27,14 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         externalDomain: config.oidc.externalDomain,
         cacheTtlSeconds: 60,
       }),
-      ModelGatewayModule.register({ mistralApiKey: config.mistralApiKey }),
-      MemoryModule,
+      ModelGatewayModule.register({
+        mistralApiKey: config.mistralApiKey,
+        embedModel: config.mistralEmbedModel,
+      }),
+      MemoryModule.register({
+        qdrantUrl: config.qdrantUrl,
+        embeddingModel: config.mistralEmbedModel,
+      }),
       IngestionModule.register({ imports: [ConnectorsModule], readers: [NotesSourceReader] }),
       AgentsModule,
       ConnectorsModule,

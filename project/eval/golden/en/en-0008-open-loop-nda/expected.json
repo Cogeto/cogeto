@@ -1,0 +1,25 @@
+{
+  "case_id": "en-0008",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "The signed NDA from Meridian Grupa is still outstanding",
+      "kind": "open_loop",
+      "entities": ["Meridian Grupa"],
+      "condition": null,
+      "temporal": { "valid_from": "source_date" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "The user will chase Meridian Grupa's legal team if the NDA has not arrived by Wednesday",
+      "kind": "commitment",
+      "entities": ["Meridian Grupa"],
+      "condition": "if the signed NDA has not arrived by Wednesday",
+      "temporal": { "valid_until": "resolved relative to source_date (Wednesday)" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

@@ -23,13 +23,19 @@ It is **EU-first, privacy-first, self-hostable, and model-agnostic (Mistral-firs
 
 ## Status
 
-**Session 1 complete (S1-A + S1-B).** The stack runs end to end: `docker compose up`
-reaches a working Zitadel login and dashboard shell; migration 0001 (contractual
-core: scope, NOT NULL provenance, six lifecycle statuses + sensitive flag, validity
-intervals, append-only audit) and 0002 (outbox, idempotent job queue, dead-letter,
-prompt registry) are applied by the init container; the Memory aggregate enforces
-actor-owned status transitions behind a Principal-gated interface; the identity and
-model-gateway seams are in place. Next: Session 2 — the Notes vertical slice.
+**Session 2 complete (S2-A + S2-B).** On top of the Session 1 foundation (compose
+stack to login, contractual schema, outbox + idempotent queue, Memory aggregate,
+identity/model-gateway seams), the Notes vertical slice now runs for real: notes
+captured on the **Memories** page go through the six-stage pipeline — ingest →
+chunk → extract (versioned prompt `extraction/v0001`) → verify (independent
+`verification/v0001`; supported → `active`, partial/unsupported → `uncertain`) →
+**embed + store** (batched Mistral embeddings; Qdrant points with native
+scope/sensitive payload gates) — with reconcile stubbed for Session 4. Semantic
+search is live behind `MemoryStore.vectorSearch`; `npm run reindex` rebuilds
+Qdrant from Postgres and verifies counts; `npm run eval` scores the extraction +
+verification prompts against the bilingual golden set (`project/eval/golden/`,
+results in `docs/eval/history.md`). Next: Session 3 — retrieval fusion, chat, and
+the dashboard.
 
 ## Licensing
 

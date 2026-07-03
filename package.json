@@ -18,7 +18,10 @@
     "format": "prettier --write .",
     "boundaries": "depcruise project/src project/shared project/web --config .dependency-cruiser.cjs",
     "test": "npm run test --workspaces --if-present",
-    "gateway:smoke": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/gateway-smoke.js"
+    "gateway:smoke": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/gateway-smoke.js",
+    "reindex": "node project/src/dist/entrypoints/reindex.js",
+    "eval": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/eval.js",
+    "vector:smoke": "node project/src/dist/entrypoints/vector-smoke.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",

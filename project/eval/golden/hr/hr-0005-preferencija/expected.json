@@ -1,0 +1,17 @@
+{
+  "case_id": "hr-0005",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Ivana iz Torpeda ne voli sastanke petkom; najbolji termin je utorak ujutro",
+      "kind": "preference",
+      "entities": ["Ivana", "Torpedo"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

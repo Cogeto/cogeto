@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
   NotImplementedException,
+  Optional,
 } from '@nestjs/common';
 import { and, desc, eq, or } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
@@ -12,6 +13,8 @@ import { DRIZZLE, writeAudit } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { memory } from './persistence/tables';
 import type { MemoryRow, SourceType } from './persistence/tables';
+import { buildGateFilter, MemoryVectorStore } from './persistence/vector-store';
+import type { MemoryPoint } from './persistence/vector-store';
 import { actorLabel, checkTransition } from './domain/transition';
 import type { MemoryActor } from './domain/transition';
 
@@ -38,6 +41,8 @@ export interface NewFact {
   validUntil?: Date;
   /** Ingestion stores unverified facts as `uncertain` (§B.3); default `active`. */
   initialStatus?: 'active' | 'uncertain';
+  /** Which embed model produced (or is about to produce) this memory's vector. */
+  embeddingModel?: string;
 }
 
 export interface ReadOptions {
@@ -79,7 +84,11 @@ export class DeletionSagaStub extends DeletionSaga {
 
 @Injectable()
 export class MemoryStore {
-  constructor(@Inject(DRIZZLE) private readonly db: Db) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: Db,
+    /** Optional so pure-Postgres tests need no Qdrant; DI always provides it. */
+    @Optional() private readonly vectors?: MemoryVectorStore,
+  ) {}
 
   // ── Reads (Principal-gated) ─────────────────────────────────────────────────
 
@@ -203,14 +212,28 @@ export class MemoryStore {
     });
   }
 
-  // ── Search primitives (implemented with the Notes slice, Session 2) ────────
+  // ── Search primitives (0003 ruling 2: Principal-gated, gates in the store) ──
 
-  vectorSearch(
-    _principal: Principal,
-    _embedding: number[],
-    _opts: SearchOptions,
+  /**
+   * Semantic search over the Qdrant index. The scope and sensitive gates are
+   * native payload pre-filters INSIDE the vector query (§A.4/§A.5) — an
+   * ungated hit cannot exist, not even transiently. Scores are normalized to
+   * [0,1], higher = better (cosine similarity mapped from [-1,1]).
+   */
+  async vectorSearch(
+    principal: Principal,
+    embedding: number[],
+    opts: SearchOptions,
   ): Promise<MemorySearchHit[]> {
-    throw new NotImplementedException('Session 2: Qdrant adapter with payload pre-filters (§A.4)');
+    const hits = await this.requireVectors().search(
+      embedding,
+      buildGateFilter(principal, opts),
+      opts.topK,
+    );
+    return hits.map((hit) => ({
+      memoryId: hit.id,
+      score: Math.min(1, Math.max(0, (hit.score + 1) / 2)),
+    }));
   }
 
   fullTextSearch(
@@ -218,7 +241,7 @@ export class MemoryStore {
     _query: string,
     _opts: SearchOptions,
   ): Promise<MemorySearchHit[]> {
-    throw new NotImplementedException('Session 2: Postgres FTS (§A.5)');
+    throw new NotImplementedException('Session 3: Postgres FTS (§A.5)');
   }
 
   entitySearch(
@@ -226,7 +249,50 @@ export class MemoryStore {
     _entity: string,
     _opts: SearchOptions,
   ): Promise<MemorySearchHit[]> {
-    throw new NotImplementedException('Session 2: trigram entity match (§A.5)');
+    throw new NotImplementedException('Session 3: trigram entity match (§A.5)');
+  }
+
+  // ── Vector index maintenance (memory owns the Qdrant client — ruling 2) ────
+
+  /** Idempotent collection + payload-index creation; runs on worker boot. */
+  async ensureIndexReady(): Promise<void> {
+    await this.requireVectors().ensureCollection();
+  }
+
+  /**
+   * Writes the Qdrant points for already-committed (or about-to-commit) rows.
+   * Point id = memory id, so retries upsert instead of duplicating; callers
+   * (pipeline stage 5, reindex) order this AFTER the Postgres writes.
+   */
+  async upsertVectors(rows: MemoryRow[], embeddings: number[][]): Promise<void> {
+    if (rows.length !== embeddings.length) {
+      throw new BadRequestException(
+        `got ${embeddings.length} embeddings for ${rows.length} memories`,
+      );
+    }
+    const points: MemoryPoint[] = rows.map((row, i) => ({
+      id: row.id,
+      vector: embeddings[i]!,
+      payload: {
+        owner_id: row.ownerId,
+        scope: row.scope,
+        status: row.status,
+        sensitive: row.sensitive,
+        source_type: row.sourceType,
+        source_id: row.sourceId,
+        valid_until: row.validUntil?.toISOString() ?? null,
+      },
+    }));
+    await this.requireVectors().upsert(points);
+  }
+
+  private requireVectors(): MemoryVectorStore {
+    if (!this.vectors) {
+      throw new NotImplementedException(
+        'MemoryStore was constructed without a vector store (Qdrant) — register MemoryModule with a qdrantUrl',
+      );
+    }
+    return this.vectors;
   }
 
   // ── Private: the gates and shared write paths ───────────────────────────────
@@ -265,6 +331,7 @@ export class MemoryStore {
         validFrom: fact.validFrom ?? new Date(),
         validUntil: fact.validUntil,
         content: fact.content,
+        embeddingModel: fact.embeddingModel,
       })
       .returning();
     const created = row as MemoryRow;

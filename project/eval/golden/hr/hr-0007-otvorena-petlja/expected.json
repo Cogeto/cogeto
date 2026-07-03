@@ -1,0 +1,25 @@
+{
+  "case_id": "hr-0007",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Potpisani ugovor od Sidra još nije stigao",
+      "kind": "open_loop",
+      "entities": ["Sidro"],
+      "condition": null,
+      "temporal": { "valid_from": "source_date" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Korisnik će zvati Anu iz nabave ako ugovor od Sidra ne stigne do srijede",
+      "kind": "commitment",
+      "entities": ["Ana", "Sidro"],
+      "condition": "ako ugovor ne stigne do srijede",
+      "temporal": { "valid_until": "resolved relative to source_date (srijeda)" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}
