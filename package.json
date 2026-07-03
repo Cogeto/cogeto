@@ -21,6 +21,7 @@
     "gateway:smoke": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/gateway-smoke.js",
     "reindex": "node project/src/dist/entrypoints/reindex.js",
     "eval": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/eval.js",
+    "eval:chat": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/eval-chat.js",
     "vector:smoke": "node project/src/dist/entrypoints/vector-smoke.js"
   },
   "devDependencies": {

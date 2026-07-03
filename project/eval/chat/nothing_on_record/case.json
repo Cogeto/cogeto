@@ -1,0 +1,13 @@
+{
+  "case_id": "nothing_on_record",
+  "description": "Regression guard: a question with no supporting memory must take the nothing-on-record path — no generation from thin air, no sources.",
+  "anchor": "2026-07-03T09:00:00.000Z",
+  "notes": [
+    "Petra sent the signed SOW for the Baltic Retail analytics project this morning.",
+    "Coffee with Thomas from Baltic Retail is set for next week."
+  ],
+  "script": ["What is Cogeto and what are its pricing tiers?"],
+  "checks": {
+    "nothing_on_record": true
+  }
+}

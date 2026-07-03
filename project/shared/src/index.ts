@@ -1,4 +1,5 @@
 export * from './chat';
+export * from './citations';
 export * from './memory';
 export * from './notes';
 export * from './principal';

@@ -41,6 +41,8 @@ export interface MemoryListItem {
   supersededBy: string | null;
   validFrom: string | null;
   validUntil: string | null;
+  /** Raw temporal phrases code could not resolve (decision 0007 ruling 1). */
+  temporalUnresolved: string[];
   createdAt: string;
 }
 

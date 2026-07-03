@@ -10,7 +10,7 @@ import { createWorkerRootModule } from './worker-root.module';
 import { createDb } from '../infrastructure/index';
 import { ACTIVE_PROMPTS, IngestionPipeline } from '../ingestion/index';
 import { MemoryStore } from '../memory/index';
-import { ANSWER_PROMPT } from '../retrieval/index';
+import { ANSWER_PROMPT, QUERY_REWRITE_PROMPT } from '../retrieval/index';
 import { loadPrompt, ModelGateway, recordPromptVersion } from '../model-gateway/index';
 import { buildTaskList } from './worker-tasks';
 
@@ -37,7 +37,7 @@ async function main(): Promise<void> {
 
   // Register the active prompt versions (§B.7) — also the immutability check:
   // a released version whose file hash changed fails the boot.
-  for (const ref of [...ACTIVE_PROMPTS, ANSWER_PROMPT]) {
+  for (const ref of [...ACTIVE_PROMPTS, ANSWER_PROMPT, QUERY_REWRITE_PROMPT]) {
     const prompt = await loadPrompt(ref.family, ref.version);
     await recordPromptVersion(db, prompt);
     logger.info(

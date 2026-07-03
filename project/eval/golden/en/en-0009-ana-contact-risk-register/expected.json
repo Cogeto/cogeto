@@ -1,0 +1,25 @@
+{
+  "case_id": "en-0009",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Ana Kovač is the client contact at Adriatic Foods for the Atlas CRM Migration",
+      "kind": "fact",
+      "entities": ["Ana Kovač", "Adriatic Foods", "Atlas CRM Migration"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Ana Kovač asked the user to prepare a risk register for the Atlas CRM Migration",
+      "kind": "commitment",
+      "entities": ["Ana Kovač"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

@@ -6,10 +6,21 @@ import type { ZodType, ZodTypeDef } from 'zod';
  * touch callers.
  */
 
+/**
+ * Per-task model tier (decision 0007 ruling 3). Task sites request a TIER, never
+ * a vendor model string — the gateway maps tiers to concrete models from config:
+ * - `pipeline` — extraction, verification, future consolidation (cheaper model).
+ * - `answer`   — chat synthesis and the eval grader (stronger general model).
+ * Each method has a sensible default tier, so most callers name none.
+ */
+export type ModelTier = 'pipeline' | 'answer';
+
 export interface CompletionRequest {
   system?: string;
   input: string;
   maxTokens?: number;
+  /** Defaults to `answer` — completion is the user-facing synthesis path. */
+  tier?: ModelTier;
 }
 
 export interface CompletionResult {
@@ -20,6 +31,8 @@ export interface StructuredExtractionRequest {
   /** The system prompt — a versioned artifact loaded via the prompt loader (§B.7). */
   system: string;
   input: string;
+  /** Defaults to `pipeline` — structured extraction is slow-path ingestion work. */
+  tier?: ModelTier;
 }
 
 export abstract class ModelGateway {

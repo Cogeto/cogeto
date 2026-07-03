@@ -12,6 +12,12 @@ export const SIGNAL_FETCH_FACTOR = 4;
 /** Results returned when the caller does not say how many it wants. */
 export const DEFAULT_TOP_K = 8;
 
+/** Entity-profile mode (F1/F4): gather up to this many of an entity's memories, no top-k. */
+export const PROFILE_CEILING = 50;
+
+/** Bounded budget for the conversational rewriter call (F3); fall back to raw query. */
+export const REWRITE_TIMEOUT_MS = 4000;
+
 /**
  * Capitalized tokens that are sentence mechanics, not names — the filter for
  * the fast-path query-entity heuristic (no model call, v1). English + Croatian,

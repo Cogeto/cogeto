@@ -1,0 +1,27 @@
+{
+  "case_id": "atlas_scope",
+  "description": "A single project-scope question that must combine ALL the Atlas notes, not stop at the first match (F5 under-retrieval).",
+  "anchor": "2026-07-03T09:00:00.000Z",
+  "notes": [
+    "Call with Ana Kovač at Adriatic Foods about the Atlas CRM Migration — she is our main contact there. She asked me to put together a risk register for the project.",
+    "Ana confirmed the Atlas CRM Migration will run in two waves: sales first, then support.",
+    "Ana asked about cleaning up the HubSpot contacts before import. That depends on her sending me the export format first.",
+    "We decided leads older than 3 years are archived to CSV, not imported into the new CRM.",
+    "Ana wants Marta included in the import mapping review for Atlas.",
+    "Ana flagged GDPR consent as the highest data-quality risk for the Atlas migration."
+  ],
+  "script": ["What is the full scope of the Atlas CRM migration?"],
+  "checks": {
+    "coverage_facts": [
+      "The migration runs in two waves: sales first, then support",
+      "A risk register was requested",
+      "HubSpot contacts are cleaned up before import, pending an export format from Ana",
+      "Leads older than 3 years are archived to CSV, not imported",
+      "Marta is included in the import mapping review",
+      "GDPR consent is the highest data-quality risk"
+    ],
+    "coverage_target": 0.8,
+    "no_mechanics": true,
+    "citations_valid": true
+  }
+}

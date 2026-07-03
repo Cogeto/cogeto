@@ -9,7 +9,7 @@ export interface PromptVersionRef {
   version: string;
 }
 
-export const EXTRACTION_PROMPT: PromptVersionRef = { family: 'extraction', version: 'v0001' };
-export const VERIFICATION_PROMPT: PromptVersionRef = { family: 'verification', version: 'v0001' };
+export const EXTRACTION_PROMPT: PromptVersionRef = { family: 'extraction', version: 'v0002' };
+export const VERIFICATION_PROMPT: PromptVersionRef = { family: 'verification', version: 'v0002' };
 
 export const ACTIVE_PROMPTS: readonly PromptVersionRef[] = [EXTRACTION_PROMPT, VERIFICATION_PROMPT];

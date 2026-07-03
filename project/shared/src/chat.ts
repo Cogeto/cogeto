@@ -27,6 +27,8 @@ export interface ChatFactDto {
   claim: string | null;
   status: MemoryStatus;
   sensitive: boolean;
+  /** The entity this fact is primarily ABOUT (F1/F4); null pre-v0002. */
+  subjectEntity: string | null;
   sourceType: string;
   sourceId: string;
   validFrom: string | null;
@@ -39,5 +41,11 @@ export interface ChatFactDto {
 export type ChatStreamEvent =
   | { type: 'sources'; facts: ChatFactDto[] }
   | { type: 'token'; text: string }
-  | { type: 'done'; messageId: string; content: string }
+  | {
+      type: 'done';
+      messageId: string;
+      content: string;
+      /** Non-conforming citation tokens stripped from this answer (metadata only). */
+      citationViolations: number;
+    }
   | { type: 'error'; message: string };

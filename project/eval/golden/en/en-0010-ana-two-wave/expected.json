@@ -1,0 +1,17 @@
+{
+  "case_id": "en-0010",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Ana confirmed the Atlas CRM Migration runs in two waves, sales first then support",
+      "kind": "decision",
+      "entities": ["Ana", "Atlas CRM Migration"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

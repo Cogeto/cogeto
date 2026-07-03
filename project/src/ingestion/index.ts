@@ -10,3 +10,4 @@ export { ACTIVE_PROMPTS, EXTRACTION_PROMPT, VERIFICATION_PROMPT } from './prompt
 export type { PromptVersionRef } from './prompt-versions';
 export { runGoldenEval, evalConfigSchema } from './eval-harness';
 export type { EvalConfig, EvalMetrics, EvalRunResult } from './eval-harness';
+export { seedMemoryFromSource } from './eval-seed';

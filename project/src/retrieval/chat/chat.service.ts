@@ -1,5 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { asc, eq } from 'drizzle-orm';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { asc, desc, eq } from 'drizzle-orm';
 import type { ChatFactDto, ChatMessageDto, ChatStreamEvent, Principal } from '@cogeto/shared';
 import { DRIZZLE } from '../../infrastructure/index';
 import type { Db } from '../../infrastructure/index';
@@ -7,18 +7,21 @@ import { loadPrompt, ModelGateway } from '../../model-gateway/index';
 import type { PromptArtifact } from '../../model-gateway/index';
 import { RetrievalService } from '../retrieval.service';
 import type { RetrievedMemory } from '../retrieval.service';
+import type { ConversationTurn } from '../query-rewrite';
 import { chatMessage } from '../persistence/tables';
 import {
   ANSWER_PROMPT,
   buildAnswerInput,
   NOTHING_ON_RECORD,
-  toStoredMarkers,
+  toStoredAnswer,
 } from './answer-prompt';
 
-/** How many facts the answer context receives. */
-const ANSWER_FACTS_TOP_K = 8;
+/** How many facts the answer context receives (wider so aggregation fits, F5). */
+const ANSWER_FACTS_TOP_K = 12;
 /** How much history the chat page loads. */
 const HISTORY_LIMIT = 200;
+/** Turns of prior conversation the rewriter sees to resolve references (F3). */
+const REWRITE_HISTORY_TURNS = 6;
 
 /**
  * The chat area (S3-A). Strictly fast path (§A.3): persist → retrieve →
@@ -32,6 +35,7 @@ const HISTORY_LIMIT = 200;
 @Injectable()
 export class ChatService {
   private prompt?: PromptArtifact;
+  private readonly logger = new Logger(ChatService.name);
 
   constructor(
     @Inject(DRIZZLE) private readonly db: Db,
@@ -60,12 +64,15 @@ export class ChatService {
    * stored form of the answer.
    */
   async *ask(principal: Principal, content: string): AsyncGenerator<ChatStreamEvent> {
+    // Prior turns (before this one) feed the conversational rewriter (F3).
+    const history = await this.recentTurns(principal);
     await this.db.insert(chatMessage).values({ ownerId: principal.userId, role: 'user', content });
 
     const retrieved = await this.retrieval.retrieve(principal, content, {
       topK: ANSWER_FACTS_TOP_K,
+      history,
     });
-    const facts = retrieved.map(toFactDto);
+    const facts = retrieved.memories.map((hit, i) => toFactDto(hit, i));
     yield { type: 'sources', facts };
 
     let answer: string;
@@ -78,7 +85,8 @@ export class ChatService {
       let buffer = '';
       const stream = this.gateway.completeStream({
         system: prompt.content,
-        input: buildAnswerInput(facts, content),
+        input: buildAnswerInput(facts, content, retrieved.mode),
+        tier: 'answer',
       });
       for await (const text of stream) {
         buffer += text;
@@ -87,12 +95,27 @@ export class ChatService {
       answer = buffer;
     }
 
-    const stored = toStoredMarkers(answer, facts);
+    const { text: stored, violations } = toStoredAnswer(answer, facts);
+    if (violations > 0) {
+      // Metadata only — never the answer content or tokens (pino rule).
+      this.logger.warn(`citation_violation stripped=${violations}`);
+    }
     const [row] = await this.db
       .insert(chatMessage)
       .values({ ownerId: principal.userId, role: 'assistant', content: stored })
       .returning();
-    yield { type: 'done', messageId: row!.id, content: stored };
+    yield { type: 'done', messageId: row!.id, content: stored, citationViolations: violations };
+  }
+
+  /** The last few turns, oldest first — context for the rewriter (F3). */
+  private async recentTurns(principal: Principal): Promise<ConversationTurn[]> {
+    const rows = await this.db
+      .select({ role: chatMessage.role, content: chatMessage.content })
+      .from(chatMessage)
+      .where(eq(chatMessage.ownerId, principal.userId))
+      .orderBy(desc(chatMessage.createdAt), desc(chatMessage.id))
+      .limit(REWRITE_HISTORY_TURNS);
+    return rows.reverse();
   }
 
   private async getPrompt(): Promise<PromptArtifact> {
@@ -108,6 +131,7 @@ function toFactDto(hit: RetrievedMemory, index: number): ChatFactDto {
     claim: hit.memory.content,
     status: hit.memory.status,
     sensitive: hit.memory.sensitive,
+    subjectEntity: hit.memory.subjectEntity,
     sourceType: hit.memory.sourceType,
     sourceId: hit.memory.sourceId,
     validFrom: hit.memory.validFrom?.toISOString() ?? null,

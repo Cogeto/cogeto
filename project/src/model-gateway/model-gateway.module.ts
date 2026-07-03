@@ -6,7 +6,10 @@ import { MistralModelGateway, UnconfiguredModelGateway } from './mistral.gateway
 export interface ModelGatewayModuleOptions {
   /** When absent the process boots normally; model calls fail with a typed error. */
   mistralApiKey?: string;
-  model?: string;
+  /** `pipeline` tier model (extraction, verification) — decision 0007 ruling 3. */
+  pipelineModel?: string;
+  /** `answer` tier model (chat synthesis, eval grader). */
+  answerModel?: string;
   embedModel?: string;
 }
 
@@ -30,7 +33,8 @@ export class ModelGatewayModule {
             options.mistralApiKey
               ? new MistralModelGateway({
                   apiKey: options.mistralApiKey,
-                  model: options.model,
+                  pipelineModel: options.pipelineModel,
+                  answerModel: options.answerModel,
                   embedModel: options.embedModel,
                 })
               : new UnconfiguredModelGateway(),

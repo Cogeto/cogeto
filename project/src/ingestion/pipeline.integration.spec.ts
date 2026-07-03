@@ -248,7 +248,7 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
     );
     for (const row of results.rows) {
       expect(row.reason.length).toBeGreaterThan(0);
-      expect(row.pv).toBe('verification/v0001');
+      expect(row.pv).toBe('verification/v0002');
     }
 
     // Stage 5 wrote one point per admitted memory (uncertain ones included —

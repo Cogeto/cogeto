@@ -1,0 +1,20 @@
+{
+  "case_id": "en-0017",
+  "source_type": "user_note",
+  "source_date": "2026-07-03T09:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Ana needs the risk register by Monday",
+      "kind": "commitment",
+      "entities": ["Ana"],
+      "condition": null,
+      "temporal": {
+        "valid_until": "2026-07-06"
+      },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

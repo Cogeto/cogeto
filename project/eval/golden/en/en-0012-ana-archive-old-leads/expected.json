@@ -1,0 +1,17 @@
+{
+  "case_id": "en-0012",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Leads older than 3 years are archived to CSV and not imported into the new CRM",
+      "kind": "decision",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

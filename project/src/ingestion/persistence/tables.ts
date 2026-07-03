@@ -24,6 +24,8 @@ export const verificationResult = pgTable('verification_result', {
   promptVersion: text('prompt_version').notNull(),
   /** The extractor's cited source passage (migration 0006); NULL pre-S3-B. */
   sourceSpan: text('source_span'),
+  /** The tentative wording that made this memory uncertain (migration 0008; F7). */
+  hedgePhrase: text('hedge_phrase'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

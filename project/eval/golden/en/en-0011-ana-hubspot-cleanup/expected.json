@@ -1,0 +1,17 @@
+{
+  "case_id": "en-0011",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Ana asked about cleaning up the HubSpot contacts before the Atlas import",
+      "kind": "open_loop",
+      "entities": ["Ana", "HubSpot"],
+      "condition": "depends on Ana sending the export format first",
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

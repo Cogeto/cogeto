@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ChatFactDto } from '@cogeto/shared';
+import { mapMarkersToCitations, scanAnswer } from '@cogeto/shared';
 import { askChat, fetchChatMessages } from '../api';
 import type { Session } from '../auth/oidc';
 import { CitationChip } from '../components/CitationChip';
@@ -8,14 +9,13 @@ import { MemoryDrawer } from '../components/MemoryDrawer';
 import { Shell } from '../components/Shell';
 
 /**
- * Chat (S3-A): grounded answers over the user's memories. Assistant messages
- * carry inline citation markers — `[F#]` while streaming (resolved via the SSE
- * sources event), `[[mem:<id>]]` once persisted (resolved via the memory API).
- * Chips deep-link into the Memories governance drawer (S3-B).
+ * Chat (S3-A/S3.5-A): grounded answers over the user's memories. The one
+ * citation grammar is `{{cite:<uuid>}}` (decision 0007 ruling 2). Stored
+ * messages already contain only canonical cites; live streaming text is
+ * canonicalized here from the model's `[F#]` markers (via the SSE sources map)
+ * and every non-conforming token is stripped — no raw marker ever reaches the
+ * screen. Chips deep-link into the Memories governance drawer (S3-B).
  */
-
-const MARKER = /\[\[mem:([0-9a-fA-F-]{36})\]\]|\[(F\d+)\]/g;
-
 function MessageBody({
   session,
   content,
@@ -27,32 +27,32 @@ function MessageBody({
   facts?: ChatFactDto[];
   onOpenMemory: (memoryId: string) => void;
 }) {
-  const parts: React.ReactNode[] = [];
-  let last = 0;
+  // Live text carries `[F#]` markers + a facts map; canonicalize first, then
+  // scan. Stored text has no facts map and is already canonical/sanitized.
+  const markerMap = new Map((facts ?? []).map((f) => [f.marker, f.memoryId]));
+  const canonical = facts ? mapMarkersToCitations(content, markerMap) : content;
+  const validIds = facts ? new Set(facts.map((f) => f.memoryId)) : undefined;
+  const { segments } = scanAnswer(canonical, validIds);
+
   let ordinal = 0;
-  for (const match of content.matchAll(MARKER)) {
-    const at = match.index ?? 0;
-    if (at > last) parts.push(content.slice(last, at));
-    ordinal += 1;
-    const memoryId = match[1];
-    const marker = match[2];
-    const fact = marker
-      ? facts?.find((f) => f.marker === marker)
-      : facts?.find((f) => f.memoryId === memoryId);
-    parts.push(
-      <CitationChip
-        key={`${at}-${ordinal}`}
-        session={session}
-        ordinal={ordinal}
-        memoryId={memoryId}
-        fact={fact}
-        onOpen={onOpenMemory}
-      />,
-    );
-    last = at + match[0].length;
-  }
-  if (last < content.length) parts.push(content.slice(last));
-  return <p className="whitespace-pre-wrap text-sm leading-relaxed">{parts}</p>;
+  return (
+    <p className="whitespace-pre-wrap text-sm leading-relaxed">
+      {segments.map((segment, i) => {
+        if (segment.kind === 'text') return <span key={i}>{segment.text}</span>;
+        ordinal += 1;
+        return (
+          <CitationChip
+            key={i}
+            session={session}
+            ordinal={ordinal}
+            memoryId={segment.memoryId}
+            fact={facts?.find((f) => f.memoryId === segment.memoryId)}
+            onOpen={onOpenMemory}
+          />
+        );
+      })}
+    </p>
+  );
 }
 
 function Bubble({ role, children }: { role: 'user' | 'assistant'; children: React.ReactNode }) {

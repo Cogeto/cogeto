@@ -29,3 +29,45 @@ against this baseline.
 | en | 8 | 100.0% (12/12) | 100.0% (11/11) | 57.1% (4/7) |
 | hr | 8 | 71.4% (10/14) | 81.8% (9/11) | 57.1% (4/7) |
 | aggregate | 16 | 84.6% (22/26) | 90.9% (20/22) | 57.1% (8/14) |
+
+
+## 2026-07-03 — extraction/v0001 + verification/v0001 (thresholds v1, 27 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 19 | 88.5% (23/26) | 91.3% (21/23) | 66.7% (12/18) |
+| hr | 8 | 66.7% (10/15) | 81.8% (9/11) | 85.7% (6/7) |
+| aggregate | 27 | 80.5% (33/41) | 88.2% (30/34) | 72.0% (18/25) |
+
+
+## 2026-07-03 — chat eval (pipeline=mistral-small-latest · answer=mistral-medium-latest · answer-prompt=answer/v0001 · grader=eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | overall |
+|---|---|---|---|---|---|---|---|
+| atlas_scope | — | 67% | — | PASS | PASS | — | FAIL |
+| nothing_on_record | — | — | — | — | — | PASS | PASS |
+| who_is_ana | PASS | 13% | PASS | PASS | PASS | — | FAIL |
+
+## 2026-07-03 — chat eval (pipeline=mistral-small-latest · answer=mistral-medium-latest · answer-prompt=answer/v0002 · grader=eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | overall |
+|---|---|---|---|---|---|---|---|
+| atlas_scope | — | 100% | — | PASS | PASS | — | PASS |
+| nothing_on_record | — | — | — | — | — | PASS | PASS |
+| who_is_ana | PASS | 100% | PASS | PASS | PASS | — | PASS |
+
+## 2026-07-03 — extraction/v0002 + verification/v0002 (thresholds v1, 27 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 19 | 92.3% (24/26) | 95.7% (22/23) | 94.4% (17/18) |
+| hr | 8 | 73.3% (11/15) | 90.9% (10/11) | 57.1% (4/7) |
+| aggregate | 27 | 85.4% (35/41) | 94.1% (32/34) | 84.0% (21/25) |
+
+## 2026-07-03 — extraction/v0002 + verification/v0002 (thresholds v1, 27 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 19 | 88.5% (23/26) | 91.3% (21/23) | 88.9% (16/18) |
+| hr | 8 | 66.7% (10/15) | 81.8% (9/11) | 57.1% (4/7) |
+| aggregate | 27 | 80.5% (33/41) | 88.2% (30/34) | 80.0% (20/25) |

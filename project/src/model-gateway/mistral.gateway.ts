@@ -8,38 +8,46 @@ import type {
   StructuredExtractionRequest,
 } from './model-gateway.service';
 import { ModelGatewayError, ModelGatewayNotConfiguredError } from './errors';
+import type { ModelTier } from './model-gateway.service';
 
 export interface MistralGatewayOptions {
   apiKey: string;
-  /** Chat model for completion + structured extraction. */
-  model?: string;
+  /** Model for the `pipeline` tier (extraction, verification). */
+  pipelineModel?: string;
+  /** Model for the `answer` tier (chat synthesis, eval grader). */
+  answerModel?: string;
   embedModel?: string;
 }
 
-const DEFAULT_MODEL = 'mistral-small-latest';
+const DEFAULT_PIPELINE_MODEL = 'mistral-small-latest';
+const DEFAULT_ANSWER_MODEL = 'mistral-medium-latest';
 const DEFAULT_EMBED_MODEL = 'mistral-embed';
 const EMBED_BATCH_SIZE = 128;
 
 /**
  * The only place in the system that touches the Mistral client (§A.10) —
- * enforced by a dependency-cruiser rule.
+ * enforced by a dependency-cruiser rule. Maps model tiers (decision 0007
+ * ruling 3) to concrete Mistral models; callers never name a model string.
  */
 export class MistralModelGateway extends ModelGateway {
   private readonly client: Mistral;
-  private readonly model: string;
+  private readonly models: Record<ModelTier, string>;
   private readonly embedModel: string;
 
   constructor(options: MistralGatewayOptions) {
     super();
     this.client = new Mistral({ apiKey: options.apiKey });
-    this.model = options.model ?? DEFAULT_MODEL;
+    this.models = {
+      pipeline: options.pipelineModel ?? DEFAULT_PIPELINE_MODEL,
+      answer: options.answerModel ?? DEFAULT_ANSWER_MODEL,
+    };
     this.embedModel = options.embedModel ?? DEFAULT_EMBED_MODEL;
   }
 
   async complete(request: CompletionRequest): Promise<CompletionResult> {
     const response = await this.call(() =>
       this.client.chat.complete({
-        model: this.model,
+        model: this.models[request.tier ?? 'answer'],
         maxTokens: request.maxTokens,
         messages: [
           ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
@@ -53,7 +61,7 @@ export class MistralModelGateway extends ModelGateway {
   async *completeStream(request: CompletionRequest): AsyncIterable<string> {
     const stream = await this.call(() =>
       this.client.chat.stream({
-        model: this.model,
+        model: this.models[request.tier ?? 'answer'],
         maxTokens: request.maxTokens,
         messages: [
           ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
@@ -71,10 +79,11 @@ export class MistralModelGateway extends ModelGateway {
     schema: ZodType<T, ZodTypeDef, unknown>,
     request: StructuredExtractionRequest,
   ): Promise<T> {
+    const model = this.models[request.tier ?? 'pipeline'];
     const attempt = async (extraInstruction?: string): Promise<T> => {
       const response = await this.call(() =>
         this.client.chat.complete({
-          model: this.model,
+          model,
           responseFormat: { type: 'json_object' },
           messages: [
             { role: 'system' as const, content: request.system },
@@ -147,23 +156,39 @@ export class MistralModelGateway extends ModelGateway {
     return this.embedModel;
   }
 
-  /** Maps provider/network failures to typed errors with a retryable flag. */
+  /**
+   * Maps provider/network failures to typed errors with a retryable flag, and
+   * retries retryable ones (429 rate-limits, 5xx, network) with exponential
+   * backoff before giving up. Transient rate-limits during a burst (evals,
+   * batch ingestion) no longer fail the call on the first 429; a genuine error
+   * still surfaces as a ModelGatewayError after the bounded attempts.
+   */
   private async call<T>(fn: () => Promise<T>): Promise<T> {
-    try {
-      return await fn();
-    } catch (error) {
-      const status = extractStatus(error);
-      const retryable = status === undefined || status === 429 || status >= 500;
-      throw new ModelGatewayError(
-        `mistral call failed${status ? ` (HTTP ${status})` : ''}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        retryable,
-        error,
-      );
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        const status = extractStatus(error);
+        const retryable = status === undefined || status === 429 || status >= 500;
+        if (retryable && attempt < MAX_RETRIES) {
+          await sleep(RETRY_BASE_MS * 2 ** attempt);
+          continue;
+        }
+        throw new ModelGatewayError(
+          `mistral call failed${status ? ` (HTTP ${status})` : ''}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+          retryable,
+          error,
+        );
+      }
     }
   }
 }
+
+const MAX_RETRIES = 5;
+const RETRY_BASE_MS = 800;
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Boots without a key (app/worker do not need the model to start); fails on use. */
 export class UnconfiguredModelGateway extends ModelGateway {

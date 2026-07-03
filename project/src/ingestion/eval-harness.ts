@@ -40,6 +40,8 @@ const expectedMemorySchema = z.object({
 const expectedFileSchema = z.object({
   case_id: z.string(),
   source_type: z.string().default('user_note'),
+  /** Per-case anchor (S3.5-A): pins relative-date cases to a fixed date forever. */
+  source_date: z.string().optional(),
   expected_memories: z.array(expectedMemorySchema).default([]),
   must_not_extract: z.array(z.string()).default([]),
   expected_relations: z.array(z.unknown()).default([]),
@@ -178,12 +180,17 @@ export async function runGoldenEval(options: {
     const metrics = byLang.get(testCase.lang) ?? emptyMetrics(testCase.lang);
     byLang.set(testCase.lang, metrics);
 
+    // Per-case anchor when the case pins one (F8 date cases); else the global
+    // reference time.
+    const caseAnchor = testCase.expected.source_date
+      ? new Date(testCase.expected.source_date)
+      : referenceTime;
     const source: SourceItem = {
       sourceType: 'user_note',
       sourceId: `golden-${testCase.caseId}`,
       ownerId: 'golden-eval',
       content: testCase.source,
-      createdAt: referenceTime,
+      createdAt: caseAnchor,
     };
     const chunks = chunkContent(source.content);
     let facts: CandidateFact[];

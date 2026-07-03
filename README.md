@@ -23,28 +23,34 @@ It is **EU-first, privacy-first, self-hostable, and model-agnostic (Mistral-firs
 
 ## Status
 
-**Session 3 complete (S3-A + S3-B).** On top of the Session 1–2 foundation
-(compose stack to login, contractual schema, outbox + idempotent queue, the
-six-stage Notes pipeline with versioned prompts and the bilingual golden set),
-Cogeto now **answers and governs**:
+**Session 3.5 complete (quality hardening, S3.5-A + S3.5-B).** On top of the
+Session 1–3 foundation (compose stack to login, contractual schema, outbox +
+idempotent queue, the six-stage Notes pipeline, hybrid retrieval, grounded chat,
+and the governance dashboard), Cogeto's memory quality is hardened against real
+owner-testing failures:
 
-- **Hybrid retrieval** (§A.5): vector (Qdrant) + keyword FTS (`simple` +
-  unaccent) + trigram entity match, fused with reciprocal rank fusion, status
-  multipliers on top — scope and sensitive stay hard in-query gates.
-- **Chat**: `POST /api/chat` streams grounded answers (prompt family
-  `answer/v0001`) that cite only retrieved facts; citation chips carry the
-  memory's status and deep-link into the governance drawer; zero retrieval
-  yields an honest "nothing on record", never invention.
-- **Governance dashboard**: the governed Memories list (search, filters,
-  entity tags), a detail drawer with provenance, verification verdict,
-  supersession history and actions (approve / mark outdated / sensitive
-  toggle / edit-as-supersession / reject), the **Review** queue for uncertain
-  facts, and a **System** view with queue health and dead-letter retry. Every
-  action writes `audit_log` with the acting principal.
+- **Grounded, complete chat**: conversational query rewriting resolves pronouns
+  ("who is she?") against recent turns; an **entity-profile** retrieval mode
+  gathers everything about a person and answers with a full profile; project
+  questions aggregate the whole picture. Answers describe the world (never the
+  retrieval), and a fact about Ana that mentions Marta is never conflated.
+- **Deterministic dates**: relative expressions ("by Monday", "in two weeks")
+  are resolved by code against the note anchor, not guessed by the model.
+- **Honest uncertainty**: hedged source wording ("might", "not sure") admits a
+  memory as *uncertain* and is shown with soft framing; plainly stated facts stay
+  *active* — the verifier judges support only.
+- **Leak-proof citations**: one grammar (`{{cite:uuid}}`); any other bracketed
+  token is stripped before it can reach the user.
+- **Per-task model tiers**: a cheaper model for high-volume ingestion, a stronger
+  one for user-facing answers.
+- **Two eval harnesses**: `npm run eval` (golden set, extraction + verification)
+  and `npm run eval:chat` (scripted conversations scored end-to-end), both
+  recorded to `docs/eval/history.md`.
 
-Reconcile (dedup/contradiction), the deletion saga, and the CI eval gates
-arrive in Session 4. `npm run reindex` and `npm run eval` remain the
-operational contracts (results in `docs/eval/history.md`).
+Reconcile (dedup/contradiction), the deletion saga, and the CI eval gates arrive
+in Session 4. `npm run reindex` and the two eval commands are the operational
+contracts. Retrieval/answer/extraction prompts are versioned artifacts under
+`project/prompts/` (currently extraction/verification/answer at v0002).
 
 ## Licensing
 

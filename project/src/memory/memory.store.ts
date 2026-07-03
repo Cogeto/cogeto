@@ -38,6 +38,10 @@ export interface NewFact {
   sourceId: string;
   /** Extracted entity names, flat (decision 0006 ruling 2) — the §A.5 entity signal. */
   entities?: string[];
+  /** The entity this fact is primarily ABOUT (F1/F4) — distinct from mentions. */
+  subjectEntity?: string;
+  /** Raw temporal phrases code could not resolve (decision 0007 ruling 1). */
+  temporalUnresolved?: string[];
   sensitive?: boolean;
   validFrom?: Date;
   validUntil?: Date;
@@ -303,6 +307,7 @@ export class MemoryStore {
         sourceType: old.sourceType,
         sourceId: old.sourceId,
         entities: old.entities,
+        subjectEntity: old.subjectEntity ?? undefined,
         sensitive: old.sensitive,
         validUntil: old.validUntil ?? undefined,
         initialStatus: 'user_approved',
@@ -625,6 +630,8 @@ export class MemoryStore {
         status: fact.initialStatus ?? 'active',
         sensitive: fact.sensitive ?? false,
         entities: fact.entities ?? [],
+        subjectEntity: fact.subjectEntity,
+        temporalUnresolved: fact.temporalUnresolved ?? [],
         validFrom: fact.validFrom ?? new Date(),
         validUntil: fact.validUntil,
         content: fact.content,

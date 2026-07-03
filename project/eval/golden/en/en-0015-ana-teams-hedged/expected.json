@@ -1,0 +1,17 @@
+{
+  "case_id": "en-0015",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Ana might prefer Teams over Zoom for the workshops (not yet confirmed)",
+      "kind": "preference",
+      "entities": ["Ana"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

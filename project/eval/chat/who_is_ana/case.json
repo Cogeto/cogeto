@@ -1,0 +1,37 @@
+{
+  "case_id": "who_is_ana",
+  "description": "Multi-turn from the owner transcript: build context about Ana, then ask who she is, then a pronoun-only turn. Scores entity correctness (never Marta), coverage of the Ana profile on the final answer, hedge marking of the Teams preference, no exposed mechanics, and citation validity.",
+  "anchor": "2026-07-03T09:00:00.000Z",
+  "notes": [
+    "Call with Ana Kovač at Adriatic Foods about the Atlas CRM Migration — she is our main contact there. She asked me to put together a risk register for the project.",
+    "Ana confirmed the Atlas CRM Migration will run in two waves: sales first, then support.",
+    "Ana asked about cleaning up the HubSpot contacts before import. That depends on her sending me the export format first.",
+    "We decided leads older than 3 years are archived to CSV, not imported into the new CRM.",
+    "Ana wants Marta included in the import mapping review for Atlas.",
+    "Ana flagged GDPR consent as the highest data-quality risk for the Atlas migration.",
+    "Ana mentioned she might prefer Teams over Zoom for the workshops, but she wasn't sure yet.",
+    "Marta is my subcontractor on the analytics work; she will handle the import mapping herself."
+  ],
+  "script": [
+    "Tell me about the Atlas CRM migration.",
+    "Who is Ana?",
+    "What has she asked me to do?",
+    "Remind me — who is she, exactly?"
+  ],
+  "checks": {
+    "entity": { "mustMention": ["ana"], "notIdentity": ["marta", "petra", "thomas"] },
+    "coverage_facts": [
+      "Ana Kovač is the client contact at Adriatic Foods for the Atlas CRM Migration",
+      "Ana asked for a risk register",
+      "Ana confirmed a two-wave migration: sales first, then support",
+      "Ana asked about HubSpot contact cleanup, dependent on her sending the export format",
+      "Ana wants Marta included in the import mapping review",
+      "Ana flagged GDPR consent as the highest data-quality risk",
+      "Ana might prefer Teams over Zoom for the workshops (unconfirmed)"
+    ],
+    "coverage_target": 0.8,
+    "hedge": { "term": "teams" },
+    "no_mechanics": true,
+    "citations_valid": true
+  }
+}

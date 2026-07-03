@@ -3,7 +3,7 @@ import type { Tx } from '../../infrastructure/index';
 import { MemoryStore } from '../../memory/index';
 import type { MemoryRow } from '../../memory/index';
 import { ModelGateway } from '../../model-gateway/index';
-import { resolveTemporal } from '../domain/candidate-fact';
+import { resolveFactTemporal } from '../domain/candidate-fact';
 import { verificationResult } from '../persistence/tables';
 import type { SourceItem } from './source-reader';
 import type { VerifiedFact } from './verify.stage';
@@ -46,15 +46,24 @@ export class EmbedStoreStage {
     const rows: MemoryRow[] = [];
     const admitted: AdmittedMemory[] = [];
     for (const { fact, verdict, reason, promptVersion } of verified) {
-      const status = verdict === 'supported' ? 'active' : 'uncertain';
+      // Admission rule (S3.5-B, F7): active ONLY when the source stated it
+      // plainly (hedged=false) AND the verifier supported it; a hedged fact is
+      // uncertain even when supported, because the SOURCE was tentative.
+      const status = !fact.hedged && verdict === 'supported' ? 'active' : 'uncertain';
+      // Dates are resolved by code against the note anchor (decision 0007
+      // ruling 1); v0001 still passes through its pre-resolved fields.
+      const { validFrom, validUntil, unresolved } = resolveFactTemporal(fact, source.createdAt);
       const row = await this.memoryStore.admitExtractedFact(tx, source.ownerId, {
         content: fact.claim,
         scope: 'private', // notes are private in v1 (S2-A §4)
         sourceType: source.sourceType,
         sourceId: source.sourceId,
         entities: flattenEntities(fact),
+        subjectEntity: fact.subject_entity ?? undefined,
         sensitive: false,
-        ...resolveTemporal(fact.temporal),
+        validFrom,
+        validUntil,
+        temporalUnresolved: unresolved,
         initialStatus: status,
         embeddingModel,
       });
@@ -64,6 +73,7 @@ export class EmbedStoreStage {
         reason,
         promptVersion,
         sourceSpan: fact.source_span,
+        hedgePhrase: fact.hedged ? fact.hedge_phrase : null,
       });
       rows.push(row);
       admitted.push({ memoryId: row.id, status });

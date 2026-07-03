@@ -31,6 +31,8 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       }),
       ModelGatewayModule.register({
         mistralApiKey: config.mistralApiKey,
+        pipelineModel: config.mistralPipelineModel,
+        answerModel: config.mistralAnswerModel,
         embedModel: config.mistralEmbedModel,
       }),
       MemoryModule.register({

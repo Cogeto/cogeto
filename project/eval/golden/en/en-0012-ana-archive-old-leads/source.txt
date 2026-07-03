@@ -1,0 +1,1 @@
+We decided leads older than 3 years are archived to CSV, not imported into the new CRM.

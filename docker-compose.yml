@@ -49,6 +49,11 @@ services:
       # Optional: without it the model gateway boots unconfigured and fails on use
       # with a typed error. Model calls start with the Notes pipeline (Session 2).
       COGETO_MISTRAL_API_KEY: ${COGETO_MISTRAL_API_KEY:-}
+      # Per-task model tiers (decision 0007 ruling 3) and the embedding model —
+      # each falls back to the config default when unset.
+      COGETO_MISTRAL_MODEL_PIPELINE: ${COGETO_MISTRAL_MODEL_PIPELINE:-}
+      COGETO_MISTRAL_MODEL_ANSWER: ${COGETO_MISTRAL_MODEL_ANSWER:-}
+      COGETO_MISTRAL_EMBED_MODEL: ${COGETO_MISTRAL_EMBED_MODEL:-}
       COGETO_LOG_LEVEL: ${COGETO_LOG_LEVEL:-info}
     volumes:
       - web-config:/web-config:ro

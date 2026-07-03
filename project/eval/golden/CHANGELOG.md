@@ -9,3 +9,18 @@ One line per label change (docs/eval-golden-set.md §4 rule 5).
   dates, multi-fact notes, two nothing-to-remember cases, two designed traps;
   Croatian cases authored idiomatically, not translated). Thresholds live in
   `project/eval/eval-config.json` (v1).
+- 2026-07-03 (S3.5-A): added the Ana corpus and calibration/date cases from
+  owner testing — `en-0009`–`en-0016` (Ana Kovač at Adriatic Foods / Atlas CRM
+  Migration: contact + risk register, two-wave decision, HubSpot cleanup open
+  loop, archive-old-leads decision, Marta-inclusion with Ana as subject and
+  Marta secondary [F1], GDPR risk, the HEDGED Teams preference expected
+  `partial`/uncertain [F7], and the Petra SOW calibration case expected
+  `supported`/active guarding F7 false-positives) and `en-0017`–`en-0019` (F8
+  relative-date cases, each pinning `source_date` 2026-07-03 so the anchor is
+  fixed forever; deterministic resolution verified in `temporal-resolver.spec.ts`).
+  Adds the optional `source_date` field to the case format (per-case anchor).
+- 2026-07-03 (S3.5-B): relabeled `en-0015` (hedged Teams) verification_expected
+  `partial` → `supported`. v0002 splits the two dimensions: verification judges
+  support only (the claim faithfully carries the hedge → supported), while the
+  extractor's `hedged` flag drives the memory to `uncertain`. The old `partial`
+  label encoded the F7 conflation the fix removes.

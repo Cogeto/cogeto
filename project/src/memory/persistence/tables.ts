@@ -45,6 +45,10 @@ export const memory = pgTable(
      * raw SQL in the search primitives only.
      */
     entities: text('entities').array().notNull().default([]),
+    /** Raw temporal phrases code could not resolve (migration 0007, decision 0007). */
+    temporalUnresolved: text('temporal_unresolved').array().notNull().default([]),
+    /** The entity this fact is primarily ABOUT (migration 0008; F1/F4). NULL pre-v0002. */
+    subjectEntity: text('subject_entity'),
     validFrom: timestamp('valid_from', { withTimezone: true }),
     validUntil: timestamp('valid_until', { withTimezone: true }),
     supersededBy: uuid('superseded_by'),

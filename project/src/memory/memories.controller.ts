@@ -33,6 +33,7 @@ function toListItem(row: MemoryRow): MemoryListItem {
     supersededBy: row.supersededBy,
     validFrom: row.validFrom?.toISOString() ?? null,
     validUntil: row.validUntil?.toISOString() ?? null,
+    temporalUnresolved: row.temporalUnresolved,
     createdAt: row.createdAt.toISOString(),
   };
 }

@@ -1,0 +1,17 @@
+{
+  "case_id": "en-0013",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Ana wants Marta included in the Atlas import mapping review",
+      "kind": "preference",
+      "entities": ["Ana", "Marta"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

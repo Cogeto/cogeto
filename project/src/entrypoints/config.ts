@@ -25,6 +25,9 @@ const configSchema = z.object({
   mistralApiKey: z.string().min(1).optional(),
   /** MISTRAL_EMBED_MODEL — recorded per memory; reindex re-embeds on change. */
   mistralEmbedModel: z.string().min(1).default('mistral-embed'),
+  /** Per-task model tiers (decision 0007 ruling 3). */
+  mistralPipelineModel: z.string().min(1).default('mistral-small-latest'),
+  mistralAnswerModel: z.string().min(1).default('mistral-medium-latest'),
   logLevel: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
 });
 
@@ -45,6 +48,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
     // Compose passes '' when unset; treat empty as absent.
     mistralApiKey: env.COGETO_MISTRAL_API_KEY || env.MISTRAL_API_KEY || undefined,
     mistralEmbedModel: env.COGETO_MISTRAL_EMBED_MODEL || env.MISTRAL_EMBED_MODEL || undefined,
+    mistralPipelineModel:
+      env.COGETO_MISTRAL_MODEL_PIPELINE || env.MISTRAL_MODEL_PIPELINE || undefined,
+    mistralAnswerModel: env.COGETO_MISTRAL_MODEL_ANSWER || env.MISTRAL_MODEL_ANSWER || undefined,
     logLevel: env.COGETO_LOG_LEVEL,
   });
   if (!parsed.success) {

@@ -140,13 +140,15 @@ describe('chat (integration, real Postgres + real Qdrant, gateway mocked)', () =
     expect(request.input).not.toContain('Vault code');
     for (const fact of facts) expect(request.input).toContain(`[${fact.marker}]`);
 
-    // The persisted assistant message carries the stable citation form.
+    // The persisted assistant message carries the one canonical citation form
+    // (decision 0007 ruling 2): {{cite:<uuid>}} — never the raw [F1] marker.
     const done = events.find((e) => e.type === 'done');
     expect(done?.type).toBe('done');
     const content = done!.type === 'done' ? done!.content : '';
     const f1 = facts.find((f) => f.marker === 'F1')!;
-    expect(content).toContain(`[[mem:${f1.memoryId}]]`);
+    expect(content).toContain(`{{cite:${f1.memoryId}}}`);
     expect(content).not.toContain('[F1]');
+    expect(content).not.toMatch(/\[F\d/);
     const persisted = await tdb.db.select().from(chatMessage);
     expect(persisted.filter((m) => m.role === 'user').map((m) => m.content)).toContain(question);
     expect(persisted.filter((m) => m.role === 'assistant').map((m) => m.content)).toContain(
