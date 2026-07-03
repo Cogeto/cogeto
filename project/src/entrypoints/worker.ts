@@ -8,6 +8,8 @@ import { loadConfig } from './config';
 import { createLogger, PinoNestLogger } from './logger';
 import { createWorkerRootModule } from './worker-root.module';
 import { createDb } from '../infrastructure/index';
+import { ACTIVE_PROMPTS, IngestionPipeline } from '../ingestion/index';
+import { loadPrompt, recordPromptVersion } from '../model-gateway/index';
 import { buildTaskList } from './worker-tasks';
 
 const HEARTBEAT_FILE = '/tmp/worker-heartbeat';
@@ -30,10 +32,26 @@ async function main(): Promise<void> {
 
   const pool = new Pool({ connectionString: config.databaseUrl });
   const db = createDb(pool);
+
+  // Register the active prompt versions (§B.7) — also the immutability check:
+  // a released version whose file hash changed fails the boot.
+  for (const ref of ACTIVE_PROMPTS) {
+    const prompt = await loadPrompt(ref.family, ref.version);
+    await recordPromptVersion(db, prompt);
+    logger.info(
+      { family: prompt.family, version: prompt.version, sha256: prompt.contentHash.slice(0, 12) },
+      'prompt version registered',
+    );
+  }
+
+  const pipeline = context.get(IngestionPipeline);
   const runner: Runner = await run({
     pgPool: pool,
     concurrency: 2,
-    taskList: buildTaskList(db),
+    taskList: buildTaskList(db, {
+      pipeline,
+      log: (event, message) => logger.info(event, message),
+    }),
     noHandleSignals: true,
   });
   logger.info('cogeto worker started (graphile runner + task registry)');

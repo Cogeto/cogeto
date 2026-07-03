@@ -35,6 +35,7 @@ export interface NewFact {
   sourceId: string;
   sensitive?: boolean;
   validFrom?: Date;
+  validUntil?: Date;
   /** Ingestion stores unverified facts as `uncertain` (§B.3); default `active`. */
   initialStatus?: 'active' | 'uncertain';
 }
@@ -108,7 +109,19 @@ export class MemoryStore {
   // ── Writes (aggregate-owned invariants) ────────────────────────────────────
 
   async createFromFact(principal: Principal, fact: NewFact): Promise<MemoryRow> {
-    return this.db.transaction(async (tx) => this.insertFact(tx, principal.userId, fact));
+    return this.db.transaction(async (tx) =>
+      this.insertFact(tx, principal.userId, fact, `user:${principal.userId}`),
+    );
+  }
+
+  /**
+   * Admission path for the ingestion pipeline (§B.3): the verification pass
+   * decides `initialStatus` (supported → active, partial/unsupported →
+   * uncertain) and admits the fact inside the pipeline job's transaction, so
+   * admission and the job's idempotency row commit atomically.
+   */
+  async admitExtractedFact(tx: Tx, ownerId: string, fact: NewFact): Promise<MemoryRow> {
+    return this.insertFact(tx, ownerId, fact, 'verification');
   }
 
   /**
@@ -163,10 +176,12 @@ export class MemoryStore {
         throw new BadRequestException('memory is already replaced; supersede its successor');
       }
       const successorValidFrom = successorFact.validFrom ?? new Date();
-      const successor = await this.insertFact(tx, old.ownerId, {
-        ...successorFact,
-        validFrom: successorValidFrom,
-      });
+      const successor = await this.insertFact(
+        tx,
+        old.ownerId,
+        { ...successorFact, validFrom: successorValidFrom },
+        actorLabel(actor),
+      );
       const [predecessor] = await tx
         .update(memory)
         .set({
@@ -225,7 +240,19 @@ export class MemoryStore {
     return and(scopeGate, sensitiveGate)!;
   }
 
-  private async insertFact(tx: Tx, ownerId: string, fact: NewFact): Promise<MemoryRow> {
+  private async insertFact(
+    tx: Tx,
+    ownerId: string,
+    fact: NewFact,
+    actor: string,
+  ): Promise<MemoryRow> {
+    // Provenance is NOT NULL, always (§A.6): the aggregate rejects orphans even
+    // where the database could not (an empty string satisfies a NOT NULL column).
+    if (!ownerId.trim() || !fact.sourceType || !fact.sourceId.trim()) {
+      throw new BadRequestException(
+        'a memory requires owner_id, source_type and source_id — no orphans, ever (§A.6)',
+      );
+    }
     const [row] = await tx
       .insert(memory)
       .values({
@@ -236,12 +263,13 @@ export class MemoryStore {
         status: fact.initialStatus ?? 'active',
         sensitive: fact.sensitive ?? false,
         validFrom: fact.validFrom ?? new Date(),
+        validUntil: fact.validUntil,
         content: fact.content,
       })
       .returning();
     const created = row as MemoryRow;
     await writeAudit(tx, {
-      actor: `user:${ownerId}`,
+      actor,
       action: 'memory.created',
       entityType: 'memory',
       entityId: created.id,

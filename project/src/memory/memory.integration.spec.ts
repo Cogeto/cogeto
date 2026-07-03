@@ -77,6 +77,33 @@ describe('memory store (integration, real Postgres)', () => {
     expect(aOptInList.map((m) => m.id)).not.toContain(bSensitiveShared.id);
   });
 
+  it('provenance_always: a memory cannot be created without source_type/source_id', async () => {
+    const before = await tdb.pool.query<{ n: string }>('SELECT count(*)::text AS n FROM memory');
+
+    // The aggregate rejects orphans on every write path — including empty
+    // strings, which the database's NOT NULL columns alone would accept.
+    await expect(store.createFromFact(userA, fact({ sourceId: '' }))).rejects.toThrow(
+      /source_type and source_id/,
+    );
+    await expect(store.createFromFact(userA, fact({ sourceId: '   ' }))).rejects.toThrow(
+      /source_type and source_id/,
+    );
+    await expect(
+      store.createFromFact(userA, fact({ sourceType: undefined as never })),
+    ).rejects.toThrow(/source_type and source_id/);
+    await expect(
+      tdb.db.transaction((tx) =>
+        store.admitExtractedFact(tx, userA.userId, fact({ sourceId: '' })),
+      ),
+    ).rejects.toThrow(/source_type and source_id/);
+    await expect(
+      tdb.db.transaction((tx) => store.admitExtractedFact(tx, '', fact())),
+    ).rejects.toThrow(/source_type and source_id/);
+
+    const after = await tdb.pool.query<{ n: string }>('SELECT count(*)::text AS n FROM memory');
+    expect(after.rows[0]?.n).toBe(before.rows[0]?.n);
+  });
+
   it('illegal_transition: actor-owned transitions are rejected; supersession preserves history', async () => {
     const row = await store.createFromFact(userA, fact({ content: 'March pricing is 100' }));
 

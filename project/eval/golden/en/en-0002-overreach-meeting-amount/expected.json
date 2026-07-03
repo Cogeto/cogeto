@@ -1,0 +1,29 @@
+{
+  "case_id": "en-0002",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "The user met Petra from Novira about the Q3 renewal; the €48,000 figure was discussed",
+      "kind": "fact",
+      "entities": ["Petra", "Novira"],
+      "condition": null,
+      "temporal": { "valid_from": "source_date" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "The Q3 renewal conversation with Petra continues next week",
+      "kind": "open_loop",
+      "entities": ["Petra", "Novira"],
+      "condition": null,
+      "temporal": { "valid_from": "source_date" },
+      "must_extract": false
+    }
+  ],
+  "must_not_extract": [
+    "any decision or agreement on the €48,000 amount — it was only discussed",
+    "any commitment by Petra or Novira to renew",
+    "any characterization of the renewal as won, agreed or closed"
+  ],
+  "expected_relations": [],
+  "verification_expected": "unsupported"
+}

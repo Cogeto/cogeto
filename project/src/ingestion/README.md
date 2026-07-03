@@ -13,7 +13,13 @@ Binding rules:
   evaluated against the golden set (§B.4) — the eval harness is built WITH the extractor.
 
 May depend on: `memory` public interface (writes via the aggregate), `model-gateway`.
-Consumes connector events via the outbox (§A.3).
+Consumes connector events via the outbox (§A.3); reads source content through the
+`SourceReader` port that connectors implement (bound by the worker composition root).
+
+Owns: the `verification_result` table (S2-A) — the verdict that earned each
+admitted memory its status. S2-A implements stages 1–4 (`IngestionPipeline`,
+one idempotent worker job per source item); stage 5 (embedding, S2-B) and
+stage 6 (reconcile, Session 4) are logging stubs.
 
 Read first: `docs/research/retrieval-and-pipeline-patterns.md`,
 `docs/research/memory-architecture-patterns.md`.

@@ -1,0 +1,67 @@
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { z } from 'zod';
+import type { NoteCaptured, NoteDto, NoteStatusDto } from '@cogeto/shared';
+import { BearerAuthGuard } from '../identity/index';
+import type { AuthenticatedRequest } from '../identity/index';
+import { NotesService } from './notes.service';
+
+/** Zod at the boundary: non-blank, bounded content. */
+const captureSchema = z.object({
+  content: z
+    .string()
+    .max(20_000, 'note is too long (max 20000 characters)')
+    .refine((value) => value.trim().length > 0, 'note content must not be blank'),
+});
+
+@Controller('notes')
+@UseGuards(BearerAuthGuard)
+export class NotesController {
+  constructor(private readonly notes: NotesService) {}
+
+  /** Capture a note and (transactionally) enqueue its pipeline job. */
+  @Post()
+  async capture(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: unknown,
+  ): Promise<NoteCaptured> {
+    const parsed = captureSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
+    }
+    const row = await this.notes.createNote(request.principal, parsed.data.content);
+    return { id: row.id, createdAt: row.createdAt.toISOString() };
+  }
+
+  /** The originating note text — the source drawer target (owner-only). */
+  @Get(':id')
+  async get(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<NoteDto> {
+    const row = await this.notes.getNoteForOwner(request.principal, id);
+    if (!row) throw new NotFoundException(`note ${id} not found`);
+    return { id: row.id, content: row.content, createdAt: row.createdAt.toISOString() };
+  }
+
+  /** Pipeline progress for the capture card's processing indicator. */
+  @Get(':id/status')
+  async status(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<NoteStatusDto> {
+    const row = await this.notes.getNoteForOwner(request.principal, id);
+    if (!row) throw new NotFoundException(`note ${id} not found`);
+    return { state: await this.notes.getProcessingState(id) };
+  }
+}

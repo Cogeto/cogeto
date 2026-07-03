@@ -1,0 +1,17 @@
+{
+  "case_id": "en-0001",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "The user will send the revised proposal to Luka",
+      "kind": "commitment",
+      "entities": ["Luka"],
+      "condition": "after Luka confirms the budget",
+      "temporal": { "valid_from": "source_date" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

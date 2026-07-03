@@ -1,19 +1,32 @@
-const SECTIONS = ['Memories', 'Chat', 'Review', 'Forgotten', 'Settings'] as const;
+export type NavSection = 'dashboard' | 'memories';
+
+const ENABLED: { key: NavSection; label: string; href: string }[] = [
+  { key: 'dashboard', label: 'Dashboard', href: '/' },
+  { key: 'memories', label: 'Memories', href: '/memories' },
+];
+const UPCOMING = ['Chat', 'Review', 'Forgotten', 'Settings'] as const;
 
 /** Left navigation — future sections stubbed and disabled until their slices ship. */
-export function Nav() {
+export function Nav({ active }: { active: NavSection }) {
   return (
     <nav className="flex w-56 flex-col border-r border-slate-200 bg-brand-navy-deep text-white">
       <div className="border-b border-white/10 p-4">
         <img src="/brand/cogeto-final-logo-dark.svg" alt="Cogeto" className="h-8" />
       </div>
       <ul className="flex-1 space-y-1 p-3">
-        <li>
-          <span className="block rounded-md bg-white/10 px-3 py-2 text-sm font-medium">
-            Dashboard
-          </span>
-        </li>
-        {SECTIONS.map((section) => (
+        {ENABLED.map((section) => (
+          <li key={section.key}>
+            <a
+              href={section.href}
+              className={`block rounded-md px-3 py-2 text-sm font-medium ${
+                active === section.key ? 'bg-white/10' : 'text-white/70 hover:bg-white/5'
+              }`}
+            >
+              {section.label}
+            </a>
+          </li>
+        ))}
+        {UPCOMING.map((section) => (
           <li key={section}>
             <button
               type="button"

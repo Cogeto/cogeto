@@ -19,6 +19,9 @@ export class ModelGatewayModule {
   static register(options: ModelGatewayModuleOptions = {}): DynamicModule {
     return {
       module: ModelGatewayModule,
+      // Global like DatabaseModule: consumers (ingestion, tasks) inject
+      // ModelGateway without re-registering the seam's options.
+      global: true,
       providers: [
         {
           provide: ModelGateway,

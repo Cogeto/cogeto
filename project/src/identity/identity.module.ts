@@ -18,6 +18,9 @@ export class IdentityModule {
   static register(options: IdentityOptions): DynamicModule {
     return {
       module: IdentityModule,
+      // Global like DatabaseModule: domain-module controllers resolve
+      // BearerAuthGuard without each module re-registering the seam's options.
+      global: true,
       controllers: [MeController],
       providers: [
         { provide: IDENTITY_OPTIONS, useValue: options },

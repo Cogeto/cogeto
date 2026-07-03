@@ -1,10 +1,17 @@
 import { Module } from '@nestjs/common';
+import { NotesController } from './notes.controller';
+import { NotesService } from './notes.service';
+import { NotesSourceReader } from './notes.source-reader';
 
 /**
  * connectors — notes, calendar, email, in that order (§A.11; decision 0003
  * ruling 4: OAuth callbacks/webhooks in app; all sync as worker jobs; tokens
- * encrypted at callback, decrypted only in the worker). Shell module until
- * the Notes connector.
+ * encrypted at callback, decrypted only in the worker). S2-A ships the notes
+ * source: capture endpoint + the ingestion pipeline's source reader.
  */
-@Module({})
+@Module({
+  controllers: [NotesController],
+  providers: [NotesService, NotesSourceReader],
+  exports: [NotesService, NotesSourceReader],
+})
 export class ConnectorsModule {}
