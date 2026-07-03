@@ -11,7 +11,7 @@ import { createDb } from '../infrastructure/index';
 import { ACTIVE_PROMPTS, IngestionPipeline } from '../ingestion/index';
 import { MemoryStore } from '../memory/index';
 import { ANSWER_PROMPT } from '../retrieval/index';
-import { loadPrompt, recordPromptVersion } from '../model-gateway/index';
+import { loadPrompt, ModelGateway, recordPromptVersion } from '../model-gateway/index';
 import { buildTaskList } from './worker-tasks';
 
 const HEARTBEAT_FILE = '/tmp/worker-heartbeat';
@@ -56,6 +56,8 @@ async function main(): Promise<void> {
     concurrency: 2,
     taskList: buildTaskList(db, {
       pipeline,
+      memoryStore: context.get(MemoryStore),
+      gateway: context.get(ModelGateway),
       log: (event, message) => logger.info(event, message),
     }),
     noHandleSignals: true,

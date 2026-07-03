@@ -1,14 +1,16 @@
-export type NavSection = 'dashboard' | 'memories' | 'chat';
+export type NavSection = 'dashboard' | 'memories' | 'chat' | 'review' | 'system';
 
 const ENABLED: { key: NavSection; label: string; href: string }[] = [
   { key: 'dashboard', label: 'Dashboard', href: '/' },
   { key: 'memories', label: 'Memories', href: '/memories' },
   { key: 'chat', label: 'Chat', href: '/chat' },
+  { key: 'review', label: 'Review', href: '/review' },
+  { key: 'system', label: 'System', href: '/system' },
 ];
-const UPCOMING = ['Review', 'Forgotten', 'Settings'] as const;
+const UPCOMING = ['Forgotten', 'Settings'] as const;
 
 /** Left navigation — future sections stubbed and disabled until their slices ship. */
-export function Nav({ active }: { active: NavSection }) {
+export function Nav({ active, reviewCount }: { active: NavSection; reviewCount?: number }) {
   return (
     <nav className="flex w-56 flex-col border-r border-slate-200 bg-brand-navy-deep text-white">
       <div className="border-b border-white/10 p-4">
@@ -19,11 +21,16 @@ export function Nav({ active }: { active: NavSection }) {
           <li key={section.key}>
             <a
               href={section.href}
-              className={`block rounded-md px-3 py-2 text-sm font-medium ${
+              className={`flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium ${
                 active === section.key ? 'bg-white/10' : 'text-white/70 hover:bg-white/5'
               }`}
             >
               {section.label}
+              {section.key === 'review' && (reviewCount ?? 0) > 0 && (
+                <span className="rounded-full bg-amber-400 px-1.5 text-xs font-bold text-slate-900">
+                  {reviewCount}
+                </span>
+              )}
             </a>
           </li>
         ))}

@@ -28,16 +28,45 @@ export interface NoteStatusDto {
   state: NoteProcessingState;
 }
 
-/** One row of the Memories (preview) list — replaced by the S3 dashboard. */
+/** One row of the governed Memories list (S3-B dashboard). */
 export interface MemoryListItem {
   id: string;
   content: string | null;
   status: MemoryStatus;
   scope: MemoryScope;
   sensitive: boolean;
+  entities: string[];
   sourceType: string;
   sourceId: string;
+  supersededBy: string | null;
   validFrom: string | null;
   validUntil: string | null;
   createdAt: string;
+}
+
+/** GET /api/memories envelope: `total` counts everything under the filters. */
+export interface MemoryPage {
+  items: MemoryListItem[];
+  total: number;
+}
+
+/** GET /api/memories/:id/verification — the §B.3 verdict that earned the status. */
+export interface VerificationDto {
+  verdict: 'supported' | 'partial' | 'unsupported';
+  reason: string;
+  promptVersion: string;
+  /** The extractor's cited source passage; null for pre-S3-B rows. */
+  sourceSpan: string | null;
+  createdAt: string;
+}
+
+/** GET /api/jobs/dead-letter — parked jobs, dashboard-visible (§A.3). */
+export interface DeadLetterJobDto {
+  id: string;
+  jobType: string;
+  sourceType: string | null;
+  sourceId: string | null;
+  error: string;
+  attempts: number;
+  failedAt: string;
 }

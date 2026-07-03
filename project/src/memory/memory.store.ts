@@ -9,7 +9,7 @@ import {
 import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import type { MemoryScope, MemoryStatus, Principal } from '@cogeto/shared';
-import { DRIZZLE, writeAudit } from '../infrastructure/index';
+import { DRIZZLE, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { memory } from './persistence/tables';
 import type { MemoryRow, SourceType } from './persistence/tables';
@@ -41,8 +41,11 @@ export interface NewFact {
   sensitive?: boolean;
   validFrom?: Date;
   validUntil?: Date;
-  /** Ingestion stores unverified facts as `uncertain` (§B.3); default `active`. */
-  initialStatus?: 'active' | 'uncertain';
+  /**
+   * Ingestion stores unverified facts as `uncertain` (§B.3); default `active`.
+   * `user_approved` exists for edit-supersession successors only (0006 ruling 3).
+   */
+  initialStatus?: 'active' | 'uncertain' | 'user_approved';
   /** Which embed model produced (or is about to produce) this memory's vector. */
   embeddingModel?: string;
 }
@@ -52,7 +55,17 @@ export interface ReadOptions {
   includeSensitive?: boolean;
 }
 
-export interface ListOptions extends ReadOptions {
+/** Dashboard filters (S3-B) — WHERE clauses, composed with the gates, never after them. */
+export interface MemoryFilters {
+  scope?: MemoryScope;
+  status?: MemoryStatus;
+  /** Only sensitive rows. Effective only with the includeSensitive opt-in. */
+  sensitiveOnly?: boolean;
+  /** Trigram-matched against the stored entities array. */
+  entity?: string;
+}
+
+export interface ListOptions extends ReadOptions, MemoryFilters {
   limit?: number;
   offset?: number;
 }
@@ -73,6 +86,12 @@ export interface ScoredMemory {
 export interface SearchOptions extends ReadOptions {
   topK: number;
 }
+
+/** ftsSearch/entitySearch accept the dashboard filters; vectorSearch does not (retrieval-only). */
+export type FilteredSearchOptions = SearchOptions & MemoryFilters;
+
+/** The job the edit path enqueues: embed the supersession successor (worker). */
+export const MEMORY_EMBED_JOB_TYPE = 'memory.embed';
 
 /** Deletion happens only through the saga (§A.7). Implementation: Session 4. */
 export abstract class DeletionSaga {
@@ -118,10 +137,58 @@ export class MemoryStore {
     return this.db
       .select()
       .from(memory)
-      .where(this.visibleTo(principal, opts))
-      .orderBy(desc(memory.createdAt))
+      .where(and(this.visibleTo(principal, opts), ...this.filterClauses(opts)))
+      .orderBy(desc(memory.createdAt), memory.id)
       .limit(Math.min(opts.limit ?? 50, 200))
       .offset(opts.offset ?? 0);
+  }
+
+  /** Total under the same gates + filters — the list's pagination and the review badge. */
+  async countForPrincipal(
+    principal: Principal,
+    opts: ReadOptions & MemoryFilters = {},
+  ): Promise<number> {
+    const rows = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(memory)
+      .where(and(this.visibleTo(principal, opts), ...this.filterClauses(opts)));
+    return rows[0]?.n ?? 0;
+  }
+
+  /**
+   * The supersession chain through a memory, oldest → newest (§B.2, S3-B
+   * history panel): follows superseded_by forward and its inverse backward.
+   * Every hop passes the same gates as any read.
+   */
+  async getChain(
+    principal: Principal,
+    memoryId: string,
+    opts: ReadOptions = {},
+  ): Promise<MemoryRow[]> {
+    const target = await this.getForPrincipal(principal, memoryId, opts);
+    if (!target) return [];
+    const chain: MemoryRow[] = [target];
+
+    // Backward: who was replaced by the head of the chain?
+    for (let hops = 0; hops < 50; hops += 1) {
+      const head = chain[0]!;
+      const rows = await this.db
+        .select()
+        .from(memory)
+        .where(and(eq(memory.supersededBy, head.id), this.visibleTo(principal, opts)))
+        .limit(1);
+      if (!rows[0]) break;
+      chain.unshift(rows[0]);
+    }
+    // Forward: what replaced the tail?
+    for (let hops = 0; hops < 50; hops += 1) {
+      const tail = chain[chain.length - 1]!;
+      if (!tail.supersededBy) break;
+      const next = await this.getForPrincipal(principal, tail.supersededBy, opts);
+      if (!next) break;
+      chain.push(next);
+    }
+    return chain;
   }
 
   // ── Writes (aggregate-owned invariants) ────────────────────────────────────
@@ -171,7 +238,130 @@ export class MemoryStore {
         entityId: memoryId,
         detail: { from: row.status, to, reason: reason ?? null },
       });
+      // Keep the Qdrant payload copy honest (§A.4), point op last: a failure
+      // rolls the row back and the caller retries — the two stores converge.
+      await this.vectors?.setPayload(memoryId, { status: to });
       return updated as MemoryRow;
+    });
+  }
+
+  /**
+   * Sensitive is a hard gate (0003 ruling 3) — its payload copy in Qdrant must
+   * change in the same act as the row. Two-store pattern (S2-B): row update +
+   * audit in the transaction, the point payload write last; a failed payload
+   * write rolls everything back and a retry converges (setPayload is
+   * idempotent; a not-yet-embedded memory has no point and that is a no-op).
+   */
+  async toggleSensitive(
+    principal: Principal,
+    memoryId: string,
+    sensitive: boolean,
+  ): Promise<MemoryRow> {
+    const actor: MemoryActor = { kind: 'user', userId: principal.userId };
+    return this.db.transaction(async (tx) => {
+      const row = await this.lockRow(tx, memoryId, actor);
+      if (row.sensitive === sensitive) return row; // idempotent no-op, no audit noise
+      const [updated] = await tx
+        .update(memory)
+        .set({ sensitive, updatedAt: new Date() })
+        .where(eq(memory.id, memoryId))
+        .returning();
+      await writeAudit(tx, {
+        actor: actorLabel(actor),
+        action: 'memory.sensitive_toggled',
+        entityType: 'memory',
+        entityId: memoryId,
+        detail: { sensitive },
+      });
+      await this.requireVectors().setPayload(memoryId, { sensitive });
+      return updated as MemoryRow;
+    });
+  }
+
+  /**
+   * Editing content is supersession, never mutation (0006 ruling 3): one
+   * transaction creates the successor (`user_approved`, same provenance),
+   * marks the predecessor `replaced`, writes the edit audit entry, and
+   * enqueues the successor's embedding job via the outbox — the fast path
+   * never calls the embed model. Until the worker embeds it, the successor is
+   * findable via FTS/entity; vector search catches up within seconds.
+   */
+  async editContent(
+    principal: Principal,
+    memoryId: string,
+    newContent: string,
+  ): Promise<{ predecessor: MemoryRow; successor: MemoryRow }> {
+    const actor: MemoryActor = { kind: 'user', userId: principal.userId };
+    return this.db.transaction(async (tx) => {
+      const old = await this.lockRow(tx, memoryId, actor);
+      if (old.status === 'replaced') {
+        throw new BadRequestException('memory is already replaced; edit its successor instead');
+      }
+      const result = await this.supersedeCore(tx, actor, old, {
+        content: newContent,
+        scope: old.scope,
+        sourceType: old.sourceType,
+        sourceId: old.sourceId,
+        entities: old.entities,
+        sensitive: old.sensitive,
+        validUntil: old.validUntil ?? undefined,
+        initialStatus: 'user_approved',
+      });
+      await writeAudit(tx, {
+        actor: actorLabel(actor),
+        action: 'memory.edited',
+        entityType: 'memory',
+        entityId: memoryId,
+        detail: { successor: result.successor.id },
+      });
+      await withTransactionalEnqueue(
+        tx,
+        {
+          type: 'memory.edited',
+          payload: { memory_id: memoryId, successor_id: result.successor.id },
+        },
+        {
+          type: MEMORY_EMBED_JOB_TYPE,
+          payload: { source_type: 'memory', source_id: result.successor.id },
+        },
+      );
+      return result;
+    });
+  }
+
+  /**
+   * Review rejection (0006 ruling 4): an audited removal of the row and its
+   * Qdrant point through this guarded path — the narrow extension of "only
+   * the saga hard-deletes". Legal ONLY from `uncertain`; owner-only. Ordering
+   * makes it converge: the point is deleted before the row-delete commits, so
+   * a failed point delete rolls the row back and the retry repeats both.
+   * Returns null when the memory does not exist (already rejected — done).
+   */
+  async rejectUncertain(principal: Principal, memoryId: string): Promise<MemoryRow | null> {
+    const actor: MemoryActor = { kind: 'user', userId: principal.userId };
+    return this.db.transaction(async (tx) => {
+      const rows = await tx.select().from(memory).where(eq(memory.id, memoryId)).for('update');
+      const row = rows[0];
+      if (!row) return null;
+      if (actor.kind === 'user' && row.ownerId !== actor.userId) {
+        throw new NotFoundException(`memory ${memoryId} not found`);
+      }
+      if (row.status !== 'uncertain') {
+        throw new BadRequestException(
+          `only an uncertain memory can be rejected in review (this one is ${row.status}); ` +
+            'source-level deletion goes through the deletion saga (§A.7)',
+        );
+      }
+      await tx.delete(memory).where(eq(memory.id, memoryId));
+      await writeAudit(tx, {
+        actor: actorLabel(actor),
+        action: 'memory.rejected',
+        entityType: 'memory',
+        entityId: memoryId,
+        detail: { sourceType: row.sourceType, sourceId: row.sourceId, status: row.status },
+      });
+      await this.requireVectors().deletePoints([memoryId]);
+      return row;
     });
   }
 
@@ -193,32 +383,44 @@ export class MemoryStore {
       if (old.status === 'replaced') {
         throw new BadRequestException('memory is already replaced; supersede its successor');
       }
-      const successorValidFrom = successorFact.validFrom ?? new Date();
-      const successor = await this.insertFact(
-        tx,
-        old.ownerId,
-        { ...successorFact, validFrom: successorValidFrom },
-        actorLabel(actor),
-      );
-      const [predecessor] = await tx
-        .update(memory)
-        .set({
-          status: 'replaced',
-          validUntil: successorValidFrom,
-          supersededBy: successor.id,
-          updatedAt: new Date(),
-        })
-        .where(eq(memory.id, predecessorId))
-        .returning();
-      await writeAudit(tx, {
-        actor: actorLabel(actor),
-        action: 'memory.superseded',
-        entityType: 'memory',
-        entityId: predecessorId,
-        detail: { supersededBy: successor.id, validUntil: successorValidFrom.toISOString() },
-      });
-      return { predecessor: predecessor as MemoryRow, successor };
+      return this.supersedeCore(tx, actor, old, successorFact);
     });
+  }
+
+  /** Shared body of supersede/editContent: caller holds the lock and the tx. */
+  private async supersedeCore(
+    tx: Tx,
+    actor: MemoryActor,
+    old: MemoryRow,
+    successorFact: NewFact,
+  ): Promise<{ predecessor: MemoryRow; successor: MemoryRow }> {
+    const successorValidFrom = successorFact.validFrom ?? new Date();
+    const successor = await this.insertFact(
+      tx,
+      old.ownerId,
+      { ...successorFact, validFrom: successorValidFrom },
+      actorLabel(actor),
+    );
+    const [predecessor] = await tx
+      .update(memory)
+      .set({
+        status: 'replaced',
+        validUntil: successorValidFrom,
+        supersededBy: successor.id,
+        updatedAt: new Date(),
+      })
+      .where(eq(memory.id, old.id))
+      .returning();
+    await writeAudit(tx, {
+      actor: actorLabel(actor),
+      action: 'memory.superseded',
+      entityType: 'memory',
+      entityId: old.id,
+      detail: { supersededBy: successor.id, validUntil: successorValidFrom.toISOString() },
+    });
+    // Payload copy honesty (§A.4): the predecessor's point now says replaced.
+    await this.vectors?.setPayload(old.id, { status: 'replaced' });
+    return { predecessor: predecessor as MemoryRow, successor };
   }
 
   // ── Search primitives (0003 ruling 2: Principal-gated, gates in the store) ──
@@ -254,7 +456,7 @@ export class MemoryStore {
   async ftsSearch(
     principal: Principal,
     query: string,
-    opts: SearchOptions,
+    opts: FilteredSearchOptions,
   ): Promise<ScoredMemory[]> {
     if (!query.trim()) return [];
     const tsQuery = sql`websearch_to_tsquery('simple', cogeto_unaccent(${query}))`;
@@ -262,7 +464,13 @@ export class MemoryStore {
     const rows = await this.db
       .select({ memory, score })
       .from(memory)
-      .where(and(this.visibleTo(principal, opts), sql`content_tsv @@ ${tsQuery}`))
+      .where(
+        and(
+          this.visibleTo(principal, opts),
+          sql`content_tsv @@ ${tsQuery}`,
+          ...this.filterClauses(opts),
+        ),
+      )
       .orderBy(desc(score), memory.id)
       .limit(opts.topK);
     return rows.map((row) => ({ memory: row.memory, score: Number(row.score) }));
@@ -277,7 +485,7 @@ export class MemoryStore {
   async entitySearch(
     principal: Principal,
     names: string[],
-    opts: SearchOptions,
+    opts: FilteredSearchOptions,
   ): Promise<ScoredMemory[]> {
     const wanted = [...new Set(names.map((n) => n.trim()).filter((n) => n.length > 0))];
     if (wanted.length === 0) return [];
@@ -299,6 +507,7 @@ export class MemoryStore {
             SELECT 1 FROM unnest(entities) AS hit(entity), unnest(${namesArray}) AS wanted(name)
             WHERE hit.entity % wanted.name
           )`,
+          ...this.filterClauses(opts),
         ),
       )
       .orderBy(desc(score), memory.id)
@@ -366,6 +575,23 @@ export class MemoryStore {
   }
 
   // ── Private: the gates and shared write paths ───────────────────────────────
+
+  /** Dashboard filters as SQL — always ANDed with the gates, never a substitute. */
+  private filterClauses(filters: MemoryFilters): SQL[] {
+    const clauses: SQL[] = [];
+    if (filters.scope) clauses.push(eq(memory.scope, filters.scope));
+    if (filters.status) clauses.push(eq(memory.status, filters.status));
+    if (filters.sensitiveOnly) clauses.push(eq(memory.sensitive, true));
+    if (filters.entity?.trim()) {
+      clauses.push(
+        sql`EXISTS (
+          SELECT 1 FROM unnest(entities) AS hit(entity)
+          WHERE hit.entity % ${filters.entity.trim()}
+        )`,
+      );
+    }
+    return clauses;
+  }
 
   /** The scope + sensitive gates. Private: every public read builds on this. */
   private visibleTo(principal: Principal, opts: ReadOptions): SQL {

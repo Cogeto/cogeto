@@ -22,6 +22,8 @@ export const verificationResult = pgTable('verification_result', {
   verdict: verificationVerdictEnum('verdict').notNull(),
   reason: text('reason').notNull(),
   promptVersion: text('prompt_version').notNull(),
+  /** The extractor's cited source passage (migration 0006); NULL pre-S3-B. */
+  sourceSpan: text('source_span'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

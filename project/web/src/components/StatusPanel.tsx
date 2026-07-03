@@ -47,6 +47,7 @@ export function StatusPanel() {
           <CheckRow name="Qdrant" check={data.checks.qdrant} />
           <CheckRow name="MinIO" check={data.checks.minio} />
           <CheckRow name="Migrations" check={data.checks.migrations} />
+          <CheckRow name="Job queue" check={data.checks.queue} />
         </ul>
       )}
     </section>

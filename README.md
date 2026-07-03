@@ -23,19 +23,28 @@ It is **EU-first, privacy-first, self-hostable, and model-agnostic (Mistral-firs
 
 ## Status
 
-**Session 2 complete (S2-A + S2-B).** On top of the Session 1 foundation (compose
-stack to login, contractual schema, outbox + idempotent queue, Memory aggregate,
-identity/model-gateway seams), the Notes vertical slice now runs for real: notes
-captured on the **Memories** page go through the six-stage pipeline — ingest →
-chunk → extract (versioned prompt `extraction/v0001`) → verify (independent
-`verification/v0001`; supported → `active`, partial/unsupported → `uncertain`) →
-**embed + store** (batched Mistral embeddings; Qdrant points with native
-scope/sensitive payload gates) — with reconcile stubbed for Session 4. Semantic
-search is live behind `MemoryStore.vectorSearch`; `npm run reindex` rebuilds
-Qdrant from Postgres and verifies counts; `npm run eval` scores the extraction +
-verification prompts against the bilingual golden set (`project/eval/golden/`,
-results in `docs/eval/history.md`). Next: Session 3 — retrieval fusion, chat, and
-the dashboard.
+**Session 3 complete (S3-A + S3-B).** On top of the Session 1–2 foundation
+(compose stack to login, contractual schema, outbox + idempotent queue, the
+six-stage Notes pipeline with versioned prompts and the bilingual golden set),
+Cogeto now **answers and governs**:
+
+- **Hybrid retrieval** (§A.5): vector (Qdrant) + keyword FTS (`simple` +
+  unaccent) + trigram entity match, fused with reciprocal rank fusion, status
+  multipliers on top — scope and sensitive stay hard in-query gates.
+- **Chat**: `POST /api/chat` streams grounded answers (prompt family
+  `answer/v0001`) that cite only retrieved facts; citation chips carry the
+  memory's status and deep-link into the governance drawer; zero retrieval
+  yields an honest "nothing on record", never invention.
+- **Governance dashboard**: the governed Memories list (search, filters,
+  entity tags), a detail drawer with provenance, verification verdict,
+  supersession history and actions (approve / mark outdated / sensitive
+  toggle / edit-as-supersession / reject), the **Review** queue for uncertain
+  facts, and a **System** view with queue health and dead-letter retry. Every
+  action writes `audit_log` with the acting principal.
+
+Reconcile (dedup/contradiction), the deletion saga, and the CI eval gates
+arrive in Session 4. `npm run reindex` and `npm run eval` remain the
+operational contracts (results in `docs/eval/history.md`).
 
 ## Licensing
 

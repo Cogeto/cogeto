@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../infrastructure/index';
 import { IdentityModule } from '../identity/index';
+import { IngestionModule } from '../ingestion/index';
 import { MemoryModule } from '../memory/index';
 import { RetrievalModule } from '../retrieval/index';
 import { AgentsModule } from '../agents/index';
@@ -10,6 +11,7 @@ import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG } from './config';
 import type { CogetoConfig } from './config';
 import { HealthController } from './health.controller';
+import { JobsController } from './jobs.controller';
 import { WebConfigController } from './web-config.controller';
 
 /**
@@ -36,11 +38,12 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         embeddingModel: config.mistralEmbedModel,
       }),
       RetrievalModule,
+      IngestionModule.forQueries(), // verification read endpoint only (S3-B)
       AgentsModule,
       ConnectorsModule,
       TasksModule,
     ],
-    controllers: [HealthController, WebConfigController],
+    controllers: [HealthController, JobsController, WebConfigController],
     providers: [{ provide: COGETO_CONFIG, useValue: config }],
   })
   class AppRootModule {}

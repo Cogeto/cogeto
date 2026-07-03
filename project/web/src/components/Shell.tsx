@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchMe } from '../api';
+import { fetchMe, fetchMemories } from '../api';
 import { logout } from '../auth/oidc';
 import type { Session } from '../auth/oidc';
 import { Nav } from './Nav';
@@ -12,11 +12,14 @@ export function Shell({
   title,
   active,
   children,
+  fullHeight = false,
 }: {
   session: Session;
   title: string;
   active: NavSection;
   children: ReactNode;
+  /** Pin the page to the viewport: children scroll internally (chat). */
+  fullHeight?: boolean;
 }) {
   const {
     data: me,
@@ -27,12 +30,18 @@ export function Shell({
     queryFn: () => fetchMe(session),
     retry: 1,
   });
+  // The review badge: how many uncertain memories await a verdict.
+  const { data: uncertain } = useQuery({
+    queryKey: ['uncertain-count'],
+    queryFn: () => fetchMemories(session, { status: 'uncertain', limit: 1 }),
+    refetchInterval: 30_000,
+  });
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <Nav active={active} />
-      <div className="flex-1">
-        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+      <Nav active={active} reviewCount={uncertain?.total} />
+      <div className={fullHeight ? 'flex h-screen min-h-0 flex-1 flex-col' : 'flex-1'}>
+        <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
           <div>
             <h1 className="text-lg font-semibold text-slate-800">{title}</h1>
             {isPending && <p className="text-sm text-slate-400">Loading identity…</p>}
@@ -51,7 +60,15 @@ export function Shell({
             Sign out
           </button>
         </header>
-        <main className="grid max-w-3xl gap-6 p-6">{children}</main>
+        <main
+          className={
+            fullHeight
+              ? 'flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-6 p-6'
+              : 'grid max-w-3xl gap-6 p-6'
+          }
+        >
+          {children}
+        </main>
       </div>
     </div>
   );

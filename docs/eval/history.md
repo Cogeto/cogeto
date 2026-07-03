@@ -21,3 +21,11 @@ only "next Friday" in the passage — rules `partial` (en-0003, en-0004, en-0007
 hr-0003, hr-0004 all disagree this way). Fix belongs in verification/v0002
 ("a correctly resolved relative date is not an addition"), to be measured
 against this baseline.
+
+## 2026-07-03 — extraction/v0001 + verification/v0001 (thresholds v1, 16 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 8 | 100.0% (12/12) | 100.0% (11/11) | 57.1% (4/7) |
+| hr | 8 | 71.4% (10/14) | 81.8% (9/11) | 57.1% (4/7) |
+| aggregate | 16 | 84.6% (22/26) | 90.9% (20/22) | 57.1% (8/14) |

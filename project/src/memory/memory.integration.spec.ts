@@ -124,14 +124,16 @@ describe('memory store (integration, real Postgres)', () => {
       store.transition({ kind: 'user', userId: userB.userId }, row.id, 'user_approved'),
     ).rejects.toThrow(/not found/);
 
-    // Legal path: reconciliation contradicts, the user approves their own row.
+    // Legal path: reconciliation contradicts, the user re-affirms their own row
+    // by setting it back to active (S3-B: user_approved is reserved for the
+    // uncertain→approved review verdict).
     await store.transition({ kind: 'reconciliation' }, row.id, 'contradicted', 'conflicting note');
-    const approved = await store.transition(
+    const reaffirmed = await store.transition(
       { kind: 'user', userId: userA.userId },
       row.id,
-      'user_approved',
+      'active',
     );
-    expect(approved.status).toBe('user_approved');
+    expect(reaffirmed.status).toBe('active');
 
     // Supersession: predecessor kept, interval closed, pointer set — never deleted.
     const validFrom = new Date('2026-07-01T00:00:00Z');

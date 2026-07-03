@@ -34,7 +34,11 @@ describe('memory transition matrix (unit)', () => {
       for (const to of MEMORY_STATUSES) {
         for (const actor of ACTORS) {
           const expected =
-            from !== 'replaced' && from !== to && to !== 'replaced'
+            from !== 'replaced' &&
+            from !== to &&
+            to !== 'replaced' &&
+            // S3-B: approval is the review verdict — only uncertain approves.
+            !(to === 'user_approved' && from !== 'uncertain')
               ? EXPECTED_OWNERS[to].includes(actor.kind)
               : false;
           const result = checkTransition(from, to, actor);
@@ -46,8 +50,9 @@ describe('memory transition matrix (unit)', () => {
         }
       }
     }
-    // 24 legal transitions exist; a change to this number is a domain decision.
-    expect(allowedCount).toBe(24);
+    // 21 legal transitions exist; a change to this number is a domain decision
+    // (was 24 before S3-B narrowed user_approved to the uncertain→approved path).
+    expect(allowedCount).toBe(21);
   });
 
   it('explains rejections', () => {

@@ -177,6 +177,30 @@ export class MemoryVectorStore {
     return ids;
   }
 
+  /**
+   * Updates the payload copy of gate/filter fields on an existing point —
+   * how status/sensitive changes propagate to the index (S3-B). Idempotent;
+   * a missing point (row not yet embedded) is a no-op, not an error.
+   */
+  async setPayload(id: string, payload: Partial<MemoryPointPayload>): Promise<void> {
+    await this.client.setPayload(this.collection, { points: [id], payload, wait: true });
+  }
+
+  /** Payloads by memory id — the toggle test's assertion surface. */
+  async retrievePayloads(ids: string[]): Promise<Map<string, Record<string, unknown>>> {
+    if (ids.length === 0) return new Map();
+    const points = await this.client.retrieve(this.collection, {
+      ids,
+      with_payload: true,
+      with_vector: false,
+    });
+    const found = new Map<string, Record<string, unknown>>();
+    for (const point of points) {
+      if (point.payload) found.set(String(point.id), point.payload);
+    }
+    return found;
+  }
+
   async deletePoints(ids: string[]): Promise<void> {
     if (ids.length === 0) return;
     await this.client.delete(this.collection, { wait: true, points: ids });

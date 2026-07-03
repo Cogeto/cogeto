@@ -6,6 +6,7 @@ import { IngestionPipeline } from './pipeline/pipeline.service';
 import { SOURCE_READERS } from './pipeline/source-reader';
 import type { SourceReader } from './pipeline/source-reader';
 import { VerifyStage } from './pipeline/verify.stage';
+import { VerificationController } from './verification.controller';
 
 export interface IngestionModuleOptions {
   /** Modules whose exports provide the reader classes (e.g. ConnectorsModule). */
@@ -16,9 +17,9 @@ export interface IngestionModuleOptions {
 
 /**
  * ingestion — the ingest → chunk → extract → verify → embed + store → reconcile
- * pipeline (scope §4.9, Addendum §B.3). Worker-only. Source readers are bound
- * by the composition root: connectors depend on ingestion's port, never the
- * reverse, so the module graph stays acyclic (§A.1).
+ * pipeline (scope §4.9, Addendum §B.3). Pipeline work is worker-only. Source
+ * readers are bound by the composition root: connectors depend on ingestion's
+ * port, never the reverse, so the module graph stays acyclic (§A.1).
  */
 @Module({})
 export class IngestionModule {
@@ -40,6 +41,18 @@ export class IngestionModule {
         },
       ],
       exports: [IngestionPipeline],
+    };
+  }
+
+  /**
+   * The app-process slice (S3-B): only the verification read endpoint — no
+   * pipeline, no stages, no readers. Ingestion keeps sole ownership of its
+   * table; the dashboard gets its verdict panel.
+   */
+  static forQueries(): DynamicModule {
+    return {
+      module: IngestionModule,
+      controllers: [VerificationController],
     };
   }
 }

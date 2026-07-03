@@ -6,8 +6,10 @@ import { Chat } from './pages/Chat';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
 import { Memories } from './pages/Memories';
+import { Review } from './pages/Review';
+import { System } from './pages/System';
 
-/** Tiny path switch — a router dependency is not justified by four paths. */
+/** Tiny path switch — a router dependency is still not justified. */
 export function App() {
   const [session, setSession] = useState<Session | null>(loadSession);
 
@@ -17,5 +19,7 @@ export function App() {
   if (!session) return <Login />;
   if (window.location.pathname === '/memories') return <Memories session={session} />;
   if (window.location.pathname === '/chat') return <Chat session={session} />;
+  if (window.location.pathname === '/review') return <Review session={session} />;
+  if (window.location.pathname === '/system') return <System session={session} />;
   return <Dashboard session={session} />;
 }

@@ -3,9 +3,14 @@ import { idempotentTask, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
 import type { IngestionPipeline, PipelineLog } from '../ingestion/index';
+import { MEMORY_EMBED_JOB_TYPE, runMemoryEmbedJob } from '../memory/index';
+import type { MemoryStore } from '../memory/index';
+import type { ModelGateway } from '../model-gateway/index';
 
 export interface WorkerTaskDeps {
   pipeline: IngestionPipeline;
+  memoryStore: MemoryStore;
+  gateway: ModelGateway;
   /** Bound to pino by the worker entrypoint. Counts only — never content. */
   log: PipelineLog;
 }
@@ -51,5 +56,15 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
         );
       },
     ),
+
+    // Embeds an edit's supersession successor (S3-B). Idempotency key:
+    // ('memory', <memory id>, 'memory.embed') — a duplicate delivery skips.
+    [MEMORY_EMBED_JOB_TYPE]: idempotentTask(db, MEMORY_EMBED_JOB_TYPE, async (tx, payload) => {
+      const { embedded } = await runMemoryEmbedJob(tx, deps.memoryStore, deps.gateway, payload);
+      deps.log(
+        { source_type: payload.source_type, source_id: payload.source_id, embedded },
+        'memory embed job completed',
+      );
+    }),
   };
 }

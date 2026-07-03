@@ -2,45 +2,28 @@ import { useQuery } from '@tanstack/react-query';
 import type { ChatFactDto, MemoryStatus } from '@cogeto/shared';
 import { fetchMemory } from '../api';
 import type { Session } from '../auth/oidc';
+import { STATUS_CHIP, statusLabel, WARN_STATUSES } from './status';
 
 /**
  * An inline citation chip in an assistant message. Live streams pass the fact
  * from the SSE sources event; persisted messages resolve the memory id via
  * GET /api/memories/:id. Uncertain and contradicted facts are visibly marked.
- * Clicking opens the source drawer for note-backed memories.
+ * Clicking opens the governance drawer in place when the page provides an
+ * onOpen handler (chat); otherwise it deep-links to /memories.
  */
-
-const STATUS_CHIP: Record<MemoryStatus, string> = {
-  active: 'bg-brand-teal/15 text-brand-teal',
-  user_approved: 'bg-brand-teal/15 text-brand-teal',
-  uncertain: 'bg-amber-100 text-amber-700',
-  contradicted: 'bg-red-100 text-red-600',
-  outdated: 'bg-slate-200 text-slate-500',
-  replaced: 'bg-slate-200 text-slate-500',
-};
-
-const WARN_STATUSES: MemoryStatus[] = ['uncertain', 'contradicted'];
-
-export interface ChipTarget {
-  status: MemoryStatus;
-  sourceType: string;
-  sourceId: string;
-  claim: string | null;
-}
-
 export function CitationChip({
   session,
   ordinal,
   memoryId,
   fact,
-  onSource,
+  onOpen,
 }: {
   session: Session;
   /** Position of this citation within its message, 1-based. */
   ordinal: number;
   memoryId?: string;
   fact?: ChatFactDto;
-  onSource: (target: ChipTarget) => void;
+  onOpen?: (memoryId: string) => void;
 }) {
   const lookupId = fact ? undefined : memoryId;
   const { data } = useQuery({
@@ -50,20 +33,10 @@ export function CitationChip({
     staleTime: 30_000,
   });
 
-  const target: ChipTarget | null = fact
-    ? {
-        status: fact.status,
-        sourceType: fact.sourceType,
-        sourceId: fact.sourceId,
-        claim: fact.claim,
-      }
+  const target = fact
+    ? { memoryId: fact.memoryId, status: fact.status, claim: fact.claim }
     : data
-      ? {
-          status: data.status,
-          sourceType: data.sourceType,
-          sourceId: data.sourceId,
-          claim: data.content,
-        }
+      ? { memoryId: data.id, status: data.status as MemoryStatus, claim: data.content }
       : null;
 
   if (!target) {
@@ -74,15 +47,29 @@ export function CitationChip({
     );
   }
   const warn = WARN_STATUSES.includes(target.status);
-  return (
+  const className = `mx-0.5 inline-flex items-center gap-1 rounded-full px-1.5 align-baseline text-xs font-semibold no-underline ${STATUS_CHIP[target.status]}`;
+  const label = (
+    <>
+      {ordinal}
+      {warn && <span aria-label={target.status}>⚠ {statusLabel(target.status)}</span>}
+    </>
+  );
+  return onOpen ? (
     <button
       type="button"
-      onClick={() => onSource(target)}
+      onClick={() => onOpen(target.memoryId)}
       title={target.claim ?? undefined}
-      className={`mx-0.5 inline-flex items-center gap-1 rounded-full px-1.5 text-xs font-semibold align-baseline ${STATUS_CHIP[target.status]}`}
+      className={className}
     >
-      {ordinal}
-      {warn && <span aria-label={target.status}>⚠ {target.status.replace('_', '-')}</span>}
+      {label}
     </button>
+  ) : (
+    <a
+      href={`/memories?open=${target.memoryId}`}
+      title={target.claim ?? undefined}
+      className={className}
+    >
+      {label}
+    </a>
   );
 }

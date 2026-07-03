@@ -1,5 +1,5 @@
 import { Controller, Get, HttpCode, Inject } from '@nestjs/common';
-import type { HealthCheck, HealthReport } from '@cogeto/shared';
+import type { HealthCheck, HealthReport, QueueHealthCheck } from '@cogeto/shared';
 import { Pool } from 'pg';
 import { COGETO_CONFIG } from './config';
 import type { CogetoConfig } from './config';
@@ -25,17 +25,48 @@ export class HealthController {
 
   @Get()
   async health(): Promise<HealthReport> {
-    const [postgres, qdrant, minio, migrations] = await Promise.all([
+    const [postgres, qdrant, minio, migrations, queue] = await Promise.all([
       this.checkPostgres(),
       this.checkHttp(`${this.config.qdrantUrl}/readyz`),
       this.checkHttp(`${this.config.s3Url}/minio/health/live`),
       this.checkMigrations(),
+      this.checkQueue(),
     ]);
-    const checks = { postgres, qdrant, minio, migrations };
+    const checks = { postgres, qdrant, minio, migrations, queue };
     return {
       status: Object.values(checks).every((c) => c.ok) ? 'ok' : 'degraded',
       checks,
     };
+  }
+
+  /** Queue depth + dead-letter count for the System view (S3-B). */
+  private async checkQueue(): Promise<QueueHealthCheck> {
+    const started = Date.now();
+    try {
+      const [jobs, parked] = await Promise.all([
+        this.pool.query<{ n: string }>('SELECT count(*)::text AS n FROM graphile_worker.jobs'),
+        this.pool.query<{ n: string }>('SELECT count(*)::text AS n FROM dead_letter'),
+      ]);
+      const depth = Number(jobs.rows[0]?.n ?? 0);
+      const deadLettered = Number(parked.rows[0]?.n ?? 0);
+      return {
+        // Parked jobs mean work was lost until someone retries — surface it.
+        ok: deadLettered === 0,
+        latencyMs: Date.now() - started,
+        depth,
+        deadLettered,
+        detail: `${depth} queued, ${deadLettered} dead-lettered`,
+        ...(deadLettered > 0 ? { error: `${deadLettered} dead-lettered job(s)` } : {}),
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        latencyMs: Date.now() - started,
+        depth: 0,
+        deadLettered: 0,
+        error: message(error),
+      };
+    }
   }
 
   private async checkPostgres(): Promise<HealthCheck> {

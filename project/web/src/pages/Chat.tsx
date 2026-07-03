@@ -4,14 +4,14 @@ import type { ChatFactDto } from '@cogeto/shared';
 import { askChat, fetchChatMessages } from '../api';
 import type { Session } from '../auth/oidc';
 import { CitationChip } from '../components/CitationChip';
-import type { ChipTarget } from '../components/CitationChip';
+import { MemoryDrawer } from '../components/MemoryDrawer';
 import { Shell } from '../components/Shell';
-import { SourceDrawer } from '../components/SourceDrawer';
 
 /**
  * Chat (S3-A): grounded answers over the user's memories. Assistant messages
  * carry inline citation markers — `[F#]` while streaming (resolved via the SSE
  * sources event), `[[mem:<id>]]` once persisted (resolved via the memory API).
+ * Chips deep-link into the Memories governance drawer (S3-B).
  */
 
 const MARKER = /\[\[mem:([0-9a-fA-F-]{36})\]\]|\[(F\d+)\]/g;
@@ -20,12 +20,12 @@ function MessageBody({
   session,
   content,
   facts,
-  onSource,
+  onOpenMemory,
 }: {
   session: Session;
   content: string;
   facts?: ChatFactDto[];
-  onSource: (target: ChipTarget) => void;
+  onOpenMemory: (memoryId: string) => void;
 }) {
   const parts: React.ReactNode[] = [];
   let last = 0;
@@ -46,7 +46,7 @@ function MessageBody({
         ordinal={ordinal}
         memoryId={memoryId}
         fact={fact}
-        onSource={onSource}
+        onOpen={onOpenMemory}
       />,
     );
     last = at + match[0].length;
@@ -84,11 +84,15 @@ export function Chat({ session }: { session: Session }) {
   const [liveQuestion, setLiveQuestion] = useState<string | null>(null);
   const [liveText, setLiveText] = useState('');
   const [liveFacts, setLiveFacts] = useState<ChatFactDto[]>([]);
-  const [drawer, setDrawer] = useState<ChipTarget | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [openMemoryId, setOpenMemoryId] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Pin the view to the latest message: scroll the message pane itself (never
+  // the page — the input stays fixed at the bottom) on history and stream
+  // updates.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: 'end' });
+    const pane = scrollRef.current;
+    if (pane) pane.scrollTop = pane.scrollHeight;
   }, [history, liveText, liveQuestion]);
 
   const send = async () => {
@@ -116,16 +120,12 @@ export function Chat({ session }: { session: Session }) {
     setBusy(false);
   };
 
-  const onSource = (target: ChipTarget) => {
-    if (target.sourceType === 'user_note') setDrawer(target);
-  };
-
   const empty = !isPending && (history?.length ?? 0) === 0 && !liveQuestion;
 
   return (
-    <Shell session={session} title="Chat" active="chat">
-      <section className="flex min-h-[60vh] flex-col rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm">
-        <div className="flex-1 space-y-3">
+    <Shell session={session} title="Chat" active="chat" fullHeight>
+      <section className="flex min-h-0 flex-1 flex-col rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm">
+        <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
           {isPending && <p className="text-sm text-slate-400">Loading conversation…</p>}
           {empty && (
             <div className="rounded-md border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
@@ -142,7 +142,11 @@ export function Chat({ session }: { session: Session }) {
           )}
           {history?.map((message) => (
             <Bubble key={message.id} role={message.role}>
-              <MessageBody session={session} content={message.content} onSource={onSource} />
+              <MessageBody
+                session={session}
+                content={message.content}
+                onOpenMemory={setOpenMemoryId}
+              />
             </Bubble>
           ))}
           {liveQuestion && (
@@ -157,7 +161,7 @@ export function Chat({ session }: { session: Session }) {
                   session={session}
                   content={liveText}
                   facts={liveFacts}
-                  onSource={onSource}
+                  onOpenMemory={setOpenMemoryId}
                 />
               ) : (
                 <p className="text-sm text-slate-400">Searching your memories…</p>
@@ -165,10 +169,9 @@ export function Chat({ session }: { session: Session }) {
             </Bubble>
           )}
           {failed && <p className="text-sm text-red-600">Answer generation failed — ask again.</p>}
-          <div ref={bottomRef} />
         </div>
         <form
-          className="mt-4 flex gap-2"
+          className="mt-4 flex shrink-0 gap-2"
           onSubmit={(e) => {
             e.preventDefault();
             void send();
@@ -189,11 +192,12 @@ export function Chat({ session }: { session: Session }) {
           </button>
         </form>
       </section>
-      {drawer && (
-        <SourceDrawer
+      {openMemoryId && (
+        <MemoryDrawer
           session={session}
-          sourceId={drawer.sourceId}
-          onClose={() => setDrawer(null)}
+          memoryId={openMemoryId}
+          onClose={() => setOpenMemoryId(null)}
+          onNavigate={setOpenMemoryId}
         />
       )}
     </Shell>

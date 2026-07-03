@@ -63,6 +63,7 @@ export class EmbedStoreStage {
         verdict,
         reason,
         promptVersion,
+        sourceSpan: fact.source_span,
       });
       rows.push(row);
       admitted.push({ memoryId: row.id, status });

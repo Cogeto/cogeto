@@ -1,20 +1,37 @@
 import type {
   ChatMessageDto,
   ChatStreamEvent,
+  DeadLetterJobDto,
   HealthReport,
   MemoryListItem,
+  MemoryPage,
+  MemoryScope,
+  MemoryStatus,
   NoteCaptured,
   NoteDto,
   NoteStatusDto,
   Principal,
+  VerificationDto,
 } from '@cogeto/shared';
 import type { Session } from './auth/oidc';
+
+/** Typed API errors: the server's message (e.g. an illegal transition) is the UI copy. */
+async function toError(path: string, response: Response): Promise<Error> {
+  try {
+    const body = (await response.json()) as { message?: string | string[] };
+    const message = Array.isArray(body.message) ? body.message.join('; ') : body.message;
+    if (message) return new Error(message);
+  } catch {
+    // fall through to the generic error
+  }
+  return new Error(`${path} -> HTTP ${response.status}`);
+}
 
 async function apiGet<T>(path: string, session?: Session): Promise<T> {
   const response = await fetch(path, {
     headers: session ? { authorization: `Bearer ${session.accessToken}` } : {},
   });
-  if (!response.ok) throw new Error(`${path} -> HTTP ${response.status}`);
+  if (!response.ok) throw await toError(path, response);
   return (await response.json()) as T;
 }
 
@@ -27,7 +44,7 @@ async function apiPost<T>(path: string, body: unknown, session: Session): Promis
     },
     body: JSON.stringify(body),
   });
-  if (!response.ok) throw new Error(`${path} -> HTTP ${response.status}`);
+  if (!response.ok) throw await toError(path, response);
   return (await response.json()) as T;
 }
 
@@ -42,10 +59,60 @@ export const fetchNoteStatus = (session: Session, id: string): Promise<NoteStatu
   apiGet(`/api/notes/${id}/status`, session);
 // The dashboard is the owner's governance surface: explicit sensitive opt-in
 // (decision 0003 ruling 3) — the store still returns only the owner's own rows.
-export const fetchMemories = (session: Session): Promise<MemoryListItem[]> =>
-  apiGet('/api/memories?includeSensitive=true', session);
+export interface MemoryListParams {
+  q?: string;
+  scope?: MemoryScope;
+  status?: MemoryStatus;
+  sensitiveOnly?: boolean;
+  entity?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export function fetchMemories(
+  session: Session,
+  params: MemoryListParams = {},
+): Promise<MemoryPage> {
+  const search = new URLSearchParams({ includeSensitive: 'true' });
+  if (params.q?.trim()) search.set('q', params.q.trim());
+  if (params.scope) search.set('scope', params.scope);
+  if (params.status) search.set('status', params.status);
+  if (params.sensitiveOnly) search.set('sensitive', 'true');
+  if (params.entity?.trim()) search.set('entity', params.entity.trim());
+  if (params.limit !== undefined) search.set('limit', String(params.limit));
+  if (params.offset !== undefined) search.set('offset', String(params.offset));
+  return apiGet(`/api/memories?${search.toString()}`, session);
+}
+
 export const fetchMemory = (session: Session, id: string): Promise<MemoryListItem> =>
   apiGet(`/api/memories/${id}`, session);
+export const fetchMemoryChain = (session: Session, id: string): Promise<MemoryListItem[]> =>
+  apiGet(`/api/memories/${id}/chain`, session);
+export const fetchVerification = (session: Session, id: string): Promise<VerificationDto> =>
+  apiGet(`/api/memories/${id}/verification`, session);
+
+export const approveMemory = (session: Session, id: string): Promise<MemoryListItem> =>
+  apiPost(`/api/memories/${id}/approve`, {}, session);
+export const markMemoryOutdated = (session: Session, id: string): Promise<MemoryListItem> =>
+  apiPost(`/api/memories/${id}/mark-outdated`, {}, session);
+export const setMemorySensitive = (
+  session: Session,
+  id: string,
+  sensitive: boolean,
+): Promise<MemoryListItem> => apiPost(`/api/memories/${id}/sensitive`, { sensitive }, session);
+export const editMemory = (
+  session: Session,
+  id: string,
+  content: string,
+): Promise<{ predecessor: MemoryListItem; successor: MemoryListItem }> =>
+  apiPost(`/api/memories/${id}/edit`, { content }, session);
+export const rejectMemory = (session: Session, id: string): Promise<{ rejected: boolean }> =>
+  apiPost(`/api/memories/${id}/reject`, {}, session);
+
+export const fetchDeadLetterJobs = (session: Session): Promise<DeadLetterJobDto[]> =>
+  apiGet('/api/jobs/dead-letter', session);
+export const retryDeadLetterJob = (session: Session, id: string): Promise<{ retried: boolean }> =>
+  apiPost(`/api/jobs/dead-letter/${id}/retry`, {}, session);
 
 export const fetchChatMessages = (session: Session): Promise<ChatMessageDto[]> =>
   apiGet('/api/chat/messages', session);

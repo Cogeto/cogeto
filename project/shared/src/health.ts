@@ -7,6 +7,12 @@ export interface HealthCheck {
   detail?: string;
 }
 
+/** Queue visibility for the System view (S3-B): depth + dead-letter count. */
+export interface QueueHealthCheck extends HealthCheck {
+  depth: number;
+  deadLettered: number;
+}
+
 export interface HealthReport {
   status: 'ok' | 'degraded';
   checks: {
@@ -14,5 +20,6 @@ export interface HealthReport {
     qdrant: HealthCheck;
     minio: HealthCheck;
     migrations: HealthCheck;
+    queue: QueueHealthCheck;
   };
 }
