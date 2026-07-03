@@ -38,6 +38,13 @@ export const memory = pgTable(
     sourceId: text('source_id').notNull(),
     status: memoryStatusEnum('status').notNull().default('active'),
     sensitive: boolean('sensitive').notNull().default(false),
+    /**
+     * Extracted entities, flat (decision 0006 ruling 2). The generated
+     * content_tsv column and the trigram/tsvector indexes are deliberately not
+     * mapped — they are query-side artifacts of migration 0005, referenced via
+     * raw SQL in the search primitives only.
+     */
+    entities: text('entities').array().notNull().default([]),
     validFrom: timestamp('valid_from', { withTimezone: true }),
     validUntil: timestamp('valid_until', { withTimezone: true }),
     supersededBy: uuid('superseded_by'),

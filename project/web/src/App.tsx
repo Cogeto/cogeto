@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { loadSession } from './auth/oidc';
 import type { Session } from './auth/oidc';
 import { Callback } from './pages/Callback';
+import { Chat } from './pages/Chat';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
 import { Memories } from './pages/Memories';
 
-/** Tiny path switch — a router dependency is not justified by three paths. */
+/** Tiny path switch — a router dependency is not justified by four paths. */
 export function App() {
   const [session, setSession] = useState<Session | null>(loadSession);
 
@@ -15,5 +16,6 @@ export function App() {
   }
   if (!session) return <Login />;
   if (window.location.pathname === '/memories') return <Memories session={session} />;
+  if (window.location.pathname === '/chat') return <Chat session={session} />;
   return <Dashboard session={session} />;
 }

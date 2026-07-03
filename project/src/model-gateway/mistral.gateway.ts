@@ -50,6 +50,23 @@ export class MistralModelGateway extends ModelGateway {
     return { text: contentToText(response.choices?.[0]?.message?.content) };
   }
 
+  async *completeStream(request: CompletionRequest): AsyncIterable<string> {
+    const stream = await this.call(() =>
+      this.client.chat.stream({
+        model: this.model,
+        maxTokens: request.maxTokens,
+        messages: [
+          ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
+          { role: 'user' as const, content: request.input },
+        ],
+      }),
+    );
+    for await (const event of stream) {
+      const text = contentToText(event.data.choices?.[0]?.delta?.content);
+      if (text) yield text;
+    }
+  }
+
   async extractStructured<T>(
     schema: ZodType<T, ZodTypeDef, unknown>,
     request: StructuredExtractionRequest,
@@ -151,6 +168,10 @@ export class MistralModelGateway extends ModelGateway {
 /** Boots without a key (app/worker do not need the model to start); fails on use. */
 export class UnconfiguredModelGateway extends ModelGateway {
   complete(): Promise<CompletionResult> {
+    throw new ModelGatewayNotConfiguredError();
+  }
+  // eslint-disable-next-line require-yield -- fails on first pull, like the rest
+  async *completeStream(): AsyncIterable<string> {
     throw new ModelGatewayNotConfiguredError();
   }
   extractStructured<T>(): Promise<T> {

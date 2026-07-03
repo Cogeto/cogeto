@@ -52,6 +52,7 @@ export class EmbedStoreStage {
         scope: 'private', // notes are private in v1 (S2-A §4)
         sourceType: source.sourceType,
         sourceId: source.sourceId,
+        entities: flattenEntities(fact),
         sensitive: false,
         ...resolveTemporal(fact.temporal),
         initialStatus: status,
@@ -65,11 +66,21 @@ export class EmbedStoreStage {
       });
       rows.push(row);
       admitted.push({ memoryId: row.id, status });
-      // fact.entities are still not persisted: entity storage lands with
-      // retrieval's trigram work (Session 3).
     }
 
     await this.memoryStore.upsertVectors(rows, embeddings);
     return admitted;
   }
+}
+
+/**
+ * The memory row stores entities flat (decision 0006 ruling 2): people,
+ * organizations and projects in one deduplicated array, names exactly as the
+ * extractor preserved them from the source.
+ */
+export function flattenEntities(fact: VerifiedFact['fact']): string[] {
+  const flat = [...fact.entities.people, ...fact.entities.organizations, ...fact.entities.projects]
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+  return [...new Set(flat)];
 }

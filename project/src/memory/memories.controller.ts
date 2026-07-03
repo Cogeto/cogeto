@@ -1,4 +1,13 @@
-import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  ParseUUIDPipe,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import type { MemoryListItem } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
@@ -41,5 +50,19 @@ export class MemoriesController {
       limit: 50,
     });
     return rows.map(toListItem);
+  }
+
+  /** One memory — the chat citation chip's lookup for persisted messages. */
+  @Get(':id')
+  async get(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<MemoryListItem> {
+    // Sensitive opt-in mirrors the list: the store returns it owner-only anyway.
+    const row = await this.store.getForPrincipal(request.principal, id, {
+      includeSensitive: true,
+    });
+    if (!row) throw new NotFoundException(`memory ${id} not found`);
+    return toListItem(row);
   }
 }

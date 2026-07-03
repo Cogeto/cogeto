@@ -6,7 +6,7 @@ import {
   NotImplementedException,
   Optional,
 } from '@nestjs/common';
-import { and, desc, eq, or } from 'drizzle-orm';
+import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import type { MemoryScope, MemoryStatus, Principal } from '@cogeto/shared';
 import { DRIZZLE, writeAudit } from '../infrastructure/index';
@@ -36,6 +36,8 @@ export interface NewFact {
   scope: MemoryScope;
   sourceType: SourceType;
   sourceId: string;
+  /** Extracted entity names, flat (decision 0006 ruling 2) — the §A.5 entity signal. */
+  entities?: string[];
   sensitive?: boolean;
   validFrom?: Date;
   validUntil?: Date;
@@ -58,6 +60,13 @@ export interface ListOptions extends ReadOptions {
 export interface MemorySearchHit {
   memoryId: string;
   /** Normalized to [0,1], higher = better (research: memory-architecture §6). */
+  score: number;
+}
+
+/** FTS and entity hits carry the row itself — the SQL already read it, gated. */
+export interface ScoredMemory {
+  memory: MemoryRow;
+  /** Normalized to [0,1], higher = better. */
   score: number;
 }
 
@@ -236,20 +245,81 @@ export class MemoryStore {
     }));
   }
 
-  fullTextSearch(
-    _principal: Principal,
-    _query: string,
-    _opts: SearchOptions,
-  ): Promise<MemorySearchHit[]> {
-    throw new NotImplementedException('Session 3: Postgres FTS (§A.5)');
+  /**
+   * Keyword full-text search over the generated content_tsv column (migration
+   * 0005; decision 0006 ruling 1: simple config + unaccent). The scope and
+   * sensitive gates are WHERE clauses in the same query — no post-filtering.
+   * Scores are ts_rank_cd with normalization 32 (rank/(rank+1)), i.e. [0,1).
+   */
+  async ftsSearch(
+    principal: Principal,
+    query: string,
+    opts: SearchOptions,
+  ): Promise<ScoredMemory[]> {
+    if (!query.trim()) return [];
+    const tsQuery = sql`websearch_to_tsquery('simple', cogeto_unaccent(${query}))`;
+    const score = sql<number>`ts_rank_cd(content_tsv, ${tsQuery}, 32)`;
+    const rows = await this.db
+      .select({ memory, score })
+      .from(memory)
+      .where(and(this.visibleTo(principal, opts), sql`content_tsv @@ ${tsQuery}`))
+      .orderBy(desc(score), memory.id)
+      .limit(opts.topK);
+    return rows.map((row) => ({ memory: row.memory, score: Number(row.score) }));
   }
 
-  entitySearch(
-    _principal: Principal,
-    _entity: string,
-    _opts: SearchOptions,
-  ): Promise<MemorySearchHit[]> {
-    throw new NotImplementedException('Session 3: trigram entity match (§A.5)');
+  /**
+   * Trigram entity match (decision 0006 ruling 2): query names against the
+   * entities array, fuzzy via pg_trgm's % operator (its similarity threshold),
+   * gated exactly like every other read. Score = best similarity between any
+   * stored entity and any queried name, already in [0,1].
+   */
+  async entitySearch(
+    principal: Principal,
+    names: string[],
+    opts: SearchOptions,
+  ): Promise<ScoredMemory[]> {
+    const wanted = [...new Set(names.map((n) => n.trim()).filter((n) => n.length > 0))];
+    if (wanted.length === 0) return [];
+    const namesArray = sql`ARRAY[${sql.join(
+      wanted.map((name) => sql`${name}`),
+      sql`, `,
+    )}]::text[]`;
+    const score = sql<number>`(
+      SELECT max(similarity(hit.entity, wanted.name))
+      FROM unnest(entities) AS hit(entity), unnest(${namesArray}) AS wanted(name)
+    )`;
+    const rows = await this.db
+      .select({ memory, score })
+      .from(memory)
+      .where(
+        and(
+          this.visibleTo(principal, opts),
+          sql`EXISTS (
+            SELECT 1 FROM unnest(entities) AS hit(entity), unnest(${namesArray}) AS wanted(name)
+            WHERE hit.entity % wanted.name
+          )`,
+        ),
+      )
+      .orderBy(desc(score), memory.id)
+      .limit(opts.topK);
+    return rows.map((row) => ({ memory: row.memory, score: Number(row.score) }));
+  }
+
+  /**
+   * Gated batch read — how retrieval resolves vectorSearch's id hits into rows.
+   * Same gates as every read; ids the principal may not see simply drop out.
+   */
+  async getManyForPrincipal(
+    principal: Principal,
+    memoryIds: string[],
+    opts: ReadOptions = {},
+  ): Promise<MemoryRow[]> {
+    if (memoryIds.length === 0) return [];
+    return this.db
+      .select()
+      .from(memory)
+      .where(and(inArray(memory.id, memoryIds), this.visibleTo(principal, opts)));
   }
 
   // ── Vector index maintenance (memory owns the Qdrant client — ruling 2) ────
@@ -328,6 +398,7 @@ export class MemoryStore {
         sourceId: fact.sourceId,
         status: fact.initialStatus ?? 'active',
         sensitive: fact.sensitive ?? false,
+        entities: fact.entities ?? [],
         validFrom: fact.validFrom ?? new Date(),
         validUntil: fact.validUntil,
         content: fact.content,

@@ -44,6 +44,10 @@ class ScriptedGateway extends ModelGateway {
   complete(): never {
     throw new Error('complete() is not used by the pipeline');
   }
+  // eslint-disable-next-line require-yield -- not used by the pipeline
+  async *completeStream(): AsyncIterable<string> {
+    throw new Error('completeStream() is not used by the pipeline');
+  }
   async embed(texts: string[]): Promise<number[][]> {
     this.embedCalls += texts.length;
     return texts.map((text) => fakeEmbedding(text, DIMS));

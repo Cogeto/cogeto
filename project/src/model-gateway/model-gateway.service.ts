@@ -25,6 +25,11 @@ export interface StructuredExtractionRequest {
 export abstract class ModelGateway {
   abstract complete(request: CompletionRequest): Promise<CompletionResult>;
   /**
+   * Streaming completion for the fast path (chat, §A.5): yields text deltas in
+   * order. Same seam rule as everything else — no provider types leak out.
+   */
+  abstract completeStream(request: CompletionRequest): AsyncIterable<string>;
+  /**
    * Requests JSON output, parses it, and validates it against the Zod schema.
    * The input type is free so schemas may use .default() for omitted fields.
    */

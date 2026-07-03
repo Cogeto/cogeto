@@ -9,6 +9,7 @@ export type {
   ReadOptions,
   ListOptions,
   MemorySearchHit,
+  ScoredMemory,
   SearchOptions,
 } from './memory.store';
 export { checkTransition, actorLabel } from './domain/transition';

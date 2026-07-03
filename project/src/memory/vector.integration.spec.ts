@@ -28,6 +28,10 @@ class FakeEmbedGateway extends ModelGateway {
   complete(): never {
     throw new Error('not used');
   }
+  // eslint-disable-next-line require-yield -- not used
+  async *completeStream(): AsyncIterable<string> {
+    throw new Error('not used');
+  }
   extractStructured<T>(): Promise<T> {
     throw new Error('not used');
   }

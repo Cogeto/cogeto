@@ -14,6 +14,23 @@ reaches memory only through its public interface or domain events — never its 
 **and never the Qdrant client** (0003 ruling 2; dependency-cruiser rule
 `only-memory-imports-qdrant`).
 
+## Search primitives (S2-B, S3-A — 0003 ruling 2)
+
+Three Principal-gated primitives on `MemoryStore`; the retrieval module fuses
+them and never touches a table or client:
+
+- `vectorSearch(principal, embedding, opts)` — Qdrant, gates as native payload
+  pre-filters inside the query.
+- `ftsSearch(principal, query, opts)` — Postgres FTS over the generated
+  `content_tsv` column (simple config + unaccent, decision 0006 ruling 1),
+  gates as WHERE clauses.
+- `entitySearch(principal, names, opts)` — pg_trgm fuzzy match against the
+  `entities text[]` column (decision 0006 ruling 2), gates as WHERE clauses.
+
+All scores normalized to [0,1]. `getManyForPrincipal` is the gated batch read
+that resolves vector id-hits into rows. Sensitive rows: excluded by default,
+owner-only on explicit `includeSensitive` opt-in — identical in all paths.
+
 ## Vector index (S2-B)
 
 One Qdrant collection, `memories` (cosine, size per the embed model): point id =

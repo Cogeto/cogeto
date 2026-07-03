@@ -1,10 +1,11 @@
-export type NavSection = 'dashboard' | 'memories';
+export type NavSection = 'dashboard' | 'memories' | 'chat';
 
 const ENABLED: { key: NavSection; label: string; href: string }[] = [
   { key: 'dashboard', label: 'Dashboard', href: '/' },
   { key: 'memories', label: 'Memories', href: '/memories' },
+  { key: 'chat', label: 'Chat', href: '/chat' },
 ];
-const UPCOMING = ['Chat', 'Review', 'Forgotten', 'Settings'] as const;
+const UPCOMING = ['Review', 'Forgotten', 'Settings'] as const;
 
 /** Left navigation — future sections stubbed and disabled until their slices ship. */
 export function Nav({ active }: { active: NavSection }) {
