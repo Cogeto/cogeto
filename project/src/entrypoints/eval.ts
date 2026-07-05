@@ -1,5 +1,6 @@
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import * as path from 'node:path';
+import { z } from 'zod';
 import { evalConfigSchema, runGoldenEval, runReconcileEval } from '../ingestion/index';
 import type { EvalMetrics, ReconcileEvalMetrics } from '../ingestion/index';
 import { MistralModelGateway } from '../model-gateway/index';
@@ -18,7 +19,20 @@ import { MistralModelGateway } from '../model-gateway/index';
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const GOLDEN_DIR = path.join(REPO_ROOT, 'project', 'eval', 'golden');
 const CONFIG_FILE = path.join(REPO_ROOT, 'project', 'eval', 'eval-config.json');
+const GATES_FILE = path.join(REPO_ROOT, 'project', 'eval', 'gates.json');
 const HISTORY_FILE = path.join(REPO_ROOT, 'docs', 'eval', 'history.md');
+
+/** The §B.4 CI gates (decision 0011): aggregate metrics, ratchet-up-only. */
+const gatesSchema = z.object({
+  version: z.number(),
+  gates: z.object({
+    extraction_precision: z.number(),
+    extraction_recall: z.number(),
+    verification_agreement: z.number(),
+    dedup_accuracy: z.number(),
+    contradiction_recall: z.number(),
+  }),
+});
 
 async function resolveApiKey(): Promise<string | undefined> {
   const fromEnv = process.env.COGETO_MISTRAL_API_KEY || process.env.MISTRAL_API_KEY;
@@ -121,6 +135,40 @@ async function main(): Promise<void> {
     'utf8',
   );
   console.log(`appended to ${path.relative(REPO_ROOT, HISTORY_FILE)}`);
+
+  // ── The §B.4 gates (decision 0011): aggregate metrics vs gates.json ───────
+  // Always printed; enforced (exit 1) when COGETO_EVAL_GATE=1 — the CI mode
+  // and `npm run eval:gate`. Ratchet up only; lowering needs a decision record.
+  const { version: gatesVersion, gates } = gatesSchema.parse(
+    JSON.parse(await readFile(GATES_FILE, 'utf8')),
+  );
+  const measured = {
+    extraction_precision: result.aggregate.precision,
+    extraction_recall: result.aggregate.recall,
+    verification_agreement: result.aggregate.verificationAgreement,
+    dedup_accuracy: reconcile.aggregate.dedupAccuracy,
+    contradiction_recall: reconcile.aggregate.contradictionRecall,
+  };
+  const failures: string[] = [];
+  console.log(`\n================== GATE CHECK (gates v${gatesVersion}) ==================`);
+  for (const [metric, gate] of Object.entries(gates)) {
+    const value = measured[metric as keyof typeof measured];
+    const ok = value >= gate;
+    if (!ok) failures.push(`${metric}: ${pct(value)} < gate ${pct(gate)}`);
+    console.log(
+      `  ${ok ? 'PASS' : 'FAIL'}  ${metric.padEnd(24)} ${pct(value)}  (gate ≥ ${pct(gate)})`,
+    );
+  }
+  console.log('===========================================================\n');
+  if (failures.length > 0) {
+    console.error(`GATE BREACH: ${failures.join('; ')}`);
+    if (process.env.COGETO_EVAL_GATE === '1') {
+      console.error('failing the build (§B.4: regressions fail the build)');
+      process.exitCode = 1;
+    } else {
+      console.error('advisory run (set COGETO_EVAL_GATE=1 to enforce)');
+    }
+  }
 }
 
 main().catch((error: unknown) => {

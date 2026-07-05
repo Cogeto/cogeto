@@ -1,0 +1,20 @@
+{
+  "case_id": "en-0024",
+  "source_type": "user_note",
+  "source_date": "2026-07-05T13:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Sanja will sanity-check the Helios forecast numbers with finance",
+      "kind": "commitment",
+      "entities": ["Sanja", "Helios"],
+      "condition": "before anything goes to the board",
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "the Helios Q4 expansion being worth 80,000 EUR stated as a settled amount or won deal"
+  ],
+  "expected_relations": [],
+  "verification_expected": "unsupported"
+}

@@ -25,7 +25,9 @@
     "vector:smoke": "node project/src/dist/entrypoints/vector-smoke.js",
     "seed:object": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/seed-object.js",
     "seed:orphan": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/seed-orphan.js",
-    "sweep": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/sweep.js"
+    "sweep": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/sweep.js",
+    "dream": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/dream.js",
+    "eval:gate": "npm run build -w @cogeto/shared -w @cogeto/server && COGETO_EVAL_GATE=1 node project/src/dist/entrypoints/eval.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",

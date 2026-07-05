@@ -611,6 +611,73 @@ export class MemoryStore {
     await this.requireVectors().upsert(points);
   }
 
+  /**
+   * Stored embeddings by memory id — how the dreaming batch driver rebuilds
+   * ReconcileInputs without re-embedding (decision 0011). Ids the caller
+   * holds already passed a gated read; rows never embedded simply drop out.
+   */
+  async retrieveEmbeddings(memoryIds: string[]): Promise<Map<string, number[]>> {
+    if (memoryIds.length === 0) return new Map();
+    return this.requireVectors().retrieveVectors(memoryIds);
+  }
+
+  // ── System reads for the dreaming driver (decision 0011) ───────────────────
+  // Worker-only machine reads, the out-of-module mirror of the sweep's
+  // in-module scans: no Principal because the caller is the nightly job
+  // covering every owner. They feed reconciliation, whose candidate reads and
+  // actions re-apply the per-owner gates; nothing here reaches a user.
+
+  /** The day's scope: rows admitted or touched inside the watermark window. */
+  async listTouchedBetween(from: Date, to: Date, limit = 2000): Promise<MemoryRow[]> {
+    return this.db
+      .select()
+      .from(memory)
+      .where(
+        and(
+          inArray(memory.status, ['active', 'uncertain']),
+          or(
+            and(sql`${memory.createdAt} >= ${from}`, sql`${memory.createdAt} < ${to}`),
+            and(sql`${memory.updatedAt} >= ${from}`, sql`${memory.updatedAt} < ${to}`),
+          ),
+        ),
+      )
+      .orderBy(memory.ownerId, memory.createdAt)
+      .limit(limit);
+  }
+
+  /** Staleness pass input: active rows whose validity interval has lapsed. */
+  async listLapsedActive(asOf: Date, limit = 2000): Promise<MemoryRow[]> {
+    return this.db
+      .select()
+      .from(memory)
+      .where(and(eq(memory.status, 'active'), sql`${memory.validUntil} < ${asOf}`))
+      .orderBy(memory.createdAt)
+      .limit(limit);
+  }
+
+  /** Dormant pass input: active commitments with no activity since the window. */
+  async listQuietCommitments(quietBefore: Date, limit = 2000): Promise<MemoryRow[]> {
+    return this.db
+      .select()
+      .from(memory)
+      .where(
+        and(
+          eq(memory.status, 'active'),
+          eq(memory.kind, 'commitment'),
+          sql`${memory.createdAt} < ${quietBefore}`,
+          sql`${memory.updatedAt} < ${quietBefore}`,
+        ),
+      )
+      .orderBy(memory.createdAt)
+      .limit(limit);
+  }
+
+  /** Batch system read — flag maintenance resolves current statuses through it. */
+  async getManySystem(memoryIds: string[]): Promise<MemoryRow[]> {
+    if (memoryIds.length === 0) return [];
+    return this.db.select().from(memory).where(inArray(memory.id, memoryIds));
+  }
+
   private requireVectors(): MemoryVectorStore {
     if (!this.vectors) {
       throw new NotImplementedException(

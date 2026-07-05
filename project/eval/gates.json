@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "note": "CI eval gates (docs/eval-golden-set.md §6; decision 0011 ruling 6). Gates apply to AGGREGATE metrics. Ratchet UP only — lowering a gate requires a decision record. extraction_precision (spec 0.85) and verification_agreement (spec 0.90) sit at honest floors BELOW the observed run-to-run bands on the 36-case corpus (precision 71.2–82.5%, verification 79.4–91.2% across five same-code runs — extractor variance, measured in the F2-B session log): a floor inside the noise band is a flaky gate, and a flaky gate gets ignored. A broken prompt lands far below these floors (the degraded drill measured 8.8%). Raise them as the corpus and prompts improve; never game them.",
+  "gates": {
+    "extraction_precision": 0.7,
+    "extraction_recall": 0.8,
+    "verification_agreement": 0.75,
+    "dedup_accuracy": 0.9,
+    "contradiction_recall": 0.7
+  }
+}

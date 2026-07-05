@@ -1,8 +1,8 @@
 import type { TaskList } from 'graphile-worker';
 import { idempotentTask, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
-import { INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
-import type { IngestionPipeline, PipelineLog } from '../ingestion/index';
+import { DREAM_JOB_TYPE, INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
+import type { DreamingService, IngestionPipeline, PipelineLog } from '../ingestion/index';
 import {
   DELETION_JOB_TYPE,
   MEMORY_EMBED_JOB_TYPE,
@@ -17,6 +17,7 @@ export interface WorkerTaskDeps {
   memoryStore: MemoryStore;
   deletionExecutor: DeletionExecutor;
   integritySweep: IntegritySweep;
+  dreaming: DreamingService;
   gateway: ModelGateway;
   /** Bound to pino by the worker entrypoint. Counts only — never content. */
   log: PipelineLog;
@@ -92,6 +93,16 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
     [SWEEP_JOB_TYPE]: async () => {
       const report = await deps.integritySweep.run((message) => deps.log({}, message));
       deps.log({ ...report }, 'integrity sweep completed');
+    },
+
+    // The nightly dreaming cycle (§B.6 plain form; decision 0011) — scheduled
+    // 03:30, after the 03:00 sweep; on demand via `npm run dream`. Like the
+    // sweep, deliberately NOT idempotentTask (a recurring job, not a one-shot
+    // per source); its effects are idempotent by construction — reconcile
+    // tombstones, the staleness status filter, the unique open-flag index.
+    [DREAM_JOB_TYPE]: async () => {
+      const report = await deps.dreaming.run(deps.log);
+      deps.log({ ...report }, 'dreaming cycle completed (scheduled)');
     },
 
     // Embeds an edit's supersession successor (S3-B). Idempotency key:

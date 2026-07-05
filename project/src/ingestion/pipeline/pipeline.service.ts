@@ -71,6 +71,7 @@ export class IngestionPipeline {
         enriched: 0,
         contradictions: 0,
         superseded: 0,
+        actions: [],
       },
     };
     const ref = { source_type: payload.source_type, source_id: payload.source_id };
@@ -122,7 +123,11 @@ export class IngestionPipeline {
       admitted.map(({ row, embedding }) => ({ row, embedding })),
       log,
     );
-    log({ stage: 'reconcile', ...ref, ...summary.reconcile }, 'reconciliation complete');
+    const { actions, ...reconcileCounts } = summary.reconcile;
+    log(
+      { stage: 'reconcile', ...ref, ...reconcileCounts, actionCount: actions.length },
+      'reconciliation complete',
+    );
     return summary;
   }
 }

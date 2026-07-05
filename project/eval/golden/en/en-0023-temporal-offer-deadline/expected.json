@@ -1,0 +1,18 @@
+{
+  "case_id": "en-0023",
+  "source_type": "user_note",
+  "source_date": "2026-07-05T12:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "The Analytics Summit early-bird discount holds until August 15",
+      "kind": "fact",
+      "entities": ["Analytics Summit"],
+      "condition": null,
+      "temporal": { "valid_from": "source_date", "valid_until": "2026-08-15" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

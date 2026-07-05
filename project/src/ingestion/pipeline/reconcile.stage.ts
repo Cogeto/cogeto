@@ -60,6 +60,20 @@ export interface ReconcileSummary {
   enriched: number;
   contradictions: number;
   superseded: number;
+  /**
+   * Every state-changing action taken, in order — the dreaming driver
+   * persists these as dream_action rows (F2-B). The pipeline driver ignores
+   * them (its ledger is the job log). Skipped results are not recorded.
+   */
+  actions: ReconcileActionRecord[];
+}
+
+export interface ReconcileActionRecord {
+  /** The incoming fact of the pair. */
+  factId: string;
+  /** The existing memory it was checked against. */
+  candidateId: string;
+  result: PairActionResult;
 }
 
 function factBlock(label: string, fact: ReconcileFactView): string {
@@ -159,6 +173,10 @@ export class ReconciliationService {
       enriched: 0,
       contradictions: 0,
       superseded: 0,
+      actions: [],
+    };
+    const record = (factId: string, candidateId: string, result: PairActionResult) => {
+      if (result.action !== 'skipped') summary.actions.push({ factId, candidateId, result });
     };
 
     for (const item of items) {
@@ -199,6 +217,7 @@ export class ReconciliationService {
           verdict.reason,
         );
         this.logAction(log, fact.id, candidate.row.id, result);
+        record(fact.id, candidate.row.id, result);
         if (result.action === 'merged') {
           summary.merged += 1;
           if (result.enriched) summary.enriched += 1;
@@ -258,6 +277,7 @@ export class ReconciliationService {
           if (result.action === 'contradiction_created') summary.contradictions += 1;
         }
         this.logAction(log, fact.id, candidate.row.id, result);
+        record(fact.id, candidate.row.id, result);
         // At most ONE contradiction action per fact per run (0010 ruling 6).
         break;
       }

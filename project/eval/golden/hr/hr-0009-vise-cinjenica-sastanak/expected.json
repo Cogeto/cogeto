@@ -1,0 +1,42 @@
+{
+  "case_id": "hr-0009",
+  "source_type": "user_note",
+  "source_date": "2026-07-05T09:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Dogovoreno je produljenje ugovora s Dalmatinkom na godinu dana za 38.000 eura",
+      "kind": "decision",
+      "entities": ["Vesna", "Dalmatinka"],
+      "condition": null,
+      "temporal": { "valid_from": "source_date" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Vesna je obećala poslati potpisani aneks do srijede",
+      "kind": "commitment",
+      "entities": ["Vesna"],
+      "condition": null,
+      "temporal": { "valid_until": "2026-07-08" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Novi skladišni sustav Dalmatinke kreće s radom 1. rujna",
+      "kind": "fact",
+      "entities": ["Dalmatinka"],
+      "condition": null,
+      "temporal": { "valid_from": "2026-09-01" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Korisnik Dalmatinki još duguje specifikaciju integracije",
+      "kind": "open_loop",
+      "entities": ["Dalmatinka"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": ["da je sastanak održan, kao samostalna činjenica"],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

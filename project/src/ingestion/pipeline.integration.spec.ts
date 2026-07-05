@@ -15,6 +15,7 @@ import { EmbedStoreStage } from './pipeline/embed-store.stage';
 import { ExtractStage } from './pipeline/extract.stage';
 import { IngestionPipeline, INGESTION_PIPELINE_JOB_TYPE } from './pipeline/pipeline.service';
 import { ReconciliationService } from './pipeline/reconcile.stage';
+import { VERIFICATION_PROMPT } from './prompt-versions';
 import type { SourceItem, SourceReader } from './pipeline/source-reader';
 import { VerifyStage } from './pipeline/verify.stage';
 
@@ -261,7 +262,8 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
     );
     for (const row of results.rows) {
       expect(row.reason.length).toBeGreaterThan(0);
-      expect(row.pv).toBe('verification/v0002');
+      // Pin to the ACTIVE version so a prompt bump doesn't silently stale this.
+      expect(row.pv).toBe(`${VERIFICATION_PROMPT.family}/${VERIFICATION_PROMPT.version}`);
     }
 
     // Stage 5 wrote one point per admitted memory (uncertain ones included —

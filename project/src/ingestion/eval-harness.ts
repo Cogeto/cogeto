@@ -24,8 +24,11 @@ import { EXTRACTION_PROMPT, VERIFICATION_PROMPT } from './prompt-versions';
  *   matched to an expected label got verdict `supported`.
  * - `verification_expected: "unsupported"` (designed-trap cases) — the case
  *   agrees when no extracted fact OUTSIDE the expected labels was admitted as
- *   `supported`: the extractor abstaining from the trap, or the verifier
- *   demoting it, both count as the system handling the trap correctly.
+ *   `supported` AND unhedged: extractor abstention, verifier demotion, and the
+ *   extractor's hedge flag (which admits the fact as `uncertain` regardless of
+ *   verdict — the S3.5-B admission rule) all count as correct trap handling.
+ *   A faithfully hedged stray is `supported` by design (v0002 calibration)
+ *   yet never remembered as active — the trap checks what gets REMEMBERED.
  */
 
 const expectedMemorySchema = z.object({
@@ -263,8 +266,11 @@ export async function runGoldenEval(options: {
     const expectedVerdict = testCase.expected.verification_expected;
     let agreed: boolean | null = null;
     if (expectedVerdict === 'unsupported') {
+      // Hedged strays are admitted `uncertain` whatever the verdict says
+      // (admission rule, S3.5-B) — the trap is only sprung by a stray the
+      // system would remember as active.
       const straySupported = verified.filter(
-        (v, i) => !factMatched[i] && v.verdict === 'supported',
+        (v, i) => !factMatched[i] && v.verdict === 'supported' && !v.fact.hedged,
       );
       agreed = straySupported.length === 0;
     } else if (expectedVerdict) {

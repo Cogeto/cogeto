@@ -6,6 +6,7 @@ import type {
   ChainVerificationDto,
   DeletionPreviewDto,
   DeletionRequestedDto,
+  DreamDigestDto,
   HealthReport,
   IntegrityStatusDto,
   MemoryListItem,
@@ -116,6 +117,11 @@ export const editMemory = (
   apiPost(`/api/memories/${id}/edit`, { content }, session);
 export const rejectMemory = (session: Session, id: string): Promise<{ rejected: boolean }> =>
   apiPost(`/api/memories/${id}/reject`, {}, session);
+
+// The plain dreaming digest (§B.6 v1 form, F2-B): the latest finished run's
+// actions as at most six linked lines; empty lines = render nothing.
+export const fetchDreamDigest = (session: Session): Promise<DreamDigestDto> =>
+  apiGet('/api/dreaming/latest', session);
 
 // The contradicted queue (F2-A, decision 0010): open contradictions where both
 // facts belong to the caller, and the three owner resolutions.

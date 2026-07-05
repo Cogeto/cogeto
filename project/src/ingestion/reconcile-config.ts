@@ -47,6 +47,16 @@ export const CONTRADICTION_CANDIDATE_STATUSES: MemoryStatus[] = ['active', 'user
 /** Kinds that can contradict (0010 ruling 6): open loops are tasks, not claims. */
 export const CONTRADICTION_KINDS: FactKind[] = ['fact', 'decision', 'preference', 'commitment'];
 
+/**
+ * Dreaming (decision 0011): commitments with no activity for this long are
+ * flagged dormant — recorded for the digest and the F3 task engine, never a
+ * status transition.
+ */
+export const DORMANT_SILENCE_DAYS = 14;
+
+/** First-ever dream run looks back this far for its scope window. */
+export const DREAM_FIRST_RUN_LOOKBACK_HOURS = 24;
+
 /** Case-insensitive entity-name normalization used by both candidate paths. */
 export const normalizeEntity = (name: string): string => name.trim().toLowerCase();
 

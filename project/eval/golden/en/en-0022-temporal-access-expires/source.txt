@@ -1,0 +1,1 @@
+Gave the contractor from Meridian temporary access to the staging environment. Access expires on July 31 — remove the account after that.

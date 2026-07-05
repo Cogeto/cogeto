@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r007",
+  "task": "dedup",
+  "expected": "distinct",
+  "a": {
+    "content": "Ivana je poslala konačni ugovor Elektri Zagreb.",
+    "kind": "fact",
+    "entities": ["Ivana", "Elektra Zagreb"],
+    "subject_entity": "Ivana",
+    "captured_at": "2026-07-05T09:00:00.000Z",
+    "source": "Ivana je danas poslala konačni ugovor Elektri Zagreb."
+  },
+  "b": {
+    "content": "Ivana je poslala nacrt ugovora Elektri Zagreb.",
+    "kind": "fact",
+    "entities": ["Ivana", "Elektra Zagreb"],
+    "subject_entity": "Ivana",
+    "captured_at": "2026-06-25T09:00:00.000Z",
+    "source": "Nacrt ugovora za Elektru Zagreb je poslan — Ivana ga je poslala jučer."
+  },
+  "notes": "ZAMKA za lažno spajanje (težina 2): isti akteri, isti ugovor — ali nacrt i konačni ugovor dva su koraka procesa. Spajanjem se briše tijek."
+}

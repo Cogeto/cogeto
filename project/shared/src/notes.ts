@@ -83,6 +83,24 @@ export type ResolveContradictionRequest =
   | { action: 'correct'; aContent: string; bContent: string }
   | { action: 'dismiss' };
 
+/**
+ * GET /api/dreaming/latest — the plain digest (§B.6 v1 form; decision 0011):
+ * the most recent finished dreaming run's actions as at most six
+ * human-phrased, deep-linked lines, scoped to the caller's own memories.
+ * `lines: []` means render nothing — silent nights produce no panel.
+ */
+export interface DreamDigestLine {
+  text: string;
+  /** SPA route the line deep-links to; always resolvable for the caller. */
+  href: string;
+}
+
+export interface DreamDigestDto {
+  runId: string | null;
+  finishedAt: string | null;
+  lines: DreamDigestLine[];
+}
+
 /** GET /api/jobs/dead-letter — parked jobs, dashboard-visible (§A.3). */
 export interface DeadLetterJobDto {
   id: string;

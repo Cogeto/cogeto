@@ -87,3 +87,113 @@ against this baseline.
 | en | 4 | 100.0% (6/6) | 4 | 66.7% (2/3) | 100.0% (2/2) | 0/1 | 0 |
 | hr | 3 | 75.0% (3/4) | 3 | 100.0% (2/2) | 100.0% (2/2) | — | 0 |
 | aggregate | 7 | 90.0% (9/10) | 7 | 80.0% (4/5) | 100.0% (4/4) | 0/1 | 0 |
+
+## 2026-07-05 — extraction/v0002 + verification/v0002 (thresholds v1, 36 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 24 | 82.5% (33/40) | 91.2% (31/34) | 87.0% (20/23) |
+| hr | 12 | 74.1% (20/27) | 95.0% (19/20) | 81.8% (9/11) |
+| aggregate | 36 | 79.1% (53/67) | 92.6% (50/54) | 85.3% (29/34) |
+
+## 2026-07-05 — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 18 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 5 | 100.0% (8/8) | 5 | 66.7% (2/3) | 100.0% (2/2) | 0/1 | 0 |
+| hr | 4 | 83.3% (5/6) | 4 | 100.0% (2/2) | 100.0% (2/2) | — | 0 |
+| aggregate | 9 | 92.9% (13/14) | 9 | 80.0% (4/5) | 100.0% (4/4) | 0/1 | 0 |
+
+## 2026-07-05 — extraction/v0002 + verification/v0003 (thresholds v1, 36 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 24 | 77.5% (31/40) | 85.3% (29/34) | 91.3% (21/23) |
+| hr | 12 | 70.4% (19/27) | 90.0% (18/20) | 54.5% (6/11) |
+| aggregate | 36 | 74.6% (50/67) | 87.0% (47/54) | 79.4% (27/34) |
+
+## 2026-07-05 — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 18 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 5 | 100.0% (8/8) | 5 | 66.7% (2/3) | 100.0% (2/2) | 0/1 | 0 |
+| hr | 4 | 83.3% (5/6) | 4 | 100.0% (2/2) | 100.0% (2/2) | — | 0 |
+| aggregate | 9 | 92.9% (13/14) | 9 | 80.0% (4/5) | 100.0% (4/4) | 0/1 | 0 |
+
+## 2026-07-05 — extraction/v0002 + verification/v0003 (thresholds v1, 36 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 24 | 82.5% (33/40) | 94.1% (32/34) | 87.0% (20/23) |
+| hr | 12 | 76.9% (20/26) | 95.0% (19/20) | 63.6% (7/11) |
+| aggregate | 36 | 80.3% (53/66) | 94.4% (51/54) | 79.4% (27/34) |
+
+## 2026-07-05 — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 18 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 5 | 100.0% (8/8) | 5 | 66.7% (2/3) | 100.0% (2/2) | 0/1 | 0 |
+| hr | 4 | 83.3% (5/6) | 4 | 100.0% (2/2) | 100.0% (2/2) | — | 0 |
+| aggregate | 9 | 92.9% (13/14) | 9 | 80.0% (4/5) | 100.0% (4/4) | 0/1 | 0 |
+
+## 2026-07-05 — extraction/v0002 + verification/v0004 (thresholds v1, 36 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 24 | 85.0% (34/40) | 94.1% (32/34) | 87.0% (20/23) |
+| hr | 12 | 65.4% (17/26) | 80.0% (16/20) | 81.8% (9/11) |
+| aggregate | 36 | 77.3% (51/66) | 88.9% (48/54) | 85.3% (29/34) |
+
+## 2026-07-05 — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 18 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 5 | 100.0% (8/8) | 5 | 66.7% (2/3) | 100.0% (2/2) | 0/1 | 0 |
+| hr | 4 | 83.3% (5/6) | 4 | 100.0% (2/2) | 100.0% (2/2) | — | 0 |
+| aggregate | 9 | 92.9% (13/14) | 9 | 80.0% (4/5) | 100.0% (4/4) | 0/1 | 0 |
+
+> Note: a degraded-prompt gate demonstration ran on 2026-07-05 (verification
+> agreement 8.8%, build failed with exit 1, as designed). Its rows are
+> deliberately not part of this history — the demo is documented in
+> docs/sessions/F2-B.md ("Gate proof"). Honest numbers only means honest
+> MEASUREMENTS; a sabotage drill is not a measurement.
+
+## 2026-07-05 — extraction/v0002 + verification/v0004 (thresholds v1, 36 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 24 | 76.9% (30/39) | 85.3% (29/34) | 91.3% (21/23) |
+| hr | 12 | 63.0% (17/27) | 80.0% (16/20) | 90.9% (10/11) |
+| aggregate | 36 | 71.2% (47/66) | 83.3% (45/54) | 91.2% (31/34) |
+
+## 2026-07-05 — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 18 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 5 | 100.0% (8/8) | 5 | 50.0% (2/4) | 100.0% (2/2) | 0/1 | 0 |
+| hr | 4 | 83.3% (5/6) | 4 | 100.0% (2/2) | 100.0% (2/2) | — | 0 |
+| aggregate | 9 | 92.9% (13/14) | 9 | 66.7% (4/6) | 100.0% (4/4) | 0/1 | 0 |
+
+## 2026-07-05 — extraction/v0002 + verification/v0004 (thresholds v1, 36 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 24 | 79.5% (31/39) | 88.2% (30/34) | 91.3% (21/23) |
+| hr | 12 | 74.1% (20/27) | 95.0% (19/20) | 72.7% (8/11) |
+| aggregate | 36 | 77.3% (51/66) | 90.7% (49/54) | 85.3% (29/34) |
+
+## 2026-07-05 — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 18 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 5 | 100.0% (8/8) | 5 | 66.7% (2/3) | 100.0% (2/2) | 0/1 | 0 |
+| hr | 4 | 83.3% (5/6) | 4 | 100.0% (2/2) | 100.0% (2/2) | — | 0 |
+| aggregate | 9 | 92.9% (13/14) | 9 | 80.0% (4/5) | 100.0% (4/4) | 0/1 | 0 |
+
+## 2026-07-05 — chat eval (pipeline=mistral-small-latest · answer=mistral-medium-latest · answer-prompt=answer/v0002 · grader=eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | overall |
+|---|---|---|---|---|---|---|---|
+| atlas_scope | — | 83% | — | PASS | PASS | — | PASS |
+| nothing_on_record | — | — | — | — | — | PASS | PASS |
+| who_is_ana | PASS | 86% | PASS | PASS | PASS | — | PASS |

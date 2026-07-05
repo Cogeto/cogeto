@@ -23,7 +23,25 @@ It is **EU-first, privacy-first, self-hostable, and model-agnostic (Mistral-firs
 
 ## Status
 
-**Session F2-A complete (the reconciliation engine — pipeline stage 6).**
+**Session F2 complete (reconciliation + dreaming + gates, F2-A + F2-B).**
+Cogeto now **consolidates itself while you sleep and measures itself before it
+ships**. The nightly **dreaming** cycle (03:30, after the integrity sweep)
+re-runs the reconciliation engine in batch over the day's new facts, marks
+lapsed memories outdated deterministically, and flags commitments that went
+quiet — never touching a status it isn't entitled to. Its work appears each
+morning as a plain **"While you were away"** panel: at most six human-phrased
+lines, every one deep-linked to its artifact, silent nights showing nothing
+(the tappable chat card is v1.x, contract frozen in the F2 handoff). The
+verifier is now calibrated for Croatian (`verification/v0004`: month-name
+false friends, present-for-future, colloquial agreement, hedging particles —
+hr agreement 57.1% → 81.8%), the golden corpus grew to 30 en / 17 hr items,
+and the **§B.4 eval gates are ON**: `npm run eval:gate` and the `eval-gate`
+CI workflow fail the build when any aggregate metric drops below the
+versioned, ratchet-up-only thresholds in `project/eval/gates.json` — proven
+by a degraded-prompt drill that collapsed verification to 8.8% and exited 1
+(decisions 0010–0011; migrations 0011–0012).
+
+Previously — **Session F2-A (the reconciliation engine — pipeline stage 6).**
 Cogeto's memory now reconciles with itself: every newly admitted fact is
 checked against the owner's existing memory — deterministic candidate rules
 first (versioned thresholds, zero model calls), then two new versioned prompt

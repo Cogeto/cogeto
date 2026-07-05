@@ -325,6 +325,16 @@ async function main(): Promise<void> {
   const stamp = new Date().toISOString().slice(0, 10);
   await appendFile(HISTORY_FILE, `\n## ${stamp} — chat eval (${versions})\n\n${table}\n`, 'utf8');
   console.log(`appended to ${path.relative(REPO_ROOT, HISTORY_FILE)}`);
+
+  // Gate mode (decision 0011): every chat case must PASS. Same switch as the
+  // golden-set gates so CI enforces both with one convention.
+  const failed = scores.filter((s) => !s.pass);
+  if (failed.length > 0 && process.env.COGETO_EVAL_GATE === '1') {
+    console.error(
+      `GATE BREACH: chat case(s) failed: ${failed.map((s) => s.caseId).join(', ')} — failing the build`,
+    );
+    process.exitCode = 1;
+  }
 }
 
 main().catch((error: unknown) => {

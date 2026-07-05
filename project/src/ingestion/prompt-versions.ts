@@ -10,7 +10,7 @@ export interface PromptVersionRef {
 }
 
 export const EXTRACTION_PROMPT: PromptVersionRef = { family: 'extraction', version: 'v0002' };
-export const VERIFICATION_PROMPT: PromptVersionRef = { family: 'verification', version: 'v0002' };
+export const VERIFICATION_PROMPT: PromptVersionRef = { family: 'verification', version: 'v0004' };
 export const RECONCILE_DEDUP_PROMPT: PromptVersionRef = {
   family: 'reconcile_dedup',
   version: 'v0001',

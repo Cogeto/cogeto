@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r010",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "The board approved two new hires in sales for Q3.",
+    "kind": "decision",
+    "entities": ["board"],
+    "subject_entity": "board",
+    "captured_at": "2026-07-05T10:00:00.000Z",
+    "source": "Board outcome: two new sales hires approved for Q3."
+  },
+  "b": {
+    "content": "The board approved a hiring freeze for engineering.",
+    "kind": "decision",
+    "entities": ["board"],
+    "subject_entity": "board",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "The board signed off on the engineering hiring freeze."
+  },
+  "notes": "COMPATIBLE TRAP: same subject, same topic (hiring), opposite-sounding outcomes — but different departments. Both true; no alarm."
+}

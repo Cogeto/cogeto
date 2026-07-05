@@ -1,0 +1,42 @@
+{
+  "case_id": "en-0020",
+  "source_type": "user_note",
+  "source_date": "2026-07-05T09:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Vera confirmed the Northwind Logistics renewal at 52,000 EUR for next year",
+      "kind": "fact",
+      "entities": ["Vera", "Northwind Logistics"],
+      "condition": null,
+      "temporal": { "valid_from": "source_date" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "The new Northwind Logistics SLA takes effect on August 1",
+      "kind": "fact",
+      "entities": ["Northwind Logistics"],
+      "condition": null,
+      "temporal": { "valid_from": "2026-08-01" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Vera decided to drop the weekend support tier",
+      "kind": "decision",
+      "entities": ["Vera"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "The user still needs to send Vera the revised onboarding deck",
+      "kind": "open_loop",
+      "entities": ["Vera"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": ["that a quarterly review happened, as a fact on its own"],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r009",
+  "task": "dedup",
+  "expected": "distinct",
+  "a": {
+    "content": "Petra booked the venue for the Q3 workshop in Ljubljana.",
+    "kind": "fact",
+    "entities": ["Petra", "Ljubljana"],
+    "subject_entity": "Petra",
+    "captured_at": "2026-07-05T09:00:00.000Z",
+    "source": "Petra confirmed she booked the venue for the Q3 workshop in Ljubljana."
+  },
+  "b": {
+    "content": "Petra booked the catering for the Q3 workshop in Ljubljana.",
+    "kind": "fact",
+    "entities": ["Petra", "Ljubljana"],
+    "subject_entity": "Petra",
+    "captured_at": "2026-07-03T09:00:00.000Z",
+    "source": "Catering for the Q3 Ljubljana workshop is booked — Petra handled it."
+  },
+  "notes": "FALSE-MERGE TRAP (weight 2): identical actor, event, city, kind — venue and catering are two bookings. One word carries the distinction."
+}

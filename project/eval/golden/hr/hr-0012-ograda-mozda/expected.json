@@ -1,0 +1,18 @@
+{
+  "case_id": "hr-0012",
+  "source_type": "user_note",
+  "source_date": "2026-07-05T12:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Novi uredski prostor u Heinzelovoj možda bude slobodan od rujna (ništa nije potpisano)",
+      "kind": "fact",
+      "entities": ["Marko", "Heinzelova"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": ["da je selidba ureda dogovorena ili prostor zakupljen"],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

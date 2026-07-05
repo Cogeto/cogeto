@@ -301,7 +301,12 @@ type ReviewTab = 'uncertain' | 'contradicted';
  * decision 0010 ruling 3).
  */
 export function Review({ session }: { session: Session }) {
-  const [tab, setTab] = useState<ReviewTab>('uncertain');
+  // ?tab=contradicted — dreaming digest conflict lines land on the right queue.
+  const [tab, setTab] = useState<ReviewTab>(() =>
+    new URLSearchParams(window.location.search).get('tab') === 'contradicted'
+      ? 'contradicted'
+      : 'uncertain',
+  );
 
   const uncertain = useQuery({
     queryKey: ['review-queue'],

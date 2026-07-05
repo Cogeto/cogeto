@@ -24,6 +24,17 @@ One line per label change (docs/eval-golden-set.md §4 rule 5).
   support only (the claim faithfully carries the hedge → supported), while the
   extractor's `hedged` flag drives the memory to `uncertain`. The old `partial`
   label encoded the F7 conflation the fix removes.
+- 2026-07-05 (F2-B): corpus growth toward the §B.4 ladder — en `en-0020`–`en-0024`
+  (two multi-fact notes, two temporal valid_until cases feeding the staleness
+  pass, one designed forecast-overreach trap expected `unsupported`) and hr
+  `hr-0009`–`hr-0012` (multi-fact, formal register that must NOT read as
+  tentativeness [hr-0010], valid_until, and the `navodno` hedging-particle case
+  [hr-0012] — the v0003 calibration targets), plus pairs `en-r009` (dedup trap:
+  venue vs catering), `en-r010` (compatible trap: same board, different
+  departments), `hr-r007` (dedup trap: nacrt vs konačni ugovor), `hr-r008`
+  (compatible trap: zadovoljan cijenom + traži popust). Totals: en 30 items
+  (24 extraction + 6 pairs), hr 17 items (12 extraction + 5 pairs). All
+  fictional; hr authored idiomatically.
 - 2026-07-05 (F2-A): added the reconciliation pair-case format (`pair.json` in a
   case dir; loader dispatches on file presence — decision 0010 ruling 9) and 14
   pairs: dedup `en-r001`–`en-r004` + `hr-r001`–`hr-r003` (7, of which 3

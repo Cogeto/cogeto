@@ -1,0 +1,18 @@
+{
+  "case_id": "hr-0011",
+  "source_type": "user_note",
+  "source_date": "2026-07-05T11:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Ponuda Adria Solara za servis vrijedi do 15. kolovoza",
+      "kind": "fact",
+      "entities": ["Adria Solar", "Ivana"],
+      "condition": null,
+      "temporal": { "valid_from": "source_date", "valid_until": "2026-08-15" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

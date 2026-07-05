@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule, ModuleMetadata, Type } from '@nestjs/common';
+import { DreamingController } from './dreaming.controller';
+import { DreamingService } from './dreaming.service';
 import { EmbedStoreStage } from './pipeline/embed-store.stage';
 import { ExtractStage } from './pipeline/extract.stage';
 import { IngestionPipeline } from './pipeline/pipeline.service';
@@ -36,25 +38,26 @@ export class IngestionModule {
         EmbedStoreStage,
         ReconciliationService,
         IngestionPipeline,
+        DreamingService,
         {
           provide: SOURCE_READERS,
           useFactory: (...readers: SourceReader[]) => readers,
           inject: options.readers,
         },
       ],
-      exports: [IngestionPipeline],
+      exports: [IngestionPipeline, DreamingService],
     };
   }
 
   /**
-   * The app-process slice (S3-B): only the verification read endpoint — no
-   * pipeline, no stages, no readers. Ingestion keeps sole ownership of its
-   * table; the dashboard gets its verdict panel.
+   * The app-process slice (S3-B, F2-B): only the read endpoints — the
+   * verification verdict panel and the dreaming digest. No pipeline, no
+   * stages, no readers. Ingestion keeps sole ownership of its tables.
    */
   static forQueries(): DynamicModule {
     return {
       module: IngestionModule,
-      controllers: [VerificationController],
+      controllers: [VerificationController, DreamingController],
     };
   }
 }

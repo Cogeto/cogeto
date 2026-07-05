@@ -62,7 +62,13 @@ export function GovernedMemories({
   onOpen: (memoryId: string) => void;
 }) {
   const [q, setQ] = useState('');
-  const [status, setStatus] = useState<MemoryStatus | ''>('');
+  // ?status=outdated — dreaming digest lines deep-link into a filtered view.
+  const [status, setStatus] = useState<MemoryStatus | ''>(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get('status');
+    return fromUrl && (MEMORY_STATUSES as readonly string[]).includes(fromUrl)
+      ? (fromUrl as MemoryStatus)
+      : '';
+  });
   const [scope, setScope] = useState<MemoryScope | ''>('');
   const [sensitiveOnly, setSensitiveOnly] = useState(false);
   const [entity, setEntity] = useState('');

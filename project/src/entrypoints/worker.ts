@@ -8,7 +8,12 @@ import { loadConfig } from './config';
 import { createLogger, PinoNestLogger } from './logger';
 import { createWorkerRootModule } from './worker-root.module';
 import { createDb, ensureInstanceKeys } from '../infrastructure/index';
-import { ACTIVE_PROMPTS, IngestionPipeline } from '../ingestion/index';
+import {
+  ACTIVE_PROMPTS,
+  DREAM_CRONTAB,
+  DreamingService,
+  IngestionPipeline,
+} from '../ingestion/index';
 import { DeletionExecutor, IntegritySweep, MemoryStore, SWEEP_CRONTAB } from '../memory/index';
 import { ANSWER_PROMPT, QUERY_REWRITE_PROMPT } from '../retrieval/index';
 import { loadPrompt, ModelGateway, recordPromptVersion } from '../model-gateway/index';
@@ -71,12 +76,14 @@ async function main(): Promise<void> {
       memoryStore: context.get(MemoryStore),
       deletionExecutor: context.get(DeletionExecutor),
       integritySweep: context.get(IntegritySweep),
+      dreaming: context.get(DreamingService),
       gateway: context.get(ModelGateway),
       log: (event, message) => logger.info(event, message),
     }),
-    // The nightly integrity sweep (§A.7 step 4) — graphile cron; on-demand runs
-    // go through the sweep entrypoint instead of the queue.
-    crontab: SWEEP_CRONTAB,
+    // Nightly schedule (graphile cron): the 03:00 integrity sweep (§A.7 step
+    // 4), then the 03:30 dreaming cycle (§B.6; decision 0011). On-demand runs
+    // go through the sweep/dream entrypoints instead of the queue.
+    crontab: `${SWEEP_CRONTAB}\n${DREAM_CRONTAB}`,
     noHandleSignals: true,
   });
   logger.info('cogeto worker started (graphile runner + task registry)');

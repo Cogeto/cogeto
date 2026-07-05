@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r008",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "Hrvoje je zatražio dodatni popust od novog dobavljača.",
+    "kind": "fact",
+    "entities": ["Hrvoje"],
+    "subject_entity": "Hrvoje",
+    "captured_at": "2026-07-05T10:00:00.000Z",
+    "source": "Hrvoje je jutros tražio dodatni popust od novog dobavljača."
+  },
+  "b": {
+    "content": "Hrvoje je zadovoljan cijenom novog dobavljača.",
+    "kind": "preference",
+    "entities": ["Hrvoje"],
+    "subject_entity": "Hrvoje",
+    "captured_at": "2026-06-28T10:00:00.000Z",
+    "source": "Hrvoje kaže da je s cijenom novog dobavljača sasvim zadovoljan."
+  },
+  "notes": "ZAMKA kompatibilnosti: zvuči proturječno (zadovoljan cijenom, a traži popust), ali pregovaranje ne poništava zadovoljstvo — obje činjenice stoje."
+}

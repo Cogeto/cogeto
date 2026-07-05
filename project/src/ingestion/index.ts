@@ -6,6 +6,8 @@ export type { PipelineSummary } from './pipeline/pipeline.service';
 export { SOURCE_READERS } from './pipeline/source-reader';
 export type { SourceReader, SourceItem } from './pipeline/source-reader';
 export type { PipelineLog } from './pipeline/pipeline-log';
+export { DreamingService, DREAM_JOB_TYPE, DREAM_CRONTAB } from './dreaming.service';
+export type { DreamReport } from './dreaming.service';
 export { ReconciliationService, ReconcileJudge, buildPairInput } from './pipeline/reconcile.stage';
 export type {
   ReconcileFactView,

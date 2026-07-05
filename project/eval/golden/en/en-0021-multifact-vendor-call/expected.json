@@ -1,0 +1,42 @@
+{
+  "case_id": "en-0021",
+  "source_type": "user_note",
+  "source_date": "2026-07-05T10:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "The warehouse scanner delivery slipped to September 10",
+      "kind": "fact",
+      "entities": ["Tomas"],
+      "condition": null,
+      "temporal": { "valid_from": "2026-09-10" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Tomas committed to sending the firmware changelog by Friday",
+      "kind": "commitment",
+      "entities": ["Tomas"],
+      "condition": null,
+      "temporal": { "valid_until": "2026-07-10" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "The Munich office might take over EU support next year (not decided)",
+      "kind": "fact",
+      "entities": ["Tomas"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": false
+    },
+    {
+      "content_gist": "The pilot stays at 40 devices",
+      "kind": "decision",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": ["the Munich possibility stated as a settled fact"],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

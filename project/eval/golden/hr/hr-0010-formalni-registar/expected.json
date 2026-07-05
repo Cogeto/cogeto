@@ -1,0 +1,35 @@
+{
+  "case_id": "hr-0010",
+  "source_type": "user_note",
+  "source_date": "2026-07-05T10:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Odbor Panonske banke prihvatio je ponudu za reviziju procesa",
+      "kind": "fact",
+      "entities": ["Horvat", "Panonska banka"],
+      "condition": null,
+      "temporal": { "valid_from": "source_date" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Implementacija revizije procesa počinje 1. listopada",
+      "kind": "fact",
+      "entities": ["Panonska banka"],
+      "condition": null,
+      "temporal": { "valid_from": "2026-10-01" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Korisnik mora dostaviti plan rada Horvatu do kraja mjeseca",
+      "kind": "commitment",
+      "entities": ["Horvat"],
+      "condition": null,
+      "temporal": { "valid_until": "2026-07-31" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported",
+  "notes": "Formal register + conditional politeness ('kako bi implementacija započela') that IS a confirmed plan — formal phrasing must not be misread as tentativeness."
+}

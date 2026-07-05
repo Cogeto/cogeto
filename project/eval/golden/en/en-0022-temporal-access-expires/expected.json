@@ -1,0 +1,26 @@
+{
+  "case_id": "en-0022",
+  "source_type": "user_note",
+  "source_date": "2026-07-05T11:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "The Meridian contractor has staging access until July 31",
+      "kind": "fact",
+      "entities": ["Meridian"],
+      "condition": null,
+      "temporal": { "valid_from": "source_date", "valid_until": "2026-07-31" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "The user must remove the contractor account after July 31",
+      "kind": "open_loop",
+      "entities": ["Meridian"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}
