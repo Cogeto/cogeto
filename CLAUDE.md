@@ -27,9 +27,8 @@ backed by an inspectable artifact — with human-approved agents on top.
 - `project/web/` — chat + dashboard frontend. `project/prompts/` — versioned prompt
   artifacts (§B.7). `project/infra/` — compose stack; `docker compose up` is the
   contract (§A.2).
-- `docs/` — specs, research, decisions. Root `tests/` — reserved, gitignored, do not
-  use; application tests will live under `project/` (location recorded as a decision
-  when coding starts).
+- `docs/` — specs, research, decisions. Application tests live under `project/src/`,
+  next to the code they exercise (Vitest).
 - `assets/brand/` — canonical logo files (trademarked, not AGPL — see TRADEMARK.md).
   Reuse from here; never generate, recreate, or modify the logo.
 

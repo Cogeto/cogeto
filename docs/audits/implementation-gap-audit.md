@@ -305,15 +305,13 @@ fail the build.
   configured (3.9) — doc drift that hides a real gap.
 - **5.3 — Env drift:** `COGETO_MIGRATIONS_DIR`/`COGETO_PROMPTS_DIR` read in code, absent
   from `.env.example` (2.10). Harmless (defaults) but undocumented.
-- **5.4 — Root `tests/`** correctly reserved: only `.gitkeep`, gitignored
-  (`.gitignore` `/tests/*`). Compliant with AGENTS.md.
-- **5.5 — Session-log fidelity:** the S1–S3.5 logs match reality closely (stub locations,
+- **5.4 — Session-log fidelity:** the S1–S3.5 logs match reality closely (stub locations,
   migration numbers 0001–0008, prompt versions, test names all verified). The decision/
   migration numbering-offset caveats in the logs are accurate. No material drift between
   `docs/sessions/` and code.
-- **5.6 — Prompt registry** does not include tool-only/superseded prompts on boot (2.8);
+- **5.5 — Prompt registry** does not include tool-only/superseded prompts on boot (2.8);
   cosmetic.
-- **5.7 — No duplicated cross-module logic** observed; entity/name handling is centralized
+- **5.6 — No duplicated cross-module logic** observed; entity/name handling is centralized
   (`entity-profile.ts`, `query-entities.ts`), citations in `@cogeto/shared/citations`.
 
 ---

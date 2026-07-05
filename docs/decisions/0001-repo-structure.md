@@ -35,8 +35,8 @@ internal modules, exactly two deployable processes (app, worker).
 - `services/` and `packages/` roots were removed; `.gitkeep`-style leftovers cleaned.
 - Directory names (`model-gateway`) may be renamed to fit the chosen stack's module
   naming (e.g. underscores); record such a rename as a new decision.
-- Root `tests/` remains reserved and gitignored per repo rules; application tests will
-  live under `project/` once coding starts (record the location decision when made).
+- Application tests live under `project/src/`, next to the code they exercise
+  (location decided once coding began).
 - The git index still holds the old staged paths; the owner manages git manually and
   will re-stage after this restructure.
 - The eval harness (§B.4) gets its directory when built (first coding sessions),

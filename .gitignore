@@ -32,13 +32,6 @@ venv/
 target/
 
 # ─────────────────────────────────────────────
-# Tests — intentionally unused
-# Keep the folder marker only, ignore everything else
-# ─────────────────────────────────────────────
-/tests/*
-!/tests/.gitkeep
-
-# ─────────────────────────────────────────────
 # Local Claude settings
 # ─────────────────────────────────────────────
 .claude/settings.local.json

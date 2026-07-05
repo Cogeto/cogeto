@@ -19,7 +19,6 @@ It is **EU-first, privacy-first, self-hostable, and model-agnostic (Mistral-firs
 - `project/` — the Cogeto product (skeleton only for now).
 - `docs/` — authoritative product specification and scope.
 - `assets/` — brand assets (logo, icon); trademarked, see [`TRADEMARK.md`](TRADEMARK.md).
-- `tests/` — **intentionally unused** (folder marker only, gitignored).
 
 ## Status
 

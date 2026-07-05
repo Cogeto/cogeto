@@ -109,8 +109,7 @@ over every other document.
 ## Working rules
 
 - [ ] **Never run git commands unless the owner explicitly asks.**
-- [ ] Root `tests/` is reserved and gitignored — do not use it. Application tests
-      live under `project/` (location fixed by decision record at coding start).
+- [ ] Application tests live under `project/src/`, next to the code they exercise (Vitest).
 - [ ] New dependencies, frameworks, and Addendum deviations need owner sign-off
       (full list: CLAUDE.md).
 - [ ] Read the matching `docs/research/` file before implementing memory,
