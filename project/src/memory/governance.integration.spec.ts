@@ -256,7 +256,7 @@ describe('memory governance (integration, real Postgres + real Qdrant)', () => {
     ).rejects.toThrow(BadRequestException);
     await expect(
       store.transition({ kind: 'user', userId: userA.userId }, active.id, 'user_approved'),
-    ).rejects.toThrow(/only an uncertain memory can be approved/);
+    ).rejects.toThrow(/only an uncertain or contradicted memory can be approved/);
 
     // Reject on active: 400 pointing at the deletion saga for real deletions.
     await expect(store.rejectUncertain(userA, active.id)).rejects.toThrow(BadRequestException);

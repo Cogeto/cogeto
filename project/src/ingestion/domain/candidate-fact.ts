@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { FACT_KINDS } from '@cogeto/shared';
 import { resolveTemporalExpressions } from './temporal-resolver';
 import type { ResolvedInterval } from './temporal-resolver';
 
@@ -6,10 +7,13 @@ import type { ResolvedInterval } from './temporal-resolver';
  * The extractor's output contract (S2-A §3) and the verifier's verdict contract
  * (§B.3). Both are Zod-validated at the gateway boundary: output that fails the
  * schema is never stored — it surfaces as a retryable job failure.
+ *
+ * FACT_KINDS lives in @cogeto/shared since F2-A: the memory table stores kind
+ * (migration 0011) and the two must never drift.
  */
 
-export const FACT_KINDS = ['commitment', 'decision', 'preference', 'fact', 'open_loop'] as const;
-export type FactKind = (typeof FACT_KINDS)[number];
+export { FACT_KINDS } from '@cogeto/shared';
+export type { FactKind } from '@cogeto/shared';
 
 // Absent-but-unambiguous fields default instead of failing the schema: a
 // missing entity array means "none", a missing condition means "none" — models

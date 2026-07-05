@@ -1,7 +1,7 @@
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import * as path from 'node:path';
-import { evalConfigSchema, runGoldenEval } from '../ingestion/index';
-import type { EvalMetrics } from '../ingestion/index';
+import { evalConfigSchema, runGoldenEval, runReconcileEval } from '../ingestion/index';
+import type { EvalMetrics, ReconcileEvalMetrics } from '../ingestion/index';
 import { MistralModelGateway } from '../model-gateway/index';
 
 /**
@@ -42,6 +42,17 @@ function metricsRow(m: EvalMetrics): string {
   );
 }
 
+function reconcileRow(m: ReconcileEvalMetrics): string {
+  return (
+    `| ${m.label} | ${m.dedupPairs} | ${pct(m.dedupAccuracy)} (${m.dedupEarned}/${m.dedupWeight}` +
+    `${m.falseMerges ? `, ${m.falseMerges} FALSE MERGE${m.falseMerges > 1 ? 'S' : ''}` : ''}) ` +
+    `| ${m.contradictionPairs} | ${pct(m.contradictionPrecision)} (${m.correctContradictions}/${m.flaggedContradictions}) ` +
+    `| ${pct(m.contradictionRecall)} (${m.correctContradictions}/${m.expectedContradictions}) ` +
+    `| ${m.supersedesPairs ? `${m.supersedesCorrect}/${m.supersedesPairs}` : '—'} ` +
+    `| ${m.candidateMisses} |`
+  );
+}
+
 async function main(): Promise<void> {
   const apiKey = await resolveApiKey();
   if (!apiKey) {
@@ -79,11 +90,34 @@ async function main(): Promise<void> {
   console.log(table);
   console.log('====================================================\n');
 
+  // Reconciliation pair cases (F2-A, decision 0010 ruling 9) — the same run,
+  // so the trust score always reports extraction and reconciliation together.
+  console.log('reconciliation pairs:');
+  const reconcile = await runReconcileEval({
+    gateway,
+    goldenDir: GOLDEN_DIR,
+    log: (message) => console.log(`  ${message}`),
+  });
+  const reconcileTable = [
+    '| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes | candidate misses |',
+    '|---|---|---|---|---|---|---|---|',
+    ...reconcile.perLanguage.map(reconcileRow),
+    reconcileRow(reconcile.aggregate),
+  ].join('\n');
+
+  console.log('\n============= RECONCILIATION PAIR RESULTS =============');
+  console.log(
+    `prompts: reconcile_dedup/v0001 + reconcile_contradiction/v0001 · reconcile-config v${reconcile.configVersion} · ${reconcile.pairCount} pairs`,
+  );
+  console.log(reconcileTable);
+  console.log('=======================================================\n');
+
   await mkdir(path.dirname(HISTORY_FILE), { recursive: true });
   const stamp = new Date().toISOString().slice(0, 10);
   await appendFile(
     HISTORY_FILE,
-    `\n## ${stamp} — ${result.promptVersions} (thresholds v${result.config.version}, ${result.caseCount} cases)\n\n${table}\n`,
+    `\n## ${stamp} — ${result.promptVersions} (thresholds v${result.config.version}, ${result.caseCount} cases)\n\n${table}\n` +
+      `\n## ${stamp} — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v${reconcile.configVersion}, ${reconcile.pairCount} pairs)\n\n${reconcileTable}\n`,
     'utf8',
   );
   console.log(`appended to ${path.relative(REPO_ROOT, HISTORY_FILE)}`);

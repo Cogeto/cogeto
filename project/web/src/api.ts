@@ -1,6 +1,7 @@
 import type {
   ChatMessageDto,
   ChatStreamEvent,
+  ContradictionDto,
   DeadLetterJobDto,
   ChainVerificationDto,
   DeletionPreviewDto,
@@ -17,6 +18,7 @@ import type {
   Principal,
   ReceiptDetailDto,
   ReceiptListItem,
+  ResolveContradictionRequest,
   VerificationDto,
 } from '@cogeto/shared';
 import type { Session } from './auth/oidc';
@@ -114,6 +116,16 @@ export const editMemory = (
   apiPost(`/api/memories/${id}/edit`, { content }, session);
 export const rejectMemory = (session: Session, id: string): Promise<{ rejected: boolean }> =>
   apiPost(`/api/memories/${id}/reject`, {}, session);
+
+// The contradicted queue (F2-A, decision 0010): open contradictions where both
+// facts belong to the caller, and the three owner resolutions.
+export const fetchContradictions = (session: Session): Promise<ContradictionDto[]> =>
+  apiGet('/api/relations', session);
+export const resolveContradiction = (
+  session: Session,
+  relationId: string,
+  body: ResolveContradictionRequest,
+): Promise<{ resolved: boolean }> => apiPost(`/api/relations/${relationId}/resolve`, body, session);
 
 // Source-level true deletion (§A.7, §B.1): impact preview for the confirm
 // dialog, then the saga. The receipt id identifies the pending receipt the

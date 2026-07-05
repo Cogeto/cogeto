@@ -11,6 +11,9 @@ import type { VerifiedFact } from './verify.stage';
 export interface AdmittedMemory {
   memoryId: string;
   status: 'active' | 'uncertain';
+  /** The committed-in-tx row and its stage-5 embedding — stage 6's input. */
+  row: MemoryRow;
+  embedding: number[];
 }
 
 /**
@@ -45,7 +48,7 @@ export class EmbedStoreStage {
 
     const rows: MemoryRow[] = [];
     const admitted: AdmittedMemory[] = [];
-    for (const { fact, verdict, reason, promptVersion } of verified) {
+    for (const [i, { fact, verdict, reason, promptVersion }] of verified.entries()) {
       // Admission rule (S3.5-B, F7): active ONLY when the source stated it
       // plainly (hedged=false) AND the verifier supported it; a hedged fact is
       // uncertain even when supported, because the SOURCE was tentative.
@@ -60,6 +63,7 @@ export class EmbedStoreStage {
         sourceId: source.sourceId,
         entities: flattenEntities(fact),
         subjectEntity: fact.subject_entity ?? undefined,
+        kind: fact.kind,
         sensitive: false,
         validFrom,
         validUntil,
@@ -76,7 +80,7 @@ export class EmbedStoreStage {
         hedgePhrase: fact.hedged ? fact.hedge_phrase : null,
       });
       rows.push(row);
-      admitted.push({ memoryId: row.id, status });
+      admitted.push({ memoryId: row.id, status, row, embedding: embeddings[i]! });
     }
 
     await this.memoryStore.upsertVectors(rows, embeddings);

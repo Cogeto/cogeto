@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r005",
+  "task": "contradiction",
+  "expected": "contradicts",
+  "a": {
+    "content": "The Atlas CRM Migration go-live is confirmed for October 1.",
+    "kind": "decision",
+    "entities": ["Atlas CRM Migration"],
+    "subject_entity": "Atlas CRM Migration",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Go-live for the Atlas CRM Migration confirmed: October 1."
+  },
+  "b": {
+    "content": "The Atlas CRM Migration go-live is confirmed for September 1.",
+    "kind": "decision",
+    "entities": ["Atlas CRM Migration"],
+    "subject_entity": "Atlas CRM Migration",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "We confirmed September 1 as the Atlas CRM Migration go-live."
+  },
+  "notes": "Same slot (one go-live date), two values, neither record shows awareness of a change — a human must decide. Also exercises the distinct-escalation: these embed nearly identically."
+}

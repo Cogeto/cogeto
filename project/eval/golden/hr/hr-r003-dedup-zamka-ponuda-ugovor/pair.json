@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r003",
+  "task": "dedup",
+  "expected": "distinct",
+  "a": {
+    "content": "Adria Solar potpisala je ugovor o održavanju s Elektrom Zagreb.",
+    "kind": "fact",
+    "entities": ["Adria Solar", "Elektra Zagreb"],
+    "subject_entity": "Adria Solar",
+    "captured_at": "2026-07-03T12:00:00.000Z",
+    "source": "Adria Solar je danas potpisala ugovor o održavanju s Elektrom Zagreb."
+  },
+  "b": {
+    "content": "Adria Solar poslala je Elektri Zagreb ponudu za ugovor o održavanju.",
+    "kind": "fact",
+    "entities": ["Adria Solar", "Elektra Zagreb"],
+    "subject_entity": "Adria Solar",
+    "captured_at": "2026-06-20T12:00:00.000Z",
+    "source": "Adria Solar je poslala ponudu za ugovor o održavanju Elektri Zagreb."
+  },
+  "notes": "ZAMKA za lažno spajanje (težina 2): isti akteri i tema, ali ponuda i potpisani ugovor dvije su različite činjenice — spajanjem se gubi tijek posla."
+}

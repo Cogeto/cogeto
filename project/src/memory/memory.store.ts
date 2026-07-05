@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
-import type { MemoryScope, MemoryStatus, Principal } from '@cogeto/shared';
+import type { FactKind, MemoryScope, MemoryStatus, Principal } from '@cogeto/shared';
 import { DRIZZLE, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { memory } from './persistence/tables';
@@ -40,6 +40,8 @@ export interface NewFact {
   entities?: string[];
   /** The entity this fact is primarily ABOUT (F1/F4) — distinct from mentions. */
   subjectEntity?: string;
+  /** The extractor's fact kind (migration 0011) — reconciliation matches on it. */
+  kind?: FactKind;
   /** Raw temporal phrases code could not resolve (decision 0007 ruling 1). */
   temporalUnresolved?: string[];
   sensitive?: boolean;
@@ -89,6 +91,15 @@ export interface ScoredMemory {
 
 export interface SearchOptions extends ReadOptions {
   topK: number;
+  /**
+   * Reconciliation candidate narrowing (decision 0010 ruling 6) — additive
+   * pre-filters ON TOP of the gates, inside the vector query, never after it:
+   * exact scope, own rows only (drops the shared-scope arm of the gate), and
+   * a status allowlist. Retrieval callers pass none of these.
+   */
+  scope?: MemoryScope;
+  ownerOnly?: boolean;
+  statuses?: MemoryStatus[];
 }
 
 /** ftsSearch/entitySearch accept the dashboard filters; vectorSearch does not (retrieval-only). */
@@ -207,29 +218,43 @@ export class MemoryStore {
     to: MemoryStatus,
     reason?: string,
   ): Promise<MemoryRow> {
-    return this.db.transaction(async (tx) => {
-      const row = await this.lockRow(tx, memoryId, actor);
-      const check = checkTransition(row.status, to, actor);
-      if (!check.allowed) {
-        throw new BadRequestException(`illegal transition ${row.status} -> ${to}: ${check.reason}`);
-      }
-      const [updated] = await tx
-        .update(memory)
-        .set({ status: to, updatedAt: new Date() })
-        .where(eq(memory.id, memoryId))
-        .returning();
-      await writeAudit(tx, {
-        actor: actorLabel(actor),
-        action: 'memory.status_transition',
-        entityType: 'memory',
-        entityId: memoryId,
-        detail: { from: row.status, to, reason: reason ?? null },
-      });
-      // Keep the Qdrant payload copy honest (§A.4), point op last: a failure
-      // rolls the row back and the caller retries — the two stores converge.
-      await this.vectors?.setPayload(memoryId, { status: to });
-      return updated as MemoryRow;
+    return this.db.transaction(async (tx) => this.transitionInTx(tx, actor, memoryId, to, reason));
+  }
+
+  /**
+   * The transition body, composable into a caller's transaction — how
+   * reconciliation (pipeline stage 6, the contradiction resolutions) makes
+   * status changes commit atomically with the relation rows and, in stage 6,
+   * with the not-yet-committed incoming facts (decision 0010 ruling 1).
+   */
+  async transitionInTx(
+    tx: Tx,
+    actor: MemoryActor,
+    memoryId: string,
+    to: MemoryStatus,
+    reason?: string,
+  ): Promise<MemoryRow> {
+    const row = await this.lockRow(tx, memoryId, actor);
+    const check = checkTransition(row.status, to, actor);
+    if (!check.allowed) {
+      throw new BadRequestException(`illegal transition ${row.status} -> ${to}: ${check.reason}`);
+    }
+    const [updated] = await tx
+      .update(memory)
+      .set({ status: to, updatedAt: new Date() })
+      .where(eq(memory.id, memoryId))
+      .returning();
+    await writeAudit(tx, {
+      actor: actorLabel(actor),
+      action: 'memory.status_transition',
+      entityType: 'memory',
+      entityId: memoryId,
+      detail: { from: row.status, to, reason: reason ?? null },
     });
+    // Keep the Qdrant payload copy honest (§A.4), point op last: a failure
+    // rolls the row back and the caller retries — the two stores converge.
+    await this.vectors?.setPayload(memoryId, { status: to });
+    return updated as MemoryRow;
   }
 
   /**
@@ -278,43 +303,58 @@ export class MemoryStore {
     memoryId: string,
     newContent: string,
   ): Promise<{ predecessor: MemoryRow; successor: MemoryRow }> {
+    return this.db.transaction(async (tx) =>
+      this.editContentInTx(tx, principal, memoryId, newContent),
+    );
+  }
+
+  /**
+   * The edit body, composable into a caller's transaction — the "correct both"
+   * contradiction resolution (0010 ruling 3) performs two edits and resolves
+   * the relation atomically through this.
+   */
+  async editContentInTx(
+    tx: Tx,
+    principal: Principal,
+    memoryId: string,
+    newContent: string,
+  ): Promise<{ predecessor: MemoryRow; successor: MemoryRow }> {
     const actor: MemoryActor = { kind: 'user', userId: principal.userId };
-    return this.db.transaction(async (tx) => {
-      const old = await this.lockRow(tx, memoryId, actor);
-      if (old.status === 'replaced') {
-        throw new BadRequestException('memory is already replaced; edit its successor instead');
-      }
-      const result = await this.supersedeCore(tx, actor, old, {
-        content: newContent,
-        scope: old.scope,
-        sourceType: old.sourceType,
-        sourceId: old.sourceId,
-        entities: old.entities,
-        subjectEntity: old.subjectEntity ?? undefined,
-        sensitive: old.sensitive,
-        validUntil: old.validUntil ?? undefined,
-        initialStatus: 'user_approved',
-      });
-      await writeAudit(tx, {
-        actor: actorLabel(actor),
-        action: 'memory.edited',
-        entityType: 'memory',
-        entityId: memoryId,
-        detail: { successor: result.successor.id },
-      });
-      await withTransactionalEnqueue(
-        tx,
-        {
-          type: 'memory.edited',
-          payload: { memory_id: memoryId, successor_id: result.successor.id },
-        },
-        {
-          type: MEMORY_EMBED_JOB_TYPE,
-          payload: { source_type: 'memory', source_id: result.successor.id },
-        },
-      );
-      return result;
+    const old = await this.lockRow(tx, memoryId, actor);
+    if (old.status === 'replaced') {
+      throw new BadRequestException('memory is already replaced; edit its successor instead');
+    }
+    const result = await this.supersedeCore(tx, actor, old, {
+      content: newContent,
+      scope: old.scope,
+      sourceType: old.sourceType,
+      sourceId: old.sourceId,
+      entities: old.entities,
+      subjectEntity: old.subjectEntity ?? undefined,
+      kind: old.kind ?? undefined,
+      sensitive: old.sensitive,
+      validUntil: old.validUntil ?? undefined,
+      initialStatus: 'user_approved',
     });
+    await writeAudit(tx, {
+      actor: actorLabel(actor),
+      action: 'memory.edited',
+      entityType: 'memory',
+      entityId: memoryId,
+      detail: { successor: result.successor.id },
+    });
+    await withTransactionalEnqueue(
+      tx,
+      {
+        type: 'memory.edited',
+        payload: { memory_id: memoryId, successor_id: result.successor.id },
+      },
+      {
+        type: MEMORY_EMBED_JOB_TYPE,
+        payload: { source_type: 'memory', source_id: result.successor.id },
+      },
+    );
+    return result;
   }
 
   /**
@@ -363,16 +403,30 @@ export class MemoryStore {
     predecessorId: string,
     successorFact: NewFact,
   ): Promise<{ predecessor: MemoryRow; successor: MemoryRow }> {
+    return this.db.transaction(async (tx) =>
+      this.supersedeInTx(tx, actor, predecessorId, successorFact),
+    );
+  }
+
+  /**
+   * The supersession body, composable into a caller's transaction — how the
+   * reconciliation merge enriches a survivor atomically with the merge itself
+   * (decision 0010 ruling 4).
+   */
+  async supersedeInTx(
+    tx: Tx,
+    actor: MemoryActor,
+    predecessorId: string,
+    successorFact: NewFact,
+  ): Promise<{ predecessor: MemoryRow; successor: MemoryRow }> {
     if (actor.kind !== 'user' && actor.kind !== 'reconciliation') {
       throw new BadRequestException('only the user or reconciliation may supersede a memory');
     }
-    return this.db.transaction(async (tx) => {
-      const old = await this.lockRow(tx, predecessorId, actor);
-      if (old.status === 'replaced') {
-        throw new BadRequestException('memory is already replaced; supersede its successor');
-      }
-      return this.supersedeCore(tx, actor, old, successorFact);
-    });
+    const old = await this.lockRow(tx, predecessorId, actor);
+    if (old.status === 'replaced') {
+      throw new BadRequestException('memory is already replaced; supersede its successor');
+    }
+    return this.supersedeCore(tx, actor, old, successorFact);
   }
 
   /** Shared body of supersede/editContent: caller holds the lock and the tx. */
@@ -424,11 +478,15 @@ export class MemoryStore {
     embedding: number[],
     opts: SearchOptions,
   ): Promise<MemorySearchHit[]> {
-    const hits = await this.requireVectors().search(
-      embedding,
-      buildGateFilter(principal, opts),
-      opts.topK,
-    );
+    const filter = buildGateFilter(principal, opts);
+    // Candidate narrowing (0010 ruling 6): extra must-conditions AND with the
+    // gates — they can only shrink the result, never widen past a gate.
+    if (opts.scope) filter.must.push({ key: 'scope', match: { value: opts.scope } });
+    if (opts.ownerOnly) filter.must.push({ key: 'owner_id', match: { value: principal.userId } });
+    if (opts.statuses?.length) {
+      filter.must.push({ key: 'status', match: { any: [...opts.statuses] } });
+    }
+    const hits = await this.requireVectors().search(embedding, filter, opts.topK);
     return hits.map((hit) => ({
       memoryId: hit.id,
       score: Math.min(1, Math.max(0, (hit.score + 1) / 2)),
@@ -614,6 +672,7 @@ export class MemoryStore {
         sensitive: fact.sensitive ?? false,
         entities: fact.entities ?? [],
         subjectEntity: fact.subjectEntity,
+        kind: fact.kind,
         temporalUnresolved: fact.temporalUnresolved ?? [],
         validFrom: fact.validFrom ?? new Date(),
         validUntil: fact.validUntil,

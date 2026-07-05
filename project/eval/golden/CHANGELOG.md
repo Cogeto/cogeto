@@ -24,3 +24,11 @@ One line per label change (docs/eval-golden-set.md §4 rule 5).
   support only (the claim faithfully carries the hedge → supported), while the
   extractor's `hedged` flag drives the memory to `uncertain`. The old `partial`
   label encoded the F7 conflation the fix removes.
+- 2026-07-05 (F2-A): added the reconciliation pair-case format (`pair.json` in a
+  case dir; loader dispatches on file presence — decision 0010 ruling 9) and 14
+  pairs: dedup `en-r001`–`en-r004` + `hr-r001`–`hr-r003` (7, of which 3
+  false-merge traps: SOW-vs-report, GDPR-vs-vendor register, ponuda-vs-ugovor)
+  and contradiction `en-r005`–`en-r008` + `hr-r004`–`hr-r006` (7: 4 contradicts,
+  2 compatible traps, 1 supersedes with explicit update wording). Croatian cases
+  authored idiomatically, not translated. Scored by `npm run eval` alongside
+  extraction (dedup accuracy weights traps ×2 per spec §5).

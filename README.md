@@ -23,7 +23,25 @@ It is **EU-first, privacy-first, self-hostable, and model-agnostic (Mistral-firs
 
 ## Status
 
-**Session F1 complete (deletion saga + provable forgetting, F1-A + F1-B).**
+**Session F2-A complete (the reconciliation engine — pipeline stage 6).**
+Cogeto's memory now reconciles with itself: every newly admitted fact is
+checked against the owner's existing memory — deterministic candidate rules
+first (versioned thresholds, zero model calls), then two new versioned prompt
+families confirm **duplicates** (`reconcile_dedup/v0001`, biased hard against
+merging: a false merge destroys a distinct fact) and **contradictions**
+(`reconcile_contradiction/v0001`, biased to compatible: a false alarm wastes
+the user's attention). Confirmed duplicates merge by supersession (history
+preserved; the user's own confirmations always outrank the machine);
+confirmed conflicts mark **both** memories `contradicted` and land in a new
+**Review → Contradicted** queue showing both facts and both sources side by
+side, with three resolutions: confirm one, correct both, or dismiss —
+dismissed pairs are never re-flagged. Explicit updates ("moved to X") apply
+supersession only when the direction is unambiguous; every doubt routes to
+the human. First measured baseline (14 labeled pairs, en+hr): dedup accuracy
+90% with **zero false merges**, contradiction recall 100%, zero candidate
+misses (decision 0010; migration 0011).
+
+Previously — **Session F1 (deletion saga + provable forgetting, F1-A + F1-B).**
 Cogeto can now **prove it forgot something**: source-level deletion runs as a
 saga across Postgres, Qdrant and MinIO and issues a **hash-chained, ed25519-
 signed deletion receipt** — permanent (DB-frozen), owner-scoped in the

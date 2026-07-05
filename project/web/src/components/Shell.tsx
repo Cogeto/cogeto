@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchMe, fetchMemories } from '../api';
+import { fetchContradictions, fetchMe, fetchMemories } from '../api';
 import { logout } from '../auth/oidc';
 import type { Session } from '../auth/oidc';
 import { Nav } from './Nav';
@@ -30,16 +30,22 @@ export function Shell({
     queryFn: () => fetchMe(session),
     retry: 1,
   });
-  // The review badge: how many uncertain memories await a verdict.
+  // The review badge counts BOTH queues: uncertain memories awaiting a
+  // verdict plus open contradictions awaiting a resolution (F2-A).
   const { data: uncertain } = useQuery({
     queryKey: ['uncertain-count'],
     queryFn: () => fetchMemories(session, { status: 'uncertain', limit: 1 }),
     refetchInterval: 30_000,
   });
+  const { data: contradictions } = useQuery({
+    queryKey: ['contradictions'],
+    queryFn: () => fetchContradictions(session),
+    refetchInterval: 30_000,
+  });
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <Nav active={active} reviewCount={uncertain?.total} />
+      <Nav active={active} reviewCount={(uncertain?.total ?? 0) + (contradictions?.length ?? 0)} />
       <div className={fullHeight ? 'flex h-screen min-h-0 flex-1 flex-col' : 'flex-1'}>
         <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
           <div>

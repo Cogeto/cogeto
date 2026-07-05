@@ -18,25 +18,7 @@ import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { MemoryStore } from './memory.store';
 import type { MemoryFilters } from './memory.store';
-import type { MemoryRow } from './persistence/tables';
-
-function toListItem(row: MemoryRow): MemoryListItem {
-  return {
-    id: row.id,
-    content: row.content,
-    status: row.status,
-    scope: row.scope,
-    sensitive: row.sensitive,
-    entities: row.entities,
-    sourceType: row.sourceType,
-    sourceId: row.sourceId,
-    supersededBy: row.supersededBy,
-    validFrom: row.validFrom?.toISOString() ?? null,
-    validUntil: row.validUntil?.toISOString() ?? null,
-    temporalUnresolved: row.temporalUnresolved,
-    createdAt: row.createdAt.toISOString(),
-  };
-}
+import { toListItem } from './list-item';
 
 /** Zod at the boundary: the list's query surface and the two action bodies. */
 const listQuerySchema = z.object({

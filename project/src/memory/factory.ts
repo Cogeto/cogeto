@@ -1,5 +1,6 @@
 import type { Db } from '../infrastructure/index';
 import { MemoryStore } from './memory.store';
+import { MemoryReconciliation } from './reconciliation';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
 import type { ObjectStoreOptions } from './persistence/object-store';
@@ -26,6 +27,16 @@ export interface CreateMemoryStoreOptions {
 export function createMemoryStore(options: CreateMemoryStoreOptions): MemoryStore {
   const vectors = options.qdrant ? new MemoryVectorStore(options.qdrant) : undefined;
   return new MemoryStore(options.db, vectors);
+}
+
+/** The reconciliation actions for non-Nest callers (integration tests, eval). */
+export function createMemoryReconciliation(options: CreateMemoryStoreOptions): {
+  store: MemoryStore;
+  reconciliation: MemoryReconciliation;
+} {
+  const vectors = options.qdrant ? new MemoryVectorStore(options.qdrant) : undefined;
+  const store = new MemoryStore(options.db, vectors);
+  return { store, reconciliation: new MemoryReconciliation(options.db, store, vectors) };
 }
 
 export interface CreateIntegritySweepOptions {

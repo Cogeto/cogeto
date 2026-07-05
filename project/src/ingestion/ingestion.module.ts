@@ -3,6 +3,7 @@ import type { DynamicModule, ModuleMetadata, Type } from '@nestjs/common';
 import { EmbedStoreStage } from './pipeline/embed-store.stage';
 import { ExtractStage } from './pipeline/extract.stage';
 import { IngestionPipeline } from './pipeline/pipeline.service';
+import { ReconciliationService } from './pipeline/reconcile.stage';
 import { SOURCE_READERS } from './pipeline/source-reader';
 import type { SourceReader } from './pipeline/source-reader';
 import { VerifyStage } from './pipeline/verify.stage';
@@ -33,6 +34,7 @@ export class IngestionModule {
         ExtractStage,
         VerifyStage,
         EmbedStoreStage,
+        ReconciliationService,
         IngestionPipeline,
         {
           provide: SOURCE_READERS,

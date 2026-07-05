@@ -5,8 +5,10 @@ import type { MemoryStatus } from '@cogeto/shared';
  *
  * Ownership of transitions (Addendum, glossary, S1-B prompt):
  * - `contradicted`  — only reconciliation.
- * - `user_approved` — only the user, and only FROM `uncertain`: it is the
- *   review verdict (S3-B), not a general blessing of any memory.
+ * - `user_approved` — only the user, and only FROM `uncertain` or
+ *   `contradicted`: it is a review verdict (S3-B review approval; F2-A
+ *   contradiction "confirm" resolution — decision 0010 ruling 3), not a
+ *   general blessing of any memory.
  * - `outdated`      — consolidation or the user.
  * - `uncertain`     — only the verification pass (§B.3 demotion).
  * - `active`        — only the user (re-affirming / correcting a memory).
@@ -49,10 +51,10 @@ export function checkTransition(
   if (to === 'replaced') {
     return { allowed: false, reason: 'replaced is set only by supersession, never by transition' };
   }
-  if (to === 'user_approved' && from !== 'uncertain') {
+  if (to === 'user_approved' && from !== 'uncertain' && from !== 'contradicted') {
     return {
       allowed: false,
-      reason: `user_approved is the review verdict: only an uncertain memory can be approved (this one is ${from})`,
+      reason: `user_approved is a review verdict: only an uncertain or contradicted memory can be approved (this one is ${from})`,
     };
   }
   const owners = TRANSITION_OWNERS[to];

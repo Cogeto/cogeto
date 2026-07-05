@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r006",
+  "task": "contradiction",
+  "expected": "contradicts",
+  "a": {
+    "content": "Ana decided the client workshops will run on Zoom.",
+    "kind": "decision",
+    "entities": ["Ana", "Zoom"],
+    "subject_entity": "Ana",
+    "captured_at": "2026-07-03T13:00:00.000Z",
+    "source": "Ana's call: the client workshops run on Zoom."
+  },
+  "b": {
+    "content": "Ana decided the client workshops will run on Teams.",
+    "kind": "decision",
+    "entities": ["Ana", "Teams"],
+    "subject_entity": "Ana",
+    "captured_at": "2026-07-01T13:00:00.000Z",
+    "source": "Ana decided we're doing the client workshops on Teams."
+  },
+  "notes": "Two firm decisions on the same question with different outcomes, no update wording in either — contradicts, not supersedes."
+}

@@ -1,4 +1,4 @@
-import type { MemoryScope, MemoryStatus } from './memory';
+import type { FactKind, MemoryScope, MemoryStatus } from './memory';
 
 /** Notes capture DTOs (S2-A): POST /api/notes and the processing-status poll. */
 
@@ -36,6 +36,8 @@ export interface MemoryListItem {
   scope: MemoryScope;
   sensitive: boolean;
   entities: string[];
+  /** The extractor's fact kind (migration 0011); null on pre-F2 rows. */
+  kind: FactKind | null;
   sourceType: string;
   sourceId: string;
   supersededBy: string | null;
@@ -61,6 +63,25 @@ export interface VerificationDto {
   sourceSpan: string | null;
   createdAt: string;
 }
+
+/**
+ * One open contradiction in the Review queue (GET /api/relations; decision
+ * 0010). `a` is the fact reconciliation admitted more recently, `b` the one
+ * that was already on record.
+ */
+export interface ContradictionDto {
+  id: string;
+  detectedAt: string;
+  a: MemoryListItem;
+  b: MemoryListItem;
+}
+
+/** POST /api/relations/:id/resolve — the three owner actions (0010 ruling 3). */
+export type ResolveContradictionRequest =
+  | { action: 'confirm_a' }
+  | { action: 'confirm_b' }
+  | { action: 'correct'; aContent: string; bContent: string }
+  | { action: 'dismiss' };
 
 /** GET /api/jobs/dead-letter — parked jobs, dashboard-visible (§A.3). */
 export interface DeadLetterJobDto {

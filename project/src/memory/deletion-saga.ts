@@ -20,6 +20,7 @@ import type { SourceType } from './persistence/tables';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
 import { hashReceiptPayload, GENESIS_HASH } from './domain/receipt-chain';
+import { liftContradictionsBeforeDeletion } from './reconciliation';
 
 /**
  * The deletion saga (§A.7, §B.1) — the ONLY path that hard-deletes memories
@@ -121,6 +122,8 @@ export class DeletionSaga {
   constructor(
     @Inject(DRIZZLE) private readonly db: Db,
     @Optional() @Inject(SOURCE_DELETIONS) adapters: SourceDeletion[] = [],
+    /** Payload sync for lifted contradiction partners (0010 ruling 8). */
+    @Optional() private readonly vectors?: MemoryVectorStore,
   ) {
     this.adapters = new Map(adapters.map((a) => [a.sourceType, a]));
   }
@@ -168,6 +171,12 @@ export class DeletionSaga {
       );
 
       const memoryIds = rows.map((r) => r.id);
+
+      // Contradiction lift (decision 0010 ruling 8): surviving partners of
+      // unresolved relations touching a doomed row are restored to their
+      // recorded prior status — an accusation whose evidence is being erased
+      // does not stick. The relation rows go with the memories (FK CASCADE).
+      const liftedPartners = await liftContradictionsBeforeDeletion(tx, memoryIds, this.vectors);
 
       // Cross-source chain handling (see header): surviving rows pointing at a
       // deleted row get the pointer nulled — recorded in the receipt. Doing it
@@ -228,6 +237,7 @@ export class DeletionSaga {
           memoryCount: memoryIds.length,
           objectCount: objectKeys.length,
           supersededByNulled: nulledPointers.length,
+          contradictionsLifted: liftedPartners,
         },
       });
       return { receiptId };

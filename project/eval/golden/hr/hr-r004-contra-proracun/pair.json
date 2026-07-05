@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r004",
+  "task": "contradiction",
+  "expected": "contradicts",
+  "a": {
+    "content": "Odobreni proračun za pilot projekt Jadran iznosi 60.000 eura.",
+    "kind": "fact",
+    "entities": ["Jadran"],
+    "subject_entity": "Jadran",
+    "captured_at": "2026-07-03T11:30:00.000Z",
+    "source": "Za pilot projekt Jadran odobreno je 60.000 eura."
+  },
+  "b": {
+    "content": "Odobreni proračun za pilot projekt Jadran iznosi 45.000 eura.",
+    "kind": "fact",
+    "entities": ["Jadran"],
+    "subject_entity": "Jadran",
+    "captured_at": "2026-07-01T11:30:00.000Z",
+    "source": "Proračun pilot projekta Jadran: odobreno 45.000 eura."
+  },
+  "notes": "Isti iznos-slot, dvije vrijednosti, nijedan zapis ne spominje promjenu — proturječje, odlučuje čovjek."
+}

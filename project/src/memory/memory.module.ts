@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule, ModuleMetadata, Type } from '@nestjs/common';
 import { MemoriesController } from './memories.controller';
+import { RelationsController } from './relations.controller';
 import { SourcesController } from './sources.controller';
 import { IntegrityController, ReceiptsController } from './receipts.controller';
 import { IntegritySweep } from './integrity-sweep';
 import { MemoryStore } from './memory.store';
+import { MemoryReconciliation } from './reconciliation';
 import {
   DeletionExecutor,
   DeletionSaga,
@@ -47,7 +49,13 @@ export class MemoryModule {
       module: MemoryModule,
       global: true,
       imports: [...(options.sourceDeletions?.imports ?? [])],
-      controllers: [MemoriesController, SourcesController, ReceiptsController, IntegrityController],
+      controllers: [
+        MemoriesController,
+        RelationsController,
+        SourcesController,
+        ReceiptsController,
+        IntegrityController,
+      ],
       providers: [
         {
           provide: MemoryVectorStore,
@@ -69,11 +77,19 @@ export class MemoryModule {
           inject: options.sourceDeletions?.adapters ?? [],
         },
         MemoryStore,
+        MemoryReconciliation,
         DeletionSaga,
         DeletionExecutor,
         IntegritySweep,
       ],
-      exports: [MemoryStore, DeletionSaga, DeletionExecutor, IntegritySweep, MemoryObjectStore],
+      exports: [
+        MemoryStore,
+        MemoryReconciliation,
+        DeletionSaga,
+        DeletionExecutor,
+        IntegritySweep,
+        MemoryObjectStore,
+      ],
     };
   }
 }

@@ -71,3 +71,19 @@ against this baseline.
 | en | 19 | 88.5% (23/26) | 91.3% (21/23) | 88.9% (16/18) |
 | hr | 8 | 66.7% (10/15) | 81.8% (9/11) | 57.1% (4/7) |
 | aggregate | 27 | 80.5% (33/41) | 88.2% (30/34) | 80.0% (20/25) |
+
+## 2026-07-05 — extraction/v0002 + verification/v0002 (thresholds v1, 27 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 19 | 91.7% (22/24) | 91.3% (21/23) | 100.0% (18/18) |
+| hr | 8 | 68.8% (11/16) | 81.8% (9/11) | 100.0% (7/7) |
+| aggregate | 27 | 82.5% (33/40) | 88.2% (30/34) | 100.0% (25/25) |
+
+## 2026-07-05 — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 14 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 4 | 100.0% (6/6) | 4 | 66.7% (2/3) | 100.0% (2/2) | 0/1 | 0 |
+| hr | 3 | 75.0% (3/4) | 3 | 100.0% (2/2) | 100.0% (2/2) | — | 0 |
+| aggregate | 7 | 90.0% (9/10) | 7 | 80.0% (4/5) | 100.0% (4/4) | 0/1 | 0 |

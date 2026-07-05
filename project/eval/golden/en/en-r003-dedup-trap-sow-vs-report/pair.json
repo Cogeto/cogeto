@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r003",
+  "task": "dedup",
+  "expected": "distinct",
+  "a": {
+    "content": "Petra will send the signed SOW for the Baltic Retail analytics project.",
+    "kind": "commitment",
+    "entities": ["Petra", "Baltic Retail"],
+    "subject_entity": "Petra",
+    "captured_at": "2026-07-03T11:00:00.000Z",
+    "source": "Petra says she'll send over the signed SOW for the Baltic Retail analytics project."
+  },
+  "b": {
+    "content": "Petra will prepare the final report for the Baltic Retail analytics project.",
+    "kind": "commitment",
+    "entities": ["Petra", "Baltic Retail"],
+    "subject_entity": "Petra",
+    "captured_at": "2026-07-01T11:00:00.000Z",
+    "source": "Petra is preparing the final report for the Baltic Retail analytics project."
+  },
+  "notes": "FALSE-MERGE TRAP (weight 2): identical entities, same kind, same project — but two different deliverables. A merge destroys one commitment."
+}

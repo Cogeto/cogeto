@@ -17,6 +17,23 @@ export type MemoryStatus = (typeof MEMORY_STATUSES)[number];
 export const MEMORY_SCOPES = ['private', 'shared'] as const;
 export type MemoryScope = (typeof MEMORY_SCOPES)[number];
 
+/**
+ * The fact kinds the extractor labels (docs/eval-golden-set.md §4 rule 2).
+ * Stored on the memory row since migration 0011 — reconciliation's candidate
+ * rules match on kind (decision 0010 rulings 2, 6). NULL on pre-F2 rows.
+ */
+export const FACT_KINDS = ['commitment', 'decision', 'preference', 'fact', 'open_loop'] as const;
+export type FactKind = (typeof FACT_KINDS)[number];
+
+/** How the owner resolved a contradiction in Review (decision 0010 ruling 3). */
+export const RELATION_RESOLUTIONS = [
+  'confirmed_a',
+  'confirmed_b',
+  'corrected',
+  'dismissed',
+] as const;
+export type RelationResolution = (typeof RELATION_RESOLUTIONS)[number];
+
 /** Retrieval score multipliers per status (Addendum §A.5). */
 export const STATUS_MULTIPLIERS: Record<MemoryStatus, number> = {
   active: 1.0,

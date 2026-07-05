@@ -37,8 +37,9 @@ describe('memory transition matrix (unit)', () => {
             from !== 'replaced' &&
             from !== to &&
             to !== 'replaced' &&
-            // S3-B: approval is the review verdict — only uncertain approves.
-            !(to === 'user_approved' && from !== 'uncertain')
+            // Approval is a review verdict: uncertain (S3-B review approval)
+            // or contradicted (F2-A confirm resolution — decision 0010 r3).
+            !(to === 'user_approved' && from !== 'uncertain' && from !== 'contradicted')
               ? EXPECTED_OWNERS[to].includes(actor.kind)
               : false;
           const result = checkTransition(from, to, actor);
@@ -50,9 +51,10 @@ describe('memory transition matrix (unit)', () => {
         }
       }
     }
-    // 21 legal transitions exist; a change to this number is a domain decision
-    // (was 24 before S3-B narrowed user_approved to the uncertain→approved path).
-    expect(allowedCount).toBe(21);
+    // 22 legal transitions exist; a change to this number is a domain decision
+    // (21 after S3-B narrowed user_approved to uncertain→approved; +1 in F2-A
+    // for contradicted→user_approved, the confirm resolution — decision 0010).
+    expect(allowedCount).toBe(22);
   });
 
   it('explains rejections', () => {

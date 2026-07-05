@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r007",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "Adriatic Foods will expand the pilot to the Split warehouse in Q3.",
+    "kind": "decision",
+    "entities": ["Adriatic Foods", "Split"],
+    "subject_entity": "Adriatic Foods",
+    "captured_at": "2026-07-03T16:00:00.000Z",
+    "source": "Adriatic Foods agreed to expand the pilot to the Split warehouse in Q3."
+  },
+  "b": {
+    "content": "Adriatic Foods completed the pilot in the Zagreb warehouse.",
+    "kind": "fact",
+    "entities": ["Adriatic Foods", "Zagreb"],
+    "subject_entity": "Adriatic Foods",
+    "captured_at": "2026-06-25T16:00:00.000Z",
+    "source": "The Zagreb warehouse pilot at Adriatic Foods wrapped up successfully."
+  },
+  "notes": "COMPATIBLE TRAP: same subject, same pilot, similar wording — but different sites and phases. Both true; flagging this wastes the user's attention."
+}

@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r002",
+  "task": "dedup",
+  "expected": "same_fact",
+  "a": {
+    "content": "Dogovoren je sastanak s Konzumom u Zagrebu.",
+    "kind": "fact",
+    "entities": ["Konzum", "Zagreb"],
+    "subject_entity": "Konzum",
+    "captured_at": "2026-07-03T15:00:00.000Z",
+    "source": "Potvrđeno — imamo sastanak s Konzumom u Zagrebu."
+  },
+  "b": {
+    "content": "Dogovoren je sastanak s Konzumom u Zagrebu u utorak u 10 sati.",
+    "kind": "fact",
+    "entities": ["Konzum", "Zagreb"],
+    "subject_entity": "Konzum",
+    "captured_at": "2026-07-02T15:00:00.000Z",
+    "source": "Sastanak s Konzumom dogovoren za utorak u 10, kod njih u Zagrebu."
+  },
+  "notes": "Ista činjenica; stariji zapis nosi termin (utorak, 10 h). Mora se spojiti — obogaćivanje smije prenijeti termin."
+}

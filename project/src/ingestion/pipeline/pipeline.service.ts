@@ -5,7 +5,8 @@ import { EmbedStoreStage } from './embed-store.stage';
 import { ExtractStage } from './extract.stage';
 import { noopLog } from './pipeline-log';
 import type { PipelineLog } from './pipeline-log';
-import { reconcileStub } from './reconcile.stub';
+import { ReconciliationService } from './reconcile.stage';
+import type { ReconcileSummary } from './reconcile.stage';
 import { SOURCE_READERS } from './source-reader';
 import type { SourceReader } from './source-reader';
 import { VerifyStage } from './verify.stage';
@@ -24,13 +25,14 @@ export interface PipelineSummary {
   verdicts: { supported: number; partial: number; unsupported: number };
   admitted: { active: number; uncertain: number };
   embedded: number;
+  reconcile: ReconcileSummary;
   skipped?: 'source_missing';
 }
 
 /**
  * One worker job per source item, orchestrating the six pipeline stages
  * (glossary): ingest → chunk → extract → verify → embed + store → reconcile.
- * S2-B: stages 1–5 are real; stage 6 (reconcile) is a stub until Session 4.
+ * All six stages are real since F2-A (decision 0010).
  *
  * The whole run executes inside the job's idempotency transaction (`tx`), so
  * a retry after any failure — malformed model output, a failed Qdrant write —
@@ -45,6 +47,7 @@ export class IngestionPipeline {
     private readonly extractStage: ExtractStage,
     private readonly verifyStage: VerifyStage,
     private readonly embedStoreStage: EmbedStoreStage,
+    private readonly reconciliationService: ReconciliationService,
   ) {}
 
   async run(
@@ -60,6 +63,15 @@ export class IngestionPipeline {
       verdicts: { supported: 0, partial: 0, unsupported: 0 },
       admitted: { active: 0, uncertain: 0 },
       embedded: 0,
+      reconcile: {
+        considered: 0,
+        dedupChecks: 0,
+        contradictionChecks: 0,
+        merged: 0,
+        enriched: 0,
+        contradictions: 0,
+        superseded: 0,
+      },
     };
     const ref = { source_type: payload.source_type, source_id: payload.source_id };
 
@@ -103,8 +115,14 @@ export class IngestionPipeline {
       'facts embedded and stored',
     );
 
-    // Stage 6 — reconcile (stub: Session 4).
-    reconcileStub(admitted, log);
+    // Stage 6 — reconcile (decision 0010): new facts vs the owner's existing
+    // memory, inside the same idempotency transaction as their admission.
+    summary.reconcile = await this.reconciliationService.reconcile(
+      tx,
+      admitted.map(({ row, embedding }) => ({ row, embedding })),
+      log,
+    );
+    log({ stage: 'reconcile', ...ref, ...summary.reconcile }, 'reconciliation complete');
     return summary;
   }
 }

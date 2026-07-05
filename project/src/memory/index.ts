@@ -22,7 +22,7 @@ export { MemoryObjectStore } from './persistence/object-store';
 export type { ObjectStoreOptions } from './persistence/object-store';
 export { seedObjectFixture, seedOrphanPoint } from './dev-seed';
 export type { SeedObjectOptions, SeededObject, SeedOrphanOptions, SeededOrphan } from './dev-seed';
-export { createMemoryStore } from './factory';
+export { createMemoryStore, createMemoryReconciliation } from './factory';
 export type { CreateMemoryStoreOptions } from './factory';
 export type {
   NewFact,
@@ -35,9 +35,22 @@ export type {
   FilteredSearchOptions,
 } from './memory.store';
 export { runMemoryEmbedJob } from './embed-job';
+export { MemoryReconciliation } from './reconciliation';
+export type {
+  PairActionResult,
+  ContradictionResolveAction,
+  OpenContradiction,
+} from './reconciliation';
+export {
+  chooseSurvivor,
+  confirmLoserOutcome,
+  eventTime,
+  supersessionUnambiguous,
+} from './domain/reconcile-policy';
+export type { PolicyParty, MergeDecision } from './domain/reconcile-policy';
 export { checkTransition, actorLabel } from './domain/transition';
 export type { MemoryActor, ActorKind, TransitionCheck } from './domain/transition';
-export type { MemoryRow, SourceType } from './persistence/tables';
+export type { MemoryRow, MemoryRelationRow, SourceType } from './persistence/tables';
 // Reindex: rebuild Qdrant from Postgres (§A.4). Qdrant stays module-private —
 // callers pass primitives and a gateway, never a client.
 export { reindexMemories } from './reindex';

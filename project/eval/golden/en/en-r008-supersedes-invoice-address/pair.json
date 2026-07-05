@@ -1,0 +1,24 @@
+{
+  "case_id": "en-r008",
+  "task": "contradiction",
+  "expected": "supersedes_a_over_b",
+  "a": {
+    "content": "Starting June 1, Adriatic Foods invoices go to billing@adriaticfoods.hr instead of the old address.",
+    "kind": "fact",
+    "entities": ["Adriatic Foods"],
+    "subject_entity": "Adriatic Foods",
+    "captured_at": "2026-07-02T09:00:00.000Z",
+    "valid_from": "2026-06-01T00:00:00.000Z",
+    "source": "Heads up: from June 1, Adriatic Foods invoices go to billing@adriaticfoods.hr instead of the old address."
+  },
+  "b": {
+    "content": "Adriatic Foods invoices are sent to racuni@adriaticfoods.hr.",
+    "kind": "fact",
+    "entities": ["Adriatic Foods"],
+    "subject_entity": "Adriatic Foods",
+    "captured_at": "2026-05-10T09:00:00.000Z",
+    "valid_from": "2026-05-10T00:00:00.000Z",
+    "source": "Invoices for Adriatic Foods go to racuni@adriaticfoods.hr."
+  },
+  "notes": "Explicit update relationship: same slot (invoice address), the newer record marks the change ('starting June 1', 'instead of the old address'), direction a over b, event times ordered."
+}

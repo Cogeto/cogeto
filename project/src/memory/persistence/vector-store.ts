@@ -51,7 +51,8 @@ export interface VectorHit {
 
 interface FieldMatch {
   key: string;
-  match: { value: string | boolean };
+  /** Exact value, or any-of for status allowlists (0010 ruling 6). */
+  match: { value: string | boolean } | { any: string[] };
 }
 /** A Qdrant condition may itself be a nested filter — used for OR-gates. */
 export interface GateFilter {

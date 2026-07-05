@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r001",
+  "task": "dedup",
+  "expected": "same_fact",
+  "a": {
+    "content": "Ana promised to send Marko the updated proposal once he confirms the budget.",
+    "kind": "commitment",
+    "entities": ["Ana", "Marko"],
+    "subject_entity": "Ana",
+    "captured_at": "2026-07-03T09:00:00.000Z",
+    "source": "Ana said she'll get Marko the updated proposal as soon as he confirms the budget."
+  },
+  "b": {
+    "content": "Ana will send the revised proposal to Marko after Marko confirms the budget.",
+    "kind": "commitment",
+    "entities": ["Ana", "Marko"],
+    "subject_entity": "Ana",
+    "captured_at": "2026-07-01T09:00:00.000Z",
+    "source": "Ana will send the revised proposal to Marko after he confirms the budget."
+  },
+  "notes": "Canonical duplicate: same actor, recipient, deliverable, condition — only wording differs. Must merge."
+}

@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r004",
+  "task": "dedup",
+  "expected": "distinct",
+  "a": {
+    "content": "Marko will review the GDPR risk register by Friday.",
+    "kind": "commitment",
+    "entities": ["Marko"],
+    "subject_entity": "Marko",
+    "captured_at": "2026-07-03T08:30:00.000Z",
+    "source": "Marko took the GDPR risk register — review due Friday."
+  },
+  "b": {
+    "content": "Marko will review the vendor risk register by Friday.",
+    "kind": "commitment",
+    "entities": ["Marko"],
+    "subject_entity": "Marko",
+    "captured_at": "2026-07-02T08:30:00.000Z",
+    "source": "Marko also owns the vendor risk register review, same Friday deadline."
+  },
+  "notes": "FALSE-MERGE TRAP (weight 2): one word apart — two different registers, two obligations. The designed near-miss."
+}

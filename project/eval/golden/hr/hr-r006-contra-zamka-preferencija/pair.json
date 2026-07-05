@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r006",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "Hrvoje je odgodio jutrošnji sastanak zbog puta u Split.",
+    "kind": "fact",
+    "entities": ["Hrvoje", "Split"],
+    "subject_entity": "Hrvoje",
+    "captured_at": "2026-07-03T08:00:00.000Z",
+    "source": "Hrvoje je jutros javio da odgađa sastanak jer putuje u Split."
+  },
+  "b": {
+    "content": "Hrvoje preferira sastanke ujutro.",
+    "kind": "preference",
+    "entities": ["Hrvoje"],
+    "subject_entity": "Hrvoje",
+    "captured_at": "2026-06-15T08:00:00.000Z",
+    "source": "Hrvoje voli sastanke zakazivati ujutro."
+  },
+  "notes": "ZAMKA kompatibilnosti: slična tema (Hrvoje i jutarnji sastanci), ali jedna odgoda ne proturječi trajnoj preferenciji. Obje činjenice stoje."
+}

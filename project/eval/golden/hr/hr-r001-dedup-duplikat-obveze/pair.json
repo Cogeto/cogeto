@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r001",
+  "task": "dedup",
+  "expected": "same_fact",
+  "a": {
+    "content": "Ivana je obećala Hrvoju dostaviti ponudu najkasnije u petak.",
+    "kind": "commitment",
+    "entities": ["Ivana", "Hrvoje"],
+    "subject_entity": "Ivana",
+    "captured_at": "2026-07-03T09:30:00.000Z",
+    "source": "Ivana kaže da će Hrvoju dostaviti ponudu najkasnije do petka."
+  },
+  "b": {
+    "content": "Ivana će poslati ponudu Hrvoju do petka.",
+    "kind": "commitment",
+    "entities": ["Ivana", "Hrvoje"],
+    "subject_entity": "Ivana",
+    "captured_at": "2026-07-01T09:30:00.000Z",
+    "source": "Ivana šalje ponudu Hrvoju do petka."
+  },
+  "notes": "Duplikat: ista osoba, isti primatelj, isti rok — samo drukčije sročeno. Mora se spojiti."
+}

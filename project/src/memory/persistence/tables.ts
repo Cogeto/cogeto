@@ -9,7 +9,7 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { MEMORY_SCOPES, MEMORY_STATUSES } from '@cogeto/shared';
+import { FACT_KINDS, MEMORY_SCOPES, MEMORY_STATUSES, RELATION_RESOLUTIONS } from '@cogeto/shared';
 
 /**
  * Tables owned by the memory module (migration 0001; §A.6 as amended by 0003).
@@ -27,6 +27,12 @@ export const sourceTypeEnum = pgEnum('source_type', [
   'file',
 ]);
 export const receiptStatusEnum = pgEnum('receipt_status', ['pending', 'confirmed']);
+export const factKindEnum = pgEnum('fact_kind', FACT_KINDS);
+export const memoryRelationKindEnum = pgEnum('memory_relation_kind', ['contradicts']);
+export const memoryRelationResolutionEnum = pgEnum(
+  'memory_relation_resolution',
+  RELATION_RESOLUTIONS,
+);
 
 export const memory = pgTable(
   'memory',
@@ -49,6 +55,8 @@ export const memory = pgTable(
     temporalUnresolved: text('temporal_unresolved').array().notNull().default([]),
     /** The entity this fact is primarily ABOUT (migration 0008; F1/F4). NULL pre-v0002. */
     subjectEntity: text('subject_entity'),
+    /** The extractor's fact kind (migration 0011; decision 0010). NULL pre-F2. */
+    kind: factKindEnum('kind'),
     validFrom: timestamp('valid_from', { withTimezone: true }),
     validUntil: timestamp('valid_until', { withTimezone: true }),
     supersededBy: uuid('superseded_by'),
@@ -104,5 +112,33 @@ export const integrityAlert = pgTable('integrity_alert', {
   detectedAt: timestamp('detected_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * Pairs of memories reconciliation flagged (migration 0011; decision 0010
+ * ruling 2). `a` is the incoming (newer) fact at detection time, `b` the
+ * existing one; prior statuses enable dismiss-restoration. Any row — resolved
+ * or not — is a permanent tombstone: the pair is never re-detected. The
+ * canonical-pair unique index (least/greatest expression) is not mapped here;
+ * inserts rely on it via ON CONFLICT DO NOTHING.
+ */
+export const memoryRelation = pgTable(
+  'memory_relation',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    kind: memoryRelationKindEnum('kind').notNull(),
+    aMemoryId: uuid('a_memory_id').notNull(),
+    bMemoryId: uuid('b_memory_id').notNull(),
+    aPriorStatus: memoryStatusEnum('a_prior_status').notNull(),
+    bPriorStatus: memoryStatusEnum('b_prior_status').notNull(),
+    detectedAt: timestamp('detected_at', { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+    resolution: memoryRelationResolutionEnum('resolution'),
+  },
+  (t) => [
+    index('memory_relation_a_idx').on(t.aMemoryId),
+    index('memory_relation_b_idx').on(t.bMemoryId),
+  ],
+);
+
 export type MemoryRow = typeof memory.$inferSelect;
+export type MemoryRelationRow = typeof memoryRelation.$inferSelect;
 export type SourceType = (typeof sourceTypeEnum.enumValues)[number];

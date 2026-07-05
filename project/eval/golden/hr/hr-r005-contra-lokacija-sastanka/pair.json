@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r005",
+  "task": "contradiction",
+  "expected": "contradicts",
+  "a": {
+    "content": "Godišnji sastanak uprave u ožujku održat će se u Rijeci.",
+    "kind": "decision",
+    "entities": ["uprava", "Rijeka"],
+    "subject_entity": "uprava",
+    "captured_at": "2026-07-03T14:30:00.000Z",
+    "source": "Odlučeno: godišnji sastanak uprave u ožujku ide u Rijeku."
+  },
+  "b": {
+    "content": "Godišnji sastanak uprave u ožujku održat će se u Osijeku.",
+    "kind": "decision",
+    "entities": ["uprava", "Osijek"],
+    "subject_entity": "uprava",
+    "captured_at": "2026-07-01T14:30:00.000Z",
+    "source": "Godišnji sastanak uprave u ožujku bit će u Osijeku."
+  },
+  "notes": "Isti događaj, isti termin, dvije lokacije — bez naznake promjene. Proturječje."
+}

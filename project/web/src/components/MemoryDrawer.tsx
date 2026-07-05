@@ -4,6 +4,7 @@ import type { MemoryListItem } from '@cogeto/shared';
 import {
   approveMemory,
   editMemory,
+  fetchContradictions,
   fetchMemory,
   fetchMemoryChain,
   fetchNote,
@@ -81,6 +82,26 @@ export function MemoryDrawer({
     queryKey: ['note', memory?.sourceId],
     queryFn: () => fetchNote(session, memory!.sourceId),
     enabled: memory?.sourceType === 'user_note',
+  });
+  // Contradicted memories show the OTHER side of the conflict right here —
+  // the warning chip's promise is both facts, both sources (F2-A).
+  const contradictionsQuery = useQuery({
+    queryKey: ['contradictions'],
+    queryFn: () => fetchContradictions(session),
+    enabled: memory?.status === 'contradicted',
+  });
+  const contradiction = contradictionsQuery.data?.find(
+    (relation) => relation.a.id === memoryId || relation.b.id === memoryId,
+  );
+  const otherSide = contradiction
+    ? contradiction.a.id === memoryId
+      ? contradiction.b
+      : contradiction.a
+    : null;
+  const otherNoteQuery = useQuery({
+    queryKey: ['note', otherSide?.sourceId],
+    queryFn: () => fetchNote(session, otherSide!.sourceId),
+    enabled: otherSide?.sourceType === 'user_note',
   });
 
   const refresh = async () => {
@@ -284,6 +305,34 @@ export function MemoryDrawer({
                 </form>
               )}
             </Panel>
+
+            {memory.status === 'contradicted' && (
+              <Panel title="Contradiction">
+                {otherSide ? (
+                  <div className="space-y-2 text-sm">
+                    <p className="text-slate-600">This memory conflicts with:</p>
+                    <p className="rounded-md bg-red-50 p-2 text-slate-800">{otherSide.content}</p>
+                    {otherNoteQuery.data && (
+                      <p className="whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs text-slate-600">
+                        {otherNoteQuery.data.content}
+                      </p>
+                    )}
+                    <a
+                      href="/review"
+                      className="inline-block rounded-md bg-brand-teal px-3 py-1.5 text-xs font-semibold text-white no-underline"
+                    >
+                      Resolve in Review
+                    </a>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400">
+                    {contradictionsQuery.isPending
+                      ? 'Loading the conflicting fact…'
+                      : 'The conflicting fact is not visible to you (it may have been resolved).'}
+                  </p>
+                )}
+              </Panel>
+            )}
 
             <Panel title="Verification">
               {verificationQuery.data ? (

@@ -6,7 +6,7 @@ import type { ZodType } from 'zod';
 import { fakeEmbedding, startTestDatabase, startTestQdrant } from '../testing/index';
 import type { TestDatabase, TestQdrant } from '../testing/index';
 import { idempotentTask, withTransactionalEnqueue } from '../infrastructure/index';
-import { createMemoryStore } from '../memory/index';
+import { createMemoryStore, MemoryReconciliation } from '../memory/index';
 import type { MemoryStore } from '../memory/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
@@ -14,6 +14,7 @@ import type { CandidateFact } from './domain/candidate-fact';
 import { EmbedStoreStage } from './pipeline/embed-store.stage';
 import { ExtractStage } from './pipeline/extract.stage';
 import { IngestionPipeline, INGESTION_PIPELINE_JOB_TYPE } from './pipeline/pipeline.service';
+import { ReconciliationService } from './pipeline/reconcile.stage';
 import type { SourceItem, SourceReader } from './pipeline/source-reader';
 import { VerifyStage } from './pipeline/verify.stage';
 
@@ -58,9 +59,16 @@ class ScriptedGateway extends ModelGateway {
 
   async extractStructured<T>(schema: ZodType<T>, request: StructuredExtractionRequest): Promise<T> {
     const isVerify = request.input.startsWith('CLAIM UNDER REVIEW');
-    const raw = isVerify
-      ? (this.verifyCalls++, this.verifyOutput(request.input))
-      : (this.extractCalls++, this.extractOutput());
+    // Stage 6 (F2-A) may probe pairs of stored facts; these tests exercise
+    // stages 1–5, so the judge conservatively rules every pair unrelated.
+    const isReconcile = request.input.startsWith('FACT A:');
+    const raw = isReconcile
+      ? request.system.includes('same_fact')
+        ? { verdict: 'distinct', reason: 'scripted', merged_content: null }
+        : { verdict: 'compatible', direction: null, reason: 'scripted' }
+      : isVerify
+        ? (this.verifyCalls++, this.verifyOutput(request.input))
+        : (this.extractCalls++, this.extractOutput());
     const parsed = schema.safeParse(raw);
     if (!parsed.success) {
       throw new ModelGatewayError('structured output failed schema validation twice', false);
@@ -125,6 +133,11 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
       new ExtractStage(gateway),
       new VerifyStage(gateway),
       new EmbedStoreStage(gateway, memoryStore),
+      new ReconciliationService(
+        gateway,
+        memoryStore,
+        new MemoryReconciliation(tdb.db, memoryStore),
+      ),
     );
 
   const count = async (sql: string, params: unknown[] = []): Promise<number> => {

@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r002",
+  "task": "dedup",
+  "expected": "same_fact",
+  "a": {
+    "content": "Luka approved the pilot budget for the Adriatic Foods rollout.",
+    "kind": "decision",
+    "entities": ["Luka", "Adriatic Foods"],
+    "subject_entity": "Luka",
+    "captured_at": "2026-07-03T14:00:00.000Z",
+    "source": "Quick note: Luka approved the pilot budget for the Adriatic Foods rollout."
+  },
+  "b": {
+    "content": "Luka approved the pilot budget of 40,000 EUR for the Adriatic Foods rollout.",
+    "kind": "decision",
+    "entities": ["Luka", "Adriatic Foods"],
+    "subject_entity": "Luka",
+    "captured_at": "2026-07-02T10:00:00.000Z",
+    "source": "Luka signed off the pilot budget — 40,000 EUR — for the Adriatic Foods rollout."
+  },
+  "notes": "Same decision; the older record carries the amount. Must merge (enrichment may carry the 40,000 EUR into the survivor)."
+}

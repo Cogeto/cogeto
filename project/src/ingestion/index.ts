@@ -6,8 +6,34 @@ export type { PipelineSummary } from './pipeline/pipeline.service';
 export { SOURCE_READERS } from './pipeline/source-reader';
 export type { SourceReader, SourceItem } from './pipeline/source-reader';
 export type { PipelineLog } from './pipeline/pipeline-log';
-export { ACTIVE_PROMPTS, EXTRACTION_PROMPT, VERIFICATION_PROMPT } from './prompt-versions';
+export { ReconciliationService, ReconcileJudge, buildPairInput } from './pipeline/reconcile.stage';
+export type {
+  ReconcileFactView,
+  ReconcileInput,
+  ReconcileSummary,
+} from './pipeline/reconcile.stage';
+export {
+  isDedupCandidate,
+  isContradictionCandidate,
+  dedupBySimilarity,
+  dedupByEntities,
+} from './domain/reconcile-candidates';
+export type { CandidateFacts } from './domain/reconcile-candidates';
+export {
+  ACTIVE_PROMPTS,
+  EXTRACTION_PROMPT,
+  VERIFICATION_PROMPT,
+  RECONCILE_DEDUP_PROMPT,
+  RECONCILE_CONTRADICTION_PROMPT,
+} from './prompt-versions';
 export type { PromptVersionRef } from './prompt-versions';
 export { runGoldenEval, evalConfigSchema } from './eval-harness';
 export type { EvalConfig, EvalMetrics, EvalRunResult } from './eval-harness';
+export { runReconcileEval, loadPairCases, judgePair, pairCaseSchema } from './eval-reconcile';
+export type {
+  PairCase,
+  PairOutcome,
+  ReconcileEvalMetrics,
+  ReconcileEvalResult,
+} from './eval-reconcile';
 export { seedMemoryFromSource } from './eval-seed';
