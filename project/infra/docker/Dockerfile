@@ -29,6 +29,10 @@ COPY project/src/package.json project/src/package.json
 RUN npm ci -w @cogeto/server --omit=dev && npm cache clean --force
 COPY --from=build /repo/project/shared/dist project/shared/dist
 COPY --from=build /repo/project/src/dist project/src/dist
+# Dev-only entrypoints never ship: seed-object/seed-orphan plant demo fixtures
+# (Session F1). The sweep entrypoint stays — it is an ops tool, not a fixture.
+RUN rm -f project/src/dist/entrypoints/seed-object.js project/src/dist/entrypoints/seed-object.d.ts project/src/dist/entrypoints/seed-object.js.map \
+    project/src/dist/entrypoints/seed-orphan.js project/src/dist/entrypoints/seed-orphan.d.ts project/src/dist/entrypoints/seed-orphan.js.map
 # Reviewable SQL migrations (read by the migrate entrypoint) and versioned
 # prompt artifacts (read by the model-gateway prompt loader, §B.7).
 COPY --from=build /repo/project/src/migrations project/src/migrations

@@ -97,23 +97,6 @@ export type FilteredSearchOptions = SearchOptions & MemoryFilters;
 /** The job the edit path enqueues: embed the supersession successor (worker). */
 export const MEMORY_EMBED_JOB_TYPE = 'memory.embed';
 
-/** Deletion happens only through the saga (§A.7). Implementation: Session 4. */
-export abstract class DeletionSaga {
-  abstract requestDeletion(
-    principal: Principal,
-    source: { sourceType: SourceType; sourceId: string },
-  ): Promise<{ receiptId: string }>;
-}
-
-@Injectable()
-export class DeletionSagaStub extends DeletionSaga {
-  requestDeletion(): Promise<{ receiptId: string }> {
-    throw new NotImplementedException(
-      'deletion saga arrives in Session 4 (§A.7); hard delete has no other path',
-    );
-  }
-}
-
 @Injectable()
 export class MemoryStore {
   constructor(

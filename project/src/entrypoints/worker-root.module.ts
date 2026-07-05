@@ -4,7 +4,7 @@ import { IdentityModule } from '../identity/index';
 import { MemoryModule } from '../memory/index';
 import { IngestionModule } from '../ingestion/index';
 import { AgentsModule } from '../agents/index';
-import { ConnectorsModule, NotesSourceReader } from '../connectors/index';
+import { ConnectorsModule, NotesSourceDeletion, NotesSourceReader } from '../connectors/index';
 import { TasksModule } from '../tasks/index';
 import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG } from './config';
@@ -36,6 +36,14 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       MemoryModule.register({
         qdrantUrl: config.qdrantUrl,
         embeddingModel: config.mistralEmbedModel,
+        s3: {
+          url: config.s3Url,
+          accessKey: config.s3AccessKey,
+          secretKey: config.s3SecretKey,
+          bucket: config.s3Bucket,
+        },
+        instanceKeyDir: config.instanceKeyDir,
+        sourceDeletions: { imports: [ConnectorsModule], adapters: [NotesSourceDeletion] },
       }),
       IngestionModule.register({ imports: [ConnectorsModule], readers: [NotesSourceReader] }),
       AgentsModule,

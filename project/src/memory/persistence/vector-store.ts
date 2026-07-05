@@ -183,7 +183,14 @@ export class MemoryVectorStore {
    * a missing point (row not yet embedded) is a no-op, not an error.
    */
   async setPayload(id: string, payload: Partial<MemoryPointPayload>): Promise<void> {
-    await this.client.setPayload(this.collection, { points: [id], payload, wait: true });
+    try {
+      await this.client.setPayload(this.collection, { points: [id], payload, wait: true });
+    } catch (error) {
+      // Qdrant 404s on a missing point; the no-op contract above is what the
+      // two-store write paths (toggleSensitive, supersedeCore) rely on for
+      // not-yet-embedded memories. Anything else is a real failure.
+      if (!/not found/i.test(String(error))) throw error;
+    }
   }
 
   /** Payloads by memory id — the toggle test's assertion surface. */

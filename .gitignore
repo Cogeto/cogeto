@@ -16,6 +16,8 @@ Thumbs.db
 *.pem
 *.key
 secrets/
+# Instance signing keypair generated for local (non-Docker) runs — decision 0008.
+.instance-keys/
 
 # ─────────────────────────────────────────────
 # Language / build artifacts

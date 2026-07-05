@@ -2,7 +2,11 @@ import type {
   ChatMessageDto,
   ChatStreamEvent,
   DeadLetterJobDto,
+  ChainVerificationDto,
+  DeletionPreviewDto,
+  DeletionRequestedDto,
   HealthReport,
+  IntegrityStatusDto,
   MemoryListItem,
   MemoryPage,
   MemoryScope,
@@ -11,6 +15,8 @@ import type {
   NoteDto,
   NoteStatusDto,
   Principal,
+  ReceiptDetailDto,
+  ReceiptListItem,
   VerificationDto,
 } from '@cogeto/shared';
 import type { Session } from './auth/oidc';
@@ -108,6 +114,42 @@ export const editMemory = (
   apiPost(`/api/memories/${id}/edit`, { content }, session);
 export const rejectMemory = (session: Session, id: string): Promise<{ rejected: boolean }> =>
   apiPost(`/api/memories/${id}/reject`, {}, session);
+
+// Source-level true deletion (§A.7, §B.1): impact preview for the confirm
+// dialog, then the saga. The receipt id identifies the pending receipt the
+// worker confirms once Qdrant and MinIO acknowledged.
+export const fetchDeletionImpact = (
+  session: Session,
+  sourceType: string,
+  sourceId: string,
+): Promise<DeletionPreviewDto> =>
+  apiGet(`/api/sources/${sourceType}/${encodeURIComponent(sourceId)}/impact`, session);
+
+export async function deleteSource(
+  session: Session,
+  sourceType: string,
+  sourceId: string,
+): Promise<DeletionRequestedDto> {
+  const path = `/api/sources/${sourceType}/${encodeURIComponent(sourceId)}`;
+  const response = await fetch(path, {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${session.accessToken}` },
+  });
+  if (!response.ok) throw await toError(path, response);
+  return (await response.json()) as DeletionRequestedDto;
+}
+
+// The Forgotten ledger (§B.1) + the sweep's System surface (§A.7 step 4).
+export const fetchReceipts = (session: Session): Promise<ReceiptListItem[]> =>
+  apiGet('/api/receipts', session);
+export const fetchReceipt = (session: Session, id: string): Promise<ReceiptDetailDto> =>
+  apiGet(`/api/receipts/${id}`, session);
+export const fetchChainStatus = (session: Session): Promise<ChainVerificationDto> =>
+  apiGet('/api/receipts/verify', session);
+export const fetchIntegrity = (session: Session): Promise<IntegrityStatusDto> =>
+  apiGet('/api/integrity', session);
+export const fetchInstancePublicKey = (): Promise<{ algorithm: string; publicKeyPem: string }> =>
+  apiGet('/api/instance/public-key');
 
 export const fetchDeadLetterJobs = (session: Session): Promise<DeadLetterJobDto[]> =>
   apiGet('/api/jobs/dead-letter', session);

@@ -13,6 +13,7 @@ import {
   setMemorySensitive,
 } from '../api';
 import type { Session } from '../auth/oidc';
+import { SourceDrawer } from './SourceDrawer';
 import { STATUS_CHIP, statusLabel, timeAgo } from './status';
 
 const EDIT_EXPLAINED_KEY = 'cogeto-supersession-explained';
@@ -56,6 +57,7 @@ export function MemoryDrawer({
   const [actionError, setActionError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
+  const [showSource, setShowSource] = useState(false);
   const [showExplainer] = useState(() => !localStorage.getItem(EDIT_EXPLAINED_KEY));
 
   const memoryQuery = useQuery({
@@ -326,6 +328,13 @@ export function MemoryDrawer({
                   {noteQuery.data.content}
                 </p>
               )}
+              <button
+                type="button"
+                onClick={() => setShowSource(true)}
+                className="mt-2 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600"
+              >
+                Open source · delete…
+              </button>
             </Panel>
 
             <Panel title="History">
@@ -356,6 +365,20 @@ export function MemoryDrawer({
           </>
         )}
       </aside>
+      {memory && showSource && (
+        <SourceDrawer
+          session={session}
+          sourceType={memory.sourceType}
+          sourceId={memory.sourceId}
+          onClose={() => setShowSource(false)}
+          onDeleted={() => {
+            // The source, this memory and its siblings are gone; a signed
+            // receipt is being confirmed by the worker (Forgotten UI: F1-B).
+            setShowSource(false);
+            onClose();
+          }}
+        />
+      )}
     </div>
   );
 }

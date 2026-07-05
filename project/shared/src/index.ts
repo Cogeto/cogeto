@@ -3,5 +3,6 @@ export * from './citations';
 export * from './memory';
 export * from './notes';
 export * from './principal';
+export * from './receipts';
 export * from './health';
 export * from './web-config';

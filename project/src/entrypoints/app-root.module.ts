@@ -5,12 +5,13 @@ import { IngestionModule } from '../ingestion/index';
 import { MemoryModule } from '../memory/index';
 import { RetrievalModule } from '../retrieval/index';
 import { AgentsModule } from '../agents/index';
-import { ConnectorsModule } from '../connectors/index';
+import { ConnectorsModule, NotesSourceDeletion } from '../connectors/index';
 import { TasksModule } from '../tasks/index';
 import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG } from './config';
 import type { CogetoConfig } from './config';
 import { HealthController } from './health.controller';
+import { InstanceController } from './instance.controller';
 import { JobsController } from './jobs.controller';
 import { WebConfigController } from './web-config.controller';
 
@@ -38,6 +39,14 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       MemoryModule.register({
         qdrantUrl: config.qdrantUrl,
         embeddingModel: config.mistralEmbedModel,
+        s3: {
+          url: config.s3Url,
+          accessKey: config.s3AccessKey,
+          secretKey: config.s3SecretKey,
+          bucket: config.s3Bucket,
+        },
+        instanceKeyDir: config.instanceKeyDir,
+        sourceDeletions: { imports: [ConnectorsModule], adapters: [NotesSourceDeletion] },
       }),
       RetrievalModule,
       IngestionModule.forQueries(), // verification read endpoint only (S3-B)
@@ -45,7 +54,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       ConnectorsModule,
       TasksModule,
     ],
-    controllers: [HealthController, JobsController, WebConfigController],
+    controllers: [HealthController, InstanceController, JobsController, WebConfigController],
     providers: [{ provide: COGETO_CONFIG, useValue: config }],
   })
   class AppRootModule {}

@@ -1,7 +1,27 @@
 /** Public interface of the memory bounded context (§A.1 rule 1). */
 export { MemoryModule } from './memory.module';
 export type { MemoryModuleOptions } from './memory.module';
-export { MemoryStore, DeletionSaga, MEMORY_EMBED_JOB_TYPE } from './memory.store';
+export { MemoryStore, MEMORY_EMBED_JOB_TYPE } from './memory.store';
+export {
+  DeletionSaga,
+  DeletionExecutor,
+  DELETION_JOB_TYPE,
+  DELETION_JOB_SOURCE_TYPE,
+  SOURCE_DELETIONS,
+  INSTANCE_KEY_DIR,
+} from './deletion-saga';
+export type { SourceDeletion, DeletionPreview, ReceiptCounts } from './deletion-saga';
+export { parseReceiptCounts } from './deletion-saga';
+export { verifyChain, canonicalize, GENESIS_HASH } from './domain/receipt-chain';
+export type { ChainVerification, ConfirmedReceipt } from './domain/receipt-chain';
+export { IntegritySweep, SWEEP_JOB_TYPE, SWEEP_CRONTAB } from './integrity-sweep';
+export type { SweepReport, IntegrityStatus, IntegrityAlertRecord } from './integrity-sweep';
+export { createIntegritySweep } from './factory';
+export type { CreateIntegritySweepOptions, QdrantOptions } from './factory';
+export { MemoryObjectStore } from './persistence/object-store';
+export type { ObjectStoreOptions } from './persistence/object-store';
+export { seedObjectFixture, seedOrphanPoint } from './dev-seed';
+export type { SeedObjectOptions, SeededObject, SeedOrphanOptions, SeededOrphan } from './dev-seed';
 export { createMemoryStore } from './factory';
 export type { CreateMemoryStoreOptions } from './factory';
 export type {

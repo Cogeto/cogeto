@@ -46,6 +46,8 @@ export function StatusPanel() {
           <CheckRow name="PostgreSQL" check={data.checks.postgres} />
           <CheckRow name="Qdrant" check={data.checks.qdrant} />
           <CheckRow name="MinIO" check={data.checks.minio} />
+          <CheckRow name="MinIO encryption" check={data.checks.minioEncryption} />
+          <CheckRow name="Deletion integrity" check={data.checks.integrity} />
           <CheckRow name="Migrations" check={data.checks.migrations} />
           <CheckRow name="Job queue" check={data.checks.queue} />
         </ul>

@@ -2,3 +2,4 @@
 export { ConnectorsModule } from './connectors.module';
 export { NotesService } from './notes.service';
 export { NotesSourceReader } from './notes.source-reader';
+export { NotesSourceDeletion } from './notes.source-deletion';

@@ -23,11 +23,22 @@ It is **EU-first, privacy-first, self-hostable, and model-agnostic (Mistral-firs
 
 ## Status
 
-**Session 3.5 complete (quality hardening, S3.5-A + S3.5-B).** On top of the
-Session 1–3 foundation (compose stack to login, contractual schema, outbox +
-idempotent queue, the six-stage Notes pipeline, hybrid retrieval, grounded chat,
-and the governance dashboard), Cogeto's memory quality is hardened against real
-owner-testing failures:
+**Session F1 complete (deletion saga + provable forgetting, F1-A + F1-B).**
+Cogeto can now **prove it forgot something**: source-level deletion runs as a
+saga across Postgres, Qdrant and MinIO and issues a **hash-chained, ed25519-
+signed deletion receipt** — permanent (DB-frozen), owner-scoped in the
+**Forgotten** section, exportable as a self-verifying JSON artifact. A nightly
+integrity sweep re-verifies every confirmed receipt (no rows, no vectors, no
+bytes) and the whole chain; violations become alerts that degrade `/api/health`
+and light up the System view. MinIO runs with SSE-S3 encryption at rest
+(asserted at compose up and in the health check), and each instance signs with
+its own key generated at first boot. Operational contracts: `npm run reindex`,
+`npm run eval`, `npm run eval:chat`, and now the sweep
+(`docker compose exec worker node project/src/dist/entrypoints/sweep.js`).
+
+On top of the Session 1–3.5 foundation (compose stack to login, contractual
+schema, outbox + idempotent queue, the six-stage Notes pipeline, hybrid
+retrieval, grounded chat, the governance dashboard, and quality hardening):
 
 - **Grounded, complete chat**: conversational query rewriting resolves pronouns
   ("who is she?") against recent turns; an **entity-profile** retrieval mode
@@ -47,9 +58,10 @@ owner-testing failures:
   and `npm run eval:chat` (scripted conversations scored end-to-end), both
   recorded to `docs/eval/history.md`.
 
-Reconcile (dedup/contradiction), the deletion saga, and the CI eval gates arrive
-in Session 4. `npm run reindex` and the two eval commands are the operational
-contracts. Retrieval/answer/extraction prompts are versioned artifacts under
+Next (Session F2): reconcile (dedup/contradiction), the dreaming cycle, and
+the CI eval gates — per `docs/Cogeto-Model-Split-Roadmap.md`. File uploads plug
+into the deletion saga per the frozen `docs/handoff/F1-deletion-saga.md` (O1).
+Retrieval/answer/extraction prompts are versioned artifacts under
 `project/prompts/` (currently extraction/verification/answer at v0002).
 
 ## Licensing

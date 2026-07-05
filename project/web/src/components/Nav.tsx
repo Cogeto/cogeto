@@ -1,13 +1,14 @@
-export type NavSection = 'dashboard' | 'memories' | 'chat' | 'review' | 'system';
+export type NavSection = 'dashboard' | 'memories' | 'chat' | 'review' | 'forgotten' | 'system';
 
 const ENABLED: { key: NavSection; label: string; href: string }[] = [
   { key: 'dashboard', label: 'Dashboard', href: '/' },
   { key: 'memories', label: 'Memories', href: '/memories' },
   { key: 'chat', label: 'Chat', href: '/chat' },
   { key: 'review', label: 'Review', href: '/review' },
+  { key: 'forgotten', label: 'Forgotten', href: '/forgotten' },
   { key: 'system', label: 'System', href: '/system' },
 ];
-const UPCOMING = ['Forgotten', 'Settings'] as const;
+const UPCOMING = ['Settings'] as const;
 
 /** Left navigation — future sections stubbed and disabled until their slices ship. */
 export function Nav({ active, reviewCount }: { active: NavSection; reviewCount?: number }) {

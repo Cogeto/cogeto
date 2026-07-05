@@ -84,8 +84,24 @@ export const deletionReceipt = pgTable('deletion_receipt', {
   status: receiptStatusEnum('status').notNull().default('pending'),
   prevHash: text('prev_hash'),
   hash: text('hash'),
+  /** ed25519 signature over `hash`, base64 (§B.1; migration 0009). */
+  signature: text('signature'),
   signedAt: timestamp('signed_at', { withTimezone: true }),
   confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+});
+
+/**
+ * Discrepancies found by the nightly integrity sweep (§A.7 step 4, migration
+ * 0010). The dedupe unique index (expression-based, not mapped here) makes
+ * re-detection idempotent: one row per (receipt, kind, identifier), however
+ * many runs re-find it.
+ */
+export const integrityAlert = pgTable('integrity_alert', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  receiptId: uuid('receipt_id'),
+  kind: text('kind').notNull(),
+  detail: text('detail').notNull(),
+  detectedAt: timestamp('detected_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type MemoryRow = typeof memory.$inferSelect;

@@ -22,7 +22,10 @@
     "reindex": "node project/src/dist/entrypoints/reindex.js",
     "eval": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/eval.js",
     "eval:chat": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/eval-chat.js",
-    "vector:smoke": "node project/src/dist/entrypoints/vector-smoke.js"
+    "vector:smoke": "node project/src/dist/entrypoints/vector-smoke.js",
+    "seed:object": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/seed-object.js",
+    "seed:orphan": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/seed-orphan.js",
+    "sweep": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/sweep.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",

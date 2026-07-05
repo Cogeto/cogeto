@@ -11,6 +11,14 @@ const configSchema = z.object({
   databaseUrl: z.string().min(1),
   qdrantUrl: z.string().url(),
   s3Url: z.string().url(),
+  /** Object-storage credentials + bucket (decision 0008). Defaults match the
+   * compose dev stack; provisioning injects real values per instance. */
+  s3AccessKey: z.string().min(1).default('cogeto'),
+  s3SecretKey: z.string().min(1).default('cogeto-dev-password'),
+  s3Bucket: z.string().min(1).default('cogeto'),
+  /** Instance signing keypair directory (§B.1, decision 0008). The local
+   * default is gitignored; compose mounts the instance-keys volume. */
+  instanceKeyDir: z.string().min(1).default('.instance-keys'),
   oidc: z.object({
     /** Public issuer as the browser sees it, e.g. https://localhost */
     issuer: z.string().url(),
@@ -39,6 +47,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
     databaseUrl: env.COGETO_DATABASE_URL,
     qdrantUrl: env.COGETO_QDRANT_URL,
     s3Url: env.COGETO_S3_URL,
+    s3AccessKey: env.COGETO_S3_ACCESS_KEY || undefined,
+    s3SecretKey: env.COGETO_S3_SECRET_KEY || undefined,
+    s3Bucket: env.COGETO_S3_BUCKET || undefined,
+    instanceKeyDir: env.COGETO_INSTANCE_KEY_DIR || undefined,
     oidc: {
       issuer: env.COGETO_OIDC_ISSUER,
       internalUrl: env.COGETO_OIDC_INTERNAL_URL,

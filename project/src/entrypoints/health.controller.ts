@@ -1,6 +1,7 @@
 import { Controller, Get, HttpCode, Inject } from '@nestjs/common';
 import type { HealthCheck, HealthReport, QueueHealthCheck } from '@cogeto/shared';
 import { Pool } from 'pg';
+import { IntegritySweep, MemoryObjectStore } from '../memory/index';
 import { COGETO_CONFIG } from './config';
 import type { CogetoConfig } from './config';
 
@@ -13,7 +14,11 @@ import type { CogetoConfig } from './config';
 export class HealthController {
   private readonly pool: Pool;
 
-  constructor(@Inject(COGETO_CONFIG) private readonly config: CogetoConfig) {
+  constructor(
+    @Inject(COGETO_CONFIG) private readonly config: CogetoConfig,
+    private readonly objects: MemoryObjectStore,
+    private readonly integrity: IntegritySweep,
+  ) {
     this.pool = new Pool({ connectionString: config.databaseUrl, max: 2 });
   }
 
@@ -25,18 +30,42 @@ export class HealthController {
 
   @Get()
   async health(): Promise<HealthReport> {
-    const [postgres, qdrant, minio, migrations, queue] = await Promise.all([
-      this.checkPostgres(),
-      this.checkHttp(`${this.config.qdrantUrl}/readyz`),
-      this.checkHttp(`${this.config.s3Url}/minio/health/live`),
-      this.checkMigrations(),
-      this.checkQueue(),
-    ]);
-    const checks = { postgres, qdrant, minio, migrations, queue };
+    const [postgres, qdrant, minio, minioEncryption, integrity, migrations, queue] =
+      await Promise.all([
+        this.checkPostgres(),
+        this.checkHttp(`${this.config.qdrantUrl}/readyz`),
+        this.checkHttp(`${this.config.s3Url}/minio/health/live`),
+        this.checkBucketEncryption(),
+        this.checkIntegrity(),
+        this.checkMigrations(),
+        this.checkQueue(),
+      ]);
+    const checks = { postgres, qdrant, minio, minioEncryption, integrity, migrations, queue };
     return {
       status: Object.values(checks).every((c) => c.ok) ? 'ok' : 'degraded',
       checks,
     };
+  }
+
+  /**
+   * The bucket must REPORT default encryption enabled (§A.9, audit 3.9) —
+   * minio-init asserts it once at compose up; this keeps asserting it for the
+   * instance's lifetime. A bucket storing plaintext bytes degrades the stack.
+   */
+  private async checkBucketEncryption(): Promise<HealthCheck> {
+    const started = Date.now();
+    try {
+      const enabled = await this.objects.encryptionEnabled();
+      return {
+        ok: enabled,
+        latencyMs: Date.now() - started,
+        ...(enabled
+          ? { detail: 'SSE-S3 default encryption on' }
+          : { error: 'bucket reports NO default encryption (see decision 0008)' }),
+      };
+    } catch (error) {
+      return { ok: false, latencyMs: Date.now() - started, error: message(error) };
+    }
   }
 
   /** Queue depth + dead-letter count for the System view (S3-B). */
@@ -66,6 +95,37 @@ export class HealthController {
         deadLettered: 0,
         error: message(error),
       };
+    }
+  }
+
+  /**
+   * The sweep's verdict (§A.7 step 4): any open integrity alert or a broken
+   * chain degrades the instance — provable forgetting is the product.
+   * DB-only reads; the sweep itself runs nightly (cron) or on demand.
+   */
+  private async checkIntegrity(): Promise<HealthCheck> {
+    const started = Date.now();
+    try {
+      const status = await this.integrity.status();
+      const chainOk = status.lastReport?.chainOk ?? true;
+      const ok = status.openAlerts === 0 && chainOk;
+      const lastRun = status.lastSweepAt
+        ? `last sweep ${status.lastSweepAt}`
+        : 'sweep has not run yet';
+      return {
+        ok,
+        latencyMs: Date.now() - started,
+        detail: `${lastRun}; ${status.openAlerts} alert(s)`,
+        ...(ok
+          ? {}
+          : {
+              error: chainOk
+                ? `${status.openAlerts} integrity alert(s) on record`
+                : `receipt chain broken: ${status.lastReport?.chainError ?? 'unknown'}`,
+            }),
+      };
+    } catch (error) {
+      return { ok: false, latencyMs: Date.now() - started, error: message(error) };
     }
   }
 

@@ -3,13 +3,20 @@ import { idempotentTask, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
 import type { IngestionPipeline, PipelineLog } from '../ingestion/index';
-import { MEMORY_EMBED_JOB_TYPE, runMemoryEmbedJob } from '../memory/index';
-import type { MemoryStore } from '../memory/index';
+import {
+  DELETION_JOB_TYPE,
+  MEMORY_EMBED_JOB_TYPE,
+  runMemoryEmbedJob,
+  SWEEP_JOB_TYPE,
+} from '../memory/index';
+import type { DeletionExecutor, IntegritySweep, MemoryStore } from '../memory/index';
 import type { ModelGateway } from '../model-gateway/index';
 
 export interface WorkerTaskDeps {
   pipeline: IngestionPipeline;
   memoryStore: MemoryStore;
+  deletionExecutor: DeletionExecutor;
+  integritySweep: IntegritySweep;
   gateway: ModelGateway;
   /** Bound to pino by the worker entrypoint. Counts only — never content. */
   log: PipelineLog;
@@ -56,6 +63,36 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
         );
       },
     ),
+
+    // Saga steps 2–3 (§A.7): Qdrant points + MinIO objects, then receipt
+    // confirmation with chain hash + signature — all one attempt, so the
+    // receipt can never confirm while an enumerated identifier could still
+    // exist. Idempotency key: ('deletion_receipt', <receipt id>, this) —
+    // graphile retries with backoff; exhaustion parks in dead_letter with
+    // the receipt still pending.
+    [DELETION_JOB_TYPE]: idempotentTask(db, DELETION_JOB_TYPE, async (tx, payload) => {
+      const result = await deps.deletionExecutor.execute(tx, payload.source_id);
+      deps.log(
+        {
+          source_type: payload.source_type,
+          source_id: payload.source_id,
+          already_confirmed: result.alreadyConfirmed,
+          points: result.points,
+          objects: result.objects,
+        },
+        'deletion saga external leg completed',
+      );
+    }),
+
+    // The nightly integrity sweep (§A.7 step 4) — scheduled by the crontab in
+    // worker.ts, also runnable on demand (sweep entrypoint). Deliberately NOT
+    // wrapped in idempotentTask: that key fires once ever, a sweep recurs. Its
+    // effects are idempotent by construction instead — alert inserts dedupe on
+    // a unique index; the audit row is the run's ledger entry.
+    [SWEEP_JOB_TYPE]: async () => {
+      const report = await deps.integritySweep.run((message) => deps.log({}, message));
+      deps.log({ ...report }, 'integrity sweep completed');
+    },
 
     // Embeds an edit's supersession successor (S3-B). Idempotency key:
     // ('memory', <memory id>, 'memory.embed') — a duplicate delivery skips.

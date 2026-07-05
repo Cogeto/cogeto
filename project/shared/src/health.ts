@@ -19,6 +19,10 @@ export interface HealthReport {
     postgres: HealthCheck;
     qdrant: HealthCheck;
     minio: HealthCheck;
+    /** Bucket default encryption reported by MinIO (§A.9, decision 0008). */
+    minioEncryption: HealthCheck;
+    /** Nightly sweep result: open integrity alerts + chain status (§A.7 step 4). */
+    integrity: HealthCheck;
     migrations: HealthCheck;
     queue: QueueHealthCheck;
   };

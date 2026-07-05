@@ -14,4 +14,11 @@ export { withTransactionalEnqueue } from './outbox';
 export type { DomainEvent, JobSpec } from './outbox';
 export { idempotentTask } from './queue';
 export type { IdempotentJobPayload } from './queue';
+export {
+  ensureInstanceKeys,
+  loadInstanceSigner,
+  loadInstancePublicKey,
+  verifyWithPublicKey,
+} from './instance-key';
+export type { InstanceSigner } from './instance-key';
 export { auditLog, outboxEvent, jobExecution, deadLetter } from './persistence/tables';

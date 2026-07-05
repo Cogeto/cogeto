@@ -4,6 +4,7 @@ import type { Session } from './auth/oidc';
 import { Callback } from './pages/Callback';
 import { Chat } from './pages/Chat';
 import { Dashboard } from './pages/Dashboard';
+import { Forgotten } from './pages/Forgotten';
 import { Login } from './pages/Login';
 import { Memories } from './pages/Memories';
 import { Review } from './pages/Review';
@@ -20,6 +21,7 @@ export function App() {
   if (window.location.pathname === '/memories') return <Memories session={session} />;
   if (window.location.pathname === '/chat') return <Chat session={session} />;
   if (window.location.pathname === '/review') return <Review session={session} />;
+  if (window.location.pathname === '/forgotten') return <Forgotten session={session} />;
   if (window.location.pathname === '/system') return <System session={session} />;
   return <Dashboard session={session} />;
 }
