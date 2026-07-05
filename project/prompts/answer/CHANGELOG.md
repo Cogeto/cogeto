@@ -4,6 +4,15 @@ Prompt family for the fast-path chat answerer (S3-A): answers only from the
 retrieved fact blocks, cites with inline `[F#]` markers, says plainly when the
 facts do not cover the question.
 
+## v0004 — 2026-07-05 (F3-B)
+
+The open-loops answer (decision 0013 ruling 7): `tasks` mode renders the OPEN
+LOOPS block as a human rundown — actionable-now first (due dates), then
+blocked ones with their condition in plain words ("waiting on Luka's budget
+confirmation"), quiet ones nudged, unconfirmed ones softly framed, done and
+dismissed never shown, every task covered and cited to its deriving fact.
+Everything else verbatim from v0003.
+
 ## v0003 — 2026-07-05 (F3-A)
 
 The temporal contract (decision 0012 ruling 6): fact blocks may carry a

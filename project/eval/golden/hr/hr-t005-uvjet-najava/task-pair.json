@@ -1,0 +1,17 @@
+{
+  "case_id": "hr-t005",
+  "family": "condition",
+  "expected": "not_satisfied",
+  "task": {
+    "title": "Poslati Marku revidiranu ponudu nakon što Marko potvrdi proračun.",
+    "primary_person": "Marko",
+    "entities": ["Marko"],
+    "condition_text": "nakon što Marko potvrdi proračun",
+    "due": null
+  },
+  "fact": {
+    "content": "Marko je najavio da će o proračunu odlučiti na sjednici u četvrtak.",
+    "entities": ["Marko"]
+  },
+  "notes": "Najavljeno, ne potvrđeno — uvjet nije ispunjen."
+}

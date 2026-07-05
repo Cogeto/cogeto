@@ -39,6 +39,17 @@ export type {
   ReconcileEvalResult,
 } from './eval-reconcile';
 export { seedMemoryFromSource } from './eval-seed';
+// The dormant-flag consumption API (F2 handoff §3): the task engine's window
+// into ingestion's dormant_flag table — read and clear, never write.
+export { listOpenDormantFlags, clearDormantFlag } from './dormant-flags';
+export type { OpenDormantFlag } from './dormant-flags';
+/**
+ * Cross-module events the pipeline emits (decision 0013 ruling 2): ingestion
+ * defines the job-type constants; tasks registers the handlers via the worker
+ * composition root. Dependency direction stays tasks → ingestion, never back.
+ */
+export const TASK_DERIVE_JOB_TYPE = 'tasks.derive';
+export const TASKS_BACKFILL_JOB_TYPE = 'tasks_backfill';
 // The S3.5 deterministic date resolver (decision 0007 ruling 1) — reused by
 // temporal query understanding (decision 0012 ruling 2); never duplicated.
 export { resolveExpression } from './domain/temporal-resolver';

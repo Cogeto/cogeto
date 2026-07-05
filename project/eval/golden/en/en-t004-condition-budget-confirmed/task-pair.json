@@ -1,0 +1,17 @@
+{
+  "case_id": "en-t004",
+  "family": "condition",
+  "expected": "satisfied",
+  "task": {
+    "title": "Send Luka the revised offer after Luka confirms the budget.",
+    "primary_person": "Luka",
+    "entities": ["Luka"],
+    "condition_text": "after Luka confirms the budget",
+    "due": null
+  },
+  "fact": {
+    "content": "Luka confirmed the budget for the second phase today.",
+    "entities": ["Luka"]
+  },
+  "notes": "The exact prerequisite, by the named party."
+}

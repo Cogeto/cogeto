@@ -6,7 +6,7 @@ import { MemoryModule } from '../memory/index';
 import { RetrievalModule } from '../retrieval/index';
 import { AgentsModule } from '../agents/index';
 import { ConnectorsModule, NotesSourceDeletion } from '../connectors/index';
-import { TasksModule } from '../tasks/index';
+import { TasksCascade, TasksModule } from '../tasks/index';
 import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG } from './config';
 import type { CogetoConfig } from './config';
@@ -47,12 +47,13 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         },
         instanceKeyDir: config.instanceKeyDir,
         sourceDeletions: { imports: [ConnectorsModule], adapters: [NotesSourceDeletion] },
+        derivedCascades: { imports: [TasksModule.forApi()], adapters: [TasksCascade] },
       }),
       RetrievalModule,
-      IngestionModule.forQueries(), // verification read endpoint only (S3-B)
+      IngestionModule.forQueries(), // verification + dreaming read endpoints
       AgentsModule,
       ConnectorsModule,
-      TasksModule,
+      TasksModule.forApi(),
     ],
     controllers: [HealthController, InstanceController, JobsController, WebConfigController],
     providers: [{ provide: COGETO_CONFIG, useValue: config }],

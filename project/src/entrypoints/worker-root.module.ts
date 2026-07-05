@@ -5,7 +5,7 @@ import { MemoryModule } from '../memory/index';
 import { IngestionModule } from '../ingestion/index';
 import { AgentsModule } from '../agents/index';
 import { ConnectorsModule, NotesSourceDeletion, NotesSourceReader } from '../connectors/index';
-import { TasksModule } from '../tasks/index';
+import { TasksCascade, TasksModule } from '../tasks/index';
 import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG } from './config';
 import type { CogetoConfig } from './config';
@@ -44,11 +44,12 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         },
         instanceKeyDir: config.instanceKeyDir,
         sourceDeletions: { imports: [ConnectorsModule], adapters: [NotesSourceDeletion] },
+        derivedCascades: { imports: [TasksModule.register()], adapters: [TasksCascade] },
       }),
       IngestionModule.register({ imports: [ConnectorsModule], readers: [NotesSourceReader] }),
       AgentsModule,
       ConnectorsModule,
-      TasksModule,
+      TasksModule.register(),
     ],
     providers: [{ provide: COGETO_CONFIG, useValue: config }],
   })

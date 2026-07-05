@@ -14,6 +14,7 @@ import {
   ANSWER_PROMPT,
   buildAnswerInput,
   NOTHING_ON_RECORD,
+  NOTHING_OPEN,
   toStoredAnswer,
 } from './answer-prompt';
 
@@ -77,7 +78,11 @@ export class ChatService {
     yield { type: 'sources', facts };
 
     let answer: string;
-    if (facts.length === 0) {
+    if (retrieved.mode === 'tasks' && (retrieved.tasks?.length ?? 0) === 0) {
+      // Zero open loops is an ANSWER (all clear), not a data gap (F3-B).
+      answer = NOTHING_OPEN;
+      yield { type: 'token', text: answer };
+    } else if (facts.length === 0) {
       // The zero-retrieval path: no model call, no generation from thin air.
       answer = NOTHING_ON_RECORD;
       yield { type: 'token', text: answer };
@@ -89,6 +94,7 @@ export class ChatService {
         input: buildAnswerInput(facts, content, retrieved.mode, {
           temporal: retrieved.temporal,
           changes: retrieved.changes,
+          tasks: retrieved.tasks,
         }),
         tier: 'answer',
       });

@@ -8,9 +8,15 @@ export {
   DELETION_JOB_TYPE,
   DELETION_JOB_SOURCE_TYPE,
   SOURCE_DELETIONS,
+  DERIVED_CASCADES,
   INSTANCE_KEY_DIR,
 } from './deletion-saga';
-export type { SourceDeletion, DeletionPreview, ReceiptCounts } from './deletion-saga';
+export type {
+  SourceDeletion,
+  DerivedCascade,
+  DeletionPreview,
+  ReceiptCounts,
+} from './deletion-saga';
 export { parseReceiptCounts } from './deletion-saga';
 export { verifyChain, canonicalize, GENESIS_HASH } from './domain/receipt-chain';
 export type { ChainVerification, ConfirmedReceipt } from './domain/receipt-chain';

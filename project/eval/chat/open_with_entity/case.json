@@ -1,0 +1,26 @@
+{
+  "case_id": "open_with_entity",
+  "description": "F3-B: entity-scoped open loops — only Luka's task, never Ana's (decision 0013 ruling 7).",
+  "anchor": "2026-07-01T09:00:00.000Z",
+  "facts": [
+    {
+      "content": "You will send Luka the revised offer after Luka confirms the budget.",
+      "kind": "commitment",
+      "entities": ["Luka"],
+      "subject_entity": "Luka"
+    },
+    {
+      "content": "You will send Ana the Atlas risk register.",
+      "kind": "commitment",
+      "entities": ["Ana"],
+      "subject_entity": "Ana"
+    }
+  ],
+  "script": ["What's still open with Luka?"],
+  "checks": {
+    "must_include": ["Luka", "offer"],
+    "must_exclude": ["risk register"],
+    "no_mechanics": true,
+    "citations_valid": true
+  }
+}

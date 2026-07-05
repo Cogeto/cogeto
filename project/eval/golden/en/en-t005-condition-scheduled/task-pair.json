@@ -1,0 +1,17 @@
+{
+  "case_id": "en-t005",
+  "family": "condition",
+  "expected": "not_satisfied",
+  "task": {
+    "title": "Send Luka the revised offer after Luka confirms the budget.",
+    "primary_person": "Luka",
+    "entities": ["Luka"],
+    "condition_text": "after Luka confirms the budget",
+    "due": null
+  },
+  "fact": {
+    "content": "Luka said the budget discussion is on Thursday's board agenda.",
+    "entities": ["Luka"]
+  },
+  "notes": "Scheduled, not given — the adjacent green light."
+}

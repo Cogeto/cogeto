@@ -1,0 +1,17 @@
+{
+  "case_id": "en-t001",
+  "family": "closure",
+  "expected": "closes",
+  "task": {
+    "title": "Ana will send the revised proposal to Marko.",
+    "primary_person": "Ana",
+    "entities": ["Ana", "Marko"],
+    "condition_text": null,
+    "due": null
+  },
+  "fact": {
+    "content": "Ana sent Marko the revised proposal this morning.",
+    "entities": ["Ana", "Marko"]
+  },
+  "notes": "Same actor, recipient, deliverable — done. Must close."
+}

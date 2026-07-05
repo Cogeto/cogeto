@@ -24,6 +24,14 @@ One line per label change (docs/eval-golden-set.md §4 rule 5).
   support only (the claim faithfully carries the hedge → supported), while the
   extractor's `hedged` flag drives the memory to `uncertain`. The old `partial`
   label encoded the F7 conflation the fix removes.
+- 2026-07-05 (F3-B): task-judgment pair format (`task-pair.json`; extraction
+  loader skips those dirs) and 10 pairs — closure en-t001–003 / hr-t001–003
+  (fulfilled, progress-not-fulfillment, and the weight-2 false-close trap:
+  same people, different obligation) and condition en-t004–005 / hr-t004–005
+  (exact prerequisite vs scheduled-not-given). Chat suite gains
+  `whats_still_open` (the day-one sentence verbatim), `open_with_entity`, and
+  `closure_flow` (live capture→close→gone), with a `must_exclude` check.
+  Totals: en 37, hr 24 items.
 - 2026-07-05 (F3-A): temporal interval cases feeding time-travel retrieval —
   en `en-0025` (explicit from/until interval) + `en-0026` (open-start "until"
   bound), hr `hr-0013` + `hr-0014` (idiomatic twins, hr month names). Chat

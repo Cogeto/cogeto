@@ -3,6 +3,8 @@ import type { MemoryStatus, Principal } from '@cogeto/shared';
 import { TEMPORAL_STATUS_MULTIPLIERS } from '@cogeto/shared';
 import { MemoryStore } from '../memory/index';
 import type { MemoryChange, MemoryRow } from '../memory/index';
+import { TasksEngine } from '../tasks/index';
+import type { TaskRow } from '../tasks/index';
 import { ModelGateway } from '../model-gateway/index';
 import {
   byStatusThenRecency,
@@ -34,8 +36,8 @@ export interface RetrievedMemory {
   signals: RetrievalSignal[];
 }
 
-/** What retrieval decided, so the answerer can adapt (F1/F4, F3-A). */
-export type RetrievalMode = 'default' | 'entity_profile' | 'temporal';
+/** What retrieval decided, so the answerer can adapt (F1/F4, F3-A, F3-B). */
+export type RetrievalMode = 'default' | 'entity_profile' | 'temporal' | 'tasks';
 
 export interface RetrievalResult {
   memories: RetrievedMemory[];
@@ -46,6 +48,8 @@ export interface RetrievalResult {
   temporal?: TemporalIntent;
   /** The change events, when the temporal kind is change_since. */
   changes?: MemoryChange[];
+  /** The open/blocked tasks, when mode is tasks (decision 0013 ruling 7). */
+  tasks?: TaskRow[];
 }
 
 /**
@@ -65,6 +69,7 @@ export class RetrievalService {
   constructor(
     private readonly memoryStore: MemoryStore,
     private readonly gateway: ModelGateway,
+    private readonly tasksEngine: TasksEngine,
   ) {}
 
   async retrieve(
@@ -81,7 +86,26 @@ export class RetrievalService {
       ...new Set([...rewrite.entities, ...queryEntityCandidates(searchQuery)]),
     ];
 
-    // 2. Temporal mode (F3-A, decision 0012): explicit intent only — the
+    // 2. Open-loops mode (F3-B, decision 0013 ruling 7): the day-one
+    // question's second half. Owner-scoped task reads; citations resolve to
+    // the deriving memories through the gated read.
+    if (rewrite.openLoops) {
+      const tasks = await this.tasksEngine.listForPrincipal(principal, {
+        entity: rewrite.openLoops.entity ?? undefined,
+      });
+      const derivingRows = await this.memoryStore.getManyForPrincipal(
+        principal,
+        tasks.map((t) => t.derivedFromMemoryId),
+        opts,
+      );
+      return {
+        memories: derivingRows.map((memory) => ({ memory, score: 0, signals: [] })),
+        mode: 'tasks',
+        tasks,
+      };
+    }
+
+    // 3. Temporal mode (F3-A, decision 0012): explicit intent only — the
     // rewriter classified it AND the raw question carried a temporal hint.
     if (rewrite.temporal) {
       return this.temporalRetrieve(principal, searchQuery, entityCandidates, rewrite.temporal, {

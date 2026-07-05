@@ -1,8 +1,14 @@
 import type { TaskList } from 'graphile-worker';
 import { idempotentTask, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
-import { DREAM_JOB_TYPE, INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
+import {
+  DREAM_JOB_TYPE,
+  INGESTION_PIPELINE_JOB_TYPE,
+  TASK_DERIVE_JOB_TYPE,
+  TASKS_BACKFILL_JOB_TYPE,
+} from '../ingestion/index';
 import type { DreamingService, IngestionPipeline, PipelineLog } from '../ingestion/index';
+import type { TasksEngine } from '../tasks/index';
 import {
   DELETION_JOB_TYPE,
   MEMORY_EMBED_JOB_TYPE,
@@ -18,6 +24,7 @@ export interface WorkerTaskDeps {
   deletionExecutor: DeletionExecutor;
   integritySweep: IntegritySweep;
   dreaming: DreamingService;
+  tasksEngine: TasksEngine;
   gateway: ModelGateway;
   /** Bound to pino by the worker entrypoint. Counts only — never content. */
   log: PipelineLog;
@@ -103,6 +110,31 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
     [DREAM_JOB_TYPE]: async () => {
       const report = await deps.dreaming.run(deps.log);
       deps.log({ ...report }, 'dreaming cycle completed (scheduled)');
+    },
+
+    // Task derivation + judgments per processed source (decision 0013 ruling
+    // 2): the pipeline enqueues it transactionally after stage 6; the engine
+    // derives (UNIQUE-idempotent) and judges closure/condition, all inside
+    // this job's idempotency transaction.
+    [TASK_DERIVE_JOB_TYPE]: idempotentTask(db, TASK_DERIVE_JOB_TYPE, async (tx, payload) => {
+      const report = await deps.tasksEngine.processSource(
+        tx,
+        payload.source_type,
+        payload.source_id,
+      );
+      deps.log(
+        { source_type: payload.source_type, source_id: payload.source_id, ...report },
+        'task engine pass completed',
+      );
+    }),
+
+    // The idempotent historical backfill (0013 ruling 2): enqueued once by
+    // migration 0014 and nightly by the dreaming cycle. Like the sweep, NOT
+    // idempotentTask — recurring; the UNIQUE deriving-memory constraint makes
+    // its effects idempotent instead.
+    [TASKS_BACKFILL_JOB_TYPE]: async () => {
+      const report = await deps.tasksEngine.backfill((message) => deps.log({}, message));
+      deps.log({ ...report }, 'tasks backfill completed');
     },
 
     // Embeds an edit's supersession successor (S3-B). Idempotency key:

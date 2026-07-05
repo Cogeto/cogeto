@@ -20,6 +20,7 @@ import type {
   ReceiptDetailDto,
   ReceiptListItem,
   ResolveContradictionRequest,
+  TaskDto,
   VerificationDto,
 } from '@cogeto/shared';
 import type { Session } from './auth/oidc';
@@ -122,6 +123,23 @@ export const rejectMemory = (session: Session, id: string): Promise<{ rejected: 
 // actions as at most six linked lines; empty lines = render nothing.
 export const fetchDreamDigest = (session: Session): Promise<DreamDigestDto> =>
   apiGet('/api/dreaming/latest', session);
+
+// The debug-grade task surface (F3-B, decision 0013; the real UI is O2).
+export const fetchTasks = (
+  session: Session,
+  params: { includeSettled?: boolean; entity?: string } = {},
+): Promise<TaskDto[]> => {
+  const search = new URLSearchParams();
+  if (params.includeSettled) search.set('includeSettled', 'true');
+  if (params.entity?.trim()) search.set('entity', params.entity.trim());
+  const qs = search.toString();
+  return apiGet(`/api/tasks${qs ? `?${qs}` : ''}`, session);
+};
+export const taskOperation = (
+  session: Session,
+  id: string,
+  op: 'reopen' | 'dismiss' | 'complete',
+): Promise<TaskDto> => apiPost(`/api/tasks/${id}/${op}`, {}, session);
 
 // The contradicted queue (F2-A, decision 0010): open contradictions where both
 // facts belong to the caller, and the three owner resolutions.

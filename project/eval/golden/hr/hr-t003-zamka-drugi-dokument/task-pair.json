@@ -1,0 +1,17 @@
+{
+  "case_id": "hr-t003",
+  "family": "closure",
+  "expected": "no_close",
+  "task": {
+    "title": "Ivana će poslati konačnu ponudu Hrvoju.",
+    "primary_person": "Ivana",
+    "entities": ["Ivana", "Hrvoje"],
+    "condition_text": null,
+    "due": null
+  },
+  "fact": {
+    "content": "Ivana je poslala Hrvoju zapisnik s jučerašnjeg sastanka.",
+    "entities": ["Ivana", "Hrvoje"]
+  },
+  "notes": "ZAMKA lažnog zatvaranja (težina 2): slična aktivnost, druga obveza."
+}

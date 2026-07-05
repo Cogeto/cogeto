@@ -864,6 +864,30 @@ export class MemoryStore {
     return this.db.select().from(memory).where(inArray(memory.id, memoryIds));
   }
 
+  /** A source's derived memories — the task engine's derivation input (0013 r2). */
+  async listBySourceSystem(sourceType: SourceType, sourceId: string): Promise<MemoryRow[]> {
+    return this.db
+      .select()
+      .from(memory)
+      .where(and(eq(memory.sourceType, sourceType), eq(memory.sourceId, sourceId)))
+      .orderBy(memory.createdAt, memory.id);
+  }
+
+  /** Kind/status scan — the task backfill's input (0013 ruling 2). */
+  async listByKindsSystem(
+    kinds: FactKind[],
+    statuses: MemoryStatus[],
+    limit = 2000,
+  ): Promise<MemoryRow[]> {
+    if (kinds.length === 0 || statuses.length === 0) return [];
+    return this.db
+      .select()
+      .from(memory)
+      .where(and(inArray(memory.kind, kinds), inArray(memory.status, statuses)))
+      .orderBy(memory.createdAt, memory.id)
+      .limit(limit);
+  }
+
   private requireVectors(): MemoryVectorStore {
     if (!this.vectors) {
       throw new NotImplementedException(

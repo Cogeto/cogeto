@@ -1,0 +1,25 @@
+{
+  "case_id": "closure_flow",
+  "description": "F3-B: commitment → task; the fulfilling fact closes it (live judgment over deterministic seeds) → gone from the open answer. Extraction variance is scored by the golden harness, not here.",
+  "anchor": "2026-07-01T09:00:00.000Z",
+  "facts": [
+    {
+      "content": "You will send Marko the updated proposal.",
+      "kind": "commitment",
+      "entities": ["Marko"],
+      "subject_entity": "Marko"
+    },
+    {
+      "content": "The updated proposal was sent to Marko this afternoon and he confirmed receipt.",
+      "kind": "fact",
+      "entities": ["Marko"],
+      "subject_entity": "Marko"
+    }
+  ],
+  "script": ["What's still open with Marko?"],
+  "checks": {
+    "must_exclude": ["proposal"],
+    "no_mechanics": true,
+    "citations_valid": true
+  }
+}

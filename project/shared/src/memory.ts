@@ -25,6 +25,11 @@ export type MemoryScope = (typeof MEMORY_SCOPES)[number];
 export const FACT_KINDS = ['commitment', 'decision', 'preference', 'fact', 'open_loop'] as const;
 export type FactKind = (typeof FACT_KINDS)[number];
 
+/** Task lifecycle (decision 0013 ruling 4): done/dismissed are human or
+ * closure verdicts; blocked_on_condition ⟺ condition present and unmet. */
+export const TASK_STATUSES = ['open', 'blocked_on_condition', 'done', 'dismissed'] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+
 /** How the owner resolved a contradiction in Review (decision 0010 ruling 3). */
 export const RELATION_RESOLUTIONS = [
   'confirmed_a',

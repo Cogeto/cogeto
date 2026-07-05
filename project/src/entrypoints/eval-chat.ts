@@ -10,6 +10,7 @@ import { applyMigrations, createDb } from '../infrastructure/index';
 import { createMemoryStore } from '../memory/index';
 import type { MemoryRow } from '../memory/index';
 import { seedMemoryFromSource } from '../ingestion/index';
+import { TasksEngine } from '../tasks/index';
 import { ANSWER_PROMPT, ChatService, RetrievalService } from '../retrieval/index';
 import { loadPrompt, MistralModelGateway } from '../model-gateway/index';
 
@@ -70,8 +71,10 @@ const caseSchema = z.object({
     no_mechanics: z.boolean().optional(),
     citations_valid: z.boolean().optional(),
     nothing_on_record: z.boolean().optional(),
-    /** Substrings the final answer must contain (temporal cases). */
+    /** Substrings the final answer must contain (temporal/tasks cases). */
     must_include: z.array(z.string()).optional(),
+    /** Substrings the final answer must NOT contain (settled obligations). */
+    must_exclude: z.array(z.string()).optional(),
     /** The answer must frame past belief as past (decision 0012 ruling 6). */
     past_framing: z.boolean().optional(),
     /** The final turn's sources must include / must not include these statuses. */
@@ -255,24 +258,29 @@ async function main(): Promise<void> {
         qdrant: { url: qdrantUrl, embeddingModel, collection },
       });
       await memoryStore.ensureIndexReady();
-      const retrieval = new RetrievalService(memoryStore, gateway);
+      const tasksEngine = new TasksEngine(db, memoryStore, gateway);
+      const retrieval = new RetrievalService(memoryStore, gateway, tasksEngine);
       const chat = new ChatService(db, retrieval, gateway);
       const anchor = new Date(testCase.anchor);
 
-      // Seed through the real pipeline.
+      // Seed through the real pipeline, then run the task engine per source
+      // (F3-B) — the worker's tasks.derive job, synchronously: derivation for
+      // commitments, closure/condition judgments for later notes.
       for (let i = 0; i < testCase.notes.length; i++) {
+        const sourceId = `chat-eval-${testCase.case_id}-${i}`;
         await seedMemoryFromSource({
           db,
           gateway,
           memoryStore,
           source: {
             sourceType: 'user_note',
-            sourceId: `chat-eval-${testCase.case_id}-${i}`,
+            sourceId,
             ownerId: principal.userId,
             content: testCase.notes[i]!,
             createdAt: anchor,
           },
         });
+        await db.transaction((tx) => tasksEngine.processSource(tx, 'user_note', sourceId));
       }
       // Direct-fact seeding (F3-A): fixed dates + real supersession mechanics.
       const seededRows: MemoryRow[] = [];
@@ -315,6 +323,11 @@ async function main(): Promise<void> {
           vectors,
         );
       }
+      for (let i = 0; i < testCase.facts.length; i++) {
+        await db.transaction((tx) =>
+          tasksEngine.processSource(tx, 'user_note', `chat-eval-${testCase.case_id}-fact-${i}`),
+        );
+      }
       console.log(`  seeded ${testCase.notes.length} notes, ${testCase.facts.length} direct facts`);
 
       // Run the scripted conversation.
@@ -351,6 +364,9 @@ async function main(): Promise<void> {
       const temporalChecks: (boolean | null)[] = [
         checks.must_include
           ? checks.must_include.every((s) => final.answer.toLowerCase().includes(s.toLowerCase()))
+          : null,
+        checks.must_exclude
+          ? checks.must_exclude.every((s) => !final.answer.toLowerCase().includes(s.toLowerCase()))
           : null,
         checks.past_framing ? PAST_FRAMING_RE.test(stripCites(final.answer)) : null,
         checks.sources_status_includes

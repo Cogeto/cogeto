@@ -1,9 +1,11 @@
-export type NavSection = 'dashboard' | 'memories' | 'chat' | 'review' | 'forgotten' | 'system';
+export type NavSection =
+  'dashboard' | 'memories' | 'chat' | 'tasks' | 'review' | 'forgotten' | 'system';
 
 const ENABLED: { key: NavSection; label: string; href: string }[] = [
   { key: 'dashboard', label: 'Dashboard', href: '/' },
   { key: 'memories', label: 'Memories', href: '/memories' },
   { key: 'chat', label: 'Chat', href: '/chat' },
+  { key: 'tasks', label: 'Tasks', href: '/tasks' },
   { key: 'review', label: 'Review', href: '/review' },
   { key: 'forgotten', label: 'Forgotten', href: '/forgotten' },
   { key: 'system', label: 'System', href: '/system' },

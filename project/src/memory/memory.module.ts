@@ -10,10 +10,11 @@ import { MemoryReconciliation } from './reconciliation';
 import {
   DeletionExecutor,
   DeletionSaga,
+  DERIVED_CASCADES,
   INSTANCE_KEY_DIR,
   SOURCE_DELETIONS,
 } from './deletion-saga';
-import type { SourceDeletion } from './deletion-saga';
+import type { DerivedCascade, SourceDeletion } from './deletion-saga';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
 
@@ -32,6 +33,9 @@ export interface MemoryModuleOptions {
    * the composition root, mirroring ingestion's SourceReader port (§A.1).
    */
   sourceDeletions?: { imports?: ModuleMetadata['imports']; adapters: Type<SourceDeletion>[] };
+  /** Derived-artifact cascades (0013 ruling 6) — tasks today, bound like the
+   * source deletions: memory defines the port, the deriving module implements. */
+  derivedCascades?: { imports?: ModuleMetadata['imports']; adapters: Type<DerivedCascade>[] };
 }
 
 /**
@@ -48,7 +52,10 @@ export class MemoryModule {
     return {
       module: MemoryModule,
       global: true,
-      imports: [...(options.sourceDeletions?.imports ?? [])],
+      imports: [
+        ...(options.sourceDeletions?.imports ?? []),
+        ...(options.derivedCascades?.imports ?? []),
+      ],
       controllers: [
         MemoriesController,
         RelationsController,
@@ -75,6 +82,11 @@ export class MemoryModule {
           provide: SOURCE_DELETIONS,
           useFactory: (...adapters: SourceDeletion[]) => adapters,
           inject: options.sourceDeletions?.adapters ?? [],
+        },
+        {
+          provide: DERIVED_CASCADES,
+          useFactory: (...adapters: DerivedCascade[]) => adapters,
+          inject: options.derivedCascades?.adapters ?? [],
         },
         MemoryStore,
         MemoryReconciliation,

@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { withTransactionalEnqueue } from '../../infrastructure/index';
 import type { Tx } from '../../infrastructure/index';
 import { chunkContent } from './chunk';
 import { EmbedStoreStage } from './embed-store.stage';
@@ -128,6 +129,18 @@ export class IngestionPipeline {
       { stage: 'reconcile', ...ref, ...reconcileCounts, actionCount: actions.length },
       'reconciliation complete',
     );
+
+    // Task derivation (decision 0013 ruling 2): a cross-module EVENT, in the
+    // same transaction as admission — the tasks engine derives and judges in
+    // its own idempotent job. Nothing admitted → nothing to derive or judge.
+    if (admitted.length > 0) {
+      await withTransactionalEnqueue(
+        tx,
+        { type: 'source.processed', payload: ref },
+        { type: 'tasks.derive', payload: ref },
+      );
+      log({ stage: 'tasks_enqueue', ...ref }, 'task derivation enqueued');
+    }
     return summary;
   }
 }

@@ -1,0 +1,17 @@
+{
+  "case_id": "hr-t002",
+  "family": "closure",
+  "expected": "no_close",
+  "task": {
+    "title": "Ivana će poslati konačnu ponudu Hrvoju.",
+    "primary_person": "Ivana",
+    "entities": ["Ivana", "Hrvoje"],
+    "condition_text": null,
+    "due": null
+  },
+  "fact": {
+    "content": "Ivana je dovršila nacrt ponude i čeka još potvrdu cijena prije slanja.",
+    "entities": ["Ivana"]
+  },
+  "notes": "Napredak, ne ispunjenje — obveza i dalje stoji."
+}

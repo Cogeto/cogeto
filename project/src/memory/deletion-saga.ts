@@ -78,6 +78,22 @@ export interface SourceDeletion {
 
 export const SOURCE_DELETIONS = Symbol('SOURCE_DELETIONS');
 
+/**
+ * Port for cascading DERIVED artifacts (tasks, future derivations) when their
+ * memories are erased (decision 0013 ruling 6) — the third of the family
+ * after SourceReader and SourceDeletion: memory defines it, the deriving
+ * module implements it, composition roots bind it. Implementations delete
+ * their own rows inside the enumeration transaction and return the count for
+ * the receipt; the FK CASCADE remains as the safety net.
+ */
+export interface DerivedCascade {
+  /** Names the artifact in counts_json (e.g. 'tasks'). */
+  readonly artifact: string;
+  cascadeForMemories(tx: Tx, memoryIds: string[]): Promise<number>;
+}
+
+export const DERIVED_CASCADES = Symbol('DERIVED_CASCADES');
+
 /** Directory holding the instance signing keypair (decision 0008). */
 export const INSTANCE_KEY_DIR = Symbol('INSTANCE_KEY_DIR');
 
@@ -87,6 +103,10 @@ const countsSchema = z.object({
   requested_by: z.string(),
   memory_ids: z.array(z.string()),
   memory_count: z.number().int(),
+  /** Derived tasks removed with the memories (F3-B, additive — optional so
+   * pre-F3 receipts parse unchanged; a count, not an identifier: the sweep
+   * ignores it). */
+  tasks_removed: z.number().int().optional(),
   /** Qdrant point id = memory id (§A.4); duplicated for receipt readability. */
   point_ids: z.array(z.string()),
   object_keys: z.array(z.string()),
@@ -124,6 +144,8 @@ export class DeletionSaga {
     @Optional() @Inject(SOURCE_DELETIONS) adapters: SourceDeletion[] = [],
     /** Payload sync for lifted contradiction partners (0010 ruling 8). */
     @Optional() private readonly vectors?: MemoryVectorStore,
+    /** Derived-artifact cascades (0013 ruling 6) — tasks today. */
+    @Optional() @Inject(DERIVED_CASCADES) private readonly derivedCascades: DerivedCascade[] = [],
   ) {
     this.adapters = new Map(adapters.map((a) => [a.sourceType, a]));
   }
@@ -178,6 +200,15 @@ export class DeletionSaga {
       // does not stick. The relation rows go with the memories (FK CASCADE).
       const liftedPartners = await liftContradictionsBeforeDeletion(tx, memoryIds, this.vectors);
 
+      // Derived-artifact cascades (0013 ruling 6): counted deletes inside the
+      // enumeration transaction, before the memory rows go (the FK CASCADE
+      // stays as the safety net).
+      let tasksRemoved = 0;
+      for (const cascade of this.derivedCascades) {
+        const removed = await cascade.cascadeForMemories(tx, memoryIds);
+        if (cascade.artifact === 'tasks') tasksRemoved += removed;
+      }
+
       // Cross-source chain handling (see header): surviving rows pointing at a
       // deleted row get the pointer nulled — recorded in the receipt. Doing it
       // before the DELETE also satisfies the superseded_by FK.
@@ -204,6 +235,7 @@ export class DeletionSaga {
         requested_by: principal.userId,
         memory_ids: memoryIds,
         memory_count: memoryIds.length,
+        tasks_removed: tasksRemoved,
         point_ids: memoryIds,
         object_keys: objectKeys,
         superseded_by_nulled: nulledPointers,

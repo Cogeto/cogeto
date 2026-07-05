@@ -237,3 +237,87 @@ against this baseline.
 | point_in_time_march | — | — | — | PASS | PASS | — | PASS | PASS |
 | previously_decided | — | — | — | PASS | PASS | — | PASS | PASS |
 | who_is_ana | PASS | 86% | PASS | PASS | PASS | — | — | PASS |
+
+## 2026-07-05 — extraction/v0002 + verification/v0004 (thresholds v1, 40 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 26 | 83.3% (35/42) | 86.8% (33/38) | 96.0% (24/25) |
+| hr | 14 | 64.7% (22/34) | 87.5% (21/24) | 84.6% (11/13) |
+| aggregate | 40 | 75.0% (57/76) | 87.1% (54/62) | 92.1% (35/38) |
+
+## 2026-07-05 — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 18 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 5 | 100.0% (8/8) | 5 | 66.7% (2/3) | 100.0% (2/2) | 0/1 | 0 |
+| hr | 4 | 83.3% (5/6) | 4 | 100.0% (2/2) | 100.0% (2/2) | — | 0 |
+| aggregate | 9 | 92.9% (13/14) | 9 | 80.0% (4/5) | 100.0% (4/4) | 0/1 | 0 |
+
+## 2026-07-05 — task_closure/v0001 + task_condition/v0001 (10 pairs)
+
+| set | closure pairs | closure accuracy | condition pairs | condition accuracy |
+|---|---|---|---|---|
+| en | 3 | 100.0% (5/5) | 2 | 100.0% (2/2) |
+| hr | 3 | 100.0% (5/5) | 2 | 100.0% (2/2) |
+| aggregate | 6 | 100.0% (10/10) | 4 | 100.0% (4/4) |
+
+## 2026-07-05 — chat eval (pipeline=mistral-small-latest · answer=mistral-medium-latest · answer-prompt=answer/v0004 · grader=eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | overall |
+|---|---|---|---|---|---|---|---|---|
+| atlas_scope | — | 100% | — | PASS | PASS | — | — | PASS |
+| changed_since | — | — | — | PASS | PASS | — | PASS | PASS |
+| closure_flow | — | — | — | PASS | PASS | — | PASS | PASS |
+| default_no_time_travel | — | — | — | PASS | PASS | — | PASS | PASS |
+| nothing_on_record | — | — | — | — | — | PASS | — | PASS |
+| open_with_entity | — | — | — | PASS | PASS | — | PASS | PASS |
+| point_in_time_march | — | — | — | PASS | PASS | — | PASS | PASS |
+| previously_decided | — | — | — | PASS | PASS | — | PASS | PASS |
+| whats_still_open | — | — | — | PASS | PASS | — | PASS | PASS |
+| who_is_ana | PASS | 0% | PASS | PASS | PASS | — | — | FAIL |
+
+## 2026-07-05 — chat eval (pipeline=mistral-small-latest · answer=mistral-medium-latest · answer-prompt=answer/v0004 · grader=eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | overall |
+|---|---|---|---|---|---|---|---|---|
+| atlas_scope | — | 83% | — | PASS | PASS | — | — | PASS |
+| changed_since | — | — | — | PASS | PASS | — | PASS | PASS |
+| closure_flow | — | — | — | PASS | PASS | — | FAIL | FAIL |
+| default_no_time_travel | — | — | — | PASS | PASS | — | PASS | PASS |
+| nothing_on_record | — | — | — | — | — | PASS | — | PASS |
+| open_with_entity | — | — | — | PASS | PASS | — | PASS | PASS |
+| point_in_time_march | — | — | — | PASS | PASS | — | PASS | PASS |
+| previously_decided | — | — | — | PASS | PASS | — | PASS | PASS |
+| whats_still_open | — | — | — | PASS | PASS | — | PASS | PASS |
+| who_is_ana | PASS | 86% | PASS | PASS | PASS | — | — | PASS |
+
+## 2026-07-05 — chat eval (pipeline=mistral-small-latest · answer=mistral-medium-latest · answer-prompt=answer/v0004 · grader=eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | overall |
+|---|---|---|---|---|---|---|---|---|
+| atlas_scope | — | 100% | — | PASS | PASS | — | — | PASS |
+| changed_since | — | — | — | PASS | PASS | — | PASS | PASS |
+| closure_flow | — | — | — | PASS | PASS | — | PASS | PASS |
+| default_no_time_travel | — | — | — | PASS | PASS | — | PASS | PASS |
+| nothing_on_record | — | — | — | — | — | PASS | — | PASS |
+| open_with_entity | — | — | — | PASS | PASS | — | PASS | PASS |
+| point_in_time_march | — | — | — | PASS | PASS | — | PASS | PASS |
+| previously_decided | — | — | — | PASS | PASS | — | PASS | PASS |
+| whats_still_open | — | — | — | PASS | PASS | — | PASS | PASS |
+| who_is_ana | PASS | 0% | PASS | PASS | PASS | — | — | FAIL |
+
+## 2026-07-05 — chat eval (pipeline=mistral-small-latest · answer=mistral-medium-latest · answer-prompt=answer/v0004 · grader=eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | overall |
+|---|---|---|---|---|---|---|---|---|
+| atlas_scope | — | 83% | — | PASS | PASS | — | — | PASS |
+| changed_since | — | — | — | PASS | PASS | — | PASS | PASS |
+| closure_flow | — | — | — | PASS | PASS | — | PASS | PASS |
+| default_no_time_travel | — | — | — | PASS | PASS | — | PASS | PASS |
+| nothing_on_record | — | — | — | — | — | PASS | — | PASS |
+| open_with_entity | — | — | — | PASS | PASS | — | PASS | PASS |
+| point_in_time_march | — | — | — | PASS | PASS | — | PASS | PASS |
+| previously_decided | — | — | — | PASS | PASS | — | PASS | PASS |
+| whats_still_open | — | — | — | PASS | PASS | — | PASS | PASS |
+| who_is_ana | PASS | 86% | PASS | PASS | PASS | — | — | PASS |

@@ -15,7 +15,7 @@ import { REWRITE_TIMEOUT_MS } from './retrieval-config';
  * chrono resolver, never by the model. Any failure → default mode, never an
  * error.
  */
-export const QUERY_REWRITE_PROMPT = { family: 'query_rewrite', version: 'v0002' } as const;
+export const QUERY_REWRITE_PROMPT = { family: 'query_rewrite', version: 'v0003' } as const;
 
 export interface ConversationTurn {
   role: 'user' | 'assistant';
@@ -32,12 +32,19 @@ export interface TemporalIntent {
   since?: Date;
 }
 
+export interface OpenLoopsIntent {
+  /** Entity-scoped variant ("what's open with Luka"); null = everything open. */
+  entity: string | null;
+}
+
 export interface RewriteResult {
   query: string;
   /** Entities the query is about, from the rewriter or the heuristic fallback. */
   entities: string[];
   /** Temporal intent (decision 0012 ruling 2); null = default retrieval. */
   temporal: TemporalIntent | null;
+  /** Open-loops intent (decision 0013 ruling 7); null = default retrieval. */
+  openLoops: OpenLoopsIntent | null;
 }
 
 const rewriteSchema = z.object({
@@ -49,6 +56,10 @@ const rewriteSchema = z.object({
       /** The temporal phrase VERBATIM ("in March", "od lipnja") — code resolves it. */
       expression: z.string().nullable().default(null),
     })
+    .nullable()
+    .default(null),
+  open_loops: z
+    .object({ entity: z.string().nullable().default(null) })
     .nullable()
     .default(null),
 });
@@ -95,13 +106,61 @@ export const TEMPORAL_HINT_RE = new RegExp(
 );
 
 /**
+ * The open-loops hint lexicon (decision 0013 ruling 7), en + hr — the same
+ * enable-and-veto double guard as temporal.
+ */
+export const OPEN_LOOPS_HINT_RE = new RegExp(
+  [
+    // English
+    'still open',
+    'outstanding',
+    'pending',
+    'waiting (on|for)',
+    'open (loops?|items?|tasks?)',
+    "what('|’)?s open",
+    'what is open',
+    'did i promise',
+    'do i (still )?owe',
+    'commit(ted)? to',
+    'follow[- ]ups?',
+    'to[- ]dos?',
+    // Croatian
+    'još otvoreno',
+    'otvoren\\w*',
+    'neriješen\\w*',
+    'čeka\\w*',
+    'obeć\\w*',
+    'dugujem',
+    'obvez\\w*',
+    'zadaci|zadatke|zadataka',
+  ].join('|'),
+  'i',
+);
+
+/**
  * Rewrite when the turn leans on context (anaphora / terse follow-up) OR
- * carries a temporal hint — temporal classification needs the model even for
- * otherwise self-contained questions.
+ * carries a temporal or open-loops hint — intent classification needs the
+ * model even for otherwise self-contained questions.
  */
 export function shouldRewrite(question: string): boolean {
   const words = question.trim().split(/\s+/).filter(Boolean);
-  return words.length <= 3 || ANAPHORA_RE.test(question) || TEMPORAL_HINT_RE.test(question);
+  return (
+    words.length <= 3 ||
+    ANAPHORA_RE.test(question) ||
+    TEMPORAL_HINT_RE.test(question) ||
+    OPEN_LOOPS_HINT_RE.test(question)
+  );
+}
+
+/** The open-loops veto guard: no hint in the raw question, no tasks mode. */
+export function resolveOpenLoopsIntent(
+  rawQuestion: string,
+  claimed: { entity: string | null } | null,
+): OpenLoopsIntent | null {
+  if (!claimed) return null;
+  if (!OPEN_LOOPS_HINT_RE.test(rawQuestion)) return null;
+  const entity = claimed.entity?.trim() || null;
+  return { entity };
 }
 
 /**
@@ -161,6 +220,7 @@ export async function rewriteQuery(
     query: question,
     entities: queryEntityCandidates(question),
     temporal: null,
+    openLoops: null,
   };
   if (!shouldRewrite(question)) return fallback;
 
@@ -185,6 +245,7 @@ export async function rewriteQuery(
       entities: entities.length > 0 ? entities : queryEntityCandidates(result.rewritten_query),
       // Veto guard + deterministic date resolution (decision 0012 ruling 2).
       temporal: resolveTemporalIntent(question, result.temporal, now),
+      openLoops: resolveOpenLoopsIntent(question, result.open_loops),
     };
   } catch {
     return fallback;

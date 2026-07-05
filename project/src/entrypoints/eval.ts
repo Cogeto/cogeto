@@ -3,6 +3,8 @@ import * as path from 'node:path';
 import { z } from 'zod';
 import { evalConfigSchema, runGoldenEval, runReconcileEval } from '../ingestion/index';
 import type { EvalMetrics, ReconcileEvalMetrics } from '../ingestion/index';
+import { runTaskEval } from '../tasks/index';
+import type { TaskEvalMetrics } from '../tasks/index';
 import { MistralModelGateway } from '../model-gateway/index';
 
 /**
@@ -126,12 +128,36 @@ async function main(): Promise<void> {
   console.log(reconcileTable);
   console.log('=======================================================\n');
 
+  // Task-judgment pairs (F3-B, decision 0013 ruling 3) — same run, same
+  // trust-score page.
+  console.log('task pairs:');
+  const taskEval = await runTaskEval({
+    gateway,
+    goldenDir: GOLDEN_DIR,
+    log: (message) => console.log(`  ${message}`),
+  });
+  const taskRow = (m: TaskEvalMetrics): string =>
+    `| ${m.label} | ${m.closurePairs} | ${pct(m.closureAccuracy)} (${m.closureEarned}/${m.closureWeight}` +
+    `${m.falseClosures ? `, ${m.falseClosures} FALSE CLOSE${m.falseClosures > 1 ? 'S' : ''}` : ''}) ` +
+    `| ${m.conditionPairs} | ${pct(m.conditionAccuracy)} (${m.conditionCorrect}/${m.conditionPairs}) |`;
+  const taskTable = [
+    '| set | closure pairs | closure accuracy | condition pairs | condition accuracy |',
+    '|---|---|---|---|---|',
+    ...taskEval.perLanguage.map(taskRow),
+    taskRow(taskEval.aggregate),
+  ].join('\n');
+  console.log('\n================= TASK PAIR RESULTS =================');
+  console.log(`prompts: task_closure/v0001 + task_condition/v0001 · ${taskEval.pairCount} pairs`);
+  console.log(taskTable);
+  console.log('=====================================================\n');
+
   await mkdir(path.dirname(HISTORY_FILE), { recursive: true });
   const stamp = new Date().toISOString().slice(0, 10);
   await appendFile(
     HISTORY_FILE,
     `\n## ${stamp} — ${result.promptVersions} (thresholds v${result.config.version}, ${result.caseCount} cases)\n\n${table}\n` +
-      `\n## ${stamp} — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v${reconcile.configVersion}, ${reconcile.pairCount} pairs)\n\n${reconcileTable}\n`,
+      `\n## ${stamp} — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v${reconcile.configVersion}, ${reconcile.pairCount} pairs)\n\n${reconcileTable}\n` +
+      `\n## ${stamp} — task_closure/v0001 + task_condition/v0001 (${taskEval.pairCount} pairs)\n\n${taskTable}\n`,
     'utf8',
   );
   console.log(`appended to ${path.relative(REPO_ROOT, HISTORY_FILE)}`);

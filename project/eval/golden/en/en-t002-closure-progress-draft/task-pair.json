@@ -1,0 +1,17 @@
+{
+  "case_id": "en-t002",
+  "family": "closure",
+  "expected": "no_close",
+  "task": {
+    "title": "Ana will send the revised proposal to Marko.",
+    "primary_person": "Ana",
+    "entities": ["Ana", "Marko"],
+    "condition_text": null,
+    "due": null
+  },
+  "fact": {
+    "content": "Ana finished drafting the revised proposal and plans to send it after the pricing review.",
+    "entities": ["Ana"]
+  },
+  "notes": "Progress, not fulfillment — the obligation stands."
+}

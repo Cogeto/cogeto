@@ -1,0 +1,17 @@
+{
+  "case_id": "hr-t004",
+  "family": "condition",
+  "expected": "satisfied",
+  "task": {
+    "title": "Poslati Marku revidiranu ponudu nakon što Marko potvrdi proračun.",
+    "primary_person": "Marko",
+    "entities": ["Marko"],
+    "condition_text": "nakon što Marko potvrdi proračun",
+    "due": null
+  },
+  "fact": {
+    "content": "Marko je danas potvrdio proračun za drugu fazu.",
+    "entities": ["Marko"]
+  },
+  "notes": "Točno navedeni preduvjet, od prave osobe."
+}

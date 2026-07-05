@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { desc, eq, isNotNull, isNull } from 'drizzle-orm';
-import { DRIZZLE, writeAudit } from '../infrastructure/index';
+import { DRIZZLE, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { MemoryStore } from '../memory/index';
 import type { MemoryRow } from '../memory/index';
@@ -144,6 +144,16 @@ export class DreamingService {
       }
     }
     report.flagsCleared = await this.clearSettledFlags();
+
+    // Nightly task backfill (decision 0013 ruling 2): idempotent — the
+    // UNIQUE deriving-memory constraint makes re-derivation a no-op.
+    await this.db.transaction((tx) =>
+      withTransactionalEnqueue(
+        tx,
+        { type: 'dreaming.finished', payload: { run_id: runId } },
+        { type: 'tasks_backfill', payload: { source_type: 'tasks_backfill', source_id: runId } },
+      ),
+    );
 
     const finishedAt = new Date();
     await this.db

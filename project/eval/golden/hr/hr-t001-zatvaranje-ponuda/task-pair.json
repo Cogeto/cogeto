@@ -1,0 +1,17 @@
+{
+  "case_id": "hr-t001",
+  "family": "closure",
+  "expected": "closes",
+  "task": {
+    "title": "Ivana će poslati konačnu ponudu Hrvoju.",
+    "primary_person": "Ivana",
+    "entities": ["Ivana", "Hrvoje"],
+    "condition_text": null,
+    "due": null
+  },
+  "fact": {
+    "content": "Ivana je jutros poslala Hrvoju konačnu ponudu.",
+    "entities": ["Ivana", "Hrvoje"]
+  },
+  "notes": "Ista osoba, isti primatelj, isti dokument — obveza ispunjena."
+}

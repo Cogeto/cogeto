@@ -1,0 +1,35 @@
+{
+  "case_id": "whats_still_open",
+  "description": "F3-B: the day-one sentence verbatim — open and blocked tasks covered, conditions phrased, nothing settled shown (decision 0013 ruling 7).",
+  "anchor": "2026-07-01T09:00:00.000Z",
+  "facts": [
+    {
+      "content": "You will send Luka the revised offer after Luka confirms the budget.",
+      "kind": "commitment",
+      "entities": ["Luka"],
+      "subject_entity": "Luka"
+    },
+    {
+      "content": "You will send Ana the Atlas risk register.",
+      "kind": "commitment",
+      "entities": ["Ana"],
+      "subject_entity": "Ana",
+      "valid_until": "2026-07-10T00:00:00.000Z"
+    },
+    {
+      "content": "The quarterly report was delivered to Vera last week.",
+      "kind": "fact",
+      "entities": ["Vera"],
+      "subject_entity": "Vera"
+    }
+  ],
+  "script": [
+    "What did I decide, promise, and commit to — across my email, calendar, and notes — and what's still open?"
+  ],
+  "checks": {
+    "must_include": ["offer", "budget", "risk register"],
+    "must_exclude": ["quarterly report"],
+    "no_mechanics": true,
+    "citations_valid": true
+  }
+}

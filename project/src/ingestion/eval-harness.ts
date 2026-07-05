@@ -127,10 +127,10 @@ async function loadCases(goldenDir: string): Promise<LoadedCase[]> {
       .sort();
     for (const dir of caseDirs) {
       const base = path.join(goldenDir, lang, dir);
-      // Reconciliation pair cases (pair.json — F2-A) belong to the
-      // reconcile harness; this one scores extraction cases only.
+      // Pair cases (pair.json — F2-A; task-pair.json — F3-B) belong to their
+      // own harnesses; this one scores extraction cases only.
       const entries = await readdir(base);
-      if (entries.includes('pair.json')) continue;
+      if (entries.includes('pair.json') || entries.includes('task-pair.json')) continue;
       const source = await readFile(path.join(base, 'source.txt'), 'utf8');
       const expected = expectedFileSchema.parse(
         JSON.parse(await readFile(path.join(base, 'expected.json'), 'utf8')),

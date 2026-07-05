@@ -23,7 +23,25 @@ It is **EU-first, privacy-first, self-hostable, and model-agnostic (Mistral-firs
 
 ## Status
 
-**Session F3-A complete (temporal retrieval — time-travel memory).** Cogeto's
+**Session F3 complete (temporal retrieval + the task engine) — the day-one
+job is answerable end to end at the engine level.** Ask Cogeto the founding
+sentence — *"What did I decide, promise, and commit to — and what's still
+open?"* — and it answers from **derived tasks**: every commitment and open
+loop you capture becomes exactly one task automatically (deterministic — no
+model decides *whether*), blocked tasks carry their waiting condition
+("waiting on Luka's budget confirmation"), quiet ones are nudged, and a new
+fact that shows a promise was fulfilled **closes its task** via a
+conservative model judgment whose prompt states the cost table: a wrongly
+closed task hides an obligation, so doubt never closes. Tasks follow their
+memory through supersession, vanish (counted, on the receipt) when their
+source is deleted, and never touch memory themselves — the engine is
+read-only toward the memory it derives from, enforced by test and by the
+module boundary checker. A provisional Tasks panel ships now; reminders,
+digest integration, and the real UI are specified in the frozen
+`docs/handoff/F3-tasks.md` for O2 (decision 0013; migration 0014). **The
+Fable block (F1–F3) is complete** — next is O1 per the roadmap.
+
+Previously — **Session F3-A (temporal retrieval — time-travel memory).** Cogeto's
 memory now answers about the **past as the past**: "what did we previously
 decide", "which CRM were we using in March", and "what changed since June"
 run through an explicit temporal mode — activated only when the query

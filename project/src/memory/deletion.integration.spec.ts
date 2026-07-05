@@ -22,6 +22,7 @@ import type { SourceDeletion } from './deletion-saga';
 import { IntegritySweep } from './integrity-sweep';
 import { seedObjectFixture, seedOrphanPoint } from './dev-seed';
 import { verifyChain } from './domain/receipt-chain';
+import { TasksCascade } from '../tasks/index';
 import type { ConfirmedReceipt } from './domain/receipt-chain';
 import type { MemoryRow } from './persistence/tables';
 
@@ -388,6 +389,42 @@ describe('deletion saga (integration: real Postgres + Qdrant + MinIO)', () => {
       memoryCount: 1,
       objectCount: 0,
     });
+  });
+
+  it('task_cascade: deleting the source removes the derived task and the receipt records it', async () => {
+    // A commitment memory derives a task (F3-B); erasing its source must take
+    // the task with it, counted in the receipt (decision 0013 ruling 6).
+    const note = await notes.createNote(userA, 'You will send Marko the draft contract.');
+    const memory = await store.createFromFact(userA, {
+      content: 'You will send Marko the draft contract.',
+      scope: 'private',
+      sourceType: 'user_note',
+      sourceId: note.id,
+      entities: ['Marko'],
+      kind: 'commitment',
+    });
+    await embed([memory]);
+    // Derive through the tasks module's own port implementation context: a
+    // direct insert via the engine would need a gateway; the cascade is what
+    // is under test, so seed the task row through the public cascade owner.
+    const { TasksEngine } = await import('../tasks/index');
+    const throwingGateway = {
+      extractStructured: () => {
+        throw new Error('no judgments expected');
+      },
+    } as never;
+    const engine = new TasksEngine(tdb.db, store, throwingGateway);
+    await tdb.db.transaction((tx) => engine.processSource(tx, 'user_note', note.id));
+    expect(await engine.listForPrincipal(userA)).toHaveLength(1);
+
+    const sagaWithCascade = new DeletionSaga(tdb.db, [new NotesSourceDeletion()], vectors, [
+      new TasksCascade(),
+    ]);
+    const { receiptId } = await sagaWithCascade.requestSourceDeletion(userA, 'user_note', note.id);
+    const receipt = await getReceipt(receiptId);
+    expect((receipt?.counts_json as { tasks_removed?: number }).tasks_removed).toBe(1);
+    expect(await engine.listForPrincipal(userA)).toHaveLength(0); // task gone
+    expect(await memoryCount('user_note', note.id)).toBe(0);
   });
 
   it('cross_source_chain: same-source chains delete whole; cross-source chains null the dangling pointer and record it', async () => {
