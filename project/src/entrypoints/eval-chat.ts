@@ -8,6 +8,7 @@ import { GenericContainer, Wait } from 'testcontainers';
 import type { ChatStreamEvent, Principal } from '@cogeto/shared';
 import { applyMigrations, createDb } from '../infrastructure/index';
 import { createMemoryStore } from '../memory/index';
+import type { MemoryRow } from '../memory/index';
 import { seedMemoryFromSource } from '../ingestion/index';
 import { ANSWER_PROMPT, ChatService, RetrievalService } from '../retrieval/index';
 import { loadPrompt, MistralModelGateway } from '../model-gateway/index';
@@ -36,11 +37,28 @@ const HISTORY_FILE = path.join(REPO_ROOT, 'docs', 'eval', 'history.md');
 
 const COVERAGE_PROMPT = { family: 'eval-coverage', version: 'v0001' } as const;
 
+/**
+ * Direct-fact seeding (F3-A): temporal cases need deterministic supersession
+ * chains and fixed interval dates — extraction quality is scored elsewhere.
+ * `supersedes` points at an earlier fact by index; seeding runs the REAL
+ * supersession mechanics (interval close, replaced, pointer).
+ */
+const factSeedSchema = z.object({
+  content: z.string().min(1),
+  kind: z.enum(['commitment', 'decision', 'preference', 'fact', 'open_loop']).default('fact'),
+  entities: z.array(z.string()).default([]),
+  subject_entity: z.string().nullable().default(null),
+  valid_from: z.string().optional(),
+  valid_until: z.string().optional(),
+  supersedes: z.number().int().min(0).optional(),
+});
+
 const caseSchema = z.object({
   case_id: z.string(),
   description: z.string().default(''),
   anchor: z.string(),
-  notes: z.array(z.string()).min(1),
+  notes: z.array(z.string()).default([]),
+  facts: z.array(factSeedSchema).default([]),
   script: z.array(z.string()).min(1),
   checks: z.object({
     entity: z
@@ -52,6 +70,13 @@ const caseSchema = z.object({
     no_mechanics: z.boolean().optional(),
     citations_valid: z.boolean().optional(),
     nothing_on_record: z.boolean().optional(),
+    /** Substrings the final answer must contain (temporal cases). */
+    must_include: z.array(z.string()).optional(),
+    /** The answer must frame past belief as past (decision 0012 ruling 6). */
+    past_framing: z.boolean().optional(),
+    /** The final turn's sources must include / must not include these statuses. */
+    sources_status_includes: z.array(z.string()).optional(),
+    sources_status_excludes: z.array(z.string()).optional(),
   }),
 });
 type ChatCase = z.infer<typeof caseSchema>;
@@ -73,6 +98,7 @@ interface TurnResult {
   question: string;
   answer: string;
   sourceCount: number;
+  sourceStatuses: string[];
   citationViolations: number;
 }
 
@@ -85,8 +111,14 @@ interface CaseScore {
   noMechanics: boolean | null;
   citationsValid: boolean | null;
   nothingOnRecord: boolean | null;
+  /** The F3-A temporal checks folded into one verdict (null = not a temporal case). */
+  temporal: boolean | null;
   pass: boolean;
 }
+
+/** Past framing: the answer talks about the past in en or hr. */
+const PAST_FRAMING_RE =
+  /\b(until|previously|used to|no longer|was|were|at the time|as of|before|earlier|since then|replaced|changed to|prije|do\s|više ne|bilo je|bila je|tada|od tada|zamijenjen)\b/i;
 
 async function resolveApiKey(): Promise<string | undefined> {
   const fromEnv = process.env.COGETO_MISTRAL_API_KEY || process.env.MISTRAL_API_KEY;
@@ -242,22 +274,66 @@ async function main(): Promise<void> {
           },
         });
       }
-      console.log(`  seeded ${testCase.notes.length} notes`);
+      // Direct-fact seeding (F3-A): fixed dates + real supersession mechanics.
+      const seededRows: MemoryRow[] = [];
+      for (let i = 0; i < testCase.facts.length; i++) {
+        const seed = testCase.facts[i]!;
+        const fact = {
+          content: seed.content,
+          scope: 'private' as const,
+          sourceType: 'user_note' as const,
+          sourceId: `chat-eval-${testCase.case_id}-fact-${i}`,
+          entities: seed.entities,
+          subjectEntity: seed.subject_entity ?? undefined,
+          kind: seed.kind,
+          validFrom: seed.valid_from ? new Date(seed.valid_from) : undefined,
+          validUntil: seed.valid_until ? new Date(seed.valid_until) : undefined,
+          embeddingModel,
+        };
+        const row =
+          seed.supersedes !== undefined
+            ? (
+                await memoryStore.supersede(
+                  { kind: 'user', userId: principal.userId },
+                  seededRows[seed.supersedes]!.id,
+                  fact,
+                )
+              ).successor
+            : await memoryStore.createFromFact(principal, fact);
+        seededRows.push(row);
+      }
+      if (seededRows.length > 0) {
+        const vectors = await gateway.embed(seededRows.map((row) => row.content ?? ''));
+        // Re-read rows so predecessors carry their closed intervals/pointers.
+        const fresh = await memoryStore.getManyForPrincipal(
+          principal,
+          seededRows.map((r) => r.id),
+        );
+        const byId = new Map(fresh.map((r) => [r.id, r]));
+        await memoryStore.upsertVectors(
+          seededRows.map((r) => byId.get(r.id) ?? r),
+          vectors,
+        );
+      }
+      console.log(`  seeded ${testCase.notes.length} notes, ${testCase.facts.length} direct facts`);
 
       // Run the scripted conversation.
       const turns: TurnResult[] = [];
       for (const question of testCase.script) {
         let answer = '';
         let sourceCount = 0;
+        let sourceStatuses: string[] = [];
         let citationViolations = 0;
         for await (const event of chat.ask(principal, question) as AsyncIterable<ChatStreamEvent>) {
-          if (event.type === 'sources') sourceCount = event.facts.length;
-          else if (event.type === 'done') {
+          if (event.type === 'sources') {
+            sourceCount = event.facts.length;
+            sourceStatuses = event.facts.map((f) => f.status);
+          } else if (event.type === 'done') {
             answer = event.content;
             citationViolations = event.citationViolations;
           }
         }
-        turns.push({ question, answer, sourceCount, citationViolations });
+        turns.push({ question, answer, sourceCount, sourceStatuses, citationViolations });
         console.log(
           `  Q: ${question}\n  A (${sourceCount} facts): ${stripCites(answer).slice(0, 220)}`,
         );
@@ -271,6 +347,21 @@ async function main(): Promise<void> {
       if (coverage && coverage.missed.length > 0) {
         console.log(`  coverage misses: ${coverage.missed.join(' | ')}`);
       }
+      // The F3-A temporal checks (all deterministic), folded into one verdict.
+      const temporalChecks: (boolean | null)[] = [
+        checks.must_include
+          ? checks.must_include.every((s) => final.answer.toLowerCase().includes(s.toLowerCase()))
+          : null,
+        checks.past_framing ? PAST_FRAMING_RE.test(stripCites(final.answer)) : null,
+        checks.sources_status_includes
+          ? checks.sources_status_includes.every((s) => final.sourceStatuses.includes(s))
+          : null,
+        checks.sources_status_excludes
+          ? checks.sources_status_excludes.every((s) => !final.sourceStatuses.includes(s))
+          : null,
+      ];
+      const temporalApplied = temporalChecks.filter((v) => v !== null);
+
       const score: CaseScore = {
         caseId: testCase.case_id,
         entityCorrect: checks.entity ? checkEntity(final.answer, checks.entity) : null,
@@ -282,6 +373,7 @@ async function main(): Promise<void> {
           ? turns.every((t) => t.citationViolations === 0)
           : null,
         nothingOnRecord: checks.nothing_on_record ? checkNothingOnRecord(final.answer) : null,
+        temporal: temporalApplied.length > 0 ? temporalApplied.every(Boolean) : null,
         pass: false,
       };
       score.pass = [
@@ -291,6 +383,7 @@ async function main(): Promise<void> {
         score.noMechanics,
         score.citationsValid,
         score.nothingOnRecord,
+        score.temporal,
       ]
         .filter((v) => v !== null)
         .every(Boolean);
@@ -305,13 +398,13 @@ async function main(): Promise<void> {
   const cov = (s: CaseScore): string =>
     s.coverage === null ? '—' : `${(s.coverage * 100).toFixed(0)}%`;
   const table = [
-    '| case | entity | coverage | hedge | no-mechanics | citations | nothing | overall |',
-    '|---|---|---|---|---|---|---|---|',
+    '| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | overall |',
+    '|---|---|---|---|---|---|---|---|---|',
     ...scores.map(
       (s) =>
         `| ${s.caseId} | ${cell(s.entityCorrect)} | ${cov(s)} | ${cell(s.hedgeMarked)} | ` +
         `${cell(s.noMechanics)} | ${cell(s.citationsValid)} | ${cell(s.nothingOnRecord)} | ` +
-        `${s.pass ? 'PASS' : 'FAIL'} |`,
+        `${cell(s.temporal)} | ${s.pass ? 'PASS' : 'FAIL'} |`,
     ),
   ].join('\n');
 

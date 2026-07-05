@@ -12,6 +12,15 @@ export const STATUS_CHIP: Record<MemoryStatus, string> = {
 
 export const WARN_STATUSES: MemoryStatus[] = ['uncertain', 'contradicted'];
 
+/** Muted chip for past-belief facts in chat (F3-A, decision 0012 ruling 6). */
+export const PAST_CHIP = 'bg-slate-100 text-slate-500 border border-slate-300';
+
+/** Past belief, client-side twin: replaced/outdated or interval closed. */
+export function isPastFact(status: MemoryStatus, validUntil: string | null): boolean {
+  if (status === 'replaced' || status === 'outdated') return true;
+  return validUntil !== null && new Date(validUntil).getTime() <= Date.now();
+}
+
 export const statusLabel = (status: MemoryStatus): string => status.replace('_', '-');
 
 /** Relative timestamp for list rows; exact date on hover via title attr. */

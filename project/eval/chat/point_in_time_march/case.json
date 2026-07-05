@@ -1,0 +1,30 @@
+{
+  "case_id": "point_in_time_march",
+  "description": "F3-A: a named period selects by interval — the March answer is the fact that held in March, framed as of then (decision 0012 rulings 1, 3).",
+  "anchor": "2026-07-01T09:00:00.000Z",
+  "facts": [
+    {
+      "content": "The team CRM is HubSpot.",
+      "kind": "fact",
+      "entities": ["HubSpot"],
+      "subject_entity": "team CRM",
+      "valid_from": "2026-01-10T00:00:00.000Z"
+    },
+    {
+      "content": "The team CRM is Atlas.",
+      "kind": "fact",
+      "entities": ["Atlas"],
+      "subject_entity": "team CRM",
+      "valid_from": "2026-04-01T00:00:00.000Z",
+      "supersedes": 0
+    }
+  ],
+  "script": ["Which CRM were we using in March?"],
+  "checks": {
+    "must_include": ["HubSpot"],
+    "past_framing": true,
+    "sources_status_includes": ["replaced"],
+    "no_mechanics": true,
+    "citations_valid": true
+  }
+}

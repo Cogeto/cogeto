@@ -24,6 +24,14 @@ One line per label change (docs/eval-golden-set.md §4 rule 5).
   support only (the claim faithfully carries the hedge → supported), while the
   extractor's `hedged` flag drives the memory to `uncertain`. The old `partial`
   label encoded the F7 conflation the fix removes.
+- 2026-07-05 (F3-A): temporal interval cases feeding time-travel retrieval —
+  en `en-0025` (explicit from/until interval) + `en-0026` (open-start "until"
+  bound), hr `hr-0013` + `hr-0014` (idiomatic twins, hr month names). Chat
+  suite gains `previously_decided`, `point_in_time_march`, `changed_since`,
+  and the `default_no_time_travel` regression case; the chat case format
+  gains direct-fact seeding (`facts` with `supersedes` chains and fixed
+  interval dates — deterministic reconciliation-independent seeds). Totals:
+  en 32, hr 19 items.
 - 2026-07-05 (F2-B): corpus growth toward the §B.4 ladder — en `en-0020`–`en-0024`
   (two multi-fact notes, two temporal valid_until cases feeding the staleness
   pass, one designed forecast-overreach trap expected `unsupported`) and hr

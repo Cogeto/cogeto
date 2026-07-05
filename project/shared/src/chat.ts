@@ -35,6 +35,14 @@ export interface ChatFactDto {
   validUntil: string | null;
   /** Which §A.5 retrieval signals surfaced this fact. */
   signals: string[];
+  /**
+   * Past belief (decision 0012 ruling 6): replaced/outdated, or interval
+   * closed before now. The answer MUST frame such facts as past, and the UI
+   * renders a muted "past" chip.
+   */
+  pastBelief: boolean;
+  /** Successor pointer when this fact was superseded; null otherwise. */
+  supersededBy: string | null;
 }
 
 /** Server-sent events on POST /api/chat, in order: sources → token* → done. */

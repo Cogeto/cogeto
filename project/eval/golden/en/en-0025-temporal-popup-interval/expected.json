@@ -1,0 +1,26 @@
+{
+  "case_id": "en-0025",
+  "source_type": "user_note",
+  "source_date": "2026-07-05T09:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "The Rijeka pop-up store runs from September 1 until November 30",
+      "kind": "fact",
+      "entities": ["Rijeka"],
+      "condition": null,
+      "temporal": { "valid_from": "2026-09-01", "valid_until": "2026-11-30" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Vera coordinates staffing for the Rijeka pop-up store",
+      "kind": "fact",
+      "entities": ["Vera", "Rijeka"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

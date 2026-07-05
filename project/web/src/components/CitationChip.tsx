@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { ChatFactDto, MemoryStatus } from '@cogeto/shared';
 import { fetchMemory } from '../api';
 import type { Session } from '../auth/oidc';
-import { STATUS_CHIP, statusLabel, WARN_STATUSES } from './status';
+import { isPastFact, PAST_CHIP, STATUS_CHIP, statusLabel, WARN_STATUSES } from './status';
 
 /**
  * An inline citation chip in an assistant message. Live streams pass the fact
@@ -34,9 +34,19 @@ export function CitationChip({
   });
 
   const target = fact
-    ? { memoryId: fact.memoryId, status: fact.status, claim: fact.claim }
+    ? {
+        memoryId: fact.memoryId,
+        status: fact.status,
+        claim: fact.claim,
+        past: fact.pastBelief,
+      }
     : data
-      ? { memoryId: data.id, status: data.status as MemoryStatus, claim: data.content }
+      ? {
+          memoryId: data.id,
+          status: data.status as MemoryStatus,
+          claim: data.content,
+          past: isPastFact(data.status as MemoryStatus, data.validUntil),
+        }
       : null;
 
   if (!target) {
@@ -47,11 +57,20 @@ export function CitationChip({
     );
   }
   const warn = WARN_STATUSES.includes(target.status);
-  const className = `mx-0.5 inline-flex items-center gap-1 rounded-full px-1.5 align-baseline text-xs font-semibold no-underline ${STATUS_CHIP[target.status]}`;
+  // Past belief renders muted and labeled "past" (decision 0012 ruling 6);
+  // a warning status still wins the styling contest — a disputed past fact
+  // stays visibly disputed.
+  const chipStyle = warn
+    ? STATUS_CHIP[target.status]
+    : target.past
+      ? PAST_CHIP
+      : STATUS_CHIP[target.status];
+  const className = `mx-0.5 inline-flex items-center gap-1 rounded-full px-1.5 align-baseline text-xs font-semibold no-underline ${chipStyle}`;
   const label = (
     <>
       {ordinal}
       {warn && <span aria-label={target.status}>⚠ {statusLabel(target.status)}</span>}
+      {!warn && target.past && <span aria-label="past belief">past</span>}
     </>
   );
   return onOpen ? (

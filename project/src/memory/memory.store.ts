@@ -6,10 +6,10 @@ import {
   NotImplementedException,
   Optional,
 } from '@nestjs/common';
-import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import type { FactKind, MemoryScope, MemoryStatus, Principal } from '@cogeto/shared';
-import { DRIZZLE, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
+import { auditLog, DRIZZLE, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { memory } from './persistence/tables';
 import type { MemoryRow, SourceType } from './persistence/tables';
@@ -17,6 +17,7 @@ import { buildGateFilter, MemoryVectorStore } from './persistence/vector-store';
 import type { MemoryPoint } from './persistence/vector-store';
 import { actorLabel, checkTransition } from './domain/transition';
 import type { MemoryActor } from './domain/transition';
+import { intervalHoldsAtSql } from './domain/interval';
 
 /**
  * Public interface of the memory module (§A.1 rule 1; decision 0003 ruling 2).
@@ -107,6 +108,48 @@ export type FilteredSearchOptions = SearchOptions & MemoryFilters;
 
 /** The job the edit path enqueues: embed the supersession successor (worker). */
 export const MEMORY_EMBED_JOB_TYPE = 'memory.embed';
+
+// ── Temporal read contracts (decision 0012) ──────────────────────────────────
+
+/** SQL-first temporal candidate cap; Qdrant only ranks within it (ruling 3). */
+const TEMPORAL_CANDIDATE_CAP = 200;
+
+/** Audit actions that appear as change events (ruling 4) — frozen list. */
+const CHANGE_STATUS_ACTIONS = [
+  'memory.status_transition',
+  'memory.contradiction_dismiss_restored',
+  'memory.contradiction_lifted',
+] as const;
+const CHANGE_SUPERSEDE_ACTIONS = ['memory.superseded', 'memory.merged'] as const;
+
+export interface PointInTimeOptions extends ReadOptions {
+  topK: number;
+  /** Query embedding for relevance ranking within the temporal set. */
+  embedding?: number[];
+  /** Optional entity narrowing (trigram, same construction as entitySearch). */
+  entities?: string[];
+}
+
+export interface PointInTimeHit {
+  memory: MemoryRow;
+  /** Normalized vector relevance within the candidate set; null when unranked. */
+  score: number | null;
+}
+
+export type MemoryChangeKind = 'learned' | 'status_changed' | 'superseded';
+
+export interface MemoryChange {
+  kind: MemoryChangeKind;
+  at: Date;
+  /** The memory as it is NOW (current status, pointer) — gated read. */
+  memory: MemoryRow;
+  detail: {
+    from?: string | null;
+    to?: string | null;
+    reason?: string | null;
+    supersededBy?: string | null;
+  };
+}
 
 @Injectable()
 export class MemoryStore {
@@ -575,6 +618,149 @@ export class MemoryStore {
       .select()
       .from(memory)
       .where(and(inArray(memory.id, memoryIds), this.visibleTo(principal, opts)));
+  }
+
+  // ── Temporal primitives (decision 0012; §A.5 temporal lift, §B.2) ──────────
+
+  /**
+   * Facts holding at instant t — in ANY lifecycle status (replaced and
+   * outdated included: they are the point of the query), each with its
+   * current status and superseded_by pointer so answers frame past belief
+   * honestly. Gates unchanged: temporal never weakens scope or sensitive.
+   *
+   * Candidates come from SQL FIRST via the shared interval predicate — the
+   * NULL semantics (created_at fallback, open valid_until) are Postgres
+   * truth that the Qdrant payload cannot express (ruling 3). The vector
+   * index participates only to rank relevance WITHIN that candidate set.
+   */
+  async pointInTime(
+    principal: Principal,
+    t: Date,
+    opts: PointInTimeOptions,
+  ): Promise<PointInTimeHit[]> {
+    const base: SQL[] = [this.visibleTo(principal, opts), intervalHoldsAtSql(t)];
+    const fetch = (clauses: SQL[]) =>
+      this.db
+        .select()
+        .from(memory)
+        .where(and(...clauses))
+        .orderBy(desc(sql`COALESCE(${memory.validFrom}, ${memory.createdAt})`), memory.id)
+        .limit(TEMPORAL_CANDIDATE_CAP);
+
+    // Entity narrowing is a NARROWING, never a recall killer: query-side
+    // entity heuristics ("CRM", a month name) often miss the stored names, so
+    // an empty narrowed set falls back to the full temporal set — relevance
+    // ranking below does the rest. Gates are in `base` either way.
+    let candidates: Awaited<ReturnType<typeof fetch>> = [];
+    const wanted = [...new Set((opts.entities ?? []).map((n) => n.trim()).filter(Boolean))];
+    if (wanted.length > 0) {
+      const namesArray = sql`ARRAY[${sql.join(
+        wanted.map((name) => sql`${name}`),
+        sql`, `,
+      )}]::text[]`;
+      candidates = await fetch([
+        ...base,
+        sql`EXISTS (
+          SELECT 1 FROM unnest(entities) AS hit(entity), unnest(${namesArray}) AS wanted(name)
+          WHERE hit.entity % wanted.name
+        )`,
+      ]);
+    }
+    if (candidates.length === 0) candidates = await fetch(base);
+
+    // Relevance ranking within the temporal set (never a wider set).
+    let scores = new Map<string, number>();
+    if (opts.embedding && candidates.length > 0) {
+      const hits = await this.vectorSearch(principal, opts.embedding, {
+        topK: TEMPORAL_CANDIDATE_CAP,
+        includeSensitive: opts.includeSensitive,
+      });
+      scores = new Map(hits.map((h) => [h.memoryId, h.score]));
+    }
+    return candidates
+      .map((row) => ({ memory: row as MemoryRow, score: scores.get(row.id) ?? null }))
+      .sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
+      .slice(0, opts.topK);
+  }
+
+  /**
+   * What changed since `since`, for the caller's visible memories: the exact
+   * event set of decision 0012 ruling 4 — learned / status_changed /
+   * superseded — newest first. Erased memories resolve to no row and produce
+   * no event (their ledger is the Forgotten section, §B.1).
+   */
+  async changesSince(
+    principal: Principal,
+    since: Date,
+    opts: ReadOptions & { limit?: number } = {},
+  ): Promise<MemoryChange[]> {
+    const limit = Math.min(opts.limit ?? 50, 200);
+    const events: MemoryChange[] = [];
+
+    const learned = await this.db
+      .select()
+      .from(memory)
+      .where(and(this.visibleTo(principal, opts), gte(memory.createdAt, since)))
+      .orderBy(desc(memory.createdAt), memory.id)
+      .limit(limit);
+    for (const row of learned) {
+      events.push({ kind: 'learned', at: row.createdAt, memory: row as MemoryRow, detail: {} });
+    }
+
+    const auditRows = await this.db
+      .select()
+      .from(auditLog)
+      .where(
+        and(
+          inArray(auditLog.action, [...CHANGE_STATUS_ACTIONS, ...CHANGE_SUPERSEDE_ACTIONS]),
+          eq(auditLog.entityType, 'memory'),
+          gte(auditLog.createdAt, since),
+        ),
+      )
+      .orderBy(desc(auditLog.createdAt), auditLog.id)
+      .limit(limit * 2);
+    const visible = new Map(
+      (
+        await this.getManyForPrincipal(
+          principal,
+          [...new Set(auditRows.map((row) => row.entityId))],
+          opts,
+        )
+      ).map((row) => [row.id, row]),
+    );
+    for (const row of auditRows) {
+      const target = visible.get(row.entityId);
+      if (!target) continue; // other owners' or erased memories: no event
+      const detail = (row.detailJson ?? {}) as Record<string, unknown>;
+      if ((CHANGE_SUPERSEDE_ACTIONS as readonly string[]).includes(row.action)) {
+        events.push({
+          kind: 'superseded',
+          at: row.createdAt,
+          memory: target,
+          detail: {
+            supersededBy:
+              (detail['supersededBy'] as string | undefined) ??
+              (detail['survivor'] as string | undefined) ??
+              target.supersededBy ??
+              null,
+            reason: (detail['reason'] as string | undefined) ?? null,
+          },
+        });
+      } else {
+        events.push({
+          kind: 'status_changed',
+          at: row.createdAt,
+          memory: target,
+          detail: {
+            from: (detail['from'] as string | undefined) ?? null,
+            to: (detail['to'] as string | undefined) ?? target.status,
+            reason: (detail['reason'] as string | undefined) ?? null,
+          },
+        });
+      }
+    }
+
+    return events.sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, limit);
   }
 
   // ── Vector index maintenance (memory owns the Qdrant client — ruling 2) ────

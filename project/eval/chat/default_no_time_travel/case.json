@@ -1,0 +1,29 @@
+{
+  "case_id": "default_no_time_travel",
+  "description": "F3-A regression: a plain present-tense question NEVER surfaces replaced facts — default retrieval is byte-for-byte unchanged (decision 0012 ruling 2).",
+  "anchor": "2026-07-01T09:00:00.000Z",
+  "facts": [
+    {
+      "content": "The client workshops run on Microsoft Teams.",
+      "kind": "decision",
+      "entities": ["Teams"],
+      "subject_entity": "client workshops",
+      "valid_from": "2026-03-01T00:00:00.000Z"
+    },
+    {
+      "content": "The client workshops run on Zoom.",
+      "kind": "decision",
+      "entities": ["Zoom"],
+      "subject_entity": "client workshops",
+      "valid_from": "2026-06-01T00:00:00.000Z",
+      "supersedes": 0
+    }
+  ],
+  "script": ["What platform do the client workshops run on?"],
+  "checks": {
+    "must_include": ["Zoom"],
+    "sources_status_excludes": ["replaced"],
+    "no_mechanics": true,
+    "citations_valid": true
+  }
+}

@@ -43,3 +43,17 @@ export const STATUS_MULTIPLIERS: Record<MemoryStatus, number> = {
   outdated: 0.2,
   replaced: 0.0,
 };
+
+/**
+ * Temporal-mode multipliers (decision 0012 ruling 5): the §A.5 temporal lift.
+ * Past facts are the point of the query, so replaced/outdated rank nearly on
+ * par; statuses stay multipliers, gates stay gates.
+ */
+export const TEMPORAL_STATUS_MULTIPLIERS: Record<MemoryStatus, number> = {
+  active: 1.0,
+  user_approved: 1.0,
+  uncertain: 0.6,
+  contradicted: 0.4,
+  outdated: 0.9,
+  replaced: 0.9,
+};

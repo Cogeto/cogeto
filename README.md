@@ -23,7 +23,23 @@ It is **EU-first, privacy-first, self-hostable, and model-agnostic (Mistral-firs
 
 ## Status
 
-**Session F2 complete (reconciliation + dreaming + gates, F2-A + F2-B).**
+**Session F3-A complete (temporal retrieval — time-travel memory).** Cogeto's
+memory now answers about the **past as the past**: "what did we previously
+decide", "which CRM were we using in March", and "what changed since June"
+run through an explicit temporal mode — activated only when the query
+genuinely asks about time (deterministic hint lexicon + model classification,
+either alone is never enough), with dates resolved by code, never the model.
+One frozen interval predicate (`[valid_from, valid_until)` half-open, NULL
+means still-holding) drives point-in-time selection over every lifecycle
+status; superseded facts return with their successor and are rendered as
+muted **"past"** chips, and the answerer is contractually barred from stating
+past belief as current ("Until March you had X; since then Y"). Scope and
+sensitive gates hold unchanged through time — time travel never crosses
+owners. Default retrieval is byte-for-byte unchanged, with a regression eval
+case pinning that replaced facts never resurface without temporal intent
+(decision 0012; migration 0013).
+
+Previously — **Session F2 (reconciliation + dreaming + gates, F2-A + F2-B).**
 Cogeto now **consolidates itself while you sleep and measures itself before it
 ships**. The nightly **dreaming** cycle (03:30, after the integrity sweep)
 re-runs the reconciliation engine in batch over the day's new facts, marks

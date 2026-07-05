@@ -31,6 +31,8 @@ export interface FusedHit {
 export function fuseAndRank(
   lists: RankedList[],
   statusOf: (memoryId: string) => MemoryStatus | undefined,
+  /** Temporal mode passes TEMPORAL_STATUS_MULTIPLIERS (decision 0012 ruling 5). */
+  multipliers: Record<MemoryStatus, number> = STATUS_MULTIPLIERS,
 ): FusedHit[] {
   const fused = new Map<string, { score: number; signals: RetrievalSignal[] }>();
   for (const list of lists) {
@@ -46,8 +48,8 @@ export function fuseAndRank(
   for (const [memoryId, { score, signals }] of fused) {
     const status = statusOf(memoryId);
     if (status === undefined) continue; // not resolvable through the gated read
-    const multiplied = score * STATUS_MULTIPLIERS[status];
-    if (multiplied <= 0) continue; // replaced ×0 — excluded (§A.5)
+    const multiplied = score * multipliers[status];
+    if (multiplied <= 0) continue; // replaced ×0 — excluded in default mode (§A.5)
     hits.push({ memoryId, score: multiplied, signals });
   }
   // Deterministic: score desc, id asc as the tie-break.

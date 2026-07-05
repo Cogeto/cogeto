@@ -48,6 +48,13 @@ export {
   supersessionUnambiguous,
 } from './domain/reconcile-policy';
 export type { PolicyParty, MergeDecision } from './domain/reconcile-policy';
+export { intervalHoldsAt, intervalHoldsAtSql, isPastBelief } from './domain/interval';
+export type {
+  PointInTimeOptions,
+  PointInTimeHit,
+  MemoryChange,
+  MemoryChangeKind,
+} from './memory.store';
 export { checkTransition, actorLabel } from './domain/transition';
 export type { MemoryActor, ActorKind, TransitionCheck } from './domain/transition';
 export type { MemoryRow, MemoryRelationRow, SourceType } from './persistence/tables';

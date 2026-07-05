@@ -39,3 +39,6 @@ export type {
   ReconcileEvalResult,
 } from './eval-reconcile';
 export { seedMemoryFromSource } from './eval-seed';
+// The S3.5 deterministic date resolver (decision 0007 ruling 1) — reused by
+// temporal query understanding (decision 0012 ruling 2); never duplicated.
+export { resolveExpression } from './domain/temporal-resolver';

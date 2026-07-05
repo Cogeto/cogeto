@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import type { Principal } from '@cogeto/shared';
+import type { MemoryStatus, Principal } from '@cogeto/shared';
+import { TEMPORAL_STATUS_MULTIPLIERS } from '@cogeto/shared';
 import { MemoryStore } from '../memory/index';
-import type { MemoryRow } from '../memory/index';
+import type { MemoryChange, MemoryRow } from '../memory/index';
 import { ModelGateway } from '../model-gateway/index';
 import {
   byStatusThenRecency,
@@ -14,7 +15,7 @@ import { fuseAndRank } from './fusion';
 import type { RankedList, RetrievalSignal } from './fusion';
 import { queryEntityCandidates } from './query-entities';
 import { rewriteQuery } from './query-rewrite';
-import type { ConversationTurn } from './query-rewrite';
+import type { ConversationTurn, TemporalIntent } from './query-rewrite';
 import { DEFAULT_TOP_K, PROFILE_CEILING, SIGNAL_FETCH_FACTOR } from './retrieval-config';
 
 export interface RetrieveOptions {
@@ -33,14 +34,18 @@ export interface RetrievedMemory {
   signals: RetrievalSignal[];
 }
 
-/** What retrieval decided, so the answerer can adapt (F1/F4). */
-export type RetrievalMode = 'default' | 'entity_profile';
+/** What retrieval decided, so the answerer can adapt (F1/F4, F3-A). */
+export type RetrievalMode = 'default' | 'entity_profile' | 'temporal';
 
 export interface RetrievalResult {
   memories: RetrievedMemory[];
   mode: RetrievalMode;
   /** The entity a profile was built for, when mode is entity_profile. */
   focusEntity?: string;
+  /** The classified temporal intent, when mode is temporal (decision 0012). */
+  temporal?: TemporalIntent;
+  /** The change events, when the temporal kind is change_since. */
+  changes?: MemoryChange[];
 }
 
 /**
@@ -76,7 +81,16 @@ export class RetrievalService {
       ...new Set([...rewrite.entities, ...queryEntityCandidates(searchQuery)]),
     ];
 
-    // 2. Entity-profile mode (F1/F4): exhaustive gather, no top-k truncation.
+    // 2. Temporal mode (F3-A, decision 0012): explicit intent only — the
+    // rewriter classified it AND the raw question carried a temporal hint.
+    if (rewrite.temporal) {
+      return this.temporalRetrieve(principal, searchQuery, entityCandidates, rewrite.temporal, {
+        ...opts,
+        topK,
+      });
+    }
+
+    // 3. Entity-profile mode (F1/F4): exhaustive gather, no top-k truncation.
     const focus = detectEntityProfile(searchQuery, entityCandidates);
     if (focus) {
       const memories = await this.gatherEntityProfile(principal, focus, searchQuery, opts);
@@ -84,10 +98,10 @@ export class RetrievalService {
       // Nothing on record for this entity — fall through to normal retrieval.
     }
 
-    // 3. Default hybrid fusion.
+    // 4. Default hybrid fusion.
     let results = await this.fuse(principal, searchQuery, entityCandidates, topK, opts);
 
-    // 4. Project/topic aggregation (F5): if the results cluster on one entity,
+    // 5. Project/topic aggregation (F5): if the results cluster on one entity,
     // widen once via entity search so the answer sees the whole picture.
     const dominant = dominantEntity(results.map((r) => r.memory));
     if (dominant) {
@@ -105,6 +119,60 @@ export class RetrievalService {
     return { memories: results, mode: 'default' };
   }
 
+  /**
+   * Temporal retrieval (decision 0012): 'previous' is the standard fused
+   * search with the exclusion lifted (temporal multipliers) — past facts rank
+   * nearly on par and carry their history; 'point_in_time' and 'change_since'
+   * use the memory module's temporal primitives. Gates unchanged everywhere.
+   */
+  private async temporalRetrieve(
+    principal: Principal,
+    query: string,
+    entityCandidates: string[],
+    temporal: TemporalIntent,
+    opts: RetrieveOptions & { topK: number },
+  ): Promise<RetrievalResult> {
+    if (temporal.kind === 'previous') {
+      const memories = await this.fuse(principal, query, entityCandidates, opts.topK, opts, {
+        multipliers: TEMPORAL_STATUS_MULTIPLIERS,
+      });
+      return { memories, mode: 'temporal', temporal };
+    }
+
+    if (temporal.kind === 'point_in_time') {
+      const [embedding] = await this.gateway.embed([query]);
+      const hits = await this.memoryStore.pointInTime(principal, temporal.at!, {
+        topK: opts.topK,
+        embedding,
+        entities: entityCandidates,
+        includeSensitive: opts.includeSensitive,
+      });
+      return {
+        memories: hits.map((hit) => ({
+          memory: hit.memory,
+          score: hit.score ?? 0,
+          signals: hit.score !== null ? (['vector'] as RetrievalSignal[]) : [],
+        })),
+        mode: 'temporal',
+        temporal,
+      };
+    }
+
+    const changes = await this.memoryStore.changesSince(principal, temporal.since!, {
+      includeSensitive: opts.includeSensitive,
+      limit: Math.max(opts.topK, 20),
+    });
+    // The events' memories become the citable facts, deduplicated.
+    const byId = new Map<string, MemoryRow>();
+    for (const change of changes) byId.set(change.memory.id, change.memory);
+    return {
+      memories: [...byId.values()].map((memory) => ({ memory, score: 0, signals: [] })),
+      mode: 'temporal',
+      temporal,
+      changes,
+    };
+  }
+
   /** Default fusion over the three gated signals, resolved to ranked rows. */
   private async fuse(
     principal: Principal,
@@ -112,13 +180,13 @@ export class RetrievalService {
     entityCandidates: string[],
     topK: number,
     opts: RetrieveOptions,
-    extra?: { widenEntity: string },
+    extra?: { widenEntity?: string; multipliers?: Record<MemoryStatus, number> },
   ): Promise<RetrievedMemory[]> {
     const searchOpts = {
       topK: topK * SIGNAL_FETCH_FACTOR, // over-fetch before fusion (research §1)
       includeSensitive: opts.includeSensitive,
     };
-    const widenNames = extra ? nameVariants(extra.widenEntity) : [];
+    const widenNames = extra?.widenEntity ? nameVariants(extra.widenEntity) : [];
     const [vectorHits, ftsHits, entityHits, widenHits] = await Promise.all([
       this.gateway
         .embed([query])
@@ -147,8 +215,8 @@ export class RetrievalService {
       { signal: 'entity', ids: [...entityHits, ...widenHits].map((h) => h.memory.id) },
     ];
     // Widening lets the answer aggregate more than the default slice.
-    const limit = extra ? Math.max(topK, PROFILE_CEILING) : topK;
-    return fuseAndRank(lists, (id) => rowsById.get(id)?.status)
+    const limit = extra?.widenEntity ? Math.max(topK, PROFILE_CEILING) : topK;
+    return fuseAndRank(lists, (id) => rowsById.get(id)?.status, extra?.multipliers)
       .slice(0, limit)
       .map((hit) => ({
         memory: rowsById.get(hit.memoryId)!,

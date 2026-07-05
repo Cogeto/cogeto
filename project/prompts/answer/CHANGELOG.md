@@ -4,6 +4,17 @@ Prompt family for the fast-path chat answerer (S3-A): answers only from the
 retrieved fact blocks, cites with inline `[F#]` markers, says plainly when the
 facts do not cover the question.
 
+## v0003 — 2026-07-05 (F3-A)
+
+The temporal contract (decision 0012 ruling 6): fact blocks may carry a
+`PAST BELIEF` marker (replaced/outdated or interval closed) — the answer must
+never state them as current, frames them as "Until <boundary> you had X; since
+then Y" with the successor when named, and treats them as history, never as a
+dispute with their successor. Adds the three temporal-mode behaviors: previous
+(lead with past belief, then the replacement), point_in_time (answer as of the
+ASKED ABOUT date), change_since (narrate the CHANGES block with dates, no
+padding). Everything else verbatim from v0002; citations unchanged.
+
 ## v0002 — 2026-07-03 (S3.5-B)
 
 Quality-hardening from owner testing. (F2) explicit "describe the world, not the

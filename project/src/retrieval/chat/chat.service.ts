@@ -3,6 +3,7 @@ import { asc, desc, eq } from 'drizzle-orm';
 import type { ChatFactDto, ChatMessageDto, ChatStreamEvent, Principal } from '@cogeto/shared';
 import { DRIZZLE } from '../../infrastructure/index';
 import type { Db } from '../../infrastructure/index';
+import { isPastBelief } from '../../memory/index';
 import { loadPrompt, ModelGateway } from '../../model-gateway/index';
 import type { PromptArtifact } from '../../model-gateway/index';
 import { RetrievalService } from '../retrieval.service';
@@ -85,7 +86,10 @@ export class ChatService {
       let buffer = '';
       const stream = this.gateway.completeStream({
         system: prompt.content,
-        input: buildAnswerInput(facts, content, retrieved.mode),
+        input: buildAnswerInput(facts, content, retrieved.mode, {
+          temporal: retrieved.temporal,
+          changes: retrieved.changes,
+        }),
         tier: 'answer',
       });
       for await (const text of stream) {
@@ -137,5 +141,9 @@ function toFactDto(hit: RetrievedMemory, index: number): ChatFactDto {
     validFrom: hit.memory.validFrom?.toISOString() ?? null,
     validUntil: hit.memory.validUntil?.toISOString() ?? null,
     signals: hit.signals,
+    // The past-framing data contract (decision 0012 ruling 6): computed here,
+    // consumed by the answer prompt AND the UI chip — testable without a model.
+    pastBelief: isPastBelief(hit.memory),
+    supersededBy: hit.memory.supersededBy,
   };
 }

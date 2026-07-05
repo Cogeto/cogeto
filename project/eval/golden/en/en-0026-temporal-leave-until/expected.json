@@ -1,0 +1,26 @@
+{
+  "case_id": "en-0026",
+  "source_type": "user_note",
+  "source_date": "2026-07-05T09:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Maja is on parental leave until October 15",
+      "kind": "fact",
+      "entities": ["Maja"],
+      "condition": null,
+      "temporal": { "valid_from": "source_date", "valid_until": "2026-10-15" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Maja's approvals go to Damir while she is on leave",
+      "kind": "fact",
+      "entities": ["Maja", "Damir"],
+      "condition": null,
+      "temporal": { "valid_until": "2026-10-15" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

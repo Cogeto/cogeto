@@ -1,12 +1,19 @@
 import type { ChatFactDto } from '@cogeto/shared';
 import { mapMarkersToCitations, sanitizeAnswer } from '@cogeto/shared';
+import type { MemoryChange } from '../../memory/index';
+import type { TemporalIntent } from '../query-rewrite';
 import type { RetrievalMode } from '../retrieval.service';
 
 /**
  * The answer prompt family (§B.7): versioned artifact in project/prompts/answer,
  * registered on worker boot alongside the ingestion families.
  */
-export const ANSWER_PROMPT = { family: 'answer', version: 'v0002' } as const;
+export const ANSWER_PROMPT = { family: 'answer', version: 'v0003' } as const;
+
+export interface AnswerTemporalContext {
+  temporal?: TemporalIntent;
+  changes?: MemoryChange[];
+}
 
 /** The zero-retrieval path: no facts, no generation from thin air. */
 export const NOTHING_ON_RECORD =
@@ -23,7 +30,9 @@ export function buildAnswerInput(
   facts: ChatFactDto[],
   question: string,
   mode: RetrievalMode = 'default',
+  extras: AnswerTemporalContext = {},
 ): string {
+  const markerById = new Map(facts.map((fact) => [fact.memoryId, fact.marker]));
   const blocks = facts.map((fact) => {
     const validity =
       fact.validFrom || fact.validUntil
@@ -31,17 +40,49 @@ export function buildAnswerInput(
         : '';
     const label = fact.sourceType === 'user_note' ? 'note' : fact.sourceType.replace('_', ' ');
     const subject = fact.subjectEntity ? ` | about: ${fact.subjectEntity}` : '';
-    return `[${fact.marker}] ${fact.claim ?? ''}\n    status: ${fact.status.replace('_', '-')}${subject} | source: ${label}${validity}`;
+    // The past-framing marker (decision 0012 ruling 6): the model may never
+    // present a PAST BELIEF fact as current.
+    const past = fact.pastBelief
+      ? ` | PAST BELIEF${
+          fact.supersededBy && markerById.has(fact.supersededBy)
+            ? ` — superseded by [${markerById.get(fact.supersededBy)}]`
+            : ''
+        }`
+      : '';
+    return `[${fact.marker}] ${fact.claim ?? ''}\n    status: ${fact.status.replace('_', '-')}${subject} | source: ${label}${validity}${past}`;
   });
-  return [
-    `MODE: ${mode}`,
+
+  const lines = [
+    `MODE: ${mode}${extras.temporal ? ` (${extras.temporal.kind})` : ''}`,
     '',
     'FACTS ON RECORD (your only permitted knowledge):',
     ...blocks,
-    '',
-    'QUESTION:',
-    question,
-  ].join('\n');
+  ];
+
+  if (extras.temporal?.at) {
+    lines.push('', `ASKED ABOUT THE STATE AT: ${extras.temporal.at.toISOString().slice(0, 10)}`);
+  }
+  if (extras.changes && extras.changes.length > 0) {
+    lines.push('', `CHANGES SINCE ${extras.temporal?.since?.toISOString().slice(0, 10) ?? '…'}:`);
+    for (const change of extras.changes) {
+      const marker = markerById.get(change.memory.id);
+      const ref = marker ? `[${marker}]` : '(not cited)';
+      const what =
+        change.kind === 'learned'
+          ? 'learned'
+          : change.kind === 'superseded'
+            ? `superseded${
+                change.detail.supersededBy && markerById.has(change.detail.supersededBy)
+                  ? ` by [${markerById.get(change.detail.supersededBy)}]`
+                  : ''
+              }`
+            : `status ${change.detail.from ?? '…'} → ${change.detail.to ?? '…'}`;
+      lines.push(`- ${change.at.toISOString().slice(0, 10)}: ${ref} ${what}`);
+    }
+  }
+
+  lines.push('', 'QUESTION:', question);
+  return lines.join('\n');
 }
 
 /**

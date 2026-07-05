@@ -1,0 +1,36 @@
+{
+  "case_id": "changed_since",
+  "description": "F3-A: 'what changed since' narrates the transition set — the supersession with its dates and the newly learned fact (decision 0012 ruling 4).",
+  "anchor": "2026-07-01T09:00:00.000Z",
+  "facts": [
+    {
+      "content": "Adriatic Foods invoices go to racuni@adriaticfoods.hr.",
+      "kind": "fact",
+      "entities": ["Adriatic Foods"],
+      "subject_entity": "Adriatic Foods",
+      "valid_from": "2026-05-10T00:00:00.000Z"
+    },
+    {
+      "content": "Adriatic Foods invoices go to billing@adriaticfoods.hr.",
+      "kind": "fact",
+      "entities": ["Adriatic Foods"],
+      "subject_entity": "Adriatic Foods",
+      "valid_from": "2026-06-15T00:00:00.000Z",
+      "supersedes": 0
+    },
+    {
+      "content": "The Adriatic Foods vendor onboarding checklist was agreed with Vera.",
+      "kind": "decision",
+      "entities": ["Adriatic Foods", "Vera"],
+      "subject_entity": "Adriatic Foods",
+      "valid_from": "2026-06-20T00:00:00.000Z"
+    }
+  ],
+  "script": ["What changed about Adriatic Foods since June?"],
+  "checks": {
+    "must_include": ["billing"],
+    "past_framing": true,
+    "no_mechanics": true,
+    "citations_valid": true
+  }
+}
