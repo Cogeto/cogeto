@@ -41,18 +41,24 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         embeddingModel: config.mistralEmbedModel,
         s3: {
           url: config.s3Url,
+          publicUrl: config.s3PublicUrl,
           accessKey: config.s3AccessKey,
           secretKey: config.s3SecretKey,
           bucket: config.s3Bucket,
         },
         instanceKeyDir: config.instanceKeyDir,
-        sourceDeletions: { imports: [ConnectorsModule], adapters: [NotesSourceDeletion] },
+        sourceDeletions: { adapters: [NotesSourceDeletion] },
         derivedCascades: { imports: [TasksModule.forApi()], adapters: [TasksCascade] },
       }),
       RetrievalModule,
       IngestionModule.forQueries(), // verification + dreaming read endpoints
       AgentsModule,
-      ConnectorsModule,
+      ConnectorsModule.register({
+        fileUpload: {
+          uploadMaxBytes: config.uploadMaxBytes,
+          downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
+        },
+      }),
       TasksModule.forApi(),
     ],
     controllers: [HealthController, InstanceController, JobsController, WebConfigController],

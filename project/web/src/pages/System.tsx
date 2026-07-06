@@ -4,6 +4,7 @@ import { fetchChainStatus, fetchDeadLetterJobs, fetchIntegrity, retryDeadLetterJ
 import type { Session } from '../auth/oidc';
 import { Shell } from '../components/Shell';
 import { StatusPanel } from '../components/StatusPanel';
+import { WorkerActivityPanel } from '../components/WorkerActivityPanel';
 import { timeAgo } from '../components/status';
 
 /** The sweep's face (§A.7 step 4): last run, chain status, open alert list. */
@@ -175,6 +176,7 @@ export function System({ session }: { session: Session }) {
   return (
     <Shell session={session} title="System" active="system">
       <StatusPanel />
+      <WorkerActivityPanel session={session} />
       <IntegrityPanel session={session} />
       <DeadLetterTable session={session} />
     </Shell>

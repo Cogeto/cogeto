@@ -10,8 +10,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { desc, eq, sql } from 'drizzle-orm';
-import type { DeadLetterJobDto } from '@cogeto/shared';
-import { deadLetter, DRIZZLE, writeAudit } from '../infrastructure/index';
+import type { DeadLetterJobDto, WorkerActivityDto, WorkerJobDto } from '@cogeto/shared';
+import { deadLetter, DRIZZLE, jobExecution, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
@@ -29,6 +29,93 @@ import type { AuthenticatedRequest } from '../identity/index';
 @UseGuards(BearerAuthGuard)
 export class JobsController {
   constructor(@Inject(DRIZZLE) private readonly db: Db) {}
+
+  /**
+   * A live snapshot of the queue for the System "Worker activity" panel:
+   * what's running now, what's waiting, and what recently completed — read from
+   * graphile-worker's own tables + the job_execution ledger. No per-job
+   * percentage exists (a job is one atomic transaction); queue depth is the
+   * honest progress signal.
+   */
+  @Get('activity')
+  async activity(): Promise<WorkerActivityDto> {
+    // The public `jobs` view omits payload (it lives in `_private_jobs`); join
+    // on id to recover the source_type/source_id for the display labels.
+    const result = await this.db.execute(sql`
+      SELECT j.task_identifier, pj.payload, j.run_at, j.attempts, j.max_attempts,
+             j.locked_at, j.last_error
+      FROM graphile_worker.jobs j
+      JOIN graphile_worker._private_jobs pj ON pj.id = j.id
+      ORDER BY j.run_at ASC
+      LIMIT 200
+    `);
+    const rows = result.rows as Array<{
+      task_identifier: string;
+      payload: Record<string, unknown> | null;
+      run_at: string | Date | null;
+      attempts: number;
+      max_attempts: number;
+      locked_at: string | Date | null;
+      last_error: string | null;
+    }>;
+
+    const iso = (value: string | Date | null): string | null =>
+      value == null ? null : new Date(value).toISOString();
+    const str = (value: unknown): string | null => (typeof value === 'string' ? value : null);
+    const toJob = (r: (typeof rows)[number]): WorkerJobDto => ({
+      jobType: r.task_identifier,
+      sourceType: str(r.payload?.source_type),
+      sourceId: str(r.payload?.source_id),
+      attempts: r.attempts,
+      maxAttempts: r.max_attempts,
+      since: iso(r.locked_at),
+      runAt: iso(r.run_at),
+      lastError: r.last_error,
+    });
+
+    const now = Date.now();
+    const running: WorkerJobDto[] = [];
+    const queued: WorkerJobDto[] = [];
+    const waiting: WorkerJobDto[] = [];
+    for (const r of rows) {
+      if (r.locked_at) running.push(toJob(r));
+      else if (r.run_at != null && new Date(r.run_at).getTime() <= now) queued.push(toJob(r));
+      else waiting.push(toJob(r));
+    }
+
+    const recentRows = await this.db
+      .select()
+      .from(jobExecution)
+      .orderBy(desc(jobExecution.executedAt))
+      .limit(8);
+    const recent = recentRows.map((row) => ({
+      jobType: row.jobType,
+      sourceType: row.sourceType,
+      sourceId: row.sourceId,
+      at: row.executedAt.toISOString(),
+    }));
+
+    const [{ n: deadLetterCount }] = (
+      await this.db.execute(sql`SELECT count(*)::int AS n FROM dead_letter`)
+    ).rows as [{ n: number }];
+    const [{ n: completedTotal }] = (
+      await this.db.execute(sql`SELECT count(*)::int AS n FROM job_execution`)
+    ).rows as [{ n: number }];
+
+    return {
+      running,
+      queued,
+      waiting,
+      recent,
+      summary: {
+        running: running.length,
+        queued: queued.length,
+        waiting: waiting.length,
+        deadLetter: deadLetterCount,
+        completedTotal,
+      },
+    };
+  }
 
   @Get('dead-letter')
   async deadLetterList(): Promise<DeadLetterJobDto[]> {

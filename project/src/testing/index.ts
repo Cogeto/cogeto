@@ -5,3 +5,4 @@ export { startTestQdrant, fakeEmbedding } from './qdrant';
 export type { TestQdrant } from './qdrant';
 export { startTestMinio } from './minio';
 export type { TestMinio } from './minio';
+export { makePdf, makeDocx } from './documents';

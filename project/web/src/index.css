@@ -7,4 +7,17 @@
   /* Background baked into cogeto-final-logo-dark.svg; dark surfaces use it so the
      logo blends seamlessly (the asset may not be modified — TRADEMARK.md). */
   --color-brand-navy-deep: #141833;
+
+  /* Indeterminate worker progress bar (System → Worker activity): a segment
+     sweeping across the track signals "working" without implying a fill %. */
+  --animate-worker-indeterminate: worker-indeterminate 1.3s ease-in-out infinite;
+}
+
+@keyframes worker-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
 }

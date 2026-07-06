@@ -11,6 +11,12 @@ const configSchema = z.object({
   databaseUrl: z.string().min(1),
   qdrantUrl: z.string().url(),
   s3Url: z.string().url(),
+  /**
+   * Browser-reachable object-storage origin for presigned download URLs (O1,
+   * §A.9). Defaults to s3Url; set COGETO_S3_PUBLIC_URL when MinIO's internal
+   * hostname is not reachable from the browser (see the O1 owner checklist).
+   */
+  s3PublicUrl: z.string().url().optional(),
   /** Object-storage credentials + bucket (decision 0008). Defaults match the
    * compose dev stack; provisioning injects real values per instance. */
   s3AccessKey: z.string().min(1).default('cogeto'),
@@ -19,6 +25,14 @@ const configSchema = z.object({
   /** Instance signing keypair directory (§B.1, decision 0008). The local
    * default is gitignored; compose mounts the instance-keys volume. */
   instanceKeyDir: z.string().min(1).default('.instance-keys'),
+  /** File-upload cap (O1) — default 25 MB; PDFs/DOCX only. */
+  uploadMaxBytes: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(25 * 1024 * 1024),
+  /** Presigned download-URL lifetime in seconds (§A.9 — short-lived). */
+  downloadUrlTtlSeconds: z.coerce.number().int().positive().default(300),
   oidc: z.object({
     /** Public issuer as the browser sees it, e.g. https://localhost */
     issuer: z.string().url(),
@@ -47,10 +61,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
     databaseUrl: env.COGETO_DATABASE_URL,
     qdrantUrl: env.COGETO_QDRANT_URL,
     s3Url: env.COGETO_S3_URL,
+    s3PublicUrl: env.COGETO_S3_PUBLIC_URL || undefined,
     s3AccessKey: env.COGETO_S3_ACCESS_KEY || undefined,
     s3SecretKey: env.COGETO_S3_SECRET_KEY || undefined,
     s3Bucket: env.COGETO_S3_BUCKET || undefined,
     instanceKeyDir: env.COGETO_INSTANCE_KEY_DIR || undefined,
+    uploadMaxBytes: env.COGETO_UPLOAD_MAX_BYTES || undefined,
+    downloadUrlTtlSeconds: env.COGETO_DOWNLOAD_URL_TTL_SECONDS || undefined,
     oidc: {
       issuer: env.COGETO_OIDC_ISSUER,
       internalUrl: env.COGETO_OIDC_INTERNAL_URL,

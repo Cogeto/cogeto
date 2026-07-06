@@ -4,7 +4,12 @@ import { IdentityModule } from '../identity/index';
 import { MemoryModule } from '../memory/index';
 import { IngestionModule } from '../ingestion/index';
 import { AgentsModule } from '../agents/index';
-import { ConnectorsModule, NotesSourceDeletion, NotesSourceReader } from '../connectors/index';
+import {
+  ConnectorsModule,
+  FileSourceReader,
+  NotesSourceDeletion,
+  NotesSourceReader,
+} from '../connectors/index';
 import { TasksCascade, TasksModule } from '../tasks/index';
 import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG } from './config';
@@ -38,17 +43,23 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         embeddingModel: config.mistralEmbedModel,
         s3: {
           url: config.s3Url,
+          publicUrl: config.s3PublicUrl,
           accessKey: config.s3AccessKey,
           secretKey: config.s3SecretKey,
           bucket: config.s3Bucket,
         },
         instanceKeyDir: config.instanceKeyDir,
-        sourceDeletions: { imports: [ConnectorsModule], adapters: [NotesSourceDeletion] },
+        sourceDeletions: { adapters: [NotesSourceDeletion] },
         derivedCascades: { imports: [TasksModule.register()], adapters: [TasksCascade] },
       }),
-      IngestionModule.register({ imports: [ConnectorsModule], readers: [NotesSourceReader] }),
+      IngestionModule.register({ readers: [NotesSourceReader, FileSourceReader] }),
       AgentsModule,
-      ConnectorsModule,
+      ConnectorsModule.register({
+        fileUpload: {
+          uploadMaxBytes: config.uploadMaxBytes,
+          downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
+        },
+      }),
       TasksModule.register(),
     ],
     providers: [{ provide: COGETO_CONFIG, useValue: config }],

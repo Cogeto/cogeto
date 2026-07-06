@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { withTransactionalEnqueue } from '../../infrastructure/index';
 import type { Tx } from '../../infrastructure/index';
+import type { MemoryReconciliation, MemoryStore } from '../../memory/index';
+import type { ModelGateway } from '../../model-gateway/index';
 import { chunkContent } from './chunk';
 import { EmbedStoreStage } from './embed-store.stage';
 import { ExtractStage } from './extract.stage';
@@ -143,4 +145,27 @@ export class IngestionPipeline {
     }
     return summary;
   }
+}
+
+export interface CreatePipelineOptions {
+  readers: SourceReader[];
+  gateway: ModelGateway;
+  store: MemoryStore;
+  reconciliation: MemoryReconciliation;
+}
+
+/**
+ * Composition helper for non-Nest callers (integration tests, eval): assembles
+ * the pipeline from its stages so the stage classes can stay module-private
+ * (the Nest composition root wires them via DI). Mirrors memory's
+ * createMemoryStore — primitives in, one object out.
+ */
+export function createIngestionPipeline(options: CreatePipelineOptions): IngestionPipeline {
+  return new IngestionPipeline(
+    options.readers,
+    new ExtractStage(options.gateway),
+    new VerifyStage(options.gateway),
+    new EmbedStoreStage(options.gateway, options.store),
+    new ReconciliationService(options.gateway, options.store, options.reconciliation),
+  );
 }

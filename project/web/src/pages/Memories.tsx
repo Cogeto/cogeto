@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Session } from '../auth/oidc';
 import { CaptureCard, PendingNote } from '../components/CaptureCard';
+import { UploadCard, PendingUpload } from '../components/UploadCard';
 import { GovernedMemories } from '../components/GovernedMemories';
 import { MemoryDrawer } from '../components/MemoryDrawer';
 import { Shell } from '../components/Shell';
@@ -13,6 +14,7 @@ function openedFromUrl(): string | null {
 
 export function Memories({ session }: { session: Session }) {
   const [pending, setPending] = useState<string[]>([]);
+  const [uploads, setUploads] = useState<{ objectKey: string; filename: string }[]>([]);
   const [failedCount, setFailedCount] = useState(0);
   const [openId, setOpenId] = useState<string | null>(openedFromUrl);
   const queryClient = useQueryClient();
@@ -26,6 +28,20 @@ export function Memories({ session }: { session: Session }) {
     [queryClient],
   );
 
+  const settleUpload = useCallback(
+    (objectKey: string, failed: boolean) => {
+      // Keep a failed upload's row visible (it carries the error copy); drop
+      // it only once it succeeds and its memories appear in the list.
+      if (failed) {
+        setFailedCount((n) => n + 1);
+        return;
+      }
+      setUploads((items) => items.filter((item) => item.objectKey !== objectKey));
+      void queryClient.invalidateQueries({ queryKey: ['memories'] });
+    },
+    [queryClient],
+  );
+
   const openDrawer = (memoryId: string | null) => {
     setOpenId(memoryId);
     const url = memoryId ? `/memories?open=${memoryId}` : '/memories';
@@ -34,9 +50,26 @@ export function Memories({ session }: { session: Session }) {
 
   return (
     <Shell session={session} title="Memories" active="memories">
-      <CaptureCard session={session} onCaptured={(id) => setPending((ids) => [...ids, id])} />
+      <div className="grid gap-3 md:grid-cols-2">
+        <CaptureCard session={session} onCaptured={(id) => setPending((ids) => [...ids, id])} />
+        <UploadCard
+          session={session}
+          onUploaded={(objectKey, filename) =>
+            setUploads((items) => [...items, { objectKey, filename }])
+          }
+        />
+      </div>
       {pending.map((id) => (
         <PendingNote key={id} session={session} noteId={id} onSettled={settle} />
+      ))}
+      {uploads.map((upload) => (
+        <PendingUpload
+          key={upload.objectKey}
+          session={session}
+          objectKey={upload.objectKey}
+          filename={upload.filename}
+          onSettled={settleUpload}
+        />
       ))}
       {failedCount > 0 && (
         <p className="text-sm text-red-600">

@@ -7,6 +7,10 @@ import type {
   DeletionPreviewDto,
   DeletionRequestedDto,
   DreamDigestDto,
+  FileDownloadDto,
+  FileSourceDto,
+  FileStatusDto,
+  FileUploadedDto,
   HealthReport,
   IntegrityStatusDto,
   MemoryListItem,
@@ -17,6 +21,7 @@ import type {
   NoteDto,
   NoteStatusDto,
   Principal,
+  WorkerActivityDto,
   ReceiptDetailDto,
   ReceiptListItem,
   ResolveContradictionRequest,
@@ -67,6 +72,34 @@ export const fetchNote = (session: Session, id: string): Promise<NoteDto> =>
   apiGet(`/api/notes/${id}`, session);
 export const fetchNoteStatus = (session: Session, id: string): Promise<NoteStatusDto> =>
   apiGet(`/api/notes/${id}/status`, session);
+
+// File uploads (O1): the object key is the source id (1:1). Multipart POST —
+// the browser sets the multipart boundary, so no content-type header here.
+export async function uploadFile(
+  session: Session,
+  file: File,
+  flags: { scope: MemoryScope; sensitive: boolean },
+): Promise<FileUploadedDto> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('scope', flags.scope);
+  form.append('sensitive', String(flags.sensitive));
+  const response = await fetch('/api/files', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${session.accessToken}` },
+    body: form,
+  });
+  if (!response.ok) throw await toError('/api/files', response);
+  return (await response.json()) as FileUploadedDto;
+}
+
+const fileKey = (objectKey: string) => encodeURIComponent(objectKey);
+export const fetchFileStatus = (session: Session, objectKey: string): Promise<FileStatusDto> =>
+  apiGet(`/api/files/${fileKey(objectKey)}/status`, session);
+export const fetchFileSource = (session: Session, objectKey: string): Promise<FileSourceDto> =>
+  apiGet(`/api/files/${fileKey(objectKey)}`, session);
+export const fetchFileDownload = (session: Session, objectKey: string): Promise<FileDownloadDto> =>
+  apiGet(`/api/files/${fileKey(objectKey)}/download`, session);
 // The dashboard is the owner's governance surface: explicit sensitive opt-in
 // (decision 0003 ruling 3) — the store still returns only the owner's own rows.
 export interface MemoryListParams {
@@ -189,6 +222,8 @@ export const fetchInstancePublicKey = (): Promise<{ algorithm: string; publicKey
 
 export const fetchDeadLetterJobs = (session: Session): Promise<DeadLetterJobDto[]> =>
   apiGet('/api/jobs/dead-letter', session);
+export const fetchWorkerActivity = (session: Session): Promise<WorkerActivityDto> =>
+  apiGet('/api/jobs/activity', session);
 export const retryDeadLetterJob = (session: Session, id: string): Promise<{ retried: boolean }> =>
   apiPost(`/api/jobs/dead-letter/${id}/retry`, {}, session);
 

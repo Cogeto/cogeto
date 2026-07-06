@@ -58,13 +58,16 @@ export class EmbedStoreStage {
       const { validFrom, validUntil, unresolved } = resolveFactTemporal(fact, source.createdAt);
       const row = await this.memoryStore.admitExtractedFact(tx, source.ownerId, {
         content: fact.claim,
-        scope: 'private', // notes are private in v1 (S2-A §4)
+        // Notes are private in v1 (S2-A §4); file uploads inherit the upload's
+        // scope selector and sensitive checkbox (F1 handoff). The source item
+        // carries both — absent means the note default.
+        scope: source.scope ?? 'private',
         sourceType: source.sourceType,
         sourceId: source.sourceId,
         entities: flattenEntities(fact),
         subjectEntity: fact.subject_entity ?? undefined,
         kind: fact.kind,
-        sensitive: false,
+        sensitive: source.sensitive ?? false,
         validFrom,
         validUntil,
         temporalUnresolved: unresolved,

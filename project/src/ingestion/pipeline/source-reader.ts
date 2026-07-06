@@ -1,3 +1,4 @@
+import type { MemoryScope } from '@cogeto/shared';
 import type { SourceType } from '../../memory/index';
 
 /**
@@ -15,6 +16,14 @@ export interface SourceItem {
   content: string;
   /** The source timestamp: relative temporal expressions resolve against it. */
   createdAt: Date;
+  /**
+   * Governance the derived memories inherit from the source. Notes are always
+   * private/non-sensitive (omit → stage 5 defaults to private/false); file
+   * uploads carry the uploader's scope selector and sensitive checkbox
+   * (F1 handoff — derived facts inherit both).
+   */
+  scope?: MemoryScope;
+  sensitive?: boolean;
 }
 
 export interface SourceReader {

@@ -22,8 +22,25 @@ It is **EU-first, privacy-first, self-hostable, and model-agnostic (Mistral-firs
 
 ## Status
 
-**Session F3 complete (temporal retrieval + the task engine) — the day-one
-job is answerable end to end at the engine level.** Ask Cogeto the founding
+**Session O1-A complete (file upload + the document pipeline) — the first
+Opus/executor session.** Upload a PDF or DOCX beside the capture card and it
+enters the *same* verifiable-memory pipeline as a typed note: text is extracted
+(`pdf-parse` / `mammoth`), chunked, each fact independently verified, embedded,
+reconciled, and governed — no separate path. Uploads are transactional
+(object-first, then `file_metadata` + the pipeline job in one commit, with an
+abort-window cleanup); a corrupt file reaches a visible `error` state and
+fabricates nothing. The original bytes live in MinIO under the scoped
+`{orgId}/{userId}/{scope}/file-{uuid}` key with the filename/content-type on the
+object itself; the source drawer offers a short-lived signed-URL download
+(owner-gated; sensitive files never leave their owner). Deletion is the
+existing F1 saga, unchanged — the cascade test now runs against a real uploaded
+file, and the nightly sweep stays clean. Verified live end to end through the
+compose stack. Details in `docs/sessions/O1-A.md` (decision 0014; no migration).
+The remaining O1 work — approval state machine, audit-log reader/UI,
+extract-and-discard, minimal Settings — is O1-B.
+
+Previously — **Session F3 complete (temporal retrieval + the task engine) — the
+day-one job is answerable end to end at the engine level.** Ask Cogeto the founding
 sentence — *"What did I decide, promise, and commit to — and what's still
 open?"* — and it answers from **derived tasks**: every commitment and open
 loop you capture becomes exactly one task automatically (deterministic — no

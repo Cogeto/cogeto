@@ -25,7 +25,15 @@ export type { SweepReport, IntegrityStatus, IntegrityAlertRecord } from './integ
 export { createIntegritySweep } from './factory';
 export type { CreateIntegritySweepOptions, QdrantOptions } from './factory';
 export { MemoryObjectStore } from './persistence/object-store';
-export type { ObjectStoreOptions } from './persistence/object-store';
+export type {
+  ObjectStoreOptions,
+  PutObjectOptions,
+  FetchedObject,
+  ObjectStat,
+  PresignOptions,
+} from './persistence/object-store';
+export { MemoryFileStore } from './file-store';
+export type { FileMetadataInsert, FileMetadataRow } from './file-store';
 export { seedObjectFixture, seedOrphanPoint } from './dev-seed';
 export type { SeedObjectOptions, SeededObject, SeedOrphanOptions, SeededOrphan } from './dev-seed';
 export { createMemoryStore, createMemoryReconciliation } from './factory';

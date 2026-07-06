@@ -17,6 +17,7 @@ import {
 import type { DerivedCascade, SourceDeletion } from './deletion-saga';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
+import { MemoryFileStore } from './file-store';
 
 export interface MemoryModuleOptions {
   qdrantUrl: string;
@@ -24,8 +25,9 @@ export interface MemoryModuleOptions {
   embeddingModel: string;
   /** Test override for the vector size. */
   dimensions?: number;
-  /** Object storage — the saga's byte-deletion leg + encryption check (0008). */
-  s3: { url: string; accessKey: string; secretKey: string; bucket: string };
+  /** Object storage — the saga's byte-deletion leg + encryption check (0008);
+   * `publicUrl` is the browser-reachable origin for presigned URLs (O1, §A.9). */
+  s3: { url: string; publicUrl?: string; accessKey: string; secretKey: string; bucket: string };
   /** Where the instance signing keypair lives (§B.1, decision 0008). */
   instanceKeyDir: string;
   /**
@@ -93,6 +95,7 @@ export class MemoryModule {
         DeletionSaga,
         DeletionExecutor,
         IntegritySweep,
+        MemoryFileStore,
       ],
       exports: [
         MemoryStore,
@@ -101,6 +104,7 @@ export class MemoryModule {
         DeletionExecutor,
         IntegritySweep,
         MemoryObjectStore,
+        MemoryFileStore,
       ],
     };
   }
