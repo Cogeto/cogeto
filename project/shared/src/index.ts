@@ -2,6 +2,7 @@ export * from './chat';
 export * from './citations';
 export * from './files';
 export * from './jobs';
+export * from './approvals';
 export * from './memory';
 export * from './notes';
 export * from './principal';

@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { MemoryListItem, MemoryScope, MemoryStatus } from '@cogeto/shared';
-import { MEMORY_SCOPES, MEMORY_STATUSES } from '@cogeto/shared';
-import { fetchMemories } from '../api';
+import { BULK_OUTDATE_ACTION, MEMORY_SCOPES, MEMORY_STATUSES } from '@cogeto/shared';
+import { createApproval, fetchMemories } from '../api';
 import type { Session } from '../auth/oidc';
 import { STATUS_CHIP, statusLabel, timeAgo } from './status';
 
@@ -12,42 +12,61 @@ function MemoryRow({
   memory,
   onOpen,
   onEntity,
+  selecting,
+  selected,
+  onToggleSelect,
 }: {
   memory: MemoryListItem;
   onOpen: () => void;
   onEntity: (entity: string) => void;
+  selecting: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
 }) {
   return (
     <li
-      className="cursor-pointer rounded-md border border-slate-200 px-3 py-2 hover:border-brand-teal/60"
-      onClick={onOpen}
+      className={`flex cursor-pointer gap-2 rounded-md border px-3 py-2 hover:border-brand-teal/60 ${
+        selected ? 'border-brand-teal bg-brand-teal/5' : 'border-slate-200'
+      }`}
+      onClick={selecting ? onToggleSelect : onOpen}
     >
-      <p className="text-sm text-slate-800">{memory.content}</p>
-      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-        <span className={`rounded-full px-2 py-0.5 font-semibold ${STATUS_CHIP[memory.status]}`}>
-          {statusLabel(memory.status)}
-        </span>
-        {memory.sensitive && (
-          <span className="rounded-full bg-purple-100 px-2 py-0.5 font-semibold text-purple-700">
-            sensitive
+      {selecting && (
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggleSelect}
+          onClick={(e) => e.stopPropagation()}
+          className="mt-1 shrink-0"
+        />
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-slate-800">{memory.content}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+          <span className={`rounded-full px-2 py-0.5 font-semibold ${STATUS_CHIP[memory.status]}`}>
+            {statusLabel(memory.status)}
           </span>
-        )}
-        {memory.entities.map((entity) => (
-          <button
-            key={entity}
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEntity(entity);
-            }}
-            className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600 hover:bg-slate-200"
-          >
-            {entity}
-          </button>
-        ))}
-        <span className="ml-auto text-slate-400" title={memory.createdAt}>
-          {timeAgo(memory.createdAt)}
-        </span>
+          {memory.sensitive && (
+            <span className="rounded-full bg-purple-100 px-2 py-0.5 font-semibold text-purple-700">
+              sensitive
+            </span>
+          )}
+          {memory.entities.map((entity) => (
+            <button
+              key={entity}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEntity(entity);
+              }}
+              className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600 hover:bg-slate-200"
+            >
+              {entity}
+            </button>
+          ))}
+          <span className="ml-auto text-slate-400" title={memory.createdAt}>
+            {timeAgo(memory.createdAt)}
+          </span>
+        </div>
       </div>
     </li>
   );
@@ -73,6 +92,31 @@ export function GovernedMemories({
   const [sensitiveOnly, setSensitiveOnly] = useState(false);
   const [entity, setEntity] = useState('');
   const [page, setPage] = useState(0);
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [requested, setRequested] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const toggleSelect = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const clearSelection = () => {
+    setSelecting(false);
+    setSelected(new Set());
+  };
+
+  const requestBulkOutdate = useMutation({
+    mutationFn: () => createApproval(session, BULK_OUTDATE_ACTION, { memoryIds: [...selected] }),
+    onSuccess: async (approval) => {
+      setRequested(approval.summary);
+      clearSelection();
+      await queryClient.invalidateQueries({ queryKey: ['pending-approvals'] });
+    },
+  });
 
   const params = {
     q: q || undefined,
@@ -96,7 +140,48 @@ export function GovernedMemories({
       <div className="mb-3 flex items-center gap-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Memories</h2>
         {data && <span className="text-xs text-slate-400">{data.total} on record</span>}
+        <button
+          type="button"
+          onClick={() => (selecting ? clearSelection() : setSelecting(true))}
+          className="ml-auto rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-600"
+        >
+          {selecting ? 'Cancel' : 'Select'}
+        </button>
       </div>
+
+      {requested && (
+        <p className="mb-3 rounded-md bg-brand-teal/10 px-3 py-2 text-sm text-brand-teal">
+          Requested: “{requested}”. Decide it under{' '}
+          <a href="/approvals" className="font-semibold underline">
+            Approvals
+          </a>
+          . It runs only after you approve it there.
+        </p>
+      )}
+
+      {selecting && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-brand-teal/40 bg-brand-teal/5 px-3 py-2 text-sm">
+          <span className="font-medium text-slate-700">{selected.size} selected</span>
+          <span className="text-xs text-slate-500">
+            Bulk changes are consequential — they create a pending approval, not an instant edit.
+          </span>
+          {requestBulkOutdate.isError && (
+            <span className="text-xs text-red-600">
+              {requestBulkOutdate.error instanceof Error
+                ? requestBulkOutdate.error.message
+                : 'Request failed'}
+            </span>
+          )}
+          <button
+            type="button"
+            disabled={selected.size === 0 || requestBulkOutdate.isPending}
+            onClick={() => requestBulkOutdate.mutate()}
+            className="ml-auto rounded-md bg-brand-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+          >
+            {requestBulkOutdate.isPending ? 'Requesting…' : 'Request “Mark outdated” approval'}
+          </button>
+        </div>
+      )}
 
       <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
         <input
@@ -180,6 +265,9 @@ export function GovernedMemories({
                 setEntity(name);
                 resetPage();
               }}
+              selecting={selecting}
+              selected={selected.has(memory.id)}
+              onToggleSelect={() => toggleSelect(memory.id)}
             />
           ))}
         </ul>

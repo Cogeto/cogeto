@@ -1,5 +1,5 @@
 export type NavSection =
-  'dashboard' | 'memories' | 'chat' | 'tasks' | 'review' | 'forgotten' | 'system';
+  'dashboard' | 'memories' | 'chat' | 'tasks' | 'review' | 'approvals' | 'forgotten' | 'system';
 
 const ENABLED: { key: NavSection; label: string; href: string }[] = [
   { key: 'dashboard', label: 'Dashboard', href: '/' },
@@ -7,13 +7,26 @@ const ENABLED: { key: NavSection; label: string; href: string }[] = [
   { key: 'chat', label: 'Chat', href: '/chat' },
   { key: 'tasks', label: 'Tasks', href: '/tasks' },
   { key: 'review', label: 'Review', href: '/review' },
+  { key: 'approvals', label: 'Approvals', href: '/approvals' },
   { key: 'forgotten', label: 'Forgotten', href: '/forgotten' },
   { key: 'system', label: 'System', href: '/system' },
 ];
 const UPCOMING = ['Settings'] as const;
 
 /** Left navigation — future sections stubbed and disabled until their slices ship. */
-export function Nav({ active, reviewCount }: { active: NavSection; reviewCount?: number }) {
+export function Nav({
+  active,
+  reviewCount,
+  approvalsCount,
+}: {
+  active: NavSection;
+  reviewCount?: number;
+  approvalsCount?: number;
+}) {
+  const badges: Partial<Record<NavSection, number>> = {
+    review: reviewCount ?? 0,
+    approvals: approvalsCount ?? 0,
+  };
   return (
     <nav className="flex w-56 flex-col border-r border-slate-200 bg-brand-navy-deep text-white">
       <div className="border-b border-white/10 p-4">
@@ -29,9 +42,9 @@ export function Nav({ active, reviewCount }: { active: NavSection; reviewCount?:
               }`}
             >
               {section.label}
-              {section.key === 'review' && (reviewCount ?? 0) > 0 && (
+              {(badges[section.key] ?? 0) > 0 && (
                 <span className="rounded-full bg-amber-400 px-1.5 text-xs font-bold text-slate-900">
-                  {reviewCount}
+                  {badges[section.key]}
                 </span>
               )}
             </a>

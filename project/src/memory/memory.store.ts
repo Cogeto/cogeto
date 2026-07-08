@@ -301,6 +301,56 @@ export class MemoryStore {
   }
 
   /**
+   * Bulk "mark outdated" for an owner's own memories — the effect behind the
+   * approved bulk action (O1-B §3), run inside the approval executor's job
+   * transaction. The Memory aggregate owns the eligibility rules (§A.1 rule 4):
+   *
+   * - foreign rows (owner_id ≠ ownerId) are skipped, never touched (defence in
+   *   depth — the approval was authorized against the owner at create time);
+   * - `user_approved` is skipped — a blanket action does not override an
+   *   explicit per-memory blessing (prompt §3);
+   * - `replaced` (terminal) and already-`outdated` rows are skipped as no-ops;
+   * - everything else transitions to `outdated` via the single transition path
+   *   (one audit row each), as the user actor (an allowed setter of outdated).
+   *
+   * Reversible: the owner can re-affirm any of these (outdated → active).
+   */
+  async bulkMarkOutdatedForOwner(
+    tx: Tx,
+    ownerId: string,
+    memoryIds: string[],
+    reason?: string,
+  ): Promise<{ changed: string[]; skipped: Array<{ id: string; reason: string }> }> {
+    const actor: MemoryActor = { kind: 'user', userId: ownerId };
+    const changed: string[] = [];
+    const skipped: Array<{ id: string; reason: string }> = [];
+    // Deduplicate to keep the effect deterministic under a repeated id.
+    for (const id of [...new Set(memoryIds)]) {
+      const rows = await tx.select().from(memory).where(eq(memory.id, id)).for('update');
+      const row = rows[0];
+      if (!row || row.ownerId !== ownerId) {
+        skipped.push({ id, reason: 'not_found_or_foreign' });
+        continue;
+      }
+      if (row.status === 'user_approved') {
+        skipped.push({ id, reason: 'user_approved' });
+        continue;
+      }
+      if (row.status === 'replaced') {
+        skipped.push({ id, reason: 'replaced' });
+        continue;
+      }
+      if (row.status === 'outdated') {
+        skipped.push({ id, reason: 'already_outdated' });
+        continue;
+      }
+      await this.transitionInTx(tx, actor, id, 'outdated', reason ?? 'approved bulk action');
+      changed.push(id);
+    }
+    return { changed, skipped };
+  }
+
+  /**
    * Sensitive is a hard gate (0003 ruling 3) — its payload copy in Qdrant must
    * change in the same act as the row. Two-store pattern (S2-B): row update +
    * audit in the transaction, the point payload write last; a failed payload

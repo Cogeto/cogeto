@@ -1,4 +1,6 @@
 import type {
+  ApprovalDecision,
+  ApprovalDto,
   ChatMessageDto,
   ChatStreamEvent,
   ContradictionDto,
@@ -224,6 +226,23 @@ export const fetchDeadLetterJobs = (session: Session): Promise<DeadLetterJobDto[
   apiGet('/api/jobs/dead-letter', session);
 export const fetchWorkerActivity = (session: Session): Promise<WorkerActivityDto> =>
   apiGet('/api/jobs/activity', session);
+
+// The approval state machine (§A.8, O1-B). Create → confirm (approve|reject) is
+// the ONLY path; execution happens server-side in the worker.
+export const fetchPendingApprovals = (session: Session): Promise<ApprovalDto[]> =>
+  apiGet('/api/approvals', session);
+export const fetchApprovalHistory = (session: Session): Promise<ApprovalDto[]> =>
+  apiGet('/api/approvals/history', session);
+export const createApproval = (
+  session: Session,
+  actionType: string,
+  payload: unknown,
+): Promise<ApprovalDto> => apiPost('/api/approvals', { actionType, payload }, session);
+export const confirmApproval = (
+  session: Session,
+  id: string,
+  decision: ApprovalDecision,
+): Promise<ApprovalDto> => apiPost(`/api/approvals/${id}`, { decision }, session);
 export const retryDeadLetterJob = (session: Session, id: string): Promise<{ retried: boolean }> =>
   apiPost(`/api/jobs/dead-letter/${id}/retry`, {}, session);
 

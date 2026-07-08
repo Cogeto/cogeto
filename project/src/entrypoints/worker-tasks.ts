@@ -16,6 +16,8 @@ import {
   SWEEP_JOB_TYPE,
 } from '../memory/index';
 import type { DeletionExecutor, IntegritySweep, MemoryStore } from '../memory/index';
+import { APPROVAL_EXECUTE_JOB_TYPE, APPROVAL_EXPIRY_JOB_TYPE } from '../agents/index';
+import type { ApprovalExecutor, ApprovalService } from '../agents/index';
 import type { ModelGateway } from '../model-gateway/index';
 
 export interface WorkerTaskDeps {
@@ -25,6 +27,8 @@ export interface WorkerTaskDeps {
   integritySweep: IntegritySweep;
   dreaming: DreamingService;
   tasksEngine: TasksEngine;
+  approvalService: ApprovalService;
+  approvalExecutor: ApprovalExecutor;
   gateway: ModelGateway;
   /** Bound to pino by the worker entrypoint. Counts only — never content. */
   log: PipelineLog;
@@ -135,6 +139,31 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
     [TASKS_BACKFILL_JOB_TYPE]: async () => {
       const report = await deps.tasksEngine.backfill((message) => deps.log({}, message));
       deps.log({ ...report }, 'tasks backfill completed');
+    },
+
+    // Approval execution (§A.8, O1-B) — the ONLY place a consequential effect
+    // runs. Guarded key ('approval', <id>, this): a duplicate delivery claims
+    // nothing and the effect runs at most once; the executor also refuses any
+    // row not in `approved`. The confirm endpoint (app) only enqueued this.
+    [APPROVAL_EXECUTE_JOB_TYPE]: idempotentTask(
+      db,
+      APPROVAL_EXECUTE_JOB_TYPE,
+      async (tx, payload) => {
+        const result = await deps.approvalExecutor.execute(tx, payload.source_id);
+        deps.log(
+          { source_type: payload.source_type, source_id: payload.source_id, ...result },
+          'approval execution completed',
+        );
+      },
+    ),
+
+    // The approval expiry pass (cron, every 5 min): pending approvals past
+    // their expires_at → expired. Like the sweep, NOT idempotentTask (recurring,
+    // not one-shot per key); it is idempotent by construction (a second pass
+    // finds none still pending-and-past).
+    [APPROVAL_EXPIRY_JOB_TYPE]: async () => {
+      const expired = await deps.approvalService.expireStale();
+      deps.log({ expired }, 'approval expiry pass completed');
     },
 
     // Embeds an edit's supersession successor (S3-B). Idempotency key:

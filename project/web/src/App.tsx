@@ -6,6 +6,7 @@ import { Chat } from './pages/Chat';
 import { Dashboard } from './pages/Dashboard';
 import { Forgotten } from './pages/Forgotten';
 import { Login } from './pages/Login';
+import { Approvals } from './pages/Approvals';
 import { Memories } from './pages/Memories';
 import { Review } from './pages/Review';
 import { System } from './pages/System';
@@ -23,6 +24,7 @@ export function App() {
   if (window.location.pathname === '/chat') return <Chat session={session} />;
   if (window.location.pathname === '/tasks') return <Tasks session={session} />;
   if (window.location.pathname === '/review') return <Review session={session} />;
+  if (window.location.pathname === '/approvals') return <Approvals session={session} />;
   if (window.location.pathname === '/forgotten') return <Forgotten session={session} />;
   if (window.location.pathname === '/system') return <System session={session} />;
   return <Dashboard session={session} />;

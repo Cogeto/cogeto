@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchContradictions, fetchMe, fetchMemories } from '../api';
+import { fetchContradictions, fetchMe, fetchMemories, fetchPendingApprovals } from '../api';
 import { logout } from '../auth/oidc';
 import type { Session } from '../auth/oidc';
 import { Nav } from './Nav';
@@ -42,10 +42,20 @@ export function Shell({
     queryFn: () => fetchContradictions(session),
     refetchInterval: 30_000,
   });
+  // The approvals badge: pending consequential actions awaiting a decision (§A.8).
+  const { data: pendingApprovals } = useQuery({
+    queryKey: ['pending-approvals'],
+    queryFn: () => fetchPendingApprovals(session),
+    refetchInterval: 30_000,
+  });
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <Nav active={active} reviewCount={(uncertain?.total ?? 0) + (contradictions?.length ?? 0)} />
+      <Nav
+        active={active}
+        reviewCount={(uncertain?.total ?? 0) + (contradictions?.length ?? 0)}
+        approvalsCount={pendingApprovals?.length ?? 0}
+      />
       <div className={fullHeight ? 'flex h-screen min-h-0 flex-1 flex-col' : 'flex-1'}>
         <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
           <div>

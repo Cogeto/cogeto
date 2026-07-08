@@ -22,7 +22,25 @@ It is **EU-first, privacy-first, self-hostable, and model-agnostic (Mistral-firs
 
 ## Status
 
-**Session O1-A complete (file upload + the document pipeline) — the first
+**Session O1-B complete (the approval state machine — Addendum §A.8).**
+Consequential actions are now gated by a real server-side state machine:
+`draft → pending_approval → approved → executed` (plus `rejected`, `expired`).
+The authenticated confirm endpoint only *transitions state* — on approve it
+enqueues a worker job and does nothing else; the effect runs **only in the
+worker**, inside the S1-B execution guard (at-most-once), and can run **only
+from `approved`**. A front-end dialog is never sufficient. An action-type
+registry maps each action to a validated payload schema, a human summary, and a
+worker-only effect; the first wired action is an in-system, reversible **bulk
+memory outdate** (skips explicitly user-approved memories). A **Pending
+Approvals** surface (nav badge, Pending + History tabs) is the sole approval
+path; Memories gained a Select → "Request 'Mark outdated' approval" flow. Every
+transition is audited; org-scoped so one tenant can't confirm another's; a
+5-minute expiry pass ages out stale requests. Verified live end to end through
+the compose stack. Details in `docs/sessions/O1-B.md` (decision 0015, migration
+0015). Remaining O1 items (audit-log reader/UI, extract-and-discard, minimal
+Settings) are for a later session.
+
+Previously — **Session O1-A (file upload + the document pipeline) — the first
 Opus/executor session.** Upload a PDF or DOCX beside the capture card and it
 enters the *same* verifiable-memory pipeline as a typed note: text is extracted
 (`pdf-parse` / `mammoth`), chunked, each fact independently verified, embedded,
