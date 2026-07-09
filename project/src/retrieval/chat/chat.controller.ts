@@ -3,6 +3,8 @@ import {
   Body,
   Controller,
   Get,
+  Param,
+  ParseUUIDPipe,
   Post,
   Req,
   Res,
@@ -10,7 +12,13 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { z } from 'zod';
-import type { ChatMessageDto, ChatStreamEvent } from '@cogeto/shared';
+import type {
+  ChatContextDto,
+  ChatMessageDto,
+  ChatRememberedDto,
+  ChatStreamEvent,
+  NoteStatusDto,
+} from '@cogeto/shared';
 import { BearerAuthGuard } from '../../identity/index';
 import type { AuthenticatedRequest } from '../../identity/index';
 import { ChatService } from './chat.service';
@@ -32,6 +40,33 @@ export class ChatController {
   @Get('messages')
   async messages(@Req() request: AuthenticatedRequest): Promise<ChatMessageDto[]> {
     return this.chat.listMessages(request.principal);
+  }
+
+  /** "Remember this" (decision 0021): capture a USER message via the pipeline. */
+  @Post('messages/:id/remember')
+  async remember(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ChatRememberedDto> {
+    return this.chat.rememberMessage(request.principal, id);
+  }
+
+  /** Capture progress for the "remembering…" indicator. */
+  @Get('messages/:id/capture-status')
+  async captureStatus(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<NoteStatusDto> {
+    return { state: await this.chat.captureState(request.principal, id) };
+  }
+
+  /** The chat context behind a remembered memory's source drawer. */
+  @Get('messages/:id/context')
+  async context(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ChatContextDto> {
+    return this.chat.messageContext(request.principal, id);
   }
 
   /**

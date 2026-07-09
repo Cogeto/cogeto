@@ -1,0 +1,18 @@
+{
+  "case_id": "hr-0017",
+  "source_type": "chat",
+  "source_date": "2026-07-06T09:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Pristup vanjskog suradnika na projektu Delta vrijedi do 15. kolovoza",
+      "kind": "fact",
+      "entities": ["Delta"],
+      "condition": null,
+      "temporal": { "valid_from": "source_date", "valid_until": "2026-08-15" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

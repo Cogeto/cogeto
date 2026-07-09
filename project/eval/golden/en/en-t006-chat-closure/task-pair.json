@@ -1,0 +1,17 @@
+{
+  "case_id": "en-t006",
+  "family": "closure",
+  "expected": "closes",
+  "task": {
+    "title": "Ana will send Marko the signed Delta contract.",
+    "primary_person": "Ana",
+    "entities": ["Ana", "Marko", "Delta"],
+    "condition_text": null,
+    "due": null
+  },
+  "fact": {
+    "content": "Just sent Marko the signed Delta contract.",
+    "entities": ["Marko", "Delta"]
+  },
+  "notes": "A chat-stated fulfillment closes the task exactly like a note would: same recipient, same document, the obligation is met (unambiguous 'sent', not 'on its way')."
+}

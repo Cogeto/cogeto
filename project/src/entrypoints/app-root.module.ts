@@ -3,7 +3,7 @@ import { DatabaseModule } from '../infrastructure/index';
 import { IdentityModule } from '../identity/index';
 import { IngestionModule } from '../ingestion/index';
 import { MemoryModule } from '../memory/index';
-import { RetrievalModule } from '../retrieval/index';
+import { ChatSourceDeletion, ChatSourceModule, RetrievalModule } from '../retrieval/index';
 import { AgentsModule } from '../agents/index';
 import { ConnectorsModule, NotesSourceDeletion } from '../connectors/index';
 import { TasksCascade, TasksModule } from '../tasks/index';
@@ -48,10 +48,13 @@ export function createAppRootModule(config: CogetoConfig): unknown {
           bucket: config.s3Bucket,
         },
         instanceKeyDir: config.instanceKeyDir,
-        sourceDeletions: { adapters: [NotesSourceDeletion] },
+        // Chat joins notes as a deletable source (decision 0021 r7) — the
+        // source-delete endpoint runs the saga for a chat-derived memory too.
+        sourceDeletions: { adapters: [NotesSourceDeletion, ChatSourceDeletion] },
         derivedCascades: { imports: [TasksModule.forApi()], adapters: [TasksCascade] },
       }),
       RetrievalModule,
+      ChatSourceModule, // the chat source-deletion adapter for the delete endpoint
       IngestionModule.forQueries(), // verification + dreaming read endpoints
       AgentsModule,
       ConnectorsModule.register({

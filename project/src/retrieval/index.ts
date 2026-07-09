@@ -18,3 +18,8 @@ export type { RetrievalSignal } from './fusion';
 // surface stays the ChatController.
 export { ChatService } from './chat/chat.service';
 export { ANSWER_PROMPT } from './chat/answer-prompt';
+// The chat source ports for source_type 'chat' (decision 0021): the composition
+// roots bind these into ingestion's readers and the memory deletion saga.
+export { ChatSourceModule } from './chat/chat-source.module';
+export { ChatSourceReader } from './chat/chat.source-reader';
+export { ChatSourceDeletion } from './chat/chat.source-deletion';

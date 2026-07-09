@@ -1,0 +1,17 @@
+{
+  "case_id": "en-0028",
+  "source_type": "chat",
+  "expected_memories": [
+    {
+      "content_gist": "The user will circulate the Q3 numbers to Marko",
+      "kind": "commitment",
+      "entities": ["Marko"],
+      "condition": "once finance signs off",
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

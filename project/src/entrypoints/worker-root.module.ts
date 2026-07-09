@@ -11,6 +11,7 @@ import {
   NotesSourceReader,
 } from '../connectors/index';
 import { TasksCascade, TasksModule } from '../tasks/index';
+import { ChatSourceDeletion, ChatSourceModule, ChatSourceReader } from '../retrieval/index';
 import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG } from './config';
 import type { CogetoConfig } from './config';
@@ -49,10 +50,16 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
           bucket: config.s3Bucket,
         },
         instanceKeyDir: config.instanceKeyDir,
-        sourceDeletions: { adapters: [NotesSourceDeletion] },
+        // The chat source deletion joins notes' so a chat-derived memory's source
+        // deletion erases the originating turn under the saga (decision 0021 r7).
+        sourceDeletions: { adapters: [NotesSourceDeletion, ChatSourceDeletion] },
         derivedCascades: { imports: [TasksModule.register()], adapters: [TasksCascade] },
       }),
-      IngestionModule.register({ readers: [NotesSourceReader, FileSourceReader] }),
+      // ChatSourceReader gives ingestion a stage-1 reader for source_type 'chat'.
+      IngestionModule.register({
+        readers: [NotesSourceReader, FileSourceReader, ChatSourceReader],
+      }),
+      ChatSourceModule,
       AgentsModule,
       ConnectorsModule.register({
         fileUpload: {

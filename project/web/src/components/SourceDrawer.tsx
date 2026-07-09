@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   deleteSource,
+  fetchChatContext,
   fetchDeletionImpact,
   fetchFileDownload,
   fetchFileSource,
@@ -47,6 +48,7 @@ export function SourceDrawer({
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const isNote = sourceType === 'user_note';
   const isFile = sourceType === 'file';
+  const isChat = sourceType === 'chat';
 
   const noteQuery = useQuery({
     queryKey: ['note', sourceId],
@@ -57,6 +59,11 @@ export function SourceDrawer({
     queryKey: ['file-source', sourceId],
     queryFn: () => fetchFileSource(session, sourceId),
     enabled: isFile,
+  });
+  const chatQuery = useQuery({
+    queryKey: ['chat-context', sourceId],
+    queryFn: () => fetchChatContext(session, sourceId),
+    enabled: isChat,
   });
 
   const download = useMutation({
@@ -103,7 +110,7 @@ export function SourceDrawer({
       >
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Source · {isNote ? 'note' : sourceType.replace('_', ' ')}
+            Source · {isNote ? 'note' : isChat ? 'conversation' : sourceType.replace('_', ' ')}
           </h3>
           <button type="button" onClick={onClose} className="text-sm text-slate-400">
             Close
@@ -189,7 +196,39 @@ export function SourceDrawer({
             )}
           </>
         )}
-        {!isNote && !isFile && (
+        {isChat && (
+          <>
+            {chatQuery.isPending && <p className="text-sm text-slate-400">Loading conversation…</p>}
+            {chatQuery.isError && (
+              <p className="text-sm text-red-600">Could not load the conversation.</p>
+            )}
+            {chatQuery.data && (
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500">
+                  Remembered from chat — the highlighted message is the source; nearby turns are
+                  shown for context.
+                </p>
+                {chatQuery.data.turns.map((turn) => (
+                  <div
+                    key={turn.id}
+                    className={`rounded-md p-2 text-sm ${
+                      turn.isTarget
+                        ? 'border border-brand-teal/50 bg-brand-teal/5 text-slate-800'
+                        : 'bg-slate-50 text-slate-500'
+                    }`}
+                  >
+                    <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      {turn.role === 'user' ? 'You' : 'Cogeto'}
+                      {turn.isTarget && ' · remembered'}
+                    </p>
+                    <p className="whitespace-pre-wrap">{turn.content}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+        {!isNote && !isFile && !isChat && (
           <p className="break-all rounded-md bg-slate-50 p-3 text-xs text-slate-600">{sourceId}</p>
         )}
 

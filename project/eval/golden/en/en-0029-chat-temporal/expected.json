@@ -1,0 +1,18 @@
+{
+  "case_id": "en-0029",
+  "source_type": "chat",
+  "source_date": "2026-07-06T09:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "The Delta contractor's badge access is valid until August 15",
+      "kind": "fact",
+      "entities": ["Delta"],
+      "condition": null,
+      "temporal": { "valid_from": "source_date", "valid_until": "2026-08-15" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

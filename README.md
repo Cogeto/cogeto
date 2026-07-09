@@ -22,7 +22,29 @@ It is **EU-first, privacy-first, self-hostable, and model-agnostic (Mistral-firs
 
 ## Status
 
-**Session O1 complete (O1-C: extract-and-discard, Settings, the audit reader).**
+**Session O2 complete (O2-C: chat-derived memories, seam coverage, corpus).**
+Cogeto now turns memory into action and shares it across a team. **Tasks,
+reminders, and a unified daily digest** (O2-A): commitments derive tasks with
+conditions and closure; a reminders pass (on the one existing scheduler) and a
+single digest surface consolidation + tasks, deep-linked and silent when empty.
+**Shared scope and a second user** (O2-B): notes and uploads choose private or
+shared, an owner-only audited action flips a memory's scope (row + vector payload
+together), shared memories are visible org-wide with owner attribution while every
+mutation stays owner-only — proven by a cross-user suite (private invisible across
+every read path; shared read-only for peers; cross-org isolation by single-tenant
+deployment). **Chat-derived memories** (O2-C): a *"remember this"* affordance on a
+user chat message routes it through the same verifiable pipeline (`source_type
+'chat'`) — never silently, never the assistant's replies; a commitment stated in
+chat derives a task exactly like a note, and its source drawer shows the framed
+conversation. The **identity and model-gateway seams** are now directly tested
+(Principal construction, token rejection, tier selection, retryable-vs-fatal
+errors, prompt immutability, and architecture assertions that only each seam
+touches Zitadel / Mistral). Golden corpus grew with idiomatic chat-sourced en/hr
+cases; all eval gates pass. Details in `docs/sessions/O2-A.md`, `O2-B.md`,
+`O2-C.md` (decisions 0018–0021, migrations 0017–0019). **O3 — the Ana sandbox,
+the Presidio redaction sidecar, and a frontend design pass — is next.**
+
+Previously — **Session O1 complete (O1-C: extract-and-discard, Settings, the audit reader).**
 The document pipeline now offers **extract-and-discard** (a per-upload flag with
 a per-user default): the original is deleted once its facts are extracted — no
 durable object, no metadata row — while the derived memories keep full

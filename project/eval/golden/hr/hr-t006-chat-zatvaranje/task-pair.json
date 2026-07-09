@@ -1,0 +1,17 @@
+{
+  "case_id": "hr-t006",
+  "family": "closure",
+  "expected": "closes",
+  "task": {
+    "title": "Ana će poslati Marku potpisani ugovor za Deltu.",
+    "primary_person": "Ana",
+    "entities": ["Ana", "Marko", "Delta"],
+    "condition_text": null,
+    "due": null
+  },
+  "fact": {
+    "content": "Upravo javio Marku — potpisani ugovor za Deltu je poslan.",
+    "entities": ["Marko", "Delta"]
+  },
+  "notes": "Ispunjenje navedeno u razgovoru zatvara zadatak jednako kao i bilješka: isti primatelj, isti dokument, obveza je ispunjena."
+}

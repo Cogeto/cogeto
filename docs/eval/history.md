@@ -321,3 +321,51 @@ against this baseline.
 | previously_decided | — | — | — | PASS | PASS | — | PASS | PASS |
 | whats_still_open | — | — | — | PASS | PASS | — | PASS | PASS |
 | who_is_ana | PASS | 86% | PASS | PASS | PASS | — | — | PASS |
+
+## 2026-07-09 — extraction/v0002 + verification/v0004 (thresholds v1, 46 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 29 | 85.7% (42/49) | 97.6% (40/41) | 85.7% (24/28) |
+| hr | 17 | 76.5% (26/34) | 88.9% (24/27) | 87.5% (14/16) |
+| aggregate | 46 | 81.9% (68/83) | 94.1% (64/68) | 86.4% (38/44) |
+
+## 2026-07-09 — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 18 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 5 | 100.0% (8/8) | 5 | 66.7% (2/3) | 100.0% (2/2) | 0/1 | 0 |
+| hr | 4 | 83.3% (5/6) | 4 | 100.0% (2/2) | 100.0% (2/2) | — | 0 |
+| aggregate | 9 | 92.9% (13/14) | 9 | 80.0% (4/5) | 100.0% (4/4) | 0/1 | 0 |
+
+## 2026-07-09 — task_closure/v0001 + task_condition/v0001 (12 pairs)
+
+| set | closure pairs | closure accuracy | condition pairs | condition accuracy |
+|---|---|---|---|---|
+| en | 4 | 83.3% (5/6) | 2 | 100.0% (2/2) |
+| hr | 4 | 100.0% (6/6) | 2 | 100.0% (2/2) |
+| aggregate | 8 | 91.7% (11/12) | 4 | 100.0% (4/4) |
+
+## 2026-07-09 — extraction/v0002 + verification/v0004 (thresholds v1, 46 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 29 | 91.5% (43/47) | 97.6% (40/41) | 89.3% (25/28) |
+| hr | 17 | 68.6% (24/35) | 81.5% (22/27) | 87.5% (14/16) |
+| aggregate | 46 | 81.7% (67/82) | 91.2% (62/68) | 88.6% (39/44) |
+
+## 2026-07-09 — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 18 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 5 | 100.0% (8/8) | 5 | 66.7% (2/3) | 100.0% (2/2) | 0/1 | 0 |
+| hr | 4 | 83.3% (5/6) | 4 | 100.0% (2/2) | 100.0% (2/2) | — | 0 |
+| aggregate | 9 | 92.9% (13/14) | 9 | 80.0% (4/5) | 100.0% (4/4) | 0/1 | 0 |
+
+## 2026-07-09 — task_closure/v0001 + task_condition/v0001 (12 pairs)
+
+| set | closure pairs | closure accuracy | condition pairs | condition accuracy |
+|---|---|---|---|---|
+| en | 4 | 100.0% (6/6) | 2 | 100.0% (2/2) |
+| hr | 4 | 100.0% (6/6) | 2 | 100.0% (2/2) |
+| aggregate | 8 | 100.0% (12/12) | 4 | 100.0% (4/4) |

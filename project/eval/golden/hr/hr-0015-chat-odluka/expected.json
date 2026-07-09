@@ -1,0 +1,17 @@
+{
+  "case_id": "hr-0015",
+  "source_type": "chat",
+  "expected_memories": [
+    {
+      "content_gist": "Korisnik je odlučio da za projekt Delta koristi model fiksne naknade",
+      "kind": "decision",
+      "entities": ["Delta"],
+      "condition": null,
+      "temporal": { "valid_from": "source_date" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

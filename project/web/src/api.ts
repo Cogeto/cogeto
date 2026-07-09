@@ -5,7 +5,9 @@ import type {
   AuditQuery,
   UserSettingsDto,
   UpdateUserSettingsRequest,
+  ChatContextDto,
   ChatMessageDto,
+  ChatRememberedDto,
   ChatStreamEvent,
   ContradictionDto,
   DeadLetterJobDto,
@@ -303,6 +305,15 @@ export const retryDeadLetterJob = (session: Session, id: string): Promise<{ retr
 
 export const fetchChatMessages = (session: Session): Promise<ChatMessageDto[]> =>
   apiGet('/api/chat/messages', session);
+
+// Chat-derived memory capture (O2-C, decision 0021): "remember this" on a user
+// message routes it through the pipeline (source_type 'chat').
+export const rememberChatMessage = (session: Session, id: string): Promise<ChatRememberedDto> =>
+  apiPost(`/api/chat/messages/${id}/remember`, {}, session);
+export const fetchChatCaptureStatus = (session: Session, id: string): Promise<NoteStatusDto> =>
+  apiGet(`/api/chat/messages/${id}/capture-status`, session);
+export const fetchChatContext = (session: Session, id: string): Promise<ChatContextDto> =>
+  apiGet(`/api/chat/messages/${id}/context`, session);
 
 /**
  * POST /api/chat streams server-sent events (sources → token* → done).

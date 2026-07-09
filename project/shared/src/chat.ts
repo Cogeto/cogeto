@@ -63,3 +63,24 @@ export type ChatStreamEvent =
       citationViolations: number;
     }
   | { type: 'error'; message: string };
+
+/** POST /api/chat/messages/:id/remember (decision 0021): the enqueued capture. */
+export interface ChatRememberedDto {
+  /** The chat_message id — the derived memories' `source_id`. */
+  messageId: string;
+}
+
+/** One turn in a remembered message's source drawer (the chat provenance). */
+export interface ChatContextTurn {
+  id: string;
+  role: ChatRole;
+  content: string;
+  createdAt: string;
+  /** The remembered message itself — the drawer highlights it. */
+  isTarget: boolean;
+}
+
+/** GET /api/chat/messages/:id/context — the message plus surrounding turns. */
+export interface ChatContextDto {
+  turns: ChatContextTurn[];
+}

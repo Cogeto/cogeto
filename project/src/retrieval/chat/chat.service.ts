@@ -1,8 +1,22 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import { asc, desc, eq } from 'drizzle-orm';
-import type { ChatFactDto, ChatMessageDto, ChatStreamEvent, Principal } from '@cogeto/shared';
-import { DRIZZLE } from '../../infrastructure/index';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import type {
+  ChatContextDto,
+  ChatFactDto,
+  ChatMessageDto,
+  ChatRememberedDto,
+  ChatStreamEvent,
+  NoteProcessingState,
+  Principal,
+} from '@cogeto/shared';
+import {
+  deadLetter,
+  DRIZZLE,
+  jobExecution,
+  withTransactionalEnqueue,
+} from '../../infrastructure/index';
 import type { Db } from '../../infrastructure/index';
+import { INGESTION_PIPELINE_JOB_TYPE } from '../../ingestion/index';
 import { isPastBelief } from '../../memory/index';
 import { loadPrompt, ModelGateway } from '../../model-gateway/index';
 import type { PromptArtifact } from '../../model-gateway/index';
@@ -26,14 +40,17 @@ const HISTORY_LIMIT = 200;
 /** Turns of prior conversation the rewriter sees to resolve references (F3). */
 const REWRITE_HISTORY_TURNS = 6;
 
+/** Surrounding turns shown either side of a remembered message in its drawer. */
+const CONTEXT_TURNS = 2;
+
 /**
- * The chat area (S3-A). Strictly fast path (§A.3): persist → retrieve →
- * generate — deliberately NO outbox enqueue and no ingestion-stage work.
- * Chat-derived memories are a later feature; when they arrive, the persisted
- * chat_message rows are their §A.6 provenance targets.
+ * The chat area (S3-A). Asking a question is strictly fast path (§A.3): persist
+ * → retrieve → generate — deliberately NO enqueue and no ingestion-stage work.
  *
- * Both writes are plain inserts to the module's own table; sensitive memories
- * stay excluded (no opt-in surface in chat v1 — decision 0003 ruling 3).
+ * Capture is separate and explicit (decision 0021): `rememberMessage` routes a
+ * USER message through the normal pipeline (source_type 'chat'). The persisted
+ * chat_message rows are those memories' §A.6 provenance targets. The assistant's
+ * own replies are never captured.
  */
 @Injectable()
 export class ChatService {
@@ -60,6 +77,127 @@ export class ChatService {
       content: row.content,
       createdAt: row.createdAt.toISOString(),
     }));
+  }
+
+  /**
+   * "Remember this" (decision 0021): route a USER message through the normal
+   * pipeline (source_type 'chat', source_id = message id). Transactional via the
+   * outbox (§A.3), idempotency-keyed so a double-click captures at most once. The
+   * assistant's replies are refused — its output is not evidence about the world.
+   */
+  async rememberMessage(principal: Principal, messageId: string): Promise<ChatRememberedDto> {
+    const rows = await this.db
+      .select()
+      .from(chatMessage)
+      .where(and(eq(chatMessage.id, messageId), eq(chatMessage.ownerId, principal.userId)))
+      .limit(1);
+    const message = rows[0];
+    if (!message) throw new NotFoundException(`message ${messageId} not found`);
+    if (message.role !== 'user') {
+      throw new BadRequestException(
+        'only your own messages can be remembered — the assistant’s replies are never captured',
+      );
+    }
+    await this.db.transaction((tx) =>
+      withTransactionalEnqueue(
+        tx,
+        {
+          type: 'chat.remembered',
+          payload: { source_type: 'chat', source_id: messageId, owner_id: principal.userId },
+        },
+        {
+          type: INGESTION_PIPELINE_JOB_TYPE,
+          payload: { source_type: 'chat', source_id: messageId },
+        },
+      ),
+    );
+    return { messageId };
+  }
+
+  /** Pipeline progress for the capture indicator — the queue's own ledgers
+   * (mirror of NotesService.getProcessingState), owner-checked. */
+  async captureState(principal: Principal, messageId: string): Promise<NoteProcessingState> {
+    const owned = await this.db
+      .select({ id: chatMessage.id })
+      .from(chatMessage)
+      .where(and(eq(chatMessage.id, messageId), eq(chatMessage.ownerId, principal.userId)))
+      .limit(1);
+    if (owned.length === 0) throw new NotFoundException(`message ${messageId} not found`);
+
+    const done = await this.db
+      .select({ id: jobExecution.id })
+      .from(jobExecution)
+      .where(
+        and(
+          eq(jobExecution.sourceType, 'chat'),
+          eq(jobExecution.sourceId, messageId),
+          eq(jobExecution.jobType, INGESTION_PIPELINE_JOB_TYPE),
+        ),
+      )
+      .limit(1);
+    if (done.length > 0) return 'done';
+
+    const failed = await this.db
+      .select({ id: deadLetter.id })
+      .from(deadLetter)
+      .where(
+        and(
+          eq(deadLetter.jobType, INGESTION_PIPELINE_JOB_TYPE),
+          sql`${deadLetter.payload}->>'source_id' = ${messageId}`,
+        ),
+      )
+      .limit(1);
+    return failed.length > 0 ? 'failed' : 'processing';
+  }
+
+  /**
+   * The chat context behind a remembered memory's source drawer (decision 0021):
+   * the message plus a couple of surrounding turns, owner-scoped, framed so the
+   * provenance reads as a conversation rather than a note body.
+   */
+  async messageContext(principal: Principal, messageId: string): Promise<ChatContextDto> {
+    const rows = await this.db
+      .select()
+      .from(chatMessage)
+      .where(and(eq(chatMessage.id, messageId), eq(chatMessage.ownerId, principal.userId)))
+      .limit(1);
+    const target = rows[0];
+    if (!target) throw new NotFoundException(`message ${messageId} not found`);
+
+    const before = await this.db
+      .select()
+      .from(chatMessage)
+      .where(
+        and(
+          eq(chatMessage.ownerId, principal.userId),
+          lte(chatMessage.createdAt, target.createdAt),
+        ),
+      )
+      .orderBy(desc(chatMessage.createdAt), desc(chatMessage.id))
+      .limit(CONTEXT_TURNS + 1);
+    const after = await this.db
+      .select()
+      .from(chatMessage)
+      .where(
+        and(
+          eq(chatMessage.ownerId, principal.userId),
+          gte(chatMessage.createdAt, target.createdAt),
+        ),
+      )
+      .orderBy(asc(chatMessage.createdAt), asc(chatMessage.id))
+      .limit(CONTEXT_TURNS + 1);
+
+    const byId = new Map([...before, ...after].map((r) => [r.id, r]));
+    const turns = [...byId.values()]
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || (a.id < b.id ? -1 : 1))
+      .map((r) => ({
+        id: r.id,
+        role: r.role,
+        content: r.content,
+        createdAt: r.createdAt.toISOString(),
+        isTarget: r.id === target.id,
+      }));
+    return { turns };
   }
 
   /**

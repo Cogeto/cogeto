@@ -59,3 +59,11 @@ One line per label change (docs/eval-golden-set.md §4 rule 5).
   2 compatible traps, 1 supersedes with explicit update wording). Croatian cases
   authored idiomatically, not translated. Scored by `npm run eval` alongside
   extraction (dedup accuracy weights traps ×2 per spec §5).
+- 2026-07-09 (O2-C): chat-capture corpus tick — 8 chat-sourced cases (4 en, 4
+  hr), `source_type: "chat"`. Extraction: a stated decision (`en-0027`,
+  `hr-0015`), a stated commitment that derives a task (`en-0028`, `hr-0016`), and
+  a stated temporal fact with `valid_until` (`en-0029`, `hr-0017`). Task closure:
+  a chat-stated fulfillment closes a task like a note (`en-t006`, `hr-t006`,
+  family `closure`, expected `closes`). Croatian authored idiomatically, not
+  translated. Corpus now 44 en / 30 hr subdirs. Scored by `npm run eval`
+  (extraction + task-pair) with no gate regression.

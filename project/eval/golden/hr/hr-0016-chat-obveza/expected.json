@@ -1,0 +1,17 @@
+{
+  "case_id": "hr-0016",
+  "source_type": "chat",
+  "expected_memories": [
+    {
+      "content_gist": "Korisnik će Marku poslati brojke za treći kvartal",
+      "kind": "commitment",
+      "entities": ["Marko"],
+      "condition": "čim financije daju zeleno svjetlo",
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ChatFactDto } from '@cogeto/shared';
 import { mapMarkersToCitations, scanAnswer } from '@cogeto/shared';
-import { askChat, fetchChatMessages } from '../api';
+import { askChat, fetchChatCaptureStatus, fetchChatMessages, rememberChatMessage } from '../api';
 import type { Session } from '../auth/oidc';
 import { CitationChip } from '../components/CitationChip';
 import { MemoryDrawer } from '../components/MemoryDrawer';
@@ -52,6 +52,59 @@ function MessageBody({
         );
       })}
     </p>
+  );
+}
+
+/**
+ * "Remember this" on a user message (O2-C, decision 0021): routes the message
+ * through the pipeline and polls capture progress. Only user messages get this —
+ * the assistant's replies are never captured.
+ */
+function RememberAction({ session, messageId }: { session: Session; messageId: string }) {
+  const queryClient = useQueryClient();
+  const [captured, setCaptured] = useState(false);
+  const remember = useMutation({
+    mutationFn: () => rememberChatMessage(session, messageId),
+    onSuccess: () => setCaptured(true),
+  });
+  // Poll the pipeline once capture starts; stop when it settles.
+  const status = useQuery({
+    queryKey: ['chat-capture', messageId],
+    queryFn: () => fetchChatCaptureStatus(session, messageId),
+    enabled: captured,
+    refetchInterval: (query) =>
+      query.state.data && query.state.data.state !== 'processing' ? false : 1500,
+  });
+  useEffect(() => {
+    if (status.data?.state === 'done') {
+      void queryClient.invalidateQueries({ queryKey: ['memories'] });
+    }
+  }, [status.data?.state, queryClient]);
+
+  if (!captured) {
+    return (
+      <button
+        type="button"
+        onClick={() => remember.mutate()}
+        disabled={remember.isPending}
+        className="mt-0.5 text-xs text-white/60 underline decoration-white/30 underline-offset-2 hover:text-white disabled:opacity-40"
+        title="Remember this message — it becomes memory through the normal pipeline"
+      >
+        {remember.isPending ? 'Remembering…' : 'Remember this'}
+      </button>
+    );
+  }
+  const state = status.data?.state ?? 'processing';
+  const label =
+    state === 'done'
+      ? 'Remembered ✓'
+      : state === 'failed'
+        ? 'Capture failed'
+        : 'Remembering… extracting & verifying';
+  return (
+    <span className={`mt-0.5 text-xs ${state === 'failed' ? 'text-red-300' : 'text-white/60'}`}>
+      {label}
+    </span>
   );
 }
 
@@ -141,13 +194,21 @@ export function Chat({ session }: { session: Session }) {
             </div>
           )}
           {history?.map((message) => (
-            <Bubble key={message.id} role={message.role}>
-              <MessageBody
-                session={session}
-                content={message.content}
-                onOpenMemory={setOpenMemoryId}
-              />
-            </Bubble>
+            <div
+              key={message.id}
+              className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'}`}
+            >
+              <Bubble role={message.role}>
+                <MessageBody
+                  session={session}
+                  content={message.content}
+                  onOpenMemory={setOpenMemoryId}
+                />
+                {message.role === 'user' && (
+                  <RememberAction session={session} messageId={message.id} />
+                )}
+              </Bubble>
+            </div>
           ))}
           {liveQuestion && (
             <Bubble role="user">
