@@ -18,6 +18,9 @@ export const note = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     ownerId: text('owner_id').notNull(),
     content: text('content').notNull(),
+    // The capture-time scope (migration 0018); the source reader passes it to
+    // the pipeline so derived memories inherit it (O2-B).
+    scope: scopeEnum('scope').notNull().default('private'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('note_owner_created_idx').on(t.ownerId, t.createdAt)],

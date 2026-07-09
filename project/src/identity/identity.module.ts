@@ -6,6 +6,7 @@ import { IdentityService } from './identity.service';
 import { BearerAuthGuard } from './bearer-auth.guard';
 import { MeController } from './me.controller';
 import { PRINCIPAL, principalProvider } from './principal.provider';
+import { UserDirectory } from './user-directory';
 
 /**
  * identity — leaf seam wrapping Zitadel (scope §4.5, §A.10). Zitadel answers
@@ -25,10 +26,11 @@ export class IdentityModule {
       providers: [
         { provide: IDENTITY_OPTIONS, useValue: options },
         IdentityService,
+        UserDirectory,
         BearerAuthGuard,
         principalProvider,
       ],
-      exports: [IdentityService, BearerAuthGuard, PRINCIPAL],
+      exports: [IdentityService, UserDirectory, BearerAuthGuard, PRINCIPAL],
     };
   }
 }

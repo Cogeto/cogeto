@@ -12,22 +12,28 @@ import {
 } from '@nestjs/common';
 import { z } from 'zod';
 import type { NoteCaptured, NoteDto, NoteStatusDto } from '@cogeto/shared';
+import { MEMORY_SCOPES } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { NotesService } from './notes.service';
+import { UserSettingsService } from './user-settings.service';
 
-/** Zod at the boundary: non-blank, bounded content. */
+/** Zod at the boundary: non-blank, bounded content; optional scope (O2-B). */
 const captureSchema = z.object({
   content: z
     .string()
     .max(20_000, 'note is too long (max 20000 characters)')
     .refine((value) => value.trim().length > 0, 'note content must not be blank'),
+  scope: z.enum(MEMORY_SCOPES).optional(),
 });
 
 @Controller('notes')
 @UseGuards(BearerAuthGuard)
 export class NotesController {
-  constructor(private readonly notes: NotesService) {}
+  constructor(
+    private readonly notes: NotesService,
+    private readonly settings: UserSettingsService,
+  ) {}
 
   /** Capture a note and (transactionally) enqueue its pipeline job. */
   @Post()
@@ -39,7 +45,10 @@ export class NotesController {
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
     }
-    const row = await this.notes.createNote(request.principal, parsed.data.content);
+    // An omitted scope falls back to the user's saved default (§A.9, O1-C) —
+    // the same rule uploads follow, so the Settings toggle now governs BOTH.
+    const scope = parsed.data.scope ?? (await this.settings.get(request.principal)).defaultScope;
+    const row = await this.notes.createNote(request.principal, parsed.data.content, scope);
     return { id: row.id, createdAt: row.createdAt.toISOString() };
   }
 

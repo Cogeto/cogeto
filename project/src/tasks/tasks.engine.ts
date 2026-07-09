@@ -420,6 +420,8 @@ export class TasksEngine {
               primaryPerson: head.subjectEntity ?? head.entities[0] ?? t.primaryPerson,
               due: head.validUntil ?? t.due,
               fromUncertain: head.status === 'uncertain',
+              // Inherit the head's scope (O2-B) so shared/private follows the memory.
+              scope: head.scope,
               updatedAt: new Date(),
             })
             .where(eq(task.id, t.id));
@@ -452,11 +454,20 @@ export class TasksEngine {
             detail: { reason: 'superseded_duplicate', head: head.id },
           });
         }
-      } else if (t.fromUncertain && head.status === 'active') {
-        await tx
-          .update(task)
-          .set({ fromUncertain: false, updatedAt: new Date() })
-          .where(eq(task.id, t.id));
+      } else {
+        // Same head (no supersession): converge derived fields that can change
+        // in place — the uncertain→active promotion, and a scope change (O2-B),
+        // so a memory flipped private→shared makes its task visible org-wide on
+        // the next pass (and shared→private hides it beyond the owner).
+        const patch: Partial<typeof task.$inferInsert> = {};
+        if (t.fromUncertain && head.status === 'active') patch.fromUncertain = false;
+        if (t.scope !== head.scope) patch.scope = head.scope;
+        if (Object.keys(patch).length > 0) {
+          await tx
+            .update(task)
+            .set({ ...patch, updatedAt: new Date() })
+            .where(eq(task.id, t.id));
+        }
       }
     }
 

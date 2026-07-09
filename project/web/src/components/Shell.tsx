@@ -40,7 +40,8 @@ export function Shell({
   // verdict plus open contradictions awaiting a resolution (F2-A).
   const { data: uncertain } = useQuery({
     queryKey: ['uncertain-count'],
-    queryFn: () => fetchMemories(session, { status: 'uncertain', limit: 1 }),
+    // Own uncertain only (O2-B) — the badge mirrors the Review queue's scope.
+    queryFn: () => fetchMemories(session, { status: 'uncertain', mine: true, limit: 1 }),
     refetchInterval: 30_000,
   });
   const { data: contradictions } = useQuery({

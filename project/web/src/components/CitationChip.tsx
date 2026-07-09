@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ChatFactDto, MemoryStatus } from '@cogeto/shared';
-import { fetchMemory } from '../api';
+import { fetchMe, fetchMemory } from '../api';
 import type { Session } from '../auth/oidc';
 import { isPastFact, PAST_CHIP, STATUS_CHIP, statusLabel, WARN_STATUSES } from './status';
 
@@ -32,6 +32,7 @@ export function CitationChip({
     enabled: Boolean(lookupId),
     staleTime: 30_000,
   });
+  const { data: me } = useQuery({ queryKey: ['me'], queryFn: () => fetchMe(session) });
 
   const target = fact
     ? {
@@ -39,6 +40,9 @@ export function CitationChip({
         status: fact.status,
         claim: fact.claim,
         past: fact.pastBelief,
+        scope: fact.scope,
+        ownerId: fact.ownerId,
+        ownerName: fact.ownerName,
       }
     : data
       ? {
@@ -46,6 +50,9 @@ export function CitationChip({
           status: data.status as MemoryStatus,
           claim: data.content,
           past: isPastFact(data.status as MemoryStatus, data.validUntil),
+          scope: data.scope,
+          ownerId: data.ownerId,
+          ownerName: data.ownerName,
         }
       : null;
 
@@ -65,29 +72,36 @@ export function CitationChip({
     : target.past
       ? PAST_CHIP
       : STATUS_CHIP[target.status];
+  // Attribute a cited SHARED fact owned by someone else (O2-B).
+  const sharedByOther = target.scope === 'shared' && target.ownerId !== me?.userId;
+  const ownerLabel = target.ownerName ?? 'a teammate';
   const className = `mx-0.5 inline-flex items-center gap-1 rounded-full px-1.5 align-baseline text-xs font-semibold no-underline ${chipStyle}`;
+  const title = [target.claim, sharedByOther ? `shared by ${ownerLabel}` : null]
+    .filter(Boolean)
+    .join(' — ');
   const label = (
     <>
       {ordinal}
       {warn && <span aria-label={target.status}>⚠ {statusLabel(target.status)}</span>}
       {!warn && target.past && <span aria-label="past belief">past</span>}
+      {sharedByOther && (
+        <span aria-label={`shared by ${ownerLabel}`} className="text-sky-700">
+          · {ownerLabel}
+        </span>
+      )}
     </>
   );
   return onOpen ? (
     <button
       type="button"
       onClick={() => onOpen(target.memoryId)}
-      title={target.claim ?? undefined}
+      title={title || undefined}
       className={className}
     >
       {label}
     </button>
   ) : (
-    <a
-      href={`/memories?open=${target.memoryId}`}
-      title={target.claim ?? undefined}
-      className={className}
-    >
+    <a href={`/memories?open=${target.memoryId}`} title={title || undefined} className={className}>
       {label}
     </a>
   );

@@ -11,6 +11,7 @@ import { createMemoryStore } from '../memory/index';
 import type { MemoryRow } from '../memory/index';
 import { seedMemoryFromSource } from '../ingestion/index';
 import { TasksEngine } from '../tasks/index';
+import { UserDirectory } from '../identity/index';
 import { ANSWER_PROMPT, ChatService, RetrievalService } from '../retrieval/index';
 import { loadPrompt, MistralModelGateway } from '../model-gateway/index';
 
@@ -260,7 +261,7 @@ async function main(): Promise<void> {
       await memoryStore.ensureIndexReady();
       const tasksEngine = new TasksEngine(db, memoryStore, gateway);
       const retrieval = new RetrievalService(memoryStore, gateway, tasksEngine);
-      const chat = new ChatService(db, retrieval, gateway);
+      const chat = new ChatService(db, retrieval, gateway, new UserDirectory(db));
       const anchor = new Date(testCase.anchor);
 
       // Seed through the real pipeline, then run the task engine per source

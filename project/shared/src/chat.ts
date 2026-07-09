@@ -1,4 +1,4 @@
-import type { MemoryStatus } from './memory';
+import type { MemoryScope, MemoryStatus } from './memory';
 
 /** Chat DTOs (S3-A): POST /api/chat (SSE) and the persisted conversation. */
 
@@ -26,6 +26,12 @@ export interface ChatFactDto {
   memoryId: string;
   claim: string | null;
   status: MemoryStatus;
+  /** Scope of the cited fact (O2-B): a `shared` fact owned by another org
+   * member is attributed to them in the chip. */
+  scope: MemoryScope;
+  /** The owning user's id and display name (O2-B) — null name when unresolved. */
+  ownerId: string;
+  ownerName: string | null;
   sensitive: boolean;
   /** The entity this fact is primarily ABOUT (F1/F4); null pre-v0002. */
   subjectEntity: string | null;

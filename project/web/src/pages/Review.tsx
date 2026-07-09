@@ -310,7 +310,9 @@ export function Review({ session }: { session: Session }) {
 
   const uncertain = useQuery({
     queryKey: ['review-queue'],
-    queryFn: () => fetchMemories(session, { status: 'uncertain', limit: 50 }),
+    // Own facts only (O2-B): you review your own uncertain extractions — a
+    // peer's shared uncertain fact is theirs to approve, never yours.
+    queryFn: () => fetchMemories(session, { status: 'uncertain', mine: true, limit: 50 }),
   });
   const contradictions = useQuery({
     queryKey: ['contradictions'],

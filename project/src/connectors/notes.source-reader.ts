@@ -25,6 +25,8 @@ export class NotesSourceReader implements SourceReader {
       sourceId: row.id,
       ownerId: row.ownerId,
       content: row.content,
+      // The capture-time scope (O2-B); memories inherit it in embed-store.
+      scope: row.scope,
       createdAt: row.createdAt,
     };
   }

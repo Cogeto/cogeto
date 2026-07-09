@@ -3,6 +3,7 @@ import type { Principal } from '@cogeto/shared';
 import { IDENTITY_OPTIONS } from './identity-options';
 import type { IdentityOptions } from './identity-options';
 import { fetchUserinfo } from './zitadel-userinfo.client';
+import { UserDirectory } from './user-directory';
 
 const ORG_ID_CLAIM = 'urn:zitadel:iam:user:resourceowner:id';
 const ORG_NAME_CLAIM = 'urn:zitadel:iam:user:resourceowner:name';
@@ -24,7 +25,10 @@ interface CacheEntry {
 export class IdentityService {
   private readonly cache = new Map<string, CacheEntry>();
 
-  constructor(@Inject(IDENTITY_OPTIONS) private readonly options: IdentityOptions) {}
+  constructor(
+    @Inject(IDENTITY_OPTIONS) private readonly options: IdentityOptions,
+    private readonly directory: UserDirectory,
+  ) {}
 
   async resolvePrincipal(accessToken: string): Promise<Principal> {
     const cached = this.cache.get(accessToken);
@@ -57,6 +61,9 @@ export class IdentityService {
       expiresAt: Date.now() + this.options.cacheTtlSeconds * 1000,
     });
     this.evictExpired();
+    // Provision / refresh the directory on each fresh resolve (throttled by the
+    // token cache above). Best-effort: a directory write must never fail auth.
+    await this.directory.record(principal).catch(() => undefined);
     return principal;
   }
 

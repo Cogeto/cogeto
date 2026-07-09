@@ -83,8 +83,11 @@ const apiPut = <T>(path: string, body: unknown, session: Session): Promise<T> =>
 export const fetchMe = (session: Session): Promise<Principal> => apiGet('/api/me', session);
 export const fetchHealth = (): Promise<HealthReport> => apiGet('/api/health');
 
-export const captureNote = (session: Session, content: string): Promise<NoteCaptured> =>
-  apiPost('/api/notes', { content }, session);
+export const captureNote = (
+  session: Session,
+  content: string,
+  scope?: MemoryScope,
+): Promise<NoteCaptured> => apiPost('/api/notes', { content, scope }, session);
 export const fetchNote = (session: Session, id: string): Promise<NoteDto> =>
   apiGet(`/api/notes/${id}`, session);
 export const fetchNoteStatus = (session: Session, id: string): Promise<NoteStatusDto> =>
@@ -126,6 +129,8 @@ export interface MemoryListParams {
   status?: MemoryStatus;
   sensitiveOnly?: boolean;
   entity?: string;
+  /** Owner-only (O2-B): the Review queue reviews your own facts, not peers'. */
+  mine?: boolean;
   limit?: number;
   offset?: number;
 }
@@ -140,6 +145,7 @@ export function fetchMemories(
   if (params.status) search.set('status', params.status);
   if (params.sensitiveOnly) search.set('sensitive', 'true');
   if (params.entity?.trim()) search.set('entity', params.entity.trim());
+  if (params.mine) search.set('mine', 'true');
   if (params.limit !== undefined) search.set('limit', String(params.limit));
   if (params.offset !== undefined) search.set('offset', String(params.offset));
   return apiGet(`/api/memories?${search.toString()}`, session);
@@ -161,6 +167,11 @@ export const setMemorySensitive = (
   id: string,
   sensitive: boolean,
 ): Promise<MemoryListItem> => apiPost(`/api/memories/${id}/sensitive`, { sensitive }, session);
+export const changeMemoryScope = (
+  session: Session,
+  id: string,
+  scope: MemoryScope,
+): Promise<MemoryListItem> => apiPost(`/api/memories/${id}/scope`, { scope }, session);
 export const editMemory = (
   session: Session,
   id: string,

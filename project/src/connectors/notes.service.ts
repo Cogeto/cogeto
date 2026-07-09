@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
-import type { NoteProcessingState, Principal } from '@cogeto/shared';
+import type { MemoryScope, NoteProcessingState, Principal } from '@cogeto/shared';
 import {
   deadLetter,
   DRIZZLE,
@@ -21,11 +21,15 @@ import type { NoteRow } from './persistence/tables';
 export class NotesService {
   constructor(@Inject(DRIZZLE) private readonly db: Db) {}
 
-  async createNote(principal: Principal, content: string): Promise<NoteRow> {
+  async createNote(
+    principal: Principal,
+    content: string,
+    scope: MemoryScope = 'private',
+  ): Promise<NoteRow> {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
         .insert(note)
-        .values({ ownerId: principal.userId, content })
+        .values({ ownerId: principal.userId, content, scope })
         .returning();
       const created = row as NoteRow;
       await withTransactionalEnqueue(

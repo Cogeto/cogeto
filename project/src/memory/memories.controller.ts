@@ -14,7 +14,7 @@ import {
 import { z } from 'zod';
 import type { MemoryListItem, MemoryPage } from '@cogeto/shared';
 import { MEMORY_SCOPES, MEMORY_STATUSES } from '@cogeto/shared';
-import { BearerAuthGuard } from '../identity/index';
+import { BearerAuthGuard, UserDirectory } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { MemoryStore } from './memory.store';
 import type { MemoryFilters } from './memory.store';
@@ -28,6 +28,7 @@ const listQuerySchema = z.object({
   sensitive: z.enum(['true', 'false']).optional(),
   entity: z.string().max(200).optional(),
   includeSensitive: z.enum(['true', 'false']).optional(),
+  mine: z.enum(['true', 'false']).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   offset: z.coerce.number().int().min(0).default(0),
 });
@@ -40,6 +41,7 @@ const editSchema = z.object({
 });
 
 const sensitiveSchema = z.object({ sensitive: z.boolean() });
+const scopeSchema = z.object({ scope: z.enum(MEMORY_SCOPES) });
 
 /**
  * The dashboard's memory surface (S3-B) — thin routes over the MemoryStore
@@ -50,7 +52,19 @@ const sensitiveSchema = z.object({ sensitive: z.boolean() });
 @Controller('memories')
 @UseGuards(BearerAuthGuard)
 export class MemoriesController {
-  constructor(private readonly store: MemoryStore) {}
+  constructor(
+    private readonly store: MemoryStore,
+    private readonly directory: UserDirectory,
+  ) {}
+
+  /** Attach owner display names (O2-B) so shared rows owned by others are
+   * attributable in the list and drawer. Name-only — visibility was already
+   * decided by the gates the store applied. */
+  private async withOwnerNames(items: MemoryListItem[]): Promise<MemoryListItem[]> {
+    if (items.length === 0) return items;
+    const names = await this.directory.displayNames(items.map((i) => i.ownerId));
+    return items.map((i) => ({ ...i, ownerName: names.get(i.ownerId) ?? null }));
+  }
 
   @Get()
   async list(@Req() request: AuthenticatedRequest, @Query() query: unknown): Promise<MemoryPage> {
@@ -65,6 +79,7 @@ export class MemoriesController {
       status: q.status,
       sensitiveOnly: q.sensitive === 'true',
       entity: q.entity,
+      mine: q.mine === 'true',
     } satisfies MemoryFilters & { includeSensitive: boolean };
 
     if (q.q?.trim()) {
@@ -75,14 +90,17 @@ export class MemoriesController {
         topK: q.offset + q.limit,
       });
       const total = await this.store.countForPrincipal(request.principal, opts);
-      return { items: hits.slice(q.offset).map((h) => toListItem(h.memory)), total };
+      const items = await this.withOwnerNames(
+        hits.slice(q.offset).map((h) => toListItem(h.memory)),
+      );
+      return { items, total };
     }
 
     const [rows, total] = await Promise.all([
       this.store.listForPrincipal(request.principal, { ...opts, limit: q.limit, offset: q.offset }),
       this.store.countForPrincipal(request.principal, opts),
     ]);
-    return { items: rows.map(toListItem), total };
+    return { items: await this.withOwnerNames(rows.map(toListItem)), total };
   }
 
   /** One memory — detail drawer + chat citation chips. */
@@ -96,7 +114,7 @@ export class MemoriesController {
       includeSensitive: true,
     });
     if (!row) throw new NotFoundException(`memory ${id} not found`);
-    return toListItem(row);
+    return (await this.withOwnerNames([toListItem(row)]))[0]!;
   }
 
   /** The supersession chain, oldest → newest — the history panel (§B.2). */
@@ -107,7 +125,7 @@ export class MemoriesController {
   ): Promise<MemoryListItem[]> {
     const rows = await this.store.getChain(request.principal, id, { includeSensitive: true });
     if (rows.length === 0) throw new NotFoundException(`memory ${id} not found`);
-    return rows.map(toListItem);
+    return this.withOwnerNames(rows.map(toListItem));
   }
 
   /** Review approval: uncertain → user_approved, owner-only (S3-B). */
@@ -149,6 +167,19 @@ export class MemoriesController {
     const parsed = sensitiveSchema.safeParse(body);
     if (!parsed.success) throw new BadRequestException('body must be { sensitive: boolean }');
     const row = await this.store.toggleSensitive(request.principal, id, parsed.data.sensitive);
+    return toListItem(row);
+  }
+
+  /** Scope change (O2-B): private↔shared, owner-only, row + Qdrant payload. */
+  @Post(':id/scope')
+  async setScope(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: unknown,
+  ): Promise<MemoryListItem> {
+    const parsed = scopeSchema.safeParse(body);
+    if (!parsed.success) throw new BadRequestException('body must be { scope: private|shared }');
+    const row = await this.store.setScope(request.principal, id, parsed.data.scope);
     return toListItem(row);
   }
 

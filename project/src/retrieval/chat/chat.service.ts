@@ -6,6 +6,7 @@ import type { Db } from '../../infrastructure/index';
 import { isPastBelief } from '../../memory/index';
 import { loadPrompt, ModelGateway } from '../../model-gateway/index';
 import type { PromptArtifact } from '../../model-gateway/index';
+import { UserDirectory } from '../../identity/index';
 import { RetrievalService } from '../retrieval.service';
 import type { RetrievedMemory } from '../retrieval.service';
 import type { ConversationTurn } from '../query-rewrite';
@@ -43,6 +44,7 @@ export class ChatService {
     @Inject(DRIZZLE) private readonly db: Db,
     private readonly retrieval: RetrievalService,
     private readonly gateway: ModelGateway,
+    private readonly directory: UserDirectory,
   ) {}
 
   async listMessages(principal: Principal): Promise<ChatMessageDto[]> {
@@ -75,6 +77,10 @@ export class ChatService {
       history,
     });
     const facts = retrieved.memories.map((hit, i) => toFactDto(hit, i));
+    // Attribute cited shared facts to their owner (O2-B) — name-only; the gates
+    // already decided these were visible to the caller.
+    const names = await this.directory.displayNames(facts.map((f) => f.ownerId));
+    for (const fact of facts) fact.ownerName = names.get(fact.ownerId) ?? null;
     yield { type: 'sources', facts };
 
     let answer: string;
@@ -140,6 +146,9 @@ function toFactDto(hit: RetrievedMemory, index: number): ChatFactDto {
     memoryId: hit.memory.id,
     claim: hit.memory.content,
     status: hit.memory.status,
+    scope: hit.memory.scope,
+    ownerId: hit.memory.ownerId,
+    ownerName: null,
     sensitive: hit.memory.sensitive,
     subjectEntity: hit.memory.subjectEntity,
     sourceType: hit.memory.sourceType,

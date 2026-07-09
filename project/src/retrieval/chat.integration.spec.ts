@@ -6,6 +6,7 @@ import { createMemoryStore } from '../memory/index';
 import type { MemoryStore, NewFact } from '../memory/index';
 import { ModelGateway } from '../model-gateway/index';
 import type { CompletionRequest } from '../model-gateway/index';
+import { UserDirectory } from '../identity/index';
 import { ChatService } from './chat/chat.service';
 import { NOTHING_ON_RECORD } from './chat/answer-prompt';
 import { RetrievalService } from './retrieval.service';
@@ -70,7 +71,12 @@ describe('chat (integration, real Postgres + real Qdrant, gateway mocked)', () =
       qdrant: { url: qdrant.url, embeddingModel: MODEL, dimensions: DIMS },
     });
     await store.ensureIndexReady();
-    chat = new ChatService(tdb.db, new RetrievalService(store, gateway), gateway);
+    chat = new ChatService(
+      tdb.db,
+      new RetrievalService(store, gateway),
+      gateway,
+      new UserDirectory(tdb.db),
+    );
   });
   afterAll(async () => {
     await Promise.all([tdb.stop(), qdrant.stop()]);

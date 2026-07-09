@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { MemoryListItem, MemoryScope, MemoryStatus } from '@cogeto/shared';
 import { BULK_OUTDATE_ACTION, MEMORY_SCOPES, MEMORY_STATUSES } from '@cogeto/shared';
-import { createApproval, fetchMemories } from '../api';
+import { createApproval, fetchMe, fetchMemories } from '../api';
 import type { Session } from '../auth/oidc';
 import { STATUS_CHIP, statusLabel, timeAgo } from './status';
 
@@ -10,6 +10,7 @@ const PAGE_SIZE = 25;
 
 function MemoryRow({
   memory,
+  myUserId,
   onOpen,
   onEntity,
   selecting,
@@ -17,12 +18,14 @@ function MemoryRow({
   onToggleSelect,
 }: {
   memory: MemoryListItem;
+  myUserId?: string;
   onOpen: () => void;
   onEntity: (entity: string) => void;
   selecting: boolean;
   selected: boolean;
   onToggleSelect: () => void;
 }) {
+  const mine = memory.ownerId === myUserId;
   return (
     <li
       className={`flex cursor-pointer gap-2 rounded-md border px-3 py-2 hover:border-brand-teal/60 ${
@@ -48,6 +51,11 @@ function MemoryRow({
           {memory.sensitive && (
             <span className="rounded-full bg-purple-100 px-2 py-0.5 font-semibold text-purple-700">
               sensitive
+            </span>
+          )}
+          {memory.scope === 'shared' && (
+            <span className="rounded-full bg-sky-100 px-2 py-0.5 font-semibold text-sky-700">
+              shared{!mine && ` · ${memory.ownerName ?? 'member'}`}
             </span>
           )}
           {memory.entities.map((entity) => (
@@ -131,6 +139,8 @@ export function GovernedMemories({
     queryKey: ['memories', params],
     queryFn: () => fetchMemories(session, params),
   });
+  // Cached by the Shell — used only to mark which shared rows are someone else's.
+  const { data: me } = useQuery({ queryKey: ['me'], queryFn: () => fetchMe(session) });
 
   const resetPage = () => setPage(0);
   const pages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
@@ -260,6 +270,7 @@ export function GovernedMemories({
             <MemoryRow
               key={memory.id}
               memory={memory}
+              myUserId={me?.userId}
               onOpen={() => onOpen(memory.id)}
               onEntity={(name) => {
                 setEntity(name);

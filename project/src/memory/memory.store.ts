@@ -70,6 +70,12 @@ export interface MemoryFilters {
   sensitiveOnly?: boolean;
   /** Trigram-matched against the stored entities array. */
   entity?: string;
+  /**
+   * Owner-only (O2-B): narrows the already-gated result to the caller's OWN
+   * rows, dropping the shared arm. Review uses it — you review only your own
+   * uncertain facts, never a peer's shared ones (which you cannot action).
+   */
+  mine?: boolean;
 }
 
 export interface ListOptions extends ReadOptions, MemoryFilters {
@@ -178,7 +184,7 @@ export class MemoryStore {
     return this.db
       .select()
       .from(memory)
-      .where(and(this.visibleTo(principal, opts), ...this.filterClauses(opts)))
+      .where(and(this.visibleTo(principal, opts), ...this.filterClauses(principal, opts)))
       .orderBy(desc(memory.createdAt), memory.id)
       .limit(Math.min(opts.limit ?? 50, 200))
       .offset(opts.offset ?? 0);
@@ -192,7 +198,7 @@ export class MemoryStore {
     const rows = await this.db
       .select({ n: sql<number>`count(*)::int` })
       .from(memory)
-      .where(and(this.visibleTo(principal, opts), ...this.filterClauses(opts)));
+      .where(and(this.visibleTo(principal, opts), ...this.filterClauses(principal, opts)));
     return rows[0]?.n ?? 0;
   }
 
@@ -379,6 +385,38 @@ export class MemoryStore {
         detail: { sensitive },
       });
       await this.requireVectors().setPayload(memoryId, { sensitive });
+      return updated as MemoryRow;
+    });
+  }
+
+  /**
+   * Scope change (O2-B) — the private↔shared visibility switch, owner-only and
+   * audited, in the SAME two-store pattern as the sensitive toggle: the row and
+   * the Qdrant payload's `scope` field move together, so a shared→private demote
+   * takes effect in vector search the instant it commits (a demoted leak is
+   * still a leak — AGENTS.md §A.4). setPayload runs last: if it throws the row
+   * write rolls back and the retry converges. Task visibility follows the
+   * memory — the tasks engine gates its shared arm through the deriving memory's
+   * readability, and re-syncs task.scope on its next pass.
+   */
+  async setScope(principal: Principal, memoryId: string, scope: MemoryScope): Promise<MemoryRow> {
+    const actor: MemoryActor = { kind: 'user', userId: principal.userId };
+    return this.db.transaction(async (tx) => {
+      const row = await this.lockRow(tx, memoryId, actor);
+      if (row.scope === scope) return row; // idempotent no-op, no audit noise
+      const [updated] = await tx
+        .update(memory)
+        .set({ scope, updatedAt: new Date() })
+        .where(eq(memory.id, memoryId))
+        .returning();
+      await writeAudit(tx, {
+        actor: actorLabel(actor),
+        action: 'memory.scope_changed',
+        entityType: 'memory',
+        entityId: memoryId,
+        detail: { from: row.scope, to: scope },
+      });
+      await this.requireVectors().setPayload(memoryId, { scope });
       return updated as MemoryRow;
     });
   }
@@ -607,7 +645,7 @@ export class MemoryStore {
         and(
           this.visibleTo(principal, opts),
           sql`content_tsv @@ ${tsQuery}`,
-          ...this.filterClauses(opts),
+          ...this.filterClauses(principal, opts),
         ),
       )
       .orderBy(desc(score), memory.id)
@@ -646,7 +684,7 @@ export class MemoryStore {
             SELECT 1 FROM unnest(entities) AS hit(entity), unnest(${namesArray}) AS wanted(name)
             WHERE hit.entity % wanted.name
           )`,
-          ...this.filterClauses(opts),
+          ...this.filterClauses(principal, opts),
         ),
       )
       .orderBy(desc(score), memory.id)
@@ -975,8 +1013,9 @@ export class MemoryStore {
   // ── Private: the gates and shared write paths ───────────────────────────────
 
   /** Dashboard filters as SQL — always ANDed with the gates, never a substitute. */
-  private filterClauses(filters: MemoryFilters): SQL[] {
+  private filterClauses(principal: Principal, filters: MemoryFilters): SQL[] {
     const clauses: SQL[] = [];
+    if (filters.mine) clauses.push(eq(memory.ownerId, principal.userId));
     if (filters.scope) clauses.push(eq(memory.scope, filters.scope));
     if (filters.status) clauses.push(eq(memory.status, filters.status));
     if (filters.sensitiveOnly) clauses.push(eq(memory.sensitive, true));

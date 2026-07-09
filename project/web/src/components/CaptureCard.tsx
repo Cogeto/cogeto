@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { captureNote, fetchNoteStatus } from '../api';
+import type { MemoryScope } from '@cogeto/shared';
+import { captureNote, fetchNoteStatus, fetchSettings } from '../api';
 import type { Session } from '../auth/oidc';
 
 /** The Memories capture card: one textarea straight into the pipeline. */
@@ -12,8 +13,13 @@ export function CaptureCard({
   onCaptured: (noteId: string) => void;
 }) {
   const [content, setContent] = useState('');
+  // Scope prefills from the user's saved default (§A.9); an explicit choice
+  // overrides it. The server applies the same default when scope is omitted.
+  const settings = useQuery({ queryKey: ['settings'], queryFn: () => fetchSettings(session) });
+  const [scope, setScope] = useState<MemoryScope | null>(null);
+  const effScope: MemoryScope = scope ?? settings.data?.defaultScope ?? 'private';
   const capture = useMutation({
-    mutationFn: (text: string) => captureNote(session, text),
+    mutationFn: (text: string) => captureNote(session, text, effScope),
     onSuccess: (result) => onCaptured(result.id),
   });
 
@@ -36,11 +42,26 @@ export function CaptureCard({
         rows={3}
         className="w-full resize-y rounded-md border border-slate-300 p-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-teal focus:outline-none"
       />
-      <div className="mt-2 flex items-center justify-between">
-        <p className="text-xs text-slate-400">
-          Extracted facts appear below once the pipeline verifies them.
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <label className="flex items-center gap-1.5 text-xs text-slate-500">
+          Scope
+          <select
+            value={effScope}
+            onChange={(e) => setScope(e.target.value as MemoryScope)}
+            className="rounded-md border border-slate-300 px-2 py-1"
+            title="Shared facts are visible to everyone in your organization; private stays yours."
+          >
+            <option value="private">private</option>
+            <option value="shared">shared</option>
+          </select>
+        </label>
+        <p className="ml-auto text-xs text-slate-400">
+          {capture.isError ? (
+            <span className="text-red-600">Capture failed — try again.</span>
+          ) : (
+            'Facts appear below once verified.'
+          )}
         </p>
-        {capture.isError && <p className="text-xs text-red-600">Capture failed — try again.</p>}
         <button
           type="button"
           onClick={submit}

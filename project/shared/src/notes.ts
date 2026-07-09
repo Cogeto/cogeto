@@ -34,6 +34,12 @@ export interface MemoryListItem {
   content: string | null;
   status: MemoryStatus;
   scope: MemoryScope;
+  /** The owning user's Zitadel id (O2-B) — the UI gates owner-only actions on
+   * `ownerId === me.userId`; the server enforces it regardless. */
+  ownerId: string;
+  /** The owner's display name, resolved from the identity directory; null when
+   * unknown (e.g. the owner has not logged in since provisioning). */
+  ownerName: string | null;
   sensitive: boolean;
   entities: string[];
   /** The extractor's fact kind (migration 0011); null on pre-F2 rows. */

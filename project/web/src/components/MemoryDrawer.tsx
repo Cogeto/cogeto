@@ -3,8 +3,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { MemoryListItem } from '@cogeto/shared';
 import {
   approveMemory,
+  changeMemoryScope,
   editMemory,
   fetchContradictions,
+  fetchMe,
   fetchMemory,
   fetchMemoryChain,
   fetchNote,
@@ -66,6 +68,11 @@ export function MemoryDrawer({
     queryFn: () => fetchMemory(session, memoryId),
   });
   const memory = memoryQuery.data;
+  // Ownership drives which actions are offered (O2-B). The server enforces
+  // owner-only regardless; the UI hides what a non-owner may never do and
+  // explains why. `me` is cached by the Shell — this is a free read.
+  const { data: me } = useQuery({ queryKey: ['me'], queryFn: () => fetchMe(session) });
+  const isMine = memory ? memory.ownerId === me?.userId : false;
 
   const chainQuery = useQuery({
     queryKey: ['memory-chain', memoryId],
@@ -127,6 +134,11 @@ export function MemoryDrawer({
     onSuccess: refresh,
     onError,
   });
+  const scope = useMutation({
+    mutationFn: (value: 'private' | 'shared') => changeMemoryScope(session, memoryId, value),
+    onSuccess: refresh,
+    onError,
+  });
   const reject = useMutation({
     mutationFn: () => rejectMemory(session, memoryId),
     onSuccess: async () => {
@@ -151,6 +163,7 @@ export function MemoryDrawer({
     approve.isPending ||
     outdate.isPending ||
     sensitive.isPending ||
+    scope.isPending ||
     reject.isPending ||
     edit.isPending;
 
@@ -185,7 +198,18 @@ export function MemoryDrawer({
                   sensitive
                 </span>
               )}
-              <span className="text-slate-400">scope: {memory.scope}</span>
+              {memory.scope === 'shared' ? (
+                <span className="rounded-full bg-sky-100 px-2 py-0.5 font-semibold text-sky-700">
+                  shared
+                </span>
+              ) : (
+                <span className="text-slate-400">private</span>
+              )}
+              {!isMine && (
+                <span className="text-slate-400">
+                  owned by {memory.ownerName ?? 'another member'}
+                </span>
+              )}
               {memory.entities.map((entity) => (
                 <span key={entity} className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
                   {entity}
@@ -209,100 +233,127 @@ export function MemoryDrawer({
             )}
 
             <Panel title="Actions">
-              <div className="flex flex-wrap gap-2">
-                {memory.status === 'uncertain' && (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => approve.mutate()}
-                    className="rounded-md bg-brand-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
-                  >
-                    Approve
-                  </button>
-                )}
-                {memory.status === 'uncertain' && (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => {
-                      if (window.confirm('Reject and remove this memory? This cannot be undone.'))
-                        reject.mutate();
-                    }}
-                    className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
-                  >
-                    Reject
-                  </button>
-                )}
-                {memory.status !== 'outdated' && memory.status !== 'replaced' && (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => outdate.mutate()}
-                    className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 disabled:opacity-40"
-                  >
-                    Mark outdated
-                  </button>
-                )}
-                {memory.status !== 'replaced' && (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => {
-                      setEditText(memory.content ?? '');
-                      setEditing(true);
-                    }}
-                    className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 disabled:opacity-40"
-                  >
-                    Edit
-                  </button>
-                )}
-                <label className="ml-auto flex items-center gap-1.5 text-xs text-slate-600">
-                  <input
-                    type="checkbox"
-                    checked={memory.sensitive}
-                    disabled={busy}
-                    onChange={(e) => sensitive.mutate(e.target.checked)}
-                  />
-                  Sensitive
-                </label>
-              </div>
-              {editing && (
-                <form
-                  className="mt-3 space-y-2"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (editText.trim()) edit.mutate(editText.trim());
-                  }}
-                >
-                  <textarea
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    rows={3}
-                    className="w-full resize-y rounded-md border border-slate-300 p-2 text-sm"
-                  />
-                  {showExplainer && (
-                    <p className="text-xs text-slate-500">
-                      Saving a correction never rewrites history: it records a new, approved version
-                      and keeps this one as its predecessor.
-                    </p>
-                  )}
-                  <div className="flex gap-2">
-                    <button
-                      type="submit"
-                      disabled={busy || !editText.trim()}
-                      className="rounded-md bg-brand-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+              {!isMine ? (
+                <p className="text-sm text-slate-500">
+                  This memory is shared with your organization by{' '}
+                  <span className="font-medium">{memory.ownerName ?? 'another member'}</span>. You
+                  can read it, but only its owner can approve, edit, change its scope, or delete it.
+                </p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {memory.status === 'uncertain' && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => approve.mutate()}
+                        className="rounded-md bg-brand-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                      >
+                        Approve
+                      </button>
+                    )}
+                    {memory.status === 'uncertain' && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          if (
+                            window.confirm('Reject and remove this memory? This cannot be undone.')
+                          )
+                            reject.mutate();
+                        }}
+                        className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                      >
+                        Reject
+                      </button>
+                    )}
+                    {memory.status !== 'outdated' && memory.status !== 'replaced' && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => outdate.mutate()}
+                        className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 disabled:opacity-40"
+                      >
+                        Mark outdated
+                      </button>
+                    )}
+                    {memory.status !== 'replaced' && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          setEditText(memory.content ?? '');
+                          setEditing(true);
+                        }}
+                        className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 disabled:opacity-40"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    <label
+                      className="ml-auto flex items-center gap-1.5 text-xs text-slate-600"
+                      title="Shared facts are visible to everyone in your organization."
                     >
-                      Save as correction
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditing(false)}
-                      className="rounded-md border border-slate-300 px-3 py-1.5 text-xs text-slate-600"
-                    >
-                      Cancel
-                    </button>
+                      Scope
+                      <select
+                        value={memory.scope}
+                        disabled={busy}
+                        onChange={(e) => scope.mutate(e.target.value as 'private' | 'shared')}
+                        className="rounded-md border border-slate-300 px-2 py-0.5"
+                      >
+                        <option value="private">private</option>
+                        <option value="shared">shared</option>
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={memory.sensitive}
+                        disabled={busy}
+                        onChange={(e) => sensitive.mutate(e.target.checked)}
+                      />
+                      Sensitive
+                    </label>
                   </div>
-                </form>
+                  {editing && (
+                    <form
+                      className="mt-3 space-y-2"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (editText.trim()) edit.mutate(editText.trim());
+                      }}
+                    >
+                      <textarea
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        rows={3}
+                        className="w-full resize-y rounded-md border border-slate-300 p-2 text-sm"
+                      />
+                      {showExplainer && (
+                        <p className="text-xs text-slate-500">
+                          Saving a correction never rewrites history: it records a new, approved
+                          version and keeps this one as its predecessor.
+                        </p>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          disabled={busy || !editText.trim()}
+                          className="rounded-md bg-brand-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                        >
+                          Save as correction
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditing(false)}
+                          className="rounded-md border border-slate-300 px-3 py-1.5 text-xs text-slate-600"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </>
               )}
             </Panel>
 
@@ -377,13 +428,19 @@ export function MemoryDrawer({
                   {noteQuery.data.content}
                 </p>
               )}
-              <button
-                type="button"
-                onClick={() => setShowSource(true)}
-                className="mt-2 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600"
-              >
-                Open source · delete…
-              </button>
+              {isMine ? (
+                <button
+                  type="button"
+                  onClick={() => setShowSource(true)}
+                  className="mt-2 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600"
+                >
+                  Open source · delete…
+                </button>
+              ) : (
+                <p className="mt-2 text-xs text-slate-400">
+                  The source is private to its owner — deletion is owner-only.
+                </p>
+              )}
             </Panel>
 
             <Panel title="History">
