@@ -23,6 +23,20 @@ export function isPastFact(status: MemoryStatus, validUntil: string | null): boo
 
 export const statusLabel = (status: MemoryStatus): string => status.replace('_', '-');
 
+/**
+ * Relative due rendering for task rows (F3 handoff §4): "in 3 days", "due
+ * today", "overdue by 2 days". `overdue` drives the red treatment.
+ */
+export function dueLabel(iso: string): { text: string; overdue: boolean } {
+  const days = Math.round((new Date(iso).getTime() - Date.now()) / 86_400_000);
+  if (days < 0) {
+    const n = -days;
+    return { text: `overdue by ${n === 1 ? '1 day' : `${n} days`}`, overdue: true };
+  }
+  if (days === 0) return { text: 'due today', overdue: false };
+  return { text: days === 1 ? 'due tomorrow' : `in ${days} days`, overdue: false };
+}
+
 /** Relative timestamp for list rows; exact date on hover via title attr. */
 export function timeAgo(iso: string): string {
   const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);

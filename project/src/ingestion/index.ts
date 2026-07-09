@@ -13,6 +13,12 @@ export type { SourceReader, SourceItem } from './pipeline/source-reader';
 export type { PipelineLog } from './pipeline/pipeline-log';
 export { DreamingService, DREAM_JOB_TYPE, DREAM_CRONTAB } from './dreaming.service';
 export type { DreamReport } from './dreaming.service';
+// The digest endpoint + the port the tasks module fills with its section
+// (F3 handoff §3). Exporting the controller lets the tasks module — the port's
+// implementor — integration-test the composed endpoint (tasks → ingestion).
+export { DreamingController } from './dreaming.controller';
+export { DIGEST_TASK_SECTION } from './digest-task-port';
+export type { DigestTaskSectionPort, DigestTaskContext } from './digest-task-port';
 export { ReconciliationService, ReconcileJudge, buildPairInput } from './pipeline/reconcile.stage';
 export type {
   ReconcileFactView,

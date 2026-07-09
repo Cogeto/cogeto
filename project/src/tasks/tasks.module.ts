@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
+import { DIGEST_TASK_SECTION } from '../ingestion/index';
 import { TasksCascade } from './tasks-cascade';
 import { TasksController } from './tasks.controller';
+import { TasksDigestSection } from './tasks-digest';
 import { TasksEngine } from './tasks.engine';
 
 /**
@@ -29,6 +31,25 @@ export class TasksModule {
       controllers: [TasksController],
       providers: [TasksEngine, TasksCascade],
       exports: [TasksEngine, TasksCascade],
+    };
+  }
+
+  /**
+   * The digest's TASKS section as a GLOBAL provider (O2-A): ingestion's
+   * DreamingController — a different module — injects it OPTIONALLY under
+   * `DIGEST_TASK_SECTION`, so the tasks section joins the digest without
+   * ingestion ever importing tasks (the dependency stays tasks → ingestion).
+   * Follows the codebase's global-seam pattern (MemoryStore, the DB handle).
+   */
+  static forDigest(): DynamicModule {
+    return {
+      module: TasksModule,
+      global: true,
+      providers: [
+        TasksDigestSection,
+        { provide: DIGEST_TASK_SECTION, useExisting: TasksDigestSection },
+      ],
+      exports: [DIGEST_TASK_SECTION],
     };
   }
 }

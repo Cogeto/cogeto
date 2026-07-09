@@ -106,6 +106,8 @@ function toTaskRow(pair: TaskPairCase): TaskRow {
     closedByMemoryId: null,
     dormant: false,
     fromUncertain: false,
+    dueRemindedAt: null,
+    dormantRemindedAt: null,
     createdAt: new Date(pair.fact.captured_at),
     updatedAt: new Date(pair.fact.captured_at),
   };

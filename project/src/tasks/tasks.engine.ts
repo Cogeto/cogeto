@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Principal } from '@cogeto/shared';
 import { DRIZZLE, writeAudit } from '../infrastructure/index';
@@ -11,6 +11,8 @@ import { loadPrompt, ModelGateway } from '../model-gateway/index';
 import type { PromptArtifact } from '../model-gateway/index';
 import { task } from './persistence/tables';
 import type { TaskRow } from './persistence/tables';
+import { gateForeignTasks } from './task-visibility';
+import { REMINDER_DUE_SOON_HORIZON_HOURS } from './reminders-config';
 
 /**
  * The task-derivation engine (decision 0013; glossary: Task, Open loops) —
@@ -28,6 +30,14 @@ import type { TaskRow } from './persistence/tables';
 export const TASK_CONDITION_PROMPT = { family: 'task_condition', version: 'v0001' } as const;
 export const TASK_CLOSURE_PROMPT = { family: 'task_closure', version: 'v0001' } as const;
 export const TASK_PROMPTS = [TASK_CONDITION_PROMPT, TASK_CLOSURE_PROMPT] as const;
+
+/**
+ * The reminders pass runs on the EXISTING graphile cron (F3 handoff §2): ONE
+ * new crontab line + task, no second scheduler. 03:40 — after the 03:30
+ * dreaming cycle, so the dormancy sync it depends on has already run.
+ */
+export const TASKS_REMINDERS_JOB_TYPE = 'tasks_reminders';
+export const TASKS_REMINDERS_CRONTAB = `40 3 * * * ${TASKS_REMINDERS_JOB_TYPE}`;
 
 const closureVerdictSchema = z.object({
   verdict: z.enum(['closes', 'progresses', 'unrelated']),
@@ -52,6 +62,12 @@ export interface TaskEngineReport {
   closed: number;
   conditionsMet: number;
   dormantSynced: number;
+}
+
+export interface ReminderReport {
+  dueRaised: number;
+  dormantRaised: number;
+  dormantCleared: number;
 }
 
 export interface TaskListFilters {
@@ -121,6 +137,58 @@ export class TasksEngine {
     log(
       `tasks backfill: ${report.derived} derived, ${report.repointed} repointed, ` +
         `${report.dormantSynced} dormant synced`,
+    );
+    return report;
+  }
+
+  /**
+   * The reminders pass (F3 handoff §2) — a graphile-cron job, NOT a new
+   * scheduler. Evaluates every open/blocked task against the due horizon and
+   * the dormancy flag and stamps a pending reminder ONCE per window:
+   *
+   *   - due-based: `due` within the horizon (overdue tasks are already inside
+   *     it) and no pending due reminder ⇒ stamp `due_reminded_at`.
+   *   - dormant-based: `dormant` set and no pending dormant reminder ⇒ stamp;
+   *     `dormant` cleared but a stamp lingers ⇒ clear it (dormancy resolved).
+   *
+   * Idempotent per task per window by the "stamp only when NULL" rule: a
+   * re-delivered pass finds every stamp already set and changes nothing. The
+   * digest renders tasks carrying a pending stamp; close/dismiss clears both
+   * (see `settle` and `userOp`). Deliberately does NOT touch `updated_at` — a
+   * reminder is not a task edit, and the digest's "newly unblocked" line keys
+   * off `updated_at`.
+   */
+  async runReminders(log: (message: string) => void = () => undefined): Promise<ReminderReport> {
+    const report: ReminderReport = { dueRaised: 0, dormantRaised: 0, dormantCleared: 0 };
+    const now = new Date();
+    const horizon = new Date(now.getTime() + REMINDER_DUE_SOON_HORIZON_HOURS * 3600 * 1000);
+    await this.db.transaction(async (tx) => {
+      const open = await tx
+        .select()
+        .from(task)
+        .where(inArray(task.status, ['open', 'blocked_on_condition']))
+        .for('update');
+      for (const t of open) {
+        const patch: Partial<typeof task.$inferInsert> = {};
+        if (t.due && t.due <= horizon && t.dueRemindedAt === null) {
+          patch.dueRemindedAt = now;
+          report.dueRaised += 1;
+        }
+        if (t.dormant && t.dormantRemindedAt === null) {
+          patch.dormantRemindedAt = now;
+          report.dormantRaised += 1;
+        } else if (!t.dormant && t.dormantRemindedAt !== null) {
+          patch.dormantRemindedAt = null;
+          report.dormantCleared += 1;
+        }
+        if (Object.keys(patch).length > 0) {
+          await tx.update(task).set(patch).where(eq(task.id, t.id));
+        }
+      }
+    });
+    log(
+      `tasks reminders: ${report.dueRaised} due raised, ` +
+        `${report.dormantRaised} dormant raised, ${report.dormantCleared} cleared`,
     );
     return report;
   }
@@ -251,7 +319,14 @@ export class TasksEngine {
     }
     await tx
       .update(task)
-      .set({ status: to, closedByMemoryId: byFact.id, updatedAt: new Date() })
+      .set({
+        status: to,
+        closedByMemoryId: byFact.id,
+        // A closed task carries no pending reminders (F3 handoff §2).
+        dueRemindedAt: null,
+        dormantRemindedAt: null,
+        updatedAt: new Date(),
+      })
       .where(eq(task.id, taskId));
     await writeAudit(tx, {
       actor: 'tasks_engine',
@@ -361,7 +436,12 @@ export class TasksEngine {
           // a merge — the duplicate is dismissed, the obligation survives once.
           await tx
             .update(task)
-            .set({ status: 'dismissed', updatedAt: new Date() })
+            .set({
+              status: 'dismissed',
+              dueRemindedAt: null,
+              dormantRemindedAt: null,
+              updatedAt: new Date(),
+            })
             .where(eq(task.id, t.id));
           report.dismissedDuplicates += 1;
           await writeAudit(tx, {
@@ -440,7 +520,10 @@ export class TasksEngine {
       }
       const [updated] = await tx
         .update(task)
-        .set({ ...patch, updatedAt: new Date() })
+        // Every user transition clears pending reminders: close/dismiss retire
+        // them; reopen resets so the next pass re-raises against fresh state
+        // (F3 handoff §2 — reminders clear when the task closes).
+        .set({ ...patch, dueRemindedAt: null, dormantRemindedAt: null, updatedAt: new Date() })
         .where(eq(task.id, taskId))
         .returning();
       await writeAudit(tx, {
@@ -462,19 +545,47 @@ export class TasksEngine {
       (filters.includeSettled
         ? (['open', 'blocked_on_condition', 'done', 'dismissed'] as TaskRow['status'][])
         : (['open', 'blocked_on_condition'] as TaskRow['status'][]));
+    // Candidates: the caller's own tasks plus every shared-scope task (F3
+    // handoff §5 — shared tasks are visible org-wide). Foreign shared tasks are
+    // then gated through their deriving memory, which enforces scope + org +
+    // sensitive; cross-org and private-of-others never survive.
     const rows = await this.db
       .select()
       .from(task)
-      .where(and(eq(task.ownerId, principal.userId), inArray(task.status, statuses)))
+      .where(
+        and(
+          or(eq(task.ownerId, principal.userId), eq(task.scope, 'shared')),
+          inArray(task.status, statuses),
+        ),
+      )
       .orderBy(sql`${task.due} ASC NULLS LAST`, desc(task.updatedAt))
       .limit(OPEN_TASK_POOL);
-    if (!filters.entity?.trim()) return rows;
+    const visible = await gateForeignTasks(this.memoryStore, principal, rows);
+    if (!filters.entity?.trim()) return visible;
     const wanted = norm(filters.entity);
-    return rows.filter(
+    return visible.filter(
       (t) =>
         t.entities.some((e) => norm(e).includes(wanted)) ||
         (t.primaryPerson !== null && norm(t.primaryPerson).includes(wanted)),
     );
+  }
+
+  /**
+   * The nav-badge count (F3 handoff §4): open + blocked, gated to the Principal
+   * — the caller's OWN workload, not the org-wide shared view. Mirrors the
+   * Review badge (your queue, not everyone's).
+   */
+  async countOpenForPrincipal(principal: Principal): Promise<number> {
+    const rows = await this.db
+      .select({ id: task.id })
+      .from(task)
+      .where(
+        and(
+          eq(task.ownerId, principal.userId),
+          inArray(task.status, ['open', 'blocked_on_condition']),
+        ),
+      );
+    return rows.length;
   }
 
   private async getConditionPrompt(): Promise<PromptArtifact> {

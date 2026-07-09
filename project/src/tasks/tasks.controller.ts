@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { z } from 'zod';
-import type { TaskDto } from '@cogeto/shared';
+import type { TaskCountDto, TaskDto } from '@cogeto/shared';
 import { TASK_STATUSES } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
@@ -38,6 +38,7 @@ function toDto(row: TaskRow): TaskDto {
     derivedFromMemoryId: row.derivedFromMemoryId,
     closedByMemoryId: row.closedByMemoryId,
     createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   };
 }
 
@@ -63,6 +64,12 @@ export class TasksController {
       includeSettled: parsed.data.includeSettled === 'true',
     });
     return rows.map(toDto);
+  }
+
+  /** The nav badge: open + blocked, owner-scoped (F3 handoff §4). */
+  @Get('count')
+  async count(@Req() request: AuthenticatedRequest): Promise<TaskCountDto> {
+    return { open: await this.engine.countOpenForPrincipal(request.principal) };
   }
 
   @Post(':id/reopen')

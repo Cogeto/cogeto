@@ -9,6 +9,7 @@ import {
   TASKS_BACKFILL_JOB_TYPE,
 } from '../ingestion/index';
 import type { DreamingService, IngestionPipeline, PipelineLog } from '../ingestion/index';
+import { TASKS_REMINDERS_JOB_TYPE } from '../tasks/index';
 import type { TasksEngine } from '../tasks/index';
 import {
   DELETION_JOB_TYPE,
@@ -146,6 +147,16 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
     [TASKS_BACKFILL_JOB_TYPE]: async () => {
       const report = await deps.tasksEngine.backfill((message) => deps.log({}, message));
       deps.log({ ...report }, 'tasks backfill completed');
+    },
+
+    // The nightly task reminders pass (F3 handoff §2) — scheduled 03:40 by the
+    // crontab in worker.ts, after the dreaming cycle's dormancy sync. Like the
+    // sweep, NOT idempotentTask (recurring, not one-shot per key); it is
+    // idempotent by construction — reminders stamp only when unset, so a
+    // re-delivered pass raises nothing new.
+    [TASKS_REMINDERS_JOB_TYPE]: async () => {
+      const report = await deps.tasksEngine.runReminders((message) => deps.log({}, message));
+      deps.log({ ...report }, 'task reminders pass completed');
     },
 
     // Extract-and-discard staging cleanup (§A.9, O1-C): deletes the transient

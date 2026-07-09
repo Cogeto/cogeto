@@ -28,12 +28,15 @@ export function Nav({
   active,
   reviewCount,
   approvalsCount,
+  tasksCount,
 }: {
   active: NavSection;
   reviewCount?: number;
   approvalsCount?: number;
+  tasksCount?: number;
 }) {
   const badges: Partial<Record<NavSection, number>> = {
+    tasks: tasksCount ?? 0,
     review: reviewCount ?? 0,
     approvals: approvalsCount ?? 0,
   };

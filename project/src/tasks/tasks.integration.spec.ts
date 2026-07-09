@@ -309,6 +309,120 @@ describe('task engine (integration, real Postgres, scripted judge)', () => {
     await expect(engine.reopen(principalFor('someone-else'), t.id)).rejects.toThrow(/not found/);
   });
 
+  const setDue = (taskId: string, due: Date | null) =>
+    tdb.pool.query(`UPDATE task SET due = $2 WHERE id = $1`, [taskId, due]);
+  const setDormant = (taskId: string, dormant: boolean) =>
+    tdb.pool.query(`UPDATE task SET dormant = $2 WHERE id = $1`, [taskId, dormant]);
+
+  it('reminder_idempotent: a re-run raises no duplicate reminder for the same task and window', async () => {
+    const owner = `task-rem-idem-${randomUUID()}`;
+    const engine = engineWith(new ScriptedJudgeGateway());
+    const s = randomUUID();
+    await seed(owner, s, { content: 'You will submit the grant application.', kind: 'commitment' });
+    await run(engine, s);
+    const t = (await engine.listForPrincipal(principalFor(owner)))[0]!;
+    await setDue(t.id, new Date(Date.now() - 24 * 3600 * 1000)); // overdue
+    await setDormant(t.id, true);
+
+    await engine.runReminders();
+    const stamped = (await engine.listForPrincipal(principalFor(owner)))[0]!;
+    expect(stamped.dueRemindedAt).not.toBeNull();
+    expect(stamped.dormantRemindedAt).not.toBeNull();
+
+    // Re-run the pass: the stamps must NOT move — one reminder per window.
+    await engine.runReminders();
+    const after = (await engine.listForPrincipal(principalFor(owner)))[0]!;
+    expect(after.dueRemindedAt?.getTime()).toBe(stamped.dueRemindedAt?.getTime());
+    expect(after.dormantRemindedAt?.getTime()).toBe(stamped.dormantRemindedAt?.getTime());
+  });
+
+  it('reminder_clears_on_close: completing a task clears its pending reminders; resolved dormancy clears too', async () => {
+    const owner = `task-rem-close-${randomUUID()}`;
+    const engine = engineWith(new ScriptedJudgeGateway());
+    const s = randomUUID();
+    await seed(owner, s, { content: 'You will renew the certificate.', kind: 'commitment' });
+    await run(engine, s);
+    const t = (await engine.listForPrincipal(principalFor(owner)))[0]!;
+    await setDue(t.id, new Date(Date.now() - 24 * 3600 * 1000));
+    await setDormant(t.id, true);
+    await engine.runReminders();
+    expect((await engine.listForPrincipal(principalFor(owner)))[0]!.dueRemindedAt).not.toBeNull();
+
+    await engine.complete(principalFor(owner), t.id);
+    const settled = (
+      await engine.listForPrincipal(principalFor(owner), { includeSettled: true })
+    ).find((row) => row.id === t.id)!;
+    expect(settled.dueRemindedAt).toBeNull();
+    expect(settled.dormantRemindedAt).toBeNull();
+  });
+
+  it('reminder_resolved_dormancy_clears: a dormant reminder is dropped once the task is no longer quiet', async () => {
+    const owner = `task-rem-dorm-${randomUUID()}`;
+    const engine = engineWith(new ScriptedJudgeGateway());
+    const s = randomUUID();
+    await seed(owner, s, { content: 'You will circulate the notes.', kind: 'commitment' });
+    await run(engine, s);
+    const t = (await engine.listForPrincipal(principalFor(owner)))[0]!;
+    await setDormant(t.id, true);
+    await engine.runReminders();
+    expect(
+      (await engine.listForPrincipal(principalFor(owner)))[0]!.dormantRemindedAt,
+    ).not.toBeNull();
+
+    await setDormant(t.id, false); // the engine's dormancy sync flipped it back
+    await engine.runReminders();
+    expect((await engine.listForPrincipal(principalFor(owner)))[0]!.dormantRemindedAt).toBeNull();
+  });
+
+  it('tasks_ui_actions_audited: reopen/dismiss/complete each write exactly one audit row through the engine', async () => {
+    const owner = `task-audit-${randomUUID()}`;
+    const engine = engineWith(new ScriptedJudgeGateway());
+    const s = randomUUID();
+    await seed(owner, s, { content: 'You will book the venue.', kind: 'commitment' });
+    await run(engine, s);
+    const t = (await engine.listForPrincipal(principalFor(owner)))[0]!;
+
+    await engine.complete(principalFor(owner), t.id);
+    await engine.reopen(principalFor(owner), t.id);
+    await engine.dismiss(principalFor(owner), t.id);
+    // Exactly one audit row per operation — no double-writes, no missing rows.
+    expect(await auditCount('task.done', t.id)).toBe(1);
+    expect(await auditCount('task.open', t.id)).toBe(1);
+    expect(await auditCount('task.dismissed', t.id)).toBe(1);
+  });
+
+  it('task_badge_counts: the badge equals open + blocked, gated to the Principal', async () => {
+    const owner = `task-badge-${randomUUID()}`;
+    const other = `task-badge-other-${randomUUID()}`;
+    const engine = engineWith(new ScriptedJudgeGateway());
+
+    const s1 = randomUUID();
+    await seed(owner, s1, { content: 'You will draft the memo.', kind: 'commitment' });
+    const s2 = randomUUID();
+    await seed(owner, s2, {
+      content: 'Send Ivo the invoice after Ivo returns the signed form.',
+      kind: 'commitment',
+      entities: ['Ivo'],
+    });
+    const s3 = randomUUID();
+    await seed(owner, s3, { content: 'You will archive the tickets.', kind: 'commitment' });
+    await run(engine, s1);
+    await run(engine, s2);
+    await run(engine, s3);
+    // Another owner's task never counts toward this Principal's badge.
+    const sOther = randomUUID();
+    await seed(other, sOther, { content: 'Other will call the bank.', kind: 'commitment' });
+    await run(engine, sOther);
+
+    expect(await engine.countOpenForPrincipal(principalFor(owner))).toBe(3); // 2 open + 1 blocked
+    const archive = (await engine.listForPrincipal(principalFor(owner))).find((t) =>
+      t.title.includes('archive'),
+    )!;
+    await engine.complete(principalFor(owner), archive.id);
+    expect(await engine.countOpenForPrincipal(principalFor(owner))).toBe(2);
+    expect(await engine.countOpenForPrincipal(principalFor(other))).toBe(1);
+  });
+
   it('tasks_read_only_memory: the tasks module calls no mutating memory interface and no memory internals', () => {
     const tasksDir = path.resolve(__dirname);
     const sources = readdirSync(tasksDir)

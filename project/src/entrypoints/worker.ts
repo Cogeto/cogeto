@@ -22,7 +22,7 @@ import {
   SWEEP_CRONTAB,
 } from '../memory/index';
 import { APPROVAL_EXPIRY_CRONTAB, ApprovalExecutor, ApprovalService } from '../agents/index';
-import { TASK_PROMPTS, TasksEngine } from '../tasks/index';
+import { TASK_PROMPTS, TASKS_REMINDERS_CRONTAB, TasksEngine } from '../tasks/index';
 import { ANSWER_PROMPT, QUERY_REWRITE_PROMPT } from '../retrieval/index';
 import { loadPrompt, ModelGateway, recordPromptVersion } from '../model-gateway/index';
 import { buildTaskList } from './worker-tasks';
@@ -93,10 +93,11 @@ async function main(): Promise<void> {
       log: (event, message) => logger.info(event, message),
     }),
     // Nightly schedule (graphile cron): the 03:00 integrity sweep (§A.7 step
-    // 4), then the 03:30 dreaming cycle (§B.6; decision 0011), plus the
-    // every-5-minute approval expiry pass (§A.8; O1-B). On-demand sweep/dream
-    // runs go through their entrypoints instead of the queue.
-    crontab: `${SWEEP_CRONTAB}\n${DREAM_CRONTAB}\n${APPROVAL_EXPIRY_CRONTAB}`,
+    // 4), the 03:30 dreaming cycle (§B.6; decision 0011), then the 03:40 task
+    // reminders pass (F3 handoff §2 — one more crontab LINE, never a second
+    // scheduler), plus the every-5-minute approval expiry pass (§A.8; O1-B).
+    // On-demand sweep/dream runs go through their entrypoints instead.
+    crontab: `${SWEEP_CRONTAB}\n${DREAM_CRONTAB}\n${TASKS_REMINDERS_CRONTAB}\n${APPROVAL_EXPIRY_CRONTAB}`,
     noHandleSignals: true,
   });
   logger.info('cogeto worker started (graphile runner + task registry)');

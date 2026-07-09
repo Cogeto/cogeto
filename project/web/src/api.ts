@@ -31,7 +31,9 @@ import type {
   ReceiptDetailDto,
   ReceiptListItem,
   ResolveContradictionRequest,
+  TaskCountDto,
   TaskDto,
+  TaskStatus,
   VerificationDto,
 } from '@cogeto/shared';
 import type { Session } from './auth/oidc';
@@ -173,17 +175,23 @@ export const rejectMemory = (session: Session, id: string): Promise<{ rejected: 
 export const fetchDreamDigest = (session: Session): Promise<DreamDigestDto> =>
   apiGet('/api/dreaming/latest', session);
 
-// The debug-grade task surface (F3-B, decision 0013; the real UI is O2).
+// The Tasks surface (O2-A, decision 0013; F3 handoff §4). Views map to status
+// filters; the remaining filters (due window, dormant-only, from_uncertain)
+// refine client-side over the capped list.
 export const fetchTasks = (
   session: Session,
-  params: { includeSettled?: boolean; entity?: string } = {},
+  params: { status?: TaskStatus; includeSettled?: boolean; entity?: string } = {},
 ): Promise<TaskDto[]> => {
   const search = new URLSearchParams();
+  if (params.status) search.set('status', params.status);
   if (params.includeSettled) search.set('includeSettled', 'true');
   if (params.entity?.trim()) search.set('entity', params.entity.trim());
   const qs = search.toString();
   return apiGet(`/api/tasks${qs ? `?${qs}` : ''}`, session);
 };
+// The nav badge: open + blocked, owner-scoped (F3 handoff §4).
+export const fetchTaskCount = (session: Session): Promise<TaskCountDto> =>
+  apiGet('/api/tasks/count', session);
 export const taskOperation = (
   session: Session,
   id: string,

@@ -93,6 +93,12 @@ export interface DreamDigestLine {
   text: string;
   /** SPA route the line deep-links to; always resolvable for the caller. */
   href: string;
+  /**
+   * Which panel section the line belongs to (O2-A): the nightly consolidation
+   * or the tasks reminders/updates. Optional for back-compat; absent reads as
+   * `consolidation`. The digest is one surface with two sections (F3 §3).
+   */
+  section?: 'consolidation' | 'tasks';
 }
 
 export interface DreamDigestDto {

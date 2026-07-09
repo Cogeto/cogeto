@@ -33,6 +33,12 @@ export const task = pgTable(
     closedByMemoryId: uuid('closed_by_memory_id'),
     dormant: boolean('dormant').notNull().default(false),
     fromUncertain: boolean('from_uncertain').notNull().default(false),
+    // Reminder state (migration 0017; F3 handoff §2): a set timestamp means a
+    // pending reminder of that kind. The reminders pass stamps once per window;
+    // close/dismiss and dormancy-resolution clear. NOT a second table — additive
+    // columns, pre-approved by the handoff.
+    dueRemindedAt: timestamp('due_reminded_at', { withTimezone: true }),
+    dormantRemindedAt: timestamp('dormant_reminded_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

@@ -16,4 +16,11 @@ export interface TaskDto {
   derivedFromMemoryId: string;
   closedByMemoryId: string | null;
   createdAt: string;
+  /** Last transition time — the relative "closed N days ago" in history. */
+  updatedAt: string;
+}
+
+/** GET /api/tasks/count — the nav badge (open + blocked, owner-scoped). */
+export interface TaskCountDto {
+  open: number;
 }

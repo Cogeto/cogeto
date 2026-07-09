@@ -61,6 +61,9 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         },
       }),
       TasksModule.forApi(),
+      // The digest's TASKS section as a global provider, so ingestion's digest
+      // endpoint can inject it without importing tasks (O2-A; F3 handoff §3).
+      TasksModule.forDigest(),
     ],
     controllers: [
       AuditController,
