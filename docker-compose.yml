@@ -42,6 +42,11 @@ services:
       COGETO_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-cogeto-dev-password}@postgres:5432/cogeto
       COGETO_QDRANT_URL: http://qdrant:6333
       COGETO_S3_URL: http://minio:9000
+      # Browser-reachable S3 origin for presigned download URLs (§A.9, O1;
+      # decision 0017): served by Caddy at https://s3.localhost with the Host
+      # header preserved, so MinIO's SigV4 host check matches. Add the local DNS
+      # entry (see decision 0017) before downloads resolve in the browser.
+      COGETO_S3_PUBLIC_URL: ${COGETO_S3_PUBLIC_URL:-https://s3.localhost}
       # Object-storage credentials + bucket for the memory module's S3 client
       # (deletion saga object removal, encryption health check — decision 0008).
       COGETO_S3_ACCESS_KEY: ${MINIO_ROOT_USER:-cogeto}
@@ -229,10 +234,20 @@ services:
 
   minio:
     image: minio/minio:latest
-    command: ['server', '/data']
+    # Console on :9001 (S3 API stays on :9000). Both are fronted by Caddy —
+    # no host ports published (single-ingress; decision 0017).
+    command: ['server', '/data', '--console-address', ':9001']
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-cogeto}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-cogeto-dev-password}
+      # The console's public origin behind the Caddy edge (decision 0017).
+      # NOTE: we deliberately do NOT set MINIO_SERVER_URL — it would point the
+      # console's API client at https://s3.localhost, which is unresolvable from
+      # inside the container (that DNS is host-only) and breaks console login
+      # with a 503. Presigned downloads do NOT need it: MinIO validates SigV4
+      # against the incoming Host header (preserved by Caddy), which matches
+      # COGETO_S3_PUBLIC_URL. TLS is terminated at Caddy; MinIO speaks HTTP.
+      MINIO_BROWSER_REDIRECT_URL: ${MINIO_BROWSER_REDIRECT_URL:-https://minio.localhost}
       # Server-side encryption at rest (§A.9, decision 0008): single-node KMS
       # backed by one named static key. Format: <name>:<base64 32 bytes>.
       # The baked-in value is DEV-ONLY; provisioning generates a real one per
