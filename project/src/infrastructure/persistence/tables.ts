@@ -16,6 +16,8 @@ export const auditLog = pgTable('audit_log', {
   entityType: text('entity_type').notNull(),
   entityId: text('entity_id').notNull(),
   detailJson: jsonb('detail_json'),
+  /** Org for org-scoped reads (migration 0016); NULL = system/global entry. */
+  orgId: text('org_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

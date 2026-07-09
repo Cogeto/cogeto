@@ -19,7 +19,11 @@ import type { TestDatabase, TestMinio, TestQdrant } from '../testing/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import { FilesService, FileSourceReader } from '../connectors/index';
-import { INGESTION_PIPELINE_JOB_TYPE, createIngestionPipeline } from '../ingestion/index';
+import {
+  FILE_DISCARD_CLEANUP_JOB_TYPE,
+  INGESTION_PIPELINE_JOB_TYPE,
+  createIngestionPipeline,
+} from '../ingestion/index';
 import { MemoryStore } from './memory.store';
 import { MemoryReconciliation } from './reconciliation';
 import { MemoryVectorStore } from './persistence/vector-store';
@@ -132,7 +136,7 @@ describe('deletion cascade over a real uploaded file (F1 handoff §4)', () => {
 
     store = new MemoryStore(tdb.db, vectors);
     fileStore = new MemoryFileStore(tdb.db);
-    filesService = new FilesService(tdb.db, objects, fileStore, {
+    filesService = new FilesService(tdb.db, objects, fileStore, store, {
       uploadMaxBytes: 25 * 1024 * 1024,
       downloadUrlTtlSeconds: 300,
     });
@@ -164,6 +168,10 @@ describe('deletion cascade over a real uploaded file (F1 handoff §4)', () => {
     [DELETION_JOB_TYPE]: idempotentTask(tdb.db, DELETION_JOB_TYPE, async (tx, payload) => {
       await executor.execute(tx, payload.source_id);
     }),
+    [FILE_DISCARD_CLEANUP_JOB_TYPE]: async (rawPayload) => {
+      const key = (rawPayload as { source_id?: unknown }).source_id;
+      if (typeof key === 'string') await objects.deleteObject(key);
+    },
   });
   const runWorker = () => runOnce({ pgPool: tdb.pool, taskList: taskList() });
 
@@ -265,5 +273,45 @@ describe('deletion cascade over a real uploaded file (F1 handoff §4)', () => {
     expect(verifyChain(await confirmedReceipts(), publicKey).ok).toBe(true);
     const sweep = new IntegritySweep(tdb.db, vectors, objects, keyDir);
     expect(await sweep.run()).toMatchObject({ newAlerts: 0, openAlerts: 0, chainOk: true });
+  });
+
+  it('discard_receipt: deleting a discarded source yields a receipt with zero objects and the correct memory count', async () => {
+    gateway = new ScriptedGateway(() => ({
+      facts: [
+        fact('Ana will circulate the discarded brief to the team.', ['Ana']),
+        fact('The brief is due before the quarterly review.'),
+      ],
+    }));
+    const { objectKey } = await filesService.upload(
+      userA,
+      {
+        buffer: makePdf('A two-fact brief that will be discarded after extraction.'),
+        originalName: 'discarded-brief.pdf',
+        mimeType: PDF_CONTENT_TYPE,
+      },
+      { scope: 'private', sensitive: true, discard: true },
+    );
+    await runWorker(); // extract → 2 memories + enqueue staging cleanup
+    await runWorker(); // run the staging cleanup
+
+    // Discarded: byte-less source, no file_metadata, but memories with provenance.
+    expect(await memoryCount(objectKey)).toBe(2);
+    expect(await fileMetaExists(objectKey)).toBe(false);
+    expect(await objects.objectExists(objectKey)).toBe(false);
+
+    // Deletion works with no file_metadata (auth falls back to the memories'
+    // owner); the receipt records the memories and ZERO object keys.
+    const { receiptId } = await saga.requestSourceDeletion(userA, 'file', objectKey);
+    expect(await memoryCount(objectKey)).toBe(0);
+    await runWorker(); // confirm
+
+    const receipt = await getReceipt(receiptId);
+    expect(receipt?.status).toBe('confirmed');
+    const counts = receipt!.counts_json as { memory_count: number; object_keys: string[] };
+    expect(counts.memory_count).toBe(2);
+    expect(counts.object_keys).toEqual([]); // a discarded original has no object
+
+    const publicKey = await loadInstancePublicKey(keyDir);
+    expect(verifyChain(await confirmedReceipts(), publicKey).ok).toBe(true);
   });
 });

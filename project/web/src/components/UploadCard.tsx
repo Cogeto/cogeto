@@ -6,7 +6,7 @@ import {
   ALLOWED_UPLOAD_EXTENSIONS,
   DEFAULT_UPLOAD_MAX_BYTES,
 } from '@cogeto/shared';
-import { fetchFileStatus, uploadFile } from '../api';
+import { fetchFileStatus, fetchSettings, uploadFile } from '../api';
 import type { Session } from '../auth/oidc';
 
 /** Client-side pre-check — the server re-validates type (magic bytes) and size. */
@@ -34,14 +34,21 @@ export function UploadCard({
   session: Session;
   onUploaded: (objectKey: string, filename: string) => void;
 }) {
-  const [scope, setScope] = useState<MemoryScope>('private');
+  // Prefill scope + discard from the user's saved defaults (§A.9, O1-C).
+  const settings = useQuery({ queryKey: ['settings'], queryFn: () => fetchSettings(session) });
+  const [scope, setScope] = useState<MemoryScope | null>(null);
   const [sensitive, setSensitive] = useState(false);
+  const [discard, setDiscard] = useState<boolean | null>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const effScope = scope ?? settings.data?.defaultScope ?? 'private';
+  const effDiscard = discard ?? settings.data?.discardByDefault ?? false;
+
   const upload = useMutation({
-    mutationFn: ({ file }: { file: File }) => uploadFile(session, file, { scope, sensitive }),
+    mutationFn: ({ file }: { file: File }) =>
+      uploadFile(session, file, { scope: effScope, sensitive, discard: effDiscard }),
     onSuccess: (result, { file }) => onUploaded(result.objectKey, file.name),
     onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
   });
@@ -97,7 +104,7 @@ export function UploadCard({
         <label className="flex items-center gap-1.5">
           Scope
           <select
-            value={scope}
+            value={effScope}
             onChange={(e) => setScope(e.target.value as MemoryScope)}
             className="rounded-md border border-slate-300 px-2 py-1"
           >
@@ -113,8 +120,25 @@ export function UploadCard({
           />
           Sensitive
         </label>
+        <label
+          className="flex items-center gap-1.5"
+          title="Delete the original after extraction — keep only the derived memories (§A.9)."
+        >
+          <input
+            type="checkbox"
+            checked={effDiscard}
+            onChange={(e) => setDiscard(e.target.checked)}
+          />
+          Discard original after extraction
+        </label>
       </div>
 
+      {effDiscard && (
+        <p className="mt-2 text-xs text-amber-600">
+          The uploaded file will be deleted once its facts are extracted — only the verified
+          memories are kept. This cannot be undone.
+        </p>
+      )}
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </section>
   );

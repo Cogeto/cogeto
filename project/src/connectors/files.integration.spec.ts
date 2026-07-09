@@ -18,12 +18,19 @@ import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import { createMemoryReconciliation, MemoryFileStore, MemoryObjectStore } from '../memory/index';
 import type { MemoryStore, MemoryReconciliation } from '../memory/index';
-import { INGESTION_PIPELINE_JOB_TYPE, createIngestionPipeline } from '../ingestion/index';
+import {
+  FILE_DISCARD_CLEANUP_JOB_TYPE,
+  INGESTION_PIPELINE_JOB_TYPE,
+  createIngestionPipeline,
+} from '../ingestion/index';
 import type { IngestionPipeline } from '../ingestion/index';
 import { NotesService } from './notes.service';
 import { NotesSourceReader } from './notes.source-reader';
 import { FilesService } from './files.service';
 import { FileSourceReader } from './file.source-reader';
+import { UserSettingsService } from './user-settings.service';
+import { FilesController } from './files.controller';
+import type { AuthenticatedRequest } from '../identity/index';
 
 const DIMS = 8;
 const EMBED_MODEL = 'test-embed';
@@ -110,6 +117,7 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
   let reconciliation: MemoryReconciliation;
   let fileStore: MemoryFileStore;
   let filesService: FilesService;
+  let userSettings: UserSettingsService;
   let notes: NotesService;
 
   const uploadOpts = { uploadMaxBytes: 25 * 1024 * 1024, downloadUrlTtlSeconds: 300 };
@@ -140,7 +148,8 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
     }));
     await store.ensureIndexReady();
     fileStore = new MemoryFileStore(tdb.db);
-    filesService = new FilesService(tdb.db, objects, fileStore, uploadOpts);
+    filesService = new FilesService(tdb.db, objects, fileStore, store, uploadOpts);
+    userSettings = new UserSettingsService(tdb.db);
     notes = new NotesService(tdb.db);
   }, 120_000);
 
@@ -166,6 +175,11 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
         await pipeline.run(tx, payload);
       },
     ),
+    // Discard staging cleanup — the same handler the worker registry runs.
+    [FILE_DISCARD_CLEANUP_JOB_TYPE]: async (rawPayload) => {
+      const key = (rawPayload as { source_id?: unknown }).source_id;
+      if (typeof key === 'string') await objects.deleteObject(key);
+    },
   });
   const runWorker = (pipeline: IngestionPipeline) =>
     runOnce({ pgPool: tdb.pool, taskList: taskListFor(pipeline) });
@@ -236,7 +250,7 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
       },
       get: async () => null,
     } as unknown as MemoryFileStore;
-    const brokenService = new FilesService(tdb.db, objects, brokenFiles, uploadOpts);
+    const brokenService = new FilesService(tdb.db, objects, brokenFiles, store, uploadOpts);
 
     const jobsBefore = await pipelineJobCount();
     await expect(
@@ -400,5 +414,78 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
       ),
     ).rejects.toThrow(/unsupported file type/i);
     expect(await pipelineJobCount()).toBe(before); // nothing enqueued
+  });
+
+  it('discard_mode: the original is deleted after extraction; memories retained with provenance; download disabled', async () => {
+    const text = 'Ivan will finalize the discard-mode demo by Friday.';
+    const gateway = new ScriptedGateway(() => ({ facts: [fact(text, ['Ivan'])] }));
+    const pipeline = buildPipeline(gateway);
+    const { objectKey } = await filesService.upload(
+      userA,
+      { buffer: makePdf(text), originalName: 'secret.pdf', mimeType: PDF_CONTENT_TYPE },
+      { scope: 'private', sensitive: false, discard: true },
+    );
+    const parts = objectKey.split('/');
+    parts[parts.length - 2] = 'staging';
+    const stagingKey = parts.join('/');
+
+    // Discard mode: NO durable object, NO file_metadata — bytes are only staged.
+    expect(await objects.objectExists(objectKey)).toBe(false);
+    expect(await fileMetaExists(objectKey)).toBe(false);
+    expect(await objects.objectExists(stagingKey)).toBe(true);
+    // Status polls work BEFORE any memory/metadata exists (owner-only by key).
+    expect(await filesService.getUploadState(userA, objectKey)).toBe('processing');
+    expect(await filesService.getUploadState(userB, objectKey)).toBeNull(); // not the owner
+
+    await runWorker(pipeline); // extract → store memories → enqueue staging cleanup
+    await runWorker(pipeline); // run the cleanup job
+
+    // Memories retained, with full provenance to the (now byte-less) source key.
+    const rows = (await memoriesFor('file', objectKey)).rows;
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.status).toBe('active');
+    expect(await pointsFor(objectKey)).toHaveLength(1);
+    // The original never existed durably and staging is cleaned; still no metadata.
+    expect(await objects.objectExists(stagingKey)).toBe(false);
+    expect(await objects.objectExists(objectKey)).toBe(false);
+    expect(await fileMetaExists(objectKey)).toBe(false);
+
+    // The drawer shows "discarded"; download is disabled.
+    const src = await filesService.getSourceForOwner(userA, objectKey);
+    expect(src?.discarded).toBe(true);
+    expect(src?.filename).toBeNull();
+    expect(src?.state).toBe('done');
+    expect(await filesService.getDownloadUrl(userA, objectKey)).toBeNull();
+  });
+
+  it('settings_defaults_applied: a new upload honors the per-user discard and scope defaults', async () => {
+    await userSettings.update(userA, { discardByDefault: true, defaultScope: 'shared' });
+    expect(await userSettings.get(userA)).toEqual({
+      discardByDefault: true,
+      defaultScope: 'shared',
+    });
+
+    // Upload through the controller with NO explicit flags → it applies the defaults.
+    const controller = new FilesController(filesService, userSettings);
+    const text = 'Marko approved the shared discard default.';
+    const request = {
+      principal: userA,
+      file: { buffer: makePdf(text), originalname: 'd.pdf', mimetype: PDF_CONTENT_TYPE },
+      body: {},
+    } as unknown as AuthenticatedRequest;
+    const { objectKey } = await controller.upload(request);
+
+    // discard=true → staged, no file_metadata; scope=shared → key + derived memories.
+    expect(await fileMetaExists(objectKey)).toBe(false);
+    expect(objectKey).toContain('/shared/');
+    const gateway = new ScriptedGateway(() => ({ facts: [fact(text, ['Marko'])] }));
+    const pipeline = buildPipeline(gateway);
+    await runWorker(pipeline);
+    await runWorker(pipeline);
+    const rows = (await memoriesFor('file', objectKey)).rows;
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.scope).toBe('shared');
+
+    await userSettings.update(userA, { discardByDefault: false, defaultScope: 'private' });
   });
 });

@@ -10,6 +10,7 @@ import { TasksCascade, TasksModule } from '../tasks/index';
 import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG } from './config';
 import type { CogetoConfig } from './config';
+import { AuditController } from './audit.controller';
 import { HealthController } from './health.controller';
 import { InstanceController } from './instance.controller';
 import { JobsController } from './jobs.controller';
@@ -61,7 +62,13 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       }),
       TasksModule.forApi(),
     ],
-    controllers: [HealthController, InstanceController, JobsController, WebConfigController],
+    controllers: [
+      AuditController,
+      HealthController,
+      InstanceController,
+      JobsController,
+      WebConfigController,
+    ],
     providers: [{ provide: COGETO_CONFIG, useValue: config }],
   })
   class AppRootModule {}

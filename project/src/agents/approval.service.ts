@@ -62,6 +62,7 @@ export class ApprovalService {
         entityType: 'approval',
         entityId: created.id,
         detail: { actionType, status: created.status },
+        orgId: principal.orgId,
       });
       return created;
     });
@@ -97,6 +98,7 @@ export class ApprovalService {
         entityType: 'approval',
         entityId: id,
         detail: { actionType: current.actionType, from: current.status, to },
+        orgId: principal.orgId,
       });
       // Execution is a worker job — the confirm endpoint does nothing else.
       if (decision === 'approve') {
@@ -125,7 +127,7 @@ export class ApprovalService {
   async expireStale(): Promise<number> {
     return this.db.transaction(async (tx) => {
       const stale = await tx
-        .select({ id: approval.id, actionType: approval.actionType })
+        .select({ id: approval.id, actionType: approval.actionType, orgId: approval.orgId })
         .from(approval)
         .where(and(eq(approval.status, 'pending_approval'), lt(approval.expiresAt, sql`now()`)))
         .for('update');
@@ -139,6 +141,7 @@ export class ApprovalService {
           entityType: 'approval',
           entityId: r.id,
           detail: { actionType: r.actionType, from: 'pending_approval', to: 'expired' },
+          orgId: r.orgId ?? undefined,
         });
       }
       return stale.length;

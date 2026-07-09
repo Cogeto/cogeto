@@ -24,6 +24,14 @@ export interface SourceItem {
    */
   scope?: MemoryScope;
   sensitive?: boolean;
+  /**
+   * Extract-and-discard (§A.9, F1 handoff §3): the transient staging object the
+   * bytes were read from, present ONLY in discard mode. The pipeline schedules
+   * its deletion AFTER the derived memories commit — so a discarded original is
+   * removed only once its extraction is durable (never a memory-loss window).
+   * A staging key never enters file_metadata, provenance, or any receipt.
+   */
+  stagingKey?: string;
 }
 
 export interface SourceReader {

@@ -14,7 +14,13 @@ import {
   DreamingService,
   IngestionPipeline,
 } from '../ingestion/index';
-import { DeletionExecutor, IntegritySweep, MemoryStore, SWEEP_CRONTAB } from '../memory/index';
+import {
+  DeletionExecutor,
+  IntegritySweep,
+  MemoryObjectStore,
+  MemoryStore,
+  SWEEP_CRONTAB,
+} from '../memory/index';
 import { APPROVAL_EXPIRY_CRONTAB, ApprovalExecutor, ApprovalService } from '../agents/index';
 import { TASK_PROMPTS, TasksEngine } from '../tasks/index';
 import { ANSWER_PROMPT, QUERY_REWRITE_PROMPT } from '../retrieval/index';
@@ -82,6 +88,7 @@ async function main(): Promise<void> {
       tasksEngine: context.get(TasksEngine),
       approvalService: context.get(ApprovalService),
       approvalExecutor: context.get(ApprovalExecutor),
+      objects: context.get(MemoryObjectStore),
       gateway: context.get(ModelGateway),
       log: (event, message) => logger.info(event, message),
     }),

@@ -10,8 +10,8 @@ import {
   withTransactionalEnqueue,
 } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
-import { INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
-import { MemoryFileStore, MemoryObjectStore } from '../memory/index';
+import { FILE_DISCARD_CLEANUP_JOB_TYPE, INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
+import { MemoryFileStore, MemoryObjectStore, MemoryStore } from '../memory/index';
 import { sniffContentType } from './document-extract';
 import { FILE_UPLOAD_OPTIONS } from './file-upload-options';
 import type { FileUploadOptions } from './file-upload-options';
@@ -34,6 +34,18 @@ export interface UploadedFile {
 export interface UploadFlags {
   scope: MemoryScope;
   sensitive: boolean;
+  /** Extract-and-discard (§A.9): keep no original after extraction. */
+  discard: boolean;
+}
+
+/** How long the staging object lingers before the backstop cleanup runs. */
+const STAGING_BACKSTOP_MINUTES = 15;
+
+/** Derives a source key's staging twin: the scope segment becomes `staging`. */
+function toStagingKey(sourceKey: string): string {
+  const parts = sourceKey.split('/');
+  parts[parts.length - 2] = 'staging'; // {org}/{user}/{scope}/file-{uuid}
+  return parts.join('/');
 }
 
 /**
@@ -58,6 +70,7 @@ export class FilesService {
     @Inject(DRIZZLE) private readonly db: Db,
     private readonly objects: MemoryObjectStore,
     private readonly files: MemoryFileStore,
+    private readonly memory: MemoryStore,
     @Inject(FILE_UPLOAD_OPTIONS) private readonly options: FileUploadOptions,
   ) {}
 
@@ -76,8 +89,22 @@ export class FilesService {
 
     // Object key contract (§A.6, handoff §1): {orgId}/{userId}/{scope}/file-{uuid},
     // first segment the Zitadel org id — minted before anything is written, the
-    // provenance anchor of every derived memory.
+    // provenance anchor of every derived memory. Same in both modes.
     const objectKey = `${principal.orgId}/${principal.userId}/${flags.scope}/file-${randomUUID()}`;
+
+    return flags.discard
+      ? this.uploadDiscard(principal, file, flags, objectKey, contentType)
+      : this.uploadStored(principal, file, flags, objectKey, contentType);
+  }
+
+  /** Stored mode (F1 handoff §1): durable object + file_metadata row. */
+  private async uploadStored(
+    principal: Principal,
+    file: UploadedFile,
+    flags: UploadFlags,
+    objectKey: string,
+    contentType: string,
+  ): Promise<{ objectKey: string }> {
     const checksum = createHash('sha256').update(file.buffer).digest('hex');
 
     // (1) object-first.
@@ -122,22 +149,115 @@ export class FilesService {
     return { objectKey };
   }
 
+  /**
+   * Extract-and-discard mode (§A.9, F1 handoff §3): NO durable object, NO
+   * file_metadata row. The bytes are staged at {org}/{user}/staging/file-{uuid}
+   * (the object key's staging twin); the pipeline reads them, derives memories
+   * with full provenance to the byte-less source key, and — in the SAME
+   * transaction as those memories — schedules the staging object's deletion, so
+   * the original is discarded only after extraction is durable (no memory-loss
+   * window). A delayed backstop cleanup guarantees the staging bytes go even if
+   * extraction never succeeds (corrupt file / crash); absent = success. Staging
+   * keys never enter file_metadata, provenance, or any receipt.
+   */
+  private async uploadDiscard(
+    principal: Principal,
+    file: UploadedFile,
+    flags: UploadFlags,
+    objectKey: string,
+    contentType: string,
+  ): Promise<{ objectKey: string }> {
+    const stagingKey = toStagingKey(objectKey);
+
+    // (1) stage the bytes, carrying the context the pipeline needs (there is no
+    // file_metadata row to read it from): owner, scope, sensitive, upload time.
+    await this.objects.putObject(stagingKey, file.buffer, {
+      contentType,
+      metadata: {
+        'original-filename': encodeURIComponent(file.originalName),
+        'owner-id': principal.userId,
+        scope: flags.scope,
+        sensitive: String(flags.sensitive),
+        'uploaded-at': new Date().toISOString(),
+      },
+    });
+
+    try {
+      // (2) enqueue the pipeline job + the delayed backstop cleanup in one tx.
+      await this.db.transaction(async (tx) => {
+        await withTransactionalEnqueue(
+          tx,
+          {
+            type: 'file.uploaded',
+            payload: {
+              source_type: 'file',
+              source_id: objectKey,
+              owner_id: principal.userId,
+              discard: true,
+            },
+          },
+          {
+            type: INGESTION_PIPELINE_JOB_TYPE,
+            payload: { source_type: 'file', source_id: objectKey },
+            maxAttempts: FILE_PIPELINE_MAX_ATTEMPTS,
+          },
+        );
+        // Backstop: fires in 15 min even if extraction never succeeds; the
+        // success path also enqueues an immediate cleanup, so the norm is fast.
+        await tx.execute(sql`
+          SELECT graphile_worker.add_job(
+            ${FILE_DISCARD_CLEANUP_JOB_TYPE},
+            payload := ${JSON.stringify({ source_type: 'file', source_id: stagingKey })}::json,
+            run_at := now() + (${STAGING_BACKSTOP_MINUTES} || ' minutes')::interval,
+            max_attempts := 5
+          )
+        `);
+      });
+    } catch (error) {
+      // Abort-window cleanup: no job enqueued, so the staging object is a true
+      // orphan — remove it (absent = success).
+      await this.objects.deleteObject(stagingKey).catch(() => undefined);
+      throw error;
+    }
+
+    return { objectKey };
+  }
+
   /** The source drawer's file facts — owner-only (null → the controller 404s). */
   async getSourceForOwner(principal: Principal, objectKey: string): Promise<FileSourceDto | null> {
     const metadata = await this.files.get(objectKey);
-    if (!metadata || metadata.ownerId !== principal.userId) return null;
+    if (metadata) {
+      if (metadata.ownerId !== principal.userId) return null;
+      const stat = await this.objects.statObject(objectKey);
+      const rawFilename = stat?.metadata['original-filename'] ?? null;
+      return {
+        objectKey,
+        filename: rawFilename ? safeDecode(rawFilename) : null,
+        contentType: stat?.contentType ?? null,
+        sizeBytes: stat?.sizeBytes ?? metadata.sizeBytes ?? null,
+        scope: metadata.scope,
+        sensitive: metadata.sensitive,
+        uploadDate: metadata.uploadDate.toISOString(),
+        state: await this.getProcessingState(objectKey),
+        discarded: false,
+      };
+    }
 
-    const stat = await this.objects.statObject(objectKey);
-    const rawFilename = stat?.metadata['original-filename'] ?? null;
+    // No file_metadata: either a discarded source (its byte-less memories still
+    // carry this key as provenance) or nonexistent. Authorization + the drawer
+    // facts fall back to the derived memories (F1 handoff §3).
+    const derived = await this.memory.describeSource('file', objectKey);
+    if (!derived || derived.ownerId !== principal.userId) return null;
     return {
       objectKey,
-      filename: rawFilename ? safeDecode(rawFilename) : null,
-      contentType: stat?.contentType ?? null,
-      sizeBytes: stat?.sizeBytes ?? metadata.sizeBytes ?? null,
-      scope: metadata.scope,
-      sensitive: metadata.sensitive,
-      uploadDate: metadata.uploadDate.toISOString(),
+      filename: null,
+      contentType: null,
+      sizeBytes: null,
+      scope: derived.scope,
+      sensitive: derived.sensitive,
+      uploadDate: derived.createdAt.toISOString(),
       state: await this.getProcessingState(objectKey),
+      discarded: true,
     };
   }
 
@@ -166,6 +286,22 @@ export class FilesService {
       contentType: stat.contentType ?? undefined,
     });
     return { url, expiresInSeconds: this.options.downloadUrlTtlSeconds };
+  }
+
+  /**
+   * The per-upload processing indicator's state — owner-only, and crucially
+   * available BEFORE any memory or file_metadata exists (a discard-mode upload
+   * has neither until extraction commits). Authorization is by the object key
+   * itself: {orgId}/{userId}/… is minted for the uploader, so the key encodes
+   * its owner. Null → the controller 404s.
+   */
+  async getUploadState(
+    principal: Principal,
+    objectKey: string,
+  ): Promise<FileProcessingState | null> {
+    const parts = objectKey.split('/');
+    if (parts[0] !== principal.orgId || parts[1] !== principal.userId) return null;
+    return this.getProcessingState(objectKey);
   }
 
   /**

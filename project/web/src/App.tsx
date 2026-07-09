@@ -7,8 +7,10 @@ import { Dashboard } from './pages/Dashboard';
 import { Forgotten } from './pages/Forgotten';
 import { Login } from './pages/Login';
 import { Approvals } from './pages/Approvals';
+import { Audit } from './pages/Audit';
 import { Memories } from './pages/Memories';
 import { Review } from './pages/Review';
+import { Settings } from './pages/Settings';
 import { System } from './pages/System';
 import { Tasks } from './pages/Tasks';
 
@@ -26,6 +28,8 @@ export function App() {
   if (window.location.pathname === '/review') return <Review session={session} />;
   if (window.location.pathname === '/approvals') return <Approvals session={session} />;
   if (window.location.pathname === '/forgotten') return <Forgotten session={session} />;
+  if (window.location.pathname === '/audit') return <Audit session={session} />;
+  if (window.location.pathname === '/settings') return <Settings session={session} />;
   if (window.location.pathname === '/system') return <System session={session} />;
   return <Dashboard session={session} />;
 }

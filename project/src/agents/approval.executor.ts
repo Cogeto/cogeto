@@ -44,6 +44,7 @@ export class ApprovalExecutor {
       entityType: 'approval',
       entityId: approvalId,
       detail: { actionType: row.actionType, summary: result.summary, ...result.detail },
+      orgId: row.orgId ?? undefined,
     });
     return { alreadyExecuted: false };
   }

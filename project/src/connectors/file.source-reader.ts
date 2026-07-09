@@ -1,21 +1,30 @@
 import { Injectable } from '@nestjs/common';
+import type { MemoryScope } from '@cogeto/shared';
 import { MemoryFileStore, MemoryObjectStore } from '../memory/index';
 import type { SourceItem, SourceReader } from '../ingestion/index';
 import { extractDocumentText } from './document-extract';
 
+/** Derives a source key's staging twin: the scope segment becomes `staging`. */
+function toStagingKey(sourceKey: string): string {
+  const parts = sourceKey.split('/');
+  parts[parts.length - 2] = 'staging';
+  return parts.join('/');
+}
+
 /**
  * Ingestion's stage-1 port for source_type 'file' (F1 handoff): the pipeline
- * reads a file source through this exactly like a note. It resolves the
- * upload's governance from the memory module's file-metadata port, pulls the
- * bytes from the memory module's object store, and extracts clean text — the
- * SAME downstream stages then run (extract → verify → embed+store → reconcile),
- * NOT a fork. Derived facts inherit the upload's scope + sensitive flags, so
- * the SourceItem carries them.
+ * reads a file source through this exactly like a note, and the SAME downstream
+ * stages run — never a fork. Two storage modes:
  *
- * Bound to SOURCE_READERS by the worker composition root, alongside
- * NotesSourceReader. Never touches file_metadata or MinIO directly — both are
- * the memory module's tables/clients (§A.1 rule 2), reached only through its
- * public interfaces.
+ * - **Stored**: a `file_metadata` row + a durable object at the source key.
+ * - **Discard** (§A.9, handoff §3): no `file_metadata`, no durable object; the
+ *   bytes are staged at the key's staging twin, carrying owner/scope/sensitive
+ *   in the object's metadata (there is no row to read them from). The returned
+ *   SourceItem sets `stagingKey`, and the pipeline deletes it once the derived
+ *   memories commit.
+ *
+ * Never touches file_metadata or MinIO directly — both are the memory module's
+ * (§A.1 rule 2), reached only through its public interfaces.
  */
 @Injectable()
 export class FileSourceReader implements SourceReader {
@@ -27,27 +36,52 @@ export class FileSourceReader implements SourceReader {
   ) {}
 
   async load(sourceId: string): Promise<SourceItem | null> {
-    // Absence of the metadata row means the source vanished (deleted by the
-    // saga before this job ran, or a discard-mode key with no durable original)
-    // — the pipeline completes cleanly with nothing to do.
     const metadata = await this.files.get(sourceId);
-    if (!metadata) return null;
+    if (metadata) return this.loadStored(sourceId, metadata);
+    return this.loadDiscard(sourceId);
+  }
 
+  private async loadStored(
+    sourceId: string,
+    metadata: NonNullable<Awaited<ReturnType<MemoryFileStore['get']>>>,
+  ): Promise<SourceItem | null> {
+    // The object was deleted (by the saga) before this job ran → vanished.
+    const stat = await this.objects.statObject(sourceId);
+    if (!stat) return null;
     const object = await this.objects.getObject(sourceId);
-    // A parse failure throws PermanentExtractionError → the pipeline job
-    // dead-letters and the file's status reads `error`; zero memories, never a
-    // fabricated one.
     const content = await extractDocumentText(object.body, object.contentType);
-
     return {
       sourceType: this.sourceType,
       sourceId,
       ownerId: metadata.ownerId,
       content,
-      // Temporal expressions resolve against when the document was uploaded.
       createdAt: metadata.uploadDate,
       scope: metadata.scope,
       sensitive: metadata.sensitive,
+    };
+  }
+
+  private async loadDiscard(sourceId: string): Promise<SourceItem | null> {
+    const stagingKey = toStagingKey(sourceId);
+    // No file_metadata AND no staging object → the source never existed here or
+    // its bytes were already cleaned; nothing to do (complete cleanly). A
+    // present staging object means a discard-mode upload awaiting extraction.
+    const stat = await this.objects.statObject(stagingKey);
+    if (!stat) return null;
+
+    const object = await this.objects.getObject(stagingKey);
+    const md = object.metadata;
+    const content = await extractDocumentText(object.body, object.contentType);
+    return {
+      sourceType: this.sourceType,
+      sourceId,
+      ownerId: md['owner-id'] ?? '',
+      content,
+      createdAt: md['uploaded-at'] ? new Date(md['uploaded-at']!) : new Date(),
+      scope: (md['scope'] as MemoryScope | undefined) ?? 'private',
+      sensitive: md['sensitive'] === 'true',
+      // Signals the pipeline to delete the staging object once memories commit.
+      stagingKey,
     };
   }
 }

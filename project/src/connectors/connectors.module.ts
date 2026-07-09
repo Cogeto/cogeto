@@ -7,6 +7,8 @@ import { NotesSourceDeletion } from './notes.source-deletion';
 import { FilesController } from './files.controller';
 import { FilesService } from './files.service';
 import { FileSourceReader } from './file.source-reader';
+import { SettingsController } from './settings.controller';
+import { UserSettingsService } from './user-settings.service';
 import { FILE_UPLOAD_OPTIONS } from './file-upload-options';
 import type { FileUploadOptions } from './file-upload-options';
 
@@ -33,13 +35,14 @@ export class ConnectorsModule {
     return {
       module: ConnectorsModule,
       global: true,
-      controllers: [NotesController, FilesController],
+      controllers: [NotesController, FilesController, SettingsController],
       providers: [
         NotesService,
         NotesSourceReader,
         NotesSourceDeletion,
         FilesService,
         FileSourceReader,
+        UserSettingsService,
         { provide: FILE_UPLOAD_OPTIONS, useValue: options.fileUpload },
       ],
       exports: [
@@ -48,6 +51,7 @@ export class ConnectorsModule {
         NotesSourceDeletion,
         FilesService,
         FileSourceReader,
+        UserSettingsService,
       ],
     };
   }

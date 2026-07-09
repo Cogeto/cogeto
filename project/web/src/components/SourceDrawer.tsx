@@ -133,15 +133,23 @@ export function SourceDrawer({
             {fileQuery.data && (
               <div className="space-y-2 rounded-md bg-slate-50 p-3">
                 <p className="break-words text-sm font-medium text-slate-800">
-                  {fileQuery.data.filename ?? 'Uploaded document'}
+                  {fileQuery.data.filename ??
+                    (fileQuery.data.discarded ? 'Discarded document' : 'Uploaded document')}
                 </p>
-                <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  {fileQuery.data.contentType && <span>{fileQuery.data.contentType}</span>}
-                  {formatBytes(fileQuery.data.sizeBytes) && (
-                    <span>· {formatBytes(fileQuery.data.sizeBytes)}</span>
-                  )}
-                  <span>· uploaded {new Date(fileQuery.data.uploadDate).toLocaleString()}</span>
-                </p>
+                {fileQuery.data.discarded ? (
+                  <p className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-700">
+                    Original discarded after extraction — only the derived memories remain (§A.9).
+                    Provenance is intact; there is nothing to download.
+                  </p>
+                ) : (
+                  <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    {fileQuery.data.contentType && <span>{fileQuery.data.contentType}</span>}
+                    {formatBytes(fileQuery.data.sizeBytes) && (
+                      <span>· {formatBytes(fileQuery.data.sizeBytes)}</span>
+                    )}
+                    <span>· uploaded {new Date(fileQuery.data.uploadDate).toLocaleString()}</span>
+                  </p>
+                )}
                 <p className="flex flex-wrap items-center gap-2 text-xs">
                   <span
                     className={`rounded-full px-2 py-0.5 font-semibold ${
@@ -161,18 +169,22 @@ export function SourceDrawer({
                   )}
                   <span className="text-slate-400">scope: {fileQuery.data.scope}</span>
                 </p>
-                <button
-                  type="button"
-                  disabled={download.isPending}
-                  onClick={() => {
-                    setDownloadError(null);
-                    download.mutate();
-                  }}
-                  className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 disabled:opacity-40"
-                >
-                  {download.isPending ? 'Preparing…' : 'Download original'}
-                </button>
-                {downloadError && <p className="text-xs text-red-600">{downloadError}</p>}
+                {!fileQuery.data.discarded && (
+                  <>
+                    <button
+                      type="button"
+                      disabled={download.isPending}
+                      onClick={() => {
+                        setDownloadError(null);
+                        download.mutate();
+                      }}
+                      className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 disabled:opacity-40"
+                    >
+                      {download.isPending ? 'Preparing…' : 'Download original'}
+                    </button>
+                    {downloadError && <p className="text-xs text-red-600">{downloadError}</p>}
+                  </>
+                )}
               </div>
             )}
           </>

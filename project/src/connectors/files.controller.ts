@@ -21,17 +21,24 @@ import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { DocumentUploadInterceptor } from './document-upload.interceptor';
 import { FilesService } from './files.service';
+import { UserSettingsService } from './user-settings.service';
 
-/** Zod at the boundary: the upload's scope selector + sensitive checkbox. */
+/** Multipart text fields arrive as strings; accept the common truthy forms. */
+const boolField = z
+  .union([z.boolean(), z.enum(['true', 'false', 'on', 'off', '1', '0'])])
+  .transform((value) =>
+    typeof value === 'boolean' ? value : value === 'true' || value === 'on' || value === '1',
+  );
+
+/**
+ * Zod at the boundary. Every flag is OPTIONAL — an omitted scope/discard falls
+ * back to the user's saved defaults (settings_defaults_applied); sensitive
+ * defaults to false.
+ */
 const uploadFlagsSchema = z.object({
-  scope: z.enum(MEMORY_SCOPES).default('private'),
-  // Multipart text fields arrive as strings; accept the common truthy forms.
-  sensitive: z
-    .union([z.boolean(), z.enum(['true', 'false', 'on', 'off', '1', '0'])])
-    .default(false)
-    .transform((value) =>
-      typeof value === 'boolean' ? value : value === 'true' || value === 'on' || value === '1',
-    ),
+  scope: z.enum(MEMORY_SCOPES).optional(),
+  sensitive: boolField.optional(),
+  discard: boolField.optional(),
 });
 
 /**
@@ -46,7 +53,10 @@ const uploadFlagsSchema = z.object({
 @Controller('files')
 @UseGuards(BearerAuthGuard)
 export class FilesController {
-  constructor(private readonly files: FilesService) {}
+  constructor(
+    private readonly files: FilesService,
+    private readonly settings: UserSettingsService,
+  ) {}
 
   @Post()
   @UseInterceptors(DocumentUploadInterceptor)
@@ -58,6 +68,8 @@ export class FilesController {
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
     }
+    // Omitted flags fall back to the user's saved defaults (§A.9, O1-C).
+    const defaults = await this.settings.get(request.principal);
     const { objectKey } = await this.files.upload(
       request.principal,
       {
@@ -65,7 +77,11 @@ export class FilesController {
         originalName: file.originalname,
         mimeType: file.mimetype,
       },
-      parsed.data,
+      {
+        scope: parsed.data.scope ?? defaults.defaultScope,
+        sensitive: parsed.data.sensitive ?? false,
+        discard: parsed.data.discard ?? defaults.discardByDefault,
+      },
     );
     return { objectKey };
   }
@@ -76,10 +92,11 @@ export class FilesController {
     @Req() request: AuthenticatedRequest,
     @Param('key') key: string,
   ): Promise<FileStatusDto> {
-    // Owner-scoped: a non-owner learns nothing about another user's uploads.
-    const source = await this.files.getSourceForOwner(request.principal, key);
-    if (!source) throw new NotFoundException(`file ${key} not found`);
-    return { state: source.state };
+    // Owner-scoped by the object key — available even before any memory or
+    // file_metadata exists (a discard upload still processing).
+    const state = await this.files.getUploadState(request.principal, key);
+    if (!state) throw new NotFoundException(`file ${key} not found`);
+    return { state };
   }
 
   /** The source drawer's file facts (owner-only). */

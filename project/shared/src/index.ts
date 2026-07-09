@@ -3,6 +3,8 @@ export * from './citations';
 export * from './files';
 export * from './jobs';
 export * from './approvals';
+export * from './settings';
+export * from './audit';
 export * from './memory';
 export * from './notes';
 export * from './principal';

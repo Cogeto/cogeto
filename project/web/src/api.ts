@@ -1,6 +1,10 @@
 import type {
   ApprovalDecision,
   ApprovalDto,
+  AuditPage,
+  AuditQuery,
+  UserSettingsDto,
+  UpdateUserSettingsRequest,
   ChatMessageDto,
   ChatStreamEvent,
   ContradictionDto,
@@ -52,9 +56,14 @@ async function apiGet<T>(path: string, session?: Session): Promise<T> {
   return (await response.json()) as T;
 }
 
-async function apiPost<T>(path: string, body: unknown, session: Session): Promise<T> {
+async function apiSend<T>(
+  method: 'POST' | 'PUT',
+  path: string,
+  body: unknown,
+  session: Session,
+): Promise<T> {
   const response = await fetch(path, {
-    method: 'POST',
+    method,
     headers: {
       authorization: `Bearer ${session.accessToken}`,
       'content-type': 'application/json',
@@ -64,6 +73,10 @@ async function apiPost<T>(path: string, body: unknown, session: Session): Promis
   if (!response.ok) throw await toError(path, response);
   return (await response.json()) as T;
 }
+const apiPost = <T>(path: string, body: unknown, session: Session): Promise<T> =>
+  apiSend('POST', path, body, session);
+const apiPut = <T>(path: string, body: unknown, session: Session): Promise<T> =>
+  apiSend('PUT', path, body, session);
 
 export const fetchMe = (session: Session): Promise<Principal> => apiGet('/api/me', session);
 export const fetchHealth = (): Promise<HealthReport> => apiGet('/api/health');
@@ -80,12 +93,13 @@ export const fetchNoteStatus = (session: Session, id: string): Promise<NoteStatu
 export async function uploadFile(
   session: Session,
   file: File,
-  flags: { scope: MemoryScope; sensitive: boolean },
+  flags: { scope: MemoryScope; sensitive: boolean; discard: boolean },
 ): Promise<FileUploadedDto> {
   const form = new FormData();
   form.append('file', file);
   form.append('scope', flags.scope);
   form.append('sensitive', String(flags.sensitive));
+  form.append('discard', String(flags.discard));
   const response = await fetch('/api/files', {
     method: 'POST',
     headers: { authorization: `Bearer ${session.accessToken}` },
@@ -226,6 +240,28 @@ export const fetchDeadLetterJobs = (session: Session): Promise<DeadLetterJobDto[
   apiGet('/api/jobs/dead-letter', session);
 export const fetchWorkerActivity = (session: Session): Promise<WorkerActivityDto> =>
   apiGet('/api/jobs/activity', session);
+
+// Per-user capture/upload defaults (§A.9, O1-C Settings).
+export const fetchSettings = (session: Session): Promise<UserSettingsDto> =>
+  apiGet('/api/settings', session);
+export const updateSettings = (
+  session: Session,
+  patch: UpdateUserSettingsRequest,
+): Promise<UserSettingsDto> => apiPut('/api/settings', patch, session);
+
+// The read-only audit trail (§A.8/§B.1, O1-C).
+export function fetchAudit(session: Session, params: AuditQuery = {}): Promise<AuditPage> {
+  const search = new URLSearchParams();
+  if (params.actor?.trim()) search.set('actor', params.actor.trim());
+  if (params.action?.trim()) search.set('action', params.action.trim());
+  if (params.entityType?.trim()) search.set('entityType', params.entityType.trim());
+  if (params.from) search.set('from', params.from);
+  if (params.to) search.set('to', params.to);
+  if (params.limit !== undefined) search.set('limit', String(params.limit));
+  if (params.offset !== undefined) search.set('offset', String(params.offset));
+  const qs = search.toString();
+  return apiGet(`/api/audit${qs ? `?${qs}` : ''}`, session);
+}
 
 // The approval state machine (§A.8, O1-B). Create → confirm (approve|reject) is
 // the ONLY path; execution happens server-side in the worker.

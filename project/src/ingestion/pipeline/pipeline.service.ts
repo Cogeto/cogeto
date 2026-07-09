@@ -20,6 +20,15 @@ import { VerifyStage } from './verify.stage';
  */
 export const INGESTION_PIPELINE_JOB_TYPE = 'ingestion.pipeline';
 
+/**
+ * Deletes a discard-mode source's transient staging object (§A.9, F1 handoff
+ * §3). Enqueued by the pipeline in the SAME transaction as the derived
+ * memories, so it fires only once they commit — the original is discarded only
+ * after its extraction is durable. Idempotent (an absent object is success);
+ * the handler lives in the worker task registry (deletes via the object store).
+ */
+export const FILE_DISCARD_CLEANUP_JOB_TYPE = 'file.discard_cleanup';
+
 export interface PipelineSummary {
   sourceType: string;
   sourceId: string;
@@ -142,6 +151,21 @@ export class IngestionPipeline {
         { type: 'tasks.derive', payload: ref },
       );
       log({ stage: 'tasks_enqueue', ...ref }, 'task derivation enqueued');
+    }
+
+    // Extract-and-discard (§A.9, F1 handoff §3): schedule the staging object's
+    // deletion in THIS transaction — it fires only when the derived memories
+    // commit, so the original is discarded only after extraction is durable.
+    if (source.stagingKey) {
+      await withTransactionalEnqueue(
+        tx,
+        { type: 'source.discard_original', payload: ref },
+        {
+          type: FILE_DISCARD_CLEANUP_JOB_TYPE,
+          payload: { source_type: source.sourceType, source_id: source.stagingKey },
+        },
+      );
+      log({ stage: 'discard_cleanup_enqueue', ...ref }, 'discard staging cleanup enqueued');
     }
     return summary;
   }

@@ -271,6 +271,7 @@ export class DeletionSaga {
           supersededByNulled: nulledPointers.length,
           contradictionsLifted: liftedPartners,
         },
+        orgId: principal.orgId,
       });
       return { receiptId };
     });

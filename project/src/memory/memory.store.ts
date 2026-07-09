@@ -670,6 +670,31 @@ export class MemoryStore {
       .where(and(inArray(memory.id, memoryIds), this.visibleTo(principal, opts)));
   }
 
+  /**
+   * A source's derived memories, summarized for the connectors' source drawer —
+   * the owner (authorization), the inherited scope/sensitive, and the earliest
+   * createdAt. Null when the source has no memories. Used for discarded files,
+   * whose byte-less original left no file_metadata but whose memories still
+   * carry the source key as provenance (F1 handoff §3).
+   */
+  async describeSource(
+    sourceType: SourceType,
+    sourceId: string,
+  ): Promise<{ ownerId: string; scope: MemoryScope; sensitive: boolean; createdAt: Date } | null> {
+    const rows = await this.db
+      .select({
+        ownerId: memory.ownerId,
+        scope: memory.scope,
+        sensitive: memory.sensitive,
+        createdAt: memory.createdAt,
+      })
+      .from(memory)
+      .where(and(eq(memory.sourceType, sourceType), eq(memory.sourceId, sourceId)))
+      .orderBy(memory.createdAt)
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
   // ── Temporal primitives (decision 0012; §A.5 temporal lift, §B.2) ──────────
 
   /**

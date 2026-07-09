@@ -1,5 +1,14 @@
 export type NavSection =
-  'dashboard' | 'memories' | 'chat' | 'tasks' | 'review' | 'approvals' | 'forgotten' | 'system';
+  | 'dashboard'
+  | 'memories'
+  | 'chat'
+  | 'tasks'
+  | 'review'
+  | 'approvals'
+  | 'forgotten'
+  | 'audit'
+  | 'system'
+  | 'settings';
 
 const ENABLED: { key: NavSection; label: string; href: string }[] = [
   { key: 'dashboard', label: 'Dashboard', href: '/' },
@@ -9,11 +18,12 @@ const ENABLED: { key: NavSection; label: string; href: string }[] = [
   { key: 'review', label: 'Review', href: '/review' },
   { key: 'approvals', label: 'Approvals', href: '/approvals' },
   { key: 'forgotten', label: 'Forgotten', href: '/forgotten' },
+  { key: 'audit', label: 'Audit', href: '/audit' },
   { key: 'system', label: 'System', href: '/system' },
+  { key: 'settings', label: 'Settings', href: '/settings' },
 ];
-const UPCOMING = ['Settings'] as const;
 
-/** Left navigation — future sections stubbed and disabled until their slices ship. */
+/** Left navigation — every section now ships (O1-C removed the disabled stubs). */
 export function Nav({
   active,
   reviewCount,
@@ -48,18 +58,6 @@ export function Nav({
                 </span>
               )}
             </a>
-          </li>
-        ))}
-        {UPCOMING.map((section) => (
-          <li key={section}>
-            <button
-              type="button"
-              disabled
-              title="Coming in a later session"
-              className="block w-full cursor-not-allowed rounded-md px-3 py-2 text-left text-sm text-white/40"
-            >
-              {section}
-            </button>
           </li>
         ))}
       </ul>

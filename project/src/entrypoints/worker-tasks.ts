@@ -3,6 +3,7 @@ import { idempotentTask, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import {
   DREAM_JOB_TYPE,
+  FILE_DISCARD_CLEANUP_JOB_TYPE,
   INGESTION_PIPELINE_JOB_TYPE,
   TASK_DERIVE_JOB_TYPE,
   TASKS_BACKFILL_JOB_TYPE,
@@ -15,7 +16,12 @@ import {
   runMemoryEmbedJob,
   SWEEP_JOB_TYPE,
 } from '../memory/index';
-import type { DeletionExecutor, IntegritySweep, MemoryStore } from '../memory/index';
+import type {
+  DeletionExecutor,
+  IntegritySweep,
+  MemoryObjectStore,
+  MemoryStore,
+} from '../memory/index';
 import { APPROVAL_EXECUTE_JOB_TYPE, APPROVAL_EXPIRY_JOB_TYPE } from '../agents/index';
 import type { ApprovalExecutor, ApprovalService } from '../agents/index';
 import type { ModelGateway } from '../model-gateway/index';
@@ -29,6 +35,7 @@ export interface WorkerTaskDeps {
   tasksEngine: TasksEngine;
   approvalService: ApprovalService;
   approvalExecutor: ApprovalExecutor;
+  objects: MemoryObjectStore;
   gateway: ModelGateway;
   /** Bound to pino by the worker entrypoint. Counts only — never content. */
   log: PipelineLog;
@@ -139,6 +146,19 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
     [TASKS_BACKFILL_JOB_TYPE]: async () => {
       const report = await deps.tasksEngine.backfill((message) => deps.log({}, message));
       deps.log({ ...report }, 'tasks backfill completed');
+    },
+
+    // Extract-and-discard staging cleanup (§A.9, O1-C): deletes the transient
+    // staging object once its extraction is durable (enqueued by the pipeline
+    // in the memories' transaction), plus a delayed backstop enqueued at upload
+    // that fires even if extraction never succeeded. Absent object = success.
+    // A plain task (not idempotentTask): the delete is idempotent by nature and
+    // deliberately re-runnable.
+    [FILE_DISCARD_CLEANUP_JOB_TYPE]: async (rawPayload) => {
+      const stagingKey = (rawPayload as { source_id?: unknown }).source_id;
+      if (typeof stagingKey !== 'string' || !stagingKey) return;
+      await deps.objects.deleteObject(stagingKey);
+      deps.log({ source_id: stagingKey }, 'discard staging object deleted');
     },
 
     // Approval execution (§A.8, O1-B) — the ONLY place a consequential effect

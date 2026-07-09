@@ -8,6 +8,8 @@ export interface AuditEntry {
   entityType: string;
   entityId: string;
   detail?: Record<string, unknown>;
+  /** Zitadel org for org-scoped audit reads (§A.4). NULL = system/global entry. */
+  orgId?: string;
 }
 
 /**
@@ -21,5 +23,6 @@ export async function writeAudit(executor: DbOrTx, entry: AuditEntry): Promise<v
     entityType: entry.entityType,
     entityId: entry.entityId,
     detailJson: entry.detail ?? null,
+    orgId: entry.orgId ?? null,
   });
 }

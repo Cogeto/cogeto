@@ -4,6 +4,7 @@ export type { IngestionModuleOptions } from './ingestion.module';
 export {
   IngestionPipeline,
   INGESTION_PIPELINE_JOB_TYPE,
+  FILE_DISCARD_CLEANUP_JOB_TYPE,
   createIngestionPipeline,
 } from './pipeline/pipeline.service';
 export type { PipelineSummary, CreatePipelineOptions } from './pipeline/pipeline.service';

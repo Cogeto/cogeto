@@ -22,7 +22,23 @@ It is **EU-first, privacy-first, self-hostable, and model-agnostic (Mistral-firs
 
 ## Status
 
-**Session O1-B complete (the approval state machine — Addendum §A.8).**
+**Session O1 complete (O1-C: extract-and-discard, Settings, the audit reader).**
+The document pipeline now offers **extract-and-discard** (a per-upload flag with
+a per-user default): the original is deleted once its facts are extracted — no
+durable object, no metadata row — while the derived memories keep full
+provenance to the (now byte-less) source, and deleting that source still issues
+a signed receipt (covering the memories, zero objects). A minimal **Settings**
+surface exposes only real, wired toggles (the discard default, the default
+capture/upload scope) plus the read-only instance signing key. And the
+**audit trail is finally readable**: a reverse-chronological, filterable,
+paginated, org-scoped, *read-only* Audit view closes the write-only-audit gap —
+the trust surface can now show who did what, with each entry linking to its
+receipt, memory, or approval. Verified live end to end. Details in
+`docs/sessions/O1-C.md` (decision 0016, migration 0016). **Session O1 (files,
+approvals, audit, discard) is done; O2 — tasks UI, reminders, digest,
+shared scope, chat-derived memories — is next.**
+
+Previously — **Session O1-B (the approval state machine — Addendum §A.8).**
 Consequential actions are now gated by a real server-side state machine:
 `draft → pending_approval → approved → executed` (plus `rejected`, `expired`).
 The authenticated confirm endpoint only *transitions state* — on approve it
