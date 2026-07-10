@@ -13,7 +13,8 @@ import { seedMemoryFromSource } from '../ingestion/index';
 import { TasksEngine } from '../tasks/index';
 import { UserDirectory } from '../identity/index';
 import { ANSWER_PROMPT, ChatService, RetrievalService } from '../retrieval/index';
-import { loadPrompt, MistralModelGateway } from '../model-gateway/index';
+import { createModelGateway, loadPrompt, ModelGateway } from '../model-gateway/index';
+import { redactionFromEnv } from './config';
 
 /**
  * npm run eval:chat — the chat-answer eval suite (S3.5-A §2). It seeds a FRESH
@@ -195,7 +196,7 @@ function checkHedge(answer: string, term: string): boolean {
 }
 
 async function gradeCoverage(
-  gateway: MistralModelGateway,
+  gateway: ModelGateway,
   graderPrompt: string,
   answer: string,
   facts: string[],
@@ -228,7 +229,13 @@ async function main(): Promise<void> {
   const pipelineModel =
     process.env.COGETO_MISTRAL_MODEL_PIPELINE || process.env.MISTRAL_MODEL_PIPELINE;
   const answerModel = process.env.COGETO_MISTRAL_MODEL_ANSWER || process.env.MISTRAL_MODEL_ANSWER;
-  const gateway = new MistralModelGateway({ apiKey, pipelineModel, answerModel, embedModel });
+  const gateway = createModelGateway({
+    mistralApiKey: apiKey,
+    pipelineModel,
+    answerModel,
+    embedModel,
+    redaction: redactionFromEnv(),
+  });
   const graderPrompt = (await loadPrompt(COVERAGE_PROMPT.family, COVERAGE_PROMPT.version)).content;
   const cases = await loadCases();
 

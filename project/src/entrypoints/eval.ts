@@ -5,7 +5,8 @@ import { evalConfigSchema, runGoldenEval, runReconcileEval } from '../ingestion/
 import type { EvalMetrics, ReconcileEvalMetrics } from '../ingestion/index';
 import { runTaskEval } from '../tasks/index';
 import type { TaskEvalMetrics } from '../tasks/index';
-import { MistralModelGateway } from '../model-gateway/index';
+import { createModelGateway } from '../model-gateway/index';
+import { redactionFromEnv } from './config';
 
 /**
  * npm run eval — the golden-set harness (§B.4; docs/eval-golden-set.md) against
@@ -76,10 +77,13 @@ async function main(): Promise<void> {
     process.exit(2);
   }
   const config = evalConfigSchema.parse(JSON.parse(await readFile(CONFIG_FILE, 'utf8')));
-  const gateway = new MistralModelGateway({
-    apiKey,
+  const redaction = redactionFromEnv();
+  const gateway = createModelGateway({
+    mistralApiKey: apiKey,
     embedModel: process.env.COGETO_MISTRAL_EMBED_MODEL || process.env.MISTRAL_EMBED_MODEL,
+    redaction,
   });
+  if (redaction) console.log(`redaction: ON (sidecar ${redaction.url}) — measuring the delta`);
 
   console.log(`golden set: ${GOLDEN_DIR}`);
   console.log(

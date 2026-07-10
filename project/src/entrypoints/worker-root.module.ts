@@ -13,7 +13,7 @@ import {
 import { TasksCascade, TasksModule } from '../tasks/index';
 import { ChatSourceDeletion, ChatSourceModule, ChatSourceReader } from '../retrieval/index';
 import { ModelGatewayModule } from '../model-gateway/index';
-import { COGETO_CONFIG } from './config';
+import { COGETO_CONFIG, redactionOptions } from './config';
 import type { CogetoConfig } from './config';
 
 /**
@@ -38,6 +38,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         pipelineModel: config.mistralPipelineModel,
         answerModel: config.mistralAnswerModel,
         embedModel: config.mistralEmbedModel,
+        redaction: redactionOptions(config),
       }),
       MemoryModule.register({
         qdrantUrl: config.qdrantUrl,

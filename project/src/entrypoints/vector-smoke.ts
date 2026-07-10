@@ -3,8 +3,8 @@ import { Pool } from 'pg';
 import type { Principal } from '@cogeto/shared';
 import { createDb } from '../infrastructure/index';
 import { createMemoryStore } from '../memory/index';
-import { MistralModelGateway } from '../model-gateway/index';
-import { loadConfig } from './config';
+import { createModelGateway } from '../model-gateway/index';
+import { loadConfig, redactionOptions } from './config';
 
 /**
  * vector:smoke — ops check for the semantic search primitive. Embeds the query
@@ -52,9 +52,10 @@ async function main(): Promise<void> {
     roles: [],
   };
 
-  const gateway = new MistralModelGateway({
-    apiKey: config.mistralApiKey,
+  const gateway = createModelGateway({
+    mistralApiKey: config.mistralApiKey,
     embedModel: config.mistralEmbedModel,
+    redaction: redactionOptions(config),
   });
   const [embedding] = await gateway.embed([query]);
   const hits = await store.vectorSearch(principal, embedding!, { topK: 5 });

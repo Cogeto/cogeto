@@ -2,8 +2,8 @@ import 'reflect-metadata';
 import { Pool } from 'pg';
 import { createDb } from '../infrastructure/index';
 import { reindexMemories } from '../memory/index';
-import { MistralModelGateway, UnconfiguredModelGateway } from '../model-gateway/index';
-import { loadConfig } from './config';
+import { createModelGateway } from '../model-gateway/index';
+import { loadConfig, redactionOptions } from './config';
 
 /**
  * reindex — rebuilds the Qdrant index from Postgres (§A.4; memory README).
@@ -15,12 +15,13 @@ async function main(): Promise<void> {
   const config = loadConfig();
   const pool = new Pool({ connectionString: config.databaseUrl });
   const db = createDb(pool);
-  const gateway = config.mistralApiKey
-    ? new MistralModelGateway({
-        apiKey: config.mistralApiKey,
-        embedModel: config.mistralEmbedModel,
-      })
-    : new UnconfiguredModelGateway();
+  // Redaction wraps embeddings too (decision 0023): a reindex under redaction
+  // must re-embed pseudonymized text, matching how the vectors were first made.
+  const gateway = createModelGateway({
+    mistralApiKey: config.mistralApiKey,
+    embedModel: config.mistralEmbedModel,
+    redaction: redactionOptions(config),
+  });
 
   const report = await reindexMemories({
     db,

@@ -12,3 +12,13 @@ export type {
 export { ModelGatewayError, ModelGatewayNotConfiguredError } from './errors';
 export { loadPrompt, recordPromptVersion } from './prompt-loader';
 export type { PromptArtifact } from './prompt-loader';
+// Gateway construction goes through this factory everywhere so the redaction
+// decorator (Addendum B.8) wraps ALL model traffic — no path bypasses it.
+export { createModelGateway } from './factory';
+export type { CreateModelGatewayOptions, RedactionConfig } from './factory';
+// The decorator + its port are exported for tests; the RedactionClient (the only
+// thing that reaches the sidecar over HTTP) is deliberately NOT exported, so no
+// module outside the gateway can call the sidecar (architectural constraint).
+export { RedactingModelGateway } from './redacting.gateway';
+export type { RedactionPort, RedactionResult } from './redaction-client';
+export { reidentifyText, reidentifyDeep } from './redaction-utils';

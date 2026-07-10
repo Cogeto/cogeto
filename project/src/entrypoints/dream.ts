@@ -2,8 +2,8 @@ import { Pool } from 'pg';
 import { createDb } from '../infrastructure/index';
 import { createMemoryReconciliation } from '../memory/index';
 import { DreamingService, ReconciliationService } from '../ingestion/index';
-import { MistralModelGateway } from '../model-gateway/index';
-import { loadConfig } from './config';
+import { createModelGateway } from '../model-gateway/index';
+import { loadConfig, redactionOptions } from './config';
 
 /**
  * dream — the on-demand dreaming cycle (§B.6 plain form; decision 0011). The
@@ -24,11 +24,12 @@ async function main(): Promise<void> {
   const pool = new Pool({ connectionString: config.databaseUrl });
   try {
     const db = createDb(pool);
-    const gateway = new MistralModelGateway({
-      apiKey: config.mistralApiKey,
+    const gateway = createModelGateway({
+      mistralApiKey: config.mistralApiKey,
       pipelineModel: config.mistralPipelineModel,
       answerModel: config.mistralAnswerModel,
       embedModel: config.mistralEmbedModel,
+      redaction: redactionOptions(config),
     });
     const { store, reconciliation } = createMemoryReconciliation({
       db,

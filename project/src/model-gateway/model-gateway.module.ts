@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import { ModelGateway } from './model-gateway.service';
-import { MistralModelGateway, UnconfiguredModelGateway } from './mistral.gateway';
+import { createModelGateway } from './factory';
+import type { RedactionConfig } from './factory';
 
 export interface ModelGatewayModuleOptions {
   /** When absent the process boots normally; model calls fail with a typed error. */
@@ -11,6 +12,8 @@ export interface ModelGatewayModuleOptions {
   /** `answer` tier model (chat synthesis, eval grader). */
   answerModel?: string;
   embedModel?: string;
+  /** Redaction mode (Addendum B.8) — wraps the gateway when enabled. */
+  redaction?: RedactionConfig;
 }
 
 /**
@@ -29,15 +32,7 @@ export class ModelGatewayModule {
       providers: [
         {
           provide: ModelGateway,
-          useFactory: () =>
-            options.mistralApiKey
-              ? new MistralModelGateway({
-                  apiKey: options.mistralApiKey,
-                  pipelineModel: options.pipelineModel,
-                  answerModel: options.answerModel,
-                  embedModel: options.embedModel,
-                })
-              : new UnconfiguredModelGateway(),
+          useFactory: () => createModelGateway(options),
         },
       ],
       exports: [ModelGateway],

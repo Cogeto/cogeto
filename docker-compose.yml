@@ -76,6 +76,11 @@ services:
       COGETO_DEMO_MODE: ${COGETO_DEMO_MODE:-}
       COGETO_PRODUCTION: ${COGETO_PRODUCTION:-}
       COGETO_DEMO_RESET_CRON: ${COGETO_DEMO_RESET_CRON:-0 */6 * * *}
+      # Redaction mode (§B.8, profile redaction). Off by default. Set
+      # REDACTION_ENABLED=1 (with the profile up) to pseudonymize every outbound
+      # model call; the gateway then fails closed if the sidecar is unreachable.
+      REDACTION_ENABLED: ${REDACTION_ENABLED:-}
+      REDACTION_URL: ${REDACTION_URL:-http://redaction:8080}
     volumes:
       - web-config:/web-config:ro
       - instance-keys:/instance-keys:ro
@@ -403,12 +408,36 @@ services:
         condition: service_completed_successfully
     restart: 'no'
 
-  # redaction: local CPU NER pseudonymization (§B.8) — arrives with its feature.
-  redaction-placeholder:
+  # ── Redaction sidecar (profile redaction; §B.8, decisions 0002/0023) ────────
+  #
+  # Local CPU NER (Presidio) that pseudonymizes sensitive entities before any
+  # external model call and re-identifies the response — "PII never leaves your
+  # box, even though a frontier model answers you." Python ONLY here, isolated
+  # behind the model-gateway seam (decision 0002). Stateless: no DB, no volumes.
+  # Internal-network only (no published ports); reachable at http://redaction:8080.
+  #
+  #   REDACTION_ENABLED=1 docker compose --profile redaction up --build
+  #
+  # The env flips the gateway on; the profile brings the sidecar up. If enabled
+  # and the sidecar is unreachable, model calls FAIL CLOSED (never plaintext).
+  # Memory: ~0.7–1 GB RSS (spaCy en_core_web_lg). See project/services/redaction.
+  redaction:
     profiles: ['redaction']
-    image: busybox:stable
-    command: ['echo', 'redaction profile: the Presidio NER sidecar arrives with redaction mode']
-    restart: 'no'
+    build:
+      context: project/services/redaction
+    environment:
+      SPACY_MODEL: ${REDACTION_SPACY_MODEL:-en_core_web_lg}
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health').status==200 else 1)"
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 90s
+    restart: unless-stopped
 
 volumes:
   pg-data:

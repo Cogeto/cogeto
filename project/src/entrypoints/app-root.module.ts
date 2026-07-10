@@ -8,7 +8,7 @@ import { AgentsModule } from '../agents/index';
 import { ConnectorsModule, NotesSourceDeletion } from '../connectors/index';
 import { TasksCascade, TasksModule } from '../tasks/index';
 import { ModelGatewayModule } from '../model-gateway/index';
-import { COGETO_CONFIG } from './config';
+import { COGETO_CONFIG, redactionOptions } from './config';
 import type { CogetoConfig } from './config';
 import { AuditController } from './audit.controller';
 import { HealthController } from './health.controller';
@@ -36,6 +36,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         pipelineModel: config.mistralPipelineModel,
         answerModel: config.mistralAnswerModel,
         embedModel: config.mistralEmbedModel,
+        redaction: redactionOptions(config),
       }),
       MemoryModule.register({
         qdrantUrl: config.qdrantUrl,

@@ -1,9 +1,9 @@
 import { Pool } from 'pg';
 import { createDb } from '../infrastructure/index';
 import { createMemoryStore } from '../memory/index';
-import { MistralModelGateway } from '../model-gateway/index';
+import { createModelGateway } from '../model-gateway/index';
 import { TasksEngine } from '../tasks/index';
-import { loadConfig } from './config';
+import { loadConfig, redactionOptions } from './config';
 
 /**
  * reminders — the on-demand task reminders pass (F3 handoff §2). The SAME pass
@@ -22,11 +22,12 @@ async function main(): Promise<void> {
     const db = createDb(pool);
     // The pass never calls the model; the gateway is only a constructor dep, so
     // a missing key is fine here (unlike `dream`, which does confirm with it).
-    const gateway = new MistralModelGateway({
-      apiKey: config.mistralApiKey ?? '',
+    const gateway = createModelGateway({
+      mistralApiKey: config.mistralApiKey,
       pipelineModel: config.mistralPipelineModel,
       answerModel: config.mistralAnswerModel,
       embedModel: config.mistralEmbedModel,
+      redaction: redactionOptions(config),
     });
     const store = createMemoryStore({
       db,

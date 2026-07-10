@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { loadPrompt, MistralModelGateway } from '../model-gateway/index';
+import { createModelGateway, loadPrompt } from '../model-gateway/index';
+import { redactionFromEnv } from './config';
 
 /**
  * gateway:smoke — proves the model-gateway round trip (S1-B §5).
@@ -30,7 +31,7 @@ async function main(): Promise<void> {
   );
   console.log(`input:  ${INPUT}`);
 
-  const gateway = new MistralModelGateway({ apiKey });
+  const gateway = createModelGateway({ mistralApiKey: apiKey, redaction: redactionFromEnv() });
   const result = await gateway.extractStructured(smokeSchema, {
     system: prompt.content,
     input: INPUT,

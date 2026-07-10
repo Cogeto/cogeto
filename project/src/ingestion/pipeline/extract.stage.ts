@@ -28,7 +28,12 @@ export class ExtractStage {
         system: prompt.content,
         input: buildExtractionInput(source, chunk),
       });
-      facts.push(...output.facts);
+      // Provenance guard: a weaker model can grab one of the input's ALL-CAPS
+      // metadata labels (REFERENCE TIME / SOURCE TYPE / SOURCE CONTENT) as if it
+      // were content — most visible under redaction, where the real names become
+      // bracketed slots and the labels are the only capitalized tokens left. Such
+      // a "fact" is never grounded in SOURCE CONTENT; drop it rather than store it.
+      facts.push(...output.facts.filter((fact) => !carriesMetadataLabel(fact)));
     }
     return facts;
   }
@@ -55,4 +60,14 @@ export function buildExtractionInput(source: SourceItem, chunk: Chunk): string {
     'SOURCE CONTENT:',
     chunk.text,
   ].join('\n');
+}
+
+/** The metadata labels `buildExtractionInput` prepends — never real fact content. */
+const METADATA_LABELS = ['REFERENCE TIME', 'SOURCE TYPE', 'SOURCE CONTENT'];
+
+/** True when the model spilled a metadata label into the fact (claim, span, or
+ * subject) — a provenance leak, not a real fact. */
+export function carriesMetadataLabel(fact: CandidateFact): boolean {
+  const fields = [fact.claim, fact.source_span, fact.subject_entity ?? ''];
+  return fields.some((field) => METADATA_LABELS.some((label) => field.includes(label)));
 }

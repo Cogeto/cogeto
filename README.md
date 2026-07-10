@@ -22,7 +22,21 @@ It is **EU-first, privacy-first, self-hostable, and model-agnostic (Mistral-firs
 
 ## Status
 
-**Session O3-A complete — the Ana sandbox (`--profile demo`).** The public demo
+**Session O3-B complete — the redaction sidecar (`--profile redaction`).** A
+per-tenant privacy tier (Addendum B.8): a stateless, CPU-only Python/Presidio
+service — the only caller is the model gateway, it touches no database and stores
+nothing — pseudonymizes sensitive entities (person, org, location, email, phone,
+IBAN, monetary amount, Croatian OIB) **before any external model call** and
+re-identifies the response, so *"PII never leaves your box, even though a frontier
+model answers you."* A gateway decorator wraps every model path (completion,
+extraction, embedding); embeddings are redacted too (decision 0023 — the honest
+v1 choice, local embeddings are the v1.x fix), and if the sidecar is unreachable,
+model calls **fail closed** rather than sending plaintext. Enable with
+`REDACTION_ENABLED=1 docker compose --profile redaction up --build`. Details in
+`docs/sessions/O3-B.md` (decisions 0002/0023; no migration). **The rest of O3 — a
+broader frontend design pass — is next.**
+
+Previously — **Session O3-A — the Ana sandbox (`--profile demo`).** The public demo
 is now the real growth engine (§B.9): `docker compose --profile demo up` provisions
 a real, pre-authenticated demo Principal ("Ana Kovač"), feeds ~31 fictional
 first-person notes + one uploaded contract **through the real public API**, ages

@@ -369,3 +369,31 @@ against this baseline.
 | en | 4 | 100.0% (6/6) | 2 | 100.0% (2/2) |
 | hr | 4 | 100.0% (6/6) | 2 | 100.0% (2/2) |
 | aggregate | 8 | 100.0% (12/12) | 4 | 100.0% (4/4) |
+
+## 2026-07-10 — redaction mode (O3-B): eval delta OFF vs ON — PENDING owner run
+
+Redaction mode (Addendum B.8, decision 0023) pseudonymizes every outbound model
+call, embeddings included. The delta is measured by running the golden set both
+ways (needs the sidecar up + a Mistral key):
+
+```bash
+npm run eval                                                          # OFF (baseline)
+REDACTION_ENABLED=1 REDACTION_URL=http://localhost:8080 npm run eval  # ON
+```
+
+**Not measured in-session** — the O3-B session could not run it in-band (it needs
+the built Presidio image + a live Mistral budget; the same honesty applied to the
+O3-A live compose). Record both rows here after the owner run. Expected shape
+(decision 0023): extraction precision/recall and verification agreement move
+little (the model sees consistent pseudonyms within a call and the gateway
+re-identifies the structured result); the embedding-dependent surfaces — dedup
+similarity and `eval:chat` retrieval coverage — take the largest hit, because
+per-call pseudonym numbering is not consistent across documents. If the measured
+drop is material, that is the argument to pull local embeddings forward from
+v1.x. Postgres FTS + entity-array retrieval run on the real (un-redacted, in-box)
+text, which softens the embedding cost.
+
+| set | run | extraction precision | extraction recall | verification agreement | dedup accuracy |
+|---|---|---|---|---|---|
+| aggregate | OFF (baseline) | _fill in_ | _fill in_ | _fill in_ | _fill in_ |
+| aggregate | ON (redaction) | _fill in_ | _fill in_ | _fill in_ | _fill in_ |

@@ -1,8 +1,8 @@
 import { Pool } from 'pg';
-import { assertDemoAllowed, loadConfig } from './config';
+import { assertDemoAllowed, loadConfig, redactionOptions } from './config';
 import { createDb } from '../infrastructure/index';
 import { MemoryObjectStore } from '../memory/index';
-import { MistralModelGateway } from '../model-gateway/index';
+import { createModelGateway } from '../model-gateway/index';
 import { establishDemoSession } from './demo/bootstrap';
 import { resetDemoWorld } from './demo/reset';
 import { summarize } from './demo/assertions';
@@ -29,11 +29,12 @@ async function main(): Promise<void> {
     const { api, ownerId, principal } = await establishDemoSession(config);
     console.log(`resetting demo for ${principal.name} (${ownerId})…`);
 
-    const gateway = new MistralModelGateway({
-      apiKey: config.mistralApiKey,
+    const gateway = createModelGateway({
+      mistralApiKey: config.mistralApiKey,
       pipelineModel: config.mistralPipelineModel,
       answerModel: config.mistralAnswerModel,
       embedModel: config.mistralEmbedModel,
+      redaction: redactionOptions(config),
     });
     const objects = new MemoryObjectStore({
       url: config.s3Url,
