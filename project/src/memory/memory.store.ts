@@ -302,7 +302,9 @@ export class MemoryStore {
     });
     // Keep the Qdrant payload copy honest (§A.4), point op last: a failure
     // rolls the row back and the caller retries — the two stores converge.
-    await this.vectors?.setPayload(memoryId, { status: to });
+    // requireVectors, exactly like the toggles (QS-26): a store wired without
+    // Qdrant must throw here, never silently leave the point saying 'active'.
+    await this.requireVectors().setPayload(memoryId, { status: to });
     return updated as MemoryRow;
   }
 
@@ -592,7 +594,8 @@ export class MemoryStore {
       detail: { supersededBy: successor.id, validUntil: successorValidFrom.toISOString() },
     });
     // Payload copy honesty (§A.4): the predecessor's point now says replaced.
-    await this.vectors?.setPayload(old.id, { status: 'replaced' });
+    // requireVectors like the toggles (QS-26) — never a silent skip.
+    await this.requireVectors().setPayload(old.id, { status: 'replaced' });
     return { predecessor: predecessor as MemoryRow, successor };
   }
 

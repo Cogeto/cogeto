@@ -1,7 +1,55 @@
 import type { Task } from 'graphile-worker';
+import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Db, Tx } from './db';
 import { deadLetter, jobExecution } from './persistence/tables';
+
+/** The §A.3 idempotency key: one row in job_execution = the job ran (or was cancelled). */
+export interface JobIdempotencyKey {
+  sourceType: string;
+  sourceId: string;
+  jobType: string;
+}
+
+const advisoryKeySql = (key: JobIdempotencyKey) =>
+  sql`hashtextextended(${key.jobType} || ':' || ${key.sourceType} || ':' || ${key.sourceId}, 0)`;
+
+/**
+ * Takes the transaction-scoped advisory lock that identifies a RUNNING
+ * idempotent job for this key. `idempotentTask` acquires it before the
+ * idempotency-row insert, so holding it (or failing to take it) is proof about
+ * in-flight runs: `tryJobRunLock` returning true guarantees no run of this key
+ * is currently in flight — which makes a subsequent `consumeIdempotencyKey`
+ * non-blocking (only a COMMITTED row can conflict, and that conflict resolves
+ * instantly). Released automatically at transaction end.
+ */
+export async function acquireJobRunLock(tx: Tx, key: JobIdempotencyKey): Promise<void> {
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(${advisoryKeySql(key)})`);
+}
+
+/** Non-blocking probe of the run lock: false = a run of this key is in flight. */
+export async function tryJobRunLock(tx: Tx, key: JobIdempotencyKey): Promise<boolean> {
+  const result = await tx.execute(
+    sql`SELECT pg_try_advisory_xact_lock(${advisoryKeySql(key)}) AS locked`,
+  );
+  return (result.rows[0] as { locked: boolean }).locked;
+}
+
+/**
+ * Marks the idempotency key consumed WITHOUT running the job — how the deletion
+ * saga cancels a source's queued-but-not-started ingestion inside its own
+ * transaction (QS-5): the next delivery of the job finds the key and skips.
+ * Returns false when the key was already consumed (the job already ran).
+ * Callers must hold (or have probed) the run lock first — see acquireJobRunLock.
+ */
+export async function consumeIdempotencyKey(tx: Tx, key: JobIdempotencyKey): Promise<boolean> {
+  const claimed = await tx
+    .insert(jobExecution)
+    .values({ sourceType: key.sourceType, sourceId: key.sourceId, jobType: key.jobType })
+    .onConflictDoNothing()
+    .returning({ id: jobExecution.id });
+  return claimed.length > 0;
+}
 
 const idempotentPayloadSchema = z
   .object({ source_type: z.string().min(1), source_id: z.string().min(1) })
@@ -29,6 +77,15 @@ export function idempotentTask(
     const payload = idempotentPayloadSchema.parse(rawPayload);
     try {
       await db.transaction(async (tx) => {
+        // Run lock BEFORE the claim insert — the invariant other transactions
+        // rely on (QS-5): any in-flight run of this key holds the advisory
+        // lock, so `tryJobRunLock` success proves no uncommitted claim row
+        // exists and a cancellation insert can never block on one.
+        await acquireJobRunLock(tx, {
+          sourceType: payload.source_type,
+          sourceId: payload.source_id,
+          jobType,
+        });
         const claimed = await tx
           .insert(jobExecution)
           .values({

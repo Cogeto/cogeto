@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../infrastructure/index';
 import { IdentityModule } from '../identity/index';
 import { MemoryModule } from '../memory/index';
-import { IngestionModule } from '../ingestion/index';
+import { IngestionModule, PipelineIngestionGuard } from '../ingestion/index';
 import { AgentsModule } from '../agents/index';
 import {
   ConnectorsModule,
@@ -55,6 +55,9 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         // deletion erases the originating turn under the saga (decision 0021 r7).
         sourceDeletions: { adapters: [NotesSourceDeletion, ChatSourceDeletion] },
         derivedCascades: { imports: [TasksModule.register()], adapters: [TasksCascade] },
+        // Delete-vs-ingestion serialization (QS-5, decision 0024): the saga
+        // cancels a source's pending pipeline run inside its enumeration tx.
+        ingestionGuard: PipelineIngestionGuard,
       }),
       // ChatSourceReader gives ingestion a stage-1 reader for source_type 'chat'.
       IngestionModule.register({

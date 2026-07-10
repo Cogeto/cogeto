@@ -1,12 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { Inject, Injectable } from '@nestjs/common';
-import { desc, eq, inArray, sql } from 'drizzle-orm';
+import { Inject, Injectable, Optional } from '@nestjs/common';
+import { and, desc, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { auditLog, DRIZZLE, loadInstancePublicKey, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { deletionReceipt, integrityAlert, memory } from './persistence/tables';
+import type { SourceType } from './persistence/tables';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
-import { INSTANCE_KEY_DIR, parseReceiptCounts } from './deletion-saga';
+import { INSTANCE_KEY_DIR, parseReceiptCounts, SOURCE_DELETIONS } from './deletion-saga';
+import type { SourceDeletion } from './deletion-saga';
 import { verifyChain } from './domain/receipt-chain';
 import type { ConfirmedReceipt } from './domain/receipt-chain';
 
@@ -30,7 +32,18 @@ export const SWEEP_JOB_TYPE = 'deletion_sweep';
 export const SWEEP_CRONTAB = `0 3 * * * ${SWEEP_JOB_TYPE}`;
 
 export type AlertKind =
-  'memory_row_present' | 'qdrant_point_present' | 'object_present' | 'chain_broken';
+  | 'memory_row_present'
+  | 'qdrant_point_present'
+  | 'object_present'
+  | 'chain_broken'
+  /**
+   * A memory row whose provenance no longer resolves (QS-5/QS-37, decision
+   * 0024): either its (source_type, source_id) matches a confirmed receipt's
+   * source but the id is not in that receipt (a post-receipt resurrection), or
+   * its source row no longer exists. Either way the "no orphans, ever"
+   * invariant is broken — an integrity violation, never auto-repaired.
+   */
+  | 'orphaned_memory';
 
 export interface SweepReport {
   receiptsChecked: number;
@@ -59,12 +72,19 @@ export interface IntegrityStatus {
 
 @Injectable()
 export class IntegritySweep {
+  private readonly sourceAdapters: Map<SourceType, SourceDeletion>;
+
   constructor(
     @Inject(DRIZZLE) private readonly db: Db,
     private readonly vectors: MemoryVectorStore,
     private readonly objects: MemoryObjectStore,
     @Inject(INSTANCE_KEY_DIR) private readonly instanceKeyDir: string,
-  ) {}
+    /** Source-row existence probes for the orphan arm (decision 0024) — the
+     * same adapters the saga binds; file sources are covered receipt-side. */
+    @Optional() @Inject(SOURCE_DELETIONS) sourceAdapters: SourceDeletion[] = [],
+  ) {
+    this.sourceAdapters = new Map(sourceAdapters.map((a) => [a.sourceType, a]));
+  }
 
   async run(log?: (message: string) => void): Promise<SweepReport> {
     const confirmed = await this.db
@@ -98,7 +118,37 @@ export class IntegritySweep {
           found.push({ receiptId: receipt.id, kind: 'object_present', detail: key });
         }
       }
+
+      // Orphan arm, receipt side (QS-5, decision 0024): a receipted source is
+      // provably deleted, so ANY memory row whose provenance still points at
+      // it — including ids minted after enumeration by a racing pipeline run —
+      // is a resurrection. Ids in the receipt are covered above; this catches
+      // the rest. Works for every source type, discard-mode files included.
+      const resurrectedWhere = and(
+        eq(memory.sourceType, receipt.sourceType),
+        eq(memory.sourceId, receipt.sourceId),
+      );
+      const resurrected = await this.db
+        .select({ id: memory.id })
+        .from(memory)
+        .where(
+          counts.memory_ids.length > 0
+            ? and(resurrectedWhere, notInArray(memory.id, counts.memory_ids))
+            : resurrectedWhere,
+        );
+      for (const row of resurrected) {
+        found.push({ receiptId: receipt.id, kind: 'orphaned_memory', detail: row.id });
+        identifiersChecked += 1;
+      }
     }
+
+    // Orphan arm, source side (QS-5/QS-37, decision 0024): memories whose
+    // source row no longer exists — historical residue and any deletion path
+    // that bypassed provenance. Probed through the saga's SourceDeletion
+    // adapters (row-backed types only; 'file' is intentionally absent: a
+    // discard-mode upload legitimately has memories and no row, so file
+    // resurrections are detected receipt-side above).
+    found.push(...(await this.findOrphanedMemories()));
 
     const chain = verifyChain(
       confirmed.map(toConfirmedReceipt),
@@ -171,6 +221,44 @@ export class IntegritySweep {
       detail: row.detail,
       detectedAt: row.detectedAt.toISOString(),
     }));
+  }
+
+  /**
+   * Source-side orphan detection (decision 0024). For each adapter-backed
+   * source type: group live memories by (source_type, source_id), probe the
+   * source row through the adapter, and on a miss RE-READ the memories in the
+   * same transaction — the saga deletes memories and their source atomically,
+   * so rows that survive the re-read while the source is gone are genuine
+   * orphans, not a mid-delete snapshot artifact. O(distinct sources) nightly;
+   * the adapter's FOR UPDATE lock is per-row and released per iteration.
+   */
+  private async findOrphanedMemories(): Promise<
+    { receiptId: string | null; kind: AlertKind; detail: string }[]
+  > {
+    const orphans: { receiptId: string | null; kind: AlertKind; detail: string }[] = [];
+    const adapterTypes = [...this.sourceAdapters.keys()];
+    if (adapterTypes.length === 0) return orphans;
+
+    const groups = await this.db
+      .selectDistinct({ sourceType: memory.sourceType, sourceId: memory.sourceId })
+      .from(memory)
+      .where(inArray(memory.sourceType, adapterTypes));
+
+    for (const group of groups) {
+      const adapter = this.sourceAdapters.get(group.sourceType)!;
+      const orphanIds = await this.db.transaction(async (tx) => {
+        if ((await adapter.ownerOf(tx, group.sourceId)) !== null) return [];
+        const rows = await tx
+          .select({ id: memory.id })
+          .from(memory)
+          .where(and(eq(memory.sourceType, group.sourceType), eq(memory.sourceId, group.sourceId)));
+        return rows.map((r) => r.id);
+      });
+      for (const id of orphanIds) {
+        orphans.push({ receiptId: null, kind: 'orphaned_memory', detail: id });
+      }
+    }
+    return orphans;
   }
 
   private async countAlerts(): Promise<number> {

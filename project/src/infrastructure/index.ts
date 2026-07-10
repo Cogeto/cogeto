@@ -12,8 +12,8 @@ export { writeAudit } from './audit';
 export type { AuditEntry } from './audit';
 export { withTransactionalEnqueue } from './outbox';
 export type { DomainEvent, JobSpec } from './outbox';
-export { idempotentTask } from './queue';
-export type { IdempotentJobPayload } from './queue';
+export { idempotentTask, acquireJobRunLock, tryJobRunLock, consumeIdempotencyKey } from './queue';
+export type { IdempotentJobPayload, JobIdempotencyKey } from './queue';
 export {
   ensureInstanceKeys,
   loadInstanceSigner,

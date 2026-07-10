@@ -1,4 +1,5 @@
 import type { MemoryScope } from '@cogeto/shared';
+import type { Tx } from '../../infrastructure/index';
 import type { SourceType } from '../../memory/index';
 
 /**
@@ -37,6 +38,23 @@ export interface SourceItem {
 export interface SourceReader {
   readonly sourceType: SourceType;
   load(sourceId: string): Promise<SourceItem | null>;
+  /**
+   * The admission checkpoint (decision 0024): re-verifies INSIDE the pipeline's
+   * idempotency transaction, after the slow model stages and immediately before
+   * any memory row is inserted, that the durable source row still exists.
+   * Implementations MUST run the check on `tx` with a shared row lock
+   * (`FOR KEY SHARE`), so it serializes against the deletion saga's
+   * `FOR UPDATE` + DELETE of the same row: if the saga already committed the
+   * source's deletion this returns false (the pipeline aborts admission as a
+   * no-op); if the check acquires the lock first, the lock is held until the
+   * pipeline commits, so the saga's enumeration then sees the fresh memories
+   * and erases them under the receipt. Either way, no orphan can commit.
+   *
+   * Discard-mode file sources have no durable row by design — the pipeline
+   * skips this checkpoint for them (SourceItem.stagingKey set); that mode is
+   * covered by the saga's idempotency-key cancellation instead.
+   */
+  existsForAdmission(tx: Tx, sourceId: string): Promise<boolean>;
 }
 
 export const SOURCE_READERS = Symbol('SOURCE_READERS');

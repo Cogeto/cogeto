@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Principal } from '@cogeto/shared';
-import { startTestDatabase } from '../testing/index';
-import type { TestDatabase } from '../testing/index';
+import { startTestDatabase, startTestQdrant } from '../testing/index';
+import type { TestDatabase, TestQdrant } from '../testing/index';
 import { MemoryStore } from './memory.store';
 import type { NewFact } from './memory.store';
+import { MemoryVectorStore } from './persistence/vector-store';
 
 const userA: Principal = {
   userId: 'user-a',
@@ -23,16 +24,39 @@ const fact = (overrides: Partial<NewFact> = {}): NewFact => ({
   ...overrides,
 });
 
-describe('memory store (integration, real Postgres)', () => {
+describe('memory store (integration, real Postgres + Qdrant)', () => {
   let tdb: TestDatabase;
+  let qdrant: TestQdrant;
   let store: MemoryStore;
 
   beforeAll(async () => {
-    tdb = await startTestDatabase();
-    store = new MemoryStore(tdb.db);
+    // Real Qdrant since QS-26: transitions and supersession REQUIRE the vector
+    // store (their payload sync throws on a vector-less store, by design).
+    [tdb, qdrant] = await Promise.all([startTestDatabase(), startTestQdrant()]);
+    const vectors = new MemoryVectorStore({
+      url: qdrant.url,
+      embeddingModel: 'test-embed',
+      dimensions: 8,
+      collection: 'memory-spec',
+    });
+    await vectors.ensureCollection();
+    store = new MemoryStore(tdb.db, vectors);
   });
   afterAll(async () => {
-    await tdb.stop();
+    await Promise.all([tdb.stop(), qdrant.stop()]);
+  });
+
+  it('vectorless_transition_throws (QS-26): a store without Qdrant refuses transitions and supersession instead of silently skipping the payload sync', async () => {
+    const sqlOnlyStore = new MemoryStore(tdb.db);
+    const row = await sqlOnlyStore.createFromFact(userA, fact()); // plain insert: allowed
+    await expect(
+      sqlOnlyStore.transition({ kind: 'reconciliation' }, row.id, 'contradicted'),
+    ).rejects.toThrow(/vector store/);
+    await expect(
+      sqlOnlyStore.supersede({ kind: 'user', userId: userA.userId }, row.id, fact()),
+    ).rejects.toThrow(/vector store/);
+    // Nothing changed: the row is untouched and still active.
+    expect((await sqlOnlyStore.getForPrincipal(userA, row.id))?.status).toBe('active');
   });
 
   it("scope_gate: user B's private memory is never returned to user A through any public read", async () => {

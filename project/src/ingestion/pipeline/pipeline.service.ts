@@ -1,5 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { withTransactionalEnqueue } from '../../infrastructure/index';
+import {
+  acquireJobRunLock,
+  withTransactionalEnqueue,
+  writeAudit,
+} from '../../infrastructure/index';
 import type { Tx } from '../../infrastructure/index';
 import type { MemoryReconciliation, MemoryStore } from '../../memory/index';
 import type { ModelGateway } from '../../model-gateway/index';
@@ -38,7 +42,12 @@ export interface PipelineSummary {
   admitted: { active: number; uncertain: number };
   embedded: number;
   reconcile: ReconcileSummary;
-  skipped?: 'source_missing';
+  /**
+   * `source_missing`: the source vanished before the run started (stage 1).
+   * `source_deleted`: the deletion saga erased the source DURING the run —
+   * the admission checkpoint aborted before any row was written (QS-5).
+   */
+  skipped?: 'source_missing' | 'source_deleted';
 }
 
 /**
@@ -88,6 +97,16 @@ export class IngestionPipeline {
     };
     const ref = { source_type: payload.source_type, source_id: payload.source_id };
 
+    // Run lock (QS-5, decision 0024): announces this in-flight run to the
+    // deletion saga's cancellation probe. idempotentTask already takes it for
+    // worker deliveries; re-acquiring here (advisory xact locks are reentrant)
+    // extends the guarantee to every direct pipeline.run caller (tests, eval).
+    await acquireJobRunLock(tx, {
+      sourceType: payload.source_type,
+      sourceId: payload.source_id,
+      jobType: INGESTION_PIPELINE_JOB_TYPE,
+    });
+
     // Stage 1 — ingest: load the source through its connector's reader port.
     const reader = this.readers.find((r) => r.sourceType === payload.source_type);
     if (!reader) {
@@ -117,6 +136,33 @@ export class IngestionPipeline {
       { stage: 'verify', ...ref, extracted: summary.extracted, ...summary.verdicts },
       'verification pass complete',
     );
+
+    // Admission checkpoint (QS-5, decision 0024): the source may have been
+    // deleted by the saga while the model stages above held this transaction
+    // open. Re-verify — with a KEY SHARE row lock, in THIS transaction — that
+    // the durable source row still exists before writing anything. If the
+    // saga's FOR UPDATE + DELETE already committed, abort cleanly: no rows, no
+    // points, the job completes as a no-op (consuming its idempotency key) and
+    // leaves an audit trace. If the check wins the lock instead, it is held to
+    // commit, so a concurrent saga enumerates AFTER our memories are visible
+    // and erases them under its receipt. Discard-mode file sources have no
+    // durable row by design (stagingKey set) — they are protected by the
+    // saga's idempotency-key cancellation, which waits out in-flight runs.
+    if (verified.length > 0 && !source.stagingKey) {
+      const sourceStillExists = await reader.existsForAdmission(tx, payload.source_id);
+      if (!sourceStillExists) {
+        summary.skipped = 'source_deleted';
+        await writeAudit(tx, {
+          actor: 'ingestion_pipeline',
+          action: 'ingestion.admission_aborted',
+          entityType: 'source',
+          entityId: `${payload.source_type}/${payload.source_id}`,
+          detail: { ...ref, verified: verified.length, reason: 'source_deleted_mid_flight' },
+        });
+        log({ stage: 'admission', ...ref, skipped: true }, 'source deleted mid-flight; aborting');
+        return summary;
+      }
+    }
 
     // Stage 5 — embed + store: batched embedding, Postgres rows (status per
     // verdict), Qdrant points last.

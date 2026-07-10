@@ -5,9 +5,10 @@ import type { TaskList } from 'graphile-worker';
 import type { Principal } from '@cogeto/shared';
 import { BULK_OUTDATE_ACTION } from '@cogeto/shared';
 import { idempotentTask } from '../infrastructure/index';
-import { startTestDatabase } from '../testing/index';
-import type { TestDatabase } from '../testing/index';
-import { MemoryStore } from '../memory/index';
+import { startTestDatabase, startTestQdrant } from '../testing/index';
+import type { TestDatabase, TestQdrant } from '../testing/index';
+import { createMemoryStore } from '../memory/index';
+import type { MemoryStore } from '../memory/index';
 import { ActionRegistry } from './action-registry';
 import { ApprovalService } from './approval.service';
 import { ApprovalExecutor } from './approval.executor';
@@ -31,21 +32,33 @@ const userB: Principal = {
   roles: [],
 };
 
-describe('approval state machine (integration: real Postgres)', () => {
+describe('approval state machine (integration: real Postgres + Qdrant)', () => {
   let tdb: TestDatabase;
+  let qdrant: TestQdrant;
   let store: MemoryStore;
   let service: ApprovalService;
   let executor: ApprovalExecutor;
 
   beforeAll(async () => {
-    tdb = await startTestDatabase();
-    store = new MemoryStore(tdb.db); // no vectors: setPayload is a no-op (optional)
+    // Real Qdrant since QS-26: the approved bulk-outdate transitions memories,
+    // and transitions now REQUIRE the vector store (no silent payload skip).
+    [tdb, qdrant] = await Promise.all([startTestDatabase(), startTestQdrant()]);
+    store = createMemoryStore({
+      db: tdb.db,
+      qdrant: {
+        url: qdrant.url,
+        embeddingModel: 'test-embed',
+        dimensions: 8,
+        collection: 'approvals-spec',
+      },
+    });
+    await store.ensureIndexReady();
     const registry = new ActionRegistry(store);
     service = new ApprovalService(tdb.db, registry);
     executor = new ApprovalExecutor(registry);
   }, 120_000);
   afterAll(async () => {
-    await tdb.stop();
+    await Promise.all([tdb.stop(), qdrant.stop()]);
   });
 
   // ── Harness ──────────────────────────────────────────────────────────────

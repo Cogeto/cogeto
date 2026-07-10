@@ -94,6 +94,39 @@ export interface DerivedCascade {
 
 export const DERIVED_CASCADES = Symbol('DERIVED_CASCADES');
 
+/**
+ * Cancellation outcome of a source's pending ingestion (QS-5, decision 0024):
+ * - `cancelled`      — no run was in flight; the idempotency key is now
+ *                      consumed, so any queued or future pipeline job for this
+ *                      source no-ops at its claim.
+ * - `already_ran`    — ingestion completed earlier (key already consumed);
+ *                      the enumeration in this transaction sees everything.
+ * - `run_in_flight`  — a pipeline run holds the run lock right now. Safe for
+ *                      row-backed sources: the run's admission checkpoint
+ *                      serializes against the source-row lock this transaction
+ *                      already holds, and the run consumes its own key.
+ */
+export type IngestionCancellation = 'cancelled' | 'already_ran' | 'run_in_flight';
+
+/**
+ * Port for cancelling a source's pending ingestion inside the saga's
+ * enumeration transaction — the fourth of the port family (SourceReader,
+ * SourceDeletion, DerivedCascade): memory defines it, ingestion implements it
+ * (it owns the pipeline job type), composition roots bind it. `waitForRun`
+ * makes the call block until an in-flight run finishes — required for sources
+ * with no durable row to serialize on (discard-mode files).
+ */
+export interface IngestionGuard {
+  cancelPending(
+    tx: Tx,
+    sourceType: SourceType,
+    sourceId: string,
+    opts: { waitForRun: boolean },
+  ): Promise<IngestionCancellation>;
+}
+
+export const INGESTION_GUARD = Symbol('INGESTION_GUARD');
+
 /** Directory holding the instance signing keypair (decision 0008). */
 export const INSTANCE_KEY_DIR = Symbol('INSTANCE_KEY_DIR');
 
@@ -146,6 +179,9 @@ export class DeletionSaga {
     @Optional() private readonly vectors?: MemoryVectorStore,
     /** Derived-artifact cascades (0013 ruling 6) — tasks today. */
     @Optional() @Inject(DERIVED_CASCADES) private readonly derivedCascades: DerivedCascade[] = [],
+    /** Pending-ingestion cancellation (QS-5, decision 0024) — always bound by
+     * the composition roots; optional only for legacy test harnesses. */
+    @Optional() @Inject(INGESTION_GUARD) private readonly ingestionGuard?: IngestionGuard,
   ) {
     this.adapters = new Map(adapters.map((a) => [a.sourceType, a]));
   }
@@ -184,14 +220,32 @@ export class DeletionSaga {
     if (!sourceId.trim()) throw new BadRequestException('source id must not be blank');
 
     return this.db.transaction(async (tx) => {
-      const { rows, fileRow, adapter } = await this.loadAndAuthorize(
-        tx,
-        principal,
-        sourceType,
-        sourceId,
-        { lock: true },
-      );
+      // Lock order (QS-5, decision 0024): source row FIRST, then the ingestion
+      // guard, then the memory rows — the same source-before-memories order the
+      // pipeline uses, so the two transactions can never deadlock on it.
+      const { fileRow, adapter, sourceOwner } = await this.resolveSource(tx, sourceType, sourceId, {
+        lock: true,
+      });
+      if (sourceOwner !== null && sourceOwner !== principal.userId) {
+        throw new NotFoundException(`source ${sourceType}/${sourceId} not found`);
+      }
 
+      // Cancel pending ingestion BEFORE enumerating (QS-5): a queued pipeline
+      // job finds its idempotency key consumed and no-ops; an in-flight run is
+      // reported and left to its own admission checkpoint, which serializes
+      // against the source-row lock held above. Discard-mode file sources have
+      // no row to serialize on, so for them the guard WAITS the run out — the
+      // enumeration below then sees whatever that run committed.
+      const ingestion = this.ingestionGuard
+        ? await this.ingestionGuard.cancelPending(tx, sourceType, sourceId, {
+            waitForRun: sourceType === 'file' && !fileRow,
+          })
+        : null;
+
+      const rows = await this.enumerateAndAuthorize(tx, principal, sourceType, sourceId, {
+        lock: true,
+        sourceOwner,
+      });
       const memoryIds = rows.map((r) => r.id);
 
       // Contradiction lift (decision 0010 ruling 8): surviving partners of
@@ -270,6 +324,8 @@ export class DeletionSaga {
           objectCount: objectKeys.length,
           supersededByNulled: nulledPointers.length,
           contradictionsLifted: liftedPartners,
+          // The QS-5 cancellation trace: how pending ingestion was resolved.
+          ingestionCancellation: ingestion,
         },
         orgId: principal.orgId,
       });
@@ -278,7 +334,9 @@ export class DeletionSaga {
   }
 
   /**
-   * Enumerates the derived memories and resolves + checks the source owner.
+   * Enumerates the derived memories and resolves + checks the source owner —
+   * the preview path (read-only). The deletion path composes the same two
+   * halves directly so the ingestion guard can run between them (QS-5).
    * NotFound when neither a source row nor derived memories exist, and for
    * any owner mismatch (existence must not leak).
    */
@@ -289,12 +347,30 @@ export class DeletionSaga {
     sourceId: string,
     opts: { lock: boolean },
   ) {
-    const baseQuery = tx
-      .select()
-      .from(memory)
-      .where(and(eq(memory.sourceType, sourceType), eq(memory.sourceId, sourceId)));
-    const rows = opts.lock ? await baseQuery.for('update') : await baseQuery;
+    const { fileRow, adapter, sourceOwner } = await this.resolveSource(tx, sourceType, sourceId, {
+      lock: opts.lock,
+    });
+    if (sourceOwner !== null && sourceOwner !== principal.userId) {
+      throw new NotFoundException(`source ${sourceType}/${sourceId} not found`);
+    }
+    const rows = await this.enumerateAndAuthorize(tx, principal, sourceType, sourceId, {
+      lock: opts.lock,
+      sourceOwner,
+    });
+    return { rows, fileRow, adapter };
+  }
 
+  /** Resolves (and under `lock` FOR UPDATE-locks) the source row + its owner. */
+  private async resolveSource(
+    tx: Tx,
+    sourceType: SourceType,
+    sourceId: string,
+    opts: { lock: boolean },
+  ): Promise<{
+    fileRow: typeof fileMetadata.$inferSelect | undefined;
+    adapter: SourceDeletion | undefined;
+    sourceOwner: string | null;
+  }> {
     let fileRow: typeof fileMetadata.$inferSelect | undefined;
     let adapter: SourceDeletion | undefined;
     let sourceOwner: string | null = null;
@@ -312,15 +388,29 @@ export class DeletionSaga {
       }
       sourceOwner = await adapter.ownerOf(tx, sourceId);
     }
+    return { fileRow, adapter, sourceOwner };
+  }
+
+  /** Enumerates (and under `lock` FOR UPDATE-locks) the derived memory rows. */
+  private async enumerateAndAuthorize(
+    tx: Tx,
+    principal: Principal,
+    sourceType: SourceType,
+    sourceId: string,
+    opts: { lock: boolean; sourceOwner: string | null },
+  ) {
+    const baseQuery = tx
+      .select()
+      .from(memory)
+      .where(and(eq(memory.sourceType, sourceType), eq(memory.sourceId, sourceId)));
+    const rows = opts.lock ? await baseQuery.for('update') : await baseQuery;
 
     const notFound = () => new NotFoundException(`source ${sourceType}/${sourceId} not found`);
-    if (sourceOwner === null && rows.length === 0) throw notFound();
-    if (sourceOwner !== null && sourceOwner !== principal.userId) throw notFound();
+    if (opts.sourceOwner === null && rows.length === 0) throw notFound();
     // Defense in depth: provenance says these derive from the caller's source —
     // any foreign-owned row means corrupted state, and we refuse to touch it.
     if (rows.some((r) => r.ownerId !== principal.userId)) throw notFound();
-
-    return { rows, fileRow, adapter };
+    return rows;
   }
 }
 

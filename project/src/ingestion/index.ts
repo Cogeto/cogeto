@@ -10,6 +10,10 @@ export {
 export type { PipelineSummary, CreatePipelineOptions } from './pipeline/pipeline.service';
 export { SOURCE_READERS } from './pipeline/source-reader';
 export type { SourceReader, SourceItem } from './pipeline/source-reader';
+// The deletion saga's pending-ingestion cancellation (QS-5, decision 0024) —
+// memory defines the IngestionGuard port; this module implements it because it
+// owns the pipeline job type. Composition roots bind it into MemoryModule.
+export { PipelineIngestionGuard } from './pipeline/pipeline-guard';
 export type { PipelineLog } from './pipeline/pipeline-log';
 export { DreamingService, DREAM_JOB_TYPE, DREAM_CRONTAB } from './dreaming.service';
 export type { DreamReport } from './dreaming.service';

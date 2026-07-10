@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { DRIZZLE } from '../infrastructure/index';
-import type { Db } from '../infrastructure/index';
+import type { Db, Tx } from '../infrastructure/index';
 import type { SourceItem, SourceReader } from '../ingestion/index';
 import { note } from './persistence/tables';
 
@@ -29,5 +29,18 @@ export class NotesSourceReader implements SourceReader {
       scope: row.scope,
       createdAt: row.createdAt,
     };
+  }
+
+  /**
+   * Admission checkpoint (decision 0024): KEY SHARE serializes against the
+   * deletion saga's FOR UPDATE + DELETE on this note row — see SourceReader.
+   */
+  async existsForAdmission(tx: Tx, sourceId: string): Promise<boolean> {
+    const rows = await tx
+      .select({ id: note.id })
+      .from(note)
+      .where(eq(note.id, sourceId))
+      .for('key share');
+    return rows.length > 0;
   }
 }

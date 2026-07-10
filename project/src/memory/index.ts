@@ -9,11 +9,14 @@ export {
   DELETION_JOB_SOURCE_TYPE,
   SOURCE_DELETIONS,
   DERIVED_CASCADES,
+  INGESTION_GUARD,
   INSTANCE_KEY_DIR,
 } from './deletion-saga';
 export type {
   SourceDeletion,
   DerivedCascade,
+  IngestionGuard,
+  IngestionCancellation,
   DeletionPreview,
   ReceiptCounts,
 } from './deletion-saga';

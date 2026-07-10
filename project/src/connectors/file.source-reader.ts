@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { MemoryScope } from '@cogeto/shared';
+import type { Tx } from '../infrastructure/index';
 import { MemoryFileStore, MemoryObjectStore } from '../memory/index';
 import type { SourceItem, SourceReader } from '../ingestion/index';
 import { extractDocumentText } from './document-extract';
@@ -39,6 +40,16 @@ export class FileSourceReader implements SourceReader {
     const metadata = await this.files.get(sourceId);
     if (metadata) return this.loadStored(sourceId, metadata);
     return this.loadDiscard(sourceId);
+  }
+
+  /**
+   * Admission checkpoint (decision 0024), stored mode only: KEY SHARE on the
+   * file_metadata row through the memory module's port. The pipeline never
+   * calls this for discard-mode sources (stagingKey set) — they have no
+   * durable row by design and are covered by the saga's key cancellation.
+   */
+  async existsForAdmission(tx: Tx, sourceId: string): Promise<boolean> {
+    return this.files.existsForAdmission(tx, sourceId);
   }
 
   private async loadStored(

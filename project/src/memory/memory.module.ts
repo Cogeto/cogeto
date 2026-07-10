@@ -11,10 +11,11 @@ import {
   DeletionExecutor,
   DeletionSaga,
   DERIVED_CASCADES,
+  INGESTION_GUARD,
   INSTANCE_KEY_DIR,
   SOURCE_DELETIONS,
 } from './deletion-saga';
-import type { DerivedCascade, SourceDeletion } from './deletion-saga';
+import type { DerivedCascade, IngestionGuard, SourceDeletion } from './deletion-saga';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
 import { MemoryFileStore } from './file-store';
@@ -38,6 +39,13 @@ export interface MemoryModuleOptions {
   /** Derived-artifact cascades (0013 ruling 6) — tasks today, bound like the
    * source deletions: memory defines the port, the deriving module implements. */
   derivedCascades?: { imports?: ModuleMetadata['imports']; adapters: Type<DerivedCascade>[] };
+  /**
+   * Pending-ingestion cancellation for the deletion saga (QS-5, decision
+   * 0024) — REQUIRED so no production wiring can silently ship without the
+   * delete-vs-ingestion serialization. Implemented by the ingestion module
+   * (PipelineIngestionGuard); must be dependency-free (instantiated here).
+   */
+  ingestionGuard: Type<IngestionGuard>;
 }
 
 /**
@@ -51,6 +59,12 @@ export interface MemoryModuleOptions {
 @Module({})
 export class MemoryModule {
   static register(options: MemoryModuleOptions): DynamicModule {
+    // Boot assertion (QS-26): a production-configured memory module ALWAYS has
+    // a vector store — transitions and supersession must fail loudly, never
+    // silently skip their Qdrant payload sync, if Qdrant is miswired.
+    if (!options.qdrantUrl) {
+      throw new Error('MemoryModule.register: qdrantUrl is required — see decision 0024 / QS-26');
+    }
     return {
       module: MemoryModule,
       global: true,
@@ -90,6 +104,7 @@ export class MemoryModule {
           useFactory: (...adapters: DerivedCascade[]) => adapters,
           inject: options.derivedCascades?.adapters ?? [],
         },
+        { provide: INGESTION_GUARD, useClass: options.ingestionGuard },
         MemoryStore,
         MemoryReconciliation,
         DeletionSaga,

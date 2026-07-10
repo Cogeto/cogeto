@@ -4,8 +4,8 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { ZodType } from 'zod';
 import type { Principal } from '@cogeto/shared';
-import { startTestDatabase } from '../testing/index';
-import type { TestDatabase } from '../testing/index';
+import { startTestDatabase, startTestQdrant } from '../testing/index';
+import type { TestDatabase, TestQdrant } from '../testing/index';
 import { createMemoryStore } from '../memory/index';
 import type { MemoryStore, NewFact } from '../memory/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
@@ -60,16 +60,28 @@ class ScriptedJudgeGateway extends ModelGateway {
   }
 }
 
-describe('task engine (integration, real Postgres, scripted judge)', () => {
+describe('task engine (integration, real Postgres + Qdrant, scripted judge)', () => {
   let tdb: TestDatabase;
+  let qdrant: TestQdrant;
   let store: MemoryStore;
 
   beforeAll(async () => {
-    tdb = await startTestDatabase();
-    store = createMemoryStore({ db: tdb.db });
+    // Real Qdrant since QS-26: the edit-supersession case transitions the
+    // predecessor, and supersession now REQUIRES the vector store.
+    [tdb, qdrant] = await Promise.all([startTestDatabase(), startTestQdrant()]);
+    store = createMemoryStore({
+      db: tdb.db,
+      qdrant: {
+        url: qdrant.url,
+        embeddingModel: 'test-embed',
+        dimensions: 8,
+        collection: 'tasks-spec',
+      },
+    });
+    await store.ensureIndexReady();
   });
   afterAll(async () => {
-    await tdb.stop();
+    await Promise.all([tdb.stop(), qdrant.stop()]);
   });
 
   const engineWith = (gateway: ScriptedJudgeGateway) => new TasksEngine(tdb.db, store, gateway);

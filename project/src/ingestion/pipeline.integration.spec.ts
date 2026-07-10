@@ -98,6 +98,11 @@ class FakeReader implements SourceReader {
   async load(sourceId: string): Promise<SourceItem | null> {
     return this.sources.get(sourceId) ?? null;
   }
+
+  /** Admission checkpoint: the in-memory map IS the durable source here. */
+  async existsForAdmission(_tx: unknown, sourceId: string): Promise<boolean> {
+    return this.sources.has(sourceId);
+  }
 }
 
 const fact = (claim: string, overrides: Partial<CandidateFact> = {}): CandidateFact => ({

@@ -37,7 +37,9 @@ async function main(): Promise<void> {
   const pool = new Pool({ connectionString: config.databaseUrl });
   try {
     const db = createDb(pool);
-    const store = createMemoryStore({ db });
+    // sqlOnly (QS-26): the fixture only inserts a memory row; the demo's
+    // cascade covers vectors through the saga, not through this store.
+    const store = createMemoryStore({ db, sqlOnly: true });
     const objects = new MemoryObjectStore({
       url: config.s3Url,
       accessKey: config.s3AccessKey,

@@ -47,6 +47,22 @@ export class MemoryFileStore {
     });
   }
 
+  /**
+   * Admission checkpoint for stored-mode file sources (decision 0024): a
+   * KEY SHARE existence check inside the pipeline's transaction, so it
+   * serializes against the saga's FOR UPDATE + DELETE of the metadata row —
+   * the file twin of NotesSourceReader.existsForAdmission. Discard-mode
+   * sources have no row here by design; callers skip the checkpoint for them.
+   */
+  async existsForAdmission(tx: Tx, objectKey: string): Promise<boolean> {
+    const rows = await tx
+      .select({ objectKey: fileMetadata.objectKey })
+      .from(fileMetadata)
+      .where(eq(fileMetadata.objectKey, objectKey))
+      .for('key share');
+    return rows.length > 0;
+  }
+
   /** The stored row, or null when absent (discarded original / never uploaded). */
   async get(objectKey: string): Promise<FileMetadataRow | null> {
     const rows = await this.db

@@ -54,7 +54,9 @@ describe('digest composition (integration, real Postgres)', () => {
 
   beforeAll(async () => {
     tdb = await startTestDatabase();
-    store = createMemoryStore({ db: tdb.db });
+    // sqlOnly (QS-26): this suite only seeds facts and reads the digest — no
+    // transition/supersession/search ever runs on this store.
+    store = createMemoryStore({ db: tdb.db, sqlOnly: true });
   });
   afterAll(async () => {
     await tdb.stop();

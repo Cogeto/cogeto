@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../infrastructure/index';
 import { IdentityModule } from '../identity/index';
-import { IngestionModule } from '../ingestion/index';
+import { IngestionModule, PipelineIngestionGuard } from '../ingestion/index';
 import { MemoryModule } from '../memory/index';
 import { ChatSourceDeletion, ChatSourceModule, RetrievalModule } from '../retrieval/index';
 import { AgentsModule } from '../agents/index';
@@ -53,6 +53,9 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         // source-delete endpoint runs the saga for a chat-derived memory too.
         sourceDeletions: { adapters: [NotesSourceDeletion, ChatSourceDeletion] },
         derivedCascades: { imports: [TasksModule.forApi()], adapters: [TasksCascade] },
+        // Delete-vs-ingestion serialization (QS-5, decision 0024): the saga
+        // cancels a source's pending pipeline run inside its enumeration tx.
+        ingestionGuard: PipelineIngestionGuard,
       }),
       RetrievalModule,
       ChatSourceModule, // the chat source-deletion adapter for the delete endpoint
