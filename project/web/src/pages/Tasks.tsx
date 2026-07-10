@@ -6,6 +6,17 @@ import type { Session } from '../auth/oidc';
 import { MemoryDrawer } from '../components/MemoryDrawer';
 import { Shell } from '../components/Shell';
 import { dueLabel, timeAgo } from '../components/status';
+import {
+  btnPrimary,
+  btnSecondary,
+  DormantBadge,
+  EmptyState,
+  EntityChip,
+  ErrorState,
+  Pill,
+  SkeletonRows,
+  Tabs,
+} from '../components/ui';
 
 type View = 'open' | 'done' | 'dismissed';
 
@@ -41,13 +52,24 @@ function TaskRow({
 
   return (
     <li
-      className={`rounded-lg border bg-white p-3 shadow-sm ${
-        task.fromUncertain ? 'border-amber-200' : 'border-slate-200'
+      className={`rounded-lg border border-l-4 bg-white p-3 shadow-sm ${
+        settled
+          ? 'border-l-slate-200 border-slate-200 opacity-70'
+          : blocked
+            ? 'border-l-amber-400 border-slate-200'
+            : 'border-l-brand-teal border-slate-200'
       }`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-medium text-slate-800">{task.title}</p>
+          <div className="flex items-center gap-2">
+            {blocked && !settled && (
+              <Pill tone="warning" icon="⏳">
+                blocked
+              </Pill>
+            )}
+            <p className="text-sm font-medium text-slate-800">{task.title}</p>
+          </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             {task.primaryPerson && (
               <span className="font-medium text-slate-600">{task.primaryPerson}</span>
@@ -55,32 +77,24 @@ function TaskRow({
             {task.entities
               .filter((e) => e !== task.primaryPerson)
               .map((entity) => (
-                <span key={entity} className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">
-                  {entity}
-                </span>
+                <EntityChip key={entity} name={entity} />
               ))}
             {due && !settled && (
               <span className={due.overdue ? 'font-semibold text-red-600' : 'text-slate-500'}>
                 {due.text}
               </span>
             )}
-            {task.dormant && !settled && (
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">
-                gone quiet
-              </span>
-            )}
+            {task.dormant && !settled && <DormantBadge />}
             {task.fromUncertain && (
-              <a
-                href="/review"
-                className="rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-700 no-underline"
-                title="Derived from a memory still awaiting your review"
-              >
-                unconfirmed
+              <a href="/review" title="Derived from a memory still awaiting your review">
+                <Pill tone="warning">unconfirmed</Pill>
               </a>
             )}
           </div>
           {blocked && task.conditionText && !task.conditionMet && (
-            <p className="mt-1 text-xs text-amber-700">waiting on {task.conditionText}</p>
+            <p className="mt-1.5 text-xs text-amber-800">
+              <span className="font-semibold">Waiting</span> {task.conditionText}.
+            </p>
           )}
           {settled && task.closedByMemoryId && (
             <p className="mt-1 text-xs text-slate-400">
@@ -103,7 +117,7 @@ function TaskRow({
                 type="button"
                 disabled={op.isPending}
                 onClick={() => op.mutate('reopen')}
-                className="rounded border border-slate-300 px-2 py-0.5 text-xs text-slate-600 disabled:opacity-40"
+                className={btnSecondary}
               >
                 Reopen
               </button>
@@ -113,7 +127,7 @@ function TaskRow({
                   type="button"
                   disabled={op.isPending}
                   onClick={() => op.mutate('complete')}
-                  className="rounded bg-brand-teal px-2 py-0.5 text-xs font-semibold text-white disabled:opacity-40"
+                  className={btnPrimary}
                 >
                   Done
                 </button>
@@ -121,7 +135,7 @@ function TaskRow({
                   type="button"
                   disabled={op.isPending}
                   onClick={() => op.mutate('dismiss')}
-                  className="rounded border border-slate-300 px-2 py-0.5 text-xs text-slate-600 disabled:opacity-40"
+                  className={btnSecondary}
                 >
                   Dismiss
                 </button>
@@ -177,38 +191,17 @@ export function Tasks({ session }: { session: Session }) {
     return true;
   });
 
-  const tabClass = (active: boolean) =>
-    `rounded-md px-3 py-1.5 text-sm font-semibold ${
-      active ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-    }`;
-
   return (
     <Shell session={session} title="Tasks" active="tasks">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex w-fit gap-1 rounded-lg bg-slate-200/70 p-1">
-          <button
-            type="button"
-            className={tabClass(view === 'open')}
-            onClick={() => setView('open')}
-          >
-            Open
-          </button>
-          <button
-            type="button"
-            className={tabClass(view === 'done')}
-            onClick={() => setView('done')}
-          >
-            Done
-          </button>
-          <button
-            type="button"
-            className={tabClass(view === 'dismissed')}
-            onClick={() => setView('dismissed')}
-          >
-            Dismissed
-          </button>
-        </div>
-      </div>
+      <Tabs
+        active={view}
+        onChange={setView}
+        tabs={[
+          { key: 'open', label: 'Open' },
+          { key: 'done', label: 'Done' },
+          { key: 'dismissed', label: 'Dismissed' },
+        ]}
+      />
 
       <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
         <input
@@ -248,24 +241,25 @@ export function Tasks({ session }: { session: Session }) {
         )}
       </div>
 
-      {isPending && <p className="text-sm text-slate-400">Loading tasks…</p>}
-      {isError && <p className="text-sm text-red-600">Could not load tasks.</p>}
-
-      {data && rows.length === 0 && (
-        <section className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-          {view === 'open' ? (
-            <>
-              <p className="font-medium text-slate-600">Nothing is still open.</p>
-              <p className="mt-1">
-                Tasks aren’t typed by hand — commitments you capture (“I’ll send Luka the offer”)
-                become tasks automatically, derived from your memory.
-              </p>
-            </>
-          ) : (
-            'None yet.'
-          )}
-        </section>
+      {isPending && <SkeletonRows rows={3} label="Loading tasks…" />}
+      {isError && (
+        <ErrorState onRetry={() => void window.location.reload()}>
+          We couldn’t load your tasks.
+        </ErrorState>
       )}
+
+      {data &&
+        rows.length === 0 &&
+        (view === 'open' ? (
+          <EmptyState icon="✓" tone="positive" title="Nothing is still open">
+            Tasks aren’t typed by hand — commitments you capture (“I’ll send Luka the offer”) become
+            tasks automatically, derived from your memory.
+          </EmptyState>
+        ) : (
+          <EmptyState icon="📋" title={`No ${view} tasks yet`}>
+            Tasks you complete or dismiss will be listed here.
+          </EmptyState>
+        ))}
 
       {rows.length > 0 && (
         <ul className="space-y-2">

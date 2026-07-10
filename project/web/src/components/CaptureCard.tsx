@@ -3,6 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import type { MemoryScope } from '@cogeto/shared';
 import { captureNote, fetchNoteStatus, fetchSettings } from '../api';
 import type { Session } from '../auth/oidc';
+import { btnPrimary, Card } from './ui';
 
 /** The Memories capture card: one textarea straight into the pipeline. */
 export function CaptureCard({
@@ -31,7 +32,7 @@ export function CaptureCard({
   };
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <Card>
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
@@ -40,7 +41,7 @@ export function CaptureCard({
         }}
         placeholder="Remember this..."
         rows={3}
-        className="w-full resize-y rounded-md border border-slate-300 p-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-teal focus:outline-none"
+        className="w-full resize-y rounded-md border border-slate-300 p-3 text-sm text-slate-800 placeholder:text-slate-400 transition-colors focus:border-brand-teal"
       />
       <div className="mt-2 flex items-center justify-between gap-3">
         <label className="flex items-center gap-1.5 text-xs text-slate-500">
@@ -57,7 +58,7 @@ export function CaptureCard({
         </label>
         <p className="ml-auto text-xs text-slate-400">
           {capture.isError ? (
-            <span className="text-red-600">Capture failed — try again.</span>
+            <span className="text-red-700">Capture failed — try again.</span>
           ) : (
             'Facts appear below once verified.'
           )}
@@ -66,12 +67,12 @@ export function CaptureCard({
           type="button"
           onClick={submit}
           disabled={!content.trim() || capture.isPending}
-          className="rounded-md bg-brand-teal px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
+          className={btnPrimary}
         >
           Remember
         </button>
       </div>
-    </section>
+    </Card>
   );
 }
 
@@ -98,8 +99,8 @@ export function PendingNote({
 
   return (
     <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500">
-      <span className="h-2 w-2 animate-pulse rounded-full bg-brand-teal" />
-      Remembering… extraction and verification are running.
+      <span className="h-2 w-2 animate-pulse rounded-full bg-brand-teal" aria-hidden="true" />
+      <span role="status">Remembering… extraction and verification are running.</span>
     </div>
   );
 }

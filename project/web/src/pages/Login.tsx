@@ -29,11 +29,15 @@ export function Login() {
           type="button"
           onClick={() => void onLogin()}
           disabled={busy}
-          className="w-full rounded-lg bg-brand-navy px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-navy/90 disabled:opacity-50"
+          className="w-full rounded-lg bg-brand-navy px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-navy/90 disabled:opacity-50"
         >
           {busy ? 'Redirecting…' : 'Sign in'}
         </button>
-        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+        {error && (
+          <p className="mt-4 text-sm text-red-700" role="alert">
+            {error}
+          </p>
+        )}
       </div>
     </main>
   );

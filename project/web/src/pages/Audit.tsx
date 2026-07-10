@@ -4,6 +4,7 @@ import type { AuditEntryDto } from '@cogeto/shared';
 import { fetchAudit } from '../api';
 import type { Session } from '../auth/oidc';
 import { Shell } from '../components/Shell';
+import { Card, EmptyState, ErrorState, SectionTitle, SkeletonRows } from '../components/ui';
 import { timeAgo } from '../components/status';
 
 const PAGE_SIZE = 50;
@@ -39,9 +40,11 @@ function AuditRow({ entry }: { entry: AuditEntryDto }) {
         </span>
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-        <span className="rounded-full bg-slate-100 px-2 py-0.5">{entry.entityType}</span>
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
+          {entry.entityType}
+        </span>
         {link ? (
-          <a href={link} className="font-mono text-brand-teal hover:underline">
+          <a href={link} className="font-mono text-brand-teal-ink hover:underline">
             {entry.entityId.length > 24 ? `${entry.entityId.slice(0, 24)}…` : entry.entityId}
           </a>
         ) : (
@@ -88,11 +91,9 @@ export function Audit({ session }: { session: Session }) {
 
   return (
     <Shell session={session} title="Audit" active="audit">
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <Card>
         <div className="mb-3 flex items-center gap-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Audit trail
-          </h2>
+          <SectionTitle>Audit trail</SectionTitle>
           {data && <span className="text-xs text-slate-400">{data.total} entries</span>}
           <span className="ml-auto text-xs text-slate-400">read-only · append-only</span>
         </div>
@@ -151,10 +152,13 @@ export function Audit({ session }: { session: Session }) {
           </label>
         </div>
 
-        {isPending && <p className="text-sm text-slate-400">Loading…</p>}
-        {isError && <p className="text-sm text-red-600">Could not load the audit trail.</p>}
+        {isPending && <SkeletonRows rows={5} label="Loading audit trail…" />}
+        {isError && <ErrorState>We couldn’t load the audit trail.</ErrorState>}
         {data && data.items.length === 0 && (
-          <p className="text-sm text-slate-400">No audit entries match these filters.</p>
+          <EmptyState icon="🗒" title="No entries match these filters">
+            The audit trail records every consequential action — approvals, deletions, scope and
+            settings changes. Clear the filters to see the full history.
+          </EmptyState>
         )}
         {data && data.items.length > 0 && (
           <ul>
@@ -187,7 +191,7 @@ export function Audit({ session }: { session: Session }) {
             </button>
           </div>
         )}
-      </section>
+      </Card>
     </Shell>
   );
 }

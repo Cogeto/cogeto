@@ -186,7 +186,7 @@ export function Chat({ session }: { session: Session }) {
               <p className="mt-1">
                 Answers come only from your memories — every claim carries a citation chip that
                 opens its source. Nothing on record yet? Capture a note on the{' '}
-                <a href="/memories" className="text-brand-teal hover:underline">
+                <a href="/memories" className="text-brand-teal-ink hover:underline">
                   Memories
                 </a>{' '}
                 page first.
@@ -217,19 +217,32 @@ export function Chat({ session }: { session: Session }) {
           )}
           {liveQuestion && (
             <Bubble role="assistant">
-              {liveText ? (
-                <MessageBody
-                  session={session}
-                  content={liveText}
-                  facts={liveFacts}
-                  onOpenMemory={setOpenMemoryId}
-                />
-              ) : (
-                <p className="text-sm text-slate-400">Searching your memories…</p>
-              )}
+              <div aria-live="polite" aria-busy={!liveText}>
+                {liveText ? (
+                  <MessageBody
+                    session={session}
+                    content={liveText}
+                    facts={liveFacts}
+                    onOpenMemory={setOpenMemoryId}
+                  />
+                ) : (
+                  <p className="flex items-center gap-2 text-sm text-slate-400">
+                    <span className="inline-flex gap-0.5" aria-hidden="true">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-300" />
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-300 [animation-delay:150ms]" />
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-300 [animation-delay:300ms]" />
+                    </span>
+                    Searching your memories…
+                  </p>
+                )}
+              </div>
             </Bubble>
           )}
-          {failed && <p className="text-sm text-red-600">Answer generation failed — ask again.</p>}
+          {failed && (
+            <p role="alert" className="text-sm text-red-700">
+              That answer didn’t come through. Try asking again.
+            </p>
+          )}
         </div>
         <form
           className="mt-4 flex shrink-0 gap-2"
@@ -238,16 +251,20 @@ export function Chat({ session }: { session: Session }) {
             void send();
           }}
         >
+          <label className="sr-only" htmlFor="chat-input">
+            Ask a question
+          </label>
           <input
+            id="chat-input"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Ask about your commitments, decisions, people…"
-            className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-brand-teal focus:outline-none"
+            className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-colors focus:border-brand-teal"
           />
           <button
             type="submit"
             disabled={busy || !draft.trim()}
-            className="rounded-md bg-brand-teal px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            className="rounded-md bg-brand-teal px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-teal-ink disabled:opacity-40"
           >
             {busy ? 'Answering…' : 'Ask'}
           </button>

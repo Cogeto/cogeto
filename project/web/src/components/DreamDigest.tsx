@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { DreamDigestLine } from '@cogeto/shared';
 import { fetchDreamDigest } from '../api';
 import type { Session } from '../auth/oidc';
+
+const DISMISSED_KEY = 'cogeto.digest.dismissed';
 
 /**
  * "While you were away" (F2-B + O2-A): ONE surface, two sections — the nightly
@@ -14,18 +17,38 @@ export function DreamDigest({ session }: { session: Session }) {
     queryKey: ['dream-digest'],
     queryFn: () => fetchDreamDigest(session),
   });
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISSED_KEY));
 
   if (!data || data.lines.length === 0) return null;
+  // Dismissed until the next consolidation produces a fresh digest.
+  const stamp = data.finishedAt ?? 'latest';
+  if (dismissed === stamp) return null;
 
   // `section` is optional for back-compat; absent reads as consolidation.
   const consolidation = data.lines.filter((l) => l.section !== 'tasks');
   const tasks = data.lines.filter((l) => l.section === 'tasks');
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-        While you were away
-      </h2>
+    <section className="rounded-lg border border-slate-200 border-l-4 border-l-brand-teal/50 bg-white p-4 shadow-sm">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <span aria-hidden="true" className="text-brand-teal-ink">
+            ☾
+          </span>
+          While you were away
+        </h2>
+        <button
+          type="button"
+          onClick={() => {
+            localStorage.setItem(DISMISSED_KEY, stamp);
+            setDismissed(stamp);
+          }}
+          className="rounded p-1 text-slate-300 transition-colors hover:bg-slate-100 hover:text-slate-500"
+          aria-label="Dismiss digest"
+        >
+          <span aria-hidden="true">✕</span>
+        </button>
+      </div>
       {consolidation.length > 0 && <Lines lines={consolidation} />}
       {tasks.length > 0 && (
         <div className={consolidation.length > 0 ? 'mt-3 border-t border-slate-100 pt-3' : ''}>
@@ -51,7 +74,7 @@ function Lines({ lines }: { lines: DreamDigestLine[] }) {
         <li key={`${line.href}-${line.text}`}>
           <a
             href={line.href}
-            className="text-sm text-slate-700 underline decoration-slate-300 underline-offset-2 hover:text-brand-teal"
+            className="text-sm text-slate-700 underline decoration-slate-300 underline-offset-2 transition-colors hover:text-brand-teal-ink"
           >
             {line.text}
           </a>

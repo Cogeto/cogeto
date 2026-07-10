@@ -5,14 +5,26 @@ import { confirmApproval, fetchApprovalHistory, fetchPendingApprovals } from '..
 import type { Session } from '../auth/oidc';
 import { Shell } from '../components/Shell';
 import { timeAgo } from '../components/status';
+import type { Tone } from '../components/status';
+import {
+  btnDanger,
+  btnPrimary,
+  Card,
+  CountBadge,
+  EmptyState,
+  ErrorState,
+  Pill,
+  SkeletonRows,
+  Tabs,
+} from '../components/ui';
 
-const STATUS_CHIP: Record<ApprovalStatus, string> = {
-  draft: 'bg-slate-100 text-slate-600',
-  pending_approval: 'bg-amber-100 text-amber-700',
-  approved: 'bg-sky-100 text-sky-700',
-  executed: 'bg-brand-teal/15 text-brand-teal',
-  rejected: 'bg-red-100 text-red-600',
-  expired: 'bg-slate-200 text-slate-500',
+const STATUS_TONE: Record<ApprovalStatus, Tone> = {
+  draft: 'neutral',
+  pending_approval: 'warning',
+  approved: 'info',
+  executed: 'positive',
+  rejected: 'danger',
+  expired: 'neutral',
 };
 const STATUS_LABEL: Record<ApprovalStatus, string> = {
   draft: 'draft',
@@ -23,12 +35,8 @@ const STATUS_LABEL: Record<ApprovalStatus, string> = {
   expired: 'expired',
 };
 
-function StatusChip({ status }: { status: ApprovalStatus }) {
-  return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_CHIP[status]}`}>
-      {STATUS_LABEL[status]}
-    </span>
-  );
+function ApprovalPill({ status }: { status: ApprovalStatus }) {
+  return <Pill tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Pill>;
 }
 
 function PendingCard({ session, approval }: { session: Session; approval: ApprovalDto }) {
@@ -44,7 +52,7 @@ function PendingCard({ session, approval }: { session: Session; approval: Approv
   });
 
   return (
-    <li className="rounded-md border border-slate-200 p-4">
+    <li className="rounded-lg border border-slate-200 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-slate-800">{approval.summary}</p>
@@ -53,7 +61,7 @@ function PendingCard({ session, approval }: { session: Session; approval: Approv
             {approval.createdAt ? ` · ${timeAgo(approval.createdAt)}` : ''}
           </p>
         </div>
-        <StatusChip status={approval.status} />
+        <ApprovalPill status={approval.status} />
       </div>
 
       {approval.preview.length > 0 && (
@@ -76,7 +84,7 @@ function PendingCard({ session, approval }: { session: Session; approval: Approv
           type="button"
           disabled={decide.isPending}
           onClick={() => decide.mutate('approve')}
-          className="rounded-md bg-brand-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+          className={btnPrimary}
         >
           Approve
         </button>
@@ -86,7 +94,7 @@ function PendingCard({ session, approval }: { session: Session; approval: Approv
           onClick={() => {
             if (window.confirm('Reject this action? It will not run.')) decide.mutate('reject');
           }}
-          className="rounded-md border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-600 disabled:opacity-40"
+          className={btnDanger}
         >
           Reject
         </button>
@@ -110,9 +118,9 @@ function HistoryRow({ approval }: { approval: ApprovalDto }) {
           {approval.decidedBy ? ` · decided by ${approval.decidedBy}` : ''}
           {when ? ` · ${timeAgo(when)}` : ''}
         </p>
-        {approval.result && <p className="mt-0.5 text-xs text-brand-teal">{approval.result}</p>}
+        {approval.result && <p className="mt-0.5 text-xs text-brand-teal-ink">{approval.result}</p>}
       </div>
-      <StatusChip status={approval.status} />
+      <ApprovalPill status={approval.status} />
     </li>
   );
 }
@@ -133,37 +141,38 @@ export function Approvals({ session }: { session: Session }) {
 
   return (
     <Shell session={session} title="Approvals" active="approvals">
-      <div className="mb-4 flex gap-2">
-        {(['pending', 'history'] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              tab === t ? 'bg-brand-teal text-white' : 'border border-slate-300 text-slate-600'
-            }`}
-          >
-            {t === 'pending' ? 'Pending' : 'History'}
-            {t === 'pending' && (pending.data?.length ?? 0) > 0 && (
-              <span className="ml-1.5 rounded-full bg-amber-400 px-1.5 text-xs font-bold text-slate-900">
-                {pending.data?.length}
+      <Tabs
+        active={tab}
+        onChange={setTab}
+        tabs={[
+          {
+            key: 'pending',
+            label: (
+              <span className="flex items-center gap-1.5">
+                Pending
+                {(pending.data?.length ?? 0) > 0 && (
+                  <CountBadge count={pending.data!.length} label="awaiting approval" />
+                )}
               </span>
-            )}
-          </button>
-        ))}
-      </div>
+            ),
+          },
+          { key: 'history', label: 'History' },
+        ]}
+      />
 
       {tab === 'pending' && (
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          {pending.isPending && <p className="text-sm text-slate-400">Loading…</p>}
+        <Card>
+          {pending.isPending && <SkeletonRows rows={2} label="Loading approvals…" />}
           {pending.isError && (
-            <p className="text-sm text-red-600">Could not load pending approvals.</p>
+            <ErrorState onRetry={() => void pending.refetch()}>
+              We couldn’t load pending approvals.
+            </ErrorState>
           )}
           {pending.data && pending.data.length === 0 && (
-            <p className="text-sm text-slate-400">
-              No actions awaiting approval. Consequential actions (e.g. a bulk memory change from
-              Memories) appear here for you to approve or reject.
-            </p>
+            <EmptyState icon="✓" tone="positive" title="Nothing awaiting approval">
+              Consequential actions (like a bulk memory change from Memories) land here for you to
+              approve or reject. Cogeto never runs them on its own.
+            </EmptyState>
           )}
           {pending.data && pending.data.length > 0 && (
             <ul className="space-y-3">
@@ -172,14 +181,21 @@ export function Approvals({ session }: { session: Session }) {
               ))}
             </ul>
           )}
-        </section>
+        </Card>
       )}
 
       {tab === 'history' && (
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          {history.isPending && <p className="text-sm text-slate-400">Loading…</p>}
+        <Card>
+          {history.isPending && <SkeletonRows rows={2} label="Loading history…" />}
+          {history.isError && (
+            <ErrorState onRetry={() => void history.refetch()}>
+              We couldn’t load the approval history.
+            </ErrorState>
+          )}
           {history.data && history.data.length === 0 && (
-            <p className="text-sm text-slate-400">No decided approvals yet.</p>
+            <EmptyState icon="🗂" title="No decided approvals yet">
+              Once you approve or reject an action, it’s recorded here.
+            </EmptyState>
           )}
           {history.data && history.data.length > 0 && (
             <ul>
@@ -188,7 +204,7 @@ export function Approvals({ session }: { session: Session }) {
               ))}
             </ul>
           )}
-        </section>
+        </Card>
       )}
     </Shell>
   );

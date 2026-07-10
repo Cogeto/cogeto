@@ -22,7 +22,22 @@ It is **EU-first, privacy-first, self-hostable, and model-agnostic (Mistral-firs
 
 ## Status
 
-**Session O3-B complete — the redaction sidecar (`--profile redaction`).** A
+**Session O3-C complete — the frontend design pass. Session O3 is complete;
+Cogeto is demoable.** The dashboard SPA now reads as one system: a brand-anchored
+palette with an **AA-verified, colorblind-safe status vocabulary** (each lifecycle
+state has a fixed color *and* a label + icon — never color alone), one set of
+canonical components (chips, buttons, cards, tabs, states, and a single accessible
+drawer) that replace the prior drift, and deliberate empty/loading/error states
+that teach rather than blame. Screen by screen with judgment: the contradicted
+pair reads as a side-by-side "vs" comparison, blocked tasks are instantly distinct
+from open ones, the deletion receipt is a printable certificate, the memory drawer
+reads as a dossier, and the dreaming digest is quiet + dismissible. Keyboard
+navigable with a visible focus ring everywhere, reduced-motion honored globally,
+**Lighthouse accessibility 100/100** on the built SPA. No route/state changes, no
+new dependencies. Details in `docs/sessions/O3-C.md` and `docs/design/README.md`.
+**O4 (calendar connector) is next per the roadmap.**
+
+Previously — **Session O3-B — the redaction sidecar (`--profile redaction`).** A
 per-tenant privacy tier (Addendum B.8): a stateless, CPU-only Python/Presidio
 service — the only caller is the model gateway, it touches no database and stores
 nothing — pseudonymizes sensitive entities (person, org, location, email, phone,

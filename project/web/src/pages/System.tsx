@@ -6,6 +6,15 @@ import { Shell } from '../components/Shell';
 import { StatusPanel } from '../components/StatusPanel';
 import { WorkerActivityPanel } from '../components/WorkerActivityPanel';
 import { timeAgo } from '../components/status';
+import {
+  btnSecondary,
+  Card,
+  EmptyState,
+  ErrorState,
+  Pill,
+  SectionTitle,
+  SkeletonRows,
+} from '../components/ui';
 
 /** The sweep's face (§A.7 step 4): last run, chain status, open alert list. */
 function IntegrityPanel({ session }: { session: Session }) {
@@ -22,35 +31,34 @@ function IntegrityPanel({ session }: { session: Session }) {
   const data = integrity.data;
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-        Deletion integrity
-      </h2>
-      {integrity.isPending && <p className="text-sm text-slate-400">Loading…</p>}
-      {integrity.isError && <p className="text-sm text-red-600">Could not load sweep status.</p>}
+    <Card>
+      <div className="mb-3">
+        <SectionTitle>Deletion integrity</SectionTitle>
+      </div>
+      {integrity.isPending && <SkeletonRows rows={2} label="Loading sweep status…" />}
+      {integrity.isError && <ErrorState>We couldn’t load the sweep status.</ErrorState>}
       {data && (
         <>
           <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
             {data.openAlerts === 0 ? (
-              <span className="rounded-full bg-brand-teal/15 px-2 py-0.5 text-xs font-semibold text-brand-teal">
+              <Pill tone="positive" icon="✓">
                 0 integrity alerts
-              </span>
+              </Pill>
             ) : (
-              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-600">
+              <Pill tone="danger" icon="⚠">
                 {data.openAlerts} integrity alert{data.openAlerts === 1 ? '' : 's'}
-              </span>
+              </Pill>
             )}
             {chain.data &&
               (chain.data.ok ? (
-                <span className="rounded-full bg-brand-teal/15 px-2 py-0.5 text-xs font-semibold text-brand-teal">
+                <Pill tone="positive" icon="✓">
                   chain verified ({chain.data.verified})
-                </span>
+                </Pill>
               ) : (
-                <span
-                  className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-600"
-                  title={chain.data.error}
-                >
-                  chain BROKEN
+                <span title={chain.data.error}>
+                  <Pill tone="danger" icon="✗">
+                    chain BROKEN
+                  </Pill>
                 </span>
               ))}
             <span className="text-xs text-slate-400">
@@ -73,7 +81,7 @@ function IntegrityPanel({ session }: { session: Session }) {
                 <tbody>
                   {data.alerts.map((alert) => (
                     <tr key={alert.id} className="border-b border-slate-100 align-top">
-                      <td className="py-2 pr-3 font-medium text-red-600">{alert.kind}</td>
+                      <td className="py-2 pr-3 font-medium text-red-700">{alert.kind}</td>
                       <td className="max-w-64 break-all py-2 pr-3 font-mono text-xs text-slate-600">
                         {alert.detail}
                       </td>
@@ -91,7 +99,7 @@ function IntegrityPanel({ session }: { session: Session }) {
           )}
         </>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -113,15 +121,21 @@ function DeadLetterTable({ session }: { session: Session }) {
   });
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-        Dead-letter queue
-      </h2>
-      {isPending && <p className="text-sm text-slate-400">Loading…</p>}
-      {isError && <p className="text-sm text-red-600">Could not load the dead-letter queue.</p>}
-      {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
+    <Card>
+      <div className="mb-3">
+        <SectionTitle>Dead-letter queue</SectionTitle>
+      </div>
+      {isPending && <SkeletonRows rows={2} label="Loading dead-letter queue…" />}
+      {isError && <ErrorState>We couldn’t load the dead-letter queue.</ErrorState>}
+      {error && (
+        <div className="mb-2">
+          <ErrorState>{error}</ErrorState>
+        </div>
+      )}
       {data && data.length === 0 && (
-        <p className="text-sm text-slate-400">No parked jobs — every enqueued job completed.</p>
+        <EmptyState icon="✓" tone="positive" title="No parked jobs">
+          Every enqueued job completed. Jobs that permanently fail land here to retry.
+        </EmptyState>
       )}
       {data && data.length > 0 && (
         <div className="overflow-x-auto">
@@ -144,7 +158,7 @@ function DeadLetterTable({ session }: { session: Session }) {
                     {job.sourceType ?? '—'}
                     {job.sourceId ? ` / ${job.sourceId.slice(0, 8)}…` : ''}
                   </td>
-                  <td className="max-w-64 py-2 pr-3 text-xs text-red-600" title={job.error}>
+                  <td className="max-w-64 py-2 pr-3 text-xs text-red-700" title={job.error}>
                     {job.error.length > 120 ? `${job.error.slice(0, 120)}…` : job.error}
                   </td>
                   <td className="py-2 pr-3 text-slate-500">{job.attempts}</td>
@@ -156,7 +170,7 @@ function DeadLetterTable({ session }: { session: Session }) {
                       type="button"
                       disabled={retry.isPending}
                       onClick={() => retry.mutate(job.id)}
-                      className="rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40"
+                      className={btnSecondary}
                     >
                       Retry
                     </button>
@@ -167,7 +181,7 @@ function DeadLetterTable({ session }: { session: Session }) {
           </table>
         </div>
       )}
-    </section>
+    </Card>
   );
 }
 

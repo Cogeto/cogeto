@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { HealthCheck } from '@cogeto/shared';
 import { fetchHealth } from '../api';
+import { Card, ErrorState, Pill, SectionTitle, SkeletonRows } from './ui';
 
 function CheckRow({ name, check }: { name: string; check: HealthCheck }) {
   return (
@@ -10,15 +11,14 @@ function CheckRow({ name, check }: { name: string; check: HealthCheck }) {
         {check.detail && <span className="text-xs text-slate-400">{check.detail}</span>}
         <span className="text-slate-400">{check.latencyMs} ms</span>
         {check.ok ? (
-          <span className="rounded-full bg-brand-teal/15 px-2 py-0.5 text-xs font-semibold text-brand-teal">
+          <Pill tone="positive" icon="●">
             up
-          </span>
+          </Pill>
         ) : (
-          <span
-            className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-600"
-            title={check.error}
-          >
-            down
+          <span title={check.error}>
+            <Pill tone="danger" icon="●">
+              down
+            </Pill>
           </span>
         )}
       </span>
@@ -35,12 +35,12 @@ export function StatusPanel() {
   });
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-        System status
-      </h2>
-      {isPending && <p className="text-sm text-slate-400">Checking…</p>}
-      {isError && <p className="text-sm text-red-600">The API is unreachable.</p>}
+    <Card>
+      <div className="mb-3">
+        <SectionTitle>System status</SectionTitle>
+      </div>
+      {isPending && <SkeletonRows rows={4} label="Checking services…" />}
+      {isError && <ErrorState>The API is unreachable right now.</ErrorState>}
       {data && (
         <ul className="space-y-2">
           <CheckRow name="PostgreSQL" check={data.checks.postgres} />
@@ -52,6 +52,6 @@ export function StatusPanel() {
           <CheckRow name="Job queue" check={data.checks.queue} />
         </ul>
       )}
-    </section>
+    </Card>
   );
 }

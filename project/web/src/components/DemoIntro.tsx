@@ -71,7 +71,7 @@ export function DemoIntro() {
                 href={t.href}
                 className="flex gap-3 rounded-lg border border-slate-200 p-3 text-left transition hover:border-brand-teal hover:bg-brand-teal/5"
               >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-teal/15 text-xs font-bold text-brand-teal">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-teal-surface text-xs font-bold text-brand-teal-ink">
                   {t.n}
                 </span>
                 <span>

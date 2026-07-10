@@ -46,7 +46,19 @@ export function App() {
   // a demo visitor never flashes the login screen.
   if (!session) {
     if (configPending || (demoMode && webConfig?.demoSession)) {
-      return <div className="grid min-h-screen place-items-center text-slate-400">Loading…</div>;
+      return (
+        <main className="grid min-h-screen place-items-center bg-slate-50 text-sm text-slate-600">
+          <span className="flex items-center gap-2" role="status" aria-live="polite">
+            <img
+              src="/brand/cogeto-final-favicon.svg"
+              alt=""
+              className="h-5 w-5"
+              aria-hidden="true"
+            />
+            Loading Cogeto…
+          </span>
+        </main>
+      );
     }
     return <Login />;
   }

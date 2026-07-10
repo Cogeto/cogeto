@@ -84,8 +84,8 @@ export function Shell({
           </div>
           {isDemoSession() ? (
             // Sandbox: no sign-out (no account to leave); a subtle sandbox tag.
-            <span className="rounded-full bg-brand-teal/15 px-3 py-1 text-xs font-semibold text-brand-teal">
-              Live sandbox
+            <span className="inline-flex items-center gap-1 rounded-full bg-brand-teal-surface px-3 py-1 text-xs font-semibold text-brand-teal-ink">
+              <span aria-hidden="true">●</span> Live sandbox
             </span>
           ) : (
             <button

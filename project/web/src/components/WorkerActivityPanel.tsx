@@ -48,10 +48,10 @@ function Stat({
 }) {
   const cls =
     tone === 'active'
-      ? 'bg-brand-teal/15 text-brand-teal'
+      ? 'bg-brand-teal-surface text-brand-teal-ink'
       : tone === 'alert'
-        ? 'bg-red-100 text-red-600'
-        : 'bg-slate-100 text-slate-500';
+        ? 'bg-red-100 text-red-700'
+        : 'bg-slate-100 text-slate-600';
   return (
     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${cls}`}>
       {value} {label}
@@ -134,23 +134,29 @@ export function WorkerActivityPanel({ session }: { session: Session }) {
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           Worker activity
         </h2>
         <span
           className={`h-2 w-2 rounded-full ${busy ? 'animate-pulse bg-brand-teal' : 'bg-slate-300'}`}
           title={busy ? 'processing' : 'idle'}
+          role="img"
+          aria-label={busy ? 'processing' : 'idle'}
         />
       </div>
 
       {isPending && <p className="text-sm text-slate-400">Loading…</p>}
-      {isError && <p className="text-sm text-red-600">Could not load worker activity.</p>}
+      {isError && (
+        <p className="text-sm text-red-700" role="alert">
+          We couldn’t load worker activity.
+        </p>
+      )}
 
       {data && (
         <>
           <div className="mb-3 flex flex-wrap items-center gap-2">
             {idle ? (
-              <span className="rounded-full bg-brand-teal/15 px-2 py-0.5 text-xs font-semibold text-brand-teal">
+              <span className="rounded-full bg-brand-teal-surface px-2 py-0.5 text-xs font-semibold text-brand-teal-ink">
                 Idle — all jobs processed
               </span>
             ) : (
@@ -211,7 +217,7 @@ export function WorkerActivityPanel({ session }: { session: Session }) {
                     key={`${c.jobType}-${c.sourceId ?? i}`}
                     className="flex items-center gap-2 text-xs text-slate-500"
                   >
-                    <span className="text-brand-teal">✓</span>
+                    <span className="text-brand-teal-ink">✓</span>
                     <span className="text-slate-600">{jobLabel(c.jobType)}</span>
                     {sourceLabel(c.sourceType, c.sourceId) && (
                       <span className="truncate text-slate-400">

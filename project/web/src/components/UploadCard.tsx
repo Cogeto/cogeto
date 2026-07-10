@@ -8,6 +8,7 @@ import {
 } from '@cogeto/shared';
 import { fetchFileStatus, fetchSettings, uploadFile } from '../api';
 import type { Session } from '../auth/oidc';
+import { Card } from './ui';
 
 /** Client-side pre-check — the server re-validates type (magic bytes) and size. */
 function validate(file: File): string | null {
@@ -65,7 +66,7 @@ export function UploadCard({
   };
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <Card>
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -134,13 +135,17 @@ export function UploadCard({
       </div>
 
       {effDiscard && (
-        <p className="mt-2 text-xs text-amber-600">
+        <p className="mt-2 text-xs text-amber-800">
           The uploaded file will be deleted once its facts are extracted — only the verified
           memories are kept. This cannot be undone.
         </p>
       )}
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
-    </section>
+      {error && (
+        <p className="mt-2 text-xs text-red-700" role="alert">
+          {error}
+        </p>
+      )}
+    </Card>
   );
 }
 
@@ -178,11 +183,13 @@ export function PendingUpload({
     <div
       className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${
         failed
-          ? 'border-red-200 bg-red-50 text-red-600'
+          ? 'border-red-200 bg-red-50 text-red-700'
           : 'border-slate-200 bg-white text-slate-500'
       }`}
     >
-      {!failed && <span className="h-2 w-2 animate-pulse rounded-full bg-brand-teal" />}
+      {!failed && (
+        <span className="h-2 w-2 animate-pulse rounded-full bg-brand-teal" aria-hidden="true" />
+      )}
       <span className="truncate font-medium text-slate-600">{filename}</span>
       <span className="ml-auto text-xs">{STATE_LABEL[state]}</span>
     </div>

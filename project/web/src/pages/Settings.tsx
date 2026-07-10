@@ -4,6 +4,7 @@ import type { MemoryScope } from '@cogeto/shared';
 import { fetchInstancePublicKey, fetchSettings, updateSettings } from '../api';
 import type { Session } from '../auth/oidc';
 import { Shell } from '../components/Shell';
+import { btnPrimary, SectionTitle, Skeleton } from '../components/ui';
 
 /** Settings (§A.9, O1-C): only real, wired toggles — every control does something today. */
 export function Settings({ session }: { session: Session }) {
@@ -36,15 +37,13 @@ export function Settings({ session }: { session: Session }) {
     <Shell session={session} title="Settings" active="settings">
       <section className="max-w-2xl space-y-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Capture &amp; upload defaults
-          </h2>
+          <SectionTitle>Capture &amp; upload defaults</SectionTitle>
           <p className="mt-1 text-xs text-slate-400">
             Applied to new notes and uploads. You can still override either per upload.
           </p>
         </div>
 
-        {settings.isPending && <p className="text-sm text-slate-400">Loading…</p>}
+        {settings.isPending && <Skeleton className="h-24 w-full" />}
         {settings.data && (
           <>
             <label className="flex items-start gap-3">
@@ -84,21 +83,21 @@ export function Settings({ session }: { session: Session }) {
                 type="button"
                 disabled={save.isPending}
                 onClick={() => save.mutate()}
-                className="rounded-md bg-brand-teal px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
+                className={btnPrimary}
               >
                 {save.isPending ? 'Saving…' : 'Save'}
               </button>
-              {saved && <span className="text-xs text-brand-teal">Saved.</span>}
-              {save.isError && <span className="text-xs text-red-600">Could not save.</span>}
+              {saved && <span className="text-xs text-brand-teal-ink">Saved.</span>}
+              {save.isError && (
+                <span className="text-xs text-red-700">Couldn’t save — try again.</span>
+              )}
             </div>
           </>
         )}
       </section>
 
       <section className="mt-4 max-w-2xl space-y-2 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Instance signing key
-        </h2>
+        <SectionTitle>Instance signing key</SectionTitle>
         <p className="text-xs text-slate-500">
           Every deletion receipt is signed with this instance's private key (§B.1). Anyone can
           verify a receipt or the Forgotten ledger against the public key below — proof that a
@@ -109,7 +108,7 @@ export function Settings({ session }: { session: Session }) {
             {publicKey.data.publicKeyPem}
           </pre>
         ) : (
-          <p className="text-sm text-slate-400">Loading…</p>
+          <Skeleton className="h-16 w-full" />
         )}
         {publicKey.data && (
           <p className="text-xs text-slate-400">Algorithm: {publicKey.data.algorithm}</p>

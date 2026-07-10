@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { MemoryListItem } from '@cogeto/shared';
 import {
   approveMemory,
   changeMemoryScope,
@@ -17,22 +16,28 @@ import {
 } from '../api';
 import type { Session } from '../auth/oidc';
 import { SourceDrawer } from './SourceDrawer';
-import { STATUS_CHIP, statusLabel, timeAgo } from './status';
+import { timeAgo } from './status';
+import {
+  btnDanger,
+  btnPrimary,
+  btnSecondary,
+  Drawer,
+  EntityChip,
+  ErrorState,
+  PrivateTag,
+  SensitiveBadge,
+  SharedBadge,
+  SkeletonRows,
+  StatusChip,
+  VerdictChip,
+} from './ui';
 
 const EDIT_EXPLAINED_KEY = 'cogeto-supersession-explained';
 
-function Chip({ item }: { item: MemoryListItem }) {
-  return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_CHIP[item.status]}`}>
-      {statusLabel(item.status)}
-    </span>
-  );
-}
-
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-md border border-slate-200 p-3">
-      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</h4>
+    <section className="rounded-lg border border-slate-200 p-3">
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</h3>
       {children}
     </section>
   );
@@ -168,52 +173,29 @@ export function MemoryDrawer({
     edit.isPending;
 
   return (
-    <div className="fixed inset-0 z-10" onClick={onClose}>
-      <div className="absolute inset-0 bg-slate-900/30" />
-      <aside
-        className="absolute right-0 top-0 h-full w-full max-w-lg space-y-3 overflow-y-auto bg-white p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Memory</h3>
-          <button type="button" onClick={onClose} className="text-sm text-slate-400">
-            Close
-          </button>
-        </div>
-
-        {memoryQuery.isPending && <p className="text-sm text-slate-400">Loading…</p>}
+    <>
+      <Drawer title="Memory" onClose={onClose}>
+        {memoryQuery.isPending && <SkeletonRows rows={4} label="Loading memory…" />}
         {memoryQuery.isError && (
-          <p className="text-sm text-red-600">Could not load this memory (it may be rejected).</p>
+          <ErrorState>This memory couldn’t be loaded — it may have been rejected.</ErrorState>
         )}
 
         {memory && (
           <>
-            <p className="whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-sm text-slate-800">
+            <p className="whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-base leading-relaxed text-slate-800">
               {memory.content}
             </p>
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <Chip item={memory} />
-              {memory.sensitive && (
-                <span className="rounded-full bg-purple-100 px-2 py-0.5 font-semibold text-purple-700">
-                  sensitive
-                </span>
-              )}
-              {memory.scope === 'shared' ? (
-                <span className="rounded-full bg-sky-100 px-2 py-0.5 font-semibold text-sky-700">
-                  shared
-                </span>
-              ) : (
-                <span className="text-slate-400">private</span>
-              )}
+              <StatusChip status={memory.status} />
+              {memory.sensitive && <SensitiveBadge />}
+              {memory.scope === 'shared' ? <SharedBadge /> : <PrivateTag />}
               {!isMine && (
                 <span className="text-slate-400">
                   owned by {memory.ownerName ?? 'another member'}
                 </span>
               )}
               {memory.entities.map((entity) => (
-                <span key={entity} className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
-                  {entity}
-                </span>
+                <EntityChip key={entity} name={entity} />
               ))}
             </div>
             {(memory.validFrom || memory.validUntil) && (
@@ -229,7 +211,9 @@ export function MemoryDrawer({
             )}
 
             {actionError && (
-              <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{actionError}</p>
+              <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {actionError}
+              </p>
             )}
 
             <Panel title="Actions">
@@ -247,7 +231,7 @@ export function MemoryDrawer({
                         type="button"
                         disabled={busy}
                         onClick={() => approve.mutate()}
-                        className="rounded-md bg-brand-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                        className={btnPrimary}
                       >
                         Approve
                       </button>
@@ -262,7 +246,7 @@ export function MemoryDrawer({
                           )
                             reject.mutate();
                         }}
-                        className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                        className={btnDanger}
                       >
                         Reject
                       </button>
@@ -272,7 +256,7 @@ export function MemoryDrawer({
                         type="button"
                         disabled={busy}
                         onClick={() => outdate.mutate()}
-                        className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 disabled:opacity-40"
+                        className={btnSecondary}
                       >
                         Mark outdated
                       </button>
@@ -285,7 +269,7 @@ export function MemoryDrawer({
                           setEditText(memory.content ?? '');
                           setEditing(true);
                         }}
-                        className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 disabled:opacity-40"
+                        className={btnSecondary}
                       >
                         Edit
                       </button>
@@ -339,14 +323,14 @@ export function MemoryDrawer({
                         <button
                           type="submit"
                           disabled={busy || !editText.trim()}
-                          className="rounded-md bg-brand-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                          className={btnPrimary}
                         >
                           Save as correction
                         </button>
                         <button
                           type="button"
                           onClick={() => setEditing(false)}
-                          className="rounded-md border border-slate-300 px-3 py-1.5 text-xs text-slate-600"
+                          className={btnSecondary}
                         >
                           Cancel
                         </button>
@@ -368,10 +352,7 @@ export function MemoryDrawer({
                         {otherNoteQuery.data.content}
                       </p>
                     )}
-                    <a
-                      href="/review"
-                      className="inline-block rounded-md bg-brand-teal px-3 py-1.5 text-xs font-semibold text-white no-underline"
-                    >
+                    <a href="/review" className={`${btnPrimary} no-underline`}>
                       Resolve in Review
                     </a>
                   </div>
@@ -388,17 +369,9 @@ export function MemoryDrawer({
             <Panel title="Verification">
               {verificationQuery.data ? (
                 <div className="space-y-1 text-sm">
-                  <p>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        verificationQuery.data.verdict === 'supported'
-                          ? 'bg-brand-teal/15 text-brand-teal'
-                          : 'bg-amber-100 text-amber-700'
-                      }`}
-                    >
-                      {verificationQuery.data.verdict}
-                    </span>
-                    <span className="ml-2 text-xs text-slate-400">
+                  <p className="flex items-center gap-2">
+                    <VerdictChip verdict={verificationQuery.data.verdict} />
+                    <span className="text-xs text-slate-400">
                       {verificationQuery.data.promptVersion}
                     </span>
                   </p>
@@ -432,7 +405,7 @@ export function MemoryDrawer({
                 <button
                   type="button"
                   onClick={() => setShowSource(true)}
-                  className="mt-2 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600"
+                  className={`${btnSecondary} mt-2`}
                 >
                   Open source · delete…
                 </button>
@@ -455,11 +428,13 @@ export function MemoryDrawer({
                     >
                       <p className="whitespace-pre-wrap text-slate-700">{entry.content}</p>
                       <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                        <Chip item={entry} />
+                        <StatusChip status={entry.status} />
                         <span title={entry.createdAt}>
                           {i === 0 ? 'original' : 'correction'} · {timeAgo(entry.createdAt)}
                         </span>
-                        {entry.id === memory.id && <span className="text-brand-teal">viewing</span>}
+                        {entry.id === memory.id && (
+                          <span className="font-semibold text-brand-teal-ink">viewing</span>
+                        )}
                       </p>
                     </li>
                   ))}
@@ -470,7 +445,7 @@ export function MemoryDrawer({
             </Panel>
           </>
         )}
-      </aside>
+      </Drawer>
       {memory && showSource && (
         <SourceDrawer
           session={session}
@@ -485,6 +460,6 @@ export function MemoryDrawer({
           }}
         />
       )}
-    </div>
+    </>
   );
 }

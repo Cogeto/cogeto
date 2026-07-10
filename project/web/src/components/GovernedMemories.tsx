@@ -4,7 +4,20 @@ import type { MemoryListItem, MemoryScope, MemoryStatus } from '@cogeto/shared';
 import { BULK_OUTDATE_ACTION, MEMORY_SCOPES, MEMORY_STATUSES } from '@cogeto/shared';
 import { createApproval, fetchMe, fetchMemories } from '../api';
 import type { Session } from '../auth/oidc';
-import { STATUS_CHIP, statusLabel, timeAgo } from './status';
+import { statusLabel, timeAgo } from './status';
+import {
+  btnPrimary,
+  btnSecondary,
+  Card,
+  EmptyState,
+  EntityChip,
+  ErrorState,
+  SectionTitle,
+  SensitiveBadge,
+  SharedBadge,
+  SkeletonRows,
+  StatusChip,
+} from './ui';
 
 const PAGE_SIZE = 25;
 
@@ -28,52 +41,41 @@ function MemoryRow({
   const mine = memory.ownerId === myUserId;
   return (
     <li
-      className={`flex cursor-pointer gap-2 rounded-md border px-3 py-2 hover:border-brand-teal/60 ${
+      className={`rounded-md border transition-colors hover:border-brand-teal/60 ${
         selected ? 'border-brand-teal bg-brand-teal/5' : 'border-slate-200'
       }`}
-      onClick={selecting ? onToggleSelect : onOpen}
     >
-      {selecting && (
-        <input
-          type="checkbox"
-          checked={selected}
-          onChange={onToggleSelect}
-          onClick={(e) => e.stopPropagation()}
-          className="mt-1 shrink-0"
-        />
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="text-sm text-slate-800">{memory.content}</p>
-        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-          <span className={`rounded-full px-2 py-0.5 font-semibold ${STATUS_CHIP[memory.status]}`}>
-            {statusLabel(memory.status)}
-          </span>
-          {memory.sensitive && (
-            <span className="rounded-full bg-purple-100 px-2 py-0.5 font-semibold text-purple-700">
-              sensitive
+      <div className="flex gap-2 px-3 py-2">
+        {selecting && (
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={onToggleSelect}
+            className="mt-1 shrink-0"
+            aria-label={`Select: ${memory.content?.slice(0, 60) ?? 'memory'}`}
+          />
+        )}
+        <div className="min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={selecting ? onToggleSelect : onOpen}
+            className="block w-full text-left text-sm text-slate-800 transition-colors hover:text-brand-teal-ink"
+          >
+            {memory.content}
+          </button>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+            <StatusChip status={memory.status} />
+            {memory.sensitive && <SensitiveBadge />}
+            {memory.scope === 'shared' && (
+              <SharedBadge owner={!mine ? (memory.ownerName ?? 'member') : undefined} />
+            )}
+            {memory.entities.map((entity) => (
+              <EntityChip key={entity} name={entity} onClick={() => onEntity(entity)} />
+            ))}
+            <span className="ml-auto text-slate-400" title={memory.createdAt}>
+              {timeAgo(memory.createdAt)}
             </span>
-          )}
-          {memory.scope === 'shared' && (
-            <span className="rounded-full bg-sky-100 px-2 py-0.5 font-semibold text-sky-700">
-              shared{!mine && ` · ${memory.ownerName ?? 'member'}`}
-            </span>
-          )}
-          {memory.entities.map((entity) => (
-            <button
-              key={entity}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEntity(entity);
-              }}
-              className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600 hover:bg-slate-200"
-            >
-              {entity}
-            </button>
-          ))}
-          <span className="ml-auto text-slate-400" title={memory.createdAt}>
-            {timeAgo(memory.createdAt)}
-          </span>
+          </div>
         </div>
       </div>
     </li>
@@ -146,21 +148,21 @@ export function GovernedMemories({
   const pages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <Card>
       <div className="mb-3 flex items-center gap-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Memories</h2>
+        <SectionTitle>Memories</SectionTitle>
         {data && <span className="text-xs text-slate-400">{data.total} on record</span>}
         <button
           type="button"
           onClick={() => (selecting ? clearSelection() : setSelecting(true))}
-          className="ml-auto rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-600"
+          className={`${btnSecondary} ml-auto`}
         >
           {selecting ? 'Cancel' : 'Select'}
         </button>
       </div>
 
       {requested && (
-        <p className="mb-3 rounded-md bg-brand-teal/10 px-3 py-2 text-sm text-brand-teal">
+        <p className="mb-3 rounded-md bg-brand-teal-surface px-3 py-2 text-sm text-brand-teal-ink">
           Requested: “{requested}”. Decide it under{' '}
           <a href="/approvals" className="font-semibold underline">
             Approvals
@@ -186,7 +188,7 @@ export function GovernedMemories({
             type="button"
             disabled={selected.size === 0 || requestBulkOutdate.isPending}
             onClick={() => requestBulkOutdate.mutate()}
-            className="ml-auto rounded-md bg-brand-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+            className={`${btnPrimary} ml-auto`}
           >
             {requestBulkOutdate.isPending ? 'Requesting…' : 'Request “Mark outdated” approval'}
           </button>
@@ -255,15 +257,20 @@ export function GovernedMemories({
         </label>
       </div>
 
-      {isPending && <p className="text-sm text-slate-400">Loading…</p>}
-      {isError && <p className="text-sm text-red-600">Could not load memories.</p>}
-      {data && data.items.length === 0 && (
-        <p className="text-sm text-slate-400">
-          {data.total === 0 && !q && !status && !scope && !entity && !sensitiveOnly
-            ? 'Nothing remembered yet. Capture a note above to see the pipeline work.'
-            : 'No memories match these filters.'}
-        </p>
-      )}
+      {isPending && <SkeletonRows rows={4} label="Loading memories…" />}
+      {isError && <ErrorState>We couldn’t load your memories just now.</ErrorState>}
+      {data &&
+        data.items.length === 0 &&
+        (data.total === 0 && !q && !status && !scope && !entity && !sensitiveOnly ? (
+          <EmptyState icon="🧠" title="Nothing remembered yet">
+            A memory is a single verifiable fact Cogeto extracted from something you captured.
+            Capture a note above and watch it move through extraction and verification.
+          </EmptyState>
+        ) : (
+          <EmptyState icon="🔍" title="No memories match these filters">
+            Try clearing the search or status filter.
+          </EmptyState>
+        ))}
       {data && data.items.length > 0 && (
         <ul className="space-y-2">
           {data.items.map((memory) => (
@@ -307,6 +314,6 @@ export function GovernedMemories({
           </button>
         </div>
       )}
-    </section>
+    </Card>
   );
 }

@@ -9,6 +9,16 @@ import {
   fetchNote,
 } from '../api';
 import type { Session } from '../auth/oidc';
+import {
+  btnDanger,
+  btnSecondary,
+  Drawer,
+  ErrorState,
+  Pill,
+  SensitiveBadge,
+  SkeletonRows,
+} from './ui';
+import type { Tone } from './status';
 
 const FILE_STATE_LABEL: Record<string, string> = {
   processing: 'Extracting…',
@@ -101,165 +111,139 @@ export function SourceDrawer({
     if (window.confirm(message)) remove.mutate();
   };
 
+  const fileTone = (state: string): Tone =>
+    state === 'error' ? 'danger' : state === 'done' ? 'positive' : 'warning';
+
   return (
-    <div className="fixed inset-0 z-10" onClick={onClose}>
-      <div className="absolute inset-0 bg-slate-900/30" />
-      <aside
-        className="absolute right-0 top-0 h-full w-full max-w-md space-y-3 overflow-y-auto bg-white p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Source · {isNote ? 'note' : isChat ? 'conversation' : sourceType.replace('_', ' ')}
-          </h3>
-          <button type="button" onClick={onClose} className="text-sm text-slate-400">
-            Close
-          </button>
-        </div>
-
-        {isNote && noteQuery.isPending && <p className="text-sm text-slate-400">Loading…</p>}
-        {isNote && noteQuery.isError && (
-          <p className="text-sm text-red-600">Could not load the note.</p>
-        )}
-        {isNote && noteQuery.data && (
-          <>
-            <p className="whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-sm text-slate-800">
-              {noteQuery.data.content}
-            </p>
-            <p className="text-xs text-slate-400">
-              Captured {new Date(noteQuery.data.createdAt).toLocaleString()}
-            </p>
-          </>
-        )}
-        {isFile && (
-          <>
-            {fileQuery.isPending && <p className="text-sm text-slate-400">Loading…</p>}
-            {fileQuery.isError && (
-              <p className="text-sm text-red-600">Could not load this file source.</p>
-            )}
-            {fileQuery.data && (
-              <div className="space-y-2 rounded-md bg-slate-50 p-3">
-                <p className="break-words text-sm font-medium text-slate-800">
-                  {fileQuery.data.filename ??
-                    (fileQuery.data.discarded ? 'Discarded document' : 'Uploaded document')}
-                </p>
-                {fileQuery.data.discarded ? (
-                  <p className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-700">
-                    Original discarded after extraction — only the derived memories remain (§A.9).
-                    Provenance is intact; there is nothing to download.
-                  </p>
-                ) : (
-                  <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                    {fileQuery.data.contentType && <span>{fileQuery.data.contentType}</span>}
-                    {formatBytes(fileQuery.data.sizeBytes) && (
-                      <span>· {formatBytes(fileQuery.data.sizeBytes)}</span>
-                    )}
-                    <span>· uploaded {new Date(fileQuery.data.uploadDate).toLocaleString()}</span>
-                  </p>
-                )}
-                <p className="flex flex-wrap items-center gap-2 text-xs">
-                  <span
-                    className={`rounded-full px-2 py-0.5 font-semibold ${
-                      fileQuery.data.state === 'error'
-                        ? 'bg-red-100 text-red-700'
-                        : fileQuery.data.state === 'done'
-                          ? 'bg-brand-teal/15 text-brand-teal'
-                          : 'bg-amber-100 text-amber-700'
-                    }`}
-                  >
-                    {FILE_STATE_LABEL[fileQuery.data.state] ?? fileQuery.data.state}
-                  </span>
-                  {fileQuery.data.sensitive && (
-                    <span className="rounded-full bg-purple-100 px-2 py-0.5 font-semibold text-purple-700">
-                      sensitive
-                    </span>
-                  )}
-                  <span className="text-slate-400">scope: {fileQuery.data.scope}</span>
-                </p>
-                {!fileQuery.data.discarded && (
-                  <>
-                    <button
-                      type="button"
-                      disabled={download.isPending}
-                      onClick={() => {
-                        setDownloadError(null);
-                        download.mutate();
-                      }}
-                      className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 disabled:opacity-40"
-                    >
-                      {download.isPending ? 'Preparing…' : 'Download original'}
-                    </button>
-                    {downloadError && <p className="text-xs text-red-600">{downloadError}</p>}
-                  </>
-                )}
-              </div>
-            )}
-          </>
-        )}
-        {isChat && (
-          <>
-            {chatQuery.isPending && <p className="text-sm text-slate-400">Loading conversation…</p>}
-            {chatQuery.isError && (
-              <p className="text-sm text-red-600">Could not load the conversation.</p>
-            )}
-            {chatQuery.data && (
-              <div className="space-y-2">
-                <p className="text-xs text-slate-500">
-                  Remembered from chat — the highlighted message is the source; nearby turns are
-                  shown for context.
-                </p>
-                {chatQuery.data.turns.map((turn) => (
-                  <div
-                    key={turn.id}
-                    className={`rounded-md p-2 text-sm ${
-                      turn.isTarget
-                        ? 'border border-brand-teal/50 bg-brand-teal/5 text-slate-800'
-                        : 'bg-slate-50 text-slate-500'
-                    }`}
-                  >
-                    <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                      {turn.role === 'user' ? 'You' : 'Cogeto'}
-                      {turn.isTarget && ' · remembered'}
-                    </p>
-                    <p className="whitespace-pre-wrap">{turn.content}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-        {!isNote && !isFile && !isChat && (
-          <p className="break-all rounded-md bg-slate-50 p-3 text-xs text-slate-600">{sourceId}</p>
-        )}
-
-        {deleteError && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{deleteError}</p>
-        )}
-
-        <section className="rounded-md border border-red-200 p-3">
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-red-600">
-            Danger zone
-          </h4>
-          <p className="mb-2 text-xs text-slate-500">
-            {impactQuery.data
-              ? `Deleting this source removes it, ${impactQuery.data.memoryCount} derived ` +
-                `memor${impactQuery.data.memoryCount === 1 ? 'y' : 'ies'}` +
-                (impactQuery.data.objectCount > 0
-                  ? ` and ${impactQuery.data.objectCount} stored file${impactQuery.data.objectCount === 1 ? '' : 's'}`
-                  : '') +
-                ' — permanently, with a signed receipt as proof.'
-              : 'Computing what deletion would remove…'}
+    <Drawer
+      title={`Source · ${isNote ? 'note' : isChat ? 'conversation' : sourceType.replace('_', ' ')}`}
+      onClose={onClose}
+      width="max-w-md"
+    >
+      {isNote && noteQuery.isPending && <SkeletonRows rows={3} label="Loading note…" />}
+      {isNote && noteQuery.isError && (
+        <ErrorState>We couldn’t load this note right now.</ErrorState>
+      )}
+      {isNote && noteQuery.data && (
+        <>
+          <p className="whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-sm text-slate-800">
+            {noteQuery.data.content}
           </p>
-          <button
-            type="button"
-            disabled={remove.isPending || !impactQuery.data}
-            onClick={confirmAndDelete}
-            className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
-          >
-            {remove.isPending ? 'Deleting…' : 'Delete source…'}
-          </button>
-        </section>
-      </aside>
-    </div>
+          <p className="text-xs text-slate-400">
+            Captured {new Date(noteQuery.data.createdAt).toLocaleString()}
+          </p>
+        </>
+      )}
+      {isFile && (
+        <>
+          {fileQuery.isPending && <SkeletonRows rows={2} label="Loading file…" />}
+          {fileQuery.isError && <ErrorState>We couldn’t load this file source.</ErrorState>}
+          {fileQuery.data && (
+            <div className="space-y-2 rounded-md bg-slate-50 p-3">
+              <p className="break-words text-sm font-medium text-slate-800">
+                {fileQuery.data.filename ??
+                  (fileQuery.data.discarded ? 'Discarded document' : 'Uploaded document')}
+              </p>
+              {fileQuery.data.discarded ? (
+                <p className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-700">
+                  Original discarded after extraction — only the derived memories remain (§A.9).
+                  Provenance is intact; there is nothing to download.
+                </p>
+              ) : (
+                <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  {fileQuery.data.contentType && <span>{fileQuery.data.contentType}</span>}
+                  {formatBytes(fileQuery.data.sizeBytes) && (
+                    <span>· {formatBytes(fileQuery.data.sizeBytes)}</span>
+                  )}
+                  <span>· uploaded {new Date(fileQuery.data.uploadDate).toLocaleString()}</span>
+                </p>
+              )}
+              <p className="flex flex-wrap items-center gap-2 text-xs">
+                <Pill tone={fileTone(fileQuery.data.state)}>
+                  {FILE_STATE_LABEL[fileQuery.data.state] ?? fileQuery.data.state}
+                </Pill>
+                {fileQuery.data.sensitive && <SensitiveBadge />}
+                <span className="text-slate-400">scope: {fileQuery.data.scope}</span>
+              </p>
+              {!fileQuery.data.discarded && (
+                <>
+                  <button
+                    type="button"
+                    disabled={download.isPending}
+                    onClick={() => {
+                      setDownloadError(null);
+                      download.mutate();
+                    }}
+                    className={btnSecondary}
+                  >
+                    {download.isPending ? 'Preparing…' : 'Download original'}
+                  </button>
+                  {downloadError && <p className="text-xs text-red-600">{downloadError}</p>}
+                </>
+              )}
+            </div>
+          )}
+        </>
+      )}
+      {isChat && (
+        <>
+          {chatQuery.isPending && <SkeletonRows rows={3} label="Loading conversation…" />}
+          {chatQuery.isError && <ErrorState>We couldn’t load the conversation.</ErrorState>}
+          {chatQuery.data && (
+            <div className="space-y-2">
+              <p className="text-xs text-slate-500">
+                Remembered from chat — the highlighted message is the source; nearby turns are shown
+                for context.
+              </p>
+              {chatQuery.data.turns.map((turn) => (
+                <div
+                  key={turn.id}
+                  className={`rounded-md p-2 text-sm ${
+                    turn.isTarget
+                      ? 'border border-brand-teal/50 bg-brand-teal/5 text-slate-800'
+                      : 'bg-slate-50 text-slate-500'
+                  }`}
+                >
+                  <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    {turn.role === 'user' ? 'You' : 'Cogeto'}
+                    {turn.isTarget && ' · remembered'}
+                  </p>
+                  <p className="whitespace-pre-wrap">{turn.content}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+      {!isNote && !isFile && !isChat && (
+        <p className="break-all rounded-md bg-slate-50 p-3 text-xs text-slate-600">{sourceId}</p>
+      )}
+
+      {deleteError && <ErrorState>{deleteError}</ErrorState>}
+
+      <section className="rounded-lg border border-red-200 p-3">
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-red-600">
+          Danger zone
+        </h3>
+        <p className="mb-2 text-xs text-slate-500">
+          {impactQuery.data
+            ? `Deleting this source removes it, ${impactQuery.data.memoryCount} derived ` +
+              `memor${impactQuery.data.memoryCount === 1 ? 'y' : 'ies'}` +
+              (impactQuery.data.objectCount > 0
+                ? ` and ${impactQuery.data.objectCount} stored file${impactQuery.data.objectCount === 1 ? '' : 's'}`
+                : '') +
+              ' — permanently, with a signed receipt as proof.'
+            : 'Computing what deletion would remove…'}
+        </p>
+        <button
+          type="button"
+          disabled={remove.isPending || !impactQuery.data}
+          onClick={confirmAndDelete}
+          className={btnDanger}
+        >
+          {remove.isPending ? 'Deleting…' : 'Delete source…'}
+        </button>
+      </section>
+    </Drawer>
   );
 }

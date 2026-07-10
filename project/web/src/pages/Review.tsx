@@ -13,6 +13,16 @@ import {
 import type { Session } from '../auth/oidc';
 import { Shell } from '../components/Shell';
 import { timeAgo } from '../components/status';
+import {
+  btnDanger,
+  btnPrimary,
+  btnSecondary,
+  EmptyState,
+  ErrorState,
+  SkeletonRows,
+  Tabs,
+  VerdictChip,
+} from '../components/ui';
 
 /** Highlights the cited span inside the source text when it is present. */
 function SourceWithSpan({ source, span }: { source: string; span: string | null }) {
@@ -69,10 +79,10 @@ function ReviewItem({ session, memory }: { session: Session; memory: MemoryListI
           </h3>
           <p className="rounded-md bg-slate-50 p-2 text-sm text-slate-800">{memory.content}</p>
           {verification.data && (
-            <p className="mt-2 text-xs text-slate-500">
-              <span className="font-semibold text-amber-700">{verification.data.verdict}</span> —{' '}
-              {verification.data.reason}
-            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <VerdictChip verdict={verification.data.verdict} />
+              <span>{verification.data.reason}</span>
+            </div>
           )}
         </div>
         <div>
@@ -93,13 +103,17 @@ function ReviewItem({ session, memory }: { session: Session; memory: MemoryListI
           </div>
         </div>
       </div>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
       <div className="mt-3 flex items-center gap-2">
         <button
           type="button"
           disabled={busy}
           onClick={() => approve.mutate()}
-          className="rounded-md bg-brand-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+          className={btnPrimary}
         >
           Approve
         </button>
@@ -110,7 +124,7 @@ function ReviewItem({ session, memory }: { session: Session; memory: MemoryListI
             if (window.confirm('Reject and remove this memory? This cannot be undone.'))
               reject.mutate();
           }}
-          className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+          className={btnDanger}
         >
           Reject
         </button>
@@ -122,14 +136,18 @@ function ReviewItem({ session, memory }: { session: Session; memory: MemoryListI
   );
 }
 
-/** One side of a contradiction: the fact and its source, span highlighted. */
+/** One side of a contradiction: the fact and its source, span highlighted.
+ * The newer side carries a teal accent, the earlier a slate one, so the two
+ * claims read as a comparison at a glance. */
 function ContradictionSide({
   session,
   label,
+  accent,
   memory,
 }: {
   session: Session;
   label: string;
+  accent: 'newer' | 'earlier';
   memory: MemoryListItem;
 }) {
   const verification = useQuery({
@@ -142,10 +160,23 @@ function ContradictionSide({
     queryFn: () => fetchNote(session, memory.sourceId),
     enabled: memory.sourceType === 'user_note',
   });
+  const isNewer = accent === 'newer';
   return (
-    <div className="rounded-md border border-slate-200 p-3">
-      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</h3>
-      <p className="rounded-md bg-slate-50 p-2 text-sm text-slate-800">{memory.content}</p>
+    <div
+      className={`rounded-lg border-l-4 bg-white p-3 shadow-sm ${
+        isNewer ? 'border-l-brand-teal border-slate-200' : 'border-l-slate-400 border-slate-200'
+      } border`}
+    >
+      <p
+        className={`mb-1.5 text-[11px] font-bold uppercase tracking-wide ${
+          isNewer ? 'text-brand-teal-ink' : 'text-slate-500'
+        }`}
+      >
+        {label}
+      </p>
+      <p className="rounded-md bg-slate-50 p-2 text-sm font-medium text-slate-800">
+        {memory.content}
+      </p>
       <p className="mt-1 text-xs text-slate-400" title={memory.createdAt}>
         {memory.kind ? `${memory.kind.replace('_', ' ')} · ` : ''}captured{' '}
         {timeAgo(memory.createdAt)}
@@ -190,12 +221,36 @@ function ContradictionItem({
   const busy = resolve.isPending;
 
   return (
-    <li className="rounded-lg border border-red-200 bg-white p-4 shadow-sm">
-      <div className="grid gap-3 md:grid-cols-2">
-        <ContradictionSide session={session} label="Newer fact" memory={contradiction.a} />
-        <ContradictionSide session={session} label="Earlier fact" memory={contradiction.b} />
+    <li className="rounded-lg border border-red-200 bg-red-50/40 p-4 shadow-sm">
+      <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-red-700">
+        <span aria-hidden="true">⚠</span>
+        These two facts disagree
+      </p>
+      <div className="relative grid gap-3 md:grid-cols-2">
+        <ContradictionSide
+          session={session}
+          label="Newer fact"
+          accent="newer"
+          memory={contradiction.a}
+        />
+        <span
+          className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 rounded-full border border-red-200 bg-white px-2 py-0.5 text-[11px] font-bold uppercase text-red-600 md:block"
+          aria-hidden="true"
+        >
+          vs
+        </span>
+        <ContradictionSide
+          session={session}
+          label="Earlier fact"
+          accent="earlier"
+          memory={contradiction.b}
+        />
       </div>
-      {error && <p className="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
       {correcting ? (
         <form
           className="mt-3 space-y-2"
@@ -231,15 +286,11 @@ function ContradictionItem({
             <button
               type="submit"
               disabled={busy || !aText.trim() || !bText.trim()}
-              className="rounded-md bg-brand-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+              className={btnPrimary}
             >
               Save both corrections
             </button>
-            <button
-              type="button"
-              onClick={() => setCorrecting(false)}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-xs text-slate-600"
-            >
+            <button type="button" onClick={() => setCorrecting(false)} className={btnSecondary}>
               Cancel
             </button>
           </div>
@@ -250,7 +301,7 @@ function ContradictionItem({
             type="button"
             disabled={busy}
             onClick={() => resolve.mutate({ action: 'confirm_a' })}
-            className="rounded-md bg-brand-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+            className={btnPrimary}
           >
             The newer fact is right
           </button>
@@ -258,7 +309,7 @@ function ContradictionItem({
             type="button"
             disabled={busy}
             onClick={() => resolve.mutate({ action: 'confirm_b' })}
-            className="rounded-md bg-brand-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+            className={btnPrimary}
           >
             The earlier fact is right
           </button>
@@ -270,7 +321,7 @@ function ContradictionItem({
               setBText(contradiction.b.content ?? '');
               setCorrecting(true);
             }}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 disabled:opacity-40"
+            className={btnSecondary}
           >
             Correct both
           </button>
@@ -278,7 +329,7 @@ function ContradictionItem({
             type="button"
             disabled={busy}
             onClick={() => resolve.mutate({ action: 'dismiss' })}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 disabled:opacity-40"
+            className={btnSecondary}
             title="They don't actually conflict — restore both as they were"
           >
             Not a conflict
@@ -319,42 +370,36 @@ export function Review({ session }: { session: Session }) {
     queryFn: () => fetchContradictions(session),
   });
 
-  const tabClass = (active: boolean) =>
-    `rounded-md px-3 py-1.5 text-sm font-semibold ${
-      active ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-    }`;
-
   return (
     <Shell session={session} title="Review" active="review">
-      <div className="flex w-fit gap-1 rounded-lg bg-slate-200/70 p-1">
-        <button
-          type="button"
-          className={tabClass(tab === 'uncertain')}
-          onClick={() => setTab('uncertain')}
-        >
-          Uncertain{uncertain.data ? ` (${uncertain.data.total})` : ''}
-        </button>
-        <button
-          type="button"
-          className={tabClass(tab === 'contradicted')}
-          onClick={() => setTab('contradicted')}
-        >
-          Contradicted{contradictions.data ? ` (${contradictions.data.length})` : ''}
-        </button>
-      </div>
+      <Tabs
+        active={tab}
+        onChange={setTab}
+        tabs={[
+          {
+            key: 'uncertain',
+            label: `Uncertain${uncertain.data ? ` (${uncertain.data.total})` : ''}`,
+          },
+          {
+            key: 'contradicted',
+            label: `Contradicted${contradictions.data ? ` (${contradictions.data.length})` : ''}`,
+          },
+        ]}
+      />
 
       {tab === 'uncertain' && (
         <>
-          {uncertain.isPending && (
-            <p className="text-sm text-slate-400">Loading the review queue…</p>
-          )}
+          {uncertain.isPending && <SkeletonRows rows={3} label="Loading the review queue…" />}
           {uncertain.isError && (
-            <p className="text-sm text-red-600">Could not load the review queue.</p>
+            <ErrorState onRetry={() => void uncertain.refetch()}>
+              We couldn’t load the review queue.
+            </ErrorState>
           )}
           {uncertain.data && uncertain.data.items.length === 0 && (
-            <section className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-              Nothing awaits review — every remembered fact passed verification or has your verdict.
-            </section>
+            <EmptyState icon="✓" tone="positive" title="Nothing awaits review">
+              Every remembered fact passed verification or already has your verdict. Cogeto only
+              asks when it isn’t sure.
+            </EmptyState>
           )}
           {uncertain.data && uncertain.data.items.length > 0 && (
             <ul className="space-y-3">
@@ -368,16 +413,17 @@ export function Review({ session }: { session: Session }) {
 
       {tab === 'contradicted' && (
         <>
-          {contradictions.isPending && (
-            <p className="text-sm text-slate-400">Loading contradictions…</p>
-          )}
+          {contradictions.isPending && <SkeletonRows rows={2} label="Loading contradictions…" />}
           {contradictions.isError && (
-            <p className="text-sm text-red-600">Could not load the contradiction queue.</p>
+            <ErrorState onRetry={() => void contradictions.refetch()}>
+              We couldn’t load the contradiction queue.
+            </ErrorState>
           )}
           {contradictions.data && contradictions.data.length === 0 && (
-            <section className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-              No open contradictions — your memories agree with each other.
-            </section>
+            <EmptyState icon="🤝" tone="positive" title="No open contradictions">
+              Your memories agree with each other. When two facts about the same thing disagree,
+              they’ll appear here side by side to resolve.
+            </EmptyState>
           )}
           {contradictions.data && contradictions.data.length > 0 && (
             <ul className="space-y-3">

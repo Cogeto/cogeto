@@ -23,6 +23,14 @@ const ENABLED: { key: NavSection; label: string; href: string }[] = [
   { key: 'settings', label: 'Settings', href: '/settings' },
 ];
 
+import { CountBadge } from './ui';
+
+const BADGE_LABEL: Partial<Record<NavSection, string>> = {
+  tasks: 'open tasks',
+  review: 'items to review',
+  approvals: 'pending approvals',
+};
+
 /** Left navigation — every section now ships (O1-C removed the disabled stubs). */
 export function Nav({
   active,
@@ -41,28 +49,35 @@ export function Nav({
     approvals: approvalsCount ?? 0,
   };
   return (
-    <nav className="flex w-56 flex-col border-r border-slate-200 bg-brand-navy-deep text-white">
+    <nav
+      aria-label="Primary"
+      className="flex w-56 flex-col border-r border-slate-200 bg-brand-navy-deep text-white"
+    >
       <div className="border-b border-white/10 p-4">
         <img src="/brand/cogeto-final-logo-dark.svg" alt="Cogeto" className="h-8" />
       </div>
       <ul className="flex-1 space-y-1 p-3">
-        {ENABLED.map((section) => (
-          <li key={section.key}>
-            <a
-              href={section.href}
-              className={`flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium ${
-                active === section.key ? 'bg-white/10' : 'text-white/70 hover:bg-white/5'
-              }`}
-            >
-              {section.label}
-              {(badges[section.key] ?? 0) > 0 && (
-                <span className="rounded-full bg-amber-400 px-1.5 text-xs font-bold text-slate-900">
-                  {badges[section.key]}
-                </span>
-              )}
-            </a>
-          </li>
-        ))}
+        {ENABLED.map((section) => {
+          const count = badges[section.key] ?? 0;
+          return (
+            <li key={section.key}>
+              <a
+                href={section.href}
+                aria-current={active === section.key ? 'page' : undefined}
+                className={`flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  active === section.key
+                    ? 'bg-white/10 text-white'
+                    : 'text-white/70 hover:bg-white/5'
+                }`}
+              >
+                {section.label}
+                {count > 0 && (
+                  <CountBadge count={count} label={BADGE_LABEL[section.key] ?? 'items'} />
+                )}
+              </a>
+            </li>
+          );
+        })}
       </ul>
       <div className="border-t border-white/10 p-3 text-xs text-white/40">
         Cogeto · verifiable memory

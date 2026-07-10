@@ -49,15 +49,21 @@ class ScriptedGateway extends ModelGateway {
       : isVerify
         ? { verdict: 'supported', reason: 'scripted' }
         : {
+            // A real extractor pulls from SOURCE CONTENT only, never the metadata
+            // headers — mirror that so the provenance guard (extract.stage) is
+            // exercised faithfully rather than tripped by the test double.
             facts: [
-              {
-                claim: request.input,
-                kind: this.kind,
-                entities: { people: ['Marko'], organizations: [], projects: [] },
-                condition: null,
-                temporal: { valid_from: null, valid_until: null, anchors_resolved: true },
-                source_span: request.input.slice(0, 40),
-              },
+              (() => {
+                const content = request.input.split('SOURCE CONTENT:\n')[1] ?? request.input;
+                return {
+                  claim: content,
+                  kind: this.kind,
+                  entities: { people: ['Marko'], organizations: [], projects: [] },
+                  condition: null,
+                  temporal: { valid_from: null, valid_until: null, anchors_resolved: true },
+                  source_span: content.slice(0, 40),
+                };
+              })(),
             ],
           };
     const parsed = schema.safeParse(raw);

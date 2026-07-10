@@ -18,7 +18,7 @@ export function DemoBanner() {
           href="https://cogeto.eu"
           target="_blank"
           rel="noreferrer"
-          className="font-semibold text-brand-teal hover:underline"
+          className="font-semibold text-brand-teal-ink hover:underline"
         >
           Learn more
         </a>

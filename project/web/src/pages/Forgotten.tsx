@@ -5,6 +5,16 @@ import { fetchChainStatus, fetchInstancePublicKey, fetchReceipt, fetchReceipts }
 import type { Session } from '../auth/oidc';
 import { Shell } from '../components/Shell';
 import { timeAgo } from '../components/status';
+import {
+  btnPrimary,
+  Card,
+  Drawer,
+  EmptyState,
+  ErrorState,
+  Pill,
+  SectionTitle,
+  SkeletonRows,
+} from '../components/ui';
 
 /**
  * Forgotten (§B.1): the permanent, read-only ledger of deletion receipts —
@@ -13,25 +23,23 @@ import { timeAgo } from '../components/status';
  * show as alerting. Receipts cannot be deleted; that permanence is the point.
  */
 
-function StatusChip({ receipt }: { receipt: ReceiptListItem }) {
-  if (receipt.alerting) {
+function ReceiptStatus({ receipt }: { receipt: ReceiptListItem }) {
+  if (receipt.alerting)
     return (
-      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-600">
+      <Pill tone="danger" icon="⚠">
         alerting
-      </span>
+      </Pill>
     );
-  }
-  if (receipt.status === 'pending') {
+  if (receipt.status === 'pending')
     return (
-      <span className="animate-pulse rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+      <Pill tone="warning" className="animate-pulse">
         pending…
-      </span>
+      </Pill>
     );
-  }
   return (
-    <span className="rounded-full bg-brand-teal/15 px-2 py-0.5 text-xs font-semibold text-brand-teal">
+    <Pill tone="positive" icon="✓">
       confirmed
-    </span>
+    </Pill>
   );
 }
 
@@ -183,80 +191,66 @@ function ReceiptDrawer({
   );
 
   return (
-    <div className="fixed inset-0 z-10" onClick={onClose}>
-      <div className="absolute inset-0 bg-slate-900/30" />
-      <aside
-        className="absolute right-0 top-0 h-full w-full max-w-lg space-y-4 overflow-y-auto bg-white p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Deletion receipt
-          </h3>
-          <button type="button" onClick={onClose} className="text-sm text-slate-400">
-            Close
-          </button>
-        </div>
-        {isPending && <p className="text-sm text-slate-400">Loading…</p>}
-        {isError && <p className="text-sm text-red-600">Could not load the receipt.</p>}
-        {data && (
-          <>
-            <div className="flex items-center justify-between">
-              <StatusChip receipt={data} />
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  disabled={data.status !== 'confirmed'}
-                  title={
-                    data.status === 'confirmed'
-                      ? 'Print or save the receipt as a PDF certificate'
-                      : 'Available once the receipt is confirmed'
-                  }
-                  onClick={() => window.print()}
-                  className="rounded-md border border-brand-teal px-3 py-1.5 text-xs font-semibold text-brand-teal disabled:opacity-40"
-                >
-                  Save as PDF
-                </button>
-                <button
-                  type="button"
-                  disabled={data.status !== 'confirmed'}
-                  title={
-                    data.status === 'confirmed'
-                      ? 'Download the receipt with its verification key'
-                      : 'Available once the receipt is confirmed'
-                  }
-                  onClick={() => void exportReceiptJson(data)}
-                  className="rounded-md bg-brand-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
-                >
-                  Export JSON
-                </button>
-              </div>
+    <Drawer title="Deletion receipt" onClose={onClose}>
+      {isPending && <SkeletonRows rows={4} label="Loading receipt…" />}
+      {isError && <ErrorState>We couldn’t load this receipt right now.</ErrorState>}
+      {data && (
+        <>
+          <div className="flex items-center justify-between">
+            <ReceiptStatus receipt={data} />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={data.status !== 'confirmed'}
+                title={
+                  data.status === 'confirmed'
+                    ? 'Print or save the receipt as a PDF certificate'
+                    : 'Available once the receipt is confirmed'
+                }
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-1.5 rounded-md border border-brand-teal px-3 py-1.5 text-xs font-semibold text-brand-teal-ink transition-colors hover:bg-brand-teal-surface disabled:opacity-40"
+              >
+                Save as PDF
+              </button>
+              <button
+                type="button"
+                disabled={data.status !== 'confirmed'}
+                title={
+                  data.status === 'confirmed'
+                    ? 'Download the receipt with its verification key'
+                    : 'Available once the receipt is confirmed'
+                }
+                onClick={() => void exportReceiptJson(data)}
+                className={btnPrimary}
+              >
+                Export JSON
+              </button>
             </div>
-            {field('Receipt id', data.id)}
-            {field('Source', `${data.sourceType} / ${data.sourceId}`)}
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Canonical payload (counts_json)
-              </p>
-              <pre className="max-h-64 overflow-auto rounded-md bg-slate-50 p-2 text-xs text-slate-700">
-                {JSON.stringify(data.countsJson, null, 2)}
-              </pre>
-            </div>
-            {field('Signed at', data.signedAt)}
-            {field('Confirmed at', data.confirmedAt)}
-            {field('Previous hash', data.prevHash)}
-            {field('Hash (SHA-256)', data.hash)}
-            {field('Signature (ed25519, base64)', data.signature)}
-            <p className="rounded-md bg-slate-50 p-2 text-xs text-slate-500">
-              The exported JSON contains this receipt plus the instance public key — a
-              self-contained artifact anyone can verify without access to Cogeto. “Save as PDF”
-              prints a clean, single-page certificate.
+          </div>
+          {field('Receipt id', data.id)}
+          {field('Source', `${data.sourceType} / ${data.sourceId}`)}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Canonical payload (counts_json)
             </p>
-            <PrintableReceipt detail={data} />
-          </>
-        )}
-      </aside>
-    </div>
+            <pre className="max-h-64 overflow-auto rounded-md bg-slate-50 p-2 text-xs text-slate-700">
+              {JSON.stringify(data.countsJson, null, 2)}
+            </pre>
+          </div>
+          {field('Signed at', data.signedAt)}
+          {field('Confirmed at', data.confirmedAt)}
+          {field('Previous hash', data.prevHash)}
+          {field('Hash (SHA-256)', data.hash)}
+          {field('Signature (ed25519, base64)', data.signature)}
+          <p className="rounded-md bg-slate-50 p-2 text-xs text-slate-500">
+            The exported JSON contains this receipt plus the instance public key — a self-contained
+            artifact anyone can verify without access to Cogeto. “Save as PDF” prints a clean,
+            single-page certificate.
+          </p>
+          <PrintableReceipt detail={data} />
+        </>
+      )}
+    </Drawer>
   );
 }
 
@@ -279,24 +273,19 @@ export function Forgotten({ session }: { session: Session }) {
 
   return (
     <Shell session={session} title="Forgotten" active="forgotten">
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <Card>
         <div className="mb-1 flex flex-wrap items-center gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Deletion receipts
-          </h2>
+          <SectionTitle>Deletion receipts</SectionTitle>
           {chainQuery.data &&
             (chainQuery.data.ok ? (
-              <span className="rounded-full bg-brand-teal/15 px-2 py-0.5 text-xs font-semibold text-brand-teal">
-                ✓ chain verified · {chainQuery.data.verified} receipt
+              <Pill tone="positive" icon="✓">
+                chain verified · {chainQuery.data.verified} receipt
                 {chainQuery.data.verified === 1 ? '' : 's'}
-              </span>
+              </Pill>
             ) : (
-              <span
-                className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-600"
-                title={chainQuery.data.error}
-              >
-                ✗ chain verification FAILED
-              </span>
+              <Pill tone="danger" icon="✗" className="cursor-help">
+                <span title={chainQuery.data.error}>chain verification FAILED</span>
+              </Pill>
             ))}
         </div>
         <p className="mb-3 text-xs text-slate-500">
@@ -305,16 +294,16 @@ export function Forgotten({ session }: { session: Session }) {
           can itself never be quietly rewritten.
         </p>
 
-        {receiptsQuery.isPending && <p className="text-sm text-slate-400">Loading…</p>}
+        {receiptsQuery.isPending && <SkeletonRows rows={4} label="Loading receipts…" />}
         {receiptsQuery.isError && (
-          <p className="text-sm text-red-600">Could not load the receipts.</p>
+          <ErrorState>We couldn’t load the deletion receipts right now.</ErrorState>
         )}
         {receipts && receipts.length === 0 && (
-          <p className="text-sm text-slate-400">
+          <EmptyState icon="🧾" title="No deletions yet">
             A deletion receipt is the signed, tamper-evident proof Cogeto issues when it permanently
             removes a source and everything derived from it. Delete a note from its source drawer
-            and the receipt will appear here.
-          </p>
+            and the receipt appears here — permanently.
+          </EmptyState>
         )}
         {receipts && receipts.length > 0 && (
           <div className="overflow-x-auto">
@@ -335,7 +324,15 @@ export function Forgotten({ session }: { session: Session }) {
                     onClick={() => setOpenId(receipt.id)}
                     className="cursor-pointer border-b border-slate-100 align-top hover:bg-slate-50"
                   >
-                    <td className="py-2 pr-3 font-medium text-slate-700">{sourceLabel(receipt)}</td>
+                    <td className="py-2 pr-3 font-medium text-slate-700">
+                      <button
+                        type="button"
+                        onClick={() => setOpenId(receipt.id)}
+                        className="text-left hover:text-brand-teal-ink"
+                      >
+                        {sourceLabel(receipt)}
+                      </button>
+                    </td>
                     <td className="py-2 pr-3 text-xs text-slate-500">
                       {receipt.memoryCount} memor{receipt.memoryCount === 1 ? 'y' : 'ies'} ·{' '}
                       {receipt.memoryCount} vector{receipt.memoryCount === 1 ? '' : 's'} ·{' '}
@@ -351,7 +348,7 @@ export function Forgotten({ session }: { session: Session }) {
                       {receipt.confirmedAt ? timeAgo(receipt.confirmedAt) : '—'}
                     </td>
                     <td className="py-2 pr-3">
-                      <StatusChip receipt={receipt} />
+                      <ReceiptStatus receipt={receipt} />
                     </td>
                   </tr>
                 ))}
@@ -359,7 +356,7 @@ export function Forgotten({ session }: { session: Session }) {
             </table>
           </div>
         )}
-      </section>
+      </Card>
       {openId && (
         <ReceiptDrawer session={session} receiptId={openId} onClose={() => setOpenId(null)} />
       )}
