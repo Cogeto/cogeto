@@ -37,6 +37,8 @@ async function main(): Promise<void> {
     const report = await sweep.run();
     console.log(
       `sweep: ${report.receiptsChecked} receipt(s), ${report.identifiersChecked} identifier(s) checked; ` +
+        `${report.objectsScanned} object(s) scanned, ${report.payloadsChecked} payload(s) compared ` +
+        `(${report.payloadsHealed} healed); ` +
         `${report.newAlerts} new alert(s), ${report.openAlerts} on record; ` +
         `chain ${report.chainOk ? 'ok' : `BROKEN (${report.chainError})`}`,
     );

@@ -337,6 +337,10 @@ export function Forgotten({ session }: { session: Session }) {
                       {receipt.memoryCount} memor{receipt.memoryCount === 1 ? 'y' : 'ies'} ·{' '}
                       {receipt.memoryCount} vector{receipt.memoryCount === 1 ? '' : 's'} ·{' '}
                       {receipt.objectCount} file{receipt.objectCount === 1 ? '' : 's'}
+                      {receipt.chatMessagesRedacted > 0 &&
+                        ` · ${receipt.chatMessagesRedacted} chat answer${
+                          receipt.chatMessagesRedacted === 1 ? '' : 's'
+                        } redacted`}
                     </td>
                     <td className="py-2 pr-3 text-xs text-slate-400" title={receipt.requestedAt}>
                       {timeAgo(receipt.requestedAt)}

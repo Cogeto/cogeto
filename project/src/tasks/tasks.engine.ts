@@ -1,8 +1,15 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Principal } from '@cogeto/shared';
 import { DRIZZLE, writeAudit } from '../infrastructure/index';
+import { UserDirectory } from '../identity/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { MemoryStore } from '../memory/index';
 import type { MemoryRow, SourceType } from '../memory/index';
@@ -87,7 +94,14 @@ export class TasksEngine {
     @Inject(DRIZZLE) private readonly db: Db,
     private readonly memoryStore: MemoryStore,
     private readonly gateway: ModelGateway,
+    /** Org resolution for audit stamping (QS-13, decision 0025); DI provides it. */
+    @Optional() private readonly directory?: UserDirectory,
   ) {}
+
+  /** Org for audit stamping: the owner's org via the directory, else null. */
+  private async orgFor(ownerId: string): Promise<string | undefined> {
+    return (await this.directory?.orgOf(ownerId)) ?? undefined;
+  }
 
   // ── Engine entrypoints (worker jobs) ────────────────────────────────────────
 
@@ -232,6 +246,8 @@ export class TasksEngine {
       entityType: 'task',
       entityId: inserted[0]!.id,
       detail: { memoryId: row.id, kind: row.kind, blocked: conditionText !== null },
+      ownerId: row.ownerId,
+      orgId: await this.orgFor(row.ownerId),
     });
     return 1;
   }
@@ -310,7 +326,8 @@ export class TasksEngine {
     taskId: string,
     byFact: MemoryRow,
     to: 'done',
-    reason: string,
+    // Advisory only — never persisted (QS-1, decision 0025).
+    _reason: string,
   ): Promise<boolean> {
     const rows = await tx.select().from(task).where(eq(task.id, taskId)).for('update');
     const current = rows[0];
@@ -333,7 +350,9 @@ export class TasksEngine {
       action: 'task.closed',
       entityType: 'task',
       entityId: taskId,
-      detail: { byMemoryId: byFact.id, reason },
+      detail: { byMemoryId: byFact.id },
+      ownerId: byFact.ownerId,
+      orgId: await this.orgFor(byFact.ownerId),
     });
     // Fulfilled → its dormant flag is done too (F2 handoff §3).
     await clearDormantFlag(this.db, current.derivedFromMemoryId);
@@ -344,7 +363,8 @@ export class TasksEngine {
     tx: Tx,
     taskId: string,
     byFact: MemoryRow,
-    reason: string,
+    // Advisory only — never persisted (QS-1, decision 0025).
+    _reason: string,
   ): Promise<boolean> {
     const rows = await tx.select().from(task).where(eq(task.id, taskId)).for('update');
     const current = rows[0];
@@ -363,7 +383,9 @@ export class TasksEngine {
       action: 'task.condition_met',
       entityType: 'task',
       entityId: taskId,
-      detail: { byMemoryId: byFact.id, reason },
+      detail: { byMemoryId: byFact.id },
+      ownerId: byFact.ownerId,
+      orgId: await this.orgFor(byFact.ownerId),
     });
     return true;
   }
@@ -432,6 +454,8 @@ export class TasksEngine {
             entityType: 'task',
             entityId: t.id,
             detail: { from: t.derivedFromMemoryId, to: head.id },
+            ownerId: t.ownerId,
+            orgId: await this.orgFor(t.ownerId),
           });
         } else {
           // The head already carries its own task: same obligation met through
@@ -451,7 +475,9 @@ export class TasksEngine {
             action: 'task.dismissed',
             entityType: 'task',
             entityId: t.id,
-            detail: { reason: 'superseded_duplicate', head: head.id },
+            detail: { cause: 'superseded_duplicate', head: head.id },
+            ownerId: t.ownerId,
+            orgId: await this.orgFor(t.ownerId),
           });
         }
       } else {
@@ -543,6 +569,8 @@ export class TasksEngine {
         entityType: 'task',
         entityId: taskId,
         detail: { from: current.status },
+        ownerId: principal.userId,
+        orgId: principal.orgId,
       });
       return updated as TaskRow;
     });

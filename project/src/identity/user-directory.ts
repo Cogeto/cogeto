@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { inArray } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import type { Principal } from '@cogeto/shared';
 import { DRIZZLE } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
@@ -13,7 +13,32 @@ import { appUser } from './persistence/tables';
  */
 @Injectable()
 export class UserDirectory {
+  /** userId → orgId, memoized: org membership is deployment-stable (0019). */
+  private readonly orgCache = new Map<string, string>();
+
   constructor(@Inject(DRIZZLE) private readonly db: Db) {}
+
+  /**
+   * The org a user belongs to, or null when the directory has never seen them
+   * (QS-13, decision 0025): how system-actor audit writers (reconciliation,
+   * task derivation, staleness transitions) stamp org_id on entries that have
+   * an owner but no Principal in scope. Name-book semantics apply: this never
+   * grants visibility, it only labels the trail.
+   */
+  async orgOf(userId: string): Promise<string | null> {
+    if (!userId) return null;
+    const cached = this.orgCache.get(userId);
+    if (cached !== undefined) return cached;
+    const rows = await this.db
+      .select({ orgId: appUser.orgId })
+      .from(appUser)
+      .where(eq(appUser.userId, userId))
+      .limit(1);
+    const orgId = rows[0]?.orgId ?? null;
+    // Cache hits only — an unknown user may log in later and become known.
+    if (orgId !== null) this.orgCache.set(userId, orgId);
+    return orgId;
+  }
 
   /** Upsert on login/refresh — "provision the Principal", keep the name fresh. */
   async record(principal: Principal): Promise<void> {

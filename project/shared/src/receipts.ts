@@ -36,6 +36,9 @@ export interface ReceiptListItem {
   alerting: boolean;
   memoryCount: number;
   objectCount: number;
+  /** Assistant chat answers redacted because they cited the erased memories
+   * (QS-7, decision 0025); 0 on pre-0025 receipts. */
+  chatMessagesRedacted: number;
   /** Enumeration time — when the deletion was requested. */
   requestedAt: string;
   confirmedAt: string | null;

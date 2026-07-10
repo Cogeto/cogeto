@@ -46,6 +46,7 @@ export class RelationsController {
     return open.map(({ relation, a, b }) => ({
       id: relation.id,
       detectedAt: relation.detectedAt.toISOString(),
+      reason: relation.reason ?? null,
       a: toListItem(a),
       b: toListItem(b),
     }));

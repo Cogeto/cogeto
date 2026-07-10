@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { ChatSourceReader } from './chat.source-reader';
 import { ChatSourceDeletion } from './chat.source-deletion';
+import { ChatAnswerCascade } from './chat-answer-cascade';
 
 /**
  * The chat source ports (decision 0021) as a GLOBAL slim module: the pipeline
@@ -15,7 +16,7 @@ import { ChatSourceDeletion } from './chat.source-deletion';
  */
 @Global()
 @Module({
-  providers: [ChatSourceReader, ChatSourceDeletion],
-  exports: [ChatSourceReader, ChatSourceDeletion],
+  providers: [ChatSourceReader, ChatSourceDeletion, ChatAnswerCascade],
+  exports: [ChatSourceReader, ChatSourceDeletion, ChatAnswerCascade],
 })
 export class ChatSourceModule {}

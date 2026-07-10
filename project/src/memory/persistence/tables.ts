@@ -130,6 +130,10 @@ export const memoryRelation = pgTable(
     aPriorStatus: memoryStatusEnum('a_prior_status').notNull(),
     bPriorStatus: memoryStatusEnum('b_prior_status').notNull(),
     detectedAt: timestamp('detected_at', { withTimezone: true }).notNull().defaultNow(),
+    /** The model's explanation of the conflict (migration 0020, QS-1): lives on
+     * this owner-gated row — NEVER in the org-readable audit trail — and is
+     * erased with the pair (FK CASCADE). NULL on pre-0020 rows. */
+    reason: text('reason'),
     resolvedAt: timestamp('resolved_at', { withTimezone: true }),
     resolution: memoryRelationResolutionEnum('resolution'),
   },

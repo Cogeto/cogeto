@@ -7,6 +7,9 @@ export interface AuditEntryDto {
   entityType: string;
   entityId: string;
   detail: Record<string, unknown> | null;
+  /** True when detail exists but belongs to another user's artifact — entries
+   * are org-visible, detail is owner-only (QS-1/QS-13, decision 0025). */
+  detailWithheld?: boolean;
   createdAt: string;
 }
 

@@ -7,8 +7,13 @@ import type { TaskList } from 'graphile-worker';
 import type { ZodType } from 'zod';
 import type { Principal } from '@cogeto/shared';
 import { ensureInstanceKeys, idempotentTask } from '../infrastructure/index';
-import { fakeEmbedding, startTestDatabase, startTestQdrant } from '../testing/index';
-import type { TestDatabase, TestQdrant } from '../testing/index';
+import {
+  fakeEmbedding,
+  startTestDatabase,
+  startTestMinio,
+  startTestQdrant,
+} from '../testing/index';
+import type { TestDatabase, TestMinio, TestQdrant } from '../testing/index';
 import { NotesService, NotesSourceDeletion, NotesSourceReader } from '../connectors/index';
 import {
   createIngestionPipeline,
@@ -107,6 +112,7 @@ class SlowExtractionGateway extends ModelGateway {
 describe('QS-5 delete-vs-ingestion race (integration: real Postgres + Qdrant, real saga + pipeline)', () => {
   let tdb: TestDatabase;
   let qdrant: TestQdrant;
+  let minio: TestMinio;
   let keyDir: string;
   let vectors: MemoryVectorStore;
   let store: MemoryStore;
@@ -116,7 +122,11 @@ describe('QS-5 delete-vs-ingestion race (integration: real Postgres + Qdrant, re
   let sweep: IntegritySweep;
 
   beforeAll(async () => {
-    [tdb, qdrant] = await Promise.all([startTestDatabase(), startTestQdrant()]);
+    [tdb, qdrant, minio] = await Promise.all([
+      startTestDatabase(),
+      startTestQdrant(),
+      startTestMinio(),
+    ]);
     keyDir = mkdtempSync(path.join(tmpdir(), 'cogeto-instance-keys-'));
     await ensureInstanceKeys(keyDir);
     vectors = new MemoryVectorStore({
@@ -135,19 +145,20 @@ describe('QS-5 delete-vs-ingestion race (integration: real Postgres + Qdrant, re
       [],
       new PipelineIngestionGuard(),
     );
-    // No object leg in these receipts (notes have no bytes) — the endpoint is
-    // never called, so a placeholder satisfies the constructor honestly.
+    // Real MinIO: the sweep's orphan-object arm (QS-28) lists the bucket, so
+    // a placeholder endpoint would fail the sweep assertions below.
     const objects = new MemoryObjectStore({
-      url: 'http://127.0.0.1:1',
-      accessKey: 'unused',
-      secretKey: 'unused',
-      bucket: 'unused',
+      url: minio.url,
+      accessKey: minio.accessKey,
+      secretKey: minio.secretKey,
+      bucket: 'cogeto',
     });
+    await objects.ensureBucket();
     executor = new DeletionExecutor(vectors, objects, keyDir);
     sweep = new IntegritySweep(tdb.db, vectors, objects, keyDir, [new NotesSourceDeletion()]);
   });
   afterAll(async () => {
-    await Promise.all([tdb.stop(), qdrant.stop()]);
+    await Promise.all([tdb.stop(), qdrant.stop(), minio.stop()]);
   });
 
   const buildPipeline = (gateway: ModelGateway): IngestionPipeline =>

@@ -123,6 +123,7 @@ export class ReceiptsController {
       alerting: alerting.has(row.id),
       memoryCount: counts.memory_count,
       objectCount: counts.object_keys.length,
+      chatMessagesRedacted: counts.chat_messages_redacted ?? 0,
       requestedAt: counts.enumerated_at,
       confirmedAt: row.confirmedAt?.toISOString() ?? null,
     };

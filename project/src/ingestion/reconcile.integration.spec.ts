@@ -358,6 +358,22 @@ describe('reconciliation stage 6 (integration, real Postgres + Qdrant, scripted 
     });
     expect(await auditCount('memory.contradiction_detected', relations[0]!.id)).toBe(1);
 
+    // QS-1 (decision 0025): the model's explanation lives on the owner-gated
+    // relation row; the org-readable audit detail carries ids only — no
+    // free-text 'reason' key, ever.
+    const { rows: reasonRows } = await tdb.pool.query<{ reason: string | null }>(
+      `SELECT reason FROM memory_relation WHERE id = $1`,
+      [relations[0]!.id],
+    );
+    expect(reasonRows[0]?.reason).toBe('incompatible values');
+    const { rows: auditRows } = await tdb.pool.query<{ detail_json: Record<string, unknown> }>(
+      `SELECT detail_json FROM audit_log
+       WHERE action = 'memory.contradiction_detected' AND entity_id = $1`,
+      [relations[0]!.id],
+    );
+    expect(auditRows[0]?.detail_json).not.toHaveProperty('reason');
+    expect(auditRows[0]?.detail_json).toMatchObject({ a: incoming.id, b: approved.id });
+
     // Idempotent under a second detection attempt: the canonical-pair unique
     // index tombstones the relation.
     const again = await tdb.db.transaction((tx) =>

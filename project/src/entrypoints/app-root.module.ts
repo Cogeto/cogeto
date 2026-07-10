@@ -3,7 +3,12 @@ import { DatabaseModule } from '../infrastructure/index';
 import { IdentityModule } from '../identity/index';
 import { IngestionModule, PipelineIngestionGuard } from '../ingestion/index';
 import { MemoryModule } from '../memory/index';
-import { ChatSourceDeletion, ChatSourceModule, RetrievalModule } from '../retrieval/index';
+import {
+  ChatAnswerCascade,
+  ChatSourceDeletion,
+  ChatSourceModule,
+  RetrievalModule,
+} from '../retrieval/index';
 import { AgentsModule } from '../agents/index';
 import { ConnectorsModule, NotesSourceDeletion } from '../connectors/index';
 import { TasksCascade, TasksModule } from '../tasks/index';
@@ -52,7 +57,12 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         // Chat joins notes as a deletable source (decision 0021 r7) — the
         // source-delete endpoint runs the saga for a chat-derived memory too.
         sourceDeletions: { adapters: [NotesSourceDeletion, ChatSourceDeletion] },
-        derivedCascades: { imports: [TasksModule.forApi()], adapters: [TasksCascade] },
+        derivedCascades: {
+          imports: [TasksModule.forApi(), ChatSourceModule],
+          // Tasks are deleted with their memories; assistant answers citing
+          // erased memories are redacted (QS-7, decision 0025).
+          adapters: [TasksCascade, ChatAnswerCascade],
+        },
         // Delete-vs-ingestion serialization (QS-5, decision 0024): the saga
         // cancels a source's pending pipeline run inside its enumeration tx.
         ingestionGuard: PipelineIngestionGuard,

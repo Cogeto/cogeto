@@ -9,6 +9,7 @@ import { and, desc, eq, inArray, isNull, or } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Principal, RelationResolution } from '@cogeto/shared';
 import { DRIZZLE, writeAudit } from '../infrastructure/index';
+import { UserDirectory } from '../identity/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { memory, memoryRelation } from './persistence/tables';
 import type { MemoryRelationRow, MemoryRow } from './persistence/tables';
@@ -93,6 +94,7 @@ export async function restoreFromContradiction(
   auditAction: 'memory.contradiction_dismiss_restored' | 'memory.contradiction_lifted',
   actor: string,
   vectors?: MemoryVectorStore,
+  orgId?: string,
 ): Promise<void> {
   if (row.status !== 'contradicted' || priorStatus === 'contradicted') return;
   await tx
@@ -105,6 +107,8 @@ export async function restoreFromContradiction(
     entityType: 'memory',
     entityId: row.id,
     detail: { from: 'contradicted', to: priorStatus },
+    ownerId: row.ownerId,
+    orgId,
   });
   await vectors?.setPayload(row.id, { status: priorStatus });
 }
@@ -120,6 +124,7 @@ export async function liftContradictionsBeforeDeletion(
   tx: Tx,
   memoryIds: string[],
   vectors?: MemoryVectorStore,
+  orgId?: string,
 ): Promise<number> {
   if (memoryIds.length === 0) return 0;
   const doomed = new Set(memoryIds);
@@ -156,6 +161,7 @@ export async function liftContradictionsBeforeDeletion(
       'memory.contradiction_lifted',
       'deletion_saga',
       vectors,
+      orgId,
     );
     lifted += 1;
   }
@@ -169,7 +175,14 @@ export class MemoryReconciliation {
     private readonly store: MemoryStore,
     /** Optional so pure-Postgres tests need no Qdrant; DI always provides it. */
     @Optional() private readonly vectors?: MemoryVectorStore,
+    /** Org resolution for audit stamping (QS-13, decision 0025); DI provides it. */
+    @Optional() private readonly directory?: UserDirectory,
   ) {}
+
+  /** Org for audit stamping: the owner's org via the directory, else null. */
+  private async orgFor(ownerId: string): Promise<string | undefined> {
+    return (await this.directory?.orgOf(ownerId)) ?? undefined;
+  }
 
   // ── Pair actions (stage 6 / dreaming; caller's transaction) ────────────────
 
@@ -185,7 +198,8 @@ export class MemoryReconciliation {
     incomingId: string,
     existingId: string,
     mergedContent: string | null,
-    reason: string,
+    // Advisory only — never persisted (QS-1, decision 0025).
+    _reason: string,
   ): Promise<PairActionResult> {
     const [first, second] = await this.lockPair(tx, incomingId, existingId);
     const incoming = first.id === incomingId ? first : second;
@@ -232,10 +246,12 @@ export class MemoryReconciliation {
       enriched = true;
     }
 
+    // The model's merge rationale is NOT persisted (QS-1, decision 0025):
+    // audit detail is structural metadata only, and a merge needs no durable
+    // explanation beyond the supersession pointer itself.
     await this.closeAndPoint(tx, loserRow, finalSurvivor, 'memory.merged', {
       survivor: finalSurvivor.id,
       enriched,
-      reason,
     });
     return { action: 'merged', survivorId: finalSurvivor.id, loserId: loserRow.id, enriched };
   }
@@ -266,6 +282,10 @@ export class MemoryReconciliation {
         bMemoryId: existing.id,
         aPriorStatus: incoming.status,
         bPriorStatus: existing.status,
+        // The model's explanation lives HERE — the owner-gated relation row the
+        // Review queue reads — never in the org-readable audit trail (QS-1,
+        // decision 0025). Erased with the relation (FK CASCADE with the pair).
+        reason,
       })
       .onConflictDoNothing()
       .returning();
@@ -283,7 +303,9 @@ export class MemoryReconciliation {
       action: 'memory.contradiction_detected',
       entityType: 'memory_relation',
       entityId: relation.id,
-      detail: { a: incoming.id, b: existing.id, reason },
+      detail: { a: incoming.id, b: existing.id },
+      ownerId: incoming.ownerId,
+      orgId: await this.orgFor(incoming.ownerId),
     });
     return { action: 'contradiction_created', relationId: relation.id };
   }
@@ -298,7 +320,8 @@ export class MemoryReconciliation {
     tx: Tx,
     winnerId: string,
     loserId: string,
-    reason: string,
+    // Advisory only — never persisted (QS-1, decision 0025).
+    _reason: string,
   ): Promise<PairActionResult> {
     const [first, second] = await this.lockPair(tx, winnerId, loserId);
     const winner = first.id === winnerId ? first : second;
@@ -312,7 +335,6 @@ export class MemoryReconciliation {
     await this.closeAndPoint(tx, loser, winner, 'memory.superseded', {
       supersededBy: winner.id,
       mechanism: 'reconciliation',
-      reason,
     });
     return { action: 'superseded', winnerId: winner.id, loserId: loser.id };
   }
@@ -426,6 +448,7 @@ export class MemoryReconciliation {
           'memory.contradiction_dismiss_restored',
           actorLabel(user),
           this.vectors,
+          principal.orgId,
         );
         await restoreFromContradiction(
           tx,
@@ -434,6 +457,7 @@ export class MemoryReconciliation {
           'memory.contradiction_dismiss_restored',
           actorLabel(user),
           this.vectors,
+          principal.orgId,
         );
       }
 
@@ -448,6 +472,8 @@ export class MemoryReconciliation {
         entityType: 'memory_relation',
         entityId: relation.id,
         detail: { resolution, a: rowA.id, b: rowB.id },
+        ownerId: principal.userId,
+        orgId: principal.orgId,
       });
       return { relation: resolved as MemoryRelationRow, alreadyResolved: false };
     });
@@ -495,6 +521,8 @@ export class MemoryReconciliation {
       entityType: 'memory',
       entityId: loser.id,
       detail: { ...detail, validUntil: validUntil.toISOString() },
+      ownerId: loser.ownerId,
+      orgId: await this.orgFor(loser.ownerId),
     });
     await this.vectors?.setPayload(loser.id, {
       status: 'replaced',

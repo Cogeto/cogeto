@@ -246,6 +246,12 @@ function ContradictionItem({
           memory={contradiction.b}
         />
       </div>
+      {contradiction.reason && (
+        <p className="mt-2 text-xs text-slate-500">
+          <span className="font-medium text-slate-600">Why it was flagged:</span>{' '}
+          {contradiction.reason}
+        </p>
+      )}
       {error && (
         <p className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}

@@ -140,6 +140,11 @@ const countsSchema = z.object({
    * pre-F3 receipts parse unchanged; a count, not an identifier: the sweep
    * ignores it). */
   tasks_removed: z.number().int().optional(),
+  /** Assistant chat answers whose stored citations referenced erased memories,
+   * redacted to a deletion marker (FIX-1 QS-7, decision 0025; additive —
+   * optional so earlier receipts parse unchanged; a count, not an identifier:
+   * the sweep ignores it). */
+  chat_messages_redacted: z.number().int().optional(),
   /** Qdrant point id = memory id (§A.4); duplicated for receipt readability. */
   point_ids: z.array(z.string()),
   object_keys: z.array(z.string()),
@@ -252,15 +257,25 @@ export class DeletionSaga {
       // unresolved relations touching a doomed row are restored to their
       // recorded prior status — an accusation whose evidence is being erased
       // does not stick. The relation rows go with the memories (FK CASCADE).
-      const liftedPartners = await liftContradictionsBeforeDeletion(tx, memoryIds, this.vectors);
+      const liftedPartners = await liftContradictionsBeforeDeletion(
+        tx,
+        memoryIds,
+        this.vectors,
+        principal.orgId,
+      );
 
       // Derived-artifact cascades (0013 ruling 6): counted deletes inside the
       // enumeration transaction, before the memory rows go (the FK CASCADE
       // stays as the safety net).
       let tasksRemoved = 0;
+      let chatMessagesRedacted = 0;
       for (const cascade of this.derivedCascades) {
         const removed = await cascade.cascadeForMemories(tx, memoryIds);
         if (cascade.artifact === 'tasks') tasksRemoved += removed;
+        // QS-7 (decision 0025): assistant answers that cited erased memories
+        // are redacted to a deletion marker by the chat cascade; the receipt
+        // counts them so the erasure claim is complete, not just row-deep.
+        if (cascade.artifact === 'chat_messages') chatMessagesRedacted += removed;
       }
 
       // Cross-source chain handling (see header): surviving rows pointing at a
@@ -290,6 +305,7 @@ export class DeletionSaga {
         memory_ids: memoryIds,
         memory_count: memoryIds.length,
         tasks_removed: tasksRemoved,
+        chat_messages_redacted: chatMessagesRedacted,
         point_ids: memoryIds,
         object_keys: objectKeys,
         superseded_by_nulled: nulledPointers,
@@ -324,10 +340,12 @@ export class DeletionSaga {
           objectCount: objectKeys.length,
           supersededByNulled: nulledPointers.length,
           contradictionsLifted: liftedPartners,
+          chatMessagesRedacted,
           // The QS-5 cancellation trace: how pending ingestion was resolved.
           ingestionCancellation: ingestion,
         },
         orgId: principal.orgId,
+        ownerId: principal.userId,
       });
       return { receiptId };
     });
@@ -486,6 +504,9 @@ export class DeletionExecutor {
         objects: counts.object_keys.length,
         hash,
       },
+      // Receipts are visible to the deletion's actor (0020 ruling 5) — the
+      // confirmation entry carries the same owner for the detail gate.
+      ownerId: counts.requested_by,
     });
     return {
       alreadyConfirmed: false,

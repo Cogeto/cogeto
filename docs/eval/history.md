@@ -397,3 +397,42 @@ text, which softens the embedding cost.
 |---|---|---|---|---|---|
 | aggregate | OFF (baseline) | _fill in_ | _fill in_ | _fill in_ | _fill in_ |
 | aggregate | ON (redaction) | _fill in_ | _fill in_ | _fill in_ | _fill in_ |
+
+## 2026-07-10 — extraction/v0002 + verification/v0004 (thresholds v1, 46 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 29 | 87.5% (42/48) | 97.6% (40/41) | 82.1% (23/28) |
+| hr | 17 | 75.8% (25/33) | 88.9% (24/27) | 81.3% (13/16) |
+| aggregate | 46 | 82.7% (67/81) | 94.1% (64/68) | 81.8% (36/44) |
+
+## 2026-07-10 — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 18 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 5 | 100.0% (8/8) | 5 | 66.7% (2/3) | 100.0% (2/2) | 0/1 | 0 |
+| hr | 4 | 83.3% (5/6) | 4 | 100.0% (2/2) | 100.0% (2/2) | — | 0 |
+| aggregate | 9 | 92.9% (13/14) | 9 | 80.0% (4/5) | 100.0% (4/4) | 0/1 | 0 |
+
+## 2026-07-10 — task_closure/v0001 + task_condition/v0001 (12 pairs)
+
+| set | closure pairs | closure accuracy | condition pairs | condition accuracy |
+|---|---|---|---|---|
+| en | 4 | 100.0% (6/6) | 2 | 100.0% (2/2) |
+| hr | 4 | 100.0% (6/6) | 2 | 100.0% (2/2) |
+| aggregate | 8 | 100.0% (12/12) | 4 | 100.0% (4/4) |
+
+## 2026-07-10 — chat eval (pipeline=mistral-small-latest · answer=mistral-medium-latest · answer-prompt=answer/v0004 · grader=eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | overall |
+|---|---|---|---|---|---|---|---|---|
+| atlas_scope | — | 83% | — | PASS | PASS | — | — | PASS |
+| changed_since | — | — | — | PASS | PASS | — | PASS | PASS |
+| closure_flow | — | — | — | PASS | PASS | — | PASS | PASS |
+| default_no_time_travel | — | — | — | PASS | PASS | — | PASS | PASS |
+| nothing_on_record | — | — | — | — | — | PASS | — | PASS |
+| open_with_entity | — | — | — | PASS | PASS | — | PASS | PASS |
+| point_in_time_march | — | — | — | PASS | PASS | — | PASS | PASS |
+| previously_decided | — | — | — | PASS | PASS | — | PASS | PASS |
+| whats_still_open | — | — | — | PASS | PASS | — | PASS | PASS |
+| who_is_ana | PASS | 86% | PASS | PASS | PASS | — | — | PASS |

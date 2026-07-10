@@ -11,7 +11,12 @@ import {
   NotesSourceReader,
 } from '../connectors/index';
 import { TasksCascade, TasksModule } from '../tasks/index';
-import { ChatSourceDeletion, ChatSourceModule, ChatSourceReader } from '../retrieval/index';
+import {
+  ChatAnswerCascade,
+  ChatSourceDeletion,
+  ChatSourceModule,
+  ChatSourceReader,
+} from '../retrieval/index';
 import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG, redactionOptions } from './config';
 import type { CogetoConfig } from './config';
@@ -54,7 +59,12 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         // The chat source deletion joins notes' so a chat-derived memory's source
         // deletion erases the originating turn under the saga (decision 0021 r7).
         sourceDeletions: { adapters: [NotesSourceDeletion, ChatSourceDeletion] },
-        derivedCascades: { imports: [TasksModule.register()], adapters: [TasksCascade] },
+        derivedCascades: {
+          imports: [TasksModule.register(), ChatSourceModule],
+          // Tasks are deleted with their memories; assistant answers citing
+          // erased memories are redacted (QS-7, decision 0025).
+          adapters: [TasksCascade, ChatAnswerCascade],
+        },
         // Delete-vs-ingestion serialization (QS-5, decision 0024): the saga
         // cancels a source's pending pipeline run inside its enumeration tx.
         ingestionGuard: PipelineIngestionGuard,

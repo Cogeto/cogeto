@@ -157,7 +157,8 @@ export class IngestionPipeline {
           action: 'ingestion.admission_aborted',
           entityType: 'source',
           entityId: `${payload.source_type}/${payload.source_id}`,
-          detail: { ...ref, verified: verified.length, reason: 'source_deleted_mid_flight' },
+          detail: { ...ref, verified: verified.length, cause: 'source_deleted_mid_flight' },
+          ownerId: source.ownerId,
         });
         log({ stage: 'admission', ...ref, skipped: true }, 'source deleted mid-flight; aborting');
         return summary;

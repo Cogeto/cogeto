@@ -18,6 +18,9 @@ export const auditLog = pgTable('audit_log', {
   detailJson: jsonb('detail_json'),
   /** Org for org-scoped reads (migration 0016); NULL = system/global entry. */
   orgId: text('org_id'),
+  /** Whose artifact the entry concerns (migration 0020, QS-1/QS-13): the
+   * reader returns detail_json only to this owner; NULL = system entry. */
+  ownerId: text('owner_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -60,6 +60,11 @@ function AuditRow({ entry }: { entry: AuditEntryDto }) {
             .join(' · ')}
         </p>
       )}
+      {entry.detailWithheld && (
+        <p className="mt-1 text-xs italic text-slate-400">
+          Details visible to the entry’s owner only.
+        </p>
+      )}
     </li>
   );
 }

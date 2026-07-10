@@ -69,15 +69,25 @@ export class AuditController {
       this.db.select({ n: count() }).from(auditLog).where(where),
     ]);
 
-    const items: AuditEntryDto[] = rows.map((row) => ({
-      id: row.id,
-      actor: row.actor,
-      action: row.action,
-      entityType: row.entityType,
-      entityId: row.entityId,
-      detail: (row.detailJson as Record<string, unknown> | null) ?? null,
-      createdAt: row.createdAt.toISOString(),
-    }));
+    const items: AuditEntryDto[] = rows.map((row) => {
+      // Detail gate (QS-1/QS-13, decision 0025): the ENTRY is org-visible
+      // (who did what to which id — the org-wide trail), but detail_json is
+      // returned only to the stamped owner. Ownerless rows are system entries
+      // whose detail is structural metadata by the writer contract. Detail is
+      // structural-only everywhere since 0025; this gate is defense in depth
+      // for anything a future writer gets wrong.
+      const isOwner = row.ownerId === null || row.ownerId === request.principal.userId;
+      return {
+        id: row.id,
+        actor: row.actor,
+        action: row.action,
+        entityType: row.entityType,
+        entityId: row.entityId,
+        detail: isOwner ? ((row.detailJson as Record<string, unknown> | null) ?? null) : null,
+        ...(isOwner ? {} : { detailWithheld: true as const }),
+        createdAt: row.createdAt.toISOString(),
+      };
+    });
     return { items, total: Number(totalRows[0]?.n ?? 0) };
   }
 }

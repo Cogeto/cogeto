@@ -43,8 +43,11 @@ export class ApprovalExecutor {
       action: 'approval.executed',
       entityType: 'approval',
       entityId: approvalId,
+      // summary/detail are counts + ids by the ActionDefinition contract —
+      // never memory content (QS-1, decision 0025).
       detail: { actionType: row.actionType, summary: result.summary, ...result.detail },
       orgId: row.orgId ?? undefined,
+      ownerId: ctx.userId,
     });
     return { alreadyExecuted: false };
   }

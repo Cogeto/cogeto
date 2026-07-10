@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, Optional } from '@nestjs/common';
-import { and, desc, eq, inArray, notInArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNotNull, notInArray, sql } from 'drizzle-orm';
 import { auditLog, DRIZZLE, loadInstancePublicKey, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
-import { deletionReceipt, integrityAlert, memory } from './persistence/tables';
+import { deletionReceipt, fileMetadata, integrityAlert, memory } from './persistence/tables';
 import type { SourceType } from './persistence/tables';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
@@ -43,11 +43,32 @@ export type AlertKind =
    * its source row no longer exists. Either way the "no orphans, ever"
    * invariant is broken — an integrity violation, never auto-repaired.
    */
-  | 'orphaned_memory';
+  | 'orphaned_memory'
+  /**
+   * An object in the bucket with no file_metadata row and no staging excuse
+   * (QS-28, decision 0025): PII bytes outside any receipt's reach — e.g. a
+   * failed compensating delete after an aborted upload. Never auto-repaired
+   * (deleting bytes is the saga's monopoly): the owner investigates.
+   */
+  | 'orphaned_object'
+  /**
+   * A live memory row whose Qdrant payload disagrees on a gate-relevant field
+   * (QS-16, decision 0025): a payload write that survived a failed commit.
+   * Retrieval re-gates every hit through Postgres, so this is a RECALL/
+   * consistency defect, never a leak. Self-healed by a targeted payload
+   * re-upsert; the alert records that it happened.
+   */
+  | 'payload_mismatch';
 
 export interface SweepReport {
   receiptsChecked: number;
   identifiersChecked: number;
+  /** Bucket objects examined by the orphan-object arm (QS-28). */
+  objectsScanned: number;
+  /** Live rows compared against their Qdrant payloads (QS-16). */
+  payloadsChecked: number;
+  /** Stale payloads re-upserted by the self-heal (QS-16). */
+  payloadsHealed: number;
   /** Alerts newly written this run (0 on a re-run over known violations). */
   newAlerts: number;
   /** All alert rows on record after this run. */
@@ -55,6 +76,23 @@ export interface SweepReport {
   chainOk: boolean;
   chainError?: string;
 }
+
+/** Tuning for the sweep's newer arms; tests override, production defaults. */
+export interface SweepOptions {
+  /**
+   * Objects younger than this are never orphans (QS-28): stored-mode uploads
+   * PUT the bytes BEFORE the metadata transaction commits, and staging
+   * objects have a 15-minute cleanup backstop — 60 minutes comfortably clears
+   * both without masking real residue for more than one night.
+   */
+  objectGraceMinutes?: number;
+}
+
+export const SWEEP_OPTIONS = Symbol('SWEEP_OPTIONS');
+
+const DEFAULT_OBJECT_GRACE_MINUTES = 60;
+/** QS-16 page size: the full scan runs in id-keyset pages of this many rows. */
+const PAYLOAD_PAGE_SIZE = 500;
 
 export interface IntegrityAlertRecord {
   id: string;
@@ -82,6 +120,7 @@ export class IntegritySweep {
     /** Source-row existence probes for the orphan arm (decision 0024) — the
      * same adapters the saga binds; file sources are covered receipt-side. */
     @Optional() @Inject(SOURCE_DELETIONS) sourceAdapters: SourceDeletion[] = [],
+    @Optional() @Inject(SWEEP_OPTIONS) private readonly options?: SweepOptions,
   ) {
     this.sourceAdapters = new Map(sourceAdapters.map((a) => [a.sourceType, a]));
   }
@@ -150,6 +189,16 @@ export class IntegritySweep {
     // resurrections are detected receipt-side above).
     found.push(...(await this.findOrphanedMemories()));
 
+    // Orphan-object arm (QS-28, decision 0025): every bucket object must be a
+    // file_metadata row's bytes or a staging object inside its cleanup window.
+    const orphanObjects = await this.findOrphanedObjects();
+    found.push(...orphanObjects.alerts);
+
+    // Payload-consistency arm (QS-16, decision 0025): live rows vs their
+    // Qdrant payload copies, self-healed by targeted re-upsert.
+    const payloads = await this.reconcilePayloads();
+    found.push(...payloads.alerts);
+
     const chain = verifyChain(
       confirmed.map(toConfirmedReceipt),
       await loadInstancePublicKey(this.instanceKeyDir),
@@ -172,6 +221,9 @@ export class IntegritySweep {
     const report: SweepReport = {
       receiptsChecked: confirmed.length,
       identifiersChecked,
+      objectsScanned: orphanObjects.scanned,
+      payloadsChecked: payloads.checked,
+      payloadsHealed: payloads.healed,
       newAlerts,
       openAlerts,
       chainOk: chain.ok,
@@ -259,6 +311,143 @@ export class IntegritySweep {
       }
     }
     return orphans;
+  }
+
+  /**
+   * QS-28 (decision 0025): objects in the bucket unaccounted for by
+   * file_metadata. Anything younger than the grace window is skipped — the
+   * stored-upload PUT lands before its metadata transaction commits, and
+   * staging objects live legitimately until the 15-minute cleanup backstop.
+   * Past the window: a staging key means the discard cleanup never ran; any
+   * other key with no metadata row means a failed compensating delete (or a
+   * write outside the upload path) left PII bytes no receipt can ever cover.
+   * Detection only — deleting bytes stays the saga's monopoly (§A.7).
+   */
+  private async findOrphanedObjects(): Promise<{
+    scanned: number;
+    alerts: { receiptId: string | null; kind: AlertKind; detail: string }[];
+  }> {
+    const alerts: { receiptId: string | null; kind: AlertKind; detail: string }[] = [];
+    const objects = await this.objects.listObjects();
+    const graceMinutes = this.options?.objectGraceMinutes ?? DEFAULT_OBJECT_GRACE_MINUTES;
+    const cutoff = new Date(Date.now() - graceMinutes * 60_000);
+
+    const aged = objects.filter((o) => o.lastModified < cutoff);
+    const stagingKeys = aged.filter((o) => o.key.split('/')[2] === 'staging');
+    const durableKeys = aged.filter((o) => o.key.split('/')[2] !== 'staging');
+
+    const known = new Set<string>();
+    for (let i = 0; i < durableKeys.length; i += 500) {
+      const batch = durableKeys.slice(i, i + 500).map((o) => o.key);
+      const rows = await this.db
+        .select({ objectKey: fileMetadata.objectKey })
+        .from(fileMetadata)
+        .where(inArray(fileMetadata.objectKey, batch));
+      for (const row of rows) known.add(row.objectKey);
+    }
+
+    for (const { key } of stagingKeys) {
+      alerts.push({
+        receiptId: null,
+        kind: 'orphaned_object',
+        detail: `${key} — staging object outlived its cleanup window; original bytes not erased`,
+      });
+    }
+    for (const { key } of durableKeys) {
+      if (known.has(key)) continue;
+      alerts.push({
+        receiptId: null,
+        kind: 'orphaned_object',
+        detail: `${key} — object present with no file_metadata row; bytes outside any receipt`,
+      });
+    }
+    return { scanned: objects.length, alerts };
+  }
+
+  /**
+   * QS-16 (decision 0025): compares every embedded live row's gate-relevant
+   * fields (owner_id, scope, status, sensitive) against its Qdrant payload
+   * and re-upserts the payload on mismatch (idempotent — the same targeted
+   * setPayload the write paths use). FULL scan, not a sample: the cost is one
+   * batched point-retrieve per 500 rows nightly — trivial at v1 scale (even
+   * 100k memories is 200 Qdrant calls) — and a sample cannot promise the
+   * "detected within one sweep cycle" bar. Retrieval re-gates every hit
+   * through Postgres, so a stale payload distorts RECALL, never visibility —
+   * the alert copy says so, to keep the severity honest.
+   */
+  private async reconcilePayloads(): Promise<{
+    checked: number;
+    healed: number;
+    alerts: { receiptId: string | null; kind: AlertKind; detail: string }[];
+  }> {
+    const alerts: { receiptId: string | null; kind: AlertKind; detail: string }[] = [];
+    let checked = 0;
+    let healed = 0;
+    let afterId: string | null = null;
+
+    for (;;) {
+      const page = await this.db
+        .select({
+          id: memory.id,
+          ownerId: memory.ownerId,
+          scope: memory.scope,
+          status: memory.status,
+          sensitive: memory.sensitive,
+          validUntil: memory.validUntil,
+        })
+        .from(memory)
+        .where(
+          afterId === null
+            ? isNotNull(memory.embeddingModel)
+            : and(isNotNull(memory.embeddingModel), gt(memory.id, afterId)),
+        )
+        .orderBy(asc(memory.id))
+        .limit(PAYLOAD_PAGE_SIZE);
+      if (page.length === 0) break;
+      afterId = page[page.length - 1]!.id;
+      checked += page.length;
+
+      const payloads = await this.vectors.retrievePayloads(page.map((r) => r.id));
+      for (const row of page) {
+        const payload = payloads.get(row.id);
+        if (!payload) {
+          // An embedded row with no point: rebuildable state (§A.4) — reindex
+          // restores it; recall-only, so no self-heal here (no vector to write).
+          alerts.push({
+            receiptId: null,
+            kind: 'payload_mismatch',
+            detail:
+              `${row.id} — indexed point missing; run reindex. Recall-only: ` +
+              'retrieval re-gates through Postgres, this is not a leak',
+          });
+          continue;
+        }
+        const stale: string[] = [];
+        if (payload['owner_id'] !== row.ownerId) stale.push('owner_id');
+        if (payload['scope'] !== row.scope) stale.push('scope');
+        if (payload['status'] !== row.status) stale.push('status');
+        if (payload['sensitive'] !== row.sensitive) stale.push('sensitive');
+        if (stale.length === 0) continue;
+
+        await this.vectors.setPayload(row.id, {
+          owner_id: row.ownerId,
+          scope: row.scope,
+          status: row.status,
+          sensitive: row.sensitive,
+          valid_until: row.validUntil?.toISOString() ?? null,
+        });
+        healed += 1;
+        alerts.push({
+          receiptId: null,
+          kind: 'payload_mismatch',
+          detail:
+            `${row.id} — stale index payload (${stale.join(', ')}); self-healed by ` +
+            're-upsert. Recall/consistency only, not a leak: retrieval re-gates ' +
+            'every hit through Postgres',
+        });
+      }
+    }
+    return { checked, healed, alerts };
   }
 
   private async countAlerts(): Promise<number> {

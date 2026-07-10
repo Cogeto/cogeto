@@ -130,6 +130,35 @@ export class MemoryObjectStore {
   }
 
   /**
+   * Full bucket listing (ListObjectsV2, paginated) — the integrity sweep's
+   * orphan-object arm (QS-28, decision 0025): every key must be accounted for
+   * by a file_metadata row or be a staging object inside its cleanup window.
+   * `lastModified` powers the mid-upload grace window (the bytes land before
+   * the metadata transaction commits, so freshly-written keys are not orphans).
+   */
+  async listObjects(prefix?: string): Promise<{ key: string; lastModified: Date }[]> {
+    const results: { key: string; lastModified: Date }[] = [];
+    let continuationToken: string | undefined;
+    for (;;) {
+      const query: Record<string, string> = { 'list-type': '2', 'max-keys': '1000' };
+      if (prefix) query['prefix'] = prefix;
+      if (continuationToken) query['continuation-token'] = continuationToken;
+      const canonicalQuery = canonicalQueryString(query);
+      const response = await this.request('GET', `/${this.options.bucket}`, canonicalQuery);
+      if (!response.ok) throw await this.asError('listObjects', prefix ?? '(all)', response);
+      const xml = await response.text();
+      for (const match of xml.matchAll(
+        /<Contents>[\s\S]*?<Key>([\s\S]*?)<\/Key>[\s\S]*?<LastModified>([\s\S]*?)<\/LastModified>[\s\S]*?<\/Contents>/g,
+      )) {
+        results.push({ key: decodeXml(match[1]!), lastModified: new Date(match[2]!) });
+      }
+      const token = /<NextContinuationToken>([\s\S]*?)<\/NextContinuationToken>/.exec(xml);
+      if (!token || !xml.includes('<IsTruncated>true</IsTruncated>')) return results;
+      continuationToken = decodeXml(token[1]!);
+    }
+  }
+
+  /**
    * A short-lived SigV4 presigned GET URL (§A.9): the download link the source
    * drawer hands the browser. Signing is offline (no network) — only the host
    * header is signed, the payload is UNSIGNED. The controller gates WHO may
@@ -308,6 +337,16 @@ function amzTimestamp(now: Date): { amzDate: string; dateStamp: string } {
     .replace(/[-:]/g, '')
     .replace(/\.\d{3}/, '');
   return { amzDate, dateStamp: amzDate.slice(0, 8) };
+}
+
+/** Minimal XML entity decoding for S3 list keys (S3 escapes only these five). */
+function decodeXml(value: string): string {
+  return value
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&');
 }
 
 /** Reads `x-amz-meta-*` response headers back into a plain metadata map. */

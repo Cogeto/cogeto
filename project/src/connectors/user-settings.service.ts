@@ -58,6 +58,7 @@ export class UserSettingsService {
         entityId: principal.userId,
         detail: { ...next },
         orgId: principal.orgId,
+        ownerId: principal.userId,
       });
     });
     return next;

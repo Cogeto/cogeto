@@ -161,6 +161,8 @@ export class JobsController {
         entityType: 'dead_letter',
         entityId: id,
         detail: { jobType: row.jobType, attempts: row.attempts },
+        ownerId: request.principal.userId,
+        orgId: request.principal.orgId,
       });
     });
     return { retried: true };

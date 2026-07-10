@@ -23,3 +23,6 @@ export { ANSWER_PROMPT } from './chat/answer-prompt';
 export { ChatSourceModule } from './chat/chat-source.module';
 export { ChatSourceReader } from './chat/chat.source-reader';
 export { ChatSourceDeletion } from './chat/chat.source-deletion';
+// QS-7 (decision 0025): the deletion saga's cascade over assistant answers
+// that cite erased memories — bound into MemoryModule's derivedCascades.
+export { ChatAnswerCascade, CHAT_ANSWER_REDACTED } from './chat/chat-answer-cascade';

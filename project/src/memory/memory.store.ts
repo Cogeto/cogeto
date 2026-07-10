@@ -11,6 +11,7 @@ import type { SQL } from 'drizzle-orm';
 import type { FactKind, MemoryScope, MemoryStatus, Principal } from '@cogeto/shared';
 import { auditLog, DRIZZLE, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
+import { UserDirectory } from '../identity/index';
 import { memory } from './persistence/tables';
 import type { MemoryRow, SourceType } from './persistence/tables';
 import { buildGateFilter, MemoryVectorStore } from './persistence/vector-store';
@@ -163,7 +164,16 @@ export class MemoryStore {
     @Inject(DRIZZLE) private readonly db: Db,
     /** Optional so pure-Postgres tests need no Qdrant; DI always provides it. */
     @Optional() private readonly vectors?: MemoryVectorStore,
+    /** Org resolution for audit stamping (QS-13, decision 0025) — optional so
+     * bare test/fixture constructions still work (their entries stay NULL-org;
+     * detail is owner-gated regardless). DI provides it. */
+    @Optional() private readonly directory?: UserDirectory,
   ) {}
+
+  /** Org for audit stamping: the owner's org via the directory, else null. */
+  private async orgFor(ownerId: string): Promise<string | undefined> {
+    return (await this.directory?.orgOf(ownerId)) ?? undefined;
+  }
 
   // ── Reads (Principal-gated) ─────────────────────────────────────────────────
 
@@ -275,13 +285,19 @@ export class MemoryStore {
    * reconciliation (pipeline stage 6, the contradiction resolutions) makes
    * status changes commit atomically with the relation rows and, in stage 6,
    * with the not-yet-committed incoming facts (decision 0010 ruling 1).
+   *
+   * `reason` is advisory context for the CALLER only and is deliberately NOT
+   * persisted (QS-1, decision 0025): it can be model free-text naming private
+   * memory values, and the audit trail is org-readable and outlives deletion.
+   * Durable explanations live on owner-gated domain rows instead
+   * (memory_relation.reason, verification_result.reason).
    */
   async transitionInTx(
     tx: Tx,
     actor: MemoryActor,
     memoryId: string,
     to: MemoryStatus,
-    reason?: string,
+    _reason?: string,
   ): Promise<MemoryRow> {
     const row = await this.lockRow(tx, memoryId, actor);
     const check = checkTransition(row.status, to, actor);
@@ -298,7 +314,9 @@ export class MemoryStore {
       action: 'memory.status_transition',
       entityType: 'memory',
       entityId: memoryId,
-      detail: { from: row.status, to, reason: reason ?? null },
+      detail: { from: row.status, to },
+      ownerId: row.ownerId,
+      orgId: await this.orgFor(row.ownerId),
     });
     // Keep the Qdrant payload copy honest (§A.4), point op last: a failure
     // rolls the row back and the caller retries — the two stores converge.
@@ -385,6 +403,8 @@ export class MemoryStore {
         entityType: 'memory',
         entityId: memoryId,
         detail: { sensitive },
+        ownerId: row.ownerId,
+        orgId: principal.orgId,
       });
       await this.requireVectors().setPayload(memoryId, { sensitive });
       return updated as MemoryRow;
@@ -417,6 +437,8 @@ export class MemoryStore {
         entityType: 'memory',
         entityId: memoryId,
         detail: { from: row.scope, to: scope },
+        ownerId: row.ownerId,
+        orgId: principal.orgId,
       });
       await this.requireVectors().setPayload(memoryId, { scope });
       return updated as MemoryRow;
@@ -475,6 +497,8 @@ export class MemoryStore {
       entityType: 'memory',
       entityId: memoryId,
       detail: { successor: result.successor.id },
+      ownerId: old.ownerId,
+      orgId: principal.orgId,
     });
     await withTransactionalEnqueue(
       tx,
@@ -520,6 +544,8 @@ export class MemoryStore {
         entityType: 'memory',
         entityId: memoryId,
         detail: { sourceType: row.sourceType, sourceId: row.sourceId, status: row.status },
+        ownerId: row.ownerId,
+        orgId: principal.orgId,
       });
       await this.requireVectors().deletePoints([memoryId]);
       return row;
@@ -592,6 +618,8 @@ export class MemoryStore {
       entityType: 'memory',
       entityId: old.id,
       detail: { supersededBy: successor.id, validUntil: successorValidFrom.toISOString() },
+      ownerId: old.ownerId,
+      orgId: await this.orgFor(old.ownerId),
     });
     // Payload copy honesty (§A.4): the predecessor's point now says replaced.
     // requireVectors like the toggles (QS-26) — never a silent skip.
@@ -1081,6 +1109,8 @@ export class MemoryStore {
       entityType: 'memory',
       entityId: created.id,
       detail: { sourceType: fact.sourceType, sourceId: fact.sourceId, scope: fact.scope },
+      ownerId,
+      orgId: await this.orgFor(ownerId),
     });
     return created;
   }

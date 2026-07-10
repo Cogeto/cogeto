@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
 import type { FileProcessingState, FileSourceDto, MemoryScope, Principal } from '@cogeto/shared';
 import { ALLOWED_UPLOAD_CONTENT_TYPES } from '@cogeto/shared';
@@ -23,6 +23,11 @@ import type { FileUploadOptions } from './file-upload-options';
  * 10 — a note never "fails to parse").
  */
 const FILE_PIPELINE_MAX_ATTEMPTS = 3;
+
+/** Abort-window cleanup retries: quick in-line attempts before handing the
+ * orphan to the nightly sweep's orphan-object arm (QS-28, decision 0025). */
+const CLEANUP_ATTEMPTS = 3;
+const CLEANUP_RETRY_DELAY_MS = 250;
 
 export interface UploadedFile {
   buffer: Buffer;
@@ -66,6 +71,8 @@ function toStagingKey(sourceKey: string): string {
  */
 @Injectable()
 export class FilesService {
+  private readonly logger = new Logger(FilesService.name);
+
   constructor(
     @Inject(DRIZZLE) private readonly db: Db,
     private readonly objects: MemoryObjectStore,
@@ -73,6 +80,33 @@ export class FilesService {
     private readonly memory: MemoryStore,
     @Inject(FILE_UPLOAD_OPTIONS) private readonly options: FileUploadOptions,
   ) {}
+
+  /**
+   * Compensating delete for the upload abort window (QS-28, decision 0025):
+   * the metadata transaction failed, so the just-written object is a true
+   * orphan. Retried in-line with a short backoff and LOGGED on every failure
+   * (object keys are identifiers, never content — pino rule holds); if all
+   * attempts fail, the nightly sweep's orphan-object arm detects and alerts.
+   * Never throws — the caller rethrows the original upload error.
+   */
+  private async cleanupOrphanObject(objectKey: string): Promise<void> {
+    for (let attempt = 1; attempt <= CLEANUP_ATTEMPTS; attempt += 1) {
+      try {
+        await this.objects.deleteObject(objectKey);
+        return;
+      } catch {
+        if (attempt === CLEANUP_ATTEMPTS) {
+          this.logger.error(
+            `abort-window cleanup failed after ${attempt} attempts; ` +
+              `orphan object left for the integrity sweep: ${objectKey}`,
+          );
+          return;
+        }
+        this.logger.warn(`abort-window cleanup attempt ${attempt} failed for ${objectKey}`);
+        await new Promise((resolve) => setTimeout(resolve, CLEANUP_RETRY_DELAY_MS * attempt));
+      }
+    }
+  }
 
   async upload(
     principal: Principal,
@@ -141,8 +175,9 @@ export class FilesService {
       });
     } catch (error) {
       // (3) abort-window cleanup: the transaction left no metadata and no job,
-      // so the object is a true orphan — remove it (absent = success).
-      await this.objects.deleteObject(objectKey).catch(() => undefined);
+      // so the object is a true orphan — remove it. Logged + retried (QS-28):
+      // a swallowed failure here used to leave PII bytes in the bucket forever.
+      await this.cleanupOrphanObject(objectKey);
       throw error;
     }
 
@@ -215,8 +250,9 @@ export class FilesService {
       });
     } catch (error) {
       // Abort-window cleanup: no job enqueued, so the staging object is a true
-      // orphan — remove it (absent = success).
-      await this.objects.deleteObject(stagingKey).catch(() => undefined);
+      // orphan — remove it. Logged + retried (QS-28); the sweep's orphan arm
+      // is the backstop if every attempt fails.
+      await this.cleanupOrphanObject(stagingKey);
       throw error;
     }
 

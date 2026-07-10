@@ -23,8 +23,13 @@ export type {
 export { parseReceiptCounts } from './deletion-saga';
 export { verifyChain, canonicalize, GENESIS_HASH } from './domain/receipt-chain';
 export type { ChainVerification, ConfirmedReceipt } from './domain/receipt-chain';
-export { IntegritySweep, SWEEP_JOB_TYPE, SWEEP_CRONTAB } from './integrity-sweep';
-export type { SweepReport, IntegrityStatus, IntegrityAlertRecord } from './integrity-sweep';
+export { IntegritySweep, SWEEP_JOB_TYPE, SWEEP_CRONTAB, SWEEP_OPTIONS } from './integrity-sweep';
+export type {
+  SweepReport,
+  SweepOptions,
+  IntegrityStatus,
+  IntegrityAlertRecord,
+} from './integrity-sweep';
 export { createIntegritySweep } from './factory';
 export type { CreateIntegritySweepOptions, QdrantOptions } from './factory';
 export { MemoryObjectStore } from './persistence/object-store';

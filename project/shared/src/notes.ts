@@ -78,6 +78,9 @@ export interface VerificationDto {
 export interface ContradictionDto {
   id: string;
   detectedAt: string;
+  /** Why reconciliation flagged the pair — owner-gated (from the relation row,
+   * migration 0020); null on pre-0020 detections. */
+  reason: string | null;
   a: MemoryListItem;
   b: MemoryListItem;
 }
