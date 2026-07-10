@@ -76,6 +76,91 @@ async function exportReceiptJson(detail: ReceiptDetailDto): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * The print/PDF artifact (decision 0022 §4 — the money screenshot). Hidden on
+ * screen (`.receipt-print`); the print stylesheet shows only this. A clean,
+ * single-page deletion certificate anyone can save as PDF from the browser.
+ */
+function PrintableReceipt({ detail }: { detail: ReceiptDetailDto }) {
+  const row = (label: string, value: string | null) => (
+    <div style={{ marginBottom: '10px' }}>
+      <div
+        style={{
+          fontSize: '10px',
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          color: '#64748b',
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontFamily: 'monospace',
+          fontSize: '12px',
+          color: '#0f172a',
+          wordBreak: 'break-all',
+        }}
+      >
+        {value ?? '—'}
+      </div>
+    </div>
+  );
+  return (
+    <div
+      className="receipt-print"
+      style={{ color: '#0f172a', maxWidth: '640px', margin: '0 auto' }}
+    >
+      <div
+        style={{ borderBottom: '3px solid #21c29a', paddingBottom: '12px', marginBottom: '20px' }}
+      >
+        <div style={{ fontSize: '22px', fontWeight: 700, color: '#1c2150' }}>Cogeto</div>
+        <div style={{ fontSize: '15px', color: '#334155' }}>
+          Deletion receipt — provable forgetting
+        </div>
+      </div>
+      {row('Receipt id', detail.id)}
+      {row('Source', `${detail.sourceType} / ${detail.sourceId}`)}
+      {row('Status', detail.status)}
+      {row('Requested / signed', detail.signedAt)}
+      {row('Confirmed', detail.confirmedAt)}
+      <div style={{ marginBottom: '10px' }}>
+        <div
+          style={{
+            fontSize: '10px',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: '#64748b',
+          }}
+        >
+          What was removed
+        </div>
+        <pre
+          style={{ fontSize: '11px', background: '#f8fafc', padding: '8px', borderRadius: '6px' }}
+        >
+          {JSON.stringify(detail.countsJson, null, 2)}
+        </pre>
+      </div>
+      {row('Previous hash', detail.prevHash)}
+      {row('Hash (SHA-256)', detail.hash)}
+      {row('Signature (ed25519, base64)', detail.signature)}
+      <div
+        style={{
+          marginTop: '18px',
+          fontSize: '11px',
+          color: '#64748b',
+          borderTop: '1px solid #e2e8f0',
+          paddingTop: '10px',
+        }}
+      >
+        Hash-chained to the previous receipt and signed by this Cogeto instance. Verify
+        independently with the instance public key at /api/instance/public-key. This record is
+        permanent.
+      </div>
+    </div>
+  );
+}
+
 function ReceiptDrawer({
   session,
   receiptId,
@@ -118,19 +203,34 @@ function ReceiptDrawer({
           <>
             <div className="flex items-center justify-between">
               <StatusChip receipt={data} />
-              <button
-                type="button"
-                disabled={data.status !== 'confirmed'}
-                title={
-                  data.status === 'confirmed'
-                    ? 'Download the receipt with its verification key'
-                    : 'Available once the receipt is confirmed'
-                }
-                onClick={() => void exportReceiptJson(data)}
-                className="rounded-md bg-brand-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
-              >
-                Export JSON
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={data.status !== 'confirmed'}
+                  title={
+                    data.status === 'confirmed'
+                      ? 'Print or save the receipt as a PDF certificate'
+                      : 'Available once the receipt is confirmed'
+                  }
+                  onClick={() => window.print()}
+                  className="rounded-md border border-brand-teal px-3 py-1.5 text-xs font-semibold text-brand-teal disabled:opacity-40"
+                >
+                  Save as PDF
+                </button>
+                <button
+                  type="button"
+                  disabled={data.status !== 'confirmed'}
+                  title={
+                    data.status === 'confirmed'
+                      ? 'Download the receipt with its verification key'
+                      : 'Available once the receipt is confirmed'
+                  }
+                  onClick={() => void exportReceiptJson(data)}
+                  className="rounded-md bg-brand-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                >
+                  Export JSON
+                </button>
+              </div>
             </div>
             {field('Receipt id', data.id)}
             {field('Source', `${data.sourceType} / ${data.sourceId}`)}
@@ -149,8 +249,10 @@ function ReceiptDrawer({
             {field('Signature (ed25519, base64)', data.signature)}
             <p className="rounded-md bg-slate-50 p-2 text-xs text-slate-500">
               The exported JSON contains this receipt plus the instance public key — a
-              self-contained artifact anyone can verify without access to Cogeto.
+              self-contained artifact anyone can verify without access to Cogeto. “Save as PDF”
+              prints a clean, single-page certificate.
             </p>
+            <PrintableReceipt detail={data} />
           </>
         )}
       </aside>

@@ -14,7 +14,13 @@ const SRC = process.cwd();
 const REPO = path.resolve(SRC, '../..');
 
 /** Dev/CI-only toggles set by npm scripts or seed tooling — not operator config. */
-const DEV_ONLY = new Set(['COGETO_EVAL_GATE', 'COGETO_SEED_ORG', 'COGETO_SEED_OWNER']);
+const DEV_ONLY = new Set([
+  'COGETO_EVAL_GATE',
+  'COGETO_SEED_ORG',
+  'COGETO_SEED_OWNER',
+  // Test-only: vitest points the demo corpus loader at project/demo (decision 0022).
+  'COGETO_DEMO_DIR',
+]);
 
 function walkTs(dir: string, acc: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {

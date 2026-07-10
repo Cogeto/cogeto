@@ -21,3 +21,26 @@
     transform: translateX(400%);
   }
 }
+
+/* Deletion receipt "Save as PDF" (§B.1, decision 0022): the printable receipt is
+   hidden on screen; when printing, everything else is hidden and only the
+   receipt artifact is shown — a clean, single-page deletion certificate. */
+.receipt-print {
+  display: none;
+}
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  .receipt-print,
+  .receipt-print * {
+    visibility: visible !important;
+  }
+  .receipt-print {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    padding: 2.5rem;
+    background: white;
+  }
+}

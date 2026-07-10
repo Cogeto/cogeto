@@ -26,6 +26,7 @@ import { TASK_PROMPTS, TASKS_REMINDERS_CRONTAB, TasksEngine } from '../tasks/ind
 import { ANSWER_PROMPT, QUERY_REWRITE_PROMPT } from '../retrieval/index';
 import { loadPrompt, ModelGateway, recordPromptVersion } from '../model-gateway/index';
 import { buildTaskList } from './worker-tasks';
+import { DEMO_RESET_JOB_TYPE, establishDemoSession, resetDemoWorld } from './demo/index';
 
 const HEARTBEAT_FILE = '/tmp/worker-heartbeat';
 const HEARTBEAT_INTERVAL_MS = 10_000;
@@ -76,28 +77,60 @@ async function main(): Promise<void> {
   }
 
   const pipeline = context.get(IngestionPipeline);
+  const objects = context.get(MemoryObjectStore);
+  const gateway = context.get(ModelGateway);
+  const taskList = buildTaskList(db, {
+    pipeline,
+    memoryStore: context.get(MemoryStore),
+    deletionExecutor: context.get(DeletionExecutor),
+    integritySweep: context.get(IntegritySweep),
+    dreaming: context.get(DreamingService),
+    tasksEngine: context.get(TasksEngine),
+    approvalService: context.get(ApprovalService),
+    approvalExecutor: context.get(ApprovalExecutor),
+    objects,
+    gateway,
+    log: (event, message) => logger.info(event, message),
+  });
+
+  // Ana sandbox (decision 0022 ruling 2): the scheduled reset is registered +
+  // scheduled ONLY on a demo instance — never on a customer instance. It reuses
+  // the demo Principal from the seed job and runs the same wipe-and-reseed
+  // routine. One more crontab LINE (demoLine), never a second scheduler.
+  let demoLine = '';
+  if (config.demoMode) {
+    taskList[DEMO_RESET_JOB_TYPE] = async () => {
+      const { api, ownerId } = await establishDemoSession(config);
+      await resetDemoWorld({
+        pool,
+        db,
+        api,
+        ownerId,
+        objects,
+        gateway,
+        qdrantUrl: config.qdrantUrl,
+        embeddingModel: config.mistralEmbedModel,
+        strict: false, // a failed scheduled reset logs; the next one repairs it
+        excludeTask: DEMO_RESET_JOB_TYPE, // don't count our own running job
+        log: (message) => logger.info({}, message),
+      });
+      logger.info({}, 'scheduled demo reset completed');
+    };
+    demoLine = `\n${config.demoResetCron} ${DEMO_RESET_JOB_TYPE}`;
+    logger.info({ cron: config.demoResetCron }, 'demo mode: scheduled reset enabled');
+  }
+
   const runner: Runner = await run({
     pgPool: pool,
     concurrency: 2,
-    taskList: buildTaskList(db, {
-      pipeline,
-      memoryStore: context.get(MemoryStore),
-      deletionExecutor: context.get(DeletionExecutor),
-      integritySweep: context.get(IntegritySweep),
-      dreaming: context.get(DreamingService),
-      tasksEngine: context.get(TasksEngine),
-      approvalService: context.get(ApprovalService),
-      approvalExecutor: context.get(ApprovalExecutor),
-      objects: context.get(MemoryObjectStore),
-      gateway: context.get(ModelGateway),
-      log: (event, message) => logger.info(event, message),
-    }),
-    // Nightly schedule (graphile cron): the 03:00 integrity sweep (§A.7 step
-    // 4), the 03:30 dreaming cycle (§B.6; decision 0011), then the 03:40 task
+    taskList,
+    // Nightly schedule (graphile cron): the 03:00 integrity sweep (§A.7 step 4),
+    // the 03:30 dreaming cycle (§B.6; decision 0011), then the 03:40 task
     // reminders pass (F3 handoff §2 — one more crontab LINE, never a second
-    // scheduler), plus the every-5-minute approval expiry pass (§A.8; O1-B).
-    // On-demand sweep/dream runs go through their entrypoints instead.
-    crontab: `${SWEEP_CRONTAB}\n${DREAM_CRONTAB}\n${TASKS_REMINDERS_CRONTAB}\n${APPROVAL_EXPIRY_CRONTAB}`,
+    // scheduler), plus the every-5-minute approval expiry pass (§A.8; O1-B), plus
+    // the demo reset on a demo instance. On-demand sweep/dream go through their
+    // entrypoints instead.
+    crontab: `${SWEEP_CRONTAB}\n${DREAM_CRONTAB}\n${TASKS_REMINDERS_CRONTAB}\n${APPROVAL_EXPIRY_CRONTAB}${demoLine}`,
     noHandleSignals: true,
   });
   logger.info('cogeto worker started (graphile runner + task registry)');

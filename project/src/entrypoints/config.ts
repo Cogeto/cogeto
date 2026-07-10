@@ -6,6 +6,14 @@ import { z } from 'zod';
  * fails to start, not on request. Only entrypoints read the environment;
  * modules receive options through their registration APIs.
  */
+/** Env-var boolean: only 1/true/on/yes (case-insensitive) are true; anything
+ * else, including '0'/'false'/'' and unset, is false. `z.coerce.boolean` cannot
+ * be used — it makes the non-empty string '0' true. */
+const envBool = z
+  .string()
+  .optional()
+  .transform((v) => ['1', 'true', 'on', 'yes'].includes((v ?? '').trim().toLowerCase()));
+
 const configSchema = z.object({
   httpPort: z.coerce.number().int().positive().default(3000),
   databaseUrl: z.string().min(1),
@@ -51,9 +59,50 @@ const configSchema = z.object({
   mistralPipelineModel: z.string().min(1).default('mistral-small-latest'),
   mistralAnswerModel: z.string().min(1).default('mistral-medium-latest'),
   logLevel: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
+  /**
+   * Ana sandbox (decision 0022). `demoMode` turns this instance into the public
+   * sandbox: the app serves the pre-minted demo session on GET /api/config and
+   * the worker schedules the periodic reset. Never set on a customer instance.
+   */
+  demoMode: envBool,
+  /** Production marker — when true, the demo seed/reset refuse to run
+   * (`assertDemoAllowed`). Set by `COGETO_PRODUCTION=1` or `COGETO_ENV=production`. */
+  production: envBool,
+  /** Shared file the demo-seed job writes the demo Principal's PAT to and the
+   * app reads to populate `WebConfig.demoSession` (decision 0022 ruling 1). */
+  demoSessionFile: z.string().min(1).default('/demo-config/session.json'),
+  /** Cron for the scheduled demo reset (demo profile only) — default every 6h. */
+  demoResetCron: z.string().min(1).default('0 */6 * * *'),
+  /** App base URL the demo seed/reset drives the public API through. */
+  demoAppUrl: z.string().url().default('http://app:3000'),
+  /** Bootstrap machine-user PAT the demo-seed job provisions the demo Principal
+   * with (written by zitadel FirstInstance; mounted like zitadel-init). */
+  zitadelPatFile: z.string().min(1).default('/machinekey/pat.txt'),
 });
 
 export type CogetoConfig = z.infer<typeof configSchema>;
+
+/**
+ * The demo-profile boot guard (decision 0022 ruling 4). Every demo entrypoint
+ * (seed, reset) calls this first: a production instance that somehow received
+ * the demo profile fails loudly rather than seeding fictional data into real
+ * infrastructure, and running a demo tool without `COGETO_DEMO_MODE` is refused.
+ * Pure and side-effect-free so `demo_disabled_in_production` can assert it.
+ */
+export function assertDemoAllowed(config: Pick<CogetoConfig, 'demoMode' | 'production'>): void {
+  if (config.production) {
+    throw new Error(
+      'refusing to run a demo tool on a production instance ' +
+        '(COGETO_PRODUCTION / COGETO_ENV=production is set) — decision 0022 ruling 4',
+    );
+  }
+  if (!config.demoMode) {
+    throw new Error(
+      'refusing to run a demo tool without COGETO_DEMO_MODE=1 — the demo profile ' +
+        'is never enabled on a customer instance (decision 0022 ruling 4)',
+    );
+  }
+}
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
   const parsed = configSchema.safeParse({
@@ -81,6 +130,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
       env.COGETO_MISTRAL_MODEL_PIPELINE || env.MISTRAL_MODEL_PIPELINE || undefined,
     mistralAnswerModel: env.COGETO_MISTRAL_MODEL_ANSWER || env.MISTRAL_MODEL_ANSWER || undefined,
     logLevel: env.COGETO_LOG_LEVEL,
+    demoMode: env.COGETO_DEMO_MODE || undefined,
+    // Either explicit flag or the conventional COGETO_ENV=production marker.
+    production:
+      env.COGETO_PRODUCTION || (env.COGETO_ENV === 'production' ? 'true' : undefined) || undefined,
+    demoSessionFile: env.COGETO_DEMO_SESSION_FILE || undefined,
+    demoResetCron: env.COGETO_DEMO_RESET_CRON || undefined,
+    demoAppUrl: env.COGETO_DEMO_APP_URL || undefined,
+    zitadelPatFile: env.COGETO_ZITADEL_PAT_FILE || undefined,
   });
   if (!parsed.success) {
     const details = parsed.error.issues

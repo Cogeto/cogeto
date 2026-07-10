@@ -28,7 +28,9 @@
     "sweep": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/sweep.js",
     "dream": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/dream.js",
     "reminders": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/reminders.js",
-    "eval:gate": "npm run build -w @cogeto/shared -w @cogeto/server && COGETO_EVAL_GATE=1 node project/src/dist/entrypoints/eval.js"
+    "eval:gate": "npm run build -w @cogeto/shared -w @cogeto/server && COGETO_EVAL_GATE=1 node project/src/dist/entrypoints/eval.js",
+    "demo:seed": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/demo-seed.js",
+    "demo:reset": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/demo-reset.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",

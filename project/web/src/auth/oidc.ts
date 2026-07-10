@@ -107,6 +107,29 @@ export async function completeLogin(callbackUrl: string): Promise<Session> {
   return session;
 }
 
+const DEMO_FLAG_KEY = 'cogeto.demo';
+
+/**
+ * Ana sandbox (decision 0022): install the pre-minted demo session served on
+ * /api/config, so a visitor is authenticated on first load with no login. The
+ * token is a real Zitadel PAT; only the local expiry is synthetic (far out).
+ */
+export function installDemoSession(accessToken: string): Session {
+  const session: Session = {
+    accessToken,
+    idToken: '',
+    expiresAt: Date.now() + 365 * 24 * 3600 * 1000,
+  };
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  sessionStorage.setItem(DEMO_FLAG_KEY, '1');
+  return session;
+}
+
+/** True in the current tab once a demo session has been installed. */
+export function isDemoSession(): boolean {
+  return sessionStorage.getItem(DEMO_FLAG_KEY) === '1';
+}
+
 export function loadSession(): Session | null {
   const raw = sessionStorage.getItem(SESSION_KEY);
   if (!raw) return null;

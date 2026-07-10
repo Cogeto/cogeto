@@ -68,9 +68,20 @@ services:
       COGETO_MISTRAL_MODEL_ANSWER: ${COGETO_MISTRAL_MODEL_ANSWER:-}
       COGETO_MISTRAL_EMBED_MODEL: ${COGETO_MISTRAL_EMBED_MODEL:-}
       COGETO_LOG_LEVEL: ${COGETO_LOG_LEVEL:-info}
+      # Ana sandbox (decision 0022). Off by default. The app auto-enables sandbox
+      # mode when the demo-seed job has written /demo-config/session.json (so
+      # `--profile demo up` is enough); COGETO_DEMO_MODE=1 forces it AND enables
+      # the worker's scheduled reset. COGETO_PRODUCTION=1 hard-refuses the demo
+      # seed/reset. NEVER set demo mode on a customer instance.
+      COGETO_DEMO_MODE: ${COGETO_DEMO_MODE:-}
+      COGETO_PRODUCTION: ${COGETO_PRODUCTION:-}
+      COGETO_DEMO_RESET_CRON: ${COGETO_DEMO_RESET_CRON:-0 */6 * * *}
     volumes:
       - web-config:/web-config:ro
       - instance-keys:/instance-keys:ro
+      # Empty on a normal instance (no session file → no demo mode); the
+      # demo-seed job (profile demo) writes the demo Principal's session here.
+      - demo-config:/demo-config:ro
     healthcheck:
       test:
         - CMD
@@ -105,6 +116,8 @@ services:
     environment: *cogeto-env
     volumes:
       - instance-keys:/instance-keys:ro
+      # Demo scheduled reset (decision 0022) reuses the session the seed wrote.
+      - demo-config:/demo-config:ro
     healthcheck:
       test:
         - CMD
@@ -347,12 +360,47 @@ services:
         condition: service_healthy
     restart: 'no'
 
-  # ── Profile placeholders (documented, no real services yet) ────────────────
-  # demo: seeds the Ana sandbox persona (§B.9) — arrives with the Notes slice.
-  demo-placeholder:
+  # ── Ana sandbox (profile demo; §B.9, decision 0022) ────────────────────────
+  #
+  # ⚠️  SECURITY WARNING (decision 0022 ruling 1). This profile turns the instance
+  #     into the PUBLIC SANDBOX: the demo-seed job provisions a real Zitadel
+  #     Principal and publishes its access token on the (public) /api/config, so
+  #     any visitor is pre-authenticated. This is acceptable ONLY because the
+  #     instance holds NO REAL DATA and is disposable. The demo profile must
+  #     NEVER share infrastructure (Postgres / Qdrant / MinIO / Zitadel) with a
+  #     customer instance — a leaked demo token must reach nothing but fictional
+  #     data. A production instance (COGETO_PRODUCTION=1) refuses the demo seed.
+  #
+  #   docker compose --profile demo up --build        # seeds the sandbox
+  #   COGETO_DEMO_MODE=1 docker compose --profile demo up   # + scheduled reset
+  #
+  # Runs from the BUILD image (like seed-object) — it needs the demo corpus and
+  # dev entrypoints the runtime image strips. Feeds the corpus through the REAL
+  # public API (decision 0022; no direct DB inserts) and asserts the end state.
+  demo-seed:
     profiles: ['demo']
-    image: busybox:stable
-    command: ['echo', 'demo profile: the Ana sandbox seed arrives with the Notes vertical slice']
+    build:
+      context: .
+      dockerfile: project/infra/docker/Dockerfile
+      target: build
+    entrypoint: ['node', 'project/src/dist/entrypoints/demo-seed.js']
+    environment:
+      <<: *cogeto-env
+      COGETO_DEMO_MODE: '1'
+      COGETO_DEMO_APP_URL: http://app:3000
+      COGETO_ZITADEL_PAT_FILE: /machinekey/pat.txt
+    volumes:
+      # Bootstrap PAT to provision the demo Principal; demo-config to publish its
+      # session for the app + worker.
+      - zitadel-machinekey:/machinekey:ro
+      - demo-config:/demo-config
+    depends_on:
+      app:
+        condition: service_healthy
+      zitadel:
+        condition: service_healthy
+      zitadel-init:
+        condition: service_completed_successfully
     restart: 'no'
 
   # redaction: local CPU NER pseudonymization (§B.8) — arrives with its feature.
@@ -371,3 +419,6 @@ volumes:
   web-config:
   caddy-data:
   caddy-config:
+  # Ana sandbox demo Principal's session (decision 0022) — written by demo-seed,
+  # read by app + worker. Empty (inert) on a non-demo instance.
+  demo-config:

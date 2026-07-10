@@ -22,7 +22,22 @@ It is **EU-first, privacy-first, self-hostable, and model-agnostic (Mistral-firs
 
 ## Status
 
-**Session O2 complete (O2-C: chat-derived memories, seam coverage, corpus).**
+**Session O3-A complete — the Ana sandbox (`--profile demo`).** The public demo
+is now the real growth engine (§B.9): `docker compose --profile demo up` provisions
+a real, pre-authenticated demo Principal ("Ana Kovač"), feeds ~31 fictional
+first-person notes + one uploaded contract **through the real public API**, ages
+the world to weeks of accrual, runs one dreaming cycle, and **asserts the end
+state loudly** — a contradiction to resolve, lapsed and superseded facts, hedged
+memories, derived tasks, and the deletion-receipt document. A subtle sandbox
+banner and a dismissible first-visit overlay guide the three demo moments (ask
+what Ana promised Marko → resolve the contradiction → delete Ana's contract and
+watch the signed receipt confirm, now exportable as a PDF certificate). `npm run
+demo:reset` and a demo-only scheduled reset restore it; a production flag refuses
+the seed. All fictional, single-tenant, disposable. Details in
+`docs/sessions/O3-A.md` (decision 0022; no migration). **The rest of O3 — the
+Presidio redaction sidecar and a broader frontend design pass — is next.**
+
+Previously — **Session O2 complete (O2-C: chat-derived memories, seam coverage, corpus).**
 Cogeto now turns memory into action and shares it across a team. **Tasks,
 reminders, and a unified daily digest** (O2-A): commitments derive tasks with
 conditions and closure; a reminders pass (on the one existing scheduler) and a
@@ -41,8 +56,7 @@ conversation. The **identity and model-gateway seams** are now directly tested
 errors, prompt immutability, and architecture assertions that only each seam
 touches Zitadel / Mistral). Golden corpus grew with idiomatic chat-sourced en/hr
 cases; all eval gates pass. Details in `docs/sessions/O2-A.md`, `O2-B.md`,
-`O2-C.md` (decisions 0018–0021, migrations 0017–0019). **O3 — the Ana sandbox,
-the Presidio redaction sidecar, and a frontend design pass — is next.**
+`O2-C.md` (decisions 0018–0021, migrations 0017–0019).
 
 Previously — **Session O1 complete (O1-C: extract-and-discard, Settings, the audit reader).**
 The document pipeline now offers **extract-and-discard** (a per-upload flag with

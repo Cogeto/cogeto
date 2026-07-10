@@ -7,7 +7,7 @@ import {
   fetchPendingApprovals,
   fetchTaskCount,
 } from '../api';
-import { logout } from '../auth/oidc';
+import { isDemoSession, logout } from '../auth/oidc';
 import type { Session } from '../auth/oidc';
 import { Nav } from './Nav';
 import type { NavSection } from './Nav';
@@ -82,13 +82,20 @@ export function Shell({
               </p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => void logout()}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100"
-          >
-            Sign out
-          </button>
+          {isDemoSession() ? (
+            // Sandbox: no sign-out (no account to leave); a subtle sandbox tag.
+            <span className="rounded-full bg-brand-teal/15 px-3 py-1 text-xs font-semibold text-brand-teal">
+              Live sandbox
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100"
+            >
+              Sign out
+            </button>
+          )}
         </header>
         <main
           className={

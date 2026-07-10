@@ -1,0 +1,275 @@
+{
+  "$schema": "./corpus.schema.md",
+  "persona": {
+    "owner": "Ana Kovač",
+    "role": "independent consultant",
+    "clients": ["Adriatic Foods (Atlas CRM Migration)", "Baltic Retail"],
+    "contacts": {
+      "Marko": "client lead at Adriatic Foods",
+      "Luka": "budget approver at Adriatic Foods",
+      "Marta": "Ana's subcontractor (data / analytics)",
+      "Petra": "colleague; owns the Novira and Baltic Retail accounts",
+      "Thomas": "Baltic Retail contact"
+    },
+    "note": "First-person notes as Ana would write them: terse, specific, occasionally sloppy. Consistent with the golden-set persona (project/eval/golden). Fictional — decision 0022 ruling 3. `daysAgo` back-dates the created memory so the world reads as weeks of accrual (the seed simulates elapsed time; it never fabricates memories — extraction is always real)."
+  },
+  "notes": [
+    {
+      "id": "en-setup-kickoff",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 28,
+      "role": "identity: clients, contacts, roles",
+      "text": "First proper working session on the Atlas CRM Migration for Adriatic Foods. Marko runs the project on their side, Luka signs off the budgets. I'm leading it solo, with Marta subcontracting the data work."
+    },
+    {
+      "id": "en-marta-subcontractor",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 26,
+      "role": "identity: Marta is a distinct person (subcontractor)",
+      "text": "Marta is my subcontractor on the analytics side — she'll handle the import mapping herself. Loop her into the Atlas mapping review."
+    },
+    {
+      "id": "en-baltic-sow",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 24,
+      "role": "identity: Baltic Retail engagement + Petra",
+      "text": "Baltic Retail analytics is the other live engagement. Petra sent over the signed SOW this morning — good to get going."
+    },
+    {
+      "id": "en-novira-radar",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 19,
+      "role": "canon: Petra's Novira account kept distinct (€48k, fixed-fee)",
+      "text": "Novira is Petra's account, not mine. She mentioned the €48,000 Q3 renewal figure again and that they're moving to a fixed-fee model from August. Keeping it on my radar only."
+    },
+    {
+      "id": "en-atlas-two-wave",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 23,
+      "role": "decision (canon en-0010)",
+      "text": "Atlas migration runs in two waves: sales first, then support."
+    },
+    {
+      "id": "en-atlas-archive",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 22,
+      "role": "decision (canon en-0012)",
+      "text": "Decided: leads older than three years get archived to CSV, not imported into Atlas."
+    },
+    {
+      "id": "en-atlas-gdpr",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 21,
+      "role": "fact / risk (canon en-0014)",
+      "text": "Flagged GDPR consent as the highest data-quality risk on the Atlas migration."
+    },
+    {
+      "id": "en-pilot-budget",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 14,
+      "role": "fact with amount (canon en-r002)",
+      "text": "Luka approved the pilot budget of €40,000 for the Adriatic Foods rollout."
+    },
+    {
+      "id": "en-pilot-zagreb-split",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 13,
+      "role": "decision (canon en-r007)",
+      "text": "Agreed with Marko: the Atlas pilot covers the Zagreb warehouse first, then expands to Split in Q3."
+    },
+    {
+      "id": "en-promise-marko-proposal",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 10,
+      "role": "PROMINENT open commitment to Marko WITH condition -> blocked task; the 'what did Ana promise Marko' answer",
+      "text": "Promised Marko I'd send him the revised Atlas migration proposal — but only once he confirms the Q3 budget on his side. Told him end of next week is realistic if the budget lands in time."
+    },
+    {
+      "id": "en-promise-marko-reminder",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 6,
+      "role": "enriches the same Marko commitment (dedup/enrichment; richer citation)",
+      "text": "Marko pinged about timelines. Reminded him the revised proposal is ready to send the moment the Q3 budget is confirmed."
+    },
+    {
+      "id": "en-golive-september",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 18,
+      "role": "CONTRADICTION side A (canon en-r005) — firm, no update wording",
+      "text": "Confirmed with Marko on the call: the Atlas CRM Migration go-live is September 1."
+    },
+    {
+      "id": "en-golive-october",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 12,
+      "role": "CONTRADICTION side B (canon en-r005) — firm, no update wording, days apart",
+      "text": "Team planning session — Atlas CRM Migration go-live is confirmed for October 1."
+    },
+    {
+      "id": "en-invoice-old",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 30,
+      "role": "SUPERSESSION chain, older fact (canon en-r008)",
+      "text": "Adriatic Foods invoices go to racuni@adriaticfoods.hr."
+    },
+    {
+      "id": "en-invoice-new",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 8,
+      "role": "SUPERSESSION chain, newer fact with explicit update wording -> replaces the old; history/time-travel",
+      "text": "Heads-up from Marko: starting June 1, Adriatic Foods invoices go to billing@adriaticfoods.hr instead of the old address."
+    },
+    {
+      "id": "en-staging-access-lapsed",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 15,
+      "role": "LAPSED validity -> outdated (absolute past valid_until)",
+      "text": "Gave the Meridian contractor temporary access to the Atlas staging environment. Access expired on 30 June 2026 — I still need to remove the account."
+    },
+    {
+      "id": "en-earlybird-lapsed",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 20,
+      "role": "LAPSED validity -> outdated (absolute past valid_until)",
+      "text": "Early-bird tickets for the Analytics Summit were held until 15 June 2026; after that the price goes up by €200."
+    },
+    {
+      "id": "en-hedged-teams",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 9,
+      "role": "UNCERTAIN: hedged preference (canon en-0015, with Marko)",
+      "text": "Marko may prefer Teams over Zoom for the client workshops, but he wasn't sure yet."
+    },
+    {
+      "id": "en-hedged-baltic-leads",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 11,
+      "role": "UNCERTAIN: hedged, undecided",
+      "text": "Might make sense to archive the oldest Baltic Retail leads before the migration — not decided, just a thought."
+    },
+    {
+      "id": "en-risk-register-monday",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 5,
+      "role": "open commitment -> task (canon en-0009/0017)",
+      "text": "Marko asked me to put together a risk register for Atlas — he needs it by Monday."
+    },
+    {
+      "id": "en-hubspot-blocked",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 8,
+      "role": "open loop WITH condition -> blocked task (canon en-0011)",
+      "text": "HubSpot contact cleanup has to happen before the Atlas import. That's blocked on Marko sending me the export format first."
+    },
+    {
+      "id": "en-dormant-vendor-register",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 21,
+      "role": "DORMANT task: an old commitment gone quiet (>14 days, no follow-up)",
+      "text": "I still owe Thomas at Baltic Retail the vendor risk register. Need to pull it together and send it over."
+    },
+    {
+      "id": "en-reports-croatian-pref",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 16,
+      "role": "preference",
+      "text": "Adriatic Foods want all project reports in Croatian, not English."
+    },
+    {
+      "id": "en-luka-mornings-pref",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 17,
+      "role": "preference (canon en-0006, with Luka)",
+      "text": "Note to self: never schedule Luka before 10am — he's said twice he doesn't take morning calls."
+    },
+    {
+      "id": "en-thomas-coffee",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 2,
+      "role": "identity / open item (canon: Thomas, Baltic Retail)",
+      "text": "Coffee with Thomas from Baltic Retail set for next week to walk through the analytics scope."
+    },
+    {
+      "id": "en-this-week-open-loops",
+      "lang": "en",
+      "channel": "note",
+      "daysAgo": 1,
+      "role": "answers 'what's open this week' richly",
+      "text": "This week: finish the Atlas risk register for Marko, chase the Meridian NDA, and get Marta my mapping-review notes."
+    },
+    {
+      "id": "hr-mapping-commitment",
+      "lang": "hr",
+      "channel": "note",
+      "daysAgo": 4,
+      "role": "Croatian commitment -> task (to Marta)",
+      "text": "Marti do kraja tjedna poslati finalnu tablicu mapiranja za Atlas migraciju."
+    },
+    {
+      "id": "hr-office-move-hedged",
+      "lang": "hr",
+      "channel": "note",
+      "daysAgo": 7,
+      "role": "Croatian UNCERTAIN: 'navodno' hedging (canon hr-0012, with Marko)",
+      "text": "Čuo sam se s Markom oko selidbe ureda. Navodno bi novi prostor mogao biti slobodan od rujna, ali još ništa nije potpisano."
+    },
+    {
+      "id": "hr-baltic-multifact",
+      "lang": "hr",
+      "channel": "note",
+      "daysAgo": 6,
+      "role": "Croatian multi-fact (Petra / Baltic Retail)",
+      "text": "Bilješka nakon poziva s Petrom: Baltic Retail analitika ide dalje, potpisani SOW je stigao. Prvi izvještaj dogovaramo za kraj mjeseca."
+    },
+    {
+      "id": "en-chat-q3-numbers",
+      "lang": "en",
+      "channel": "chat",
+      "daysAgo": 3,
+      "role": "chat 'remember this' -> commitment -> task (canon en-0028)",
+      "text": "I'll circulate the Q3 numbers to Marko once finance signs off."
+    },
+    {
+      "id": "en-chat-training-decision",
+      "lang": "en",
+      "channel": "chat",
+      "daysAgo": 3,
+      "role": "chat 'remember this' -> decision",
+      "text": "We decided the Atlas go-live training will be a half-day remote session."
+    }
+  ],
+  "document": {
+    "id": "adriatic-foods-consulting-agreement",
+    "file": "adriatic-foods-consulting-agreement.pdf",
+    "title": "Adriatic Foods consulting agreement",
+    "scope": "private",
+    "daysAgo": 22,
+    "role": "THE deletion-receipt demo object — 'delete Ana's contract; watch the receipt confirm'. Yields several derived memories (fee, term, notice, scope).",
+    "expectContains": ["Adriatic Foods", "Ana Kovač", "Atlas", "consulting"]
+  }
+}
