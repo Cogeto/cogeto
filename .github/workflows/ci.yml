@@ -1,31 +1,174 @@
+# Continuous integration for Cogeto.
+#
+# Runs on every pull request and on push to main. Five jobs are the REQUIRED
+# status checks for branch protection on main:
+#
+#     lint · boundaries · test · build · eval-gate
+#
+# A sixth job, docker-build, keeps the production Dockerfile green on every PR
+# (amd64, no push) but is not required to merge.
+#
+# "install" is per-job: each job checks out, restores the shared npm download
+# cache via setup-node (cache: npm), and runs `npm ci`. Sharing a single
+# node_modules across jobs would mean uploading/downloading it as an artifact
+# on every run — slower and more fragile than a cached `npm ci`, which is the
+# GitHub-recommended pattern.
 name: CI
 
 on:
-  push:
   pull_request:
+  push:
+    branches: [main]
+
+# One in-flight run per ref; a new push cancels the previous run on that ref.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  checks:
+  lint:
+    name: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
       - name: Install
         run: npm ci
-
       - name: Lint (ESLint + Prettier)
         run: npm run lint
 
+  boundaries:
+    name: boundaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
       - name: Module boundaries (dependency-cruiser, §A.1)
         run: npm run boundaries
 
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      # The shared package resolves via its compiled entrypoint (dist/index.js),
+      # so build it before Vitest runs the source specs that import it.
+      # Integration suites start real containers via Testcontainers; the
+      # ubuntu-latest runner ships a working Docker engine.
+      - name: Build shared (for @cogeto/shared resolution)
+        run: npm run build -w @cogeto/shared
+      - name: Test (Vitest + Testcontainers)
+        run: npm run test
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
       - name: Build (shared → server → web)
         run: npm run build
 
-      - name: Test (Vitest)
-        run: npm run test
+  # ── eval-gate (§B.4, decision 0011) ─────────────────────────────────────────
+  # Prompt, model, or pipeline changes that regress the golden set fail the
+  # build. Secret-gated behaviour (QS-15) is preserved:
+  #
+  #   • Pull requests (including from forks): the MOCKED path only — build the
+  #     eval harness + prompt wiring WITHOUT the live key. No secret is read, so
+  #     fork PRs run cleanly and the API key never touches a PR branch. This job
+  #     always concludes, which is required for it to be a required status check.
+  #   • Push to main (post-merge): the LIVE golden-set gate runs with the key.
+  #     If the secret is somehow absent it SKIPS LOUDLY (a warning annotation)
+  #     rather than failing silently.
+  #
+  # Thresholds live in project/eval/gates.json (ratchet UP only; lowering a gate
+  # needs a decision record).
+  eval-gate:
+    name: eval-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+
+      # PR mocked path: compile the eval harness + prompt wiring + shared DTOs
+      # without the live key, so a broken eval/build still fails a PR fast.
+      - name: Mocked path — build only (pull requests)
+        if: github.event_name == 'pull_request'
+        run: npm run build
+
+      - name: Check for the eval secret (push to main only)
+        id: secret
+        if: github.event_name == 'push'
+        env:
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+        run: |
+          if [ -z "$MISTRAL_API_KEY" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=eval gate SKIPPED::MISTRAL_API_KEY is not available on main. The golden-set gate did NOT run — add the repository secret."
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Golden-set gate (extraction + reconciliation, gates.json)
+        if: github.event_name == 'push' && steps.secret.outputs.present == 'true'
+        env:
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          COGETO_EVAL_GATE: '1'
+        run: npm run eval
+
+      - name: Chat eval gate (all cases must PASS)
+        if: github.event_name == 'push' && steps.secret.outputs.present == 'true'
+        env:
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          COGETO_EVAL_GATE: '1'
+        run: npm run eval:chat
+
+  # ── docker-build (not required to merge) ────────────────────────────────────
+  # Builds the production amd64 image WITHOUT pushing, so the Dockerfile stays
+  # green on every PR. Docker layers are cached via the GitHub Actions cache.
+  # Target `runtime` is the app/worker/migrate image published as cogeto/cogeto.
+  docker-build:
+    name: docker-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build amd64 image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: project/infra/docker/Dockerfile
+          target: runtime
+          platforms: linux/amd64
+          push: false
+          load: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

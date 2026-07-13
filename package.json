@@ -18,6 +18,7 @@
   },
   "scripts": {
     "build": "npm run build -w @cogeto/shared && npm run build -w @cogeto/server && npm run build -w @cogeto/web",
+    "verify:version": "node scripts/ci/verify-version.mjs",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "boundaries": "depcruise project/src project/shared project/web --config .dependency-cruiser.cjs",

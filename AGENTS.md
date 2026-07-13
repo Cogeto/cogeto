@@ -109,6 +109,10 @@ over every other document.
 ## Working rules
 
 - [ ] **Never run git commands unless the owner explicitly asks.**
+- [ ] **Commits and pull requests are always authored as the owner** — Ivan
+      Golubic `<ivan@themrcto.com>`. Never a bot identity, never a
+      `Co-authored-by` trailer. Issue/branch/PR operations go through `gh` as the
+      owner. Delivery loop: `docs/engineering-workflow.md`.
 - [ ] Application tests live under `project/src/`, next to the code they exercise (Vitest).
 - [ ] New dependencies, frameworks, and Addendum deviations need owner sign-off
       (full list: CLAUDE.md).

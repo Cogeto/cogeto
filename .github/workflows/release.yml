@@ -1,0 +1,157 @@
+# Release pipeline for Cogeto — tag-driven.
+#
+# Pushing a semver tag `vX.Y.Z` cuts a release:
+#   1. verify:version — the tag must equal package.json's version (two sources
+#      of truth, one number). A mismatch fails before anything is published.
+#   2. Build the production amd64 image once (target `runtime`).
+#   3. Push cogeto/cogeto:X.Y.Z and cogeto/cogeto:latest to Docker Hub.
+#   4. Sign the pushed image with keyless cosign (Sigstore, GitHub OIDC — no
+#      long-lived keys) and generate an SBOM, attached to the GitHub Release.
+#   5. Create the GitHub Release with notes auto-generated from the merged
+#      Conventional-Commit pull requests (grouped by .github/release.yml), plus
+#      a footer showing the exact `cosign verify` command for this image.
+#
+# The owner cuts releases by tagging; CI never creates tags. Required secrets:
+# DOCKERHUB_USERNAME, DOCKERHUB_TOKEN (see docs/notes/cicd-setup.md).
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: cogeto/cogeto
+
+permissions:
+  contents: write # create the GitHub Release
+  id-token: write # keyless cosign signing via Sigstore OIDC
+  packages: read
+
+jobs:
+  release:
+    name: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so release-note generation sees prior tags
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # ── Gate: tag must match package.json ────────────────────────────────
+      - name: Verify tag matches package.json version
+        run: npm run verify:version
+
+      - name: Derive version numbers
+        id: v
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      # ── Build & push the amd64 image once ────────────────────────────────
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push (amd64)
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: project/infra/docker/Dockerfile
+          target: runtime
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.v.outputs.version }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Keep the pushed tags plain single-arch images so cosign signs and
+          # verifies by the image digest unambiguously. Signing + SBOM are done
+          # explicitly with cosign below.
+          provenance: false
+          sbom: false
+
+      # ── Sign the pushed image (keyless, by digest) ───────────────────────
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign the image with cosign (keyless)
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          cosign sign --yes \
+            "${IMAGE}@${DIGEST}"
+
+      # ── SBOM (SPDX JSON) for the pushed image ────────────────────────────
+      - name: Generate SBOM (Syft, SPDX JSON)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.IMAGE }}:${{ steps.v.outputs.version }}
+          format: spdx-json
+          output-file: cogeto-${{ steps.v.outputs.version }}.sbom.spdx.json
+          upload-artifact: false
+
+      - name: Attach SBOM as a cosign attestation
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          SBOM: cogeto-${{ steps.v.outputs.version }}.sbom.spdx.json
+        run: |
+          cosign attest --yes \
+            --predicate "$SBOM" \
+            --type spdxjson \
+            "${IMAGE}@${DIGEST}"
+
+      # ── GitHub Release with grouped, auto-generated notes ────────────────
+      - name: Compose release notes
+        id: notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.v.outputs.tag }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          # Notes grouped by type per .github/release.yml (Features / Fixes /
+          # Docs / Chores), computed from the merged Conventional-Commit PRs.
+          BODY="$(gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+            -f tag_name="$TAG" --jq '.body')"
+          {
+            echo "Cogeto ${VERSION} — EU-hosted AI command center with verifiable memory."
+            echo
+            echo "$BODY"
+            echo
+            echo "---"
+            echo "**Verify this image** (keyless cosign signature):"
+            echo
+            echo '```sh'
+            echo "cosign verify ${IMAGE}:${VERSION} \\"
+            echo "  --certificate-identity-regexp '^https://github.com/${GITHUB_REPOSITORY}/\\.github/workflows/release\\.yml@refs/tags/' \\"
+            echo "  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'"
+            echo '```'
+          } > release-notes.md
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.v.outputs.tag }}
+          VERSION: ${{ steps.v.outputs.version }}
+          SBOM: cogeto-${{ steps.v.outputs.version }}.sbom.spdx.json
+        run: |
+          gh release create "$TAG" \
+            --title "$VERSION" \
+            --notes-file release-notes.md \
+            "$SBOM"

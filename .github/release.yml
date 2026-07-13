@@ -1,0 +1,34 @@
+# Groups auto-generated release notes by type. GitHub's note generator
+# categorises merged pull requests by their LABELS, so each PR should carry the
+# label matching its Conventional-Commit prefix (feat/fix/docs/chore/…). The
+# release workflow (release.yml) turns these categories into the grouped list;
+# the catch-all keeps anything unlabelled from being dropped.
+changelog:
+  exclude:
+    labels:
+      - duplicate
+      - invalid
+      - wontfix
+  categories:
+    - title: Features
+      labels:
+        - feat
+        - enhancement
+    - title: Fixes
+      labels:
+        - fix
+        - bug
+    - title: Documentation
+      labels:
+        - docs
+        - documentation
+    - title: Chores
+      labels:
+        - chore
+        - ci
+        - refactor
+        - test
+        - dependencies
+    - title: Other Changes
+      labels:
+        - '*'

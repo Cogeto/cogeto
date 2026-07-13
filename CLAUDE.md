@@ -15,6 +15,7 @@ backed by an inspectable artifact — with human-approved agents on top.
 | `docs/Cogeto-v1-scope.md` | For product scope, users, positioning, business model. |
 | `docs/Cogeto-v1-Specification.docx` | Full product spec (binary; owner-maintained). |
 | `docs/Cogeto-Technical-Architecture.md` | Full engineering plan: stack rationale, containers, mechanisms, phased implementation. (The .docx is the presentation copy.) |
+| `docs/engineering-workflow.md` | **Before opening any issue, branch, or PR.** The delivery loop: branch naming, Conventional Commits, squash-merge, `Closes #N`, required checks, tag-driven releases, and the `create-issues.sh` helper. |
 | `docs/glossary.md` | The ubiquitous language — names in code must match it. |
 | `docs/eval-golden-set.md` | Corpus format, metrics, CI gates for the eval harness. Read before building the extractor or harness. |
 | `docs/research/*.md` | **Required before implementing the matching area** — see the table in `docs/research/README.md`. Distilled patterns from studied production systems. |
@@ -51,6 +52,26 @@ Then, in order:
 3. **Notes vertical slice** (§A.11): ingest → extract → verify → embed → reconcile →
    retrieve → dashboard → deletion cascade, with the eval harness built alongside
    the extractor (§B.4).
+
+## Delivery loop (every unit of work)
+
+Full details in [`docs/engineering-workflow.md`](docs/engineering-workflow.md).
+All subsequent work follows this loop:
+
+1. **Open GitHub issues** for the unit of work — logically separated, each
+   labelled under a shared label (use `scripts/dev/create-issues.sh`).
+2. **Create a branch** — `feature/<slug>`, `fix/<slug>`, or `chore/<slug>`.
+3. **Implement.**
+4. **Open a pull request**, authored as the owner, with `Closes #N` in the body
+   for each issue it resolves. Title is a Conventional Commit (`feat:`, `fix:`,
+   `chore:`, `docs:`, `refactor:`, `test:`, `ci:`).
+5. **Ensure the required checks pass** — `lint`, `boundaries`, `test`, `build`,
+   `eval-gate`. **Nothing merges without green required checks.**
+6. **Squash-and-merge** — the PR title becomes the single commit on `main`.
+7. **Releases are cut by the owner** tagging `vX.Y.Z` (matching `package.json`);
+   the tag drives the image publish and GitHub Release.
+
+Issue, branch, and pull-request operations are performed via `gh` as the owner.
 
 ## Coding conventions
 
