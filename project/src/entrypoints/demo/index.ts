@@ -11,6 +11,14 @@ export { createDemoApi } from './http-client';
 export type { DemoApi } from './http-client';
 export { establishDemoSession, waitForApp } from './bootstrap';
 export type { DemoSession } from './bootstrap';
+export {
+  DEMO_USERNAME,
+  ensureDemoCredentials,
+  readDemoLogin,
+  demoLoginFile,
+  credentialsBanner,
+} from './credentials';
+export type { DemoCredentials } from './credentials';
 export { seedDemoWorld, captureCorpus, alreadySeeded } from './seed';
 export type { SeedWorldDeps } from './seed';
 export { resetDemoWorld, DemoResetInProgressError } from './reset';

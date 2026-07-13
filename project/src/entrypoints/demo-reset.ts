@@ -4,6 +4,7 @@ import { createDb } from '../infrastructure/index';
 import { MemoryObjectStore } from '../memory/index';
 import { createModelGateway } from '../model-gateway/index';
 import { establishDemoSession } from './demo/bootstrap';
+import { credentialsBanner, ensureDemoCredentials } from './demo/credentials';
 import { resetDemoWorld } from './demo/reset';
 import { summarize } from './demo/assertions';
 
@@ -57,6 +58,9 @@ async function main(): Promise<void> {
       log: (m) => console.log(m),
     });
     console.log(`demo sandbox reset: ${summarize(state)}`);
+    // A reset is a fresh world → rotate the login password (decision 0027).
+    const creds = await ensureDemoCredentials(config.demoSessionFile, { rotate: true });
+    console.log(credentialsBanner(creds));
   } finally {
     await pool.end();
   }

@@ -273,6 +273,10 @@ services:
       COGETO_POST_LOGOUT_URI: https://${COGETO_EXTERNAL_DOMAIN:-localhost}/
       ZITADEL_PAT_FILE: /machinekey/pat.txt
       COGETO_WEB_CONFIG_FILE: /web-config/config.json
+      # QS-10: grant the FirstInstance admin the operator role so the System view
+      # works out of the box (must match the app's COGETO_ADMIN_ROLE).
+      ZITADEL_ADMIN_USERNAME: ${ZITADEL_ADMIN_USERNAME:-admin@cogeto.localhost}
+      COGETO_ADMIN_ROLE: ${COGETO_ADMIN_ROLE:-admin}
     volumes:
       - ./project/infra/docker/zitadel-init:/init:ro
       - zitadel-machinekey:/machinekey:ro

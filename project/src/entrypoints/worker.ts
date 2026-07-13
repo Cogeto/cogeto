@@ -28,8 +28,10 @@ import { ANSWER_PROMPT, QUERY_REWRITE_PROMPT } from '../retrieval/index';
 import { loadPrompt, ModelGateway, recordPromptVersion } from '../model-gateway/index';
 import { buildTaskList } from './worker-tasks';
 import {
+  credentialsBanner,
   DEMO_RESET_JOB_TYPE,
   DemoResetInProgressError,
+  ensureDemoCredentials,
   establishDemoSession,
   resetDemoWorld,
 } from './demo/index';
@@ -127,6 +129,9 @@ async function main(): Promise<void> {
           excludeTask: DEMO_RESET_JOB_TYPE, // don't count our own running job
           log: (message) => logger.info({}, message),
         });
+        // A reset rotates the sandbox login password (decision 0027); surface it.
+        const creds = await ensureDemoCredentials(config.demoSessionFile, { rotate: true });
+        logger.info({}, credentialsBanner(creds));
         logger.info({}, 'scheduled demo reset completed');
       } catch (error) {
         // QS-33: another reset already holds the lock — skip cleanly, don't fail

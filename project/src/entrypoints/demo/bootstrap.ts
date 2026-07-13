@@ -4,6 +4,7 @@ import type { Principal } from '@cogeto/shared';
 import type { CogetoConfig } from '../config';
 import { createDemoApi } from './http-client';
 import type { DemoApi } from './http-client';
+import { ensureDemoCredentials } from './credentials';
 import { provisionDemoPrincipal } from './zitadel-admin';
 
 /**
@@ -18,6 +19,9 @@ export interface DemoSession {
   principal: Principal;
   ownerId: string;
   accessToken: string;
+  /** The operator's login credentials for the sandbox (decision 0027). */
+  loginUsername: string;
+  loginPassword: string;
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
@@ -72,7 +76,7 @@ export async function establishDemoSession(config: CogetoConfig): Promise<DemoSe
       // Re-assert file permissions so the app (a different uid) can read it even
       // when reusing a token an earlier run wrote (decision 0022).
       await writeSessionFile(config.demoSessionFile, persisted, principal.userId);
-      return { api, principal, ownerId: principal.userId, accessToken: persisted };
+      return withCredentials(config, api, principal, persisted);
     } catch {
       // fall through and provision a fresh token
     }
@@ -86,5 +90,29 @@ export async function establishDemoSession(config: CogetoConfig): Promise<DemoSe
   const api = createDemoApi(config.demoAppUrl, token);
   const principal = await api.me();
   await writeSessionFile(config.demoSessionFile, token, principal.userId);
-  return { api, principal, ownerId: principal.userId, accessToken: token };
+  return withCredentials(config, api, principal, token);
+}
+
+/**
+ * Attaches the operator login credentials (decision 0027) to a resolved session.
+ * `rotate: false` — an existing password is reused, so a mere restart does not
+ * change the operator's known password; the reset paths rotate it explicitly.
+ */
+async function withCredentials(
+  config: CogetoConfig,
+  api: DemoApi,
+  principal: Principal,
+  accessToken: string,
+): Promise<DemoSession> {
+  const { username, password } = await ensureDemoCredentials(config.demoSessionFile, {
+    rotate: false,
+  });
+  return {
+    api,
+    principal,
+    ownerId: principal.userId,
+    accessToken,
+    loginUsername: username,
+    loginPassword: password,
+  };
 }

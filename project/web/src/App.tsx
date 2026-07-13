@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { UNAUTHORIZED_EVENT } from './api';
-import { clearSession, getWebConfig, installDemoSession, loadSession } from './auth/oidc';
+import { clearSession, getWebConfig, loadSession } from './auth/oidc';
 import type { Session } from './auth/oidc';
 import { DemoBanner } from './components/DemoBanner';
 import { DemoIntro } from './components/DemoIntro';
 import { Callback } from './pages/Callback';
 import { Chat } from './pages/Chat';
 import { Dashboard } from './pages/Dashboard';
+import { DemoLogin } from './pages/DemoLogin';
 import { Forgotten } from './pages/Forgotten';
 import { Login } from './pages/Login';
 import { Approvals } from './pages/Approvals';
@@ -36,9 +37,9 @@ export function App() {
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
   }, [queryClient]);
 
-  // Ana sandbox (decision 0022): /api/config advertises demo mode + a pre-minted
-  // session on a demo instance. Install it on first load so the visitor is
-  // authenticated with no login screen.
+  // Ana sandbox (decision 0022/0027): /api/config advertises demo mode + a
+  // password-gated login on a demo instance. The token is NOT served here — the
+  // sandbox is no longer auto-open (decision 0027).
   const { data: webConfig, isPending: configPending } = useQuery({
     queryKey: ['web-config'],
     queryFn: getWebConfig,
@@ -47,20 +48,15 @@ export function App() {
   });
   const demoMode = webConfig?.demoMode === true;
 
-  useEffect(() => {
-    if (!session && demoMode && webConfig?.demoSession?.accessToken) {
-      setSession(installDemoSession(webConfig.demoSession.accessToken));
-    }
-  }, [session, demoMode, webConfig?.demoSession?.accessToken]);
-
   if (window.location.pathname === '/callback') {
     return <Callback onSession={setSession} />;
   }
 
-  // Wait for /api/config before deciding between Login and the demo session, so
-  // a demo visitor never flashes the login screen.
+  // Wait for /api/config before deciding, so a demo visitor never flashes the
+  // wrong screen. On a demo instance, show the password gate (decision 0027);
+  // otherwise the normal OIDC login.
   if (!session) {
-    if (configPending || (demoMode && webConfig?.demoSession)) {
+    if (configPending) {
       return (
         <main className="grid min-h-screen place-items-center bg-slate-50 text-sm text-slate-600">
           <span className="flex items-center gap-2" role="status" aria-live="polite">
@@ -75,6 +71,7 @@ export function App() {
         </main>
       );
     }
+    if (demoMode) return <DemoLogin onSession={setSession} />;
     return <Login />;
   }
 

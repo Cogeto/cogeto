@@ -23,6 +23,11 @@ const WEB_CONFIG_FILE = process.env.COGETO_WEB_CONFIG_FILE ?? '/web-config/confi
 
 const PROJECT_NAME = 'cogeto';
 const APP_NAME = 'cogeto-web';
+// The operator/admin role the jobs endpoints require (QS-10). The FirstInstance
+// human admin is granted it here so the System view works out of the box; a
+// second (non-admin) user logs in fine but without it.
+const ADMIN_ROLE = process.env.COGETO_ADMIN_ROLE || 'admin';
+const ADMIN_USERNAME = process.env.ZITADEL_ADMIN_USERNAME || 'admin@cogeto.localhost';
 
 const base = new URL(INTERNAL_URL);
 
@@ -142,6 +147,88 @@ async function main() {
     console.log(`created OIDC app ${APP_NAME} (client ${clientId})`);
   } else {
     console.log(`OIDC app ${APP_NAME} already exists (client ${clientId})`);
+  }
+
+  // 2b. Ensure the operator 'admin' role exists AND is asserted into tokens, so
+  // the seam's userinfo call carries roles and the AdminGuard on the jobs
+  // endpoints (QS-10) can see them. Without this a fresh instance has no roles
+  // and the System view returns 403 to everyone.
+  const roleRes = await request(
+    'POST',
+    `/management/v1/projects/${projectId}/roles`,
+    { roleKey: ADMIN_ROLE, displayName: 'Admin', group: '' },
+    pat,
+  );
+  console.log(
+    roleRes.status === 200
+      ? `created project role '${ADMIN_ROLE}'`
+      : `project role '${ADMIN_ROLE}' already present (${roleRes.status})`,
+  );
+  const assertRes = await request(
+    'PUT',
+    `/management/v1/projects/${projectId}`,
+    {
+      name: PROJECT_NAME,
+      projectRoleAssertion: true,
+      // Keep role/project checks OFF so a second, un-granted user can still log
+      // in (they simply lack the admin role) — only the jobs endpoints gate.
+      projectRoleCheck: false,
+      hasProjectCheck: false,
+      privateLabelingSetting: 'PRIVATE_LABELING_SETTING_UNSPECIFIED',
+    },
+    pat,
+  );
+  // A re-run finds assertion already on → Zitadel answers 400 "No changes";
+  // that is success for an idempotent bootstrap, not a failure.
+  const assertNoChange =
+    typeof assertRes.body?.message === 'string' && assertRes.body.message.includes('No changes');
+  if (assertRes.status !== 200 && !assertNoChange) {
+    throw new Error(
+      `enable role assertion failed (${assertRes.status}): ${JSON.stringify(assertRes.body)}`,
+    );
+  }
+  console.log(
+    `role assertion on project '${PROJECT_NAME}' ${assertNoChange ? '(already on)' : 'enabled'}`,
+  );
+
+  // 2c. Grant the FirstInstance admin the 'admin' role (idempotent).
+  const users = await request(
+    'POST',
+    '/management/v1/users/_search',
+    {
+      queries: [
+        { emailQuery: { emailAddress: ADMIN_USERNAME, method: 'TEXT_QUERY_METHOD_EQUALS' } },
+      ],
+    },
+    pat,
+  );
+  const adminUserId = users.body.result?.[0]?.id;
+  if (!adminUserId) {
+    console.warn(`admin user '${ADMIN_USERNAME}' not found — skipping role grant`);
+  } else {
+    const grants = await request(
+      'POST',
+      '/management/v1/users/grants/_search',
+      { queries: [{ userIdQuery: { userId: adminUserId } }] },
+      pat,
+    );
+    const hasGrant = (grants.body.result ?? []).some(
+      (g) => g.projectId === projectId && (g.roleKeys ?? []).includes(ADMIN_ROLE),
+    );
+    if (hasGrant) {
+      console.log(`admin '${ADMIN_USERNAME}' already has role '${ADMIN_ROLE}'`);
+    } else {
+      const grant = await request(
+        'POST',
+        `/management/v1/users/${adminUserId}/grants`,
+        { projectId, roleKeys: [ADMIN_ROLE] },
+        pat,
+      );
+      if (grant.status !== 200) {
+        throw new Error(`grant admin role failed (${grant.status}): ${JSON.stringify(grant.body)}`);
+      }
+      console.log(`granted '${ADMIN_ROLE}' to ${ADMIN_USERNAME}`);
+    }
   }
 
   // 3. Publish what the SPA needs.

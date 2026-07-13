@@ -110,8 +110,26 @@ export async function completeLogin(callbackUrl: string): Promise<Session> {
 const DEMO_FLAG_KEY = 'cogeto.demo';
 
 /**
- * Ana sandbox (decision 0022): install the pre-minted demo session served on
- * /api/config, so a visitor is authenticated on first load with no login. The
+ * Password-gated sandbox login (decision 0027): exchange the operator's demo
+ * username + generated password at POST /api/config/demo-login for the session
+ * token, then install it. Throws on bad credentials. The token is never served
+ * on GET /api/config — the sandbox is no longer auto-open.
+ */
+export async function demoLogin(username: string, password: string): Promise<Session> {
+  const res = await fetch('/api/config/demo-login', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) throw new Error('Invalid demo username or password.');
+  const { accessToken } = (await res.json()) as { accessToken?: string };
+  if (!accessToken) throw new Error('Demo login did not return a session.');
+  return installDemoSession(accessToken);
+}
+
+/**
+ * Ana sandbox (decision 0022/0027): install the demo session token obtained from
+ * the password gate, so the tab is authenticated as the demo Principal. The
  * token is a real Zitadel PAT; only the local expiry is synthetic (far out).
  */
 export function installDemoSession(accessToken: string): Session {
