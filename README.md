@@ -255,3 +255,4 @@ Retrieval/answer/extraction prompts are versioned artifacts under
 - **Contributions** require a **CLA** — see [`CLA.md`](CLA.md).
 - **Commercial licenses** (AGPL exemption) are available — see [`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md).
 - The **"Cogeto" name and logo** are trademarks — see [`TRADEMARK.md`](TRADEMARK.md).
+
