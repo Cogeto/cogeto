@@ -27,8 +27,8 @@ export default tseslint.config(
     },
   },
   {
-    // Plain-JS infra / demo scripts run under Node; give them the runtime globals.
-    files: ['project/infra/**/*.mjs', 'project/demo/**/*.mjs'],
+    // Plain-JS infra / demo / dev scripts run under Node; give them the runtime globals.
+    files: ['project/infra/**/*.mjs', 'project/demo/**/*.mjs', 'scripts/**/*.mjs'],
     languageOptions: {
       globals: {
         console: 'readonly',
