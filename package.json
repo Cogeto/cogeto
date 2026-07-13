@@ -12,6 +12,10 @@
     "project/src",
     "project/web"
   ],
+  "overridesRationale": "multer <=2.1.1 has two DoS advisories (GHSA-72gw-mp4g-v24j, GHSA-3p4h-7m6x-2hcm) reachable via the upload path (QS-12). It is a transitive dep of @nestjs/platform-express; the patched 2.2.0 line keeps the same API. Pinned here to avoid the breaking drizzle-orm/testcontainers bumps a bare `npm audit fix` would also pull in.",
+  "overrides": {
+    "multer": "^2.2.0"
+  },
   "scripts": {
     "build": "npm run build -w @cogeto/shared && npm run build -w @cogeto/server && npm run build -w @cogeto/web",
     "lint": "eslint . && prettier --check .",

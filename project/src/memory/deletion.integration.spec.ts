@@ -5,7 +5,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runOnce } from 'graphile-worker';
 import type { TaskList } from 'graphile-worker';
 import type { Principal } from '@cogeto/shared';
-import { ensureInstanceKeys, idempotentTask, loadInstancePublicKey } from '../infrastructure/index';
+import {
+  ensureInstanceKeys,
+  idempotentTask,
+  loadInstancePublicKey,
+  DailyCounters,
+} from '../infrastructure/index';
 import {
   fakeEmbedding,
   startTestDatabase,
@@ -76,7 +81,10 @@ describe('deletion saga (integration: real Postgres + Qdrant + MinIO)', () => {
     await objects.setBucketEncryption();
 
     store = new MemoryStore(tdb.db, vectors);
-    notes = new NotesService(tdb.db);
+    notes = new NotesService(tdb.db, new DailyCounters(), {
+      captureMax: 1_000_000,
+      uploadMax: 1_000_000,
+    });
     saga = new DeletionSaga(tdb.db, [new NotesSourceDeletion()]);
     executor = new DeletionExecutor(vectors, objects, keyDir);
   });

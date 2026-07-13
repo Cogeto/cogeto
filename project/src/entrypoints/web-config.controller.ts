@@ -28,15 +28,14 @@ export class WebConfigController {
         'identity bootstrap has not completed yet (web config unavailable)',
       );
     }
-    // Ana sandbox (decision 0022): a demo instance advertises demoMode and its
-    // pre-minted session. The signal is the demo session file the demo-seed job
-    // writes — so `docker compose --profile demo up` flips the SPA into sandbox
-    // mode with no extra env (an explicit COGETO_DEMO_MODE=1 forces it too). A
-    // production instance never serves it, and a customer instance never has the
-    // file (it mounts an empty demo-config volume).
-    if (this.config.production) return base;
+    // Ana sandbox (decision 0022) — FAIL-CLOSED (QS-3). Serving the pre-minted
+    // demo session (a working bearer token, published to anyone) requires an
+    // EXPLICIT COGETO_DEMO_MODE=1. File presence alone NEVER flips it: a stray
+    // session.json in a reused demo-config volume can no longer hand a token to
+    // an anonymous caller. Production is refused first; a customer instance
+    // (demo unset, production unset) serves nothing but the base OIDC config.
+    if (this.config.production || !this.config.demoMode) return base;
     const demoSession = await this.readDemoSession();
-    if (!this.config.demoMode && !demoSession) return base;
     return { ...base, demoMode: true, ...(demoSession ? { demoSession } : {}) };
   }
 

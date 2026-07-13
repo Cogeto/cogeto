@@ -333,7 +333,9 @@ export async function askChat(
     },
     body: JSON.stringify({ content }),
   });
-  if (!response.ok || !response.body) throw new Error(`/api/chat -> HTTP ${response.status}`);
+  // A 429 (rate limit / too many concurrent streams, FIX-2) arrives BEFORE the
+  // stream starts — surface the server's message as the UI copy.
+  if (!response.ok || !response.body) throw await toError('/api/chat', response);
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();

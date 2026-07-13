@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { DailyCounters } from '../../infrastructure/index';
 import type { Principal } from '@cogeto/shared';
 import { startTestDatabase } from '../../testing/index';
 import type { TestDatabase } from '../../testing/index';
@@ -25,7 +26,10 @@ describe('QS-7 chat-answer cascade (integration: real Postgres, real saga)', () 
   beforeAll(async () => {
     tdb = await startTestDatabase();
     store = new MemoryStore(tdb.db); // rows only — this cascade never touches Qdrant
-    notes = new NotesService(tdb.db);
+    notes = new NotesService(tdb.db, new DailyCounters(), {
+      captureMax: 1_000_000,
+      uploadMax: 1_000_000,
+    });
     saga = new DeletionSaga(tdb.db, [new NotesSourceDeletion()], undefined, [
       new ChatAnswerCascade(),
     ]);

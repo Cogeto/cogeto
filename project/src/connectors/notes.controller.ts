@@ -13,6 +13,7 @@ import {
 import { z } from 'zod';
 import type { NoteCaptured, NoteDto, NoteStatusDto } from '@cogeto/shared';
 import { MEMORY_SCOPES } from '@cogeto/shared';
+import { RateLimit, RateLimitGuard } from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { NotesService } from './notes.service';
@@ -37,6 +38,8 @@ export class NotesController {
 
   /** Capture a note and (transactionally) enqueue its pipeline job. */
   @Post()
+  @UseGuards(RateLimitGuard)
+  @RateLimit('capture')
   async capture(
     @Req() request: AuthenticatedRequest,
     @Body() body: unknown,

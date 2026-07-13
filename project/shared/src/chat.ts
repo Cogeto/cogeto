@@ -62,7 +62,14 @@ export type ChatStreamEvent =
       /** Non-conforming citation tokens stripped from this answer (metadata only). */
       citationViolations: number;
     }
-  | { type: 'error'; message: string };
+  | {
+      type: 'error';
+      message: string;
+      /** Machine-readable cause when the client should surface a specific
+       * message: `model_budget_exceeded` (daily cap), `timeout` (idle/max
+       * duration abort — FIX-2 QS-2/QS-14). Absent for a generic failure. */
+      code?: 'model_budget_exceeded' | 'timeout';
+    };
 
 /** POST /api/chat/messages/:id/remember (decision 0021): the enqueued capture. */
 export interface ChatRememberedDto {

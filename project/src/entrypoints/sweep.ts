@@ -22,7 +22,11 @@ async function main(): Promise<void> {
   try {
     const sweep = createIntegritySweep({
       db: createDb(pool),
-      qdrant: { url: config.qdrantUrl, embeddingModel: config.mistralEmbedModel },
+      qdrant: {
+        url: config.qdrantUrl,
+        apiKey: config.qdrantApiKey,
+        embeddingModel: config.mistralEmbedModel,
+      },
       s3: {
         url: config.s3Url,
         accessKey: config.s3AccessKey,

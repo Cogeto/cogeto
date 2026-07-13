@@ -17,6 +17,7 @@ export interface ResetDeps {
   objects: MemoryObjectStore;
   gateway: ModelGateway;
   qdrantUrl: string;
+  qdrantApiKey?: string;
   embeddingModel?: string;
   corpus?: Corpus;
   strict?: boolean;
@@ -55,6 +56,7 @@ export async function resetDemoWorld(deps: ResetDeps): Promise<DemoEndState> {
     db: deps.db,
     gateway: deps.gateway,
     qdrantUrl: deps.qdrantUrl,
+    qdrantApiKey: deps.qdrantApiKey,
     embeddingModel: deps.embeddingModel,
   });
   log(`  · cleared vector index (${report.orphansRemoved} orphan point(s) removed)`);

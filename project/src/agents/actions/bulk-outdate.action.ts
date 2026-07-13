@@ -55,6 +55,10 @@ export function buildBulkOutdateAction(memory: MemoryStore): ActionDefinition<Bu
       return {
         summary: `Marked ${changed.length} outdated${skipped.length ? `, skipped ${skipped.length}` : ''}`,
         detail: { changed, skipped },
+        // QS-27: sync the changed points' Qdrant payload AFTER commit, outside
+        // the row-lock window (idempotent; the payload sweep is the backstop).
+        afterCommit:
+          changed.length > 0 ? () => memory.syncStatusPayloads(changed, 'outdated') : undefined,
       };
     },
   };

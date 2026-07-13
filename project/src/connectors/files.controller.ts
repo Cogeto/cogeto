@@ -17,6 +17,7 @@ import type {
   FileUploadedDto,
 } from '@cogeto/shared';
 import { MEMORY_SCOPES } from '@cogeto/shared';
+import { RateLimit, RateLimitGuard } from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { DocumentUploadInterceptor } from './document-upload.interceptor';
@@ -59,6 +60,8 @@ export class FilesController {
   ) {}
 
   @Post()
+  @UseGuards(RateLimitGuard)
+  @RateLimit('upload')
   @UseInterceptors(DocumentUploadInterceptor)
   async upload(@Req() request: AuthenticatedRequest): Promise<FileUploadedDto> {
     const file = request.file;

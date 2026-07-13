@@ -31,7 +31,11 @@ async function main(): Promise<void> {
     });
     const store = createMemoryStore({
       db,
-      qdrant: { url: config.qdrantUrl, embeddingModel: config.mistralEmbedModel },
+      qdrant: {
+        url: config.qdrantUrl,
+        apiKey: config.qdrantApiKey,
+        embeddingModel: config.mistralEmbedModel,
+      },
     });
     const engine = new TasksEngine(db, store, gateway);
     const report = await engine.runReminders((message) => console.log(`  ${message}`));

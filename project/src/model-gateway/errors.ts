@@ -16,3 +16,15 @@ export class ModelGatewayNotConfiguredError extends ModelGatewayError {
     this.name = 'ModelGatewayNotConfiguredError';
   }
 }
+
+/**
+ * The caller has spent their daily per-user model budget (FIX-2 QS-2). Not
+ * retryable (the cap resets at UTC midnight); surfaced to the user as a
+ * "limit reached" 429 (HTTP) or a distinct SSE error event (chat stream).
+ */
+export class ModelBudgetExceededError extends ModelGatewayError {
+  constructor() {
+    super('daily usage limit reached — please try again tomorrow', false);
+    this.name = 'ModelBudgetExceededError';
+  }
+}

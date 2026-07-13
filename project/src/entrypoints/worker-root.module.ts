@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { DatabaseModule } from '../infrastructure/index';
+import { DatabaseModule, LimitsModule } from '../infrastructure/index';
 import { IdentityModule } from '../identity/index';
 import { MemoryModule } from '../memory/index';
 import { IngestionModule, PipelineIngestionGuard } from '../ingestion/index';
@@ -31,6 +31,10 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
   @Module({
     imports: [
       DatabaseModule.register({ databaseUrl: config.databaseUrl }),
+      // Limits (FIX-2): the worker needs the parse caps (QS-6) for the pipeline
+      // + file source reader. Its model calls are unattributed, so the model
+      // budget is off here (ModelGatewayModule without `budget`).
+      LimitsModule.register(config.limits),
       // The worker serves no HTTP, but domain modules carry controllers whose
       // guards Nest resolves at init — the identity seam must be present here too.
       IdentityModule.register({
@@ -47,6 +51,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       }),
       MemoryModule.register({
         qdrantUrl: config.qdrantUrl,
+        qdrantApiKey: config.qdrantApiKey,
         embeddingModel: config.mistralEmbedModel,
         s3: {
           url: config.s3Url,

@@ -28,7 +28,11 @@ async function main(): Promise<void> {
   const pool = new Pool({ connectionString: config.databaseUrl });
   const store = createMemoryStore({
     db: createDb(pool),
-    qdrant: { url: config.qdrantUrl, embeddingModel: config.mistralEmbedModel },
+    qdrant: {
+      url: config.qdrantUrl,
+      apiKey: config.qdrantApiKey,
+      embeddingModel: config.mistralEmbedModel,
+    },
   });
 
   // Smoke tool only: default to the most recent memory's owner.

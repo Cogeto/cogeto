@@ -298,6 +298,14 @@ export class MemoryStore {
     memoryId: string,
     to: MemoryStatus,
     _reason?: string,
+    /**
+     * When false, the Qdrant payload sync is DEFERRED to the caller (QS-27):
+     * the caller collects the id and batches setPayload after the transaction
+     * commits, via {@link syncStatusPayloads}, so a bulk transition never holds
+     * row locks across per-row Qdrant HTTP calls. Defaults to true — the single
+     * transition still keeps the two stores honest in one act.
+     */
+    opts: { syncPayload?: boolean } = {},
   ): Promise<MemoryRow> {
     const row = await this.lockRow(tx, memoryId, actor);
     const check = checkTransition(row.status, to, actor);
@@ -322,8 +330,25 @@ export class MemoryStore {
     // rolls the row back and the caller retries — the two stores converge.
     // requireVectors, exactly like the toggles (QS-26): a store wired without
     // Qdrant must throw here, never silently leave the point saying 'active'.
-    await this.requireVectors().setPayload(memoryId, { status: to });
+    if (opts.syncPayload !== false) {
+      await this.requireVectors().setPayload(memoryId, { status: to });
+    }
     return updated as MemoryRow;
+  }
+
+  /**
+   * Batch the Qdrant `status` payload sync for already-committed transitions
+   * (QS-27) — the deferred half of a `transitionInTx({ syncPayload: false })`
+   * bulk change. Runs AFTER the caller's transaction commits, so no row lock is
+   * held while these HTTP calls fan out. Idempotent (setPayload no-ops on a
+   * not-yet-embedded point); the nightly payload-consistency sweep (decision
+   * 0025) reconciles anything a transient Qdrant failure here leaves stale.
+   */
+  async syncStatusPayloads(memoryIds: string[], status: MemoryStatus): Promise<void> {
+    const vectors = this.requireVectors();
+    for (const id of memoryIds) {
+      await vectors.setPayload(id, { status });
+    }
   }
 
   /**
@@ -340,6 +365,12 @@ export class MemoryStore {
    *   (one audit row each), as the user actor (an allowed setter of outdated).
    *
    * Reversible: the owner can re-affirm any of these (outdated → active).
+   *
+   * Qdrant is NOT touched here (QS-27): the transitions run PG-only and the
+   * caller batches the payload sync for `changed` AFTER the transaction commits
+   * (via {@link syncStatusPayloads}), so this loop never holds up to 500 row
+   * locks across 500 sequential Qdrant HTTP calls. The nightly payload sweep
+   * (decision 0025) is the backstop if that deferred sync misses one.
    */
   async bulkMarkOutdatedForOwner(
     tx: Tx,
@@ -370,7 +401,9 @@ export class MemoryStore {
         skipped.push({ id, reason: 'already_outdated' });
         continue;
       }
-      await this.transitionInTx(tx, actor, id, 'outdated', reason ?? 'approved bulk action');
+      await this.transitionInTx(tx, actor, id, 'outdated', reason ?? 'approved bulk action', {
+        syncPayload: false,
+      });
       changed.push(id);
     }
     return { changed, skipped };

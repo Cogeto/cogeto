@@ -9,7 +9,11 @@ export type {
   CompletionResult,
   StructuredExtractionRequest,
 } from './model-gateway.service';
-export { ModelGatewayError, ModelGatewayNotConfiguredError } from './errors';
+export {
+  ModelGatewayError,
+  ModelGatewayNotConfiguredError,
+  ModelBudgetExceededError,
+} from './errors';
 export { loadPrompt, recordPromptVersion } from './prompt-loader';
 export type { PromptArtifact } from './prompt-loader';
 // Gateway construction goes through this factory everywhere so the redaction
@@ -20,5 +24,7 @@ export type { CreateModelGatewayOptions, RedactionConfig } from './factory';
 // thing that reaches the sidecar over HTTP) is deliberately NOT exported, so no
 // module outside the gateway can call the sidecar (architectural constraint).
 export { RedactingModelGateway } from './redacting.gateway';
+// The budget decorator (FIX-2 QS-2) — exported for tests; wired via the factory.
+export { BudgetedModelGateway } from './budgeted.gateway';
 export type { RedactionPort, RedactionResult } from './redaction-client';
 export { reidentifyText, reidentifyDeep } from './redaction-utils';

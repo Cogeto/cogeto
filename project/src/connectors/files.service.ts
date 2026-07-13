@@ -1,15 +1,24 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
 import type { FileProcessingState, FileSourceDto, MemoryScope, Principal } from '@cogeto/shared';
 import { ALLOWED_UPLOAD_CONTENT_TYPES } from '@cogeto/shared';
 import {
+  DailyCounters,
   deadLetter,
   DRIZZLE,
+  INGEST_QUOTA,
   jobExecution,
   withTransactionalEnqueue,
 } from '../infrastructure/index';
-import type { Db } from '../infrastructure/index';
+import type { Db, IngestQuota } from '../infrastructure/index';
 import { FILE_DISCARD_CLEANUP_JOB_TYPE, INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
 import { MemoryFileStore, MemoryObjectStore, MemoryStore } from '../memory/index';
 import { sniffContentType } from './document-extract';
@@ -79,6 +88,8 @@ export class FilesService {
     private readonly files: MemoryFileStore,
     private readonly memory: MemoryStore,
     @Inject(FILE_UPLOAD_OPTIONS) private readonly options: FileUploadOptions,
+    private readonly counters: DailyCounters,
+    @Inject(INGEST_QUOTA) private readonly quota: IngestQuota,
   ) {}
 
   /**
@@ -119,7 +130,21 @@ export class FilesService {
         `file exceeds the ${this.options.uploadMaxBytes}-byte upload limit`,
       );
     }
+    // Per-user daily upload cap (FIX-2 QS-6): bounds the parse + pipeline work a
+    // single user (or the shared demo principal) can drive in a day.
+    if (this.counters.get(principal.userId, 'upload') >= this.quota.uploadMax) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.TOO_MANY_REQUESTS,
+          error: 'Too Many Requests',
+          code: 'daily_upload_limit',
+          message: `daily upload limit reached (${this.quota.uploadMax}) — try again tomorrow`,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
     const contentType = this.resolveContentType(file);
+    this.counters.add(principal.userId, 'upload', 1);
 
     // Object key contract (§A.6, handoff §1): {orgId}/{userId}/{scope}/file-{uuid},
     // first segment the Zitadel org id — minted before anything is written, the

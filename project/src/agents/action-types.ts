@@ -21,6 +21,13 @@ export interface ActionResult {
   /** Human one-liner recorded on the approval + audit (e.g. "Marked 9, skipped 3"). */
   summary: string;
   detail: Record<string, unknown>;
+  /**
+   * Optional side effect to run AFTER the executor's transaction commits (QS-27)
+   * — for idempotent, externally-reconciled work that must not hold row locks
+   * (e.g. batched Qdrant payload sync). Bubbled through the idempotent-task
+   * wrapper and run best-effort; the nightly consistency sweep is the backstop.
+   */
+  afterCommit?: () => Promise<void>;
 }
 
 /**

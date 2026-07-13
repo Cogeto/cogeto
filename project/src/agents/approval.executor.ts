@@ -18,7 +18,10 @@ import { ActionRegistry } from './action-registry';
 export class ApprovalExecutor {
   constructor(private readonly registry: ActionRegistry) {}
 
-  async execute(tx: Tx, approvalId: string): Promise<{ alreadyExecuted: boolean }> {
+  async execute(
+    tx: Tx,
+    approvalId: string,
+  ): Promise<{ alreadyExecuted: boolean; afterCommit?: () => Promise<void> }> {
     const rows = await tx.select().from(approval).where(eq(approval.id, approvalId)).for('update');
     const row = rows[0] as ApprovalRow | undefined;
     if (!row) throw new Error(`approval ${approvalId} not found`);
@@ -49,6 +52,8 @@ export class ApprovalExecutor {
       orgId: row.orgId ?? undefined,
       ownerId: ctx.userId,
     });
-    return { alreadyExecuted: false };
+    // The effect's after-commit continuation (QS-27) bubbles to the idempotent
+    // task wrapper, which runs it once this transaction commits.
+    return { alreadyExecuted: false, afterCommit: result.afterCommit };
   }
 }

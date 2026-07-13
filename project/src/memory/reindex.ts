@@ -21,6 +21,8 @@ export interface ReindexOptions {
   db: Db;
   gateway: ModelGateway;
   qdrantUrl: string;
+  /** Qdrant API key (QS-4); forwarded to the client. */
+  qdrantApiKey?: string;
   /** Defaults to the gateway's configured embedding model. */
   embeddingModel?: string;
   /** Test override for the collection's vector size. */
@@ -50,6 +52,7 @@ export async function reindexMemories(options: ReindexOptions): Promise<ReindexR
   const batchSize = options.batchSize ?? 64;
   const vectors = new MemoryVectorStore({
     url: options.qdrantUrl,
+    apiKey: options.qdrantApiKey,
     embeddingModel: model,
     dimensions: options.dimensions,
     collection: options.collection,

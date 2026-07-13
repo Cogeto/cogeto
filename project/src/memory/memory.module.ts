@@ -22,6 +22,8 @@ import { MemoryFileStore } from './file-store';
 
 export interface MemoryModuleOptions {
   qdrantUrl: string;
+  /** Qdrant API key (QS-4); forwarded to the client. */
+  qdrantApiKey?: string;
   /** Determines the collection's vector size; recorded per memory. */
   embeddingModel: string;
   /** Test override for the vector size. */
@@ -85,6 +87,7 @@ export class MemoryModule {
           useFactory: () =>
             new MemoryVectorStore({
               url: options.qdrantUrl,
+              apiKey: options.qdrantApiKey,
               embeddingModel: options.embeddingModel,
               dimensions: options.dimensions,
             }),

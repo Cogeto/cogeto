@@ -73,9 +73,17 @@ export const candidateFactSchema = z.object({
   source_span: z.string().min(1),
 });
 
+/**
+ * A single chunk (~1.5k tokens) cannot legitimately contain hundreds of durable
+ * facts; a response claiming that many is pathological output, so the array is
+ * capped (FIX-2 QS-6 — `.max()`). This is the per-chunk guard; the pipeline
+ * additionally caps the TOTAL facts per source to a configurable limit.
+ */
+export const MAX_FACTS_PER_CHUNK = 200;
+
 /** Calibrated abstention (§3): a source with nothing durable yields facts: []. */
 export const extractionOutputSchema = z.object({
-  facts: z.array(candidateFactSchema),
+  facts: z.array(candidateFactSchema).max(MAX_FACTS_PER_CHUNK),
 });
 
 export type CandidateFact = z.infer<typeof candidateFactSchema>;

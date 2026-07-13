@@ -80,6 +80,9 @@ export function buildGateFilter(
 export interface MemoryVectorStoreOptions {
   url: string;
   embeddingModel: string;
+  /** Qdrant API key (QS-4). Sent as the `api-key` header on every request; the
+   * default compose stack keeps Qdrant internal with no key. */
+  apiKey?: string;
   /** Test override; production derives from the embed model. */
   dimensions?: number;
   collection?: string;
@@ -92,7 +95,7 @@ export class MemoryVectorStore {
   readonly embeddingModel: string;
 
   constructor(options: MemoryVectorStoreOptions) {
-    this.client = new QdrantClient({ url: options.url });
+    this.client = new QdrantClient({ url: options.url, apiKey: options.apiKey });
     this.collection = options.collection ?? MEMORY_COLLECTION;
     this.embeddingModel = options.embeddingModel;
     this.dimensions = options.dimensions ?? dimensionsFor(options.embeddingModel);

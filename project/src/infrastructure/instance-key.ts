@@ -69,6 +69,28 @@ export async function loadInstancePublicKey(dir: string): Promise<string> {
   return readKey(path.join(dir, PUBLIC_KEY_FILE));
 }
 
+/**
+ * QS-9 boot assertion for the internet-facing app: the receipt-signing PRIVATE
+ * key must not be reachable at the key dir (the app mounts a public-key-only
+ * volume). Throws if the private key file is present — a misconfigured mount
+ * that would let an app-side RCE forge "provably deleted" receipts. Also
+ * verifies the public key IS present (the app needs it to verify receipts).
+ */
+export async function assertAppKeyMount(dir: string): Promise<void> {
+  if (await exists(path.join(dir, PRIVATE_KEY_FILE))) {
+    throw new Error(
+      `the private signing key is readable at ${dir} — the app must mount only the ` +
+        `public half (QS-9). Check the instance-pubkey volume mount.`,
+    );
+  }
+  if (!(await exists(path.join(dir, PUBLIC_KEY_FILE)))) {
+    throw new Error(
+      `the instance public key is missing at ${dir} — the migrate job publishes it ` +
+        `(COGETO_INSTANCE_PUBKEY_DIR, QS-9)`,
+    );
+  }
+}
+
 /** Pure verification against a PEM public key — receipt-chain verification. */
 export function verifyWithPublicKey(
   publicKeyPem: string,

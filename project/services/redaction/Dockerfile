@@ -1,7 +1,13 @@
 # Cogeto redaction sidecar — Python/Presidio, CPU-only (Addendum B.8; decision
 # 0002 language boundary: Python ONLY where a local model runs, isolated behind
 # the gateway seam). No dependency on the TypeScript workspace.
-FROM python:3.12-slim
+#
+# Base image PINNED BY DIGEST and the spaCy NER model pinned to an exact version
+# (QS-25) so the build is reproducible — a plain model fetch otherwise pulls the
+# latest compatible model, a silent supply-chain drift. Update procedure:
+# docs/operations/image-pins.md.
+# python:3.12-slim
+FROM python@sha256:423ed6ab25b1921a477529254bfeeabf5855151dc2c3141699a1bfc852199fbf
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -9,12 +15,12 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Deps first (cache-friendly), then the NER model. en_core_web_lg gives the best
-# CPU NER accuracy; swap to en_core_web_md via SPACY_MODEL to trade accuracy for
-# ~half the RSS if the ~1 GB target is tight.
+# Deps first (cache-friendly), then the NER model at a PINNED version (matches
+# spacy 3.7.x). en_core_web_lg gives the best CPU NER accuracy; to trade accuracy
+# for ~half the RSS, pin en_core_web_md-3.7.1 instead and set SPACY_MODEL.
 COPY requirements.txt ./
 RUN pip install -r requirements.txt \
-    && python -m spacy download en_core_web_lg
+    && pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.7.1/en_core_web_lg-3.7.1-py3-none-any.whl
 
 COPY app ./app
 

@@ -109,6 +109,7 @@ async function main(): Promise<void> {
         objects,
         gateway,
         qdrantUrl: config.qdrantUrl,
+        qdrantApiKey: config.qdrantApiKey,
         embeddingModel: config.mistralEmbedModel,
         strict: false, // a failed scheduled reset logs; the next one repairs it
         excludeTask: DEMO_RESET_JOB_TYPE, // don't count our own running job

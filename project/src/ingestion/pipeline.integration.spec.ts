@@ -133,7 +133,16 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
   });
 
   const reader = new FakeReader();
-  const buildPipeline = (gateway: ScriptedGateway, memoryStore: MemoryStore = store) =>
+  const buildPipeline = (
+    gateway: ScriptedGateway,
+    memoryStore: MemoryStore = store,
+    parseCaps?: {
+      maxTextChars: number;
+      maxChunks: number;
+      timeoutSeconds: number;
+      maxFacts: number;
+    },
+  ) =>
     new IngestionPipeline(
       [reader],
       new ExtractStage(gateway),
@@ -144,6 +153,7 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
         memoryStore,
         new MemoryReconciliation(tdb.db, memoryStore),
       ),
+      parseCaps,
     );
 
   const count = async (sql: string, params: unknown[] = []): Promise<number> => {
@@ -318,6 +328,32 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
     expect(
       await count(`SELECT count(*)::text AS n FROM job_execution WHERE source_id = $1`, [sourceId]),
     ).toBe(1);
+  });
+
+  it('parse_caps: chunk count and fact count are bounded (QS-6)', async () => {
+    // A long source (many chunks) whose extractor returns several facts/chunk.
+    const facts3 = () => ({
+      facts: [
+        fact('Ana will send the plan.'),
+        fact('Ana will call Luka.'),
+        fact('Ana will file it.'),
+      ],
+    });
+    const gateway = new ScriptedGateway(facts3);
+    const pipeline = buildPipeline(gateway, store, {
+      maxTextChars: 1_000_000,
+      maxChunks: 1, // force the chunk cap
+      maxFacts: 1, // force the fact cap
+      timeoutSeconds: 30,
+    });
+    const sourceId = reader.add('sentence. '.repeat(2000)); // ~20k chars → many chunks
+
+    const summary = await tdb.db.transaction((tx) =>
+      pipeline.run(tx, { source_type: 'user_note', source_id: sourceId }),
+    );
+    expect(summary.chunks).toBe(1); // capped from several
+    expect(summary.extracted).toBe(1); // facts capped
+    expect((await memoriesFor(sourceId)).rows).toHaveLength(1);
   });
 
   it('abstention: an empty-content source stores zero memories and completes cleanly', async () => {

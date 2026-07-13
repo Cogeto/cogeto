@@ -1,10 +1,12 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import {
   acquireJobRunLock,
+  DEFAULT_PARSE_CAPS,
+  PARSE_CAPS,
   withTransactionalEnqueue,
   writeAudit,
 } from '../../infrastructure/index';
-import type { Tx } from '../../infrastructure/index';
+import type { ParseCaps, Tx } from '../../infrastructure/index';
 import type { MemoryReconciliation, MemoryStore } from '../../memory/index';
 import type { ModelGateway } from '../../model-gateway/index';
 import { chunkContent } from './chunk';
@@ -69,6 +71,8 @@ export class IngestionPipeline {
     private readonly verifyStage: VerifyStage,
     private readonly embedStoreStage: EmbedStoreStage,
     private readonly reconciliationService: ReconciliationService,
+    /** Parse/extraction caps (QS-6); optional so bare/test builds still work. */
+    @Optional() @Inject(PARSE_CAPS) private readonly parseCaps: ParseCaps = DEFAULT_PARSE_CAPS,
   ) {}
 
   async run(
@@ -120,13 +124,44 @@ export class IngestionPipeline {
       return summary;
     }
 
-    // Stage 2 — chunk: transient values, never rows.
-    const chunks = chunkContent(source.content);
+    // Stage 2 — chunk: transient values, never rows. Parse caps (QS-6) bound
+    // the work a single source can drive: text length (defense in depth over
+    // the file extractor's own cap, covering every source type) and chunk count
+    // (which bounds the per-chunk extraction model calls). Over-cap input is
+    // truncated with a log rather than failed — a legitimate long source still
+    // yields its leading facts.
+    const content =
+      source.content.length > this.parseCaps.maxTextChars
+        ? source.content.slice(0, this.parseCaps.maxTextChars)
+        : source.content;
+    if (content.length < source.content.length) {
+      log(
+        { stage: 'chunk', ...ref, cappedTextChars: this.parseCaps.maxTextChars },
+        'source text capped (QS-6)',
+      );
+    }
+    let chunks = chunkContent(content);
+    if (chunks.length > this.parseCaps.maxChunks) {
+      log(
+        { stage: 'chunk', ...ref, cappedChunks: this.parseCaps.maxChunks },
+        'chunk count capped (QS-6)',
+      );
+      chunks = chunks.slice(0, this.parseCaps.maxChunks);
+    }
     summary.chunks = chunks.length;
 
     // Stage 3 — extract: empty content short-circuits with zero model calls;
     // a durable-fact-free source legitimately yields [] (calibrated abstention).
-    const facts = await this.extractStage.run(source, chunks);
+    // The facts array is capped (QS-6) so a pathological source cannot fan out
+    // into thousands of verify/reconcile/embed calls and memory rows.
+    let facts = await this.extractStage.run(source, chunks);
+    if (facts.length > this.parseCaps.maxFacts) {
+      log(
+        { stage: 'extract', ...ref, cappedFacts: this.parseCaps.maxFacts },
+        'fact count capped (QS-6)',
+      );
+      facts = facts.slice(0, this.parseCaps.maxFacts);
+    }
     summary.extracted = facts.length;
 
     // Stage 4 — verify: the independent §B.3 pass decides each fact's verdict.
@@ -223,6 +258,8 @@ export interface CreatePipelineOptions {
   gateway: ModelGateway;
   store: MemoryStore;
   reconciliation: MemoryReconciliation;
+  /** Parse/extraction caps (QS-6); the generous defaults apply when omitted. */
+  parseCaps?: ParseCaps;
 }
 
 /**
@@ -238,5 +275,6 @@ export function createIngestionPipeline(options: CreatePipelineOptions): Ingesti
     new VerifyStage(options.gateway),
     new EmbedStoreStage(options.gateway, options.store),
     new ReconciliationService(options.gateway, options.store, options.reconciliation),
+    options.parseCaps ?? DEFAULT_PARSE_CAPS,
   );
 }

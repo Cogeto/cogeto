@@ -180,11 +180,17 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       db,
       APPROVAL_EXECUTE_JOB_TYPE,
       async (tx, payload) => {
-        const result = await deps.approvalExecutor.execute(tx, payload.source_id);
+        const { afterCommit, ...result } = await deps.approvalExecutor.execute(
+          tx,
+          payload.source_id,
+        );
         deps.log(
           { source_type: payload.source_type, source_id: payload.source_id, ...result },
           'approval execution completed',
         );
+        // QS-27: the bulk-outdate effect's Qdrant payload sync runs here, AFTER
+        // the transaction commits and its row locks release.
+        return afterCommit;
       },
     ),
 

@@ -436,3 +436,27 @@ text, which softens the embedding cost.
 | previously_decided | — | — | — | PASS | PASS | — | PASS | PASS |
 | whats_still_open | — | — | — | PASS | PASS | — | PASS | PASS |
 | who_is_ana | PASS | 86% | PASS | PASS | PASS | — | — | PASS |
+
+## 2026-07-13 — extraction/v0002 + verification/v0004 (thresholds v1, 46 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 29 | 85.1% (40/47) | 95.1% (39/41) | 96.4% (27/28) |
+| hr | 17 | 67.6% (23/34) | 81.5% (22/27) | 93.8% (15/16) |
+| aggregate | 46 | 77.8% (63/81) | 89.7% (61/68) | 95.5% (42/44) |
+
+## 2026-07-13 — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 18 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 5 | 100.0% (8/8) | 5 | 66.7% (2/3) | 100.0% (2/2) | 0/1 | 0 |
+| hr | 4 | 83.3% (5/6) | 4 | 100.0% (2/2) | 100.0% (2/2) | — | 0 |
+| aggregate | 9 | 92.9% (13/14) | 9 | 80.0% (4/5) | 100.0% (4/4) | 0/1 | 0 |
+
+## 2026-07-13 — task_closure/v0001 + task_condition/v0001 (12 pairs)
+
+| set | closure pairs | closure accuracy | condition pairs | condition accuracy |
+|---|---|---|---|---|
+| en | 4 | 100.0% (6/6) | 2 | 100.0% (2/2) |
+| hr | 4 | 100.0% (6/6) | 2 | 100.0% (2/2) |
+| aggregate | 8 | 100.0% (12/12) | 4 | 100.0% (4/4) |

@@ -51,6 +51,7 @@ async function main(): Promise<void> {
       objects,
       gateway,
       qdrantUrl: config.qdrantUrl,
+      qdrantApiKey: config.qdrantApiKey,
       embeddingModel: config.mistralEmbedModel,
       strict: true,
       log: (m) => console.log(m),

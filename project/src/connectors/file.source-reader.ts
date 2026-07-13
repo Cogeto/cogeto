@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import type { MemoryScope } from '@cogeto/shared';
-import type { Tx } from '../infrastructure/index';
+import { DEFAULT_PARSE_CAPS, PARSE_CAPS } from '../infrastructure/index';
+import type { ParseCaps, Tx } from '../infrastructure/index';
 import { MemoryFileStore, MemoryObjectStore } from '../memory/index';
 import type { SourceItem, SourceReader } from '../ingestion/index';
 import { extractDocumentText } from './document-extract';
@@ -34,6 +35,8 @@ export class FileSourceReader implements SourceReader {
   constructor(
     private readonly files: MemoryFileStore,
     private readonly objects: MemoryObjectStore,
+    /** Parse caps (QS-6); optional so a bare/test construction still works. */
+    @Optional() @Inject(PARSE_CAPS) private readonly parseCaps: ParseCaps = DEFAULT_PARSE_CAPS,
   ) {}
 
   async load(sourceId: string): Promise<SourceItem | null> {
@@ -60,7 +63,7 @@ export class FileSourceReader implements SourceReader {
     const stat = await this.objects.statObject(sourceId);
     if (!stat) return null;
     const object = await this.objects.getObject(sourceId);
-    const content = await extractDocumentText(object.body, object.contentType);
+    const content = await extractDocumentText(object.body, object.contentType, this.parseCaps);
     return {
       sourceType: this.sourceType,
       sourceId,
@@ -82,7 +85,7 @@ export class FileSourceReader implements SourceReader {
 
     const object = await this.objects.getObject(stagingKey);
     const md = object.metadata;
-    const content = await extractDocumentText(object.body, object.contentType);
+    const content = await extractDocumentText(object.body, object.contentType, this.parseCaps);
     return {
       sourceType: this.sourceType,
       sourceId,

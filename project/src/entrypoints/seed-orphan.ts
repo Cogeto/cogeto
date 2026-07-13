@@ -19,7 +19,11 @@ async function main(): Promise<void> {
   try {
     const planted = await seedOrphanPoint({
       db: createDb(pool),
-      qdrant: { url: config.qdrantUrl, embeddingModel: config.mistralEmbedModel },
+      qdrant: {
+        url: config.qdrantUrl,
+        apiKey: config.qdrantApiKey,
+        embeddingModel: config.mistralEmbedModel,
+      },
     });
     if (!planted) {
       console.error('no confirmed receipt with enumerated points found — delete a source first');

@@ -1,0 +1,28 @@
+# Cogeto infrastructure consoles (QS-4; profile `consoles`). Served by the
+# `caddy-consoles` service, which compose binds to 127.0.0.1 ONLY — these vhosts
+# are never reachable from another host. They carry admin credentials / an
+# unauthenticated Qdrant dashboard, so they must stay localhost-only.
+#
+# Reach them at https://<host>:8443 with the *.localhost DNS entries (decision
+# 0017) and Caddy's internal CA. Presigned O1 downloads also resolve here (the
+# s3.localhost origin), so downloads require the `consoles` profile up.
+
+{
+	local_certs
+}
+
+# MinIO S3 API — also the browser-reachable origin for O1 presigned downloads.
+# Caddy preserves the incoming Host header, which MinIO's SigV4 presign check needs.
+s3.localhost {
+	reverse_proxy minio:9000
+}
+
+# MinIO Console — buckets, objects, SSE status.
+minio.localhost {
+	reverse_proxy minio:9001
+}
+
+# Qdrant — REST API + its built-in dashboard at /dashboard.
+qdrant.localhost {
+	reverse_proxy qdrant:6333
+}

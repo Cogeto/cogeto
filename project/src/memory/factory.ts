@@ -15,6 +15,8 @@ import type { SourceDeletion } from './deletion-saga';
 export interface QdrantOptions {
   url: string;
   embeddingModel: string;
+  /** Qdrant API key (QS-4); forwarded to the client. */
+  apiKey?: string;
   /** Test overrides. */
   dimensions?: number;
   collection?: string;

@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { buildLimits } from './limits';
+import type { LimitsConfig } from '../infrastructure/index';
+import { assertProductionSecrets } from './secret-preflight';
 
 /**
  * Typed process configuration (research: project-structure-lessons §4).
@@ -19,6 +22,9 @@ const configSchema = z
     httpPort: z.coerce.number().int().positive().default(3000),
     databaseUrl: z.string().min(1),
     qdrantUrl: z.string().url(),
+    /** Qdrant API key (QS-4) — required for auth on a reachable deployment; the
+     * default compose stack keeps Qdrant on the internal network with no key. */
+    qdrantApiKey: z.string().min(1).optional(),
     s3Url: z.string().url(),
     /**
      * Browser-reachable object-storage origin for presigned download URLs (O1,
@@ -93,7 +99,10 @@ const configSchema = z
     path: ['redactionUrl'],
   });
 
-export type CogetoConfig = z.infer<typeof configSchema>;
+export type CogetoConfig = z.infer<typeof configSchema> & {
+  /** Abuse/DoS limits (FIX-2), resolved from env + demoMode at load. */
+  limits: LimitsConfig;
+};
 
 /**
  * The demo-profile boot guard (decision 0022 ruling 4). Every demo entrypoint
@@ -122,6 +131,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
     httpPort: env.COGETO_HTTP_PORT,
     databaseUrl: env.COGETO_DATABASE_URL,
     qdrantUrl: env.COGETO_QDRANT_URL,
+    qdrantApiKey: env.COGETO_QDRANT_API_KEY || undefined,
     s3Url: env.COGETO_S3_URL,
     s3PublicUrl: env.COGETO_S3_PUBLIC_URL || undefined,
     s3AccessKey: env.COGETO_S3_ACCESS_KEY || undefined,
@@ -161,7 +171,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
       .join('\n');
     throw new Error(`invalid COGETO_* configuration:\n${details}`);
   }
-  return parsed.data;
+  // QS-8: refuse known dev secret values on a non-localhost deployment. Checks
+  // whatever secret env vars are present (the app sees a subset; the dedicated
+  // preflight container sees them all) — absent vars are skipped.
+  assertProductionSecrets(env);
+  return { ...parsed.data, limits: buildLimits(env, parsed.data.demoMode) };
 }
 
 export const COGETO_CONFIG = Symbol('COGETO_CONFIG');

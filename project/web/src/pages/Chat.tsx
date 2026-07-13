@@ -134,6 +134,8 @@ export function Chat({ session }: { session: Session }) {
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  /** Specific failure copy (FIX-2): rate limit / daily budget / timeout. */
+  const [failMessage, setFailMessage] = useState<string | null>(null);
   const [liveQuestion, setLiveQuestion] = useState<string | null>(null);
   const [liveText, setLiveText] = useState('');
   const [liveFacts, setLiveFacts] = useState<ChatFactDto[]>([]);
@@ -153,6 +155,7 @@ export function Chat({ session }: { session: Session }) {
     if (!content || busy) return;
     setBusy(true);
     setFailed(false);
+    setFailMessage(null);
     setDraft('');
     setLiveQuestion(content);
     setLiveText('');
@@ -161,10 +164,19 @@ export function Chat({ session }: { session: Session }) {
       await askChat(session, content, (event) => {
         if (event.type === 'sources') setLiveFacts(event.facts);
         else if (event.type === 'token') setLiveText((text) => text + event.text);
-        else if (event.type === 'error') setFailed(true);
+        else if (event.type === 'error') {
+          setFailed(true);
+          // Specific copy for the daily budget / stream-timeout aborts (FIX-2).
+          if (event.code === 'model_budget_exceeded' || event.code === 'timeout') {
+            setFailMessage(event.message);
+          }
+        }
       });
-    } catch {
+    } catch (error) {
+      // A pre-stream 429 (rate limit / too many streams) throws with the
+      // server's message; show it verbatim.
       setFailed(true);
+      setFailMessage(error instanceof Error ? error.message : null);
     }
     await queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
     setLiveQuestion(null);
@@ -240,7 +252,7 @@ export function Chat({ session }: { session: Session }) {
           )}
           {failed && (
             <p role="alert" className="text-sm text-red-700">
-              That answer didn’t come through. Try asking again.
+              {failMessage ?? 'That answer didn’t come through. Try asking again.'}
             </p>
           )}
         </div>

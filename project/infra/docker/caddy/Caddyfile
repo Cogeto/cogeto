@@ -30,24 +30,10 @@ localhost {
 	}
 }
 
-# ── Infrastructure consoles (dev overview; decision 0017) ─────────────────────
-# Fronted by Caddy so everything stays behind one edge with its internal CA and
-# no raw host ports. Caddy v2 preserves the incoming Host header on reverse_proxy
-# by default — required for MinIO's SigV4 presign host check on s3.localhost.
-# Requires local DNS for *.localhost (see decision 0017): NEVER expose on a
-# reachable host — these carry admin credentials.
-
-# MinIO S3 API — also the browser-reachable origin for O1 presigned downloads.
-s3.localhost {
-	reverse_proxy minio:9000
-}
-
-# MinIO Console — buckets, objects, SSE status.
-minio.localhost {
-	reverse_proxy minio:9001
-}
-
-# Qdrant — REST API + its built-in dashboard at /dashboard.
-qdrant.localhost {
-	reverse_proxy qdrant:6333
-}
+# ── Infrastructure consoles moved out (QS-4) ──────────────────────────────────
+# The s3.localhost / minio.localhost / qdrant.localhost vhosts USED to live here,
+# on the public 80/443 listener — any reachable host could hit them by spoofing
+# the Host header (unauthenticated Qdrant, MinIO console). They now live in
+# Caddyfile.consoles, served by the `caddy-consoles` service under the
+# `consoles` compose profile, bound to 127.0.0.1 only. The default deployment
+# exposes EXACTLY this app vhost.

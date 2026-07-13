@@ -3,6 +3,8 @@ import type { DynamicModule } from '@nestjs/common';
 import { ModelGateway } from './model-gateway.service';
 import { createModelGateway } from './factory';
 import type { RedactionConfig } from './factory';
+import { MODEL_USAGE_METER } from '../infrastructure/index';
+import type { ModelUsageMeter } from '../infrastructure/index';
 
 export interface ModelGatewayModuleOptions {
   /** When absent the process boots normally; model calls fail with a typed error. */
@@ -14,6 +16,12 @@ export interface ModelGatewayModuleOptions {
   embedModel?: string;
   /** Redaction mode (Addendum B.8) — wraps the gateway when enabled. */
   redaction?: RedactionConfig;
+  /**
+   * Per-user daily model budget (FIX-2 QS-2). When true, the gateway is wrapped
+   * with the {@link MODEL_USAGE_METER} provided by the global LimitsModule; the
+   * worker opens no usage scope, so its pipeline traffic stays unmetered.
+   */
+  budget?: boolean;
 }
 
 /**
@@ -32,7 +40,14 @@ export class ModelGatewayModule {
       providers: [
         {
           provide: ModelGateway,
-          useFactory: () => createModelGateway(options),
+          useFactory: (usageMeter?: ModelUsageMeter) =>
+            createModelGateway({
+              ...options,
+              usageMeter: options.budget ? usageMeter : undefined,
+            }),
+          // The meter comes from the global LimitsModule; optional so a root
+          // that registers no LimitsModule (or budget: false) still boots.
+          inject: [{ token: MODEL_USAGE_METER, optional: true }],
         },
       ],
       exports: [ModelGateway],

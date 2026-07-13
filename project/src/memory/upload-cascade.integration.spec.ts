@@ -7,7 +7,12 @@ import type { TaskList } from 'graphile-worker';
 import type { ZodType } from 'zod';
 import type { Principal } from '@cogeto/shared';
 import { PDF_CONTENT_TYPE } from '@cogeto/shared';
-import { ensureInstanceKeys, idempotentTask, loadInstancePublicKey } from '../infrastructure/index';
+import {
+  ensureInstanceKeys,
+  idempotentTask,
+  loadInstancePublicKey,
+  DailyCounters,
+} from '../infrastructure/index';
 import {
   fakeEmbedding,
   makePdf,
@@ -136,10 +141,15 @@ describe('deletion cascade over a real uploaded file (F1 handoff §4)', () => {
 
     store = new MemoryStore(tdb.db, vectors);
     fileStore = new MemoryFileStore(tdb.db);
-    filesService = new FilesService(tdb.db, objects, fileStore, store, {
-      uploadMaxBytes: 25 * 1024 * 1024,
-      downloadUrlTtlSeconds: 300,
-    });
+    filesService = new FilesService(
+      tdb.db,
+      objects,
+      fileStore,
+      store,
+      { uploadMaxBytes: 25 * 1024 * 1024, downloadUrlTtlSeconds: 300 },
+      new DailyCounters(),
+      { captureMax: 1_000_000, uploadMax: 1_000_000 },
+    );
     saga = new DeletionSaga(tdb.db, [], vectors);
     executor = new DeletionExecutor(vectors, objects, keyDir);
   }, 120_000);

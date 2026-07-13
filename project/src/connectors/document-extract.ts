@@ -35,20 +35,71 @@ export function sniffContentType(buffer: Buffer): string | null {
 }
 
 /**
+ * Parse caps (FIX-2 QS-6): a wall-clock timeout around the parse and a cap on
+ * the resulting (decompressed) text length. The 25 MB upload cap bounds only
+ * COMPRESSED input, so a zip-bomb DOCX/PDF can still decompress to GBs of text;
+ * these bound the parse time and reject over-long output as a PERMANENT error
+ * (error state, zero downstream model calls) rather than OOM-ing the worker.
+ */
+export interface ExtractCaps {
+  maxTextChars: number;
+  timeoutSeconds: number;
+}
+
+const DEFAULT_EXTRACT_CAPS: ExtractCaps = { maxTextChars: 1_000_000, timeoutSeconds: 30 };
+
+/**
  * Extracts text, routing on the resolved content type (declared type, else
- * sniffed). Unknown/unsupported types and parse failures throw
- * PermanentExtractionError.
+ * sniffed). Unknown/unsupported types, parse failures, a parse that exceeds the
+ * wall-clock timeout, and text over the length cap all throw
+ * PermanentExtractionError (no fabricated memory, §B.3).
  */
 export async function extractDocumentText(
   buffer: Buffer,
   declaredContentType: string | null,
+  caps: ExtractCaps = DEFAULT_EXTRACT_CAPS,
 ): Promise<string> {
   const contentType = normalizeType(declaredContentType) ?? sniffContentType(buffer);
-  if (contentType === PDF_CONTENT_TYPE) return extractPdf(buffer);
-  if (contentType === DOCX_CONTENT_TYPE) return extractDocx(buffer);
-  throw new PermanentExtractionError(
-    `unsupported document type '${declaredContentType ?? 'unknown'}'`,
-  );
+  const parse =
+    contentType === PDF_CONTENT_TYPE
+      ? () => extractPdf(buffer)
+      : contentType === DOCX_CONTENT_TYPE
+        ? () => extractDocx(buffer)
+        : null;
+  if (!parse) {
+    throw new PermanentExtractionError(
+      `unsupported document type '${declaredContentType ?? 'unknown'}'`,
+    );
+  }
+  const text = await withParseTimeout(parse, caps.timeoutSeconds);
+  if (text.length > caps.maxTextChars) {
+    throw new PermanentExtractionError(
+      `extracted text (${text.length} chars) exceeds the ${caps.maxTextChars}-char cap ` +
+        `(possible decompression bomb) — QS-6`,
+    );
+  }
+  return text;
+}
+
+/** Rejects with a PermanentExtractionError if the parse outruns the timeout. */
+async function withParseTimeout(
+  parse: () => Promise<string>,
+  timeoutSeconds: number,
+): Promise<string> {
+  if (timeoutSeconds <= 0) return parse();
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () =>
+        reject(new PermanentExtractionError(`document parse exceeded ${timeoutSeconds}s — QS-6`)),
+      timeoutSeconds * 1000,
+    );
+  });
+  try {
+    return await Promise.race([parse(), timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 async function extractPdf(buffer: Buffer): Promise<string> {

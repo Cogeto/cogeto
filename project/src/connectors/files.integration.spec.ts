@@ -4,7 +4,7 @@ import type { TaskList } from 'graphile-worker';
 import type { ZodType } from 'zod';
 import type { Principal } from '@cogeto/shared';
 import { PDF_CONTENT_TYPE, DOCX_CONTENT_TYPE } from '@cogeto/shared';
-import { idempotentTask } from '../infrastructure/index';
+import { idempotentTask, DailyCounters } from '../infrastructure/index';
 import {
   fakeEmbedding,
   makeDocx,
@@ -148,9 +148,20 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
     }));
     await store.ensureIndexReady();
     fileStore = new MemoryFileStore(tdb.db);
-    filesService = new FilesService(tdb.db, objects, fileStore, store, uploadOpts);
+    filesService = new FilesService(
+      tdb.db,
+      objects,
+      fileStore,
+      store,
+      uploadOpts,
+      new DailyCounters(),
+      { captureMax: 1_000_000, uploadMax: 1_000_000 },
+    );
     userSettings = new UserSettingsService(tdb.db);
-    notes = new NotesService(tdb.db);
+    notes = new NotesService(tdb.db, new DailyCounters(), {
+      captureMax: 1_000_000,
+      uploadMax: 1_000_000,
+    });
   }, 120_000);
 
   afterAll(async () => {
@@ -250,7 +261,15 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
       },
       get: async () => null,
     } as unknown as MemoryFileStore;
-    const brokenService = new FilesService(tdb.db, objects, brokenFiles, store, uploadOpts);
+    const brokenService = new FilesService(
+      tdb.db,
+      objects,
+      brokenFiles,
+      store,
+      uploadOpts,
+      new DailyCounters(),
+      { captureMax: 1_000_000, uploadMax: 1_000_000 },
+    );
 
     const jobsBefore = await pipelineJobCount();
     await expect(

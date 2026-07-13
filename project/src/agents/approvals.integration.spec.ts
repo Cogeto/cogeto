@@ -68,10 +68,19 @@ describe('approval state machine (integration: real Postgres + Qdrant)', () => {
       tdb.db,
       APPROVAL_EXECUTE_JOB_TYPE,
       async (tx, payload) => {
-        await executor.execute(tx, payload.source_id);
+        // Return the after-commit thunk (QS-27) so the deferred Qdrant payload
+        // sync runs once the transaction commits, exactly as the worker does.
+        return (await executor.execute(tx, payload.source_id)).afterCommit;
       },
     ),
   });
+  /** The Qdrant point's stored status payload, via plain REST (memory owns the client). */
+  const pointStatus = async (id: string): Promise<string | undefined> => {
+    const response = await fetch(`${qdrant.url}/collections/approvals-spec/points/${id}`);
+    if (!response.ok) return undefined;
+    const body = (await response.json()) as { result?: { payload?: { status?: string } } };
+    return body.result?.payload?.status;
+  };
   const runWorker = () => runOnce({ pgPool: tdb.pool, taskList: taskList() });
   const enqueueExecute = (approvalId: string) =>
     tdb.pool.query(`SELECT graphile_worker.add_job($1, payload := $2::json)`, [
@@ -141,6 +150,29 @@ describe('approval state machine (integration: real Postgres + Qdrant)', () => {
     // Reversible: the owner can re-affirm a wrongly-outdated memory.
     await store.transition({ kind: 'user', userId: userA.userId }, m1, 'active');
     expect(await statusOf(m1)).toBe('active');
+  });
+
+  it('bulk_outdate_syncs_qdrant_after_commit (QS-27): the bulk effect defers the per-row Qdrant payload sync to after the transaction, and the points end outdated', async () => {
+    const m1 = await makeMemory(userA, 'active');
+    const m2 = await makeMemory(userA, 'active');
+    // Give the memories real Qdrant points so the payload sync is observable
+    // (createFromFact does not embed — embedding is a separate step).
+    const rows = await store.getManyForPrincipal(userA, [m1, m2], { includeSensitive: true });
+    await store.upsertVectors(
+      rows,
+      rows.map(() => Array.from({ length: 8 }, () => 0)),
+    );
+    expect(await pointStatus(m1)).toBe('active'); // upserted with the row's current status
+
+    const approval = await service.create(userA, BULK_OUTDATE_ACTION, { memoryIds: [m1, m2] });
+    await service.confirm(userA, approval.id, 'approve');
+    await runWorker();
+
+    // PG committed the transition; the deferred after-commit step then synced
+    // the Qdrant payloads (QS-27) — no row lock was held across those calls.
+    expect(await statusOf(m1)).toBe('outdated');
+    expect(await pointStatus(m1)).toBe('outdated');
+    expect(await pointStatus(m2)).toBe('outdated');
   });
 
   it('approval_worker_only: confirm(approve) transitions state but runs NO effect; only the worker executes', async () => {

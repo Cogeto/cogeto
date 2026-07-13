@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
-import { DatabaseModule } from '../infrastructure/index';
+import { APP_FILTER } from '@nestjs/core';
+import { DatabaseModule, LimitsModule } from '../infrastructure/index';
 import { IdentityModule } from '../identity/index';
+import { ModelBudgetExceptionFilter } from './model-budget.filter';
 import { IngestionModule, PipelineIngestionGuard } from '../ingestion/index';
 import { MemoryModule } from '../memory/index';
 import {
@@ -31,6 +33,9 @@ export function createAppRootModule(config: CogetoConfig): unknown {
   @Module({
     imports: [
       DatabaseModule.register({ databaseUrl: config.databaseUrl }),
+      // Abuse/DoS limits (FIX-2) — global, so the rate-limit guard, ingest
+      // quota, SSE caps and model budget are injectable across controllers.
+      LimitsModule.register(config.limits),
       IdentityModule.register({
         internalBaseUrl: config.oidc.internalUrl,
         externalDomain: config.oidc.externalDomain,
@@ -42,9 +47,13 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         answerModel: config.mistralAnswerModel,
         embedModel: config.mistralEmbedModel,
         redaction: redactionOptions(config),
+        // Enforce the per-user daily model budget on the app's user-attributed
+        // calls (QS-2); the worker registers this without budget.
+        budget: true,
       }),
       MemoryModule.register({
         qdrantUrl: config.qdrantUrl,
+        qdrantApiKey: config.qdrantApiKey,
         embeddingModel: config.mistralEmbedModel,
         s3: {
           url: config.s3Url,
@@ -89,7 +98,12 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       JobsController,
       WebConfigController,
     ],
-    providers: [{ provide: COGETO_CONFIG, useValue: config }],
+    providers: [
+      { provide: COGETO_CONFIG, useValue: config },
+      // Map a spent daily model budget to HTTP 429 for non-stream endpoints
+      // (QS-2); the chat SSE path surfaces it as a distinct error event instead.
+      { provide: APP_FILTER, useClass: ModelBudgetExceptionFilter },
+    ],
   })
   class AppRootModule {}
 

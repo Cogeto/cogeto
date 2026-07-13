@@ -1,8 +1,14 @@
 # One multi-stage image, two entrypoints (decision 0002).
 # Build context: the repo root. Targets: runtime (app/worker/migrate), caddy (edge + SPA).
+#
+# Base images are PINNED BY DIGEST (QS-25) so builds are reproducible and cannot
+# silently drift under a floating tag. The human-readable tag is kept in a
+# comment; to update, run `docker buildx imagetools inspect <image>:<tag>` and
+# replace the digest (see docs/operations/image-pins.md).
 
 # ── Stage 1a: install all workspace dependencies ─────────────────────────────
-FROM node:22-alpine AS deps
+# node:22-alpine
+FROM node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS deps
 WORKDIR /repo
 COPY package.json package-lock.json ./
 COPY project/shared/package.json project/shared/package.json
@@ -21,7 +27,8 @@ COPY project/demo project/demo
 RUN npm run build
 
 # ── Stage 2: slim runtime — app, worker, and migrate run from this image ─────
-FROM node:22-alpine AS runtime
+# node:22-alpine
+FROM node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS runtime
 ENV NODE_ENV=production
 WORKDIR /repo
 COPY package.json package-lock.json ./
@@ -49,6 +56,14 @@ USER node
 CMD ["node", "project/src/dist/entrypoints/app.js"]
 
 # ── Edge: Caddy with the built SPA baked in ──────────────────────────────────
-FROM caddy:2-alpine AS caddy
+# caddy:2-alpine
+FROM caddy@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648 AS caddy
 COPY project/infra/docker/caddy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /repo/project/web/dist /srv
+
+# ── Consoles edge (profile `consoles`, QS-4): the infra dashboards (MinIO,
+# Qdrant) + the S3 presign origin, served ONLY here so they never answer on the
+# public 443 listener by Host header. Compose binds this to 127.0.0.1 only.
+# caddy:2-alpine
+FROM caddy@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648 AS caddy-consoles
+COPY project/infra/docker/caddy/Caddyfile.consoles /etc/caddy/Caddyfile

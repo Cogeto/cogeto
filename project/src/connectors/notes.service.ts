@@ -1,13 +1,15 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
 import type { MemoryScope, NoteProcessingState, Principal } from '@cogeto/shared';
 import {
+  DailyCounters,
   deadLetter,
   DRIZZLE,
+  INGEST_QUOTA,
   jobExecution,
   withTransactionalEnqueue,
 } from '../infrastructure/index';
-import type { Db } from '../infrastructure/index';
+import type { Db, IngestQuota } from '../infrastructure/index';
 import { INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
 import { note } from './persistence/tables';
 import type { NoteRow } from './persistence/tables';
@@ -19,32 +21,52 @@ import type { NoteRow } from './persistence/tables';
  */
 @Injectable()
 export class NotesService {
-  constructor(@Inject(DRIZZLE) private readonly db: Db) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: Db,
+    private readonly counters: DailyCounters,
+    @Inject(INGEST_QUOTA) private readonly quota: IngestQuota,
+  ) {}
 
   async createNote(
     principal: Principal,
     content: string,
     scope: MemoryScope = 'private',
   ): Promise<NoteRow> {
-    return this.db.transaction(async (tx) => {
+    // Per-user daily capture cap (FIX-2 QS-6): bounds the pipeline model work a
+    // single user (or the shared demo principal) can drive in a day. Reserved
+    // BEFORE the write so a burst cannot slip past the check.
+    if (this.counters.get(principal.userId, 'capture') >= this.quota.captureMax) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.TOO_MANY_REQUESTS,
+          error: 'Too Many Requests',
+          code: 'daily_capture_limit',
+          message: `daily capture limit reached (${this.quota.captureMax}) — try again tomorrow`,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+    const created = await this.db.transaction(async (tx) => {
       const [row] = await tx
         .insert(note)
         .values({ ownerId: principal.userId, content, scope })
         .returning();
-      const created = row as NoteRow;
+      const inserted = row as NoteRow;
       await withTransactionalEnqueue(
         tx,
         {
           type: 'note.captured',
-          payload: { source_type: 'user_note', source_id: created.id, owner_id: created.ownerId },
+          payload: { source_type: 'user_note', source_id: inserted.id, owner_id: inserted.ownerId },
         },
         {
           type: INGESTION_PIPELINE_JOB_TYPE,
-          payload: { source_type: 'user_note', source_id: created.id },
+          payload: { source_type: 'user_note', source_id: inserted.id },
         },
       );
-      return created;
+      return inserted;
     });
+    this.counters.add(principal.userId, 'capture', 1);
+    return created;
   }
 
   /** Owner-only read — the source drawer behind every memory's source link. */

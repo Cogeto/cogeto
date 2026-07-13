@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { DailyCounters } from '../infrastructure/index';
 import type { Principal } from '@cogeto/shared';
 import { startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
@@ -20,7 +21,10 @@ describe('notes capture (integration, real Postgres)', () => {
 
   beforeAll(async () => {
     tdb = await startTestDatabase();
-    service = new NotesService(tdb.db);
+    service = new NotesService(tdb.db, new DailyCounters(), {
+      captureMax: 1_000_000,
+      uploadMax: 1_000_000,
+    });
   });
   afterAll(async () => {
     await tdb.stop();
@@ -72,5 +76,20 @@ describe('notes capture (integration, real Postgres)', () => {
 
     // Nothing has processed the job yet: the poll endpoint reports processing.
     expect(await service.getProcessingState(created.id)).toBe('processing');
+  });
+
+  it('daily_capture_cap: captures beyond the per-user daily cap are refused with 429 (QS-6)', async () => {
+    const capped = new NotesService(tdb.db, new DailyCounters(), {
+      captureMax: 2,
+      uploadMax: 1_000_000,
+    });
+    const user: Principal = { ...principal, userId: 'capped-user' };
+    await capped.createNote(user, 'first');
+    await capped.createNote(user, 'second');
+    await expect(capped.createNote(user, 'third')).rejects.toMatchObject({ status: 429 });
+    // A different user has their own daily allowance.
+    await expect(
+      capped.createNote({ ...user, userId: 'other-user' }, 'first for other'),
+    ).resolves.toBeTruthy();
   });
 });

@@ -58,6 +58,17 @@ const idempotentPayloadSchema = z
 export type IdempotentJobPayload = z.infer<typeof idempotentPayloadSchema>;
 
 /**
+ * An after-commit continuation a handler may return: work that must run AFTER
+ * the idempotency transaction commits, never inside it (QS-27). It executes
+ * best-effort — a failure is logged, not retried, and never dead-letters the
+ * job (the committed effect already happened). Use only for idempotent,
+ * externally-reconciled side effects (e.g. Qdrant payload sync, whose nightly
+ * consistency sweep is the backstop — decision 0025). Returning nothing keeps
+ * the classic contract unchanged.
+ */
+export type AfterCommit = () => Promise<void>;
+
+/**
  * Wraps a job handler with the §A.3 contract:
  *
  * - **Idempotency**: the handler's effect and an INSERT into job_execution under
@@ -67,15 +78,19 @@ export type IdempotentJobPayload = z.infer<typeof idempotentPayloadSchema>;
  *   exponential backoff; the rolled-back transaction leaves no partial effect.
  * - **Dead-letter**: when the final attempt fails, the job is recorded in
  *   dead_letter (dashboard-visible) instead of retrying forever.
+ * - **After-commit** (QS-27): a handler may return an {@link AfterCommit} thunk,
+ *   run once the transaction has committed and its row locks released — for work
+ *   that must not be held inside the lock window (per-row Qdrant HTTP calls).
  */
 export function idempotentTask(
   db: Db,
   jobType: string,
-  handler: (tx: Tx, payload: IdempotentJobPayload) => Promise<void>,
+  handler: (tx: Tx, payload: IdempotentJobPayload) => Promise<void | AfterCommit>,
 ): Task {
   return async (rawPayload, helpers) => {
     const payload = idempotentPayloadSchema.parse(rawPayload);
     try {
+      let afterCommit: AfterCommit | undefined;
       await db.transaction(async (tx) => {
         // Run lock BEFORE the claim insert — the invariant other transactions
         // rely on (QS-5): any in-flight run of this key holds the advisory
@@ -101,8 +116,22 @@ export function idempotentTask(
           );
           return;
         }
-        await handler(tx, payload);
+        afterCommit = (await handler(tx, payload)) ?? undefined;
       });
+      // Runs only after a successful commit (a duplicate-skip leaves it unset).
+      // Best-effort by contract: log and move on — the effect is already durable
+      // and the after-commit work is externally reconciled (QS-27).
+      if (afterCommit) {
+        try {
+          await afterCommit();
+        } catch (error) {
+          helpers.logger.error(
+            `after-commit step for ${jobType} failed (effect committed; will reconcile): ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }
+      }
     } catch (error) {
       const { attempts, max_attempts: maxAttempts } = helpers.job;
       if (attempts >= maxAttempts) {

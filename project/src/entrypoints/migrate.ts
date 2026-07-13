@@ -1,5 +1,7 @@
+import { copyFile, mkdir } from 'node:fs/promises';
+import * as path from 'node:path';
 import { Pool } from 'pg';
-import { applyMigrations, ensureInstanceKeys } from '../infrastructure/index';
+import { applyMigrations, ensureInstanceKeys, PUBLIC_KEY_FILE } from '../infrastructure/index';
 
 /**
  * migrate — one-shot init container (§A.2: migrations never run on app boot).
@@ -22,6 +24,18 @@ async function main(): Promise<void> {
     const instanceKeyDir = process.env.COGETO_INSTANCE_KEY_DIR ?? '.instance-keys';
     await ensureInstanceKeys(instanceKeyDir);
     console.log(`instance signing keypair ready in ${instanceKeyDir}`);
+
+    // QS-9: publish ONLY the public half into the app-facing volume, so the
+    // internet-facing app never mounts the receipt-signing private key.
+    const pubkeyDir = process.env.COGETO_INSTANCE_PUBKEY_DIR;
+    if (pubkeyDir && pubkeyDir !== instanceKeyDir) {
+      await mkdir(pubkeyDir, { recursive: true });
+      await copyFile(
+        path.join(instanceKeyDir, PUBLIC_KEY_FILE),
+        path.join(pubkeyDir, PUBLIC_KEY_FILE),
+      );
+      console.log(`instance public key published to ${pubkeyDir} (app mounts this — QS-9)`);
+    }
   } finally {
     await pool.end();
   }
