@@ -1,0 +1,148 @@
+# Cogeto project board automation.
+#
+# Keeps the Cogeto Project (v2) board in sync with issue/PR activity:
+#   • issue or PR opened      → add to board, Status = Todo (PRs: In Progress)
+#   • linked PR opened        → linked issues → Status = In Progress
+#   • PR marked ready-for-review → PR + linked issues → Status = In Review
+#   • issue/PR closed or merged → Status = Done
+#
+# GitHub Projects (v2) has no built-in workflow for "linked PR opened → In
+# Progress" or "ready-for-review → In Review", so this does it explicitly.
+#
+# AUTH: writing an org project needs a token with project scope — the default
+# GITHUB_TOKEN cannot. Provide a fine-grained PAT as the repo secret
+# PROJECTS_TOKEN (Organization permissions → Projects: Read and write; see
+# docs/notes/cicd-setup.md). Without the secret every step no-ops with a warning,
+# so the workflow is safe to merge before the secret exists and on fork PRs.
+name: Project automation
+
+on:
+  issues:
+    types: [opened, reopened, closed]
+  pull_request_target:
+    types: [opened, reopened, ready_for_review, closed]
+
+permissions:
+  contents: read
+
+env:
+  ORG: Cogeto
+  PROJECT_NUMBER: '1'
+
+jobs:
+  sync:
+    name: sync board
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync card to the Cogeto board
+        uses: actions/github-script@v7
+        env:
+          PROJECTS_TOKEN: ${{ secrets.PROJECTS_TOKEN }}
+        with:
+          github-token: ${{ secrets.PROJECTS_TOKEN }}
+          script: |
+            if (!process.env.PROJECTS_TOKEN) {
+              core.warning(
+                'PROJECTS_TOKEN not set — board automation is disabled. ' +
+                'Add the secret to enable it (docs/notes/cicd-setup.md).',
+              );
+              return;
+            }
+
+            const org = process.env.ORG;
+            const number = parseInt(process.env.PROJECT_NUMBER, 10);
+
+            // Resolve the project, its Status field, and option ids by name.
+            const proj = await github.graphql(
+              `query($org:String!,$number:Int!){
+                 organization(login:$org){
+                   projectV2(number:$number){
+                     id
+                     field(name:"Status"){
+                       ... on ProjectV2SingleSelectField { id options { id name } }
+                     }
+                   }
+                 }
+               }`,
+              { org, number },
+            );
+            const project = proj.organization.projectV2;
+            const statusFieldId = project.field.id;
+            const optionByName = Object.fromEntries(
+              project.field.options.map((o) => [o.name, o.id]),
+            );
+
+            // Put a content node on the board (idempotent) and set its Status.
+            async function place(contentId, statusName) {
+              const optionId = optionByName[statusName];
+              if (!optionId) {
+                core.warning(`No board option named "${statusName}" — skipping.`);
+                return;
+              }
+              const added = await github.graphql(
+                `mutation($project:ID!,$content:ID!){
+                   addProjectV2ItemById(input:{projectId:$project,contentId:$content}){
+                     item { id }
+                   }
+                 }`,
+                { project: project.id, content: contentId },
+              );
+              const itemId = added.addProjectV2ItemById.item.id;
+              await github.graphql(
+                `mutation($project:ID!,$item:ID!,$field:ID!,$option:String!){
+                   updateProjectV2ItemFieldValue(input:{
+                     projectId:$project,itemId:$item,fieldId:$field,
+                     value:{singleSelectOptionId:$option}
+                   }){ projectV2Item { id } }
+                 }`,
+                { project: project.id, item: itemId, field: statusFieldId, option: optionId },
+              );
+              core.info(`Set item ${itemId} → ${statusName}`);
+            }
+
+            const event = context.eventName;
+            const payload = context.payload;
+
+            if (event === 'issues') {
+              const issue = payload.issue;
+              const status = payload.action === 'closed' ? 'Done' : 'Todo';
+              await place(issue.node_id, status);
+              return;
+            }
+
+            // pull_request_target
+            const pr = payload.pull_request;
+
+            // The issues this PR will close (Closes #N), so we can move them too.
+            async function linkedIssues() {
+              const res = await github.graphql(
+                `query($owner:String!,$repo:String!,$number:Int!){
+                   repository(owner:$owner,name:$repo){
+                     pullRequest(number:$number){
+                       closingIssuesReferences(first:20){ nodes { id } }
+                     }
+                   }
+                 }`,
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  number: pr.number,
+                },
+              );
+              return res.repository.pullRequest.closingIssuesReferences.nodes.map((n) => n.id);
+            }
+
+            let prStatus;
+            if (payload.action === 'closed') prStatus = 'Done';
+            else if (payload.action === 'ready_for_review') prStatus = 'In Review';
+            else prStatus = 'In Progress'; // opened / reopened
+
+            await place(pr.node_id, prStatus);
+
+            // Move linked issues in step with the PR (but never regress them to
+            // Done here — a closed-but-unmerged PR should not close its issues).
+            if (prStatus === 'In Progress' || prStatus === 'In Review') {
+              for (const issueId of await linkedIssues()) {
+                await place(issueId, prStatus);
+              }
+            }
