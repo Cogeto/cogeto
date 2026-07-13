@@ -7,7 +7,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { and, count, desc, eq, gte, ilike, isNull, lt, or } from 'drizzle-orm';
+import { and, count, desc, eq, gte, isNull, lt, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import type { AuditEntryDto, AuditPage } from '@cogeto/shared';
@@ -51,8 +51,13 @@ export class AuditController {
       // The org gate — never another org's entries; null-org = system/global.
       or(eq(auditLog.orgId, request.principal.orgId), isNull(auditLog.orgId))!,
     ];
-    if (q.actor) clauses.push(ilike(auditLog.actor, `%${q.actor}%`));
-    if (q.action) clauses.push(ilike(auditLog.action, `%${q.action}%`));
+    // QS-20: escape LIKE metacharacters so a user-supplied `%`/`_` is matched
+    // literally (not as a wildcard) — no match-everything, no slow leading-wildcard
+    // patterns. The bound ESCAPE clause makes `\` the escape character.
+    if (q.actor)
+      clauses.push(sql`${auditLog.actor} ILIKE ${`%${escapeLike(q.actor)}%`} ESCAPE '\\'`);
+    if (q.action)
+      clauses.push(sql`${auditLog.action} ILIKE ${`%${escapeLike(q.action)}%`} ESCAPE '\\'`);
     if (q.entityType) clauses.push(eq(auditLog.entityType, q.entityType));
     if (q.from) clauses.push(gte(auditLog.createdAt, new Date(q.from)));
     if (q.to) clauses.push(lt(auditLog.createdAt, new Date(q.to)));
@@ -90,4 +95,9 @@ export class AuditController {
     });
     return { items, total: Number(totalRows[0]?.n ?? 0) };
   }
+}
+
+/** Escape LIKE/ILIKE metacharacters so user input matches literally (QS-20). */
+export function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
 }

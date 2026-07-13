@@ -892,6 +892,15 @@ export class MemoryStore {
           inArray(auditLog.action, [...CHANGE_STATUS_ACTIONS, ...CHANGE_SUPERSEDE_ACTIONS]),
           eq(auditLog.entityType, 'memory'),
           gte(auditLog.createdAt, since),
+          // QS-31: restrict to the caller's OWN memory events BEFORE the limit.
+          // Without this the query scans all owners' events and, on a busy
+          // instance, another owner's changes push the caller's out of the
+          // window — silently missing from "what changed since". Memory
+          // status/supersede audit rows are always stamped with the memory
+          // owner's id (never null), so ownership = visibility here (v1 notes
+          // are private; the getManyForPrincipal re-check below still enforces
+          // the scope + sensitive gates as defence in depth).
+          eq(auditLog.ownerId, principal.userId),
         ),
       )
       .orderBy(desc(auditLog.createdAt), auditLog.id)

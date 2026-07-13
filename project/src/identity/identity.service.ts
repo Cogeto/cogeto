@@ -34,6 +34,14 @@ export class IdentityService {
     const cached = this.cache.get(accessToken);
     if (cached && cached.expiresAt > Date.now()) return cached.principal;
 
+    // QS-17: when the token is a JWT, validate iss/aud LOCALLY against this
+    // instance's configuration before spending a userinfo round-trip. userinfo
+    // does not enforce audience, so on a (hypothetical) shared Zitadel a token
+    // minted for a different client could otherwise resolve. Opaque tokens
+    // (e.g. the demo PAT) cannot be decoded and fall through to userinfo, which
+    // — against the instance's OWN Zitadel (decision 0019) — is the boundary.
+    this.assertTokenAudienceAndIssuer(accessToken);
+
     const { status, body } = await fetchUserinfo(
       this.options.internalBaseUrl,
       this.options.externalDomain,
@@ -72,6 +80,37 @@ export class IdentityService {
     const now = Date.now();
     for (const [token, entry] of this.cache) {
       if (entry.expiresAt <= now) this.cache.delete(token);
+    }
+  }
+
+  /**
+   * QS-17: if `token` is a JWT (three dot-separated segments), decode its
+   * payload — WITHOUT verifying the signature; userinfo below proves the token
+   * — and reject a mismatched `iss` or an `aud` that does not include the
+   * configured client id. A non-JWT (opaque) token, or missing config, is
+   * left to userinfo.
+   */
+  private assertTokenAudienceAndIssuer(token: string): void {
+    const parts = token.split('.');
+    if (parts.length !== 3) return; // opaque token (e.g. a PAT) — cannot decode
+    let claims: Record<string, unknown>;
+    try {
+      claims = JSON.parse(Buffer.from(parts[1]!, 'base64url').toString('utf8')) as Record<
+        string,
+        unknown
+      >;
+    } catch {
+      throw new UnauthorizedException('malformed access token');
+    }
+    if (this.options.issuer && claims['iss'] !== this.options.issuer) {
+      throw new UnauthorizedException('token issuer not trusted by this instance');
+    }
+    if (this.options.expectedAudience) {
+      const aud = claims['aud'];
+      const audiences = Array.isArray(aud) ? aud.map(String) : aud != null ? [String(aud)] : [];
+      if (!audiences.includes(this.options.expectedAudience)) {
+        throw new UnauthorizedException('token audience is not this instance');
+      }
     }
   }
 }

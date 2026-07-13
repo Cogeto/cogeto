@@ -15,6 +15,7 @@ import {
   setMemorySensitive,
 } from '../api';
 import type { Session } from '../auth/oidc';
+import { invalidateAfterGovernance } from '../query-invalidation';
 import { SourceDrawer } from './SourceDrawer';
 import { timeAgo } from './status';
 import {
@@ -118,8 +119,8 @@ export function MemoryDrawer({
 
   const refresh = async () => {
     setActionError(null);
-    // Chat chips, lists, badges — everything reflects governance immediately.
-    await queryClient.invalidateQueries();
+    // Chat chips, lists, badges — the governance-affected queries only (QS-36).
+    await invalidateAfterGovernance(queryClient);
   };
   const onError = (error: unknown) =>
     setActionError(error instanceof Error ? error.message : String(error));

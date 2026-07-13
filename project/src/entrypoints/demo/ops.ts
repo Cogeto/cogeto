@@ -1,4 +1,4 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 
 /**
  * Demo-only database operations (decision 0022) — job draining, one-shot
@@ -9,6 +9,38 @@ import type { Pool } from 'pg';
  */
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Session-level advisory lock guarding the whole reset (QS-33). Reset truncates
+ * every domain table and re-seeds; two overlapping resets — a manual `demo:reset`
+ * racing the worker's scheduled one, or a slow reset overlapping the next cron —
+ * would truncate mid-seed and corrupt the world. The lock is database-global
+ * (across processes and pools), so the standalone entrypoint and the in-worker
+ * job serialize on it. Returns null when another reset already holds it. */
+const DEMO_RESET_LOCK = `hashtextextended('cogeto:demo-reset', 0)`;
+
+export async function acquireDemoResetLock(pool: Pool): Promise<PoolClient | null> {
+  const client = await pool.connect();
+  try {
+    const { rows } = await client.query<{ locked: boolean }>(
+      `SELECT pg_try_advisory_lock(${DEMO_RESET_LOCK}) AS locked`,
+    );
+    if (rows[0]?.locked) return client;
+    client.release();
+    return null;
+  } catch (error) {
+    client.release();
+    throw error;
+  }
+}
+
+export async function releaseDemoResetLock(client: PoolClient): Promise<void> {
+  try {
+    await client.query(`SELECT pg_advisory_unlock(${DEMO_RESET_LOCK})`);
+  } finally {
+    client.release();
+  }
+}
 
 /**
  * Pending + running Graphile jobs — the quiescence signal. `excludeTask` drops a

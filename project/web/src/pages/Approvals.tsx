@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ApprovalDto, ApprovalStatus } from '@cogeto/shared';
 import { confirmApproval, fetchApprovalHistory, fetchPendingApprovals } from '../api';
 import type { Session } from '../auth/oidc';
+import { invalidateAfterApproval } from '../query-invalidation';
 import { Shell } from '../components/Shell';
 import { timeAgo } from '../components/status';
 import type { Tone } from '../components/status';
@@ -46,7 +47,7 @@ function PendingCard({ session, approval }: { session: Session; approval: Approv
     mutationFn: (decision: 'approve' | 'reject') => confirmApproval(session, approval.id, decision),
     onSuccess: async () => {
       setError(null);
-      await queryClient.invalidateQueries();
+      await invalidateAfterApproval(queryClient); // QS-36
     },
     onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
   });

@@ -104,9 +104,13 @@ export type VerificationOutput = z.infer<typeof verificationOutputSchema>;
  * - old form (v0001): already-resolved ISO strings pass through unchanged.
  * The new form wins when present.
  */
-export function resolveFactTemporal(fact: CandidateFact, anchor: Date): ResolvedInterval {
+export function resolveFactTemporal(
+  fact: CandidateFact,
+  anchor: Date,
+  timeZone?: string,
+): ResolvedInterval {
   if (fact.temporal_expressions.length > 0) {
-    return resolveTemporalExpressions(fact.temporal_expressions, anchor);
+    return resolveTemporalExpressions(fact.temporal_expressions, anchor, timeZone);
   }
   const parse = (value: string | null): Date | undefined => {
     if (!value) return undefined;

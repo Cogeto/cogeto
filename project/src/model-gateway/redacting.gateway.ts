@@ -3,6 +3,7 @@ import { ModelGateway } from './model-gateway.service';
 import type {
   CompletionRequest,
   CompletionResult,
+  GatewayReachability,
   StructuredExtractionRequest,
 } from './model-gateway.service';
 import type { RedactionPort } from './redaction-client';
@@ -62,5 +63,9 @@ export class RedactingModelGateway extends ModelGateway {
 
   embeddingModelId(): string {
     return this.inner.embeddingModelId();
+  }
+
+  override async reachable(): Promise<GatewayReachability> {
+    return this.inner.reachable(); // QS-35: probing is the wrapped gateway's job.
   }
 }

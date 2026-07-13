@@ -77,6 +77,21 @@ module.exports = {
       to: { path: 'node_modules/@qdrant' },
     },
     {
+      name: 'only-composition-roots-import-pg',
+      comment:
+        'Raw pg (Pool/Client) is confined to the composition roots + the database module ' +
+        '(QS-40): entrypoints/** and infrastructure/{db,database.module,migrations}.ts. A ' +
+        'domain module opening its own Pool would run raw SQL that the persistence rule ' +
+        'cannot see — closing the last "no cross-module table access" gap left to convention.',
+      severity: 'error',
+      from: {
+        path: '^project/src/',
+        pathNot:
+          '^project/src/entrypoints/|^project/src/infrastructure/(db|database\\.module|migrations)\\.ts$|^project/src/testing/|\\.spec\\.ts$',
+      },
+      to: { path: 'node_modules/pg/' },
+    },
+    {
       name: 'testing-helpers-only-in-tests',
       comment: 'The testing harness never leaks into production code.',
       severity: 'error',

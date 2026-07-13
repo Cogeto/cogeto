@@ -7,7 +7,8 @@ import type { Runner } from 'graphile-worker';
 import { loadConfig } from './config';
 import { createLogger, PinoNestLogger } from './logger';
 import { createWorkerRootModule } from './worker-root.module';
-import { createDb, ensureInstanceKeys } from '../infrastructure/index';
+import { createDb, describeErrorLine, ensureInstanceKeys } from '../infrastructure/index';
+import { logRedactionState } from './redaction-boot';
 import {
   ACTIVE_PROMPTS,
   DREAM_CRONTAB,
@@ -26,7 +27,12 @@ import { TASK_PROMPTS, TASKS_REMINDERS_CRONTAB, TasksEngine } from '../tasks/ind
 import { ANSWER_PROMPT, QUERY_REWRITE_PROMPT } from '../retrieval/index';
 import { loadPrompt, ModelGateway, recordPromptVersion } from '../model-gateway/index';
 import { buildTaskList } from './worker-tasks';
-import { DEMO_RESET_JOB_TYPE, establishDemoSession, resetDemoWorld } from './demo/index';
+import {
+  DEMO_RESET_JOB_TYPE,
+  DemoResetInProgressError,
+  establishDemoSession,
+  resetDemoWorld,
+} from './demo/index';
 
 const HEARTBEAT_FILE = '/tmp/worker-heartbeat';
 const HEARTBEAT_INTERVAL_MS = 10_000;
@@ -39,6 +45,7 @@ const HEARTBEAT_INTERVAL_MS = 10_000;
 async function main(): Promise<void> {
   const config = loadConfig();
   const logger = createLogger(config.logLevel);
+  logRedactionState(logger, config); // QS-21: state the effective posture loudly.
 
   const context = await NestFactory.createApplicationContext(
     createWorkerRootModule(config) as never,
@@ -46,7 +53,11 @@ async function main(): Promise<void> {
   );
   context.enableShutdownHooks();
 
-  const pool = new Pool({ connectionString: config.databaseUrl });
+  // QS-38: explicit pool ceiling. This pool backs BOTH the graphile runner and
+  // the job handlers' idempotency transactions (which the pipeline holds open
+  // across model calls), so it must clear worker concurrency (2) with headroom
+  // for the single-flight locks and graphile's own connections.
+  const pool = new Pool({ connectionString: config.databaseUrl, max: config.pgPoolMax });
   const db = createDb(pool);
 
   // Register the active prompt versions (§B.7) — also the immutability check:
@@ -71,7 +82,7 @@ async function main(): Promise<void> {
     await ensureInstanceKeys(config.instanceKeyDir);
   } catch (error) {
     logger.warn(
-      { error: String(error), dir: config.instanceKeyDir },
+      { err: error, dir: config.instanceKeyDir },
       'could not ensure instance keys (read-only mount without keys?) — signing will fail until the migrate job runs',
     );
   }
@@ -101,21 +112,31 @@ async function main(): Promise<void> {
   if (config.demoMode) {
     taskList[DEMO_RESET_JOB_TYPE] = async () => {
       const { api, ownerId } = await establishDemoSession(config);
-      await resetDemoWorld({
-        pool,
-        db,
-        api,
-        ownerId,
-        objects,
-        gateway,
-        qdrantUrl: config.qdrantUrl,
-        qdrantApiKey: config.qdrantApiKey,
-        embeddingModel: config.mistralEmbedModel,
-        strict: false, // a failed scheduled reset logs; the next one repairs it
-        excludeTask: DEMO_RESET_JOB_TYPE, // don't count our own running job
-        log: (message) => logger.info({}, message),
-      });
-      logger.info({}, 'scheduled demo reset completed');
+      try {
+        await resetDemoWorld({
+          pool,
+          db,
+          api,
+          ownerId,
+          objects,
+          gateway,
+          qdrantUrl: config.qdrantUrl,
+          qdrantApiKey: config.qdrantApiKey,
+          embeddingModel: config.mistralEmbedModel,
+          strict: false, // a failed scheduled reset logs; the next one repairs it
+          excludeTask: DEMO_RESET_JOB_TYPE, // don't count our own running job
+          log: (message) => logger.info({}, message),
+        });
+        logger.info({}, 'scheduled demo reset completed');
+      } catch (error) {
+        // QS-33: another reset already holds the lock — skip cleanly, don't fail
+        // the job (which would retry into the running reset).
+        if (error instanceof DemoResetInProgressError) {
+          logger.info({}, 'scheduled demo reset skipped — another reset in progress');
+          return;
+        }
+        throw error;
+      }
     };
     demoLine = `\n${config.demoResetCron} ${DEMO_RESET_JOB_TYPE}`;
     logger.info({ cron: config.demoResetCron }, 'demo mode: scheduled reset enabled');
@@ -131,6 +152,12 @@ async function main(): Promise<void> {
     // scheduler), plus the every-5-minute approval expiry pass (§A.8; O1-B), plus
     // the demo reset on a demo instance. On-demand sweep/dream go through their
     // entrypoints instead.
+    //
+    // QS-39: graphile cron honours the process timezone, so the worker container
+    // pins TZ=UTC (compose) — these times are UTC and DST never shifts them. A
+    // DST transition can still make a wall-clock hour repeat/skip on non-UTC
+    // hosts; the single-flight advisory lock on each recurring job (worker-tasks)
+    // makes a double-fire a clean skip, and the jobs are idempotent by design.
     crontab: `${SWEEP_CRONTAB}\n${DREAM_CRONTAB}\n${TASKS_REMINDERS_CRONTAB}\n${APPROVAL_EXPIRY_CRONTAB}${demoLine}`,
     noHandleSignals: true,
   });
@@ -138,7 +165,7 @@ async function main(): Promise<void> {
 
   const heartbeat = setInterval(() => {
     void writeFile(HEARTBEAT_FILE, new Date().toISOString()).catch((error: unknown) => {
-      logger.warn({ error: String(error) }, 'heartbeat write failed');
+      logger.warn({ err: error }, 'heartbeat write failed');
     });
   }, HEARTBEAT_INTERVAL_MS);
   await writeFile(HEARTBEAT_FILE, new Date().toISOString());
@@ -157,7 +184,18 @@ async function main(): Promise<void> {
   process.on('SIGINT', () => void shutdown());
 }
 
+// Top-level handlers log the error class + a scrubbed, bounded message only —
+// never the raw error (stack / `received …` can carry secrets or model output),
+// QS-22.
+process.on('unhandledRejection', (reason: unknown) => {
+  console.error(`unhandledRejection: ${describeErrorLine(reason)}`);
+});
+process.on('uncaughtException', (error: unknown) => {
+  console.error(`uncaughtException: ${describeErrorLine(error)}`);
+  process.exit(1);
+});
+
 main().catch((error: unknown) => {
-  console.error('worker failed to start:', error);
+  console.error(`worker failed to start: ${describeErrorLine(error)}`);
   process.exit(1);
 });

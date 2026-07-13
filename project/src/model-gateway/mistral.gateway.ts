@@ -5,6 +5,7 @@ import { ModelGateway } from './model-gateway.service';
 import type {
   CompletionRequest,
   CompletionResult,
+  GatewayReachability,
   StructuredExtractionRequest,
 } from './model-gateway.service';
 import { ModelGatewayError, ModelGatewayNotConfiguredError } from './errors';
@@ -33,6 +34,7 @@ export class MistralModelGateway extends ModelGateway {
   private readonly client: Mistral;
   private readonly models: Record<ModelTier, string>;
   private readonly embedModel: string;
+  private reachabilityCache?: { at: number; value: GatewayReachability };
 
   constructor(options: MistralGatewayOptions) {
     super();
@@ -157,6 +159,30 @@ export class MistralModelGateway extends ModelGateway {
   }
 
   /**
+   * Cached reachability probe (QS-35): one cheap `models.list` at most every
+   * {@link REACHABILITY_TTL_MS}, so repeated health polls never hammer the
+   * provider. A failure surfaces as ok:false with the class-only message.
+   */
+  override async reachable(): Promise<GatewayReachability> {
+    const now = Date.now();
+    if (this.reachabilityCache && now - this.reachabilityCache.at < REACHABILITY_TTL_MS) {
+      return this.reachabilityCache.value;
+    }
+    let value: GatewayReachability;
+    try {
+      await this.client.models.list();
+      value = { ok: true, detail: 'mistral reachable' };
+    } catch (error) {
+      value = {
+        ok: false,
+        error: `mistral unreachable: ${error instanceof Error ? error.name : 'error'}`,
+      };
+    }
+    this.reachabilityCache = { at: now, value };
+    return value;
+  }
+
+  /**
    * Maps provider/network failures to typed errors with a retryable flag, and
    * retries retryable ones (429 rate-limits, 5xx, network) with exponential
    * backoff before giving up. Transient rate-limits during a burst (evals,
@@ -188,6 +214,8 @@ export class MistralModelGateway extends ModelGateway {
 
 const MAX_RETRIES = 5;
 const RETRY_BASE_MS = 800;
+/** Reachability probe cache window (QS-35) — health polls reuse it. */
+const REACHABILITY_TTL_MS = 30_000;
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Boots without a key (app/worker do not need the model to start); fails on use. */
@@ -207,6 +235,12 @@ export class UnconfiguredModelGateway extends ModelGateway {
   }
   embeddingModelId(): string {
     throw new ModelGatewayNotConfiguredError();
+  }
+  // Not an error state for health (QS-35): an instance may deliberately run
+  // without a model key; report "not configured" but stay ok so it doesn't
+  // degrade the whole instance.
+  override async reachable(): Promise<GatewayReachability> {
+    return { ok: true, detail: 'model gateway not configured — model features disabled' };
   }
 }
 

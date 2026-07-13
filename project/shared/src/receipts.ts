@@ -44,6 +44,20 @@ export interface ReceiptListItem {
   confirmedAt: string | null;
 }
 
+/**
+ * The chain tip carried on every exported receipt (QS-23) — a cheap EXTERNAL
+ * ANCHOR. Recording the tip hash + confirmed count at export time lets anyone
+ * later prove no confirmed receipt was quietly dropped from the ledger: the tip
+ * they hold must still appear in (and the count must not exceed) a fresh
+ * GET /api/receipts/verify. Tamper that removes a receipt changes the tip.
+ */
+export interface ChainTipAnchor {
+  /** Hash of the newest confirmed receipt (the chain head); null if none yet. */
+  hash: string | null;
+  /** Number of confirmed receipts in the ledger at export time. */
+  confirmedCount: number;
+}
+
 /** GET /api/receipts/:id — the full artifact behind a ledger row. */
 export interface ReceiptDetailDto extends ReceiptListItem {
   countsJson: unknown;
@@ -52,6 +66,8 @@ export interface ReceiptDetailDto extends ReceiptListItem {
   prevHash: string | null;
   signature: string | null;
   signedAt: string | null;
+  /** The ledger's chain tip at export time — the external anchor (QS-23). */
+  chainTip: ChainTipAnchor;
 }
 
 /** One sweep discrepancy (§A.7 step 4) — permanent until investigated. */

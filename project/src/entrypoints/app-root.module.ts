@@ -1,7 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { Module } from '@nestjs/common';
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { DatabaseModule, LimitsModule } from '../infrastructure/index';
-import { IdentityModule } from '../identity/index';
+import { BearerAuthGuard, IdentityModule } from '../identity/index';
 import { ModelBudgetExceptionFilter } from './model-budget.filter';
 import { IngestionModule, PipelineIngestionGuard } from '../ingestion/index';
 import { MemoryModule } from '../memory/index';
@@ -32,14 +33,19 @@ import { WebConfigController } from './web-config.controller';
 export function createAppRootModule(config: CogetoConfig): unknown {
   @Module({
     imports: [
-      DatabaseModule.register({ databaseUrl: config.databaseUrl }),
+      DatabaseModule.register({ databaseUrl: config.databaseUrl, poolMax: config.pgPoolMax }),
       // Abuse/DoS limits (FIX-2) — global, so the rate-limit guard, ingest
       // quota, SSE caps and model budget are injectable across controllers.
-      LimitsModule.register(config.limits),
+      LimitsModule.register(config.limits, config.timezone),
       IdentityModule.register({
         internalBaseUrl: config.oidc.internalUrl,
         externalDomain: config.oidc.externalDomain,
-        cacheTtlSeconds: 60,
+        // QS-11: small TTL bounds the token-revocation window (see the seam
+        // README + decision 0026). QS-17: validate JWT iss/aud locally.
+        cacheTtlSeconds: 10,
+        issuer: config.oidc.issuer,
+        expectedAudience: readOidcClientId(config.webConfigFile),
+        adminRole: config.adminRole,
       }),
       ModelGatewayModule.register({
         mistralApiKey: config.mistralApiKey,
@@ -100,6 +106,10 @@ export function createAppRootModule(config: CogetoConfig): unknown {
     ],
     providers: [
       { provide: COGETO_CONFIG, useValue: config },
+      // Default-deny auth (QS-18): the bearer guard runs on EVERY route; only
+      // routes marked @Public() (health/config/instance) opt out. A new
+      // controller that forgets @UseGuards is closed, not silently open.
+      { provide: APP_GUARD, useExisting: BearerAuthGuard },
       // Map a spent daily model budget to HTTP 429 for non-stream endpoints
       // (QS-2); the chat SSE path surfaces it as a distinct error event instead.
       { provide: APP_FILTER, useClass: ModelBudgetExceptionFilter },
@@ -108,4 +118,18 @@ export function createAppRootModule(config: CogetoConfig): unknown {
   class AppRootModule {}
 
   return AppRootModule;
+}
+
+/**
+ * The SPA client id (QS-17 aud validation) from the zitadel-init-written web
+ * config file. Best-effort at boot: absent/malformed → undefined, and the aud
+ * check is skipped (opaque tokens skip it anyway).
+ */
+function readOidcClientId(webConfigFile: string): string | undefined {
+  try {
+    const parsed = JSON.parse(readFileSync(webConfigFile, 'utf8')) as { clientId?: unknown };
+    return typeof parsed.clientId === 'string' && parsed.clientId ? parsed.clientId : undefined;
+  } catch {
+    return undefined;
+  }
 }

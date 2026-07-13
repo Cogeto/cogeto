@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import type { MemoryStatus, Principal } from '@cogeto/shared';
 import { TEMPORAL_STATUS_MULTIPLIERS } from '@cogeto/shared';
+import { DEFAULT_INSTANCE_TIMEZONE, INSTANCE_TIMEZONE } from '../infrastructure/index';
 import { MemoryStore } from '../memory/index';
 import type { MemoryChange, MemoryRow } from '../memory/index';
 import { TasksEngine } from '../tasks/index';
@@ -70,6 +71,10 @@ export class RetrievalService {
     private readonly memoryStore: MemoryStore,
     private readonly gateway: ModelGateway,
     private readonly tasksEngine: TasksEngine,
+    // Instance timezone for relative-date resolution in query rewriting (QS-32).
+    @Optional()
+    @Inject(INSTANCE_TIMEZONE)
+    private readonly timeZone: string = DEFAULT_INSTANCE_TIMEZONE,
   ) {}
 
   async retrieve(
@@ -80,7 +85,14 @@ export class RetrievalService {
     const topK = opts.topK ?? DEFAULT_TOP_K;
 
     // 1. Conversational rewriting (F3): resolve "who is she?" to its referent.
-    const rewrite = await rewriteQuery(this.gateway, opts.history ?? [], query);
+    const rewrite = await rewriteQuery(
+      this.gateway,
+      opts.history ?? [],
+      query,
+      undefined,
+      undefined,
+      this.timeZone,
+    );
     const searchQuery = rewrite.query;
     const entityCandidates = [
       ...new Set([...rewrite.entities, ...queryEntityCandidates(searchQuery)]),

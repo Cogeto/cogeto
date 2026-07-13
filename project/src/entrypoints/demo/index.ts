@@ -13,7 +13,7 @@ export { establishDemoSession, waitForApp } from './bootstrap';
 export type { DemoSession } from './bootstrap';
 export { seedDemoWorld, captureCorpus, alreadySeeded } from './seed';
 export type { SeedWorldDeps } from './seed';
-export { resetDemoWorld } from './reset';
+export { resetDemoWorld, DemoResetInProgressError } from './reset';
 export type { ResetDeps } from './reset';
 export { inspectEndState, assertEndState, summarize } from './assertions';
 export type { DemoEndState } from './assertions';

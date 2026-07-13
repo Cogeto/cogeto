@@ -4,6 +4,7 @@ import { IDENTITY_OPTIONS } from './identity-options';
 import type { IdentityOptions } from './identity-options';
 import { IdentityService } from './identity.service';
 import { BearerAuthGuard } from './bearer-auth.guard';
+import { AdminGuard } from './admin.guard';
 import { MeController } from './me.controller';
 import { PRINCIPAL, principalProvider } from './principal.provider';
 import { UserDirectory } from './user-directory';
@@ -28,9 +29,10 @@ export class IdentityModule {
         IdentityService,
         UserDirectory,
         BearerAuthGuard,
+        AdminGuard,
         principalProvider,
       ],
-      exports: [IdentityService, UserDirectory, BearerAuthGuard, PRINCIPAL],
+      exports: [IdentityService, UserDirectory, BearerAuthGuard, AdminGuard, PRINCIPAL],
     };
   }
 }

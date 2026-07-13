@@ -44,10 +44,39 @@ describe('temporal resolver (F8 — deterministic relative dates)', () => {
     expect(iso(resolveExpression('in two months', ANCHOR))).toBe('2026-09-03');
   });
 
+  it('resolves "last/past/previous <weekday>" BACKWARD (QS-29)', () => {
+    // Anchor Fri 07-03: the most recent Monday BEFORE it is 06-29.
+    expect(iso(resolveExpression('last Monday', ANCHOR))).toBe('2026-06-29');
+    expect(iso(resolveExpression('past Monday', ANCHOR))).toBe('2026-06-29');
+    expect(iso(resolveExpression('previous Thursday', ANCHOR))).toBe('2026-07-02');
+    // The anchor's own weekday backward is -7, never the anchor itself.
+    expect(iso(resolveExpression('last Friday', ANCHOR))).toBe('2026-06-26');
+  });
+
+  it('subtracts "N days/weeks/months ago" from the anchor (QS-29)', () => {
+    expect(iso(resolveExpression('two weeks ago', ANCHOR))).toBe('2026-06-19');
+    expect(iso(resolveExpression('3 days ago', ANCHOR))).toBe('2026-06-30');
+    expect(iso(resolveExpression('one month ago', ANCHOR))).toBe('2026-06-03');
+  });
+
   it('handles today / tomorrow / yesterday against the anchor', () => {
     expect(iso(resolveExpression('today', ANCHOR))).toBe('2026-07-03');
     expect(iso(resolveExpression('tomorrow', ANCHOR))).toBe('2026-07-04');
     expect(iso(resolveExpression('yesterday', ANCHOR))).toBe('2026-07-02');
+  });
+
+  it('fixes the calendar date in the configured instance timezone (QS-32)', () => {
+    // 23:30 UTC on Fri Jul 3 is already Sat Jul 4 in Europe/Zagreb (UTC+2 in
+    // summer) but still Jul 3 in UTC and in New York (UTC-4).
+    const nearMidnight = new Date('2026-07-03T23:30:00.000Z');
+    // Default zone (Europe/Zagreb): local date is 07-04, so "today" → 07-04.
+    expect(iso(resolveExpression('today', nearMidnight))).toBe('2026-07-04');
+    expect(iso(resolveExpression('tomorrow', nearMidnight))).toBe('2026-07-05');
+    // Explicit UTC keeps the UTC calendar date, 07-03.
+    expect(iso(resolveExpression('today', nearMidnight, 'UTC'))).toBe('2026-07-03');
+    expect(iso(resolveExpression('tomorrow', nearMidnight, 'UTC'))).toBe('2026-07-04');
+    // A western zone still on Jul 3 locally resolves to 07-03.
+    expect(iso(resolveExpression('today', nearMidnight, 'America/New_York'))).toBe('2026-07-03');
   });
 
   it('resolves absolute dates via chrono, anchored for the year', () => {

@@ -1,15 +1,21 @@
 # The §B.4 eval gate (decision 0011): prompt, model, or pipeline changes that
 # regress the golden set fail the build. Runs on the paths that can move the
-# measured numbers, and on every push to main. Thresholds live in
-# project/eval/gates.json (versioned; ratchet UP only — lowering a gate
-# requires a decision record).
+# measured numbers. Thresholds live in project/eval/gates.json (versioned;
+# ratchet UP only — lowering a gate requires a decision record).
+#
+# QS-15: the LIVE-key eval (real Mistral calls) runs ONLY on push to main
+# (post-merge). Pull-request runs use the MOCKED path only — a build that
+# compiles the eval harness + prompt wiring without spending the key. This keeps
+# the API key off PR branches entirely (no leak surface, no per-PR cost, no
+# nondeterministic model output gating a review), while main still enforces the
+# golden set before a regression can land in a release.
 #
 # Owner setup (recorded in the F2-B session log):
 #   1. Add the repository secret MISTRAL_API_KEY.
 #   2. Mark the "eval-gate" check as required-to-merge in branch protection.
 #
-# Forks have no secrets: the job then SKIPS LOUDLY instead of failing —
-# maintainers see the gate run on the merge branch, where the secret exists.
+# On push to main the secret is always present; if it is somehow absent the live
+# steps SKIP LOUDLY rather than failing silently.
 
 name: eval-gate
 
@@ -46,27 +52,35 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Check for the eval secret
+      # PR mocked path (QS-15): compile the eval harness + prompt wiring + shared
+      # DTOs WITHOUT the live key, so a broken eval/build still fails a PR fast.
+      # The live golden-set numbers are enforced on push to main below.
+      - name: Mocked path — build only (pull requests)
+        if: github.event_name == 'pull_request'
+        run: npm run build
+
+      - name: Check for the eval secret (push to main only)
         id: secret
+        if: github.event_name == 'push'
         env:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
         run: |
           if [ -z "$MISTRAL_API_KEY" ]; then
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=eval gate SKIPPED::MISTRAL_API_KEY is not available (fork PR?). The golden-set gate did NOT run here — it will run on the merge branch, where the secret exists."
+            echo "::warning title=eval gate SKIPPED::MISTRAL_API_KEY is not available on main. The golden-set gate did NOT run — add the repository secret."
           else
             echo "present=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Golden-set gate (extraction + reconciliation, gates.json)
-        if: steps.secret.outputs.present == 'true'
+        if: github.event_name == 'push' && steps.secret.outputs.present == 'true'
         env:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           COGETO_EVAL_GATE: '1'
         run: npm run eval
 
       - name: Chat eval gate (all cases must PASS)
-        if: steps.secret.outputs.present == 'true'
+        if: github.event_name == 'push' && steps.secret.outputs.present == 'true'
         env:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           COGETO_EVAL_GATE: '1'

@@ -238,6 +238,35 @@ describe('approval state machine (integration: real Postgres + Qdrant)', () => {
     expect(await statusOf(m2)).toBe('outdated');
   });
 
+  it('approval_concurrent_confirm (QS-30): two parallel approves — one wins, the effect runs exactly once', async () => {
+    const m = await makeMemory(userA, 'active');
+    const approval = await service.create(userA, BULK_OUTDATE_ACTION, { memoryIds: [m] });
+
+    // Fire two approve-confirms concurrently. `confirm` locks the row FOR UPDATE
+    // before checking the transition, so they SERIALIZE: exactly one takes
+    // pending_approval → approved (and enqueues the single execute job); the
+    // other, re-reading the now-approved row under READ COMMITTED, fails the
+    // approved→approved transition and rejects. No double-approve, no double
+    // enqueue.
+    const results = await Promise.allSettled([
+      service.confirm(userA, approval.id, 'approve'),
+      service.confirm(userA, approval.id, 'approve'),
+    ]);
+    const winners = results.filter((r) => r.status === 'fulfilled');
+    const losers = results.filter((r) => r.status === 'rejected');
+    expect(winners).toHaveLength(1);
+    expect(losers).toHaveLength(1);
+    expect(await approvalStatus(approval.id)).toBe('approved');
+    // Exactly ONE approved transition was recorded (single winner).
+    expect(await auditCount('approval.approved', approval.id)).toBe(1);
+
+    // The worker then runs the effect exactly once, end to end.
+    await runWorker();
+    expect(await statusOf(m)).toBe('outdated');
+    expect(await approvalStatus(approval.id)).toBe('executed');
+    expect(await auditCount('approval.executed', approval.id)).toBe(1);
+  });
+
   it('approval_expiry: an expired approval cannot execute', async () => {
     const m = await makeMemory(userA, 'active');
     const approval = await service.create(userA, BULK_OUTDATE_ACTION, { memoryIds: [m] });

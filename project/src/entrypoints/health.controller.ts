@@ -2,14 +2,18 @@ import { Controller, Get, HttpCode, Inject } from '@nestjs/common';
 import type { HealthCheck, HealthReport, QueueHealthCheck } from '@cogeto/shared';
 import { Pool } from 'pg';
 import { IntegritySweep, MemoryObjectStore } from '../memory/index';
+import { ModelGateway } from '../model-gateway/index';
+import { Public } from '../identity/index';
 import { COGETO_CONFIG } from './config';
 import type { CogetoConfig } from './config';
 
 /**
  * GET /api/health — aggregate reachability of Postgres, Qdrant, MinIO for the
  * dashboard status panel. GET /api/health/live — container liveness only.
- * Lives in the entrypoint (deployment concern, not domain).
+ * Lives in the entrypoint (deployment concern, not domain). Public (QS-18):
+ * liveness/readiness must answer without a token.
  */
+@Public()
 @Controller('health')
 export class HealthController {
   private readonly pool: Pool;
@@ -18,6 +22,7 @@ export class HealthController {
     @Inject(COGETO_CONFIG) private readonly config: CogetoConfig,
     private readonly objects: MemoryObjectStore,
     private readonly integrity: IntegritySweep,
+    private readonly gateway: ModelGateway,
   ) {
     this.pool = new Pool({ connectionString: config.databaseUrl, max: 2 });
   }
@@ -30,7 +35,7 @@ export class HealthController {
 
   @Get()
   async health(): Promise<HealthReport> {
-    const [postgres, qdrant, minio, minioEncryption, integrity, migrations, queue] =
+    const [postgres, qdrant, minio, minioEncryption, integrity, migrations, queue, gateway] =
       await Promise.all([
         this.checkPostgres(),
         this.checkHttp(`${this.config.qdrantUrl}/readyz`),
@@ -39,8 +44,18 @@ export class HealthController {
         this.checkIntegrity(),
         this.checkMigrations(),
         this.checkQueue(),
+        this.checkGateway(),
       ]);
-    const checks = { postgres, qdrant, minio, minioEncryption, integrity, migrations, queue };
+    const checks = {
+      postgres,
+      qdrant,
+      minio,
+      minioEncryption,
+      integrity,
+      migrations,
+      queue,
+      gateway,
+    };
     return {
       status: Object.values(checks).every((c) => c.ok) ? 'ok' : 'degraded',
       checks,
@@ -68,24 +83,36 @@ export class HealthController {
     }
   }
 
-  /** Queue depth + dead-letter count for the System view (S3-B). */
+  /** Queue depth + dead-letter + graphile permanent-failure count (S3-B, QS-34). */
   private async checkQueue(): Promise<QueueHealthCheck> {
     const started = Date.now();
     try {
-      const [jobs, parked] = await Promise.all([
+      const [jobs, parked, failed] = await Promise.all([
         this.pool.query<{ n: string }>('SELECT count(*)::text AS n FROM graphile_worker.jobs'),
         this.pool.query<{ n: string }>('SELECT count(*)::text AS n FROM dead_letter'),
+        // QS-34: jobs that exhausted their retries and will not run again. Our
+        // dead_letter write is best-effort under DB pressure (queue.ts retries),
+        // so surfacing graphile's own permanent-failure count is the backstop
+        // alert — a parked job that never made it into dead_letter still shows.
+        this.pool.query<{ n: string }>(
+          'SELECT count(*)::text AS n FROM graphile_worker.jobs WHERE attempts >= max_attempts AND last_error IS NOT NULL',
+        ),
       ]);
       const depth = Number(jobs.rows[0]?.n ?? 0);
       const deadLettered = Number(parked.rows[0]?.n ?? 0);
+      const permanentlyFailed = Number(failed.rows[0]?.n ?? 0);
+      const problems: string[] = [];
+      if (deadLettered > 0) problems.push(`${deadLettered} dead-lettered job(s)`);
+      if (permanentlyFailed > 0) problems.push(`${permanentlyFailed} permanently-failed job(s)`);
       return {
-        // Parked jobs mean work was lost until someone retries — surface it.
-        ok: deadLettered === 0,
+        // Parked or permanently-failed jobs mean work was lost — surface both.
+        ok: deadLettered === 0 && permanentlyFailed === 0,
         latencyMs: Date.now() - started,
         depth,
         deadLettered,
-        detail: `${depth} queued, ${deadLettered} dead-lettered`,
-        ...(deadLettered > 0 ? { error: `${deadLettered} dead-lettered job(s)` } : {}),
+        permanentlyFailed,
+        detail: `${depth} queued, ${deadLettered} dead-lettered, ${permanentlyFailed} permanently failed`,
+        ...(problems.length > 0 ? { error: problems.join('; ') } : {}),
       };
     } catch (error) {
       return {
@@ -93,8 +120,29 @@ export class HealthController {
         latencyMs: Date.now() - started,
         depth: 0,
         deadLettered: 0,
+        permanentlyFailed: 0,
         error: message(error),
       };
+    }
+  }
+
+  /**
+   * Model-gateway reachability (QS-35) — cheap and cached in the gateway (≤1
+   * provider probe per 30s), so a dashboard poll never hammers Mistral. An
+   * unconfigured gateway reports ok (model features are simply off).
+   */
+  private async checkGateway(): Promise<HealthCheck> {
+    const started = Date.now();
+    try {
+      const r = await this.gateway.reachable();
+      return {
+        ok: r.ok,
+        latencyMs: Date.now() - started,
+        ...(r.detail ? { detail: r.detail } : {}),
+        ...(r.error ? { error: r.error } : {}),
+      };
+    } catch (error) {
+      return { ok: false, latencyMs: Date.now() - started, error: message(error) };
     }
   }
 

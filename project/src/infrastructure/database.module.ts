@@ -21,11 +21,17 @@ class PoolLifecycle implements OnApplicationShutdown {
 @Global()
 @Module({})
 export class DatabaseModule {
-  static register(options: { databaseUrl: string }): DynamicModule {
+  static register(options: { databaseUrl: string; poolMax?: number }): DynamicModule {
     return {
       module: DatabaseModule,
       providers: [
-        { provide: PG_POOL, useFactory: () => new Pool({ connectionString: options.databaseUrl }) },
+        {
+          provide: PG_POOL,
+          // QS-38: an explicit, configurable pool ceiling (default 20 here in the
+          // absence of a caller value — composition roots pass config.pgPoolMax).
+          useFactory: () =>
+            new Pool({ connectionString: options.databaseUrl, max: options.poolMax ?? 20 }),
+        },
         { provide: DRIZZLE, useFactory: (pool: Pool) => createDb(pool), inject: [PG_POOL] },
         PoolLifecycle,
       ],

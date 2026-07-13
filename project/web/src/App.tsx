@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getWebConfig, installDemoSession, loadSession } from './auth/oidc';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { UNAUTHORIZED_EVENT } from './api';
+import { clearSession, getWebConfig, installDemoSession, loadSession } from './auth/oidc';
 import type { Session } from './auth/oidc';
 import { DemoBanner } from './components/DemoBanner';
 import { DemoIntro } from './components/DemoIntro';
@@ -20,6 +21,20 @@ import { Tasks } from './pages/Tasks';
 /** Tiny path switch — a router dependency is still not justified. */
 export function App() {
   const [session, setSession] = useState<Session | null>(loadSession);
+  const queryClient = useQueryClient();
+
+  // QS-36: on a 401 (token expired/revoked) drop the dead session and re-fetch
+  // /api/config, so the shell re-decides between Login and the demo session from
+  // fresh state instead of looping failed authed requests.
+  useEffect(() => {
+    const onUnauthorized = (): void => {
+      clearSession();
+      setSession(null);
+      void queryClient.invalidateQueries({ queryKey: ['web-config'] });
+    };
+    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+  }, [queryClient]);
 
   // Ana sandbox (decision 0022): /api/config advertises demo mode + a pre-minted
   // session on a demo instance. Install it on first load so the visitor is

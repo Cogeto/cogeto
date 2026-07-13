@@ -11,6 +11,13 @@ export interface HealthCheck {
 export interface QueueHealthCheck extends HealthCheck {
   depth: number;
   deadLettered: number;
+  /**
+   * Graphile jobs that exhausted their retries and will NOT run again
+   * (attempts ≥ max_attempts, last_error set) — QS-34. Unlike dead_letter (our
+   * own parked-work table), these still sit in the queue as permanent failures;
+   * any > 0 degrades the instance so an operator is alerted.
+   */
+  permanentlyFailed: number;
 }
 
 export interface HealthReport {
@@ -25,5 +32,7 @@ export interface HealthReport {
     integrity: HealthCheck;
     migrations: HealthCheck;
     queue: QueueHealthCheck;
+    /** Model-gateway reachability probe — cheap, cached (QS-35). */
+    gateway: HealthCheck;
   };
 }

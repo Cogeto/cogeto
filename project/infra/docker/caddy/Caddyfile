@@ -23,8 +23,24 @@ localhost {
 	}
 
 	# The SPA: static files with history-API fallback.
+	#
+	# QS-19: strict Content-Security-Policy applied to the SPA responses ONLY
+	# (never the proxied Zitadel login UI or the JSON API, which have their own
+	# needs). script-src is 'self' with NO third-party sources and no
+	# 'unsafe-inline' — an injected <script src=evil> or inline handler cannot
+	# execute. style-src keeps 'unsafe-inline' (React sets element styles at
+	# runtime); connect-src is 'self' because the API and Zitadel share this
+	# origin. Tradeoff recorded (QS-19): the SPA holds the bearer token in
+	# sessionStorage — accepted for v1, since a strict script-src is the real XSS
+	# mitigation and the single-tenant origin (decision 0019) bounds exposure.
 	handle {
 		root * /srv
+		header {
+			Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+			X-Content-Type-Options "nosniff"
+			Referrer-Policy "no-referrer"
+			X-Frame-Options "DENY"
+		}
 		try_files {path} /index.html
 		file_server
 	}

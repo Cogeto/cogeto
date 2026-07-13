@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import {
+  DEFAULT_INSTANCE_TIMEZONE,
   INGEST_QUOTA,
+  INSTANCE_TIMEZONE,
   MODEL_USAGE_METER,
   PARSE_CAPS,
   RATE_LIMIT_OPTIONS,
@@ -25,7 +27,7 @@ import { RateLimitGuard } from './rate-limit';
  */
 @Module({})
 export class LimitsModule {
-  static register(limits: LimitsConfig): DynamicModule {
+  static register(limits: LimitsConfig, timeZone?: string): DynamicModule {
     return {
       module: LimitsModule,
       global: true,
@@ -37,6 +39,8 @@ export class LimitsModule {
         { provide: INGEST_QUOTA, useValue: limits.ingestQuota },
         { provide: SSE_LIMITS, useValue: limits.sse },
         { provide: PARSE_CAPS, useValue: limits.parse },
+        // The instance timezone for relative-date resolution (QS-32).
+        { provide: INSTANCE_TIMEZONE, useValue: timeZone ?? DEFAULT_INSTANCE_TIMEZONE },
         RateLimitGuard,
         {
           provide: MODEL_USAGE_METER,
@@ -51,6 +55,7 @@ export class LimitsModule {
         INGEST_QUOTA,
         SSE_LIMITS,
         PARSE_CAPS,
+        INSTANCE_TIMEZONE,
         MODEL_USAGE_METER,
         RateLimitGuard,
       ],

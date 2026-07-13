@@ -30,17 +30,17 @@ import type { CogetoConfig } from './config';
 export function createWorkerRootModule(config: CogetoConfig): unknown {
   @Module({
     imports: [
-      DatabaseModule.register({ databaseUrl: config.databaseUrl }),
+      DatabaseModule.register({ databaseUrl: config.databaseUrl, poolMax: config.pgPoolMax }),
       // Limits (FIX-2): the worker needs the parse caps (QS-6) for the pipeline
       // + file source reader. Its model calls are unattributed, so the model
       // budget is off here (ModelGatewayModule without `budget`).
-      LimitsModule.register(config.limits),
+      LimitsModule.register(config.limits, config.timezone),
       // The worker serves no HTTP, but domain modules carry controllers whose
       // guards Nest resolves at init — the identity seam must be present here too.
       IdentityModule.register({
         internalBaseUrl: config.oidc.internalUrl,
         externalDomain: config.oidc.externalDomain,
-        cacheTtlSeconds: 60,
+        cacheTtlSeconds: 10, // QS-11 (the worker serves no HTTP; parity only)
       }),
       ModelGatewayModule.register({
         mistralApiKey: config.mistralApiKey,

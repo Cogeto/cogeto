@@ -13,12 +13,19 @@ import { desc, eq, sql } from 'drizzle-orm';
 import type { DeadLetterJobDto, WorkerActivityDto, WorkerJobDto } from '@cogeto/shared';
 import { deadLetter, DRIZZLE, jobExecution, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
-import { BearerAuthGuard } from '../identity/index';
+import { AdminGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 
 /**
  * /api/jobs — the dashboard's System view over the queue's own ledgers (§A.3).
  * Lives in the entrypoint: queue plumbing is infrastructure, not domain.
+ *
+ * ADMIN-ONLY (QS-10): activity/dead-letter expose cross-user source ids and
+ * object keys, and retry replays ANY parked job — operator concerns, not
+ * per-user data. The global BearerAuthGuard authenticates; AdminGuard then
+ * requires the configured admin role. (Owner-scoping was rejected: most queue
+ * jobs — sweep/dream/backfill/expiry — carry no user owner, so a per-owner
+ * filter would both hide operational state and still leak by omission.)
  *
  * Retry re-enqueues the parked payload and removes the dead-letter row in one
  * transaction. Double effects are impossible regardless of how often a job is
@@ -26,7 +33,7 @@ import type { AuthenticatedRequest } from '../identity/index';
  * job_type) key before the handler's effect — a re-run of completed work skips.
  */
 @Controller('jobs')
-@UseGuards(BearerAuthGuard)
+@UseGuards(AdminGuard)
 export class JobsController {
   constructor(@Inject(DRIZZLE) private readonly db: Db) {}
 

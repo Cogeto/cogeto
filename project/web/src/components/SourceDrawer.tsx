@@ -9,6 +9,7 @@ import {
   fetchNote,
 } from '../api';
 import type { Session } from '../auth/oidc';
+import { invalidateAfterSourceDeletion } from '../query-invalidation';
 import {
   btnDanger,
   btnSecondary,
@@ -90,7 +91,7 @@ export function SourceDrawer({
   const remove = useMutation({
     mutationFn: () => deleteSource(session, sourceType, sourceId),
     onSuccess: async ({ receiptId }) => {
-      await queryClient.invalidateQueries();
+      await invalidateAfterSourceDeletion(queryClient); // QS-36: the deletion cascade only.
       onDeleted(receiptId);
     },
     onError: (error: unknown) =>

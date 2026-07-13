@@ -11,6 +11,7 @@ import {
   resolveContradiction,
 } from '../api';
 import type { Session } from '../auth/oidc';
+import { invalidateAfterContradiction, invalidateAfterGovernance } from '../query-invalidation';
 import { Shell } from '../components/Shell';
 import { timeAgo } from '../components/status';
 import {
@@ -55,7 +56,7 @@ function ReviewItem({ session, memory }: { session: Session; memory: MemoryListI
 
   const settle = async () => {
     setError(null);
-    await queryClient.invalidateQueries();
+    await invalidateAfterGovernance(queryClient); // QS-36
   };
   const onError = (e: unknown) => setError(e instanceof Error ? e.message : String(e));
   const approve = useMutation({
@@ -213,8 +214,8 @@ function ContradictionItem({
     onSuccess: async () => {
       setError(null);
       setCorrecting(false);
-      // Chat chips, lists, badges — governance reflects immediately.
-      await queryClient.invalidateQueries();
+      // Chat chips, lists, badges — the contradiction-affected queries (QS-36).
+      await invalidateAfterContradiction(queryClient);
     },
     onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
   });

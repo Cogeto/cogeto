@@ -4,19 +4,29 @@ import * as chrono from 'chrono-node';
  * Deterministic relative-date resolution (decision 0007 ruling 1; owner test
  * F8). Models never do calendar arithmetic: the extractor emits raw temporal
  * expressions verbatim, and this code resolves them against the note's
- * created_at anchor. All math is in UTC so results are host-timezone
- * independent — the golden cases pin an anchor date and must stay stable
- * forever.
+ * created_at anchor. The anchor is a UTC instant; the calendar date it lands on
+ * is computed in the configured INSTANCE TIMEZONE (QS-32, default Europe/Zagreb)
+ * so "today" for a note written at 23:30 local resolves to the local calendar
+ * day, not the UTC one. Once the local calendar date is fixed, all arithmetic is
+ * UTC-midnight math so results stay host-timezone independent — the golden cases
+ * pin an anchor date (mid-day, so the local date matches UTC) and must stay
+ * stable forever.
  *
  * F8 rules encoded here:
  * - weekday names resolve to the NEXT occurrence strictly after the anchor
  *   date (anchor Friday 2026-07-03: "Monday" → 07-06, "Thursday" → 07-09);
  *   the anchor's own weekday resolves to +7, never to the anchor itself.
- * - "in N days/weeks/months" adds to the anchor ("in two weeks" → 07-17).
+ * - "last/past/previous <weekday>" resolves BACKWARD to the most recent prior
+ *   occurrence (QS-29): anchor Friday 2026-07-03, "last Monday" → 06-29.
+ * - "in N days/weeks/months" adds to the anchor ("in two weeks" → 07-17);
+ *   "N days/weeks/months ago" subtracts ("two weeks ago" → 06-19).
  * - "by X" is a valid_until; a plain point/valid_from expression sets valid_from.
  * - anything unresolvable leaves the field null and is reported so the memory
  *   detail drawer can flag "date could not be resolved".
  */
+
+/** Default instance timezone for calendar-date resolution (QS-32). */
+export const DEFAULT_TIMEZONE = 'Europe/Zagreb';
 
 export type TemporalKind = 'valid_from' | 'valid_until' | 'point';
 
@@ -64,6 +74,24 @@ function atUtcMidnight(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 }
 
+/**
+ * The calendar date the anchor lands on in `timeZone`, as UTC midnight of that
+ * local date (QS-32). Using Intl to read the local Y/M/D keeps the result a UTC
+ * instant whose `toISOString().slice(0,10)` IS the local calendar date, so all
+ * downstream UTC-midnight arithmetic stays timezone-independent and the golden
+ * cases stay stable.
+ */
+function zonedMidnight(d: Date, timeZone: string): Date {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(d);
+  const get = (type: string): number => Number(parts.find((p) => p.type === type)!.value);
+  return new Date(Date.UTC(get('year'), get('month') - 1, get('day')));
+}
+
 function addUtcDays(d: Date, days: number): Date {
   const r = atUtcMidnight(d);
   r.setUTCDate(r.getUTCDate() + days);
@@ -76,12 +104,18 @@ function addUtcMonths(d: Date, months: number): Date {
   return r;
 }
 
-/** The next occurrence of `dow` strictly after the anchor date (never the anchor). */
-function nextWeekday(anchor: Date, dow: number): Date {
-  const base = atUtcMidnight(anchor);
+/** The next occurrence of `dow` strictly after the base date (never the base). */
+function nextWeekday(base: Date, dow: number): Date {
   let delta = (dow - base.getUTCDay() + 7) % 7;
   if (delta === 0) delta = 7;
   return addUtcDays(base, delta);
+}
+
+/** The previous occurrence of `dow` strictly before the base date (QS-29). */
+function prevWeekday(base: Date, dow: number): Date {
+  let delta = (base.getUTCDay() - dow + 7) % 7;
+  if (delta === 0) delta = 7;
+  return addUtcDays(base, -delta);
 }
 
 function parseCount(token: string): number | null {
@@ -90,8 +124,8 @@ function parseCount(token: string): number | null {
 }
 
 /** chrono fallback for absolute/other forms; components read in UTC (TZ-safe). */
-function chronoResolve(raw: string, anchor: Date): Date | null {
-  const results = chrono.parse(raw, anchor, { forwardDate: true });
+function chronoResolve(raw: string, base: Date, forward: boolean): Date | null {
+  const results = chrono.parse(raw, base, { forwardDate: forward });
   const start = results[0]?.start;
   if (!start) return null;
   const year = start.get('year');
@@ -106,13 +140,34 @@ function chronoResolve(raw: string, anchor: Date): Date | null {
  * The custom pass (weekday, "in N", today/tomorrow/yesterday) is authoritative
  * and deterministic; chrono handles absolute dates as a fallback.
  */
-export function resolveExpression(raw: string, anchor: Date): Date | null {
+export function resolveExpression(
+  raw: string,
+  anchor: Date,
+  timeZone: string = DEFAULT_TIMEZONE,
+): Date | null {
   const text = raw.trim().toLowerCase();
   if (!text) return null;
 
-  if (/\btoday\b/.test(text)) return atUtcMidnight(anchor);
-  if (/\btomorrow\b/.test(text)) return addUtcDays(anchor, 1);
-  if (/\byesterday\b/.test(text)) return addUtcDays(anchor, -1);
+  // Fix the anchor to its calendar date in the instance timezone (QS-32); all
+  // arithmetic below is UTC-midnight math on this normalized base.
+  const base = zonedMidnight(anchor, timeZone);
+
+  if (/\btoday\b/.test(text)) return base;
+  if (/\btomorrow\b/.test(text)) return addUtcDays(base, 1);
+  if (/\byesterday\b/.test(text)) return addUtcDays(base, -1);
+
+  // "N days/weeks/months ago" — subtracted from the anchor (QS-29). Checked
+  // before "in N" so a stray "in ... ago" can't be misrouted.
+  const agoMatch = text.match(/\b([a-z]+|\d+)\s+(day|days|week|weeks|month|months)\s+ago\b/);
+  if (agoMatch) {
+    const n = parseCount(agoMatch[1]!);
+    const unit = agoMatch[2]!;
+    if (n !== null) {
+      if (unit.startsWith('day')) return addUtcDays(base, -n);
+      if (unit.startsWith('week')) return addUtcDays(base, -n * 7);
+      return addUtcMonths(base, -n);
+    }
+  }
 
   // "in N days/weeks/months" — added to the anchor.
   const inMatch = text.match(/\bin\s+([a-z]+|\d+)\s+(day|days|week|weeks|month|months)\b/);
@@ -120,31 +175,39 @@ export function resolveExpression(raw: string, anchor: Date): Date | null {
     const n = parseCount(inMatch[1]!);
     const unit = inMatch[2]!;
     if (n !== null) {
-      if (unit.startsWith('day')) return addUtcDays(anchor, n);
-      if (unit.startsWith('week')) return addUtcDays(anchor, n * 7);
-      return addUtcMonths(anchor, n);
+      if (unit.startsWith('day')) return addUtcDays(base, n);
+      if (unit.startsWith('week')) return addUtcDays(base, n * 7);
+      return addUtcMonths(base, n);
     }
   }
 
-  // Weekday names, with any of the usual lead-ins ("by", "next", "on", …).
+  // Weekday names, with any of the usual lead-ins. "last/past/previous" resolve
+  // BACKWARD (QS-29); every other lead-in resolves forward.
   const wdMatch = text.match(
-    /\b(?:by|before|on|this|next|coming|the)?\s*(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/,
+    /\b(last|past|previous|by|before|on|this|next|coming|the)?\s*(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/,
   );
   if (wdMatch) {
-    return nextWeekday(anchor, WEEKDAYS[wdMatch[1]!]!);
+    const lead = wdMatch[1];
+    const dow = WEEKDAYS[wdMatch[2]!]!;
+    const backward = lead === 'last' || lead === 'past' || lead === 'previous';
+    return backward ? prevWeekday(base, dow) : nextWeekday(base, dow);
   }
 
-  return chronoResolve(raw, anchor);
+  // chrono fallback for absolute/other forms. Backward-leaning phrases disable
+  // forwardDate so chrono resolves "last …"/"… ago" into the past (QS-29).
+  const forward = !/\b(ago|last|past|previous)\b/.test(text);
+  return chronoResolve(raw, base, forward);
 }
 
 /** Resolve a list of expressions, routing each by kind; collect unresolved raws. */
 export function resolveTemporalExpressions(
   expressions: TemporalExpression[],
   anchor: Date,
+  timeZone: string = DEFAULT_TIMEZONE,
 ): ResolvedInterval {
   const out: ResolvedInterval = { unresolved: [] };
   for (const expr of expressions) {
-    const date = resolveExpression(expr.raw, anchor);
+    const date = resolveExpression(expr.raw, anchor, timeZone);
     if (!date) {
       out.unresolved.push(expr.raw);
       continue;

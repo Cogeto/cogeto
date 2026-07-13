@@ -396,69 +396,17 @@ export class MemoryReconciliation {
       }
       const user: MemoryActor = { kind: 'user', userId: principal.userId };
 
+      // The three resolution outcomes (0010 ruling 3), each extracted to a
+      // behavior-preserving helper (QS-41): confirm one party (loser outdated or
+      // superseded), correct both by edit-as-supersession, or dismiss (restore
+      // both to their prior status). Every helper runs inside `tx`.
       let resolution: RelationResolution;
       if (action.type === 'confirm') {
-        resolution = action.winner === 'a' ? 'confirmed_a' : 'confirmed_b';
-        const winner = action.winner === 'a' ? rowA : rowB;
-        const loser = action.winner === 'a' ? rowB : rowA;
-        if (winner.status !== 'contradicted' || loser.status !== 'contradicted') {
-          throw new BadRequestException(
-            'a memory in this contradiction changed since detection — review it in Memories, then dismiss or correct instead',
-          );
-        }
-        const confirmed = await this.store.transitionInTx(
-          tx,
-          user,
-          winner.id,
-          'user_approved',
-          'contradiction resolution: confirmed by owner',
-        );
-        if (confirmLoserOutcome(asParty(confirmed), asParty(loser)) === 'outdated') {
-          await this.store.transitionInTx(
-            tx,
-            user,
-            loser.id,
-            'outdated',
-            'contradiction resolution: time-superseded by the confirmed fact',
-          );
-        } else {
-          await this.closeAndPoint(
-            tx,
-            loser,
-            confirmed,
-            'memory.superseded',
-            { supersededBy: confirmed.id, mechanism: 'contradiction_confirm' },
-            actorLabel(user),
-            eventTime(asParty(confirmed)),
-          );
-        }
+        resolution = await this.applyConfirm(tx, user, rowA, rowB, action.winner);
       } else if (action.type === 'correct') {
-        resolution = 'corrected';
-        // Edit-as-supersession per memory (0006 ruling 3), atomically with the
-        // relation resolution: both parties end `replaced` under user_approved
-        // successors, which clears the warning chips.
-        await this.store.editContentInTx(tx, principal, rowA.id, action.aContent);
-        await this.store.editContentInTx(tx, principal, rowB.id, action.bContent);
+        resolution = await this.applyCorrect(tx, principal, rowA, rowB, action);
       } else {
-        resolution = 'dismissed';
-        await restoreFromContradiction(
-          tx,
-          rowA,
-          relation.aPriorStatus,
-          'memory.contradiction_dismiss_restored',
-          actorLabel(user),
-          this.vectors,
-          principal.orgId,
-        );
-        await restoreFromContradiction(
-          tx,
-          rowB,
-          relation.bPriorStatus,
-          'memory.contradiction_dismiss_restored',
-          actorLabel(user),
-          this.vectors,
-          principal.orgId,
-        );
+        resolution = await this.applyDismiss(tx, user, principal, rowA, rowB, relation);
       }
 
       const [resolved] = await tx
@@ -494,6 +442,100 @@ export class MemoryReconciliation {
       throw new NotFoundException('a memory in this pair no longer exists');
     }
     return [rows[0]!, rows[1]!];
+  }
+
+  // ── Resolution-outcome helpers (QS-41, extracted from resolveContradiction;
+  // each is behavior-preserving and runs inside the caller's `tx`) ─────────────
+
+  /** Confirm: winner → user_approved; the loser is outdated or superseded. */
+  private async applyConfirm(
+    tx: Tx,
+    user: MemoryActor,
+    rowA: MemoryRow,
+    rowB: MemoryRow,
+    winnerSide: 'a' | 'b',
+  ): Promise<RelationResolution> {
+    const winner = winnerSide === 'a' ? rowA : rowB;
+    const loser = winnerSide === 'a' ? rowB : rowA;
+    if (winner.status !== 'contradicted' || loser.status !== 'contradicted') {
+      throw new BadRequestException(
+        'a memory in this contradiction changed since detection — review it in Memories, then dismiss or correct instead',
+      );
+    }
+    const confirmed = await this.store.transitionInTx(
+      tx,
+      user,
+      winner.id,
+      'user_approved',
+      'contradiction resolution: confirmed by owner',
+    );
+    if (confirmLoserOutcome(asParty(confirmed), asParty(loser)) === 'outdated') {
+      await this.store.transitionInTx(
+        tx,
+        user,
+        loser.id,
+        'outdated',
+        'contradiction resolution: time-superseded by the confirmed fact',
+      );
+    } else {
+      await this.closeAndPoint(
+        tx,
+        loser,
+        confirmed,
+        'memory.superseded',
+        { supersededBy: confirmed.id, mechanism: 'contradiction_confirm' },
+        actorLabel(user),
+        eventTime(asParty(confirmed)),
+      );
+    }
+    return winnerSide === 'a' ? 'confirmed_a' : 'confirmed_b';
+  }
+
+  /**
+   * Correct: edit-as-supersession per memory (0006 ruling 3), atomically with
+   * the relation resolution — both parties end `replaced` under user_approved
+   * successors, which clears the warning chips.
+   */
+  private async applyCorrect(
+    tx: Tx,
+    principal: Principal,
+    rowA: MemoryRow,
+    rowB: MemoryRow,
+    action: Extract<ContradictionResolveAction, { type: 'correct' }>,
+  ): Promise<RelationResolution> {
+    await this.store.editContentInTx(tx, principal, rowA.id, action.aContent);
+    await this.store.editContentInTx(tx, principal, rowB.id, action.bContent);
+    return 'corrected';
+  }
+
+  /** Dismiss: restore both parties to their pre-contradiction status. */
+  private async applyDismiss(
+    tx: Tx,
+    user: MemoryActor,
+    principal: Principal,
+    rowA: MemoryRow,
+    rowB: MemoryRow,
+    relation: MemoryRelationRow,
+  ): Promise<RelationResolution> {
+    await restoreFromContradiction(
+      tx,
+      rowA,
+      relation.aPriorStatus,
+      'memory.contradiction_dismiss_restored',
+      actorLabel(user),
+      this.vectors,
+      principal.orgId,
+    );
+    await restoreFromContradiction(
+      tx,
+      rowB,
+      relation.bPriorStatus,
+      'memory.contradiction_dismiss_restored',
+      actorLabel(user),
+      this.vectors,
+      principal.orgId,
+    );
+    return 'dismissed';
   }
 
   /**

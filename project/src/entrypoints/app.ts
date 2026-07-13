@@ -1,7 +1,8 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import type { NextFunction, Request, Response } from 'express';
-import { assertAppKeyMount, runWithUsageContext } from '../infrastructure/index';
+import { assertAppKeyMount, describeErrorLine, runWithUsageContext } from '../infrastructure/index';
+import { logRedactionState } from './redaction-boot';
 import { loadConfig } from './config';
 import { createLogger, PinoNestLogger } from './logger';
 import { createAppRootModule } from './app-root.module';
@@ -43,9 +44,21 @@ async function main(): Promise<void> {
       ? 'DEMO SANDBOX (publishes a shared session token to anyone)'
       : 'standard (customer instance; no demo session served)';
   logger.info({ port: config.httpPort, mode }, `cogeto app listening — mode: ${mode}`);
+  logRedactionState(logger, config);
 }
 
+// Top-level handlers log the error CLASS + a scrubbed, length-bounded message
+// only — never the raw error, whose stack or `received "<value>"` fragment can
+// carry secrets or model output (QS-22).
+process.on('unhandledRejection', (reason: unknown) => {
+  console.error(`unhandledRejection: ${describeErrorLine(reason)}`);
+});
+process.on('uncaughtException', (error: unknown) => {
+  console.error(`uncaughtException: ${describeErrorLine(error)}`);
+  process.exit(1);
+});
+
 main().catch((error: unknown) => {
-  console.error('app failed to start:', error);
+  console.error(`app failed to start: ${describeErrorLine(error)}`);
   process.exit(1);
 });

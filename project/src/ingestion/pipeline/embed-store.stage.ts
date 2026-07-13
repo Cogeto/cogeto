@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
+import { DEFAULT_INSTANCE_TIMEZONE, INSTANCE_TIMEZONE } from '../../infrastructure/index';
 import type { Tx } from '../../infrastructure/index';
 import { MemoryStore } from '../../memory/index';
 import type { MemoryRow } from '../../memory/index';
@@ -38,6 +39,11 @@ export class EmbedStoreStage {
   constructor(
     private readonly gateway: ModelGateway,
     private readonly memoryStore: MemoryStore,
+    // The instance timezone for relative-date resolution (QS-32); @Optional so
+    // bare/test builds fall back to the default without wiring LimitsModule.
+    @Optional()
+    @Inject(INSTANCE_TIMEZONE)
+    private readonly timeZone: string = DEFAULT_INSTANCE_TIMEZONE,
   ) {}
 
   async run(tx: Tx, source: SourceItem, verified: VerifiedFact[]): Promise<AdmittedMemory[]> {
@@ -55,7 +61,11 @@ export class EmbedStoreStage {
       const status = !fact.hedged && verdict === 'supported' ? 'active' : 'uncertain';
       // Dates are resolved by code against the note anchor (decision 0007
       // ruling 1); v0001 still passes through its pre-resolved fields.
-      const { validFrom, validUntil, unresolved } = resolveFactTemporal(fact, source.createdAt);
+      const { validFrom, validUntil, unresolved } = resolveFactTemporal(
+        fact,
+        source.createdAt,
+        this.timeZone,
+      );
       const row = await this.memoryStore.admitExtractedFact(tx, source.ownerId, {
         content: fact.claim,
         // Notes are private in v1 (S2-A §4); file uploads inherit the upload's

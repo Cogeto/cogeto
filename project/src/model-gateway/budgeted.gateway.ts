@@ -2,6 +2,7 @@ import { ModelGateway } from './model-gateway.service';
 import type {
   CompletionRequest,
   CompletionResult,
+  GatewayReachability,
   StructuredExtractionRequest,
 } from './model-gateway.service';
 import { ModelBudgetExceededError } from './errors';
@@ -64,6 +65,10 @@ export class BudgetedModelGateway extends ModelGateway {
 
   embeddingModelId(): string {
     return this.inner.embeddingModelId();
+  }
+
+  override async reachable(): Promise<GatewayReachability> {
+    return this.inner.reachable(); // QS-35: probing is the wrapped gateway's job.
   }
 
   /** Enforce the cap before a call; returns the user to charge (or undefined). */

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { TaskDto } from '@cogeto/shared';
 import { fetchTasks, taskOperation } from '../api';
 import type { Session } from '../auth/oidc';
+import { invalidateAfterTaskOp } from '../query-invalidation';
 import { MemoryDrawer } from '../components/MemoryDrawer';
 import { Shell } from '../components/Shell';
 import { dueLabel, timeAgo } from '../components/status';
@@ -41,8 +42,8 @@ function TaskRow({
       taskOperation(session, task.id, operation),
     onSuccess: async () => {
       setError(null);
-      // Lists, the nav badge, and the digest all reflect the settle at once.
-      await queryClient.invalidateQueries();
+      // Lists + the nav badge reflect the settle at once (QS-36).
+      await invalidateAfterTaskOp(queryClient);
     },
     onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
   });

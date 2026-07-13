@@ -69,6 +69,17 @@ export const MODEL_USAGE_METER = Symbol('MODEL_USAGE_METER');
 export const PARSE_CAPS = Symbol('PARSE_CAPS');
 
 /**
+ * Instance timezone (QS-32) — the IANA zone relative-date resolution ("today",
+ * "last Monday") uses to fix a note's calendar date from its UTC created_at.
+ * Provided by LimitsModule from `config.timezone`; injected @Optional so bare
+ * builds fall back to {@link DEFAULT_INSTANCE_TIMEZONE}.
+ */
+export const INSTANCE_TIMEZONE = Symbol('INSTANCE_TIMEZONE');
+
+/** Default instance timezone (QS-32); mirrors temporal-resolver's DEFAULT_TIMEZONE. */
+export const DEFAULT_INSTANCE_TIMEZONE = 'Europe/Zagreb';
+
+/**
  * Fallback parse caps for bare/test constructions (createIngestionPipeline,
  * a directly-instantiated FileSourceReader) that run without LimitsModule.
  * Production wiring always injects the env-resolved values. Kept generous so it

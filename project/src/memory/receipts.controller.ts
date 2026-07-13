@@ -99,7 +99,7 @@ export class ReceiptsController {
     if (!row || counts?.requested_by !== request.principal.userId) {
       throw new NotFoundException(`receipt ${id} not found`);
     }
-    const alerting = await this.alertingReceiptIds();
+    const [alerting, chainTip] = await Promise.all([this.alertingReceiptIds(), this.chainTip()]);
     return {
       ...this.toListItem(row, alerting),
       countsJson: row.countsJson,
@@ -107,7 +107,25 @@ export class ReceiptsController {
       prevHash: row.prevHash,
       signature: row.signature,
       signedAt: row.signedAt?.toISOString() ?? null,
+      // QS-23: stamp the ledger's chain tip onto the exported receipt as an
+      // external anchor. A later verify must still contain this tip and show a
+      // confirmed count ≥ this one — a dropped receipt moves the tip.
+      chainTip,
     };
+  }
+
+  /**
+   * The chain tip (QS-23): the newest confirmed receipt — the one whose hash no
+   * other confirmed receipt references as prev_hash — plus the confirmed count.
+   */
+  private async chainTip(): Promise<{ hash: string | null; confirmedCount: number }> {
+    const confirmed = await this.db
+      .select({ hash: deletionReceipt.hash, prevHash: deletionReceipt.prevHash })
+      .from(deletionReceipt)
+      .where(eq(deletionReceipt.status, 'confirmed'));
+    const referenced = new Set(confirmed.map((r) => r.prevHash).filter((h): h is string => !!h));
+    const tip = confirmed.find((r) => r.hash && !referenced.has(r.hash));
+    return { hash: tip?.hash ?? null, confirmedCount: confirmed.length };
   }
 
   private toListItem(

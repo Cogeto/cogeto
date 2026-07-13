@@ -146,6 +146,17 @@ export function loadSession(): Session | null {
   }
 }
 
+/**
+ * Clears the stored session WITHOUT an IdP round-trip (QS-36). Used when the API
+ * returns 401 (token expired/revoked — recall the 10s Principal cache bound,
+ * decision 0026): the app drops the dead session and re-derives its auth posture
+ * from a fresh /api/config. The demo flag is left intact so a demo tab
+ * re-installs its published session rather than falling to the login screen.
+ */
+export function clearSession(): void {
+  sessionStorage.removeItem(SESSION_KEY);
+}
+
 export async function logout(): Promise<void> {
   const session = loadSession();
   sessionStorage.removeItem(SESSION_KEY);

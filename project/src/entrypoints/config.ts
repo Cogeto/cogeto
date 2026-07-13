@@ -48,6 +48,16 @@ const configSchema = z
       .default(25 * 1024 * 1024),
     /** Presigned download-URL lifetime in seconds (§A.9 — short-lived). */
     downloadUrlTtlSeconds: z.coerce.number().int().positive().default(300),
+    /**
+     * Postgres connection-pool ceiling per process (QS-38). Sized against worker
+     * concurrency (2): the ingestion pipeline deliberately holds its idempotency
+     * transaction OPEN across model calls (decision 0004/0005 — a retry must
+     * leave no partial rows), so each in-flight job pins a connection for its
+     * whole run; the single-flight lock (QS-39) and the graphile runner pin more.
+     * The default 10 gives ample headroom over concurrency for both the Nest pool
+     * and the worker's graphile pool. Raise it only alongside worker concurrency.
+     */
+    pgPoolMax: z.coerce.number().int().positive().default(10),
     oidc: z.object({
       /** Public issuer as the browser sees it, e.g. https://localhost */
       issuer: z.string().url(),
@@ -66,6 +76,20 @@ const configSchema = z
     mistralPipelineModel: z.string().min(1).default('mistral-small-latest'),
     mistralAnswerModel: z.string().min(1).default('mistral-medium-latest'),
     logLevel: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
+    /**
+     * Instance display timezone (QS-32) — relative dates ("today"/"tomorrow")
+     * resolve against local midnight in THIS zone, not UTC, fixing the
+     * near-midnight off-by-one for the EU audience. IANA name; default matches
+     * the primary market. All chain/interval math stays UTC; only the day
+     * boundary is zoned.
+     */
+    timezone: z.string().min(1).default('Europe/Zagreb'),
+    /**
+     * Zitadel project role that unlocks the operator System view (QS-10): the
+     * queue activity/dead-letter reads and retry, which expose cross-user
+     * source ids. A member without it gets 403 on /api/jobs/*.
+     */
+    adminRole: z.string().min(1).default('admin'),
     /**
      * Ana sandbox (decision 0022). `demoMode` turns this instance into the public
      * sandbox: the app serves the pre-minted demo session on GET /api/config and
@@ -93,10 +117,23 @@ const configSchema = z
      */
     redactionEnabled: envBool,
     redactionUrl: z.string().url().optional(),
+    /**
+     * Fail-closed assertion (QS-21): when set, the process REFUSES to boot
+     * unless redaction is actually enabled. The `redaction` compose profile sets
+     * this on the app + worker, so bringing the profile up while forgetting
+     * `REDACTION_ENABLED=1` fails loudly at boot instead of silently sending
+     * plaintext to the model — "profile up, redaction off" can no longer pass.
+     */
+    redactionRequired: envBool,
   })
   .refine((c) => !c.redactionEnabled || !!c.redactionUrl, {
     message: 'REDACTION_URL is required when REDACTION_ENABLED is set',
     path: ['redactionUrl'],
+  })
+  .refine((c) => !c.redactionRequired || c.redactionEnabled, {
+    message:
+      'REDACTION_REQUIRED is set but REDACTION_ENABLED is not — refusing to boot without redaction (QS-21)',
+    path: ['redactionEnabled'],
   });
 
 export type CogetoConfig = z.infer<typeof configSchema> & {
@@ -140,6 +177,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
     instanceKeyDir: env.COGETO_INSTANCE_KEY_DIR || undefined,
     uploadMaxBytes: env.COGETO_UPLOAD_MAX_BYTES || undefined,
     downloadUrlTtlSeconds: env.COGETO_DOWNLOAD_URL_TTL_SECONDS || undefined,
+    pgPoolMax: env.COGETO_PG_POOL_MAX || undefined,
     oidc: {
       issuer: env.COGETO_OIDC_ISSUER,
       internalUrl: env.COGETO_OIDC_INTERNAL_URL,
@@ -153,6 +191,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
       env.COGETO_MISTRAL_MODEL_PIPELINE || env.MISTRAL_MODEL_PIPELINE || undefined,
     mistralAnswerModel: env.COGETO_MISTRAL_MODEL_ANSWER || env.MISTRAL_MODEL_ANSWER || undefined,
     logLevel: env.COGETO_LOG_LEVEL,
+    timezone: env.COGETO_TIMEZONE || undefined,
+    adminRole: env.COGETO_ADMIN_ROLE || undefined,
     demoMode: env.COGETO_DEMO_MODE || undefined,
     // Either explicit flag or the conventional COGETO_ENV=production marker.
     production:
@@ -164,6 +204,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
     // Redaction mode (Addendum B.8) — REDACTION_* namespace, set by the profile.
     redactionEnabled: env.REDACTION_ENABLED,
     redactionUrl: env.REDACTION_URL || undefined,
+    redactionRequired: env.REDACTION_REQUIRED,
   });
   if (!parsed.success) {
     const details = parsed.error.issues

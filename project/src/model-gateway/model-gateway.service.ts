@@ -58,4 +58,22 @@ export abstract class ModelGateway {
    * is required.
    */
   abstract embeddingModelId(): string;
+
+  /**
+   * Cheap, cached reachability probe for the health surface (QS-35) — never on a
+   * request hot path. The base default assumes reachable (in-memory/test
+   * gateways are always up); the Mistral impl does a real cached probe,
+   * Unconfigured reports "not configured" (still ok — model features are simply
+   * off), and the decorators delegate to the wrapped gateway.
+   */
+  async reachable(): Promise<GatewayReachability> {
+    return { ok: true, detail: 'gateway reachable' };
+  }
+}
+
+/** Result of {@link ModelGateway.reachable} — the health controller adds latency. */
+export interface GatewayReachability {
+  ok: boolean;
+  detail?: string;
+  error?: string;
 }

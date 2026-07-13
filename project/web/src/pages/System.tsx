@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchChainStatus, fetchDeadLetterJobs, fetchIntegrity, retryDeadLetterJob } from '../api';
 import type { Session } from '../auth/oidc';
+import { invalidateAfterJobRetry } from '../query-invalidation';
 import { Shell } from '../components/Shell';
 import { StatusPanel } from '../components/StatusPanel';
 import { WorkerActivityPanel } from '../components/WorkerActivityPanel';
@@ -115,7 +116,7 @@ function DeadLetterTable({ session }: { session: Session }) {
     mutationFn: (id: string) => retryDeadLetterJob(session, id),
     onSuccess: async () => {
       setError(null);
-      await queryClient.invalidateQueries();
+      await invalidateAfterJobRetry(queryClient); // QS-36
     },
     onError: (e) => setError(e instanceof Error ? e.message : String(e)),
   });

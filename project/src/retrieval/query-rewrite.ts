@@ -172,11 +172,12 @@ export function resolveTemporalIntent(
   rawQuestion: string,
   claimed: { kind: TemporalIntentKind; expression: string | null } | null,
   now: Date = new Date(),
+  timeZone?: string,
 ): TemporalIntent | null {
   if (!claimed) return null;
   if (!TEMPORAL_HINT_RE.test(rawQuestion)) return null; // veto: no hint, no mode
   if (claimed.kind === 'previous') return { kind: 'previous' };
-  const raw = claimed.expression ? resolveExpression(claimed.expression, now) : null;
+  const raw = claimed.expression ? resolveExpression(claimed.expression, now, timeZone) : null;
   const resolved = raw ? toMostRecentPast(raw, now) : null;
   if (!resolved) return null; // unresolvable date → default mode, never an error
   return claimed.kind === 'point_in_time'
@@ -215,6 +216,7 @@ export async function rewriteQuery(
   question: string,
   loadPromptFn: typeof loadPrompt = loadPrompt,
   now: Date = new Date(),
+  timeZone?: string,
 ): Promise<RewriteResult> {
   const fallback: RewriteResult = {
     query: question,
@@ -244,7 +246,7 @@ export async function rewriteQuery(
       query: result.rewritten_query.trim() || question,
       entities: entities.length > 0 ? entities : queryEntityCandidates(result.rewritten_query),
       // Veto guard + deterministic date resolution (decision 0012 ruling 2).
-      temporal: resolveTemporalIntent(question, result.temporal, now),
+      temporal: resolveTemporalIntent(question, result.temporal, now, timeZone),
       openLoops: resolveOpenLoopsIntent(question, result.open_loops),
     };
   } catch {

@@ -3,6 +3,11 @@ import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Db, Tx } from './db';
 import { deadLetter, jobExecution } from './persistence/tables';
+import { describeErrorLine } from './error-scrub';
+
+const DEAD_LETTER_WRITE_ATTEMPTS = 3;
+const DEAD_LETTER_RETRY_MS = 200;
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /** The §A.3 idempotency key: one row in job_execution = the job ran (or was cancelled). */
 export interface JobIdempotencyKey {
@@ -33,6 +38,31 @@ export async function tryJobRunLock(tx: Tx, key: JobIdempotencyKey): Promise<boo
     sql`SELECT pg_try_advisory_xact_lock(${advisoryKeySql(key)}) AS locked`,
   );
   return (result.rows[0] as { locked: boolean }).locked;
+}
+
+/**
+ * Single-flight guard for RECURRING jobs (FIX-3 QS-33/QS-39). The nightly
+ * sweep/dream/reminders/backfill and the demo reset are NOT idempotentTask
+ * (they recur, not once-per-key), so a slow run can overlap the next cron fire
+ * (or a DST double-fire). This wraps a job body in a transaction-scoped
+ * advisory lock keyed by name: the SECOND concurrent runner fails the try-lock
+ * and skips cleanly rather than running in parallel. The body runs on separate
+ * pooled connections; the lock (held on the wrapping tx's connection) is
+ * released at commit. Returns { ran: false } when it skipped.
+ */
+export async function runSingleFlight<T>(
+  db: Db,
+  name: string,
+  fn: () => Promise<T>,
+): Promise<{ ran: true; result: T } | { ran: false }> {
+  return db.transaction(async (tx) => {
+    const got = await tx.execute(
+      sql`SELECT pg_try_advisory_xact_lock(hashtextextended(${`cogeto:single-flight:${name}`}, 0)) AS locked`,
+    );
+    if (!(got.rows[0] as { locked: boolean }).locked) return { ran: false };
+    const result = await fn();
+    return { ran: true, result };
+  });
 }
 
 /**
@@ -135,16 +165,35 @@ export function idempotentTask(
     } catch (error) {
       const { attempts, max_attempts: maxAttempts } = helpers.job;
       if (attempts >= maxAttempts) {
-        // Final attempt: park in the dead-letter table (own transaction — the
-        // failed one rolled back) and complete the job. Visibility over retry loops.
-        await db.insert(deadLetter).values({
-          jobType,
-          payload,
-          error: error instanceof Error ? error.message : String(error),
-          attempts,
-        });
-        helpers.logger.error(`job ${jobType} dead-lettered after ${attempts} attempts`);
-        return;
+        // Final attempt: park in dead_letter (own transaction — the failed one
+        // rolled back) and complete the job. The error is SCRUBBED of model
+        // output before it lands in the column (QS-22). The write itself is
+        // retried (QS-34) — a lost dead_letter row would make health show green
+        // over lost work; if every retry fails we re-throw so graphile keeps the
+        // job as permanently-failed, which the health graphile-permfail check
+        // detects (also QS-34).
+        for (let writeAttempt = 1; ; writeAttempt++) {
+          try {
+            await db.insert(deadLetter).values({
+              jobType,
+              payload,
+              error: describeErrorLine(error),
+              attempts,
+            });
+            helpers.logger.error(`job ${jobType} dead-lettered after ${attempts} attempts`);
+            return;
+          } catch (writeError) {
+            if (writeAttempt >= DEAD_LETTER_WRITE_ATTEMPTS) {
+              helpers.logger.error(
+                `job ${jobType}: dead_letter write failed ${writeAttempt}x — re-throwing so it ` +
+                  `parks as graphile permanent-failure (health will flag it): ` +
+                  describeErrorLine(writeError),
+              );
+              throw error; // graphile keeps the exhausted job; health detects it
+            }
+            await sleep(DEAD_LETTER_RETRY_MS * writeAttempt);
+          }
+        }
       }
       throw error;
     }

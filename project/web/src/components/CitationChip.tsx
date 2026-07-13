@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { ChatFactDto, MemoryStatus } from '@cogeto/shared';
 import { fetchMe, fetchMemory } from '../api';
 import type { Session } from '../auth/oidc';
+import { CITATION_STALE_MS } from '../query-invalidation';
 import { isPastFact, PAST_CHIP, STATUS_CHIP, statusLabel, WARN_STATUSES } from './status';
 
 /**
@@ -30,7 +31,9 @@ export function CitationChip({
     queryKey: ['memory', lookupId],
     queryFn: () => fetchMemory(session, lookupId!),
     enabled: Boolean(lookupId),
-    staleTime: 30_000,
+    // A cited memory's status is refreshed by targeted invalidation on any
+    // governance mutation (QS-36); this stale window just bounds passive drift.
+    staleTime: CITATION_STALE_MS,
   });
   const { data: me } = useQuery({ queryKey: ['me'], queryFn: () => fetchMe(session) });
 

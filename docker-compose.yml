@@ -89,6 +89,11 @@ services:
       # model call; the gateway then fails closed if the sidecar is unreachable.
       REDACTION_ENABLED: ${REDACTION_ENABLED:-}
       REDACTION_URL: ${REDACTION_URL:-http://redaction:8080}
+      # QS-21 fail-closed assertion: set to 1 to REFUSE boot unless redaction is
+      # actually enabled — bringing the redaction profile up while forgetting
+      # REDACTION_ENABLED=1 then fails loudly at boot instead of silently sending
+      # plaintext to the model provider.
+      REDACTION_REQUIRED: ${REDACTION_REQUIRED:-}
     volumes:
       - web-config:/web-config:ro
       # QS-9: the app mounts the PUBLIC-KEY-ONLY volume (migrate copies the public
@@ -131,7 +136,13 @@ services:
       dockerfile: project/infra/docker/Dockerfile
       target: runtime
     command: ['node', 'project/src/dist/entrypoints/worker.js']
-    environment: *cogeto-env
+    environment:
+      <<: *cogeto-env
+      # QS-39: run the worker's graphile crons in UTC so the 03:00/03:30/03:40
+      # nightly schedule is timezone-stable and a DST transition never skips or
+      # double-fires a run (the single-flight advisory lock also guards the
+      # double-fire). The app carries no crons, so only the worker pins TZ.
+      TZ: UTC
     volumes:
       # The worker keeps the FULL keypair (it signs receipts) — QS-9.
       - instance-keys:/instance-keys:ro

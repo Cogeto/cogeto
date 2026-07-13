@@ -40,8 +40,18 @@ import type {
 } from '@cogeto/shared';
 import type { Session } from './auth/oidc';
 
+/** Fired on any 401 so the shell can drop the dead session and re-fetch config (QS-36). */
+export const UNAUTHORIZED_EVENT = 'cogeto:unauthorized';
+
 /** Typed API errors: the server's message (e.g. an illegal transition) is the UI copy. */
 async function toError(path: string, response: Response): Promise<Error> {
+  // A 401 means the bearer token expired or was revoked (10s Principal-cache
+  // bound, decision 0026). Signal the shell exactly once, from the single place
+  // every request funnels its failures through, so it can re-derive auth from a
+  // fresh /api/config (QS-36). 403 (e.g. a missing admin role) is NOT this.
+  if (response.status === 401 && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+  }
   try {
     const body = (await response.json()) as { message?: string | string[] };
     const message = Array.isArray(body.message) ? body.message.join('; ') : body.message;

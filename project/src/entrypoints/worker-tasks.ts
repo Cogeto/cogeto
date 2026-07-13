@@ -1,5 +1,5 @@
 import type { TaskList } from 'graphile-worker';
-import { idempotentTask, writeAudit } from '../infrastructure/index';
+import { idempotentTask, runSingleFlight, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import {
   DREAM_JOB_TYPE,
@@ -49,6 +49,19 @@ export interface WorkerTaskDeps {
  * delivery provably changes nothing.
  */
 export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
+  // Single-flight wrapper for the RECURRING nightly jobs (QS-39): a slow run
+  // must not overlap the next cron fire (or a DST double-fire). The named
+  // advisory lock lets the second concurrent runner skip cleanly instead of
+  // running in parallel. These jobs are idempotent by construction, so a skip is
+  // safe — the next scheduled pass repairs anything missed.
+  const recurring =
+    (name: string, body: () => Promise<void>): (() => Promise<void>) =>
+    async () => {
+      const outcome = await runSingleFlight(db, name, body);
+      if (!outcome.ran) {
+        deps.log({ job: name }, `${name} skipped — another run holds the single-flight lock`);
+      }
+    };
   return {
     echo: idempotentTask(db, 'echo', async (tx, payload) => {
       await writeAudit(tx, {
@@ -109,20 +122,20 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
     // wrapped in idempotentTask: that key fires once ever, a sweep recurs. Its
     // effects are idempotent by construction instead — alert inserts dedupe on
     // a unique index; the audit row is the run's ledger entry.
-    [SWEEP_JOB_TYPE]: async () => {
+    [SWEEP_JOB_TYPE]: recurring(SWEEP_JOB_TYPE, async () => {
       const report = await deps.integritySweep.run((message) => deps.log({}, message));
       deps.log({ ...report }, 'integrity sweep completed');
-    },
+    }),
 
     // The nightly dreaming cycle (§B.6 plain form; decision 0011) — scheduled
     // 03:30, after the 03:00 sweep; on demand via `npm run dream`. Like the
     // sweep, deliberately NOT idempotentTask (a recurring job, not a one-shot
     // per source); its effects are idempotent by construction — reconcile
     // tombstones, the staleness status filter, the unique open-flag index.
-    [DREAM_JOB_TYPE]: async () => {
+    [DREAM_JOB_TYPE]: recurring(DREAM_JOB_TYPE, async () => {
       const report = await deps.dreaming.run(deps.log);
       deps.log({ ...report }, 'dreaming cycle completed (scheduled)');
-    },
+    }),
 
     // Task derivation + judgments per processed source (decision 0013 ruling
     // 2): the pipeline enqueues it transactionally after stage 6; the engine
@@ -144,20 +157,20 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
     // migration 0014 and nightly by the dreaming cycle. Like the sweep, NOT
     // idempotentTask — recurring; the UNIQUE deriving-memory constraint makes
     // its effects idempotent instead.
-    [TASKS_BACKFILL_JOB_TYPE]: async () => {
+    [TASKS_BACKFILL_JOB_TYPE]: recurring(TASKS_BACKFILL_JOB_TYPE, async () => {
       const report = await deps.tasksEngine.backfill((message) => deps.log({}, message));
       deps.log({ ...report }, 'tasks backfill completed');
-    },
+    }),
 
     // The nightly task reminders pass (F3 handoff §2) — scheduled 03:40 by the
     // crontab in worker.ts, after the dreaming cycle's dormancy sync. Like the
     // sweep, NOT idempotentTask (recurring, not one-shot per key); it is
     // idempotent by construction — reminders stamp only when unset, so a
     // re-delivered pass raises nothing new.
-    [TASKS_REMINDERS_JOB_TYPE]: async () => {
+    [TASKS_REMINDERS_JOB_TYPE]: recurring(TASKS_REMINDERS_JOB_TYPE, async () => {
       const report = await deps.tasksEngine.runReminders((message) => deps.log({}, message));
       deps.log({ ...report }, 'task reminders pass completed');
-    },
+    }),
 
     // Extract-and-discard staging cleanup (§A.9, O1-C): deletes the transient
     // staging object once its extraction is durable (enqueued by the pipeline
@@ -198,10 +211,10 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
     // their expires_at → expired. Like the sweep, NOT idempotentTask (recurring,
     // not one-shot per key); it is idempotent by construction (a second pass
     // finds none still pending-and-past).
-    [APPROVAL_EXPIRY_JOB_TYPE]: async () => {
+    [APPROVAL_EXPIRY_JOB_TYPE]: recurring(APPROVAL_EXPIRY_JOB_TYPE, async () => {
       const expired = await deps.approvalService.expireStale();
       deps.log({ expired }, 'approval expiry pass completed');
-    },
+    }),
 
     // Embeds an edit's supersession successor (S3-B). Idempotency key:
     // ('memory', <memory id>, 'memory.embed') — a duplicate delivery skips.

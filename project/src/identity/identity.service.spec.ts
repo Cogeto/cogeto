@@ -77,6 +77,53 @@ describe('identity seam — resolvePrincipal', () => {
   });
 });
 
+// ── QS-17: local iss/aud pre-validation before trusting userinfo ───────────────
+const b64url = (obj: unknown): string => Buffer.from(JSON.stringify(obj)).toString('base64url');
+/** A JWT-SHAPED token (3 segments; signature not verified — userinfo proves it). */
+const jwt = (claims: Record<string, unknown>): string =>
+  `${b64url({ alg: 'RS256' })}.${b64url(claims)}.sig`;
+
+describe('identity seam — iss/aud pre-validation (QS-17)', () => {
+  const AUD_OPTIONS = {
+    internalBaseUrl: 'http://zitadel:8080',
+    externalDomain: 'localhost',
+    cacheTtlSeconds: 60,
+    issuer: 'https://localhost',
+    expectedAudience: 'cogeto-spa',
+  };
+  let service: IdentityService;
+  beforeEach(() => {
+    mockFetch.mockReset();
+    service = new IdentityService(AUD_OPTIONS, directory);
+  });
+
+  it('rejects a JWT whose issuer is not this instance — no userinfo round-trip', async () => {
+    const token = jwt({ iss: 'https://evil.example', aud: 'cogeto-spa' });
+    await expect(service.resolvePrincipal(token)).rejects.toThrow(UnauthorizedException);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects a JWT whose audience does not include the client id', async () => {
+    const token = jwt({ iss: 'https://localhost', aud: 'some-other-client' });
+    await expect(service.resolvePrincipal(token)).rejects.toThrow(UnauthorizedException);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('accepts a JWT with the right iss + aud (aud may be an array), then uses userinfo', async () => {
+    mockFetch.mockResolvedValue({ status: 200, body: VALID_BODY });
+    const token = jwt({ iss: 'https://localhost', aud: ['cogeto-spa', 'other'] });
+    expect((await service.resolvePrincipal(token)).userId).toBe('user-123');
+    expect(mockFetch).toHaveBeenCalledOnce();
+  });
+
+  it('lets an OPAQUE token (e.g. the demo PAT) through to userinfo unchecked', async () => {
+    mockFetch.mockResolvedValue({ status: 200, body: VALID_BODY });
+    // No dots → not a JWT → the iss/aud decode is skipped by design.
+    expect((await service.resolvePrincipal('opaque-pat-token')).userId).toBe('user-123');
+    expect(mockFetch).toHaveBeenCalledOnce();
+  });
+});
+
 // ── Architecture: the seam is the ONLY place that names Zitadel ────────────────
 const SRC_ROOT = path.resolve(__dirname, '..');
 function sources(dir: string, acc: string[] = []): string[] {
