@@ -10,7 +10,8 @@ backed by an inspectable artifact — with human-approved agents on top.
 
 | Doc | Read it when |
 |---|---|
-| `docs/Cogeto-v1-Addendum-Verifiable-Memory.md` | **Always, first.** Binding architecture decisions (Part A) + feature set with v1/v1.x/Later tags (Part B). Wins over every other doc on conflict. |
+| `docs/Cogeto-v1-Roadmap-Revision.md` | **For the remaining v1 plan — read before any O4–O7 work.** BINDING. Supersedes the Model-Split roadmap's O4/O5/O6 + v1.x list and the Addendum §A.11 connector order: calendar is dropped from v1, email arrives via a per-tenant receive-only Haraka forwarding server (no OAuth/CASA), operations are script-driven, v1 scope is locked. |
+| `docs/Cogeto-v1-Addendum-Verifiable-Memory.md` | **Always, first.** Binding architecture decisions (Part A) + feature set with v1/v1.x/Later tags (Part B). Wins over every other doc on conflict — **except** the remaining-plan items (O4–O7, connector set, v1 scope), where the Roadmap Revision above supersedes it (notably §A.11 connector order + Gmail/CASA). |
 | `docs/Cogeto-v1-scope.md` | For product scope, users, positioning, business model. |
 | `docs/Cogeto-v1-Specification.docx` | Full product spec (binary; owner-maintained). |
 | `docs/Cogeto-Technical-Architecture.md` | Full engineering plan: stack rationale, containers, mechanisms, phased implementation. (The .docx is the presentation copy.) |

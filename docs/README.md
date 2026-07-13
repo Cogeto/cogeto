@@ -2,8 +2,17 @@
 
 The spec is the source of truth; when code and spec disagree, the spec wins (or is
 updated deliberately). Precedence: **the Addendum wins over the scope doc and the
-Specification wherever they conflict** (it is newer and resolves their open points).
+Specification wherever they conflict** (it is newer and resolves their open points) —
+**except for the remaining v1 plan (O4–O7 sessions, connector set, and v1 scope lock),
+where `Cogeto-v1-Roadmap-Revision.md` supersedes the Addendum** (notably §A.11's
+connector order and the Gmail/CASA path).
 
+- `Cogeto-v1-Roadmap-Revision.md` — **BINDING** for the remaining v1 plan: O4–O7
+  sessions, email via a per-tenant receive-only Haraka forwarding server, calendar
+  dropped from v1, operations script-driven, v1 scope locked. Wins over earlier plans.
+- `Cogeto-Roadmap-Revision-Email-Calendar.md` — **superseded**; the earlier email/calendar
+  working note, now folded into the Roadmap Revision above (kept for provenance only —
+  plan against the Revision, which wins).
 - `Cogeto-v1-Addendum-Verifiable-Memory.md` — **binding** architecture decisions
   (Part A) + the Verifiable Memory feature set with sequencing tags (Part B).
 - `Cogeto-v1-scope.md` — the locked v1 scope and strategy.

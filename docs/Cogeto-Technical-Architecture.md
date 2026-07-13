@@ -77,7 +77,7 @@ because unenforced modularity erodes within months.
 | ingestion            | Ingest, chunk, extract, verify, embed, store pipeline                                       | Facts, never raw documents, enter the vector store; every fact passes independent verification before becoming active         |
 | retrieval            | Hybrid search, fusion, ranking                                                              | Scope and sensitive are hard filters inside the query; statuses are score multipliers; no app-side post-filtering             |
 | agents               | Drafting, proposals, approval state machine                                                 | Consequential actions execute only from a server-side approved state, only in the worker                                      |
-| connectors           | Email, calendar, notes sync; OAuth token custody                                            | Tokens encrypted at rest; incremental sync; ingestion via outbox only                                                         |
+| connectors           | Notes capture and email inbound (via receive-only Haraka forwarding — no OAuth/CASA; calendar dropped from v1)                                            | Ingestion via outbox only; email accepted by the per-tenant Haraka container and dropped onto the pipeline                                                         |
 | tasks                | Todos, open loops, reminders, digests, dreaming card                                        | Derived from memory; never mutates memory directly                                                                            |
 | identity (seam)      | Authenticated principal, org, roles; wraps Zitadel                                          | No other module calls Zitadel; scope filtering is Cogeto logic, not identity-provider logic                                   |
 | model-gateway (seam) | All model and embedding calls; prompt registry                                              | No other module calls a model API; prompts are versioned artifacts with eval scores                                           |
@@ -321,11 +321,13 @@ sprawl is a fleet-maintenance cost multiplied by every tenant instance.
 
 ## 8. Implementation Plan
 
+> **Phases 5–8 below are superseded by [`docs/Cogeto-v1-Roadmap-Revision.md`](Cogeto-v1-Roadmap-Revision.md) (BINDING).** Calendar is dropped from v1 (reconsidered only post-2.0). Email arrives by forwarding into a per-tenant, receive-only **Haraka** SMTP container — no OAuth, no CASA, no Gmail scope assessment, no sending. Operations are script-driven and manual-by-design (no Terraform/API automation/self-serve/monitoring/backup scripts). The trust-score page and compliance one-pager are **website deliverables**, not running-instance features. Local embeddings are deferred to 2.0. The rows are kept below for history; the revision's O4–O7 session ladder governs.
+
 Phases are sequential and each ends in something demonstrable. The
-connector order (notes first, calendar second, email last) is
-deliberate: it exercises the full pipeline with zero OAuth friction,
-produces the public demo early, and defers the one external dependency
-(email scope verification) that can stall a launch.
+connector order (notes first, email second — via receive-only Haraka
+forwarding) is deliberate: it exercises the full pipeline with zero
+OAuth friction and produces the public demo early. (Calendar, formerly
+sequenced here, is dropped from v1 per the Roadmap Revision.)
 
 | **Phase**                | **Scope**                                                                                                                                                                                   | **Exit criterion**                                                                 |
 |--------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------|
@@ -334,17 +336,14 @@ produces the public demo early, and defers the one external dependency
 | 2\. Notes vertical slice | Manual note capture; full pipeline ingest to reconcile; self-verifying extraction; embedding and Qdrant storage; hybrid retrieval; chat answer with sources; dashboard list, edit, statuses | A note becomes a correct, source-linked, verified memory answerable in chat        |
 | 3\. Trust machinery      | Deletion saga with receipts and cascade test; approval state machine end to end; eval harness with golden set gating CI; prompt registry                                                    | Delete a document, receive a confirmed signed receipt; CI fails on eval regression |
 | 4\. Ana sandbox          | Demo compose profile with seeded persona; public sandbox deployment; compliance one-pager                                                                                                   | A visitor asks what Ana promised Marko and watches a live deletion receipt         |
-| 5\. Calendar connector   | Google and Microsoft calendar OAuth, incremental sync, meeting prep                                                                                                                         | Calendar facts flow through the same pipeline with correct provenance              |
-| 6\. Email connector      | Microsoft Graph and IMAP first; Gmail per the scope-assessment decision; drafts through approval                                                                                            | The day-one question is answerable across all three sources                        |
-| 7\. Productization       | Instance provisioning and teardown automation, trial lifecycle, backups, monitoring, upgrade playbook across the fleet                                                                      | A trial instance is created, used, converted or destroyed without manual steps     |
-| 8\. v1.x expansion       | Time-travel diff view, Memory Passport export, dreaming digest card, local embeddings and reranker                                                                                          | Each ships as an independent increment on the same schema                          |
+| 5\. Email via Haraka (O4)   | Per-tenant, receive-only Haraka SMTP container; unique per-instance inbound address; user forwards/BCCs/rules mail in; inbound parsing (incl. calendar-invite parts within emails) into the pipeline as source_type 'email'; thread-aware extraction; deletion saga covers email + receipts; reply drafts through approval, sent by the user from their own client | Email facts flow through the same pipeline with correct provenance; email never leaves the tenant's box |
+| 6\. Time-travel + Passport (O5) | Per-entity/per-project time-travel diff UI (each change source-linked); Memory Passport one-click export (facts, statuses, provenance, validity history, receipts; documented versioned open format; export only)                                    | Knowledge changes are inspectable over time and the full memory is exportable      |
+| 7\. Operator script + runbook (O6) | One script for a fresh OVHcloud Ubuntu instance (install/configure/upgrade/status): auto-does what it can (Docker, secrets, Haraka address, TLS, migrations), then prints a structured operator TODO (DNS incl. MX, OVH backup settings, verification). Runbook: onboarding, manual trials, OVH backup + rehearsed restore. No Terraform/API automation/monitoring | An operator onboards a fresh instance in under an hour from one script + its checklist |
+| 8\. Launch gate (O7)       | Trust-score public page + compliance one-pager (**website deliverables** from curated cross-instance data, not instance features); OSS launch prep (CONTRIBUTING/CLA, SECURITY, README); re-run gap + security audits                          | Both audits pass; the OSS repo and website deliverables are launch-ready           |
+| Later (2.0+)               | Calendar connector (if design-partner demand proves real); local embeddings and a local-LLM tier; operational automation (Terraform/self-serve/monitoring/backup scripts); Memory Passport import; dreaming digest chat card                    | Each ships as an independent increment on the same schema                          |
 
-**The one decision to make before Phase 6 begins, not during it:** the
-Gmail restricted-scope question. Either budget for the third-party
-security assessment immediately (months of lead time) or launch email
-via Microsoft and IMAP and add Gmail when the assessment clears. This
-dependency gates the launch date more than any engineering task in this
-plan.
+ISO 27001 / SOC 2 are handled by an external implementing company, not
+built in-repo, and are kept out of the product roadmap.
 
 ## 9. Ways of Working
 

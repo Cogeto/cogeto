@@ -35,7 +35,7 @@ reads as a dossier, and the dreaming digest is quiet + dismissible. Keyboard
 navigable with a visible focus ring everywhere, reduced-motion honored globally,
 **Lighthouse accessibility 100/100** on the built SPA. No route/state changes, no
 new dependencies. Details in `docs/sessions/O3-C.md` and `docs/design/README.md`.
-**O4 (calendar connector) is next per the roadmap.**
+**O4 (email via a per-tenant, receive-only Haraka forwarding server) is next per the [Roadmap Revision](docs/Cogeto-v1-Roadmap-Revision.md).** Calendar has been dropped from v1.
 
 Previously — **Session O3-B — the redaction sidecar (`--profile redaction`).** A
 per-tenant privacy tier (Addendum B.8): a stateless, CPU-only Python/Presidio

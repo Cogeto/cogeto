@@ -124,8 +124,9 @@ name it in a decision record before coining a term in code.
 - **Chat** — the primary conversational surface (fast path lives behind it).
 - **Dashboard** — the governance surface: see/search/edit/correct/delete memories,
   statuses, source links, receipts, dead-letter jobs.
-- **Connector** — a source integration; exactly three in v1: **notes**, **calendar**,
-  **email** — built in that order (§A.11).
+- **Connector** — a source integration; **two in v1**: **notes** and **email**
+  (email via a per-tenant, receive-only Haraka forwarding server — no OAuth). Calendar
+  is dropped from v1 (Roadmap Revision; reconsidered only post-2.0).
 - **Task** — an actionable item derived from memory (person, topic, condition,
   status). Tasks read memory through its public interface; they never mutate it.
   Owned by the `tasks` context.

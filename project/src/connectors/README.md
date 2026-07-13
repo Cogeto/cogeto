@@ -1,8 +1,9 @@
 # connectors — bounded context
 
-Source integrations — exactly three in v1 (scope §4.6): **notes** (manual/quick capture),
-**calendar**, **email** — built in that order (Addendum §A.11: Notes first, zero OAuth
-friction; calendar next; email last, pending the Gmail/CASA decision).
+Source integrations — **two in v1** (per [`docs/Cogeto-v1-Roadmap-Revision.md`](../../../docs/Cogeto-v1-Roadmap-Revision.md), BINDING): **notes** (manual/quick capture)
+and **email** — built in that order. Email arrives by forwarding into a per-tenant,
+receive-only **Haraka** SMTP container (no OAuth, no CASA, no sending). Calendar is
+dropped from v1 (reconsidered only post-2.0). Notes first for zero OAuth friction.
 
 Responsibilities: sync with external sources, normalize items, and emit ingestion
 events **transactionally via the outbox** (§A.3) — an item can never be ingested
