@@ -218,7 +218,8 @@ export class ApprovalService {
       approvalId: row.id,
       status: row.status,
       to: payload.to,
-      recipientResolved: payload.recipientResolved,
+      // Legacy drafts (created before the field existed) are treated as resolved.
+      recipientResolved: payload.recipientResolved !== false,
       subject: payload.subject,
       body: payload.body,
       mailto: buildMailto(payload),

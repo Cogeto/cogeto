@@ -121,4 +121,41 @@ describe('email reply draft — approval finalises, never sends (integration)', 
     expect(detail.sent).toBe(false);
     expect(JSON.stringify(detail)).not.toContain('Friday works'); // no body in audit
   });
+
+  it('legacy_payload_survives_schema_growth: a draft stored before recipientResolved existed still reads, lists, and executes', async () => {
+    // A payload as an earlier release wrote it — no `recipientResolved` field.
+    const legacy = {
+      to: 'ana@adriatic-foods.hr',
+      subject: 'Re: Old draft',
+      inReplyTo: null,
+      references: [],
+      body: 'Sounds good, thanks.',
+      emailSourceId: null,
+    };
+    const { rows } = await tdb.pool.query<{ id: string }>(
+      `INSERT INTO approval (action_type, payload_json, status, org_id, requested_by, expires_at)
+       VALUES ($1, $2::jsonb, 'pending_approval', $3, $4, now() + interval '7 days')
+       RETURNING id`,
+      [EMAIL_REPLY_DRAFT_ACTION, JSON.stringify(legacy), userA.orgId, userA.userId],
+    );
+    const id = rows[0]!.id;
+
+    // The read that used to 400 with "invalid payload … Required".
+    const draft = await service.getEmailDraft(userA, id);
+    expect(draft.to).toBe('ana@adriatic-foods.hr');
+    expect(draft.recipientResolved).toBe(true); // absent → treated as resolved
+    expect(draft.sent).toBe(false);
+    expect(draft.eml).toContain('To: ana@adriatic-foods.hr');
+
+    // The Approvals list renders it (summary/preview, not the raw action type).
+    const pending = await service.listPending(userA);
+    const listed = pending.find((a) => a.id === id)!;
+    expect(listed.summary).toBe('Draft reply to ana@adriatic-foods.hr');
+    expect(listed.preview.length).toBeGreaterThan(0);
+
+    // And it still executes (finalise, no send).
+    await service.confirm(userA, id, 'approve');
+    await runWorker();
+    expect((await service.getEmailDraft(userA, id)).status).toBe('executed');
+  });
 });
