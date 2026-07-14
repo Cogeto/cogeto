@@ -13,6 +13,7 @@ import {
   NotesSourceReader,
 } from '../connectors/index';
 import { TasksCascade, TasksModule } from '../tasks/index';
+import { PassportModule, PASSPORT_EXPORT_RETENTION_HOURS } from '../passport/index';
 import {
   ChatAnswerCascade,
   ChatSourceDeletion,
@@ -93,6 +94,13 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         mail: mailOptions(config),
       }),
       TasksModule.register(),
+      // The Memory Passport export + retention jobs run here (§A.3 slow path);
+      // the worker holds the private signing key to sign each manifest.
+      PassportModule.register({
+        instanceKeyDir: config.instanceKeyDir,
+        downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
+        exportRetentionHours: PASSPORT_EXPORT_RETENTION_HOURS,
+      }),
     ],
     providers: [{ provide: COGETO_CONFIG, useValue: config }],
   })

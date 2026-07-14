@@ -44,6 +44,8 @@ import type {
   TimelineDto,
   PointInTimeDto,
   TimelineDiffDto,
+  PassportExportDto,
+  PassportDownloadDto,
   VerificationDto,
 } from '@cogeto/shared';
 import type { Session } from './auth/oidc';
@@ -384,6 +386,19 @@ export const fetchTimelineDiff = (
     `/api/timeline/diff?subject=${encodeURIComponent(subject)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
     session,
   );
+
+// Memory Passport (§B.5): a complete, documented, versioned export of the
+// user's own data. Trigger → poll → download via a short-lived signed URL.
+export const triggerPassportExport = (
+  session: Session,
+  includeOriginals: boolean,
+): Promise<PassportExportDto> => apiPost('/api/passport/exports', { includeOriginals }, session);
+export const fetchPassportExports = (session: Session): Promise<PassportExportDto[]> =>
+  apiGet('/api/passport/exports', session);
+export const fetchPassportExport = (session: Session, id: string): Promise<PassportExportDto> =>
+  apiGet(`/api/passport/exports/${id}`, session);
+export const fetchPassportDownload = (session: Session, id: string): Promise<PassportDownloadDto> =>
+  apiGet(`/api/passport/exports/${id}/download`, session);
 
 export const fetchChatMessages = (session: Session): Promise<ChatMessageDto[]> =>
   apiGet('/api/chat/messages', session);

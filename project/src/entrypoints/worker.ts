@@ -24,6 +24,7 @@ import {
 } from '../memory/index';
 import { APPROVAL_EXPIRY_CRONTAB, ApprovalExecutor, ApprovalService } from '../agents/index';
 import { TASK_PROMPTS, TASKS_REMINDERS_CRONTAB, TasksEngine } from '../tasks/index';
+import { PassportExportExecutor, PASSPORT_RETENTION_CRONTAB } from '../passport/index';
 import { ANSWER_PROMPT, QUERY_REWRITE_PROMPT } from '../retrieval/index';
 import { loadPrompt, ModelGateway, recordPromptVersion } from '../model-gateway/index';
 import { buildTaskList } from './worker-tasks';
@@ -101,6 +102,7 @@ async function main(): Promise<void> {
     tasksEngine: context.get(TasksEngine),
     approvalService: context.get(ApprovalService),
     approvalExecutor: context.get(ApprovalExecutor),
+    passportExecutor: context.get(PassportExportExecutor),
     objects,
     gateway,
     log: (event, message) => logger.info(event, message),
@@ -163,7 +165,7 @@ async function main(): Promise<void> {
     // DST transition can still make a wall-clock hour repeat/skip on non-UTC
     // hosts; the single-flight advisory lock on each recurring job (worker-tasks)
     // makes a double-fire a clean skip, and the jobs are idempotent by design.
-    crontab: `${SWEEP_CRONTAB}\n${DREAM_CRONTAB}\n${TASKS_REMINDERS_CRONTAB}\n${APPROVAL_EXPIRY_CRONTAB}${demoLine}`,
+    crontab: `${SWEEP_CRONTAB}\n${DREAM_CRONTAB}\n${TASKS_REMINDERS_CRONTAB}\n${APPROVAL_EXPIRY_CRONTAB}\n${PASSPORT_RETENTION_CRONTAB}${demoLine}`,
     noHandleSignals: true,
   });
   logger.info('cogeto worker started (graphile runner + task registry)');

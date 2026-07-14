@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { EmailAllowlistKind, MemoryScope } from '@cogeto/shared';
+import type { PassportExportDto } from '@cogeto/shared';
 import {
   addEmailAllowlistEntry,
   fetchEmailConfig,
   fetchInstancePublicKey,
+  fetchPassportDownload,
+  fetchPassportExports,
   fetchSettings,
   removeEmailAllowlistEntry,
+  triggerPassportExport,
   updateSettings,
 } from '../api';
 import type { Session } from '../auth/oidc';
 import { Shell } from '../components/Shell';
-import { btnPrimary, SectionTitle, Skeleton } from '../components/ui';
+import { btnPrimary, btnSecondary, SectionTitle, Skeleton } from '../components/ui';
+import { timeAgo } from '../components/status';
 
 /** Settings (§A.9, O1-C): only real, wired toggles — every control does something today. */
 export function Settings({ session }: { session: Session }) {
@@ -105,6 +110,8 @@ export function Settings({ session }: { session: Session }) {
 
       <EmailCaptureSection session={session} />
 
+      <PassportSection session={session} />
+
       <section className="mt-4 max-w-2xl space-y-2 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <SectionTitle>Instance signing key</SectionTitle>
         <p className="text-xs text-slate-500">
@@ -124,6 +131,129 @@ export function Settings({ session }: { session: Session }) {
         )}
       </section>
     </Shell>
+  );
+}
+
+const PASSPORT_STATUS_LABEL: Record<PassportExportDto['status'], string> = {
+  pending: 'Assembling your export…',
+  ready: 'Ready to download',
+  failed: 'Export failed',
+  expired: 'Expired (re-export to get a fresh copy)',
+};
+
+/**
+ * Memory Passport (§B.5, decision 0029): a complete, documented, versioned
+ * export of the user's own data — the anti-lock-in promise made real. Assembly
+ * runs in the worker; this polls the request and hands back a short-lived signed
+ * download. The artifact is an open format documented in docs/passport-schema/.
+ */
+function PassportSection({ session }: { session: Session }) {
+  const queryClient = useQueryClient();
+  const [includeOriginals, setIncludeOriginals] = useState(false);
+  const exportsQuery = useQuery({
+    queryKey: ['passport-exports'],
+    queryFn: () => fetchPassportExports(session),
+    // Poll while an export is still assembling; stop once everything settled.
+    refetchInterval: (query) =>
+      query.state.data?.some((row) => row.status === 'pending') ? 2000 : false,
+  });
+  const trigger = useMutation({
+    mutationFn: () => triggerPassportExport(session, includeOriginals),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['passport-exports'] }),
+  });
+  const download = useMutation({
+    mutationFn: async (id: string) => {
+      const { url } = await fetchPassportDownload(session, id);
+      window.location.href = url;
+    },
+  });
+
+  const rows = exportsQuery.data ?? [];
+  const pending = rows.some((row) => row.status === 'pending');
+
+  return (
+    <section className="mt-4 max-w-2xl space-y-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <SectionTitle>Export my data · Memory Passport</SectionTitle>
+      <p className="text-xs text-slate-500">
+        Download <span className="font-medium">everything</span> Cogeto knows for you — every fact
+        with its status, provenance and full history, your derived tasks, and your deletion receipts
+        (still independently verifiable) — in an open, documented, versioned format. Your memory is
+        portable; leave whenever you want.
+      </p>
+
+      <label className="flex items-start gap-3 text-sm text-slate-700">
+        <input
+          type="checkbox"
+          checked={includeOriginals}
+          onChange={(e) => setIncludeOriginals(e.target.checked)}
+          className="mt-1"
+        />
+        <span>
+          <span className="font-medium">Include original files</span>
+          <span className="block text-xs text-slate-400">
+            Attach the original bytes of files you uploaded (a full archive). Off by default —
+            provenance and metadata are always included either way.
+          </span>
+        </span>
+      </label>
+
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          disabled={trigger.isPending || pending}
+          onClick={() => trigger.mutate()}
+          className={btnPrimary}
+        >
+          {trigger.isPending || pending ? 'Preparing…' : 'Export my data'}
+        </button>
+        {trigger.isError && (
+          <span className="text-xs text-red-700">Couldn’t start the export — try again.</span>
+        )}
+      </div>
+
+      {rows.length > 0 && (
+        <ul className="space-y-2 border-t border-slate-100 pt-3">
+          {rows.slice(0, 5).map((row) => (
+            <li
+              key={row.id}
+              className="flex flex-wrap items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm"
+            >
+              <span className="font-mono text-xs text-slate-500">{row.filename}</span>
+              <span
+                className={`text-xs ${
+                  row.status === 'failed'
+                    ? 'text-red-700'
+                    : row.status === 'ready'
+                      ? 'text-brand-teal-ink'
+                      : 'text-slate-400'
+                }`}
+              >
+                {PASSPORT_STATUS_LABEL[row.status]}
+                {row.status === 'failed' && row.error ? ` — ${row.error}` : ''}
+              </span>
+              <span className="text-xs text-slate-400" title={row.createdAt}>
+                {timeAgo(row.createdAt)}
+              </span>
+              {row.status === 'ready' && (
+                <button
+                  type="button"
+                  onClick={() => download.mutate(row.id)}
+                  disabled={download.isPending}
+                  className={`${btnSecondary} ml-auto`}
+                >
+                  Download
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="text-xs text-slate-400">
+        The format is open and documented at{' '}
+        <span className="font-mono">docs/passport-schema/</span> — anyone can read and verify a
+        Passport with only the schema and the instance public key above.
+      </p>
+    </section>
   );
 }
 

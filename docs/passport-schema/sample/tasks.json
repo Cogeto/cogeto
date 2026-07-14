@@ -1,0 +1,19 @@
+{
+  "passport_version": "1.0",
+  "count": 1,
+  "tasks": [
+    {
+      "id": "44444444-4444-4444-8444-444444444444",
+      "title": "Send the signed Adriatic Foods proposal to Marko",
+      "status": "blocked_on_condition",
+      "condition_text": "the Q3 budget is approved",
+      "due": "2026-07-18T00:00:00.000Z",
+      "dormant": false,
+      "from_uncertain": false,
+      "derived_from_memory_id": "33333333-3333-4333-8333-333333333333",
+      "scope": "shared",
+      "created_at": "2026-07-14T10:00:05.000Z",
+      "updated_at": null
+    }
+  ]
+}

@@ -25,6 +25,8 @@ import type {
 } from '../memory/index';
 import { APPROVAL_EXECUTE_JOB_TYPE, APPROVAL_EXPIRY_JOB_TYPE } from '../agents/index';
 import type { ApprovalExecutor, ApprovalService } from '../agents/index';
+import { PASSPORT_EXPORT_JOB_TYPE, PASSPORT_RETENTION_JOB_TYPE } from '../passport/index';
+import type { PassportExportExecutor } from '../passport/index';
 import type { ModelGateway } from '../model-gateway/index';
 
 export interface WorkerTaskDeps {
@@ -36,6 +38,7 @@ export interface WorkerTaskDeps {
   tasksEngine: TasksEngine;
   approvalService: ApprovalService;
   approvalExecutor: ApprovalExecutor;
+  passportExecutor: PassportExportExecutor;
   objects: MemoryObjectStore;
   gateway: ModelGateway;
   /** Bound to pino by the worker entrypoint. Counts only — never content. */
@@ -214,6 +217,36 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
     [APPROVAL_EXPIRY_JOB_TYPE]: recurring(APPROVAL_EXPIRY_JOB_TYPE, async () => {
       const expired = await deps.approvalService.expireStale();
       deps.log({ expired }, 'approval expiry pass completed');
+    }),
+
+    // The Memory Passport export (§B.5, decision 0029) — worker-run because it
+    // can be large (§A.3). A plain task: assembly re-reads through the gated
+    // interfaces and writes an idempotent object + status, so a retry overwrites
+    // rather than duplicates. On error the row is marked failed (visible in
+    // Settings) and rethrown so graphile retries with backoff; a persistent
+    // failure parks in dead_letter with the row failed.
+    [PASSPORT_EXPORT_JOB_TYPE]: async (rawPayload) => {
+      const exportId = (rawPayload as { source_id?: unknown }).source_id;
+      if (typeof exportId !== 'string' || !exportId) return;
+      try {
+        const result = await deps.passportExecutor.run(exportId, new Date());
+        deps.log({ source_id: exportId, size_bytes: result.sizeBytes }, 'passport export ready');
+      } catch (error) {
+        await deps.passportExecutor.fail(
+          exportId,
+          error instanceof Error ? error.message : 'export failed',
+        );
+        throw error;
+      }
+    },
+
+    // The hourly Passport retention pass (§B.5): deletes ready export objects
+    // past their expiry and marks the rows expired — the "short-lived
+    // downloadable" promise. Recurring + idempotent by construction (an expired
+    // row is skipped next pass); single-flight so a slow run never overlaps.
+    [PASSPORT_RETENTION_JOB_TYPE]: recurring(PASSPORT_RETENTION_JOB_TYPE, async () => {
+      const report = await deps.passportExecutor.runRetention(new Date());
+      deps.log({ ...report }, 'passport retention pass completed');
     }),
 
     // Embeds an edit's supersession successor (S3-B). Idempotency key:
