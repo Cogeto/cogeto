@@ -14,14 +14,19 @@ import type { ActionDefinition } from '../action-types';
  * draft. The body lives on the approval payload (not the audit trail, which stays
  * content-free per QS-1).
  */
-// All fields are required in the stored payload (the drafting service always
-// sets them) — no zod defaults, so the schema's input and output types match and
-// it satisfies ActionDefinition<P>'s invariant ZodType<P>.
+// Backward-compatibility rule: a stored approval payload must keep parsing after
+// this schema grows, or already-created drafts 400 on read/execute. So fields
+// added after the first release are OPTIONAL here (absent → the pre-field
+// default), and the drafting service still always sets them on new drafts. Using
+// `.optional()` (not `.default()`) also keeps the schema's input and output types
+// equal, satisfying ActionDefinition<P>'s invariant ZodType<P>.
 const payloadSchema = z.object({
   // Empty when the recipient could not be recovered from a forward — the user
   // fills it in before sending (the forwarded-addressing rule).
   to: z.string().max(320),
-  recipientResolved: z.boolean(),
+  // Added in the reply-triggers unit; a legacy draft without it had a real
+  // recipient (the sender), so absent is treated as resolved.
+  recipientResolved: z.boolean().optional(),
   subject: z.string().max(998),
   inReplyTo: z.string().nullable(),
   references: z.array(z.string()),
@@ -29,6 +34,11 @@ const payloadSchema = z.object({
   emailSourceId: z.string().nullable(),
 });
 type EmailReplyDraftPayload = z.infer<typeof payloadSchema>;
+
+/** Absent recipientResolved (legacy drafts) counts as resolved. */
+function isRecipientResolved(p: EmailReplyDraftPayload): boolean {
+  return p.recipientResolved !== false;
+}
 
 /** Body preview lines for the Pending Approvals surface (bounded). */
 function bodyPreview(body: string): string[] {
@@ -45,9 +55,11 @@ export function buildEmailReplyDraftAction(): ActionDefinition<EmailReplyDraftPa
     initialStatus: 'pending_approval',
     ttlSeconds: 7 * 24 * 60 * 60, // a week to send it (or not)
     summarize: (p) =>
-      p.recipientResolved ? `Draft reply to ${p.to}` : 'Draft reply (set recipient)',
+      isRecipientResolved(p) ? `Draft reply to ${p.to}` : 'Draft reply (set recipient)',
     preview: (p) => [
-      p.recipientResolved ? `To: ${p.to}` : 'To: (recipient not recovered — set it before sending)',
+      isRecipientResolved(p)
+        ? `To: ${p.to}`
+        : 'To: (recipient not recovered — set it before sending)',
       `Subject: ${p.subject || '(no subject)'}`,
       '—',
       ...bodyPreview(p.body),
