@@ -41,8 +41,7 @@ export class TimelineService {
    * caller's OWN sensitive rows (the store enforces owner-only regardless).
    */
   async forSubject(principal: Principal, subject: string): Promise<TimelineDto> {
-    const rows = await this.store.listForPrincipal(principal, {
-      entity: subject,
+    const rows = await this.store.listForSubject(principal, subject, {
       includeSensitive: true,
       limit: SUBJECT_MEMORY_CAP,
     });
@@ -62,9 +61,13 @@ export class TimelineService {
    */
   async pointInTime(principal: Principal, subject: string, at: Date): Promise<PointInTimeDto> {
     const subjectIds = await this.subjectIds(principal, subject);
+    // No entity pre-narrowing here: the subject is identified by `subjectIds`
+    // (subject_entity OR entities), so the point-in-time set is the gated facts
+    // holding at `at` intersected with that — the interval predicate stays the
+    // sole "holds at t" authority, the subject scoping stays consistent with the
+    // spans view.
     const hits = await this.store.pointInTime(principal, at, {
       topK: SUBJECT_MEMORY_CAP,
-      entities: [subject],
       includeSensitive: true,
     });
     const now = Date.now();
@@ -106,8 +109,7 @@ export class TimelineService {
 
   /** The gated id set of the subject's facts — the point-in-time narrowing key. */
   private async subjectIds(principal: Principal, subject: string): Promise<Set<string>> {
-    const rows = await this.store.listForPrincipal(principal, {
-      entity: subject,
+    const rows = await this.store.listForSubject(principal, subject, {
       includeSensitive: true,
       limit: SUBJECT_MEMORY_CAP,
     });

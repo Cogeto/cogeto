@@ -200,6 +200,43 @@ export class MemoryStore {
       .offset(opts.offset ?? 0);
   }
 
+  /**
+   * A subject's memories for the time-travel view (decision 0012): rows this
+   * name is ABOUT — matched against `subject_entity` (the extractor's primary
+   * subject, F1/F4) OR the `entities` mentions array, both by trigram — in ANY
+   * lifecycle status (the past is the point). A gated read like
+   * `listForPrincipal` (same `visibleTo` gate), NOT retrieval: no scoring, no
+   * temporal semantics. Ordered newest-first, capped. The `entities`-only match
+   * (the dashboard filter, `entitySearch`) misses facts whose subject was
+   * recorded only as `subject_entity` — which is most of them — so the timeline
+   * needs both arms to find its subject at all.
+   */
+  async listForSubject(
+    principal: Principal,
+    subject: string,
+    opts: ReadOptions & { limit?: number } = {},
+  ): Promise<MemoryRow[]> {
+    const name = subject.trim();
+    if (!name) return [];
+    return this.db
+      .select()
+      .from(memory)
+      .where(
+        and(
+          this.visibleTo(principal, opts),
+          or(
+            sql`${memory.subjectEntity} % ${name}`,
+            sql`EXISTS (
+              SELECT 1 FROM unnest(entities) AS hit(entity)
+              WHERE hit.entity % ${name}
+            )`,
+          )!,
+        ),
+      )
+      .orderBy(desc(memory.createdAt), memory.id)
+      .limit(Math.min(opts.limit ?? 200, 200));
+  }
+
   /** Total under the same gates + filters — the list's pagination and the review badge. */
   async countForPrincipal(
     principal: Principal,

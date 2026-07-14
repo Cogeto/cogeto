@@ -53,7 +53,10 @@ describe('timeline assembly (integration, real Postgres + Qdrant)', () => {
       scope: opts.scope ?? 'private',
       sourceType: 'user_note',
       sourceId: randomUUID(),
-      entities: opts.entities ?? ['Atlas'],
+      // Realistic default: the extractor records the subject in `subject_entity`
+      // and often leaves `entities` empty — the timeline must still find it (the
+      // bug this spec guards). Tests that need `entities` populated pass them.
+      entities: opts.entities ?? [],
       subjectEntity: opts.subjectEntity ?? 'Atlas',
       sensitive: opts.sensitive,
       validFrom: opts.validFrom,
@@ -61,20 +64,28 @@ describe('timeline assembly (integration, real Postgres + Qdrant)', () => {
       initialStatus: opts.initialStatus,
     });
 
-  /** A subject with a price supersession (Jan → Apr) plus a stable launch fact. */
-  const seedAtlas = async (owner: string) => {
-    const v1 = await seed(owner, 'Atlas costs 100 EUR.', { validFrom: new Date('2026-01-01') });
+  /**
+   * A subject with a price supersession (Jan → Apr) plus a stable launch fact.
+   * `entities` defaults to empty (subject recorded only as `subject_entity`, the
+   * common real shape); pass `['Atlas']` to also populate the mentions array.
+   */
+  const seedAtlas = async (owner: string, entities: string[] = []) => {
+    const v1 = await seed(owner, 'Atlas costs 100 EUR.', {
+      validFrom: new Date('2026-01-01'),
+      entities,
+    });
     const { successor: v2 } = await store.supersede({ kind: 'user', userId: owner }, v1.id, {
       content: 'Atlas costs 120 EUR.',
       scope: 'private',
       sourceType: 'user_note',
       sourceId: randomUUID(),
-      entities: ['Atlas'],
+      entities,
       subjectEntity: 'Atlas',
       validFrom: new Date('2026-04-01'),
     });
     const launched = await seed(owner, 'Atlas launched in 2025.', {
       validFrom: new Date('2025-06-01'),
+      entities,
     });
     return { v1, v2, launched };
   };
@@ -166,7 +177,9 @@ describe('timeline assembly (integration, real Postgres + Qdrant)', () => {
 
   it('ui_matches_chat: the timeline point-in-time is the same primitive chat answers from', async () => {
     const owner = `tl-parity-${randomUUID()}`;
-    const { v1, v2 } = await seedAtlas(owner);
+    // Entities populated here so chat's entity-narrowing matches precisely — the
+    // case where the two surfaces identify the subject identically.
+    const { v1, v2 } = await seedAtlas(owner, ['Atlas']);
     const at = new Date('2026-03-15');
 
     // The primitive a temporal chat answer retrieves through (RetrievalService
