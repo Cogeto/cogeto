@@ -42,6 +42,10 @@ jobs:
         run: npm ci
       - name: Lint (ESLint + Prettier)
         run: npm run lint
+      # Host-level scripting is linted too: the operator script (session O6)
+      # must stay shellcheck-clean. ubuntu-latest ships shellcheck.
+      - name: Shellcheck (operator script)
+        run: shellcheck scripts/operator/cogeto
 
   boundaries:
     name: boundaries
@@ -151,9 +155,11 @@ jobs:
         run: npm run eval:chat
 
   # ── docker-build (not required to merge) ────────────────────────────────────
-  # Builds the production amd64 image WITHOUT pushing, so the Dockerfile stays
+  # Builds the production amd64 images WITHOUT pushing, so the Dockerfiles stay
   # green on every PR. Docker layers are cached via the GitHub Actions cache.
-  # Target `runtime` is the app/worker/migrate image published as cogeto/cogeto.
+  # All three pull-only images a customer instance needs are covered (decision
+  # 0030): runtime (cogeto/cogeto), the Caddy edge (cogeto/cogeto-edge), and
+  # the Haraka mail service (cogeto/cogeto-mail).
   docker-build:
     name: docker-build
     runs-on: ubuntu-latest
@@ -161,12 +167,32 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Build amd64 image (no push)
+      - name: Build amd64 runtime image (no push)
         uses: docker/build-push-action@v6
         with:
           context: .
           file: project/infra/docker/Dockerfile
           target: runtime
+          platforms: linux/amd64
+          push: false
+          load: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build amd64 edge image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: project/infra/docker/Dockerfile
+          target: caddy
+          platforms: linux/amd64
+          push: false
+          load: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build amd64 mail image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: project/services/mail
           platforms: linux/amd64
           push: false
           load: false

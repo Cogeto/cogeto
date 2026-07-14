@@ -3,13 +3,18 @@
 # Pushing a semver tag `vX.Y.Z` cuts a release:
 #   1. verify:version — the tag must equal package.json's version (two sources
 #      of truth, one number). A mismatch fails before anything is published.
-#   2. Build the production amd64 image once (target `runtime`).
-#   3. Push cogeto/cogeto:X.Y.Z and cogeto/cogeto:latest to Docker Hub.
-#   4. Sign the pushed image with keyless cosign (Sigstore, GitHub OIDC — no
-#      long-lived keys) and generate an SBOM, attached to the GitHub Release.
+#   2. Build the production amd64 images once each — the full pull-only set a
+#      customer instance needs (decision 0030: the instance NEVER builds):
+#        cogeto/cogeto        app/worker/migrate/preflight (target `runtime`)
+#        cogeto/cogeto-edge   Caddy edge with the built SPA (target `caddy`)
+#        cogeto/cogeto-mail   receive-only Haraka inbound SMTP (Session O4)
+#   3. Push each as :X.Y.Z and :latest to Docker Hub.
+#   4. Sign every pushed image with keyless cosign (Sigstore, GitHub OIDC — no
+#      long-lived keys) and generate an SBOM for the main image, attached to
+#      the GitHub Release.
 #   5. Create the GitHub Release with notes auto-generated from the merged
 #      Conventional-Commit pull requests (grouped by .github/release.yml), plus
-#      a footer showing the exact `cosign verify` command for this image.
+#      a footer showing the exact `cosign verify` commands for these images.
 #
 # The owner cuts releases by tagging; CI never creates tags. Required secrets:
 # DOCKERHUB_USERNAME, DOCKERHUB_TOKEN (see docs/notes/cicd-setup.md).
@@ -26,6 +31,8 @@ concurrency:
 
 env:
   IMAGE: cogeto/cogeto
+  IMAGE_EDGE: cogeto/cogeto-edge
+  IMAGE_MAIL: cogeto/cogeto-mail
 
 permissions:
   contents: write # create the GitHub Release
@@ -57,7 +64,7 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      # ── Build & push the amd64 image once ────────────────────────────────
+      # ── Build & push the amd64 images once each ──────────────────────────
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -67,7 +74,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push (amd64)
+      - name: Build and push cogeto/cogeto (amd64)
         id: build
         uses: docker/build-push-action@v6
         with:
@@ -87,16 +94,54 @@ jobs:
           provenance: false
           sbom: false
 
-      # ── Sign the pushed image (keyless, by digest) ───────────────────────
+      # The Caddy edge carries the built SPA — a pull-only instance cannot
+      # produce it locally (decision 0030), so the release publishes it.
+      - name: Build and push cogeto/cogeto-edge (amd64)
+        id: build-edge
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: project/infra/docker/Dockerfile
+          target: caddy
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_EDGE }}:${{ steps.v.outputs.version }}
+            ${{ env.IMAGE_EDGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
+          sbom: false
+
+      # The receive-only Haraka inbound SMTP service (Session O4, decision 0028).
+      - name: Build and push cogeto/cogeto-mail (amd64)
+        id: build-mail
+        uses: docker/build-push-action@v6
+        with:
+          context: project/services/mail
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_MAIL }}:${{ steps.v.outputs.version }}
+            ${{ env.IMAGE_MAIL }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
+          sbom: false
+
+      # ── Sign the pushed images (keyless, by digest) ──────────────────────
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
 
-      - name: Sign the image with cosign (keyless)
+      - name: Sign the images with cosign (keyless)
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
+          DIGEST_EDGE: ${{ steps.build-edge.outputs.digest }}
+          DIGEST_MAIL: ${{ steps.build-mail.outputs.digest }}
         run: |
-          cosign sign --yes \
-            "${IMAGE}@${DIGEST}"
+          cosign sign --yes "${IMAGE}@${DIGEST}"
+          cosign sign --yes "${IMAGE_EDGE}@${DIGEST_EDGE}"
+          cosign sign --yes "${IMAGE_MAIL}@${DIGEST_MAIL}"
 
       # ── SBOM (SPDX JSON) for the pushed image ────────────────────────────
       - name: Generate SBOM (Syft, SPDX JSON)
@@ -135,12 +180,14 @@ jobs:
             echo "$BODY"
             echo
             echo "---"
-            echo "**Verify this image** (keyless cosign signature):"
+            echo "**Verify these images** (keyless cosign signatures):"
             echo
             echo '```sh'
-            echo "cosign verify ${IMAGE}:${VERSION} \\"
-            echo "  --certificate-identity-regexp '^https://github.com/${GITHUB_REPOSITORY}/\\.github/workflows/release\\.yml@refs/tags/' \\"
-            echo "  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'"
+            for IMG in "${IMAGE}" "${IMAGE_EDGE}" "${IMAGE_MAIL}"; do
+              echo "cosign verify ${IMG}:${VERSION} \\"
+              echo "  --certificate-identity-regexp '^https://github.com/${GITHUB_REPOSITORY}/\\.github/workflows/release\\.yml@refs/tags/' \\"
+              echo "  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'"
+            done
             echo '```'
           } > release-notes.md
 
