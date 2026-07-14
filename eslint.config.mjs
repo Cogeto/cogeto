@@ -10,6 +10,10 @@ export default tseslint.config(
       '**/*.d.ts',
       'project/web/dist/**',
       '.dependency-cruiser.cjs',
+      // Standalone services with their own runtime + conventions (not the TS
+      // workspace): the Python redaction sidecar and the Haraka mail plugins
+      // (CommonJS, Haraka's plugin API). Linted/tested within their own service.
+      'project/services/**',
     ],
   },
   js.configs.recommended,

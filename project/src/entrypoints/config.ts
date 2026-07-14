@@ -49,6 +49,29 @@ const configSchema = z
     /** Presigned download-URL lifetime in seconds (§A.9 — short-lived). */
     downloadUrlTtlSeconds: z.coerce.number().int().positive().default(300),
     /**
+     * Inbound email (Session O4, decision 0028). The instance's unique inbound
+     * address (ruling 1), the size caps (ruling 6), the optional capture-owner
+     * email (ruling 3), and the shared secret the Haraka queue hook presents to
+     * the internal intake endpoint (ruling 7). All set at provision time; the
+     * intake endpoint is fail-closed when the token is empty.
+     */
+    mailInboundAddress: z.string().min(1).optional(),
+    mailMaxBytes: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(25 * 1024 * 1024),
+    mailAttachmentsMaxBytes: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(25 * 1024 * 1024),
+    mailCaptureUserEmail: z.string().min(1).optional(),
+    mailIntakeToken: z.string().default(''),
+    /** host:port of the Haraka SMTP listener for the health probe (Session O4);
+     * unset → the mail check reports "not configured" and stays green. */
+    mailSmtpAddress: z.string().min(1).optional(),
+    /**
      * Postgres connection-pool ceiling per process (QS-38). Sized against worker
      * concurrency (2): the ingestion pipeline deliberately holds its idempotency
      * transaction OPEN across model calls (decision 0004/0005 — a retry must
@@ -177,6 +200,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
     instanceKeyDir: env.COGETO_INSTANCE_KEY_DIR || undefined,
     uploadMaxBytes: env.COGETO_UPLOAD_MAX_BYTES || undefined,
     downloadUrlTtlSeconds: env.COGETO_DOWNLOAD_URL_TTL_SECONDS || undefined,
+    mailInboundAddress: env.COGETO_MAIL_INBOUND_ADDRESS || undefined,
+    mailMaxBytes: env.COGETO_MAIL_MAX_BYTES || undefined,
+    mailAttachmentsMaxBytes: env.COGETO_MAIL_ATTACHMENTS_MAX_BYTES || undefined,
+    mailCaptureUserEmail: env.COGETO_MAIL_CAPTURE_USER_EMAIL || undefined,
+    mailIntakeToken: env.COGETO_MAIL_INTAKE_TOKEN || undefined,
+    mailSmtpAddress: env.COGETO_MAIL_SMTP_ADDRESS || undefined,
     pgPoolMax: env.COGETO_PG_POOL_MAX || undefined,
     oidc: {
       issuer: env.COGETO_OIDC_ISSUER,
@@ -220,6 +249,26 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
 }
 
 export const COGETO_CONFIG = Symbol('COGETO_CONFIG');
+
+/**
+ * Inbound-email wiring for the connectors module (Session O4, decision 0028),
+ * assembled from the validated config so both composition roots pass one shape.
+ */
+export function mailOptions(config: CogetoConfig): {
+  inboundAddress: string | null;
+  maxBytes: number;
+  attachmentsMaxBytes: number;
+  captureUserEmail: string | null;
+  intakeToken: string;
+} {
+  return {
+    inboundAddress: config.mailInboundAddress ?? null,
+    maxBytes: config.mailMaxBytes,
+    attachmentsMaxBytes: config.mailAttachmentsMaxBytes,
+    captureUserEmail: config.mailCaptureUserEmail ?? null,
+    intakeToken: config.mailIntakeToken,
+  };
+}
 
 /**
  * Redaction wiring for the model-gateway factory (Addendum B.8). Undefined when

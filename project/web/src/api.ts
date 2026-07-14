@@ -5,6 +5,9 @@ import type {
   AuditQuery,
   UserSettingsDto,
   UpdateUserSettingsRequest,
+  AddEmailAllowlistEntryRequest,
+  EmailAllowlistEntryDto,
+  EmailCaptureConfigDto,
   ChatContextDto,
   ChatMessageDto,
   ChatRememberedDto,
@@ -279,6 +282,23 @@ export const updateSettings = (
   session: Session,
   patch: UpdateUserSettingsRequest,
 ): Promise<UserSettingsDto> => apiPut('/api/settings', patch, session);
+
+// Email capture (Session O4): the inbound address, the sender allowlist, and
+// recent refusals for one-click allowlisting.
+export const fetchEmailConfig = (session: Session): Promise<EmailCaptureConfigDto> =>
+  apiGet('/api/email/config', session);
+export const addEmailAllowlistEntry = (
+  session: Session,
+  request: AddEmailAllowlistEntryRequest,
+): Promise<EmailAllowlistEntryDto> => apiPost('/api/email/allowlist', request, session);
+export async function removeEmailAllowlistEntry(session: Session, id: string): Promise<void> {
+  const path = `/api/email/allowlist/${encodeURIComponent(id)}`;
+  const response = await fetch(path, {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${session.accessToken}` },
+  });
+  if (!response.ok) throw await toError(path, response);
+}
 
 // The read-only audit trail (§A.8/§B.1, O1-C).
 export function fetchAudit(session: Session, params: AuditQuery = {}): Promise<AuditPage> {

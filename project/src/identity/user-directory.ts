@@ -40,6 +40,32 @@ export class UserDirectory {
     return orgId;
   }
 
+  /**
+   * Resolve the instance's capture owner for inbound email (decision 0028 ruling
+   * 3): the directory user matching `preferredEmail` when configured, else the
+   * sole user when the directory holds exactly one. Returns null when it cannot
+   * be resolved unambiguously (zero/ambiguous users, unmatched email) so the
+   * intake refuses rather than guessing an owner. Name-book semantics: this
+   * grants no visibility, it only names the owner a forwarded message belongs to.
+   */
+  async resolveCaptureOwner(
+    preferredEmail?: string | null,
+  ): Promise<{ userId: string; orgId: string } | null> {
+    if (preferredEmail) {
+      const email = preferredEmail.trim().toLowerCase();
+      const rows = await this.db
+        .select({ userId: appUser.userId, orgId: appUser.orgId, email: appUser.email })
+        .from(appUser);
+      const match = rows.find((r) => (r.email ?? '').toLowerCase() === email);
+      return match ? { userId: match.userId, orgId: match.orgId } : null;
+    }
+    const rows = await this.db
+      .select({ userId: appUser.userId, orgId: appUser.orgId })
+      .from(appUser)
+      .limit(2);
+    return rows.length === 1 ? { userId: rows[0]!.userId, orgId: rows[0]!.orgId } : null;
+  }
+
   /** Upsert on login/refresh — "provision the Principal", keep the name fresh. */
   async record(principal: Principal): Promise<void> {
     if (!principal.userId) return;

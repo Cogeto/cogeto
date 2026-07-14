@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import { raw } from 'express';
 import type { NextFunction, Request, Response } from 'express';
 import { assertAppKeyMount, describeErrorLine, runWithUsageContext } from '../infrastructure/index';
 import { logRedactionState } from './redaction-boot';
@@ -31,6 +32,11 @@ async function main(): Promise<void> {
   // budget decorator can meter/cap that principal's model calls. Non-API and
   // unauthenticated requests simply carry an empty scope.
   app.use((_req: Request, _res: Response, next: NextFunction) => runWithUsageContext(() => next()));
+  // The email-intake endpoint (Session O4, decision 0028 ruling 7) receives the
+  // raw RFC822 as the request body — the message-sized limit is far above the
+  // default JSON parser's, and the raw parser hands the controller a Buffer. The
+  // JSON/urlencoded parsers skip it by content-type (message/rfc822).
+  app.use('/api/email/intake', raw({ type: () => true, limit: config.mailMaxBytes }));
   app.setGlobalPrefix('api');
   app.enableShutdownHooks();
 

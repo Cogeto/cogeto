@@ -1,0 +1,18 @@
+# Cogeto inbound Haraka — receive-only, minimal plugin set (decision 0028).
+# Order matters: connection/rate limits first, then recipient validation, then
+# the delivery-to-app queue hook. NO outbound/relay plugins are loaded — this
+# server never sends (ruling 4).
+
+# Per-connection concurrency + per-remote-host connection/recipient rate limits
+# (config/limit.ini) — anti-abuse hygiene (ruling 6).
+limit
+
+# Accept mail ONLY for the instance's configured inbound address; refuse every
+# other recipient at RCPT (SMTP 550) — recipient validation (ruling 6).
+cogeto_rcpt
+
+# The delivery-to-app plugin: at queue time, POST the full raw message to the
+# internal authenticated intake endpoint and translate its HTTP verdict into the
+# SMTP response (ruling 7). This is the ONLY egress from the mail service, and it
+# is an internal HTTP call, not a shared filesystem.
+cogeto_deliver

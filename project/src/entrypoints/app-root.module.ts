@@ -16,7 +16,7 @@ import { AgentsModule } from '../agents/index';
 import { ConnectorsModule, NotesSourceDeletion } from '../connectors/index';
 import { TasksCascade, TasksModule } from '../tasks/index';
 import { ModelGatewayModule } from '../model-gateway/index';
-import { COGETO_CONFIG, redactionOptions } from './config';
+import { COGETO_CONFIG, mailOptions, redactionOptions } from './config';
 import type { CogetoConfig } from './config';
 import { AuditController } from './audit.controller';
 import { HealthController } from './health.controller';
@@ -91,6 +91,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
           uploadMaxBytes: config.uploadMaxBytes,
           downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
         },
+        mail: mailOptions(config),
       }),
       TasksModule.forApi(),
       // The digest's TASKS section as a global provider, so ingestion's digest
