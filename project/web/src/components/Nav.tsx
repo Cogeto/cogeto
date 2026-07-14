@@ -82,7 +82,10 @@ export function Nav({
         })}
       </ul>
       <div className="border-t border-white/10 p-3 text-xs text-white/40">
-        Cogeto · verifiable memory
+        <div>Cogeto · verifiable memory</div>
+        <div className="mt-0.5 text-white/30" title="Cogeto version">
+          v{__APP_VERSION__}
+        </div>
       </div>
     </nav>
   );
