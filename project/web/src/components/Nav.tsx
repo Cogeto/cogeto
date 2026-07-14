@@ -2,6 +2,7 @@ export type NavSection =
   | 'dashboard'
   | 'memories'
   | 'chat'
+  | 'timeline'
   | 'tasks'
   | 'review'
   | 'approvals'
@@ -14,6 +15,7 @@ const ENABLED: { key: NavSection; label: string; href: string }[] = [
   { key: 'dashboard', label: 'Dashboard', href: '/' },
   { key: 'memories', label: 'Memories', href: '/memories' },
   { key: 'chat', label: 'Chat', href: '/chat' },
+  { key: 'timeline', label: 'Time travel', href: '/timeline' },
   { key: 'tasks', label: 'Tasks', href: '/tasks' },
   { key: 'review', label: 'Review', href: '/review' },
   { key: 'approvals', label: 'Approvals', href: '/approvals' },

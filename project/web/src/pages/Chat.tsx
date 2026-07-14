@@ -131,7 +131,11 @@ export function Chat({ session }: { session: Session }) {
     queryFn: () => fetchChatMessages(session),
   });
 
-  const [draft, setDraft] = useState('');
+  // A ?q= param prefills the box — the timeline's "Explain in chat" hand-off
+  // lands here with the question ready to send (never auto-sent).
+  const [draft, setDraft] = useState(
+    () => new URLSearchParams(window.location.search).get('q') ?? '',
+  );
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   /** Specific failure copy (FIX-2): rate limit / daily budget / timeout. */

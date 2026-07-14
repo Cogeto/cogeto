@@ -4,8 +4,10 @@ import { MemoriesController } from './memories.controller';
 import { RelationsController } from './relations.controller';
 import { SourcesController } from './sources.controller';
 import { IntegrityController, ReceiptsController } from './receipts.controller';
+import { TimelineController } from './timeline.controller';
 import { IntegritySweep } from './integrity-sweep';
 import { MemoryStore } from './memory.store';
+import { TimelineService } from './timeline.service';
 import { MemoryReconciliation } from './reconciliation';
 import {
   DeletionExecutor,
@@ -80,6 +82,7 @@ export class MemoryModule {
         SourcesController,
         ReceiptsController,
         IntegrityController,
+        TimelineController,
       ],
       providers: [
         {
@@ -109,6 +112,7 @@ export class MemoryModule {
         },
         { provide: INGESTION_GUARD, useClass: options.ingestionGuard },
         MemoryStore,
+        TimelineService,
         MemoryReconciliation,
         DeletionSaga,
         DeletionExecutor,
@@ -117,6 +121,7 @@ export class MemoryModule {
       ],
       exports: [
         MemoryStore,
+        TimelineService,
         MemoryReconciliation,
         DeletionSaga,
         DeletionExecutor,

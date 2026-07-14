@@ -35,6 +35,16 @@ import {
 
 const EDIT_EXPLAINED_KEY = 'cogeto-supersession-explained';
 
+/** Deep-link into the time-travel view for a subject, optionally at an instant. */
+function timelineHref(subject: string, at?: string | null): string {
+  const params = new URLSearchParams({ subject });
+  if (at) {
+    params.set('mode', 'at');
+    params.set('at', at);
+  }
+  return `/timeline?${params.toString()}`;
+}
+
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="rounded-lg border border-slate-200 p-3">
@@ -196,7 +206,14 @@ export function MemoryDrawer({
                 </span>
               )}
               {memory.entities.map((entity) => (
-                <EntityChip key={entity} name={entity} />
+                <EntityChip
+                  key={entity}
+                  name={entity}
+                  title={`Time-travel ${entity}`}
+                  onClick={() => {
+                    window.location.href = timelineHref(entity);
+                  }}
+                />
               ))}
             </div>
             {(memory.validFrom || memory.validUntil) && (
@@ -418,6 +435,14 @@ export function MemoryDrawer({
             </Panel>
 
             <Panel title="History">
+              {memory.entities.length > 0 && (
+                <a
+                  href={timelineHref(memory.entities[0]!, memory.validFrom ?? memory.createdAt)}
+                  className={`${btnSecondary} mb-2`}
+                >
+                  Open timeline for {memory.entities[0]}
+                </a>
+              )}
               {chainQuery.data && chainQuery.data.length > 1 ? (
                 <ol className="space-y-2">
                   {chainQuery.data.map((entry, i) => (
