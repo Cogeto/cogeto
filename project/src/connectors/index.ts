@@ -14,3 +14,10 @@ export {
   sniffContentType,
   PermanentExtractionError,
 } from './document-extract';
+// Inbound email (Session O4, decision 0028).
+export { EmailIntakeService } from './email-intake.service';
+export type { MailEnvelope, IntakeResult } from './email-intake.service';
+export { EmailAllowlistService } from './email-allowlist.service';
+export { EmailSourceReader } from './email.source-reader';
+export { MAIL_OPTIONS } from './mail-options';
+export type { MailOptions } from './mail-options';

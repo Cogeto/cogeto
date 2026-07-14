@@ -1,7 +1,8 @@
 # Cogeto per-tenant stack (Addendum §A.2: `docker compose up` is the contract).
-# Seven containers plus one-shot init jobs plus an optional redaction profile
-# (decision 0003 ruling 5). Works with zero configuration on a fresh clone;
-# every variable can be overridden via .env (see .env.example).
+# Eight containers (incl. the receive-only inbound mail server, Session O4) plus
+# one-shot init jobs plus an optional redaction profile (decision 0003 ruling 5).
+# Works with zero configuration on a fresh clone; every variable can be
+# overridden via .env (see .env.example).
 
 name: cogeto
 
@@ -94,6 +95,19 @@ services:
       # REDACTION_ENABLED=1 then fails loudly at boot instead of silently sending
       # plaintext to the model provider.
       REDACTION_REQUIRED: ${REDACTION_REQUIRED:-}
+      # Inbound email (Session O4, decision 0028). The instance's unique inbound
+      # address (ruling 1), the size caps (ruling 6), the optional capture-owner
+      # email (ruling 3, empty → the sole user), the shared secret the Haraka
+      # queue hook presents to the internal intake (ruling 7), and the SMTP
+      # listener address for the app's mail health probe. The DEV token below is
+      # for localhost only — provisioning (O6) generates a real one per instance
+      # and sets it on BOTH the app and the mail service.
+      COGETO_MAIL_INBOUND_ADDRESS: ${COGETO_MAIL_INBOUND_ADDRESS:-capture@in.localhost}
+      COGETO_MAIL_MAX_BYTES: ${COGETO_MAIL_MAX_BYTES:-26214400}
+      COGETO_MAIL_ATTACHMENTS_MAX_BYTES: ${COGETO_MAIL_ATTACHMENTS_MAX_BYTES:-26214400}
+      COGETO_MAIL_CAPTURE_USER_EMAIL: ${COGETO_MAIL_CAPTURE_USER_EMAIL:-}
+      COGETO_MAIL_INTAKE_TOKEN: ${COGETO_MAIL_INTAKE_TOKEN:-cogeto-dev-mail-token}
+      COGETO_MAIL_SMTP_ADDRESS: ${COGETO_MAIL_SMTP_ADDRESS:-mail:2525}
     volumes:
       - web-config:/web-config:ro
       # QS-9: the app mounts the PUBLIC-KEY-ONLY volume (migrate copies the public
@@ -547,6 +561,45 @@ services:
       timeout: 5s
       retries: 18
       start_period: 90s
+    restart: unless-stopped
+
+  # ── Inbound mail (Session O4, decision 0028; roadmap D2) ────────────────────
+  #
+  # Per-tenant, RECEIVE-ONLY Haraka SMTP. Accepts forwarded mail for this
+  # instance's single inbound address, applies recipient/size/rate hygiene, and
+  # POSTs the full raw message to the app's internal authenticated intake
+  # (COGETO_MAIL_INTAKE_TOKEN must match the app). It NEVER sends. Listens on
+  # 2525 as a non-root user; the standard inbound port 25 is mapped to it. The
+  # allowlist (the real acceptance gate) lives in the app, not here.
+  #
+  # MX/TLS/DNS to point real mail at this container is an O6 provisioning
+  # concern; see docs/notes/email-inbound.md. Locally, exercise it with
+  # scripts/dev/send-test-email.mjs (no real DNS needed).
+  mail:
+    build:
+      context: project/services/mail
+    environment:
+      COGETO_MAIL_INBOUND_ADDRESS: ${COGETO_MAIL_INBOUND_ADDRESS:-capture@in.localhost}
+      COGETO_MAIL_MAX_BYTES: ${COGETO_MAIL_MAX_BYTES:-26214400}
+      COGETO_INTAKE_URL: ${COGETO_INTAKE_URL:-http://app:3000/api/email/intake}
+      COGETO_MAIL_INTAKE_TOKEN: ${COGETO_MAIL_INTAKE_TOKEN:-cogeto-dev-mail-token}
+    ports:
+      # Host inbound port 25 → container 2525 (non-root listener). Change the
+      # host side if 25 is taken locally, e.g. '2525:2525'.
+      - '${COGETO_MAIL_HOST_PORT:-25}:2525'
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('net').connect(2525,'127.0.0.1').on('connect',function(){process.exit(0)}).on('error',function(){process.exit(1)})"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    depends_on:
+      app:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

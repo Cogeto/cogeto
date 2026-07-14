@@ -34,5 +34,11 @@ export interface HealthReport {
     queue: QueueHealthCheck;
     /** Model-gateway reachability probe — cheap, cached (QS-35). */
     gateway: HealthCheck;
+    /**
+     * Inbound mail (Session O4): the per-tenant Haraka SMTP listener is
+     * accepting connections. `ok` with a "not configured" detail when the
+     * instance runs without the mail service (COGETO_MAIL_SMTP_ADDRESS unset).
+     */
+    mail: HealthCheck;
   };
 }

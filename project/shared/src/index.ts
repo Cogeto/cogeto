@@ -1,5 +1,6 @@
 export * from './chat';
 export * from './citations';
+export * from './email';
 export * from './files';
 export * from './jobs';
 export * from './approvals';

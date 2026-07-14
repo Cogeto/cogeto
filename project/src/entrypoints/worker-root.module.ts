@@ -6,6 +6,7 @@ import { IngestionModule, PipelineIngestionGuard } from '../ingestion/index';
 import { AgentsModule } from '../agents/index';
 import {
   ConnectorsModule,
+  EmailSourceReader,
   FileSourceReader,
   NotesSourceDeletion,
   NotesSourceReader,
@@ -18,7 +19,7 @@ import {
   ChatSourceReader,
 } from '../retrieval/index';
 import { ModelGatewayModule } from '../model-gateway/index';
-import { COGETO_CONFIG, redactionOptions } from './config';
+import { COGETO_CONFIG, mailOptions, redactionOptions } from './config';
 import type { CogetoConfig } from './config';
 
 /**
@@ -74,9 +75,10 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         // cancels a source's pending pipeline run inside its enumeration tx.
         ingestionGuard: PipelineIngestionGuard,
       }),
-      // ChatSourceReader gives ingestion a stage-1 reader for source_type 'chat'.
+      // ChatSourceReader gives ingestion a stage-1 reader for source_type 'chat';
+      // EmailSourceReader adds source_type 'email' (Session O4).
       IngestionModule.register({
-        readers: [NotesSourceReader, FileSourceReader, ChatSourceReader],
+        readers: [NotesSourceReader, FileSourceReader, ChatSourceReader, EmailSourceReader],
       }),
       ChatSourceModule,
       AgentsModule,
@@ -85,6 +87,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
           uploadMaxBytes: config.uploadMaxBytes,
           downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
         },
+        mail: mailOptions(config),
       }),
       TasksModule.register(),
     ],

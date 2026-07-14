@@ -1,3 +1,4 @@
+import { connect } from 'node:net';
 import { Controller, Get, HttpCode, Inject } from '@nestjs/common';
 import type { HealthCheck, HealthReport, QueueHealthCheck } from '@cogeto/shared';
 import { Pool } from 'pg';
@@ -35,7 +36,7 @@ export class HealthController {
 
   @Get()
   async health(): Promise<HealthReport> {
-    const [postgres, qdrant, minio, minioEncryption, integrity, migrations, queue, gateway] =
+    const [postgres, qdrant, minio, minioEncryption, integrity, migrations, queue, gateway, mail] =
       await Promise.all([
         this.checkPostgres(),
         this.checkHttp(`${this.config.qdrantUrl}/readyz`),
@@ -45,6 +46,7 @@ export class HealthController {
         this.checkMigrations(),
         this.checkQueue(),
         this.checkGateway(),
+        this.checkMail(),
       ]);
     const checks = {
       postgres,
@@ -55,6 +57,7 @@ export class HealthController {
       migrations,
       queue,
       gateway,
+      mail,
     };
     return {
       status: Object.values(checks).every((c) => c.ok) ? 'ok' : 'degraded',
@@ -175,6 +178,35 @@ export class HealthController {
     } catch (error) {
       return { ok: false, latencyMs: Date.now() - started, error: message(error) };
     }
+  }
+
+  /**
+   * Inbound-mail liveness (Session O4): a TCP connect to the Haraka SMTP
+   * listener (COGETO_MAIL_SMTP_ADDRESS, e.g. mail:2525). Unset → the instance
+   * runs without the mail service; report ok with a "not configured" detail so
+   * the check never falsely degrades a mail-less deployment.
+   */
+  private async checkMail(): Promise<HealthCheck> {
+    const started = Date.now();
+    const address = this.config.mailSmtpAddress;
+    if (!address) {
+      return { ok: true, latencyMs: 0, detail: 'inbound mail not configured' };
+    }
+    const [host, portRaw] = address.split(':');
+    const port = Number(portRaw ?? 25);
+    return new Promise<HealthCheck>((resolve) => {
+      const socket = connect({ host: host || '127.0.0.1', port }, () => {
+        socket.destroy();
+        resolve({ ok: true, latencyMs: Date.now() - started, detail: `SMTP ${address} reachable` });
+      });
+      socket.setTimeout(3000);
+      const fail = (error: string) => {
+        socket.destroy();
+        resolve({ ok: false, latencyMs: Date.now() - started, error });
+      };
+      socket.on('timeout', () => fail('connect timeout'));
+      socket.on('error', (error) => fail(message(error)));
+    });
   }
 
   private async checkPostgres(): Promise<HealthCheck> {

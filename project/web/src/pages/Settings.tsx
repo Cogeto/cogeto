@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { MemoryScope } from '@cogeto/shared';
-import { fetchInstancePublicKey, fetchSettings, updateSettings } from '../api';
+import type { EmailAllowlistKind, MemoryScope } from '@cogeto/shared';
+import {
+  addEmailAllowlistEntry,
+  fetchEmailConfig,
+  fetchInstancePublicKey,
+  fetchSettings,
+  removeEmailAllowlistEntry,
+  updateSettings,
+} from '../api';
 import type { Session } from '../auth/oidc';
 import { Shell } from '../components/Shell';
 import { btnPrimary, SectionTitle, Skeleton } from '../components/ui';
@@ -96,6 +103,8 @@ export function Settings({ session }: { session: Session }) {
         )}
       </section>
 
+      <EmailCaptureSection session={session} />
+
       <section className="mt-4 max-w-2xl space-y-2 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <SectionTitle>Instance signing key</SectionTitle>
         <p className="text-xs text-slate-500">
@@ -115,5 +124,194 @@ export function Settings({ session }: { session: Session }) {
         )}
       </section>
     </Shell>
+  );
+}
+
+/**
+ * Email capture (Session O4, decision 0028): the instance's inbound address, the
+ * sender allowlist (the control that decides whose mail Cogeto will remember),
+ * and recent refusals for one-click allowlisting. The forwarding-setup guidance
+ * that accompanies the address is Unit B.
+ */
+function EmailCaptureSection({ session }: { session: Session }) {
+  const queryClient = useQueryClient();
+  const config = useQuery({ queryKey: ['email-config'], queryFn: () => fetchEmailConfig(session) });
+
+  const [kind, setKind] = useState<EmailAllowlistKind>('address');
+  const [value, setValue] = useState('');
+  const [note, setNote] = useState('');
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['email-config'] });
+
+  const add = useMutation({
+    mutationFn: (entry: { kind: EmailAllowlistKind; value: string; note?: string | null }) =>
+      addEmailAllowlistEntry(session, entry),
+    onSuccess: async () => {
+      setValue('');
+      setNote('');
+      await invalidate();
+    },
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => removeEmailAllowlistEntry(session, id),
+    onSuccess: invalidate,
+  });
+
+  const submit = () => {
+    const trimmed = value.trim();
+    if (trimmed) add.mutate({ kind, value: trimmed, note: note.trim() || null });
+  };
+
+  const allowlist = config.data?.allowlist ?? [];
+  const refusals = config.data?.recentRefusals ?? [];
+  // Senders already listed shouldn't be offered as one-click adds.
+  const listed = new Set(allowlist.map((e) => e.value));
+
+  return (
+    <section className="mt-4 max-w-2xl space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <div>
+        <SectionTitle>Email capture</SectionTitle>
+        <p className="mt-1 text-xs text-slate-400">
+          Forward, BCC, or set a provider rule to send mail to your inbound address. The sender
+          allowlist below decides whose mail Cogeto will remember — until you add a sender or
+          domain, no forwarded mail is accepted.
+        </p>
+      </div>
+
+      {config.isPending && <Skeleton className="h-24 w-full" />}
+
+      {config.data && (
+        <>
+          <div className="rounded-md bg-slate-50 p-3">
+            <div className="text-xs font-medium text-slate-500">Your inbound address</div>
+            {config.data.inboundAddress ? (
+              <code className="mt-1 block text-sm text-slate-700">
+                {config.data.inboundAddress}
+              </code>
+            ) : (
+              <p className="mt-1 text-xs text-slate-400">
+                Not configured yet — the operator sets this when provisioning the instance.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <div className="text-sm font-medium text-slate-700">Allowed senders</div>
+            {allowlist.length === 0 ? (
+              <p className="mt-1 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
+                No senders allowed yet — Cogeto is <strong>closed by default</strong> and will not
+                accept any forwarded mail until you add an address or domain here.
+              </p>
+            ) : (
+              <ul className="mt-2 divide-y divide-slate-100 rounded-md border border-slate-200">
+                {allowlist.map((entry) => (
+                  <li key={entry.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                    <span className="min-w-0 text-sm text-slate-700">
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">
+                        {entry.kind}
+                      </span>{' '}
+                      <span className="font-mono">{entry.value}</span>
+                      {entry.note && (
+                        <span className="block truncate text-xs text-slate-400">{entry.note}</span>
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => remove.mutate(entry.id)}
+                      disabled={remove.isPending}
+                      className="shrink-0 text-xs text-red-700 hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="text-xs text-slate-500">
+              <span className="block">Kind</span>
+              <select
+                value={kind}
+                onChange={(e) => setKind(e.target.value as EmailAllowlistKind)}
+                className="mt-1 rounded-md border border-slate-300 px-2 py-1 text-sm"
+              >
+                <option value="address">address</option>
+                <option value="domain">domain</option>
+              </select>
+            </label>
+            <label className="min-w-[16rem] flex-1 text-xs text-slate-500">
+              <span className="block">{kind === 'address' ? 'Email address' : 'Domain'}</span>
+              <input
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submit()}
+                placeholder={kind === 'address' ? 'ana@adriatic-foods.hr' : 'adriatic-foods.hr'}
+                className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+              />
+            </label>
+            <label className="min-w-[10rem] flex-1 text-xs text-slate-500">
+              <span className="block">Note (optional)</span>
+              <input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submit()}
+                placeholder="e.g. supplier"
+                className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={submit}
+              disabled={add.isPending || !value.trim()}
+              className={btnPrimary}
+            >
+              Add
+            </button>
+          </div>
+          {add.isError && (
+            <p className="text-xs text-red-700">
+              {add.error instanceof Error ? add.error.message : 'Couldn’t add — check the value.'}
+            </p>
+          )}
+
+          {refusals.length > 0 && (
+            <div>
+              <div className="text-sm font-medium text-slate-700">Recently refused</div>
+              <p className="text-xs text-slate-400">
+                Mail Cogeto turned away because the sender wasn’t allowed. Add a legitimate sender
+                in one click.
+              </p>
+              <ul className="mt-2 space-y-1">
+                {refusals
+                  .filter((r) => r.fromAddr && !listed.has(r.fromAddr))
+                  .map((r) => (
+                    <li
+                      key={r.id}
+                      className="flex items-center justify-between gap-3 rounded-md bg-slate-50 px-3 py-1.5"
+                    >
+                      <span className="min-w-0 truncate text-sm text-slate-600">
+                        <span className="font-mono">{r.fromAddr}</span>
+                        <span className="ml-2 text-xs text-slate-400">{r.reason}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          r.fromAddr && add.mutate({ kind: 'address', value: r.fromAddr })
+                        }
+                        disabled={add.isPending}
+                        className="shrink-0 text-xs text-brand-teal-ink hover:underline"
+                      >
+                        Allow this sender
+                      </button>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
+    </section>
   );
 }
