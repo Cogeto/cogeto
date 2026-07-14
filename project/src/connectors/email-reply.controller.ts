@@ -1,8 +1,12 @@
-import { Controller, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { z } from 'zod';
 import type { ApprovalDto } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { EmailReplyDraftService } from './email-reply-draft.service';
+
+/** Optional one-line steer for the draft ("accept", "decline", "ask for X"). */
+const bodySchema = z.object({ intent: z.string().max(500).optional() }).partial();
 
 /**
  * POST /api/email/:id/reply-draft (Session O4 — email source): draft a reply to
@@ -23,7 +27,11 @@ export class EmailReplyController {
   async draftReply(
     @Req() request: AuthenticatedRequest,
     @Param('id') id: string,
+    @Body() body: unknown,
   ): Promise<ApprovalDto> {
-    return this.drafts.draftReply(request.principal, id);
+    const parsed = bodySchema.safeParse(body ?? {});
+    const intent = parsed.success ? parsed.data.intent : undefined;
+    const { approval } = await this.drafts.draftReply(request.principal, id, { intent });
+    return approval;
   }
 }

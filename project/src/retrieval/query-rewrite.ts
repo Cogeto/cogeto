@@ -37,6 +37,12 @@ export interface OpenLoopsIntent {
   entity: string | null;
 }
 
+/** Draft-a-reply intent (Session O4 — email reply triggers). */
+export interface EmailReplyIntent {
+  /** The named person/sender to reply to; null = "reply to that/the last one". */
+  target: string | null;
+}
+
 export interface RewriteResult {
   query: string;
   /** Entities the query is about, from the rewriter or the heuristic fallback. */
@@ -45,6 +51,8 @@ export interface RewriteResult {
   temporal: TemporalIntent | null;
   /** Open-loops intent (decision 0013 ruling 7); null = default retrieval. */
   openLoops: OpenLoopsIntent | null;
+  /** Draft-a-reply intent (Session O4); null = not a reply request. */
+  emailReply: EmailReplyIntent | null;
 }
 
 const rewriteSchema = z.object({
@@ -138,9 +146,71 @@ export const OPEN_LOOPS_HINT_RE = new RegExp(
 );
 
 /**
+ * Draft-a-reply hint lexicon (Session O4), en + hr. Deliberately anchored on
+ * reply/response verbs WITH a target/context so it does not fire on the everyday
+ * sense of "answer"/"reply".
+ */
+export const REPLY_EMAIL_HINT_RE = new RegExp(
+  [
+    // English
+    'draft (a |an )?(reply|response)',
+    'write (a |an )?(reply|response)',
+    'compose (a |an )?(reply|response)',
+    '\\breply to\\b',
+    '\\brespond to\\b',
+    '\\bresponse to\\b',
+    'help me (answer|reply|respond)',
+    'answer\\b.{0,40}\\b(email|e-mail|mail|message|msg)\\b',
+    // Croatian
+    'odgovor\\w* na\\b',
+    'odgovori(ti)? na\\b',
+    'napiš\\w* odgovor',
+    'nacrt odgovora',
+    'sastavi odgovor',
+  ].join('|'),
+  'i',
+);
+
+/** Captures the reply TARGET (person/sender) after the reply verb. */
+const REPLY_TARGET_RE =
+  /(?:reply to|respond to|response to|answer|help me (?:answer|reply to|respond to)|odgovor\w* na|odgovori(?:ti)? na)\s+(.+)$/i;
+
+/**
+ * Detect a draft-a-reply request and extract the target person/sender. Purely
+ * deterministic (no model) — reuses the rewriter's `entities` only as a fallback
+ * target. A demonstrative target ("that", "the last one") resolves to null so
+ * the resolver picks the most recent email.
+ */
+export function detectEmailReplyIntent(
+  question: string,
+  entities: string[] = [],
+): EmailReplyIntent | null {
+  if (!REPLY_EMAIL_HINT_RE.test(question)) return null;
+  const match = REPLY_TARGET_RE.exec(question);
+  let target = match?.[1] ? cleanReplyTarget(match[1]) : null;
+  if (!target && entities.length > 0) target = entities[0]!.trim() || null;
+  if (target && /^(that|this|it|the last( one)?|latest|last|him|her|them)$/i.test(target)) {
+    target = null;
+  }
+  return { target: target || null };
+}
+
+function cleanReplyTarget(raw: string): string {
+  return raw
+    .trim()
+    .replace(/[.?!]+$/, '')
+    .replace(/['’]s\b.*$/, '') // "Ana's last email" → "Ana"
+    .replace(/\b(last|latest|recent|zadnj\w*|posljednj\w*)\b/gi, '')
+    .replace(/\b(e-?mail|mail|message|msg|note|poruk\w*|mejl\w*)\b/gi, '')
+    .replace(/^(the|that|this|a|an)\s+/i, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+/**
  * Rewrite when the turn leans on context (anaphora / terse follow-up) OR
- * carries a temporal or open-loops hint — intent classification needs the
- * model even for otherwise self-contained questions.
+ * carries a temporal, open-loops, or reply hint — intent classification needs
+ * the model even for otherwise self-contained questions.
  */
 export function shouldRewrite(question: string): boolean {
   const words = question.trim().split(/\s+/).filter(Boolean);
@@ -148,7 +218,8 @@ export function shouldRewrite(question: string): boolean {
     words.length <= 3 ||
     ANAPHORA_RE.test(question) ||
     TEMPORAL_HINT_RE.test(question) ||
-    OPEN_LOOPS_HINT_RE.test(question)
+    OPEN_LOOPS_HINT_RE.test(question) ||
+    REPLY_EMAIL_HINT_RE.test(question)
   );
 }
 
@@ -223,6 +294,7 @@ export async function rewriteQuery(
     entities: queryEntityCandidates(question),
     temporal: null,
     openLoops: null,
+    emailReply: detectEmailReplyIntent(question, queryEntityCandidates(question)),
   };
   if (!shouldRewrite(question)) return fallback;
 
@@ -242,12 +314,17 @@ export async function rewriteQuery(
     const result = await Promise.race([call, timeout]);
     if (!result) return fallback; // timed out
     const entities = result.entities.map((e) => e.trim()).filter(Boolean);
+    const resolvedEntities =
+      entities.length > 0 ? entities : queryEntityCandidates(result.rewritten_query);
     return {
       query: result.rewritten_query.trim() || question,
-      entities: entities.length > 0 ? entities : queryEntityCandidates(result.rewritten_query),
+      entities: resolvedEntities,
       // Veto guard + deterministic date resolution (decision 0012 ruling 2).
       temporal: resolveTemporalIntent(question, result.temporal, now, timeZone),
       openLoops: resolveOpenLoopsIntent(question, result.open_loops),
+      // Deterministic — detected from the raw question; the rewriter's entities
+      // (which resolve anaphora) improve the target fallback (Session O4).
+      emailReply: detectEmailReplyIntent(question, resolvedEntities),
     };
   } catch {
     return fallback;

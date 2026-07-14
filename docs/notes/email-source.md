@@ -46,6 +46,73 @@ The receipt counts every memory id and object key; the worker deletes points +
 objects (absent = success); the chain verifies and the nightly sweep finds zero
 residue. Covered by `email_deletion_cascade`.
 
+---
+
+## Making reply drafting usable (Session O4 — email reply triggers)
+
+The reply-drafting capability (below) is now reachable the two ways a person
+expects: **from the email itself** and **from chat**. Plus a faithful reading
+view so you can see what you're replying to.
+
+### The email reading view
+
+`GET /api/email/:id/source` renders the full retained message in the source
+drawer: sender, recipients, date, subject, body, attachments (downloadable when
+they're a stored file source), and — for a forward — the recovered original
+correspondent ("Originally from: Ana Kovač <ana@…>"). **UX/safety choice:** the
+body renders the **text/plain** part by default (safe, faithful); HTML-only mail
+falls back to the sanitised HTML with **remote content neutralised** (no tracking
+pixels auto-load) — the choice mail clients make and the hardest to misuse. The
+intake sanitiser already strips scripts/handlers/`javascript:` URLs; the drawer
+additionally blocks remote `src`/`srcset`/`url()`.
+
+### Forwarded-message reply addressing (the core correctness rule)
+
+Cogeto receives email by forwarding, so when you forward Ana's message to Cogeto
+the envelope/header From becomes **you**, and Ana sits in the body as a forwarded
+block. A naïve "reply to this" would address the reply to yourself. So the reply
+recipient is **recovered from the forwarded content**, with this precedence
+(documented so both triggers behave identically):
+
+1. **The recovered forwarded original From** — a forwarded block in the body
+   names the real correspondent (manual forward). Reply to them; thread on the
+   original subject + Message-ID.
+2. **The message's own From**, when it's a plausible external sender (not the
+   capture user). This covers directly received mail **and** provider-side
+   auto-forward / BCC, which preserve the original sender on the message itself —
+   so those address correctly with no body parsing.
+3. **Otherwise unset** — a self-forward whose original couldn't be recovered
+   leaves the recipient blank for you to fill in, rather than guessing or
+   replying to yourself. The draft is still created; the UI/chat prompt you to
+   set the recipient.
+
+`resolveReplyTarget` implements this; `parseForwardedHeaders` recovers the
+en/hr forwarded header stanza. The resolved reply-to is recorded on the draft, so
+the drawer button and the chat trigger produce identical addressing.
+
+### The two triggers
+
+- **Email-drawer "Draft reply" button** (the reliable, discoverable path) — on an
+  email source only (never notes/files/chat). It states plainly that Cogeto will
+  write a suggested reply you edit and send yourself, gives immediate feedback,
+  and points you to the pending draft in Approvals. **UX choice:** a single
+  button with a great default ("reply appropriately from context"), not a form —
+  the optional one-line steer lives on the API (`{ intent }`) for callers that
+  want it, but the drawer keeps it one click.
+- **Chat intent** — `detectEmailReplyIntent` (deterministic, in the
+  query-understanding layer; reuses the rewriter's entities for the target)
+  recognises "draft a reply to Ana's last email", "reply to Marko", "help me
+  answer Ana", and the Croatian equivalents. It resolves the target against your
+  recent emails and behaves like a thoughtful assistant: **one confident match →
+  drafts** and confirms with a pointer to Approvals; **an ambiguous named request
+  → lists the candidates and asks** (creates nothing); **no match → declines**
+  and points to the drawer button. It's fast-path: no ingestion work, no sending
+  — it only creates the draft through the existing approval path. Cross-module
+  wiring is a port (`CHAT_REPLY_RESOLVER`): retrieval defines it, connectors
+  implements it, the app root binds it — ChatService never imports connectors.
+  **UX note:** the chat confirmation is deterministic text (not model output) and
+  references the **Approvals** page (chat renders plain text by design).
+
 ### 3. Reply drafts through approval (no sending)
 
 `POST /api/email/:id/reply-draft` drafts a reply to an email you own: retrieval
@@ -94,10 +161,31 @@ that decides whose mail is remembered) lives right below it.
    .eml**, or **Open in mail client** to send it yourself. The UI states plainly
    that Cogeto does not send mail.
 
+### Draft a reply from the drawer / from chat (Session O4 triggers)
+
+- **From the email:** open an email memory's source drawer → read the message →
+  click **Draft reply** → you're pointed to the pending draft in **Approvals**.
+- **From chat:** type *"draft a reply to Ana's last email"* (or *"reply to
+  Marko"*, or the Croatian *"napiši odgovor…"*). Cogeto resolves the email, drafts
+  it, and confirms with a pointer to Approvals. Try an **ambiguous** request
+  (several emails from the same person) and it lists them and asks instead of
+  guessing.
+- Either way the draft lands in **Approvals** with the "Cogeto does not send"
+  notice and the copy / `.eml` / mail-client options. A **forwarded** message
+  addresses the reply to the recovered original correspondent, not the forwarder.
+
 ## Owner verification checklist
 
 - [ ] A forwarded thread remembers only the latest message's new content; quoted
       history and the signature are not extracted.
+- [ ] The email drawer shows the message readably (sender, recipients, date,
+      subject, body, attachments); a forwarded message shows "Originally from: …".
+- [ ] **Draft reply** on the drawer creates a draft and routes to Approvals.
+- [ ] Chat: naming a sender drafts a reply and confirms; an ambiguous request
+      asks (lists candidates) rather than guessing; a no-match declines cleanly.
+- [ ] A **forwarded** email's drafted reply is addressed to the original
+      correspondent (Ana), not the forwarder; an unrecoverable one leaves the
+      recipient blank with a prompt to set it.
 - [ ] A "FYI"-forwarded original remembers the innermost forwarded content, with
       provenance to the email that carried it.
 - [ ] Deleting an email source (with an attachment) removes the row, the raw +
@@ -112,6 +200,14 @@ that decides whose mail is remembered) lives right below it.
 
 ## Named tests
 
-`quote_stripping`, `forwarded_message` (ingestion `email-preprocess.spec`);
-`email_deletion_cascade` (memory); `reply_draft_no_send` (agents); `thread_dedup`
-(connectors). Plus the Unit A email intake/allowlist suites.
+Email as a source (earlier units): `quote_stripping`, `forwarded_message`
+(ingestion `email-preprocess.spec`); `email_deletion_cascade` (memory);
+`reply_draft_no_send` (agents); `thread_dedup` (connectors).
+
+Reply triggers (this unit): `forwarded_reply_addressing` (connectors
+`email-reply-target.spec` + `email-reply-triggers.integration`),
+`reading_view_faithful` + `reply_button_creates_draft`
+(`email-reply-triggers.integration`), `chat_reply_intent` + `fast_path_clean` +
+`no_send_preserved` (retrieval `chat-reply-intent.integration`), plus
+`detectEmailReplyIntent` + `parseForwardedHeaders` unit tests. Golden chat-eval:
+`reply_to_ana` (en) + `reply_hr_zadnja` (hr).

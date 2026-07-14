@@ -2,19 +2,25 @@ import 'reflect-metadata';
 import { appendFile, mkdir, readdir, readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { z } from 'zod';
+import { sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { GenericContainer, Wait } from 'testcontainers';
 import type { ChatStreamEvent, Principal } from '@cogeto/shared';
 import { applyMigrations, createDb } from '../infrastructure/index';
-import { createMemoryStore } from '../memory/index';
+import { createMemoryStore, MemoryObjectStore } from '../memory/index';
 import type { MemoryRow } from '../memory/index';
 import { seedMemoryFromSource } from '../ingestion/index';
 import { TasksEngine } from '../tasks/index';
 import { UserDirectory } from '../identity/index';
 import { ANSWER_PROMPT, ChatService, RetrievalService } from '../retrieval/index';
+import { ActionRegistry, ApprovalService } from '../agents/index';
+import { ChatReplyResolver, EmailReplyDraftService, EmailSourceService } from '../connectors/index';
 import { createModelGateway, loadPrompt, ModelGateway } from '../model-gateway/index';
 import { redactionFromEnv } from './config';
+
+/** The inbound address seeded emails are addressed to (chat reply-intent cases). */
+const EVAL_INBOUND = 'capture@in.localhost';
 
 /**
  * npm run eval:chat — the chat-answer eval suite (S3.5-A §2). It seeds a FRESH
@@ -56,12 +62,22 @@ const factSeedSchema = z.object({
   supersedes: z.number().int().min(0).optional(),
 });
 
+/** Seeded email_message rows (Session O4 — chat reply-intent cases). */
+const emailSeedSchema = z.object({
+  from: z.string().min(1),
+  subject: z.string().optional(),
+  text: z.string().default(''),
+  message_id: z.string().optional(),
+});
+
 const caseSchema = z.object({
   case_id: z.string(),
   description: z.string().default(''),
   anchor: z.string(),
   notes: z.array(z.string()).default([]),
   facts: z.array(factSeedSchema).default([]),
+  /** Emails to seed for a draft-a-reply case (Session O4). */
+  emails: z.array(emailSeedSchema).default([]),
   script: z.array(z.string()).min(1),
   checks: z.object({
     entity: z
@@ -268,8 +284,35 @@ async function main(): Promise<void> {
       await memoryStore.ensureIndexReady();
       const tasksEngine = new TasksEngine(db, memoryStore, gateway);
       const retrieval = new RetrievalService(memoryStore, gateway, tasksEngine);
-      const chat = new ChatService(db, retrieval, gateway, new UserDirectory(db));
+      // The chat → email-reply resolver (Session O4): draft-a-reply cases seed
+      // emails and exercise the real drafting path (the confirmation text is
+      // deterministic; the model only writes the draft body, which is not graded).
+      // The object store is never called for seeded text emails.
+      const objects = new MemoryObjectStore({
+        url: 'http://127.0.0.1:1',
+        accessKey: 'unused',
+        secretKey: 'unused',
+        bucket: 'cogeto',
+      });
+      const approvals = new ApprovalService(db, new ActionRegistry(memoryStore));
+      const emailDrafts = new EmailReplyDraftService(db, retrieval, gateway, approvals);
+      const replyResolver = new ChatReplyResolver(new EmailSourceService(db, objects), emailDrafts);
+      const chat = new ChatService(db, retrieval, gateway, new UserDirectory(db), replyResolver);
       const anchor = new Date(testCase.anchor);
+
+      // Seed emails (Session O4 reply-intent cases) directly — no public seed API.
+      for (let i = 0; i < testCase.emails.length; i++) {
+        const e = testCase.emails[i]!;
+        await db.execute(sql`
+          INSERT INTO email_message
+            (owner_id, scope, from_addr, to_addr, subject, message_id, received_at,
+             raw_object_key, text_body, headers_json, has_attachments)
+          VALUES
+            (${principal.userId}, 'private', ${e.from}, ${EVAL_INBOUND}, ${e.subject ?? null},
+             ${e.message_id ?? null}, ${anchor.toISOString()},
+             ${`eval/${testCase.case_id}/email-${i}`}, ${e.text}, '{}'::jsonb, false)
+        `);
+      }
 
       // Seed through the real pipeline, then run the task engine per source
       // (F3-B) — the worker's tasks.derive job, synchronously: derivation for

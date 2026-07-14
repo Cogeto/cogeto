@@ -26,6 +26,7 @@ const userB: Principal = { ...userA, userId: 'user-b', orgId: 'org-1' }; // same
 
 const draftPayload: EmailReplyDraftPayload = {
   to: 'ana@adriatic-foods.hr',
+  recipientResolved: true,
   subject: 'Re: Delivery deadline',
   inReplyTo: '<orig@cogeto.test>',
   references: ['<orig@cogeto.test>'],

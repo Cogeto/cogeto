@@ -80,3 +80,12 @@ One line per label change (docs/eval-golden-set.md §4 rule 5).
   Croatian-declension false misses on the first email batch; tighten in a later
   tick as the corpus grows. Croatian authored idiomatically, not translated.
   Scored by `npm run eval` (extraction + reconcile) with no gate regression.
+- 2026-07-14 (O4 email reply triggers): chat-eval tick — 2 draft-a-reply cases
+  (`project/eval/chat/reply_to_ana` en, `reply_hr_zadnja` hr). Each seeds an
+  `email_message` and runs a reply request ("draft a reply to Ana's last email";
+  hr "napiši odgovor na zadnju e-poruku") through the real chat path with the
+  chat→reply resolver wired; the deterministic confirmation must point to
+  Approvals and state Cogeto never sends. The eval-chat harness gained an
+  `emails` seed field + resolver wiring for these. The hr case uses "the last
+  message" (target null → most recent) to avoid a Croatian-declension miss on a
+  named target; tighten with fuzzier name matching in a later tick.

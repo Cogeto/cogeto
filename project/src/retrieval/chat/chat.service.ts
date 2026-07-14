@@ -1,4 +1,11 @@
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import type {
   ChatContextDto,
@@ -24,6 +31,9 @@ import { UserDirectory } from '../../identity/index';
 import { RetrievalService } from '../retrieval.service';
 import type { RetrievedMemory } from '../retrieval.service';
 import type { ConversationTurn } from '../query-rewrite';
+import { detectEmailReplyIntent } from '../query-rewrite';
+import { CHAT_REPLY_RESOLVER } from './chat-reply-resolver.port';
+import type { ChatReplyResolverPort } from './chat-reply-resolver.port';
 import { chatMessage } from '../persistence/tables';
 import {
   ANSWER_PROMPT,
@@ -62,6 +72,9 @@ export class ChatService {
     private readonly retrieval: RetrievalService,
     private readonly gateway: ModelGateway,
     private readonly directory: UserDirectory,
+    /** The chat → email-reply seam (Session O4). Absent in the worker and bare
+     * test harnesses — then the reply intent is simply inactive. */
+    @Optional() @Inject(CHAT_REPLY_RESOLVER) private readonly replyResolver?: ChatReplyResolverPort,
   ) {}
 
   async listMessages(principal: Principal): Promise<ChatMessageDto[]> {
@@ -210,6 +223,17 @@ export class ChatService {
     const history = await this.recentTurns(principal);
     await this.db.insert(chatMessage).values({ ownerId: principal.userId, role: 'user', content });
 
+    // Draft-a-reply intent (Session O4): deterministic detection; if it fires and
+    // the resolver is wired, this turn creates an email reply draft (or asks /
+    // declines) — fast path, no ingestion work, no sending. Then we return.
+    if (this.replyResolver) {
+      const replyIntent = detectEmailReplyIntent(content);
+      if (replyIntent) {
+        yield* this.handleReplyIntent(principal, replyIntent.target);
+        return;
+      }
+    }
+
     const retrieved = await this.retrieval.retrieve(principal, content, {
       topK: ANSWER_FACTS_TOP_K,
       history,
@@ -259,6 +283,53 @@ export class ChatService {
       .values({ ownerId: principal.userId, role: 'assistant', content: stored })
       .returning();
     yield { type: 'done', messageId: row!.id, content: stored, citationViolations: violations };
+  }
+
+  /**
+   * The draft-a-reply chat flow (Session O4). Resolve the target email against
+   * the owner's recent emails, then act like a thoughtful assistant:
+   *  - 0 matches      → say so, point to the drawer's "Draft reply".
+   *  - >1 for a NAMED target → list the candidates and ask which (create nothing).
+   *  - 1 (or "the last one") → create the draft via the approval path and confirm
+   *    with a link. Cogeto never sends. No retrieval-answer, no ingestion work.
+   */
+  private async *handleReplyIntent(
+    principal: Principal,
+    target: string | null,
+  ): AsyncGenerator<ChatStreamEvent> {
+    yield { type: 'sources', facts: [] };
+    let answer: string;
+    try {
+      const candidates = await this.replyResolver!.findCandidates(principal, target);
+      if (candidates.length === 0) {
+        answer = target
+          ? `I couldn't find a recent email from "${target}". Open the email in Cogeto and use "Draft reply" on it, and I'll write a suggested response.`
+          : `I couldn't find a recent email to reply to. Open the email you mean and use "Draft reply" on it.`;
+      } else if (target && candidates.length > 1) {
+        const list = candidates
+          .map(
+            (c, i) =>
+              `${i + 1}. ${c.from} — "${c.subject ?? '(no subject)'}" (${new Date(c.receivedAt).toLocaleDateString()})`,
+          )
+          .join('\n');
+        answer = `I found more than one email that might match "${target}". Which one should I reply to?\n\n${list}\n\nTell me the sender or subject and I'll draft it.`;
+      } else {
+        const draft = await this.replyResolver!.createDraft(principal, candidates[0]!.emailId);
+        answer = draft.recipientResolved
+          ? `I've drafted a reply to ${draft.to}. Open the Approvals page to review it, then send it from your own mail client — Cogeto never sends mail for you.`
+          : `I've drafted a reply, but this message looks forwarded and I couldn't work out the original recipient. Open the Approvals page, set the recipient, then send it yourself — Cogeto never sends mail.`;
+      }
+    } catch (error) {
+      this.logger.warn(`reply_intent_failed: ${error instanceof Error ? error.message : 'error'}`);
+      answer = `I couldn't draft that reply just now. You can open the email and use "Draft reply" on it.`;
+    }
+
+    yield { type: 'token', text: answer };
+    const [row] = await this.db
+      .insert(chatMessage)
+      .values({ ownerId: principal.userId, role: 'assistant', content: answer })
+      .returning();
+    yield { type: 'done', messageId: row!.id, content: answer, citationViolations: 0 };
   }
 
   /** The last few turns, oldest first — context for the rewriter (F3). */

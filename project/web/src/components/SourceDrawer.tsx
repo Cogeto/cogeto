@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   deleteSource,
+  draftEmailReply,
   fetchChatContext,
   fetchDeletionImpact,
+  fetchEmailSource,
   fetchFileDownload,
   fetchFileSource,
   fetchNote,
@@ -12,6 +14,7 @@ import type { Session } from '../auth/oidc';
 import { invalidateAfterSourceDeletion } from '../query-invalidation';
 import {
   btnDanger,
+  btnPrimary,
   btnSecondary,
   Drawer,
   ErrorState,
@@ -19,6 +22,19 @@ import {
   SensitiveBadge,
   SkeletonRows,
 } from './ui';
+
+/**
+ * Neutralize remote content in retained email HTML before rendering (Session O4).
+ * The intake sanitizer already strips scripts/handlers/js: URLs; here we also
+ * stop remote resources (tracking pixels) from auto-loading — the choice most
+ * mail clients make and the hardest to misuse. Formatting is preserved.
+ */
+function neutralizeRemoteHtml(html: string): string {
+  return html
+    .replace(/\s(src|background)\s*=\s*("|')?\s*https?:[^"'\s>]*/gi, ' data-remote-src="blocked"')
+    .replace(/\ssrcset\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/url\(\s*['"]?https?:[^)]*\)/gi, 'none');
+}
 import type { Tone } from './status';
 
 const FILE_STATE_LABEL: Record<string, string> = {
@@ -60,6 +76,9 @@ export function SourceDrawer({
   const isNote = sourceType === 'user_note';
   const isFile = sourceType === 'file';
   const isChat = sourceType === 'chat';
+  const isEmail = sourceType === 'email';
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [drafted, setDrafted] = useState(false);
 
   const noteQuery = useQuery({
     queryKey: ['note', sourceId],
@@ -75,6 +94,19 @@ export function SourceDrawer({
     queryKey: ['chat-context', sourceId],
     queryFn: () => fetchChatContext(session, sourceId),
     enabled: isChat,
+  });
+  const emailQuery = useQuery({
+    queryKey: ['email-source', sourceId],
+    queryFn: () => fetchEmailSource(session, sourceId),
+    enabled: isEmail,
+  });
+  const draftReply = useMutation({
+    mutationFn: () => draftEmailReply(session, sourceId),
+    onSuccess: () => {
+      setDraftError(null);
+      setDrafted(true);
+    },
+    onError: (e: unknown) => setDraftError(e instanceof Error ? e.message : String(e)),
   });
 
   const download = useMutation({
@@ -216,7 +248,135 @@ export function SourceDrawer({
           )}
         </>
       )}
-      {!isNote && !isFile && !isChat && (
+      {isEmail && (
+        <>
+          {emailQuery.isPending && <SkeletonRows rows={4} label="Loading email…" />}
+          {emailQuery.isError && <ErrorState>We couldn’t load this email.</ErrorState>}
+          {emailQuery.data && (
+            <div className="space-y-3">
+              <div className="space-y-1 rounded-md bg-slate-50 p-3 text-sm">
+                <p className="font-semibold text-slate-800">
+                  {emailQuery.data.subject || '(no subject)'}
+                </p>
+                <p className="text-xs text-slate-500">
+                  <span className="font-medium">From:</span> {emailQuery.data.from}
+                </p>
+                <p className="text-xs text-slate-500">
+                  <span className="font-medium">To:</span> {emailQuery.data.to}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {new Date(emailQuery.data.sentAt ?? emailQuery.data.receivedAt).toLocaleString()}
+                </p>
+                {emailQuery.data.isForward && emailQuery.data.originalCorrespondent && (
+                  <p className="mt-1 rounded bg-brand-teal/5 px-2 py-1 text-xs text-brand-teal-ink">
+                    Originally from:{' '}
+                    <span className="font-medium">{emailQuery.data.originalCorrespondent}</span> — a
+                    reply will go to them, not the forwarder.
+                  </p>
+                )}
+                {emailQuery.data.isForward && !emailQuery.data.originalCorrespondent && (
+                  <p className="mt-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-700">
+                    This arrived as a forward; the original sender couldn’t be recovered, so a reply
+                    will leave the recipient for you to fill in.
+                  </p>
+                )}
+                <p className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                  {emailQuery.data.sensitive && <SensitiveBadge />}
+                  <span className="text-slate-400">scope: {emailQuery.data.scope}</span>
+                </p>
+              </div>
+
+              {/* Body: text preferred (safe); sanitised HTML with remote content
+                  blocked as the fallback for HTML-only mail. */}
+              {emailQuery.data.textBody ? (
+                <p className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md border border-slate-200 p-3 text-sm text-slate-700">
+                  {emailQuery.data.textBody}
+                </p>
+              ) : emailQuery.data.htmlBody ? (
+                <div
+                  className="max-h-72 overflow-auto rounded-md border border-slate-200 p-3 text-sm text-slate-700"
+                  // Sanitised at intake (scripts/handlers/js: stripped) + remote
+                  // content neutralised here so nothing external auto-loads.
+                  dangerouslySetInnerHTML={{
+                    __html: neutralizeRemoteHtml(emailQuery.data.htmlBody),
+                  }}
+                />
+              ) : (
+                <p className="text-xs text-slate-400">(no body)</p>
+              )}
+
+              {emailQuery.data.attachments.length > 0 && (
+                <div>
+                  <p className="mb-1 text-xs font-medium text-slate-500">Attachments</p>
+                  <ul className="space-y-1">
+                    {emailQuery.data.attachments.map((a) => (
+                      <li
+                        key={a.id}
+                        className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-2 py-1 text-xs"
+                      >
+                        <span className="min-w-0 truncate text-slate-700">
+                          {a.filename ?? 'attachment'}
+                          {formatBytes(a.sizeBytes) && (
+                            <span className="text-slate-400"> · {formatBytes(a.sizeBytes)}</span>
+                          )}
+                        </span>
+                        {a.downloadable && a.fileObjectKey ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              fetchFileDownload(session, a.fileObjectKey!).then(({ url }) =>
+                                window.open(url, '_blank', 'noopener'),
+                              )
+                            }
+                            className="shrink-0 text-brand-teal-ink hover:underline"
+                          >
+                            Download
+                          </button>
+                        ) : (
+                          <span className="shrink-0 text-slate-400">retained</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Draft reply — the reliable, discoverable trigger. */}
+              <div className="rounded-lg border border-brand-teal/30 bg-brand-teal/5 p-3">
+                {drafted ? (
+                  <p className="text-sm text-slate-700">
+                    Draft created. Review it on the{' '}
+                    <a
+                      href="/approvals"
+                      className="font-medium text-brand-teal-ink hover:underline"
+                    >
+                      Approvals
+                    </a>{' '}
+                    page, then send it from your own mail client — Cogeto never sends mail.
+                  </p>
+                ) : (
+                  <>
+                    <p className="mb-2 text-xs text-slate-500">
+                      Cogeto will write a suggested reply you can edit and send yourself. It never
+                      sends mail — you approve and send from your own client.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={draftReply.isPending}
+                      onClick={() => draftReply.mutate()}
+                      className={btnPrimary}
+                    >
+                      {draftReply.isPending ? 'Drafting…' : 'Draft reply'}
+                    </button>
+                    {draftError && <p className="mt-2 text-xs text-red-600">{draftError}</p>}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+      {!isNote && !isFile && !isChat && !isEmail && (
         <p className="break-all rounded-md bg-slate-50 p-3 text-xs text-slate-600">{sourceId}</p>
       )}
 
