@@ -85,8 +85,17 @@ export function DormantBadge() {
   );
 }
 
-/** Entity tag. A button when filterable, a plain span otherwise. */
-export function EntityChip({ name, onClick }: { name: string; onClick?: () => void }) {
+/** Entity tag. A button when interactive, a plain span otherwise. */
+export function EntityChip({
+  name,
+  onClick,
+  title,
+}: {
+  name: string;
+  onClick?: () => void;
+  /** Overrides the default "Filter by {name}" tooltip (e.g. navigation). */
+  title?: string;
+}) {
   const cls = 'rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600';
   return onClick ? (
     <button
@@ -96,7 +105,7 @@ export function EntityChip({ name, onClick }: { name: string; onClick?: () => vo
         onClick();
       }}
       className={`${cls} hover:bg-slate-200`}
-      title={`Filter by ${name}`}
+      title={title ?? `Filter by ${name}`}
     >
       {name}
     </button>

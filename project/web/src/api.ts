@@ -41,6 +41,9 @@ import type {
   TaskCountDto,
   TaskDto,
   TaskStatus,
+  TimelineDto,
+  PointInTimeDto,
+  TimelineDiffDto,
   VerificationDto,
 } from '@cogeto/shared';
 import type { Session } from './auth/oidc';
@@ -356,6 +359,31 @@ export const fetchEmailDraft = (
   apiGet(`/api/approvals/${encodeURIComponent(approvalId)}/email-draft`, session);
 export const retryDeadLetterJob = (session: Session, id: string): Promise<{ retried: boolean }> =>
   apiPost(`/api/jobs/dead-letter/${id}/retry`, {}, session);
+
+// Time-travel (decision 0012): the visual surface over the temporal primitives.
+// Thin reads — a subject's spans, the subject at an instant, and the diff
+// between two instants. Every read is Principal-gated server-side.
+export const fetchTimeline = (session: Session, subject: string): Promise<TimelineDto> =>
+  apiGet(`/api/timeline?subject=${encodeURIComponent(subject)}`, session);
+export const fetchTimelineAt = (
+  session: Session,
+  subject: string,
+  at: string,
+): Promise<PointInTimeDto> =>
+  apiGet(
+    `/api/timeline/at?subject=${encodeURIComponent(subject)}&at=${encodeURIComponent(at)}`,
+    session,
+  );
+export const fetchTimelineDiff = (
+  session: Session,
+  subject: string,
+  from: string,
+  to: string,
+): Promise<TimelineDiffDto> =>
+  apiGet(
+    `/api/timeline/diff?subject=${encodeURIComponent(subject)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+    session,
+  );
 
 export const fetchChatMessages = (session: Session): Promise<ChatMessageDto[]> =>
   apiGet('/api/chat/messages', session);

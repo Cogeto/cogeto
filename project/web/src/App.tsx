@@ -18,6 +18,7 @@ import { Review } from './pages/Review';
 import { Settings } from './pages/Settings';
 import { System } from './pages/System';
 import { Tasks } from './pages/Tasks';
+import { Timeline } from './pages/Timeline';
 
 /** Tiny path switch — a router dependency is still not justified. */
 export function App() {
@@ -95,6 +96,8 @@ function renderPage(session: Session) {
       return <Memories session={session} />;
     case '/chat':
       return <Chat session={session} />;
+    case '/timeline':
+      return <Timeline session={session} />;
     case '/tasks':
       return <Tasks session={session} />;
     case '/review':

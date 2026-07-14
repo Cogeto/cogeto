@@ -2,6 +2,7 @@
 export { MemoryModule } from './memory.module';
 export type { MemoryModuleOptions } from './memory.module';
 export { MemoryStore, MEMORY_EMBED_JOB_TYPE } from './memory.store';
+export { TimelineService } from './timeline.service';
 export {
   DeletionSaga,
   DeletionExecutor,
