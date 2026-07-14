@@ -1,0 +1,56 @@
+# Cogeto customer-instance edge (decision 0030) — the production counterpart of
+# project/infra/docker/caddy/Caddyfile (dev: localhost with Caddy's internal
+# CA). Mounted over the baked-in dev Caddyfile by docker-compose.deploy.yml.
+#
+# TLS is real Let's Encrypt ACME: Caddy obtains and renews certificates for the
+# app domain and the s3.<domain> presign origin automatically as soon as the
+# operator's DNS A records resolve to this host (ports 80+443 stay open for the
+# HTTP-01 / TLS-ALPN-01 challenges). Until DNS points here, Caddy keeps retrying
+# in the background — the stack still comes up.
+#
+# {$VAR} placeholders are resolved by Caddy from the container environment
+# (COGETO_EXTERNAL_DOMAIN, COGETO_ACME_EMAIL — set in .env by the operator
+# script).
+
+{
+	email {$COGETO_ACME_EMAIL}
+}
+
+{$COGETO_EXTERNAL_DOMAIN} {
+	encode gzip
+
+	# Zitadel paths on the shared origin (OIDC, login UI, console, APIs).
+	# NOTE: Zitadel's asset API is /assets/v1/* — the bare /assets/* prefix belongs
+	# to the SPA's Vite bundles and must NOT be proxied.
+	@zitadel path /.well-known/* /oauth/* /oidc/* /ui/* /idps/* /saml/* /assets/v1/* /auth/v1/* /management/v1/* /admin/v1/* /system/v1/* /device* /zitadel*
+	handle @zitadel {
+		reverse_proxy zitadel:8080
+	}
+
+	# The Cogeto API (app process).
+	handle /api/* {
+		reverse_proxy app:3000
+	}
+
+	# The SPA: static files with history-API fallback. Same strict CSP as the
+	# dev edge (QS-19): script-src 'self' only, applied to SPA responses only.
+	handle {
+		root * /srv
+		header {
+			Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+			X-Content-Type-Options "nosniff"
+			Referrer-Policy "no-referrer"
+			X-Frame-Options "DENY"
+		}
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+# MinIO S3 API — the browser-reachable origin for presigned download URLs
+# (§A.9; COGETO_S3_PUBLIC_URL). Caddy preserves the incoming Host header, which
+# MinIO's SigV4 presign check needs. Access is authorized by the presigned URL
+# signature itself; the MinIO console is NOT exposed on a customer instance.
+s3.{$COGETO_EXTERNAL_DOMAIN} {
+	reverse_proxy minio:9000
+}

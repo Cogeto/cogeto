@@ -1,0 +1,943 @@
+#!/usr/bin/env bash
+# cogeto — the Cogeto operator script (roadmap D3, decision 0030).
+#
+# The single tool an operator runs BY HAND on a fresh OVHcloud Ubuntu instance
+# to install, configure, upgrade, and check a customer instance. Operations are
+# script-driven and manual-by-design: no Terraform, no cloud-provider API
+# automation, no self-serve provisioning, no automatic updates.
+#
+#   cogeto install    [--domain D] [--acme-email E] [--version X.Y.Z] [--mistral-key K]
+#   cogeto configure  [--domain D] [--mistral-key K] [--regenerate NAME]
+#   cogeto upgrade    [X.Y.Z|latest]
+#   cogeto status
+#   cogeto backup-info
+#
+# Global flags: --check (dry run: validate prerequisites, print the intended
+# actions and the checklist, mutate NOTHING), --help, --root DIR.
+#
+# Design rules (decision 0030):
+#   • The instance PULLS the prebuilt, cosign-signed release images
+#     (cogeto/cogeto, cogeto/cogeto-edge, cogeto/cogeto-mail) and NEVER builds.
+#   • Idempotent where possible — safe to re-run; every destructive or
+#     irreversible action requires an explicit typed confirmation.
+#   • Secrets are generated locally into a 600-permission .env and are never
+#     committed, transmitted, or logged (names are logged, values never).
+#   • Whatever the script cannot do itself is printed as a precise,
+#     instance-specific "WHAT YOU MUST DO NOW" checklist at the end of the run.
+#   • Supported OS: Ubuntu 22.04 LTS and 24.04 LTS, amd64.
+#
+# Developer notes: docs/notes/operator-script.md. Tests (usage, --check, pure
+# helpers): project/src/entrypoints/operator-script.spec.ts. Keep this file
+# clean under shellcheck (CI lint job) and bash-3.2-compatible (the spec also
+# runs it on macOS): no associative arrays, no ${var,,}, no mapfile.
+
+set -euo pipefail
+
+# ── Constants ─────────────────────────────────────────────────────────────────
+
+# The pinned known-good release (overridable with --version / `upgrade X.Y.Z`).
+# Bump this in the `chore: release vX.Y.Z` PR once the release is verified.
+DEFAULT_VERSION="0.9.0"
+# Releases before this one do not publish the edge/mail images (decision 0030);
+# a pull-only instance cannot run them.
+MIN_VERSION="0.9.0"
+
+IMAGE="cogeto/cogeto"
+IMAGE_EDGE="cogeto/cogeto-edge"
+IMAGE_MAIL="cogeto/cogeto-mail"
+GITHUB_REPO="Cogeto/cogeto"
+RAW_BASE="https://raw.githubusercontent.com/${GITHUB_REPO}"
+HUB_API="https://hub.docker.com/v2/repositories"
+
+COGETO_ROOT="${COGETO_ROOT:-/srv/cogeto}"
+SERVICE_USER="cogeto"
+SUPPORTED_UBUNTU="22.04 24.04"
+MIN_RAM_MB=7000   # an 8 GB instance reports ~7.6 GiB
+MIN_DISK_GB=30    # free space on the filesystem holding /var/lib/docker
+MIN_CPUS=2
+
+CHECK=0           # --check: dry run, mutate nothing
+SAY_PREFIX="cogeto:"
+
+# Checklist accumulators (printed by print_checklist at the end of every run).
+TODO_NOW=()
+TODO_AFTER_DNS=()
+TODO_VAULT=()
+
+# ── Output helpers ────────────────────────────────────────────────────────────
+
+say()  { printf '%s %s\n' "$SAY_PREFIX" "$*"; }
+warn() { printf '%s WARNING: %s\n' "$SAY_PREFIX" "$*" >&2; }
+die()  { printf '%s ERROR: %s\n' "$SAY_PREFIX" "$*" >&2; exit 1; }
+
+# Run a MUTATING command — in --check mode it is printed, not executed.
+run() {
+  if [ "$CHECK" -eq 1 ]; then
+    printf '%s [dry-run] would run: %s\n' "$SAY_PREFIX" "$*"
+    return 0
+  fi
+  "$@"
+}
+
+# Typed confirmation for destructive / irreversible actions. Never a default:
+# the operator must type the exact phrase. --check mode skips (nothing mutates).
+confirm_typed() {
+  phrase="$1"; reason="$2"
+  if [ "$CHECK" -eq 1 ]; then
+    say "[dry-run] would ask you to type '${phrase}' to confirm: ${reason}"
+    return 0
+  fi
+  printf '%s %s\n' "$SAY_PREFIX" "$reason"
+  printf "%s type '%s' to proceed (anything else aborts): " "$SAY_PREFIX" "$phrase"
+  IFS= read -r answer
+  [ "$answer" = "$phrase" ] || die "not confirmed — nothing was changed"
+}
+
+todo_now()   { TODO_NOW+=("$1"); }
+todo_dns()   { TODO_AFTER_DNS+=("$1"); }
+todo_vault() { TODO_VAULT+=("$1"); }
+
+print_checklist() {
+  echo
+  echo "══════════════════════════════════════════════════════════════════════"
+  echo " WHAT YOU MUST DO NOW"
+  echo "══════════════════════════════════════════════════════════════════════"
+  if [ "${#TODO_NOW[@]}" -eq 0 ] && [ "${#TODO_AFTER_DNS[@]}" -eq 0 ] && [ "${#TODO_VAULT[@]}" -eq 0 ]; then
+    echo " Nothing — this run left no operator actions."
+  fi
+  if [ "${#TODO_NOW[@]}" -gt 0 ]; then
+    echo
+    echo " Do now:"
+    for item in "${TODO_NOW[@]}"; do
+      printf '  [ ] %s\n' "$item"
+    done
+  fi
+  if [ "${#TODO_AFTER_DNS[@]}" -gt 0 ]; then
+    echo
+    echo " Verify after DNS propagates:"
+    for item in "${TODO_AFTER_DNS[@]}"; do
+      printf '  [ ] %s\n' "$item"
+    done
+  fi
+  if [ "${#TODO_VAULT[@]}" -gt 0 ]; then
+    echo
+    echo " Record in your vault:"
+    for item in "${TODO_VAULT[@]}"; do
+      printf '  [ ] %s\n' "$item"
+    done
+  fi
+  echo "══════════════════════════════════════════════════════════════════════"
+}
+
+usage() {
+  cat <<'USAGE'
+cogeto — install, configure, upgrade, and check a Cogeto customer instance.
+
+Usage:
+  cogeto install    [--domain D] [--acme-email E] [--version X.Y.Z] [--mistral-key K]
+  cogeto configure  [--domain D] [--mistral-key K] [--regenerate NAME]
+  cogeto upgrade    [X.Y.Z|latest]
+  cogeto status
+  cogeto backup-info
+  cogeto --help
+
+Subcommands:
+  install      First-time setup on a fresh Ubuntu 22.04/24.04 instance:
+               verifies OS and resources, installs Docker Engine + compose
+               plugin, creates the service user and /srv/cogeto, fetches the
+               pull-only deployment files at the pinned version, generates
+               per-instance secrets and the unique inbound email address,
+               pulls the signed images, brings the stack up (TLS via Let's
+               Encrypt as soon as DNS resolves), and prints the DNS/backup/
+               verification checklist.
+  configure    Show or change instance configuration idempotently: --domain
+               moves the instance to a new domain (updates OIDC issuer, S3
+               origin, inbound address); --mistral-key sets the model API key;
+               --regenerate NAME rotates a rotatable secret (see notes —
+               data-bound secrets and the receipt-signing key are refused).
+  upgrade      Move to a published release: shows current → target, pulls the
+               prebuilt images (never builds), re-runs the migrate job,
+               restarts app and worker, health-checks, and re-embeds via
+               reindex when the recorded embedding model diverged. Prints the
+               rollback procedure. Refuses unpublished tags.
+  status       Honest health report: running vs configured version, container
+               health, disk and volume usage, domain and inbound address, TLS
+               certificate state and renewal, last migration, queue depth and
+               dead-letter count, deletion-sweep state. Green only when
+               actually working.
+  backup-info  Exactly what to enable in the OVHcloud panel (roadmap D4 —
+               the script itself performs no backups).
+
+Global flags:
+  --check      Dry run: validate prerequisites, print intended actions and the
+               checklist, mutate nothing. Exercisable in CI and on any machine.
+  --root DIR   Instance directory (default /srv/cogeto; env COGETO_ROOT).
+  --help       This text.
+
+Every destructive or irreversible action requires typing an explicit
+confirmation phrase. Secrets are generated locally into ${COGETO_ROOT}/.env
+(mode 600) and never logged. Every run ends with a "WHAT YOU MUST DO NOW"
+checklist of the operator actions the script cannot perform itself.
+USAGE
+}
+
+# ── Pure helpers (unit-tested via project/src/entrypoints/operator-script.spec.ts)
+
+# Valid dotted semver X.Y.Z (no pre-release/build suffixes — releases are plain).
+semver_valid() {
+  printf '%s' "$1" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'
+}
+
+# version_cmp A B → prints -1 / 0 / 1 for A<B / A=B / A>B.
+version_cmp() {
+  a1="${1%%.*}"; rest="${1#*.}"; a2="${rest%%.*}"; a3="${rest#*.}"
+  b1="${2%%.*}"; rest="${2#*.}"; b2="${rest%%.*}"; b3="${rest#*.}"
+  for pair in "$a1 $b1" "$a2 $b2" "$a3 $b3"; do
+    x="${pair%% *}"; y="${pair##* }"
+    if [ "$x" -lt "$y" ]; then echo "-1"; return 0; fi
+    if [ "$x" -gt "$y" ]; then echo "1"; return 0; fi
+  done
+  echo "0"
+}
+
+version_ge() { [ "$(version_cmp "$1" "$2")" != "-1" ]; }
+
+# The per-tenant inbound address scheme (decision 0028 ruling 1): the fixed
+# local part `capture` on the instance's own `in.` subdomain.
+derive_inbound_address() { printf 'capture@in.%s' "$1"; }
+derive_inbound_subdomain() { printf 'in.%s' "$1"; }
+derive_mx_host() { printf 'mail.%s' "$1"; }
+derive_s3_origin() { printf 'https://s3.%s' "$1"; }
+
+# Minimal domain sanity: at least one dot, valid label characters, no scheme.
+domain_valid() {
+  printf '%s' "$1" | grep -Eq '^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$'
+}
+
+# Secret generators — values go straight into .env; NEVER echo them.
+gen_password() {  # 32 chars, alphanumeric (safe in URLs, env files, psql)
+  openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 32
+}
+gen_token() {     # 64 hex chars
+  openssl rand -hex 32
+}
+gen_zitadel_masterkey() {  # Zitadel requires EXACTLY 32 characters
+  openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 32
+}
+gen_zitadel_admin_password() {
+  # Zitadel's default policy wants upper + lower + digit + symbol; the random
+  # tail keeps the entropy, the fixed 4-char prefix guarantees the classes.
+  printf 'Cg1!%s' "$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 20)"
+}
+gen_minio_kms_key() {  # <key-name>:<base64 of 32 random bytes>
+  printf 'cogeto-instance-key:%s' "$(openssl rand -base64 32)"
+}
+
+# ── .env helpers ──────────────────────────────────────────────────────────────
+
+ENV_FILE=""  # set in main() from COGETO_ROOT
+
+env_get() {  # env_get KEY → value or empty
+  [ -f "$ENV_FILE" ] || return 0
+  sed -n "s/^$1=//p" "$ENV_FILE" | tail -n 1
+}
+
+env_set() {  # env_set KEY VALUE — idempotent replace-or-append; value never logged
+  key="$1"; value="$2"
+  if [ "$CHECK" -eq 1 ]; then
+    say "[dry-run] would set ${key} in ${ENV_FILE}"
+    return 0
+  fi
+  touch "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
+  if grep -q "^${key}=" "$ENV_FILE"; then
+    # sed -i differs between GNU/BSD; a temp file is portable.
+    grep -v "^${key}=" "$ENV_FILE" > "${ENV_FILE}.tmp"
+    printf '%s=%s\n' "$key" "$value" >> "${ENV_FILE}.tmp"
+    chmod 600 "${ENV_FILE}.tmp"
+    mv "${ENV_FILE}.tmp" "$ENV_FILE"
+  else
+    printf '%s=%s\n' "$key" "$value" >> "$ENV_FILE"
+  fi
+}
+
+# ── Host checks ───────────────────────────────────────────────────────────────
+
+check_os() {
+  if [ ! -f /etc/os-release ]; then
+    [ "$CHECK" -eq 1 ] && { warn "no /etc/os-release — cannot verify Ubuntu (check mode continues)"; return 0; }
+    die "unsupported OS: /etc/os-release not found (supported: Ubuntu ${SUPPORTED_UBUNTU})"
+  fi
+  os_id="$(sed -n 's/^ID=//p' /etc/os-release | tr -d '"')"
+  os_ver="$(sed -n 's/^VERSION_ID=//p' /etc/os-release | tr -d '"')"
+  ok=1
+  [ "$os_id" = "ubuntu" ] || ok=0
+  case " ${SUPPORTED_UBUNTU} " in *" ${os_ver} "*) : ;; *) ok=0 ;; esac
+  if [ "$ok" -eq 1 ]; then
+    say "OS check: ${os_id} ${os_ver} — supported"
+  else
+    [ "$CHECK" -eq 1 ] && { warn "OS is ${os_id:-unknown} ${os_ver:-unknown}; supported: Ubuntu ${SUPPORTED_UBUNTU} (check mode continues)"; return 0; }
+    die "unsupported OS ${os_id:-unknown} ${os_ver:-unknown} — supported: Ubuntu ${SUPPORTED_UBUNTU}"
+  fi
+}
+
+check_resources() {
+  ram_mb=0; cpus=0; disk_gb=0
+  if [ -r /proc/meminfo ]; then
+    ram_kb="$(sed -n 's/^MemTotal:[[:space:]]*\([0-9]*\).*/\1/p' /proc/meminfo)"
+    ram_mb=$((ram_kb / 1024))
+  fi
+  cpus="$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 0)"
+  docker_fs="/var/lib/docker"; [ -d "$docker_fs" ] || docker_fs="/"
+  disk_gb="$(df -Pk "$docker_fs" 2>/dev/null | awk 'NR==2 {printf "%d", $4/1024/1024}')"
+  say "resources: ${ram_mb} MB RAM, ${cpus} CPUs, ${disk_gb} GB free on ${docker_fs}"
+  problems=""
+  [ "$ram_mb" -ge "$MIN_RAM_MB" ] || problems="${problems} RAM<${MIN_RAM_MB}MB"
+  [ "$cpus" -ge "$MIN_CPUS" ] || problems="${problems} CPUs<${MIN_CPUS}"
+  [ "$disk_gb" -ge "$MIN_DISK_GB" ] || problems="${problems} disk<${MIN_DISK_GB}GB"
+  if [ -n "$problems" ]; then
+    if [ "$CHECK" -eq 1 ] || [ "${COGETO_SKIP_RESOURCE_CHECK:-0}" = "1" ]; then
+      warn "resource check failed:${problems} — the stack (Postgres, Qdrant, MinIO, Zitadel, app, worker, mail, edge) needs at least ${MIN_RAM_MB}MB RAM / ${MIN_CPUS} CPUs / ${MIN_DISK_GB}GB free"
+    else
+      die "insufficient resources:${problems}. This stack needs ≥${MIN_RAM_MB}MB RAM, ≥${MIN_CPUS} CPUs, ≥${MIN_DISK_GB}GB free (set COGETO_SKIP_RESOURCE_CHECK=1 to override at your own risk)"
+    fi
+  fi
+}
+
+require_root() {
+  [ "$CHECK" -eq 1 ] && return 0
+  [ "$(id -u)" -eq 0 ] || die "this subcommand must run as root (sudo)"
+}
+
+detect_public_ip() {
+  ip=""
+  ip="$(curl -fsS --max-time 5 https://api.ipify.org 2>/dev/null || true)"
+  if [ -z "$ip" ]; then
+    ip="$(hostname -I 2>/dev/null | awk '{print $1}' || true)"
+  fi
+  printf '%s' "${ip:-<the instance public IPv4>}"
+}
+
+compose() {
+  docker compose --project-directory "$COGETO_ROOT" "$@"
+}
+
+# ── Release lookups (Docker Hub) ──────────────────────────────────────────────
+
+hub_tag_exists() {
+  curl -fsS --max-time 15 "${HUB_API}/${IMAGE}/tags/$1" >/dev/null 2>&1
+}
+
+hub_latest_version() {
+  # Highest published semver tag of cogeto/cogeto. No jq dependency: extract
+  # the tag names, keep plain X.Y.Z, sort -V.
+  curl -fsS --max-time 15 "${HUB_API}/${IMAGE}/tags?page_size=100" 2>/dev/null \
+    | tr ',' '\n' \
+    | sed -n 's/.*"name":[[:space:]]*"\([0-9][0-9.]*\)".*/\1/p' \
+    | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
+    | sort -V \
+    | tail -n 1
+}
+
+print_cosign_commands() {
+  version="$1"
+  say "verify the pulled images (keyless cosign; run any time):"
+  for img in "$IMAGE" "$IMAGE_EDGE" "$IMAGE_MAIL"; do
+    cat <<EOF
+  cosign verify ${img}:${version} \\
+    --certificate-identity-regexp '^https://github.com/${GITHUB_REPO}/\\.github/workflows/release\\.yml@refs/tags/' \\
+    --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
+EOF
+  done
+}
+
+verify_images() {
+  version="$1"
+  if command -v cosign >/dev/null 2>&1; then
+    say "cosign found — verifying image signatures"
+    for img in "$IMAGE" "$IMAGE_EDGE" "$IMAGE_MAIL"; do
+      run cosign verify "${img}:${version}" \
+        --certificate-identity-regexp "^https://github.com/${GITHUB_REPO}/\\.github/workflows/release\\.yml@refs/tags/" \
+        --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' >/dev/null
+    done
+    [ "$CHECK" -eq 1 ] || say "all three image signatures verified"
+  else
+    warn "cosign is not installed — signatures NOT verified (install cosign to verify)"
+  fi
+  print_cosign_commands "$version"
+}
+
+# ── Deployment assets ─────────────────────────────────────────────────────────
+
+fetch_deploy_assets() {
+  version="$1"
+  say "fetching deployment files pinned to v${version} from github.com/${GITHUB_REPO}"
+  run mkdir -p "$COGETO_ROOT/zitadel-init"
+  fetch_one "v${version}" "project/infra/deploy/docker-compose.deploy.yml" "$COGETO_ROOT/docker-compose.yml"
+  fetch_one "v${version}" "project/infra/deploy/Caddyfile" "$COGETO_ROOT/Caddyfile"
+  fetch_one "v${version}" "project/infra/docker/zitadel-init/init.mjs" "$COGETO_ROOT/zitadel-init/init.mjs"
+}
+
+fetch_one() {
+  ref="$1"; path="$2"; dest="$3"
+  url="${RAW_BASE}/${ref}/${path}"
+  if [ "$CHECK" -eq 1 ]; then
+    say "[dry-run] would fetch ${url} → ${dest}"
+    return 0
+  fi
+  curl -fsSL --max-time 60 "$url" -o "${dest}.tmp" || die "failed to fetch ${url} — is v${ref#v} a published release?"
+  mv "${dest}.tmp" "$dest"
+  say "fetched ${path} → ${dest}"
+}
+
+# ── Docker installation (idempotent) ─────────────────────────────────────────
+
+install_docker() {
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    say "Docker Engine + compose plugin already installed — skipping"
+    return 0
+  fi
+  say "installing Docker Engine + compose plugin from download.docker.com (official apt repo)"
+  if [ "$CHECK" -eq 1 ]; then
+    say "[dry-run] would: apt-get install ca-certificates curl; add Docker's GPG key + apt repo; apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin"
+    return 0
+  fi
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update -qq
+  apt-get install -y -qq ca-certificates curl
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  chmod a+r /etc/apt/keyrings/docker.asc
+  # shellcheck disable=SC1091
+  codename="$(. /etc/os-release && echo "$VERSION_CODENAME")"
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${codename} stable" \
+    > /etc/apt/sources.list.d/docker.list
+  apt-get update -qq
+  apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  systemctl enable --now docker
+  say "Docker installed: $(docker --version)"
+}
+
+ensure_service_user() {
+  if id "$SERVICE_USER" >/dev/null 2>&1; then
+    say "service user '${SERVICE_USER}' already exists — skipping"
+  else
+    say "creating system user '${SERVICE_USER}' (no login shell)"
+    run useradd --system --home-dir "$COGETO_ROOT" --shell /usr/sbin/nologin "$SERVICE_USER"
+  fi
+}
+
+open_firewall() {
+  if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
+    say "ufw is active — allowing 80/tcp (ACME+redirect), 443 (HTTPS), 25/tcp (inbound mail)"
+    run ufw allow 80/tcp
+    run ufw allow 443
+    run ufw allow 25/tcp
+  else
+    say "ufw inactive or absent — no host firewall change needed (OVHcloud network firewall, if enabled, must allow 80, 443, 25)"
+  fi
+}
+
+# ── Health wait / health report ───────────────────────────────────────────────
+
+service_health() {  # service_health NAME → healthy|starting|unhealthy|exited:N|missing
+  cid="$(compose ps -q "$1" 2>/dev/null | head -n 1)"
+  if [ -z "$cid" ]; then echo "missing"; return 0; fi
+  state="$(docker inspect -f '{{.State.Status}}' "$cid" 2>/dev/null || echo unknown)"
+  if [ "$state" = "exited" ]; then
+    echo "exited:$(docker inspect -f '{{.State.ExitCode}}' "$cid")"
+    return 0
+  fi
+  health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cid" 2>/dev/null || echo unknown)"
+  if [ "$health" = "none" ]; then echo "$state"; else echo "$health"; fi
+}
+
+wait_healthy() {
+  if [ "$CHECK" -eq 1 ]; then
+    say "[dry-run] would wait for app, worker, caddy, mail to report healthy (up to 5 minutes)"
+    return 0
+  fi
+  say "waiting for the stack to become healthy (Zitadel's first init takes a minute)..."
+  deadline=$(( $(date +%s) + 300 ))
+  while :; do
+    app="$(service_health app)"; workr="$(service_health worker)"
+    caddy="$(service_health caddy)"; mail="$(service_health mail)"
+    if [ "$app" = "healthy" ] && [ "$workr" = "healthy" ] && [ "$caddy" = "healthy" ] && [ "$mail" = "healthy" ]; then
+      say "stack healthy: app, worker, caddy, mail all report healthy"
+      return 0
+    fi
+    if [ "$(date +%s)" -ge "$deadline" ]; then
+      warn "stack did not become healthy in 5 minutes (app=${app} worker=${workr} caddy=${caddy} mail=${mail})"
+      warn "inspect with: cd ${COGETO_ROOT} && docker compose ps && docker compose logs --tail 100 app"
+      return 1
+    fi
+    sleep 5
+  done
+}
+
+# The app's aggregate health endpoint (/api/health, public by design — QS-18)
+# covers Postgres, Qdrant, MinIO + encryption, integrity sweep, migrations,
+# queue depth/dead-letter, model gateway, and mail. Fetched from INSIDE the app
+# container so it works before DNS points anywhere.
+fetch_health_report() {
+  compose exec -T app node -e '
+    fetch("http://127.0.0.1:3000/api/health")
+      .then((r) => r.json())
+      .then((j) => {
+        console.log("overall: " + j.status);
+        for (const [name, c] of Object.entries(j.checks)) {
+          const mark = c.ok ? "ok  " : "FAIL";
+          const extra = c.error ? " — " + c.error : c.detail ? " — " + c.detail : "";
+          console.log("  " + mark + "  " + name + extra);
+        }
+        process.exit(j.status === "ok" ? 0 : 1);
+      })
+      .catch((e) => { console.log("unreachable: " + e.message); process.exit(1); });
+  ' 2>/dev/null
+}
+
+# ── Checklist builders ────────────────────────────────────────────────────────
+
+add_install_checklist() {
+  domain="$1"; inbound="$2"; ip="$3"
+  mx_sub="$(derive_inbound_subdomain "$domain")"
+  mx_host="$(derive_mx_host "$domain")"
+
+  todo_now "OVHcloud DNS → add the app A record:            ${domain}.  IN A  ${ip}"
+  todo_now "OVHcloud DNS → add the presign-origin A record: s3.${domain}.  IN A  ${ip}"
+  todo_now "OVHcloud DNS → add the mail host A record:      ${mx_host}.  IN A  ${ip}"
+  todo_now "OVHcloud DNS → add the inbound MX record:       ${mx_sub}.  IN MX 10  ${mx_host}."
+  todo_now "OVHcloud panel → set the PTR (reverse DNS) of ${ip} to ${mx_host} (senders soft-reject hosts without matching forward/reverse DNS)"
+  todo_now "SPF note: receiving needs no SPF, but if the apex domain publishes a strict SPF, confirm it does not cover ${mx_sub} (Cogeto never sends — no outbound SPF/DKIM/DMARC needed)"
+  todo_now "OVHcloud panel → enable Automated Backup for this instance (roadmap D4; run 'cogeto backup-info' for the exact settings)"
+  todo_now "If the OVHcloud Network Firewall is enabled for this IP: allow inbound TCP 80, 443, and 25"
+
+  todo_dns "Open https://${domain} — a valid Let's Encrypt certificate is served and the login page loads (Caddy retries ACME automatically once DNS resolves; no restart needed)"
+  todo_dns "Log in as the admin (username admin@${domain}; password is ZITADEL_ADMIN_PASSWORD in ${ENV_FILE}) and create the customer's user"
+  todo_dns "Settings → Email capture: add the customer's allowlisted sender/domain (the allowlist is CLOSED by default), then send a test email from that sender to ${inbound} and confirm it lands as a source"
+  todo_dns "Export a Memory Passport (dashboard → Passport) and confirm the download"
+  todo_dns "Delete a test source and confirm Forgotten shows a signed deletion receipt"
+  todo_dns "Run 'cogeto status' on the instance — everything green"
+
+  todo_vault "Store ${ENV_FILE} (all per-instance secrets) in the operator vault — losing MINIO_KMS_SECRET_KEY makes stored files unreadable"
+  todo_vault "Record the Zitadel admin login (admin@${domain} + ZITADEL_ADMIN_PASSWORD from ${ENV_FILE})"
+  todo_vault "Note: the receipt-signing keypair is generated on first boot INSIDE the 'instance-keys' Docker volume (never a file on disk) — it is covered by the OVHcloud instance backup, not by ${ENV_FILE}"
+}
+
+# ── install ───────────────────────────────────────────────────────────────────
+
+cmd_install() {
+  domain=""; acme_email=""; version="$DEFAULT_VERSION"; mistral_key=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --domain)      domain="$2"; shift 2 ;;
+      --acme-email)  acme_email="$2"; shift 2 ;;
+      --version)     version="$2"; shift 2 ;;
+      --mistral-key) mistral_key="$2"; shift 2 ;;
+      *) die "install: unknown argument '$1' (see --help)" ;;
+    esac
+  done
+
+  say "install — first-time setup of a Cogeto customer instance (pull-only, v${version})"
+  require_root
+  check_os
+  check_resources
+
+  if [ -f "$ENV_FILE" ]; then
+    die "already installed: ${ENV_FILE} exists. Use 'cogeto upgrade' to change version, 'cogeto configure' to change configuration. (To reinstall from scratch, remove ${COGETO_ROOT} and the Docker volumes YOURSELF — this script never deletes data.)"
+  fi
+
+  semver_valid "$version" || die "--version must be X.Y.Z (got '${version}')"
+  version_ge "$version" "$MIN_VERSION" || die "version ${version} predates the pull-only deploy channel — ${MIN_VERSION} is the oldest installable release (decision 0030)"
+
+  # Gather instance identity. In --check mode, placeholders keep the dry run going.
+  if [ -z "$domain" ]; then
+    if [ "$CHECK" -eq 1 ]; then domain="instance.example.com"; say "[dry-run] no --domain given — using placeholder ${domain}"; else
+      printf '%s app domain for this instance (e.g. acme.cogeto.eu): ' "$SAY_PREFIX"; IFS= read -r domain
+    fi
+  fi
+  domain="$(printf '%s' "$domain" | tr '[:upper:]' '[:lower:]')"
+  domain_valid "$domain" || die "'${domain}' is not a valid domain name"
+  if [ -z "$acme_email" ]; then
+    if [ "$CHECK" -eq 1 ]; then acme_email="ops@example.com"; say "[dry-run] no --acme-email given — using placeholder ${acme_email}"; else
+      printf "%s operator email for Let's Encrypt expiry notices: " "$SAY_PREFIX"; IFS= read -r acme_email
+    fi
+  fi
+
+  inbound="$(derive_inbound_address "$domain")"
+  say "instance identity: https://${domain} — inbound email address: ${inbound}"
+
+  # Published-release gate (skipped in check mode only if the network is absent).
+  if hub_tag_exists "$version"; then
+    say "release ${version} is published on Docker Hub"
+  else
+    if [ "$CHECK" -eq 1 ]; then warn "could not confirm ${IMAGE}:${version} on Docker Hub (offline check run?)"; else
+      die "${IMAGE}:${version} is not a published release — the instance only ever pulls published, signed images"
+    fi
+  fi
+
+  install_docker
+  ensure_service_user
+  say "creating instance directory ${COGETO_ROOT}"
+  run mkdir -p "$COGETO_ROOT"
+  fetch_deploy_assets "$version"
+
+  say "generating per-instance secrets → ${ENV_FILE} (mode 600; values are never logged)"
+  env_set COGETO_VERSION "$version"
+  env_set COGETO_EXTERNAL_DOMAIN "$domain"
+  env_set COGETO_ACME_EMAIL "$acme_email"
+  env_set COGETO_S3_PUBLIC_URL "$(derive_s3_origin "$domain")"
+  env_set POSTGRES_PASSWORD "$(gen_password)"
+  env_set MINIO_ROOT_USER "cogeto"
+  env_set MINIO_ROOT_PASSWORD "$(gen_password)"
+  env_set MINIO_KMS_SECRET_KEY "$(gen_minio_kms_key)"
+  env_set ZITADEL_MASTERKEY "$(gen_zitadel_masterkey)"
+  env_set ZITADEL_DB_PASSWORD "$(gen_password)"
+  env_set ZITADEL_ORG_NAME "Cogeto"
+  env_set ZITADEL_ADMIN_USERNAME "admin@${domain}"
+  env_set ZITADEL_ADMIN_PASSWORD "$(gen_zitadel_admin_password)"
+  env_set COGETO_QDRANT_API_KEY "$(gen_token)"
+  env_set COGETO_MAIL_INBOUND_ADDRESS "$inbound"
+  env_set COGETO_MAIL_INTAKE_TOKEN "$(gen_token)"
+  env_set COGETO_MISTRAL_API_KEY "$mistral_key"
+  if [ -z "$mistral_key" ]; then
+    warn "no Mistral API key set — the stack runs (login, dashboard, capture) but model features fail with a typed error until 'cogeto configure --mistral-key ...' sets one"
+    todo_now "Set the model API key: cogeto configure --mistral-key <key from console.mistral.ai>"
+  fi
+  if [ "$CHECK" -eq 0 ]; then
+    chown -R "${SERVICE_USER}:${SERVICE_USER}" "$COGETO_ROOT" 2>/dev/null || true
+    chmod 600 "$ENV_FILE"
+  fi
+
+  open_firewall
+
+  say "pulling the prebuilt signed images (${IMAGE}, ${IMAGE_EDGE}, ${IMAGE_MAIL} @ ${version}) — the instance never builds"
+  run compose pull --quiet
+  verify_images "$version"
+
+  say "bringing the stack up (init jobs → migrations → app/worker/edge/mail)"
+  run compose up -d
+  wait_healthy || true
+
+  if [ "$CHECK" -eq 0 ]; then
+    say "aggregate application health:"
+    fetch_health_report || warn "health is not fully green yet — re-check with 'cogeto status' (the model-gateway check needs the API key; TLS needs DNS)"
+  fi
+
+  say "TLS: Caddy requests the Let's Encrypt certificate automatically and keeps retrying until the DNS A record resolves to this host — no further action beyond the DNS records below"
+  add_install_checklist "$domain" "$inbound" "$(detect_public_ip)"
+  print_checklist
+}
+
+# ── upgrade ───────────────────────────────────────────────────────────────────
+
+require_installed() {
+  [ -f "$ENV_FILE" ] || die "no instance found at ${COGETO_ROOT} (missing .env) — run 'cogeto install' first, or pass --root"
+}
+
+cmd_upgrade() {
+  target="${1:-latest}"
+  require_root
+  require_installed
+  current="$(env_get COGETO_VERSION)"
+  [ -n "$current" ] || die "COGETO_VERSION missing from ${ENV_FILE} — the instance is misconfigured"
+
+  if [ "$target" = "latest" ]; then
+    say "resolving the latest published release from Docker Hub..."
+    target="$(hub_latest_version)"
+    [ -n "$target" ] || die "could not resolve the latest published version (network?) — pass an explicit version"
+  fi
+  semver_valid "$target" || die "target version must be X.Y.Z or 'latest' (got '${target}')"
+  version_ge "$target" "$MIN_VERSION" || die "version ${target} predates the pull-only deploy channel (${MIN_VERSION} is the oldest)"
+
+  say "upgrade: current v${current} → target v${target}"
+  cmp="$(version_cmp "$target" "$current")"
+  if [ "$cmp" = "0" ]; then
+    say "already on v${current} — nothing to do (re-run 'cogeto status' to verify health)"
+    print_checklist
+    return 0
+  fi
+
+  if ! hub_tag_exists "$target"; then
+    die "${IMAGE}:${target} is not a published release — refusing to upgrade to an unpublished tag"
+  fi
+
+  if [ "$cmp" = "-1" ]; then
+    warn "v${target} is OLDER than the running v${current} — this is a ROLLBACK. Database migrations are forward-only: rolling back the image does NOT roll back the schema. Roll back data by restoring the OVHcloud backup (see the runbook)."
+    confirm_typed "ROLLBACK to ${target}" "rolling the image back while keeping the newer schema can break the instance."
+  else
+    confirm_typed "upgrade to ${target}" "this pulls ${IMAGE}[-edge|-mail]:${target}, re-runs the migration job, and restarts app and worker (short downtime)."
+  fi
+
+  # Deployment files are versioned with the images — fetch the matching set.
+  fetch_deploy_assets "$target"
+  env_set COGETO_VERSION "$target"
+
+  say "pulling v${target} images (never building)"
+  run compose pull --quiet
+  verify_images "$target"
+
+  say "applying: init jobs re-run (preflight → migrate) and changed services restart"
+  run compose up -d --remove-orphans
+  wait_healthy || true
+
+  if [ "$CHECK" -eq 0 ]; then
+    say "post-upgrade health:"
+    fetch_health_report || warn "health not fully green — inspect 'cogeto status' before handing the instance back"
+    check_embedding_model
+  fi
+
+  say "rollback, if this upgrade misbehaves: 'cogeto upgrade ${current}' (typed ROLLBACK confirmation; schema stays at v${target} — full data rollback is the rehearsed OVHcloud-backup restore)"
+  todo_dns "Log in at https://$(env_get COGETO_EXTERNAL_DOMAIN) and confirm the release works (version shows v${target} in the nav footer)"
+  todo_now "Run 'cogeto status' and confirm everything is green"
+  print_checklist
+}
+
+# After an upgrade the configured embedding model may differ from the model
+# recorded on existing memories (migration 0004) — then the Qdrant index must
+# be rebuilt from Postgres (§A.4: reindex must always work).
+check_embedding_model() {
+  configured="$(env_get COGETO_MISTRAL_EMBED_MODEL)"
+  [ -n "$configured" ] || configured="mistral-embed"
+  stale="$(compose exec -T postgres psql -U postgres -d cogeto -tA \
+    -c "SELECT count(*) FROM memory WHERE embedding_model IS NOT NULL AND embedding_model <> '${configured}'" 2>/dev/null || echo "")"
+  if [ -z "$stale" ]; then
+    warn "could not check the recorded embedding model (postgres not reachable?) — if the release notes mention an embedding-model change, run the reindex manually"
+    return 0
+  fi
+  if [ "$stale" = "0" ]; then
+    say "embedding model unchanged ('${configured}') — no reindex needed"
+    return 0
+  fi
+  warn "${stale} memories were embedded with a DIFFERENT model than the configured '${configured}' — the vector index must be rebuilt (re-embeds via the model API; costs API calls)"
+  confirm_typed "REINDEX" "rebuild the Qdrant index from Postgres now (the app keeps running; §A.4)."
+  run compose exec -T app node project/src/dist/entrypoints/reindex.js
+}
+
+# ── status ────────────────────────────────────────────────────────────────────
+
+cmd_status() {
+  require_installed
+  domain="$(env_get COGETO_EXTERNAL_DOMAIN)"
+  version="$(env_get COGETO_VERSION)"
+  inbound="$(env_get COGETO_MAIL_INBOUND_ADDRESS)"
+  green=1
+
+  echo "── Cogeto instance status ──────────────────────────────────────────────"
+  echo " configured version : v${version}"
+  echo " domain             : https://${domain}"
+  echo " inbound email      : ${inbound}"
+
+  # Running version — what the containers actually run, not what .env says.
+  app_cid="$(compose ps -q app 2>/dev/null | head -n 1 || true)"
+  running_image=""
+  if [ -n "$app_cid" ]; then
+    running_image="$(docker inspect -f '{{.Config.Image}}' "$app_cid" 2>/dev/null || true)"
+  fi
+  echo " running image      : ${running_image:-NOT RUNNING}"
+  case "$running_image" in
+    "${IMAGE}:${version}") : ;;
+    "") warn "app container is not running"; green=0 ;;
+    *) warn "running image (${running_image}) differs from configured v${version} — an upgrade or restart did not complete"; green=0 ;;
+  esac
+
+  echo
+  echo " containers:"
+  for svc in caddy app worker mail postgres qdrant minio zitadel; do
+    h="$(service_health "$svc")"
+    printf '   %-10s %s\n' "$svc" "$h"
+    [ "$h" = "healthy" ] || [ "$h" = "running" ] || green=0
+  done
+
+  echo
+  echo " application health (/api/health — includes last migration, queue depth,"
+  echo " dead-letter count, deletion-sweep state, bucket encryption, mail):"
+  if fetch_health_report; then :; else green=0; fi
+
+  echo
+  echo " TLS certificate for ${domain}:"
+  cert_end="$(echo | openssl s_client -connect 127.0.0.1:443 -servername "$domain" 2>/dev/null | openssl x509 -noout -enddate -issuer 2>/dev/null || true)"
+  if [ -n "$cert_end" ]; then
+    printf '%s\n' "$cert_end" | while IFS= read -r line; do printf '   %s\n' "$line"; done
+    if echo "$cert_end" | grep -qi "let's encrypt\|ZeroSSL"; then
+      echo "   Caddy renews automatically ~30 days before expiry — no operator action."
+    else
+      warn "the served certificate is not from a public CA yet — DNS for ${domain} likely does not point here yet (Caddy keeps retrying ACME; no restart needed)"
+      green=0
+    fi
+  else
+    warn "could not read a certificate on :443 — is the caddy container running?"
+    green=0
+  fi
+
+  echo
+  echo " disk:"
+  df -h / | sed 's/^/   /'
+  docker system df 2>/dev/null | sed 's/^/   /' || true
+
+  # Obvious misconfigurations.
+  if [ -f "$ENV_FILE" ]; then
+    perms="$(stat -c '%a' "$ENV_FILE" 2>/dev/null || stat -f '%Lp' "$ENV_FILE" 2>/dev/null || echo '')"
+    if [ -n "$perms" ] && [ "$perms" != "600" ]; then
+      warn "${ENV_FILE} has mode ${perms} — it holds every secret; fix with: chmod 600 ${ENV_FILE}"
+      green=0
+    fi
+  fi
+
+  echo
+  if [ "$green" -eq 1 ]; then
+    echo " VERDICT: GREEN — everything this script can observe is actually working."
+  else
+    echo " VERDICT: NOT GREEN — see the warnings above. This report only says green when it is."
+  fi
+  echo "────────────────────────────────────────────────────────────────────────"
+}
+
+# ── configure ─────────────────────────────────────────────────────────────────
+
+cmd_configure() {
+  require_root
+  require_installed
+  new_domain=""; mistral_key=""; regen=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --domain)      new_domain="$2"; shift 2 ;;
+      --mistral-key) mistral_key="$2"; shift 2 ;;
+      --regenerate)  regen="$2"; shift 2 ;;
+      *) die "configure: unknown argument '$1' (see --help)" ;;
+    esac
+  done
+
+  if [ -z "$new_domain" ] && [ -z "$mistral_key" ] && [ -z "$regen" ]; then
+    say "current configuration (secret VALUES are never printed):"
+    echo "  domain             = $(env_get COGETO_EXTERNAL_DOMAIN)"
+    echo "  version            = $(env_get COGETO_VERSION)"
+    echo "  inbound address    = $(env_get COGETO_MAIL_INBOUND_ADDRESS)"
+    echo "  s3 public origin   = $(env_get COGETO_S3_PUBLIC_URL)"
+    echo "  admin username     = $(env_get ZITADEL_ADMIN_USERNAME)"
+    mk="$(env_get COGETO_MISTRAL_API_KEY)"
+    echo "  mistral api key    = $([ -n "$mk" ] && echo '<set>' || echo '<empty — model features off>')"
+    say "change with --domain, --mistral-key, or --regenerate NAME (see --help)"
+    return 0
+  fi
+
+  restart_needed=""
+
+  if [ -n "$new_domain" ]; then
+    new_domain="$(printf '%s' "$new_domain" | tr '[:upper:]' '[:lower:]')"
+    domain_valid "$new_domain" || die "'${new_domain}' is not a valid domain name"
+    old_domain="$(env_get COGETO_EXTERNAL_DOMAIN)"
+    warn "changing the domain changes the OIDC issuer (all sessions invalidate), the S3 presign origin, and the inbound email address; the OLD inbound address (capture@in.${old_domain}) stops accepting mail"
+    confirm_typed "change domain to ${new_domain}" "move this instance from ${old_domain} to ${new_domain}."
+    env_set COGETO_EXTERNAL_DOMAIN "$new_domain"
+    env_set COGETO_S3_PUBLIC_URL "$(derive_s3_origin "$new_domain")"
+    env_set COGETO_MAIL_INBOUND_ADDRESS "$(derive_inbound_address "$new_domain")"
+    say "note: the Zitadel admin username stays admin@${old_domain} — Zitadel does not rename existing users on a domain change"
+    restart_needed="caddy app worker mail zitadel zitadel-init"
+    add_install_checklist "$new_domain" "$(derive_inbound_address "$new_domain")" "$(detect_public_ip)"
+  fi
+
+  if [ -n "$mistral_key" ]; then
+    env_set COGETO_MISTRAL_API_KEY "$mistral_key"
+    say "model API key updated in .env (value not logged)"
+    restart_needed="${restart_needed} app worker"
+  fi
+
+  if [ -n "$regen" ]; then
+    case "$regen" in
+      COGETO_MAIL_INTAKE_TOKEN)
+        confirm_typed "regenerate ${regen}" "rotate the mail-intake shared secret (app + mail restart together; no data impact)."
+        env_set COGETO_MAIL_INTAKE_TOKEN "$(gen_token)"
+        restart_needed="${restart_needed} app worker mail" ;;
+      COGETO_QDRANT_API_KEY)
+        confirm_typed "regenerate ${regen}" "rotate the Qdrant API key (qdrant + app + worker restart together; no data impact)."
+        env_set COGETO_QDRANT_API_KEY "$(gen_token)"
+        restart_needed="${restart_needed} qdrant app worker" ;;
+      POSTGRES_PASSWORD|ZITADEL_DB_PASSWORD|MINIO_ROOT_PASSWORD|MINIO_KMS_SECRET_KEY|ZITADEL_MASTERKEY)
+        die "refusing: ${regen} is DATA-BOUND — the running Postgres/MinIO/Zitadel state was initialized with it, and swapping the env alone bricks the stack (losing MINIO_KMS_SECRET_KEY makes stored objects permanently unreadable). Rotating these is a manual, backed-up procedure — see docs/notes/operator-script.md" ;;
+      INSTANCE_SIGNING_KEY|instance-signing-key)
+        die "refusing LOUDLY: the receipt-signing keypair is NEVER rotated by this script — every deletion receipt chains to it (§B.1), and a silent rotation would break the hash-chain verification that makes forgetting provable. If a rotation is truly required, it is an owner-level, documented procedure with a chain anchor (decision 0026)" ;;
+      *)
+        die "unknown secret '${regen}' — rotatable here: COGETO_MAIL_INTAKE_TOKEN, COGETO_QDRANT_API_KEY" ;;
+    esac
+  fi
+
+  if [ -n "$restart_needed" ]; then
+    say "applying the new configuration (recreates: ${restart_needed})"
+    # Intentional word splitting of the accumulated service names:
+    # shellcheck disable=SC2086
+    run compose up -d $restart_needed
+    wait_healthy || true
+    todo_now "Run 'cogeto status' and confirm everything is green"
+  fi
+  print_checklist
+}
+
+# ── backup-info ───────────────────────────────────────────────────────────────
+
+cmd_backup_info() {
+  cat <<'INFO'
+── OVHcloud backups (roadmap D4 — configured in the OVH panel, not by this script)
+
+Cogeto v1 deliberately ships NO backup scripts: backups use OVHcloud's own
+capability, enabled per instance by the operator, and restore is a rehearsed
+manual procedure (documented in the operator runbook).
+
+Enable, in the OVHcloud control panel for THIS instance:
+
+ [ ] Public Cloud → your instance → enable "Automated Backup"
+     (daily snapshot, retention ≥ 7 days). This snapshots the whole disk:
+     all Docker volumes (pg-data, minio-data, qdrant-data, instance-keys,
+     zitadel-machinekey, caddy-data) and /srv/cogeto (.env, compose files).
+ [ ] If the instance uses attached volumes for Docker data, additionally
+     enable volume snapshots on those volumes with the same cadence.
+ [ ] Note the backup schedule's hour: pick a low-traffic hour; the nightly
+     Cogeto jobs run 03:00–04:00 UTC, so avoid that window.
+ [ ] Store the instance .env in the operator vault as well — a snapshot
+     protects the box, the vault protects you if the box is gone.
+ [ ] Rehearse the restore once per customer: restore the snapshot to a new
+     instance, run 'cogeto status', log in, verify a deletion receipt — the
+     runbook documents the step-by-step procedure.
+
+What must be covered for a full recovery: the Docker volumes (source of truth:
+Postgres; rebuildable: Qdrant via reindex; files: MinIO; the receipt-signing
+keypair: instance-keys) plus /srv/cogeto/.env. The signing keypair exists ONLY
+in the instance-keys volume — without a snapshot or rehearsed restore it is
+unrecoverable, and with it every future receipt would break the chain.
+INFO
+}
+
+# ── main ──────────────────────────────────────────────────────────────────────
+
+main() {
+  cmd=""
+  args=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --check) CHECK=1; shift ;;
+      --root)  COGETO_ROOT="$2"; shift 2 ;;
+      --help|-h|help) usage; exit 0 ;;
+      install|configure|upgrade|status|backup-info)
+        [ -z "$cmd" ] || die "only one subcommand per run (got '${cmd}' and '$1')"
+        cmd="$1"; shift ;;
+      *)
+        [ -n "$cmd" ] || die "unknown argument '$1' — see 'cogeto --help'"
+        args+=("$1"); shift ;;
+    esac
+  done
+  ENV_FILE="${COGETO_ROOT}/.env"
+  [ "$CHECK" -eq 1 ] && say "CHECK MODE — validating and printing intentions; nothing will be changed"
+  case "$cmd" in
+    install)     cmd_install "${args[@]+"${args[@]}"}" ;;
+    configure)   cmd_configure "${args[@]+"${args[@]}"}" ;;
+    upgrade)     cmd_upgrade "${args[@]+"${args[@]}"}" ;;
+    status)      cmd_status "${args[@]+"${args[@]}"}" ;;
+    backup-info) cmd_backup_info ;;
+    "")          usage; exit 1 ;;
+  esac
+}
+
+# Sourcing the file (for unit tests) skips execution; running it executes main.
+if [ "${BASH_SOURCE[0]:-$0}" = "$0" ]; then
+  main "$@"
+fi
