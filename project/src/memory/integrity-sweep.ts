@@ -332,7 +332,12 @@ export class IntegritySweep {
     const graceMinutes = this.options?.objectGraceMinutes ?? DEFAULT_OBJECT_GRACE_MINUTES;
     const cutoff = new Date(Date.now() - graceMinutes * 60_000);
 
-    const aged = objects.filter((o) => o.lastModified < cutoff);
+    const aged = objects
+      .filter((o) => o.lastModified < cutoff)
+      // Passport export objects (decision 0029) are backed by the passport
+      // module's own ledger and retention, not file_metadata; skip them here so
+      // a legitimate short-lived export is never mis-flagged as an orphan.
+      .filter((o) => o.key.split('/')[2] !== 'exports');
     const stagingKeys = aged.filter((o) => o.key.split('/')[2] === 'staging');
     const durableKeys = aged.filter((o) => o.key.split('/')[2] !== 'staging');
 

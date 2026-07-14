@@ -1,0 +1,23 @@
+{
+  "passport_version": "1.0",
+  "count": 1,
+  "instance_public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA<sample-placeholder-not-a-real-key>\n-----END PUBLIC KEY-----\n",
+  "receipts": [
+    {
+      "id": "55555555-5555-4555-8555-555555555555",
+      "source_type": "user_note",
+      "source_id": "note-old",
+      "counts_json": {
+        "requested_by": "ana",
+        "enumerated_at": "2026-06-30T12:00:00.000Z",
+        "memory_count": 2,
+        "object_keys": []
+      },
+      "signed_at": "2026-06-30T12:00:03.000Z",
+      "confirmed_at": "2026-06-30T12:00:03.000Z",
+      "prev_hash": "cogeto:deletion-receipt-chain:genesis",
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "signature": "c2FtcGxlLXBsYWNlaG9sZGVyLXNpZ25hdHVyZS1ub3QtcmVhbA=="
+    }
+  ]
+}

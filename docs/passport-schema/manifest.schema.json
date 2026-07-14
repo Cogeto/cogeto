@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cogeto.eu/passport-schema/1.0/manifest.schema.json",
+  "title": "Cogeto Memory Passport — manifest",
+  "description": "The signed index of a Memory Passport archive (passport_version 1.0). manifest.json.sig is a detached ed25519 signature (base64) over the exact bytes of this file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "passport_version",
+    "generated_at",
+    "subject",
+    "instance",
+    "options",
+    "counts",
+    "documents"
+  ],
+  "properties": {
+    "passport_version": { "const": "1.0" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["user_id", "display_name"],
+      "properties": {
+        "user_id": { "type": "string" },
+        "display_name": { "type": ["string", "null"] }
+      }
+    },
+    "instance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["public_key_pem", "signature_algorithm", "signature_file"],
+      "properties": {
+        "public_key_pem": {
+          "type": "string",
+          "description": "SPKI PEM of the instance ed25519 public key; also served at GET /api/instance/public-key."
+        },
+        "signature_algorithm": { "const": "ed25519" },
+        "signature_file": { "const": "manifest.json.sig" }
+      }
+    },
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["include_originals"],
+      "properties": { "include_originals": { "type": "boolean" } }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["memories", "tasks", "receipts", "attachments"],
+      "properties": {
+        "memories": { "type": "integer", "minimum": 0 },
+        "tasks": { "type": "integer", "minimum": 0 },
+        "receipts": { "type": "integer", "minimum": 0 },
+        "attachments": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "documents": {
+      "type": "array",
+      "description": "Every non-manifest document in the archive, each with a SHA-256 of its exact bytes.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256", "bytes"],
+        "properties": {
+          "path": { "type": "string" },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "bytes": { "type": "integer", "minimum": 0 }
+        }
+      }
+    }
+  }
+}

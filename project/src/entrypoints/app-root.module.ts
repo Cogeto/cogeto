@@ -20,6 +20,7 @@ import {
   NotesSourceDeletion,
 } from '../connectors/index';
 import { TasksCascade, TasksModule } from '../tasks/index';
+import { PassportModule, PASSPORT_EXPORT_RETENTION_HOURS } from '../passport/index';
 import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG, mailOptions, redactionOptions } from './config';
 import type { CogetoConfig } from './config';
@@ -108,6 +109,13 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       // RetrievalService + ApprovalService); the worker never drafts. Global, so
       // ChatService resolves CHAT_REPLY_RESOLVER.
       EmailReplyModule,
+      // The Memory Passport (§B.5, decision 0029): export trigger/status/download.
+      // Assembly is a worker job; the app only creates requests and serves reads.
+      PassportModule.register({
+        instanceKeyDir: config.instanceKeyDir,
+        downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
+        exportRetentionHours: PASSPORT_EXPORT_RETENTION_HOURS,
+      }),
     ],
     controllers: [
       AuditController,

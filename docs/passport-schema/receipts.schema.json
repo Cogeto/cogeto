@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cogeto.eu/passport-schema/1.0/receipts.schema.json",
+  "title": "Cogeto Memory Passport — deletion receipts",
+  "description": "The user's confirmed deletion receipts, in the exact shape needed to verify them against the instance's hash chain and public key (§B.1). Each receipt stays independently verifiable outside Cogeto.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["passport_version", "count", "instance_public_key_pem", "receipts"],
+  "properties": {
+    "passport_version": { "const": "1.0" },
+    "count": { "type": "integer", "minimum": 0 },
+    "instance_public_key_pem": {
+      "type": "string",
+      "description": "SPKI PEM of the instance ed25519 public key — verify each receipt's signature against it."
+    },
+    "receipts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "source_type",
+          "source_id",
+          "counts_json",
+          "signed_at",
+          "confirmed_at",
+          "prev_hash",
+          "hash",
+          "signature"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "source_type": { "type": "string" },
+          "source_id": { "type": "string" },
+          "counts_json": {
+            "description": "The signed payload of counts (memory_count, object_keys, requested_by, enumerated_at, …).",
+            "type": "object"
+          },
+          "signed_at": { "type": "string" },
+          "confirmed_at": { "type": "string" },
+          "prev_hash": {
+            "type": "string",
+            "description": "SHA-256 of the previous confirmed receipt (or the genesis constant for the first)."
+          },
+          "hash": {
+            "type": "string",
+            "description": "SHA-256 over the canonical receipt payload including prev_hash."
+          },
+          "signature": {
+            "type": "string",
+            "description": "base64 ed25519 signature over `hash`, made with the instance private key."
+          }
+        }
+      }
+    }
+  }
+}

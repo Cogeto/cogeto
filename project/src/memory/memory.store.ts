@@ -12,8 +12,9 @@ import type { FactKind, MemoryScope, MemoryStatus, Principal } from '@cogeto/sha
 import { auditLog, DRIZZLE, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { UserDirectory } from '../identity/index';
-import { memory } from './persistence/tables';
+import { deletionReceipt, memory } from './persistence/tables';
 import type { MemoryRow, SourceType } from './persistence/tables';
+import type { ConfirmedReceipt } from './domain/receipt-chain';
 import { buildGateFilter, MemoryVectorStore } from './persistence/vector-store';
 import type { MemoryPoint } from './persistence/vector-store';
 import { actorLabel, checkTransition } from './domain/transition';
@@ -235,6 +236,61 @@ export class MemoryStore {
       )
       .orderBy(desc(memory.createdAt), memory.id)
       .limit(Math.min(opts.limit ?? 200, 200));
+  }
+
+  /**
+   * Every memory the principal may see (own + visible shared), in ANY lifecycle
+   * status, for a full data export (§B.5, the Memory Passport). Paged internally
+   * so the export is COMPLETE beyond the dashboard's list cap; the same
+   * `visibleTo` gate as every read, so a user can only ever export what they are
+   * entitled to see. `includeSensitive` returns only the caller's OWN sensitive
+   * rows (never a teammate's). Ordered oldest-first for a stable export.
+   */
+  async listAllForPrincipal(
+    principal: Principal,
+    opts: ReadOptions & { pageSize?: number } = {},
+  ): Promise<MemoryRow[]> {
+    const pageSize = Math.min(opts.pageSize ?? 500, 1000);
+    const all: MemoryRow[] = [];
+    for (let offset = 0; offset < 200_000; offset += pageSize) {
+      const page = (await this.db
+        .select()
+        .from(memory)
+        .where(this.visibleTo(principal, opts))
+        .orderBy(memory.createdAt, memory.id)
+        .limit(pageSize)
+        .offset(offset)) as MemoryRow[];
+      all.push(...page);
+      if (page.length < pageSize) break;
+    }
+    return all;
+  }
+
+  /**
+   * The caller's confirmed deletion receipts, in the shape `verifyChain`
+   * consumes (§B.5) — owner-scoped by the signed payload's `requested_by`, the
+   * same gate the Forgotten ledger uses. Exported into a Passport, each receipt
+   * stays independently verifiable against the chain and the instance key.
+   */
+  async confirmedReceiptsForOwner(userId: string): Promise<ConfirmedReceipt[]> {
+    const rows = await this.db
+      .select()
+      .from(deletionReceipt)
+      .where(
+        and(eq(deletionReceipt.status, 'confirmed'), sql`counts_json->>'requested_by' = ${userId}`),
+      )
+      .orderBy(deletionReceipt.confirmedAt, deletionReceipt.id);
+    return rows.map((row) => ({
+      id: row.id,
+      source_type: row.sourceType,
+      source_id: row.sourceId,
+      counts_json: row.countsJson,
+      signed_at: row.signedAt?.toISOString() ?? '',
+      confirmed_at: row.confirmedAt?.toISOString() ?? '',
+      prev_hash: row.prevHash ?? '',
+      hash: row.hash ?? '',
+      signature: row.signature ?? '',
+    }));
   }
 
   /** Total under the same gates + filters — the list's pagination and the review badge. */

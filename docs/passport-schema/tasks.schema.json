@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cogeto.eu/passport-schema/1.0/tasks.schema.json",
+  "title": "Cogeto Memory Passport — tasks",
+  "description": "Tasks derived from the user's memories, with their conditions and status.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["passport_version", "count", "tasks"],
+  "properties": {
+    "passport_version": { "const": "1.0" },
+    "count": { "type": "integer", "minimum": 0 },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "status",
+          "condition_text",
+          "due",
+          "dormant",
+          "from_uncertain",
+          "derived_from_memory_id",
+          "scope",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "status": {
+            "description": "open | blocked_on_condition | done | dismissed.",
+            "type": "string"
+          },
+          "condition_text": {
+            "type": ["string", "null"],
+            "description": "The unmet condition when status is blocked_on_condition."
+          },
+          "due": { "type": ["string", "null"] },
+          "dormant": { "type": "boolean" },
+          "from_uncertain": { "type": "boolean" },
+          "derived_from_memory_id": {
+            "type": "string",
+            "description": "The memory in memories.json this task was derived from."
+          },
+          "scope": { "enum": ["private", "shared"] },
+          "created_at": { "type": "string" },
+          "updated_at": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

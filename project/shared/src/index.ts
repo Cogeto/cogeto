@@ -12,5 +12,6 @@ export * from './principal';
 export * from './receipts';
 export * from './tasks';
 export * from './timeline';
+export * from './passport';
 export * from './health';
 export * from './web-config';

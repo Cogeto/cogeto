@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cogeto.eu/passport-schema/1.0/memories.schema.json",
+  "title": "Cogeto Memory Passport — memories",
+  "description": "Every memory the user may see, in any lifecycle status. The full validity history and supersession chains are the set of all versions plus each memory's superseded_by pointer.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["passport_version", "count", "memories"],
+  "properties": {
+    "passport_version": { "const": "1.0" },
+    "count": { "type": "integer", "minimum": 0 },
+    "memories": { "type": "array", "items": { "$ref": "#/$defs/memory" } }
+  },
+  "$defs": {
+    "memory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "content",
+        "status",
+        "scope",
+        "sensitive",
+        "owner_id",
+        "owned_by_me",
+        "entities",
+        "subject_entity",
+        "kind",
+        "valid_from",
+        "valid_until",
+        "created_at",
+        "updated_at",
+        "superseded_by",
+        "temporal_unresolved",
+        "provenance"
+      ],
+      "properties": {
+        "id": { "type": "string" },
+        "content": { "type": ["string", "null"] },
+        "status": {
+          "description": "Lifecycle status (§A.6): active, outdated, contradicted, uncertain, replaced, user_approved.",
+          "type": "string"
+        },
+        "scope": { "enum": ["private", "shared"] },
+        "sensitive": {
+          "type": "boolean",
+          "description": "Owner-only in retrieval; present in the owner's own export, clearly marked."
+        },
+        "owner_id": { "type": "string" },
+        "owned_by_me": {
+          "type": "boolean",
+          "description": "false for a shared fact owned by a teammate (still exported, marked)."
+        },
+        "entities": { "type": "array", "items": { "type": "string" } },
+        "subject_entity": { "type": ["string", "null"] },
+        "kind": { "type": ["string", "null"] },
+        "valid_from": { "type": ["string", "null"], "description": "ISO-8601; null = since ingestion." },
+        "valid_until": { "type": ["string", "null"], "description": "ISO-8601; null = still holding." },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": ["string", "null"] },
+        "superseded_by": {
+          "type": ["string", "null"],
+          "description": "Successor memory id; follow these to reconstruct the supersession chain."
+        },
+        "temporal_unresolved": { "type": "array", "items": { "type": "string" } },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_type", "source_id", "context", "file", "attachment_path"],
+      "properties": {
+        "source_type": {
+          "description": "user_note | chat | email | calendar_event | file.",
+          "type": "string"
+        },
+        "source_id": { "type": "string" },
+        "context": {
+          "type": ["string", "null"],
+          "description": "Reserved for a source excerpt (owner's own memories); null in v1."
+        },
+        "file": {
+          "description": "File provenance for source_type=file, else null.",
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["filename", "content_type", "size_bytes"],
+          "properties": {
+            "filename": { "type": ["string", "null"] },
+            "content_type": { "type": ["string", "null"] },
+            "size_bytes": { "type": ["number", "null"] }
+          }
+        },
+        "attachment_path": {
+          "type": ["string", "null"],
+          "description": "Archive path of the included original bytes, when include_originals; else null."
+        }
+      }
+    }
+  }
+}
