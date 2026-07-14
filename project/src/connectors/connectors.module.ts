@@ -14,6 +14,7 @@ import type { FileUploadOptions } from './file-upload-options';
 import { EmailIntakeService } from './email-intake.service';
 import { EmailAllowlistService } from './email-allowlist.service';
 import { EmailSourceReader } from './email.source-reader';
+import { EmailSourceDeletion } from './email.source-deletion';
 import { EmailIntakeController } from './email-intake.controller';
 import { EmailSettingsController } from './email-settings.controller';
 import { MailIntakeGuard } from './mail-intake.guard';
@@ -62,6 +63,7 @@ export class ConnectorsModule {
         EmailIntakeService,
         EmailAllowlistService,
         EmailSourceReader,
+        EmailSourceDeletion,
         MailIntakeGuard,
         { provide: FILE_UPLOAD_OPTIONS, useValue: options.fileUpload },
         { provide: MAIL_OPTIONS, useValue: options.mail },
@@ -76,6 +78,7 @@ export class ConnectorsModule {
         EmailIntakeService,
         EmailAllowlistService,
         EmailSourceReader,
+        EmailSourceDeletion,
       ],
     };
   }

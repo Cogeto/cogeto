@@ -14,6 +14,7 @@ export {
 } from './deletion-saga';
 export type {
   SourceDeletion,
+  SourceCascade,
   DerivedCascade,
   IngestionGuard,
   IngestionCancellation,

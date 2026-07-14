@@ -112,25 +112,8 @@ export function sanitizeHtml(html: string | null | undefined): string | null {
   return out;
 }
 
-/**
- * Strip quoted reply history from a plaintext body to build the EXTRACTION
- * input (thread-aware: avoids re-extracting quoted history — roadmap O4). The
- * full body is always retained verbatim; this transformed copy is only what the
- * extractor sees. Heuristic and language-tolerant: cuts at the first attribution
- * line ("On … wrote:", "-----Original Message-----", "Od:/From:" block) and
- * drops leading '>' quote blocks.
- */
-export function stripQuotedHistory(text: string | null | undefined): string {
-  if (!text) return '';
-  const lines = text.split(/\r?\n/);
-  const kept: string[] = [];
-  const attribution =
-    /^\s*(On\b.*\bwrote:\s*$|-----\s*Original Message\s*-----|_{5,}\s*$|From:\s.+|Od:\s.+|Dana\b.*\bnapisao)/i;
-  for (const line of lines) {
-    if (attribution.test(line)) break;
-    // Drop fully-quoted lines ("> …"); keep everything else.
-    if (/^\s*>/.test(line)) continue;
-    kept.push(line);
-  }
-  return kept.join('\n').trim() || text.trim();
-}
+// Extraction-input isolation (quoted-history / signature / forwarded stripping)
+// lives in ingestion as `isolateEmailContent` (Session O4 — email source): it is
+// an extraction-preprocessing concern shared with the golden-set harness, not a
+// retention concern. This module keeps only sender/allowlist normalization and
+// the retention-side HTML sanitizer above.

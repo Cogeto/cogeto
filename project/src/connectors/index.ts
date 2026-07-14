@@ -19,5 +19,10 @@ export { EmailIntakeService } from './email-intake.service';
 export type { MailEnvelope, IntakeResult } from './email-intake.service';
 export { EmailAllowlistService } from './email-allowlist.service';
 export { EmailSourceReader } from './email.source-reader';
+export { EmailSourceDeletion } from './email.source-deletion';
+// Reply drafting (Session O4) — composed ONLY into the app root (needs
+// RetrievalService + ApprovalService); never the worker.
+export { EmailReplyDraftService } from './email-reply-draft.service';
+export { EmailReplyController } from './email-reply.controller';
 export { MAIL_OPTIONS } from './mail-options';
 export type { MailOptions } from './mail-options';

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { ModelGateway } from '../model-gateway/index';
 import { chunkContent } from './pipeline/chunk';
 import { ExtractStage } from './pipeline/extract.stage';
+import { isolateEmailContent } from './pipeline/email-preprocess';
 import type { SourceItem } from './pipeline/source-reader';
 import { VerifyStage } from './pipeline/verify.stage';
 import type { CandidateFact } from './domain/candidate-fact';
@@ -192,11 +193,17 @@ export async function runGoldenEval(options: {
     const caseAnchor = testCase.expected.source_date
       ? new Date(testCase.expected.source_date)
       : referenceTime;
+    // Email cases run through the SAME thread-aware pre-processing the email
+    // SourceReader applies (Session O4): quoted history, signatures, and
+    // forwarding wrappers are isolated before extraction, so a threaded case
+    // scores on its new content only — exactly as production would see it.
+    const isEmail = testCase.expected.source_type === 'email';
+    const content = isEmail ? isolateEmailContent(testCase.source) : testCase.source;
     const source: SourceItem = {
-      sourceType: 'user_note',
+      sourceType: isEmail ? 'email' : 'user_note',
       sourceId: `golden-${testCase.caseId}`,
       ownerId: 'golden-eval',
-      content: testCase.source,
+      content,
       createdAt: caseAnchor,
     };
     const chunks = chunkContent(source.content);

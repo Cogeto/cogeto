@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { createDb } from '../infrastructure/index';
 import { createIntegritySweep } from '../memory/index';
-import { NotesSourceDeletion } from '../connectors/index';
+import { EmailSourceDeletion, NotesSourceDeletion } from '../connectors/index';
 import { ChatSourceDeletion } from '../retrieval/index';
 import { loadConfig } from './config';
 
@@ -36,7 +36,11 @@ async function main(): Promise<void> {
       instanceKeyDir: config.instanceKeyDir,
       // The orphan-memory arm's source-row probes (decision 0024) — the same
       // adapters the composition roots bind to the deletion saga.
-      sourceDeletions: [new NotesSourceDeletion(), new ChatSourceDeletion()],
+      sourceDeletions: [
+        new NotesSourceDeletion(),
+        new ChatSourceDeletion(),
+        new EmailSourceDeletion(),
+      ],
     });
     const report = await sweep.run();
     console.log(

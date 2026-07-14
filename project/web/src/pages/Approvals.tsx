@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ApprovalDto, ApprovalStatus } from '@cogeto/shared';
-import { confirmApproval, fetchApprovalHistory, fetchPendingApprovals } from '../api';
+import { EMAIL_REPLY_DRAFT_ACTION } from '@cogeto/shared';
+import {
+  confirmApproval,
+  fetchApprovalHistory,
+  fetchEmailDraft,
+  fetchPendingApprovals,
+} from '../api';
 import type { Session } from '../auth/oidc';
 import { invalidateAfterApproval } from '../query-invalidation';
 import { Shell } from '../components/Shell';
@@ -40,6 +46,81 @@ function ApprovalPill({ status }: { status: ApprovalStatus }) {
   return <Pill tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Pill>;
 }
 
+/**
+ * Reply-draft presentation (Session O4): the finalised draft, with copy /
+ * download .eml / open-in-mail-client affordances. Cogeto NEVER sends — every
+ * path here hands the draft to the user's own client.
+ */
+function EmailDraftPanel({ session, approvalId }: { session: Session; approvalId: string }) {
+  const [open, setOpen] = useState(false);
+  const draft = useQuery({
+    queryKey: ['email-draft', approvalId],
+    queryFn: () => fetchEmailDraft(session, approvalId),
+    enabled: open,
+  });
+
+  const downloadEml = () => {
+    if (!draft.data) return;
+    const blob = new Blob([draft.data.eml], { type: 'message/rfc822' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reply-${approvalId.slice(0, 8)}.eml`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="mt-3 rounded-md border border-slate-200 bg-white p-2">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="text-xs font-medium text-brand-teal-ink hover:underline"
+      >
+        {open ? 'Hide draft' : 'View / send draft'}
+      </button>
+      {open && draft.data && (
+        <div className="mt-2 space-y-2">
+          <div className="text-xs text-slate-500">
+            To: <span className="font-mono">{draft.data.to}</span>
+            <br />
+            Subject: {draft.data.subject}
+          </div>
+          <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-slate-50 p-2 text-xs text-slate-700">
+            {draft.data.body}
+          </pre>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => navigator.clipboard?.writeText(draft.data!.body)}
+              className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+            >
+              Copy body
+            </button>
+            <button
+              type="button"
+              onClick={downloadEml}
+              className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+            >
+              Download .eml
+            </button>
+            <a
+              href={draft.data.mailto}
+              className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+            >
+              Open in mail client
+            </a>
+          </div>
+          <p className="text-xs text-amber-700">
+            Cogeto does <strong>not</strong> send mail. Send this reply yourself from your own
+            client.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PendingCard({ session, approval }: { session: Session; approval: ApprovalDto }) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +152,10 @@ function PendingCard({ session, approval }: { session: Session; approval: Approv
             <li key={i}>{line}</li>
           ))}
         </ul>
+      )}
+
+      {approval.actionType === EMAIL_REPLY_DRAFT_ACTION && (
+        <EmailDraftPanel session={session} approvalId={approval.id} />
       )}
 
       {approval.expiresAt && (
@@ -108,20 +193,27 @@ function PendingCard({ session, approval }: { session: Session; approval: Approv
   );
 }
 
-function HistoryRow({ approval }: { approval: ApprovalDto }) {
+function HistoryRow({ session, approval }: { session: Session; approval: ApprovalDto }) {
   const when = approval.executedAt ?? approval.decidedAt;
   return (
-    <li className="flex items-start justify-between gap-3 border-b border-slate-100 py-2 text-sm">
-      <div>
-        <p className="text-slate-700">{approval.summary}</p>
-        <p className="text-xs text-slate-400">
-          {approval.actionType}
-          {approval.decidedBy ? ` · decided by ${approval.decidedBy}` : ''}
-          {when ? ` · ${timeAgo(when)}` : ''}
-        </p>
-        {approval.result && <p className="mt-0.5 text-xs text-brand-teal-ink">{approval.result}</p>}
+    <li className="border-b border-slate-100 py-2 text-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-slate-700">{approval.summary}</p>
+          <p className="text-xs text-slate-400">
+            {approval.actionType}
+            {approval.decidedBy ? ` · decided by ${approval.decidedBy}` : ''}
+            {when ? ` · ${timeAgo(when)}` : ''}
+          </p>
+          {approval.result && (
+            <p className="mt-0.5 text-xs text-brand-teal-ink">{approval.result}</p>
+          )}
+        </div>
+        <ApprovalPill status={approval.status} />
       </div>
-      <ApprovalPill status={approval.status} />
+      {approval.actionType === EMAIL_REPLY_DRAFT_ACTION && approval.status === 'executed' && (
+        <EmailDraftPanel session={session} approvalId={approval.id} />
+      )}
     </li>
   );
 }
@@ -201,7 +293,7 @@ export function Approvals({ session }: { session: Session }) {
           {history.data && history.data.length > 0 && (
             <ul>
               {history.data.map((a) => (
-                <HistoryRow key={a.id} approval={a} />
+                <HistoryRow key={a.id} session={session} approval={a} />
               ))}
             </ul>
           )}

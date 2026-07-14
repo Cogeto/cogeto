@@ -1,0 +1,16 @@
+{
+  "case_id": "en-e002",
+  "source_type": "email",
+  "expected_memories": [
+    {
+      "content_gist": "The supplier will deliver the pallets to the Split warehouse by July 15",
+      "kind": "commitment",
+      "entities": [],
+      "temporal": { "valid_from": "source_date" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": ["the forwarding cover note (FYI, passing this along)"],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "hr-e003",
+  "source_type": "email",
+  "expected_memories": [
+    {
+      "content_gist": "Korisnik će poslati revidiranu ponudu upravnom odboru u petak",
+      "kind": "commitment",
+      "entities": [],
+      "temporal": { "valid_from": "source_date" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

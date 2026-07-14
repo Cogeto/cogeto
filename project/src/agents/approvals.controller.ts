@@ -9,7 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { z } from 'zod';
-import type { ApprovalDto } from '@cogeto/shared';
+import type { ApprovalDto, EmailReplyDraftView } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { ApprovalService } from './approval.service';
@@ -57,6 +57,19 @@ export class ApprovalsController {
   @Get(':id')
   async get(@Req() request: AuthenticatedRequest, @Param('id') id: string): Promise<ApprovalDto> {
     return this.approvals.get(request.principal, id);
+  }
+
+  /**
+   * The finalised reply draft (Session O4 — email source): the drafted subject +
+   * body, a prefilled mailto:, and a downloadable .eml, for the user to send from
+   * their OWN client. Cogeto never sends. Owner-only (the body is content).
+   */
+  @Get(':id/email-draft')
+  async emailDraft(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+  ): Promise<EmailReplyDraftView> {
+    return this.approvals.getEmailDraft(request.principal, id);
   }
 
   /** The confirm transition: approve | reject. State only — no effect here. */

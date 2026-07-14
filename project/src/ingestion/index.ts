@@ -68,3 +68,13 @@ export const TASKS_BACKFILL_JOB_TYPE = 'tasks_backfill';
 // The S3.5 deterministic date resolver (decision 0007 ruling 1) — reused by
 // temporal query understanding (decision 0012 ruling 2); never duplicated.
 export { resolveExpression } from './domain/temporal-resolver';
+// Thread-aware email extraction pre-processing (Session O4 — email source):
+// isolate the new content of an email body (unwrap forwarded, drop quoted
+// history + signature) before extraction. Shared by the email SourceReader and
+// the golden-set harness so both isolate identically.
+export {
+  isolateEmailContent,
+  extractInnermostForward,
+  stripQuotedReply,
+  stripSignature,
+} from './pipeline/email-preprocess';
