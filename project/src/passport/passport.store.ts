@@ -7,10 +7,11 @@ import type { Db, Tx } from '../infrastructure/index';
 import { passportExport } from './persistence/tables';
 import type { PassportExportRow } from './persistence/tables';
 
-/** The export job type — a worker task, keyed idempotent per export id. */
-export const PASSPORT_EXPORT_JOB_TYPE = 'passport.export';
+/** The export job type — a worker task. Underscore identifier: graphile's
+ * crontab parser rejects dots (a dotted name crashes the worker on boot). */
+export const PASSPORT_EXPORT_JOB_TYPE = 'passport_export';
 /** The recurring retention pass that expires short-lived export artifacts. */
-export const PASSPORT_RETENTION_JOB_TYPE = 'passport.retention';
+export const PASSPORT_RETENTION_JOB_TYPE = 'passport_retention';
 /** Hourly retention sweep (§B.5): deletes export objects past their expiry. */
 export const PASSPORT_RETENTION_CRONTAB = `30 * * * * ${PASSPORT_RETENTION_JOB_TYPE}`;
 
