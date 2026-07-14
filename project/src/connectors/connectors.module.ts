@@ -15,6 +15,8 @@ import { EmailIntakeService } from './email-intake.service';
 import { EmailAllowlistService } from './email-allowlist.service';
 import { EmailSourceReader } from './email.source-reader';
 import { EmailSourceDeletion } from './email.source-deletion';
+import { EmailSourceService } from './email-source.service';
+import { EmailSourceController } from './email-source.controller';
 import { EmailIntakeController } from './email-intake.controller';
 import { EmailSettingsController } from './email-settings.controller';
 import { MailIntakeGuard } from './mail-intake.guard';
@@ -52,6 +54,7 @@ export class ConnectorsModule {
         SettingsController,
         EmailIntakeController,
         EmailSettingsController,
+        EmailSourceController,
       ],
       providers: [
         NotesService,
@@ -64,6 +67,7 @@ export class ConnectorsModule {
         EmailAllowlistService,
         EmailSourceReader,
         EmailSourceDeletion,
+        EmailSourceService,
         MailIntakeGuard,
         { provide: FILE_UPLOAD_OPTIONS, useValue: options.fileUpload },
         { provide: MAIL_OPTIONS, useValue: options.mail },
@@ -79,6 +83,7 @@ export class ConnectorsModule {
         EmailAllowlistService,
         EmailSourceReader,
         EmailSourceDeletion,
+        EmailSourceService,
       ],
     };
   }

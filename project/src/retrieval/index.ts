@@ -11,7 +11,16 @@ export type {
   RetrievalMode,
 } from './retrieval.service';
 export type { ConversationTurn } from './query-rewrite';
-export { QUERY_REWRITE_PROMPT } from './query-rewrite';
+export { QUERY_REWRITE_PROMPT, detectEmailReplyIntent, REPLY_EMAIL_HINT_RE } from './query-rewrite';
+export type { EmailReplyIntent } from './query-rewrite';
+// The chat → email-reply seam (Session O4): retrieval defines the port,
+// connectors implements it, the app root binds it (like the SourceReader family).
+export { CHAT_REPLY_RESOLVER } from './chat/chat-reply-resolver.port';
+export type {
+  ChatReplyResolverPort,
+  ChatReplyCandidate,
+  ChatReplyDraftResult,
+} from './chat/chat-reply-resolver.port';
 export type { RetrievalSignal } from './fusion';
 // The chat area's service + prompt ref (worker registers the prompt on boot, §B.7).
 // ChatService is exposed for composition roots (the eval harness); the HTTP

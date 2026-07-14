@@ -1,0 +1,18 @@
+{
+  "case_id": "reply_hr_zadnja",
+  "description": "O4 (hrvatski): 'Napiši odgovor na zadnju e-poruku' — a Croatian draft-a-reply request resolves the most recent seeded email and drafts a reply through the approval machine. The confirmation points to Approvals and states Cogeto never sends.",
+  "anchor": "2026-07-01T09:00:00.000Z",
+  "emails": [
+    {
+      "from": "marko@adriatic-foods.hr",
+      "subject": "Ponuda",
+      "text": "Možeš li potvrditi ponudu do petka?",
+      "message_id": "<marko-1@x>"
+    }
+  ],
+  "facts": [],
+  "script": ["Napiši odgovor na zadnju e-poruku"],
+  "checks": {
+    "must_include": ["drafted a reply", "approvals", "never sends"]
+  }
+}

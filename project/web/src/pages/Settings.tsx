@@ -226,7 +226,11 @@ function EmailCaptureSection({ session }: { session: Session }) {
                 </li>
                 <li>
                   <span className="font-medium text-slate-600">Auto-forward rule</span>: in your
-                  mail provider, forward mail from selected senders here automatically.
+                  mail provider, forward mail from selected senders here automatically.{' '}
+                  <span className="text-slate-400">
+                    Provider-side auto-forward (or BCC) preserves the original sender better than a
+                    manual forward, so drafted replies address the right person.
+                  </span>
                 </li>
               </ul>
               <p className="rounded-md bg-slate-50 p-2 text-slate-500">

@@ -18,7 +18,10 @@ import type { ActionDefinition } from '../action-types';
 // sets them) — no zod defaults, so the schema's input and output types match and
 // it satisfies ActionDefinition<P>'s invariant ZodType<P>.
 const payloadSchema = z.object({
-  to: z.string().min(1).max(320),
+  // Empty when the recipient could not be recovered from a forward — the user
+  // fills it in before sending (the forwarded-addressing rule).
+  to: z.string().max(320),
+  recipientResolved: z.boolean(),
   subject: z.string().max(998),
   inReplyTo: z.string().nullable(),
   references: z.array(z.string()),
@@ -41,9 +44,10 @@ export function buildEmailReplyDraftAction(): ActionDefinition<EmailReplyDraftPa
     schema: payloadSchema,
     initialStatus: 'pending_approval',
     ttlSeconds: 7 * 24 * 60 * 60, // a week to send it (or not)
-    summarize: (p) => `Draft reply to ${p.to}`,
+    summarize: (p) =>
+      p.recipientResolved ? `Draft reply to ${p.to}` : 'Draft reply (set recipient)',
     preview: (p) => [
-      `To: ${p.to}`,
+      p.recipientResolved ? `To: ${p.to}` : 'To: (recipient not recovered — set it before sending)',
       `Subject: ${p.subject || '(no subject)'}`,
       '—',
       ...bodyPreview(p.body),

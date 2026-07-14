@@ -77,4 +77,6 @@ export {
   extractInnermostForward,
   stripQuotedReply,
   stripSignature,
+  parseForwardedHeaders,
 } from './pipeline/email-preprocess';
+export type { ForwardedHeaders } from './pipeline/email-preprocess';

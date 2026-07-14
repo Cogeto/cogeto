@@ -1,0 +1,18 @@
+{
+  "case_id": "reply_to_ana",
+  "description": "O4: 'draft a reply to Ana's last email' resolves the seeded email and drafts a reply through the approval machine; the deterministic chat confirmation points to Approvals and states Cogeto never sends.",
+  "anchor": "2026-07-01T09:00:00.000Z",
+  "emails": [
+    {
+      "from": "ana@adriatic-foods.hr",
+      "subject": "Delivery schedule",
+      "text": "Can you confirm the delivery is on for Friday?",
+      "message_id": "<ana-1@x>"
+    }
+  ],
+  "facts": [],
+  "script": ["Draft a reply to Ana's last email"],
+  "checks": {
+    "must_include": ["drafted a reply", "approvals", "never sends"]
+  }
+}

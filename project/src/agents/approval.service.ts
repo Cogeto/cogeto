@@ -218,6 +218,7 @@ export class ApprovalService {
       approvalId: row.id,
       status: row.status,
       to: payload.to,
+      recipientResolved: payload.recipientResolved,
       subject: payload.subject,
       body: payload.body,
       mailto: buildMailto(payload),

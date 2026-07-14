@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   extractInnermostForward,
   isolateEmailContent,
+  parseForwardedHeaders,
   stripQuotedReply,
   stripSignature,
 } from './email-preprocess';
@@ -107,5 +108,57 @@ describe('email extraction pre-processing (thread-aware; Session O4)', () => {
     expect(stripQuotedReply('new\nOn x wrote:\n> old')).toBe('new');
     expect(stripSignature('body\n-- \nsig')).toBe('body');
     expect(extractInnermostForward('no forward here')).toBeNull();
+  });
+
+  describe('parseForwardedHeaders (forwarded-addressing recovery)', () => {
+    it('recovers From/Subject/To from a Gmail forward block', () => {
+      const body = [
+        'FYI',
+        '',
+        '---------- Forwarded message ---------',
+        'From: Ana Kovač <ana@adriatic-foods.hr>',
+        'Date: Tue, 7 Jul 2026',
+        'Subject: Delivery',
+        'To: me@company.example',
+        '',
+        'We deliver Friday.',
+      ].join('\n');
+      const h = parseForwardedHeaders(body);
+      expect(h?.from).toBe('Ana Kovač <ana@adriatic-foods.hr>');
+      expect(h?.subject).toBe('Delivery');
+      expect(h?.to).toBe('me@company.example');
+    });
+
+    it('recovers an Outlook "Original Message" stanza', () => {
+      const body = [
+        'ok',
+        '-----Original Message-----',
+        'From: Marko <marko@x.com>',
+        'Sent: Monday',
+        'Subject: Venue',
+        '',
+        'body',
+      ].join('\n');
+      expect(parseForwardedHeaders(body)?.from).toBe('Marko <marko@x.com>');
+    });
+
+    it('recovers a Croatian forward stanza', () => {
+      const body = [
+        '---------- Proslijeđena poruka ---------',
+        'Od: Ana <ana@x.hr>',
+        'Predmet: Isporuka',
+        '',
+        'tekst',
+      ].join('\n');
+      const h = parseForwardedHeaders(body);
+      expect(h?.from).toBe('Ana <ana@x.hr>');
+      expect(h?.subject).toBe('Isporuka');
+    });
+
+    it('returns null when there is no forwarded stanza', () => {
+      expect(parseForwardedHeaders('just a normal message from me')).toBeNull();
+      expect(parseForwardedHeaders('From the desk of the CEO, a note.')).toBeNull();
+      expect(parseForwardedHeaders(null)).toBeNull();
+    });
   });
 });

@@ -10,9 +10,17 @@ import { ModelGateway } from '../model-gateway/index';
 import { RetrievalService } from '../retrieval/index';
 import { ApprovalService } from '../agents/index';
 import { emailMessage } from './persistence/tables';
+import { resolveReplyTarget } from './email-reply-target';
 
 /** How many context facts the drafter is grounded on. */
 const CONTEXT_TOP_K = 10;
+
+/** The created draft plus the recovered reply target (for a chat confirmation). */
+export interface DraftReplyResult {
+  approval: ApprovalDto;
+  to: string;
+  recipientResolved: boolean;
+}
 
 /**
  * The reply-drafting system prompt. NOT a memory-deciding prompt (it drafts an
@@ -50,7 +58,11 @@ export class EmailReplyDraftService {
     private readonly approvals: ApprovalService,
   ) {}
 
-  async draftReply(principal: Principal, emailId: string): Promise<ApprovalDto> {
+  async draftReply(
+    principal: Principal,
+    emailId: string,
+    opts: { intent?: string | null } = {},
+  ): Promise<DraftReplyResult> {
     const rows = await this.db
       .select()
       .from(emailMessage)
@@ -59,50 +71,51 @@ export class EmailReplyDraftService {
     const email = rows[0];
     if (!email) throw new NotFoundException(`email ${emailId} not found`);
 
-    // Context: what the user knows about this sender, and what's open with them.
+    // Recover WHO to reply to (the forwarded-addressing rule): the original
+    // correspondent, not the forwarder. Both triggers call this, so both address
+    // identically.
+    const target = resolveReplyTarget(email, principal.email);
+
+    // Context: what the user knows about the correspondent, and what's open.
+    const contextSubject = target.originalCorrespondent ?? target.toDisplay ?? email.fromAddr;
     const retrieved = await this.retrieval.retrieve(
       principal,
-      `What do I know about ${email.fromAddr}, and what is open or outstanding with them?`,
+      `What do I know about ${contextSubject}, and what is open or outstanding with them?`,
       { topK: CONTEXT_TOP_K },
     );
     const contextFacts = retrieved.memories
       .map((m) => m.memory.content)
       .filter(Boolean) as string[];
 
+    // The extraction-isolated body is the original message's new content (a
+    // forward unwraps to the innermost forwarded content).
     const originalBody = isolateEmailContent(email.textBody);
     const { text } = await this.gateway.complete({
       system: REPLY_DRAFT_SYSTEM,
       input: buildDraftInput({
-        from: email.fromAddr,
-        subject: email.subject,
+        from: target.toDisplay ?? email.fromAddr,
+        subject: target.subject,
         body: originalBody,
         context: contextFacts,
+        intent: opts.intent ?? null,
       }),
       tier: 'answer',
     });
 
-    const subject = replySubject(email.subject);
-    const references = [...email.references, email.messageId].filter(
-      (r): r is string => typeof r === 'string' && r.length > 0,
-    );
     const payload: EmailReplyDraftPayload = {
-      to: email.fromAddr,
-      subject,
-      inReplyTo: email.messageId ?? null,
-      references,
+      to: target.to,
+      recipientResolved: target.resolved,
+      subject: target.subject,
+      inReplyTo: target.inReplyTo,
+      references: target.references,
       body: (text ?? '').trim() || '(no draft produced)',
       emailSourceId: email.id,
     };
     // The approval machine records + audits the draft; approval finalises it
     // (non-sending), then GET /api/approvals/:id/email-draft presents it.
-    return this.approvals.create(principal, EMAIL_REPLY_DRAFT_ACTION, payload);
+    const approval = await this.approvals.create(principal, EMAIL_REPLY_DRAFT_ACTION, payload);
+    return { approval, to: target.to, recipientResolved: target.resolved };
   }
-}
-
-function replySubject(subject: string | null): string {
-  const base = (subject ?? '').trim();
-  if (!base) return 'Re:';
-  return /^re:/i.test(base) ? base : `Re: ${base}`;
 }
 
 function buildDraftInput(input: {
@@ -110,6 +123,7 @@ function buildDraftInput(input: {
   subject: string | null;
   body: string;
   context: string[];
+  intent: string | null;
 }): string {
   const context =
     input.context.length > 0
@@ -123,6 +137,10 @@ function buildDraftInput(input: {
     '',
     'CONTEXT FACTS (what the user knows about the sender / open loops):',
     context,
+    '',
+    // Optional one-line steer ("accept", "decline", "ask for X"); default is to
+    // reply appropriately from context.
+    `WHAT THE REPLY SHOULD DO: ${input.intent?.trim() || 'reply appropriately based on the context'}`,
     '',
     'Draft the reply body now.',
   ].join('\n');

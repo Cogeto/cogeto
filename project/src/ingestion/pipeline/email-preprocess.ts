@@ -112,6 +112,123 @@ export function stripQuotedReply(text: string): string {
 }
 
 /**
+ * The header set recovered from a forwarded-message block in a body (Session O4 —
+ * email reply triggers). All best-effort; a field absent from the forward is null.
+ */
+export interface ForwardedHeaders {
+  from: string | null;
+  to: string | null;
+  cc: string | null;
+  subject: string | null;
+  date: string | null;
+  messageId: string | null;
+}
+
+/** Maps a header key (en + hr) to our canonical field, or null to ignore. */
+function canonicalHeaderKey(raw: string): keyof ForwardedHeaders | null {
+  switch (raw.trim().toLowerCase()) {
+    case 'from':
+    case 'od':
+    case 'šalje':
+    case 'salje':
+      return 'from';
+    case 'to':
+    case 'za':
+      return 'to';
+    case 'cc':
+      return 'cc';
+    case 'subject':
+    case 'predmet':
+      return 'subject';
+    case 'date':
+    case 'sent':
+    case 'datum':
+    case 'poslano':
+      return 'date';
+    case 'message-id':
+      return 'messageId';
+    default:
+      return null;
+  }
+}
+
+const HEADER_LINE_RE = /^\s*([A-Za-z][A-Za-z-]*|Od|Za|Predmet|Datum|Šalje|Poslano):\s*(.*)$/;
+
+/**
+ * Recover the ORIGINAL correspondent's headers from a forwarded message embedded
+ * in a body (Session O4 — the forwarded-addressing rule). When a user forwards
+ * Ana's email to Cogeto, the envelope/header From becomes the user and Ana sits
+ * inside the body as a forwarded block; a reply must go to Ana, not the
+ * forwarder. This parses that block's `From:/To:/Cc:/Subject:/Date:/Message-ID:`
+ * stanza (en + hr labels).
+ *
+ * Returns null when no forwarded header stanza is present (e.g. a directly
+ * received message, or an auto-forward that preserved the original From on the
+ * message itself — the caller then uses the message's own From).
+ */
+export function parseForwardedHeaders(text: string | null | undefined): ForwardedHeaders | null {
+  if (!text) return null;
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+
+  // Prefer a stanza introduced by an explicit forward/original-message marker.
+  let start = -1;
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]!;
+    const isMarker =
+      FORWARD_MARKERS.some((m) => new RegExp(m.source, m.flags.replace('g', '')).test(line)) ||
+      /^\s*-{2,}\s*Original Message\s*-{2,}/i.test(line);
+    if (isMarker) {
+      start = i + 1;
+      break;
+    }
+  }
+  // Else an Outlook-style bare stanza: a `From:`/`Od:` line that begins a run of
+  // header lines (guards against a lone "From: X" sentence in prose).
+  if (start < 0) {
+    for (let i = 0; i < lines.length; i += 1) {
+      if (/^\s*(From|Od):\s*\S/i.test(lines[i]!) && looksLikeHeaderStanza(lines, i)) {
+        start = i;
+        break;
+      }
+    }
+  }
+  if (start < 0) return null;
+
+  const headers: ForwardedHeaders = {
+    from: null,
+    to: null,
+    cc: null,
+    subject: null,
+    date: null,
+    messageId: null,
+  };
+  let i = start;
+  while (i < lines.length && lines[i]!.trim() === '') i += 1;
+  for (; i < lines.length; i += 1) {
+    const match = HEADER_LINE_RE.exec(lines[i]!);
+    if (!match) break; // the stanza ended (body begins)
+    const key = canonicalHeaderKey(match[1]!);
+    const value = match[2]!.trim();
+    if (key && headers[key] === null && value) headers[key] = value;
+  }
+
+  // Only a stanza that actually named a sender or subject is useful.
+  return headers.from || headers.subject ? headers : null;
+}
+
+/** True when line `i` (a From:/Od: line) is followed shortly by another header
+ * line — a real forwarded stanza, not a "From: the desk of…" sentence. */
+function looksLikeHeaderStanza(lines: string[], i: number): boolean {
+  for (let j = i + 1; j < Math.min(lines.length, i + 5); j += 1) {
+    const line = lines[j]!;
+    if (line.trim() === '') continue;
+    if (/^\s*(To|Cc|Subject|Sent|Date|Za|Predmet|Datum|Poslano):/i.test(line)) return true;
+    if (!HEADER_LINE_RE.test(line)) return false;
+  }
+  return false;
+}
+
+/**
  * Strip a trailing signature: cut at the RFC 3676 delimiter line (`-- `), and
  * drop trailing device sign-off one-liners.
  */

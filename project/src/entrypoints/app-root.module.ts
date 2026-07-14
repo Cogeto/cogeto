@@ -15,8 +15,7 @@ import {
 import { AgentsModule } from '../agents/index';
 import {
   ConnectorsModule,
-  EmailReplyController,
-  EmailReplyDraftService,
+  EmailReplyModule,
   EmailSourceDeletion,
   NotesSourceDeletion,
 } from '../connectors/index';
@@ -105,6 +104,10 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       // The digest's TASKS section as a global provider, so ingestion's digest
       // endpoint can inject it without importing tasks (O2-A; F3 handoff §3).
       TasksModule.forDigest(),
+      // Reply drafting + the chat → reply resolver (O4) — app-only (needs
+      // RetrievalService + ApprovalService); the worker never drafts. Global, so
+      // ChatService resolves CHAT_REPLY_RESOLVER.
+      EmailReplyModule,
     ],
     controllers: [
       AuditController,
@@ -112,13 +115,9 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       InstanceController,
       JobsController,
       WebConfigController,
-      // Reply drafting (O4) — app-only: needs RetrievalService + ApprovalService
-      // (both imported above); the worker never drafts.
-      EmailReplyController,
     ],
     providers: [
       { provide: COGETO_CONFIG, useValue: config },
-      EmailReplyDraftService,
       // Default-deny auth (QS-18): the bearer guard runs on EVERY route; only
       // routes marked @Public() (health/config/instance) opt out. A new
       // controller that forgets @UseGuards is closed, not silently open.
