@@ -1,0 +1,16 @@
+{
+  "case_id": "hr-e002",
+  "source_type": "email",
+  "expected_memories": [
+    {
+      "content_gist": "Dobavljač će isporučiti palete u skladište u Splitu do 15. srpnja",
+      "kind": "commitment",
+      "entities": [],
+      "temporal": { "valid_from": "source_date" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": ["propratna poruka pri prosljeđivanju"],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

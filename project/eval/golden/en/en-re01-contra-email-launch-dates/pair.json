@@ -1,0 +1,22 @@
+{
+  "case_id": "en-re01",
+  "task": "contradiction",
+  "expected": "contradicts",
+  "a": {
+    "content": "The Q3 product launch is confirmed for September 15.",
+    "kind": "decision",
+    "entities": ["Q3 product launch"],
+    "subject_entity": "Q3 product launch",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Email from Ana: We've locked the Q3 product launch for September 15."
+  },
+  "b": {
+    "content": "The Q3 product launch is confirmed for October 1.",
+    "kind": "decision",
+    "entities": ["Q3 product launch"],
+    "subject_entity": "Q3 product launch",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Email from Marko: Update — the Q3 product launch moves to October 1."
+  },
+  "notes": "Two emails, same slot (one launch date), two values, neither aware of the other's change. A human must decide — feeds the dreaming/contradiction path. Embeds nearly identically (distinct-escalation)."
+}

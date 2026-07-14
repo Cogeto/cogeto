@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-re01",
+  "task": "contradiction",
+  "expected": "contradicts",
+  "a": {
+    "content": "Lansiranje proizvoda u Q3 potvrđeno je za 15. rujna.",
+    "kind": "decision",
+    "entities": ["lansiranje Q3"],
+    "subject_entity": "lansiranje Q3",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "E-pošta od Ane: Fiksirali smo lansiranje u Q3 za 15. rujna."
+  },
+  "b": {
+    "content": "Lansiranje proizvoda u Q3 potvrđeno je za 1. listopada.",
+    "kind": "decision",
+    "entities": ["lansiranje Q3"],
+    "subject_entity": "lansiranje Q3",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "E-pošta od Marka: Ažuriranje — lansiranje u Q3 pomiče se na 1. listopada."
+  },
+  "notes": "Dvije e-poruke, isti slot (datum lansiranja), dvije vrijednosti — čovjek mora odlučiti. Hrani put snova/kontradikcije."
+}

@@ -13,7 +13,13 @@ import {
   RetrievalModule,
 } from '../retrieval/index';
 import { AgentsModule } from '../agents/index';
-import { ConnectorsModule, NotesSourceDeletion } from '../connectors/index';
+import {
+  ConnectorsModule,
+  EmailReplyController,
+  EmailReplyDraftService,
+  EmailSourceDeletion,
+  NotesSourceDeletion,
+} from '../connectors/index';
 import { TasksCascade, TasksModule } from '../tasks/index';
 import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG, mailOptions, redactionOptions } from './config';
@@ -71,7 +77,9 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         instanceKeyDir: config.instanceKeyDir,
         // Chat joins notes as a deletable source (decision 0021 r7) — the
         // source-delete endpoint runs the saga for a chat-derived memory too.
-        sourceDeletions: { adapters: [NotesSourceDeletion, ChatSourceDeletion] },
+        sourceDeletions: {
+          adapters: [NotesSourceDeletion, ChatSourceDeletion, EmailSourceDeletion],
+        },
         derivedCascades: {
           imports: [TasksModule.forApi(), ChatSourceModule],
           // Tasks are deleted with their memories; assistant answers citing
@@ -104,9 +112,13 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       InstanceController,
       JobsController,
       WebConfigController,
+      // Reply drafting (O4) — app-only: needs RetrievalService + ApprovalService
+      // (both imported above); the worker never drafts.
+      EmailReplyController,
     ],
     providers: [
       { provide: COGETO_CONFIG, useValue: config },
+      EmailReplyDraftService,
       // Default-deny auth (QS-18): the bearer guard runs on EVERY route; only
       // routes marked @Public() (health/config/instance) opt out. A new
       // controller that forgets @UseGuards is closed, not silently open.

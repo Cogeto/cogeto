@@ -6,6 +6,7 @@ import { IngestionModule, PipelineIngestionGuard } from '../ingestion/index';
 import { AgentsModule } from '../agents/index';
 import {
   ConnectorsModule,
+  EmailSourceDeletion,
   EmailSourceReader,
   FileSourceReader,
   NotesSourceDeletion,
@@ -64,7 +65,9 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         instanceKeyDir: config.instanceKeyDir,
         // The chat source deletion joins notes' so a chat-derived memory's source
         // deletion erases the originating turn under the saga (decision 0021 r7).
-        sourceDeletions: { adapters: [NotesSourceDeletion, ChatSourceDeletion] },
+        sourceDeletions: {
+          adapters: [NotesSourceDeletion, ChatSourceDeletion, EmailSourceDeletion],
+        },
         derivedCascades: {
           imports: [TasksModule.register(), ChatSourceModule],
           // Tasks are deleted with their memories; assistant answers citing

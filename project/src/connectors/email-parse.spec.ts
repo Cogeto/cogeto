@@ -6,7 +6,6 @@ import {
   normalizeAllowlistValue,
   sanitizeHtml,
   senderMatchesAllowlist,
-  stripQuotedHistory,
 } from './email-parse';
 
 describe('email-parse (pure helpers, decision 0028)', () => {
@@ -97,20 +96,7 @@ describe('email-parse (pure helpers, decision 0028)', () => {
     });
   });
 
-  describe('stripQuotedHistory', () => {
-    it('cuts at the attribution line and drops quoted blocks', () => {
-      const body =
-        'The deadline moved to Friday.\n\n' +
-        'On Mon, 1 Jul 2026, Bob <bob@x.com> wrote:\n' +
-        '> please confirm the original date\n' +
-        '> thanks';
-      const stripped = stripQuotedHistory(body);
-      expect(stripped).toContain('deadline moved to Friday');
-      expect(stripped).not.toContain('confirm the original date');
-    });
-    it('falls back to the full text when there is nothing to strip', () => {
-      expect(stripQuotedHistory('just one line')).toBe('just one line');
-      expect(stripQuotedHistory(null)).toBe('');
-    });
-  });
+  // Quoted-history / signature / forwarded isolation moved to ingestion's
+  // `isolateEmailContent` (email-preprocess.spec.ts) — it is an extraction
+  // concern shared with the golden-set harness (Session O4 — email source).
 });

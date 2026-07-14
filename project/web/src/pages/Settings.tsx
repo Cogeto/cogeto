@@ -140,6 +140,7 @@ function EmailCaptureSection({ session }: { session: Session }) {
   const [kind, setKind] = useState<EmailAllowlistKind>('address');
   const [value, setValue] = useState('');
   const [note, setNote] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['email-config'] });
 
@@ -185,15 +186,56 @@ function EmailCaptureSection({ session }: { session: Session }) {
           <div className="rounded-md bg-slate-50 p-3">
             <div className="text-xs font-medium text-slate-500">Your inbound address</div>
             {config.data.inboundAddress ? (
-              <code className="mt-1 block text-sm text-slate-700">
-                {config.data.inboundAddress}
-              </code>
+              <div className="mt-1 flex items-center gap-2">
+                <code className="min-w-0 flex-1 truncate text-sm text-slate-700">
+                  {config.data.inboundAddress}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const addr = config.data?.inboundAddress;
+                    if (addr && navigator.clipboard) {
+                      void navigator.clipboard.writeText(addr);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }
+                  }}
+                  className="shrink-0 rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+                >
+                  {copied ? 'Copied' : 'Copy'}
+                </button>
+              </div>
             ) : (
               <p className="mt-1 text-xs text-slate-400">
                 Not configured yet — the operator sets this when provisioning the instance.
               </p>
             )}
           </div>
+
+          {config.data.inboundAddress && (
+            <div className="space-y-2 text-xs text-slate-500">
+              <div className="font-medium text-slate-700">How to use it</div>
+              <ul className="list-disc space-y-1 pl-5">
+                <li>
+                  <span className="font-medium text-slate-600">Forward</span> an individual message
+                  to this address to capture it.
+                </li>
+                <li>
+                  <span className="font-medium text-slate-600">BCC</span> this address when you
+                  send, to capture your own commitments as you make them.
+                </li>
+                <li>
+                  <span className="font-medium text-slate-600">Auto-forward rule</span>: in your
+                  mail provider, forward mail from selected senders here automatically.
+                </li>
+              </ul>
+              <p className="rounded-md bg-slate-50 p-2 text-slate-500">
+                Cogeto only ever receives <strong>what you forward</strong> — never your whole
+                mailbox, and never your password or account access. The allowlist below decides
+                whose forwarded mail is actually remembered.
+              </p>
+            </div>
+          )}
 
           <div>
             <div className="text-sm font-medium text-slate-700">Allowed senders</div>

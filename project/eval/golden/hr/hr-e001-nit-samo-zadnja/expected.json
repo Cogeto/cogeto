@@ -1,0 +1,16 @@
+{
+  "case_id": "hr-e001",
+  "source_type": "email",
+  "expected_memories": [
+    {
+      "content_gist": "Korisnik će poslati potpisani ugovor Luki do četvrtka",
+      "kind": "commitment",
+      "entities": [],
+      "temporal": { "valid_from": "source_date" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": ["citirana ranija poruka (već je vlastiti izvor)"],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

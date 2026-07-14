@@ -8,6 +8,7 @@ import type {
   AddEmailAllowlistEntryRequest,
   EmailAllowlistEntryDto,
   EmailCaptureConfigDto,
+  EmailReplyDraftView,
   ChatContextDto,
   ChatMessageDto,
   ChatRememberedDto,
@@ -330,6 +331,16 @@ export const confirmApproval = (
   id: string,
   decision: ApprovalDecision,
 ): Promise<ApprovalDto> => apiPost(`/api/approvals/${id}`, { decision }, session);
+
+// Reply drafts (Session O4 — email source). Drafting is a consequential action;
+// Cogeto never sends — the finalised draft is presented for the user to send.
+export const draftEmailReply = (session: Session, emailId: string): Promise<ApprovalDto> =>
+  apiPost(`/api/email/${encodeURIComponent(emailId)}/reply-draft`, {}, session);
+export const fetchEmailDraft = (
+  session: Session,
+  approvalId: string,
+): Promise<EmailReplyDraftView> =>
+  apiGet(`/api/approvals/${encodeURIComponent(approvalId)}/email-draft`, session);
 export const retryDeadLetterJob = (session: Session, id: string): Promise<{ retried: boolean }> =>
   apiPost(`/api/jobs/dead-letter/${id}/retry`, {}, session);
 

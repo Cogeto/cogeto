@@ -3,16 +3,17 @@ import { eq } from 'drizzle-orm';
 import { DRIZZLE } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import type { SourceItem, SourceReader } from '../ingestion/index';
+import { isolateEmailContent } from '../ingestion/index';
 import { emailMessage } from './persistence/tables';
-import { stripQuotedHistory } from './email-parse';
 
 /**
  * Ingestion's stage-1 port for source_type 'email' (Session O4, decision 0028):
  * the pipeline reads an accepted email through this exactly like a note or file,
- * and the SAME downstream stages run. The extraction input is the text body with
- * quoted reply history stripped (thread-aware — avoids re-extracting quoted
- * history); the full bodies remain retained on the row untouched. Never touches
- * memory tables — extraction belongs to ingestion.
+ * and the SAME downstream stages run. The extraction input is the NEW content of
+ * this message — `isolateEmailContent` unwraps a forwarded original and strips
+ * quoted reply history + signatures (thread-aware; avoids re-extracting quoted
+ * history that is already its own source). The full bodies remain retained on the
+ * row untouched. Never touches memory tables — extraction belongs to ingestion.
  */
 @Injectable()
 export class EmailSourceReader implements SourceReader {
@@ -30,7 +31,7 @@ export class EmailSourceReader implements SourceReader {
     if (!row) return null;
 
     const subject = row.subject?.trim();
-    const body = stripQuotedHistory(row.textBody);
+    const body = isolateEmailContent(row.textBody);
     // Give the extractor the subject as a lead line — email facts often live in
     // the subject ("Deadline moved to Friday"). Falls back to the subject alone
     // when the body is empty (e.g. an HTML-only message with no text part).

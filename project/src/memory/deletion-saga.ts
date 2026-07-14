@@ -74,6 +74,28 @@ export interface SourceDeletion {
   ownerOf(tx: Tx, sourceId: string): Promise<string | null>;
   /** Deletes the source row inside the saga's enumeration transaction. */
   deleteSource(tx: Tx, sourceId: string): Promise<void>;
+  /**
+   * Extra artifacts that must be enumerated and removed WITH this source, when a
+   * source owns more than its own row + body memories (Session O4 — email). An
+   * email source, for example, additionally owns the raw + sanitised-HTML
+   * objects it stored, and its supported attachments are their own `file`
+   * sources (each with file_metadata, an object, and derived memories). The saga
+   * folds these into the SAME enumeration transaction and the SAME receipt, so a
+   * source deletion stays all-or-nothing and the receipt counts everything.
+   * Optional — note/chat/file sources return nothing extra.
+   */
+  enumerateCascade?(tx: Tx, sourceId: string): Promise<SourceCascade>;
+}
+
+/**
+ * The extra members a source cascades into deletion (Session O4). `objectKeys`
+ * are connector-owned MinIO objects deleted directly (the worker leg, absent =
+ * success); `fileSubSourceKeys` are `file` source ids whose own memories,
+ * file_metadata, and object are erased too. Both feed the ONE receipt.
+ */
+export interface SourceCascade {
+  objectKeys: string[];
+  fileSubSourceKeys: string[];
 }
 
 export const SOURCE_DELETIONS = Symbol('SOURCE_DELETIONS');
@@ -199,15 +221,34 @@ export class DeletionSaga {
   ): Promise<DeletionPreview> {
     const sourceType = assertSourceType(rawSourceType);
     return this.db.transaction(async (tx) => {
-      const { rows, fileRow } = await this.loadAndAuthorize(tx, principal, sourceType, sourceId, {
-        lock: false,
-      });
-      return {
+      const { rows, fileRow, adapter } = await this.loadAndAuthorize(
+        tx,
+        principal,
         sourceType,
         sourceId,
-        memoryCount: rows.length,
-        objectCount: fileRow ? 1 : 0,
-      };
+        { lock: false },
+      );
+      let memoryCount = rows.length;
+      let objectCount = fileRow ? 1 : 0;
+      // Fold in the cascaded members (email: raw + HTML objects, attachment file
+      // sources and their memories) so the confirm dialog's numbers are honest.
+      if (adapter?.enumerateCascade) {
+        const cascade = await adapter.enumerateCascade(tx, sourceId);
+        objectCount += cascade.objectKeys.length;
+        for (const fileKey of cascade.fileSubSourceKeys) {
+          const subCount = await tx
+            .select({ id: memory.id })
+            .from(memory)
+            .where(and(eq(memory.sourceType, 'file'), eq(memory.sourceId, fileKey)));
+          memoryCount += subCount.length;
+          const exists = await tx
+            .select({ objectKey: fileMetadata.objectKey })
+            .from(fileMetadata)
+            .where(eq(fileMetadata.objectKey, fileKey));
+          objectCount += exists.length;
+        }
+      }
+      return { sourceType, sourceId, memoryCount, objectCount };
     });
   }
 
@@ -251,6 +292,22 @@ export class DeletionSaga {
         lock: true,
         sourceOwner,
       });
+
+      // Cascade members (Session O4 — email): fold the source's extra objects and
+      // its attachment `file` sub-sources into THIS enumeration transaction, so
+      // they share the one receipt and the all-or-nothing guarantee. The
+      // sub-sources' memories join `rows`; their objects join `cascadeObjectKeys`.
+      const cascade = adapter?.enumerateCascade
+        ? await adapter.enumerateCascade(tx, sourceId)
+        : null;
+      const cascadeObjectKeys: string[] = cascade ? [...cascade.objectKeys] : [];
+      if (cascade) {
+        for (const fileKey of cascade.fileSubSourceKeys) {
+          const removedKey = await this.cascadeFileSubSource(tx, principal, fileKey, rows);
+          if (removedKey) cascadeObjectKeys.push(removedKey);
+        }
+      }
+
       const memoryIds = rows.map((r) => r.id);
 
       // Contradiction lift (decision 0010 ruling 8): surviving partners of
@@ -297,6 +354,9 @@ export class DeletionSaga {
         await tx.delete(fileMetadata).where(eq(fileMetadata.objectKey, sourceId));
         objectKeys.push(sourceId);
       }
+      // The source's cascaded objects (email raw + HTML + attachment objects),
+      // deduped so a key can never be double-listed in the receipt.
+      for (const key of cascadeObjectKeys) if (!objectKeys.includes(key)) objectKeys.push(key);
       if (adapter) await adapter.deleteSource(tx, sourceId);
 
       const counts: ReceiptCounts = {
@@ -407,6 +467,53 @@ export class DeletionSaga {
       sourceOwner = await adapter.ownerOf(tx, sourceId);
     }
     return { fileRow, adapter, sourceOwner };
+  }
+
+  /**
+   * Cascades one attachment `file` sub-source inside the enumeration transaction
+   * (Session O4): cancel its pending ingestion, lock + enumerate its memories
+   * (pushed onto the primary `rows` so they share the receipt), and delete its
+   * file_metadata. Returns the object key to remove, or null when the attachment
+   * was already gone (idempotent). Foreign-owned members are refused as NotFound
+   * — an attachment must belong to the same owner as its carrying email.
+   */
+  private async cascadeFileSubSource(
+    tx: Tx,
+    principal: Principal,
+    fileKey: string,
+    rows: (typeof memory.$inferSelect)[],
+  ): Promise<string | null> {
+    // A queued/in-flight attachment pipeline run finds its key consumed (or its
+    // admission checkpoint serializes on the file_metadata lock taken below).
+    if (this.ingestionGuard) {
+      await this.ingestionGuard.cancelPending(tx, 'file', fileKey, { waitForRun: false });
+    }
+
+    // The attachment's derived memories (FOR UPDATE) — empty is fine for a
+    // sub-source (an attachment may have yielded no durable facts).
+    const subRows = await tx
+      .select()
+      .from(memory)
+      .where(and(eq(memory.sourceType, 'file'), eq(memory.sourceId, fileKey)))
+      .for('update');
+    if (subRows.some((r) => r.ownerId !== principal.userId)) {
+      throw new NotFoundException(`source file/${fileKey} not found`);
+    }
+    rows.push(...subRows);
+
+    // The attachment's stored file_metadata + object key (locked, then deleted).
+    const fileRows = await tx
+      .select({ objectKey: fileMetadata.objectKey, ownerId: fileMetadata.ownerId })
+      .from(fileMetadata)
+      .where(eq(fileMetadata.objectKey, fileKey))
+      .for('update');
+    const fileRow = fileRows[0];
+    if (!fileRow) return null; // already deleted — nothing to remove
+    if (fileRow.ownerId !== principal.userId) {
+      throw new NotFoundException(`source file/${fileKey} not found`);
+    }
+    await tx.delete(fileMetadata).where(eq(fileMetadata.objectKey, fileKey));
+    return fileKey;
   }
 
   /** Enumerates (and under `lock` FOR UPDATE-locks) the derived memory rows. */

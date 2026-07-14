@@ -5,7 +5,13 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { and, desc, eq, inArray, lt, sql } from 'drizzle-orm';
-import type { ApprovalDto, Principal } from '@cogeto/shared';
+import type {
+  ApprovalDto,
+  EmailReplyDraftPayload,
+  EmailReplyDraftView,
+  Principal,
+} from '@cogeto/shared';
+import { EMAIL_REPLY_DRAFT_ACTION } from '@cogeto/shared';
 import { auditLog, DRIZZLE, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { approval } from './persistence/tables';
@@ -186,6 +192,40 @@ export class ApprovalService {
     return (await this.toDtos([row as ApprovalRow]))[0]!;
   }
 
+  /**
+   * The finalised reply draft (Session O4): the drafted subject + body, plus a
+   * ready-to-open mailto: and a downloadable .eml. OWNER-only (the body is
+   * content) — a foreign requester, even in the same org, is NotFound. Returned
+   * for any status; the UI presents the copy/send affordances once approved.
+   * Cogeto never sends: `sent` is always false.
+   */
+  async getEmailDraft(principal: Principal, id: string): Promise<EmailReplyDraftView> {
+    const rows = await this.db.select().from(approval).where(eq(approval.id, id)).limit(1);
+    const row = rows[0] as ApprovalRow | undefined;
+    if (
+      !row ||
+      row.orgId !== principal.orgId ||
+      row.requestedBy !== principal.userId ||
+      row.actionType !== EMAIL_REPLY_DRAFT_ACTION
+    ) {
+      throw new NotFoundException(`email draft ${id} not found`);
+    }
+    const payload = this.registry.parse(
+      EMAIL_REPLY_DRAFT_ACTION,
+      row.payloadJson,
+    ) as EmailReplyDraftPayload;
+    return {
+      approvalId: row.id,
+      status: row.status,
+      to: payload.to,
+      subject: payload.subject,
+      body: payload.body,
+      mailto: buildMailto(payload),
+      eml: buildEml(payload),
+      sent: false,
+    };
+  }
+
   // ── internals ──────────────────────────────────────────────────────────────
 
   private async lockForOrg(tx: Tx, principal: Principal, id: string): Promise<ApprovalRow> {
@@ -230,4 +270,27 @@ export class ApprovalService {
     }
     return rows.map((r) => this.toDto(r, results.get(r.id) ?? null));
   }
+}
+
+/** A prefilled mailto: link — opens the user's own client, ready to send. */
+function buildMailto(p: EmailReplyDraftPayload): string {
+  const params = new URLSearchParams({ subject: p.subject, body: p.body });
+  return `mailto:${encodeURIComponent(p.to)}?${params.toString()}`;
+}
+
+/**
+ * A minimal RFC822 .eml the user downloads and sends from any client. It carries
+ * the threading headers so the reply lands in the right conversation. No From
+ * (the user's own client fills it) and, deliberately, no send — this is a file.
+ */
+function buildEml(p: EmailReplyDraftPayload): string {
+  const headers = [
+    `To: ${p.to}`,
+    `Subject: ${p.subject}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/plain; charset=utf-8',
+  ];
+  if (p.inReplyTo) headers.push(`In-Reply-To: ${p.inReplyTo}`);
+  if (p.references.length > 0) headers.push(`References: ${p.references.join(' ')}`);
+  return `${headers.join('\r\n')}\r\n\r\n${p.body.replace(/\r?\n/g, '\r\n')}\r\n`;
 }

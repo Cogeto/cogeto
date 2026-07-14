@@ -67,3 +67,16 @@ One line per label change (docs/eval-golden-set.md §4 rule 5).
   family `closure`, expected `closes`). Croatian authored idiomatically, not
   translated. Corpus now 44 en / 30 hr subdirs. Scored by `npm run eval`
   (extraction + task-pair) with no gate regression.
+- 2026-07-14 (O4 email source): email corpus tick — 8 email-sourced cases (4 en,
+  4 hr), `source_type: "email"`. Extraction (run through the SAME thread-aware
+  pre-processing the email SourceReader applies — `isolateEmailContent`): a
+  threaded reply where only the latest message extracts (`en-e001`, `hr-e001`;
+  quoted history stripped), a forwarded message where the innermost content
+  extracts (`en-e002`, `hr-e002`; cover note + forward header stanza stripped),
+  and an email commitment that must derive a task (`en-e003`, `hr-e003`).
+  Contradiction: a two-email contradiction over a launch/decision date that feeds
+  the dreaming path (`en-re01`, `hr-re01`, expected `contradicts`). New email
+  extraction cases use empty `entities` (semantic-similarity match only) to avoid
+  Croatian-declension false misses on the first email batch; tighten in a later
+  tick as the corpus grows. Croatian authored idiomatically, not translated.
+  Scored by `npm run eval` (extraction + reconcile) with no gate regression.

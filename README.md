@@ -35,7 +35,20 @@ reads as a dossier, and the dreaming digest is quiet + dismissible. Keyboard
 navigable with a visible focus ring everywhere, reduced-motion honored globally,
 **Lighthouse accessibility 100/100** on the built SPA. No route/state changes, no
 new dependencies. Details in `docs/sessions/O3-C.md` and `docs/design/README.md`.
-**O4 (email via a per-tenant, receive-only Haraka forwarding server) is next per the [Roadmap Revision](docs/Cogeto-v1-Roadmap-Revision.md).** Calendar has been dropped from v1.
+**Email is a live source (Session O4).** Mail arrives by forwarding into a
+per-tenant, receive-only Haraka SMTP server (no OAuth, no mailbox credentials),
+is allowlist-gated and fully retained, and flows through the same verifiable
+pipeline as notes and files (`source_type 'email'`). Extraction is thread-aware
+(quoted history, signatures, and forwarding wrappers are stripped so only a
+message's new content is remembered); an email source and all it carries — the
+raw original, retained HTML, attachments, and derived memories — is covered by
+the deletion saga with an honest receipt; and Cogeto can draft a reply through
+the approval machine, which finalises a copy-ready draft for you to send from
+your own client (**Cogeto never sends mail**). See
+[`docs/notes/email-source.md`](docs/notes/email-source.md) and
+[`docs/notes/email-inbound.md`](docs/notes/email-inbound.md). Calendar has been
+dropped from v1; **O5 (time-travel diff UI + Memory Passport) is next** per the
+[Roadmap Revision](docs/Cogeto-v1-Roadmap-Revision.md).
 
 Previously — **Session O3-B — the redaction sidecar (`--profile redaction`).** A
 per-tenant privacy tier (Addendum B.8): a stateless, CPU-only Python/Presidio
