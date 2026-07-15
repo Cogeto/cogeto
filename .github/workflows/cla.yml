@@ -45,6 +45,6 @@ jobs:
           # no direct pushes. The record stays in-repo, permanent, auditable.
           branch: 'cla-signatures'
           # The maintainer authors as the owner; bots hold no copyright.
-          allowlist: 'dependabot[bot],github-actions[bot]'
+          allowlist: 'igolubic,dependabot[bot],github-actions[bot]'
           custom-pr-sign-comment: 'I have read the CLA Document and I hereby sign the CLA'
           lock-pullrequest-aftermerge: false
