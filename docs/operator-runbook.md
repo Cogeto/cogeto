@@ -80,12 +80,14 @@ Developer-facing notes on the script live in
    sudo ./cogeto install --domain acme.cogeto.eu --acme-email <your ops address> --mistral-key <key>
    ```
 
-   The script verifies OS/resources, installs Docker, generates all secrets
-   into `/srv/cogeto/.env` (mode 600), derives the inbound address
-   (`capture@in.<domain>`), pulls the three signed images, brings the stack
-   up, and waits for health. It ends with the **WHAT YOU MUST DO NOW**
-   checklist — everything below is that checklist, expanded with the OVH
-   panel locations.
+   The script verifies OS/resources, installs Docker **and cosign** (all
+   three image signatures are verified), installs **itself to
+   `/usr/local/bin/cogeto`** (so `sudo cogeto status` works from anywhere
+   afterwards), generates all secrets into `/srv/cogeto/.env` (mode 600),
+   derives the inbound address (`capture@in.<domain>`), pulls the three
+   signed images, brings the stack up, and waits for health. It ends with
+   the **WHAT YOU MUST DO NOW** checklist — everything below is that
+   checklist, expanded with the OVH panel locations.
 
 4. **Vault, immediately**: store `/srv/cogeto/.env` and the Zitadel admin
    login (`admin@<domain>` + `ZITADEL_ADMIN_PASSWORD` from `.env`) in your
@@ -144,12 +146,14 @@ allowlisted for the test.
       dashboard. The nav footer shows the expected version.
 - [ ] **Status green**: `sudo ./cogeto status` → `VERDICT: GREEN` (containers
       healthy, `/api/health` all ok, TLS valid, versions match).
-- [ ] **Email lands**: in **Settings → Email capture**, allowlist your test
-      sender. From that mailbox, forward any short real message to
-      `capture@in.<domain>`. Within a minute or two the email appears as a
-      source and produces memories with provenance to it (Memories page).
-      A non-allowlisted sender must be refused (no source appears; the sender
-      gets an SMTP 550; the refusal shows under "Recently refused").
+- [ ] **Email lands** (sender-routed, decision 0031): as the **customer
+      user**, forward any short real message **from the address their user is
+      registered with** to `capture@in.<domain>` — no configuration needed;
+      within a minute or two it appears as a source and produces memories
+      (Memories page). A **stranger's** mail must be refused (no source; the
+      sender gets an SMTP 550; the refusal shows under "Recently refused"
+      with its reason). Mail from the **admin account's** address is refused
+      too — the operator login never captures.
 - [ ] **Reply draft**: open the test email's source drawer → **Draft reply**
       → a pending draft appears in **Approvals**; approving it finalises a
       copy-ready draft (`.eml` / copy / mailto) and **sends nothing**.
@@ -170,27 +174,32 @@ onto a yellow instance.
 ## 4. Onboarding the customer
 
 1. **Create their user** in Zitadel — follow
-   [`docs/operations/adding-users.md`](operations/adding-users.md) (Console →
-   Users → **+ New**; email invitation or initial password out-of-band). No
-   app-side step: Cogeto provisions on first login. Roles are not needed in
-   v1; the `admin` role is only for the operator's System view.
+   [`docs/operations/adding-users.md`](operations/adding-users.md) (Console at
+   `https://<domain>/ui/console` → Users → **+ New**). **Use "Set initial
+   password"** and hand it over out-of-band — never "Send an email
+   invitation": the instance has no outbound SMTP, so invitations silently
+   never arrive. Register the user with **the email address they will
+   forward mail from** — that address routes their email capture (decision
+   0031). No app-side step: Cogeto provisions on first login. Roles are not
+   needed in v1; the `admin` role is only for the operator's System view.
 2. **First login together**: the customer signs in at `https://<domain>`,
    lands on an empty dashboard (empty states everywhere are correct).
 3. **Default scope**: in **Settings**, set their default capture scope —
    **private** is the default and right for a single-user instance; explain
    that shared scope only matters if teammates are added later.
-4. **Email capture setup** (the one thing worth doing carefully):
+4. **Email capture setup** (sender-routed, decision 0031):
    - Show **Settings → Email capture**: their inbound address
-     (`capture@in.<domain>`, copy button) and the sender **allowlist** —
-     closed by default; only allowlisted senders' mail is remembered.
-   - Have them allowlist their own address and their key correspondents (or
-     whole domains, e.g. `adriatic-foods.hr` — subdomains need their own
-     entry).
-   - Walk through the three ways to use the address (the Settings page shows
-     the same guidance): **forward** a relevant message, **BCC** the address
-     on mail they send, or set a **provider-side auto-forward rule** for
-     chosen senders. State plainly: Cogeto only ever receives what they
-     forward — never mailbox credentials, never the whole inbox.
+     (`capture@in.<domain>`, copy button) and their **always-trusted own
+     address** — anything they **forward** or **BCC** from it is captured
+     for them automatically, nothing to configure.
+   - The **allowlist** is for *external* senders: entries route mail from
+     those senders (typically provider-side **auto-forward rules**) into
+     *their* memory. Each user keeps their own list; whole domains work
+     (`adriatic-foods.hr` — subdomains need their own entry). Refused mail
+     shows under "Recently refused" with the reason and a one-click claim.
+   - State plainly: Cogeto only ever receives what reaches the inbound
+     address — never mailbox credentials, never the whole inbox. Captured
+     email follows their **default scope** (step 3).
    - Send one real forwarded email together and watch it become memories.
 5. **First-day orientation** (15 minutes, in this order):
    - **Capture** a few real notes (meeting outcomes, commitments, decisions).
@@ -347,7 +356,7 @@ sudo docker compose logs --tail 200 app      # or: worker, mail, caddy, zitadel
 | --- | --- | --- |
 | Browser can't reach the domain / certificate warning; status says "not from a public CA yet" | DNS not propagated (or pointing at the wrong IP) | Check section 2b `dig` commands. Fix the A record in the OVH zone; Caddy retries ACME automatically once it resolves — no restart. |
 | TLS still not issued though DNS resolves | Port 80 or 443 blocked (OVH Network Firewall), or a stale old A record | Allow 80+443 on the IP's firewall; `sudo docker compose logs caddy` shows the ACME errors verbatim. |
-| Forwarded mail never arrives | In order of frequency: sender not on the **allowlist**; MX record wrong/missing; TCP 25 blocked; wrong recipient address | Check **Settings → Email capture → Recently refused** first (a refusal row = SMTP and Haraka are fine — allowlist the sender, one click). Then `dig +short MX in.<domain>`; then confirm port 25 open (firewall) and `sudo docker compose logs mail`. Recipient must be exactly `capture@in.<domain>`. |
+| Forwarded mail never arrives | In order of frequency: sent from an address that is neither the user's **registered address** nor on their **allowlist** (decision 0031); MX record wrong/missing; TCP 25 blocked; wrong recipient address | Check **Settings → Email capture → Recently refused** first (a refusal row = SMTP and Haraka are fine — the reason is shown; forward from the registered address, or claim the external sender in one click). Note the **admin account never captures**. Then `dig +short MX in.<domain>`; then confirm port 25 open (firewall) and `sudo docker compose logs mail`. Recipient must be exactly `capture@in.<domain>`. |
 | Mail accepted at SMTP but no memories appear | Pipeline/dead-letter problem | `sudo ./cogeto status` queue line; dashboard System → dead-letter for the failed job and its error; `sudo docker compose logs worker`. |
 | Chat/extraction fail with a model error | No or invalid Mistral key | `sudo ./cogeto configure --mistral-key <key>` (the script restarts what's needed). |
 | Status: "running image differs from configured" | An upgrade or restart did not complete | `cd /srv/cogeto && sudo docker compose up -d`, re-run status; if it persists, re-run `sudo ./cogeto upgrade <configured version>`. |

@@ -150,6 +150,13 @@ describe('operator script — install --check dry run', () => {
     }
   });
 
+  it('installs cosign and itself (o6-dry-run: an optional verifier gets skipped; "cogeto status" must exist on PATH)', () => {
+    // Depending on the machine, cosign is either about to be installed or
+    // already present — both surface explicitly.
+    expect(out).toMatch(/would install cosign|cosign already installed/);
+    expect(out).toContain('/usr/local/bin/cogeto');
+  });
+
   it('ends with the instance-specific WHAT YOU MUST DO NOW checklist', () => {
     expect(out).toContain('WHAT YOU MUST DO NOW');
     // Real values, not placeholders (decision 0028 addressing scheme).
@@ -162,6 +169,22 @@ describe('operator script — install --check dry run', () => {
     expect(out).toContain('Do now:');
     expect(out).toContain('Verify after DNS propagates:');
     expect(out).toContain('[ ]');
+  });
+
+  it('checklist items carry the HOW (o6-dry-run detail pass)', () => {
+    // DNS propagation + automatic ACME retry, right next to the records.
+    expect(out).toContain('propagation takes minutes');
+    expect(out).toContain('AUTOMATICALLY');
+    // The PTR's exact panel path.
+    expect(out).toContain('Edit the reverse');
+    // Create-user guidance: console URL, initial password, the no-SMTP trap.
+    expect(out).toContain('/ui/console');
+    expect(out).toContain('Set initial password');
+    expect(out).toContain('no outbound SMTP');
+    // Sender-routed email test instructions (decision 0031).
+    expect(out).toContain('FROM THEIR OWN ADDRESS');
+    // The status command as it actually works after self-install.
+    expect(out).toContain('sudo cogeto status');
   });
 
   it('never logs a secret value — only the names being set', () => {

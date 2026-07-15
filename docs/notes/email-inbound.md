@@ -131,8 +131,12 @@ real mail at a tenant's box, O6 must configure, per instance:
    - `COGETO_MAIL_INTAKE_TOKEN` — the shared secret for the internal intake
      (fail-closed: an empty token disables the endpoint).
    The app additionally reads `COGETO_MAIL_SMTP_ADDRESS` (default `mail:2525`)
-   for its health probe, and optionally `COGETO_MAIL_CAPTURE_USER_EMAIL` to pin
-   the capture owner on a shared instance (default: the sole user).
+   for its health probe, and `COGETO_ADMIN_USER_EMAIL` (compose wires it from
+   `ZITADEL_ADMIN_USERNAME`) — the operator admin account is excluded from
+   capture. There is no capture-owner pin: recipients are resolved from the
+   **sender** ([decision 0031](../decisions/0031-sender-routed-inbound-email.md)
+   — a registered user's own address routes to them; other senders route by
+   each user's personal allowlist).
 
 ### Verification after provisioning
 
