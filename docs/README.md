@@ -21,6 +21,10 @@ connector order and the Gmail/CASA path).
   containers, mechanisms, phased implementation (the `.docx` is the presentation copy).
 - `glossary.md` — the ubiquitous language; names in code must match it.
 - `eval-golden-set.md` — corpus format, metrics, and CI gates for the eval harness.
+- `operator-runbook.md` — **operator-facing**: the full lifecycle of a customer
+  instance on OVHcloud (provision, install, verify, onboard, backups + rehearsed
+  restore, upgrades, trial tracking, troubleshooting). Companion to
+  `scripts/operator/cogeto` (decision 0030).
 - `research/` — anonymized engineering patterns distilled from studied production
   systems; required reading before implementing memory/agents/retrieval/pipeline code.
 - `decisions/` — short numbered decision records; 0001 (repo structure) and

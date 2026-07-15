@@ -3,9 +3,9 @@
 `scripts/operator/cogeto` is the single tool an operator runs by hand on a
 fresh OVHcloud Ubuntu instance ([decision 0030](../decisions/0030-operator-script-and-deploy-channel.md);
 roadmap [D3](../Cogeto-v1-Roadmap-Revision.md)). These are the developer-facing
-notes; the operator-facing runbook (per-customer onboarding, manual trial
-tracking, OVH backup configuration, rehearsed restore, upgrade procedure) is
-**Unit B** and does not exist yet.
+notes; the operator-facing lifecycle documentation (per-customer onboarding,
+manual trial tracking, OVH backup configuration, rehearsed restore, upgrade
+procedure) is the **[operator runbook](../operator-runbook.md)** (Unit B).
 
 ## What it does
 
@@ -52,10 +52,10 @@ on a real instance.
 - Secrets must never appear in output — the spec asserts no 64-hex-char token
   leaks from a dry run; keep `env_set` the only place values flow.
 
-## Manual test procedure (real VM — for the Unit B runbook)
+## Manual test procedure (real VM)
 
-Until the runbook lands, the manual pass on a fresh OVHcloud Ubuntu 24.04
-instance is:
+The runbook's sections 1–3 are the authoritative operator flow; the condensed
+developer pass on a fresh OVHcloud Ubuntu 24.04 instance is:
 
 1. Copy `scripts/operator/cogeto` to the instance, `chmod +x`.
 2. `sudo ./cogeto install --check` — read the plan; nothing changes.
