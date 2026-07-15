@@ -33,7 +33,7 @@ import type {
   NoteCaptured,
   NoteDto,
   NoteStatusDto,
-  Principal,
+  MeDto,
   WorkerActivityDto,
   ReceiptDetailDto,
   ReceiptListItem,
@@ -102,7 +102,7 @@ const apiPost = <T>(path: string, body: unknown, session: Session): Promise<T> =
 const apiPut = <T>(path: string, body: unknown, session: Session): Promise<T> =>
   apiSend('PUT', path, body, session);
 
-export const fetchMe = (session: Session): Promise<Principal> => apiGet('/api/me', session);
+export const fetchMe = (session: Session): Promise<MeDto> => apiGet('/api/me', session);
 export const fetchHealth = (): Promise<HealthReport> => apiGet('/api/health');
 
 export const captureNote = (

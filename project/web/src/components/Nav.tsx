@@ -39,17 +39,22 @@ export function Nav({
   reviewCount,
   approvalsCount,
   tasksCount,
+  showSystem = false,
 }: {
   active: NavSection;
   reviewCount?: number;
   approvalsCount?: number;
   tasksCount?: number;
+  /** System is an operator surface (admin role, QS-10) — hidden for plain
+   * users (o6-dry-run); the server-side AdminGuard stays the enforcement. */
+  showSystem?: boolean;
 }) {
   const badges: Partial<Record<NavSection, number>> = {
     tasks: tasksCount ?? 0,
     review: reviewCount ?? 0,
     approvals: approvalsCount ?? 0,
   };
+  const sections = ENABLED.filter((s) => s.key !== 'system' || showSystem);
   return (
     <nav
       aria-label="Primary"
@@ -59,7 +64,7 @@ export function Nav({
         <img src="/brand/cogeto-final-logo-dark.svg" alt="Cogeto" className="h-8" />
       </div>
       <ul className="flex-1 space-y-1 p-3">
-        {ENABLED.map((section) => {
+        {sections.map((section) => {
           const count = badges[section.key] ?? 0;
           return (
             <li key={section.key}>
