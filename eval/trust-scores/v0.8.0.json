@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0",
+  "generated_by": {
+    "release": "v0.8.0",
+    "commit": "18c4f1c336aeff04fa047d46ad010d9bb89158c7",
+    "harness": "transcribed: extraction/v0002 + verification/v0004 · reconcile_dedup/v0001 + reconcile_contradiction/v0001 · thresholds v1",
+    "generated_at": "2026-07-14T18:49:46.000Z",
+    "backfilled": true
+  },
+  "configurations": [
+    {
+      "id": "mistral-default",
+      "models": {
+        "pipeline": "mistral-small-latest",
+        "answer": "mistral-medium-latest",
+        "embedding": "mistral-embed"
+      },
+      "redaction": false,
+      "corpus": {
+        "golden_cases": 46,
+        "reconcile_pairs": 18,
+        "chat_cases": 10,
+        "per_language": [
+          { "language": "en", "golden_cases": 29 },
+          { "language": "hr", "golden_cases": 17 }
+        ]
+      },
+      "metrics": {
+        "per_language": [
+          {
+            "language": "en",
+            "golden_cases": 29,
+            "extraction_precision": 0.851,
+            "extraction_recall": 0.951,
+            "verification_agreement": 0.964,
+            "dedup_accuracy": 1.0,
+            "contradiction_recall": 1.0
+          },
+          {
+            "language": "hr",
+            "golden_cases": 17,
+            "extraction_precision": 0.676,
+            "extraction_recall": 0.815,
+            "verification_agreement": 0.938,
+            "dedup_accuracy": 0.833,
+            "contradiction_recall": 1.0
+          }
+        ],
+        "aggregate": {
+          "extraction_precision": 0.778,
+          "extraction_recall": 0.897,
+          "verification_agreement": 0.955,
+          "dedup_accuracy": 0.929,
+          "contradiction_recall": 1.0
+        },
+        "chat": { "cases": 10, "passed": 10, "failed": [] }
+      }
+    }
+  ],
+  "notes": [
+    "Backfilled: golden-set and reconciliation numbers transcribed from the 2026-07-13 measured run in docs/eval/history.md (the run closest to the v0.8.0 tag).",
+    "Chat summary transcribed from the nearest measured chat run (2026-07-10, 10 cases) — the two email reply cases were added to the suite after v0.8.0."
+  ]
+}

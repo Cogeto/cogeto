@@ -18,6 +18,12 @@ import { ActionRegistry, ApprovalService } from '../agents/index';
 import { ChatReplyResolver, EmailReplyDraftService, EmailSourceService } from '../connectors/index';
 import { createModelGateway, loadPrompt, ModelGateway } from '../model-gateway/index';
 import { redactionFromEnv } from './config';
+import {
+  DEFAULT_MODELS,
+  deriveConfigurationId,
+  emitPartial,
+  TRUST_SCORES_SCHEMA_VERSION,
+} from './trust-scores';
 
 /** The inbound address seeded emails are addressed to (chat reply-intent cases). */
 const EVAL_INBOUND = 'capture@in.localhost';
@@ -485,6 +491,42 @@ async function main(): Promise<void> {
   const stamp = new Date().toISOString().slice(0, 10);
   await appendFile(HISTORY_FILE, `\n## ${stamp} — chat eval (${versions})\n\n${table}\n`, 'utf8');
   console.log(`appended to ${path.relative(REPO_ROOT, HISTORY_FILE)}`);
+
+  // Trust-score emission (O7, decision 0032): --emit-json <path> merges the
+  // chat summary into the partial `npm run eval -- --emit-json` started (order
+  // does not matter; the file merges per configuration id). Emitted before the
+  // gate check so a breach still records honest numbers.
+  const emitIdx = process.argv.indexOf('--emit-json');
+  const emitPath = emitIdx >= 0 ? process.argv[emitIdx + 1] : undefined;
+  if (emitIdx >= 0 && !emitPath) {
+    console.error('--emit-json requires a file path');
+    process.exit(2);
+  }
+  if (emitPath) {
+    const models = {
+      pipeline: pipelineModel ?? DEFAULT_MODELS.pipeline,
+      answer: answerModel ?? DEFAULT_MODELS.answer,
+      embedding: embedModel ?? DEFAULT_MODELS.embedding,
+    };
+    emitPartial(emitPath, {
+      schema_version: TRUST_SCORES_SCHEMA_VERSION,
+      harness: `chat ${ANSWER_PROMPT.family}/${ANSWER_PROMPT.version} · grader ${COVERAGE_PROMPT.family}/${COVERAGE_PROMPT.version}`,
+      configuration: {
+        id: deriveConfigurationId(models),
+        models,
+        redaction: redactionFromEnv() !== undefined,
+        corpus: { chat_cases: scores.length },
+        metrics: {
+          chat: {
+            cases: scores.length,
+            passed: scores.filter((s) => s.pass).length,
+            failed: scores.filter((s) => !s.pass).map((s) => s.caseId),
+          },
+        },
+      },
+    });
+    console.log(`trust-score partial (chat) emitted → ${emitPath}`);
+  }
 
   // Gate mode (decision 0011): every chat case must PASS. Same switch as the
   // golden-set gates so CI enforces both with one convention.

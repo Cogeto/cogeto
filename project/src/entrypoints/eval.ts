@@ -7,6 +7,8 @@ import { runTaskEval } from '../tasks/index';
 import type { TaskEvalMetrics } from '../tasks/index';
 import { createModelGateway } from '../model-gateway/index';
 import { redactionFromEnv } from './config';
+import { DEFAULT_MODELS, deriveConfigurationId, emitPartial } from './trust-scores';
+import { TRUST_SCORES_SCHEMA_VERSION } from './trust-scores';
 
 /**
  * npm run eval — the golden-set harness (§B.4; docs/eval-golden-set.md) against
@@ -165,6 +167,74 @@ async function main(): Promise<void> {
     'utf8',
   );
   console.log(`appended to ${path.relative(REPO_ROOT, HISTORY_FILE)}`);
+
+  // ── Trust-score emission (O7, decision 0032): --emit-json <path> ─────────
+  // Writes/merges the machine-readable partial the release publisher combines
+  // into eval/trust-scores/vX.Y.Z.json. Emitted BEFORE the gate check so the
+  // numbers are honest even on a breach (the release only publishes after
+  // gates pass anyway).
+  const emitIdx = process.argv.indexOf('--emit-json');
+  const emitPath = emitIdx >= 0 ? process.argv[emitIdx + 1] : undefined;
+  if (emitIdx >= 0 && !emitPath) {
+    console.error('--emit-json requires a file path');
+    process.exit(2);
+  }
+  if (emitPath) {
+    const models = {
+      pipeline:
+        process.env.COGETO_MISTRAL_MODEL_PIPELINE ||
+        process.env.MISTRAL_MODEL_PIPELINE ||
+        DEFAULT_MODELS.pipeline,
+      answer:
+        process.env.COGETO_MISTRAL_MODEL_ANSWER ||
+        process.env.MISTRAL_MODEL_ANSWER ||
+        DEFAULT_MODELS.answer,
+      embedding:
+        process.env.COGETO_MISTRAL_EMBED_MODEL ||
+        process.env.MISTRAL_EMBED_MODEL ||
+        DEFAULT_MODELS.embedding,
+    };
+    const reconcileByLabel = new Map(reconcile.perLanguage.map((m) => [m.label, m]));
+    emitPartial(emitPath, {
+      schema_version: TRUST_SCORES_SCHEMA_VERSION,
+      harness: `${result.promptVersions} · reconcile_dedup/v0001 + reconcile_contradiction/v0001 · thresholds v${result.config.version}`,
+      configuration: {
+        id: deriveConfigurationId(models),
+        models,
+        redaction: redaction !== undefined,
+        corpus: {
+          golden_cases: result.caseCount,
+          reconcile_pairs: reconcile.pairCount,
+          per_language: result.perLanguage.map((m) => ({
+            language: m.label,
+            golden_cases: m.cases,
+          })),
+        },
+        metrics: {
+          per_language: result.perLanguage.map((m) => {
+            const r = reconcileByLabel.get(m.label);
+            return {
+              language: m.label,
+              golden_cases: m.cases,
+              extraction_precision: m.precision,
+              extraction_recall: m.recall,
+              verification_agreement: m.verificationAgreement,
+              dedup_accuracy: r ? r.dedupAccuracy : null,
+              contradiction_recall: r ? r.contradictionRecall : null,
+            };
+          }),
+          aggregate: {
+            extraction_precision: result.aggregate.precision,
+            extraction_recall: result.aggregate.recall,
+            verification_agreement: result.aggregate.verificationAgreement,
+            dedup_accuracy: reconcile.aggregate.dedupAccuracy,
+            contradiction_recall: reconcile.aggregate.contradictionRecall,
+          },
+        },
+      },
+    });
+    console.log(`trust-score partial emitted → ${emitPath}`);
+  }
 
   // ── The §B.4 gates (decision 0011): aggregate metrics vs gates.json ───────
   // Always printed; enforced (exit 1) when COGETO_EVAL_GATE=1 — the CI mode

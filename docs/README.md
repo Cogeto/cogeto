@@ -50,6 +50,9 @@ connector order and the Gmail/CASA path).
 
 - [`passport-schema/`](passport-schema/) — the **Memory Passport** open export format: JSON
   Schemas, a sample archive, and the independent-verification steps.
+- [`trust-scores-schema/`](trust-scores-schema/) — the **published per-release quality
+  record** the trust-score page renders (schema + example; data in
+  `eval/trust-scores/`, one immutable JSON per release).
 
 ## Operations
 
