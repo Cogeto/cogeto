@@ -12,4 +12,4 @@
 - [ ] Docs updated where behavior contradicts them; notable decisions get a `docs/decisions/` record
 - [ ] Any golden-set/eval cases added use **fictional data only** (docs/eval-golden-set.md)
 - [ ] No memory content, secrets, or tokens in logs or fixtures
-- [ ] I have signed (or will sign via the CLA check) the [CLA](../CLA.md)
+- [ ] First contribution? The CLA bot will ask you to sign with **one comment** — see [CONTRIBUTING.md](../CONTRIBUTING.md#the-cla-honestly)

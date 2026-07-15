@@ -88,13 +88,23 @@ the live gate runs on `main` after merge.
 
 ## The CLA, honestly
 
-Contributions require signing the [Contributor License Agreement](CLA.md)
-(a CLA bot will prompt you on your first PR). The plain reason: Cogeto's core
-is **AGPLv3**, and the company behind it (MVT Solutions Group d.o.o.) also
-offers **commercial licenses** to organizations that cannot accept AGPL terms —
-that dual-licensing is what funds the open core. Legally, we can only offer
-your contribution under both licenses if you grant us that permission; that is
-all the CLA does. You keep your copyright and can use your own contribution
+Contributions require accepting the [Contributor License Agreement](CLA.md) —
+and for individuals that is **one comment, once, ever**: on your first pull
+request a bot posts instructions, and you sign by replying with exactly
+
+> I have read the CLA Document and I hereby sign the CLA
+
+No forms, no email, no signature to scan. Your acceptance (username + date) is
+recorded permanently in the repository, and you're never asked again.
+(Companies contributing through employees use the Entity CLA in
+[`CLA.md`](CLA.md) — that one does go through email, deliberately.)
+
+The plain reason a CLA exists at all: Cogeto's core is **AGPLv3**, and the
+company behind it (MVT Solutions Group d.o.o.) also offers **commercial
+licenses** to organizations that cannot accept AGPL terms — that
+dual-licensing is what funds the open core. Legally, we can only offer your
+contribution under both licenses if you grant us that permission; that is all
+the CLA does. You keep your copyright and can use your own contribution
 however you like. If that trade-off isn't acceptable to you, we'd rather you
 know before writing code than after.
 
