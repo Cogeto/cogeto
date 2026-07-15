@@ -41,29 +41,34 @@ export class UserDirectory {
   }
 
   /**
-   * Resolve the instance's capture owner for inbound email (decision 0028 ruling
-   * 3): the directory user matching `preferredEmail` when configured, else the
-   * sole user when the directory holds exactly one. Returns null when it cannot
-   * be resolved unambiguously (zero/ambiguous users, unmatched email) so the
-   * intake refuses rather than guessing an owner. Name-book semantics: this
-   * grants no visibility, it only names the owner a forwarded message belongs to.
+   * The registered user whose email matches (case-insensitive), for
+   * sender-routed email capture (decision 0031 rule 1). Name-book semantics:
+   * this grants no visibility, it only names the user a message belongs to.
    */
-  async resolveCaptureOwner(
-    preferredEmail?: string | null,
-  ): Promise<{ userId: string; orgId: string } | null> {
-    if (preferredEmail) {
-      const email = preferredEmail.trim().toLowerCase();
-      const rows = await this.db
-        .select({ userId: appUser.userId, orgId: appUser.orgId, email: appUser.email })
-        .from(appUser);
-      const match = rows.find((r) => (r.email ?? '').toLowerCase() === email);
-      return match ? { userId: match.userId, orgId: match.orgId } : null;
-    }
+  async userByEmail(email: string): Promise<{ userId: string; orgId: string } | null> {
+    const wanted = email.trim().toLowerCase();
+    if (!wanted) return null;
     const rows = await this.db
-      .select({ userId: appUser.userId, orgId: appUser.orgId })
+      .select({ userId: appUser.userId, orgId: appUser.orgId, email: appUser.email })
+      .from(appUser);
+    const match = rows.find((r) => (r.email ?? '').toLowerCase() === wanted);
+    return match ? { userId: match.userId, orgId: match.orgId } : null;
+  }
+
+  /**
+   * Directory rows for a set of user ids (sender-routed capture resolves
+   * allowlist owners to full users; decision 0031 rule 2). Unknown ids are
+   * simply absent from the result.
+   */
+  async usersByIds(
+    userIds: readonly string[],
+  ): Promise<Array<{ userId: string; orgId: string; email: string | null }>> {
+    if (userIds.length === 0) return [];
+    const rows = await this.db
+      .select({ userId: appUser.userId, orgId: appUser.orgId, email: appUser.email })
       .from(appUser)
-      .limit(2);
-    return rows.length === 1 ? { userId: rows[0]!.userId, orgId: rows[0]!.orgId } : null;
+      .where(inArray(appUser.userId, [...userIds]));
+    return rows;
   }
 
   /** Upsert on login/refresh — "provision the Principal", keep the name fresh. */

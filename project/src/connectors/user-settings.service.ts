@@ -27,6 +27,20 @@ export class UserSettingsService {
     };
   }
 
+  /**
+   * The default capture scope for one user by id (no Principal available in
+   * the email intake, which acts for the resolved recipient — decision 0031).
+   * No row → the column default, private.
+   */
+  async defaultScopeFor(userId: string): Promise<'private' | 'shared'> {
+    const rows = await this.db
+      .select({ defaultScope: userSettings.defaultScope })
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId))
+      .limit(1);
+    return rows[0]?.defaultScope ?? 'private';
+  }
+
   async update(principal: Principal, patch: UpdateUserSettingsRequest): Promise<UserSettingsDto> {
     const current = await this.get(principal);
     const next: UserSettingsDto = {

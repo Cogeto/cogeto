@@ -17,28 +17,42 @@ import type { AllowlistEntry } from './email-parse';
 const RECENT_REFUSALS_LIMIT = 20;
 
 /**
- * The sender allowlist — the primary acceptance gate (decision 0028 rulings
- * 2/7) — plus the metadata-only refusal log. Owned by connectors. The intake
- * consults `matches` before storing anything; the Settings surface manages
- * entries (audited) and reads recent refusals. Empty allowlist → closed by
- * default: `matches` returns false for every sender.
+ * The per-user sender allowlist — personal routing for external senders
+ * (decision 0031 rule 2: "senders whose mail I want in MY memory") — plus the
+ * metadata-only refusal log. Owned by connectors. The intake consults
+ * `ownersMatching` before storing anything; the Settings surface manages
+ * entries (audited) and reads recent refusals. Empty allowlists → closed by
+ * default: `ownersMatching` returns nobody for every sender.
  */
 @Injectable()
 export class EmailAllowlistService {
   constructor(@Inject(DRIZZLE) private readonly db: Db) {}
 
-  /** The acceptance decision for one owner's inbound mail (closed by default). */
-  async matches(ownerId: string, matchedSender: string | null): Promise<boolean> {
-    const entries = await this.loadEntries(ownerId);
-    return senderMatchesAllowlist(matchedSender, entries);
-  }
-
-  private async loadEntries(ownerId: string): Promise<AllowlistEntry[]> {
+  /**
+   * Every user whose allowlist matches the sender — each of them receives a
+   * copy of the message (decision 0031 rule 2). Empty for an unmatched or
+   * unparsable sender (closed by default).
+   */
+  async ownersMatching(matchedSender: string | null): Promise<string[]> {
+    if (!matchedSender) return [];
     const rows = await this.db
-      .select({ kind: emailAllowlist.kind, value: emailAllowlist.value })
-      .from(emailAllowlist)
-      .where(eq(emailAllowlist.ownerId, ownerId));
-    return rows.map((r) => ({ kind: r.kind, value: r.value }));
+      .select({
+        ownerId: emailAllowlist.ownerId,
+        kind: emailAllowlist.kind,
+        value: emailAllowlist.value,
+      })
+      .from(emailAllowlist);
+    const byOwner = new Map<string, AllowlistEntry[]>();
+    for (const row of rows) {
+      const list = byOwner.get(row.ownerId) ?? [];
+      list.push({ kind: row.kind, value: row.value });
+      byOwner.set(row.ownerId, list);
+    }
+    const owners: string[] = [];
+    for (const [ownerId, entries] of byOwner) {
+      if (senderMatchesAllowlist(matchedSender, entries)) owners.push(ownerId);
+    }
+    return owners.sort();
   }
 
   /** The owner's entries for the management surface, newest first. */

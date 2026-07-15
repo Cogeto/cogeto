@@ -6,8 +6,11 @@ export interface MailOptions {
   maxBytes: number;
   /** Total-attachments-size cap in bytes (ruling 6). */
   attachmentsMaxBytes: number;
-  /** Optional capture-owner email (ruling 3); when unset, the sole user is used. */
-  captureUserEmail: string | null;
+  /**
+   * The bootstrap admin's email (decision 0031): the operator account is
+   * excluded from sender-routed capture. Null → no exclusion.
+   */
+  adminUserEmail: string | null;
   /**
    * Shared secret the Haraka queue hook presents to the internal intake
    * endpoint (ruling 7). Empty disables the endpoint (fail-closed) — set at
