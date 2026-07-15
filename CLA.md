@@ -3,7 +3,7 @@
 **Project:** Cogeto
 **Steward / Licensee:** MVT Solutions Group d.o.o., a limited liability company (*društvo s ograničenom odgovornošću*) established under the laws of the Republic of Croatia, with its registered office at Podolje 11A, 10000 Zagreb, Croatia; court register number (MBS) 081063617; company registration number (MB) 04642244; VAT ID HR85300439344 (together with its successors and assigns, **"Cogeto"**, **"We"**, or **"Us"**).
 **Version:** 1.0
-**Effective date of this version:** 1 July 2026
+**Effective date of this version:** 1 July 2026 
 
 ---
 
