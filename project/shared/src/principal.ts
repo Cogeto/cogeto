@@ -16,3 +16,13 @@ export interface Principal {
   /** Project role keys granted to the user (empty until roles are defined). */
   roles: string[];
 }
+
+/**
+ * GET /api/me — the Principal plus server-computed capability flags the shell
+ * needs. `isAdmin` reflects the configured admin role (COGETO_ADMIN_ROLE,
+ * QS-10) so the SPA never hardcodes a role name; the server-side AdminGuard
+ * remains the enforcement — this flag only drives what the UI offers.
+ */
+export interface MeDto extends Principal {
+  isAdmin: boolean;
+}

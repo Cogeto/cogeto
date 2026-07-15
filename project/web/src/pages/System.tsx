@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchChainStatus, fetchDeadLetterJobs, fetchIntegrity, retryDeadLetterJob } from '../api';
+import {
+  fetchChainStatus,
+  fetchDeadLetterJobs,
+  fetchIntegrity,
+  fetchMe,
+  retryDeadLetterJob,
+} from '../api';
 import type { Session } from '../auth/oidc';
 import { invalidateAfterJobRetry } from '../query-invalidation';
 import { Shell } from '../components/Shell';
@@ -186,8 +192,28 @@ function DeadLetterTable({ session }: { session: Session }) {
   );
 }
 
-/** System (S3-B + F1-B): health, deletion integrity, dead-letter retry. */
+/**
+ * System (S3-B + F1-B): health, deletion integrity, dead-letter retry.
+ * An operator surface: the admin-gated panels (worker activity, dead-letter —
+ * QS-10) would 403 for a plain user, so the page explains itself instead of
+ * erroring when the caller lacks the admin role (o6-dry-run). The nav hides
+ * the entry too; this covers a direct URL.
+ */
 export function System({ session }: { session: Session }) {
+  const me = useQuery({ queryKey: ['me'], queryFn: () => fetchMe(session), retry: 1 });
+  if (me.data && !me.data.isAdmin) {
+    return (
+      <Shell session={session} title="System" active="system">
+        <Card>
+          <EmptyState tone="neutral" title="The System view is the operator's surface">
+            Job activity and the dead-letter queue require the administrator role. Your account
+            doesn't have it, and everyday use never needs it. If you co-operate this instance, ask
+            the operator to grant you the role in Zitadel (Projects → cogeto → Authorizations).
+          </EmptyState>
+        </Card>
+      </Shell>
+    );
+  }
   return (
     <Shell session={session} title="System" active="system">
       <StatusPanel />

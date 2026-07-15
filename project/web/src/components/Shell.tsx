@@ -69,6 +69,7 @@ export function Shell({
         reviewCount={(uncertain?.total ?? 0) + (contradictions?.length ?? 0)}
         approvalsCount={pendingApprovals?.length ?? 0}
         tasksCount={taskCount?.open ?? 0}
+        showSystem={me?.isAdmin === true}
       />
       <div className={fullHeight ? 'flex h-screen min-h-0 flex-1 flex-col' : 'flex-1'}>
         <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
