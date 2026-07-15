@@ -30,9 +30,14 @@ automatically (for owner-name display). You only create the user in Zitadel.
    (the one created at bootstrap; there is only one). All users you add live
    here.
 3. **Create the user.** Left nav **Users** → **+ New**.
-   - Fill **Email**, **First/Last name**, **Username**.
-   - Choose **Set initial password** (hand it over out-of-band) or **Send an
-     email invitation** so the user sets their own. Save.
+   - Fill **Email**, **First/Last name**, **Username**. The **email matters
+     twice**: it is their login identity AND it routes their inbound email
+     capture — mail they forward from this address is captured for them
+     (decision 0031), so register the address they actually send from.
+   - Choose **Set initial password** and hand it over out-of-band. Do **not**
+     use "Send an email invitation" on a standard instance — Cogeto
+     deliberately has no outbound SMTP (it never sends mail), so the
+     invitation silently never arrives. Save.
    - The user is now a **member of this org** — that membership alone is what
      Cogeto needs. (Verified email / SSO login work the same as for the admin.)
 4. **Role (optional in v1).** Cogeto v1 gates visibility on *memory scope*, which

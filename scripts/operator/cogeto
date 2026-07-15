@@ -45,6 +45,9 @@ MIN_VERSION="0.9.0"
 IMAGE="cogeto/cogeto"
 IMAGE_EDGE="cogeto/cogeto-edge"
 IMAGE_MAIL="cogeto/cogeto-mail"
+# cosign is installed by `install` (o6-dry-run: an optional verifier gets
+# skipped in practice). Pinned release; single static binary, not in apt.
+COSIGN_VERSION="2.4.1"
 GITHUB_REPO="Cogeto/cogeto"
 RAW_BASE="https://raw.githubusercontent.com/${GITHUB_REPO}"
 HUB_API="https://hub.docker.com/v2/repositories"
@@ -351,6 +354,42 @@ EOF
   done
 }
 
+# Install cosign from its pinned GitHub release (idempotent; single static
+# binary). Failure is non-fatal: verify_images falls back to printing the
+# commands, but the warning is loud.
+install_cosign() {
+  if command -v cosign >/dev/null 2>&1; then
+    say "cosign already installed — skipping"
+    return 0
+  fi
+  url="https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-amd64"
+  say "installing cosign v${COSIGN_VERSION} (image-signature verification)"
+  if [ "$CHECK" -eq 1 ]; then
+    say "[dry-run] would install cosign: ${url} → /usr/local/bin/cosign"
+    return 0
+  fi
+  if curl -fsSL --max-time 120 "$url" -o /usr/local/bin/cosign.tmp; then
+    chmod 0755 /usr/local/bin/cosign.tmp
+    mv /usr/local/bin/cosign.tmp /usr/local/bin/cosign
+    say "cosign installed: $(cosign version 2>/dev/null | head -n 1 || echo v${COSIGN_VERSION})"
+  else
+    rm -f /usr/local/bin/cosign.tmp
+    warn "could not download cosign from ${url} — continuing WITHOUT signature verification (install it manually and re-run the printed verify commands)"
+  fi
+}
+
+# Put this script on PATH so the printed 'sudo cogeto status' just works
+# (o6-dry-run: the operator ran ./cogeto from \$HOME and 'cogeto' was not found).
+install_self() {
+  target="/usr/local/bin/cogeto"
+  self="$0"
+  if [ "$self" = "$target" ]; then
+    return 0
+  fi
+  say "installing this script to ${target} (so 'sudo cogeto status' works from anywhere)"
+  run install -m 0755 "$self" "$target"
+}
+
 verify_images() {
   version="$1"
   if command -v cosign >/dev/null 2>&1; then
@@ -361,6 +400,8 @@ verify_images() {
         --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' >/dev/null
     done
     [ "$CHECK" -eq 1 ] || say "all three image signatures verified"
+  elif [ "$CHECK" -eq 1 ]; then
+    say "[dry-run] would verify all three image signatures with cosign"
   else
     warn "cosign is not installed — signatures NOT verified (install cosign to verify)"
   fi
@@ -503,21 +544,22 @@ add_install_checklist() {
   mx_sub="$(derive_inbound_subdomain "$domain")"
   mx_host="$(derive_mx_host "$domain")"
 
-  todo_now "OVHcloud DNS → add the app A record:            ${domain}.  IN A  ${ip}"
-  todo_now "OVHcloud DNS → add the presign-origin A record: s3.${domain}.  IN A  ${ip}"
-  todo_now "OVHcloud DNS → add the mail host A record:      ${mx_host}.  IN A  ${ip}"
-  todo_now "OVHcloud DNS → add the inbound MX record:       ${mx_sub}.  IN MX 10  ${mx_host}."
-  todo_now "OVHcloud panel → set the PTR (reverse DNS) of ${ip} to ${mx_host} (senders soft-reject hosts without matching forward/reverse DNS)"
+  todo_now "OVHcloud DNS (Web Cloud → Domain names → zone → Add an entry) → app A record:      ${domain}.  IN A  ${ip}"
+  todo_now "OVHcloud DNS → presign-origin A record: s3.${domain}.  IN A  ${ip}"
+  todo_now "OVHcloud DNS → mail host A record:      ${mx_host}.  IN A  ${ip}"
+  todo_now "OVHcloud DNS → inbound MX record:       ${mx_sub}.  IN MX 10  ${mx_host}."
+  todo_now "NOTE on the records above: propagation takes minutes up to the zone TTL (check: dig +short A ${domain}); Caddy keeps retrying and obtains the TLS certificate AUTOMATICALLY once the A record resolves — no restart, no action. Until then the browser shows a certificate warning; that is expected."
+  todo_now "OVHcloud panel (Public Cloud → Network → Public IPs → ${ip} → Edit the reverse) → set the PTR to ${mx_host} — do this AFTER the ${mx_host} A record resolves; senders soft-reject hosts without matching forward/reverse DNS"
   todo_now "SPF note: receiving needs no SPF, but if the apex domain publishes a strict SPF, confirm it does not cover ${mx_sub} (Cogeto never sends — no outbound SPF/DKIM/DMARC needed)"
   todo_now "OVHcloud panel → enable Automated Backup for this instance (roadmap D4; run 'cogeto backup-info' for the exact settings)"
   todo_now "If the OVHcloud Network Firewall is enabled for this IP: allow inbound TCP 80, 443, and 25"
 
   todo_dns "Open https://${domain} — a valid Let's Encrypt certificate is served and the login page loads (Caddy retries ACME automatically once DNS resolves; no restart needed)"
-  todo_dns "Log in as the admin (username admin@${domain}; password is ZITADEL_ADMIN_PASSWORD in ${ENV_FILE}) and create the customer's user"
-  todo_dns "Settings → Email capture: add the customer's allowlisted sender/domain (the allowlist is CLOSED by default), then send a test email from that sender to ${inbound} and confirm it lands as a source"
+  todo_dns "Create the customer's user: open the Zitadel Console at https://${domain}/ui/console, sign in as admin@${domain} (password = ZITADEL_ADMIN_PASSWORD in ${ENV_FILE}), Users → + New — choose 'Set initial password' and hand it over out-of-band. NEVER 'Send an email invitation': the instance has no outbound SMTP, so invitations silently never arrive."
+  todo_dns "Email capture test (sender-routed, decision 0031): have the CUSTOMER forward any email FROM THEIR OWN ADDRESS (the one their user is registered with) to ${inbound} — it is captured for them with no configuration. External senders they auto-forward from are added to THEIR allowlist (Settings → Email capture); the operator admin account never captures."
   todo_dns "Export a Memory Passport (dashboard → Passport) and confirm the download"
   todo_dns "Delete a test source and confirm Forgotten shows a signed deletion receipt"
-  todo_dns "Run 'cogeto status' on the instance — everything green"
+  todo_dns "Run 'sudo cogeto status' on the instance — everything green (the script installed itself to /usr/local/bin/cogeto)"
 
   todo_vault "Store ${ENV_FILE} (all per-instance secrets) in the operator vault — losing MINIO_KMS_SECRET_KEY makes stored files unreadable"
   todo_vault "Record the Zitadel admin login (admin@${domain} + ZITADEL_ADMIN_PASSWORD from ${ENV_FILE})"
@@ -577,6 +619,8 @@ cmd_install() {
   fi
 
   install_docker
+  install_cosign
+  install_self
   ensure_service_user
   say "creating instance directory ${COGETO_ROOT}"
   run mkdir -p "$COGETO_ROOT"
@@ -689,7 +733,7 @@ cmd_upgrade() {
 
   say "rollback, if this upgrade misbehaves: 'cogeto upgrade ${current}' (typed ROLLBACK confirmation; schema stays at v${target} — full data rollback is the rehearsed OVHcloud-backup restore)"
   todo_dns "Log in at https://$(env_get COGETO_EXTERNAL_DOMAIN) and confirm the release works (version shows v${target} in the nav footer)"
-  todo_now "Run 'cogeto status' and confirm everything is green"
+  todo_now "Run 'sudo cogeto status' and confirm everything is green"
   print_checklist
 }
 
@@ -868,7 +912,7 @@ cmd_configure() {
     # shellcheck disable=SC2086
     run compose up -d $restart_needed
     wait_healthy || true
-    todo_now "Run 'cogeto status' and confirm everything is green"
+    todo_now "Run 'sudo cogeto status' and confirm everything is green"
   fi
   print_checklist
 }
