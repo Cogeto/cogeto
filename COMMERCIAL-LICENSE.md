@@ -50,7 +50,7 @@ Contact the Maintainer to discuss terms:
 
 > **MVT Solutions Group d.o.o.**
 > Podolje 11A, 10000 Zagreb, Croatia
-> **Email:** info@mvt-solutions.com
+> **Email:** legal@cogeto.eu
 
 To help us propose appropriate terms quickly, please include:
 
