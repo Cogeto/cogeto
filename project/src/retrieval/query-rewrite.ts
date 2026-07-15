@@ -196,15 +196,21 @@ export function detectEmailReplyIntent(
 }
 
 function cleanReplyTarget(raw: string): string {
-  return raw
+  const cleaned = raw
     .trim()
     .replace(/[.?!]+$/, '')
     .replace(/['’]s\b.*$/, '') // "Ana's last email" → "Ana"
     .replace(/\b(last|latest|recent|zadnj\w*|posljednj\w*)\b/gi, '')
-    .replace(/\b(e-?mail|mail|message|msg|note|poruk\w*|mejl\w*)\b/gi, '')
+    // The joined Croatian "e-poruka" (and e-mail/email) must strip WHOLE —
+    // a surviving "e-" remnant once became a phantom sender the resolver
+    // searched for (issue #78; the live gate caught it on reply_hr_zadnja).
+    .replace(/\b(?:e[- ]?)?(mail|message|msg|note|poruk\w*|mejl\w*)\b/gi, '')
     .replace(/^(the|that|this|a|an)\s+/i, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
+  // A remnant of only punctuation/hyphens is no target at all — "no named
+  // sender" correctly resolves to the most recent email downstream.
+  return /^[\s\-–—'’"]*$/.test(cleaned) ? '' : cleaned;
 }
 
 /**
