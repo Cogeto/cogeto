@@ -1,6 +1,6 @@
 # Cogeto — v1 Roadmap Revision (Email, Operations, and v1 Scope Lock)
 
-**Status: BINDING.** Place in Confluence as a revision, and in the repo at `docs/Cogeto-v1-Roadmap-Revision.md`. This document supersedes the O4/O5/O6 rows and the v1.x list in `docs/Cogeto-Model-Split-Roadmap.md`, and folds in the email and calendar decisions from `docs/Cogeto-Roadmap-Revision-Email-Calendar.md`. Where this document and any earlier plan disagree, this document wins. Each decision below should also get its own short decision record when its session runs.
+**Status: BINDING.** Lives in the repo at `docs/Cogeto-v1-Roadmap-Revision.md`. This document supersedes the O4/O5/O6 rows and the v1.x list in `docs/Cogeto-Model-Split-Roadmap.md`, and folds in the email and calendar decisions from `docs/Cogeto-Roadmap-Revision-Email-Calendar.md`. Where this document and any earlier plan disagree, this document wins. Each decision below should also get its own short decision record when its session runs.
 
 Everything through O3 and the security fix sessions (FIX-1/2/3) is complete: the memory core, deletion receipts, dreaming, temporal retrieval, tasks, files, approvals, shared scope, chat capture, the Ana sandbox, the redaction sidecar, the design pass, and the full security hardening pass. What remains for v1 is defined below.
 
