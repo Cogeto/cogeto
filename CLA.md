@@ -27,7 +27,7 @@ This document contains two agreements. Sign the one that applies to you:
 You accept this Agreement in any one of the following ways, each of which is legally binding:
 
 1. **Automated / CLA assistant:** By responding to the CLA check on a pull request (for example, by commenting the exact confirmation phrase requested by the CLA bot, such as *"I have read the CLA Document and I hereby sign the CLA"*) using the account that authored the contribution; **or**
-2. **Signed record:** By completing and signing the acceptance block at the end of Part A or Part B and returning it to Us at **info@mvt-solutions.com**; **or**
+2. **Signed record:** By completing and signing the acceptance block at the end of Part A or Part B and returning it to Us at **legal@cogeto.eu**; **or**
 3. **Conduct:** By submitting a Contribution to the project after having been presented with this Agreement, where the submission mechanism states that submission constitutes acceptance.
 
 If you are accepting on behalf of an entity, you represent that you are authorized to bind that entity, and "you" in this Agreement means that entity.
@@ -193,7 +193,7 @@ _______________________________________________________________________
 | 2 |           |                   |       |            |
 | 3 |           |                   |       |            |
 
-*(The Corporation will keep this Schedule current and notify Us of changes at info@mvt-solutions.com.)*
+*(The Corporation will keep this Schedule current and notify Us of changes at legal@cogeto.eu.)*
 
 ---
 

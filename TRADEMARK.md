@@ -40,6 +40,6 @@ If you need brand rights beyond the nominative use described above — for examp
 For trademark permissions or questions, contact the Maintainer:
 
 > **MVT Solutions Group d.o.o.**
-> **Email:** info@mvt-solutions.com
+> **Email:** legal@cogeto.eu
 
 The Maintainer may update this policy from time to time. This policy is not legal advice, and nothing in it limits any rights the Maintainer holds under applicable trademark or unfair‑competition law.

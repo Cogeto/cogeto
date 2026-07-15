@@ -8,7 +8,7 @@ taken seriously. They are.
 
 **Do not open a public issue.** Report privately, either way:
 
-- **Email:** [info@mvt-solutions.com](mailto:info@mvt-solutions.com) with the
+- **Email:** [hi@cogeto.eu](mailto:hi@cogeto.eu) with the
   subject line starting `SECURITY:`
 - **GitHub:** [private vulnerability reporting](https://github.com/Cogeto/cogeto/security/advisories/new)
   on this repository
