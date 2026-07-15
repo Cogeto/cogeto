@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
-import type { Tx } from '../infrastructure/index';
+import { eq, inArray, or } from 'drizzle-orm';
+import type { DbOrTx, Tx } from '../infrastructure/index';
 import type { SourceCascade, SourceDeletion } from '../memory/index';
 import { emailAttachment, emailMessage } from './persistence/tables';
 
@@ -65,5 +65,34 @@ export class EmailSourceDeletion implements SourceDeletion {
       .filter((key): key is string => key !== null);
 
     return { objectKeys, fileSubSourceKeys };
+  }
+
+  /**
+   * The integrity sweep's legitimacy probe (issue #62): retained emails store
+   * their raw original (and sometimes an externalised HTML body) as objects
+   * recorded on email_message — NOT in file_metadata — so the orphan arm asks
+   * here before flagging. Only keys belonging to a LIVE email row are owned;
+   * an abandoned email object (crashed intake) matches nothing and is still
+   * flagged, keeping the sweep's backstop role intact.
+   */
+  async ownsObjectKeys(db: DbOrTx, keys: readonly string[]): Promise<string[]> {
+    if (keys.length === 0) return [];
+    const batch = [...keys];
+    const rows = await db
+      .select({
+        rawObjectKey: emailMessage.rawObjectKey,
+        htmlObjectKey: emailMessage.htmlObjectKey,
+      })
+      .from(emailMessage)
+      .where(
+        or(inArray(emailMessage.rawObjectKey, batch), inArray(emailMessage.htmlObjectKey, batch)),
+      );
+    const wanted = new Set(batch);
+    const owned: string[] = [];
+    for (const row of rows) {
+      if (row.rawObjectKey && wanted.has(row.rawObjectKey)) owned.push(row.rawObjectKey);
+      if (row.htmlObjectKey && wanted.has(row.htmlObjectKey)) owned.push(row.htmlObjectKey);
+    }
+    return owned;
   }
 }
