@@ -1,3 +1,12 @@
 {
-   "signedContributors": []
+  "signedContributors": [
+    {
+      "name": "igolubic",
+      "id": 14098942,
+      "comment_id": 4985347911,
+      "created_at": "2026-07-15T21:16:47Z",
+      "repoId": 1286235236,
+      "pullRequestNo": 74
+    }
+  ]
 }
