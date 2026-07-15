@@ -10,6 +10,7 @@ import { INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
 import { MemoryFileStore, MemoryObjectStore } from '../memory/index';
 import { UserDirectory } from '../identity/index';
 import { EmailAllowlistService } from './email-allowlist.service';
+import { UserSettingsService } from './user-settings.service';
 import { sniffContentType } from './document-extract';
 import { matchSender, normalizeAddress, sanitizeHtml } from './email-parse';
 import { emailAttachment, emailMessage } from './persistence/tables';
@@ -30,9 +31,11 @@ export interface MailEnvelope {
   rcptTo: string | null;
 }
 
-/** The intake verdict the internal endpoint maps to an SMTP response (ruling 7). */
+/** The intake verdict the internal endpoint maps to an SMTP response (ruling 7).
+ * Sender-routed capture (decision 0031) can store a copy per matching user,
+ * hence a list of stored email ids. */
 export type IntakeResult =
-  | { accepted: true; emailId: string }
+  | { accepted: true; emailIds: string[] }
   | { accepted: false; status: 'refused' | 'too_large' | 'bad_recipient'; reason: string };
 
 interface PreparedObject {
@@ -42,12 +45,16 @@ interface PreparedObject {
 }
 
 /**
- * Inbound email intake (Session O4, decision 0028): parse the raw RFC822, gate
- * on the sender allowlist (the primary acceptance control), retain the complete
- * message (headers, both bodies, all attachments, the raw original in MinIO),
- * route supported document attachments into the document pipeline as linked file
- * sources, and enqueue the email body into the ingestion pipeline — all
- * transactionally via the outbox (the file-upload safe order, ruling 8).
+ * Inbound email intake (Session O4, decision 0028; routing revised by decision
+ * 0031): parse the raw RFC822, resolve the RECIPIENT USERS from the sender —
+ * a registered user's own address routes to that user; otherwise every user
+ * whose personal allowlist matches the sender receives a copy; otherwise the
+ * message is refused (closed by default; the bootstrap admin account never
+ * captures). Each recipient's copy is fully retained (headers, both bodies,
+ * all attachments, the raw original in MinIO) under their default capture
+ * scope, supported document attachments become linked file sources, and the
+ * email body is enqueued into the ingestion pipeline — all transactionally via
+ * the outbox (the file-upload safe order, ruling 8).
  *
  * A refused message stores NOTHING but a metadata-only refusal row. Storage is
  * reached only through the memory module's object-store + file-metadata ports
@@ -63,13 +70,14 @@ export class EmailIntakeService {
     private readonly files: MemoryFileStore,
     private readonly allowlist: EmailAllowlistService,
     private readonly directory: UserDirectory,
+    private readonly settings: UserSettingsService,
     @Inject(MAIL_OPTIONS) private readonly options: MailOptions,
   ) {}
 
   async intake(raw: Buffer, envelope: MailEnvelope): Promise<IntakeResult> {
     // (0) Size cap — cheap, before parsing (Haraka also caps; app is authoritative).
     if (raw.length > this.options.maxBytes) {
-      await this.refuse(null, envelope, null, 'message_too_large');
+      await this.refuse(envelope, null, 'message_too_large');
       return { accepted: false, status: 'too_large', reason: 'message exceeds the size cap' };
     }
 
@@ -80,46 +88,86 @@ export class EmailIntakeService {
     // (1) Recipient validation — only the instance's configured address.
     const rcpt = normalizeAddress(envelope.rcptTo) ?? firstAddress(parsed.to);
     if (!this.recipientAccepted(rcpt)) {
-      await this.refuse(null, envelope, matchedSender, 'wrong_recipient');
+      await this.refuse(envelope, matchedSender, 'wrong_recipient');
       return { accepted: false, status: 'bad_recipient', reason: 'recipient not accepted here' };
     }
 
-    // (2) Owner resolution (ruling 3) — refuse rather than guess.
-    const owner = await this.directory.resolveCaptureOwner(this.options.captureUserEmail);
-    if (!owner) {
-      await this.refuse(null, envelope, matchedSender, 'no_owner');
-      return { accepted: false, status: 'refused', reason: 'no capture owner configured' };
+    // (2) Sender-routed recipients (decision 0031) — refuse rather than guess.
+    const recipients = await this.resolveRecipients(matchedSender);
+    if (recipients.length === 0) {
+      await this.refuse(envelope, matchedSender, 'sender_not_recognized');
+      return {
+        accepted: false,
+        status: 'refused',
+        reason: 'sender is not a registered user and not on any allowlist',
+      };
     }
 
-    // (3) The allowlist gate (ruling 2) — closed by default.
-    if (!(await this.allowlist.matches(owner.userId, matchedSender))) {
-      await this.refuse(owner.userId, envelope, matchedSender, 'sender_not_allowlisted');
-      return { accepted: false, status: 'refused', reason: 'sender not on the allowlist' };
-    }
-
-    // (4) Attachment-size cap (ruling 6).
+    // (3) Attachment-size cap (ruling 6) — once, before any copy is stored.
     const attachments = parsed.attachments ?? [];
     const totalAttachmentBytes = attachments.reduce(
       (sum, a) => sum + (a.size ?? a.content.length),
       0,
     );
     if (totalAttachmentBytes > this.options.attachmentsMaxBytes) {
-      await this.refuse(owner.userId, envelope, matchedSender, 'attachments_too_large');
+      await this.refuse(envelope, matchedSender, 'attachments_too_large');
       return { accepted: false, status: 'too_large', reason: 'attachments exceed the size cap' };
     }
 
-    return this.store(raw, parsed, owner, matchedSender ?? headerFrom ?? '', rcpt ?? '');
+    // (4) One retained copy per recipient, each under that user's default
+    //     capture scope. A mid-loop failure aborts with copies already stored:
+    //     Haraka receives a transient 451 and retries — thread-aware dedup and
+    //     idempotent pipeline jobs absorb the re-delivery.
+    const emailIds: string[] = [];
+    for (const recipient of recipients) {
+      const scope = await this.settings.defaultScopeFor(recipient.userId);
+      const result = await this.store(
+        raw,
+        parsed,
+        recipient,
+        scope,
+        matchedSender ?? headerFrom ?? '',
+        rcpt ?? '',
+      );
+      emailIds.push(result);
+    }
+    return { accepted: true, emailIds };
   }
 
-  /** Store + enqueue in the safe order (object-first, then one transaction). */
+  /**
+   * Decision 0031 routing: (1) a sender that IS a registered user routes to
+   * that user (their own address is implicitly trusted); (2) otherwise every
+   * user whose allowlist matches the sender gets a copy; (3) nobody → empty
+   * (refused upstream). The bootstrap admin account is excluded — the operator
+   * login never captures memory.
+   */
+  private async resolveRecipients(
+    matchedSender: string | null,
+  ): Promise<Array<{ userId: string; orgId: string }>> {
+    if (!matchedSender) return [];
+    const adminEmail = normalizeAddress(this.options.adminUserEmail);
+    if (adminEmail && matchedSender === adminEmail) return [];
+
+    const self = await this.directory.userByEmail(matchedSender);
+    if (self) return [{ userId: self.userId, orgId: self.orgId }];
+
+    const ownerIds = await this.allowlist.ownersMatching(matchedSender);
+    const users = await this.directory.usersByIds(ownerIds);
+    return users
+      .filter((u) => !adminEmail || (u.email ?? '').toLowerCase() !== adminEmail)
+      .map((u) => ({ userId: u.userId, orgId: u.orgId }));
+  }
+
+  /** Store one recipient's copy + enqueue in the safe order (object-first,
+   * then one transaction). Returns the stored email id. */
   private async store(
     raw: Buffer,
     parsed: ParsedMail,
     owner: { userId: string; orgId: string },
+    scope: MemoryScope,
     fromAddr: string,
     toAddr: string,
-  ): Promise<IntakeResult> {
-    const scope: MemoryScope = 'private';
+  ): Promise<string> {
     const sensitive = false;
     const emailId = randomUUID();
     const keyBase = `${owner.orgId}/${owner.userId}/${scope}`;
@@ -258,7 +306,7 @@ export class EmailIntakeService {
       throw error;
     }
 
-    return { accepted: true, emailId };
+    return emailId;
   }
 
   private recipientAccepted(rcpt: string | null): boolean {
@@ -269,16 +317,18 @@ export class EmailIntakeService {
   }
 
   private async refuse(
-    ownerId: string | null,
     envelope: MailEnvelope,
     matchedSender: string | null,
     reason: string,
   ): Promise<void> {
-    // Metadata only — never a body (ruling 7). Best-effort; a logging failure
-    // must not turn a clean refusal into a 500.
+    // Metadata only — never a body (ruling 7). Refusals carry no owner under
+    // sender routing (nobody matched — decision 0031); a null owner makes the
+    // refusal visible to every user's "Recently refused" so any of them can
+    // claim the sender. Best-effort; a logging failure must not turn a clean
+    // refusal into a 500.
     try {
       await this.allowlist.recordRefusal(this.db, {
-        ownerId,
+        ownerId: null,
         fromAddr: matchedSender ?? normalizeAddress(envelope.mailFrom),
         toAddr: normalizeAddress(envelope.rcptTo),
         reason,

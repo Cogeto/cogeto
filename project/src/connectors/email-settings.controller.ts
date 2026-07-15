@@ -47,7 +47,13 @@ export class EmailSettingsController {
       this.allowlist.listForOwner(request.principal.userId),
       this.allowlist.recentRefusalsForOwner(request.principal.userId),
     ]);
-    return { inboundAddress: this.options.inboundAddress, allowlist, recentRefusals };
+    return {
+      inboundAddress: this.options.inboundAddress,
+      // The caller's own address is implicitly trusted (decision 0031 rule 1).
+      selfAddress: request.principal.email ?? null,
+      allowlist,
+      recentRefusals,
+    };
   }
 
   @Post('allowlist')

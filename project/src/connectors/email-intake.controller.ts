@@ -35,7 +35,7 @@ export class EmailIntakeController {
   @Post()
   @HttpCode(HttpStatus.OK)
   @Header('cache-control', 'no-store')
-  async receive(@Req() request: Request): Promise<{ status: string; emailId?: string }> {
+  async receive(@Req() request: Request): Promise<{ status: string; emailIds?: string[] }> {
     const raw = Buffer.isBuffer(request.body) ? request.body : Buffer.alloc(0);
     if (raw.length === 0) {
       throw new HttpException('empty message', HttpStatus.BAD_REQUEST);
@@ -45,7 +45,7 @@ export class EmailIntakeController {
       rcptTo: headerValue(request, 'x-cogeto-rcpt-to'),
     };
     const result = await this.intake.intake(raw, envelope);
-    if (result.accepted) return { status: 'queued', emailId: result.emailId };
+    if (result.accepted) return { status: 'queued', emailIds: result.emailIds };
 
     const status =
       result.status === 'too_large'

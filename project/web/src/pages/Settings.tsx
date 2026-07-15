@@ -257,11 +257,24 @@ function PassportSection({ session }: { session: Session }) {
   );
 }
 
+/** Plain words for a refusal reason (decision 0031; legacy reasons included). */
+const REFUSAL_REASON_LABEL: Record<string, string> = {
+  sender_not_recognized: 'sender is not a registered user and not on any allowlist',
+  sender_not_allowlisted: 'sender was not on the allowlist',
+  no_owner: 'no capture owner was configured (older refusal)',
+  wrong_recipient: 'addressed to a different recipient',
+  message_too_large: 'message exceeded the size cap',
+  attachments_too_large: 'attachments exceeded the size cap',
+};
+
+/** Only sender-identity refusals are fixable by allowlisting (decision 0031). */
+const CLAIMABLE_REASONS = new Set(['sender_not_recognized', 'sender_not_allowlisted', 'no_owner']);
+
 /**
- * Email capture (Session O4, decision 0028): the instance's inbound address, the
- * sender allowlist (the control that decides whose mail Cogeto will remember),
- * and recent refusals for one-click allowlisting. The forwarding-setup guidance
- * that accompanies the address is Unit B.
+ * Email capture (Session O4, decision 0028; sender routing per decision 0031):
+ * the instance's inbound address, the caller's always-trusted own address, the
+ * personal allowlist that routes external senders to them, and recent refusals
+ * with one-click claiming where allowlisting can actually help.
  */
 function EmailCaptureSection({ session }: { session: Session }) {
   const queryClient = useQueryClient();
@@ -303,9 +316,10 @@ function EmailCaptureSection({ session }: { session: Session }) {
       <div>
         <SectionTitle>Email capture</SectionTitle>
         <p className="mt-1 text-xs text-slate-400">
-          Forward, BCC, or set a provider rule to send mail to your inbound address. The sender
-          allowlist below decides whose mail Cogeto will remember — until you add a sender or
-          domain, no forwarded mail is accepted.
+          Forward, BCC, or set a provider rule to send mail to the inbound address. Mail{' '}
+          <strong>you</strong> send there (from your own address) is always captured for you; mail
+          from other senders reaches you only when they are on <strong>your</strong> allowlist
+          below. Captured email follows your default scope above.
         </p>
       </div>
 
@@ -365,18 +379,34 @@ function EmailCaptureSection({ session }: { session: Session }) {
               </ul>
               <p className="rounded-md bg-slate-50 p-2 text-slate-500">
                 Cogeto only ever receives <strong>what you forward</strong> — never your whole
-                mailbox, and never your password or account access. The allowlist below decides
-                whose forwarded mail is actually remembered.
+                mailbox, and never your password or account access.
+              </p>
+            </div>
+          )}
+
+          {config.data.selfAddress && (
+            <div className="rounded-md bg-slate-50 p-3">
+              <div className="text-xs font-medium text-slate-500">Always trusted</div>
+              <p className="mt-1 text-sm text-slate-700">
+                <span className="font-mono">{config.data.selfAddress}</span>
+                <span className="ml-2 text-xs text-slate-400">
+                  your registered address — anything you forward or BCC is captured for you
+                </span>
               </p>
             </div>
           )}
 
           <div>
             <div className="text-sm font-medium text-slate-700">Allowed senders</div>
+            <p className="text-xs text-slate-400">
+              External senders whose mail becomes <strong>your</strong> memory — typically the
+              people you auto-forward from your provider. Other users keep their own lists.
+            </p>
             {allowlist.length === 0 ? (
               <p className="mt-1 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
-                No senders allowed yet — Cogeto is <strong>closed by default</strong> and will not
-                accept any forwarded mail until you add an address or domain here.
+                No external senders allowed yet — apart from your own address above, Cogeto is{' '}
+                <strong>closed by default</strong> and accepts no mail for you until you add an
+                address or domain here.
               </p>
             ) : (
               <ul className="mt-2 divide-y divide-slate-100 rounded-md border border-slate-200">
@@ -456,8 +486,8 @@ function EmailCaptureSection({ session }: { session: Session }) {
             <div>
               <div className="text-sm font-medium text-slate-700">Recently refused</div>
               <p className="text-xs text-slate-400">
-                Mail Cogeto turned away because the sender wasn’t allowed. Add a legitimate sender
-                in one click.
+                Mail Cogeto turned away, and why. When the sender just isn’t known yet, claim them
+                for your own capture in one click.
               </p>
               <ul className="mt-2 space-y-1">
                 {refusals
@@ -469,18 +499,22 @@ function EmailCaptureSection({ session }: { session: Session }) {
                     >
                       <span className="min-w-0 truncate text-sm text-slate-600">
                         <span className="font-mono">{r.fromAddr}</span>
-                        <span className="ml-2 text-xs text-slate-400">{r.reason}</span>
+                        <span className="ml-2 text-xs text-slate-400">
+                          {REFUSAL_REASON_LABEL[r.reason] ?? r.reason}
+                        </span>
                       </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          r.fromAddr && add.mutate({ kind: 'address', value: r.fromAddr })
-                        }
-                        disabled={add.isPending}
-                        className="shrink-0 text-xs text-brand-teal-ink hover:underline"
-                      >
-                        Allow this sender
-                      </button>
+                      {CLAIMABLE_REASONS.has(r.reason) && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            r.fromAddr && add.mutate({ kind: 'address', value: r.fromAddr })
+                          }
+                          disabled={add.isPending}
+                          className="shrink-0 text-xs text-brand-teal-ink hover:underline"
+                        >
+                          Allow this sender
+                        </button>
+                      )}
                     </li>
                   ))}
               </ul>

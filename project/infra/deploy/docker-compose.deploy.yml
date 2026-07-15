@@ -89,14 +89,17 @@ services:
       COGETO_PRODUCTION: '1'
       # Instance timezone (QS-32) — relative dates resolve against this zone.
       COGETO_TIMEZONE: ${COGETO_TIMEZONE:-Europe/Zagreb}
-      # Inbound email (Session O4, decision 0028): the instance's unique inbound
-      # address, size caps, optional capture-owner pin, and the shared secret
-      # the Haraka queue hook presents to the internal intake (fail-closed).
+      # Inbound email (Session O4, decision 0028; sender routing per decision
+      # 0031): the instance's unique inbound address, size caps, and the shared
+      # secret the Haraka queue hook presents to the internal intake
+      # (fail-closed).
       COGETO_MAIL_INBOUND_ADDRESS: ${COGETO_MAIL_INBOUND_ADDRESS:?}
       COGETO_MAIL_MAX_BYTES: ${COGETO_MAIL_MAX_BYTES:-26214400}
       COGETO_MAIL_ATTACHMENTS_MAX_BYTES: ${COGETO_MAIL_ATTACHMENTS_MAX_BYTES:-26214400}
-      COGETO_MAIL_CAPTURE_USER_EMAIL: ${COGETO_MAIL_CAPTURE_USER_EMAIL:-}
       COGETO_MAIL_INTAKE_TOKEN: ${COGETO_MAIL_INTAKE_TOKEN:?}
+      # The bootstrap admin's login email — the operator account is excluded
+      # from sender-routed email capture (decision 0031).
+      COGETO_ADMIN_USER_EMAIL: ${ZITADEL_ADMIN_USERNAME:?}
       COGETO_MAIL_SMTP_ADDRESS: ${COGETO_MAIL_SMTP_ADDRESS:-mail:2525}
     volumes:
       - web-config:/web-config:ro
