@@ -18,6 +18,7 @@ import { ActionRegistry, ApprovalService } from '../agents/index';
 import { UserDirectory } from '../identity/index';
 import { EmailAllowlistService } from './email-allowlist.service';
 import { EmailIntakeService } from './email-intake.service';
+import { UserSettingsService } from './user-settings.service';
 import { EmailReplyDraftService } from './email-reply-draft.service';
 import { EmailSourceService } from './email-source.service';
 
@@ -144,11 +145,12 @@ describe('email reply triggers (integration: real Postgres + Qdrant + MinIO)', (
       new MemoryFileStore(tdb.db),
       allowlist,
       directory,
+      new UserSettingsService(tdb.db),
       {
         inboundAddress: INBOUND,
         maxBytes: 25 * 1024 * 1024,
         attachmentsMaxBytes: 25 * 1024 * 1024,
-        captureUserEmail: owner.email,
+        adminUserEmail: null,
         intakeToken: 't',
       },
     );
@@ -172,7 +174,7 @@ describe('email reply triggers (integration: real Postgres + Qdrant + MinIO)', (
       rcptTo: INBOUND,
     });
     if (!result.accepted) throw new Error(`intake refused: ${result.reason}`);
-    return result.emailId;
+    return result.emailIds[0]!;
   };
   const approvalCount = async () =>
     Number((await tdb.pool.query('SELECT count(*)::text AS n FROM approval')).rows[0].n);

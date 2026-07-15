@@ -58,15 +58,16 @@ describe('email allowlist management (integration: real Postgres)', () => {
     await service.addEntry(owner, { kind: 'address', value: 'ana@adriatic-foods.hr' });
     expect((await service.listForOwner(owner.userId)).length).toBe(2);
 
-    // The gate now matches an allowlisted address and a domain member.
-    expect(await service.matches(owner.userId, 'ana@adriatic-foods.hr')).toBe(true);
-    expect(await service.matches(owner.userId, 'anyone@trusted.example')).toBe(true);
-    expect(await service.matches(owner.userId, 'stranger@example.net')).toBe(false);
+    // The routing now matches an allowlisted address and a domain member to
+    // the owner (decision 0031 rule 2); a stranger matches nobody.
+    expect(await service.ownersMatching('ana@adriatic-foods.hr')).toContain(owner.userId);
+    expect(await service.ownersMatching('anyone@trusted.example')).toContain(owner.userId);
+    expect(await service.ownersMatching('stranger@example.net')).toEqual([]);
 
     // Remove the address entry; a foreign id cannot remove it.
     expect(await service.removeEntry({ ...owner, userId: 'someone-else' }, address.id)).toBe(false);
     expect(await service.removeEntry(owner, address.id)).toBe(true);
-    expect(await service.matches(owner.userId, 'ana@adriatic-foods.hr')).toBe(false);
+    expect(await service.ownersMatching('ana@adriatic-foods.hr')).not.toContain(owner.userId);
 
     // Add + remove are audited (the idempotent re-add wrote no second row).
     expect(await auditActions()).toEqual([

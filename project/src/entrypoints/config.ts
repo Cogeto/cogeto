@@ -66,7 +66,7 @@ const configSchema = z
       .int()
       .positive()
       .default(25 * 1024 * 1024),
-    mailCaptureUserEmail: z.string().min(1).optional(),
+    adminUserEmail: z.string().min(1).optional(),
     mailIntakeToken: z.string().default(''),
     /** host:port of the Haraka SMTP listener for the health probe (Session O4);
      * unset → the mail check reports "not configured" and stays green. */
@@ -203,7 +203,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
     mailInboundAddress: env.COGETO_MAIL_INBOUND_ADDRESS || undefined,
     mailMaxBytes: env.COGETO_MAIL_MAX_BYTES || undefined,
     mailAttachmentsMaxBytes: env.COGETO_MAIL_ATTACHMENTS_MAX_BYTES || undefined,
-    mailCaptureUserEmail: env.COGETO_MAIL_CAPTURE_USER_EMAIL || undefined,
+    adminUserEmail: env.COGETO_ADMIN_USER_EMAIL || undefined,
     mailIntakeToken: env.COGETO_MAIL_INTAKE_TOKEN || undefined,
     mailSmtpAddress: env.COGETO_MAIL_SMTP_ADDRESS || undefined,
     pgPoolMax: env.COGETO_PG_POOL_MAX || undefined,
@@ -258,14 +258,14 @@ export function mailOptions(config: CogetoConfig): {
   inboundAddress: string | null;
   maxBytes: number;
   attachmentsMaxBytes: number;
-  captureUserEmail: string | null;
+  adminUserEmail: string | null;
   intakeToken: string;
 } {
   return {
     inboundAddress: config.mailInboundAddress ?? null,
     maxBytes: config.mailMaxBytes,
     attachmentsMaxBytes: config.mailAttachmentsMaxBytes,
-    captureUserEmail: config.mailCaptureUserEmail ?? null,
+    adminUserEmail: config.adminUserEmail ?? null,
     intakeToken: config.mailIntakeToken,
   };
 }

@@ -23,6 +23,7 @@ import {
   EmailSourceDeletion,
   EmailSourceReader,
   FileSourceReader,
+  UserSettingsService,
 } from '../connectors/index';
 import { UserDirectory } from '../identity/index';
 import { INGESTION_PIPELINE_JOB_TYPE, createIngestionPipeline } from '../ingestion/index';
@@ -163,13 +164,21 @@ describe('email deletion cascade (integration: real Postgres + Qdrant + MinIO)',
     const directory = new UserDirectory(tdb.db);
     await directory.record(owner);
     await allowlist.addEntry(owner, { kind: 'domain', value: 'adriatic-foods.hr' });
-    intake = new EmailIntakeService(tdb.db, objects, fileStore, allowlist, directory, {
-      inboundAddress: INBOUND,
-      maxBytes: 25 * 1024 * 1024,
-      attachmentsMaxBytes: 25 * 1024 * 1024,
-      captureUserEmail: owner.email,
-      intakeToken: 't',
-    });
+    intake = new EmailIntakeService(
+      tdb.db,
+      objects,
+      fileStore,
+      allowlist,
+      directory,
+      new UserSettingsService(tdb.db),
+      {
+        inboundAddress: INBOUND,
+        maxBytes: 25 * 1024 * 1024,
+        attachmentsMaxBytes: 25 * 1024 * 1024,
+        adminUserEmail: null,
+        intakeToken: 't',
+      },
+    );
     saga = new DeletionSaga(tdb.db, [new EmailSourceDeletion()], vectors);
     executor = new DeletionExecutor(vectors, objects, keyDir);
   }, 180_000);
@@ -221,7 +230,7 @@ describe('email deletion cascade (integration: real Postgres + Qdrant + MinIO)',
     });
     expect(result.accepted).toBe(true);
     if (!result.accepted) return;
-    const emailId = result.emailId;
+    const emailId = result.emailIds[0]!;
 
     // The stored message: raw + externalised HTML objects, and the attachment
     // file source key.

@@ -33,13 +33,17 @@ export interface EmailRefusalDto {
 
 /**
  * GET /api/email/config — the Settings → Email capture surface: the instance's
- * inbound address, the current allowlist, and recent refusals for one-click
- * allowlisting.
+ * inbound address, the caller's implicitly trusted own address, the current
+ * allowlist, and recent refusals for one-click allowlisting.
  */
 export interface EmailCaptureConfigDto {
   /** The instance's unique inbound address (decision 0028 ruling 1), or null
    * when the instance has not been configured with one yet. */
   inboundAddress: string | null;
+  /** The caller's registered address — always trusted: mail they send or
+   * forward to the inbound address is captured for them (decision 0031 rule 1).
+   * Null when the identity token carries no email. */
+  selfAddress: string | null;
   allowlist: EmailAllowlistEntryDto[];
   recentRefusals: EmailRefusalDto[];
 }

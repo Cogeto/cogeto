@@ -95,18 +95,21 @@ services:
       # REDACTION_ENABLED=1 then fails loudly at boot instead of silently sending
       # plaintext to the model provider.
       REDACTION_REQUIRED: ${REDACTION_REQUIRED:-}
-      # Inbound email (Session O4, decision 0028). The instance's unique inbound
-      # address (ruling 1), the size caps (ruling 6), the optional capture-owner
-      # email (ruling 3, empty → the sole user), the shared secret the Haraka
-      # queue hook presents to the internal intake (ruling 7), and the SMTP
-      # listener address for the app's mail health probe. The DEV token below is
-      # for localhost only — provisioning (O6) generates a real one per instance
-      # and sets it on BOTH the app and the mail service.
+      # Inbound email (Session O4, decision 0028; sender routing per decision
+      # 0031). The instance's unique inbound address (ruling 1), the size caps
+      # (ruling 6), the shared secret the Haraka queue hook presents to the
+      # internal intake (ruling 7), and the SMTP listener address for the app's
+      # mail health probe. The DEV token below is for localhost only —
+      # provisioning (O6) generates a real one per instance and sets it on BOTH
+      # the app and the mail service.
       COGETO_MAIL_INBOUND_ADDRESS: ${COGETO_MAIL_INBOUND_ADDRESS:-capture@in.localhost}
       COGETO_MAIL_MAX_BYTES: ${COGETO_MAIL_MAX_BYTES:-26214400}
       COGETO_MAIL_ATTACHMENTS_MAX_BYTES: ${COGETO_MAIL_ATTACHMENTS_MAX_BYTES:-26214400}
-      COGETO_MAIL_CAPTURE_USER_EMAIL: ${COGETO_MAIL_CAPTURE_USER_EMAIL:-}
       COGETO_MAIL_INTAKE_TOKEN: ${COGETO_MAIL_INTAKE_TOKEN:-cogeto-dev-mail-token}
+      # The bootstrap admin's login email — the operator account is excluded
+      # from sender-routed email capture (decision 0031). Must match the
+      # Zitadel FirstInstance admin below.
+      COGETO_ADMIN_USER_EMAIL: ${ZITADEL_ADMIN_USERNAME:-admin@cogeto.localhost}
       COGETO_MAIL_SMTP_ADDRESS: ${COGETO_MAIL_SMTP_ADDRESS:-mail:2525}
     volumes:
       - web-config:/web-config:ro

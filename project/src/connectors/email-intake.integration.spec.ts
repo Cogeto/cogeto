@@ -21,6 +21,7 @@ import type { IngestionPipeline } from '../ingestion/index';
 import { UserDirectory } from '../identity/index';
 import { EmailAllowlistService } from './email-allowlist.service';
 import { EmailIntakeService } from './email-intake.service';
+import { UserSettingsService } from './user-settings.service';
 import { EmailSourceReader } from './email.source-reader';
 import { FileSourceReader } from './file.source-reader';
 import { NotesSourceReader } from './notes.source-reader';
@@ -156,13 +157,14 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
   let reconciliation: MemoryReconciliation;
   let allowlist: EmailAllowlistService;
   let directory: UserDirectory;
+  let settings: UserSettingsService;
   let intake: EmailIntakeService;
 
   const options: MailOptions = {
     inboundAddress: INBOUND,
     maxBytes: 25 * 1024 * 1024,
     attachmentsMaxBytes: 25 * 1024 * 1024,
-    captureUserEmail: owner.email,
+    adminUserEmail: 'admin@instance.test',
     intakeToken: 'test-token',
   };
   const envelope = { mailFrom: null as string | null, rcptTo: INBOUND };
@@ -193,8 +195,17 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     fileStore = new MemoryFileStore(tdb.db);
     allowlist = new EmailAllowlistService(tdb.db);
     directory = new UserDirectory(tdb.db);
+    settings = new UserSettingsService(tdb.db);
     await directory.record(owner);
-    intake = new EmailIntakeService(tdb.db, objects, fileStore, allowlist, directory, options);
+    intake = new EmailIntakeService(
+      tdb.db,
+      objects,
+      fileStore,
+      allowlist,
+      directory,
+      settings,
+      options,
+    );
   }, 180_000);
 
   afterAll(async () => {
@@ -291,10 +302,18 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
   });
 
   it('size_capped: an oversize message is refused, stores nothing', async () => {
-    const tiny = new EmailIntakeService(tdb.db, objects, fileStore, allowlist, directory, {
-      ...options,
-      maxBytes: 200,
-    });
+    const tiny = new EmailIntakeService(
+      tdb.db,
+      objects,
+      fileStore,
+      allowlist,
+      directory,
+      settings,
+      {
+        ...options,
+        maxBytes: 200,
+      },
+    );
     const big = rawEmail({ from: 'ana@adriatic-foods.hr', text: 'x'.repeat(5000) });
     const result = await tiny.intake(big, { mailFrom: 'ana@adriatic-foods.hr', rcptTo: INBOUND });
     expect(result.accepted).toBe(false);
@@ -315,7 +334,7 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     expect(await emailRowCount()).toBe(0);
     expect(await pipelineJobCount()).toBe(before);
     expect(await objectCount()).toBe(objsBefore);
-    expect(await refusalCount('sender_not_allowlisted')).toBeGreaterThanOrEqual(1);
+    expect(await refusalCount('sender_not_recognized')).toBeGreaterThanOrEqual(1);
 
     // Allowlisted DOMAIN → accepted.
     await allow('domain', 'adriatic-foods.hr');
@@ -356,7 +375,7 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     );
     expect(textResult.accepted).toBe(true);
     if (!textResult.accepted) return;
-    const textRow = await emailRow(textResult.emailId);
+    const textRow = await emailRow(textResult.emailIds[0]!);
     expect(textRow.from_addr).toBe('ana@adriatic-foods.hr');
     expect(textRow.text_body).toContain('deadline moved to Friday');
     expect(textRow.headers_json.subject).toContain('Deadline');
@@ -373,7 +392,7 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     );
     expect(htmlResult.accepted).toBe(true);
     if (!htmlResult.accepted) return;
-    const htmlRow = await emailRow(htmlResult.emailId);
+    const htmlRow = await emailRow(htmlResult.emailIds[0]!);
     const retainedHtml = (htmlRow.html_body as string | null) ?? '';
     expect(retainedHtml).toContain('the offer');
     expect(retainedHtml.toLowerCase()).not.toContain('<script'); // sanitised
@@ -397,9 +416,9 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     );
     expect(withAtt.accepted).toBe(true);
     if (!withAtt.accepted) return;
-    const attRow = await emailRow(withAtt.emailId);
+    const attRow = await emailRow(withAtt.emailIds[0]!);
     expect(attRow.has_attachments).toBe(true);
-    const atts = await attachmentRows(withAtt.emailId);
+    const atts = await attachmentRows(withAtt.emailIds[0]!);
     expect(atts.length).toBe(1);
     expect(atts[0]!.filename).toBe('report.pdf');
   });
@@ -428,7 +447,7 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     expect(result.accepted).toBe(true);
     if (!result.accepted) return;
 
-    const atts = await attachmentRows(result.emailId);
+    const atts = await attachmentRows(result.emailIds[0]!);
     const pdf = atts.find((a) => a.filename === 'proposal.pdf')!;
     const txt = atts.find((a) => a.filename === 'notes.txt')!;
     // The pdf is a linked, stored, processed file source.
@@ -442,7 +461,7 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     // Run the pipeline: the email body AND the pdf attachment both derive memories.
     await runWorker(pipeline);
     await runWorker(pipeline);
-    expect((await memoriesFor('email', result.emailId)).length).toBeGreaterThan(0);
+    expect((await memoriesFor('email', result.emailIds[0]!)).length).toBeGreaterThan(0);
     expect((await memoriesFor('file', pdf.file_object_key!)).length).toBeGreaterThan(0);
   });
 
@@ -458,7 +477,7 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     expect(ok.accepted).toBe(true);
     if (!ok.accepted) return;
     expect(await pipelineJobCount()).toBe(jobsBefore + 1);
-    const okRow = await emailRow(ok.emailId);
+    const okRow = await emailRow(ok.emailIds[0]!);
     expect(await objects.statObject(okRow.raw_object_key)).not.toBeNull();
 
     // Failure path: a broken file store throws inside the transaction (after the
@@ -479,6 +498,7 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
       brokenFiles,
       allowlist,
       directory,
+      settings,
       options,
     );
 
@@ -504,5 +524,90 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     expect(await emailRowCount()).toBe(rowsBefore); // no new source
     expect(await pipelineJobCount()).toBe(jobsBefore2); // no new job
     expect(await objectCount()).toBe(objsBefore); // raw + attachment both cleaned
+  });
+
+  // ── Sender routing (decision 0031) ─────────────────────────────────────────
+
+  const customer: Principal = {
+    userId: 'user-customer',
+    name: 'Customer',
+    email: 'customer@client.example',
+    orgId: 'org-mail',
+    orgName: 'Org',
+    roles: [],
+  };
+  const admin: Principal = {
+    userId: 'user-admin',
+    name: 'Operator Admin',
+    email: 'admin@instance.test',
+    orgId: 'org-mail',
+    orgName: 'Org',
+    roles: ['admin'],
+  };
+  const ownedBy = async (emailId: string) =>
+    (await tdb.pool.query('SELECT owner_id, scope FROM email_message WHERE id = $1', [emailId]))
+      .rows[0] as { owner_id: string; scope: string };
+
+  it('self_sender_routes: the exact dry-run scenario — admin + customer registered, NO configuration, the customer forwards → captured for the customer', async () => {
+    await directory.record(admin);
+    await directory.record(customer);
+    const result = await intake.intake(
+      rawEmail({ from: `Customer <${customer.email}>`, text: 'my forwarded note.' }),
+      { mailFrom: customer.email, rcptTo: INBOUND },
+    );
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) return;
+    expect(result.emailIds).toHaveLength(1);
+    expect((await ownedBy(result.emailIds[0]!)).owner_id).toBe(customer.userId);
+  });
+
+  it('admin_excluded: mail from the operator admin account is refused, never captured', async () => {
+    await directory.record(admin);
+    const result = await intake.intake(rawEmail({ from: admin.email!, text: 'operator noise.' }), {
+      mailFrom: admin.email,
+      rcptTo: INBOUND,
+    });
+    expect(result.accepted).toBe(false);
+    expect(await refusalCount('sender_not_recognized')).toBeGreaterThanOrEqual(1);
+  });
+
+  it('copy_to_each: an external sender on two users allowlists produces one copy per user; a single-list sender reaches only that user', async () => {
+    await directory.record(customer);
+    // Both the original owner and the customer allowlist the same client.
+    await allowlist.addEntry(owner, { kind: 'address', value: 'client@x.example' });
+    await allowlist.addEntry(customer, { kind: 'address', value: 'client@x.example' });
+    const both = await intake.intake(
+      rawEmail({ from: 'client@x.example', text: 'for both of you.' }),
+      { mailFrom: 'client@x.example', rcptTo: INBOUND },
+    );
+    expect(both.accepted).toBe(true);
+    if (!both.accepted) return;
+    expect(both.emailIds).toHaveLength(2);
+    const owners = await Promise.all(both.emailIds.map(async (id) => (await ownedBy(id)).owner_id));
+    expect(owners.sort()).toEqual([customer.userId, owner.userId].sort());
+
+    // Allowlisted for the customer ONLY → exactly one copy, the customer's.
+    await allowlist.addEntry(customer, { kind: 'address', value: 'private-client@y.example' });
+    const single = await intake.intake(
+      rawEmail({ from: 'private-client@y.example', text: 'for one of you.' }),
+      { mailFrom: 'private-client@y.example', rcptTo: INBOUND },
+    );
+    expect(single.accepted).toBe(true);
+    if (!single.accepted) return;
+    expect(single.emailIds).toHaveLength(1);
+    expect((await ownedBy(single.emailIds[0]!)).owner_id).toBe(customer.userId);
+  });
+
+  it('default_scope_respected: a user whose default capture scope is shared captures email as shared', async () => {
+    await directory.record(customer);
+    await settings.update(customer, { defaultScope: 'shared' });
+    const result = await intake.intake(
+      rawEmail({ from: customer.email!, text: 'a team-visible note.' }),
+      { mailFrom: customer.email, rcptTo: INBOUND },
+    );
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) return;
+    expect((await ownedBy(result.emailIds[0]!)).scope).toBe('shared');
+    await settings.update(customer, { defaultScope: 'private' });
   });
 });

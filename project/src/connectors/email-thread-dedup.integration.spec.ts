@@ -20,6 +20,7 @@ import type { IngestionPipeline } from '../ingestion/index';
 import { UserDirectory } from '../identity/index';
 import { EmailAllowlistService } from './email-allowlist.service';
 import { EmailIntakeService } from './email-intake.service';
+import { UserSettingsService } from './user-settings.service';
 import { EmailSourceReader } from './email.source-reader';
 
 const DIMS = 8;
@@ -138,13 +139,21 @@ describe('email thread dedup (integration: reconciliation over a reply chain)', 
     const directory = new UserDirectory(tdb.db);
     await directory.record(owner);
     await allowlist.addEntry(owner, { kind: 'domain', value: 'adriatic-foods.hr' });
-    intake = new EmailIntakeService(tdb.db, objects, fileStore, allowlist, directory, {
-      inboundAddress: INBOUND,
-      maxBytes: 25 * 1024 * 1024,
-      attachmentsMaxBytes: 25 * 1024 * 1024,
-      captureUserEmail: owner.email,
-      intakeToken: 't',
-    });
+    intake = new EmailIntakeService(
+      tdb.db,
+      objects,
+      fileStore,
+      allowlist,
+      directory,
+      new UserSettingsService(tdb.db),
+      {
+        inboundAddress: INBOUND,
+        maxBytes: 25 * 1024 * 1024,
+        attachmentsMaxBytes: 25 * 1024 * 1024,
+        adminUserEmail: null,
+        intakeToken: 't',
+      },
+    );
   }, 180_000);
 
   afterAll(async () => {
