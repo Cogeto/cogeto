@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -105,6 +105,19 @@ describe('operator script — CLI contract', () => {
       expect(status).toBe(1);
       expect(out).toContain('no instance found');
     }
+  });
+
+  it('upgrade self-heals the PATH install (issue #60: a re-downloaded script run via `upgrade` must still yield a working `sudo cogeto`)', () => {
+    // A fake installed instance pinned to the target version: upgrade takes
+    // the "already on" early exit — no network, no confirmation — but the
+    // self-install intent must already have been announced.
+    const root = mkdtempSync(path.join(tmpdir(), 'cogeto-operator-upgrade-'));
+    writeFileSync(path.join(root, '.env'), 'COGETO_VERSION=9.9.9\n', { mode: 0o600 });
+    const { status, out } = runScript(['upgrade', '9.9.9', '--check', '--root', root]);
+    rmSync(root, { recursive: true, force: true });
+    expect(status).toBe(0);
+    expect(out).toContain('/usr/local/bin/cogeto');
+    expect(out).toContain('already on v9.9.9');
   });
 
   it('backup-info prints the OVHcloud settings (D4) and performs nothing', () => {

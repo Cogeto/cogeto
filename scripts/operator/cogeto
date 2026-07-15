@@ -381,13 +381,15 @@ install_cosign() {
 # Put this script on PATH so the printed 'sudo cogeto status' just works
 # (o6-dry-run: the operator ran ./cogeto from \$HOME and 'cogeto' was not found).
 install_self() {
-  target="/usr/local/bin/cogeto"
-  self="$0"
-  if [ "$self" = "$target" ]; then
+  # Unique variable names: bash function variables are global, and callers
+  # (cmd_upgrade) hold state in `target` — a collision here broke upgrades.
+  self_install_target="/usr/local/bin/cogeto"
+  self_install_source="$0"
+  if [ "$self_install_source" = "$self_install_target" ]; then
     return 0
   fi
-  say "installing this script to ${target} (so 'sudo cogeto status' works from anywhere)"
-  run install -m 0755 "$self" "$target"
+  say "installing this script to ${self_install_target} (so 'sudo cogeto status' works from anywhere)"
+  run install -m 0755 "$self_install_source" "$self_install_target"
 }
 
 verify_images() {
@@ -683,6 +685,10 @@ cmd_upgrade() {
   target="${1:-latest}"
   require_root
   require_installed
+  # Self-heal the PATH install (issue #60): an operator who fetched a fresh
+  # copy of this script and ran `upgrade` must still end up with a working
+  # `sudo cogeto <cmd>` — install-time-only self-install proved insufficient.
+  install_self
   current="$(env_get COGETO_VERSION)"
   [ -n "$current" ] || die "COGETO_VERSION missing from ${ENV_FILE} — the instance is misconfigured"
 
@@ -842,6 +848,8 @@ cmd_status() {
 cmd_configure() {
   require_root
   require_installed
+  # Self-heal the PATH install (issue #60) — same rationale as cmd_upgrade.
+  install_self
   new_domain=""; mistral_key=""; regen=""
   while [ $# -gt 0 ]; do
     case "$1" in
