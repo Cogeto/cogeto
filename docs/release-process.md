@@ -45,7 +45,21 @@ tag and `package.json` `version` are the two sources of truth and must agree
 | `cogeto/cogeto-mail:X.Y.Z` (+ `:latest`) | Docker Hub, cosign-signed |
 | SBOM (`cogeto-X.Y.Z.sbom.spdx.json`) | cosign attestation + GitHub Release asset |
 | Release notes (grouped by feat/fix/docs/chore) | GitHub Release |
+| **Trust scores** (`eval/trust-scores/vX.Y.Z.json` + rebuilt `index.json`) | committed to `main` via an auto-merged PR (decision 0032) |
 | Deploy assets consumed at the tag (`project/infra/deploy/`, the zitadel-init script) | the tagged source tree |
+
+### Trust scores (decision 0032)
+
+After the images are pushed and the Release exists, the pipeline runs the
+live eval + chat suites for the **default model configuration**, emits the
+machine-readable quality record (schema:
+[`docs/trust-scores-schema/`](trust-scores-schema/)), and lands it on `main`
+as an auto-merged `chore: publish trust scores for vX.Y.Z` PR that passes
+the full required checks. Release files are **immutable** — the publisher
+refuses to overwrite an existing version. The step **never blocks the
+release**: on failure it reports loudly with the manual-retry commands. The
+**redacted** configuration is maintainer-run and merged in as a second
+`--partial` (see the schema README).
 
 ## Rules worth restating
 

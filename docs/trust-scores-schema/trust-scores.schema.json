@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cogeto.eu/schemas/trust-scores/1.0/trust-scores.schema.json",
+  "title": "Cogeto trust scores (per release)",
+  "description": "The machine-readable quality record Cogeto publishes for every release (eval/trust-scores/vX.Y.Z.json). Rendered by the public trust-score page. Files are immutable once published; corrections ship as notes in the NEXT release. Versioning: additive changes bump the minor, breaking changes the major.",
+  "type": "object",
+  "required": ["schema_version", "generated_by", "configurations"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "generated_by": {
+      "type": "object",
+      "required": ["release", "commit", "harness", "generated_at", "backfilled"],
+      "additionalProperties": false,
+      "properties": {
+        "release": { "type": "string", "pattern": "^v\\d+\\.\\d+\\.\\d+$" },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+        "harness": {
+          "type": "string",
+          "description": "Prompt/threshold versions the run used (or 'transcribed' provenance for backfilled files)."
+        },
+        "generated_at": { "type": "string", "format": "date-time" },
+        "backfilled": {
+          "type": "boolean",
+          "description": "True when the numbers were transcribed from recorded runs rather than emitted by the harness at release time."
+        }
+      }
+    },
+    "configurations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/configuration" }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "One-line human explanations for notable changes. The honesty line: dips ship with explanations, never hidden."
+    }
+  },
+  "$defs": {
+    "fraction": { "type": "number", "minimum": 0, "maximum": 1 },
+    "count": { "type": "integer", "minimum": 0 },
+    "configuration": {
+      "type": "object",
+      "required": ["id", "models", "redaction", "corpus", "metrics"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "Stable configuration identifier, e.g. mistral-default, mistral-default-redacted. The website's join key across releases."
+        },
+        "models": {
+          "type": "object",
+          "required": ["pipeline", "answer", "embedding"],
+          "additionalProperties": false,
+          "properties": {
+            "pipeline": { "type": "string", "minLength": 1 },
+            "answer": { "type": "string", "minLength": 1 },
+            "embedding": { "type": "string", "minLength": 1 }
+          }
+        },
+        "redaction": {
+          "type": "boolean",
+          "description": "Whether the local PII-redaction tier was active for this measured configuration."
+        },
+        "corpus": {
+          "type": "object",
+          "required": ["golden_cases", "reconcile_pairs", "per_language"],
+          "additionalProperties": false,
+          "properties": {
+            "golden_cases": { "$ref": "#/$defs/count" },
+            "reconcile_pairs": { "$ref": "#/$defs/count" },
+            "chat_cases": { "$ref": "#/$defs/count" },
+            "per_language": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["language", "golden_cases"],
+                "additionalProperties": false,
+                "properties": {
+                  "language": { "type": "string", "minLength": 2, "maxLength": 8 },
+                  "golden_cases": { "$ref": "#/$defs/count" }
+                }
+              }
+            }
+          }
+        },
+        "metrics": {
+          "type": "object",
+          "required": ["per_language", "aggregate"],
+          "additionalProperties": false,
+          "properties": {
+            "per_language": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": [
+                  "language",
+                  "golden_cases",
+                  "extraction_precision",
+                  "extraction_recall",
+                  "verification_agreement",
+                  "dedup_accuracy",
+                  "contradiction_recall"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "language": { "type": "string", "minLength": 2, "maxLength": 8 },
+                  "golden_cases": { "$ref": "#/$defs/count" },
+                  "extraction_precision": { "$ref": "#/$defs/fraction" },
+                  "extraction_recall": { "$ref": "#/$defs/fraction" },
+                  "verification_agreement": { "$ref": "#/$defs/fraction" },
+                  "dedup_accuracy": {
+                    "oneOf": [{ "$ref": "#/$defs/fraction" }, { "type": "null" }],
+                    "description": "Null when the language had no reconciliation pairs."
+                  },
+                  "contradiction_recall": {
+                    "oneOf": [{ "$ref": "#/$defs/fraction" }, { "type": "null" }]
+                  }
+                }
+              }
+            },
+            "aggregate": {
+              "type": "object",
+              "required": [
+                "extraction_precision",
+                "extraction_recall",
+                "verification_agreement",
+                "dedup_accuracy",
+                "contradiction_recall"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "extraction_precision": { "$ref": "#/$defs/fraction" },
+                "extraction_recall": { "$ref": "#/$defs/fraction" },
+                "verification_agreement": { "$ref": "#/$defs/fraction" },
+                "dedup_accuracy": { "$ref": "#/$defs/fraction" },
+                "contradiction_recall": { "$ref": "#/$defs/fraction" }
+              }
+            },
+            "chat": {
+              "type": "object",
+              "required": ["cases", "passed", "failed"],
+              "additionalProperties": false,
+              "properties": {
+                "cases": { "$ref": "#/$defs/count" },
+                "passed": { "$ref": "#/$defs/count" },
+                "failed": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Case ids that failed — published, not hidden."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
