@@ -14,7 +14,7 @@ import {
   withTransactionalEnqueue,
   writeAudit,
 } from '../infrastructure/index';
-import type { Db, InstanceSigner, Tx } from '../infrastructure/index';
+import type { Db, DbOrTx, InstanceSigner, Tx } from '../infrastructure/index';
 import { deletionReceipt, fileMetadata, memory, sourceTypeEnum } from './persistence/tables';
 import type { SourceType } from './persistence/tables';
 import { MemoryVectorStore } from './persistence/vector-store';
@@ -85,6 +85,17 @@ export interface SourceDeletion {
    * Optional — note/chat/file sources return nothing extra.
    */
   enumerateCascade?(tx: Tx, sourceId: string): Promise<SourceCascade>;
+  /**
+   * Which of these bucket object keys are legitimately owned by this
+   * connector's RETAINED sources (issue #62)? The integrity sweep's
+   * orphaned-object arm validates objects against file_metadata; connectors
+   * that store objects recorded elsewhere (email: raw originals + externalised
+   * HTML on email_message) answer here so retained bytes are never mis-flagged
+   * as orphans — while a genuinely abandoned object (no row) still is. The
+   * probe reads only the connector's own tables (§A.1). Optional — note/chat
+   * sources store no objects.
+   */
+  ownsObjectKeys?(db: DbOrTx, keys: readonly string[]): Promise<string[]>;
 }
 
 /**

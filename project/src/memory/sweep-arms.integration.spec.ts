@@ -1,9 +1,11 @@
+import { randomUUID } from 'node:crypto';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Principal } from '@cogeto/shared';
 import { ensureInstanceKeys } from '../infrastructure/index';
+import { EmailSourceDeletion } from '../connectors/index';
 import {
   fakeEmbedding,
   startTestDatabase,
@@ -123,6 +125,55 @@ describe('sweep arms QS-28 + QS-16 (integration: real Postgres + Qdrant + MinIO)
     await clearAlerts();
     await objects.deleteObject(orphanKey);
     await objects.deleteObject(staleStagingKey);
+  });
+
+  it('email_objects_not_orphans: retained email raw/HTML objects are adapter-owned, never flagged; an abandoned email object still is (issue #62)', async () => {
+    // A retained email exactly as the intake stores it: raw original +
+    // externalised HTML, both recorded on email_message — NO file_metadata.
+    const emailId = randomUUID();
+    const rawKey = `org-1/sweep-arms-user/private/email-${emailId}`;
+    const htmlKey = `${rawKey}.html`;
+    await objects.putObject(rawKey, Buffer.from('raw rfc822 bytes'));
+    await objects.putObject(htmlKey, Buffer.from('<p>retained html</p>'));
+    await tdb.pool.query(
+      `INSERT INTO email_message
+         (id, owner_id, from_addr, to_addr, raw_object_key, html_object_key, headers_json, has_attachments)
+       VALUES ($1, $2, 'ana@adriatic-foods.hr', 'capture@in.localhost', $3, $4, '{}'::jsonb, false)`,
+      [emailId, userA.userId, rawKey, htmlKey],
+    );
+    // The residue of a crashed intake: an email-shaped object with NO row —
+    // the abort-cleanup's documented backstop case; the sweep must still flag it.
+    const abandonedKey = `org-1/sweep-arms-user/private/email-${randomUUID()}`;
+    await objects.putObject(abandonedKey, Buffer.from('crashed intake residue'));
+
+    const sweep = new IntegritySweep(
+      tdb.db,
+      vectors,
+      objects,
+      keyDir,
+      [new EmailSourceDeletion()],
+      {
+        objectGraceMinutes: 0,
+      },
+    );
+    await sweep.run();
+    const details = await alertsOf('orphaned_object');
+    expect(details.some((d) => d.startsWith(`${rawKey} `))).toBe(false);
+    expect(details.some((d) => d.startsWith(`${htmlKey} `))).toBe(false);
+    expect(details.some((d) => d.startsWith(`${abandonedKey} `))).toBe(true);
+
+    // Without the adapter (the pre-fix sweep), the same retained email WOULD be
+    // flagged — proving the adapter is what makes retention legitimate.
+    await clearAlerts();
+    await sweepWith(0).run();
+    const blind = await alertsOf('orphaned_object');
+    expect(blind.some((d) => d.startsWith(`${rawKey} `))).toBe(true);
+
+    await clearAlerts();
+    await tdb.pool.query(`DELETE FROM email_message WHERE id = $1`, [emailId]);
+    await objects.deleteObject(rawKey);
+    await objects.deleteObject(htmlKey);
+    await objects.deleteObject(abandonedKey);
   });
 
   it('payload_mismatch_arm: a stale Qdrant payload is flagged AND self-healed by targeted re-upsert; a missing point is flagged for reindex (QS-16)', async () => {

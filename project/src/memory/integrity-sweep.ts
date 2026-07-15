@@ -349,6 +349,14 @@ export class IntegritySweep {
         .from(fileMetadata)
         .where(inArray(fileMetadata.objectKey, batch));
       for (const row of rows) known.add(row.objectKey);
+      // Connector-owned objects recorded outside file_metadata (issue #62):
+      // retained email raw originals / externalised HTML live on email_message.
+      // Ask each adapter which keys its live rows own — an abandoned object
+      // with no row matches nothing and is still flagged.
+      for (const adapter of this.sourceAdapters.values()) {
+        if (!adapter.ownsObjectKeys) continue;
+        for (const key of await adapter.ownsObjectKeys(this.db, batch)) known.add(key);
+      }
     }
 
     for (const { key } of stagingKeys) {
@@ -363,7 +371,7 @@ export class IntegritySweep {
       alerts.push({
         receiptId: null,
         kind: 'orphaned_object',
-        detail: `${key} — object present with no file_metadata row; bytes outside any receipt`,
+        detail: `${key} — object present with no owning record (file_metadata or a connector's retained source); bytes outside any receipt`,
       });
     }
     return { scanned: objects.length, alerts };
