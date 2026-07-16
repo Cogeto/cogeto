@@ -204,30 +204,59 @@ jobs:
             --notes-file release-notes.md \
             "$SBOM"
 
-      # ── Trust scores (O7, decision 0032) — NEVER blocks the release ──────
-      # Emits the default configuration's measured quality record and lands
-      # eval/trust-scores/vX.Y.Z.json + index.json on protected main via an
-      # auto-merged PR (no protection bypass; the PR runs the full checks).
-      # continue-on-error: the image publish above is already done — a failure
-      # here reports loudly for manual retry, it never fails the release.
-      # The redacted configuration is maintainer-run (the Presidio sidecar is
-      # not cheaply runnable here) — see docs/trust-scores-schema/README.md.
-      - name: Emit and publish trust scores (default configuration)
-        id: trust
-        continue-on-error: true
+  # ── Trust scores (O7, decision 0032) — NEVER blocks the release ──────────
+  # A separate job so (a) job-level continue-on-error keeps the release run
+  # green even when this fails, and (b) it can share the `live-model-eval`
+  # concurrency group with CI's eval-gate: both consume ONE Mistral API key,
+  # and running them concurrently (tag pushed right after the merge) made
+  # them 429-rate-limit each other on v0.9.2. The eval commands also retry
+  # once after a cool-off for any remaining transient rate limit.
+  # Lands eval/trust-scores/vX.Y.Z.json + index.json on protected main via an
+  # auto-merged PR (no protection bypass; the PR runs the full checks). The
+  # redacted configuration is maintainer-run — docs/trust-scores-schema/.
+  trust-scores:
+    name: trust-scores
+    needs: release
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    concurrency:
+      group: live-model-eval
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Emit trust scores (default configuration, with retry)
+        env:
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          COGETO_EVAL_GATE: '1'
+        run: |
+          npm ci
+          attempt=1
+          until npm run eval -- --emit-json /tmp/trust-partial.json && \
+                npm run eval:chat -- --emit-json /tmp/trust-partial.json; do
+            if [ "$attempt" -ge 2 ]; then
+              echo "::error title=Trust scores NOT published for ${GITHUB_REF_NAME}::The release itself completed (images pushed, signed, Release created). Retry manually per docs/trust-scores-schema/README.md."
+              exit 1
+            fi
+            attempt=$((attempt + 1))
+            echo "live eval failed (attempt 1) — cooling off 180s and retrying once (rate limits ride out)"
+            rm -f /tmp/trust-partial.json
+            sleep 180
+          done
+
+      - name: Publish via auto-merged PR
         env:
           # An owner PAT when available (PRs it opens trigger the required
           # checks, so auto-merge can complete); github.token as the fallback
           # (the PR is still created; checks may need a manual nudge).
           GH_TOKEN: ${{ secrets.PROJECTS_TOKEN != '' && secrets.PROJECTS_TOKEN || github.token }}
-          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
-          COGETO_EVAL_GATE: '1'
-          TAG: ${{ steps.v.outputs.tag }}
-          VERSION: ${{ steps.v.outputs.version }}
         run: |
-          npm ci
-          npm run eval -- --emit-json /tmp/trust-partial.json
-          npm run eval:chat -- --emit-json /tmp/trust-partial.json
+          TAG="${GITHUB_REF_NAME}"
           node scripts/ci/publish-trust-scores.mjs \
             --version "$TAG" --sha "$GITHUB_SHA" \
             --partial /tmp/trust-partial.json \
@@ -238,17 +267,9 @@ jobs:
           git checkout -b "$BRANCH"
           git add eval/trust-scores
           git commit -m "chore: publish trust scores for $TAG"
-          git -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64)" \
-            push origin "$BRANCH"
+          git push origin "$BRANCH"
           gh pr create --base main --head "$BRANCH" \
             --title "chore: publish trust scores for $TAG" \
             --label chore \
             --body "Automated by the release pipeline (decision 0032): the measured trust scores for $TAG (eval/trust-scores/$TAG.json, immutable) and the rebuilt index. Auto-merges when checks pass."
           gh pr merge "$BRANCH" --auto --squash
-
-      - name: Trust scores failed — manual retry needed
-        if: steps.trust.outcome == 'failure'
-        env:
-          TAG: ${{ steps.v.outputs.tag }}
-        run: |
-          echo "::error title=Trust scores NOT published for ${TAG}::The release itself completed (images pushed, signed, Release created). Retry manually: npm run eval -- --emit-json p.json && npm run eval:chat -- --emit-json p.json && node scripts/ci/publish-trust-scores.mjs --version ${TAG} --sha <tag commit> --partial p.json, then open a chore PR with eval/trust-scores/. See docs/trust-scores-schema/README.md."

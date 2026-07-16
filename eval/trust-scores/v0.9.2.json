@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "generated_by": {
+    "release": "v0.9.2",
+    "commit": "7b7676fd5fa6f15efb46ef450d1e29479177a1e6",
+    "harness": "extraction/v0002 + verification/v0004 · reconcile_dedup/v0001 + reconcile_contradiction/v0001 · thresholds v1 + chat answer/v0004 · grader eval-coverage/v0001",
+    "generated_at": "2026-07-16T06:20:17.482Z",
+    "backfilled": false
+  },
+  "configurations": [
+    {
+      "id": "mistral-default",
+      "models": {
+        "pipeline": "mistral-small-latest",
+        "answer": "mistral-medium-latest",
+        "embedding": "mistral-embed"
+      },
+      "redaction": false,
+      "corpus": {
+        "golden_cases": 52,
+        "reconcile_pairs": 20,
+        "chat_cases": 12,
+        "per_language": [
+          {
+            "language": "en",
+            "golden_cases": 32
+          },
+          {
+            "language": "hr",
+            "golden_cases": 20
+          }
+        ]
+      },
+      "metrics": {
+        "per_language": [
+          {
+            "language": "en",
+            "golden_cases": 32,
+            "extraction_precision": 0.8333333333333334,
+            "extraction_recall": 0.8863636363636364,
+            "verification_agreement": 0.8709677419354839,
+            "dedup_accuracy": 1,
+            "contradiction_recall": 1
+          },
+          {
+            "language": "hr",
+            "golden_cases": 20,
+            "extraction_precision": 0.7567567567567568,
+            "extraction_recall": 0.9,
+            "verification_agreement": 0.8947368421052632,
+            "dedup_accuracy": 0.8333333333333334,
+            "contradiction_recall": 1
+          }
+        ],
+        "aggregate": {
+          "extraction_precision": 0.8,
+          "extraction_recall": 0.8918918918918919,
+          "verification_agreement": 0.88,
+          "dedup_accuracy": 0.9285714285714286,
+          "contradiction_recall": 1
+        },
+        "chat": {
+          "cases": 12,
+          "passed": 11,
+          "failed": ["atlas_scope"]
+        }
+      }
+    }
+  ],
+  "notes": [
+    "Published via the manual retry path: the release-time emission hit a Mistral 429 when the tag push ran the live gate and the trust job concurrently against one API key (fixed by the shared live-model-eval concurrency group in this same commit).",
+    "Chat 11/12: atlas_scope graded 67% coverage on this run (83–100% in adjacent runs) — coverage-grader variance on a small-fact case, not a behavior change; the failing case id is published per the honesty rule."
+  ]
+}
