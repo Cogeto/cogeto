@@ -27,6 +27,8 @@ import { APPROVAL_EXECUTE_JOB_TYPE, APPROVAL_EXPIRY_JOB_TYPE } from '../agents/i
 import type { ApprovalExecutor, ApprovalService } from '../agents/index';
 import { PASSPORT_EXPORT_JOB_TYPE, PASSPORT_RETENTION_JOB_TYPE } from '../passport/index';
 import type { PassportExportExecutor } from '../passport/index';
+import { EMAIL_REFUSAL_RETENTION_JOB_TYPE } from '../connectors/index';
+import type { EmailAllowlistService } from '../connectors/index';
 import type { ModelGateway } from '../model-gateway/index';
 
 export interface WorkerTaskDeps {
@@ -39,6 +41,7 @@ export interface WorkerTaskDeps {
   approvalService: ApprovalService;
   approvalExecutor: ApprovalExecutor;
   passportExecutor: PassportExportExecutor;
+  allowlist: EmailAllowlistService;
   objects: MemoryObjectStore;
   gateway: ModelGateway;
   /** Bound to pino by the worker entrypoint. Counts only — never content. */
@@ -247,6 +250,14 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
     [PASSPORT_RETENTION_JOB_TYPE]: recurring(PASSPORT_RETENTION_JOB_TYPE, async () => {
       const report = await deps.passportExecutor.runRetention(new Date());
       deps.log({ ...report }, 'passport retention pass completed');
+    }),
+
+    // Prune refused-mail records past the retention window (SEC-6/GAP-6) —
+    // bounds the retained third-party sender PII and the table's growth on the
+    // public inbound port. Recurring + idempotent; single-flight.
+    [EMAIL_REFUSAL_RETENTION_JOB_TYPE]: recurring(EMAIL_REFUSAL_RETENTION_JOB_TYPE, async () => {
+      const removed = await deps.allowlist.pruneRefusalsOlderThan();
+      deps.log({ removed }, 'email refusal retention pass completed');
     }),
 
     // Embeds an edit's supersession successor (S3-B). Idempotency key:
