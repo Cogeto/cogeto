@@ -1,0 +1,54 @@
+# Dependabot configuration (PA-5). Version-update PRs on a weekly cadence for
+# every ecosystem in the repo; GitHub-native Dependabot SECURITY updates are
+# enabled separately in Settings → Code security (owner action). All PRs are
+# labelled so they group correctly in the release notes (.github/release.yml)
+# and land through the normal required-checks + squash-merge loop.
+version: 2
+updates:
+  # GitHub Actions — keep the SHA-pinned actions (PA-6) current. Dependabot
+  # bumps the pinned SHA and refreshes the trailing `# vX.Y.Z` comment.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - ci
+      - dependencies
+    groups:
+      actions:
+        patterns:
+          - '*'
+
+  # npm workspace (root lockfile covers @cogeto/shared, @cogeto/server, web).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels:
+      - chore
+      - dependencies
+    groups:
+      # One PR for routine dev/test tooling; production deps stay individual so
+      # each is reviewed against the module boundaries + eval gate on its own.
+      dev-dependencies:
+        dependency-type: development
+
+  # Receive-only Haraka mail service (its own package.json + lockfile — SEC-9).
+  # It parses hostile internet input, so keep its tree current.
+  - package-ecosystem: npm
+    directory: /project/services/mail
+    schedule:
+      interval: weekly
+    labels:
+      - chore
+      - dependencies
+
+  # Python redaction sidecar (requirements.txt → hash-locked requirements.lock).
+  - package-ecosystem: pip
+    directory: /project/services/redaction
+    schedule:
+      interval: weekly
+    labels:
+      - chore
+      - dependencies

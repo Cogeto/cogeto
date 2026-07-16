@@ -34,22 +34,26 @@ env:
   IMAGE_EDGE: cogeto/cogeto-edge
   IMAGE_MAIL: cogeto/cogeto-mail
 
+# Least privilege (PA-2): permissions are scoped PER JOB, not workflow-wide.
+# Only the `release` job mints an OIDC id-token (keyless cosign); the
+# `trust-scores` job never should, so it does not get id-token:write.
 permissions:
-  contents: write # create the GitHub Release + push the trust-scores branch
-  id-token: write # keyless cosign signing via Sigstore OIDC
-  packages: read
-  pull-requests: write # open the trust-scores publish PR (decision 0032)
+  contents: read
 
 jobs:
   release:
     name: release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the GitHub Release
+      id-token: write # keyless cosign signing via Sigstore OIDC
+      packages: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0 # full history so release-note generation sees prior tags
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
 
@@ -67,17 +71,17 @@ jobs:
 
       # ── Build & push the amd64 images once each ──────────────────────────
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push cogeto/cogeto (amd64)
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: project/infra/docker/Dockerfile
@@ -99,7 +103,7 @@ jobs:
       # produce it locally (decision 0030), so the release publishes it.
       - name: Build and push cogeto/cogeto-edge (amd64)
         id: build-edge
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: project/infra/docker/Dockerfile
@@ -117,7 +121,7 @@ jobs:
       # The receive-only Haraka inbound SMTP service (Session O4, decision 0028).
       - name: Build and push cogeto/cogeto-mail (amd64)
         id: build-mail
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: project/services/mail
           platforms: linux/amd64
@@ -132,7 +136,7 @@ jobs:
 
       # ── Sign the pushed images (keyless, by digest) ──────────────────────
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3.9.1
 
       - name: Sign the images with cosign (keyless)
         env:
@@ -146,7 +150,7 @@ jobs:
 
       # ── SBOM (SPDX JSON) for the pushed image ────────────────────────────
       - name: Generate SBOM (Syft, SPDX JSON)
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
           image: ${{ env.IMAGE }}:${{ steps.v.outputs.version }}
           format: spdx-json
@@ -219,13 +223,17 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     continue-on-error: true
+    # Minimal scope (PA-2): open + auto-merge the trust-scores PR. NO id-token.
+    permissions:
+      contents: write
+      pull-requests: write
     concurrency:
       group: live-model-eval
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm

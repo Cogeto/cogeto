@@ -22,6 +22,12 @@ on:
   pull_request_target:
     types: [opened, closed, synchronize]
 
+# SECURITY INVARIANT (PA-3): this workflow runs on `pull_request_target`, so it
+# executes with the base repo's write token even for fork PRs. It MUST NOT check
+# out or execute the PR head — no `actions/checkout` of the PR ref, no build/test
+# of contributor code. It only invokes the CLA action against the PR metadata.
+# Adding any checkout of `github.event.pull_request.head` here would turn this
+# into a token-exfiltration (pwn-request) vector. Keep it checkout-free.
 permissions:
   actions: write
   contents: write
@@ -35,7 +41,7 @@ jobs:
     steps:
       - name: CLA Assistant
         if: (github.event.comment.body == 'recheck' || github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA') || github.event_name == 'pull_request_target'
-        uses: contributor-assistant/github-action@v2.6.1
+        uses: contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08 # v2.6.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
