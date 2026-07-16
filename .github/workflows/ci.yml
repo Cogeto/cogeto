@@ -112,6 +112,14 @@ jobs:
   eval-gate:
     name: eval-gate
     runs-on: ubuntu-latest
+    # The LIVE gate (push to main) shares one Mistral API key with the release
+    # pipeline's trust-scores job. Tagging right after a merge ran both at
+    # once and they 429-rate-limited each other (v0.9.2). Serialize every
+    # live-key consumer through one repo-wide concurrency group; PR runs are
+    # mocked (no key) and keep their own per-ref group.
+    concurrency:
+      group: ${{ github.event_name == 'push' && 'live-model-eval' || format('eval-gate-pr-{0}', github.ref) }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
