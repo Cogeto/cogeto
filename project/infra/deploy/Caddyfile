@@ -27,6 +27,14 @@
 		reverse_proxy zitadel:8080
 	}
 
+	# The internal mail-intake endpoint (decision 0028 ruling 7) is reachable
+	# ONLY from the mail container on the internal Docker network — NEVER from the
+	# public edge (SEC-2/GAP-5). Refuse it here so an internet caller cannot reach
+	# it (and cannot make the app buffer a 25 MB body before the token check).
+	handle /api/email/intake* {
+		respond 404
+	}
+
 	# The Cogeto API (app process).
 	handle /api/* {
 		reverse_proxy app:3000

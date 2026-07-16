@@ -17,6 +17,12 @@ localhost {
 		reverse_proxy zitadel:8080
 	}
 
+	# The internal mail-intake endpoint is reachable ONLY from the mail container
+	# on the internal network (SEC-2/GAP-5, decision 0028 ruling 7) — never the edge.
+	handle /api/email/intake* {
+		respond 404
+	}
+
 	# The Cogeto API (app process).
 	handle /api/* {
 		reverse_proxy app:3000
