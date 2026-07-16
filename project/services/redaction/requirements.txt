@@ -1,4 +1,10 @@
 # Redaction sidecar (Addendum B.8). CPU-only; pinned for reproducible fleet builds.
+#
+# This is the human-readable TOP-LEVEL input. The Dockerfile does NOT install from
+# here — it installs from the fully hash-locked requirements.lock (compiled from
+# this file with `pip-compile --generate-hashes --allow-unsafe` in python:3.12,
+# SEC-12). When you change a pin below, regenerate the lock (docs/operations/
+# image-pins.md).
 fastapi==0.111.0
 uvicorn[standard]==0.30.1
 presidio-analyzer==2.2.355

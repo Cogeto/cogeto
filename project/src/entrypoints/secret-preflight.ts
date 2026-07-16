@@ -41,6 +41,11 @@ export const KNOWN_DEV_SECRETS: readonly KnownDevSecret[] = [
   { env: 'ZITADEL_MASTERKEY', devValue: 'MasterkeyNeedsToHave32Characters', match: 'equals' },
   { env: 'ZITADEL_DB_PASSWORD', devValue: 'zitadel-dev-password', match: 'equals' },
   { env: 'ZITADEL_ADMIN_PASSWORD', devValue: 'DevPassword1!', match: 'equals' },
+  // The inbound-mail intake shared secret (SEC-10/PA-19). The supported deploy
+  // path already requires it (deploy compose uses `:?`; the operator script
+  // generates one), but a hand-rolled non-localhost run of the DEV compose would
+  // otherwise ship this known token — so it fails closed here like the rest.
+  { env: 'COGETO_MAIL_INTAKE_TOKEN', devValue: 'cogeto-dev-mail-token', match: 'equals' },
 ] as const;
 
 /** True when the external domain is a local dev box (dev defaults are allowed). */

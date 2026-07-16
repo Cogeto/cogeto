@@ -42,6 +42,15 @@ const REDACT_PATHS = [
   '*.answer',
   '*.prompt',
   '*.question',
+  // Email content — a stray `{ email }` / `{ payload }` / reply-draft log must
+  // not smuggle a subject, body, or sender address into a line (SEC-7).
+  'subject',
+  '*.subject',
+  '*.textBody',
+  '*.htmlBody',
+  '*.body',
+  'fromAddr',
+  '*.fromAddr',
 ];
 
 export function createLogger(level: string): Logger {
