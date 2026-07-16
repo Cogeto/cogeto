@@ -209,37 +209,66 @@ for every finding is recorded here.
   retention pass), **SEC-8/GAP-12** (refusal listing owner filter moved into the SQL WHERE
   before LIMIT). All five required checks green.
 
-### Remaining fix:launch clusters (open — owner-gated)
+- **PR [#121](https://github.com/Cogeto/cogeto/pull/121)** — `fix: harden the inbound SMTP
+  surface` — merged `964f5b6`, closes #90. RESOLVED: **SEC-1** (Haraka `spf` plugin + app-side
+  authentication gate: a message is captured for the registered user it claims to be from only
+  when the sender passes SPF; hard fail/softfail refused), **SEC-2/GAP-5** (intake de-exposed
+  at the edge + in-process per-sender intake rate cap; checks before parse), **GAP-1** (the
+  redis-crashing bundled `limit` replaced with an in-process `cogeto_connlimit` — runtime-
+  verified the server boots healthy), **GAP-2** (STARTTLS wired: entrypoint enables Haraka
+  `tls` when a cert is mounted; `mail-tls` volume + runbook §2c), **GAP-8** (MailIntakeGuard
+  test), **GAP-16** (host_list kept + clarified), **SEC-9** (mail image on a committed
+  `package-lock.json` with `npm ci`). All five required checks green; mail image build +
+  boot verified.
+- **PR [#122](https://github.com/Cogeto/cogeto/pull/122)** — `test: expand golden corpus to 50
+  cases per language and refresh the gates note` — merged `4322407`, closes #95. RESOLVED:
+  **GAP-7** (en 49→50, hr 35→50; 100 cases; owner-approved labels), **GAP-14** (gates.json note
+  refreshed to the 100-case corpus). All five required checks green, and the **live eval-gate
+  re-measured on `main` and PASSED** on the expanded corpus.
 
-Two clusters remain, both blocked on owner sub-tasks (not on code readiness):
+### Owner actions — completed
 
-| Issue | Cluster | Findings | Gating |
-|---|---|---|---|
-| [#90](https://github.com/Cogeto/cogeto/issues/90) | SMTP surface hardening | SEC-1, GAP-1, GAP-2, SEC-2/GAP-5, GAP-8, GAP-16, SEC-9 | **Launch-critical + owner-gated**: SPF/DKIM/DMARC + STARTTLS depend on OWNER ACTIONS #6 (DNS/PTR) and #7 (cert approach), and must be validated by the live acceptance test (spoofed email → rejected) — not by CI alone. |
-| [#95](https://github.com/Cogeto/cogeto/issues/95) | Golden corpus + gates note | GAP-7, GAP-14 | **Owner-gated**: generated cases need OWNER ACTION #8 (label review); the live eval-gate re-measures only on the post-merge push. |
+Items 1–4 verified via `gh`; 5 confirmed by the owner; the SMTP DNS/cert (6, 7) are folded
+into first-install onboarding per the owner's decision (Option A — see the closing note).
+
+1. **Tag protection `v*`** — DONE, verified (`deletion` + `update` blocked on `refs/tags/v*`).
+2. **Secret scanning + push protection** — DONE, verified (`enabled`).
+3. **Dependabot security updates** — DONE, verified (`enabled`).
+4. **Auto-delete merged branches** — DONE, verified (`delete_branch_on_merge: true`).
+5. **`PROJECTS_TOKEN` scope/expiry** — confirmed by the owner.
+6. **SPF/PTR DNS** + 7. **inbound-TLS cert** — the mail hardening is merged and code/boot-
+   verified; the *live* spoofed-email + STARTTLS acceptance test runs at the first customer
+   install (runbook §2c/§3), per the owner's Option A. Not a pre-launch code gate.
 
 ### v1 Definition-of-Done (Roadmap Revision lines 43–48) — evidence walk
 
-Status after the three verifiable clusters merged (#117, #118, #119) plus #98/#99/#100.
-Bullets 1–5 are MET (with one remaining STARTTLS caveat, in #90); bullet 6 is gated on the
-two owner-gated clusters (#90 SMTP, #95 corpus) + the OWNER ACTIONS.
+All 25 fix-now findings merged; owner actions done; `main` green (incl. the live eval-gate).
 
-| # | DoD bullet | Status | Evidence / gate |
+| # | DoD bullet | Status | Evidence |
 |---|---|---|---|
-| 1 | One-script onboarding → working TLS single-tenant instance with a live inbound address, < 1 h | **MET, with GAP-2 caveat** | `scripts/operator/cogeto` (install/configure/upgrade/status + checklist); pull-only stack `project/infra/deploy/` incl. the `mail` Haraka service; runbook `docs/operator-runbook.md`. Caveat: **inbound STARTTLS** (GAP-2, #90 + OWNER ACTION #7). |
-| 2 | Captures notes/email/files; remembers, verifies, consolidates (dreaming), open loops, answers with sources, time-travel diff | **MET** | `project/src/connectors/` (notes, files, email intake/parse/reply), `memory/`, `tasks/`, dreaming, `retrieval/chat` citations, `memory/timeline.*` + `web/.../TimelineView.tsx`. Calendar-invite parts now parsed (GAP-4 resolved, PR #117). |
-| 3 | Inspect + correct everything; provable deletion with a signed receipt; Memory Passport export | **MET** | Deletion saga + hash-chained signed receipts; Passport export all-statuses, signed, offline-verifiable, schema-cross-checked (PR #100). Reply-draft-approval residue closed — the receipt now redacts + counts them (SEC-4, PR #119). |
-| 4 | Upgrade via the script; restore from an OVH backup by a rehearsed procedure | **MET** | `scripts/operator/cogeto` upgrade subcommand; runbook §5c (rehearsed restore) + §6 (upgrades). |
-| 5 | Public trust-score page + compliance one-pager live | **MET (owner-confirmed)** | Both live on cogeto.eu (owner-confirmed; external website repo — GAP-3). The trust-score data side is in-repo: `eval/trust-scores/index.json` + immutable per-version files. |
-| 6 | Both audits pass | **IN PROGRESS** | Re-run reports + this acceptance log published. Remaining to pass: the **SMTP hardening (#90)** landed and validated by the live acceptance test (owner DNS/cert), the **golden corpus (#95)** merged (owner label review), the **OWNER ACTIONS** confirmed, and a clean re-scan. |
+| 1 | One-script onboarding → working TLS single-tenant instance with a live inbound address, < 1 h | **MET** | `scripts/operator/cogeto`; pull-only `project/infra/deploy/` incl. the `mail` Haraka service; runbook. Inbound **STARTTLS** now wired (GAP-2, PR #121) — cert populated + spoof/TLS tested at first install (runbook §2c/§3). |
+| 2 | Captures notes/email/files; remembers, verifies, consolidates, open loops, answers with sources, time-travel diff | **MET** | connectors (notes/files/email intake/parse/reply, **calendar-invite parts** PR #117), memory, tasks, dreaming, chat citations, timeline. |
+| 3 | Inspect + correct everything; provable deletion with a signed receipt; Memory Passport export | **MET** | Deletion saga + hash-chained signed receipts (reply-draft residue closed, SEC-4 PR #119); Passport export all-statuses, signed, offline-verifiable, schema-cross-checked (PR #100). |
+| 4 | Upgrade via the script; restore from an OVH backup by a rehearsed procedure | **MET** | `scripts/operator/cogeto` upgrade; runbook §5c (rehearsed restore) + §6. |
+| 5 | Public trust-score page + compliance one-pager live | **MET** | Both live on cogeto.eu (owner-confirmed); in-repo data `eval/trust-scores/index.json` + immutable per-version files. |
+| 6 | Both audits pass | **MET** | This re-run's findings are all resolved (25 fix-now merged), accepted (with public rationale), or owner-actioned; no CRITICAL, no unresolved HIGH; git history CLEAN; `main` green including the live eval-gate on the expanded corpus. |
 
-**Progress:** 11 of the 13 fix:launch clusters/findings groups are merged (23 of 25 fix-now
-findings resolved and on `main`, verified green). The two that remain — #90 (SMTP hardening)
-and #95 (golden corpus) — are **owner-gated**, not code-blocked: they need the DNS/PTR + cert
-decisions and the golden-case label review before they can land and be validated.
+---
 
-**Not yet written: the closing "v1 is launchable" entry.** Per the Phase 3 contract it is
-written only when every automated fix is merged, the OWNER ACTIONS are confirmed done, and
-this DoD list is fully checked — specifically #90 landed + validated by the live spoofed-email
-acceptance test, and #95 merged. Until then v1 is **not yet declared launchable**; the next
-tag remains the owner's to cut once the above closes.
+## Closing — v1 is launchable
+
+Every finding from the three launch audits is resolved, accepted with a written rationale, or
+completed as an owner action; the GitHub/supply-chain posture is hardened (protected tags,
+secret scanning + push protection, Dependabot, least-privilege workflows, SHA-pinned actions);
+the git history is CLEAN; and `main` is green on all five required checks **including the live
+golden-set eval-gate** on the expanded 50-per-language corpus. No CRITICAL findings were found;
+no HIGH finding is unresolved.
+
+**v1 is launchable.** The next tag is **`v1.0.0`, cut by the owner** — the release chore bumps
+`package.json` from 0.9.2 to 1.0.0, then the owner tags `v1.0.0` on `main` (now guarded by the
+`v*` tag-protection ruleset), which drives the signed image publish and the GitHub Release.
+
+**One operational acceptance step carries into first onboarding** (owner's Option A, not a code
+gate): on the first live instance, populate the mail STARTTLS cert (runbook §2c) and run the
+inbound acceptance test — a spoofed `MAIL FROM` is refused, and `openssl s_client -starttls
+smtp` shows the certificate. Both are already in the onboarding acceptance checklist (§3).
