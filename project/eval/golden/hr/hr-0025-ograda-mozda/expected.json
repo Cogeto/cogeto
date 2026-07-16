@@ -1,0 +1,8 @@
+{
+  "case_id": "hr-0025",
+  "source_type": "user_note",
+  "expected_memories": [],
+  "must_not_extract": ["nepotvrđena, ograđena namjera (\"možda\", \"ništa nije potvrđeno\") nije trajna činjenica ni obveza"],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

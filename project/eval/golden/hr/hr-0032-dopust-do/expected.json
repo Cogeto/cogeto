@@ -1,0 +1,10 @@
+{
+  "case_id": "hr-0032",
+  "source_type": "user_note",
+  "expected_memories": [
+    { "content_gist": "Korisnik radi od kuće do kraja mjeseca dok traje selidba ureda", "kind": "fact", "entities": [], "condition": "dok se ne završi selidba ureda", "temporal": { "valid_until": "source_date" }, "must_extract": true }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

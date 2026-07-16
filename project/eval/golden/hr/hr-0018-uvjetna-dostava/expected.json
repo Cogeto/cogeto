@@ -1,0 +1,17 @@
+{
+  "case_id": "hr-0018",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Korisnik će naručiti materijal i javiti Ivani datum isporuke",
+      "kind": "commitment",
+      "entities": ["Ivana", "Adriatic Foods"],
+      "condition": "čim stigne potpisan ugovor od Adriatic Foods",
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

@@ -1,0 +1,10 @@
+{
+  "case_id": "hr-0030",
+  "source_type": "user_note",
+  "expected_memories": [
+    { "content_gist": "Ugovor s partnerom Delta d.o.o. raskida se 30. rujna", "kind": "decision", "entities": ["Delta d.o.o."], "condition": null, "temporal": { "valid_from": "2026-09-30" }, "must_extract": true }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

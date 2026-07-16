@@ -1,0 +1,8 @@
+{
+  "case_id": "hr-0027",
+  "source_type": "user_note",
+  "expected_memories": [],
+  "must_not_extract": ["prolazni trošak (14 eura, kava) bez trajne vrijednosti za pamćenje"],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

@@ -1,0 +1,11 @@
+{
+  "case_id": "hr-0026",
+  "source_type": "user_note",
+  "expected_memories": [
+    { "content_gist": "Ana je na bolovanju od 10. do 21. lipnja", "kind": "fact", "entities": ["Ana"], "condition": null, "temporal": { "valid_from": "2026-06-10", "valid_until": "2026-06-21" }, "must_extract": true },
+    { "content_gist": "Luka preuzima Anine zadatke tijekom njezina bolovanja", "kind": "fact", "entities": ["Luka", "Ana"], "condition": "tijekom Anina bolovanja", "temporal": { "valid_from": "2026-06-10", "valid_until": "2026-06-21" }, "must_extract": true }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

@@ -1,0 +1,12 @@
+{
+  "case_id": "hr-0024",
+  "source_type": "user_note",
+  "expected_memories": [
+    { "content_gist": "Projekt Atlas kreće 1. rujna", "kind": "fact", "entities": ["Atlas"], "condition": null, "temporal": { "valid_from": "2026-09-01" }, "must_extract": true },
+    { "content_gist": "Projekt Atlas vodi Sara", "kind": "fact", "entities": ["Atlas", "Sara"], "condition": null, "temporal": {}, "must_extract": true },
+    { "content_gist": "Proračun projekta Atlas je 120.000 eura", "kind": "fact", "entities": ["Atlas"], "condition": null, "temporal": {}, "must_extract": true }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}
