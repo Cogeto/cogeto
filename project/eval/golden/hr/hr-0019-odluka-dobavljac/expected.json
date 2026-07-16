@@ -1,0 +1,17 @@
+{
+  "case_id": "hr-0019",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Za pakiranje je odabran dobavljač Jadran umjesto Kvarnera",
+      "kind": "decision",
+      "entities": ["Jadran", "Kvarner"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

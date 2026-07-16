@@ -1,0 +1,17 @@
+{
+  "case_id": "hr-0028",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "U četvrtak je sastanak s Marinom iz Nova banke o financiranju druge faze",
+      "kind": "fact",
+      "entities": ["Marina", "Nova banka"],
+      "condition": null,
+      "temporal": { "valid_from": "source_date" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

@@ -1,0 +1,8 @@
+{
+  "case_id": "hr-0023",
+  "source_type": "user_note",
+  "expected_memories": [],
+  "must_not_extract": ["pozdrav i zahvala bez trajne obveze ili činjenice"],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

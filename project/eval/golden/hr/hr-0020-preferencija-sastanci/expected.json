@@ -1,0 +1,17 @@
+{
+  "case_id": "hr-0020",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Korisnik preferira sastanke s klijentima ujutro, nikad poslije 16h",
+      "kind": "preference",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

@@ -1,0 +1,17 @@
+{
+  "case_id": "hr-0031",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Korisnik će otkazati rezervaciju dvorane ako klijent ne potvrdi termin do ponedjeljka",
+      "kind": "commitment",
+      "entities": [],
+      "condition": "ako klijent ne potvrdi termin do ponedjeljka",
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

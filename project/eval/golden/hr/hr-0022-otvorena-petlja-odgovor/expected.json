@@ -1,0 +1,17 @@
+{
+  "case_id": "hr-0022",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Korisnik čeka Damirove komentare na nacrt ugovora prije slanja dalje",
+      "kind": "commitment",
+      "entities": ["Damir"],
+      "condition": "nakon što Damir vrati komentare",
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}
