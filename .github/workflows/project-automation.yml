@@ -22,6 +22,11 @@ on:
   pull_request_target:
     types: [opened, reopened, ready_for_review, closed]
 
+# SECURITY INVARIANT (PA-3): runs on `pull_request_target` with PROJECTS_TOKEN in
+# scope. It MUST NOT check out or execute the PR head — the single step is an
+# inline github-script that touches only the Projects GraphQL API and PR/issue
+# metadata. Adding any checkout of the PR ref would expose PROJECTS_TOKEN to
+# contributor code. Keep it checkout-free.
 permissions:
   contents: read
 
@@ -35,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Sync card to the Cogeto board
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         env:
           PROJECTS_TOKEN: ${{ secrets.PROJECTS_TOKEN }}
         with:
