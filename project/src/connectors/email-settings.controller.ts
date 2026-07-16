@@ -28,10 +28,9 @@ const addEntrySchema = z.object({
 
 /**
  * /api/email — the owner's Email capture surface (Session O4, decision 0028):
- * the inbound address (read-only), the sender allowlist (view/add/remove,
- * audited), and recent refusals for one-click allowlisting. The forwarding-setup
- * guidance that accompanies the address is Unit B; this ships the address +
- * allowlist controls.
+ * the inbound address (read-only) with its forwarding-setup guidance, the sender
+ * allowlist (view/add/remove, audited), and recent refusals for one-click
+ * allowlisting.
  */
 @Controller('email')
 @UseGuards(BearerAuthGuard)

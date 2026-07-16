@@ -51,8 +51,8 @@ export class EmailSourceReader implements SourceReader {
 
   /**
    * Admission checkpoint (decision 0024): KEY SHARE serializes against the
-   * deletion saga's FOR UPDATE + DELETE of this email row (saga coverage of
-   * email sources lands in Unit B; the checkpoint is in place now).
+   * deletion saga's FOR UPDATE + DELETE of this email row. The saga's coverage
+   * of email sources (rows, attachments, raw/HTML objects) ships alongside this.
    */
   async existsForAdmission(tx: Tx, sourceId: string): Promise<boolean> {
     const rows = await tx

@@ -12,6 +12,7 @@ describe('secret preflight (QS-8)', () => {
     COGETO_DATABASE_URL: 'postgres://postgres:cogeto-dev-password@postgres:5432/cogeto',
     ZITADEL_MASTERKEY: 'MasterkeyNeedsToHave32Characters',
     ZITADEL_ADMIN_PASSWORD: 'DevPassword1!',
+    COGETO_MAIL_INTAKE_TOKEN: 'cogeto-dev-mail-token',
   };
 
   it('treats localhost / *.localhost / 127.0.0.1 as a dev box', () => {
@@ -35,6 +36,7 @@ describe('secret preflight (QS-8)', () => {
     expect(offenders).toContain('COGETO_DATABASE_URL'); // matched by substring
     expect(offenders).toContain('ZITADEL_MASTERKEY');
     expect(offenders).toContain('ZITADEL_ADMIN_PASSWORD');
+    expect(offenders).toContain('COGETO_MAIL_INTAKE_TOKEN'); // SEC-10/PA-19
     expect(() => assertProductionSecrets(env)).toThrow(/known DEV secret/);
   });
 
