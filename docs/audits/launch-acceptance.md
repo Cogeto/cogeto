@@ -190,37 +190,56 @@ for every finding is recorded here.
   export against published JSON Schemas` — merged `7fd7589`, closes #94. RESOLVED: **GAP-9**
   (Ajv 2020-12 cross-check of generated documents against `docs/passport-schema/`; no drift
   found). All five required checks green.
+- **PR [#116](https://github.com/Cogeto/cogeto/pull/116)** — `docs: launch verification audit
+  reports and acceptance log` — merged `c7a94b5`. Publishes the three audit reports + this
+  acceptance log.
+- **PR [#117](https://github.com/Cogeto/cogeto/pull/117)** — `feat: parse calendar-invite
+  parts within emails` — merged `ef2c632`, closes #93. RESOLVED: **GAP-4** (deterministic
+  VEVENT→text summary, migration 0024, appended to extraction after isolation; en/hr unit
+  coverage). All five required checks green.
+- **PR [#118](https://github.com/Cogeto/cogeto/pull/118)** — `fix: harden reply drafting and
+  owner-gate reply-draft approvals` — merged `e5d3182`, closes #92. RESOLVED: **SEC-3**
+  (untrusted-content prompt framing + body-recovered recipient flagged unverified/"verify
+  before sending"), **SEC-5** (reply-draft preview + confirm owner-gated; teammates see a
+  content-free placeholder). All five required checks green.
+- **PR [#119](https://github.com/Cogeto/cogeto/pull/119)** — `fix: complete email deletion
+  cascade and bound refusal-log retention` — merged `8832626`, closes #91. RESOLVED: **SEC-4**
+  (source-keyed `ReplyDraftCascade` redacts reply drafts on email-source deletion, counted in
+  the receipt as `reply_drafts_redacted`), **SEC-6/GAP-6** (nightly 30-day refusal-log
+  retention pass), **SEC-8/GAP-12** (refusal listing owner filter moved into the SQL WHERE
+  before LIMIT). All five required checks green.
 
-### Remaining fix:launch clusters (open, in progress)
+### Remaining fix:launch clusters (open — owner-gated)
 
-These five clusters are substantive; two carry owner-gated sub-tasks that block completion
-regardless of the code, and one needs a new saga cascade port. They are scoped as issues and
-proceed as their own verified PRs.
+Two clusters remain, both blocked on owner sub-tasks (not on code readiness):
 
-| Issue | Cluster | Findings | Notes / gating |
+| Issue | Cluster | Findings | Gating |
 |---|---|---|---|
-| [#91](https://github.com/Cogeto/cogeto/issues/91) | Email deletion & retention | SEC-4, SEC-6/GAP-6, SEC-8/GAP-12 | SEC-4 needs a **new source-keyed cascade port** (reply-draft approvals live in the agents module, so the email SourceDeletion cannot touch them directly — §A.1); SEC-8 is a one-liner; SEC-6 adds a nightly retention arm. Locally verifiable (Testcontainers). |
-| [#92](https://github.com/Cogeto/cogeto/issues/92) | Reply-draft safety & approvals scoping | SEC-3, SEC-5 | Prompt-injection framing + untrusted reply-to; owner-gate the reply-draft preview. Locally verifiable. |
-| [#93](https://github.com/Cogeto/cogeto/issues/93) | Calendar-invite parsing | GAP-4 | Parse `text/calendar` VEVENT → text summary. Locally verifiable (unit test). |
-| [#90](https://github.com/Cogeto/cogeto/issues/90) | SMTP surface hardening | SEC-1, GAP-1, GAP-2, SEC-2/GAP-5, GAP-8, GAP-16, SEC-9 | **Launch-critical but owner-gated**: SPF/DKIM/DMARC + STARTTLS need OWNER ACTIONS #6 (DNS/PTR) + #7 (cert approach), and cannot be behaviour-tested without a running mail stack. To be validated by the live acceptance test (spoofed email → rejected), not by CI alone. |
-| [#95](https://github.com/Cogeto/cogeto/issues/95) | Golden corpus + gates note | GAP-7, GAP-14 | Generated cases need OWNER ACTION #8 (label review); the live eval-gate re-measures only on the post-merge push. |
+| [#90](https://github.com/Cogeto/cogeto/issues/90) | SMTP surface hardening | SEC-1, GAP-1, GAP-2, SEC-2/GAP-5, GAP-8, GAP-16, SEC-9 | **Launch-critical + owner-gated**: SPF/DKIM/DMARC + STARTTLS depend on OWNER ACTIONS #6 (DNS/PTR) and #7 (cert approach), and must be validated by the live acceptance test (spoofed email → rejected) — not by CI alone. |
+| [#95](https://github.com/Cogeto/cogeto/issues/95) | Golden corpus + gates note | GAP-7, GAP-14 | **Owner-gated**: generated cases need OWNER ACTION #8 (label review); the live eval-gate re-measures only on the post-merge push. |
 
 ### v1 Definition-of-Done (Roadmap Revision lines 43–48) — evidence walk
 
-Status as of this checkpoint. Bullets 1–4 are structurally MET in the codebase; the two
-caveats and bullet 6 are gated on the remaining SMTP cluster (#90) + owner actions.
+Status after the three verifiable clusters merged (#117, #118, #119) plus #98/#99/#100.
+Bullets 1–5 are MET (with one remaining STARTTLS caveat, in #90); bullet 6 is gated on the
+two owner-gated clusters (#90 SMTP, #95 corpus) + the OWNER ACTIONS.
 
 | # | DoD bullet | Status | Evidence / gate |
 |---|---|---|---|
 | 1 | One-script onboarding → working TLS single-tenant instance with a live inbound address, < 1 h | **MET, with GAP-2 caveat** | `scripts/operator/cogeto` (install/configure/upgrade/status + checklist); pull-only stack `project/infra/deploy/` incl. the `mail` Haraka service; runbook `docs/operator-runbook.md`. Caveat: **inbound STARTTLS** (GAP-2, #90 + OWNER ACTION #7). |
-| 2 | Captures notes/email/files; remembers, verifies, consolidates (dreaming), open loops, answers with sources, time-travel diff | **MET, with GAP-4 caveat** | `project/src/connectors/` (notes, files, email intake/parse/reply), `memory/`, `tasks/`, dreaming, `retrieval/chat` citations, `memory/timeline.*` + `web/.../TimelineView.tsx`. Caveat: **calendar-invite parts** (GAP-4, #93). |
-| 3 | Inspect + correct everything; provable deletion with a signed receipt; Memory Passport export | **MET** | Deletion saga + hash-chained signed receipts (`memory/deletion-saga.ts`; email cascade `email.source-deletion.ts`); Passport export all-statuses, signed, offline-verifiable, now schema-cross-checked (PR #100). Residual: reply-draft-approval residue (SEC-4, #91) — receipt-completeness hardening, in progress. |
+| 2 | Captures notes/email/files; remembers, verifies, consolidates (dreaming), open loops, answers with sources, time-travel diff | **MET** | `project/src/connectors/` (notes, files, email intake/parse/reply), `memory/`, `tasks/`, dreaming, `retrieval/chat` citations, `memory/timeline.*` + `web/.../TimelineView.tsx`. Calendar-invite parts now parsed (GAP-4 resolved, PR #117). |
+| 3 | Inspect + correct everything; provable deletion with a signed receipt; Memory Passport export | **MET** | Deletion saga + hash-chained signed receipts; Passport export all-statuses, signed, offline-verifiable, schema-cross-checked (PR #100). Reply-draft-approval residue closed — the receipt now redacts + counts them (SEC-4, PR #119). |
 | 4 | Upgrade via the script; restore from an OVH backup by a rehearsed procedure | **MET** | `scripts/operator/cogeto` upgrade subcommand; runbook §5c (rehearsed restore) + §6 (upgrades). |
 | 5 | Public trust-score page + compliance one-pager live | **MET (owner-confirmed)** | Both live on cogeto.eu (owner-confirmed; external website repo — GAP-3). The trust-score data side is in-repo: `eval/trust-scores/index.json` + immutable per-version files. |
-| 6 | Both audits pass | **IN PROGRESS** | This re-run (`launch-gap-audit.md`, `launch-security-audit.md`, `launch-platform-audit.md`) + this acceptance log. Passing requires: the remaining fix:launch clusters merged (esp. #90 SMTP), the OWNER ACTIONS completed and verified, and a clean re-scan. |
+| 6 | Both audits pass | **IN PROGRESS** | Re-run reports + this acceptance log published. Remaining to pass: the **SMTP hardening (#90)** landed and validated by the live acceptance test (owner DNS/cert), the **golden corpus (#95)** merged (owner label review), the **OWNER ACTIONS** confirmed, and a clean re-scan. |
+
+**Progress:** 11 of the 13 fix:launch clusters/findings groups are merged (23 of 25 fix-now
+findings resolved and on `main`, verified green). The two that remain — #90 (SMTP hardening)
+and #95 (golden corpus) — are **owner-gated**, not code-blocked: they need the DNS/PTR + cert
+decisions and the golden-case label review before they can land and be validated.
 
 **Not yet written: the closing "v1 is launchable" entry.** Per the Phase 3 contract it is
-written only when the automated fixes are merged, the OWNER ACTIONS are confirmed done, and
-this DoD list is fully checked — specifically the SMTP hardening (#90) landed and validated
-by the live acceptance test, and the golden corpus (#95) merged. Until then v1 is **not yet
-declared launchable**; the next tag remains the owner's to cut once the above closes.
+written only when every automated fix is merged, the OWNER ACTIONS are confirmed done, and
+this DoD list is fully checked — specifically #90 landed + validated by the live spoofed-email
+acceptance test, and #95 merged. Until then v1 is **not yet declared launchable**; the next
+tag remains the owner's to cut once the above closes.
