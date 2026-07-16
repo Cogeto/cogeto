@@ -64,6 +64,11 @@ export interface EmailReplyDraftPayload {
   /** Whether the recipient was confidently recovered. When false, the UI asks
    * the user to fill in the recipient before sending. */
   recipientResolved: boolean;
+  /** Whether the recipient is TRUSTED. False when it was recovered from the
+   * forwarded message body (attacker-controllable content, SEC-3): the address
+   * is still shown as a suggestion, but the UI must have the user verify it
+   * before sending. Optional for backward-compat; absent → treated as verified. */
+  recipientVerified?: boolean;
   /** The drafted subject (usually "Re: …"). */
   subject: string;
   /** Threading: the original Message-ID, for the reply's In-Reply-To. */
@@ -88,6 +93,9 @@ export interface EmailReplyDraftView {
   /** False when the recipient could not be recovered — the UI prompts the user
    * to set it before sending (see the forwarded-addressing rule). */
   recipientResolved: boolean;
+  /** False when the recipient was recovered from the forwarded body — a
+   * suggestion the user must verify before sending (SEC-3). Absent → verified. */
+  recipientVerified?: boolean;
   subject: string;
   body: string;
   /** A ready-to-open mailto: link, prefilled, that opens the user's own client. */

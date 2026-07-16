@@ -18,6 +18,11 @@ export interface ReplyTarget {
   /** False when the original correspondent could not be recovered (a forward
    * with no parseable original) — the draft leaves the recipient unset. */
   resolved: boolean;
+  /** Whether the recipient is TRUSTED. True only when it is the message's own
+   * From (the address the server actually received). False when recovered by
+   * parsing the forwarded body — attacker-controllable content the user must
+   * verify before sending (SEC-3). Also false when unresolved. */
+  recipientVerified: boolean;
   /** Whether the message arrived as a forward (envelope self-send and/or a
    * forwarded block in the body). */
   isForward: boolean;
@@ -62,7 +67,9 @@ export function resolveReplyTarget(
   const isForward = forwarded !== null || isSelfForward;
   const originalCorrespondent = forwarded?.from ?? null;
 
-  // 1. Recovered forwarded original correspondent.
+  // 1. Recovered forwarded original correspondent. The address comes from the
+  //    forwarded BODY (attacker-controllable), so it is resolved-but-UNVERIFIED
+  //    (SEC-3): shown as a suggestion the user must confirm before sending.
   const recovered = normalizeAddress(forwarded?.from);
   if (recovered) {
     return {
@@ -72,12 +79,14 @@ export function resolveReplyTarget(
       inReplyTo: forwarded?.messageId ?? null,
       references: dedupe([forwarded?.messageId]),
       resolved: true,
+      recipientVerified: false,
       isForward: true,
       originalCorrespondent,
     };
   }
 
-  // 2. The message's own external sender (direct mail, auto-forward, BCC).
+  // 2. The message's own external sender (direct mail, auto-forward, BCC) — the
+  //    address the server actually received, so it is VERIFIED.
   if (messageFrom && !isSelfForward) {
     return {
       to: messageFrom,
@@ -86,6 +95,7 @@ export function resolveReplyTarget(
       inReplyTo: email.messageId ?? null,
       references: dedupe([...email.references, email.messageId]),
       resolved: true,
+      recipientVerified: true,
       isForward,
       originalCorrespondent,
     };
@@ -99,6 +109,7 @@ export function resolveReplyTarget(
     inReplyTo: null,
     references: [],
     resolved: false,
+    recipientVerified: false,
     isForward: true,
     originalCorrespondent,
   };

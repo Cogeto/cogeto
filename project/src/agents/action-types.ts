@@ -46,6 +46,14 @@ export interface ActionDefinition<P = unknown> {
   ttlSeconds: number;
   summarize(payload: P): string;
   preview(payload: P): string[];
+  /**
+   * True when `summarize`/`preview` render user content (e.g. a reply-draft
+   * body). Such an approval's summary + preview are shown ONLY to its requester;
+   * other org members see a content-free placeholder, and only the requester may
+   * confirm/reject it (SEC-5). The full artifact is already owner-gated at its
+   * own endpoint. Defaults to false (an operational action shown org-wide).
+   */
+  contentBearing?: boolean;
   /** Authorize the request (e.g. ownership) at CREATE; throw to refuse. */
   authorizeCreate?(principal: Principal, payload: P): Promise<void>;
   execute(tx: Tx, ctx: ActionContext, payload: P): Promise<ActionResult>;
