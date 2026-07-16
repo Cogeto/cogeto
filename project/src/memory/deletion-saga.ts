@@ -123,6 +123,14 @@ export interface DerivedCascade {
   /** Names the artifact in counts_json (e.g. 'tasks'). */
   readonly artifact: string;
   cascadeForMemories(tx: Tx, memoryIds: string[]): Promise<number>;
+  /**
+   * Optional: cascade artifacts keyed by the SOURCE being deleted, not its
+   * memories (SEC-4). A reply-draft approval derived from an email lives in
+   * another module and references the email SOURCE id (not a memory id), so it
+   * cannot be reached via `cascadeForMemories`. Runs in the same enumeration
+   * transaction and returns the count folded into the receipt.
+   */
+  cascadeForSource?(tx: Tx, sourceType: string, sourceId: string): Promise<number>;
 }
 
 export const DERIVED_CASCADES = Symbol('DERIVED_CASCADES');
@@ -178,6 +186,11 @@ const countsSchema = z.object({
    * optional so earlier receipts parse unchanged; a count, not an identifier:
    * the sweep ignores it). */
   chat_messages_redacted: z.number().int().optional(),
+  /** Reply-draft approvals derived from the deleted email source, whose drafted
+   * body (grounded on the erased email + the user's memories) is redacted to a
+   * deletion marker (SEC-4; additive — optional so earlier receipts parse
+   * unchanged; a count, not an identifier: the sweep ignores it). */
+  reply_drafts_redacted: z.number().int().optional(),
   /** Qdrant point id = memory id (§A.4); duplicated for receipt readability. */
   point_ids: z.array(z.string()),
   object_keys: z.array(z.string()),
@@ -337,6 +350,7 @@ export class DeletionSaga {
       // stays as the safety net).
       let tasksRemoved = 0;
       let chatMessagesRedacted = 0;
+      let replyDraftsRedacted = 0;
       for (const cascade of this.derivedCascades) {
         const removed = await cascade.cascadeForMemories(tx, memoryIds);
         if (cascade.artifact === 'tasks') tasksRemoved += removed;
@@ -344,6 +358,13 @@ export class DeletionSaga {
         // are redacted to a deletion marker by the chat cascade; the receipt
         // counts them so the erasure claim is complete, not just row-deep.
         if (cascade.artifact === 'chat_messages') chatMessagesRedacted += removed;
+        // SEC-4: reply-draft approvals derived from THIS source (by source id,
+        // not memory id) — their drafted body is redacted so a "provably
+        // deleted" receipt no longer over-claims while the draft survives.
+        if (cascade.cascadeForSource) {
+          const redacted = await cascade.cascadeForSource(tx, sourceType, sourceId);
+          if (cascade.artifact === 'reply_drafts') replyDraftsRedacted += redacted;
+        }
       }
 
       // Cross-source chain handling (see header): surviving rows pointing at a
@@ -377,6 +398,7 @@ export class DeletionSaga {
         memory_count: memoryIds.length,
         tasks_removed: tasksRemoved,
         chat_messages_redacted: chatMessagesRedacted,
+        reply_drafts_redacted: replyDraftsRedacted,
         point_ids: memoryIds,
         object_keys: objectKeys,
         superseded_by_nulled: nulledPointers,
@@ -412,6 +434,7 @@ export class DeletionSaga {
           supersededByNulled: nulledPointers.length,
           contradictionsLifted: liftedPartners,
           chatMessagesRedacted,
+          replyDraftsRedacted,
           // The QS-5 cancellation trace: how pending ingestion was resolved.
           ingestionCancellation: ingestion,
         },

@@ -12,7 +12,7 @@ import {
   ChatSourceModule,
   RetrievalModule,
 } from '../retrieval/index';
-import { AgentsModule } from '../agents/index';
+import { AgentsModule, ReplyDraftCascade, ReplyDraftCascadeModule } from '../agents/index';
 import {
   ConnectorsModule,
   EmailReplyModule,
@@ -81,10 +81,10 @@ export function createAppRootModule(config: CogetoConfig): unknown {
           adapters: [NotesSourceDeletion, ChatSourceDeletion, EmailSourceDeletion],
         },
         derivedCascades: {
-          imports: [TasksModule.forApi(), ChatSourceModule],
+          imports: [TasksModule.forApi(), ChatSourceModule, ReplyDraftCascadeModule],
           // Tasks are deleted with their memories; assistant answers citing
           // erased memories are redacted (QS-7, decision 0025).
-          adapters: [TasksCascade, ChatAnswerCascade],
+          adapters: [TasksCascade, ChatAnswerCascade, ReplyDraftCascade],
         },
         // Delete-vs-ingestion serialization (QS-5, decision 0024): the saga
         // cancels a source's pending pipeline run inside its enumeration tx.

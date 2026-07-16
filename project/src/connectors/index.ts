@@ -17,7 +17,11 @@ export {
 // Inbound email (Session O4, decision 0028).
 export { EmailIntakeService } from './email-intake.service';
 export type { MailEnvelope, IntakeResult } from './email-intake.service';
-export { EmailAllowlistService } from './email-allowlist.service';
+export {
+  EmailAllowlistService,
+  EMAIL_REFUSAL_RETENTION_JOB_TYPE,
+  EMAIL_REFUSAL_RETENTION_CRONTAB,
+} from './email-allowlist.service';
 export { EmailSourceReader } from './email.source-reader';
 export { EmailSourceDeletion } from './email.source-deletion';
 export { EmailSourceService } from './email-source.service';

@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNull, lt, or } from 'drizzle-orm';
 import type {
   AddEmailAllowlistEntryRequest,
   EmailAllowlistEntryDto,
@@ -15,6 +15,17 @@ import type { AllowlistEntry } from './email-parse';
 
 /** How many recent refusals the Settings surface shows (one-click allowlisting). */
 const RECENT_REFUSALS_LIMIT = 20;
+
+/**
+ * Refused mail records hold third-party sender addresses (PII) and, on an
+ * internet-facing SMTP port, grow unbounded from unknown senders (SEC-6/GAP-6).
+ * A nightly pass prunes rows older than this window — long enough to remain
+ * useful for one-click allowlisting, short enough to bound the retained PII.
+ */
+export const REFUSAL_RETENTION_DAYS = 30;
+export const EMAIL_REFUSAL_RETENTION_JOB_TYPE = 'email_refusal_retention';
+/** Daily at 03:50 UTC — after the other nightly passes (worker pins TZ=UTC). */
+export const EMAIL_REFUSAL_RETENTION_CRONTAB = `50 3 * * * ${EMAIL_REFUSAL_RETENTION_JOB_TYPE}`;
 
 /**
  * The per-user sender allowlist — personal routing for external senders
@@ -168,21 +179,39 @@ export class EmailAllowlistService {
     });
   }
 
-  /** Recent refusals for the owner (plus system refusals with no owner yet). */
+  /**
+   * Recent refusals for the owner (plus system refusals with no owner yet). The
+   * owner/null predicate is in the WHERE, BEFORE the LIMIT (SEC-8/GAP-12), so
+   * another user's refusals can no longer crowd this user's claimable rows out
+   * of the window.
+   */
   async recentRefusalsForOwner(ownerId: string): Promise<EmailRefusalDto[]> {
     const rows = await this.db
       .select()
       .from(emailRefusal)
+      .where(or(isNull(emailRefusal.ownerId), eq(emailRefusal.ownerId, ownerId)))
       .orderBy(desc(emailRefusal.refusedAt))
       .limit(RECENT_REFUSALS_LIMIT);
-    return rows
-      .filter((r) => r.ownerId === null || r.ownerId === ownerId)
-      .map((r) => ({
-        id: r.id,
-        fromAddr: r.fromAddr,
-        reason: r.reason,
-        refusedAt: r.refusedAt.toISOString(),
-      }));
+    return rows.map((r) => ({
+      id: r.id,
+      fromAddr: r.fromAddr,
+      reason: r.reason,
+      refusedAt: r.refusedAt.toISOString(),
+    }));
+  }
+
+  /**
+   * Prune refused-mail records older than `days` (SEC-6/GAP-6) — bounds the
+   * retained third-party sender PII and the table's growth on a public inbound
+   * port. Idempotent; returns the number removed.
+   */
+  async pruneRefusalsOlderThan(days: number = REFUSAL_RETENTION_DAYS): Promise<number> {
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const removed = await this.db
+      .delete(emailRefusal)
+      .where(lt(emailRefusal.refusedAt, cutoff))
+      .returning({ id: emailRefusal.id });
+    return removed.length;
   }
 }
 

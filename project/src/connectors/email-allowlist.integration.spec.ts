@@ -83,4 +83,37 @@ describe('email allowlist management (integration: real Postgres)', () => {
     ).rejects.toThrow();
     await expect(service.addEntry(owner, { kind: 'domain', value: 'localhost' })).rejects.toThrow();
   });
+
+  it('refusal_scoping_and_retention (SEC-8/SEC-6): owner filter is applied before the limit, and old rows are pruned', async () => {
+    // 25 NEWER refusals for a different owner, then one for our owner.
+    for (let i = 0; i < 25; i++) {
+      await service.recordRefusal(tdb.db, {
+        ownerId: 'other-user',
+        fromAddr: `x${i}@ext.test`,
+        toAddr: null,
+        reason: 'not allowlisted',
+      });
+    }
+    await service.recordRefusal(tdb.db, {
+      ownerId: owner.userId,
+      fromAddr: 'mine@ext.test',
+      toAddr: null,
+      reason: 'not allowlisted',
+    });
+
+    // SEC-8: our owner's refusal is not crowded out of the window by the 25
+    // newer other-owner rows (the owner/null filter is in the WHERE, before LIMIT).
+    const recent = await service.recentRefusalsForOwner(owner.userId);
+    expect(recent.map((r) => r.fromAddr)).toContain('mine@ext.test');
+    expect(recent.map((r) => r.fromAddr)).not.toContain('x0@ext.test'); // other owner filtered out
+
+    // SEC-6: age our row past the window; the retention pass prunes it.
+    await tdb.pool.query(
+      `UPDATE email_refusal SET refused_at = now() - interval '40 days' WHERE from_addr = 'mine@ext.test'`,
+    );
+    const removed = await service.pruneRefusalsOlderThan(30);
+    expect(removed).toBeGreaterThanOrEqual(1);
+    const afterPrune = await service.recentRefusalsForOwner(owner.userId);
+    expect(afterPrune.map((r) => r.fromAddr)).not.toContain('mine@ext.test');
+  });
 });

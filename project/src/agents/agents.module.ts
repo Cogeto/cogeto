@@ -3,6 +3,7 @@ import { ApprovalsController } from './approvals.controller';
 import { ApprovalService } from './approval.service';
 import { ApprovalExecutor } from './approval.executor';
 import { ActionRegistry } from './action-registry';
+import { ReplyDraftCascade } from './reply-draft-cascade';
 
 /**
  * agents — the server-side approval state machine (Addendum §A.8):
@@ -20,3 +21,15 @@ import { ActionRegistry } from './action-registry';
   exports: [ApprovalService, ApprovalExecutor],
 })
 export class AgentsModule {}
+
+/**
+ * The reply-draft deletion cascade (SEC-4), bound into the memory saga's
+ * derivedCascades. Kept in its OWN module — it has no dependency on the approval
+ * state machine or the memory store (it only redacts the `approval` table by
+ * source id) — so the memory module can import it without a cycle.
+ */
+@Module({
+  providers: [ReplyDraftCascade],
+  exports: [ReplyDraftCascade],
+})
+export class ReplyDraftCascadeModule {}

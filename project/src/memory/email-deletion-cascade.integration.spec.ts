@@ -25,6 +25,7 @@ import {
   FileSourceReader,
   UserSettingsService,
 } from '../connectors/index';
+import { ReplyDraftCascade } from '../agents/index';
 import { UserDirectory } from '../identity/index';
 import { INGESTION_PIPELINE_JOB_TYPE, createIngestionPipeline } from '../ingestion/index';
 import { MemoryStore } from './memory.store';
@@ -179,7 +180,9 @@ describe('email deletion cascade (integration: real Postgres + Qdrant + MinIO)',
         intakeToken: 't',
       },
     );
-    saga = new DeletionSaga(tdb.db, [new EmailSourceDeletion()], vectors);
+    saga = new DeletionSaga(tdb.db, [new EmailSourceDeletion()], vectors, [
+      new ReplyDraftCascade(),
+    ]);
     executor = new DeletionExecutor(vectors, objects, keyDir);
   }, 180_000);
 
@@ -341,5 +344,57 @@ describe('email deletion cascade (integration: real Postgres + Qdrant + MinIO)',
     const report = await sweep.run();
     expect(report.newAlerts).toBe(0);
     expect(report.chainOk).toBe(true);
+  });
+
+  it('reply_draft_redacted_on_email_deletion (SEC-4): a reply draft derived from the email is redacted and counted', async () => {
+    const result = await intake.intake(rawEmailWithAttachment(makePdf('brief')), {
+      mailFrom: 'ana@adriatic-foods.hr',
+      rcptTo: INBOUND,
+    });
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) return;
+    const emailId = result.emailIds[0]!;
+
+    // A reply draft grounded on this email (its body is model-derived content).
+    const draftId = (
+      await tdb.pool.query<{ id: string }>(
+        `INSERT INTO approval (action_type, payload_json, status, org_id, requested_by, expires_at)
+         VALUES ('email.reply_draft', $1::jsonb, 'pending_approval', $2, $3, now() + interval '7 days')
+         RETURNING id`,
+        [
+          JSON.stringify({
+            to: 'ana@adriatic-foods.hr',
+            recipientResolved: true,
+            subject: 'Re: brief',
+            inReplyTo: null,
+            references: [],
+            body: 'SECRET DRAFT: the renewal is worth forty-eight thousand euros.',
+            emailSourceId: emailId,
+          }),
+          owner.orgId,
+          owner.userId,
+        ],
+      )
+    ).rows[0]!.id;
+
+    // Delete the email source; run the worker to confirm the receipt.
+    const { receiptId } = await saga.requestSourceDeletion(owner, 'email', emailId);
+    await runWorker();
+
+    // The drafted body — derived from the now-erased email — is redacted, so the
+    // signed receipt no longer over-claims.
+    const draftBody = (
+      await tdb.pool.query<{ body: string }>(
+        `SELECT payload_json->>'body' AS body FROM approval WHERE id = $1`,
+        [draftId],
+      )
+    ).rows[0]!.body;
+    expect(draftBody).not.toContain('forty-eight thousand');
+    expect(draftBody).toMatch(/redacted/i);
+
+    // The receipt counts the redaction — completeness is provable, not just claimed.
+    const confirmed = await receipt(receiptId);
+    const counts = parseReceiptCounts(confirmed!.counts_json);
+    expect(counts.reply_drafts_redacted).toBe(1);
   });
 });

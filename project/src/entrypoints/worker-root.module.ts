@@ -3,7 +3,7 @@ import { DatabaseModule, LimitsModule } from '../infrastructure/index';
 import { IdentityModule } from '../identity/index';
 import { MemoryModule } from '../memory/index';
 import { IngestionModule, PipelineIngestionGuard } from '../ingestion/index';
-import { AgentsModule } from '../agents/index';
+import { AgentsModule, ReplyDraftCascade, ReplyDraftCascadeModule } from '../agents/index';
 import {
   ConnectorsModule,
   EmailSourceDeletion,
@@ -70,10 +70,10 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
           adapters: [NotesSourceDeletion, ChatSourceDeletion, EmailSourceDeletion],
         },
         derivedCascades: {
-          imports: [TasksModule.register(), ChatSourceModule],
+          imports: [TasksModule.register(), ChatSourceModule, ReplyDraftCascadeModule],
           // Tasks are deleted with their memories; assistant answers citing
           // erased memories are redacted (QS-7, decision 0025).
-          adapters: [TasksCascade, ChatAnswerCascade],
+          adapters: [TasksCascade, ChatAnswerCascade, ReplyDraftCascade],
         },
         // Delete-vs-ingestion serialization (QS-5, decision 0024): the saga
         // cancels a source's pending pipeline run inside its enumeration tx.
