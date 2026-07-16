@@ -20,6 +20,7 @@ describe('resolveReplyTarget — forwarded-addressing recovery (Session O4)', ()
     const t = resolveReplyTarget(email({ fromAddr: 'Ana <ana@adriatic-foods.hr>' }), OWNER);
     expect(t.to).toBe('ana@adriatic-foods.hr');
     expect(t.resolved).toBe(true);
+    expect(t.recipientVerified).toBe(true); // the message's own From is trusted
     expect(t.isForward).toBe(false);
     expect(t.subject).toBe('Re: Proposal');
   });
@@ -43,6 +44,8 @@ describe('resolveReplyTarget — forwarded-addressing recovery (Session O4)', ()
     );
     expect(t.to).toBe('ana@adriatic-foods.hr'); // Ana, NOT the forwarder
     expect(t.resolved).toBe(true);
+    // Recovered from the forwarded BODY — a suggestion to verify, not trusted (SEC-3).
+    expect(t.recipientVerified).toBe(false);
     expect(t.isForward).toBe(true);
     expect(t.originalCorrespondent).toContain('ana@adriatic-foods.hr');
     expect(t.subject).toBe('Re: Delivery schedule'); // threads on the original subject

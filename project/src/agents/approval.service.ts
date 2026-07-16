@@ -73,7 +73,7 @@ export class ApprovalService {
       });
       return created;
     });
-    return this.toDto(row);
+    return this.toDto(row, principal.userId);
   }
 
   /**
@@ -90,6 +90,15 @@ export class ApprovalService {
     const to = decision === 'approve' ? 'approved' : 'rejected';
     const row = await this.db.transaction(async (tx) => {
       const current = await this.lockForOrg(tx, principal, id);
+      // A content-bearing approval (e.g. a reply draft) is personal to its
+      // requester — only they may approve/reject it (SEC-5). A teammate is told
+      // it does not exist rather than leaking its existence.
+      if (
+        this.registry.get(current.actionType).contentBearing &&
+        current.requestedBy !== principal.userId
+      ) {
+        throw new NotFoundException(`approval ${id} not found`);
+      }
       const check = checkApprovalTransition(current.status, to);
       if (!check.allowed) throw new UnprocessableEntityException(check.reason);
 
@@ -124,7 +133,7 @@ export class ApprovalService {
       }
       return updated as ApprovalRow;
     });
-    return this.toDto(row);
+    return this.toDto(row, principal.userId);
   }
 
   /**
@@ -169,7 +178,7 @@ export class ApprovalService {
       .where(and(eq(approval.orgId, principal.orgId), eq(approval.status, 'pending_approval')))
       .orderBy(desc(approval.createdAt))
       .limit(200);
-    return this.toDtos(rows as ApprovalRow[]);
+    return this.toDtos(rows as ApprovalRow[], principal.userId);
   }
 
   async listHistory(principal: Principal): Promise<ApprovalDto[]> {
@@ -181,7 +190,7 @@ export class ApprovalService {
       )
       .orderBy(desc(approval.decidedAt))
       .limit(200);
-    return this.toDtos(rows as ApprovalRow[]);
+    return this.toDtos(rows as ApprovalRow[], principal.userId);
   }
 
   async get(principal: Principal, id: string): Promise<ApprovalDto> {
@@ -189,7 +198,7 @@ export class ApprovalService {
     const row = rows[0];
     if (!row || row.orgId !== principal.orgId)
       throw new NotFoundException(`approval ${id} not found`);
-    return (await this.toDtos([row as ApprovalRow]))[0]!;
+    return (await this.toDtos([row as ApprovalRow], principal.userId))[0]!;
   }
 
   /**
@@ -220,6 +229,9 @@ export class ApprovalService {
       to: payload.to,
       // Legacy drafts (created before the field existed) are treated as resolved.
       recipientResolved: payload.recipientResolved !== false,
+      // A body-recovered recipient is a suggestion to verify (SEC-3); legacy
+      // drafts (field absent) are treated as verified.
+      recipientVerified: payload.recipientVerified !== false,
       subject: payload.subject,
       body: payload.body,
       mailto: buildMailto(payload),
@@ -240,15 +252,27 @@ export class ApprovalService {
     return row as ApprovalRow;
   }
 
-  private toDto(row: ApprovalRow, result: string | null = null): ApprovalDto {
+  private toDto(row: ApprovalRow, viewerId: string, result: string | null = null): ApprovalDto {
     const def = this.registry.get(row.actionType);
     const payload = def.schema.safeParse(row.payloadJson);
+    // A content-bearing approval's summary + preview render the requester's
+    // content; a non-requester in the same org sees a content-free placeholder
+    // (SEC-5). The full artifact is owner-gated at its own endpoint.
+    const contentGated = def.contentBearing === true && row.requestedBy !== viewerId;
     return {
       id: row.id,
       actionType: row.actionType,
       status: row.status,
-      summary: payload.success ? def.summarize(payload.data) : row.actionType,
-      preview: payload.success ? def.preview(payload.data) : [],
+      summary: contentGated
+        ? 'Private draft (visible only to the member who requested it)'
+        : payload.success
+          ? def.summarize(payload.data)
+          : row.actionType,
+      preview: contentGated
+        ? ['The content of this item is visible only to the member who requested it.']
+        : payload.success
+          ? def.preview(payload.data)
+          : [],
       requestedBy: row.requestedBy,
       createdAt: row.createdAt?.toISOString() ?? null,
       expiresAt: row.expiresAt?.toISOString() ?? null,
@@ -260,7 +284,7 @@ export class ApprovalService {
   }
 
   /** Batches the execution-result lookup (from the audit trail) for the list. */
-  private async toDtos(rows: ApprovalRow[]): Promise<ApprovalDto[]> {
+  private async toDtos(rows: ApprovalRow[], viewerId: string): Promise<ApprovalDto[]> {
     const executed = rows.filter((r) => r.status === 'executed').map((r) => r.id);
     const results = new Map<string, string>();
     if (executed.length > 0) {
@@ -270,7 +294,7 @@ export class ApprovalService {
         .where(and(eq(auditLog.action, 'approval.executed'), inArray(auditLog.entityId, executed)));
       for (const a of auditRows) if (a.summary) results.set(a.id, a.summary);
     }
-    return rows.map((r) => this.toDto(r, results.get(r.id) ?? null));
+    return rows.map((r) => this.toDto(r, viewerId, results.get(r.id) ?? null));
   }
 }
 

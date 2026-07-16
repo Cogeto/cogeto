@@ -27,6 +27,9 @@ const payloadSchema = z.object({
   // Added in the reply-triggers unit; a legacy draft without it had a real
   // recipient (the sender), so absent is treated as resolved.
   recipientResolved: z.boolean().optional(),
+  // False when the recipient was recovered from the forwarded body (SEC-3) — a
+  // suggestion to verify. Optional for backward-compat; absent → verified.
+  recipientVerified: z.boolean().optional(),
   subject: z.string().max(998),
   inReplyTo: z.string().nullable(),
   references: z.array(z.string()),
@@ -38,6 +41,20 @@ type EmailReplyDraftPayload = z.infer<typeof payloadSchema>;
 /** Absent recipientResolved (legacy drafts) counts as resolved. */
 function isRecipientResolved(p: EmailReplyDraftPayload): boolean {
   return p.recipientResolved !== false;
+}
+
+/** Absent recipientVerified (legacy drafts) counts as verified. */
+function isRecipientVerified(p: EmailReplyDraftPayload): boolean {
+  return p.recipientVerified !== false;
+}
+
+/** The recipient line for the preview — flags a body-recovered, unverified address. */
+function recipientLine(p: EmailReplyDraftPayload): string {
+  if (!isRecipientResolved(p)) return 'To: (recipient not recovered — set it before sending)';
+  if (!isRecipientVerified(p)) {
+    return `To (suggested from the forwarded message — VERIFY before sending): ${p.to}`;
+  }
+  return `To: ${p.to}`;
 }
 
 /** Body preview lines for the Pending Approvals surface (bounded). */
@@ -54,12 +71,13 @@ export function buildEmailReplyDraftAction(): ActionDefinition<EmailReplyDraftPa
     schema: payloadSchema,
     initialStatus: 'pending_approval',
     ttlSeconds: 7 * 24 * 60 * 60, // a week to send it (or not)
+    // The summary + body preview are the user's content; show them only to the
+    // requester and let only the requester confirm/reject (SEC-5).
+    contentBearing: true,
     summarize: (p) =>
       isRecipientResolved(p) ? `Draft reply to ${p.to}` : 'Draft reply (set recipient)',
     preview: (p) => [
-      isRecipientResolved(p)
-        ? `To: ${p.to}`
-        : 'To: (recipient not recovered — set it before sending)',
+      recipientLine(p),
       `Subject: ${p.subject || '(no subject)'}`,
       '—',
       ...bodyPreview(p.body),

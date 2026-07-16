@@ -31,6 +31,16 @@ const userB: Principal = {
   orgName: 'Org Two',
   roles: [],
 };
+// A SECOND user in userA's org — a teammate. Content-bearing approvals (reply
+// drafts) must hide their content from them and refuse their confirm (SEC-5).
+const userA2: Principal = {
+  userId: 'user-a2',
+  name: 'User A2',
+  email: null,
+  orgId: 'org-1',
+  orgName: 'Org One',
+  roles: [],
+};
 
 describe('approval state machine (integration: real Postgres + Qdrant)', () => {
   let tdb: TestDatabase;
@@ -331,5 +341,37 @@ describe('approval state machine (integration: real Postgres + Qdrant)', () => {
     );
     await service.expireStale();
     expect(await auditCount('approval.expired', e.id)).toBe(1);
+  });
+
+  it('reply_draft_owner_gated (SEC-5): a teammate sees no content and cannot confirm a reply draft', async () => {
+    const payload = {
+      to: 'ana@adriatic-foods.hr',
+      recipientResolved: true,
+      recipientVerified: true,
+      subject: 'Re: Delivery schedule',
+      inReplyTo: null,
+      references: [],
+      body: 'Hi Ana,\nConfirming Friday works.\nBest,\nUser A',
+      emailSourceId: randomUUID(),
+    };
+    const draft = await service.create(userA, 'email.reply_draft', payload);
+
+    // The requester sees the body preview.
+    const own = (await service.listPending(userA)).find((a) => a.id === draft.id)!;
+    expect(own.preview.join('\n')).toContain('Confirming Friday works');
+    expect(own.summary).toContain('Draft reply to ana@adriatic-foods.hr');
+
+    // A same-org teammate sees the item but NO content — a placeholder only.
+    const teammate = (await service.listPending(userA2)).find((a) => a.id === draft.id)!;
+    expect(teammate).toBeDefined();
+    expect(teammate.preview.join('\n')).not.toContain('Confirming Friday works');
+    expect(teammate.summary).not.toContain('ana@adriatic-foods.hr');
+    expect(teammate.preview.join('\n')).toMatch(/visible only to the member who requested it/i);
+
+    // The teammate cannot confirm it — it is "not found" for them.
+    await expect(service.confirm(userA2, draft.id, 'approve')).rejects.toThrow(/not found/i);
+    // The requester can.
+    const confirmed = await service.confirm(userA, draft.id, 'approve');
+    expect(confirmed.status).toBe('approved');
   });
 });
