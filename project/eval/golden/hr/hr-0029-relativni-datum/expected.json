@@ -2,7 +2,14 @@
   "case_id": "hr-0029",
   "source_type": "user_note",
   "expected_memories": [
-    { "content_gist": "Korisnik će prekosutra poslati Tomislavu završni izvještaj o pilotu", "kind": "commitment", "entities": ["Tomislav"], "condition": null, "temporal": { "valid_from": "source_date" }, "must_extract": true }
+    {
+      "content_gist": "Korisnik će prekosutra poslati Tomislavu završni izvještaj o pilotu",
+      "kind": "commitment",
+      "entities": ["Tomislav"],
+      "condition": null,
+      "temporal": { "valid_from": "source_date" },
+      "must_extract": true
+    }
   ],
   "must_not_extract": [],
   "expected_relations": [],
