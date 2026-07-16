@@ -393,6 +393,16 @@ services:
       COGETO_MAIL_MAX_BYTES: ${COGETO_MAIL_MAX_BYTES:-26214400}
       COGETO_INTAKE_URL: http://app:3000/api/email/intake
       COGETO_MAIL_INTAKE_TOKEN: ${COGETO_MAIL_INTAKE_TOKEN:?}
+      # Inbound STARTTLS (GAP-2): the entrypoint enables STARTTLS only when a
+      # readable cert/key is present at these paths in the mail-tls volume. The
+      # OPERATOR populates that volume with the instance's cert (OWNER ACTION —
+      # the operator runbook documents copying the Caddy-obtained cert for the
+      # mail hostname there; a dedicated volume, NOT the whole caddy-data store,
+      # so the internet-facing mail container never holds Caddy's other keys).
+      COGETO_MAIL_TLS_CERT: ${COGETO_MAIL_TLS_CERT:-/app/tls/cert.pem}
+      COGETO_MAIL_TLS_KEY: ${COGETO_MAIL_TLS_KEY:-/app/tls/key.pem}
+    volumes:
+      - mail-tls:/app/tls:ro
     ports:
       # Standard inbound SMTP → the container's non-root listener.
       - '${COGETO_MAIL_HOST_PORT:-25}:2525'
@@ -423,3 +433,6 @@ volumes:
   web-config:
   caddy-data:
   caddy-config:
+  # Instance TLS cert/key for inbound STARTTLS (GAP-2). The operator populates it
+  # with the mail hostname's certificate (operator runbook); empty → no STARTTLS.
+  mail-tls:

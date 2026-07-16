@@ -56,6 +56,20 @@ exports.hook_queue = function (next, connection) {
         ? txn.rcpt_to[0].address()
         : '';
 
+    // The SPF verdict for the envelope sender (SEC-1). The `spf` plugin writes a
+    // standard `Received-SPF: <result> (...)` header; the first token is the
+    // result. The app treats the sender as authenticated only on `pass` and
+    // refuses a hard `fail`/`softfail`. Absent (dev without the plugin) → empty.
+    let spfResult = '';
+    try {
+      const hdr =
+        txn.header && typeof txn.header.get === 'function' ? txn.header.get('Received-SPF') : '';
+      const m = /^\s*([a-zA-Z]+)/.exec(hdr || '');
+      if (m) spfResult = m[1].toLowerCase();
+    } catch (e) {
+      spfResult = '';
+    }
+
     const req = transport.request(
       {
         protocol: url.protocol,
@@ -69,6 +83,7 @@ exports.hook_queue = function (next, connection) {
           authorization: 'Bearer ' + token,
           'x-cogeto-mail-from': mailFrom || '',
           'x-cogeto-rcpt-to': rcptTo || '',
+          'x-cogeto-spf': spfResult,
         },
       },
       (res) => {
@@ -78,6 +93,7 @@ exports.hook_queue = function (next, connection) {
           const status = res.statusCode;
           if (status === 200) return next(constants.OK);
           if (status === 413) return next(constants.DENY, 'message too large');
+          if (status === 429) return next(constants.DENYSOFT, 'sender rate exceeded — retry later');
           if (status === 403) return next(constants.DENY, 'sender not accepted');
           if (status >= 500) return next(constants.DENYSOFT, 'temporary intake failure');
           return next(constants.DENY, 'message rejected');

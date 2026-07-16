@@ -43,15 +43,18 @@ export class EmailIntakeController {
     const envelope = {
       mailFrom: headerValue(request, 'x-cogeto-mail-from'),
       rcptTo: headerValue(request, 'x-cogeto-rcpt-to'),
+      spfResult: headerValue(request, 'x-cogeto-spf'),
     };
     const result = await this.intake.intake(raw, envelope);
     if (result.accepted) return { status: 'queued', emailIds: result.emailIds };
 
+    // The HTTP status IS the SMTP verdict Haraka relays: 413 → 552 too large,
+    // 429 → 451 slow down (retry later), 403 → 550 refused.
     const status =
       result.status === 'too_large'
         ? HttpStatus.PAYLOAD_TOO_LARGE
-        : result.status === 'bad_recipient'
-          ? HttpStatus.FORBIDDEN
+        : result.status === 'rate_limited'
+          ? HttpStatus.TOO_MANY_REQUESTS
           : HttpStatus.FORBIDDEN;
     throw new HttpException({ status: 'refused', reason: result.reason }, status);
   }

@@ -17,6 +17,24 @@ export interface MailOptions {
    * provision time alongside the mail service.
    */
   intakeToken: string;
+  /**
+   * Require an AUTHENTICATED sender for the "registered user routes to self"
+   * rule (SEC-1). When true (the default, production), a message is only
+   * captured for the registered user whose address it claims to be from if the
+   * SMTP sender passed SPF — so a spoofed `MAIL FROM:<victim@registered-domain>`
+   * from an unauthorised host cannot inject memory into that user's account. A
+   * message that hard-fails SPF (`fail`/`softfail`) is refused outright. Set
+   * false only for a closed test instance without inbound SPF.
+   */
+  requireAuthenticatedSender: boolean;
+  /**
+   * Max accepted messages per sender address within the intake rate window
+   * (SEC-2). Bounds the ingestion/model spend an internet sender can drive on
+   * the public inbound port. 0 disables the cap.
+   */
+  intakeMaxPerSenderPerWindow: number;
+  /** The intake rate window, in seconds (SEC-2). */
+  intakeRateWindowSeconds: number;
 }
 
 export const MAIL_OPTIONS = Symbol('MAIL_OPTIONS');

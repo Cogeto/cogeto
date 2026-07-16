@@ -68,6 +68,14 @@ const configSchema = z
       .default(25 * 1024 * 1024),
     adminUserEmail: z.string().min(1).optional(),
     mailIntakeToken: z.string().default(''),
+    /** Require SPF-authenticated senders for the self-route (SEC-1); default on. */
+    mailRequireAuthenticatedSender: z
+      .union([z.literal('0'), z.literal('1'), z.boolean()])
+      .default('1')
+      .transform((v) => v === true || v === '1'),
+    /** Per-sender accepted-message cap within the intake window (SEC-2); 0 = off. */
+    mailIntakeMaxPerSender: z.coerce.number().int().nonnegative().default(60),
+    mailIntakeRateWindowSeconds: z.coerce.number().int().positive().default(3600),
     /** host:port of the Haraka SMTP listener for the health probe (Session O4);
      * unset → the mail check reports "not configured" and stays green. */
     mailSmtpAddress: z.string().min(1).optional(),
@@ -205,6 +213,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
     mailAttachmentsMaxBytes: env.COGETO_MAIL_ATTACHMENTS_MAX_BYTES || undefined,
     adminUserEmail: env.COGETO_ADMIN_USER_EMAIL || undefined,
     mailIntakeToken: env.COGETO_MAIL_INTAKE_TOKEN || undefined,
+    mailRequireAuthenticatedSender: env.COGETO_MAIL_REQUIRE_SPF || undefined,
+    mailIntakeMaxPerSender: env.COGETO_MAIL_INTAKE_MAX_PER_SENDER || undefined,
+    mailIntakeRateWindowSeconds: env.COGETO_MAIL_INTAKE_RATE_WINDOW_SECONDS || undefined,
     mailSmtpAddress: env.COGETO_MAIL_SMTP_ADDRESS || undefined,
     pgPoolMax: env.COGETO_PG_POOL_MAX || undefined,
     oidc: {
@@ -260,6 +271,9 @@ export function mailOptions(config: CogetoConfig): {
   attachmentsMaxBytes: number;
   adminUserEmail: string | null;
   intakeToken: string;
+  requireAuthenticatedSender: boolean;
+  intakeMaxPerSenderPerWindow: number;
+  intakeRateWindowSeconds: number;
 } {
   return {
     inboundAddress: config.mailInboundAddress ?? null,
@@ -267,6 +281,9 @@ export function mailOptions(config: CogetoConfig): {
     attachmentsMaxBytes: config.mailAttachmentsMaxBytes,
     adminUserEmail: config.adminUserEmail ?? null,
     intakeToken: config.mailIntakeToken,
+    requireAuthenticatedSender: config.mailRequireAuthenticatedSender,
+    intakeMaxPerSenderPerWindow: config.mailIntakeMaxPerSender,
+    intakeRateWindowSeconds: config.mailIntakeRateWindowSeconds,
   };
 }
 

@@ -133,6 +133,45 @@ public CA yet" to the Let's Encrypt certificate with its expiry, and the
 verdict can go GREEN. OVH zone changes usually propagate in minutes; the zone
 TTL is the upper bound.
 
+### 2c. Inbound-mail hardening (STARTTLS + sender SPF)
+
+Two hardening steps for the internet-facing mail server. Both are safe to do
+after the instance is up.
+
+- **STARTTLS for inbound mail (GAP-2).** The mail container advertises STARTTLS
+  only when a certificate is present in its `mail-tls` volume. Copy the
+  Let's Encrypt certificate Caddy already obtained for the **mail host**
+  (`mail.<domain>`) into that volume as `cert.pem` + `key.pem`, then restart the
+  mail container. On the instance:
+
+  ```sh
+  DOMAIN=mail.acme.cogeto.eu   # the mail host (record 3 above)
+  CERTDIR=$(sudo docker volume inspect --format '{{ .Mountpoint }}' cogeto_caddy-data)/caddy/certificates/acme-v02.api.letsencrypt.org-directory/$DOMAIN
+  TLSDIR=$(sudo docker volume inspect --format '{{ .Mountpoint }}' cogeto_mail-tls)
+  sudo cp "$CERTDIR/$DOMAIN.crt" "$TLSDIR/cert.pem"
+  sudo cp "$CERTDIR/$DOMAIN.key" "$TLSDIR/key.pem"
+  sudo docker compose -f docker-compose.deploy.yml restart mail
+  # Verify: the mail log prints "STARTTLS enabled", and from your own machine:
+  #   openssl s_client -starttls smtp -connect mail.acme.cogeto.eu:25 -crlf
+  # should show the certificate and a 250-STARTTLS in EHLO.
+  ```
+
+  Renewals: Caddy renews the cert; re-run the two `cp` lines + `restart mail`
+  (or add them to a monthly cron) so the mail server picks up the new cert. If
+  you prefer a dedicated cert, point `COGETO_MAIL_TLS_CERT`/`_KEY` at it instead.
+
+- **Sender SPF authentication (SEC-1).** Cogeto now captures a message for the
+  registered user it claims to be from **only if the sending server passes SPF**
+  for that sender's domain — so a spoofed `MAIL FROM` from an unauthorised host
+  cannot inject memory into that user's account (a hard SPF `fail` is refused
+  outright). No instance DNS change is needed for this; it protects
+  automatically. Advise each **customer** that their own sending domain should
+  publish an SPF record (most business domains already do) so their legitimate
+  self-captured mail authenticates; mail they simply forward from a provider
+  (Gmail, Microsoft 365) already passes SPF for that provider. To confirm a
+  spoof is blocked, the acceptance test below sends an unauthenticated message
+  and checks it is refused.
+
 ---
 
 ## 3. Verifying a new instance (acceptance checklist)

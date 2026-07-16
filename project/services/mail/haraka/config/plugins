@@ -1,11 +1,23 @@
 # Cogeto inbound Haraka — receive-only, minimal plugin set (decision 0028).
-# Order matters: connection/rate limits first, then recipient validation, then
-# the delivery-to-app queue hook. NO outbound/relay plugins are loaded — this
-# server never sends (ruling 4).
+# Order matters: connection limits first, then sender authentication, then
+# recipient validation, then the delivery-to-app queue hook. NO outbound/relay
+# plugins are loaded — this server never sends (ruling 4).
+#
+# STARTTLS: the `tls` plugin is NOT listed here — the entrypoint appends it at
+# start ONLY when an instance certificate is mounted (GAP-2), so a cert-less dev
+# box still boots while a provisioned instance advertises + accepts STARTTLS.
 
-# Per-connection concurrency + per-remote-host connection/recipient rate limits
-# (config/limit.ini) — anti-abuse hygiene (ruling 6).
-limit
+# Per-remote-host connection concurrency limit (config/cogeto_connlimit.ini) —
+# anti-abuse hygiene (ruling 6; GAP-1). A small IN-PROCESS limiter: the bundled
+# haraka-plugin-limit needs a Redis backend and crashes init without one, so we
+# do not use it. The real throttle on the expensive path is the app-side
+# per-sender intake rate cap (SEC-2).
+cogeto_connlimit
+
+# Sender authentication (SEC-1): evaluate SPF for the envelope sender and write
+# the standard Received-SPF header. cogeto_deliver forwards the verdict to the
+# app, which treats only `pass` as authenticated and refuses a hard `fail`.
+spf
 
 # Accept mail ONLY for the instance's configured inbound address; refuse every
 # other recipient at RCPT (SMTP 550) — recipient validation (ruling 6).

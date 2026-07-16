@@ -14,9 +14,11 @@ ENV NODE_ENV=production
 
 WORKDIR /app
 
-# Deps first (cache-friendly): Haraka + its constants module.
-COPY package.json ./
-RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
+# Deps first (cache-friendly): install from the committed lockfile with `npm ci`
+# so the whole transitive tree is reproducible (SEC-9) — this container parses
+# hostile internet input, so it must not float its deps at each build.
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 
 # The receive-only config dir (plugins + core config) and the entrypoint.
 COPY haraka ./haraka

@@ -30,6 +30,13 @@ const CLEANUP_RETRY_DELAY_MS = 250;
 export interface MailEnvelope {
   mailFrom: string | null;
   rcptTo: string | null;
+  /**
+   * The SMTP SPF verdict for the envelope sender, from the Haraka `spf` plugin
+   * (via the `x-cogeto-spf` intake header): 'pass' | 'fail' | 'softfail' |
+   * 'neutral' | 'none' | 'temperror' | 'permperror'. Null when unknown (e.g. a
+   * dev instance without the plugin). Drives the SEC-1 authentication gate.
+   */
+  spfResult?: string | null;
 }
 
 /** The intake verdict the internal endpoint maps to an SMTP response (ruling 7).
@@ -37,7 +44,11 @@ export interface MailEnvelope {
  * hence a list of stored email ids. */
 export type IntakeResult =
   | { accepted: true; emailIds: string[] }
-  | { accepted: false; status: 'refused' | 'too_large' | 'bad_recipient'; reason: string };
+  | {
+      accepted: false;
+      status: 'refused' | 'too_large' | 'bad_recipient' | 'rate_limited';
+      reason: string;
+    };
 
 interface PreparedObject {
   key: string;
@@ -64,6 +75,34 @@ interface PreparedObject {
 @Injectable()
 export class EmailIntakeService {
   private readonly logger = new Logger(EmailIntakeService.name);
+  /**
+   * In-process per-sender fixed-window intake counter (SEC-2). A single-tenant
+   * instance runs one app process, so an in-memory window is sufficient and
+   * needs no Redis; it bounds the ingestion/model spend one internet sender can
+   * drive before the allowlist/routing checks even run.
+   */
+  private readonly intakeWindows = new Map<string, { count: number; resetAt: number }>();
+
+  /** True if this sender is still under the per-window intake cap (SEC-2). */
+  private withinIntakeRate(sender: string | null): boolean {
+    const max = this.options.intakeMaxPerSenderPerWindow;
+    if (!max || max <= 0) return true; // cap disabled
+    const key = sender ?? '<null-sender>';
+    const now = Date.now();
+    const windowMs = this.options.intakeRateWindowSeconds * 1000;
+    const entry = this.intakeWindows.get(key);
+    if (!entry || now >= entry.resetAt) {
+      this.intakeWindows.set(key, { count: 1, resetAt: now + windowMs });
+      // Opportunistic cleanup so the map cannot grow unbounded across senders.
+      if (this.intakeWindows.size > 10_000) {
+        for (const [k, v] of this.intakeWindows) if (now >= v.resetAt) this.intakeWindows.delete(k);
+      }
+      return true;
+    }
+    if (entry.count >= max) return false;
+    entry.count += 1;
+    return true;
+  }
 
   constructor(
     @Inject(DRIZZLE) private readonly db: Db,
@@ -82,9 +121,28 @@ export class EmailIntakeService {
       return { accepted: false, status: 'too_large', reason: 'message exceeds the size cap' };
     }
 
+    const envelopeSender = normalizeAddress(envelope.mailFrom);
+    const spf = (envelope.spfResult ?? '').trim().toLowerCase();
+
+    // (0a) Hard SPF failure (SEC-1) — the sender's domain publishes SPF and this
+    //      host is NOT authorised: a forgery. Refuse BEFORE parsing (SEC-2 — no
+    //      MIME work, no model spend on spoofed mail).
+    if (spf === 'fail' || spf === 'softfail') {
+      await this.refuse(envelope, envelopeSender, 'spf_failed');
+      return { accepted: false, status: 'refused', reason: 'sender failed SPF authentication' };
+    }
+
+    // (0b) Per-sender intake rate cap (SEC-2) — bound the ingestion/model spend
+    //      one internet sender can drive. Checked before parsing.
+    if (!this.withinIntakeRate(envelopeSender)) {
+      await this.refuse(envelope, envelopeSender, 'rate_limited');
+      return { accepted: false, status: 'rate_limited', reason: 'sender intake rate exceeded' };
+    }
+
     const parsed = await simpleParser(raw);
     const headerFrom = firstAddress(parsed.from);
     const matchedSender = matchSender(envelope.mailFrom, headerFrom);
+    const senderAuthenticated = spf === 'pass';
 
     // (1) Recipient validation — only the instance's configured address.
     const rcpt = normalizeAddress(envelope.rcptTo) ?? firstAddress(parsed.to);
@@ -94,7 +152,9 @@ export class EmailIntakeService {
     }
 
     // (2) Sender-routed recipients (decision 0031) — refuse rather than guess.
-    const recipients = await this.resolveRecipients(matchedSender);
+    //     The self-route (registered user → self) requires an AUTHENTICATED
+    //     sender (SEC-1) so a spoofed From cannot inject that user's memory.
+    const recipients = await this.resolveRecipients(matchedSender, senderAuthenticated);
     if (recipients.length === 0) {
       await this.refuse(envelope, matchedSender, 'sender_not_recognized');
       return {
@@ -144,13 +204,22 @@ export class EmailIntakeService {
    */
   private async resolveRecipients(
     matchedSender: string | null,
+    senderAuthenticated: boolean,
   ): Promise<Array<{ userId: string; orgId: string }>> {
     if (!matchedSender) return [];
     const adminEmail = normalizeAddress(this.options.adminUserEmail);
     if (adminEmail && matchedSender === adminEmail) return [];
 
+    // Rule 1 (self-route): a message claiming to be FROM a registered user is
+    // captured for them ONLY when the sender is authenticated (SEC-1) — else a
+    // spoofed From would inject memory into that user's account. When SPF
+    // authentication is not required (a closed test instance), the legacy
+    // behaviour is kept. An unauthenticated self-claim falls through to the
+    // allowlist rule (which is an explicit per-user opt-in), not a hard refuse.
     const self = await this.directory.userByEmail(matchedSender);
-    if (self) return [{ userId: self.userId, orgId: self.orgId }];
+    if (self && (senderAuthenticated || !this.options.requireAuthenticatedSender)) {
+      return [{ userId: self.userId, orgId: self.orgId }];
+    }
 
     const ownerIds = await this.allowlist.ownersMatching(matchedSender);
     const users = await this.directory.usersByIds(ownerIds);

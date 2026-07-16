@@ -166,6 +166,12 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     attachmentsMaxBytes: 25 * 1024 * 1024,
     adminUserEmail: 'admin@instance.test',
     intakeToken: 'test-token',
+    // The routing tests predate SPF; keep the self-route open here and exercise
+    // the SEC-1 authentication gate + intake cap in their own test with a
+    // strict-options intake service.
+    requireAuthenticatedSender: false,
+    intakeMaxPerSenderPerWindow: 0,
+    intakeRateWindowSeconds: 3600,
   };
   const envelope = { mailFrom: null as string | null, rcptTo: INBOUND };
 
@@ -559,6 +565,63 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     if (!result.accepted) return;
     expect(result.emailIds).toHaveLength(1);
     expect((await ownedBy(result.emailIds[0]!)).owner_id).toBe(customer.userId);
+  });
+
+  it('sender_authentication_gate (SEC-1): a spoofed self-claim is not captured; an SPF-authenticated one is; the intake rate cap bites', async () => {
+    await directory.record(customer);
+    // A strict instance: require SPF authentication, cap at 2 messages/sender.
+    const strict = new EmailIntakeService(
+      tdb.db,
+      objects,
+      fileStore,
+      allowlist,
+      directory,
+      settings,
+      {
+        ...options,
+        requireAuthenticatedSender: true,
+        intakeMaxPerSenderPerWindow: 2,
+        intakeRateWindowSeconds: 3600,
+      },
+    );
+
+    // (a) Spoofed From claiming to be the customer, but SPF FAILS → refused,
+    //     never stored as the customer (the exact SEC-1 attack).
+    const spoof = await strict.intake(
+      rawEmail({ from: `Customer <${customer.email}>`, text: 'injected fact.' }),
+      { mailFrom: customer.email, rcptTo: INBOUND, spfResult: 'fail' },
+    );
+    expect(spoof.accepted).toBe(false);
+    if (!spoof.accepted) expect(spoof.status).toBe('refused');
+
+    // (b) SPF none (unauthenticated) → the self-route is NOT taken; with no
+    //     allowlist match the message is refused, not captured as the customer.
+    const unauth = await strict.intake(
+      rawEmail({ from: `Customer <${customer.email}>`, text: 'still injected.' }),
+      { mailFrom: customer.email, rcptTo: INBOUND, spfResult: 'none' },
+    );
+    expect(unauth.accepted).toBe(false);
+
+    // (c) SPF pass → authenticated → captured for the customer.
+    const good = await strict.intake(
+      rawEmail({ from: `Customer <${customer.email}>`, text: 'a real note.' }),
+      { mailFrom: customer.email, rcptTo: INBOUND, spfResult: 'pass' },
+    );
+    expect(good.accepted).toBe(true);
+    if (good.accepted) expect((await ownedBy(good.emailIds[0]!)).owner_id).toBe(customer.userId);
+
+    // (d) Rate cap: the sender has now had 1 accepted (c) + the counter also
+    //     advanced on (b)'s pass-through; a couple more pass-SPF sends trip the
+    //     per-sender cap → rate_limited (mapped to a 451 retry at the edge).
+    let sawRateLimited = false;
+    for (let i = 0; i < 4; i++) {
+      const r = await strict.intake(
+        rawEmail({ from: `Customer <${customer.email}>`, text: `burst ${i}` }),
+        { mailFrom: customer.email, rcptTo: INBOUND, spfResult: 'pass' },
+      );
+      if (!r.accepted && r.status === 'rate_limited') sawRateLimited = true;
+    }
+    expect(sawRateLimited).toBe(true);
   });
 
   it('admin_excluded: mail from the operator admin account is refused, never captured', async () => {
