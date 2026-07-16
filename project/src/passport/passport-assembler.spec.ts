@@ -1,5 +1,12 @@
 import { generateKeyPairSync, sign as edSign } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+// Ajv 2020 draft build — validates the generated documents against the PUBLISHED
+// JSON Schemas in docs/passport-schema/ (GAP-9), not just the in-code Zod mirror,
+// so the documented open format cannot silently drift from real archives.
+import Ajv2020 from 'ajv/dist/2020';
 import { PASSPORT_VERSION } from '@cogeto/shared';
 import { canonicalize, GENESIS_HASH, verifyChain, type ConfirmedReceipt } from '../memory/index';
 import { verifyWithPublicKey } from '../infrastructure/index';
@@ -129,6 +136,40 @@ describe('passport assembler (pure)', () => {
     const manifest = JSON.parse(entries.get(PASSPORT_PATHS.manifest)!.toString());
     expect(manifestSchema.safeParse(manifest).success).toBe(true);
     expect(manifest.passport_version).toBe(PASSPORT_VERSION);
+  });
+
+  it('passport_docs_match_published_json_schema: generated documents validate against docs/passport-schema (GAP-9)', () => {
+    const { entries } = assemble();
+    // Published schemas are the third-party contract for the open format; a
+    // drift between them and a real archive is exactly what B.1/the format
+    // promise forbids. Validate each generated document against its own schema.
+    const schemaDir = resolve(
+      dirname(fileURLToPath(import.meta.url)),
+      '../../../docs/passport-schema',
+    );
+    const load = (name: string): object =>
+      JSON.parse(readFileSync(resolve(schemaDir, name), 'utf8')) as object;
+    const cases: ReadonlyArray<[path: string, schema: string]> = [
+      [PASSPORT_PATHS.memories, 'memories.schema.json'],
+      [PASSPORT_PATHS.tasks, 'tasks.schema.json'],
+      [PASSPORT_PATHS.receipts, 'receipts.schema.json'],
+      [PASSPORT_PATHS.manifest, 'manifest.schema.json'],
+    ];
+    for (const [docPath, schemaFile] of cases) {
+      // strict:false so the 2020-12 `format` annotations are not asserted (no
+      // ajv-formats dep) while every structural keyword — required,
+      // additionalProperties:false, types, const, enum, $ref — IS enforced.
+      // date-time is registered as a permissive annotation so it is not "unknown".
+      const ajv = new Ajv2020({ strict: false, allErrors: true });
+      ajv.addFormat('date-time', true);
+      const validate = ajv.compile(load(schemaFile));
+      const doc = JSON.parse(entries.get(docPath)!.toString());
+      const ok = validate(doc);
+      expect(
+        ok,
+        `${docPath} must validate against ${schemaFile}: ${ajv.errorsText(validate.errors)}`,
+      ).toBe(true);
+    }
   });
 
   it('passport_manifest_hashes: each document matches its manifest hash and byte length', () => {
