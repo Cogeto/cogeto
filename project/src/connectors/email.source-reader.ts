@@ -35,7 +35,12 @@ export class EmailSourceReader implements SourceReader {
     // Give the extractor the subject as a lead line — email facts often live in
     // the subject ("Deadline moved to Friday"). Falls back to the subject alone
     // when the body is empty (e.g. an HTML-only message with no text part).
-    const content = [subject, body].filter(Boolean).join('\n\n') || subject || '';
+    // The calendar-invite summary (GAP-4) is appended AFTER isolation so quote/
+    // signature stripping never removes it and an invite-only email still yields
+    // its event details to extraction.
+    const calendar = row.calendarSummary?.trim();
+    const content =
+      [subject, body, calendar].filter(Boolean).join('\n\n') || subject || calendar || '';
 
     return {
       sourceType: this.sourceType,

@@ -12,6 +12,7 @@ import { UserDirectory } from '../identity/index';
 import { EmailAllowlistService } from './email-allowlist.service';
 import { UserSettingsService } from './user-settings.service';
 import { sniffContentType } from './document-extract';
+import { summarizeCalendarInvites } from './email-calendar';
 import { matchSender, normalizeAddress, sanitizeHtml } from './email-parse';
 import { emailAttachment, emailMessage } from './persistence/tables';
 import { MAIL_OPTIONS } from './mail-options';
@@ -241,6 +242,8 @@ export class EmailIntakeService {
           textBody: parsed.text ?? null,
           htmlBody: htmlToObject ? null : htmlSanitized,
           htmlObjectKey: htmlKey,
+          // Deterministic summary of any calendar-invite (VEVENT) parts (GAP-4).
+          calendarSummary: summarizeCalendarInvites(parsed.attachments ?? []),
           headersJson: headerMap(parsed),
           hasAttachments: attachmentPlans.length > 0,
         });

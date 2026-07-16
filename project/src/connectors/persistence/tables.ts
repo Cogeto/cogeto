@@ -78,6 +78,9 @@ export const emailMessage = pgTable(
     textBody: text('text_body'),
     htmlBody: text('html_body'),
     htmlObjectKey: text('html_object_key'),
+    // Deterministic summary of any text/calendar (VEVENT) parts (GAP-4, migration
+    // 0024); appended to the extraction input by the SourceReader after isolation.
+    calendarSummary: text('calendar_summary'),
     headersJson: jsonb('headers_json').notNull().default({}),
     hasAttachments: boolean('has_attachments').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
