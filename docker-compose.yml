@@ -586,6 +586,11 @@ services:
       COGETO_MAIL_MAX_BYTES: ${COGETO_MAIL_MAX_BYTES:-26214400}
       COGETO_INTAKE_URL: ${COGETO_INTAKE_URL:-http://app:3000/api/email/intake}
       COGETO_MAIL_INTAKE_TOKEN: ${COGETO_MAIL_INTAKE_TOKEN:-cogeto-dev-mail-token}
+      # Inbound STARTTLS (GAP-2): the entrypoint enables STARTTLS only when a
+      # readable cert/key is present at these paths. Dev leaves them unmounted →
+      # STARTTLS is simply not advertised; a deployed instance populates them.
+      COGETO_MAIL_TLS_CERT: ${COGETO_MAIL_TLS_CERT:-/app/tls/cert.pem}
+      COGETO_MAIL_TLS_KEY: ${COGETO_MAIL_TLS_KEY:-/app/tls/key.pem}
     ports:
       # Host inbound port 25 → container 2525 (non-root listener). Change the
       # host side if 25 is taken locally, e.g. '2525:2525'.
