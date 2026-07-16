@@ -1,6 +1,6 @@
 {
   "name": "cogeto",
-  "version": "0.9.2",
+  "version": "1.0.0",
   "private": true,
   "description": "Private, EU-hosted AI command center with verifiable memory",
   "license": "AGPL-3.0-only",
