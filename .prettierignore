@@ -7,3 +7,4 @@ assets/
 package-lock.json
 .claude/
 project/infra/docker/caddy/Caddyfile
+eval/trust-scores/
