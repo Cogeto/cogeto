@@ -85,3 +85,5 @@ release**: on failure it reports loudly with the manual-retry commands. The
   (measure-only emit + check-registration race) — the trust scores now emit,
   publish, and self-merge without a manual step, even when a chat coverage case
   dips on a run.
+
+- **2026-07-17 (v1.0.3):** trust-scores publish validated fully hands-off (fresh branch per run → checks trigger → self-merge).
