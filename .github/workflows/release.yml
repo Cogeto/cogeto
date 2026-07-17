@@ -336,38 +336,53 @@ jobs:
             --out-dir eval/trust-scores
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          BRANCH="trust-scores/$TAG"
+          # A FRESH, unique branch per run. Reusing one branch and force-pushing
+          # fires a `synchronize` event that a PAT push does NOT trigger checks
+          # for, so `gh pr checks` reported "no checks" and the PR never merged
+          # (stranded v1.0.1/v1.0.2). A fresh branch → a `pull_request: opened`
+          # → the required checks reliably run. The idempotency guard above stops
+          # duplicate publishes; close any older open PR for this version first so
+          # re-runs do not pile up.
+          for old in $(gh pr list --state open --search "chore: publish trust scores for $TAG in:title" --json number --jq '.[].number'); do
+            gh pr close "$old" --delete-branch --comment "Superseded by a fresh publish run." || true
+          done
+          BRANCH="trust-scores/${TAG}-${GITHUB_RUN_ID}"
           git checkout -B "$BRANCH"
           git add eval/trust-scores
           git commit -m "chore: publish trust scores for $TAG"
-          # FORCE-push: this is a single-purpose bot branch — replace any leftover
-          # from an earlier partial run instead of failing on a non-fast-forward
-          # (the exact bug that stranded v1.0.0). The branch auto-deletes on merge.
-          git push --force origin "$BRANCH"
-          # Reuse an existing OPEN PR for the branch; else create one.
-          if [ "$(gh pr view "$BRANCH" --json state --jq '.state' 2>/dev/null || echo NONE)" != "OPEN" ]; then
-            gh pr create --base main --head "$BRANCH" \
-              --title "chore: publish trust scores for $TAG" \
-              --label chore \
-              --body "Automated (decision 0032): the measured trust scores for $TAG (eval/trust-scores/$TAG.json, immutable) and the rebuilt index. Merges automatically once the required checks pass."
-          fi
+          git push origin "$BRANCH"
+          gh pr create --base main --head "$BRANCH" \
+            --title "chore: publish trust scores for $TAG" \
+            --label chore \
+            --body "Automated (decision 0032): the measured trust scores for $TAG (eval/trust-scores/$TAG.json, immutable) and the rebuilt index. Merges automatically once the required checks pass."
           if [ "$HAS_ADMIN_TOKEN" = "true" ]; then
-            # The PR's check runs lag its creation by a few seconds; `gh pr checks
-            # --watch` errors "no checks reported" if they aren't registered yet
-            # (this exact race left v1.0.1's PR unmerged). Wait for at least one
-            # check to appear first, THEN watch the required ones to green, THEN
-            # admin-merge — which bypasses ONLY main's review rule, never the
-            # checks, and only for this trust-scores PR.
-            for _ in $(seq 1 20); do
-              n="$(gh pr view "$BRANCH" --json statusCheckRollup --jq '[.statusCheckRollup[]] | length' 2>/dev/null || echo 0)"
-              [ "${n:-0}" -gt 0 ] && break
-              echo "waiting for the PR's checks to register…"
-              sleep 15
+            # `gh pr checks --watch` errors "no checks reported" until the checks
+            # register (they lag PR creation by a few seconds), so RETRY it until
+            # they appear; once they do, it blocks until they conclude. Then
+            # admin-merge — bypassing ONLY main's review rule, never the checks,
+            # and only for this trust-scores PR.
+            merged=false
+            for attempt in $(seq 1 12); do
+              set +e
+              gh pr checks "$BRANCH" --watch --required --interval 30 > /tmp/checks.log 2>&1
+              rc=$?
+              set -e
+              cat /tmp/checks.log
+              if [ "$rc" -eq 0 ]; then
+                gh pr merge "$BRANCH" --squash --admin --delete-branch
+                merged=true
+                break
+              fi
+              if grep -qi 'no checks' /tmp/checks.log; then
+                echo "checks not registered yet (attempt ${attempt}/12) — waiting 20s"
+                sleep 20
+                continue
+              fi
+              echo "a required check failed — not merging"
+              break
             done
-            if gh pr checks "$BRANCH" --watch --required --interval 30; then
-              gh pr merge "$BRANCH" --squash --admin --delete-branch
-            else
-              echo "::warning title=Trust-scores checks not all green::Left the PR open for manual review."
+            if [ "$merged" != "true" ]; then
+              echo "::warning title=Trust-scores not auto-merged::Left the PR open for review."
               gh pr merge "$BRANCH" --squash --auto || true
             fi
           else
