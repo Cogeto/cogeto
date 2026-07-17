@@ -72,3 +72,11 @@ release**: on failure it reports loudly with the manual-retry commands. The
 - After a release is verified on a real instance, that version is the new
   pinned `DEFAULT_VERSION` — which is why the bump lives in the release PR of
   the *next* cycle.
+
+## Release flow validation
+
+- **2026-07-17 (v1.0.1):** the full tag-driven release flow was exercised
+  end-to-end — a change lands via PR, the version bump lands in a `chore: release`
+  PR, the owner tags `vX.Y.Z`, and the pipeline publishes the three signed images,
+  the GitHub Release, and the trust scores (the trust-scores PR self-merges once
+  its checks pass). No manual JSON, no stuck publish.
