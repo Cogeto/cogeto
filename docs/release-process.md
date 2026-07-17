@@ -80,3 +80,8 @@ release**: on failure it reports loudly with the manual-retry commands. The
   PR, the owner tags `vX.Y.Z`, and the pipeline publishes the three signed images,
   the GitHub Release, and the trust scores (the trust-scores PR self-merges once
   its checks pass). No manual JSON, no stuck publish.
+
+- **2026-07-17 (v1.0.2):** re-validated after the trust-scores reliability fixes
+  (measure-only emit + check-registration race) — the trust scores now emit,
+  publish, and self-merge without a manual step, even when a chat coverage case
+  dips on a run.
