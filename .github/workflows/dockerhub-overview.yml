@@ -1,0 +1,45 @@
+# Sync the Docker Hub repository overviews from version-controlled markdown
+# (docs/dockerhub/*.md) so the three published images show what they are, which
+# tags to use, and how to verify their cosign signatures (PA-16). Runs on a
+# manual dispatch and whenever the overview files change on main. Uses the same
+# DOCKERHUB_USERNAME / DOCKERHUB_TOKEN secrets the release publish uses.
+name: Docker Hub overview
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/dockerhub/**'
+      - '.github/workflows/dockerhub-overview.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: sync overview
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - repo: cogeto/cogeto
+            file: ./docs/dockerhub/cogeto.md
+            short: 'Private, EU-hosted AI memory you can inspect, correct, and prove deleted. AGPLv3.'
+          - repo: cogeto/cogeto-edge
+            file: ./docs/dockerhub/cogeto-edge.md
+            short: 'TLS edge (Caddy + prebuilt web app) for a Cogeto instance. AGPLv3.'
+          - repo: cogeto/cogeto-mail
+            file: ./docs/dockerhub/cogeto-mail.md
+            short: 'Receive-only inbound SMTP (Haraka) for a Cogeto instance. AGPLv3.'
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Update ${{ matrix.repo }} overview
+        uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ matrix.repo }}
+          readme-filepath: ${{ matrix.file }}
+          short-description: ${{ matrix.short }}
