@@ -302,9 +302,20 @@ jobs:
       - name: Publish via auto-merged PR
         if: steps.guard.outputs.already == 'false'
         env:
-          # An owner PAT when available (PRs it opens DO trigger the required
-          # checks, so auto-merge can complete); github.token as the fallback.
-          GH_TOKEN: ${{ secrets.PROJECTS_TOKEN != '' && secrets.PROJECTS_TOKEN || github.token }}
+          # Token preference for opening + landing the trust-scores PR:
+          #   1. TRUSTSCORES_TOKEN — a dedicated, repo-scoped admin PAT (owner
+          #      action). This workflow is triggered ONLY by a tag push or a
+          #      manual dispatch — never by Dependabot or a fork PR — so an
+          #      admin token here lets the trust-scores PR self-merge WITHOUT
+          #      letting anyone else bypass `main`'s review rule (their PRs still
+          #      require review). It merges only AFTER the required checks pass.
+          #   2. PROJECTS_TOKEN — a non-admin PAT: the PR is created and its
+          #      checks run, but the final merge needs a maintainer's one-click
+          #      approve (a bot cannot approve its own PR).
+          #   3. github.token — fallback; the PR is created but its checks may
+          #      need a manual nudge.
+          GH_TOKEN: ${{ secrets.TRUSTSCORES_TOKEN != '' && secrets.TRUSTSCORES_TOKEN || (secrets.PROJECTS_TOKEN != '' && secrets.PROJECTS_TOKEN || github.token) }}
+          HAS_ADMIN_TOKEN: ${{ secrets.TRUSTSCORES_TOKEN != '' }}
         run: |
           set -euo pipefail
           TAG="${TARGET_VERSION}"
@@ -330,6 +341,19 @@ jobs:
             gh pr create --base main --head "$BRANCH" \
               --title "chore: publish trust scores for $TAG" \
               --label chore \
-              --body "Automated (decision 0032): the measured trust scores for $TAG (eval/trust-scores/$TAG.json, immutable) and the rebuilt index. Auto-merges when checks pass."
+              --body "Automated (decision 0032): the measured trust scores for $TAG (eval/trust-scores/$TAG.json, immutable) and the rebuilt index. Merges automatically once the required checks pass."
           fi
-          gh pr merge "$BRANCH" --auto --squash
+          if [ "$HAS_ADMIN_TOKEN" = "true" ]; then
+            # Wait for the REQUIRED checks to finish; --watch exits non-zero if any
+            # fails. Then admin-merge — this bypasses ONLY main's review rule, never
+            # the checks (which must be green), and only for this trust-scores PR.
+            if gh pr checks "$BRANCH" --watch --required --interval 30; then
+              gh pr merge "$BRANCH" --squash --admin --delete-branch
+            else
+              echo "::warning title=Trust-scores checks not all green::Left the PR open for manual review."
+              gh pr merge "$BRANCH" --squash --auto || true
+            fi
+          else
+            # No admin token: arm auto-merge; a maintainer approves the green PR.
+            gh pr merge "$BRANCH" --squash --auto
+          fi
