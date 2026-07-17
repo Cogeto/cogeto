@@ -276,24 +276,32 @@ jobs:
             echo "already=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Emit trust scores (default configuration, with retry)
+      - name: Emit trust scores (measure-only — NOT gated)
         if: steps.guard.outputs.already == 'false'
         env:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
-          COGETO_EVAL_GATE: '1'
+          # DELIBERATELY no COGETO_EVAL_GATE here. The trust scores are the
+          # MEASURED metrics for the released code, and are published as-is
+          # (honest numbers, incl. any run-to-run coverage-grader variance) — a
+          # single flaky chat case must NOT block publishing them. The STRICT
+          # gate still runs where it belongs: CI's eval-gate on every PR + push
+          # to main (COGETO_EVAL_GATE=1), which is what actually guards merges.
+          # So by the time a tag is cut, main has already passed the gate.
         run: |
           npm ci
-          # The live eval is mildly flaky (grader variance / transient rate
-          # limits), so retry up to THREE times with a cool-off before giving up.
+          # eval / eval:chat exit non-zero ONLY on a real ERROR (transient rate
+          # limit, network, schema) — a failed chat case just lowers the measured
+          # number now that the gate env is unset. Retry rides out transient
+          # errors; a flaky grader dip is published honestly, not retried away.
           attempt=1
           max=3
           until npm run eval -- --emit-json /tmp/trust-partial.json && \
                 npm run eval:chat -- --emit-json /tmp/trust-partial.json; do
             if [ "$attempt" -ge "$max" ]; then
-              echo "::error title=Trust scores NOT published for ${TARGET_VERSION}::The release itself completed. Re-run: Actions → Release → Run workflow → version=${TARGET_VERSION} (idempotent)."
+              echo "::error title=Trust scores NOT published for ${TARGET_VERSION}::A transient error persisted. Re-run: Actions → Release → Run workflow → version=${TARGET_VERSION} (idempotent)."
               exit 1
             fi
-            echo "live eval failed (attempt ${attempt}/${max}) — cooling off 180s and retrying (rate limits / grader variance ride out)"
+            echo "live eval hit a transient error (attempt ${attempt}/${max}) — cooling off 180s and retrying"
             attempt=$((attempt + 1))
             rm -f /tmp/trust-partial.json
             sleep 180
@@ -344,9 +352,18 @@ jobs:
               --body "Automated (decision 0032): the measured trust scores for $TAG (eval/trust-scores/$TAG.json, immutable) and the rebuilt index. Merges automatically once the required checks pass."
           fi
           if [ "$HAS_ADMIN_TOKEN" = "true" ]; then
-            # Wait for the REQUIRED checks to finish; --watch exits non-zero if any
-            # fails. Then admin-merge — this bypasses ONLY main's review rule, never
-            # the checks (which must be green), and only for this trust-scores PR.
+            # The PR's check runs lag its creation by a few seconds; `gh pr checks
+            # --watch` errors "no checks reported" if they aren't registered yet
+            # (this exact race left v1.0.1's PR unmerged). Wait for at least one
+            # check to appear first, THEN watch the required ones to green, THEN
+            # admin-merge — which bypasses ONLY main's review rule, never the
+            # checks, and only for this trust-scores PR.
+            for _ in $(seq 1 20); do
+              n="$(gh pr view "$BRANCH" --json statusCheckRollup --jq '[.statusCheckRollup[]] | length' 2>/dev/null || echo 0)"
+              [ "${n:-0}" -gt 0 ] && break
+              echo "waiting for the PR's checks to register…"
+              sleep 15
+            done
             if gh pr checks "$BRANCH" --watch --required --interval 30; then
               gh pr merge "$BRANCH" --squash --admin --delete-branch
             else
