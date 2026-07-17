@@ -1,17 +1,17 @@
 # Sync the Docker Hub repository overviews from version-controlled markdown
 # (docs/dockerhub/*.md) so the three published images show what they are, which
-# tags to use, and how to verify their cosign signatures (PA-16). Runs on a
-# manual dispatch and whenever the overview files change on main. Uses the same
-# DOCKERHUB_USERNAME / DOCKERHUB_TOKEN secrets the release publish uses.
+# tags to use, and how to verify their cosign signatures (PA-16).
+#
+# MANUAL DISPATCH ONLY, and DORMANT until the owner adds a DOCKERHUB_PASSWORD
+# secret. Docker Hub's description API authenticates through /users/login, which
+# needs the ACCOUNT PASSWORD, not the repo-scoped push access token used for
+# image pushes (that returned "Forbidden"). So this is opt-in: add the password
+# secret if you want the overviews kept in sync from the repo; otherwise the
+# markdown files below are the source of truth and can be pasted by hand.
 name: Docker Hub overview
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'docs/dockerhub/**'
-      - '.github/workflows/dockerhub-overview.yml'
 
 permissions:
   contents: read
@@ -39,7 +39,9 @@ jobs:
         uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          # Account password (NOT the push access token) — the description API
+          # requires it. Add it as the DOCKERHUB_PASSWORD secret to enable this.
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
           repository: ${{ matrix.repo }}
           readme-filepath: ${{ matrix.file }}
           short-description: ${{ matrix.short }}
