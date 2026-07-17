@@ -24,9 +24,20 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  # Manual re-publish of a version's trust scores WITHOUT re-tagging (the tag is
+  # protected and images must not be rebuilt). Used when the tag-triggered
+  # trust-scores job failed transiently (flaky live eval, a leftover branch): it
+  # skips the image build and runs ONLY the idempotent trust-scores job for the
+  # given version.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to (re)publish trust scores for, e.g. v1.0.0'
+        required: true
+        type: string
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.ref }}-${{ inputs.version || github.ref_name }}
   cancel-in-progress: false
 
 env:
@@ -44,6 +55,9 @@ jobs:
   release:
     name: release
     runs-on: ubuntu-latest
+    # Only a real tag push builds/publishes images; a manual dispatch re-runs
+    # ONLY the trust-scores job (below) and skips this one.
+    if: github.event_name == 'push'
     permissions:
       contents: write # create the GitHub Release
       id-token: write # keyless cosign signing via Sigstore OIDC
@@ -221,6 +235,10 @@ jobs:
   trust-scores:
     name: trust-scores
     needs: release
+    # Run after a successful image release (tag push) OR on a manual dispatch
+    # (where the release job above is skipped). `always()` lets it run despite
+    # the skipped dependency.
+    if: always() && (needs.release.result == 'success' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     continue-on-error: true
     # Minimal scope (PA-2): open + auto-merge the trust-scores PR. NO id-token.
@@ -230,41 +248,69 @@ jobs:
     concurrency:
       group: live-model-eval
       cancel-in-progress: false
+    env:
+      # The version to publish: the manual input on dispatch, else the pushed tag.
+      TARGET_VERSION: ${{ inputs.version || github.ref_name }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          # Manual dispatch runs from main (the fixed workflow + current corpus);
+          # full history so the publish step can diff against origin/main.
+          fetch-depth: 0
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
 
+      # Idempotency: if this version's scores are already on main (a prior run
+      # succeeded), there is nothing to do — skip the expensive eval + publish.
+      - name: Skip if already published
+        id: guard
+        run: |
+          git fetch origin main --quiet
+          if git cat-file -e "origin/main:eval/trust-scores/${TARGET_VERSION}.json" 2>/dev/null; then
+            echo "already=true" >> "$GITHUB_OUTPUT"
+            echo "trust scores for ${TARGET_VERSION} already on main — nothing to do."
+          else
+            echo "already=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Emit trust scores (default configuration, with retry)
+        if: steps.guard.outputs.already == 'false'
         env:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           COGETO_EVAL_GATE: '1'
         run: |
           npm ci
+          # The live eval is mildly flaky (grader variance / transient rate
+          # limits), so retry up to THREE times with a cool-off before giving up.
           attempt=1
+          max=3
           until npm run eval -- --emit-json /tmp/trust-partial.json && \
                 npm run eval:chat -- --emit-json /tmp/trust-partial.json; do
-            if [ "$attempt" -ge 2 ]; then
-              echo "::error title=Trust scores NOT published for ${GITHUB_REF_NAME}::The release itself completed (images pushed, signed, Release created). Retry manually per docs/trust-scores-schema/README.md."
+            if [ "$attempt" -ge "$max" ]; then
+              echo "::error title=Trust scores NOT published for ${TARGET_VERSION}::The release itself completed. Re-run: Actions → Release → Run workflow → version=${TARGET_VERSION} (idempotent)."
               exit 1
             fi
+            echo "live eval failed (attempt ${attempt}/${max}) — cooling off 180s and retrying (rate limits / grader variance ride out)"
             attempt=$((attempt + 1))
-            echo "live eval failed (attempt 1) — cooling off 180s and retrying once (rate limits ride out)"
             rm -f /tmp/trust-partial.json
             sleep 180
           done
 
       - name: Publish via auto-merged PR
+        if: steps.guard.outputs.already == 'false'
         env:
-          # An owner PAT when available (PRs it opens trigger the required
-          # checks, so auto-merge can complete); github.token as the fallback
-          # (the PR is still created; checks may need a manual nudge).
+          # An owner PAT when available (PRs it opens DO trigger the required
+          # checks, so auto-merge can complete); github.token as the fallback.
           GH_TOKEN: ${{ secrets.PROJECTS_TOKEN != '' && secrets.PROJECTS_TOKEN || github.token }}
         run: |
-          TAG="${GITHUB_REF_NAME}"
+          set -euo pipefail
+          TAG="${TARGET_VERSION}"
+          # Generate onto a clean main so the rebuilt index reflects the latest
+          # published set (the publish script refuses to overwrite a release file).
+          git checkout -B publish-base origin/main
           node scripts/ci/publish-trust-scores.mjs \
             --version "$TAG" --sha "$GITHUB_SHA" \
             --partial /tmp/trust-partial.json \
@@ -272,12 +318,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           BRANCH="trust-scores/$TAG"
-          git checkout -b "$BRANCH"
+          git checkout -B "$BRANCH"
           git add eval/trust-scores
           git commit -m "chore: publish trust scores for $TAG"
-          git push origin "$BRANCH"
-          gh pr create --base main --head "$BRANCH" \
-            --title "chore: publish trust scores for $TAG" \
-            --label chore \
-            --body "Automated by the release pipeline (decision 0032): the measured trust scores for $TAG (eval/trust-scores/$TAG.json, immutable) and the rebuilt index. Auto-merges when checks pass."
+          # FORCE-push: this is a single-purpose bot branch — replace any leftover
+          # from an earlier partial run instead of failing on a non-fast-forward
+          # (the exact bug that stranded v1.0.0). The branch auto-deletes on merge.
+          git push --force origin "$BRANCH"
+          # Reuse an existing OPEN PR for the branch; else create one.
+          if [ "$(gh pr view "$BRANCH" --json state --jq '.state' 2>/dev/null || echo NONE)" != "OPEN" ]; then
+            gh pr create --base main --head "$BRANCH" \
+              --title "chore: publish trust scores for $TAG" \
+              --label chore \
+              --body "Automated (decision 0032): the measured trust scores for $TAG (eval/trust-scores/$TAG.json, immutable) and the rebuilt index. Auto-merges when checks pass."
+          fi
           gh pr merge "$BRANCH" --auto --squash
