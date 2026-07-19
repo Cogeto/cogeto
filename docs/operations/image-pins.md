@@ -10,7 +10,7 @@ human-readable tag is kept in a comment next to each digest.
 | File | Pinned artifacts |
 |---|---|
 | `project/infra/docker/Dockerfile` | `node:22-alpine` (deps/build/runtime), `caddy:2-alpine` (edge + consoles) |
-| `docker-compose.yml` | `postgres:17-alpine`, `qdrant/qdrant:v1.14.0`, `minio/minio`, `minio/mc`, `busybox:stable`, `ghcr.io/zitadel/zitadel:v2.65.1`, `node:22-alpine` (zitadel-init) |
+| `docker-compose.yml` | `postgres:17-alpine`, `qdrant/qdrant:v1.18.3`, `minio/minio`, `minio/mc`, `busybox:stable`, `ghcr.io/zitadel/zitadel:v2.65.1`, `node:22-alpine` (zitadel-init) |
 | `project/services/redaction/Dockerfile` | `python:3.12-slim`, `en_core_web_lg-3.7.1` (spaCy model wheel) |
 
 The static test `project/src/entrypoints/deployment-hardening.spec.ts` fails CI
