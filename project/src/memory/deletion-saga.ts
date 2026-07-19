@@ -176,21 +176,21 @@ const countsSchema = z.object({
   source: z.object({ type: z.string(), id: z.string() }),
   requested_by: z.string(),
   memory_ids: z.array(z.string()),
-  memory_count: z.number().int(),
+  memory_count: z.int(),
   /** Derived tasks removed with the memories (F3-B, additive — optional so
    * pre-F3 receipts parse unchanged; a count, not an identifier: the sweep
    * ignores it). */
-  tasks_removed: z.number().int().optional(),
+  tasks_removed: z.int().optional(),
   /** Assistant chat answers whose stored citations referenced erased memories,
    * redacted to a deletion marker (FIX-1 QS-7, decision 0025; additive —
    * optional so earlier receipts parse unchanged; a count, not an identifier:
    * the sweep ignores it). */
-  chat_messages_redacted: z.number().int().optional(),
+  chat_messages_redacted: z.int().optional(),
   /** Reply-draft approvals derived from the deleted email source, whose drafted
    * body (grounded on the erased email + the user's memories) is redacted to a
    * deletion marker (SEC-4; additive — optional so earlier receipts parse
    * unchanged; a count, not an identifier: the sweep ignores it). */
-  reply_drafts_redacted: z.number().int().optional(),
+  reply_drafts_redacted: z.int().optional(),
   /** Qdrant point id = memory id (§A.4); duplicated for receipt readability. */
   point_ids: z.array(z.string()),
   object_keys: z.array(z.string()),

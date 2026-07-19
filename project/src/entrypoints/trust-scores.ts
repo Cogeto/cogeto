@@ -24,7 +24,7 @@ export const DEFAULT_MODELS = {
 } as const;
 
 const fraction = z.number().min(0).max(1);
-const count = z.number().int().min(0);
+const count = z.int().min(0);
 
 export const languageMetricsSchema = z.object({
   language: z.string().min(2).max(8),
@@ -79,7 +79,7 @@ export const generatedBySchema = z.object({
   release: z.string().regex(/^v\d+\.\d+\.\d+$/),
   commit: z.string().regex(/^[0-9a-f]{7,40}$/),
   harness: z.string().min(1),
-  generated_at: z.string().datetime(),
+  generated_at: z.iso.datetime(),
   backfilled: z.boolean(),
 });
 

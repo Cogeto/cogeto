@@ -20,10 +20,10 @@ const querySchema = z.object({
   actor: z.string().min(1).optional(),
   action: z.string().min(1).optional(),
   entityType: z.string().min(1).optional(),
-  from: z.string().datetime().optional(),
-  to: z.string().datetime().optional(),
-  limit: z.coerce.number().int().min(1).max(200).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
+  from: z.iso.datetime().optional(),
+  to: z.iso.datetime().optional(),
+  limit: z.coerce.number().int().min(1).max(200).prefault(50),
+  offset: z.coerce.number().int().min(0).prefault(0),
 });
 
 /**

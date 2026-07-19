@@ -65,7 +65,7 @@ const factSeedSchema = z.object({
   subject_entity: z.string().nullable().default(null),
   valid_from: z.string().optional(),
   valid_until: z.string().optional(),
-  supersedes: z.number().int().min(0).optional(),
+  supersedes: z.int().min(0).optional(),
 });
 
 /** Seeded email_message rows (Session O4 — chat reply-intent cases). */

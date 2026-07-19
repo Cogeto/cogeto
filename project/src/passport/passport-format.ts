@@ -32,7 +32,7 @@ export function sha256Hex(bytes: Buffer): string {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
-const iso = z.string().datetime({ offset: true });
+const iso = z.iso.datetime({ offset: true });
 const isoOrPlain = z.string(); // receipts carry pre-existing ISO strings verbatim
 
 // ── memories.json ────────────────────────────────────────────────────────────
@@ -78,7 +78,7 @@ export type MemoryExport = z.infer<typeof memoryExportSchema>;
 
 export const memoriesDocSchema = z.object({
   passport_version: z.literal(PASSPORT_VERSION),
-  count: z.number().int().nonnegative(),
+  count: z.int().nonnegative(),
   memories: z.array(memoryExportSchema),
 });
 
@@ -100,7 +100,7 @@ export type TaskExport = z.infer<typeof taskExportSchema>;
 
 export const tasksDocSchema = z.object({
   passport_version: z.literal(PASSPORT_VERSION),
-  count: z.number().int().nonnegative(),
+  count: z.int().nonnegative(),
   tasks: z.array(taskExportSchema),
 });
 
@@ -121,7 +121,7 @@ export type ReceiptExport = z.infer<typeof receiptExportSchema>;
 
 export const receiptsDocSchema = z.object({
   passport_version: z.literal(PASSPORT_VERSION),
-  count: z.number().int().nonnegative(),
+  count: z.int().nonnegative(),
   /** The instance public key — receipts verify against it without contacting Cogeto. */
   instance_public_key_pem: z.string(),
   receipts: z.array(receiptExportSchema),
@@ -131,7 +131,7 @@ export const receiptsDocSchema = z.object({
 export const manifestDocumentSchema = z.object({
   path: z.string(),
   sha256: z.string().regex(/^[0-9a-f]{64}$/),
-  bytes: z.number().int().nonnegative(),
+  bytes: z.int().nonnegative(),
 });
 
 export const manifestSchema = z.object({
@@ -146,10 +146,10 @@ export const manifestSchema = z.object({
   }),
   options: z.object({ include_originals: z.boolean() }),
   counts: z.object({
-    memories: z.number().int().nonnegative(),
-    tasks: z.number().int().nonnegative(),
-    receipts: z.number().int().nonnegative(),
-    attachments: z.number().int().nonnegative(),
+    memories: z.int().nonnegative(),
+    tasks: z.int().nonnegative(),
+    receipts: z.int().nonnegative(),
+    attachments: z.int().nonnegative(),
   }),
   documents: z.array(manifestDocumentSchema),
 });
