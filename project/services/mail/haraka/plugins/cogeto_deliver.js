@@ -49,12 +49,13 @@ exports.hook_queue = function (next, connection) {
 
   collector.on('finish', () => {
     const raw = Buffer.concat(chunks);
-    const mailFrom =
-      txn.mail_from && typeof txn.mail_from.address === 'function' ? txn.mail_from.address() : '';
-    const rcptTo =
-      txn.rcpt_to && txn.rcpt_to[0] && typeof txn.rcpt_to[0].address === 'function'
-        ? txn.rcpt_to[0].address()
-        : '';
+    // Haraka <=3.1 exposes .address as a method; >=3.2 (@haraka/email-address)
+    // as a string property. Handle both so the intake headers survive engine
+    // upgrades.
+    const addressOf = (a) =>
+      (a && (typeof a.address === 'function' ? a.address() : a.address)) || '';
+    const mailFrom = addressOf(txn.mail_from);
+    const rcptTo = addressOf(txn.rcpt_to && txn.rcpt_to[0]);
 
     // The SPF verdict for the envelope sender (SEC-1). The `spf` plugin writes a
     // standard `Received-SPF: <result> (...)` header; the first token is the
