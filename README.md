@@ -100,6 +100,7 @@ architecture phones home.
 
 - **Website:** [cogeto.eu](https://cogeto.eu), including the whitepaper
 - **Documentation:** [`docs/`](docs/README.md) with specs, decisions, schemas, runbooks, audits
+- **Security and safety:** [`docs/security/`](docs/security/README.md) — how the protections work, the public audits, and how to verify them (single entry point)
 - **Run it locally:** [`docs/running-locally.md`](docs/running-locally.md)
 - **Deploy it:** [`docs/deployment.md`](docs/deployment.md)
 
@@ -118,4 +119,5 @@ Contributions are welcome. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) (the
 delivery loop, running the tests and the eval harness, golden-set rules) and
 note that contributions require accepting the [CLA](CLA.md) with a single PR
 comment; the reasoning is stated there honestly. Security reports:
-[`SECURITY.md`](SECURITY.md).
+[`SECURITY.md`](SECURITY.md); how the protections work and how to verify them:
+[`docs/security/`](docs/security/README.md).

@@ -16,6 +16,7 @@ backed by an inspectable artifact — with human-approved agents on top.
 | `docs/Cogeto-v1-Specification.docx` | Full product spec (binary; owner-maintained). |
 | `docs/Cogeto-Technical-Architecture.md` | Full engineering plan: stack rationale, containers, mechanisms, phased implementation. (The .docx is the presentation copy.) |
 | `docs/engineering-workflow.md` | **Before opening any issue, branch, or PR.** The delivery loop: branch naming, Conventional Commits, squash-merge, `Closes #N`, required checks, tag-driven releases, and the `create-issues.sh` helper. |
+| `docs/security/` | **Single entry point for security and safety** — how the protections work (e.g. inbound-email anti-spoofing), the public audits, the security-relevant decisions and tests, and supply-chain verification. Start here for anything security-related; it indexes the root `SECURITY.md`, `docs/audits/`, and the co-located tests rather than duplicating them. |
 | `docs/glossary.md` | The ubiquitous language — names in code must match it. |
 | `docs/eval-golden-set.md` | Corpus format, metrics, CI gates for the eval harness. Read before building the extractor or harness. |
 | `docs/research/*.md` | **Required before implementing the matching area** — see the table in `docs/research/README.md`. Distilled patterns from studied production systems. |
@@ -96,4 +97,9 @@ Vocabulary per `docs/glossary.md` — names in code must match it.
 - Any deviation from an Addendum Part A decision or §A.6 schema commitment.
 - The Gmail/CASA path (§A.11) — owner decision, gates launch.
 - Git: **never run git commands unless explicitly asked** — the owner manages git.
+- **NEVER add AI attribution to any git artifact. This is strictly forbidden.**
+  Do not put `Co-Authored-By: Claude` (or any co-author trailer), "Generated with
+  Claude Code", or any similar AI-authorship, attribution, or "assisted by" line
+  in commit messages, PR titles, PR bodies, issue text, or anywhere else. All
+  commits and pull requests are authored solely by the owner, with no exceptions.
 - Anything user-visible leaving the machine (publishing, external calls with real data).

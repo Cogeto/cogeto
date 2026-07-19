@@ -61,6 +61,13 @@ connector order and the Gmail/CASA path).
 - [`notes/`](notes/) — developer-facing notes per feature area (email inbound/source,
   the Memory Passport, the time-travel UI, the operator script, CI/CD setup).
 
+## Security and safety
+
+- [`security/`](security/README.md) — **single entry point** for how the
+  protections work (e.g. inbound-email anti-spoofing), how to verify them, and an
+  index of the public audits, security-relevant decisions, and the tests that
+  enforce them. Reporting policy is the repo-root [`SECURITY.md`](../SECURITY.md).
+
 ## Transparency
 
 - [`audits/`](audits/) — the implementation-gap audit and the quality/security audit,
