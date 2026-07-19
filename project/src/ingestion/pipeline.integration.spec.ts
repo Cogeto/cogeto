@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runOnce } from 'graphile-worker';
 import type { TaskList } from 'graphile-worker';
 import type { ZodType } from 'zod';
-import { fakeEmbedding, startTestDatabase, startTestQdrant } from '../testing/index';
+import { fakeEmbedding, settleJobs, startTestDatabase, startTestQdrant } from '../testing/index';
 import type { TestDatabase, TestQdrant } from '../testing/index';
 import { idempotentTask, withTransactionalEnqueue } from '../infrastructure/index';
 import { createMemoryStore, MemoryReconciliation } from '../memory/index';
@@ -210,6 +210,9 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
     await enqueue(sourceId);
     await runOnce({ pgPool: tdb.pool, taskList: taskListFor(pipeline) }); // attempt 1 fails
 
+    // Settle first: since graphile-worker 0.17 the failure write (attempts++,
+    // backoff run_at) can land after runOnce resolves.
+    await settleJobs(tdb.pool);
     const job = await tdb.pool.query<{ attempts: number }>(
       `SELECT attempts FROM graphile_worker._private_jobs WHERE payload->>'source_id' = $1`,
       [sourceId],
@@ -318,6 +321,7 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
       await count(`SELECT count(*)::text AS n FROM job_execution WHERE source_id = $1`, [sourceId]),
     ).toBe(0);
 
+    await settleJobs(tdb.pool);
     await tdb.pool.query(`UPDATE graphile_worker._private_jobs SET run_at = now()`);
     await runOnce({ pgPool: tdb.pool, taskList: taskListFor(pipeline) }); // attempt 2: succeeds
 

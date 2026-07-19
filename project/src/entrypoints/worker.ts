@@ -62,6 +62,12 @@ async function main(): Promise<void> {
   // across model calls), so it must clear worker concurrency (2) with headroom
   // for the single-flight locks and graphile's own connections.
   const pool = new Pool({ connectionString: config.databaseUrl, max: config.pgPoolMax });
+  // graphile-worker 0.17 no longer installs a default pool error handler (it
+  // warns on bare pools): an unhandled idle-client error would crash the
+  // process. Log it; the runner's own retry/backoff handles the reconnect.
+  pool.on('error', (error) => {
+    logger.error({ err: error }, 'pg pool idle client error');
+  });
   const db = createDb(pool);
 
   // Register the active prompt versions (§B.7) — also the immutability check:

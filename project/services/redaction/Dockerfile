@@ -20,13 +20,13 @@ WORKDIR /app
 # whole transitive tree — is pinned by version AND verified by hash, so no
 # transitive drift under the pinned base-image digest. requirements.txt stays as
 # the human-readable top-level input the lock is compiled from.
-# Then the NER model at a PINNED version (matches spacy 3.7.x); --no-deps keeps
+# Then the NER model at a PINNED version (matches spacy 3.8.x); --no-deps keeps
 # it hermetic (its only dependency, spacy, is already satisfied by the lock).
 # en_core_web_lg gives the best CPU NER accuracy; to trade accuracy for ~half the
-# RSS, pin en_core_web_md-3.7.1 instead and set SPACY_MODEL.
+# RSS, pin en_core_web_md-3.8.0 instead and set SPACY_MODEL.
 COPY requirements.txt requirements.lock ./
 RUN pip install --require-hashes -r requirements.lock \
-    && pip install --no-deps https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.7.1/en_core_web_lg-3.7.1-py3-none-any.whl
+    && pip install --no-deps https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
 
 COPY app ./app
 

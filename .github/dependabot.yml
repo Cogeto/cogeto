@@ -31,8 +31,23 @@ updates:
     groups:
       # One PR for routine dev/test tooling; production deps stay individual so
       # each is reviewed against the module boundaries + eval gate on its own.
+      # Minor+patch ONLY: majors arrive as individual PRs so one incompatible
+      # major (e.g. a TypeScript bump ahead of typescript-eslint's peer range)
+      # cannot poison the whole group (2026-07 triage, PR #109).
       dev-dependencies:
         dependency-type: development
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # typescript-eslint's peer range caps the TypeScript major; take TS
+      # majors deliberately once the toolchain supports them.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      # Version-locked to the digest-pinned Qdrant server image (client
+      # major.minor tracks the server - docs/operations/image-pins.md).
+      # Upgraded manually in lockstep with the server, never alone.
+      - dependency-name: '@qdrant/js-client-rest'
 
   # Receive-only Haraka mail service (its own package.json + lockfile — SEC-9).
   # It parses hostile internet input, so keep its tree current.
