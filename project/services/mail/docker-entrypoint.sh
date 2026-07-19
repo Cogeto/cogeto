@@ -43,4 +43,4 @@ fi
 echo "cogeto-mail: inbound address=${ADDR} domain=${DOMAIN} max_bytes=${MAX_BYTES}"
 echo "cogeto-mail: intake=${COGETO_INTAKE_URL:-<unset>} (receive-only; outbound disabled)"
 
-exec node /app/node_modules/Haraka/bin/haraka -c /app/haraka
+exec node /app/node_modules/haraka/bin/haraka -c /app/haraka

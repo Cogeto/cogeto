@@ -10,7 +10,11 @@ const constants = require('haraka-constants');
 
 exports.hook_rcpt = function (next, connection, params) {
   const rcpt = params[0];
-  const address = (rcpt && typeof rcpt.address === 'function' ? rcpt.address() : '').toLowerCase();
+  // Haraka <=3.1 exposes rcpt.address as a method; >=3.2 (@haraka/email-address)
+  // as a string property. Handle both so an engine upgrade can never turn this
+  // gate into a deny-all.
+  const rawAddress = rcpt && (typeof rcpt.address === 'function' ? rcpt.address() : rcpt.address);
+  const address = (rawAddress || '').toLowerCase();
   const want = (process.env.COGETO_MAIL_INBOUND_ADDRESS || '').toLowerCase();
 
   if (!want) {
