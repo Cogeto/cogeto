@@ -13,6 +13,7 @@ import {
 } from '../infrastructure/index';
 import {
   fakeEmbedding,
+  settleJobs,
   startTestDatabase,
   startTestMinio,
   startTestQdrant,
@@ -101,8 +102,12 @@ describe('deletion saga (integration: real Postgres + Qdrant + MinIO)', () => {
   });
   const runWorker = (exec: DeletionExecutor = executor) =>
     runOnce({ pgPool: tdb.pool, taskList: tasksWith(exec) });
-  const pullRetries = () =>
-    tdb.pool.query('UPDATE graphile_worker._private_jobs SET run_at = now()');
+  const pullRetries = async () => {
+    // Settle first: since graphile-worker 0.17 the failure write can land after
+    // runOnce resolves and would overwrite the pulled run_at with the backoff.
+    await settleJobs(tdb.pool);
+    await tdb.pool.query('UPDATE graphile_worker._private_jobs SET run_at = now()');
+  };
 
   const embed = (rows: MemoryRow[]) =>
     store.upsertVectors(

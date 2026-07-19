@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runOnce } from 'graphile-worker';
 import type { TaskList } from 'graphile-worker';
-import { startTestDatabase } from '../testing/index';
+import { settleJobs, startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
 import { withTransactionalEnqueue } from './outbox';
 import { idempotentTask } from './queue';
@@ -117,6 +117,9 @@ describe('outbox + queue contract (integration, real Postgres)', () => {
     expect(await countEffects('crash-1')).toBe(0);
 
     // Graphile scheduled the retry with backoff; pull it to now and run again.
+    // (settle first: since 0.17 the failure write can land after runOnce
+    // resolves and would overwrite the pulled run_at with the backoff time)
+    await settleJobs(tdb.pool);
     await tdb.pool.query('UPDATE graphile_worker._private_jobs SET run_at = now()');
     await runOnce({ pgPool: tdb.pool, taskList: tasks });
 
