@@ -34,7 +34,7 @@
     "@types/express": "^5.0.0",
     "@types/mailparser": "^3.4.6",
     "@types/multer": "^2.2.0",
-    "@types/node": "^22.15.0",
+    "@types/node": "^26.1.1",
     "@types/pg": "^8.15.0"
   }
 }
