@@ -1,5 +1,5 @@
 /** Test-only harness — never imported by production code (dependency-cruiser rule). */
-export { startTestDatabase } from './pg';
+export { startTestDatabase, settleJobs } from './pg';
 export type { TestDatabase } from './pg';
 export { startTestQdrant, fakeEmbedding } from './qdrant';
 export type { TestQdrant } from './qdrant';

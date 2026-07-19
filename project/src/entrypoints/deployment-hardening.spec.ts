@@ -35,7 +35,7 @@ describe('deployment hardening (FIX-2)', () => {
     expect(dockerfile).toMatch(/FROM node@sha256:[0-9a-f]{64}/);
     expect(dockerfile).toMatch(/FROM caddy@sha256:[0-9a-f]{64}/);
     // The spaCy model is pinned to an exact version (not `spacy download`).
-    expect(redactionDockerfile).toMatch(/en_core_web_lg-3\.7\.1-py3-none-any\.whl/);
+    expect(redactionDockerfile).toMatch(/en_core_web_lg-3\.8\.0-py3-none-any\.whl/);
     expect(redactionDockerfile).not.toMatch(/spacy download/);
     expect(redactionDockerfile).toMatch(/FROM python@sha256:[0-9a-f]{64}/);
   });
