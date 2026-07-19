@@ -16,7 +16,7 @@
     "@nestjs/platform-express": "^11.1.0",
     "@qdrant/js-client-rest": "1.14.0",
     "chrono-node": "^2.9.1",
-    "drizzle-orm": "^0.44.0",
+    "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",
     "graphile-worker": "^0.16.6",
     "mailparser": "^3.9.14",
