@@ -6,6 +6,6 @@
   "license": "AGPL-3.0-only",
   "dependencies": {
     "Haraka": "3.1.0",
-    "haraka-constants": "1.0.7"
+    "haraka-constants": "1.0.8"
   }
 }
