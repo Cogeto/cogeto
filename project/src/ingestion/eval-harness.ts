@@ -37,7 +37,7 @@ const expectedMemorySchema = z.object({
   kind: z.string(),
   entities: z.array(z.string()).default([]),
   condition: z.string().nullable().optional(),
-  temporal: z.record(z.unknown()).optional(),
+  temporal: z.record(z.string(), z.unknown()).optional(),
   must_extract: z.boolean(),
 });
 

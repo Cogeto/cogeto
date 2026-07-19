@@ -1,4 +1,4 @@
-import type { ZodType, ZodTypeDef } from 'zod';
+import type { ZodType } from 'zod';
 
 /**
  * Provider-neutral model seam (scope §5.1, §A.10): complete / extractStructured /
@@ -47,7 +47,7 @@ export abstract class ModelGateway {
    * The input type is free so schemas may use .default() for omitted fields.
    */
   abstract extractStructured<T>(
-    schema: ZodType<T, ZodTypeDef, unknown>,
+    schema: ZodType<T, unknown>,
     request: StructuredExtractionRequest,
   ): Promise<T>;
   /** Batched; one vector per input text, in order. */

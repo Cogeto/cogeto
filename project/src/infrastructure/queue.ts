@@ -81,9 +81,10 @@ export async function consumeIdempotencyKey(tx: Tx, key: JobIdempotencyKey): Pro
   return claimed.length > 0;
 }
 
-const idempotentPayloadSchema = z
-  .object({ source_type: z.string().min(1), source_id: z.string().min(1) })
-  .passthrough();
+const idempotentPayloadSchema = z.looseObject({
+  source_type: z.string().min(1),
+  source_id: z.string().min(1),
+});
 
 export type IdempotentJobPayload = z.infer<typeof idempotentPayloadSchema>;
 

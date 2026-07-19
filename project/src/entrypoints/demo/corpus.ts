@@ -12,7 +12,7 @@ const noteSchema = z.object({
   id: z.string().min(1),
   lang: z.enum(['en', 'hr']),
   channel: z.enum(['note', 'chat']),
-  daysAgo: z.number().int().min(0).max(400),
+  daysAgo: z.int().min(0).max(400),
   role: z.string().min(1),
   text: z.string().min(1).max(20_000),
 });
@@ -22,7 +22,7 @@ const documentSchema = z.object({
   file: z.string().min(1),
   title: z.string().min(1),
   scope: z.enum(['private', 'shared']),
-  daysAgo: z.number().int().min(0).max(400),
+  daysAgo: z.int().min(0).max(400),
   role: z.string().min(1),
   expectContains: z.array(z.string().min(1)).min(1),
 });

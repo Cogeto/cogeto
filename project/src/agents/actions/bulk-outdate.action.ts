@@ -12,7 +12,7 @@ import type { ActionDefinition } from '../action-types';
  * terminal, and already-outdated rows) and audits each transition.
  */
 const payloadSchema = z.object({
-  memoryIds: z.array(z.string().uuid()).min(1).max(500),
+  memoryIds: z.array(z.uuid()).min(1).max(500),
   reason: z.string().max(500).optional(),
 });
 type BulkOutdatePayload = z.infer<typeof payloadSchema>;

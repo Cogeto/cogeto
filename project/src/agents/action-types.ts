@@ -39,7 +39,7 @@ export interface ActionResult {
  */
 export interface ActionDefinition<P = unknown> {
   actionType: string;
-  schema: ZodType<P>;
+  schema: ZodType<P, P>;
   /** Where a freshly-created approval starts (most go straight to a decision). */
   initialStatus: 'draft' | 'pending_approval';
   /** How long a pending approval stays actionable before the expiry pass. */

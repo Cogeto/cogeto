@@ -19,19 +19,19 @@ const envBool = z
 
 const configSchema = z
   .object({
-    httpPort: z.coerce.number().int().positive().default(3000),
+    httpPort: z.coerce.number().int().positive().prefault(3000),
     databaseUrl: z.string().min(1),
-    qdrantUrl: z.string().url(),
+    qdrantUrl: z.url(),
     /** Qdrant API key (QS-4) — required for auth on a reachable deployment; the
      * default compose stack keeps Qdrant on the internal network with no key. */
     qdrantApiKey: z.string().min(1).optional(),
-    s3Url: z.string().url(),
+    s3Url: z.url(),
     /**
      * Browser-reachable object-storage origin for presigned download URLs (O1,
      * §A.9). Defaults to s3Url; set COGETO_S3_PUBLIC_URL when MinIO's internal
      * hostname is not reachable from the browser (see the O1 owner checklist).
      */
-    s3PublicUrl: z.string().url().optional(),
+    s3PublicUrl: z.url().optional(),
     /** Object-storage credentials + bucket (decision 0008). Defaults match the
      * compose dev stack; provisioning injects real values per instance. */
     s3AccessKey: z.string().min(1).default('cogeto'),
@@ -45,9 +45,9 @@ const configSchema = z
       .number()
       .int()
       .positive()
-      .default(25 * 1024 * 1024),
+      .prefault(25 * 1024 * 1024),
     /** Presigned download-URL lifetime in seconds (§A.9 — short-lived). */
-    downloadUrlTtlSeconds: z.coerce.number().int().positive().default(300),
+    downloadUrlTtlSeconds: z.coerce.number().int().positive().prefault(300),
     /**
      * Inbound email (Session O4, decision 0028). The instance's unique inbound
      * address (ruling 1), the size caps (ruling 6), the optional capture-owner
@@ -60,12 +60,12 @@ const configSchema = z
       .number()
       .int()
       .positive()
-      .default(25 * 1024 * 1024),
+      .prefault(25 * 1024 * 1024),
     mailAttachmentsMaxBytes: z.coerce
       .number()
       .int()
       .positive()
-      .default(25 * 1024 * 1024),
+      .prefault(25 * 1024 * 1024),
     adminUserEmail: z.string().min(1).optional(),
     mailIntakeToken: z.string().default(''),
     /** Require SPF-authenticated senders for the self-route (SEC-1); default on. */
@@ -74,8 +74,8 @@ const configSchema = z
       .default('1')
       .transform((v) => v === true || v === '1'),
     /** Per-sender accepted-message cap within the intake window (SEC-2); 0 = off. */
-    mailIntakeMaxPerSender: z.coerce.number().int().nonnegative().default(60),
-    mailIntakeRateWindowSeconds: z.coerce.number().int().positive().default(3600),
+    mailIntakeMaxPerSender: z.coerce.number().int().nonnegative().prefault(60),
+    mailIntakeRateWindowSeconds: z.coerce.number().int().positive().prefault(3600),
     /** host:port of the Haraka SMTP listener for the health probe (Session O4);
      * unset → the mail check reports "not configured" and stays green. */
     mailSmtpAddress: z.string().min(1).optional(),
@@ -88,12 +88,12 @@ const configSchema = z
      * The default 10 gives ample headroom over concurrency for both the Nest pool
      * and the worker's graphile pool. Raise it only alongside worker concurrency.
      */
-    pgPoolMax: z.coerce.number().int().positive().default(10),
+    pgPoolMax: z.coerce.number().int().positive().prefault(10),
     oidc: z.object({
       /** Public issuer as the browser sees it, e.g. https://localhost */
-      issuer: z.string().url(),
+      issuer: z.url(),
       /** Zitadel reachable inside the compose network, e.g. http://zitadel:8080 */
-      internalUrl: z.string().url(),
+      internalUrl: z.url(),
       /** External domain Zitadel resolves its instance by (Host header). */
       externalDomain: z.string().min(1),
     }),
@@ -136,7 +136,7 @@ const configSchema = z
     /** Cron for the scheduled demo reset (demo profile only) — default every 6h. */
     demoResetCron: z.string().min(1).default('0 */6 * * *'),
     /** App base URL the demo seed/reset drives the public API through. */
-    demoAppUrl: z.string().url().default('http://app:3000'),
+    demoAppUrl: z.url().default('http://app:3000'),
     /** Bootstrap machine-user PAT the demo-seed job provisions the demo Principal
      * with (written by zitadel FirstInstance; mounted like zitadel-init). */
     zitadelPatFile: z.string().min(1).default('/machinekey/pat.txt'),
@@ -147,7 +147,7 @@ const configSchema = z
      * sidecar is unreachable. `REDACTION_URL` is required when enabled.
      */
     redactionEnabled: envBool,
-    redactionUrl: z.string().url().optional(),
+    redactionUrl: z.url().optional(),
     /**
      * Fail-closed assertion (QS-21): when set, the process REFUSES to boot
      * unless redaction is actually enabled. The `redaction` compose profile sets
@@ -158,13 +158,13 @@ const configSchema = z
     redactionRequired: envBool,
   })
   .refine((c) => !c.redactionEnabled || !!c.redactionUrl, {
-    message: 'REDACTION_URL is required when REDACTION_ENABLED is set',
     path: ['redactionUrl'],
+    error: 'REDACTION_URL is required when REDACTION_ENABLED is set',
   })
   .refine((c) => !c.redactionRequired || c.redactionEnabled, {
-    message:
-      'REDACTION_REQUIRED is set but REDACTION_ENABLED is not — refusing to boot without redaction (QS-21)',
     path: ['redactionEnabled'],
+    error:
+      'REDACTION_REQUIRED is set but REDACTION_ENABLED is not — refusing to boot without redaction (QS-21)',
   });
 
 export type CogetoConfig = z.infer<typeof configSchema> & {
