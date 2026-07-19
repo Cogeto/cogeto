@@ -5,7 +5,7 @@
   "description": "Cogeto per-tenant receive-only inbound SMTP (Haraka) — Session O4, decision 0028. No TypeScript-workspace dependency.",
   "license": "AGPL-3.0-only",
   "dependencies": {
-    "Haraka": "3.1.0",
+    "Haraka": "3.3.1",
     "haraka-constants": "1.0.8"
   }
 }
