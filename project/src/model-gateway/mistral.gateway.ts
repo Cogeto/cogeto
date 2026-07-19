@@ -1,6 +1,6 @@
 import { Mistral } from '@mistralai/mistralai';
 import { ZodError } from 'zod';
-import type { ZodType, ZodTypeDef } from 'zod';
+import type { ZodType } from 'zod';
 import { ModelGateway } from './model-gateway.service';
 import type {
   CompletionRequest,
@@ -78,7 +78,7 @@ export class MistralModelGateway extends ModelGateway {
   }
 
   async extractStructured<T>(
-    schema: ZodType<T, ZodTypeDef, unknown>,
+    schema: ZodType<T, unknown>,
     request: StructuredExtractionRequest,
   ): Promise<T> {
     const model = this.models[request.tier ?? 'pipeline'];

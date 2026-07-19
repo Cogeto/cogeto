@@ -50,6 +50,19 @@ export const chatSummarySchema = z.object({
   failed: z.array(z.string()),
 });
 
+export const corpusSchema = z.object({
+  golden_cases: count,
+  reconcile_pairs: count,
+  chat_cases: count.optional(),
+  per_language: z.array(z.object({ language: z.string().min(2).max(8), golden_cases: count })),
+});
+
+export const metricsSchema = z.object({
+  per_language: z.array(languageMetricsSchema).min(1),
+  aggregate: aggregateMetricsSchema,
+  chat: chatSummarySchema.optional(),
+});
+
 export const configurationSchema = z.object({
   id: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
   models: z.object({
@@ -58,17 +71,8 @@ export const configurationSchema = z.object({
     embedding: z.string().min(1),
   }),
   redaction: z.boolean(),
-  corpus: z.object({
-    golden_cases: count,
-    reconcile_pairs: count,
-    chat_cases: count.optional(),
-    per_language: z.array(z.object({ language: z.string().min(2).max(8), golden_cases: count })),
-  }),
-  metrics: z.object({
-    per_language: z.array(languageMetricsSchema).min(1),
-    aggregate: aggregateMetricsSchema,
-    chat: chatSummarySchema.optional(),
-  }),
+  corpus: corpusSchema,
+  metrics: metricsSchema,
 });
 
 export const generatedBySchema = z.object({
@@ -98,10 +102,17 @@ export type TrustConfiguration = z.infer<typeof configurationSchema>;
 export const partialFileSchema = z.object({
   schema_version: z.literal(TRUST_SCORES_SCHEMA_VERSION),
   harness: z.string().min(1),
-  configuration: configurationSchema.deepPartial().extend({
+  // Explicit partial shape (zod 4 removed .deepPartial()): identity fields are
+  // required; corpus/metrics are optional and one-level partial. A harness
+  // side that emits a section must emit it complete — stricter at depth >= 2
+  // than the old deepPartial, which loudly rejects half-written sections
+  // instead of merging them silently.
+  configuration: z.object({
     id: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
     models: z.object({ pipeline: z.string(), answer: z.string(), embedding: z.string() }),
     redaction: z.boolean(),
+    corpus: corpusSchema.partial().optional(),
+    metrics: metricsSchema.partial().optional(),
   }),
 });
 export type PartialFile = z.infer<typeof partialFileSchema>;

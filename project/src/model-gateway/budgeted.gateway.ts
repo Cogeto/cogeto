@@ -7,7 +7,7 @@ import type {
 } from './model-gateway.service';
 import { ModelBudgetExceededError } from './errors';
 import type { ModelUsageMeter } from '../infrastructure/index';
-import type { ZodType, ZodTypeDef } from 'zod';
+import type { ZodType } from 'zod';
 
 /**
  * Per-user daily model budget (FIX-2 QS-2) as a gateway decorator — the same
@@ -47,7 +47,7 @@ export class BudgetedModelGateway extends ModelGateway {
   }
 
   async extractStructured<T>(
-    schema: ZodType<T, ZodTypeDef, unknown>,
+    schema: ZodType<T, unknown>,
     request: StructuredExtractionRequest,
   ): Promise<T> {
     const userId = this.gate();

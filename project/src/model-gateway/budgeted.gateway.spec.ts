@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ZodType, ZodTypeDef } from 'zod';
+import type { ZodType } from 'zod';
 import { z } from 'zod';
 import { ModelGateway } from './model-gateway.service';
 import type { CompletionRequest, StructuredExtractionRequest } from './model-gateway.service';
@@ -20,7 +20,7 @@ class RecordingGateway extends ModelGateway {
     yield 'world';
   }
   async extractStructured<T>(
-    schema: ZodType<T, ZodTypeDef, unknown>,
+    schema: ZodType<T, unknown>,
     _r: StructuredExtractionRequest,
   ): Promise<T> {
     this.calls++;
