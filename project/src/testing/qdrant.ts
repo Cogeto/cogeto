@@ -9,7 +9,7 @@ export interface TestQdrant {
 }
 
 export async function startTestQdrant(): Promise<TestQdrant> {
-  const container = await new GenericContainer('qdrant/qdrant:v1.14.0')
+  const container = await new GenericContainer('qdrant/qdrant:v1.18.3')
     .withExposedPorts(6333)
     .withWaitStrategy(Wait.forHttp('/readyz', 6333))
     .start();

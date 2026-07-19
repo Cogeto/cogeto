@@ -322,8 +322,8 @@ services:
     restart: unless-stopped
 
   qdrant:
-    # qdrant/qdrant:v1.14.0
-    image: qdrant/qdrant@sha256:f21bbaf111837592b70f4d727c62cf6d6525b5374b1193e9faeac26a953702a8
+    # qdrant/qdrant:v1.18.3
+    image: qdrant/qdrant@sha256:0bd98fa7977f1e75694779359ca4e212822e5a71334e28421182f72f209d5286
     # API key auth (QS-4). Qdrant enables auth whenever QDRANT__SERVICE__API_KEY
     # is present — INCLUDING an empty value — so it is opt-in (compose cannot
     # conditionally omit an env var, and an empty key would lock out the internal
