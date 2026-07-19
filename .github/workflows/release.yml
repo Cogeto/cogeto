@@ -63,11 +63,11 @@ jobs:
       id-token: write # keyless cosign signing via Sigstore OIDC
       packages: read
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0 # full history so release-note generation sees prior tags
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
 
@@ -85,17 +85,17 @@ jobs:
 
       # ── Build & push the amd64 images once each ──────────────────────────
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push cogeto/cogeto (amd64)
         id: build
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: project/infra/docker/Dockerfile
@@ -117,7 +117,7 @@ jobs:
       # produce it locally (decision 0030), so the release publishes it.
       - name: Build and push cogeto/cogeto-edge (amd64)
         id: build-edge
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: project/infra/docker/Dockerfile
@@ -135,7 +135,7 @@ jobs:
       # The receive-only Haraka inbound SMTP service (Session O4, decision 0028).
       - name: Build and push cogeto/cogeto-mail (amd64)
         id: build-mail
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: project/services/mail
           platforms: linux/amd64
@@ -150,7 +150,14 @@ jobs:
 
       # ── Sign the pushed images (keyless, by digest) ──────────────────────
       - name: Install cosign
-        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3.9.1
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          # PINNED to the cosign major the customer-side verifier uses: the
+          # operator script installs cosign 2.4.1 (COSIGN_VERSION) and the docs
+          # publish `cosign verify` commands for it. installer v4 defaults to
+          # cosign 3.x, whose bundle format older verifiers cannot read - move
+          # signer and verifier to 3.x together, never via a default drift.
+          cosign-release: 'v2.4.1'
 
       - name: Sign the images with cosign (keyless)
         env:
@@ -252,13 +259,13 @@ jobs:
       # The version to publish: the manual input on dispatch, else the pushed tag.
       TARGET_VERSION: ${{ inputs.version || github.ref_name }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           # Manual dispatch runs from main (the fixed workflow + current corpus);
           # full history so the publish step can diff against origin/main.
           fetch-depth: 0
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
