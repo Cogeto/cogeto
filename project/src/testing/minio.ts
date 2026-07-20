@@ -26,7 +26,11 @@ export async function startTestMinio(): Promise<TestMinio> {
     })
     .withCommand(['server', '/data'])
     .withExposedPorts(9000)
-    .withWaitStrategy(Wait.forHttp('/minio/health/live', 9000))
+    // `ready`, not `live`: the live endpoint answers while the server is still
+    // initializing, and the first S3 call then races a 503
+    // XMinioServerNotInitialized (seen as a CI flake). Ready gates on the
+    // server actually serving requests.
+    .withWaitStrategy(Wait.forHttp('/minio/health/ready', 9000))
     .start();
   const url = `http://${container.getHost()}:${container.getMappedPort(9000)}`;
   return {
