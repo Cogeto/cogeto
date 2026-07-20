@@ -16,7 +16,10 @@ module.exports = {
       from: { path: '^project/src/([^/]+)/' },
       to: {
         path: '^project/src/(?!$1/)[^/]+/.+',
-        pathNot: '^project/src/[^/]+/index\\.ts$',
+        // The barrel is the one allowed entry point; nested node_modules are
+        // npm placement artifacts (a workspace-local dependency dir is not a
+        // bounded context — dependency-cruiser >=17 resolves into them).
+        pathNot: '^project/src/([^/]+/index\\.ts$|node_modules/)',
       },
     },
     {

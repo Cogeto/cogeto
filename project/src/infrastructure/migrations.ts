@@ -48,7 +48,7 @@ export async function applyMigrations(
       applied.push(file);
     } catch (error) {
       await client.query('ROLLBACK');
-      throw new Error(`migration ${file} failed: ${String(error)}`);
+      throw new Error(`migration ${file} failed: ${String(error)}`, { cause: error });
     } finally {
       client.release();
     }

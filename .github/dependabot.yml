@@ -48,6 +48,11 @@ updates:
       # major.minor tracks the server - docs/operations/image-pins.md).
       # Upgraded manually in lockstep with the server, never alone.
       - dependency-name: '@qdrant/js-client-rest'
+      # Type stubs track the runtime Node major (22, engines + node:22-alpine
+      # images); newer stubs would describe APIs the runtime does not have.
+      # Bump together with a Node runtime move, never alone.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
 
   # Receive-only Haraka mail service (its own package.json + lockfile — SEC-9).
   # It parses hostile internet input, so keep its tree current.
