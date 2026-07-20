@@ -120,6 +120,7 @@ async function readKey(file: string): Promise<string> {
     throw new Error(
       `instance signing key not found at ${file} — the migrate init job generates it ` +
         `on first boot (COGETO_INSTANCE_KEY_DIR, decision 0008): ${String(error)}`,
+      { cause: error },
     );
   }
 }

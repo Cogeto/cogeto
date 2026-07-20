@@ -55,7 +55,7 @@ function request(method, path, body, token) {
         res.on('data', (c) => chunks.push(c));
         res.on('end', () => {
           const raw = Buffer.concat(chunks).toString('utf8');
-          let json = {};
+          let json;
           try {
             json = raw ? JSON.parse(raw) : {};
           } catch {

@@ -485,7 +485,7 @@ export class DeletionSaga {
   }> {
     let fileRow: typeof fileMetadata.$inferSelect | undefined;
     let adapter: SourceDeletion | undefined;
-    let sourceOwner: string | null = null;
+    let sourceOwner: string | null;
 
     if (sourceType === 'file') {
       const fileQuery = tx.select().from(fileMetadata).where(eq(fileMetadata.objectKey, sourceId));

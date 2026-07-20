@@ -76,7 +76,7 @@ function zRequest(
         res.on('data', (c: Buffer) => chunks.push(c));
         res.on('end', () => {
           const raw = Buffer.concat(chunks).toString('utf8');
-          let json: Record<string, unknown> = {};
+          let json: Record<string, unknown>;
           try {
             json = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
           } catch {
