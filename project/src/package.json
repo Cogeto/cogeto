@@ -15,7 +15,7 @@
     "@nestjs/core": "^11.1.0",
     "@nestjs/platform-express": "^11.1.0",
     "@qdrant/js-client-rest": "1.18.0",
-    "chrono-node": "^2.9.1",
+    "chrono-node": "^2.10.1",
     "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",
     "graphile-worker": "^0.17.3",
