@@ -7,9 +7,9 @@ tag and `package.json` `version` are the two sources of truth and must agree
 ## The flow
 
 1. **The bump PR.** Land a `chore: release vX.Y.Z` pull request that bumps
-   `package.json` (`npm version X.Y.Z --no-git-tag-version`) **and** the
-   operator script's pinned known-good release (`DEFAULT_VERSION` in
-   `scripts/operator/cogeto`). Squash-merge after the five required checks.
+   `package.json` (`npm version X.Y.Z --no-git-tag-version`) — nothing else;
+   the operator script resolves versions from GitHub Releases at run time
+   (decision 0033). Squash-merge after the five required checks.
 2. **The tag.** On the merged `main`:
 
    ```sh
@@ -67,11 +67,10 @@ release**: on failure it reports loudly with the manual-retry commands. The
   makes the title the commit on `main`.
 - The `eval-gate` runs live on push to `main`; a release should never be cut
   on a red main.
-- The oldest installable release is **0.9.0** (the first to publish the edge
-  and mail images); the operator script refuses older tags.
-- After a release is verified on a real instance, that version is the new
-  pinned `DEFAULT_VERSION` — which is why the bump lives in the release PR of
-  the *next* cycle.
+- The installable set is governed by GitHub release flags (decision 0033):
+  the operator script installs the newest non-pre-release by default and
+  refuses flagged (retired) or unpublished versions. There is no pinned
+  version constant to maintain.
 
 ## Release flow validation
 
@@ -87,3 +86,17 @@ release**: on failure it reports loudly with the manual-retry commands. The
   dips on a run.
 
 - **2026-07-17 (v1.0.3):** trust-scores publish validated fully hands-off (fresh branch per run → checks trigger → self-merge).
+
+## Retiring a release (decision 0033)
+
+Flag it as a pre-release — GitHub UI ("Edit release → Set as a pre-release")
+or:
+
+```sh
+gh release edit vX.Y.Z --prerelease
+```
+
+Effect is immediate: the operator script refuses to install or upgrade to it,
+and `install`/`upgrade latest` resolve to the newest non-flagged release.
+v0.1.1–v1.0.3 (the pre-launch line) are flagged; v1.0.4 is the oldest
+supported release.

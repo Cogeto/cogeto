@@ -35,12 +35,9 @@ set -euo pipefail
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-# The pinned known-good release (overridable with --version / `upgrade X.Y.Z`).
-# Bump this in the `chore: release vX.Y.Z` PR once the release is verified.
-DEFAULT_VERSION="1.0.4"
-# Releases before this one do not publish the edge/mail images (decision 0030);
-# a pull-only instance cannot run them.
-MIN_VERSION="0.9.0"
+# Version policy lives on GitHub Releases (decision 0033): the newest release
+# NOT flagged "pre-release" installs by default, and flagged releases are
+# retired — this script refuses them. No pinned version constants to bump.
 
 IMAGE="cogeto/cogeto"
 IMAGE_EDGE="cogeto/cogeto-edge"
@@ -50,6 +47,7 @@ IMAGE_MAIL="cogeto/cogeto-mail"
 COSIGN_VERSION="2.4.1"
 GITHUB_REPO="Cogeto/cogeto"
 RAW_BASE="https://raw.githubusercontent.com/${GITHUB_REPO}"
+GH_RELEASES_API="https://api.github.com/repos/${GITHUB_REPO}/releases"
 HUB_API="https://hub.docker.com/v2/repositories"
 
 COGETO_ROOT="${COGETO_ROOT:-/srv/cogeto}"
@@ -146,23 +144,28 @@ Usage:
 
 Subcommands:
   install      First-time setup on a fresh Ubuntu 22.04/24.04 instance:
-               verifies OS and resources, installs Docker Engine + compose
-               plugin, creates the service user and /srv/cogeto, fetches the
-               pull-only deployment files at the pinned version, generates
-               per-instance secrets and the unique inbound email address,
-               pulls the signed images, brings the stack up (TLS via Let's
-               Encrypt as soon as DNS resolves), and prints the DNS/backup/
-               verification checklist.
+               verifies OS and resources, resolves the latest published
+               release (or --version X.Y.Z) and asks for confirmation,
+               installs Docker Engine + compose plugin, creates the service
+               user and /srv/cogeto, fetches the pull-only deployment files
+               at that version, generates per-instance secrets and the unique
+               inbound email address, pulls the signed images and VERIFIES
+               their signatures (cosign, mandatory), brings the stack up (TLS
+               via Let's Encrypt as soon as DNS resolves), and prints the
+               DNS/backup/verification checklist.
   configure    Show or change instance configuration idempotently: --domain
                moves the instance to a new domain (updates OIDC issuer, S3
                origin, inbound address); --mistral-key sets the model API key;
                --regenerate NAME rotates a rotatable secret (see notes —
                data-bound secrets and the receipt-signing key are refused).
-  upgrade      Move to a published release: shows current → target, pulls the
-               prebuilt images (never builds), re-runs the migrate job,
-               restarts app and worker, health-checks, and re-embeds via
-               reindex when the recorded embedding model diverged. Prints the
-               rollback procedure. Refuses unpublished tags.
+  upgrade      Move to a published release: shows current → target (and
+               whether the target is the latest published release), requires
+               a typed backup acknowledgment, pulls the prebuilt images
+               (never builds) and VERIFIES their signatures (cosign,
+               mandatory), re-runs the migrate job, restarts app and worker,
+               health-checks, and re-embeds via reindex when the recorded
+               embedding model diverged. Prints the rollback procedure.
+               Refuses unpublished tags and retired (pre-release) versions.
   status       Honest health report: running vs configured version, container
                health, disk and volume usage, domain and inbound address, TLS
                certificate state and renewal, last migration, queue depth and
@@ -342,6 +345,45 @@ hub_latest_version() {
     | tail -n 1
 }
 
+github_latest_version() {
+  # The newest release NOT flagged pre-release or draft — GitHub's /latest
+  # endpoint applies that filter itself (decision 0033). No jq: extract
+  # tag_name, strip the leading v.
+  curl -fsS --max-time 15 "${GH_RELEASES_API}/latest" 2>/dev/null \
+    | sed -n 's/.*"tag_name":[[:space:]]*"v\{0,1\}\([0-9][0-9.]*\)".*/\1/p' \
+    | head -n 1
+}
+
+resolve_latest_version() {
+  # GitHub releases are the version-policy authority; Docker Hub tags are the
+  # fallback when the API is unreachable (tags cannot express retirement, so
+  # the fallback is only for network trouble, not policy).
+  rlv_v="$(github_latest_version)"
+  if [ -z "$rlv_v" ]; then
+    warn "could not reach the GitHub releases API — falling back to Docker Hub tags"
+    rlv_v="$(hub_latest_version)"
+  fi
+  printf '%s' "$rlv_v"
+}
+
+require_supported_version() {
+  # An explicitly requested version must be a published, non-retired release.
+  # Retired/testing releases carry the GitHub pre-release flag (decision 0033).
+  rsv_v="$1"
+  rsv_body="$(curl -fsS --max-time 15 "${GH_RELEASES_API}/tags/v${rsv_v}" 2>/dev/null)" || rsv_body=""
+  if [ -z "$rsv_body" ]; then
+    if [ "$CHECK" -eq 1 ]; then
+      warn "could not confirm v${rsv_v} against the GitHub releases API (offline check run?)"
+      return 0
+    fi
+    die "v${rsv_v} is not a published release (or the GitHub API is unreachable) — run without an explicit version to get the latest, or see https://github.com/${GITHUB_REPO}/releases"
+  fi
+  if printf '%s' "$rsv_body" | grep -q '"prerelease":[[:space:]]*true'; then
+    die "v${rsv_v} is a retired/testing release and will not be installed — the latest supported release is v$(resolve_latest_version)"
+  fi
+  say "release v${rsv_v} is published and supported"
+}
+
 print_cosign_commands() {
   version="$1"
   say "verify the pulled images (keyless cosign; run any time):"
@@ -355,8 +397,8 @@ EOF
 }
 
 # Install cosign from its pinned GitHub release (idempotent; single static
-# binary). Failure is non-fatal: verify_images falls back to printing the
-# commands, but the warning is loud.
+# binary). Failure is FATAL (decision 0033): images are only ever started
+# after their signatures verify, so a missing verifier stops the run.
 install_cosign() {
   if command -v cosign >/dev/null 2>&1; then
     say "cosign already installed — skipping"
@@ -374,7 +416,7 @@ install_cosign() {
     say "cosign installed: $(cosign version 2>/dev/null | head -n 1 || echo v${COSIGN_VERSION})"
   else
     rm -f /usr/local/bin/cosign.tmp
-    warn "could not download cosign from ${url} — continuing WITHOUT signature verification (install it manually and re-run the printed verify commands)"
+    die "could not download cosign from ${url} — image signatures cannot be verified, refusing to continue (decision 0033). Check the network and re-run."
   fi
 }
 
@@ -405,7 +447,7 @@ verify_images() {
   elif [ "$CHECK" -eq 1 ]; then
     say "[dry-run] would verify all three image signatures with cosign"
   else
-    warn "cosign is not installed — signatures NOT verified (install cosign to verify)"
+    die "cosign is not installed — refusing to start unverified images (decision 0033). Re-run: install/upgrade installs cosign automatically."
   fi
   print_cosign_commands "$version"
 }
@@ -571,7 +613,7 @@ add_install_checklist() {
 # ── install ───────────────────────────────────────────────────────────────────
 
 cmd_install() {
-  domain=""; acme_email=""; version="$DEFAULT_VERSION"; mistral_key=""
+  domain=""; acme_email=""; version=""; mistral_key=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --domain)      domain="$2"; shift 2 ;;
@@ -582,7 +624,7 @@ cmd_install() {
     esac
   done
 
-  say "install — first-time setup of a Cogeto customer instance (pull-only, v${version})"
+  say "install — first-time setup of a Cogeto customer instance (pull-only)"
   require_root
   check_os
   check_resources
@@ -591,8 +633,27 @@ cmd_install() {
     die "already installed: ${ENV_FILE} exists. Use 'cogeto upgrade' to change version, 'cogeto configure' to change configuration. (To reinstall from scratch, remove ${COGETO_ROOT} and the Docker volumes YOURSELF — this script never deletes data.)"
   fi
 
+  version_label="explicitly requested"
+  if [ -z "$version" ]; then
+    say "resolving the latest published release..."
+    version="$(resolve_latest_version)"
+    [ -n "$version" ] || die "could not resolve the latest published release (network?) — pass --version X.Y.Z"
+    version_label="latest published release"
+  fi
   semver_valid "$version" || die "--version must be X.Y.Z (got '${version}')"
-  version_ge "$version" "$MIN_VERSION" || die "version ${version} predates the pull-only deploy channel — ${MIN_VERSION} is the oldest installable release (decision 0030)"
+  require_supported_version "$version"
+
+  # The operator always sees and confirms the version before anything happens.
+  if [ "$CHECK" -eq 1 ]; then
+    say "[dry-run] would ask: install Cogeto v${version} (${version_label})?"
+  else
+    printf '%s install Cogeto v%s (%s)? [y/N] ' "$SAY_PREFIX" "$version" "$version_label"
+    IFS= read -r install_reply
+    case "$install_reply" in
+      y | Y | yes | YES) ;;
+      *) die "aborted — nothing was changed" ;;
+    esac
+  fi
 
   # Gather instance identity. In --check mode, placeholders keep the dry run going.
   if [ -z "$domain" ]; then
@@ -692,15 +753,17 @@ cmd_upgrade() {
   current="$(env_get COGETO_VERSION)"
   [ -n "$current" ] || die "COGETO_VERSION missing from ${ENV_FILE} — the instance is misconfigured"
 
+  target_label="explicitly requested"
   if [ "$target" = "latest" ]; then
-    say "resolving the latest published release from Docker Hub..."
-    target="$(hub_latest_version)"
+    say "resolving the latest published release..."
+    target="$(resolve_latest_version)"
     [ -n "$target" ] || die "could not resolve the latest published version (network?) — pass an explicit version"
+    target_label="latest published release"
   fi
   semver_valid "$target" || die "target version must be X.Y.Z or 'latest' (got '${target}')"
-  version_ge "$target" "$MIN_VERSION" || die "version ${target} predates the pull-only deploy channel (${MIN_VERSION} is the oldest)"
+  require_supported_version "$target"
 
-  say "upgrade: current v${current} → target v${target}"
+  say "upgrade: current v${current} → target v${target} (${target_label})"
   cmp="$(version_cmp "$target" "$current")"
   if [ "$cmp" = "0" ]; then
     say "already on v${current} — nothing to do (re-run 'cogeto status' to verify health)"
@@ -712,12 +775,22 @@ cmd_upgrade() {
     die "${IMAGE}:${target} is not a published release — refusing to upgrade to an unpublished tag"
   fi
 
+  # Migrations are forward-only: without a fresh backup there is no way back
+  # to the pre-upgrade state (runbook section 5). The operator confirms one
+  # exists before anything changes.
+  confirm_typed "BACKED-UP" "confirm a fresh backup exists before changing the instance — database migrations are forward-only, and the only full rollback is the rehearsed backup restore."
+
   if [ "$cmp" = "-1" ]; then
     warn "v${target} is OLDER than the running v${current} — this is a ROLLBACK. Database migrations are forward-only: rolling back the image does NOT roll back the schema. Roll back data by restoring the OVHcloud backup (see the runbook)."
     confirm_typed "ROLLBACK to ${target}" "rolling the image back while keeping the newer schema can break the instance."
   else
     confirm_typed "upgrade to ${target}" "this pulls ${IMAGE}[-edge|-mail]:${target}, re-runs the migration job, and restarts app and worker (short downtime)."
   fi
+
+  # Signature verification is mandatory (decision 0033) — make sure the
+  # verifier exists before anything is mutated (older instances installed it
+  # optionally at install time).
+  install_cosign
 
   # Deployment files are versioned with the images — fetch the matching set.
   fetch_deploy_assets "$target"

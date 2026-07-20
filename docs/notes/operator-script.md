@@ -30,13 +30,13 @@ The instance pulls three cosign-signed images per release —
 `cogeto/cogeto`, `cogeto/cogeto-edge`, `cogeto/cogeto-mail` — and fetches
 `project/infra/deploy/{docker-compose.deploy.yml,Caddyfile}` plus
 `project/infra/docker/zitadel-init/init.mjs` from the matching `vX.Y.Z` tag.
-See the deploy [README](../../project/infra/deploy/README.md) and decision
-0030 for the hardening rules. **The oldest installable release is 0.9.0** —
-earlier tags never published the edge/mail images.
-
-`DEFAULT_VERSION` at the top of the script is the pinned known-good release.
-**Bump it in each `chore: release vX.Y.Z` PR** once that release is verified
-on a real instance.
+See the deploy [README](../../project/infra/deploy/README.md) and decisions
+0030 + 0033 for the hardening rules. The script carries **no version
+constants**: it resolves the newest GitHub release not flagged pre-release,
+confirms it with the operator, and refuses retired (pre-release-flagged) or
+unpublished versions. Retire a release with
+`gh release edit vX.Y.Z --prerelease` — effective immediately, no script
+edit, nothing to bump in release PRs.
 
 ## Testing
 

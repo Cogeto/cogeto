@@ -337,12 +337,17 @@ then delete the rehearsal instance.
 
 1. Read the release notes for the target version
    (github.com/Cogeto/cogeto/releases) — they state when a release changes
-   the embedding model or needs anything beyond the standard flow.
-2. On the instance:
+   the embedding model or needs anything beyond the standard flow. Releases
+   flagged "pre-release" there are retired: the script refuses them
+   (decision 0033).
+2. **Take a fresh backup first** (section 5) — the script demands a typed
+   `BACKED-UP` acknowledgment before touching anything, because migrations
+   are forward-only and the only full rollback is the backup restore.
+3. On the instance:
 
    ```sh
-   sudo ./cogeto upgrade            # → latest published release
-   sudo ./cogeto upgrade 0.10.0     # → a specific published release
+   sudo ./cogeto upgrade            # → latest published release (shown + confirmed)
+   sudo ./cogeto upgrade 1.0.5      # → a specific supported release
    ```
 
    The script shows current → target, asks for a **typed confirmation**,
@@ -353,16 +358,17 @@ then delete the rehearsal instance.
    model API, so it costs API calls). Say yes when it asks; there is no
    separate bookkeeping to do.
 
-3. **Verify after**: `sudo ./cogeto status` is GREEN; log in and confirm the
+4. **Verify after**: `sudo ./cogeto status` is GREEN; log in and confirm the
    nav footer shows the new version; expect a short app/worker restart blip
-   during the upgrade, nothing more.
-4. **Rollback** (the script prints this too): `sudo ./cogeto upgrade
+   during the upgrade, nothing more. Image signatures were already verified
+   during the upgrade (cosign, mandatory — decision 0033).
+5. **Rollback** (the script prints this too): `sudo ./cogeto upgrade
    <previous version>` with the typed `ROLLBACK` confirmation. Know what it
    does and does not do: it rolls the **images** back; **database migrations
    are forward-only** and stay. If the newer schema broke the older app, the
    real rollback is a **backup restore** (section 5c) — which is why the
    rehearsal matters.
-5. Record the upgrade (version, date, reindex yes/no) in the tracker.
+6. Record the upgrade (version, date, reindex yes/no) in the tracker.
 
 ---
 
