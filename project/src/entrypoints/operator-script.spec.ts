@@ -67,7 +67,10 @@ describe('operator script — CLI contract', () => {
     expect(out).toContain('X.Y.Z');
   });
 
-  it('install refuses releases that predate the pull-only deploy channel', () => {
+  it('install refuses retired (pre-release-flagged) releases — decision 0033', () => {
+    // v0.8.0 is published but flagged pre-release on GitHub; the script must
+    // refuse it and point at the supported line. (Live API call — CI has
+    // network; the check-mode fallback only tolerates an UNREACHABLE API.)
     const { status, out } = runScript([
       'install',
       '--check',
@@ -81,7 +84,7 @@ describe('operator script — CLI contract', () => {
       '0.8.0',
     ]);
     expect(status).toBe(1);
-    expect(out).toContain('0.9.0');
+    expect(out).toContain('retired');
   });
 
   it('install refuses an invalid domain', () => {
@@ -143,6 +146,10 @@ describe('operator script — install --check dry run', () => {
   it('completes with exit 0 and announces check mode', () => {
     expect(status).toBe(0);
     expect(out).toContain('CHECK MODE');
+  });
+
+  it('resolves the latest release and surfaces the version confirmation (decision 0033)', () => {
+    expect(out).toMatch(/would ask: install Cogeto v\d+\.\d+\.\d+ \(latest published release\)\?/);
   });
 
   it('mutates nothing — the target root is never created', () => {
@@ -222,9 +229,12 @@ describe('operator script — pure helpers', () => {
     expect(helper('semver_valid latest || echo no').out).toBe('no');
   });
 
-  it('the pinned default version is valid and inside the deploy channel', () => {
-    expect(helper('echo "$DEFAULT_VERSION"').out).toMatch(/^\d+\.\d+\.\d+$/);
-    expect(helper('version_ge "$DEFAULT_VERSION" "$MIN_VERSION" && echo yes').out).toBe('yes');
+  it('carries no version constants — GitHub release flags are the policy (decision 0033)', () => {
+    const script = readFileSync(SCRIPT, 'utf8');
+    expect(script).not.toContain('DEFAULT_VERSION');
+    expect(script).not.toContain('MIN_VERSION');
+    expect(script).toContain('GH_RELEASES_API');
+    expect(script).toContain('require_supported_version');
   });
 
   it('derives the per-tenant addressing scheme (decision 0028 ruling 1)', () => {
