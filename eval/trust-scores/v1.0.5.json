@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "generated_by": {
+    "release": "v1.0.5",
+    "commit": "2445df18300b330e99f5fca0134a24f00a7a3c7a",
+    "harness": "extraction/v0002 + verification/v0004 · reconcile_dedup/v0001 + reconcile_contradiction/v0001 · thresholds v1 + chat answer/v0004 · grader eval-coverage/v0001",
+    "generated_at": "2026-07-20T17:40:14.140Z",
+    "backfilled": false
+  },
+  "configurations": [
+    {
+      "id": "mistral-default",
+      "models": {
+        "pipeline": "mistral-small-latest",
+        "answer": "mistral-medium-latest",
+        "embedding": "mistral-embed"
+      },
+      "redaction": false,
+      "corpus": {
+        "golden_cases": 68,
+        "reconcile_pairs": 20,
+        "chat_cases": 12,
+        "per_language": [
+          {
+            "language": "en",
+            "golden_cases": 33
+          },
+          {
+            "language": "hr",
+            "golden_cases": 35
+          }
+        ]
+      },
+      "metrics": {
+        "per_language": [
+          {
+            "language": "en",
+            "golden_cases": 33,
+            "extraction_precision": 0.8775510204081632,
+            "extraction_recall": 0.9111111111111111,
+            "verification_agreement": 0.90625,
+            "dedup_accuracy": 1,
+            "contradiction_recall": 1
+          },
+          {
+            "language": "hr",
+            "golden_cases": 35,
+            "extraction_precision": 0.7818181818181819,
+            "extraction_recall": 0.9333333333333333,
+            "verification_agreement": 0.7941176470588235,
+            "dedup_accuracy": 0.8333333333333334,
+            "contradiction_recall": 1
+          }
+        ],
+        "aggregate": {
+          "extraction_precision": 0.8269230769230769,
+          "extraction_recall": 0.9222222222222223,
+          "verification_agreement": 0.8484848484848485,
+          "dedup_accuracy": 0.9285714285714286,
+          "contradiction_recall": 1
+        },
+        "chat": {
+          "cases": 12,
+          "passed": 12,
+          "failed": []
+        }
+      }
+    }
+  ]
+}
