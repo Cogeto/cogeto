@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0",
+  "harness": "extraction/v0002 + verification/v0004 · reconcile_dedup/v0001 + reconcile_contradiction/v0001 · thresholds v1 + chat answer/v0004 · grader eval-coverage/v0001",
+  "configuration": {
+    "id": "mistral-default",
+    "models": {
+      "pipeline": "mistral-small-latest",
+      "answer": "mistral-medium-latest",
+      "embedding": "mistral-embed"
+    },
+    "redaction": false,
+    "corpus": {
+      "golden_cases": 68,
+      "reconcile_pairs": 20,
+      "chat_cases": 12,
+      "per_language": [
+        {
+          "language": "en",
+          "golden_cases": 33
+        },
+        {
+          "language": "hr",
+          "golden_cases": 35
+        }
+      ]
+    },
+    "metrics": {
+      "per_language": [
+        {
+          "language": "en",
+          "golden_cases": 33,
+          "extraction_precision": 0.8775510204081632,
+          "extraction_recall": 0.9111111111111111,
+          "verification_agreement": 0.90625,
+          "dedup_accuracy": 1,
+          "contradiction_recall": 1
+        },
+        {
+          "language": "hr",
+          "golden_cases": 35,
+          "extraction_precision": 0.7735849056603774,
+          "extraction_recall": 0.8888888888888888,
+          "verification_agreement": 0.8787878787878788,
+          "dedup_accuracy": 0.8333333333333334,
+          "contradiction_recall": 1
+        }
+      ],
+      "aggregate": {
+        "extraction_precision": 0.8235294117647058,
+        "extraction_recall": 0.9,
+        "verification_agreement": 0.8923076923076924,
+        "dedup_accuracy": 0.9285714285714286,
+        "contradiction_recall": 1
+      },
+      "chat": {
+        "cases": 12,
+        "passed": 11,
+        "failed": [
+          "atlas_scope"
+        ]
+      }
+    }
+  }
+}
