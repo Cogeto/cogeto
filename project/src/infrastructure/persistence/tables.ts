@@ -1,4 +1,14 @@
-import { index, integer, jsonb, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import {
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 /**
  * Infrastructure tables (migration 0002 + audit_log from 0001).
@@ -55,3 +65,26 @@ export const deadLetter = pgTable('dead_letter', {
   attempts: integer('attempts').notNull(),
   failedAt: timestamp('failed_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Attention read-state (migration 0026, decision 0039). The attention feed and
+ * dashboard stats are computed; these two content-free per-user tables are the
+ * only materialized state. They live here — not in a domain module — because
+ * the surface spans every context and none owns it (§A.1 rule 2), exactly like
+ * audit_log.
+ */
+export const attentionState = pgTable('attention_state', {
+  ownerId: text('owner_id').primaryKey(),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const attentionDismissal = pgTable(
+  'attention_dismissal',
+  {
+    ownerId: text('owner_id').notNull(),
+    /** Content-free key (run ids + within-run indices); never memory text. */
+    itemKey: text('item_key').notNull(),
+    dismissedAt: timestamp('dismissed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.ownerId, t.itemKey] })],
+);

@@ -20,6 +20,16 @@ Completes the founding promise; both halves are largely built in v1 and need the
 
 ## Priority 2 — In-app notifications and dashboard (S to M, standalone)
 
+**Status: DELIVERED** (2026-07-21, issues #170/#171 — decision 0039, migration
+0026; notes in docs/notes/dashboard-notifications.md). The dashboard is now
+attention-first: `GET /api/attention` serves a computed, Principal-gated feed
+(due/overdue, gone-quiet, review, approvals, last night's digest) with an honest
+unread indicator (`/api/attention/seen`, per-item dismissal for digest lines
+only); `GET /api/dashboard/stats` serves cheap, bounded, gated statistics
+(memory-by-status, task load, 30-day sources + dreaming series, oldest review
+item). The redesigned home renders a dark instrument hero over hand-rolled SVG
+charts (no new dependency). Outbound email notifications remain out of scope.
+
 Deliver the "what needs my attention" surface inside Cogeto itself, not over email. This supersedes the earlier Release A email-notification framing: rather than depend on outbound mail and its deliverability problems, make the dashboard the place the user sees what is due, open, gone quiet, and what changed overnight.
 
 **What.** A notifications and attention surface in the Cogeto dashboard: what is due, what is open, what has gone quiet, what last night's consolidation changed, and anything waiting for approval. A clear unread/attention indicator so the user knows there is something to look at when they open Cogeto, and a calm, scannable digest view (building on the existing daily digest panel from dreaming and tasks) as the home of it.
@@ -106,7 +116,7 @@ The visible payoff, built on the research engine from Priority 5.
 |---|---|---|---|---|---|
 | 1a | Task conclusion becomes memory | v1.x | S | none | Finishes the founding promise |
 | 1b | Create task from chat | v1.x | S | none | Tasks in the flow of thinking |
-| 2 | In-app notifications + dashboard | v1.x | S to M | none | Daily touch; no email dependency |
+| 2 | In-app notifications + dashboard ✅ delivered | v1.x | S to M | none | Daily touch; no email dependency |
 | 3 | Bring-your-own-key providers | v1.x/B groundwork | M | none | Makes model-agnostic claim true |
 | 4 | Local models via Ollama | B | L (staged) | 3 | Sovereignty + economics foundation |
 | 5 | Web research + query minimisation | C1 | L | 4 for economics | The research capability, privately |

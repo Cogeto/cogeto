@@ -39,12 +39,15 @@ export function Nav({
   reviewCount,
   approvalsCount,
   tasksCount,
+  dashboardUnread = 0,
   showSystem = false,
 }: {
   active: NavSection;
   reviewCount?: number;
   approvalsCount?: number;
   tasksCount?: number;
+  /** Unread attention items — a calm dot on the Dashboard item (Post-v1 P2). */
+  dashboardUnread?: number;
   /** System is an operator surface (admin role, QS-10) — hidden for plain
    * users (o6-dry-run); the server-side AdminGuard stays the enforcement. */
   showSystem?: boolean;
@@ -80,6 +83,12 @@ export function Nav({
                 {section.label}
                 {count > 0 && (
                   <CountBadge count={count} label={BADGE_LABEL[section.key] ?? 'items'} />
+                )}
+                {section.key === 'dashboard' && dashboardUnread > 0 && active !== 'dashboard' && (
+                  <span
+                    className="h-2 w-2 rounded-full bg-brand-teal"
+                    aria-label={`${dashboardUnread} new since you last looked`}
+                  />
                 )}
               </a>
             </li>

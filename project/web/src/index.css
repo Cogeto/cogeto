@@ -13,9 +13,14 @@
   /* Brand */
   --color-brand-navy: #1c2150;
   --color-brand-navy-deep: #141833; /* baked into the dark logo SVG; nav surface */
+  /* Instrument floor: one step below navy-deep, for the dashboard hero gradient
+     only (Post-v1 Priority 2). Not a text color — surfaces/depth only. */
+  --color-brand-navy-900: #0e112a;
   --color-brand-teal: #21c29a; /* bright accent: primary action, dots, focus ring */
   /* AA-safe teal for TEXT on light/teal surfaces — the bright teal fails AA as
-     text (2.3:1); this ink is 6.5:1 on white, 5.8:1 on the teal surface. */
+     text (2.3:1); this ink is 6.5:1 on white, 5.8:1 on the teal surface.
+     NOTE: on the dark instrument hero the BRIGHT teal is the text color — it is
+     8.2:1 on navy-900, comfortably AA (see docs/design/README.md §Instrument). */
   --color-brand-teal-ink: #0b6b57;
   --color-brand-teal-surface: #e3f6f1;
 
@@ -24,6 +29,12 @@
   --animate-drawer-in: drawer-in 0.16s ease-out;
   --animate-fade-in: fade-in 0.14s ease-out;
   --animate-skeleton: skeleton 1.4s ease-in-out infinite;
+  /* Entrance for the dashboard's instrument cards/rows — a single settle, under
+     300ms, never looping (Post-v1 Priority 2). Frozen by reduced-motion below. */
+  --animate-rise: rise 0.26s ease-out both;
+
+  /* The one sparing glow: the dashboard hero's teal rim. Depth, not decoration. */
+  --shadow-glow: 0 10px 40px -18px rgba(33, 194, 154, 0.45);
 }
 
 @layer base {
@@ -90,6 +101,16 @@
   }
   100% {
     background-position: 0 0;
+  }
+}
+@keyframes rise {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
 

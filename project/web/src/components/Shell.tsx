@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
+  fetchAttention,
   fetchContradictions,
   fetchMe,
   fetchMemories,
@@ -19,6 +20,7 @@ export function Shell({
   active,
   children,
   fullHeight = false,
+  wide = false,
 }: {
   session: Session;
   title: string;
@@ -26,6 +28,8 @@ export function Shell({
   children: ReactNode;
   /** Pin the page to the viewport: children scroll internally (chat). */
   fullHeight?: boolean;
+  /** Widen the content column for the instrument-style dashboard (Post-v1 P2). */
+  wide?: boolean;
 }) {
   const {
     data: me,
@@ -61,6 +65,14 @@ export function Shell({
     queryFn: () => fetchTaskCount(session),
     refetchInterval: 30_000,
   });
+  // The dashboard attention indicator (Post-v1 P2): unread since last viewed.
+  // Shares the ['attention'] cache with the dashboard surface, so opening the
+  // dashboard (which marks seen) clears this dot.
+  const { data: attention } = useQuery({
+    queryKey: ['attention'],
+    queryFn: () => fetchAttention(session),
+    refetchInterval: 30_000,
+  });
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -69,6 +81,7 @@ export function Shell({
         reviewCount={(uncertain?.total ?? 0) + (contradictions?.length ?? 0)}
         approvalsCount={pendingApprovals?.length ?? 0}
         tasksCount={taskCount?.open ?? 0}
+        dashboardUnread={attention?.unreadCount ?? 0}
         showSystem={me?.isAdmin === true}
       />
       <div className={fullHeight ? 'flex h-screen min-h-0 flex-1 flex-col' : 'flex-1'}>
@@ -102,7 +115,7 @@ export function Shell({
           className={
             fullHeight
               ? 'flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-6 p-6'
-              : 'grid max-w-3xl gap-6 p-6'
+              : `grid gap-6 p-6 ${wide ? 'max-w-5xl' : 'max-w-3xl'}`
           }
         >
           {children}
