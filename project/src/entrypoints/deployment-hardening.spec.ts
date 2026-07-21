@@ -89,3 +89,24 @@ describe('app key-mount guard (QS-9)', () => {
     await expect(assertAppKeyMount(empty)).rejects.toThrow(/public key is missing/);
   });
 });
+
+describe('zitadel-init hardening (decision 0034)', () => {
+  const init = readFileSync(
+    path.resolve(process.cwd(), '../..', 'project/infra/docker/zitadel-init/init.mjs'),
+    'utf8',
+  );
+
+  it('hardens the login policy: no self-registration, no external IdP, no enumeration', () => {
+    expect(init).toContain('allowRegister: false');
+    expect(init).toContain('allowExternalIdp: false');
+    expect(init).toContain('ignoreUnknownUsernames: true');
+  });
+
+  it('forbids public org registration at the instance level', () => {
+    expect(init).toContain('disallowPublicOrgRegistration: true');
+  });
+
+  it('self-verifies by re-reading after every change (a silently-ignored field fails the boot)', () => {
+    expect(init).toContain('did not stick');
+  });
+});
