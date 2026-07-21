@@ -16,6 +16,13 @@ export const chatMessage = pgTable(
     ownerId: text('owner_id').notNull(),
     role: chatRoleEnum('role').notNull(),
     content: text('content').notNull(),
+    /**
+     * The normalized commitment text a create_task intent captured from this
+     * message (migration 0025; decision 0038) — the pipeline's extraction
+     * input when set. The raw message stays untouched as the §A.6 provenance
+     * target; NULL for every message not captured as a task request.
+     */
+    captureContent: text('capture_content'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('chat_message_owner_created_idx').on(t.ownerId, t.createdAt)],

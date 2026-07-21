@@ -106,3 +106,57 @@ describe('pronoun_rewrite (F3)', () => {
     expect(gateway.rewriteRequests).toHaveLength(0);
   });
 });
+
+describe('create_task intent detection (decision 0038)', () => {
+  it('detects explicit en requests and extracts the instruction', async () => {
+    const { detectCreateTaskIntent } = await import('./query-rewrite');
+    expect(
+      detectCreateTaskIntent(
+        'Make a task to send Ana the revised mapping once she confirms the format',
+      ),
+    ).toEqual({
+      instruction: 'send Ana the revised mapping once she confirms the format',
+      lang: 'en',
+    });
+    expect(detectCreateTaskIntent('remind me to follow up with Marko next week')).toEqual({
+      instruction: 'follow up with Marko next week',
+      lang: 'en',
+    });
+    expect(detectCreateTaskIntent('add a task: chase the Baltic Retail contract')).toEqual({
+      instruction: 'chase the Baltic Retail contract',
+      lang: 'en',
+    });
+    expect(detectCreateTaskIntent('Can you create a task to review the SOW?')).toEqual({
+      instruction: 'review the SOW',
+      lang: 'en',
+    });
+  });
+
+  it('detects hr requests and picks the hr normalization language', async () => {
+    const { detectCreateTaskIntent } = await import('./query-rewrite');
+    expect(
+      detectCreateTaskIntent(
+        'Napravi zadatak da pošaljem Ani revidirano mapiranje čim potvrdi format',
+      ),
+    ).toEqual({ instruction: 'pošaljem Ani revidirano mapiranje čim potvrdi format', lang: 'hr' });
+    expect(detectCreateTaskIntent('podsjeti me da nazovem Marka')).toEqual({
+      instruction: 'nazovem Marka',
+      lang: 'hr',
+    });
+  });
+
+  it('a bare trigger yields a null instruction; the handler asks, creates nothing', async () => {
+    const { detectCreateTaskIntent } = await import('./query-rewrite');
+    expect(detectCreateTaskIntent('Add a task')).toEqual({ instruction: null, lang: 'en' });
+    expect(detectCreateTaskIntent('Dodaj zadatak')).toEqual({ instruction: null, lang: 'hr' });
+  });
+
+  it('questions about tasks are vetoed — retrieval, not creation', async () => {
+    const { detectCreateTaskIntent } = await import('./query-rewrite');
+    expect(detectCreateTaskIntent('Did I make a task for Marko?')).toBeNull();
+    expect(detectCreateTaskIntent('What tasks are still open?')).toBeNull();
+    expect(detectCreateTaskIntent('Jesam li napravio zadatak za Marka?')).toBeNull();
+    // Plain conversation never fires the intent.
+    expect(detectCreateTaskIntent('The task force meets on Monday')).toBeNull();
+  });
+});

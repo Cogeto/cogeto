@@ -1,0 +1,15 @@
+{
+  "case_id": "create_task_hr_uvjet",
+  "description": "Decision 0038 (hr): 'napravi zadatak da ... čim ...' creates exactly one blocked task with the condition populated, confirmed in Croatian.",
+  "anchor": "2026-07-01T09:00:00.000Z",
+  "facts": [],
+  "script": ["Napravi zadatak da pošaljem Ani revidirano mapiranje čim potvrdi format"],
+  "checks": {
+    "must_include": ["zadatak", "mapiranje"],
+    "task_created": {
+      "title_includes": ["mapiranje"],
+      "status": "blocked_on_condition",
+      "condition_includes": ["potvrdi"]
+    }
+  }
+}
