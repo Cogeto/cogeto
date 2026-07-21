@@ -17,7 +17,7 @@ import { loadConfig, redactionOptions } from './config';
  */
 async function main(): Promise<void> {
   const config = loadConfig();
-  if (!config.mistralApiKey) {
+  if (!config.modelProviders.configured) {
     console.error('dream needs MISTRAL_API_KEY — the reconcile passes are model confirmations');
     process.exit(2);
   }
@@ -25,10 +25,7 @@ async function main(): Promise<void> {
   try {
     const db = createDb(pool);
     const gateway = createModelGateway({
-      mistralApiKey: config.mistralApiKey,
-      pipelineModel: config.mistralPipelineModel,
-      answerModel: config.mistralAnswerModel,
-      embedModel: config.mistralEmbedModel,
+      providers: config.modelProviders,
       redaction: redactionOptions(config),
     });
     const { store, reconciliation } = createMemoryReconciliation({
@@ -36,7 +33,7 @@ async function main(): Promise<void> {
       qdrant: {
         url: config.qdrantUrl,
         apiKey: config.qdrantApiKey,
-        embeddingModel: config.mistralEmbedModel,
+        embeddingModel: config.modelProviders.tiers.embedding.model,
       },
     });
     const dreaming = new DreamingService(

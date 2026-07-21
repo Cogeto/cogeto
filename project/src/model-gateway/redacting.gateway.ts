@@ -34,7 +34,8 @@ export class RedactingModelGateway extends ModelGateway {
   async complete(request: CompletionRequest): Promise<CompletionResult> {
     const { text: input, mapping } = await this.redactor.pseudonymize(request.input);
     const result = await this.inner.complete({ ...request, input });
-    return { text: reidentifyText(result.text, mapping) };
+    // Re-identify the text; provider-reported usage passes through untouched.
+    return { ...result, text: reidentifyText(result.text, mapping) };
   }
 
   async *completeStream(request: CompletionRequest): AsyncIterable<string> {

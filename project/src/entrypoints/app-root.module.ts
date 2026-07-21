@@ -36,6 +36,7 @@ import { HealthController } from './health.controller';
 import { InstanceController } from './instance.controller';
 import { JobsController } from './jobs.controller';
 import { WebConfigController } from './web-config.controller';
+import { ModelConfigController } from './model-config.controller';
 
 /**
  * Composition root of the app process (fast path only: API, dashboard,
@@ -61,10 +62,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         adminRole: config.adminRole,
       }),
       ModelGatewayModule.register({
-        mistralApiKey: config.mistralApiKey,
-        pipelineModel: config.mistralPipelineModel,
-        answerModel: config.mistralAnswerModel,
-        embedModel: config.mistralEmbedModel,
+        providers: config.modelProviders,
         redaction: redactionOptions(config),
         // Enforce the per-user daily model budget on the app's user-attributed
         // calls (QS-2); the worker registers this without budget.
@@ -73,7 +71,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       MemoryModule.register({
         qdrantUrl: config.qdrantUrl,
         qdrantApiKey: config.qdrantApiKey,
-        embeddingModel: config.mistralEmbedModel,
+        embeddingModel: config.modelProviders.tiers.embedding.model,
         s3: {
           url: config.s3Url,
           publicUrl: config.s3PublicUrl,
@@ -139,6 +137,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       InstanceController,
       JobsController,
       WebConfigController,
+      ModelConfigController,
     ],
     providers: [
       { provide: COGETO_CONFIG, useValue: config },

@@ -9,6 +9,7 @@ import { createLogger, PinoNestLogger } from './logger';
 import { createWorkerRootModule } from './worker-root.module';
 import { createDb, describeErrorLine, ensureInstanceKeys } from '../infrastructure/index';
 import { logRedactionState } from './redaction-boot';
+import { assertEmbeddingSpaceConsistent, logModelConfiguration } from './model-boot';
 import {
   ACTIVE_PROMPTS,
   DREAM_CRONTAB,
@@ -50,6 +51,10 @@ async function main(): Promise<void> {
   const config = loadConfig();
   const logger = createLogger(config.logLevel);
   logRedactionState(logger, config); // QS-21: state the effective posture loudly.
+  logModelConfiguration(logger, config); // decision 0040: state the active configuration id.
+  // Embedding-space guard (decision 0040 ruling 3): a changed embeddings
+  // model refuses boot until reindex has re-embedded the stored vectors.
+  await assertEmbeddingSpaceConsistent(config);
 
   const context = await NestFactory.createApplicationContext(
     createWorkerRootModule(config) as never,
@@ -134,7 +139,7 @@ async function main(): Promise<void> {
           gateway,
           qdrantUrl: config.qdrantUrl,
           qdrantApiKey: config.qdrantApiKey,
-          embeddingModel: config.mistralEmbedModel,
+          embeddingModel: config.modelProviders.tiers.embedding.model,
           strict: false, // a failed scheduled reset logs; the next one repairs it
           excludeTask: DEMO_RESET_JOB_TYPE, // don't count our own running job
           log: (message) => logger.info({}, message),

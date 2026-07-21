@@ -20,7 +20,7 @@ async function main(): Promise<void> {
     process.exit(2);
   }
   const config = loadConfig();
-  if (!config.mistralApiKey) {
+  if (!config.modelProviders.configured) {
     console.error('vector:smoke needs COGETO_MISTRAL_API_KEY to embed the query');
     process.exit(2);
   }
@@ -31,7 +31,7 @@ async function main(): Promise<void> {
     qdrant: {
       url: config.qdrantUrl,
       apiKey: config.qdrantApiKey,
-      embeddingModel: config.mistralEmbedModel,
+      embeddingModel: config.modelProviders.tiers.embedding.model,
     },
   });
 
@@ -57,8 +57,7 @@ async function main(): Promise<void> {
   };
 
   const gateway = createModelGateway({
-    mistralApiKey: config.mistralApiKey,
-    embedModel: config.mistralEmbedModel,
+    providers: config.modelProviders,
     redaction: redactionOptions(config),
   });
   const [embedding] = await gateway.embed([query]);

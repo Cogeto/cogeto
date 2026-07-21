@@ -18,8 +18,7 @@ async function main(): Promise<void> {
   // Redaction wraps embeddings too (decision 0023): a reindex under redaction
   // must re-embed pseudonymized text, matching how the vectors were first made.
   const gateway = createModelGateway({
-    mistralApiKey: config.mistralApiKey,
-    embedModel: config.mistralEmbedModel,
+    providers: config.modelProviders,
     redaction: redactionOptions(config),
   });
 
@@ -28,7 +27,7 @@ async function main(): Promise<void> {
     gateway,
     qdrantUrl: config.qdrantUrl,
     qdrantApiKey: config.qdrantApiKey,
-    embeddingModel: config.mistralEmbedModel,
+    embeddingModel: config.modelProviders.tiers.embedding.model,
     log: (message) => console.log(`reindex: ${message}`),
   });
   await pool.end();

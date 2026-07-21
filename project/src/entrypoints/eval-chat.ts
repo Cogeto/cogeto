@@ -17,13 +17,9 @@ import { ANSWER_PROMPT, ChatService, RetrievalService } from '../retrieval/index
 import { ActionRegistry, ApprovalService } from '../agents/index';
 import { ChatReplyResolver, EmailReplyDraftService, EmailSourceService } from '../connectors/index';
 import { createModelGateway, loadPrompt, ModelGateway } from '../model-gateway/index';
-import { redactionFromEnv } from './config';
-import {
-  DEFAULT_MODELS,
-  deriveConfigurationId,
-  emitPartial,
-  TRUST_SCORES_SCHEMA_VERSION,
-} from './trust-scores';
+import type { ResolvedModelProviders } from '../model-gateway/index';
+import { resolveEvalProviders, requireConfiguredProviders } from './eval-env';
+import { configurationForEmission, emitPartial, TRUST_SCORES_SCHEMA_VERSION } from './trust-scores';
 
 /** The inbound address seeded emails are addressed to (chat reply-intent cases). */
 const EVAL_INBOUND = 'capture@in.localhost';
@@ -163,16 +159,29 @@ interface CaseScore {
 const PAST_FRAMING_RE =
   /\b(until|previously|used to|no longer|was|were|at the time|as of|before|earlier|since then|replaced|changed to|prije|do\s|više ne|bilo je|bila je|tada|od tada|zamijenjen)\b/i;
 
-async function resolveApiKey(): Promise<string | undefined> {
-  const fromEnv = process.env.COGETO_MISTRAL_API_KEY || process.env.MISTRAL_API_KEY;
-  if (fromEnv) return fromEnv;
-  try {
-    const dotenv = await readFile(path.join(REPO_ROOT, '.env'), 'utf8');
-    const match = dotenv.match(/^(?:COGETO_)?MISTRAL_API_KEY=(.+)$/m);
-    return match?.[1]?.trim() || undefined;
-  } catch {
-    return undefined;
+/**
+ * The eval grader follows the answer tier unless overridden (decision 0040
+ * ruling 3): COGETO_PROVIDER_GRADER / COGETO_MODEL_GRADER re-bind ONLY the
+ * grading calls (harness-only vars, never read by the instance). An override
+ * changes comparability — note it when publishing.
+ */
+function graderProvidersFrom(providers: ResolvedModelProviders): ResolvedModelProviders | null {
+  const providerVar = process.env.COGETO_PROVIDER_GRADER?.trim();
+  const modelVar = process.env.COGETO_MODEL_GRADER?.trim();
+  if (!providerVar && !modelVar) return null;
+  const provider =
+    (providerVar as ResolvedModelProviders['tiers']['answer']['provider']) ??
+    providers.tiers.answer.provider;
+  const model = modelVar ?? providers.tiers.answer.model;
+  if (providerVar && !['mistral', 'openai', 'anthropic'].includes(providerVar)) {
+    console.error(`COGETO_PROVIDER_GRADER="${providerVar}" is not a known provider`);
+    process.exit(2);
   }
+  if (!providers.keys[provider]) {
+    console.error(`COGETO_PROVIDER_GRADER="${provider}" has no API key configured`);
+    process.exit(2);
+  }
+  return { ...providers, tiers: { ...providers.tiers, answer: { provider, model } } };
 }
 
 async function loadCases(): Promise<ChatCase[]> {
@@ -258,25 +267,27 @@ async function gradeCoverage(
 }
 
 async function main(): Promise<void> {
-  const apiKey = await resolveApiKey();
-  if (!apiKey) {
-    console.error('eval:chat needs MISTRAL_API_KEY (env or repo-root .env) — the harness is live');
-    process.exit(2);
-  }
-  const embedModel = process.env.COGETO_MISTRAL_EMBED_MODEL || process.env.MISTRAL_EMBED_MODEL;
-  const pipelineModel =
-    process.env.COGETO_MISTRAL_MODEL_PIPELINE || process.env.MISTRAL_MODEL_PIPELINE;
-  const answerModel = process.env.COGETO_MISTRAL_MODEL_ANSWER || process.env.MISTRAL_MODEL_ANSWER;
+  const { providers, redaction } = await resolveEvalProviders(REPO_ROOT);
+  requireConfiguredProviders(providers, 'eval:chat');
   const gateway = createModelGateway({
-    mistralApiKey: apiKey,
-    pipelineModel,
-    answerModel,
-    embedModel,
-    redaction: redactionFromEnv(),
+    providers,
+    redaction,
     // Deterministic sampling for comparable runs (decision 0035): stabilizes
-    // both the answers under test and the coverage grader.
+    // both the answers under test and the coverage grader (where the provider
+    // accepts a temperature — 0040 ruling 1).
     temperature: 0,
   });
+  // Grader override (0040 ruling 3): a separate gateway ONLY for gradeCoverage.
+  const graderProviders = graderProvidersFrom(providers);
+  const graderGateway = graderProviders
+    ? createModelGateway({ providers: graderProviders, redaction, temperature: 0 })
+    : gateway;
+  if (graderProviders) {
+    console.log(
+      `grader override: ${graderProviders.tiers.answer.provider}/${graderProviders.tiers.answer.model} ` +
+        '(COGETO_PROVIDER_GRADER/COGETO_MODEL_GRADER) — note this when publishing',
+    );
+  }
   const graderPrompt = (await loadPrompt(COVERAGE_PROMPT.family, COVERAGE_PROMPT.version)).content;
   const cases = await loadCases();
 
@@ -484,7 +495,7 @@ async function main(): Promise<void> {
         );
       }
       const coverage = checks.coverage_facts
-        ? await gradeCoverage(gateway, graderPrompt, final.answer, checks.coverage_facts)
+        ? await gradeCoverage(graderGateway, graderPrompt, final.answer, checks.coverage_facts)
         : null;
       if (coverage && coverage.missed.length > 0) {
         console.log(`  coverage misses: ${coverage.missed.join(' | ')}`);
@@ -555,7 +566,12 @@ async function main(): Promise<void> {
     ),
   ].join('\n');
 
-  const versions = `pipeline=${pipelineModel ?? 'mistral-small-latest'} · answer=${answerModel ?? 'mistral-medium-latest'} · answer-prompt=${ANSWER_PROMPT.family}/${ANSWER_PROMPT.version} · grader=${COVERAGE_PROMPT.family}/${COVERAGE_PROMPT.version}`;
+  const graderModel = (graderProviders ?? providers).tiers.answer;
+  const versions =
+    `configuration=${providers.id} · pipeline=${providers.tiers.pipeline.provider}/${providers.tiers.pipeline.model} · ` +
+    `answer=${providers.tiers.answer.provider}/${providers.tiers.answer.model} · ` +
+    `answer-prompt=${ANSWER_PROMPT.family}/${ANSWER_PROMPT.version} · ` +
+    `grader=${graderModel.provider}/${graderModel.model} ${COVERAGE_PROMPT.family}/${COVERAGE_PROMPT.version}`;
   console.log('\n================ CHAT EVAL RESULTS ================');
   console.log(versions);
   console.log(table);
@@ -577,18 +593,16 @@ async function main(): Promise<void> {
     process.exit(2);
   }
   if (emitPath) {
-    const models = {
-      pipeline: pipelineModel ?? DEFAULT_MODELS.pipeline,
-      answer: answerModel ?? DEFAULT_MODELS.answer,
-      embedding: embedModel ?? DEFAULT_MODELS.embedding,
-    };
+    // The ACTIVE configuration, from the same resolver the gateway was built
+    // with (decision 0040 ruling 5) — id and models are exact by construction.
+    const { id, models } = configurationForEmission(providers);
     emitPartial(emitPath, {
       schema_version: TRUST_SCORES_SCHEMA_VERSION,
       harness: `chat ${ANSWER_PROMPT.family}/${ANSWER_PROMPT.version} · grader ${COVERAGE_PROMPT.family}/${COVERAGE_PROMPT.version}`,
       configuration: {
-        id: deriveConfigurationId(models),
+        id,
         models,
-        redaction: redactionFromEnv() !== undefined,
+        redaction: redaction !== undefined,
         corpus: { chat_cases: scores.length },
         metrics: {
           chat: {

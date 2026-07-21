@@ -23,10 +23,7 @@ async function main(): Promise<void> {
     // The pass never calls the model; the gateway is only a constructor dep, so
     // a missing key is fine here (unlike `dream`, which does confirm with it).
     const gateway = createModelGateway({
-      mistralApiKey: config.mistralApiKey,
-      pipelineModel: config.mistralPipelineModel,
-      answerModel: config.mistralAnswerModel,
-      embedModel: config.mistralEmbedModel,
+      providers: config.modelProviders,
       redaction: redactionOptions(config),
     });
     const store = createMemoryStore({
@@ -34,7 +31,7 @@ async function main(): Promise<void> {
       qdrant: {
         url: config.qdrantUrl,
         apiKey: config.qdrantApiKey,
-        embeddingModel: config.mistralEmbedModel,
+        embeddingModel: config.modelProviders.tiers.embedding.model,
       },
     });
     const engine = new TasksEngine(db, store, gateway);

@@ -71,6 +71,17 @@ module.exports = {
       to: { path: 'node_modules/@mistralai' },
     },
     {
+      name: 'only-model-gateway-imports-provider-sdks',
+      comment:
+        'Decision 0040: the provider adapters live in the gateway; even if an OpenAI or ' +
+        'Anthropic SDK is ever added, no module outside the seam may import it. Complements ' +
+        'the grep-level no_provider_leakage test (endpoint hostnames, since the adapters ' +
+        'speak plain fetch).',
+      severity: 'error',
+      from: { path: '^project/', pathNot: '^project/src/model-gateway/' },
+      to: { path: 'node_modules/(openai|@anthropic-ai)' },
+    },
+    {
       name: 'only-memory-imports-qdrant',
       comment:
         'The memory module owns ALL storage access including the Qdrant client ' +

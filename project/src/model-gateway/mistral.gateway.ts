@@ -1,5 +1,4 @@
 import { Mistral } from '@mistralai/mistralai';
-import { ZodError } from 'zod';
 import type { ZodType } from 'zod';
 import { ModelGateway } from './model-gateway.service';
 import type {
@@ -7,9 +6,11 @@ import type {
   CompletionResult,
   GatewayReachability,
   StructuredExtractionRequest,
+  TokenUsage,
 } from './model-gateway.service';
 import { ModelGatewayError, ModelGatewayNotConfiguredError } from './errors';
 import type { ModelTier } from './model-gateway.service';
+import { callWithRetry, REACHABILITY_TTL_MS, structuredWithRepair } from './provider';
 
 export interface MistralGatewayOptions {
   apiKey: string;
@@ -36,6 +37,8 @@ const EMBED_BATCH_SIZE = 128;
  * The only place in the system that touches the Mistral client (§A.10) —
  * enforced by a dependency-cruiser rule. Maps model tiers (decision 0007
  * ruling 3) to concrete Mistral models; callers never name a model string.
+ * Retry/error classification and the structured repair loop are the shared
+ * provider contract (decision 0040 rulings 1–2).
  */
 export class MistralModelGateway extends ModelGateway {
   private readonly client: Mistral;
@@ -56,7 +59,7 @@ export class MistralModelGateway extends ModelGateway {
   }
 
   async complete(request: CompletionRequest): Promise<CompletionResult> {
-    const response = await this.call(() =>
+    const response = await callWithRetry('mistral', () =>
       this.client.chat.complete({
         model: this.models[request.tier ?? 'answer'],
         maxTokens: request.maxTokens,
@@ -67,11 +70,11 @@ export class MistralModelGateway extends ModelGateway {
         ],
       }),
     );
-    return { text: contentToText(response.choices?.[0]?.message?.content) };
+    return { text: contentToText(response.choices?.[0]?.message?.content), ...usageOf(response) };
   }
 
   async *completeStream(request: CompletionRequest): AsyncIterable<string> {
-    const stream = await this.call(() =>
+    const stream = await callWithRetry('mistral', () =>
       this.client.chat.stream({
         model: this.models[request.tier ?? 'answer'],
         maxTokens: request.maxTokens,
@@ -93,8 +96,8 @@ export class MistralModelGateway extends ModelGateway {
     request: StructuredExtractionRequest,
   ): Promise<T> {
     const model = this.models[request.tier ?? 'pipeline'];
-    const attempt = async (extraInstruction?: string): Promise<T> => {
-      const response = await this.call(() =>
+    return structuredWithRepair(schema, async (extraInstruction) => {
+      const response = await callWithRetry('mistral', () =>
         this.client.chat.complete({
           model,
           // ALWAYS deterministic sampling (decision 0035): structured
@@ -110,50 +113,19 @@ export class MistralModelGateway extends ModelGateway {
           ],
         }),
       );
-      const text = contentToText(response.choices?.[0]?.message?.content);
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(text);
-      } catch {
-        throw new ModelGatewayError('model returned non-JSON output', false);
-      }
-      return schema.parse(parsed);
-    };
-
-    try {
-      return await attempt();
-    } catch (error) {
-      // One corrective retry on schema violations only; provider errors already
-      // carry their retryable classification from call().
-      if (error instanceof ZodError) {
-        const issues = error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
-        try {
-          return await attempt(
-            `The previous JSON answer failed validation (${issues}). Answer again with JSON matching the required shape exactly.`,
-          );
-        } catch (secondError) {
-          if (secondError instanceof ZodError) {
-            throw new ModelGatewayError(
-              `structured output failed schema validation twice: ${issues}`,
-              false,
-              secondError,
-            );
-          }
-          throw secondError;
-        }
-      }
-      throw error;
-    }
+      return contentToText(response.choices?.[0]?.message?.content);
+    });
   }
 
   async embed(texts: string[]): Promise<number[][]> {
     if (texts.length === 0) return [];
     const vectors: number[][] = [];
     // Batched: Mistral's embeddings endpoint caps inputs per request; chunking
-    // here keeps callers oblivious. Errors carry the retryable flag via call().
+    // here keeps callers oblivious. Errors carry the retryable flag via the
+    // shared retry helper.
     for (let start = 0; start < texts.length; start += EMBED_BATCH_SIZE) {
       const batch = texts.slice(start, start + EMBED_BATCH_SIZE);
-      const response = await this.call(() =>
+      const response = await callWithRetry('mistral', () =>
         this.client.embeddings.create({ model: this.embedModel, inputs: batch }),
       );
       const data = response.data ?? [];
@@ -195,42 +167,7 @@ export class MistralModelGateway extends ModelGateway {
     this.reachabilityCache = { at: now, value };
     return value;
   }
-
-  /**
-   * Maps provider/network failures to typed errors with a retryable flag, and
-   * retries retryable ones (429 rate-limits, 5xx, network) with exponential
-   * backoff before giving up. Transient rate-limits during a burst (evals,
-   * batch ingestion) no longer fail the call on the first 429; a genuine error
-   * still surfaces as a ModelGatewayError after the bounded attempts.
-   */
-  private async call<T>(fn: () => Promise<T>): Promise<T> {
-    for (let attempt = 0; ; attempt++) {
-      try {
-        return await fn();
-      } catch (error) {
-        const status = extractStatus(error);
-        const retryable = status === undefined || status === 429 || status >= 500;
-        if (retryable && attempt < MAX_RETRIES) {
-          await sleep(RETRY_BASE_MS * 2 ** attempt);
-          continue;
-        }
-        throw new ModelGatewayError(
-          `mistral call failed${status ? ` (HTTP ${status})` : ''}: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-          retryable,
-          error,
-        );
-      }
-    }
-  }
 }
-
-const MAX_RETRIES = 5;
-const RETRY_BASE_MS = 800;
-/** Reachability probe cache window (QS-35) — health polls reuse it. */
-const REACHABILITY_TTL_MS = 30_000;
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Boots without a key (app/worker do not need the model to start); fails on use. */
 export class UnconfiguredModelGateway extends ModelGateway {
@@ -272,11 +209,12 @@ function contentToText(content: unknown): string {
   return '';
 }
 
-function extractStatus(error: unknown): number | undefined {
-  if (typeof error === 'object' && error !== null) {
-    const candidate =
-      (error as { statusCode?: unknown }).statusCode ?? (error as { status?: unknown }).status;
-    if (typeof candidate === 'number') return candidate;
-  }
-  return undefined;
+function usageOf(response: { usage?: { promptTokens?: number; completionTokens?: number } }): {
+  usage?: TokenUsage;
+} {
+  const prompt = response.usage?.promptTokens;
+  const completion = response.usage?.completionTokens;
+  return typeof prompt === 'number' && typeof completion === 'number'
+    ? { usage: { inputTokens: prompt, outputTokens: completion } }
+    : {};
 }

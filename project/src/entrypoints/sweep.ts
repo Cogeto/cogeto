@@ -26,7 +26,7 @@ async function main(): Promise<void> {
       qdrant: {
         url: config.qdrantUrl,
         apiKey: config.qdrantApiKey,
-        embeddingModel: config.mistralEmbedModel,
+        embeddingModel: config.modelProviders.tiers.embedding.model,
       },
       s3: {
         url: config.s3Url,
