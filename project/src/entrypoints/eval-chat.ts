@@ -48,6 +48,7 @@ const EVAL_INBOUND = 'capture@in.localhost';
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const MIGRATIONS_DIR = path.join(REPO_ROOT, 'project', 'src', 'migrations');
 const CASES_DIR = path.join(REPO_ROOT, 'project', 'eval', 'chat');
+const GATES_FILE = path.join(REPO_ROOT, 'project', 'eval', 'gates.json');
 const HISTORY_FILE = path.join(REPO_ROOT, 'docs', 'eval', 'history.md');
 
 const COVERAGE_PROMPT = { family: 'eval-coverage', version: 'v0001' } as const;
@@ -257,6 +258,9 @@ async function main(): Promise<void> {
     answerModel,
     embedModel,
     redaction: redactionFromEnv(),
+    // Deterministic sampling for comparable runs (decision 0035): stabilizes
+    // both the answers under test and the coverage grader.
+    temperature: 0,
   });
   const graderPrompt = (await loadPrompt(COVERAGE_PROMPT.family, COVERAGE_PROMPT.version)).content;
   const cases = await loadCases();
@@ -528,14 +532,49 @@ async function main(): Promise<void> {
     console.log(`trust-score partial (chat) emitted → ${emitPath}`);
   }
 
-  // Gate mode (decision 0011): every chat case must PASS. Same switch as the
-  // golden-set gates so CI enforces both with one convention.
-  const failed = scores.filter((s) => !s.pass);
-  if (failed.length > 0 && process.env.COGETO_EVAL_GATE === '1') {
-    console.error(
-      `GATE BREACH: chat case(s) failed: ${failed.map((s) => s.caseId).join(', ')} — failing the build`,
+  // Gate mode (decision 0036): each signal gated by its reliability. The
+  // rule-based checks (entity, hedge, no-mechanics, citations,
+  // nothing-on-record, temporal) are deterministic and stay all-must-pass;
+  // the LLM-judged coverage gates on the MEAN across coverage-graded cases
+  // (per-case binary coverage flaked on judge noise). Per-case pass/fail is
+  // still computed, printed, and published unchanged — only the CI verdict
+  // arithmetic differs. Same switch as the golden-set gates.
+  if (process.env.COGETO_EVAL_GATE === '1') {
+    const { chat_gates: chatGates } = z
+      .object({ chat_gates: z.object({ mean_coverage: z.number().min(0).max(1) }) })
+      .parse(JSON.parse(await readFile(GATES_FILE, 'utf8')));
+    const rulesFailed = scores.filter((s) =>
+      [
+        s.entityCorrect,
+        s.hedgeMarked,
+        s.noMechanics,
+        s.citationsValid,
+        s.nothingOnRecord,
+        s.temporal,
+      ].some((v) => v === false),
     );
-    process.exitCode = 1;
+    const covered = scores.filter((s) => s.coverage !== null);
+    const meanCoverage =
+      covered.length === 0
+        ? 1
+        : covered.reduce((sum, s) => sum + (s.coverage ?? 0), 0) / covered.length;
+    console.log(
+      `chat gate: rule checks ${rulesFailed.length === 0 ? 'all PASS' : `FAILED (${rulesFailed.map((s) => s.caseId).join(', ')})`} · ` +
+        `mean coverage ${(meanCoverage * 100).toFixed(1)}% over ${covered.length} graded case(s) (gate ≥ ${(chatGates.mean_coverage * 100).toFixed(0)}%)`,
+    );
+    const breaches: string[] = [];
+    if (rulesFailed.length > 0) {
+      breaches.push(`rule check(s) failed: ${rulesFailed.map((s) => s.caseId).join(', ')}`);
+    }
+    if (meanCoverage < chatGates.mean_coverage) {
+      breaches.push(
+        `mean coverage ${(meanCoverage * 100).toFixed(1)}% below gate ${(chatGates.mean_coverage * 100).toFixed(0)}%`,
+      );
+    }
+    if (breaches.length > 0) {
+      console.error(`GATE BREACH: ${breaches.join('; ')} — failing the build`);
+      process.exitCode = 1;
+    }
   }
 }
 

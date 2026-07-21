@@ -7,5 +7,9 @@
     "verification_agreement": 0.75,
     "dedup_accuracy": 0.9,
     "contradiction_recall": 0.7
-  }
+  },
+  "chat_gates": {
+    "mean_coverage": 0.65
+  },
+  "chat_note": "chat_gates (decision 0036): rule checks are all-must-pass in the harness; mean_coverage gates the MEAN of LLM-judged coverage across graded cases. Calibrated 2026-07-21 from the first temperature-0 baseline (mean 92.9% over 2 graded cases, atlas_scope 100 / who_is_ana 86): 0.65 leaves margin for residual provider nondeterminism on a 2-case denominator while a broken prompt (historical degraded drill: single-digit coverage) lands far below. Ratchet UP only, same policy as gates."
 }

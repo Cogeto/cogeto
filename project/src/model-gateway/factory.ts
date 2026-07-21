@@ -23,6 +23,9 @@ export interface CreateModelGatewayOptions {
   pipelineModel?: string;
   answerModel?: string;
   embedModel?: string;
+  /** Sampling temperature for free-text completions (decision 0035); the eval
+   * harness pins 0, production leaves unset. */
+  temperature?: number;
   redaction?: RedactionConfig;
   /**
    * Per-user daily model budget (FIX-2 QS-2). When present, the gateway is
@@ -49,6 +52,7 @@ export function createModelGateway(options: CreateModelGatewayOptions): ModelGat
         pipelineModel: options.pipelineModel,
         answerModel: options.answerModel,
         embedModel: options.embedModel,
+        temperature: options.temperature,
       })
     : new UnconfiguredModelGateway();
 
