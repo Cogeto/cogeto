@@ -252,9 +252,7 @@ async function main() {
   // Zitadel's proto-JSON omits false-valued booleans entirely: an absent field
   // means false, so normalize before comparing (verified against v2.65.1).
   const boolOf = (policy, key) => policy?.[key] ?? false;
-  const loginDrift = Object.entries(desiredLogin).filter(
-    ([k, v]) => boolOf(currentLogin, k) !== v,
-  );
+  const loginDrift = Object.entries(desiredLogin).filter(([k, v]) => boolOf(currentLogin, k) !== v);
   if (loginDrift.length === 0) {
     console.log('login policy already hardened (register off, external IdP off, no enumeration)');
   } else {
