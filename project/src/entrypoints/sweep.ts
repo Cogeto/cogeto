@@ -2,6 +2,7 @@ import { Pool } from 'pg';
 import { createDb } from '../infrastructure/index';
 import { createIntegritySweep } from '../memory/index';
 import { EmailSourceDeletion, NotesSourceDeletion } from '../connectors/index';
+import { TaskConclusionSourceDeletion } from '../tasks/index';
 import { ChatSourceDeletion } from '../retrieval/index';
 import { loadConfig } from './config';
 
@@ -40,6 +41,7 @@ async function main(): Promise<void> {
         new NotesSourceDeletion(),
         new ChatSourceDeletion(),
         new EmailSourceDeletion(),
+        new TaskConclusionSourceDeletion(),
       ],
     });
     const report = await sweep.run();

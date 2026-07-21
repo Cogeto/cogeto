@@ -30,8 +30,14 @@ import type { PromptArtifact } from '../../model-gateway/index';
 import { UserDirectory } from '../../identity/index';
 import { RetrievalService } from '../retrieval.service';
 import type { RetrievedMemory } from '../retrieval.service';
-import type { ConversationTurn } from '../query-rewrite';
-import { detectEmailReplyIntent } from '../query-rewrite';
+import type { ConversationTurn, CreateTaskIntent } from '../query-rewrite';
+import {
+  ANAPHORA_RE,
+  detectCreateTaskIntent,
+  detectEmailReplyIntent,
+  rewriteQuery,
+} from '../query-rewrite';
+import { queryEntityCandidates } from '../query-entities';
 import { CHAT_REPLY_RESOLVER } from './chat-reply-resolver.port';
 import type { ChatReplyResolverPort } from './chat-reply-resolver.port';
 import { chatMessage } from '../persistence/tables';
@@ -52,6 +58,12 @@ const REWRITE_HISTORY_TURNS = 6;
 
 /** Surrounding turns shown either side of a remembered message in its drawer. */
 const CONTEXT_TURNS = 2;
+
+/** Mirrors the task engine's condition heuristic (decision 0013 ruling 2) for
+ * the create-task confirmation text ONLY — derivation re-detects downstream.
+ * No leading \b: JS \b is ASCII-only and would never match before "čim". */
+const CONDITION_HINT_RE =
+  /(?:^|[^\p{L}])(?:after|once|when|as soon as|nakon što|kad(?:a)?|čim)\s+([^.;]{4,120})/iu;
 
 /**
  * The chat area (S3-A). Asking a question is strictly fast path (§A.3): persist
@@ -221,7 +233,21 @@ export class ChatService {
   async *ask(principal: Principal, content: string): AsyncGenerator<ChatStreamEvent> {
     // Prior turns (before this one) feed the conversational rewriter (F3).
     const history = await this.recentTurns(principal);
-    await this.db.insert(chatMessage).values({ ownerId: principal.userId, role: 'user', content });
+    const [userRow] = await this.db
+      .insert(chatMessage)
+      .values({ ownerId: principal.userId, role: 'user', content })
+      .returning();
+
+    // Create-a-task intent (decision 0038): checked BEFORE the reply intent so
+    // "remind me to reply to Ana" makes a task, not a draft. Deterministic
+    // detection; a clear request routes this very message through the normal
+    // chat capture → extraction → task derivation path (never a task row
+    // directly); an ambiguous one asks; a bare trigger creates nothing.
+    const createTask = detectCreateTaskIntent(content);
+    if (createTask) {
+      yield* this.handleCreateTaskIntent(principal, userRow!.id, createTask, history);
+      return;
+    }
 
     // Draft-a-reply intent (Session O4): deterministic detection; if it fires and
     // the resolver is wired, this turn creates an email reply draft (or asks /
@@ -324,6 +350,96 @@ export class ChatService {
       answer = `I couldn't draft that reply just now. You can open the email and use "Draft reply" on it.`;
     }
 
+    yield { type: 'token', text: answer };
+    const [row] = await this.db
+      .insert(chatMessage)
+      .values({ ownerId: principal.userId, role: 'assistant', content: answer })
+      .returning();
+    yield { type: 'done', messageId: row!.id, content: answer, citationViolations: 0 };
+  }
+
+  /**
+   * The create-a-task chat flow (decision 0038). The user's own message is the
+   * capture: a clear instruction stores its normalized commitment form on the
+   * message and enqueues the NORMAL ingestion pipeline on it (source_type
+   * 'chat'), so extraction, verification, admission and task derivation run
+   * exactly as for a written note — this method never creates a task row and
+   * never sends or mutates anything else. Ambiguity asks; a bare trigger
+   * creates nothing. Fast path: the only model call is the (bounded, optional)
+   * rewriter used to resolve references to earlier turns.
+   */
+  private async *handleCreateTaskIntent(
+    principal: Principal,
+    messageId: string,
+    intent: CreateTaskIntent,
+    history: ConversationTurn[],
+  ): AsyncGenerator<ChatStreamEvent> {
+    yield { type: 'sources', facts: [] };
+    const hr = intent.lang === 'hr';
+    let answer: string;
+    if (!intent.instruction) {
+      answer = hr
+        ? `Nema ničega što bi se moglo pretvoriti u zadatak. Recite mi što zadatak treba ` +
+          `sadržavati — npr. "napravi zadatak da pošaljem Ani mapiranje čim potvrdi format".`
+        : `I couldn't find anything actionable to turn into a task. Tell me what it should ` +
+          `say — for example, "make a task to send Ana the revised mapping once she confirms the format".`;
+    } else {
+      let instruction = intent.instruction;
+      // References to earlier turns resolve through the rewriter (it already
+      // holds the recent history). Conservative: if no named person or thing
+      // survives resolution, ask instead of guessing.
+      if (ANAPHORA_RE.test(instruction) && queryEntityCandidates(instruction).length === 0) {
+        const rewritten = await rewriteQuery(this.gateway, history, instruction);
+        if (
+          queryEntityCandidates(rewritten.query).length > 0 ||
+          !ANAPHORA_RE.test(rewritten.query)
+        ) {
+          instruction = rewritten.query;
+        }
+      }
+      if (ANAPHORA_RE.test(instruction) && queryEntityCandidates(instruction).length === 0) {
+        answer = hr
+          ? `Želim taj zadatak zabilježiti točno, ali ne mogu razaznati na koga ili što se ` +
+            `"${intent.instruction}" odnosi. Recite mi osobu ili stavku (i eventualni uvjet), pa ću ga izraditi.`
+          : `I want to get that task right, but I can't tell who or what "${intent.instruction}" ` +
+            `refers to. Tell me the person or item (and any condition), and I'll create it.`;
+      } else {
+        // The capture (§A.3): normalized commitment text on the message + the
+        // pipeline enqueue, one transaction — same contract as "remember this".
+        const captureContent = `${intent.lang === 'hr' ? 'Zadatak' : 'Task'}: ${instruction}`;
+        await this.db.transaction(async (tx) => {
+          await tx.update(chatMessage).set({ captureContent }).where(eq(chatMessage.id, messageId));
+          await withTransactionalEnqueue(
+            tx,
+            {
+              type: 'chat.task_requested',
+              payload: { source_type: 'chat', source_id: messageId, owner_id: principal.userId },
+            },
+            {
+              type: INGESTION_PIPELINE_JOB_TYPE,
+              payload: { source_type: 'chat', source_id: messageId },
+            },
+          );
+        });
+        const condition = CONDITION_HINT_RE.exec(instruction)?.[0]?.trim() ?? null;
+        if (hr) {
+          answer = condition
+            ? `Zabilježeno kao zadatak: "${instruction}" — čekat će na "${condition}". ` +
+              `Upravo se izrađuje i uskoro će se pojaviti na stranici Zadaci; izveden je iz ` +
+              `ovog razgovora, pa izvor pokazuje ovamo.`
+            : `Zabilježeno kao zadatak: "${instruction}". Upravo se izrađuje i uskoro će se ` +
+              `pojaviti na stranici Zadaci; izveden je iz ovog razgovora, pa izvor pokazuje ovamo.`;
+        } else {
+          answer = condition
+            ? `I've captured that as a task: "${instruction}" — it will wait on "${condition}". ` +
+              `It's being created now and will show on your Tasks page in a moment, derived from ` +
+              `this conversation so its provenance points here.`
+            : `I've captured that as a task: "${instruction}". It's being created now and will ` +
+              `show on your Tasks page in a moment, derived from this conversation so its ` +
+              `provenance points here.`;
+        }
+      }
+    }
     yield { type: 'token', text: answer };
     const [row] = await this.db
       .insert(chatMessage)

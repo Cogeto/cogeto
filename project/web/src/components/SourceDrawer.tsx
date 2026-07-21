@@ -9,6 +9,7 @@ import {
   fetchFileDownload,
   fetchFileSource,
   fetchNote,
+  fetchTaskConclusion,
 } from '../api';
 import type { Session } from '../auth/oidc';
 import { invalidateAfterSourceDeletion } from '../query-invalidation';
@@ -77,6 +78,7 @@ export function SourceDrawer({
   const isFile = sourceType === 'file';
   const isChat = sourceType === 'chat';
   const isEmail = sourceType === 'email';
+  const isTaskConclusion = sourceType === 'task_conclusion';
   const [draftError, setDraftError] = useState<string | null>(null);
   const [drafted, setDrafted] = useState(false);
 
@@ -99,6 +101,11 @@ export function SourceDrawer({
     queryKey: ['email-source', sourceId],
     queryFn: () => fetchEmailSource(session, sourceId),
     enabled: isEmail,
+  });
+  const conclusionQuery = useQuery({
+    queryKey: ['task-conclusion', sourceId],
+    queryFn: () => fetchTaskConclusion(session, sourceId),
+    enabled: isTaskConclusion,
   });
   const draftReply = useMutation({
     mutationFn: () => draftEmailReply(session, sourceId),
@@ -376,7 +383,50 @@ export function SourceDrawer({
           )}
         </>
       )}
-      {!isNote && !isFile && !isChat && !isEmail && (
+      {isTaskConclusion && (
+        <>
+          {conclusionQuery.isPending && <SkeletonRows rows={2} label="Loading conclusion…" />}
+          {conclusionQuery.isError && (
+            <ErrorState>We couldn’t load this task conclusion.</ErrorState>
+          )}
+          {conclusionQuery.data && (
+            <div className="space-y-2 rounded-md bg-slate-50 p-3">
+              <p className="text-xs text-slate-500">
+                Derived by the task engine when{' '}
+                {conclusionQuery.data.conclusionType === 'condition_met'
+                  ? 'a task’s waiting condition was satisfied'
+                  : 'a task concluded'}{' '}
+                (decision 0037) — this statement entered the normal pipeline like any other source.
+              </p>
+              <p className="whitespace-pre-wrap text-sm text-slate-800">
+                {conclusionQuery.data.statement}
+              </p>
+              <p className="flex flex-wrap items-center gap-2 text-xs">
+                <a href="/tasks" className="underline underline-offset-2">
+                  Open Tasks
+                </a>
+                {conclusionQuery.data.derivingMemoryId && (
+                  <a
+                    href={`/memories?open=${conclusionQuery.data.derivingMemoryId}`}
+                    className="underline underline-offset-2"
+                  >
+                    the commitment it concluded
+                  </a>
+                )}
+                {conclusionQuery.data.triggerMemoryId && (
+                  <a
+                    href={`/memories?open=${conclusionQuery.data.triggerMemoryId}`}
+                    className="underline underline-offset-2"
+                  >
+                    the fact that concluded it
+                  </a>
+                )}
+              </p>
+            </div>
+          )}
+        </>
+      )}
+      {!isNote && !isFile && !isChat && !isEmail && !isTaskConclusion && (
         <p className="break-all rounded-md bg-slate-50 p-3 text-xs text-slate-600">{sourceId}</p>
       )}
 

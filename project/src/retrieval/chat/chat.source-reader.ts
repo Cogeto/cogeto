@@ -31,7 +31,9 @@ export class ChatSourceReader implements SourceReader {
       sourceType: this.sourceType,
       sourceId: row.id,
       ownerId: row.ownerId,
-      content: row.content,
+      // A create_task capture (decision 0038) extracts from the normalized
+      // commitment text; a plain "remember this" extracts the message itself.
+      content: row.captureContent ?? row.content,
       createdAt: row.createdAt,
     };
   }

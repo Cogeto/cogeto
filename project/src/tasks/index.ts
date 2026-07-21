@@ -14,4 +14,11 @@ export { TasksCascade } from './tasks-cascade';
 export { TasksDigestSection } from './tasks-digest';
 export { runTaskEval, taskPairSchema } from './eval-tasks';
 export type { TaskPairCase, TaskEvalMetrics, TaskEvalResult } from './eval-tasks';
-export type { TaskRow } from './persistence/tables';
+export type { TaskRow, TaskConclusionRow } from './persistence/tables';
+export {
+  TaskConclusionSourceModule,
+  TaskConclusionSourceReader,
+  TaskConclusionSourceDeletion,
+} from './task-conclusion.source-ports';
+export { buildConclusionStatement, conclusionDate } from './task-conclusion';
+export type { ConclusionType, ConclusionInput, TaskConclusionDto } from './task-conclusion';

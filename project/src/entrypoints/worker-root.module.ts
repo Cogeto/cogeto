@@ -12,7 +12,13 @@ import {
   NotesSourceDeletion,
   NotesSourceReader,
 } from '../connectors/index';
-import { TasksCascade, TasksModule } from '../tasks/index';
+import {
+  TaskConclusionSourceDeletion,
+  TaskConclusionSourceModule,
+  TaskConclusionSourceReader,
+  TasksCascade,
+  TasksModule,
+} from '../tasks/index';
 import { PassportModule, PASSPORT_EXPORT_RETENTION_HOURS } from '../passport/index';
 import {
   ChatAnswerCascade,
@@ -67,7 +73,13 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         // The chat source deletion joins notes' so a chat-derived memory's source
         // deletion erases the originating turn under the saga (decision 0021 r7).
         sourceDeletions: {
-          adapters: [NotesSourceDeletion, ChatSourceDeletion, EmailSourceDeletion],
+          adapters: [
+            NotesSourceDeletion,
+            ChatSourceDeletion,
+            EmailSourceDeletion,
+            // Conclusion rows are deletable sources too (decision 0037).
+            TaskConclusionSourceDeletion,
+          ],
         },
         derivedCascades: {
           imports: [TasksModule.register(), ChatSourceModule, ReplyDraftCascadeModule],
@@ -80,11 +92,19 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         ingestionGuard: PipelineIngestionGuard,
       }),
       // ChatSourceReader gives ingestion a stage-1 reader for source_type 'chat';
-      // EmailSourceReader adds source_type 'email' (Session O4).
+      // EmailSourceReader adds source_type 'email' (Session O4);
+      // TaskConclusionSourceReader adds 'task_conclusion' (decision 0037).
       IngestionModule.register({
-        readers: [NotesSourceReader, FileSourceReader, ChatSourceReader, EmailSourceReader],
+        readers: [
+          NotesSourceReader,
+          FileSourceReader,
+          ChatSourceReader,
+          EmailSourceReader,
+          TaskConclusionSourceReader,
+        ],
       }),
       ChatSourceModule,
+      TaskConclusionSourceModule,
       AgentsModule,
       ConnectorsModule.register({
         fileUpload: {

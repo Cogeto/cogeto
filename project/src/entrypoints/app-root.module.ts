@@ -19,7 +19,12 @@ import {
   EmailSourceDeletion,
   NotesSourceDeletion,
 } from '../connectors/index';
-import { TasksCascade, TasksModule } from '../tasks/index';
+import {
+  TaskConclusionSourceDeletion,
+  TaskConclusionSourceModule,
+  TasksCascade,
+  TasksModule,
+} from '../tasks/index';
 import { PassportModule, PASSPORT_EXPORT_RETENTION_HOURS } from '../passport/index';
 import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG, mailOptions, redactionOptions } from './config';
@@ -78,7 +83,13 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         // Chat joins notes as a deletable source (decision 0021 r7) — the
         // source-delete endpoint runs the saga for a chat-derived memory too.
         sourceDeletions: {
-          adapters: [NotesSourceDeletion, ChatSourceDeletion, EmailSourceDeletion],
+          adapters: [
+            NotesSourceDeletion,
+            ChatSourceDeletion,
+            EmailSourceDeletion,
+            // Conclusion rows are deletable sources too (decision 0037).
+            TaskConclusionSourceDeletion,
+          ],
         },
         derivedCascades: {
           imports: [TasksModule.forApi(), ChatSourceModule, ReplyDraftCascadeModule],
@@ -92,6 +103,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       }),
       RetrievalModule,
       ChatSourceModule, // the chat source-deletion adapter for the delete endpoint
+      TaskConclusionSourceModule, // ditto for task conclusions (decision 0037)
       IngestionModule.forQueries(), // verification + dreaming read endpoints
       AgentsModule,
       ConnectorsModule.register({

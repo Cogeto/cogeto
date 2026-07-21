@@ -8,16 +8,22 @@ import {
 import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Principal } from '@cogeto/shared';
-import { DRIZZLE, writeAudit } from '../infrastructure/index';
+import { DRIZZLE, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
 import { UserDirectory } from '../identity/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { MemoryStore } from '../memory/index';
 import type { MemoryRow, SourceType } from '../memory/index';
-import { clearDormantFlag, listOpenDormantFlags } from '../ingestion/index';
+import {
+  clearDormantFlag,
+  INGESTION_PIPELINE_JOB_TYPE,
+  listOpenDormantFlags,
+} from '../ingestion/index';
 import { loadPrompt, ModelGateway } from '../model-gateway/index';
 import type { PromptArtifact } from '../model-gateway/index';
-import { task } from './persistence/tables';
-import type { TaskRow } from './persistence/tables';
+import { task, taskConclusion } from './persistence/tables';
+import type { TaskConclusionRow, TaskRow } from './persistence/tables';
+import { buildConclusionStatement, toConclusionDto } from './task-conclusion';
+import type { ConclusionType, TaskConclusionDto } from './task-conclusion';
 import { gateForeignTasks } from './task-visibility';
 import { REMINDER_DUE_SOON_HORIZON_HOURS } from './reminders-config';
 
@@ -213,7 +219,11 @@ export class TasksEngine {
     return (
       row.kind !== null &&
       (DERIVING_KINDS as readonly string[]).includes(row.kind) &&
-      (row.status === 'active' || row.status === 'uncertain')
+      (row.status === 'active' || row.status === 'uncertain') &&
+      // The loop guard (decision 0037 ruling 6): a conclusion memory records a
+      // COMPLETED obligation — it never derives a task, whatever kind the
+      // extractor assigned, so conclude → derive → conclude cannot cycle.
+      row.sourceType !== 'task_conclusion'
     );
   }
 
@@ -258,8 +268,13 @@ export class TasksEngine {
    * the content is the condition; otherwise none. Deterministic, no model. */
   private async conditionOf(row: MemoryRow): Promise<string | null> {
     const text = row.content ?? '';
+    // NOT \b before the keyword: JS \b is ASCII-only, so "\bčim" can never
+    // match ("č" is not a \w char) — hr "čim …" conditions were structurally
+    // invisible until the create_task_hr_uvjet golden case caught it.
     const match =
-      /\b(?:after|once|when|as soon as|nakon što|kad(?:a)?|čim)\b\s+([^.;]{4,120})/i.exec(text);
+      /(?:^|[^\p{L}])(?:after|once|when|as soon as|nakon što|kad(?:a)?|čim)\s+([^.;]{4,120})/iu.exec(
+        text,
+      );
     return match ? match[0].trim() : null;
   }
 
@@ -354,6 +369,10 @@ export class TasksEngine {
       ownerId: byFact.ownerId,
       orgId: await this.orgFor(byFact.ownerId),
     });
+    // The conclusion becomes a memory (decision 0037): recorded and enqueued
+    // in THIS transaction, so the fact enters the normal pipeline iff the
+    // closure itself commits.
+    await this.emitConclusion(tx, current, 'closed', byFact);
     // Fulfilled → its dormant flag is done too (F2 handoff §3).
     await clearDormantFlag(this.db, current.derivedFromMemoryId);
     return true;
@@ -387,6 +406,8 @@ export class TasksEngine {
       ownerId: byFact.ownerId,
       orgId: await this.orgFor(byFact.ownerId),
     });
+    // The satisfaction becomes a memory too (decision 0037).
+    await this.emitConclusion(tx, current, 'condition_met', byFact);
     return true;
   }
 
@@ -529,9 +550,15 @@ export class TasksEngine {
   }
 
   async complete(principal: Principal, taskId: string): Promise<TaskRow> {
-    const row = await this.userOp(principal, taskId, ['open', 'blocked_on_condition'], () => ({
-      status: 'done',
-    }));
+    const row = await this.userOp(
+      principal,
+      taskId,
+      ['open', 'blocked_on_condition'],
+      () => ({ status: 'done' }),
+      // A user-completed task concludes too (decision 0037): no memory drove
+      // it, so the trigger is null and the statement records the user's close.
+      (tx, current) => this.emitConclusion(tx, current, 'closed', null),
+    );
     await clearDormantFlag(this.db, row.derivedFromMemoryId);
     return row;
   }
@@ -541,6 +568,8 @@ export class TasksEngine {
     taskId: string,
     legalFrom: TaskRow['status'][],
     change: (current: TaskRow) => Partial<typeof task.$inferInsert>,
+    /** Runs inside the transaction, only when a real transition happened. */
+    afterTransition?: (tx: Tx, current: TaskRow) => Promise<unknown>,
   ): Promise<TaskRow> {
     return this.db.transaction(async (tx) => {
       const rows = await tx.select().from(task).where(eq(task.id, taskId)).for('update');
@@ -572,8 +601,134 @@ export class TasksEngine {
         ownerId: principal.userId,
         orgId: principal.orgId,
       });
+      await afterTransition?.(tx, current);
       return updated as TaskRow;
     });
+  }
+
+  // ── Conclusion memories (decision 0037) ─────────────────────────────────────
+
+  /**
+   * The ONE sanctioned path by which tasks causes a memory to exist: record
+   * the durable conclusion row (the §A.6 provenance target) and enqueue the
+   * NORMAL ingestion pipeline on it via the outbox, in the same transaction as
+   * the task transition. The pipeline extracts/verifies/embeds/reconciles the
+   * statement like any other source — tasks never writes a memory row and
+   * never transitions one (the tasks_read_only_memory rule is untouched).
+   *
+   * Idempotent: transitions are re-checked under row locks before this is
+   * called, and the (task, type, trigger) unique index is the belt underneath
+   * — a re-delivered event inserts nothing and enqueues nothing. A task the
+   * user reopened and that concludes AGAIN records a NEW conclusion (new
+   * trigger, or a fresh user close); the earlier conclusion memory stays as
+   * history for reconciliation to weigh (decision 0037 ruling 5).
+   */
+  private async emitConclusion(
+    tx: Tx,
+    current: TaskRow,
+    type: ConclusionType,
+    byFact: MemoryRow | null,
+  ): Promise<void> {
+    const deriving = (await this.memoryStore.getManySystem([current.derivedFromMemoryId]))[0];
+    const statement = buildConclusionStatement({
+      type,
+      taskTitle: current.title,
+      recordedAt: deriving?.validFrom ?? deriving?.createdAt ?? current.createdAt,
+      concludedAt: byFact ? (byFact.validFrom ?? byFact.createdAt) : new Date(),
+      triggerContent: byFact?.content ?? null,
+      conditionText: current.conditionText,
+    });
+    const inserted = await tx
+      .insert(taskConclusion)
+      .values({
+        ownerId: current.ownerId,
+        // Scope follows the task (which follows the deriving memory); the
+        // conclusion is sensitive if ANY source in its chain is (ruling 3).
+        scope: current.scope,
+        sensitive: (deriving?.sensitive ?? false) || (byFact?.sensitive ?? false),
+        taskId: current.id,
+        conclusionType: type,
+        statement,
+        derivingMemoryId: deriving?.id ?? null,
+        triggerMemoryId: byFact?.id ?? null,
+      })
+      .onConflictDoNothing({
+        target: [
+          taskConclusion.taskId,
+          taskConclusion.conclusionType,
+          taskConclusion.triggerMemoryId,
+        ],
+      })
+      .returning({ id: taskConclusion.id });
+    const conclusionId = inserted[0]?.id;
+    if (!conclusionId) return; // already concluded for this trigger — no-op
+    await withTransactionalEnqueue(
+      tx,
+      {
+        type: 'task.concluded',
+        payload: {
+          source_type: 'task_conclusion',
+          source_id: conclusionId,
+          owner_id: current.ownerId,
+        },
+      },
+      {
+        type: INGESTION_PIPELINE_JOB_TYPE,
+        payload: { source_type: 'task_conclusion', source_id: conclusionId },
+      },
+    );
+    await writeAudit(tx, {
+      actor: 'tasks_engine',
+      action: 'task.concluded',
+      entityType: 'task',
+      entityId: current.id,
+      detail: {
+        conclusionId,
+        conclusionType: type,
+        derivingMemoryId: deriving?.id ?? null,
+        triggerMemoryId: byFact?.id ?? null,
+      },
+      ownerId: current.ownerId,
+      orgId: await this.orgFor(current.ownerId),
+    });
+  }
+
+  /** The conclusions a task produced, owner-only, each resolved to the memory
+   * the pipeline admitted from it (null while the capture is in flight). */
+  async listConclusionsForPrincipal(
+    principal: Principal,
+    taskId: string,
+  ): Promise<TaskConclusionDto[]> {
+    const rows = await this.db
+      .select()
+      .from(taskConclusion)
+      .where(and(eq(taskConclusion.taskId, taskId), eq(taskConclusion.ownerId, principal.userId)))
+      .orderBy(desc(taskConclusion.createdAt));
+    return Promise.all(rows.map((row) => this.resolveConclusion(principal, row)));
+  }
+
+  /** One conclusion row by id — the source drawer's context for a memory whose
+   * provenance is source_type 'task_conclusion'. Owner-only. */
+  async getConclusionForPrincipal(
+    principal: Principal,
+    conclusionId: string,
+  ): Promise<TaskConclusionDto | null> {
+    const rows = await this.db
+      .select()
+      .from(taskConclusion)
+      .where(and(eq(taskConclusion.id, conclusionId), eq(taskConclusion.ownerId, principal.userId)))
+      .limit(1);
+    const row = rows[0];
+    return row ? this.resolveConclusion(principal, row) : null;
+  }
+
+  private async resolveConclusion(
+    principal: Principal,
+    row: TaskConclusionRow,
+  ): Promise<TaskConclusionDto> {
+    const memories = await this.memoryStore.listBySourceSystem('task_conclusion', row.id);
+    const own = memories.find((m) => m.ownerId === principal.userId);
+    return toConclusionDto(row, own?.id ?? null);
   }
 
   // ── Reads (owner-scoped; the answer path and the debug panel) ───────────────

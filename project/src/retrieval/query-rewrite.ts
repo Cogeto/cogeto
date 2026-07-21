@@ -73,7 +73,7 @@ const rewriteSchema = z.object({
 });
 
 /** Third-person anaphora + demonstratives — first/second person needs no resolution. */
-const ANAPHORA_RE =
+export const ANAPHORA_RE =
   /\b(she|her|hers|he|him|his|it|its|they|them|their|theirs|this|that|these|those)\b/i;
 
 /**
@@ -170,6 +170,57 @@ export const REPLY_EMAIL_HINT_RE = new RegExp(
   ].join('|'),
   'i',
 );
+
+/** Create-a-task intent (decision 0038): the explicit conversational request
+ * to turn something into a task ("make a task to…", "remind me to…",
+ * "dodaj zadatak: …"). Deterministic like the reply intent — the lexicon both
+ * detects the request and extracts the instruction; no model decides WHETHER. */
+export interface CreateTaskIntent {
+  /** The task instruction with the trigger phrase stripped; null = the
+   * trigger fired but carried nothing actionable. */
+  instruction: string | null;
+  /** Which language's trigger matched — picks the capture normalization. */
+  lang: 'en' | 'hr';
+}
+
+const CREATE_TASK_PATTERNS: ReadonlyArray<{ lang: 'en' | 'hr'; re: RegExp }> = [
+  {
+    lang: 'en',
+    re: /\b(?:make|create|add|open|set up)\s+(?:me\s+)?a\s+(?:new\s+)?(?:task|to[- ]?do)(?:\s+(?:to|for|about)\s+(.+)|\s*[:–—-]\s+(.+))?\s*$/i,
+  },
+  { lang: 'en', re: /\bnew task\s*[:–—-]\s*(.+)$/i },
+  { lang: 'en', re: /\bremind me to\s+(.+)$/i },
+  {
+    lang: 'hr',
+    re: /\b(?:napravi|kreiraj|dodaj|otvori|stavi)\s+(?:mi\s+)?(?:novi\s+)?zadatak(?:\s+(?:da|za)\s+(.+)|\s*[:–—-]\s+(.+))?\s*$/i,
+  },
+  { lang: 'hr', re: /\bnovi zadatak\s*[:–—-]\s*(.+)$/i },
+  { lang: 'hr', re: /\bpodsjeti me (?:da|na)\s+(.+)$/i },
+];
+
+/**
+ * The question veto: a turn ASKING about tasks ("did I make a task for
+ * Marko?", "imam li zadatak…") is retrieval, not creation. Leading
+ * interrogatives that request information veto the intent; polite request
+ * forms ("can you make a task to…") deliberately do not.
+ */
+const CREATE_TASK_QUESTION_VETO =
+  /^\s*(?:did|do|does|have|has|had|is|are|was|were|what|which|when|where|why|how|who|jesam|jesi|je\s*li|ima[mš]\s*li|što|sto|koji|koja|koje|kada|kad|gdje|zašto|zasto|kako|tko)\b/i;
+
+/** Detect an explicit create-a-task request. Purely deterministic (no model). */
+export function detectCreateTaskIntent(question: string): CreateTaskIntent | null {
+  if (CREATE_TASK_QUESTION_VETO.test(question)) return null;
+  for (const { lang, re } of CREATE_TASK_PATTERNS) {
+    const match = re.exec(question);
+    if (!match) continue;
+    const raw = (match[1] ?? match[2] ?? '')
+      .trim()
+      .replace(/[.!?\s]+$/, '')
+      .trim();
+    return { instruction: raw.length >= 3 ? raw : null, lang };
+  }
+  return null;
+}
 
 /** Captures the reply TARGET (person/sender) after the reply verb. */
 const REPLY_TARGET_RE =

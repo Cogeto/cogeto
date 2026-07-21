@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Controller,
   Get,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
@@ -16,6 +17,7 @@ import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { TasksEngine } from './tasks.engine';
 import type { TaskRow } from './persistence/tables';
+import type { TaskConclusionDto } from './task-conclusion';
 
 const listQuerySchema = z.object({
   status: z.enum(TASK_STATUSES).optional(),
@@ -70,6 +72,28 @@ export class TasksController {
   @Get('count')
   async count(@Req() request: AuthenticatedRequest): Promise<TaskCountDto> {
     return { open: await this.engine.countOpenForPrincipal(request.principal) };
+  }
+
+  /** The conclusions a task produced (decision 0037) — "this task produced
+   * this fact", each resolved to its admitted memory. Owner-only. */
+  @Get(':id/conclusions')
+  async conclusions(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<TaskConclusionDto[]> {
+    return this.engine.listConclusionsForPrincipal(request.principal, id);
+  }
+
+  /** One conclusion row — the source drawer's context for a memory whose
+   * provenance is source_type 'task_conclusion'. Owner-only. */
+  @Get('conclusions/:id')
+  async conclusion(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<TaskConclusionDto> {
+    const dto = await this.engine.getConclusionForPrincipal(request.principal, id);
+    if (!dto) throw new NotFoundException(`conclusion ${id} not found`);
+    return dto;
   }
 
   @Post(':id/reopen')

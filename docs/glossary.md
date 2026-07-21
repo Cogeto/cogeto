@@ -130,6 +130,12 @@ name it in a decision record before coining a term in code.
 - **Task** — an actionable item derived from memory (person, topic, condition,
   status). Tasks read memory through its public interface; they never mutate it.
   Owned by the `tasks` context.
+- **Task conclusion** — the fact derived when a task concludes (its condition is
+  satisfied or it closes): a deterministic statement entering the normal pipeline
+  with provenance `source_type = 'task_conclusion'` pointing at the durable
+  `task_conclusion` row, which links the task, its deriving memory, and the
+  triggering memory (decision 0037). The one sanctioned way `tasks` causes a
+  memory to exist; it never mutates one.
 - **Open loops** — commitments and follow-ups without a recorded resolution.
 - **Digest** — the daily summary produced by `tasks`.
 - **Dreaming** — the nightly consolidation job; its surfaced summary is the

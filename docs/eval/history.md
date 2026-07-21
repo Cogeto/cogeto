@@ -583,3 +583,84 @@ text, which softens the embedding cost.
 | reply_to_ana | — | — | — | — | — | — | PASS | PASS |
 | whats_still_open | — | — | — | PASS | PASS | — | PASS | PASS |
 | who_is_ana | PASS | 86% | PASS | PASS | PASS | — | — | PASS |
+
+## 2026-07-21 — extraction/v0002 + verification/v0004 (thresholds v1, 68 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 33 | 86.3% (44/51) | 95.6% (43/45) | 87.5% (28/32) |
+| hr | 35 | 75.5% (40/53) | 84.4% (38/45) | 88.2% (30/34) |
+| aggregate | 68 | 80.8% (84/104) | 90.0% (81/90) | 87.9% (58/66) |
+
+## 2026-07-21 — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 20 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 5 | 100.0% (8/8) | 6 | 75.0% (3/4) | 100.0% (3/3) | 0/1 | 0 |
+| hr | 4 | 83.3% (5/6) | 5 | 100.0% (3/3) | 100.0% (3/3) | — | 0 |
+| aggregate | 9 | 92.9% (13/14) | 11 | 85.7% (6/7) | 100.0% (6/6) | 0/1 | 0 |
+
+## 2026-07-21 — task_closure/v0001 + task_condition/v0001 (12 pairs)
+
+| set | closure pairs | closure accuracy | condition pairs | condition accuracy |
+|---|---|---|---|---|
+| en | 4 | 100.0% (6/6) | 2 | 100.0% (2/2) |
+| hr | 4 | 100.0% (6/6) | 2 | 100.0% (2/2) |
+| aggregate | 8 | 100.0% (12/12) | 4 | 100.0% (4/4) |
+
+## 2026-07-21 — chat eval (pipeline=mistral-small-latest · answer=mistral-medium-latest · answer-prompt=answer/v0004 · grader=eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | task | overall |
+|---|---|---|---|---|---|---|---|---|---|
+| atlas_scope | — | 50% | — | PASS | PASS | — | — | — | FAIL |
+| changed_since | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| closure_flow | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| create_task_en_conditioned | — | — | — | — | — | — | PASS | PASS | PASS |
+| create_task_hr_uvjet | — | — | — | — | — | — | PASS | FAIL | FAIL |
+| default_no_time_travel | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| nothing_on_record | — | — | — | — | — | PASS | — | — | PASS |
+| open_with_entity | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| point_in_time_march | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| previously_decided | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| reply_hr_zadnja | — | — | — | — | — | — | PASS | — | PASS |
+| reply_to_ana | — | — | — | — | — | — | PASS | — | PASS |
+| whats_still_open | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| who_is_ana | PASS | 86% | PASS | PASS | PASS | — | — | — | PASS |
+
+## 2026-07-21 — chat eval (pipeline=mistral-small-latest · answer=mistral-medium-latest · answer-prompt=answer/v0004 · grader=eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | task | overall |
+|---|---|---|---|---|---|---|---|---|---|
+| atlas_scope | — | 50% | — | PASS | PASS | — | — | — | FAIL |
+| changed_since | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| closure_flow | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| create_task_en_conditioned | — | — | — | — | — | — | PASS | PASS | PASS |
+| create_task_hr_uvjet | — | — | — | — | — | — | PASS | PASS | PASS |
+| default_no_time_travel | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| nothing_on_record | — | — | — | — | — | PASS | — | — | PASS |
+| open_with_entity | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| point_in_time_march | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| previously_decided | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| reply_hr_zadnja | — | — | — | — | — | — | PASS | — | PASS |
+| reply_to_ana | — | — | — | — | — | — | PASS | — | PASS |
+| whats_still_open | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| who_is_ana | PASS | 0% | PASS | PASS | PASS | — | — | — | FAIL |
+
+## 2026-07-21 — chat eval (pipeline=mistral-small-latest · answer=mistral-medium-latest · answer-prompt=answer/v0004 · grader=eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | task | overall |
+|---|---|---|---|---|---|---|---|---|---|
+| atlas_scope | — | 50% | — | PASS | PASS | — | — | — | FAIL |
+| changed_since | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| closure_flow | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| create_task_en_conditioned | — | — | — | — | — | — | PASS | PASS | PASS |
+| create_task_hr_uvjet | — | — | — | — | — | — | PASS | PASS | PASS |
+| default_no_time_travel | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| nothing_on_record | — | — | — | — | — | PASS | — | — | PASS |
+| open_with_entity | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| point_in_time_march | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| previously_decided | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| reply_hr_zadnja | — | — | — | — | — | — | PASS | — | PASS |
+| reply_to_ana | — | — | — | — | — | — | PASS | — | PASS |
+| whats_still_open | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| who_is_ana | PASS | 86% | PASS | PASS | PASS | — | — | — | PASS |

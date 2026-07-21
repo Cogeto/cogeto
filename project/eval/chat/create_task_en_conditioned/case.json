@@ -1,0 +1,15 @@
+{
+  "case_id": "create_task_en_conditioned",
+  "description": "Decision 0038: an explicit create-task request with a stated condition creates exactly one blocked task via the chat capture -> extraction -> derivation path, and the chat confirms with the condition.",
+  "anchor": "2026-07-01T09:00:00.000Z",
+  "facts": [],
+  "script": ["Make a task to send Ana the revised mapping once she confirms the format"],
+  "checks": {
+    "must_include": ["task", "Ana"],
+    "task_created": {
+      "title_includes": ["Ana", "mapping"],
+      "status": "blocked_on_condition",
+      "condition_includes": ["confirm"]
+    }
+  }
+}

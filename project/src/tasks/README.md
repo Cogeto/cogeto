@@ -8,7 +8,11 @@ Responsibilities: task/reminder records, digest assembly, scheduling of recurrin
 slow-path jobs (via the queue, §A.3 — jobs are idempotent, key
 `(source_type, source_id, job_type)`).
 
-Owns: task/reminder/digest tables.
+Owns: task/reminder/digest tables, plus `task_conclusion` — the durable
+provenance rows behind `source_type 'task_conclusion'` (decision 0037): when a
+task concludes, the engine records a conclusion row and enqueues the normal
+ingestion pipeline on it. That is the ONE way this module causes a memory to
+exist; it never writes or transitions memory rows (`tasks_read_only_memory`).
 
 May depend on: `memory` and `retrieval` public interfaces, `identity`. Consumes
 domain events via the outbox; consequential outbound actions go through the

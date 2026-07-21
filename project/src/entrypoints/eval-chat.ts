@@ -105,6 +105,19 @@ const caseSchema = z.object({
     /** The final turn's sources must include / must not include these statuses. */
     sources_status_includes: z.array(z.string()).optional(),
     sources_status_excludes: z.array(z.string()).optional(),
+    /**
+     * Create-task cases (decision 0038): after the scripted turns, the harness
+     * processes the chat capture through the real pipeline + task engine and
+     * asserts EXACTLY ONE task was derived from a chat-sourced memory, with
+     * these properties. Deterministic — part of the all-must-pass rule gate.
+     */
+    task_created: z
+      .object({
+        title_includes: z.array(z.string()).default([]),
+        status: z.enum(['open', 'blocked_on_condition']).optional(),
+        condition_includes: z.array(z.string()).default([]),
+      })
+      .optional(),
   }),
 });
 type ChatCase = z.infer<typeof caseSchema>;
@@ -141,6 +154,8 @@ interface CaseScore {
   nothingOnRecord: boolean | null;
   /** The F3-A temporal checks folded into one verdict (null = not a temporal case). */
   temporal: boolean | null;
+  /** The create-task verdict (decision 0038; null = not a create-task case). */
+  taskCreated: boolean | null;
   pass: boolean;
 }
 
@@ -415,6 +430,59 @@ async function main(): Promise<void> {
 
       const final = turns[turns.length - 1]!;
       const checks = testCase.checks;
+
+      // Create-task cases (decision 0038): the intent stored a normalized
+      // capture on the user's message and enqueued the pipeline; the harness
+      // stands in for the worker — run the real stages + task engine, then
+      // assert on the derived task. A correctly refused (ambiguous/none) case
+      // simply yields no capture and no task.
+      let taskCreated: boolean | null = null;
+      if (checks.task_created) {
+        const captured = await db.execute<{ id: string; capture_content: string }>(sql`
+          SELECT id, capture_content FROM chat_message
+          WHERE owner_id = ${principal.userId} AND capture_content IS NOT NULL
+        `);
+        const chatMemoryIds = new Set<string>();
+        for (const row of captured.rows) {
+          await seedMemoryFromSource({
+            db,
+            gateway,
+            memoryStore,
+            source: {
+              sourceType: 'chat',
+              sourceId: row.id,
+              ownerId: principal.userId,
+              content: row.capture_content,
+              createdAt: anchor,
+            },
+          });
+          await db.transaction((tx) => tasksEngine.processSource(tx, 'chat', row.id));
+          for (const m of await memoryStore.listBySourceSystem('chat', row.id)) {
+            chatMemoryIds.add(m.id);
+          }
+        }
+        const allTasks = await tasksEngine.listForPrincipal(principal, { includeSettled: true });
+        const derived = allTasks.filter((t) => chatMemoryIds.has(t.derivedFromMemoryId));
+        const wanted = checks.task_created;
+        const one = derived.length === 1;
+        const t = derived[0];
+        const titleOk =
+          !!t &&
+          wanted.title_includes.every((s) => t.title.toLowerCase().includes(s.toLowerCase()));
+        const statusOk = !wanted.status || t?.status === wanted.status;
+        const conditionOk =
+          wanted.condition_includes.length === 0 ||
+          (!!t?.conditionText &&
+            wanted.condition_includes.every((s) =>
+              t.conditionText!.toLowerCase().includes(s.toLowerCase()),
+            ));
+        taskCreated = one && titleOk && statusOk && conditionOk;
+        console.log(
+          `  task_created: ${String(taskCreated)} (derived=${derived.length}` +
+            (t ? `, status=${t.status}, waiting on: ${t.conditionText ?? '—'}` : '') +
+            `)`,
+        );
+      }
       const coverage = checks.coverage_facts
         ? await gradeCoverage(gateway, graderPrompt, final.answer, checks.coverage_facts)
         : null;
@@ -451,6 +519,7 @@ async function main(): Promise<void> {
           : null,
         nothingOnRecord: checks.nothing_on_record ? checkNothingOnRecord(final.answer) : null,
         temporal: temporalApplied.length > 0 ? temporalApplied.every(Boolean) : null,
+        taskCreated,
         pass: false,
       };
       score.pass = [
@@ -461,6 +530,7 @@ async function main(): Promise<void> {
         score.citationsValid,
         score.nothingOnRecord,
         score.temporal,
+        score.taskCreated,
       ]
         .filter((v) => v !== null)
         .every(Boolean);
@@ -475,13 +545,13 @@ async function main(): Promise<void> {
   const cov = (s: CaseScore): string =>
     s.coverage === null ? '—' : `${(s.coverage * 100).toFixed(0)}%`;
   const table = [
-    '| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | overall |',
-    '|---|---|---|---|---|---|---|---|---|',
+    '| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | task | overall |',
+    '|---|---|---|---|---|---|---|---|---|---|',
     ...scores.map(
       (s) =>
         `| ${s.caseId} | ${cell(s.entityCorrect)} | ${cov(s)} | ${cell(s.hedgeMarked)} | ` +
         `${cell(s.noMechanics)} | ${cell(s.citationsValid)} | ${cell(s.nothingOnRecord)} | ` +
-        `${cell(s.temporal)} | ${s.pass ? 'PASS' : 'FAIL'} |`,
+        `${cell(s.temporal)} | ${cell(s.taskCreated)} | ${s.pass ? 'PASS' : 'FAIL'} |`,
     ),
   ].join('\n');
 
@@ -551,6 +621,7 @@ async function main(): Promise<void> {
         s.citationsValid,
         s.nothingOnRecord,
         s.temporal,
+        s.taskCreated,
       ].some((v) => v === false),
     );
     const covered = scores.filter((s) => s.coverage !== null);
