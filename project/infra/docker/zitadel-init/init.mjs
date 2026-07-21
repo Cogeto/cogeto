@@ -231,6 +231,99 @@ async function main() {
     }
   }
 
+  // 2d. Harden the instance login surface (decision 0034). Idempotent AND
+  // self-verifying: after any change the policy is re-read and every desired
+  // value asserted — a silently-ignored field can never pass as hardened.
+  //   allowRegister=false          operator-created users only, no self-signup
+  //   allowExternalIdp=false       no IdPs are configured; removes dead UI
+  //   ignoreUnknownUsernames=true  login does not reveal whether a user exists
+  const desiredLogin = {
+    allowRegister: false,
+    allowExternalIdp: false,
+    ignoreUnknownUsernames: true,
+  };
+  const policyRes = await request('GET', '/admin/v1/policies/login', null, pat);
+  if (policyRes.status !== 200) {
+    throw new Error(
+      `login policy read failed (${policyRes.status}): ${JSON.stringify(policyRes.body)}`,
+    );
+  }
+  const currentLogin = policyRes.body.policy ?? {};
+  // Zitadel's proto-JSON omits false-valued booleans entirely: an absent field
+  // means false, so normalize before comparing (verified against v2.65.1).
+  const boolOf = (policy, key) => policy?.[key] ?? false;
+  const loginDrift = Object.entries(desiredLogin).filter(([k, v]) => boolOf(currentLogin, k) !== v);
+  if (loginDrift.length === 0) {
+    console.log('login policy already hardened (register off, external IdP off, no enumeration)');
+  } else {
+    // UpdateLoginPolicy replaces the whole policy: send the current one merged
+    // with the desired values so nothing else is clobbered.
+    const restOfPolicy = { ...currentLogin };
+    delete restOfPolicy.details;
+    delete restOfPolicy.isDefault;
+    const update = await request(
+      'PUT',
+      '/admin/v1/policies/login',
+      { ...restOfPolicy, ...desiredLogin },
+      pat,
+    );
+    const updNoChange =
+      typeof update.body?.message === 'string' && update.body.message.includes('No changes');
+    if (update.status !== 200 && !updNoChange) {
+      throw new Error(
+        `login policy update failed (${update.status}): ${JSON.stringify(update.body)}`,
+      );
+    }
+    const verify = await request('GET', '/admin/v1/policies/login', null, pat);
+    for (const [key, want] of Object.entries(desiredLogin)) {
+      if (boolOf(verify.body.policy, key) !== want) {
+        throw new Error(
+          `login policy hardening did not stick: ${key} is ${JSON.stringify(
+            verify.body.policy?.[key],
+          )}, wanted ${want}`,
+        );
+      }
+    }
+    console.log(
+      `login policy hardened (${loginDrift.map(([k]) => k).join(', ')}) — verified by re-read`,
+    );
+  }
+
+  // 2e. Forbid public org registration at the instance level (single-tenant
+  // deployment boundary; same self-verifying pattern).
+  const restrRes = await request('GET', '/admin/v1/restrictions', null, pat);
+  if (restrRes.status !== 200) {
+    throw new Error(
+      `restrictions read failed (${restrRes.status}): ${JSON.stringify(restrRes.body)}`,
+    );
+  }
+  if ((restrRes.body.disallowPublicOrgRegistration ?? false) === true) {
+    console.log('public org registration already disallowed');
+  } else {
+    const setRestr = await request(
+      'PUT',
+      '/admin/v1/restrictions',
+      { disallowPublicOrgRegistration: true },
+      pat,
+    );
+    const restrNoChange =
+      typeof setRestr.body?.message === 'string' && setRestr.body.message.includes('No changes');
+    if (setRestr.status !== 200 && !restrNoChange) {
+      throw new Error(
+        `restrictions update failed (${setRestr.status}): ${JSON.stringify(setRestr.body)}`,
+      );
+    }
+    const verifyRestr = await request('GET', '/admin/v1/restrictions', null, pat);
+    if (verifyRestr.body.disallowPublicOrgRegistration !== true) {
+      throw new Error(
+        `restrictions hardening did not stick: disallowPublicOrgRegistration is ${JSON.stringify(
+          verifyRestr.body.disallowPublicOrgRegistration,
+        )}`,
+      );
+    }
+    console.log('public org registration disallowed — verified by re-read');
+  }
+
   // 3. Publish what the SPA needs.
   writeFileSync(WEB_CONFIG_FILE, JSON.stringify({ issuer: ISSUER, clientId }, null, 2));
   console.log(`wrote ${WEB_CONFIG_FILE}`);
