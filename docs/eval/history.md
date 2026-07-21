@@ -664,3 +664,70 @@ text, which softens the embedding cost.
 | reply_to_ana | — | — | — | — | — | — | PASS | — | PASS |
 | whats_still_open | — | — | — | PASS | PASS | — | PASS | — | PASS |
 | who_is_ana | PASS | 86% | PASS | PASS | PASS | — | — | — | PASS |
+
+## 2026-07-21 — extraction/v0002 + verification/v0004 (thresholds v1, 68 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 33 | 84.8% (39/46) | 84.4% (38/45) | 93.3% (28/30) |
+| hr | 35 | 78.2% (43/55) | 93.3% (42/45) | 85.3% (29/34) |
+| aggregate | 68 | 81.2% (82/101) | 88.9% (80/90) | 89.1% (57/64) |
+
+## 2026-07-21 — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 20 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 5 | 100.0% (8/8) | 6 | 75.0% (3/4) | 100.0% (3/3) | 0/1 | 0 |
+| hr | 4 | 83.3% (5/6) | 5 | 100.0% (3/3) | 100.0% (3/3) | — | 0 |
+| aggregate | 9 | 92.9% (13/14) | 11 | 85.7% (6/7) | 100.0% (6/6) | 0/1 | 0 |
+
+## 2026-07-21 — task_closure/v0001 + task_condition/v0001 (12 pairs)
+
+| set | closure pairs | closure accuracy | condition pairs | condition accuracy |
+|---|---|---|---|---|
+| en | 4 | 100.0% (6/6) | 2 | 100.0% (2/2) |
+| hr | 4 | 100.0% (6/6) | 2 | 100.0% (2/2) |
+| aggregate | 8 | 100.0% (12/12) | 4 | 100.0% (4/4) |
+
+## 2026-07-21 — extraction/v0002 + verification/v0004 (thresholds v1, 68 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 33 | 86.3% (44/51) | 93.3% (42/45) | 93.8% (30/32) |
+| hr | 35 | 76.4% (42/55) | 91.1% (41/45) | 85.3% (29/34) |
+| aggregate | 68 | 81.1% (86/106) | 92.2% (83/90) | 89.4% (59/66) |
+
+## 2026-07-21 — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 20 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 5 | 100.0% (8/8) | 6 | 75.0% (3/4) | 100.0% (3/3) | 0/1 | 0 |
+| hr | 4 | 83.3% (5/6) | 5 | 100.0% (3/3) | 100.0% (3/3) | — | 0 |
+| aggregate | 9 | 92.9% (13/14) | 11 | 85.7% (6/7) | 100.0% (6/6) | 0/1 | 0 |
+
+## 2026-07-21 — task_closure/v0001 + task_condition/v0001 (12 pairs)
+
+| set | closure pairs | closure accuracy | condition pairs | condition accuracy |
+|---|---|---|---|---|
+| en | 4 | 100.0% (6/6) | 2 | 100.0% (2/2) |
+| hr | 4 | 100.0% (6/6) | 2 | 100.0% (2/2) |
+| aggregate | 8 | 100.0% (12/12) | 4 | 100.0% (4/4) |
+
+## 2026-07-21 — chat eval (configuration=mistral-default · pipeline=mistral/mistral-small-latest · answer=mistral/mistral-medium-latest · answer-prompt=answer/v0004 · grader=mistral/mistral-medium-latest eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | task | overall |
+|---|---|---|---|---|---|---|---|---|---|
+| atlas_scope | — | 83% | — | PASS | PASS | — | — | — | PASS |
+| changed_since | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| closure_flow | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| create_task_en_conditioned | — | — | — | — | — | — | PASS | PASS | PASS |
+| create_task_hr_uvjet | — | — | — | — | — | — | PASS | PASS | PASS |
+| default_no_time_travel | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| nothing_on_record | — | — | — | — | — | PASS | — | — | PASS |
+| open_with_entity | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| point_in_time_march | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| previously_decided | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| reply_hr_zadnja | — | — | — | — | — | — | PASS | — | PASS |
+| reply_to_ana | — | — | — | — | — | — | PASS | — | PASS |
+| whats_still_open | — | — | — | PASS | PASS | — | PASS | — | PASS |
+| who_is_ana | PASS | 14% | PASS | PASS | PASS | — | — | — | FAIL |
