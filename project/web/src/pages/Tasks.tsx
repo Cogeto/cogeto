@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { TaskDto } from '@cogeto/shared';
-import { fetchTasks, taskOperation } from '../api';
+import { fetchTaskConclusions, fetchTasks, taskOperation } from '../api';
 import type { Session } from '../auth/oidc';
 import { invalidateAfterTaskOp } from '../query-invalidation';
 import { MemoryDrawer } from '../components/MemoryDrawer';
@@ -24,6 +24,42 @@ type View = 'open' | 'done' | 'dismissed';
 /** Reads ?open=<memory id> so digest task lines can deep-link a deriving fact. */
 function openedFromUrl(): string | null {
   return new URLSearchParams(window.location.search).get('open');
+}
+
+/** "This task produced this fact" (decision 0037): the conclusion memories a
+ * concluded task derived, linked into the memory drawer like "closed by". */
+function ConclusionLinks({
+  session,
+  taskId,
+  onOpenMemory,
+}: {
+  session: Session;
+  taskId: string;
+  onOpenMemory: (memoryId: string) => void;
+}) {
+  const conclusions = useQuery({
+    queryKey: ['task-conclusions', taskId],
+    queryFn: () => fetchTaskConclusions(session, taskId),
+  });
+  const rows = (conclusions.data ?? []).filter((c) => c.memoryId !== null);
+  if (rows.length === 0) return null;
+  return (
+    <p className="mt-1 text-xs text-slate-400">
+      {rows.map((c) => (
+        <button
+          key={c.id}
+          type="button"
+          onClick={() => onOpenMemory(c.memoryId!)}
+          className="mr-2 underline decoration-slate-300 underline-offset-2 hover:text-brand-teal"
+          title={c.statement}
+        >
+          {c.conclusionType === 'condition_met'
+            ? 'condition met — see the fact it produced'
+            : 'produced this fact'}
+        </button>
+      ))}
+    </p>
+  );
 }
 
 function TaskRow({
@@ -109,6 +145,9 @@ function TaskRow({
               </button>{' '}
               · {timeAgo(task.updatedAt)}
             </p>
+          )}
+          {(settled || task.conditionMet) && (
+            <ConclusionLinks session={session} taskId={task.id} onOpenMemory={onOpenMemory} />
           )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">

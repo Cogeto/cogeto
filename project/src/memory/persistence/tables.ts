@@ -25,6 +25,9 @@ export const sourceTypeEnum = pgEnum('source_type', [
   'email',
   'calendar_event',
   'file',
+  // Engine-derived task conclusions (decision 0037): the source row is the
+  // tasks-owned task_conclusion record, migration 0025.
+  'task_conclusion',
 ]);
 export const receiptStatusEnum = pgEnum('receipt_status', ['pending', 'confirmed']);
 export const factKindEnum = pgEnum('fact_kind', FACT_KINDS);

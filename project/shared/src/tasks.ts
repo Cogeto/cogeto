@@ -24,3 +24,24 @@ export interface TaskDto {
 export interface TaskCountDto {
   open: number;
 }
+
+/** What concluded a task (decision 0037). */
+export type TaskConclusionType = 'closed' | 'condition_met';
+
+/**
+ * GET /api/tasks/:id/conclusions and GET /api/tasks/conclusions/:id — the
+ * fact a task's conclusion produced (decision 0037): the deterministic
+ * statement plus the inspectable chain. `memoryId` is the memory the pipeline
+ * admitted from this conclusion — null while the capture is still in flight,
+ * or after that memory was erased.
+ */
+export interface TaskConclusionDto {
+  id: string;
+  taskId: string | null;
+  conclusionType: TaskConclusionType;
+  statement: string;
+  derivingMemoryId: string | null;
+  triggerMemoryId: string | null;
+  memoryId: string | null;
+  createdAt: string;
+}

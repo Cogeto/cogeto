@@ -38,6 +38,7 @@ import type {
   ReceiptDetailDto,
   ReceiptListItem,
   ResolveContradictionRequest,
+  TaskConclusionDto,
   TaskCountDto,
   TaskDto,
   TaskStatus,
@@ -230,6 +231,11 @@ export const taskOperation = (
   id: string,
   op: 'reopen' | 'dismiss' | 'complete',
 ): Promise<TaskDto> => apiPost(`/api/tasks/${id}/${op}`, {}, session);
+// Task conclusions (decision 0037): "this task produced this fact".
+export const fetchTaskConclusions = (session: Session, id: string): Promise<TaskConclusionDto[]> =>
+  apiGet(`/api/tasks/${id}/conclusions`, session);
+export const fetchTaskConclusion = (session: Session, id: string): Promise<TaskConclusionDto> =>
+  apiGet(`/api/tasks/conclusions/${id}`, session);
 
 // The contradicted queue (F2-A, decision 0010): open contradictions where both
 // facts belong to the caller, and the three owner resolutions.

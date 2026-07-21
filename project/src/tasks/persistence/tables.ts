@@ -1,4 +1,13 @@
-import { boolean, index, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  index,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { MEMORY_SCOPES, TASK_STATUSES } from '@cogeto/shared';
 
 // The shared `scope` pg enum, re-declared locally: migrations are hand-written
@@ -46,3 +55,35 @@ export const task = pgTable(
 );
 
 export type TaskRow = typeof task.$inferSelect;
+
+export const taskConclusionTypeEnum = pgEnum('task_conclusion_type', ['closed', 'condition_met']);
+
+/**
+ * The durable provenance row behind source_type 'task_conclusion' (migration
+ * 0025; decision 0037). One row per concluded event; the derived memory's
+ * §A.6 provenance points here, and the row carries the inspectable chain
+ * (task → deriving memory, trigger memory). FKs are SET NULL, never CASCADE:
+ * provenance must outlive what it references — the statement is self-contained.
+ */
+export const taskConclusion = pgTable(
+  'task_conclusion',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: text('owner_id').notNull(),
+    scope: scopeEnum('scope').notNull(),
+    sensitive: boolean('sensitive').notNull().default(false),
+    taskId: uuid('task_id'),
+    conclusionType: taskConclusionTypeEnum('conclusion_type').notNull(),
+    statement: text('statement').notNull(),
+    derivingMemoryId: uuid('deriving_memory_id'),
+    triggerMemoryId: uuid('trigger_memory_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('task_conclusion_once_idx').on(t.taskId, t.conclusionType, t.triggerMemoryId),
+    index('task_conclusion_task_idx').on(t.taskId),
+    index('task_conclusion_owner_idx').on(t.ownerId),
+  ],
+);
+
+export type TaskConclusionRow = typeof taskConclusion.$inferSelect;
