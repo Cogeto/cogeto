@@ -1,3 +1,4 @@
+export * from './attention';
 export * from './chat';
 export * from './citations';
 export * from './email';

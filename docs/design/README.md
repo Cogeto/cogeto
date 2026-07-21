@@ -24,6 +24,31 @@ status vocabulary in `project/web/src/components/status.ts`; the component kit i
 Neutrals are Tailwind `slate`; semantic accents are Tailwind `amber` / `red` /
 `violet` / `sky`, all chosen at AA-passing text shades.
 
+### Instrument extension (Post-v1 Priority 2 — dashboard)
+
+The redesigned dashboard adds a single **dark instrument surface** for the
+attention hero — "mission control for your practice", not neon or gamer. It
+stays within the brand: it is the navy nav surface, deepened. Three documented
+token extensions, used ONLY here:
+
+| Token | Value | Use |
+|---|---|---|
+| `brand-navy-900` | `#0E112A` | one step below `navy-deep`; the hero gradient floor. **Surface only, never text.** |
+| `--shadow-glow` (`shadow-glow`) | `0 10px 40px -18px rgba(33,194,154,.45)` | the hero's single teal rim-glow — depth, used once, never on list items |
+| `--animate-rise` (`animate-rise`) | `rise .26s ease-out both` | entrance settle for the hero; under 300ms, never loops |
+
+On the dark hero the **bright** teal (`brand-teal #21C29A`) is the accent TEXT
+color — it is **8.2:1 on `navy-900`**, comfortably AA (the ink teal is for light
+surfaces only). Body text on the hero is `white` / `white/90`; secondary is
+`white/60`, all AA on the navy gradient. The statistics below the hero stay on
+the light `Card` system — depth is meaningful (the hero is the one dark panel),
+not decorative.
+
+Charts are hand-rolled SVG (no charting dependency): a status donut, compact
+bars, sparklines. Color never carries meaning alone — every chart has a labelled
+legend or a text-equivalent `aria-label` (`seriesSummary`), and the status donut
+reuses the load-bearing status hues below.
+
 ## Status colors (load-bearing — AA + colorblind-safe)
 
 Status carries information, so each of the six lifecycle states has a fixed
@@ -67,8 +92,11 @@ system.
 Subtle and **always reduced-motion-aware** (a global
 `@media (prefers-reduced-motion: reduce)` freezes every animation/transition):
 `transition-colors` on interactive elements, a 160 ms drawer slide-in
-(`animate-drawer-in`), the skeleton shimmer, the worker indeterminate bar, and
-the "working" pulse dots.
+(`animate-drawer-in`), a 260 ms dashboard-hero entrance (`animate-rise`), the
+skeleton shimmer, the worker indeterminate bar, and the "working" pulse dots.
+Rule: motion is **entrance / transition / feedback only**, under ~300 ms, and
+nothing blinks or loops forever (the pulse dots are the one bounded exception,
+and they too freeze under reduced-motion).
 
 ## Component kit (`components/ui.tsx`)
 

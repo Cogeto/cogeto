@@ -31,7 +31,14 @@ export {
   PRIVATE_KEY_FILE,
 } from './instance-key';
 export type { InstanceSigner } from './instance-key';
-export { auditLog, outboxEvent, jobExecution, deadLetter } from './persistence/tables';
+export {
+  auditLog,
+  outboxEvent,
+  jobExecution,
+  deadLetter,
+  attentionState,
+  attentionDismissal,
+} from './persistence/tables';
 // Abuse/DoS limits (FIX-2: QS-2, QS-6, QS-14). Types + tokens live here so the
 // guards enforce them inside domain modules without importing an entrypoint.
 export {

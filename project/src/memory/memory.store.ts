@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { and, desc, eq, gte, inArray, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
+import { MEMORY_STATUSES } from '@cogeto/shared';
 import type { FactKind, MemoryScope, MemoryStatus, Principal } from '@cogeto/shared';
 import { auditLog, DRIZZLE, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
@@ -303,6 +304,77 @@ export class MemoryStore {
       .from(memory)
       .where(and(this.visibleTo(principal, opts), ...this.filterClauses(principal, opts)));
     return rows[0]?.n ?? 0;
+  }
+
+  /**
+   * Gated memory counts by lifecycle status — the dashboard's "memory by
+   * status" visual (Post-v1 Priority 2). ONE grouped query under the same
+   * `visibleTo` gate as every read: own + visible-shared rows, the caller's own
+   * sensitive rows included (the owner's governance view, like the Memories
+   * list). Absent statuses read as zero. Cheap and constant-size (≤6 rows).
+   */
+  async statusCountsForPrincipal(principal: Principal): Promise<Record<MemoryStatus, number>> {
+    const rows = await this.db
+      .select({ status: memory.status, n: sql<number>`count(*)::int` })
+      .from(memory)
+      .where(this.visibleTo(principal, { includeSensitive: true }))
+      .groupBy(memory.status);
+    const counts = Object.fromEntries(MEMORY_STATUSES.map((s) => [s, 0])) as Record<
+      MemoryStatus,
+      number
+    >;
+    for (const row of rows) counts[row.status] = row.n;
+    return counts;
+  }
+
+  /**
+   * Distinct sources ingested per UTC day over a BOUNDED window — the "sources
+   * over the last N days" series. Gated like every read; grouped by day and
+   * source type; counts DISTINCT source_id (a source, not its facts). The
+   * `created_at >= since` bound is what keeps this cheap: it is a windowed
+   * index scan, never the whole store. Returns raw (day, sourceType, sources)
+   * rows; the caller folds source types into families and fills empty days.
+   */
+  async sourceDailyCountsForPrincipal(
+    principal: Principal,
+    days: number,
+  ): Promise<Array<{ day: string; sourceType: string; sources: number }>> {
+    const since = new Date(Date.now() - days * 86_400_000);
+    const rows = await this.db
+      .select({
+        day: sql<string>`to_char(date_trunc('day', ${memory.createdAt} AT TIME ZONE 'UTC'), 'YYYY-MM-DD')`,
+        sourceType: memory.sourceType,
+        sources: sql<number>`count(distinct ${memory.sourceId})::int`,
+      })
+      .from(memory)
+      .where(
+        and(this.visibleTo(principal, { includeSensitive: true }), gte(memory.createdAt, since)),
+      )
+      .groupBy(sql`date_trunc('day', ${memory.createdAt} AT TIME ZONE 'UTC')`, memory.sourceType);
+    return rows.map((r) => ({ day: r.day, sourceType: r.sourceType, sources: r.sources }));
+  }
+
+  /**
+   * The oldest unresolved uncertain fact awaiting the caller's Review, or null.
+   * Owner-only (`mine`), mirroring the Review queue — you review only your own
+   * uncertain facts. One aggregate query under the gates. Feeds the "oldest
+   * unresolved review item age" stat together with the oldest open
+   * contradiction (owned by reconciliation).
+   */
+  async oldestUncertainAtForPrincipal(principal: Principal): Promise<Date | null> {
+    const rows = await this.db
+      .select({ at: sql<Date | string | null>`min(${memory.createdAt})` })
+      .from(memory)
+      .where(
+        and(
+          this.visibleTo(principal, {}),
+          eq(memory.ownerId, principal.userId),
+          eq(memory.status, 'uncertain'),
+        ),
+      );
+    // A bare aggregate can arrive as a string from the driver — normalize to Date.
+    const at = rows[0]?.at ?? null;
+    return at === null ? null : new Date(at);
   }
 
   /**

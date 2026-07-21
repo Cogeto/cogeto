@@ -89,6 +89,24 @@ export interface TaskListFilters {
   includeSettled?: boolean;
 }
 
+/** A task the attention feed may surface — the raw fields it classifies over. */
+export interface AttentionTask {
+  id: string;
+  title: string;
+  due: Date | null;
+  dormant: boolean;
+  status: TaskRow['status'];
+  updatedAt: Date;
+}
+
+/** Owner-scoped task counts for the dashboard's task visual. */
+export interface TaskStatusBreakdown {
+  open: number;
+  blocked: number;
+  done: number;
+  dismissed: number;
+}
+
 const norm = (name: string) => name.trim().toLowerCase();
 
 @Injectable()
@@ -762,6 +780,56 @@ export class TasksEngine {
         t.entities.some((e) => norm(e).includes(wanted)) ||
         (t.primaryPerson !== null && norm(t.primaryPerson).includes(wanted)),
     );
+  }
+
+  /**
+   * The caller's OWN open + blocked tasks, classified for the attention feed
+   * (Post-v1 Priority 2): overdue, due-soon, and gone-quiet (dormant). Owner-
+   * scoped like the nav badge — "what needs ME", not the org-wide shared view.
+   * Ordered by due date so the most pressing surface first; capped like every
+   * other engine read. The service decides the due-soon horizon and the human
+   * phrasing; this stays a thin, gated read of the raw fields.
+   */
+  async attentionTasksForPrincipal(principal: Principal): Promise<AttentionTask[]> {
+    const rows = await this.db
+      .select({
+        id: task.id,
+        title: task.title,
+        due: task.due,
+        dormant: task.dormant,
+        status: task.status,
+        updatedAt: task.updatedAt,
+      })
+      .from(task)
+      .where(
+        and(
+          eq(task.ownerId, principal.userId),
+          inArray(task.status, ['open', 'blocked_on_condition']),
+        ),
+      )
+      .orderBy(sql`${task.due} ASC NULLS LAST`, desc(task.updatedAt))
+      .limit(OPEN_TASK_POOL);
+    return rows;
+  }
+
+  /**
+   * Owner-scoped task counts by status — the dashboard's "open vs blocked vs
+   * done vs dismissed" visual. ONE grouped query over the caller's own tasks
+   * (their workload, mirroring the badge); absent statuses read as zero.
+   */
+  async statusCountsForPrincipal(principal: Principal): Promise<TaskStatusBreakdown> {
+    const rows = await this.db
+      .select({ status: task.status, n: sql<number>`count(*)::int` })
+      .from(task)
+      .where(eq(task.ownerId, principal.userId))
+      .groupBy(task.status);
+    const by = new Map(rows.map((r) => [r.status, r.n]));
+    return {
+      open: by.get('open') ?? 0,
+      blocked: by.get('blocked_on_condition') ?? 0,
+      done: by.get('done') ?? 0,
+      dismissed: by.get('dismissed') ?? 0,
+    };
   }
 
   /**

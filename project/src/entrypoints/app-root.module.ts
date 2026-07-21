@@ -29,6 +29,8 @@ import { PassportModule, PASSPORT_EXPORT_RETENTION_HOURS } from '../passport/ind
 import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG, mailOptions, redactionOptions } from './config';
 import type { CogetoConfig } from './config';
+import { AttentionController, DashboardController } from './attention.controller';
+import { AttentionService } from './attention.service';
 import { AuditController } from './audit.controller';
 import { HealthController } from './health.controller';
 import { InstanceController } from './instance.controller';
@@ -130,6 +132,8 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       }),
     ],
     controllers: [
+      AttentionController,
+      DashboardController,
       AuditController,
       HealthController,
       InstanceController,
@@ -138,6 +142,9 @@ export function createAppRootModule(config: CogetoConfig): unknown {
     ],
     providers: [
       { provide: COGETO_CONFIG, useValue: config },
+      // The attention/stats aggregator composes memory, tasks, agents and the
+      // dreaming digest through their public interfaces (Post-v1 Priority 2).
+      AttentionService,
       // Default-deny auth (QS-18): the bearer guard runs on EVERY route; only
       // routes marked @Public() (health/config/instance) opt out. A new
       // controller that forgets @UseGuards is closed, not silently open.

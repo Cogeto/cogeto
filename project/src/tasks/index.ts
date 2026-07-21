@@ -9,7 +9,13 @@ export {
   TASKS_REMINDERS_CRONTAB,
   buildPairInput,
 } from './tasks.engine';
-export type { TaskEngineReport, TaskListFilters, ReminderReport } from './tasks.engine';
+export type {
+  TaskEngineReport,
+  TaskListFilters,
+  ReminderReport,
+  AttentionTask,
+  TaskStatusBreakdown,
+} from './tasks.engine';
 export { TasksCascade } from './tasks-cascade';
 export { TasksDigestSection } from './tasks-digest';
 export { runTaskEval, taskPairSchema } from './eval-tasks';

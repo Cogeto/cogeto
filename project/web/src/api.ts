@@ -1,8 +1,12 @@
 import type {
   ApprovalDecision,
   ApprovalDto,
+  AttentionDismissDto,
+  AttentionFeedDto,
+  AttentionSeenDto,
   AuditPage,
   AuditQuery,
+  DashboardStatsDto,
   UserSettingsDto,
   UpdateUserSettingsRequest,
   AddEmailAllowlistEntryRequest,
@@ -208,6 +212,20 @@ export const rejectMemory = (session: Session, id: string): Promise<{ rejected: 
 // actions as at most six linked lines; empty lines = render nothing.
 export const fetchDreamDigest = (session: Session): Promise<DreamDigestDto> =>
   apiGet('/api/dreaming/latest', session);
+
+// The attention surface (Post-v1 Priority 2): the computed "what needs me now"
+// feed + honest unread state; viewing clears it; digest lines are dismissible.
+export const fetchAttention = (session: Session): Promise<AttentionFeedDto> =>
+  apiGet('/api/attention', session);
+export const markAttentionSeen = (session: Session): Promise<AttentionSeenDto> =>
+  apiPost('/api/attention/seen', {}, session);
+export const dismissAttentionItem = (session: Session, key: string): Promise<AttentionDismissDto> =>
+  apiPost('/api/attention/dismiss', { key }, session);
+
+// The dashboard statistics (Post-v1 Priority 2): cheap, gated aggregates + two
+// bounded daily series behind the redesigned home screen's visualizations.
+export const fetchDashboardStats = (session: Session): Promise<DashboardStatsDto> =>
+  apiGet('/api/dashboard/stats', session);
 
 // The Tasks surface (O2-A, decision 0013; F3 handoff §4). Views map to status
 // filters; the remaining filters (due window, dormant-only, from_uncertain)
