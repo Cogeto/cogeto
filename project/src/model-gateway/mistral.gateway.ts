@@ -18,6 +18,13 @@ export interface MistralGatewayOptions {
   /** Model for the `answer` tier (chat synthesis, eval grader). */
   answerModel?: string;
   embedModel?: string;
+  /**
+   * Sampling temperature for free-text completions (decision 0035). The eval
+   * harness pins 0 so runs are comparable; production chat leaves it unset
+   * (provider default). Structured extraction is ALWAYS temperature 0
+   * regardless — what Cogeto remembers must not depend on a dice roll.
+   */
+  temperature?: number;
 }
 
 const DEFAULT_PIPELINE_MODEL = 'mistral-small-latest';
@@ -34,6 +41,7 @@ export class MistralModelGateway extends ModelGateway {
   private readonly client: Mistral;
   private readonly models: Record<ModelTier, string>;
   private readonly embedModel: string;
+  private readonly temperature?: number;
   private reachabilityCache?: { at: number; value: GatewayReachability };
 
   constructor(options: MistralGatewayOptions) {
@@ -44,6 +52,7 @@ export class MistralModelGateway extends ModelGateway {
       answer: options.answerModel ?? DEFAULT_ANSWER_MODEL,
     };
     this.embedModel = options.embedModel ?? DEFAULT_EMBED_MODEL;
+    this.temperature = options.temperature;
   }
 
   async complete(request: CompletionRequest): Promise<CompletionResult> {
@@ -51,6 +60,7 @@ export class MistralModelGateway extends ModelGateway {
       this.client.chat.complete({
         model: this.models[request.tier ?? 'answer'],
         maxTokens: request.maxTokens,
+        ...(this.temperature !== undefined ? { temperature: this.temperature } : {}),
         messages: [
           ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
           { role: 'user' as const, content: request.input },
@@ -65,6 +75,7 @@ export class MistralModelGateway extends ModelGateway {
       this.client.chat.stream({
         model: this.models[request.tier ?? 'answer'],
         maxTokens: request.maxTokens,
+        ...(this.temperature !== undefined ? { temperature: this.temperature } : {}),
         messages: [
           ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
           { role: 'user' as const, content: request.input },
@@ -86,6 +97,9 @@ export class MistralModelGateway extends ModelGateway {
       const response = await this.call(() =>
         this.client.chat.complete({
           model,
+          // ALWAYS deterministic sampling (decision 0035): structured
+          // extraction decides what Cogeto remembers — never a dice roll.
+          temperature: 0,
           responseFormat: { type: 'json_object' },
           messages: [
             { role: 'system' as const, content: request.system },

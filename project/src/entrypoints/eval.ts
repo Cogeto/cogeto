@@ -84,6 +84,8 @@ async function main(): Promise<void> {
     mistralApiKey: apiKey,
     embedModel: process.env.COGETO_MISTRAL_EMBED_MODEL || process.env.MISTRAL_EMBED_MODEL,
     redaction,
+    // Deterministic sampling for comparable runs (decision 0035).
+    temperature: 0,
   });
   if (redaction) console.log(`redaction: ON (sidecar ${redaction.url}) — measuring the delta`);
 

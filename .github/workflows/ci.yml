@@ -122,6 +122,9 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          # Full history: the path filter below diffs the pushed range.
+          fetch-depth: 0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
@@ -135,9 +138,30 @@ jobs:
         if: github.event_name == 'pull_request'
         run: npm run build
 
+      # ── Path filter (decision 0036): the live gates run only when the push
+      # touches something that can change answer/memory quality — prompts, the
+      # model gateway, ingestion, retrieval, or the eval corpus/harness. A
+      # dependency bump or docs change skips LOUDLY instead of spending live
+      # model calls on a question the diff cannot have changed.
+      - name: Quality-relevant paths changed? (push only)
+        id: paths
+        if: github.event_name == 'push'
+        run: |
+          BEFORE="${{ github.event.before }}"
+          if ! git cat-file -e "$BEFORE" 2>/dev/null; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"   # first push / force-push: run
+            echo "::notice::base commit unavailable — running the live gates"
+          elif git diff --name-only "$BEFORE" "${{ github.sha }}" \
+              | grep -qE '^(project/prompts/|project/eval/|project/src/(model-gateway|ingestion|retrieval)/|project/src/entrypoints/eval|project/src/tasks/)'; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=live eval SKIPPED::No quality-relevant paths in this push (prompts, model-gateway, ingestion, retrieval, eval corpus/harness) — the live golden-set + chat gates did not run (decision 0036)."
+          fi
+
       - name: Check for the eval secret (push to main only)
         id: secret
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && steps.paths.outputs.relevant == 'true'
         env:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
         run: |
@@ -149,14 +173,14 @@ jobs:
           fi
 
       - name: Golden-set gate (extraction + reconciliation, gates.json)
-        if: github.event_name == 'push' && steps.secret.outputs.present == 'true'
+        if: github.event_name == 'push' && steps.paths.outputs.relevant == 'true' && steps.secret.outputs.present == 'true'
         env:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           COGETO_EVAL_GATE: '1'
         run: npm run eval
 
-      - name: Chat eval gate (all cases must PASS)
-        if: github.event_name == 'push' && steps.secret.outputs.present == 'true'
+      - name: Chat eval gate (rule checks + mean coverage, decision 0036)
+        if: github.event_name == 'push' && steps.paths.outputs.relevant == 'true' && steps.secret.outputs.present == 'true'
         env:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           COGETO_EVAL_GATE: '1'
