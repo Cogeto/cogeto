@@ -8,6 +8,7 @@ import type {
   AuditQuery,
   DashboardStatsDto,
   UserSettingsDto,
+  ModelConfigDto,
   UpdateUserSettingsRequest,
   AddEmailAllowlistEntryRequest,
   EmailAllowlistEntryDto,
@@ -313,6 +314,11 @@ export const updateSettings = (
   session: Session,
   patch: UpdateUserSettingsRequest,
 ): Promise<UserSettingsDto> => apiPut('/api/settings', patch, session);
+
+// Model configuration (decision 0040): read-only display of the active
+// provider configuration. Keys are operator-set and never pass through here.
+export const fetchModelConfig = (session: Session): Promise<ModelConfigDto> =>
+  apiGet('/api/settings/model-config', session);
 
 // Email capture (Session O4): the inbound address, the sender allowlist, and
 // recent refusals for one-click allowlisting.

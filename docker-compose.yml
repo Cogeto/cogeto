@@ -74,6 +74,20 @@ services:
       COGETO_MISTRAL_MODEL_PIPELINE: ${COGETO_MISTRAL_MODEL_PIPELINE:-}
       COGETO_MISTRAL_MODEL_ANSWER: ${COGETO_MISTRAL_MODEL_ANSWER:-}
       COGETO_MISTRAL_EMBED_MODEL: ${COGETO_MISTRAL_EMBED_MODEL:-}
+      # Bring-your-own-key providers (decision 0040): preset + per-tier
+      # provider/model selection and the OpenAI-compatible/Anthropic keys.
+      # Validated at boot; invalid combinations refuse to start.
+      COGETO_PROVIDER_PRESET: ${COGETO_PROVIDER_PRESET:-}
+      COGETO_PROVIDER_PIPELINE: ${COGETO_PROVIDER_PIPELINE:-}
+      COGETO_MODEL_PIPELINE: ${COGETO_MODEL_PIPELINE:-}
+      COGETO_PROVIDER_ANSWER: ${COGETO_PROVIDER_ANSWER:-}
+      COGETO_MODEL_ANSWER: ${COGETO_MODEL_ANSWER:-}
+      COGETO_PROVIDER_EMBEDDINGS: ${COGETO_PROVIDER_EMBEDDINGS:-}
+      COGETO_MODEL_EMBEDDINGS: ${COGETO_MODEL_EMBEDDINGS:-}
+      COGETO_OPENAI_API_KEY: ${COGETO_OPENAI_API_KEY:-}
+      COGETO_OPENAI_BASE_URL: ${COGETO_OPENAI_BASE_URL:-}
+      COGETO_ANTHROPIC_API_KEY: ${COGETO_ANTHROPIC_API_KEY:-}
+      COGETO_ANTHROPIC_BASE_URL: ${COGETO_ANTHROPIC_BASE_URL:-}
       COGETO_LOG_LEVEL: ${COGETO_LOG_LEVEL:-info}
       # Ana sandbox (decision 0022). Off by default and FAIL-CLOSED (QS-3):
       # serving the pre-minted demo session (a token published to anyone) now

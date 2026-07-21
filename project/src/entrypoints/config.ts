@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { buildLimits } from './limits';
 import type { LimitsConfig } from '../infrastructure/index';
+import { resolveModelProviders } from '../model-gateway/index';
+import type { ResolvedModelProviders } from '../model-gateway/index';
 import { assertProductionSecrets } from './secret-preflight';
 
 /**
@@ -99,13 +101,6 @@ const configSchema = z
     }),
     /** Written by the zitadel-init bootstrap job; served as GET /api/config. */
     webConfigFile: z.string().min(1),
-    /** Optional: without it the gateway boots unconfigured and fails on use. */
-    mistralApiKey: z.string().min(1).optional(),
-    /** MISTRAL_EMBED_MODEL — recorded per memory; reindex re-embeds on change. */
-    mistralEmbedModel: z.string().min(1).default('mistral-embed'),
-    /** Per-task model tiers (decision 0007 ruling 3). */
-    mistralPipelineModel: z.string().min(1).default('mistral-small-latest'),
-    mistralAnswerModel: z.string().min(1).default('mistral-medium-latest'),
     logLevel: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
     /**
      * Instance display timezone (QS-32) — relative dates ("today"/"tomorrow")
@@ -170,6 +165,13 @@ const configSchema = z
 export type CogetoConfig = z.infer<typeof configSchema> & {
   /** Abuse/DoS limits (FIX-2), resolved from env + demoMode at load. */
   limits: LimitsConfig;
+  /**
+   * Per-tier model provider configuration (decision 0040): provider + model
+   * for pipeline/answer/embeddings, the stable configuration id, and the
+   * provider keys (never logged or serialized to any DTO). Invalid
+   * combinations threw inside loadConfig — boot-time, never first-request.
+   */
+  modelProviders: ResolvedModelProviders;
 };
 
 /**
@@ -224,12 +226,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
       externalDomain: env.COGETO_OIDC_EXTERNAL_DOMAIN,
     },
     webConfigFile: env.COGETO_WEB_CONFIG_FILE,
-    // Compose passes '' when unset; treat empty as absent.
-    mistralApiKey: env.COGETO_MISTRAL_API_KEY || env.MISTRAL_API_KEY || undefined,
-    mistralEmbedModel: env.COGETO_MISTRAL_EMBED_MODEL || env.MISTRAL_EMBED_MODEL || undefined,
-    mistralPipelineModel:
-      env.COGETO_MISTRAL_MODEL_PIPELINE || env.MISTRAL_MODEL_PIPELINE || undefined,
-    mistralAnswerModel: env.COGETO_MISTRAL_MODEL_ANSWER || env.MISTRAL_MODEL_ANSWER || undefined,
     logLevel: env.COGETO_LOG_LEVEL,
     timezone: env.COGETO_TIMEZONE || undefined,
     adminRole: env.COGETO_ADMIN_ROLE || undefined,
@@ -256,7 +252,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
   // whatever secret env vars are present (the app sees a subset; the dedicated
   // preflight container sees them all) — absent vars are skipped.
   assertProductionSecrets(env);
-  return { ...parsed.data, limits: buildLimits(env, parsed.data.demoMode) };
+  // Model provider configuration (decision 0040): the same resolver every
+  // process uses; an invalid combination refuses boot with the exact variable
+  // to fix, never failing at first request.
+  const modelProviders = resolveModelProviders(env, { redacted: parsed.data.redactionEnabled });
+  return { ...parsed.data, limits: buildLimits(env, parsed.data.demoMode), modelProviders };
 }
 
 export const COGETO_CONFIG = Symbol('COGETO_CONFIG');

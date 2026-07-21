@@ -17,9 +17,11 @@ import type { ZodType } from 'zod';
  * estimated usage. Unattributed calls (worker pipeline, eval, smokes) have no
  * user in scope and pass through unmetered.
  *
- * Tokens are ESTIMATED from character length (~4 chars/token) — the seam
- * abstracts away provider usage counts, and a budget is a safety ceiling, not
- * billing, so an estimate is sufficient and documented.
+ * Tokens: `complete` charges the provider-REPORTED usage when the adapter
+ * normalized one (decision 0040 ruling 4); everywhere else (streams,
+ * structured extraction, embeddings — no usage channel in the seam's return
+ * shapes) the documented ~4 chars/token ESTIMATE applies. A budget is a safety
+ * ceiling, not billing, so the estimate remains sufficient where it is used.
  */
 export class BudgetedModelGateway extends ModelGateway {
   constructor(
@@ -32,7 +34,12 @@ export class BudgetedModelGateway extends ModelGateway {
   async complete(request: CompletionRequest): Promise<CompletionResult> {
     const userId = this.gate();
     const result = await this.inner.complete(request);
-    this.charge(userId, request.input, result.text);
+    if (userId && result.usage) {
+      // Real provider-reported usage, normalized by the adapter (0040 r4).
+      this.meter.record(userId, result.usage.inputTokens + result.usage.outputTokens);
+    } else {
+      this.charge(userId, request.input, result.text);
+    }
     return result;
   }
 

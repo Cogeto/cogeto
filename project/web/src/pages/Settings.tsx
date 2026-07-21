@@ -6,6 +6,7 @@ import {
   addEmailAllowlistEntry,
   fetchEmailConfig,
   fetchInstancePublicKey,
+  fetchModelConfig,
   fetchPassportDownload,
   fetchPassportExports,
   fetchSettings,
@@ -108,6 +109,8 @@ export function Settings({ session }: { session: Session }) {
         )}
       </section>
 
+      <ModelConfigSection session={session} />
+
       <EmailCaptureSection session={session} />
 
       <PassportSection session={session} />
@@ -131,6 +134,71 @@ export function Settings({ session }: { session: Session }) {
         )}
       </section>
     </Shell>
+  );
+}
+
+/**
+ * Model configuration (decision 0040): READ-ONLY display of the active
+ * provider configuration — the id the trust page joins on, the provider and
+ * model per tier, redaction posture, and what leaves the instance. No key
+ * input, no editing: keys are operator-set in the instance environment.
+ */
+function ModelConfigSection({ session }: { session: Session }) {
+  const config = useQuery({
+    queryKey: ['model-config'],
+    queryFn: () => fetchModelConfig(session),
+  });
+
+  return (
+    <section className="mt-4 max-w-2xl space-y-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <div>
+        <SectionTitle>Model configuration</SectionTitle>
+        <p className="mt-1 text-xs text-slate-400">
+          Read-only. The active providers and models are set by the operator in the instance
+          environment — API keys are never entered or shown here.
+        </p>
+      </div>
+      {config.isPending && <Skeleton className="h-24 w-full" />}
+      {config.data && (
+        <>
+          <div className="flex items-center gap-2 text-sm text-slate-700">
+            <span className="font-medium">Configuration</span>
+            <code className="rounded bg-slate-50 px-2 py-0.5 text-xs text-slate-600">
+              {config.data.configurationId}
+            </code>
+            {!config.data.configured && (
+              <span className="text-xs text-amber-700">
+                no provider key set — model features are disabled
+              </span>
+            )}
+          </div>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+            {(
+              [
+                ['Pipeline', config.data.tiers.pipeline],
+                ['Answer', config.data.tiers.answer],
+                ['Embeddings', config.data.tiers.embeddings],
+              ] as const
+            ).map(([label, tier]) => (
+              <div key={label} className="contents">
+                <dt className="text-slate-500">{label}</dt>
+                <dd className="text-slate-700">
+                  {tier.provider}/{tier.model}
+                </dd>
+              </div>
+            ))}
+            <div className="contents">
+              <dt className="text-slate-500">Redaction</dt>
+              <dd className="text-slate-700">{config.data.redactionEnabled ? 'on' : 'off'}</dd>
+            </div>
+          </dl>
+          <p className="text-xs text-slate-500">{config.data.externalCalls}</p>
+        </>
+      )}
+      {config.isError && (
+        <p className="text-xs text-red-700">Couldn’t load the model configuration.</p>
+      )}
+    </section>
   );
 }
 

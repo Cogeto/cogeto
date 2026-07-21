@@ -22,7 +22,7 @@ async function main(): Promise<void> {
       qdrant: {
         url: config.qdrantUrl,
         apiKey: config.qdrantApiKey,
-        embeddingModel: config.mistralEmbedModel,
+        embeddingModel: config.modelProviders.tiers.embedding.model,
       },
     });
     if (!planted) {

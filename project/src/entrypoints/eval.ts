@@ -6,8 +6,8 @@ import type { EvalMetrics, ReconcileEvalMetrics } from '../ingestion/index';
 import { runTaskEval } from '../tasks/index';
 import type { TaskEvalMetrics } from '../tasks/index';
 import { createModelGateway } from '../model-gateway/index';
-import { redactionFromEnv } from './config';
-import { DEFAULT_MODELS, deriveConfigurationId, emitPartial } from './trust-scores';
+import { resolveEvalProviders, requireConfiguredProviders } from './eval-env';
+import { configurationForEmission, emitPartial } from './trust-scores';
 import { TRUST_SCORES_SCHEMA_VERSION } from './trust-scores';
 
 /**
@@ -39,18 +39,6 @@ const gatesSchema = z.object({
   }),
 });
 
-async function resolveApiKey(): Promise<string | undefined> {
-  const fromEnv = process.env.COGETO_MISTRAL_API_KEY || process.env.MISTRAL_API_KEY;
-  if (fromEnv) return fromEnv;
-  try {
-    const dotenv = await readFile(path.join(REPO_ROOT, '.env'), 'utf8');
-    const match = dotenv.match(/^(?:COGETO_)?MISTRAL_API_KEY=(.+)$/m);
-    return match?.[1]?.trim() || undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 const pct = (value: number): string => `${(value * 100).toFixed(1)}%`;
 
 function metricsRow(m: EvalMetrics): string {
@@ -73,20 +61,20 @@ function reconcileRow(m: ReconcileEvalMetrics): string {
 }
 
 async function main(): Promise<void> {
-  const apiKey = await resolveApiKey();
-  if (!apiKey) {
-    console.error('eval needs MISTRAL_API_KEY (env or repo-root .env) — the harness is live-only');
-    process.exit(2);
-  }
+  const { providers, redaction } = await resolveEvalProviders(REPO_ROOT);
+  requireConfiguredProviders(providers, 'eval');
   const config = evalConfigSchema.parse(JSON.parse(await readFile(CONFIG_FILE, 'utf8')));
-  const redaction = redactionFromEnv();
   const gateway = createModelGateway({
-    mistralApiKey: apiKey,
-    embedModel: process.env.COGETO_MISTRAL_EMBED_MODEL || process.env.MISTRAL_EMBED_MODEL,
+    providers,
     redaction,
     // Deterministic sampling for comparable runs (decision 0035).
     temperature: 0,
   });
+  console.log(
+    `configuration: ${providers.id} (pipeline ${providers.tiers.pipeline.provider}/${providers.tiers.pipeline.model} · ` +
+      `answer ${providers.tiers.answer.provider}/${providers.tiers.answer.model} · ` +
+      `embeddings ${providers.tiers.embedding.provider}/${providers.tiers.embedding.model})`,
+  );
   if (redaction) console.log(`redaction: ON (sidecar ${redaction.url}) — measuring the delta`);
 
   console.log(`golden set: ${GOLDEN_DIR}`);
@@ -182,26 +170,15 @@ async function main(): Promise<void> {
     process.exit(2);
   }
   if (emitPath) {
-    const models = {
-      pipeline:
-        process.env.COGETO_MISTRAL_MODEL_PIPELINE ||
-        process.env.MISTRAL_MODEL_PIPELINE ||
-        DEFAULT_MODELS.pipeline,
-      answer:
-        process.env.COGETO_MISTRAL_MODEL_ANSWER ||
-        process.env.MISTRAL_MODEL_ANSWER ||
-        DEFAULT_MODELS.answer,
-      embedding:
-        process.env.COGETO_MISTRAL_EMBED_MODEL ||
-        process.env.MISTRAL_EMBED_MODEL ||
-        DEFAULT_MODELS.embedding,
-    };
+    // The ACTIVE configuration, from the same resolver the gateway was built
+    // with (decision 0040 ruling 5) — id and models are exact by construction.
+    const { id, models } = configurationForEmission(providers);
     const reconcileByLabel = new Map(reconcile.perLanguage.map((m) => [m.label, m]));
     emitPartial(emitPath, {
       schema_version: TRUST_SCORES_SCHEMA_VERSION,
       harness: `${result.promptVersions} · reconcile_dedup/v0001 + reconcile_contradiction/v0001 · thresholds v${result.config.version}`,
       configuration: {
-        id: deriveConfigurationId(models),
+        id,
         models,
         redaction: redaction !== undefined,
         corpus: {

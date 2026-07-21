@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createModelGateway, loadPrompt } from '../model-gateway/index';
+import { createModelGateway, loadPrompt, resolveModelProviders } from '../model-gateway/index';
 import { redactionFromEnv } from './config';
 
 /**
@@ -16,22 +16,24 @@ const smokeSchema = z.object({
 const INPUT = 'Ana will send the revised proposal to Marko after he confirms the budget.';
 
 async function main(): Promise<void> {
-  const apiKey = process.env.COGETO_MISTRAL_API_KEY ?? process.env.MISTRAL_API_KEY;
-  if (!apiKey) {
+  const redaction = redactionFromEnv();
+  const providers = resolveModelProviders(process.env, { redacted: redaction !== undefined });
+  if (!providers.configured) {
     console.log(
-      'gateway:smoke SKIPPED — set COGETO_MISTRAL_API_KEY (or MISTRAL_API_KEY) to run ' +
-        'a live structured extraction against the Mistral API.',
+      'gateway:smoke SKIPPED — set COGETO_MISTRAL_API_KEY (or a COGETO_PROVIDER_* ' +
+        'configuration) to run a live structured extraction against the configured provider.',
     );
     return;
   }
 
   const prompt = await loadPrompt('smoke', 'v0001');
   console.log(
-    `prompt: ${prompt.family}/${prompt.version} (sha256 ${prompt.contentHash.slice(0, 12)}…)`,
+    `configuration: ${providers.id} · prompt: ${prompt.family}/${prompt.version} ` +
+      `(sha256 ${prompt.contentHash.slice(0, 12)}…)`,
   );
   console.log(`input:  ${INPUT}`);
 
-  const gateway = createModelGateway({ mistralApiKey: apiKey, redaction: redactionFromEnv() });
+  const gateway = createModelGateway({ providers, redaction });
   const result = await gateway.extractStructured(smokeSchema, {
     system: prompt.content,
     input: INPUT,

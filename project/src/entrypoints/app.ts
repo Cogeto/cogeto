@@ -4,6 +4,7 @@ import { raw } from 'express';
 import type { NextFunction, Request, Response } from 'express';
 import { assertAppKeyMount, describeErrorLine, runWithUsageContext } from '../infrastructure/index';
 import { logRedactionState } from './redaction-boot';
+import { assertEmbeddingSpaceConsistent, logModelConfiguration } from './model-boot';
 import { loadConfig } from './config';
 import { createLogger, PinoNestLogger } from './logger';
 import { createAppRootModule } from './app-root.module';
@@ -23,6 +24,10 @@ async function main(): Promise<void> {
       'signing-key mount verified: public key only (QS-9)',
     );
   }
+
+  // Embedding-space guard (decision 0040 ruling 3): a changed embeddings
+  // model refuses boot until reindex has re-embedded the stored vectors.
+  await assertEmbeddingSpaceConsistent(config);
 
   const app = await NestFactory.create(createAppRootModule(config) as never, {
     logger: new PinoNestLogger(logger),
@@ -51,6 +56,7 @@ async function main(): Promise<void> {
       : 'standard (customer instance; no demo session served)';
   logger.info({ port: config.httpPort, mode }, `cogeto app listening — mode: ${mode}`);
   logRedactionState(logger, config);
+  logModelConfiguration(logger, config); // decision 0040: state the active configuration id.
 }
 
 // Top-level handlers log the error CLASS + a scrubbed, length-bounded message

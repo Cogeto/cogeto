@@ -1,8 +1,12 @@
 import { ModelGateway } from './model-gateway.service';
 import { MistralModelGateway, UnconfiguredModelGateway } from './mistral.gateway';
+import { OpenAiCompatibleModelGateway } from './openai.gateway';
+import { AnthropicModelGateway } from './anthropic.gateway';
+import { TierRoutedModelGateway } from './routed.gateway';
 import { RedactingModelGateway } from './redacting.gateway';
 import { RedactionClient } from './redaction-client';
 import { BudgetedModelGateway } from './budgeted.gateway';
+import type { ModelProviderId, ResolvedModelProviders } from './provider-config';
 import type { ModelUsageMeter } from '../infrastructure/index';
 
 /**
@@ -18,13 +22,12 @@ export interface RedactionConfig {
 }
 
 export interface CreateModelGatewayOptions {
-  /** When absent the process boots; model calls fail with a typed error. */
-  mistralApiKey?: string;
-  pipelineModel?: string;
-  answerModel?: string;
-  embedModel?: string;
+  /** The resolved per-tier provider configuration (decision 0040). Absent or
+   * unconfigured → the process boots; model calls fail with a typed error. */
+  providers?: ResolvedModelProviders;
   /** Sampling temperature for free-text completions (decision 0035); the eval
-   * harness pins 0, production leaves unset. */
+   * harness pins 0, production leaves unset. Providers that reject sampling
+   * parameters (Anthropic) ignore it — 0040 ruling 1. */
   temperature?: number;
   redaction?: RedactionConfig;
   /**
@@ -39,22 +42,15 @@ export interface CreateModelGatewayOptions {
  * The single construction point for the model gateway (§A.10). Every process —
  * the DI module AND the bare entrypoints (eval, dream, reindex, …) — builds the
  * gateway here, so the redaction and budget decorators wrap ALL model traffic
- * uniformly and nothing can bypass them.
+ * uniformly and nothing can bypass them — for EVERY provider (decision 0040:
+ * `redaction_applies_all_providers`, `budget_applies_all_providers`).
  *
- * Decorator order (outermost first): budget → redaction → provider. The budget
- * gate runs before any provider call and counts real model traffic; redaction
- * pseudonymizes inside it.
+ * Decorator order (outermost first): budget → redaction → provider(s). The
+ * budget gate runs before any provider call and counts real model traffic;
+ * redaction pseudonymizes inside it.
  */
 export function createModelGateway(options: CreateModelGatewayOptions): ModelGateway {
-  let gateway: ModelGateway = options.mistralApiKey
-    ? new MistralModelGateway({
-        apiKey: options.mistralApiKey,
-        pipelineModel: options.pipelineModel,
-        answerModel: options.answerModel,
-        embedModel: options.embedModel,
-        temperature: options.temperature,
-      })
-    : new UnconfiguredModelGateway();
+  let gateway = buildProviderGateway(options.providers, options.temperature);
 
   if (options.redaction?.enabled) {
     gateway = new RedactingModelGateway(
@@ -66,4 +62,69 @@ export function createModelGateway(options: CreateModelGatewayOptions): ModelGat
     gateway = new BudgetedModelGateway(gateway, options.usageMeter);
   }
   return gateway;
+}
+
+/**
+ * One adapter instance per DISTINCT provider, each given only the tier models
+ * routed to it; a single-provider configuration (mistral-default included)
+ * returns its adapter directly — byte-identical to the v1 path.
+ */
+function buildProviderGateway(
+  providers: ResolvedModelProviders | undefined,
+  temperature: number | undefined,
+): ModelGateway {
+  if (!providers || !providers.configured) return new UnconfiguredModelGateway();
+
+  const { tiers, keys, endpoints } = providers;
+  const adapters = new Map<ModelProviderId, ModelGateway>();
+  const adapterFor = (provider: ModelProviderId): ModelGateway => {
+    const existing = adapters.get(provider);
+    if (existing) return existing;
+    const modelIf = (tier: 'pipeline' | 'answer' | 'embedding'): string | undefined =>
+      tiers[tier].provider === provider ? tiers[tier].model : undefined;
+    // The resolver already refused any referenced provider without a key
+    // (0040 ruling 3) — the assertion here is a belt for hand-built configs.
+    const key = keys[provider];
+    if (!key) throw new Error(`model provider "${provider}" is selected but has no API key`);
+    let adapter: ModelGateway;
+    switch (provider) {
+      case 'mistral':
+        adapter = new MistralModelGateway({
+          apiKey: key,
+          pipelineModel: modelIf('pipeline'),
+          answerModel: modelIf('answer'),
+          embedModel: modelIf('embedding'),
+          temperature,
+        });
+        break;
+      case 'openai':
+        adapter = new OpenAiCompatibleModelGateway({
+          apiKey: key,
+          baseUrl: endpoints.openaiBaseUrl,
+          pipelineModel: modelIf('pipeline'),
+          answerModel: modelIf('answer'),
+          embedModel: modelIf('embedding'),
+          temperature,
+        });
+        break;
+      case 'anthropic':
+        adapter = new AnthropicModelGateway({
+          apiKey: key,
+          baseUrl: endpoints.anthropicBaseUrl,
+          pipelineModel: modelIf('pipeline'),
+          answerModel: modelIf('answer'),
+        });
+        break;
+    }
+    adapters.set(provider, adapter);
+    return adapter;
+  };
+
+  const routes = {
+    pipeline: adapterFor(tiers.pipeline.provider),
+    answer: adapterFor(tiers.answer.provider),
+    embedding: adapterFor(tiers.embedding.provider),
+  };
+  if (adapters.size === 1) return routes.pipeline;
+  return new TierRoutedModelGateway(routes);
 }

@@ -50,7 +50,13 @@ after the gates pass (see [`docs/release-process.md`](../release-process.md)
 and decision 0032). The **redacted configuration** is added by the maintainer
 when measured: run both suites with the redaction sidecar up
 (`REDACTION_ENABLED=1`, profile `redaction`) emitting to a second partial, and
-pass both `--partial` files to the publisher.
+pass both `--partial` files to the publisher. **Alternate provider
+configurations** (bring-your-own-key, decision 0040 — e.g. `openai-default`,
+`anthropic-answer`, or a custom `pipe-…--ans-…--emb-…` id) follow the same
+owner-run flow: configure the providers in the environment, emit to their own
+partial file, and pass it as an additional `--partial`
+(see [`docs/notes/model-providers.md`](../notes/model-providers.md); provider
+keys are never CI secrets).
 
 ## Rules
 

@@ -3,17 +3,14 @@ import type { DynamicModule } from '@nestjs/common';
 import { ModelGateway } from './model-gateway.service';
 import { createModelGateway } from './factory';
 import type { RedactionConfig } from './factory';
+import type { ResolvedModelProviders } from './provider-config';
 import { MODEL_USAGE_METER } from '../infrastructure/index';
 import type { ModelUsageMeter } from '../infrastructure/index';
 
 export interface ModelGatewayModuleOptions {
-  /** When absent the process boots normally; model calls fail with a typed error. */
-  mistralApiKey?: string;
-  /** `pipeline` tier model (extraction, verification) — decision 0007 ruling 3. */
-  pipelineModel?: string;
-  /** `answer` tier model (chat synthesis, eval grader). */
-  answerModel?: string;
-  embedModel?: string;
+  /** The resolved per-tier provider configuration (decision 0040). Absent or
+   * unconfigured → the process boots normally; model calls fail with a typed error. */
+  providers?: ResolvedModelProviders;
   /** Redaction mode (Addendum B.8) — wraps the gateway when enabled. */
   redaction?: RedactionConfig;
   /**
@@ -25,9 +22,10 @@ export interface ModelGatewayModuleOptions {
 }
 
 /**
- * model-gateway — leaf seam for ALL model and embedding calls (§A.10).
- * v1 routes everything to the Mistral API; no other module may import the
- * Mistral client (dependency-cruiser rule).
+ * model-gateway — leaf seam for ALL model and embedding calls (§A.10). Routes
+ * per-tier to the configured provider adapters (decision 0040); no other
+ * module may import a provider client or reach a provider endpoint
+ * (dependency-cruiser rules + the `no_provider_leakage` test).
  */
 @Module({})
 export class ModelGatewayModule {
@@ -42,7 +40,8 @@ export class ModelGatewayModule {
           provide: ModelGateway,
           useFactory: (usageMeter?: ModelUsageMeter) =>
             createModelGateway({
-              ...options,
+              providers: options.providers,
+              redaction: options.redaction,
               usageMeter: options.budget ? usageMeter : undefined,
             }),
           // The meter comes from the global LimitsModule; optional so a root

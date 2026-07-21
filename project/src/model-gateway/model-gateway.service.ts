@@ -23,8 +23,20 @@ export interface CompletionRequest {
   tier?: ModelTier;
 }
 
+/**
+ * Provider-reported token usage, normalized (decision 0040 ruling 4): each
+ * adapter maps its upstream's field names into this one shape so the budget
+ * decorator can charge real counts where the provider reports them.
+ */
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+}
+
 export interface CompletionResult {
   text: string;
+  /** Present when the provider reported usage for this call (ruling 4). */
+  usage?: TokenUsage;
 }
 
 export interface StructuredExtractionRequest {

@@ -143,7 +143,7 @@ describe('model-gateway seam — prompt registry (integration)', () => {
   });
 });
 
-// ── Architecture: only the gateway imports the Mistral client ─────────────────
+// ── Architecture: only the gateway touches any provider (no_provider_leakage) ─
 const SRC_ROOT = path.resolve(__dirname, '..');
 function sources(dir: string, acc: string[] = []): string[] {
   for (const e of readdirSync(dir)) {
@@ -155,11 +155,16 @@ function sources(dir: string, acc: string[] = []): string[] {
   return acc;
 }
 
-describe('model-gateway seam — architecture', () => {
-  it('no module outside model-gateway imports the Mistral client', () => {
+describe('model-gateway seam — architecture (no_provider_leakage)', () => {
+  // SDK import names AND raw endpoint hostnames (the fetch-based adapters have
+  // no SDK to catch via dependency-cruiser — decision 0040 ruling 1).
+  const PROVIDER_MARKERS =
+    /@mistralai|@anthropic-ai|from ['"]openai['"]|api\.openai\.com|api\.anthropic\.com|api\.mistral\.ai/;
+
+  it('no module outside model-gateway imports a provider client or names a provider endpoint', () => {
     const offenders = sources(SRC_ROOT)
       .filter((f) => !f.includes(`${path.sep}model-gateway${path.sep}`))
-      .filter((f) => /@mistralai/.test(readFileSync(f, 'utf8')));
+      .filter((f) => PROVIDER_MARKERS.test(readFileSync(f, 'utf8')));
     expect(offenders.map((f) => path.relative(SRC_ROOT, f))).toEqual([]);
   });
 });

@@ -46,6 +46,13 @@ Deliver the "what needs my attention" surface inside Cogeto itself, not over ema
 
 ## Priority 3 — Model provider gateway: bring-your-own-key (M)
 
+**Status: DELIVERED** (2026-07-21, issues #173/#174/#175 — decision 0040; notes
+in docs/notes/model-providers.md). OpenAI-compatible + Anthropic adapters
+behind the seam, per-tier provider configuration validated at boot with a
+stable configuration id, read-only Settings display, and per-configuration
+eval emission (owner-run for alternate providers). The OpenAI-compatible base
+URL is the doorway Priority 4 walks through.
+
 Makes the website's "plug in any model" claim literally true, and lays the groundwork for local models.
 
 **What.** The model gateway, today Mistral-only behind a provider-neutral seam, gains adapters for OpenAI-compatible and Anthropic APIs. The active provider and models are set per instance in configuration; a Settings screen displays which provider and models are active (a read-only status, not a key-input form).
@@ -117,7 +124,7 @@ The visible payoff, built on the research engine from Priority 5.
 | 1a | Task conclusion becomes memory | v1.x | S | none | Finishes the founding promise |
 | 1b | Create task from chat | v1.x | S | none | Tasks in the flow of thinking |
 | 2 | In-app notifications + dashboard ✅ delivered | v1.x | S to M | none | Daily touch; no email dependency |
-| 3 | Bring-your-own-key providers | v1.x/B groundwork | M | none | Makes model-agnostic claim true |
+| 3 | Bring-your-own-key providers ✅ delivered | v1.x/B groundwork | M | none | Makes model-agnostic claim true |
 | 4 | Local models via Ollama | B | L (staged) | 3 | Sovereignty + economics foundation |
 | 5 | Web research + query minimisation | C1 | L | 4 for economics | The research capability, privately |
 | 6 | Natural conversation | C2 | L | 4 | The surface users live in |

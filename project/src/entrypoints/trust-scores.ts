@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { z } from 'zod';
+import type { ResolvedModelProviders } from '../model-gateway/index';
 
 /**
  * Trust scores (O7, decision 0032) — the machine-readable per-release quality
@@ -124,20 +125,25 @@ export const indexEntrySchema = z.object({
 });
 export const indexSchema = z.array(indexEntrySchema);
 
-/** The configuration id: default tiers → mistral-default(-redacted); anything
- * else → mistral-custom(-redacted). Stable ids are the website's join key. */
-export function deriveConfigurationId(models: {
-  pipeline: string;
-  answer: string;
-  embedding: string;
-}): string {
-  const isDefault =
-    models.pipeline === DEFAULT_MODELS.pipeline &&
-    models.answer === DEFAULT_MODELS.answer &&
-    models.embedding === DEFAULT_MODELS.embedding;
-  const redacted =
-    process.env.REDACTION_ENABLED === '1' || process.env.REDACTION_ENABLED === 'true';
-  return `${isDefault ? 'mistral-default' : 'mistral-custom'}${redacted ? '-redacted' : ''}`;
+/**
+ * The configuration identity an eval run emits (decision 0040 ruling 5): both
+ * harnesses resolve the SAME provider configuration the instance would boot
+ * with, so `configuration.id` and the per-tier models are exact by
+ * construction. Ids are the website's join key — the derivation (preset name
+ * or the full per-tier form, `-redacted` suffix) lives with the resolver.
+ */
+export function configurationForEmission(providers: ResolvedModelProviders): {
+  id: string;
+  models: { pipeline: string; answer: string; embedding: string };
+} {
+  return {
+    id: providers.id,
+    models: {
+      pipeline: providers.tiers.pipeline.model,
+      answer: providers.tiers.answer.model,
+      embedding: providers.tiers.embedding.model,
+    },
+  };
 }
 
 /** Deep-merge one harness run's partial into an existing partial file (same

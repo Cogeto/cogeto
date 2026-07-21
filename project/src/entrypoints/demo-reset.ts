@@ -17,7 +17,7 @@ import { summarize } from './demo/assertions';
 async function main(): Promise<void> {
   const config = loadConfig();
   assertDemoAllowed(config);
-  if (!config.mistralApiKey) {
+  if (!config.modelProviders.configured) {
     console.error(
       'demo:reset needs MISTRAL_API_KEY (re-seeding runs the real extraction pipeline)',
     );
@@ -31,10 +31,7 @@ async function main(): Promise<void> {
     console.log(`resetting demo for ${principal.name} (${ownerId})…`);
 
     const gateway = createModelGateway({
-      mistralApiKey: config.mistralApiKey,
-      pipelineModel: config.mistralPipelineModel,
-      answerModel: config.mistralAnswerModel,
-      embedModel: config.mistralEmbedModel,
+      providers: config.modelProviders,
       redaction: redactionOptions(config),
     });
     const objects = new MemoryObjectStore({
@@ -53,7 +50,7 @@ async function main(): Promise<void> {
       gateway,
       qdrantUrl: config.qdrantUrl,
       qdrantApiKey: config.qdrantApiKey,
-      embeddingModel: config.mistralEmbedModel,
+      embeddingModel: config.modelProviders.tiers.embedding.model,
       strict: true,
       log: (m) => console.log(m),
     });

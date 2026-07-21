@@ -52,16 +52,13 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         cacheTtlSeconds: 10, // QS-11 (the worker serves no HTTP; parity only)
       }),
       ModelGatewayModule.register({
-        mistralApiKey: config.mistralApiKey,
-        pipelineModel: config.mistralPipelineModel,
-        answerModel: config.mistralAnswerModel,
-        embedModel: config.mistralEmbedModel,
+        providers: config.modelProviders,
         redaction: redactionOptions(config),
       }),
       MemoryModule.register({
         qdrantUrl: config.qdrantUrl,
         qdrantApiKey: config.qdrantApiKey,
-        embeddingModel: config.mistralEmbedModel,
+        embeddingModel: config.modelProviders.tiers.embedding.model,
         s3: {
           url: config.s3Url,
           publicUrl: config.s3PublicUrl,

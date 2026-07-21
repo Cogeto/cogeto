@@ -2,9 +2,10 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import { resolveModelProviders } from '../model-gateway/index';
 import {
   compareSemverDesc,
-  deriveConfigurationId,
+  configurationForEmission,
   emitPartial,
   indexSchema,
   mergePartial,
@@ -161,22 +162,49 @@ describe('trust scores — emission and merge', () => {
       mergePartial(goldenPartial('mistral-default'), chatPartial('mistral-custom')),
     ).toThrow(/configuration id mismatch/);
   });
+});
 
-  it('derives stable configuration ids', () => {
-    expect(
-      deriveConfigurationId({
+/**
+ * eval_emission_config_correct (decision 0040 ruling 5): both harnesses emit
+ * the configuration through this one helper over the SAME resolver the gateway
+ * boots with — the emitted id and models are the exact active configuration.
+ */
+describe('eval_emission_config_correct', () => {
+  it('emits the default configuration exactly as resolved', () => {
+    const providers = resolveModelProviders({ COGETO_MISTRAL_API_KEY: 'k' } as NodeJS.ProcessEnv, {
+      redacted: false,
+    });
+    expect(configurationForEmission(providers)).toEqual({
+      id: 'mistral-default',
+      models: {
         pipeline: 'mistral-small-latest',
         answer: 'mistral-medium-latest',
         embedding: 'mistral-embed',
-      }),
-    ).toBe('mistral-default');
-    expect(
-      deriveConfigurationId({
-        pipeline: 'other-model',
-        answer: 'mistral-medium-latest',
-        embedding: 'mistral-embed',
-      }),
-    ).toBe('mistral-custom');
+      },
+    });
+  });
+
+  it('emits a mixed configuration with the exact per-tier models and derived id', () => {
+    const providers = resolveModelProviders(
+      {
+        COGETO_PROVIDER_ANSWER: 'anthropic',
+        COGETO_MODEL_ANSWER: 'claude-sonnet-4-6',
+        COGETO_MODEL_PIPELINE: 'mistral-large-latest',
+        COGETO_ANTHROPIC_API_KEY: 'ak',
+        COGETO_MISTRAL_API_KEY: 'mk',
+      } as NodeJS.ProcessEnv,
+      { redacted: true },
+    );
+    const emission = configurationForEmission(providers);
+    expect(emission.models).toEqual({
+      pipeline: 'mistral-large-latest',
+      answer: 'claude-sonnet-4-6',
+      embedding: 'mistral-embed',
+    });
+    expect(emission.id).toBe(providers.id); // exact join key, redacted suffix included
+    expect(emission.id.endsWith('-redacted')).toBe(true);
+    // The emitted id stays inside the published schema's pattern.
+    expect(emission.id).toMatch(/^[a-z0-9][a-z0-9-]*$/);
   });
 });
 

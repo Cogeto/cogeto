@@ -11,6 +11,7 @@ import { RedactingModelGateway } from './redacting.gateway';
 import { RedactionClient } from './redaction-client';
 import type { RedactionPort, RedactionResult } from './redaction-client';
 import { createModelGateway } from './factory';
+import { resolveModelProviders } from './provider-config';
 import { MistralModelGateway } from './mistral.gateway';
 import { ModelGatewayError } from './errors';
 import { reidentifyDeep, reidentifyStream, reidentifyText } from './redaction-utils';
@@ -163,19 +164,23 @@ describe('redaction_fail_closed', () => {
 });
 
 describe('redaction_off_noop', () => {
+  const providers = resolveModelProviders({ COGETO_MISTRAL_API_KEY: 'k' } as NodeJS.ProcessEnv, {
+    redacted: false,
+  });
+
   it('the factory returns the bare gateway (not wrapped) when redaction is off', () => {
-    const off = createModelGateway({ mistralApiKey: 'k' });
+    const off = createModelGateway({ providers });
     expect(off).toBeInstanceOf(MistralModelGateway);
     expect(off).not.toBeInstanceOf(RedactingModelGateway);
 
     const disabled = createModelGateway({
-      mistralApiKey: 'k',
+      providers,
       redaction: { enabled: false, url: 'http://redaction:8080' },
     });
     expect(disabled).not.toBeInstanceOf(RedactingModelGateway);
 
     const on = createModelGateway({
-      mistralApiKey: 'k',
+      providers,
       redaction: { enabled: true, url: 'http://redaction:8080' },
     });
     expect(on).toBeInstanceOf(RedactingModelGateway);
