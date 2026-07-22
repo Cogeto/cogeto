@@ -164,6 +164,7 @@ describe('web deletion cascade (integration: real Postgres + Qdrant + MinIO)', (
       new DailyCounters(),
       { searchesMax: 10, pagesMax: 10, pagesPerRunMax: 5 },
       researchOptions,
+      gateway,
     );
 
     saga = new DeletionSaga(tdb.db, [new WebSourceDeletion()], vectors);

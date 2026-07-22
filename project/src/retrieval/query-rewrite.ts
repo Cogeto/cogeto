@@ -222,6 +222,49 @@ export function detectCreateTaskIntent(question: string): CreateTaskIntent | nul
   return null;
 }
 
+export interface ResearchIntent {
+  /** The research topic (the turn minus its trigger verb), verbatim. */
+  topic: string;
+  lang: 'en' | 'hr';
+}
+
+/**
+ * Explicit research triggers (Priority 5 Part B, decision 0045). Imperative
+ * verbs ANCHORED to the start of the turn, so research is invoked, never
+ * inferred: an ordinary question — even one about a company or a law — must
+ * never reach a search engine on its own (`not_ambient`). "search for" is
+ * deliberately paired with web/online/internet qualifiers so "search my notes
+ * for…" stays retrieval.
+ */
+const RESEARCH_PATTERNS: ReadonlyArray<{ lang: 'en' | 'hr'; re: RegExp }> = [
+  {
+    lang: 'en',
+    re: /^\s*(?:please\s+)?(?:research|look\s+up|find\s+out\s+about|search\s+(?:the\s+)?(?:web|online|internet)\s+for)\s+(.+)$/i,
+  },
+  {
+    // `istraži` is the unambiguous research imperative; `potraži`/`pretraži`
+    // need the web/internet qualifier (like "search the web for") so
+    // "potraži u mojim bilješkama…" stays retrieval.
+    lang: 'hr',
+    re: /^\s*(?:molim(?:\s+te)?\s+)?(?:istraži|potraži\s+na\s+(?:webu|internetu)|pretraži\s+(?:web|internet)\s+za)\s+(.+)$/iu,
+  },
+];
+
+/** Detect an explicit research request. Purely deterministic (no model). */
+export function detectResearchIntent(question: string): ResearchIntent | null {
+  for (const { lang, re } of RESEARCH_PATTERNS) {
+    const match = re.exec(question);
+    if (!match) continue;
+    const topic = (match[1] ?? '')
+      .trim()
+      .replace(/[.!?\s]+$/, '')
+      .trim();
+    if (topic.length < 3) return null; // a bare trigger proposes nothing
+    return { topic, lang };
+  }
+  return null;
+}
+
 /** Captures the reply TARGET (person/sender) after the reply verb. */
 const REPLY_TARGET_RE =
   /(?:reply to|respond to|response to|answer|help me (?:answer|reply to|respond to)|odgovor\w* na|odgovori(?:ti)? na)\s+(.+)$/i;

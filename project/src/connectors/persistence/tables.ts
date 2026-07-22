@@ -176,9 +176,52 @@ export const webPage = pgTable(
     fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull(),
     retainedText: text('retained_text').notNull(),
     rawObjectKey: text('raw_object_key'),
+    // The research run whose approved query led to this page (Part B,
+    // migration 0028) — the provenance chain memory → web_page →
+    // research_run.sent_query. Null for direct URL captures.
+    researchRunId: uuid('research_run_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('web_page_owner_fetched_idx').on(t.ownerId, t.fetchedAt)],
+  (t) => [
+    index('web_page_owner_fetched_idx').on(t.ownerId, t.fetchedAt),
+    index('web_page_research_run_idx').on(t.researchRunId),
+  ],
 );
 
 export type WebPageRow = typeof webPage.$inferSelect;
+
+/** The gate's three states (decision 0045): discovery runs ONLY from 'approved'. */
+export const researchRunStatusEnum = pgEnum('research_run_status', [
+  'proposed',
+  'approved',
+  'cancelled',
+]);
+
+/**
+ * A research run (Priority 5 Part B; decision 0045; migration 0028) — the
+ * auditable record of one research invocation: the user's intent, the proposed
+ * query, the minimised query + reason (decision 0044), and — only after
+ * explicit approval — the EXACT text that left the instance (`sentQuery`,
+ * post-edit). "You see precisely what leaves, and you approve it" is enforced
+ * here, not in the UI.
+ */
+export const researchRun = pgTable(
+  'research_run',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: text('owner_id').notNull(),
+    intent: text('intent').notNull(),
+    proposedQuery: text('proposed_query').notNull(),
+    minimisedQuery: text('minimised_query').notNull(),
+    minimiseReason: text('minimise_reason').notNull(),
+    sentQuery: text('sent_query'),
+    status: researchRunStatusEnum('status').notNull().default('proposed'),
+    answer: text('answer'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    approvedAt: timestamp('approved_at', { withTimezone: true }),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+  },
+  (t) => [index('research_run_owner_created_idx').on(t.ownerId, t.createdAt)],
+);
+
+export type ResearchRunRow = typeof researchRun.$inferSelect;

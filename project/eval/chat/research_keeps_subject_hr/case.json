@@ -1,0 +1,21 @@
+{
+  "case_id": "research_keeps_subject_hr",
+  "description": "minimise_keeps_subject, live + hr invocation: researching a company by name keeps the name (the search is unanswerable without it); the Croatian gate reply discloses without searching; the flow ends cited with persisted web memories.",
+  "anchor": "2026-07-10T09:00:00.000Z",
+  "script": ["istraži tvrtku Adriatic Foods prije sastanka u četvrtak"],
+  "checks": {
+    "must_include": ["ništa još nije poslano"],
+    "no_mechanics": true
+  },
+  "research": {
+    "pages": [
+      {
+        "url": "https://registar.example.org/adriatic-foods",
+        "title": "Adriatic Foods d.o.o. — profil tvrtke",
+        "html": "<html><head><title>Adriatic Foods d.o.o. — profil tvrtke</title></head><body><main><p>Adriatic Foods d.o.o. je veleprodajni dobavljač mediteranskih delikatesa sa sjedištem u Rijeci, osnovan 2015. godine.</p><p>Tvrtka opskrbljuje restorane u Hrvatskoj i Sloveniji te zapošljava oko 40 ljudi.</p></main></body></html>"
+      }
+    ],
+    "answer_must_include": ["Adriatic Foods"],
+    "sent_query_must_include": ["Adriatic Foods"]
+  }
+}

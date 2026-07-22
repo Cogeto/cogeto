@@ -99,3 +99,15 @@ One line per label change (docs/eval-golden-set.md §4 rule 5).
   fetch time, the "as of" anchor). Croatian authored idiomatically, not
   translated. The harness maps `source_type: "web"` to a web SourceItem with
   content passthrough.
+- 2026-07-22 (Priority 5 Part B — web research privacy): chat-eval tick — 2
+  research cases (`research_minimise_drop` en, `research_keeps_subject_hr` hr).
+  Each runs the REAL chat research intent (the gate reply must disclose and
+  state nothing was sent), then the harness stands in for the user at the
+  Research page: approves the LIVE minimised query, captures scripted fixture
+  pages, seeds their memories through the real stages, and runs the LIVE
+  answer-tier synthesis. Verdicts are deterministic: the SENT query must have
+  dropped the client name (drop case) / kept the subject entity (hr case), the
+  answer must carry a web citation, and web memories must persist. The harness
+  gained the `research` case field (scripted pages + sent-query/answer checks)
+  and a `research` column in the results table, folded into the all-must-pass
+  rule gate.

@@ -7,6 +7,7 @@ import { DemoBanner } from './components/DemoBanner';
 import { DemoIntro } from './components/DemoIntro';
 import { Callback } from './pages/Callback';
 import { Chat } from './pages/Chat';
+import { Research } from './pages/Research';
 import { Dashboard } from './pages/Dashboard';
 import { DemoLogin } from './pages/DemoLogin';
 import { Forgotten } from './pages/Forgotten';
@@ -96,6 +97,8 @@ function renderPage(session: Session) {
       return <Memories session={session} />;
     case '/chat':
       return <Chat session={session} />;
+    case '/research':
+      return <Research session={session} />;
     case '/timeline':
       return <Timeline session={session} />;
     case '/tasks':

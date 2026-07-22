@@ -11,8 +11,19 @@ export type {
   RetrievalMode,
 } from './retrieval.service';
 export type { ConversationTurn } from './query-rewrite';
-export { QUERY_REWRITE_PROMPT, detectEmailReplyIntent, REPLY_EMAIL_HINT_RE } from './query-rewrite';
-export type { EmailReplyIntent } from './query-rewrite';
+export {
+  QUERY_REWRITE_PROMPT,
+  detectEmailReplyIntent,
+  detectResearchIntent,
+  REPLY_EMAIL_HINT_RE,
+} from './query-rewrite';
+export type { EmailReplyIntent, ResearchIntent } from './query-rewrite';
+// The chat → research seam (Priority 5 Part B): same pattern as the reply seam.
+export { CHAT_RESEARCH_RESOLVER } from './chat/chat-research-resolver.port';
+export type {
+  ChatResearchResolverPort,
+  ChatResearchProposal,
+} from './chat/chat-research-resolver.port';
 // The chat → email-reply seam (Session O4): retrieval defines the port,
 // connectors implements it, the app root binds it (like the SourceReader family).
 export { CHAT_REPLY_RESOLVER } from './chat/chat-reply-resolver.port';

@@ -35,11 +35,14 @@ import {
   ANAPHORA_RE,
   detectCreateTaskIntent,
   detectEmailReplyIntent,
+  detectResearchIntent,
   rewriteQuery,
 } from '../query-rewrite';
 import { queryEntityCandidates } from '../query-entities';
 import { CHAT_REPLY_RESOLVER } from './chat-reply-resolver.port';
 import type { ChatReplyResolverPort } from './chat-reply-resolver.port';
+import { CHAT_RESEARCH_RESOLVER } from './chat-research-resolver.port';
+import type { ChatResearchResolverPort } from './chat-research-resolver.port';
 import { chatMessage } from '../persistence/tables';
 import {
   ANSWER_PROMPT,
@@ -87,6 +90,11 @@ export class ChatService {
     /** The chat → email-reply seam (Session O4). Absent in the worker and bare
      * test harnesses — then the reply intent is simply inactive. */
     @Optional() @Inject(CHAT_REPLY_RESOLVER) private readonly replyResolver?: ChatReplyResolverPort,
+    /** The chat → research seam (Priority 5 Part B). Absent in the worker —
+     * then the research intent is simply inactive. */
+    @Optional()
+    @Inject(CHAT_RESEARCH_RESOLVER)
+    private readonly researchResolver?: ChatResearchResolverPort,
   ) {}
 
   async listMessages(principal: Principal): Promise<ChatMessageDto[]> {
@@ -249,6 +257,18 @@ export class ChatService {
       return;
     }
 
+    // Research intent (Priority 5 Part B, decision 0045): deterministic,
+    // explicitly invoked — an imperative research verb, never an ordinary
+    // question. This turn only OPENS the gate (minimise + record a proposed
+    // run); NOTHING is sent until the user approves on the Research page.
+    if (this.researchResolver) {
+      const research = detectResearchIntent(content);
+      if (research) {
+        yield* this.handleResearchIntent(principal, research.topic, research.lang);
+        return;
+      }
+    }
+
     // Draft-a-reply intent (Session O4): deterministic detection; if it fires and
     // the resolver is wired, this turn creates an email reply draft (or asks /
     // declines) — fast path, no ingestion work, no sending. Then we return.
@@ -319,6 +339,46 @@ export class ChatService {
    *  - 1 (or "the last one") → create the draft via the approval path and confirm
    *    with a link. Cogeto never sends. No retrieval-answer, no ingestion work.
    */
+  /**
+   * The research gate opener: minimise the query and record a PROPOSED run —
+   * the deterministic confirmation states plainly that nothing has been sent
+   * and points at the Research page, where the user edits/approves/cancels.
+   * The confirmation is deterministic text except the disclosed query itself.
+   */
+  private async *handleResearchIntent(
+    principal: Principal,
+    topic: string,
+    lang: 'en' | 'hr',
+  ): AsyncGenerator<ChatStreamEvent> {
+    yield { type: 'sources', facts: [] };
+    let answer: string;
+    try {
+      const proposal = await this.researchResolver!.propose(principal, topic);
+      answer =
+        lang === 'hr'
+          ? `Pripremio sam upit za istraživanje — ništa još nije poslano. ` +
+            `Predloženi upit: "${proposal.minimisedQuery}" (${proposal.minimiseReason}) ` +
+            `Otvori stranicu Research, uredi ili odobri upit — tek tada išta napušta ovu instancu.`
+          : `I've prepared a research query — nothing has been sent yet. ` +
+            `Proposed query: "${proposal.minimisedQuery}" (${proposal.minimiseReason}) ` +
+            `Open the Research page to edit or approve it — only what you approve leaves this instance.`;
+    } catch (error) {
+      this.logger.warn(
+        `research_intent_failed: ${error instanceof Error ? error.message : 'error'}`,
+      );
+      answer =
+        lang === 'hr'
+          ? `Trenutno ne mogu pripremiti istraživanje. Pokušaj ponovno sa stranice Research.`
+          : `I couldn't set up that research just now. Try again from the Research page.`;
+    }
+    yield { type: 'token', text: answer };
+    const [row] = await this.db
+      .insert(chatMessage)
+      .values({ ownerId: principal.userId, role: 'assistant', content: answer })
+      .returning();
+    yield { type: 'done', messageId: row!.id, content: answer, citationViolations: 0 };
+  }
+
   private async *handleReplyIntent(
     principal: Principal,
     target: string | null,

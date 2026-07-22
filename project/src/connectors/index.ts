@@ -37,6 +37,13 @@ export { MAIL_OPTIONS } from './mail-options';
 export type { MailOptions } from './mail-options';
 // Web research (Priority 5 Part A, decisions 0042/0043).
 export { ResearchService } from './research.service';
+// Part B (decisions 0044/0045): minimisation, the gate, chat seam, synthesis —
+// ResearchChatModule is composed ONLY into the app root (needs retrieval).
+export { minimiseQuery, RESEARCH_MINIMISE_PROMPT } from './research-minimise';
+export type { MinimisedQuery } from './research-minimise';
+export { ChatResearchResolver } from './chat-research-resolver';
+export { ResearchSynthesisService, RESEARCH_ANSWER_PROMPT } from './research-synthesis.service';
+export { ResearchChatModule } from './research-chat.module';
 export { WebDiscoveryService } from './web-discovery.service';
 export type { DiscoveryOutcome, DiscoveredPage } from './web-discovery.service';
 export { WebFetchService, isPrivateAddress, robotsAllows } from './web-fetch';

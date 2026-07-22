@@ -1,0 +1,24 @@
+{
+  "case_id": "research_minimise_drop",
+  "description": "minimise_drops_client, live: a general-intent research request loses the client name before anything leaves; the gate reply discloses without searching; the flow ends in a web-cited answer and persisted web memories.",
+  "anchor": "2026-07-10T09:00:00.000Z",
+  "script": [
+    "research GDPR consent requirements for our client Adriatic Foods when migrating our CRM"
+  ],
+  "checks": {
+    "must_include": ["nothing has been sent", "research page"],
+    "no_mechanics": true
+  },
+  "research": {
+    "pages": [
+      {
+        "url": "https://guidance.example.org/gdpr-crm-consent",
+        "title": "GDPR consent when migrating CRM systems",
+        "html": "<html><head><title>GDPR consent when migrating CRM systems</title></head><body><main><p>Under the GDPR, consent collected in a legacy CRM remains valid after migration only if the original consent records are preserved with their audit trail.</p><p>A migration must not repurpose personal data: the new CRM may use the data only for the purposes the person originally consented to.</p></main></body></html>"
+      }
+    ],
+    "answer_must_include": ["consent"],
+    "sent_query_must_exclude": ["Adriatic Foods"],
+    "sent_query_must_include": ["GDPR"]
+  }
+}

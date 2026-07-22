@@ -3,8 +3,6 @@ import {
   Body,
   Controller,
   Get,
-  HttpException,
-  HttpStatus,
   NotFoundException,
   Param,
   ParseUUIDPipe,
@@ -13,20 +11,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { z } from 'zod';
-import type { ResearchCaptureResponse, ResearchSearchResponse, WebSourceDto } from '@cogeto/shared';
+import type { ResearchCaptureResponse, WebSourceDto } from '@cogeto/shared';
 import { MEMORY_SCOPES } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { ResearchService } from './research.service';
 
-/** Zod at the boundary: a non-blank bounded query; a bounded URL selection. */
-const searchSchema = z.object({
-  query: z
-    .string()
-    .max(500, 'query is too long (max 500 characters)')
-    .refine((value) => value.trim().length > 0, 'query must not be blank'),
-});
-
+/** Zod at the boundary: a bounded URL selection. */
 const captureSchema = z.object({
   urls: z
     .array(z.string().max(2000, 'URL is too long'))
@@ -36,39 +27,17 @@ const captureSchema = z.object({
 });
 
 /**
- * Web research endpoints (Priority 5 Part A) — explicitly invoked, owner-scoped.
- * Search unavailability surfaces as 503 `search_unavailable` (typed, retryable
- * by the user), never a crash; budget exhaustion surfaces as 429
- * `daily_research_limit` from the service.
+ * Direct web-capture endpoints (Priority 5 Part A, gated per Part B) —
+ * explicitly invoked, owner-scoped. NOTE (decision 0045): there is NO raw
+ * search endpoint any more — a query reaches discovery only through the
+ * show-edit-approve gate (`ResearchRunController.approve`). Direct URL capture
+ * remains: fetching a URL the user explicitly pasted sends no query anywhere.
+ * Budget exhaustion surfaces as 429 `daily_research_limit` from the service.
  */
 @Controller('research')
 @UseGuards(BearerAuthGuard)
 export class ResearchController {
   constructor(private readonly research: ResearchService) {}
-
-  @Post('search')
-  async search(
-    @Req() request: AuthenticatedRequest,
-    @Body() body: unknown,
-  ): Promise<ResearchSearchResponse> {
-    const parsed = searchSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
-    const outcome = await this.research.search(request.principal, parsed.data.query.trim());
-    if (outcome.status === 'unavailable') {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.SERVICE_UNAVAILABLE,
-          error: 'Service Unavailable',
-          code: 'search_unavailable',
-          message: outcome.reason,
-        },
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
-    }
-    return outcome;
-  }
 
   @Post('capture')
   async capture(
@@ -105,6 +74,9 @@ export class ResearchController {
       scope: row.scope,
       sensitive: row.sensitive,
       state: await this.research.getProcessingState(row.id),
+      // Part B provenance: the approved query that led to this page, one
+      // click from every research-derived memory. Null for direct captures.
+      sentQuery: await this.research.sentQueryFor(row),
     };
   }
 }

@@ -79,6 +79,23 @@ without a named entity, can still pass through. It is a strong, honest reduction
 of exposure, not a proof of zero leakage. Any compliance description must say
 "category-scoped redaction," never "no PII leaves the box."
 
+## Web research: minimise, disclose, approve
+
+Web research (Priority 5) adds one more thing that deliberately leaves the box:
+a search query. Pseudonymising a query breaks it, so the mechanism there is
+**minimisation plus disclosure plus approval** — a local pipeline-tier pass
+rewrites the query to its least-identifying serving form, the user sees exactly
+what would be sent (with a one-line reason for what was removed or kept), edits
+it freely, and nothing reaches a search engine without their explicit approval.
+The sent query is recorded in the provenance of every memory the research
+produces. Pages are fetched by the tenant's own instance (no third-party
+research API) via the self-hosted SearXNG container, which keeps no query logs.
+The honest claim is "you see precisely what leaves, and you approve it" —
+never "nothing leaves." Decisions
+[0044](../decisions/0044-research-query-minimisation.md) /
+[0045](../decisions/0045-research-gate-and-invocation.md); mechanics in
+[`../notes/web-research-privacy.md`](../notes/web-research-privacy.md).
+
 ## Where this lives in the code
 
 - The seam and factory: `project/src/model-gateway/` (`model-gateway.service.ts`,

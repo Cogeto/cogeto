@@ -111,6 +111,16 @@ response. It **fails closed** if unreachable: plaintext is never sent. Your
 data lives in your instance's Postgres/MinIO/Qdrant; nothing about the
 architecture phones home.
 
+**Web research** (`--profile research`) follows the same honesty rule. A
+self-hosted SearXNG container queries public engines from *your* instance (no
+API key, no vendor, no query logging), and a narrow, robots-respecting fetcher
+pulls only the pages you pick. Because a search query genuinely leaves the box,
+Cogeto minimises it locally, shows you the exact text, and sends **nothing
+until you approve it**; the sent query is then recorded in the provenance of
+every memory the research produces, next to each page's URL and fetch time.
+Research is explicitly invoked: an ordinary question never triggers a search.
+See [`docs/notes/web-research-privacy.md`](docs/notes/web-research-privacy.md).
+
 ## Links
 
 - **Website:** [cogeto.eu](https://cogeto.eu), including the whitepaper

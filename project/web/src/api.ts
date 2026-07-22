@@ -49,6 +49,10 @@ import type {
   TaskStatus,
   TimelineDto,
   WebSourceDto,
+  ResearchRunDto,
+  ResearchAnswerDto,
+  ResearchCaptureResponse,
+  ApproveResearchResponse,
   PointInTimeDto,
   TimelineDiffDto,
   PassportExportDto,
@@ -376,6 +380,28 @@ export const fetchEmailSource = (session: Session, emailId: string): Promise<Ema
 // The retained web page behind a web memory's source drawer (Priority 5 Part A).
 export const fetchWebSource = (session: Session, id: string): Promise<WebSourceDto> =>
   apiGet(`/api/research/${encodeURIComponent(id)}/source`, session);
+
+// Research runs (Part B): propose → show-edit-approve gate → capture → synthesis.
+export const proposeResearch = (session: Session, intent: string): Promise<ResearchRunDto> =>
+  apiPost('/api/research/propose', { intent }, session);
+export const fetchResearchRuns = (session: Session): Promise<ResearchRunDto[]> =>
+  apiGet('/api/research/runs', session);
+export const approveResearch = (
+  session: Session,
+  id: string,
+  query: string,
+): Promise<ApproveResearchResponse> =>
+  apiPost(`/api/research/runs/${encodeURIComponent(id)}/approve`, { query }, session);
+export const cancelResearch = (session: Session, id: string): Promise<ResearchRunDto> =>
+  apiPost(`/api/research/runs/${encodeURIComponent(id)}/cancel`, {}, session);
+export const captureResearchPages = (
+  session: Session,
+  id: string,
+  urls: string[],
+): Promise<ResearchCaptureResponse> =>
+  apiPost(`/api/research/runs/${encodeURIComponent(id)}/capture`, { urls }, session);
+export const synthesiseResearch = (session: Session, id: string): Promise<ResearchAnswerDto> =>
+  apiPost(`/api/research/runs/${encodeURIComponent(id)}/synthesise`, {}, session);
 
 // Reply drafts (Session O4 — email source). Drafting is a consequential action;
 // Cogeto never sends — the finalised draft is presented for the user to send.

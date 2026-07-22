@@ -42,6 +42,69 @@ export interface ResearchCaptureResponse {
 /** Same queue-ledger derivation as NoteProcessingState. */
 export type WebProcessingState = 'processing' | 'done' | 'failed';
 
+/* ── Research runs: the show-edit-approve gate (Part B, decisions 0044/0045) ── */
+
+export type ResearchRunStatus = 'proposed' | 'approved' | 'cancelled';
+
+export interface ProposeResearchRequest {
+  /** What the user asked for, verbatim (search box input or chat message). */
+  intent: string;
+}
+
+/**
+ * The gate's disclosure: the original intent, the proposed query, the
+ * minimised query, and the one-line reason for what was removed or kept.
+ * NOTHING has been sent when this is returned.
+ */
+export interface ResearchRunDto {
+  id: string;
+  status: ResearchRunStatus;
+  intent: string;
+  proposedQuery: string;
+  minimisedQuery: string;
+  minimiseReason: string;
+  /** The exact text that left the instance; null until approved. */
+  sentQuery: string | null;
+  answer: string | null;
+  createdAt: string;
+  approvedAt: string | null;
+  cancelledAt: string | null;
+}
+
+export interface ApproveResearchRequest {
+  /** The final query text — the user may have edited it freely at the gate. */
+  query: string;
+}
+
+/** Approval's result: discovery ran with the recorded query. */
+export interface ApproveResearchResponse {
+  run: ResearchRunDto;
+  search: ResearchSearchResponse;
+}
+
+export interface ResearchCaptureForRunRequest {
+  urls: string[];
+}
+
+/** One resolved citation of the synthesised answer. */
+export type ResearchCitationDto =
+  | {
+      kind: 'web';
+      marker: string;
+      url: string;
+      title: string | null;
+      fetchedAt: string;
+      webPageId: string;
+    }
+  | { kind: 'memory'; marker: string; memoryId: string };
+
+export interface ResearchAnswerDto {
+  runId: string;
+  /** Answer text containing the [W#]/[M#] markers the citations resolve. */
+  answer: string;
+  citations: ResearchCitationDto[];
+}
+
 /** The web source drawer: the page as Cogeto retained it, URL one click away. */
 export interface WebSourceDto {
   id: string;
@@ -53,4 +116,11 @@ export interface WebSourceDto {
   scope: MemoryScope;
   sensitive: boolean;
   state: WebProcessingState;
+  /**
+   * The approved query that led to this page (Part B): the exact text that
+   * left the instance, resolved from the page's research run. Null for direct
+   * URL captures. This makes "what was searched to learn this fact" part of
+   * every research-derived memory's inspectable provenance.
+   */
+  sentQuery: string | null;
 }
