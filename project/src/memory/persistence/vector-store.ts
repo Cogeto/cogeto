@@ -109,9 +109,22 @@ export class MemoryVectorStore {
     this.dimensions = options.dimensions ?? dimensionsFor(options.embeddingModel);
   }
 
-  /** Idempotent: safe to run on every worker boot. */
-  async ensureCollection(): Promise<void> {
-    const { exists } = await this.client.collectionExists(this.collection);
+  /**
+   * Idempotent: safe to run on every worker boot. Reindex passes
+   * `recreateOnDimensionMismatch` (issue #179): an embeddings-model switch with
+   * a different vector size must DROP and recreate the collection — Postgres is
+   * the truth and this index is rebuildable (§A.4) — or every upsert fails with
+   * a dimension error. Normal boot keeps create-if-missing semantics.
+   */
+  async ensureCollection(options: { recreateOnDimensionMismatch?: boolean } = {}): Promise<void> {
+    let { exists } = await this.client.collectionExists(this.collection);
+    if (exists && options.recreateOnDimensionMismatch) {
+      const current = await this.currentDimensions();
+      if (current !== null && current !== this.dimensions) {
+        await this.client.deleteCollection(this.collection);
+        exists = false;
+      }
+    }
     if (!exists) {
       await this.client.createCollection(this.collection, {
         vectors: { size: this.dimensions, distance: 'Cosine' },
@@ -134,6 +147,17 @@ export class MemoryVectorStore {
         .catch((error: unknown) => {
           if (!String(error).toLowerCase().includes('already exists')) throw error;
         });
+    }
+  }
+
+  /** The existing collection's vector size, or null when unreadable. */
+  private async currentDimensions(): Promise<number | null> {
+    try {
+      const info = await this.client.getCollection(this.collection);
+      const vectors = info.config?.params?.vectors as { size?: unknown } | undefined;
+      return typeof vectors?.size === 'number' ? vectors.size : null;
+    } catch {
+      return null;
     }
   }
 
