@@ -18,6 +18,7 @@ import {
   EmailReplyModule,
   EmailSourceDeletion,
   NotesSourceDeletion,
+  ResearchChatModule,
   WebSourceDeletion,
 } from '../connectors/index';
 import {
@@ -125,6 +126,9 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       // RetrievalService + ApprovalService); the worker never drafts. Global, so
       // ChatService resolves CHAT_REPLY_RESOLVER.
       EmailReplyModule,
+      // The research gate + chat → research resolver + synthesis (Priority 5
+      // Part B) — app-only for the same reason; the worker never researches.
+      ResearchChatModule,
       // The Memory Passport (§B.5, decision 0029): export trigger/status/download.
       // Assembly is a worker job; the app only creates requests and serves reads.
       PassportModule.register({

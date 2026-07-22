@@ -1,6 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { HttpException, HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
-import { and, eq, sql } from 'drizzle-orm';
+import {
+  ConflictException,
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { MemoryScope, Principal, WebProcessingState } from '@cogeto/shared';
 import {
   DailyCounters,
@@ -9,13 +17,16 @@ import {
   jobExecution,
   RESEARCH_QUOTA,
   withTransactionalEnqueue,
+  writeAudit,
 } from '../infrastructure/index';
 import type { Db, ResearchQuota } from '../infrastructure/index';
 import { INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
 import { MemoryObjectStore } from '../memory/index';
+import { ModelGateway } from '../model-gateway/index';
 import { sanitizeHtml } from './email-parse';
-import { webPage } from './persistence/tables';
-import type { WebPageRow } from './persistence/tables';
+import { minimiseQuery } from './research-minimise';
+import { researchRun, webPage } from './persistence/tables';
+import type { ResearchRunRow, WebPageRow } from './persistence/tables';
 import { RESEARCH_OPTIONS } from './research-options';
 import type { ResearchOptions } from './research-options';
 import { WebDiscoveryService } from './web-discovery.service';
@@ -56,7 +67,164 @@ export class ResearchService {
     private readonly counters: DailyCounters,
     @Inject(RESEARCH_QUOTA) private readonly quota: ResearchQuota,
     @Inject(RESEARCH_OPTIONS) private readonly options: ResearchOptions,
+    private readonly gateway: ModelGateway,
   ) {}
+
+  /**
+   * Open the gate (Part B, decisions 0044/0045): minimise the query and record
+   * a PROPOSED run. Sends NOTHING — discovery runs only from `approve`. The
+   * proposed query is the intent verbatim (chat strips its trigger verb first);
+   * minimisation rewrites it to the least-identifying serving form.
+   */
+  async propose(principal: Principal, intent: string): Promise<ResearchRunRow> {
+    const proposedQuery = intent.trim();
+    const minimised = await minimiseQuery(this.gateway, intent, proposedQuery);
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(researchRun)
+        .values({
+          ownerId: principal.userId,
+          intent,
+          proposedQuery,
+          minimisedQuery: minimised.minimised,
+          minimiseReason: minimised.reason,
+        })
+        .returning();
+      // Structural audit only (QS-1): the transition, never the query text —
+      // the text lives on the owner-gated run row itself.
+      await writeAudit(tx, {
+        actor: `user:${principal.userId}`,
+        action: 'research_run.proposed',
+        entityType: 'research_run',
+        entityId: row!.id,
+        orgId: principal.orgId,
+        ownerId: principal.userId,
+      });
+      return row!;
+    });
+  }
+
+  /**
+   * The ONLY path to discovery (decision 0045): explicit approval records the
+   * exact (possibly user-edited) query text on the run, then sends it. An
+   * already-approved run may re-run discovery with the SAME recorded query
+   * (an engine hiccup is retryable); a different text needs a new run — the
+   * record of what left is immutable.
+   */
+  async approveAndSearch(
+    principal: Principal,
+    runId: string,
+    query: string,
+  ): Promise<{ run: ResearchRunRow; search: DiscoveryOutcome }> {
+    const sentQuery = query.trim();
+    if (!sentQuery) throw new ConflictException('the approved query must not be blank');
+    const run = await this.db.transaction(async (tx) => {
+      const rows = await tx
+        .select()
+        .from(researchRun)
+        .where(and(eq(researchRun.id, runId), eq(researchRun.ownerId, principal.userId)))
+        .for('update');
+      const row = rows[0];
+      if (!row) throw new NotFoundException();
+      if (row.status === 'cancelled') {
+        throw new ConflictException('this research was cancelled — propose it again');
+      }
+      if (row.status === 'approved') {
+        if (row.sentQuery !== sentQuery) {
+          throw new ConflictException(
+            'this research already ran with a different approved query — propose a new one',
+          );
+        }
+        return row; // retry with the SAME recorded query — no state change
+      }
+      const [updated] = await tx
+        .update(researchRun)
+        .set({ status: 'approved', sentQuery, approvedAt: new Date() })
+        .where(eq(researchRun.id, runId))
+        .returning();
+      await writeAudit(tx, {
+        actor: `user:${principal.userId}`,
+        action: 'research_run.approved',
+        entityType: 'research_run',
+        entityId: runId,
+        detail: { edited: sentQuery !== row.minimisedQuery },
+        orgId: principal.orgId,
+        ownerId: principal.userId,
+      });
+      return updated!;
+    });
+    const search = await this.search(principal, sentQuery);
+    return { run, search };
+  }
+
+  /** Cancel at the gate: nothing was sent, nothing will be. Idempotent. */
+  async cancel(principal: Principal, runId: string): Promise<ResearchRunRow> {
+    return this.db.transaction(async (tx) => {
+      const rows = await tx
+        .select()
+        .from(researchRun)
+        .where(and(eq(researchRun.id, runId), eq(researchRun.ownerId, principal.userId)))
+        .for('update');
+      const row = rows[0];
+      if (!row) throw new NotFoundException();
+      if (row.status === 'cancelled') return row;
+      if (row.status === 'approved') {
+        throw new ConflictException('this research already ran — its query has left');
+      }
+      const [updated] = await tx
+        .update(researchRun)
+        .set({ status: 'cancelled', cancelledAt: new Date() })
+        .where(eq(researchRun.id, runId))
+        .returning();
+      await writeAudit(tx, {
+        actor: `user:${principal.userId}`,
+        action: 'research_run.cancelled',
+        entityType: 'research_run',
+        entityId: runId,
+        orgId: principal.orgId,
+        ownerId: principal.userId,
+      });
+      return updated!;
+    });
+  }
+
+  async getRun(principal: Principal, runId: string): Promise<ResearchRunRow | null> {
+    const rows = await this.db
+      .select()
+      .from(researchRun)
+      .where(and(eq(researchRun.id, runId), eq(researchRun.ownerId, principal.userId)))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
+  async listRuns(principal: Principal, limit = 50): Promise<ResearchRunRow[]> {
+    return this.db
+      .select()
+      .from(researchRun)
+      .where(eq(researchRun.ownerId, principal.userId))
+      .orderBy(desc(researchRun.createdAt))
+      .limit(limit);
+  }
+
+  /** Pages captured under a run — synthesis input, oldest first. */
+  async pagesForRun(principal: Principal, runId: string): Promise<WebPageRow[]> {
+    return this.db
+      .select()
+      .from(webPage)
+      .where(and(eq(webPage.researchRunId, runId), eq(webPage.ownerId, principal.userId)))
+      .orderBy(webPage.createdAt);
+  }
+
+  /** The approved query behind a captured page (provenance, Part B). */
+  async sentQueryFor(row: WebPageRow): Promise<string | null> {
+    if (!row.researchRunId) return null;
+    const rows = await this.db
+      .select({ sentQuery: researchRun.sentQuery })
+      .from(researchRun)
+      .where(eq(researchRun.id, row.researchRunId))
+      .limit(1);
+    return rows[0]?.sentQuery ?? null;
+  }
 
   /** One discovery query, budget-gated. Reserved BEFORE the search runs. */
   async search(principal: Principal, query: string): Promise<DiscoveryOutcome> {
@@ -84,7 +252,15 @@ export class ResearchService {
     principal: Principal,
     urls: string[],
     scope: MemoryScope = 'private',
+    researchRunId: string | null = null,
   ): Promise<CaptureResult[]> {
+    if (researchRunId) {
+      const run = await this.getRun(principal, researchRunId);
+      if (!run) throw new NotFoundException();
+      if (run.status !== 'approved') {
+        throw new ConflictException('capture requires an approved research run');
+      }
+    }
     if (urls.length > this.quota.pagesPerRunMax) {
       throw new HttpException(
         {
@@ -145,6 +321,7 @@ export class ResearchService {
             fetchedAt: page.fetchedAt,
             retainedText: page.text,
             rawObjectKey,
+            researchRunId,
           });
           await withTransactionalEnqueue(
             tx,
@@ -203,6 +380,11 @@ export class ResearchService {
       )
       .limit(1);
     return failed.length > 0 ? 'failed' : 'processing';
+  }
+
+  /** Persist the synthesised answer on its run (owner already verified). */
+  async recordAnswer(runId: string, answer: string): Promise<void> {
+    await this.db.update(researchRun).set({ answer }).where(eq(researchRun.id, runId));
   }
 
   /** Abort-window cleanup (the email-intake rule): the sweep is the backstop. */

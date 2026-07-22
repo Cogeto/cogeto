@@ -167,6 +167,7 @@ describe('web research (integration: real Postgres + Qdrant, scripted gateway + 
       new DailyCounters(),
       quota,
       options(),
+      gateway,
     );
   }, 180_000);
 
@@ -312,6 +313,7 @@ describe('web research (integration: real Postgres + Qdrant, scripted gateway + 
       counters,
       tiny,
       options(),
+      gateway,
     );
 
     // Search 1 passes; search 2 is refused with the typed 429.

@@ -90,15 +90,20 @@ The sovereignty and economics foundation. Directly extends Priority 3: a local r
 
 ## Priority 5 — Web research with query minimisation (L, Release C1)
 
-**Status: Part A DELIVERED** (2026-07-22, issues #185/#186/#187 — decisions
-0042/0043; notes in docs/notes/web-research-core.md). Self-hosted SearXNG
-discovery (profile `research`, internal-only, no query logging), the narrow
-hardened fetcher (SSRF guard, robots, size/type/timeout caps, no rendering),
-and web pages as first-class sources: source_type 'web' (migration 0027), URL
-+ fetch-time provenance, validity intervals and supersession, full deletion
-coverage, per-user daily search/page budgets, and en/hr web golden cases.
-**Part B (query minimisation + the show-edit-approve gate) remains** — until
-it lands, search/capture are the raw, explicitly invoked capability.
+**Status: DELIVERED in full** (2026-07-22; Part A issues #185/#186/#187 —
+decisions 0042/0043, notes in docs/notes/web-research-core.md; Part B issues
+#189/#190/#191 — decisions 0044/0045, notes in
+docs/notes/web-research-privacy.md). Part A: self-hosted SearXNG discovery
+(profile `research`, internal-only, no query logging), the narrow hardened
+fetcher (SSRF guard, robots, size/type/timeout caps, no rendering), web pages
+as first-class sources (source_type 'web', migration 0027) with URL +
+fetch-time provenance, temporal honesty, full deletion coverage, budgets, and
+en/hr golden cases. Part B: pipeline-tier query minimisation
+(research_query_minimise), the show-edit-approve gate (research_run, migration
+0028 — discovery runs ONLY from explicit approval; the sent query is recorded
+in every derived memory's provenance), explicit chat/UI invocation, and
+answer-tier synthesis with per-claim [W#]/[M#]/(unsourced) citations. Live
+research chat-eval cases judge the query that actually leaves.
 
 The research capability, with the privacy honesty improvement from the notes folded in.
 
@@ -147,7 +152,7 @@ The visible payoff, built on the research engine from Priority 5.
 | 2 | In-app notifications + dashboard ✅ delivered | v1.x | S to M | none | Daily touch; no email dependency |
 | 3 | Bring-your-own-key providers ✅ delivered | v1.x/B groundwork | M | none | Makes model-agnostic claim true |
 | 4 | Local models via Ollama ✅ delivered | B | L (staged) | 3 | Sovereignty + economics foundation |
-| 5 | Web research + query minimisation (Part A ✅ delivered) | C1 | L | 4 for economics | The research capability, privately |
+| 5 | Web research + query minimisation ✅ delivered | C1 | L | 4 for economics | The research capability, privately |
 | 6 | Natural conversation | C2 | L | 4 | The surface users live in |
 | 7 | Named skills | D | L | 5 | The visible, inimitable payoff |
 

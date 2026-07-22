@@ -15,7 +15,18 @@ import { TasksEngine } from '../tasks/index';
 import { UserDirectory } from '../identity/index';
 import { ANSWER_PROMPT, ChatService, RetrievalService } from '../retrieval/index';
 import { ActionRegistry, ApprovalService } from '../agents/index';
-import { ChatReplyResolver, EmailReplyDraftService, EmailSourceService } from '../connectors/index';
+import {
+  ChatReplyResolver,
+  ChatResearchResolver,
+  EmailReplyDraftService,
+  EmailSourceService,
+  ResearchService,
+  ResearchSynthesisService,
+  WebDiscoveryService,
+  WebFetchService,
+} from '../connectors/index';
+import type { ResearchOptions } from '../connectors/index';
+import { DailyCounters } from '../infrastructure/index';
 import { createModelGateway, loadPrompt, ModelGateway } from '../model-gateway/index';
 import type { ResolvedModelProviders } from '../model-gateway/index';
 import { resolveEvalProviders, requireConfiguredProviders } from './eval-env';
@@ -81,6 +92,28 @@ const caseSchema = z.object({
   facts: z.array(factSeedSchema).default([]),
   /** Emails to seed for a draft-a-reply case (Session O4). */
   emails: z.array(emailSeedSchema).default([]),
+  /**
+   * Research cases (Priority 5 Part B): a scripted public web (discovery
+   * returns these pages; the fetcher serves their HTML — nothing real is
+   * fetched in the harness). After the chat turns open the gate, the harness
+   * stands in for the user at the Research page: it approves the LIVE
+   * minimised query, captures the pages, seeds their memories through the
+   * real pipeline stages, and runs the LIVE answer-tier synthesis.
+   */
+  research: z
+    .object({
+      pages: z
+        .array(z.object({ url: z.string(), html: z.string(), title: z.string().optional() }))
+        .min(1),
+      /** Substrings the synthesised research answer must contain. */
+      answer_must_include: z.array(z.string()).default([]),
+      /** LIVE minimisation verdicts, judged on the query that actually LEFT
+       * (the harness approves the minimised query verbatim): what must have
+       * been dropped (minimise_drops_client) / kept (minimise_keeps_subject). */
+      sent_query_must_exclude: z.array(z.string()).default([]),
+      sent_query_must_include: z.array(z.string()).default([]),
+    })
+    .optional(),
   script: z.array(z.string()).min(1),
   checks: z.object({
     entity: z
@@ -152,6 +185,9 @@ interface CaseScore {
   temporal: boolean | null;
   /** The create-task verdict (decision 0038; null = not a create-task case). */
   taskCreated: boolean | null;
+  /** The research-flow verdict (Part B; null = not a research case): gate →
+   * approve → capture → cited synthesis → persisted web memories. */
+  research: boolean | null;
   pass: boolean;
 }
 
@@ -333,7 +369,53 @@ async function main(): Promise<void> {
       const approvals = new ApprovalService(db, new ActionRegistry(memoryStore));
       const emailDrafts = new EmailReplyDraftService(db, retrieval, gateway, approvals);
       const replyResolver = new ChatReplyResolver(new EmailSourceService(db, objects), emailDrafts);
-      const chat = new ChatService(db, retrieval, gateway, new UserDirectory(db), replyResolver);
+      // The research seam (Part B): scripted web, LIVE minimisation/synthesis.
+      const researchOptions: ResearchOptions = {
+        searxngUrl: 'http://searxng.eval.invalid:8080',
+        resultCap: 8,
+        searchTimeoutMs: 2_000,
+        fetchTimeoutMs: 2_000,
+        fetchMaxBytes: 1024 * 1024,
+        retainHtml: false,
+      };
+      const evalPages = testCase.research?.pages ?? [];
+      const discovery = new WebDiscoveryService(researchOptions);
+      discovery.fetchImpl = async () =>
+        new Response(
+          JSON.stringify({
+            results: evalPages.map((p) => ({ url: p.url, title: p.title ?? p.url, content: '' })),
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      const fetcher = new WebFetchService(researchOptions);
+      fetcher.resolveAddresses = async () => ['203.0.113.10'];
+      fetcher.fetchImpl = async (input) => {
+        const url = String(input instanceof Request ? input.url : input);
+        if (url.endsWith('/robots.txt')) return new Response('nope', { status: 404 });
+        const page = evalPages.find((p) => url.startsWith(p.url));
+        return page
+          ? new Response(page.html, { status: 200, headers: { 'content-type': 'text/html' } })
+          : new Response('not found', { status: 404 });
+      };
+      const research = new ResearchService(
+        db,
+        discovery,
+        fetcher,
+        objects,
+        new DailyCounters(),
+        { searchesMax: 100, pagesMax: 100, pagesPerRunMax: 8 },
+        researchOptions,
+        gateway,
+      );
+      const researchResolver = new ChatResearchResolver(research);
+      const chat = new ChatService(
+        db,
+        retrieval,
+        gateway,
+        new UserDirectory(db),
+        replyResolver,
+        researchResolver,
+      );
       const anchor = new Date(testCase.anchor);
 
       // Seed emails (Session O4 reply-intent cases) directly — no public seed API.
@@ -494,6 +576,90 @@ async function main(): Promise<void> {
             `)`,
         );
       }
+      // Research cases (Part B): the chat turn opened the gate; now stand in
+      // for the user's approval and the worker's pipeline, then synthesise.
+      let researchOk: boolean | null = null;
+      if (testCase.research) {
+        try {
+          const runs = await db.execute<{
+            id: string;
+            minimised_query: string;
+            status: string;
+          }>(sql`
+            SELECT id, minimised_query, status FROM research_run
+            WHERE owner_id = ${principal.userId} ORDER BY created_at DESC LIMIT 1
+          `);
+          const run = runs.rows[0];
+          if (!run || run.status !== 'proposed') {
+            console.log(`  research: no proposed run after the chat turn — FAIL`);
+            researchOk = false;
+          } else {
+            const { search } = await research.approveAndSearch(
+              principal,
+              run.id,
+              run.minimised_query, // approve the LIVE minimised query as-is
+            );
+            const captured = await research.capture(
+              principal,
+              testCase.research.pages.map((p) => p.url),
+              'private',
+              run.id,
+            );
+            const pageIds = captured.flatMap((r) => (r.status === 'captured' ? [r.id] : []));
+            // The worker's stand-in: real extract → verify → embed per page.
+            let webMemories = 0;
+            for (const pageId of pageIds) {
+              const page = (await research.getForOwner(principal, pageId))!;
+              await seedMemoryFromSource({
+                db,
+                gateway,
+                memoryStore,
+                source: {
+                  sourceType: 'web',
+                  sourceId: pageId,
+                  ownerId: principal.userId,
+                  content: page.title ? `${page.title}\n\n${page.retainedText}` : page.retainedText,
+                  createdAt: anchor,
+                },
+              });
+              webMemories += (await memoryStore.listBySourceSystem('web', pageId)).length;
+            }
+            const synthesis = new ResearchSynthesisService(research, retrieval, gateway);
+            const answer = await synthesis.synthesise(principal, run.id);
+            const cited = answer.citations.some((c) => c.kind === 'web');
+            const included = testCase.research.answer_must_include.every((sub) =>
+              answer.answer.toLowerCase().includes(sub.toLowerCase()),
+            );
+            const sent = run.minimised_query.toLowerCase();
+            const sentOk =
+              testCase.research.sent_query_must_exclude.every(
+                (sub) => !sent.includes(sub.toLowerCase()),
+              ) &&
+              testCase.research.sent_query_must_include.every((sub) =>
+                sent.includes(sub.toLowerCase()),
+              );
+            researchOk =
+              search.status === 'ok' &&
+              pageIds.length > 0 &&
+              webMemories > 0 &&
+              cited &&
+              included &&
+              sentOk;
+            console.log(
+              `  research: search=${search.status} pages=${pageIds.length} memories=${webMemories} ` +
+                `webCited=${String(cited)} include=${String(included)} sentQueryOk=${String(sentOk)}` +
+                `\n  sent query: ${run.minimised_query}` +
+                `\n  research answer: ${answer.answer.slice(0, 220)}`,
+            );
+          }
+        } catch (error) {
+          console.log(
+            `  research flow FAILED: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          researchOk = false;
+        }
+      }
+
       const coverage = checks.coverage_facts
         ? await gradeCoverage(graderGateway, graderPrompt, final.answer, checks.coverage_facts)
         : null;
@@ -531,6 +697,7 @@ async function main(): Promise<void> {
         nothingOnRecord: checks.nothing_on_record ? checkNothingOnRecord(final.answer) : null,
         temporal: temporalApplied.length > 0 ? temporalApplied.every(Boolean) : null,
         taskCreated,
+        research: researchOk,
         pass: false,
       };
       score.pass = [
@@ -542,6 +709,7 @@ async function main(): Promise<void> {
         score.nothingOnRecord,
         score.temporal,
         score.taskCreated,
+        score.research,
       ]
         .filter((v) => v !== null)
         .every(Boolean);
@@ -556,13 +724,13 @@ async function main(): Promise<void> {
   const cov = (s: CaseScore): string =>
     s.coverage === null ? '—' : `${(s.coverage * 100).toFixed(0)}%`;
   const table = [
-    '| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | task | overall |',
-    '|---|---|---|---|---|---|---|---|---|---|',
+    '| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | task | research | overall |',
+    '|---|---|---|---|---|---|---|---|---|---|---|',
     ...scores.map(
       (s) =>
         `| ${s.caseId} | ${cell(s.entityCorrect)} | ${cov(s)} | ${cell(s.hedgeMarked)} | ` +
         `${cell(s.noMechanics)} | ${cell(s.citationsValid)} | ${cell(s.nothingOnRecord)} | ` +
-        `${cell(s.temporal)} | ${cell(s.taskCreated)} | ${s.pass ? 'PASS' : 'FAIL'} |`,
+        `${cell(s.temporal)} | ${cell(s.taskCreated)} | ${cell(s.research)} | ${s.pass ? 'PASS' : 'FAIL'} |`,
     ),
   ].join('\n');
 
@@ -636,6 +804,7 @@ async function main(): Promise<void> {
         s.nothingOnRecord,
         s.temporal,
         s.taskCreated,
+        s.research,
       ].some((v) => v === false),
     );
     const covered = scores.filter((s) => s.coverage !== null);

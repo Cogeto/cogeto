@@ -61,6 +61,7 @@ Design decisions that define the security-relevant behaviour (in
 | [0027](../decisions/0027-demo-sandbox-password-gate.md) | Demo sandbox password gate |
 | [0028](../decisions/0028-inbound-email-design.md) / [0031](../decisions/0031-sender-routed-inbound-email.md) | Inbound email design and sender routing |
 | [0042](../decisions/0042-web-discovery-and-fetcher.md) / [0043](../decisions/0043-web-source-and-retention.md) | Web research: SSRF-guarded fetcher, no-query-logging discovery, budgets |
+| [0044](../decisions/0044-research-query-minimisation.md) / [0045](../decisions/0045-research-gate-and-invocation.md) | Web research: query minimisation + the show-edit-approve gate (sent query in provenance) |
 
 ## Our own audits are public — deliberately
 
@@ -92,6 +93,7 @@ every CI build. The security-relevant ones:
 | PII redaction at the model seam | `project/src/model-gateway/redaction.spec.ts` |
 | Extraction guard | `project/src/ingestion/pipeline/extract-guard.spec.ts` |
 | Web fetcher SSRF/robots/caps + internal-only discovery | `project/src/connectors/web-fetch.spec.ts`, `web-discovery.spec.ts` (+ `searx_internal_only` in `deployment-hardening.spec.ts`) |
+| Research gate: no query without approval, sent-query record | `project/src/connectors/research-gate.integration.spec.ts`, `research-flow.integration.spec.ts` |
 | Deployment hardening / secret preflight | `project/src/entrypoints/deployment-hardening.spec.ts`, `secret-preflight.spec.ts` |
 | Audit-log integrity | `project/src/entrypoints/audit.integration.spec.ts` |
 
