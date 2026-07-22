@@ -86,4 +86,4 @@ export type { MemoryRow, MemoryRelationRow, SourceType } from './persistence/tab
 // callers pass primitives and a gateway, never a client.
 export { reindexMemories } from './reindex';
 export type { ReindexOptions, ReindexReport } from './reindex';
-export { listForeignEmbeddingModels } from './embedding-space';
+export { listForeignEmbeddingModels, vectorIndexDimensionMismatch } from './embedding-space';

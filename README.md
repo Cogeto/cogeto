@@ -90,16 +90,21 @@ All model and embedding calls go through a single **model-gateway seam**; no
 provider SDK or endpoint appears anywhere else, and an architecture test keeps
 it that way. Cogeto is **model-agnostic, literally**: the gateway ships
 adapters for **Mistral (EU-hosted, the default)**, any **OpenAI-compatible
-endpoint** (base URL plus key, which is also how a local runtime plugs in
-later), and **Anthropic**. You bring your own key and pick a provider and
-model per task tier in the instance environment: a cheap model for high-volume
-ingestion, a stronger one for answers you read, and an embeddings model. One
-caveat, stated plainly: Anthropic has no embeddings API, so an Anthropic
-configuration pairs its answer or pipeline models with Mistral or
-OpenAI-compatible embeddings; the instance validates this at boot. Every
-configuration is published as its own entry in the
-[trust scores](eval/trust-scores/), so "works with your model" is measured,
-not claimed. The optional **redaction tier** (`--profile redaction`) runs a
+endpoint** (base URL plus key), **Anthropic**, and a **local Ollama runtime**,
+so inference can stay entirely on your own hardware. You bring your own key
+and pick a provider and model per task tier in the instance environment: a
+cheap model for high-volume ingestion, a stronger one for answers you read,
+and an embeddings model. The `ollama-local` preset puts all three tiers on
+your Ollama host (multilingual `bge-m3` embeddings included, no API key
+needed), and mixed postures such as hosted answers over local embeddings are
+one environment variable away; see
+[`docs/notes/local-models.md`](docs/notes/local-models.md) for setup and the
+measured per-task, per-language parity against the hosted default. One caveat,
+stated plainly: Anthropic has no embeddings API, so an Anthropic configuration
+pairs its answer or pipeline models with Mistral, OpenAI-compatible, or local
+embeddings; the instance validates this at boot. Every configuration is
+published as its own entry in the [trust scores](eval/trust-scores/), so
+"works with your model" is measured, not claimed. The optional **redaction tier** (`--profile redaction`) runs a
 local, CPU-only NER sidecar that pseudonymizes sensitive entities *before any
 external model call*, whichever provider is active, and re-identifies the
 response. It **fails closed** if unreachable: plaintext is never sent. Your

@@ -28,7 +28,12 @@ import { TASK_PROMPTS, TASKS_REMINDERS_CRONTAB, TasksEngine } from '../tasks/ind
 import { PassportExportExecutor, PASSPORT_RETENTION_CRONTAB } from '../passport/index';
 import { EmailAllowlistService, EMAIL_REFUSAL_RETENTION_CRONTAB } from '../connectors/index';
 import { ANSWER_PROMPT, QUERY_REWRITE_PROMPT } from '../retrieval/index';
-import { loadPrompt, ModelGateway, recordPromptVersion } from '../model-gateway/index';
+import {
+  assertLocalRuntimeReady,
+  loadPrompt,
+  ModelGateway,
+  recordPromptVersion,
+} from '../model-gateway/index';
 import { buildTaskList } from './worker-tasks';
 import {
   credentialsBanner,
@@ -55,6 +60,9 @@ async function main(): Promise<void> {
   // Embedding-space guard (decision 0040 ruling 3): a changed embeddings
   // model refuses boot until reindex has re-embedded the stored vectors.
   await assertEmbeddingSpaceConsistent(config);
+  // Local-runtime probe (decision 0041 ruling 2): an unreachable Ollama
+  // runtime or a never-pulled model refuses boot, never fails at first request.
+  await assertLocalRuntimeReady(config.modelProviders);
 
   const context = await NestFactory.createApplicationContext(
     createWorkerRootModule(config) as never,

@@ -50,6 +50,22 @@ describe('settings_display_accurate', () => {
     expect(dto.externalCalls).toMatch(/Mistral/);
   });
 
+  it('an all-local configuration states that nothing goes to a hosted provider (0041)', () => {
+    const modelProviders = resolveModelProviders(
+      {
+        COGETO_PROVIDER_PRESET: 'ollama-local',
+        COGETO_OLLAMA_BASE_URL: 'http://10.0.0.1:11434',
+      } as NodeJS.ProcessEnv,
+      { redacted: false },
+    );
+    const dto = buildModelConfigDto({ modelProviders, redactionEnabled: false });
+    expect(dto.configurationId).toBe('ollama-local');
+    expect(dto.preset).toBe('ollama-local');
+    expect(dto.tiers.embeddings).toEqual({ provider: 'ollama', model: 'bge-m3' });
+    expect(dto.externalCalls).toMatch(/local Ollama runtime/);
+    expect(dto.externalCalls).toMatch(/nothing is sent to a hosted model provider/);
+  });
+
   it('an unconfigured instance says so honestly', () => {
     const modelProviders = resolveModelProviders({} as NodeJS.ProcessEnv, { redacted: false });
     const dto = buildModelConfigDto({ modelProviders, redactionEnabled: false });

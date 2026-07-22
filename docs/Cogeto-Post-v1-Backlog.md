@@ -67,6 +67,17 @@ Makes the website's "plug in any model" claim literally true, and lays the groun
 
 ## Priority 4 — Local models via Ollama (L, Release B)
 
+**Status: DELIVERED** (2026-07-22, issues #181/#182/#183 — decision 0041; notes
+in docs/notes/local-models.md). The `ollama` provider flavor rides the
+OpenAI-compatible adapter with local knobs (no key, per-tier timeouts, boot
+probe with the `ollama pull` hint), the `ollama-local` preset puts all three
+tiers local (gemma3:12b + bge-m3), local embeddings flow through the existing
+reindex with an explicit dimension guard and done/total progress, and both eval
+suites ran against the local configurations — the per-task, per-language
+parity table and the migration-gating verdict live in the notes. CI keeps
+gating on `mistral-default`; local runs are owner-run and publish as their own
+trust-page configurations.
+
 The sovereignty and economics foundation. Directly extends Priority 3: a local runtime is just another gateway provider.
 
 **What and how.** An Ollama-class adapter behind the same gateway, speaking to a local model runtime on the instance. Migration is staged and eval-gated, never wholesale: local embeddings and reranking first, then the utility tasks (classification, deduplication and contradiction confirmation, verification), then optionally a local answer model. Each task moves to local only when the local configuration reaches eval parity per language on that task, and each configuration is published on the trust page.
@@ -125,7 +136,7 @@ The visible payoff, built on the research engine from Priority 5.
 | 1b | Create task from chat | v1.x | S | none | Tasks in the flow of thinking |
 | 2 | In-app notifications + dashboard ✅ delivered | v1.x | S to M | none | Daily touch; no email dependency |
 | 3 | Bring-your-own-key providers ✅ delivered | v1.x/B groundwork | M | none | Makes model-agnostic claim true |
-| 4 | Local models via Ollama | B | L (staged) | 3 | Sovereignty + economics foundation |
+| 4 | Local models via Ollama ✅ delivered | B | L (staged) | 3 | Sovereignty + economics foundation |
 | 5 | Web research + query minimisation | C1 | L | 4 for economics | The research capability, privately |
 | 6 | Natural conversation | C2 | L | 4 | The surface users live in |
 | 7 | Named skills | D | L | 5 | The visible, inimitable payoff |

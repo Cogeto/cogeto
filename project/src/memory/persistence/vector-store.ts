@@ -26,11 +26,16 @@ const EMBEDDING_DIMENSIONS: Record<string, number> = {
   'mistral-embed': 1024,
   'text-embedding-3-small': 1536,
   'text-embedding-3-large': 3072,
+  // Local multilingual embeddings via Ollama (decision 0041 ruling 5).
+  'bge-m3': 1024,
 };
 const DEFAULT_DIMENSIONS = 1024;
 
 export function dimensionsFor(embeddingModel: string): number {
-  return EMBEDDING_DIMENSIONS[embeddingModel] ?? DEFAULT_DIMENSIONS;
+  // Ollama model names may carry a `:tag` suffix (`bge-m3:latest`); the
+  // dimension is a property of the base model (decision 0041 ruling 5).
+  const base = embeddingModel.split(':')[0]!;
+  return EMBEDDING_DIMENSIONS[embeddingModel] ?? EMBEDDING_DIMENSIONS[base] ?? DEFAULT_DIMENSIONS;
 }
 
 export interface MemoryPointPayload {
@@ -119,7 +124,7 @@ export class MemoryVectorStore {
   async ensureCollection(options: { recreateOnDimensionMismatch?: boolean } = {}): Promise<void> {
     let { exists } = await this.client.collectionExists(this.collection);
     if (exists && options.recreateOnDimensionMismatch) {
-      const current = await this.currentDimensions();
+      const current = await this.indexDimensions();
       if (current !== null && current !== this.dimensions) {
         await this.client.deleteCollection(this.collection);
         exists = false;
@@ -150,8 +155,9 @@ export class MemoryVectorStore {
     }
   }
 
-  /** The existing collection's vector size, or null when unreadable. */
-  private async currentDimensions(): Promise<number | null> {
+  /** The existing collection's vector size, or null when unreadable/absent —
+   * public for the boot-time dimension guard (decision 0041 ruling 5). */
+  async indexDimensions(): Promise<number | null> {
     try {
       const info = await this.client.getCollection(this.collection);
       const vectors = info.config?.params?.vectors as { size?: unknown } | undefined;

@@ -170,6 +170,115 @@ describe('adapter_contract_openai', () => {
   });
 });
 
+describe('ollama_adapter_contract — the local flavor of the OpenAI-compatible adapter (0041)', () => {
+  const gateway = (): OpenAiCompatibleModelGateway =>
+    new OpenAiCompatibleModelGateway({
+      apiKey: 'ollama', // the synthesized dummy bearer — no real key exists
+      baseUrl: 'http://10.0.0.1:11434/v1',
+      providerLabel: 'ollama',
+      localRuntime: { rootUrl: 'http://10.0.0.1:11434' },
+      pipelineModel: 'gemma3:12b',
+      answerModel: 'gemma3:12b',
+      embedModel: 'bge-m3',
+      temperature: 0,
+    });
+
+  it('speaks the OpenAI surface under <root>/v1 with the dummy key accepted', async () => {
+    const { calls } = stubFetch(openaiChat('lokalno'));
+    const result = await gateway().complete({ input: 'q' });
+    expect(result.text).toBe('lokalno');
+    expect(calls[0]!.url).toBe('http://10.0.0.1:11434/v1/chat/completions');
+    expect(calls[0]!.body.model).toBe('gemma3:12b');
+  });
+
+  it('structured output follows the one contract: JSON mode, repaired once, then fatal', async () => {
+    const { calls } = stubFetch(openaiChat('{"wrong":1}'), openaiChat('{"needed":"da"}'));
+    const out = await gateway().extractStructured(z.object({ needed: z.string() }), {
+      system: 's',
+      input: 'x',
+    });
+    expect(out).toEqual({ needed: 'da' });
+    expect(calls).toHaveLength(2);
+    expect(calls[0]!.body.temperature).toBe(0);
+    expect(calls[0]!.body.response_format).toEqual({ type: 'json_object' });
+  });
+
+  it('connection-refused is retryable: retried with backoff, surfaced retryable', async () => {
+    vi.useFakeTimers();
+    try {
+      const failing = vi.fn(() => {
+        throw new TypeError('fetch failed: ECONNREFUSED');
+      });
+      vi.stubGlobal('fetch', failing);
+      const outcome = gateway()
+        .complete({ input: 'q' })
+        .then(
+          () => ({ ok: true as const }),
+          (error: unknown) => ({ ok: false as const, error }),
+        );
+      await vi.runAllTimersAsync();
+      const result = await outcome;
+      expect(result.ok).toBe(false);
+      expect((result as { error: unknown }).error).toMatchObject({ retryable: true });
+      expect(failing.mock.calls.length).toBeGreaterThan(1); // actually retried
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('model-not-found is FATAL and actionable: names the model and the pull command', async () => {
+    const { calls } = stubFetch(
+      new Response(
+        JSON.stringify({
+          error: { message: 'model "gemma3:12b" not found, try pulling it first' },
+        }),
+        { status: 404 },
+      ),
+    );
+    await expect(gateway().complete({ input: 'q' })).rejects.toMatchObject({
+      retryable: false,
+      message: expect.stringMatching(
+        /model "gemma3:12b" is not available.*run `ollama pull gemma3:12b` on the Ollama host/,
+      ) as string,
+    });
+    expect(calls).toHaveLength(1); // never hammers a runtime that cannot serve the model
+  });
+
+  it('a tier timeout is FATAL (never retried) and names the variable to raise', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_url: string, init?: RequestInit) =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => reject(init.signal!.reason));
+          }),
+      ),
+    );
+    const slow = new OpenAiCompatibleModelGateway({
+      apiKey: 'ollama',
+      baseUrl: 'http://10.0.0.1:11434/v1',
+      providerLabel: 'ollama',
+      localRuntime: { rootUrl: 'http://10.0.0.1:11434' },
+      answerModel: 'gemma3:12b',
+      tierTimeoutsMs: { answer: 10 },
+    });
+    await expect(slow.complete({ input: 'q' })).rejects.toMatchObject({
+      retryable: false,
+      message: expect.stringMatching(
+        /timed out after 10 ms.*COGETO_OLLAMA_TIMEOUT_ANSWER_MS/,
+      ) as string,
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('reachable() probes the runtime tags endpoint (the health surface)', async () => {
+    const { calls } = stubFetch({ models: [{ name: 'gemma3:12b' }] });
+    const health = await gateway().reachable();
+    expect(health).toEqual({ ok: true, detail: 'ollama runtime reachable' });
+    expect(calls[0]!.url).toBe('http://10.0.0.1:11434/api/tags');
+  });
+});
+
 describe('adapter_contract_anthropic', () => {
   const gateway = (): AnthropicModelGateway =>
     new AnthropicModelGateway({ apiKey: 'ak', pipelineModel: 'PIPE', answerModel: 'ANS' });
@@ -297,6 +406,12 @@ const CONFIGS: Record<string, Record<string, string>> = {
     COGETO_PROVIDER_PRESET: 'anthropic-answer',
     COGETO_ANTHROPIC_API_KEY: 'k',
     COGETO_MISTRAL_API_KEY: 'k',
+  },
+  // budgets_and_redaction_apply (decision 0041): tokens are counted even at
+  // zero cost and redaction wraps local calls — the accounting stays uniform.
+  ollama: {
+    COGETO_PROVIDER_PRESET: 'ollama-local',
+    COGETO_OLLAMA_BASE_URL: 'http://10.0.0.1:11434',
   },
 };
 

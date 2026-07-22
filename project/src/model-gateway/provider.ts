@@ -61,6 +61,15 @@ export async function callWithRetry<T>(
     try {
       return await fn();
     } catch (error) {
+      // Already classified by the adapter (e.g. a local timeout — decision
+      // 0041 ruling 2): respect its retryable flag, never re-wrap.
+      if (error instanceof ModelGatewayError) {
+        if (error.retryable && attempt < maxRetries) {
+          await sleep(baseMs * 2 ** attempt);
+          continue;
+        }
+        throw error;
+      }
       const status = extractStatus(error);
       const retryable = isRetryableStatus(status);
       if (retryable && attempt < maxRetries) {
@@ -98,11 +107,13 @@ export async function postJson<T>(
   url: string,
   headers: Record<string, string>,
   body: unknown,
+  signal?: AbortSignal,
 ): Promise<T> {
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...headers },
     body: JSON.stringify(body),
+    signal,
   });
   if (!response.ok) {
     throw new ProviderHttpError(await describeErrorBody(response), response.status);
@@ -115,11 +126,13 @@ export async function postStream(
   url: string,
   headers: Record<string, string>,
   body: unknown,
+  signal?: AbortSignal,
 ): Promise<Response> {
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...headers },
     body: JSON.stringify(body),
+    signal,
   });
   if (!response.ok) {
     throw new ProviderHttpError(await describeErrorBody(response), response.status);

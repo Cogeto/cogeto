@@ -27,6 +27,7 @@ const PROVIDER_LABEL: Record<string, string> = {
   mistral: 'Mistral',
   openai: 'the configured OpenAI-compatible endpoint',
   anthropic: 'Anthropic',
+  ollama: 'the local Ollama runtime',
 };
 
 /** Pure DTO assembly — `settings_display_accurate` asserts it mirrors the
@@ -61,6 +62,26 @@ export function buildModelConfigDto(
     providers.length === 1
       ? providers[0]!
       : `${providers.slice(0, -1).join(', ')} and ${providers[providers.length - 1]!}`;
+  // All-local (decision 0041): the honest sentence is that no hosted provider
+  // receives anything — model calls stay on the operator's own network.
+  const allLocal = [p.tiers.pipeline, p.tiers.answer, p.tiers.embedding].every(
+    (tier) => tier.provider === 'ollama',
+  );
+  if (allLocal) {
+    return {
+      configured: true,
+      configurationId: p.id,
+      preset: p.preset,
+      tiers: {
+        pipeline: { provider: p.tiers.pipeline.provider, model: p.tiers.pipeline.model },
+        answer: { provider: p.tiers.answer.provider, model: p.tiers.answer.model },
+        embeddings: { provider: p.tiers.embedding.provider, model: p.tiers.embedding.model },
+      },
+      redactionEnabled: config.redactionEnabled,
+      externalCalls:
+        'Model calls (including embeddings) go to the local Ollama runtime on your own network; nothing is sent to a hosted model provider.',
+    };
+  }
   const externalCalls = config.redactionEnabled
     ? `Model calls (including embeddings) go to ${providerList}; redaction pseudonymizes the text before it leaves this instance and fails closed if the sidecar is down.`
     : `Model calls (including embeddings) send text to ${providerList}; everything else stays inside this instance.`;

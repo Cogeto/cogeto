@@ -1,4 +1,4 @@
-import { asc, gt, inArray } from 'drizzle-orm';
+import { and, asc, gt, inArray, isNotNull, sql } from 'drizzle-orm';
 import type { Db } from '../infrastructure/index';
 import { ModelGateway } from '../model-gateway/index';
 import { memory } from './persistence/tables';
@@ -74,6 +74,15 @@ export async function reindexMemories(options: ReindexOptions): Promise<ReindexR
   };
   const embeddableIds = new Set<string>();
 
+  // Progress denominator (decision 0041 ruling 5): a full local reindex takes
+  // real wall-clock, so every batch reports done/total, not just batch sizes.
+  const [{ total }] = (await options.db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(memory)
+    .where(and(isNotNull(memory.content), sql`btrim(${memory.content}) <> ''`))) as [
+    { total: number },
+  ];
+
   // Streamed via keyset pagination on the primary key — bounded memory
   // however large the table grows.
   let afterId: string | null = null;
@@ -120,7 +129,8 @@ export async function reindexMemories(options: ReindexOptions): Promise<ReindexR
     report.reused += reusable.length;
     report.reembedded += toEmbed.length;
     log(
-      `batch of ${rows.length}: ${reusable.length} reused, ${toEmbed.length} re-embedded (model ${model})`,
+      `progress ${report.reused + report.reembedded}/${total}: batch of ${rows.length} — ` +
+        `${reusable.length} reused, ${toEmbed.length} re-embedded (model ${model})`,
     );
   }
 
