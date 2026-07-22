@@ -68,6 +68,20 @@ describe('deployment hardening (FIX-2)', () => {
     expect(compose).toContain('COGETO_INSTANCE_PUBKEY_DIR: /instance-pubkey');
   });
 
+  it('searx_internal_only: the SearXNG service is profile-gated and never publicly exposed', () => {
+    // The research profile exists and carries the searxng service.
+    expect(compose).toMatch(/searxng:\s*\n\s*profiles:\s*\['research'\]/);
+    // Internal-network only: the searxng service block declares NO ports
+    // mapping (decision 0042) — discovery is reachable solely by the app over
+    // the compose network. Extract the service block (up to the next top-level
+    // two-space-indented service key) and assert.
+    const block = compose.match(/\n {2}searxng:\n(?: {4}.*\n| *\n)+/)?.[0];
+    expect(block, 'searxng service block not found').toBeTruthy();
+    expect(block).not.toContain('ports:');
+    // And the edge never proxies it: the only public vhost stays app-only.
+    expect(caddyMain).not.toContain('searxng');
+  });
+
   it('QS-24: the Zitadel masterkey is not on the command line', () => {
     expect(compose).toContain('--masterkeyFromEnv');
     expect(compose).not.toContain('--masterkey "');

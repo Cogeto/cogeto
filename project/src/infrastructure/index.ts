@@ -44,6 +44,7 @@ export {
 export {
   RATE_LIMIT_OPTIONS,
   INGEST_QUOTA,
+  RESEARCH_QUOTA,
   SSE_LIMITS,
   MODEL_USAGE_METER,
   PARSE_CAPS,
@@ -56,6 +57,7 @@ export type {
   RateLimitBuckets,
   ModelBudget,
   IngestQuota,
+  ResearchQuota,
   SseLimits,
   ParseCaps,
 } from './limits';

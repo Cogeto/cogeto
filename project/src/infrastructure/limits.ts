@@ -32,6 +32,15 @@ export interface IngestQuota {
   uploadMax: number;
 }
 
+export interface ResearchQuota {
+  /** Max web-research searches per principal per calendar day (0 = research off). */
+  searchesMax: number;
+  /** Max fetched pages per principal per calendar day. */
+  pagesMax: number;
+  /** Max pages fetched by a single capture request (the per-research cap). */
+  pagesPerRunMax: number;
+}
+
 export interface SseLimits {
   /** Max simultaneous chat SSE streams per principal. */
   maxConcurrentPerPrincipal: number;
@@ -57,6 +66,7 @@ export interface LimitsConfig {
   rateLimit: RateLimitBuckets;
   modelBudget: ModelBudget;
   ingestQuota: IngestQuota;
+  researchQuota: ResearchQuota;
   sse: SseLimits;
   parse: ParseCaps;
 }
@@ -64,6 +74,7 @@ export interface LimitsConfig {
 /** DI tokens for the resolved limit values (provided by LimitsModule). */
 export const RATE_LIMIT_OPTIONS = Symbol('RATE_LIMIT_OPTIONS');
 export const INGEST_QUOTA = Symbol('INGEST_QUOTA');
+export const RESEARCH_QUOTA = Symbol('RESEARCH_QUOTA');
 export const SSE_LIMITS = Symbol('SSE_LIMITS');
 export const MODEL_USAGE_METER = Symbol('MODEL_USAGE_METER');
 export const PARSE_CAPS = Symbol('PARSE_CAPS');

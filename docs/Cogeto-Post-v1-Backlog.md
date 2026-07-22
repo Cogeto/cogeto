@@ -90,6 +90,16 @@ The sovereignty and economics foundation. Directly extends Priority 3: a local r
 
 ## Priority 5 — Web research with query minimisation (L, Release C1)
 
+**Status: Part A DELIVERED** (2026-07-22, issues #185/#186/#187 — decisions
+0042/0043; notes in docs/notes/web-research-core.md). Self-hosted SearXNG
+discovery (profile `research`, internal-only, no query logging), the narrow
+hardened fetcher (SSRF guard, robots, size/type/timeout caps, no rendering),
+and web pages as first-class sources: source_type 'web' (migration 0027), URL
++ fetch-time provenance, validity intervals and supersession, full deletion
+coverage, per-user daily search/page budgets, and en/hr web golden cases.
+**Part B (query minimisation + the show-edit-approve gate) remains** — until
+it lands, search/capture are the raw, explicitly invoked capability.
+
 The research capability, with the privacy honesty improvement from the notes folded in.
 
 **Architecture.** No crawler. Discovery is a self-hosted SearXNG container inside the instance (queries public engines, returns URLs, no API key, no vendor, no query logging, roughly 100 to 200 MB RAM, zero cost). Retrieval is a narrow Cogeto-owned fetcher that pulls selected pages, extracts readable content, respects robots, and caps page count. Extracted text enters the existing pipeline and becomes facts with URL provenance, verification, statuses, and validity intervals, ageing and superseding like any other source.
@@ -137,7 +147,7 @@ The visible payoff, built on the research engine from Priority 5.
 | 2 | In-app notifications + dashboard ✅ delivered | v1.x | S to M | none | Daily touch; no email dependency |
 | 3 | Bring-your-own-key providers ✅ delivered | v1.x/B groundwork | M | none | Makes model-agnostic claim true |
 | 4 | Local models via Ollama ✅ delivered | B | L (staged) | 3 | Sovereignty + economics foundation |
-| 5 | Web research + query minimisation | C1 | L | 4 for economics | The research capability, privately |
+| 5 | Web research + query minimisation (Part A ✅ delivered) | C1 | L | 4 for economics | The research capability, privately |
 | 6 | Natural conversation | C2 | L | 4 | The surface users live in |
 | 7 | Named skills | D | L | 5 | The visible, inimitable payoff |
 

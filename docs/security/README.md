@@ -60,6 +60,7 @@ Design decisions that define the security-relevant behaviour (in
 | [0026](../decisions/0026-token-revocation-window-and-receipt-chain-anchor.md) | Token revocation and receipt-chain anchoring |
 | [0027](../decisions/0027-demo-sandbox-password-gate.md) | Demo sandbox password gate |
 | [0028](../decisions/0028-inbound-email-design.md) / [0031](../decisions/0031-sender-routed-inbound-email.md) | Inbound email design and sender routing |
+| [0042](../decisions/0042-web-discovery-and-fetcher.md) / [0043](../decisions/0043-web-source-and-retention.md) | Web research: SSRF-guarded fetcher, no-query-logging discovery, budgets |
 
 ## Our own audits are public — deliberately
 
@@ -86,10 +87,11 @@ every CI build. The security-relevant ones:
 | Inbound-mail intake and SPF gate | `project/src/connectors/email-intake.integration.spec.ts` |
 | Allowlist routing | `project/src/connectors/email-allowlist.integration.spec.ts` |
 | Intake endpoint auth guard | `project/src/connectors/mail-intake.guard.spec.ts` |
-| Deletion cascade and receipts | `project/src/memory/deletion.integration.spec.ts`, `email-deletion-cascade.integration.spec.ts` |
+| Deletion cascade and receipts | `project/src/memory/deletion.integration.spec.ts`, `email-deletion-cascade.integration.spec.ts`, `web-deletion-cascade.integration.spec.ts` |
 | Forgotten sweep | `project/src/memory/sweep-arms.integration.spec.ts` |
 | PII redaction at the model seam | `project/src/model-gateway/redaction.spec.ts` |
 | Extraction guard | `project/src/ingestion/pipeline/extract-guard.spec.ts` |
+| Web fetcher SSRF/robots/caps + internal-only discovery | `project/src/connectors/web-fetch.spec.ts`, `web-discovery.spec.ts` (+ `searx_internal_only` in `deployment-hardening.spec.ts`) |
 | Deployment hardening / secret preflight | `project/src/entrypoints/deployment-hardening.spec.ts`, `secret-preflight.spec.ts` |
 | Audit-log integrity | `project/src/entrypoints/audit.integration.spec.ts` |
 

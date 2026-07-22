@@ -11,6 +11,8 @@ import {
   FileSourceReader,
   NotesSourceDeletion,
   NotesSourceReader,
+  WebSourceDeletion,
+  WebSourceReader,
 } from '../connectors/index';
 import {
   TaskConclusionSourceDeletion,
@@ -27,7 +29,7 @@ import {
   ChatSourceReader,
 } from '../retrieval/index';
 import { ModelGatewayModule } from '../model-gateway/index';
-import { COGETO_CONFIG, mailOptions, redactionOptions } from './config';
+import { COGETO_CONFIG, mailOptions, redactionOptions, researchOptions } from './config';
 import type { CogetoConfig } from './config';
 
 /**
@@ -76,6 +78,8 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
             EmailSourceDeletion,
             // Conclusion rows are deletable sources too (decision 0037).
             TaskConclusionSourceDeletion,
+            // Web pages are deletable sources (Priority 5 Part A, 0043).
+            WebSourceDeletion,
           ],
         },
         derivedCascades: {
@@ -90,7 +94,8 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       }),
       // ChatSourceReader gives ingestion a stage-1 reader for source_type 'chat';
       // EmailSourceReader adds source_type 'email' (Session O4);
-      // TaskConclusionSourceReader adds 'task_conclusion' (decision 0037).
+      // TaskConclusionSourceReader adds 'task_conclusion' (decision 0037);
+      // WebSourceReader adds 'web' (Priority 5 Part A, decision 0043).
       IngestionModule.register({
         readers: [
           NotesSourceReader,
@@ -98,6 +103,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
           ChatSourceReader,
           EmailSourceReader,
           TaskConclusionSourceReader,
+          WebSourceReader,
         ],
       }),
       ChatSourceModule,
@@ -109,6 +115,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
           downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
         },
         mail: mailOptions(config),
+        research: researchOptions(config),
       }),
       TasksModule.register(),
       // The Memory Passport export + retention jobs run here (§A.3 slow path);

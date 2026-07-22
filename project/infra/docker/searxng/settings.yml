@@ -1,0 +1,50 @@
+# SearXNG for Cogeto web research (Priority 5 Part A; decision 0042).
+#
+# Privacy posture:
+#  - No query persistence: SearXNG stores no query history; metrics are
+#    disabled so no per-query counters accumulate either. The discovery client
+#    additionally POSTs its queries, so they never appear in URL/access lines.
+#  - No image proxy, no limiter (the service is internal-network only — the
+#    compose file publishes no ports; only the app container can reach it).
+#
+# Engine set: curated for reliability from a datacenter/instance IP. Google,
+# Bing and Startpage aggressively CAPTCHA or hard-block datacenter traffic, so
+# they stay off. DuckDuckGo, Brave, Mojeek and Wikipedia tolerate it well. To
+# adjust: add a `- name: <engine>` block with `disabled: false` (see the
+# SearXNG documentation for engine names), or move one to keep_only below —
+# then `docker compose --profile research up` again; no image rebuild needed.
+use_default_settings:
+  engines:
+    keep_only:
+      - duckduckgo
+      - brave
+      - mojeek
+      - wikipedia
+
+general:
+  debug: false
+  instance_name: 'Cogeto research'
+  enable_metrics: false
+
+search:
+  # The discovery client consumes the JSON API; html stays on for debugging
+  # from inside the compose network.
+  formats:
+    - html
+    - json
+  safe_search: 0
+  autocomplete: ''
+
+server:
+  # Value comes from the SEARXNG_SECRET env var (dev default in compose;
+  # provisioning generates a real one). The env var overrides this key.
+  secret_key: 'overridden-by-env'
+  limiter: false
+  image_proxy: false
+  # The discovery client POSTs /search so queries stay out of URLs and any
+  # request-line logging.
+  method: 'POST'
+
+outgoing:
+  request_timeout: 6.0
+  max_request_timeout: 10.0

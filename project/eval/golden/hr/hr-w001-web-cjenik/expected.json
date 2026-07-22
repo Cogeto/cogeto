@@ -1,0 +1,26 @@
+{
+  "case_id": "hr-w001",
+  "source_type": "web",
+  "source_date": "2026-07-10T09:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Mjesečni najam fiksnog stola Jadranske Rive u Splitu iznosi 180 EUR bez PDV-a",
+      "kind": "fact",
+      "entities": ["Jadranska Riva"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Dnevna ulaznica Jadranske Rive od 1. listopada 2026. košta 15 EUR",
+      "kind": "fact",
+      "entities": ["Jadranska Riva"],
+      "condition": null,
+      "temporal": { "valid_from": "2026-10-01" },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

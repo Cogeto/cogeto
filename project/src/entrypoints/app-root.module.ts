@@ -18,6 +18,7 @@ import {
   EmailReplyModule,
   EmailSourceDeletion,
   NotesSourceDeletion,
+  WebSourceDeletion,
 } from '../connectors/index';
 import {
   TaskConclusionSourceDeletion,
@@ -27,7 +28,7 @@ import {
 } from '../tasks/index';
 import { PassportModule, PASSPORT_EXPORT_RETENTION_HOURS } from '../passport/index';
 import { ModelGatewayModule } from '../model-gateway/index';
-import { COGETO_CONFIG, mailOptions, redactionOptions } from './config';
+import { COGETO_CONFIG, mailOptions, redactionOptions, researchOptions } from './config';
 import type { CogetoConfig } from './config';
 import { AttentionController, DashboardController } from './attention.controller';
 import { AttentionService } from './attention.service';
@@ -89,6 +90,8 @@ export function createAppRootModule(config: CogetoConfig): unknown {
             EmailSourceDeletion,
             // Conclusion rows are deletable sources too (decision 0037).
             TaskConclusionSourceDeletion,
+            // Web pages are deletable sources (Priority 5 Part A, 0043).
+            WebSourceDeletion,
           ],
         },
         derivedCascades: {
@@ -112,6 +115,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
           downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
         },
         mail: mailOptions(config),
+        research: researchOptions(config),
       }),
       TasksModule.forApi(),
       // The digest's TASKS section as a global provider, so ingestion's digest

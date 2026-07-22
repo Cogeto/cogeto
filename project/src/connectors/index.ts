@@ -35,3 +35,13 @@ export { ChatReplyResolver } from './chat-reply-resolver';
 export { EmailReplyModule } from './email-reply.module';
 export { MAIL_OPTIONS } from './mail-options';
 export type { MailOptions } from './mail-options';
+// Web research (Priority 5 Part A, decisions 0042/0043).
+export { ResearchService } from './research.service';
+export { WebDiscoveryService } from './web-discovery.service';
+export type { DiscoveryOutcome, DiscoveredPage } from './web-discovery.service';
+export { WebFetchService, isPrivateAddress, robotsAllows } from './web-fetch';
+export type { FetchOutcome, FetchedPage } from './web-fetch';
+export { WebSourceReader } from './web.source-reader';
+export { WebSourceDeletion } from './web.source-deletion';
+export { RESEARCH_OPTIONS } from './research-options';
+export type { ResearchOptions } from './research-options';

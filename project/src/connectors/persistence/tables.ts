@@ -155,3 +155,30 @@ export const emailRefusal = pgTable(
 );
 
 export type EmailRefusalRow = typeof emailRefusal.$inferSelect;
+
+/**
+ * Fetched web pages (Priority 5 Part A; decision 0043; migration 0027). Owned
+ * by connectors. The retained extracted text + URL are the complete source of
+ * record (raw HTML optionally externalised to `rawObjectKey`); memories
+ * extracted from a page carry provenance source_type = 'web',
+ * source_id = web_page.id (§A.6), and their temporal anchor is `fetchedAt`.
+ */
+export const webPage = pgTable(
+  'web_page',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: text('owner_id').notNull(),
+    scope: scopeEnum('scope').notNull().default('private'),
+    sensitive: boolean('sensitive').notNull().default(false),
+    requestedUrl: text('requested_url').notNull(),
+    finalUrl: text('final_url').notNull(),
+    title: text('title'),
+    fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull(),
+    retainedText: text('retained_text').notNull(),
+    rawObjectKey: text('raw_object_key'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('web_page_owner_fetched_idx').on(t.ownerId, t.fetchedAt)],
+);
+
+export type WebPageRow = typeof webPage.$inferSelect;

@@ -1,0 +1,34 @@
+{
+  "case_id": "en-w001",
+  "source_type": "web",
+  "source_date": "2026-07-10T09:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Adriatic Foods delivers free for wholesale orders above 250 EUR",
+      "kind": "fact",
+      "entities": ["Adriatic Foods"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Adriatic Foods' minimum first order for new restaurant customers is 150 EUR from 1 September 2026",
+      "kind": "fact",
+      "entities": ["Adriatic Foods"],
+      "condition": null,
+      "temporal": { "valid_from": "2026-09-01" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Adriatic Foods ships from its Rijeka warehouse Monday to Friday",
+      "kind": "fact",
+      "entities": ["Adriatic Foods"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": false
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

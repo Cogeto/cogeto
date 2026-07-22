@@ -28,6 +28,9 @@ export const sourceTypeEnum = pgEnum('source_type', [
   // Engine-derived task conclusions (decision 0037): the source row is the
   // tasks-owned task_conclusion record, migration 0025.
   'task_conclusion',
+  // Fetched web pages (decision 0043): the source row is the connectors-owned
+  // web_page record, migration 0027.
+  'web',
 ]);
 export const receiptStatusEnum = pgEnum('receipt_status', ['pending', 'confirmed']);
 export const factKindEnum = pgEnum('fact_kind', FACT_KINDS);

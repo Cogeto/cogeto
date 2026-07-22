@@ -82,6 +82,25 @@ const configSchema = z
      * unset → the mail check reports "not configured" and stays green. */
     mailSmtpAddress: z.string().min(1).optional(),
     /**
+     * Web research (Priority 5 Part A; decisions 0042/0043). Discovery is the
+     * self-hosted SearXNG container (compose profile `research`, internal
+     * network only); unset → the discovery client reports "search unavailable"
+     * instead of failing requests. The fetch knobs bound the narrow fetcher:
+     * hard per-page timeout, response-size cap, and the ranked-result cap the
+     * discovery client enforces. `researchRetainHtml` switches on optional
+     * raw-HTML retention (decision 0043 — default off: clean text + URL only).
+     */
+    searxngUrl: z.url().optional(),
+    researchResultCap: z.coerce.number().int().positive().prefault(8),
+    researchSearchTimeoutSeconds: z.coerce.number().int().positive().prefault(10),
+    researchFetchTimeoutSeconds: z.coerce.number().int().positive().prefault(15),
+    researchFetchMaxBytes: z.coerce
+      .number()
+      .int()
+      .positive()
+      .prefault(5 * 1024 * 1024),
+    researchRetainHtml: envBool,
+    /**
      * Postgres connection-pool ceiling per process (QS-38). Sized against worker
      * concurrency (2): the ingestion pipeline deliberately holds its idempotency
      * transaction OPEN across model calls (decision 0004/0005 — a retry must
@@ -219,6 +238,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
     mailIntakeMaxPerSender: env.COGETO_MAIL_INTAKE_MAX_PER_SENDER || undefined,
     mailIntakeRateWindowSeconds: env.COGETO_MAIL_INTAKE_RATE_WINDOW_SECONDS || undefined,
     mailSmtpAddress: env.COGETO_MAIL_SMTP_ADDRESS || undefined,
+    searxngUrl: env.COGETO_SEARXNG_URL || undefined,
+    researchResultCap: env.COGETO_RESEARCH_RESULT_CAP || undefined,
+    researchSearchTimeoutSeconds: env.COGETO_RESEARCH_SEARCH_TIMEOUT_SECONDS || undefined,
+    researchFetchTimeoutSeconds: env.COGETO_RESEARCH_FETCH_TIMEOUT_SECONDS || undefined,
+    researchFetchMaxBytes: env.COGETO_RESEARCH_FETCH_MAX_BYTES || undefined,
+    researchRetainHtml: env.COGETO_RESEARCH_RETAIN_HTML,
     pgPoolMax: env.COGETO_PG_POOL_MAX || undefined,
     oidc: {
       issuer: env.COGETO_OIDC_ISSUER,
@@ -284,6 +309,29 @@ export function mailOptions(config: CogetoConfig): {
     requireAuthenticatedSender: config.mailRequireAuthenticatedSender,
     intakeMaxPerSenderPerWindow: config.mailIntakeMaxPerSender,
     intakeRateWindowSeconds: config.mailIntakeRateWindowSeconds,
+  };
+}
+
+/**
+ * Web-research wiring for the connectors module (Priority 5 Part A, decisions
+ * 0042/0043), assembled from the validated config so both composition roots
+ * pass one shape.
+ */
+export function researchOptions(config: CogetoConfig): {
+  searxngUrl: string | null;
+  resultCap: number;
+  searchTimeoutMs: number;
+  fetchTimeoutMs: number;
+  fetchMaxBytes: number;
+  retainHtml: boolean;
+} {
+  return {
+    searxngUrl: config.searxngUrl ?? null,
+    resultCap: config.researchResultCap,
+    searchTimeoutMs: config.researchSearchTimeoutSeconds * 1000,
+    fetchTimeoutMs: config.researchFetchTimeoutSeconds * 1000,
+    fetchMaxBytes: config.researchFetchMaxBytes,
+    retainHtml: config.researchRetainHtml,
   };
 }
 

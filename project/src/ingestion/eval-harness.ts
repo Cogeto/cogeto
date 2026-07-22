@@ -198,9 +198,12 @@ export async function runGoldenEval(options: {
     // forwarding wrappers are isolated before extraction, so a threaded case
     // scores on its new content only — exactly as production would see it.
     const isEmail = testCase.expected.source_type === 'email';
+    // Web cases carry the fetcher's OUTPUT (clean readable text) as source.txt —
+    // production preprocessing happened before the pipeline, so no prep here.
+    const isWeb = testCase.expected.source_type === 'web';
     const content = isEmail ? isolateEmailContent(testCase.source) : testCase.source;
     const source: SourceItem = {
-      sourceType: isEmail ? 'email' : 'user_note',
+      sourceType: isEmail ? 'email' : isWeb ? 'web' : 'user_note',
       sourceId: `golden-${testCase.caseId}`,
       ownerId: 'golden-eval',
       content,

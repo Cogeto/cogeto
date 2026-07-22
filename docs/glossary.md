@@ -126,7 +126,9 @@ name it in a decision record before coining a term in code.
   statuses, source links, receipts, dead-letter jobs.
 - **Connector** — a source integration; **two in v1**: **notes** and **email**
   (email via a per-tenant, receive-only Haraka forwarding server — no OAuth). Calendar
-  is dropped from v1 (Roadmap Revision; reconsidered only post-2.0).
+  is dropped from v1 (Roadmap Revision; reconsidered only post-2.0). Post-v1
+  adds **web research** (Priority 5): fetched pages as `web` sources with URL
+  provenance (decisions 0042/0043).
 - **Task** — an actionable item derived from memory (person, topic, condition,
   status). Tasks read memory through its public interface; they never mutate it.
   Owned by the `tasks` context.
