@@ -15,9 +15,17 @@ import type { MemoryScope, MemoryStatus, Principal } from '@cogeto/shared';
 
 export const MEMORY_COLLECTION = 'memories';
 
-/** Vector size per embed model; reindex re-embeds when the model changes. */
+/**
+ * Vector size per embed model; reindex re-embeds when the model changes.
+ * Every embeddings model a provider preset can select MUST have an explicit
+ * entry (issue #177: a missing entry silently fell back to 1024 and OpenAI's
+ * 1536-dim vectors failed at upsert) — `embedding_dimensions_cover_presets`
+ * enforces this.
+ */
 const EMBEDDING_DIMENSIONS: Record<string, number> = {
   'mistral-embed': 1024,
+  'text-embedding-3-small': 1536,
+  'text-embedding-3-large': 3072,
 };
 const DEFAULT_DIMENSIONS = 1024;
 
