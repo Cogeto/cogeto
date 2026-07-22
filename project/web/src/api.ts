@@ -48,6 +48,7 @@ import type {
   TaskDto,
   TaskStatus,
   TimelineDto,
+  WebSourceDto,
   PointInTimeDto,
   TimelineDiffDto,
   PassportExportDto,
@@ -371,6 +372,10 @@ export const confirmApproval = (
 // The email reading view behind an email memory's source drawer (Session O4).
 export const fetchEmailSource = (session: Session, emailId: string): Promise<EmailSourceDto> =>
   apiGet(`/api/email/${encodeURIComponent(emailId)}/source`, session);
+
+// The retained web page behind a web memory's source drawer (Priority 5 Part A).
+export const fetchWebSource = (session: Session, id: string): Promise<WebSourceDto> =>
+  apiGet(`/api/research/${encodeURIComponent(id)}/source`, session);
 
 // Reply drafts (Session O4 — email source). Drafting is a consequential action;
 // Cogeto never sends — the finalised draft is presented for the user to send.

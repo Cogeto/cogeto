@@ -12,6 +12,7 @@ export * from './model-config';
 export * from './notes';
 export * from './principal';
 export * from './receipts';
+export * from './research';
 export * from './tasks';
 export * from './timeline';
 export * from './passport';

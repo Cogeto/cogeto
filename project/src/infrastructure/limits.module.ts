@@ -7,6 +7,7 @@ import {
   MODEL_USAGE_METER,
   PARSE_CAPS,
   RATE_LIMIT_OPTIONS,
+  RESEARCH_QUOTA,
   SSE_LIMITS,
 } from './limits';
 import type { LimitsConfig } from './limits';
@@ -37,6 +38,7 @@ export class LimitsModule {
         { provide: DailyCounters, useFactory: () => new DailyCounters() },
         { provide: RATE_LIMIT_OPTIONS, useValue: limits.rateLimit },
         { provide: INGEST_QUOTA, useValue: limits.ingestQuota },
+        { provide: RESEARCH_QUOTA, useValue: limits.researchQuota },
         { provide: SSE_LIMITS, useValue: limits.sse },
         { provide: PARSE_CAPS, useValue: limits.parse },
         // The instance timezone for relative-date resolution (QS-32).
@@ -53,6 +55,7 @@ export class LimitsModule {
         DailyCounters,
         RATE_LIMIT_OPTIONS,
         INGEST_QUOTA,
+        RESEARCH_QUOTA,
         SSE_LIMITS,
         PARSE_CAPS,
         INSTANCE_TIMEZONE,

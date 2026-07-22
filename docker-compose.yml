@@ -132,6 +132,20 @@ services:
       # Zitadel FirstInstance admin below.
       COGETO_ADMIN_USER_EMAIL: ${ZITADEL_ADMIN_USERNAME:-admin@cogeto.localhost}
       COGETO_MAIL_SMTP_ADDRESS: ${COGETO_MAIL_SMTP_ADDRESS:-mail:2525}
+      # Web research (Priority 5 Part A, profile research; decisions 0042/0043).
+      # Discovery via the self-hosted SearXNG container (internal network only);
+      # unset/unreachable → the API answers "search unavailable", nothing crashes.
+      # The fetch knobs bound the narrow fetcher; retention default is clean
+      # text + URL (raw-HTML retention off).
+      COGETO_SEARXNG_URL: ${COGETO_SEARXNG_URL:-http://searxng:8080}
+      COGETO_RESEARCH_RESULT_CAP: ${COGETO_RESEARCH_RESULT_CAP:-8}
+      COGETO_RESEARCH_SEARCH_TIMEOUT_SECONDS: ${COGETO_RESEARCH_SEARCH_TIMEOUT_SECONDS:-10}
+      COGETO_RESEARCH_FETCH_TIMEOUT_SECONDS: ${COGETO_RESEARCH_FETCH_TIMEOUT_SECONDS:-15}
+      COGETO_RESEARCH_FETCH_MAX_BYTES: ${COGETO_RESEARCH_FETCH_MAX_BYTES:-5242880}
+      COGETO_RESEARCH_PAGES_PER_RUN: ${COGETO_RESEARCH_PAGES_PER_RUN:-5}
+      COGETO_RESEARCH_RETAIN_HTML: ${COGETO_RESEARCH_RETAIN_HTML:-}
+      COGETO_DAILY_RESEARCH_SEARCHES: ${COGETO_DAILY_RESEARCH_SEARCHES:-40}
+      COGETO_DAILY_RESEARCH_PAGES: ${COGETO_DAILY_RESEARCH_PAGES:-100}
     volumes:
       - web-config:/web-config:ro
       # QS-9: the app mounts the PUBLIC-KEY-ONLY volume (migrate copies the public
@@ -585,6 +599,39 @@ services:
       timeout: 5s
       retries: 18
       start_period: 90s
+    restart: unless-stopped
+
+  # ── Web discovery (profile research; Priority 5 Part A, decision 0042) ──────
+  #
+  # Self-hosted SearXNG: discovery queries public engines FROM THIS INSTANCE —
+  # no API key, no vendor, no query logging (metrics disabled, WARNING log
+  # level; see project/infra/docker/searxng/settings.yml for the curated engine
+  # set and how to adjust it). Internal-network only (no published ports);
+  # reachable at http://searxng:8080. Memory: roughly 100–200 MB RSS.
+  #
+  #   docker compose --profile research up
+  #
+  # The app profile-independently reads COGETO_SEARXNG_URL; with the profile
+  # down, research search answers a typed "search unavailable" — nothing breaks.
+  searxng:
+    profiles: ['research']
+    image: searxng/searxng@sha256:b8ca38ba06eea544d7555e88321e212ddc0d5c3c7de055419cfb2e5c6bf30812
+    environment:
+      SEARXNG_BASE_URL: http://searxng:8080/
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-cogeto-dev-searxng-secret}
+    volumes:
+      - ./project/infra/docker/searxng/settings.yml:/etc/searxng/settings.yml:ro
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -q
+        - --spider
+        - http://127.0.0.1:8080/healthz
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     restart: unless-stopped
 
   # ── Inbound mail (Session O4, decision 0028; roadmap D2) ────────────────────

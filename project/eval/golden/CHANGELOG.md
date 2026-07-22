@@ -89,3 +89,13 @@ One line per label change (docs/eval-golden-set.md §4 rule 5).
   `emails` seed field + resolver wiring for these. The hr case uses "the last
   message" (target null → most recent) to avoid a Croatian-declension miss on a
   named target; tighten with fuzzier name matching in a later tick.
+- 2026-07-22 (Priority 5 Part A — web research core): extraction tick — 2 web
+  cases (`en-w001-web-supplier-terms`, `hr-w001-web-cjenik`), the first with
+  `source_type: "web"`. Each `source.txt` is the narrow FETCHER'S OUTPUT (clean
+  readable text, title line first as the web SourceReader prepends it) — the
+  fetch/strip itself is covered by `fetcher_hardening`, not the golden set.
+  They probe third-person business facts with amounts and a dated term that
+  must land as a `valid_from` interval (web facts age; `source_date` plays the
+  fetch time, the "as of" anchor). Croatian authored idiomatically, not
+  translated. The harness maps `source_type: "web"` to a web SourceItem with
+  content passthrough.

@@ -10,6 +10,7 @@ import {
   fetchFileSource,
   fetchNote,
   fetchTaskConclusion,
+  fetchWebSource,
 } from '../api';
 import type { Session } from '../auth/oidc';
 import { invalidateAfterSourceDeletion } from '../query-invalidation';
@@ -79,6 +80,7 @@ export function SourceDrawer({
   const isChat = sourceType === 'chat';
   const isEmail = sourceType === 'email';
   const isTaskConclusion = sourceType === 'task_conclusion';
+  const isWeb = sourceType === 'web';
   const [draftError, setDraftError] = useState<string | null>(null);
   const [drafted, setDrafted] = useState(false);
 
@@ -106,6 +108,11 @@ export function SourceDrawer({
     queryKey: ['task-conclusion', sourceId],
     queryFn: () => fetchTaskConclusion(session, sourceId),
     enabled: isTaskConclusion,
+  });
+  const webQuery = useQuery({
+    queryKey: ['web-source', sourceId],
+    queryFn: () => fetchWebSource(session, sourceId),
+    enabled: isWeb,
   });
   const draftReply = useMutation({
     mutationFn: () => draftEmailReply(session, sourceId),
@@ -426,7 +433,41 @@ export function SourceDrawer({
           )}
         </>
       )}
-      {!isNote && !isFile && !isChat && !isEmail && !isTaskConclusion && (
+      {isWeb && (
+        <>
+          {webQuery.isPending && <SkeletonRows rows={3} label="Loading page…" />}
+          {webQuery.isError && <ErrorState>We couldn’t load this web source.</ErrorState>}
+          {webQuery.data && (
+            <div className="space-y-2 rounded-md bg-slate-50 p-3">
+              <p className="break-words text-sm font-medium text-slate-800">
+                {webQuery.data.title ?? webQuery.data.finalUrl}
+              </p>
+              <p className="break-all text-xs">
+                <a
+                  href={webQuery.data.finalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-teal-ink hover:underline"
+                >
+                  {webQuery.data.finalUrl}
+                </a>
+              </p>
+              <p className="text-xs text-slate-400">
+                Fetched {new Date(webQuery.data.fetchedAt).toLocaleString()} — facts from this page
+                are “as of” that moment.
+              </p>
+              <p className="flex flex-wrap items-center gap-2 text-xs">
+                {webQuery.data.sensitive && <SensitiveBadge />}
+                <span className="text-slate-400">scope: {webQuery.data.scope}</span>
+              </p>
+              <p className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md border border-slate-200 p-3 text-sm text-slate-700">
+                {webQuery.data.retainedText}
+              </p>
+            </div>
+          )}
+        </>
+      )}
+      {!isNote && !isFile && !isChat && !isEmail && !isTaskConclusion && !isWeb && (
         <p className="break-all rounded-md bg-slate-50 p-3 text-xs text-slate-600">{sourceId}</p>
       )}
 

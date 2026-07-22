@@ -61,6 +61,24 @@ export function buildLimits(env: NodeJS.ProcessEnv, demoMode: boolean): LimitsCo
       captureMax: pick(env.COGETO_DAILY_CAPTURE_MAX, env.COGETO_DEMO_DAILY_CAPTURE_MAX, 1000, 500),
       uploadMax: pick(env.COGETO_DAILY_UPLOAD_MAX, env.COGETO_DEMO_DAILY_UPLOAD_MAX, 300, 100),
     },
+    researchQuota: {
+      // Web research (Priority 5 Part A, decision 0043): searches and fetched
+      // pages are the two cost/abuse vectors — each capped per user per day,
+      // plus a per-request page cap so one research stays bounded.
+      searchesMax: pick(
+        env.COGETO_DAILY_RESEARCH_SEARCHES,
+        env.COGETO_DEMO_DAILY_RESEARCH_SEARCHES,
+        40,
+        10,
+      ),
+      pagesMax: pick(
+        env.COGETO_DAILY_RESEARCH_PAGES,
+        env.COGETO_DEMO_DAILY_RESEARCH_PAGES,
+        100,
+        20,
+      ),
+      pagesPerRunMax: num(env.COGETO_RESEARCH_PAGES_PER_RUN, 5),
+    },
     sse: {
       maxConcurrentPerPrincipal: pick(
         env.COGETO_SSE_MAX_CONCURRENT,

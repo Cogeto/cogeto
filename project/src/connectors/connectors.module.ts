@@ -22,12 +22,22 @@ import { EmailSettingsController } from './email-settings.controller';
 import { MailIntakeGuard } from './mail-intake.guard';
 import { MAIL_OPTIONS } from './mail-options';
 import type { MailOptions } from './mail-options';
+import { ResearchController } from './research.controller';
+import { ResearchService } from './research.service';
+import { RESEARCH_OPTIONS } from './research-options';
+import type { ResearchOptions } from './research-options';
+import { WebDiscoveryService } from './web-discovery.service';
+import { WebFetchService } from './web-fetch';
+import { WebSourceReader } from './web.source-reader';
+import { WebSourceDeletion } from './web.source-deletion';
 
 export interface ConnectorsModuleOptions {
   /** File-upload knobs from validated config (default 25 MB, §A.9 short TTL). */
   fileUpload: FileUploadOptions;
   /** Inbound-email knobs from validated config (Session O4, decision 0028). */
   mail: MailOptions;
+  /** Web-research knobs from validated config (Priority 5 Part A, 0042/0043). */
+  research: ResearchOptions;
 }
 
 /**
@@ -55,6 +65,7 @@ export class ConnectorsModule {
         EmailIntakeController,
         EmailSettingsController,
         EmailSourceController,
+        ResearchController,
       ],
       providers: [
         NotesService,
@@ -69,8 +80,14 @@ export class ConnectorsModule {
         EmailSourceDeletion,
         EmailSourceService,
         MailIntakeGuard,
+        ResearchService,
+        WebDiscoveryService,
+        WebFetchService,
+        WebSourceReader,
+        WebSourceDeletion,
         { provide: FILE_UPLOAD_OPTIONS, useValue: options.fileUpload },
         { provide: MAIL_OPTIONS, useValue: options.mail },
+        { provide: RESEARCH_OPTIONS, useValue: options.research },
       ],
       exports: [
         NotesService,
@@ -84,6 +101,9 @@ export class ConnectorsModule {
         EmailSourceReader,
         EmailSourceDeletion,
         EmailSourceService,
+        ResearchService,
+        WebSourceReader,
+        WebSourceDeletion,
       ],
     };
   }
