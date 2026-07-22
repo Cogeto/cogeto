@@ -7,16 +7,33 @@
  * never at first request.
  */
 
-export type ModelProviderId = 'mistral' | 'openai' | 'anthropic';
+export type ModelProviderId = 'mistral' | 'openai' | 'anthropic' | 'ollama';
 
-export const MODEL_PROVIDER_IDS: readonly ModelProviderId[] = ['mistral', 'openai', 'anthropic'];
+export const MODEL_PROVIDER_IDS: readonly ModelProviderId[] = [
+  'mistral',
+  'openai',
+  'anthropic',
+  'ollama',
+];
 
 /** Providers with an embeddings API — Anthropic has none (ruling 3). */
-export const EMBEDDING_CAPABLE: readonly ModelProviderId[] = ['mistral', 'openai'];
+export const EMBEDDING_CAPABLE: readonly ModelProviderId[] = ['mistral', 'openai', 'ollama'];
 
 export interface TierBinding {
   provider: ModelProviderId;
   model: string;
+}
+
+/**
+ * Local Ollama runtime binding (decision 0041). `baseUrl` is the runtime ROOT
+ * (never `/v1` — the adapter derives the OpenAI-compatible surface and the
+ * probe endpoint from it). Per-tier timeouts default higher than hosted
+ * providers: first-token latency on consumer hardware is seconds, not
+ * milliseconds (ruling 2).
+ */
+export interface OllamaRuntimeConfig {
+  baseUrl: string;
+  timeoutsMs: { pipeline: number; answer: number; embedding: number };
 }
 
 export interface ResolvedModelProviders {
@@ -30,6 +47,8 @@ export interface ResolvedModelProviders {
   /** API keys per provider — never logged, stored, or serialized to any DTO. */
   keys: Partial<Record<ModelProviderId, string>>;
   endpoints: { openaiBaseUrl: string; anthropicBaseUrl: string };
+  /** Present only when a tier is bound to the local runtime (decision 0041). */
+  ollama: OllamaRuntimeConfig | null;
   redacted: boolean;
 }
 
@@ -62,7 +81,22 @@ export const PROVIDER_PRESETS: Record<string, PresetTiers> = {
     answer: { provider: 'anthropic', model: 'claude-sonnet-4-6' },
     embedding: { provider: 'mistral', model: 'mistral-embed' },
   },
+  // All three tiers on the local Ollama runtime (decision 0041 ruling 4):
+  // generation on the pulled Gemma variant, embeddings on bge-m3 (multilingual,
+  // 1024 dimensions). Requires COGETO_OLLAMA_BASE_URL; needs no API key.
+  'ollama-local': {
+    pipeline: { provider: 'ollama', model: 'gemma3:12b' },
+    answer: { provider: 'ollama', model: 'gemma3:12b' },
+    embedding: { provider: 'ollama', model: 'bge-m3' },
+  },
 };
+
+/** Ruling 2 defaults: generation tiers 5 min, embeddings 2 min. */
+export const OLLAMA_TIMEOUT_DEFAULTS_MS = {
+  pipeline: 300_000,
+  answer: 300_000,
+  embedding: 120_000,
+} as const;
 
 const TIERS = ['pipeline', 'answer', 'embedding'] as const;
 type TierName = (typeof TIERS)[number];
@@ -78,6 +112,7 @@ const KEY_VAR: Record<ModelProviderId, string> = {
   mistral: 'COGETO_MISTRAL_API_KEY',
   openai: 'COGETO_OPENAI_API_KEY',
   anthropic: 'COGETO_ANTHROPIC_API_KEY',
+  ollama: 'COGETO_OLLAMA_API_KEY',
 };
 
 const slug = (value: string): string =>
@@ -224,9 +259,40 @@ export function resolveModelProviders(
   if (openaiKey) keys.openai = openaiKey;
   const anthropicKey = read(env, 'COGETO_ANTHROPIC_API_KEY');
   if (anthropicKey) keys.anthropic = anthropicKey;
+  // The local runtime requires no real key (decision 0041 ruling 1): a dummy
+  // bearer is synthesized unless the operator fronts the runtime with an
+  // authenticating proxy — so the missing-key refusal below never fires for
+  // ollama while staying exactly as strict for every hosted provider.
+  keys.ollama = read(env, 'COGETO_OLLAMA_API_KEY') ?? 'ollama';
 
   const referenced = [...new Set(TIERS.map((tier) => tiers[tier].provider))];
   const missingKeys = referenced.filter((provider) => !keys[provider]);
+
+  // Local runtime binding (decision 0041 ruling 1): the base URL has NO
+  // default — localhost, LAN, and WireGuard addresses are all deployment
+  // choices — so a tier bound to ollama without it refuses boot naming the
+  // variable. A pasted `/v1` suffix is tolerated and stripped: the config
+  // names the runtime root; the adapter derives the API surfaces.
+  let ollama: OllamaRuntimeConfig | null = null;
+  if (referenced.includes('ollama')) {
+    const rawBaseUrl = read(env, 'COGETO_OLLAMA_BASE_URL');
+    if (!rawBaseUrl) {
+      throw new ModelProviderConfigError(
+        `provider "ollama" is selected for ${TIERS.filter(
+          (tier) => tiers[tier].provider === 'ollama',
+        ).join(', ')} but COGETO_OLLAMA_BASE_URL is not set — set it to the Ollama runtime root ` +
+          `(e.g. http://10.0.0.1:11434)`,
+      );
+    }
+    ollama = {
+      baseUrl: rawBaseUrl.replace(/\/+$/, '').replace(/\/v1$/, ''),
+      timeoutsMs: {
+        pipeline: readTimeoutMs(env, 'COGETO_OLLAMA_TIMEOUT_PIPELINE_MS', 'pipeline'),
+        answer: readTimeoutMs(env, 'COGETO_OLLAMA_TIMEOUT_ANSWER_MS', 'answer'),
+        embedding: readTimeoutMs(env, 'COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS', 'embedding'),
+      },
+    };
+  }
 
   // v1 parity: a purely implicit mistral-default instance without a key boots
   // with model features off (typed error on use) instead of refusing.
@@ -257,8 +323,26 @@ export function resolveModelProviders(
       openaiBaseUrl: read(env, 'COGETO_OPENAI_BASE_URL') ?? DEFAULT_OPENAI_BASE_URL,
       anthropicBaseUrl: read(env, 'COGETO_ANTHROPIC_BASE_URL') ?? DEFAULT_ANTHROPIC_BASE_URL,
     },
+    ollama,
     redacted: options.redacted,
   };
+}
+
+/** Per-tier local timeout (decision 0041 ruling 2), independently settable. */
+function readTimeoutMs(
+  env: NodeJS.ProcessEnv,
+  name: string,
+  tier: keyof typeof OLLAMA_TIMEOUT_DEFAULTS_MS,
+): number {
+  const raw = read(env, name);
+  if (raw === undefined) return OLLAMA_TIMEOUT_DEFAULTS_MS[tier];
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new ModelProviderConfigError(
+      `${name}="${raw}" is not a positive integer number of milliseconds`,
+    );
+  }
+  return value;
 }
 
 function presetForTiers(tiers: PresetTiers): string | null {

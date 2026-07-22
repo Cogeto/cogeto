@@ -3,7 +3,9 @@
 Working notes for decision 0040 (issues #173/#174/#175). The gateway, Mistral-only
 in v1 behind the provider-neutral seam, now has OpenAI-compatible and Anthropic
 adapters, selected per instance by configuration and proven per configuration on
-the trust page.
+the trust page. The local Ollama runtime (Post-v1 Priority 4, decision 0041) is
+a fourth provider through the same doorway — setup, presets, and the measured
+parity table live in [`local-models.md`](local-models.md).
 
 ## The shape
 

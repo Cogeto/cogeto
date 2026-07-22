@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import type { Logger } from 'pino';
 import { createDb } from '../infrastructure/index';
-import { listForeignEmbeddingModels } from '../memory/index';
+import { listForeignEmbeddingModels, vectorIndexDimensionMismatch } from '../memory/index';
 import type { CogetoConfig } from './config';
 
 /**
@@ -37,7 +37,9 @@ export function logModelConfiguration(logger: Logger, config: CogetoConfig): voi
  * if stored vectors were produced by a different embeddings model than the
  * active one, serving would silently mix embedding spaces — the app and worker
  * refuse to start until `npm run reindex` (which is exempt: it exists to
- * re-embed exactly those rows) has run.
+ * re-embed exactly those rows) has run. Extended by decision 0041 ruling 5:
+ * the DIMENSION of the live collection must also agree with the active model —
+ * a model-name check alone cannot see a collection left at another size.
  */
 export async function assertEmbeddingSpaceConsistent(config: CogetoConfig): Promise<void> {
   if (!config.modelProviders.configured) return; // no active model → nothing can mix
@@ -55,5 +57,19 @@ export async function assertEmbeddingSpaceConsistent(config: CogetoConfig): Prom
     }
   } finally {
     await pool.end();
+  }
+  const mismatch = await vectorIndexDimensionMismatch({
+    url: config.qdrantUrl,
+    apiKey: config.qdrantApiKey,
+    embeddingModel: active,
+  });
+  if (mismatch) {
+    throw new Error(
+      `vector index dimension mismatch: the collection holds ${mismatch.actual}-dimension ` +
+        `vectors but the active embeddings model ${active} produces ${mismatch.expected} — ` +
+        `refusing to serve vector search against a stale index (decision 0041 ruling 5). ` +
+        `Run \`docker compose exec worker npm run reindex\` (it recreates the collection at ` +
+        `the correct dimension and re-embeds from Postgres), then start again.`,
+    );
   }
 }

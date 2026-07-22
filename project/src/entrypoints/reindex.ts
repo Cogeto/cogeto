@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { Pool } from 'pg';
 import { createDb } from '../infrastructure/index';
 import { reindexMemories } from '../memory/index';
-import { createModelGateway } from '../model-gateway/index';
+import { assertLocalRuntimeReady, createModelGateway } from '../model-gateway/index';
 import { loadConfig, redactionOptions } from './config';
 
 /**
@@ -21,6 +21,9 @@ async function main(): Promise<void> {
     providers: config.modelProviders,
     redaction: redactionOptions(config),
   });
+  // About to issue the full corpus's embedding calls — probe the local runtime
+  // first so a down runtime or missing model fails before any work (0041 r2).
+  await assertLocalRuntimeReady(config.modelProviders);
 
   const report = await reindexMemories({
     db,

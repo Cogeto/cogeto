@@ -253,6 +253,44 @@ onto a yellow instance.
      history, and all of it is exportable — they can leave anytime.
 6. Record onboarding date and trial dates in the tracker (section 8).
 
+### 4b. Model configuration and local models (Ollama)
+
+The default configuration is EU-hosted Mistral (`sudo ./cogeto configure
+--mistral-key <key>` at install). Everything below is optional and per
+instance; the full reference is
+[`docs/notes/model-providers.md`](notes/model-providers.md) (bring-your-own-key)
+and [`docs/notes/local-models.md`](notes/local-models.md) (local runtime,
+decision 0041).
+
+To run tiers on a customer-owned **Ollama** host:
+
+1. **On the Ollama host**: install Ollama, then `ollama pull gemma3:12b` (or
+   the chosen generation model) and `ollama pull bge-m3` (embeddings).
+2. **Networking**: the compose containers must reach the runtime address. A
+   LAN or same-host address usually just works; for a WireGuard address the
+   VM (the Docker **host**) must hold the wg route and forward traffic from
+   the Docker bridge subnet (or run Ollama bound to an address the bridge can
+   reach). Verify **from inside a container** before changing configuration:
+   `sudo docker compose exec app node -e "fetch('http://<addr>:11434/api/tags').then(r=>r.text()).then(console.log)"`.
+3. **Configure** in `/srv/cogeto/.env` — all-local:
+   `COGETO_PROVIDER_PRESET=ollama-local` and
+   `COGETO_OLLAMA_BASE_URL=http://<addr>:11434` — or the recommended mixed
+   posture (hosted generation, local embeddings):
+   `COGETO_PROVIDER_EMBEDDINGS=ollama`, `COGETO_MODEL_EMBEDDINGS=bge-m3`,
+   plus the base URL. No API key is needed for Ollama.
+4. **Changing the embeddings tier requires a reindex** — the instance
+   refuses to boot on a changed embedding space until it runs:
+   `sudo docker compose exec worker npm run reindex` (progress prints
+   done/total; safe to re-run if interrupted).
+5. `sudo docker compose up -d` and check `sudo ./cogeto status`: boot probes
+   the runtime and **fails loudly** if it is unreachable or a model is not
+   pulled (the error names the exact `ollama pull` command). Settings → Model
+   configuration shows the active configuration id.
+
+Before recommending a local preset, read the measured per-task, per-language
+parity table in `docs/notes/local-models.md` — where all-local misses parity
+the mixed posture stays the recommendation, and the gap is stated there.
+
 ---
 
 ## 5. Backups and restore (roadmap D4)
@@ -404,6 +442,9 @@ sudo docker compose logs --tail 200 app      # or: worker, mail, caddy, zitadel
 | Forwarded mail never arrives | In order of frequency: sent from an address that is neither the user's **registered address** nor on their **allowlist** (decision 0031); MX record wrong/missing; TCP 25 blocked; wrong recipient address | Check **Settings → Email capture → Recently refused** first (a refusal row = SMTP and Haraka are fine — the reason is shown; forward from the registered address, or claim the external sender in one click). Note the **admin account never captures**. Then `dig +short MX in.<domain>`; then confirm port 25 open (firewall) and `sudo docker compose logs mail`. Recipient must be exactly `capture@in.<domain>`. |
 | Mail accepted at SMTP but no memories appear | Pipeline/dead-letter problem | `sudo ./cogeto status` queue line; dashboard System → dead-letter for the failed job and its error; `sudo docker compose logs worker`. |
 | Chat/extraction fail with a model error | No or invalid Mistral key | `sudo ./cogeto configure --mistral-key <key>` (the script restarts what's needed). |
+| Boot fails with "Ollama runtime unreachable" | Runtime down, or the container cannot route to the address (WireGuard/bridge) | Check the runtime is up (`curl http://<addr>:11434/api/tags` from the VM), then from inside a container (section 4b step 2); fix `COGETO_OLLAMA_BASE_URL` or the host route. |
+| Boot fails with "model ... is not available on the Ollama runtime" | Model never pulled on the Ollama host | Run the exact `ollama pull <model>` command from the error on the Ollama host, then `sudo docker compose up -d`. |
+| Local chat/extraction times out | Model too large for the hardware, or first-load latency | Raise `COGETO_OLLAMA_TIMEOUT_ANSWER_MS` / `_PIPELINE_MS` (defaults 300000) or use a smaller model; the first call after idle loads the model into memory. |
 | Status: "running image differs from configured" | An upgrade or restart did not complete | `cd /srv/cogeto && sudo docker compose up -d`, re-run status; if it persists, re-run `sudo ./cogeto upgrade <configured version>`. |
 | A container is `unhealthy`/restarting | Varies — read its logs | `sudo docker compose logs --tail 200 <service>`. Disk-full is the classic silent killer: status prints `df`; volumes live under `/var/lib/docker`. |
 | Deletion-sweep alert / receipt chain not green | Integrity finding — the product's core promise | Do not improvise. Read the alert in System, capture logs, and escalate to the owner before touching data. |

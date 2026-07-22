@@ -115,6 +115,27 @@ function buildProviderGateway(
           answerModel: modelIf('answer'),
         });
         break;
+      case 'ollama': {
+        // The local flavor of the OpenAI-compatible adapter (decision 0041
+        // ruling 1): same HTTP surface under <root>/v1, local knobs on top —
+        // per-tier timeouts, the tags probe, the `ollama pull` 404 hint. The
+        // resolver refused boot without the base URL; the belt mirrors the
+        // key assertion above.
+        const ollama = providers.ollama;
+        if (!ollama) throw new Error('provider "ollama" is selected but has no base URL');
+        adapter = new OpenAiCompatibleModelGateway({
+          apiKey: key,
+          baseUrl: `${ollama.baseUrl}/v1`,
+          providerLabel: 'ollama',
+          tierTimeoutsMs: ollama.timeoutsMs,
+          localRuntime: { rootUrl: ollama.baseUrl },
+          pipelineModel: modelIf('pipeline'),
+          answerModel: modelIf('answer'),
+          embedModel: modelIf('embedding'),
+          temperature,
+        });
+        break;
+      }
     }
     adapters.set(provider, adapter);
     return adapter;

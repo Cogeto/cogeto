@@ -88,6 +88,13 @@ services:
       COGETO_OPENAI_BASE_URL: ${COGETO_OPENAI_BASE_URL:-}
       COGETO_ANTHROPIC_API_KEY: ${COGETO_ANTHROPIC_API_KEY:-}
       COGETO_ANTHROPIC_BASE_URL: ${COGETO_ANTHROPIC_BASE_URL:-}
+      # Local Ollama runtime (decision 0041): runtime root URL (no /v1), the
+      # optional reverse-proxy key, and per-tier timeouts for local inference.
+      COGETO_OLLAMA_BASE_URL: ${COGETO_OLLAMA_BASE_URL:-}
+      COGETO_OLLAMA_API_KEY: ${COGETO_OLLAMA_API_KEY:-}
+      COGETO_OLLAMA_TIMEOUT_PIPELINE_MS: ${COGETO_OLLAMA_TIMEOUT_PIPELINE_MS:-}
+      COGETO_OLLAMA_TIMEOUT_ANSWER_MS: ${COGETO_OLLAMA_TIMEOUT_ANSWER_MS:-}
+      COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS: ${COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS:-}
       COGETO_LOG_LEVEL: ${COGETO_LOG_LEVEL:-info}
       # Ana sandbox (decision 0022). Off by default and FAIL-CLOSED (QS-3):
       # serving the pre-minted demo session (a token published to anyone) now

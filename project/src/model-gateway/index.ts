@@ -20,8 +20,17 @@ export {
   PROVIDER_PRESETS,
   EMBEDDING_CAPABLE,
   MODEL_PROVIDER_IDS,
+  OLLAMA_TIMEOUT_DEFAULTS_MS,
 } from './provider-config';
-export type { ResolvedModelProviders, TierBinding, ModelProviderId } from './provider-config';
+export type {
+  ResolvedModelProviders,
+  TierBinding,
+  ModelProviderId,
+  OllamaRuntimeConfig,
+} from './provider-config';
+// Local-runtime boot probe (decision 0041 ruling 2): fail loudly at startup,
+// never at first request. Called by the app, worker, and reindex entrypoints.
+export { assertLocalRuntimeReady, modelAvailable } from './local-runtime';
 export type {
   CompletionRequest,
   CompletionResult,

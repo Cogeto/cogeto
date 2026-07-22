@@ -206,6 +206,42 @@ describe('eval_emission_config_correct', () => {
     // The emitted id stays inside the published schema's pattern.
     expect(emission.id).toMatch(/^[a-z0-9][a-z0-9-]*$/);
   });
+
+  it('emits the local configurations with correct ids (decision 0041 ruling 6)', () => {
+    // All-local: the ollama-local preset id.
+    const allLocal = configurationForEmission(
+      resolveModelProviders(
+        {
+          COGETO_PROVIDER_PRESET: 'ollama-local',
+          COGETO_OLLAMA_BASE_URL: 'http://10.0.0.1:11434',
+        } as NodeJS.ProcessEnv,
+        { redacted: false },
+      ),
+    );
+    expect(allLocal).toEqual({
+      id: 'ollama-local',
+      models: { pipeline: 'gemma3:12b', answer: 'gemma3:12b', embedding: 'bge-m3' },
+    });
+    expect(allLocal.id).toMatch(/^[a-z0-9][a-z0-9-]*$/);
+
+    // Embeddings-only local (hosted generation + bge-m3): the honest mixed id.
+    const mixed = configurationForEmission(
+      resolveModelProviders(
+        {
+          COGETO_MISTRAL_API_KEY: 'k',
+          COGETO_PROVIDER_EMBEDDINGS: 'ollama',
+          COGETO_MODEL_EMBEDDINGS: 'bge-m3',
+          COGETO_OLLAMA_BASE_URL: 'http://10.0.0.1:11434',
+        } as NodeJS.ProcessEnv,
+        { redacted: false },
+      ),
+    );
+    expect(mixed.id).toBe(
+      'pipe-mistral-mistral-small-latest--ans-mistral-mistral-medium-latest--emb-ollama-bge-m3',
+    );
+    expect(mixed.models.embedding).toBe('bge-m3');
+    expect(mixed.id).toMatch(/^[a-z0-9][a-z0-9-]*$/);
+  });
 });
 
 describe('trust scores — publish (immutability + index)', () => {

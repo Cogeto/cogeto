@@ -180,3 +180,93 @@ describe('config_id_stable — same config yields same id; any tier change yield
     );
   });
 });
+
+describe('ollama_config — the local provider flavor (decision 0041 ruling 1)', () => {
+  const OLLAMA = {
+    COGETO_PROVIDER_PRESET: 'ollama-local',
+    COGETO_OLLAMA_BASE_URL: 'http://10.0.0.1:11434',
+  };
+
+  it('the ollama-local preset resolves all three tiers local with NO key required', () => {
+    const providers = resolve(OLLAMA);
+    expect(providers.configured).toBe(true);
+    expect(providers.id).toBe('ollama-local');
+    expect(providers.preset).toBe('ollama-local');
+    expect(providers.tiers.pipeline).toEqual({ provider: 'ollama', model: 'gemma3:12b' });
+    expect(providers.tiers.answer).toEqual({ provider: 'ollama', model: 'gemma3:12b' });
+    expect(providers.tiers.embedding).toEqual({ provider: 'ollama', model: 'bge-m3' });
+    expect(providers.ollama?.baseUrl).toBe('http://10.0.0.1:11434');
+  });
+
+  it('a tier on ollama without the base URL refuses boot naming the variable', () => {
+    expect(() => resolve({ COGETO_PROVIDER_PRESET: 'ollama-local' })).toThrowError(
+      /provider "ollama" is selected for pipeline, answer, embedding but COGETO_OLLAMA_BASE_URL is not set/,
+    );
+  });
+
+  it('a pasted /v1 suffix and trailing slashes are stripped: config names the root', () => {
+    const providers = resolve({ ...OLLAMA, COGETO_OLLAMA_BASE_URL: 'http://localhost:11434/v1/' });
+    expect(providers.ollama?.baseUrl).toBe('http://localhost:11434');
+  });
+
+  it('an optional reverse-proxy key replaces the synthesized dummy bearer', () => {
+    expect(resolve(OLLAMA).keys.ollama).toBe('ollama');
+    expect(resolve({ ...OLLAMA, COGETO_OLLAMA_API_KEY: 'proxy-key' }).keys.ollama).toBe(
+      'proxy-key',
+    );
+  });
+
+  it('mixed posture: local embeddings under hosted generation derives an honest id', () => {
+    const providers = resolve({
+      COGETO_MISTRAL_API_KEY: 'k',
+      COGETO_PROVIDER_EMBEDDINGS: 'ollama',
+      COGETO_MODEL_EMBEDDINGS: 'bge-m3',
+      COGETO_OLLAMA_BASE_URL: 'http://10.0.0.1:11434',
+    });
+    expect(providers.id).toBe(
+      'pipe-mistral-mistral-small-latest--ans-mistral-mistral-medium-latest--emb-ollama-bge-m3',
+    );
+    expect(providers.tiers.embedding).toEqual({ provider: 'ollama', model: 'bge-m3' });
+  });
+
+  it('hosted configurations resolve NO local runtime binding', () => {
+    expect(resolve({ COGETO_MISTRAL_API_KEY: 'k' }).ollama).toBeNull();
+  });
+});
+
+describe('local_timeouts_config — per-tier local timeouts (decision 0041 ruling 2)', () => {
+  const OLLAMA = {
+    COGETO_PROVIDER_PRESET: 'ollama-local',
+    COGETO_OLLAMA_BASE_URL: 'http://10.0.0.1:11434',
+  };
+
+  it('defaults are high for local inference: 300s generation, 120s embeddings', () => {
+    expect(resolve(OLLAMA).ollama?.timeoutsMs).toEqual({
+      pipeline: 300_000,
+      answer: 300_000,
+      embedding: 120_000,
+    });
+  });
+
+  it('each tier timeout is INDEPENDENTLY settable', () => {
+    const providers = resolve({ ...OLLAMA, COGETO_OLLAMA_TIMEOUT_ANSWER_MS: '600000' });
+    expect(providers.ollama?.timeoutsMs).toEqual({
+      pipeline: 300_000,
+      answer: 600_000,
+      embedding: 120_000,
+    });
+    const all = resolve({
+      ...OLLAMA,
+      COGETO_OLLAMA_TIMEOUT_PIPELINE_MS: '10000',
+      COGETO_OLLAMA_TIMEOUT_ANSWER_MS: '20000',
+      COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS: '30000',
+    });
+    expect(all.ollama?.timeoutsMs).toEqual({ pipeline: 10_000, answer: 20_000, embedding: 30_000 });
+  });
+
+  it('a non-numeric timeout refuses boot naming the variable', () => {
+    expect(() => resolve({ ...OLLAMA, COGETO_OLLAMA_TIMEOUT_PIPELINE_MS: 'fast' })).toThrowError(
+      /COGETO_OLLAMA_TIMEOUT_PIPELINE_MS="fast" is not a positive integer/,
+    );
+  });
+});

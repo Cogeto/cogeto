@@ -1,6 +1,6 @@
 /** Model provider configuration display (decision 0040; Settings surface). */
 
-export type ModelProviderIdDto = 'mistral' | 'openai' | 'anthropic';
+export type ModelProviderIdDto = 'mistral' | 'openai' | 'anthropic' | 'ollama';
 
 export interface ModelTierBindingDto {
   provider: ModelProviderIdDto;
