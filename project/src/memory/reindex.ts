@@ -58,7 +58,9 @@ export async function reindexMemories(options: ReindexOptions): Promise<ReindexR
     collection: options.collection,
   });
   const store = new MemoryStore(options.db, vectors);
-  await vectors.ensureCollection();
+  // Reindex is the rebuild path (§A.4): an embeddings-model switch with a new
+  // vector size drops and recreates the collection here (issue #179).
+  await vectors.ensureCollection({ recreateOnDimensionMismatch: true });
 
   const report: ReindexReport = {
     totalMemories: 0,
