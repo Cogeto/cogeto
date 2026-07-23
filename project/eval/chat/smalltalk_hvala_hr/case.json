@@ -1,0 +1,11 @@
+{
+  "case_id": "smalltalk_hvala_hr",
+  "description": "smalltalk_natural, hr, live (decision 0046): a compound Croatian thanks routes through the model classifier to a natural reply — no sources, no citations, no nothing-on-record.",
+  "anchor": "2026-07-23T09:00:00.000Z",
+  "script": ["hvala, to mi je stvarno pomoglo!"],
+  "checks": {
+    "smalltalk": true,
+    "no_mechanics": true,
+    "citations_valid": true
+  }
+}

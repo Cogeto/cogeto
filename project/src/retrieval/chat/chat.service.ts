@@ -18,7 +18,9 @@ import type {
 } from '@cogeto/shared';
 import {
   deadLetter,
+  DEFAULT_INSTANCE_TIMEZONE,
   DRIZZLE,
+  INSTANCE_TIMEZONE,
   jobExecution,
   withTransactionalEnqueue,
 } from '../../infrastructure/index';
@@ -30,12 +32,12 @@ import type { PromptArtifact } from '../../model-gateway/index';
 import { UserDirectory } from '../../identity/index';
 import { RetrievalService } from '../retrieval.service';
 import type { RetrievedMemory } from '../retrieval.service';
-import type { ConversationTurn, CreateTaskIntent } from '../query-rewrite';
+import type { ConversationTurn, CreateTaskIntent, SmallTalkIntent } from '../query-rewrite';
 import {
   ANAPHORA_RE,
   detectCreateTaskIntent,
-  detectEmailReplyIntent,
   detectResearchIntent,
+  detectSmallTalk,
   rewriteQuery,
 } from '../query-rewrite';
 import { queryEntityCandidates } from '../query-entities';
@@ -47,6 +49,7 @@ import { chatMessage } from '../persistence/tables';
 import {
   ANSWER_PROMPT,
   buildAnswerInput,
+  buildSmallTalkInput,
   NOTHING_ON_RECORD,
   NOTHING_OPEN,
   toStoredAnswer,
@@ -95,6 +98,11 @@ export class ChatService {
     @Optional()
     @Inject(CHAT_RESEARCH_RESOLVER)
     private readonly researchResolver?: ChatResearchResolverPort,
+    // Instance timezone for the router's precomputed rewrite (QS-32 parity
+    // with retrieval's own rewriter call).
+    @Optional()
+    @Inject(INSTANCE_TIMEZONE)
+    private readonly timeZone: string = DEFAULT_INSTANCE_TIMEZONE,
   ) {}
 
   async listMessages(principal: Principal): Promise<ChatMessageDto[]> {
@@ -237,6 +245,13 @@ export class ChatService {
    * One question → one SSE stream: sources first (the frontend builds its
    * citation map before tokens arrive), then token deltas, then done with the
    * stored form of the answer.
+   *
+   * Routing (decision 0046) — one router, all capabilities, in this order:
+   * deterministic guards first (small-talk lexicon, create-task, research),
+   * then ONE bounded pipeline-tier call (the rewriter, now also the
+   * classifier) whose result routes model-classified small talk, the reply
+   * intent (with resolved anaphora), and the memory/knowledge answer paths.
+   * Classification failure falls back to the memory-question path.
    */
   async *ask(principal: Principal, content: string): AsyncGenerator<ChatStreamEvent> {
     // Prior turns (before this one) feed the conversational rewriter (F3).
@@ -245,6 +260,14 @@ export class ChatService {
       .insert(chatMessage)
       .values({ ownerId: principal.userId, role: 'user', content })
       .returning();
+
+    // Small talk, deterministic (decision 0046): a pure pleasantry gets a
+    // natural reply — no retrieval, no model call, no citation theatre.
+    const smallTalk = detectSmallTalk(content);
+    if (smallTalk) {
+      yield* this.handleSmallTalk(principal, smallTalk);
+      return;
+    }
 
     // Create-a-task intent (decision 0038): checked BEFORE the reply intent so
     // "remind me to reply to Ana" makes a task, not a draft. Deterministic
@@ -261,28 +284,56 @@ export class ChatService {
     // explicitly invoked — an imperative research verb, never an ordinary
     // question. This turn only OPENS the gate (minimise + record a proposed
     // run); NOTHING is sent until the user approves on the Research page.
+    // A topic leaning on earlier turns ("research her company") resolves
+    // through the rewriter first, same as create-task references.
     if (this.researchResolver) {
       const research = detectResearchIntent(content);
       if (research) {
-        yield* this.handleResearchIntent(principal, research.topic, research.lang);
+        let topic = research.topic;
+        if (ANAPHORA_RE.test(topic) && queryEntityCandidates(topic).length === 0) {
+          const resolved = await this.routerRewrite(history, topic);
+          if (
+            queryEntityCandidates(resolved.query).length > 0 ||
+            !ANAPHORA_RE.test(resolved.query)
+          ) {
+            topic = resolved.query;
+          }
+        }
+        yield* this.handleResearchIntent(principal, topic, research.lang);
         return;
       }
     }
 
-    // Draft-a-reply intent (Session O4): deterministic detection; if it fires and
-    // the resolver is wired, this turn creates an email reply draft (or asks /
-    // declines) — fast path, no ingestion work, no sending. Then we return.
-    if (this.replyResolver) {
-      const replyIntent = detectEmailReplyIntent(content);
-      if (replyIntent) {
-        yield* this.handleReplyIntent(principal, replyIntent.target);
-        return;
-      }
+    // The router call (decision 0046): ONE bounded pipeline-tier call rewrites
+    // the turn AND classifies it. Failure/timeout falls back to the raw query
+    // with class 'personal' — the memory-question path.
+    const rewrite = await this.routerRewrite(history, content, { alwaysClassify: true });
+
+    // Model-classified small talk / meta (beyond the lexicon): a natural,
+    // brief answer-tier reply — still no retrieval.
+    if (rewrite.questionClass === 'smalltalk') {
+      yield* this.handleModelSmallTalk(principal, content, history);
+      return;
     }
 
+    // Draft-a-reply intent (Session O4): deterministic detection on the raw
+    // turn; the router's resolved entities let "draft a reply to her last
+    // email" reach the right sender. If the resolver is wired, this turn
+    // creates an email reply draft (or asks / declines) — fast path, no
+    // ingestion work, no sending. Then we return.
+    if (this.replyResolver && rewrite.emailReply) {
+      yield* this.handleReplyIntent(principal, rewrite.emailReply.target);
+      return;
+    }
+
+    // Memory-first (decision 0046): retrieval runs for BOTH personal and
+    // knowledge questions — grounded facts always come first; general
+    // knowledge supplements, marked, never replaces.
+    const knowledge = rewrite.questionClass === 'knowledge';
     const retrieved = await this.retrieval.retrieve(principal, content, {
       topK: ANSWER_FACTS_TOP_K,
       history,
+      rewrite,
     });
     const facts = retrieved.memories.map((hit, i) => toFactDto(hit, i));
     // Attribute cited shared facts to their owner (O2-B) — name-only; the gates
@@ -296,7 +347,7 @@ export class ChatService {
       // Zero open loops is an ANSWER (all clear), not a data gap (F3-B).
       answer = NOTHING_OPEN;
       yield { type: 'token', text: answer };
-    } else if (facts.length === 0) {
+    } else if (facts.length === 0 && !knowledge) {
       // The zero-retrieval path: no model call, no generation from thin air.
       answer = NOTHING_ON_RECORD;
       yield { type: 'token', text: answer };
@@ -309,6 +360,7 @@ export class ChatService {
           temporal: retrieved.temporal,
           changes: retrieved.changes,
           tasks: retrieved.tasks,
+          knowledge,
         }),
         tier: 'answer',
       });
@@ -322,6 +374,100 @@ export class ChatService {
     const { text: stored, violations } = toStoredAnswer(answer, facts);
     if (violations > 0) {
       // Metadata only — never the answer content or tokens (pino rule).
+      this.logger.warn(`citation_violation stripped=${violations}`);
+    }
+    const [row] = await this.db
+      .insert(chatMessage)
+      .values({ ownerId: principal.userId, role: 'assistant', content: stored })
+      .returning();
+    // The research offer (decision 0046): every knowledge-class answer OFFERS
+    // research as a one-tap bridge into the existing gate — never a silent
+    // search. The offer carries the self-contained topic; tapping it proposes.
+    const researchOffer = knowledge && this.researchResolver ? { topic: rewrite.query } : null;
+    yield {
+      type: 'done',
+      messageId: row!.id,
+      content: stored,
+      citationViolations: violations,
+      researchOffer,
+    };
+  }
+
+  /** The router's bounded rewrite call — shared fallback semantics (0046). */
+  private routerRewrite(
+    history: ConversationTurn[],
+    question: string,
+    options: { alwaysClassify?: boolean } = {},
+  ) {
+    return rewriteQuery(
+      this.gateway,
+      history,
+      question,
+      undefined,
+      undefined,
+      this.timeZone,
+      options,
+    );
+  }
+
+  /**
+   * Deterministic small talk (decision 0046): a natural, brief reply in the
+   * matched language. No retrieval, no model call, no citations — "thanks!"
+   * never earns a source chip or a "nothing on record".
+   */
+  private async *handleSmallTalk(
+    principal: Principal,
+    intent: SmallTalkIntent,
+  ): AsyncGenerator<ChatStreamEvent> {
+    yield { type: 'sources', facts: [] };
+    const hr = intent.lang === 'hr';
+    const replies: Record<SmallTalkIntent['kind'], string> = hr
+      ? {
+          thanks: 'Nema na čemu — drago mi je da je pomoglo.',
+          greeting: 'Bok! Kako mogu pomoći?',
+          farewell: 'Pozdrav — tu sam kad zatrebaš.',
+          ack: 'Super. Mogu li još s čime pomoći?',
+        }
+      : {
+          thanks: 'You’re welcome — glad it helped.',
+          greeting: 'Hi! What can I help you with?',
+          farewell: 'Take care — I’ll be here when you need me.',
+          ack: 'Great. Anything else I can help with?',
+        };
+    const answer = replies[intent.kind];
+    yield { type: 'token', text: answer };
+    const [row] = await this.db
+      .insert(chatMessage)
+      .values({ ownerId: principal.userId, role: 'assistant', content: answer })
+      .returning();
+    yield { type: 'done', messageId: row!.id, content: answer, citationViolations: 0 };
+  }
+
+  /**
+   * Model-classified small talk / meta (decision 0046): pleasantries and
+   * questions about Cogeto itself that the lexicon does not cover ("what can
+   * you do?"). A brief answer-tier reply with the recent turns for tone — no
+   * retrieval, and the sanitizer still guarantees no marker can leak.
+   */
+  private async *handleModelSmallTalk(
+    principal: Principal,
+    content: string,
+    history: ConversationTurn[],
+  ): AsyncGenerator<ChatStreamEvent> {
+    yield { type: 'sources', facts: [] };
+    const prompt = await this.getPrompt();
+    let buffer = '';
+    const stream = this.gateway.completeStream({
+      system: prompt.content,
+      input: buildSmallTalkInput(history, content),
+      tier: 'answer',
+    });
+    for await (const text of stream) {
+      buffer += text;
+      yield { type: 'token', text };
+    }
+    const { text: stored, violations } = toStoredAnswer(buffer, []);
+    if (violations > 0) {
       this.logger.warn(`citation_violation stripped=${violations}`);
     }
     const [row] = await this.db
@@ -449,7 +595,7 @@ export class ChatService {
       // holds the recent history). Conservative: if no named person or thing
       // survives resolution, ask instead of guessing.
       if (ANAPHORA_RE.test(instruction) && queryEntityCandidates(instruction).length === 0) {
-        const rewritten = await rewriteQuery(this.gateway, history, instruction);
+        const rewritten = await this.routerRewrite(history, instruction);
         if (
           queryEntityCandidates(rewritten.query).length > 0 ||
           !ANAPHORA_RE.test(rewritten.query)

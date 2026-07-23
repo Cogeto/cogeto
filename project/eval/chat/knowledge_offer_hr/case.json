@@ -1,0 +1,13 @@
+{
+  "case_id": "knowledge_offer_hr",
+  "description": "research_never_silent, hr, live (decision 0046): a Croatian general-knowledge question answers marked {{unsourced}} with the research offer and no silent search.",
+  "anchor": "2026-07-23T09:00:00.000Z",
+  "script": ["Što je fiskalizacija i koga obvezuje?"],
+  "checks": {
+    "research_offer": true,
+    "unsourced_required": true,
+    "no_mechanics": true,
+    "citations_valid": true,
+    "must_include": ["fiskalizacij"]
+  }
+}

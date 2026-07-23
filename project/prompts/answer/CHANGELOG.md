@@ -4,6 +4,22 @@ Prompt family for the fast-path chat answerer (S3-A): answers only from the
 retrieved fact blocks, cites with inline `[F#]` markers, says plainly when the
 facts do not cover the question.
 
+## v0005 — 2026-07-23 (Priority 6)
+
+Per-claim provenance across three origins (decision 0046). A new
+`GENERAL KNOWLEDGE: allowed` input line (present only for knowledge-class
+questions) permits blending: claims resting on provided facts keep their
+`[F#]` markers (including web-sourced facts), and every statement from the
+model's own knowledge ends with the new `[U]` marker — per statement, never
+per paragraph; an unmarked claim-bearing sentence is defined as the model's
+failure. The order of authority is frozen: the user's facts beat model
+knowledge, contradictions are stated plainly with both origins marked, and
+unsure means saying so with `[U]` rather than fabricating. Without the line,
+`[U]` is forbidden and facts-only behavior is verbatim v0004. Adds `smalltalk`
+mode (natural brief reply, no markers, honest capability description, RECENT
+TURNS for tone) and lets the honest-gap path append marked general knowledge
+when allowed. Everything else verbatim from v0004.
+
 ## v0004 — 2026-07-05 (F3-B)
 
 The open-loops answer (decision 0013 ruling 7): `tasks` mode renders the OPEN

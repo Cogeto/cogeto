@@ -7,15 +7,16 @@ import { REWRITE_TIMEOUT_MS } from './retrieval-config';
 
 /**
  * Conversational query rewriting (decision 0007 ruling 4; F3) + temporal
- * intent (decision 0012 ruling 2; F3-A). One bounded model call resolves
+ * intent (decision 0012 ruling 2; F3-A) + the conversational router's
+ * question class (decision 0046). One bounded model call resolves
  * pronouns/ellipsis into a self-contained query and classifies temporal
  * intent — but temporal is DOUBLE-GUARDED deterministically: the model is
  * consulted for it only when the raw question carries a temporal hint, and a
  * classification without a hint is discarded. Dates are resolved by the S3.5
- * chrono resolver, never by the model. Any failure → default mode, never an
- * error.
+ * chrono resolver, never by the model. Any failure → default mode ('personal'
+ * question class — the memory-question path), never an error.
  */
-export const QUERY_REWRITE_PROMPT = { family: 'query_rewrite', version: 'v0003' } as const;
+export const QUERY_REWRITE_PROMPT = { family: 'query_rewrite', version: 'v0004' } as const;
 
 export interface ConversationTurn {
   role: 'user' | 'assistant';
@@ -43,6 +44,19 @@ export interface EmailReplyIntent {
   target: string | null;
 }
 
+/**
+ * The router's question class (decision 0046): what kind of turn this is.
+ * - `personal` — a question about the user's own world; memory answers it
+ *   (the default, and the fallback on every classification failure).
+ * - `knowledge` — a question about the wider world, answerable from general
+ *   knowledge; memory still retrieves and grounds first (memory-first), the
+ *   model's own knowledge supplements — marked — and the research offer rides
+ *   along.
+ * - `smalltalk` — greetings, thanks, and meta-questions about Cogeto itself;
+ *   a natural brief reply, no retrieval theatre.
+ */
+export type QuestionClass = 'personal' | 'knowledge' | 'smalltalk';
+
 export interface RewriteResult {
   query: string;
   /** Entities the query is about, from the rewriter or the heuristic fallback. */
@@ -53,6 +67,8 @@ export interface RewriteResult {
   openLoops: OpenLoopsIntent | null;
   /** Draft-a-reply intent (Session O4); null = not a reply request. */
   emailReply: EmailReplyIntent | null;
+  /** The router's question class (decision 0046); 'personal' on any failure. */
+  questionClass: QuestionClass;
 }
 
 const rewriteSchema = z.object({
@@ -70,6 +86,7 @@ const rewriteSchema = z.object({
     .object({ entity: z.string().nullable().default(null) })
     .nullable()
     .default(null),
+  question_class: z.enum(['personal', 'knowledge', 'smalltalk']).nullable().default(null),
 });
 
 /** Third-person anaphora + demonstratives — first/second person needs no resolution. */
@@ -265,6 +282,101 @@ export function detectResearchIntent(question: string): ResearchIntent | null {
   return null;
 }
 
+/** A deterministically detected small-talk turn (decision 0046). */
+export interface SmallTalkIntent {
+  kind: 'thanks' | 'greeting' | 'farewell' | 'ack';
+  lang: 'en' | 'hr';
+}
+
+/**
+ * The small-talk lexicon (decision 0046): pure pleasantries matched as the
+ * WHOLE turn only — "thanks!" routes here; "thanks, and who is Ana?" never
+ * does. These answer deterministically with no retrieval and no model call;
+ * anything past the lexicon is the model classifier's job (with its veto).
+ */
+const SMALL_TALK_PATTERNS: ReadonlyArray<{
+  kind: SmallTalkIntent['kind'];
+  lang: 'en' | 'hr';
+  re: RegExp;
+}> = [
+  {
+    kind: 'thanks',
+    lang: 'en',
+    re: /^(?:ok(?:ay)?[,!. ]*)?(?:many\s+)?(?:thanks|thank\s+you|thx|ty|cheers)(?:\s+(?:a\s+lot|so\s+much|again|for\s+(?:that|this|the\s+help)))?\s*$/i,
+  },
+  {
+    kind: 'thanks',
+    lang: 'hr',
+    re: /^(?:ok[,!. ]*|u\s+redu[,!. ]*)?(?:puno\s+)?hvala(?:\s+(?:ti|vam|lijepa|lijepo|puno|najljepša))*\s*$/iu,
+  },
+  {
+    kind: 'greeting',
+    lang: 'en',
+    re: /^(?:hi|hello|hey|good\s+(?:morning|afternoon|evening))(?:\s+there)?\s*$/i,
+  },
+  {
+    kind: 'greeting',
+    lang: 'hr',
+    re: /^(?:bok|pozdrav|dobro\s+jutro|dobar\s+dan|dobra\s+večer)\s*$/iu,
+  },
+  {
+    kind: 'farewell',
+    lang: 'en',
+    re: /^(?:bye|goodbye|good\s+night|see\s+you(?:\s+(?:later|tomorrow))?)\s*$/i,
+  },
+  {
+    kind: 'farewell',
+    lang: 'hr',
+    re: /^(?:doviđenja|dovidenja|vidimo\s+se(?:\s+sutra)?|laku\s+noć)\s*$/iu,
+  },
+  {
+    kind: 'ack',
+    lang: 'en',
+    re: /^(?:ok(?:ay)?|got\s+it|great|perfect|nice|cool|sounds\s+good|makes\s+sense|understood|that(?:'|’)?s\s+helpful|very\s+helpful)\s*$/i,
+  },
+  {
+    kind: 'ack',
+    lang: 'hr',
+    re: /^(?:ok|u\s+redu|može|moze|super|odlično|odlicno|savršeno|savrseno|jasno|razumijem)\s*$/iu,
+  },
+];
+
+/** Detect a pure small-talk turn. Purely deterministic (no model). */
+export function detectSmallTalk(question: string): SmallTalkIntent | null {
+  const turn = question.trim().replace(/[!.…\s]+$/u, '');
+  if (!turn || turn.length > 60) return null;
+  for (const { kind, lang, re } of SMALL_TALK_PATTERNS) {
+    if (re.test(turn)) return { kind, lang };
+  }
+  return null;
+}
+
+/**
+ * The question-class veto guard (decision 0046), same double-guard posture as
+ * temporal/open-loops: the model's classification is honored only when nothing
+ * deterministic contradicts it. A turn that names a person/organization, or
+ * that resolved a temporal/open-loops/reply intent, is never small talk; a
+ * turn with a resolved temporal/open-loops intent is never a knowledge
+ * question. Everything else falls back to 'personal' — the memory-question
+ * path is the default and the failure mode.
+ */
+export function resolveQuestionClass(
+  rawQuestion: string,
+  claimed: QuestionClass | null,
+  resolved: {
+    temporal: TemporalIntent | null;
+    openLoops: OpenLoopsIntent | null;
+    emailReply: EmailReplyIntent | null;
+  },
+): QuestionClass {
+  if (!claimed || claimed === 'personal') return 'personal';
+  if (resolved.temporal || resolved.openLoops || resolved.emailReply) return 'personal';
+  if (claimed === 'smalltalk') {
+    return queryEntityCandidates(rawQuestion).length > 0 ? 'personal' : 'smalltalk';
+  }
+  return 'knowledge';
+}
+
 /** Captures the reply TARGET (person/sender) after the reply verb. */
 const REPLY_TARGET_RE =
   /(?:reply to|respond to|response to|answer|help me (?:answer|reply to|respond to)|odgovor\w* na|odgovori(?:ti)? na)\s+(.+)$/i;
@@ -281,10 +393,22 @@ export function detectEmailReplyIntent(
 ): EmailReplyIntent | null {
   if (!REPLY_EMAIL_HINT_RE.test(question)) return null;
   const match = REPLY_TARGET_RE.exec(question);
-  let target = match?.[1] ? cleanReplyTarget(match[1]) : null;
-  if (!target && entities.length > 0) target = entities[0]!.trim() || null;
-  if (target && /^(that|this|it|the last( one)?|latest|last|him|her|them)$/i.test(target)) {
-    target = null;
+  const rawTarget = match?.[1] ?? null;
+  let target = rawTarget ? cleanReplyTarget(rawTarget) : null;
+  // A pronoun/demonstrative target normalizes to null BEFORE the entities
+  // fallback, so a rewriter-resolved referent ("her" → "Ana Kovač") can fill
+  // in (decision 0046 cross-capability follow-ups).
+  const pronounTarget = Boolean(
+    target && /^(that|this|it|the last( one)?|latest|last|him|her|them)$/i.test(target),
+  );
+  if (pronounTarget) target = null;
+  // The entities fallback applies ONLY to a resolved pronoun (or a bare reply
+  // request with no target phrase at all). A target that cleaned to nothing —
+  // "zadnju e-poruku", "the last email" — asks for the MOST RECENT email;
+  // filling it from heuristic entity candidates once produced a phantom
+  // sender ("Napiši", the sentence-initial verb — reply_hr_zadnja).
+  if (!target && (pronounTarget || rawTarget === null) && entities.length > 0) {
+    target = entities[0]!.trim() || null;
   }
   return { target: target || null };
 }
@@ -373,7 +497,36 @@ function buildRewriteInput(history: ConversationTurn[], question: string): strin
   const turns = history.length
     ? history.map((t) => `${t.role}: ${t.content}`).join('\n')
     : '(none)';
-  return ['RECENT TURNS:', turns, '', 'QUESTION:', question].join('\n');
+  // Deterministic subject assist (decision 0046): the names the USER has
+  // raised in their own turns. A pronoun's referent is almost always one of
+  // these — a person who appears only inside assistant answers (a mentioned
+  // subcontractor, a recipient) does not capture the pronoun. Computed by the
+  // same capitalized-token heuristic as retrieval's entity signal; a noisy
+  // candidate is harmless (the prompt treats these as candidates, not truth).
+  const userNamed = [
+    ...new Set(
+      history.filter((t) => t.role === 'user').flatMap((t) => queryEntityCandidates(t.content)),
+    ),
+  ].slice(0, 8);
+  return [
+    'RECENT TURNS:',
+    turns,
+    '',
+    `USER-NAMED ENTITIES (names the user has raised themself): ${userNamed.join(', ') || '(none)'}`,
+    '',
+    'QUESTION:',
+    question,
+  ].join('\n');
+}
+
+export interface RewriteOptions {
+  /**
+   * Run the model classification even for turns `shouldRewrite` would skip
+   * (decision 0046): the chat router needs the question class on every turn —
+   * a self-contained knowledge question carries no lexical hint. Non-chat
+   * callers keep the cheap gating.
+   */
+  alwaysClassify?: boolean;
 }
 
 /**
@@ -388,6 +541,7 @@ export async function rewriteQuery(
   loadPromptFn: typeof loadPrompt = loadPrompt,
   now: Date = new Date(),
   timeZone?: string,
+  options: RewriteOptions = {},
 ): Promise<RewriteResult> {
   const fallback: RewriteResult = {
     query: question,
@@ -395,8 +549,9 @@ export async function rewriteQuery(
     temporal: null,
     openLoops: null,
     emailReply: detectEmailReplyIntent(question, queryEntityCandidates(question)),
+    questionClass: 'personal',
   };
-  if (!shouldRewrite(question)) return fallback;
+  if (!options.alwaysClassify && !shouldRewrite(question)) return fallback;
 
   try {
     const prompt: PromptArtifact = await loadPromptFn(
@@ -416,15 +571,24 @@ export async function rewriteQuery(
     const entities = result.entities.map((e) => e.trim()).filter(Boolean);
     const resolvedEntities =
       entities.length > 0 ? entities : queryEntityCandidates(result.rewritten_query);
+    // Veto guard + deterministic date resolution (decision 0012 ruling 2).
+    const temporal = resolveTemporalIntent(question, result.temporal, now, timeZone);
+    const openLoops = resolveOpenLoopsIntent(question, result.open_loops);
+    // Deterministic — detected from the raw question; the rewriter's entities
+    // (which resolve anaphora) improve the target fallback (Session O4).
+    const emailReply = detectEmailReplyIntent(question, resolvedEntities);
     return {
       query: result.rewritten_query.trim() || question,
       entities: resolvedEntities,
-      // Veto guard + deterministic date resolution (decision 0012 ruling 2).
-      temporal: resolveTemporalIntent(question, result.temporal, now, timeZone),
-      openLoops: resolveOpenLoopsIntent(question, result.open_loops),
-      // Deterministic — detected from the raw question; the rewriter's entities
-      // (which resolve anaphora) improve the target fallback (Session O4).
-      emailReply: detectEmailReplyIntent(question, resolvedEntities),
+      temporal,
+      openLoops,
+      emailReply,
+      // The router's class, deterministically vetoed (decision 0046).
+      questionClass: resolveQuestionClass(question, result.question_class, {
+        temporal,
+        openLoops,
+        emailReply,
+      }),
     };
   } catch {
     return fallback;

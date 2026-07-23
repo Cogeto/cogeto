@@ -119,6 +119,18 @@ The research capability, with the privacy honesty improvement from the notes fol
 
 ## Priority 6 — Natural conversation (L, Release C2)
 
+**Status: DELIVERED** (2026-07-23, issues #203/#204/#205 — decision 0046,
+prompts query_rewrite/v0004 + answer/v0005, no migration; notes in
+docs/notes/natural-conversation.md). One router at the top of chat (the
+rewriter extended into the classifier, one bounded pipeline-tier call,
+deterministic guards kept, memory-first); per-claim provenance across three
+origins ({{cite}} memory chips, web chips with URL + fetch time, the
+{{unsourced}} marker with its calm renderer treatment under the extended
+strict grammar); research stays behind the gate — knowledge answers carry a
+one-tap OFFER that only proposes; small talk answers naturally with no
+retrieval theatre. Seven live conversation eval cases (en + hr) joined the
+rule gate under the folded `conversation` verdict.
+
 The assistant surface, affordable once local models exist.
 
 **What.** The user talks to Cogeto as they would to any capable assistant; it draws on memory, on the web when asked, and on the model's own knowledge, without a query syntax.
@@ -153,7 +165,7 @@ The visible payoff, built on the research engine from Priority 5.
 | 3 | Bring-your-own-key providers ✅ delivered | v1.x/B groundwork | M | none | Makes model-agnostic claim true |
 | 4 | Local models via Ollama ✅ delivered | B | L (staged) | 3 | Sovereignty + economics foundation |
 | 5 | Web research + query minimisation ✅ delivered | C1 | L | 4 for economics | The research capability, privately |
-| 6 | Natural conversation | C2 | L | 4 | The surface users live in |
+| 6 | Natural conversation ✅ delivered | C2 | L | 4 | The surface users live in |
 | 7 | Named skills | D | L | 5 | The visible, inimitable payoff |
 
 **Order to build:** 1a and 1b together first (small, high value, no dependencies), then 2 (standalone, high daily value), then 3 and 4 as one model-provider workstream (BYOK into local), then 5 and 6 as the assistant, then 7. Reorder only against Phase 0 evidence, and only 5/6-before-4 with the margin numbers in hand.

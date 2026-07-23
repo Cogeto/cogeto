@@ -1,0 +1,11 @@
+{
+  "case_id": "smalltalk_thanks",
+  "description": "smalltalk_natural, live (decision 0046): a compound thanks (beyond the deterministic lexicon) routes through the model classifier to a natural, brief reply — no sources, no citations, and never the nothing-on-record fallback.",
+  "anchor": "2026-07-23T09:00:00.000Z",
+  "script": ["thanks, that's really helpful!"],
+  "checks": {
+    "smalltalk": true,
+    "no_mechanics": true,
+    "citations_valid": true
+  }
+}

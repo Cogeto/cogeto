@@ -147,6 +147,21 @@ const caseSchema = z.object({
         condition_includes: z.array(z.string()).default([]),
       })
       .optional(),
+    /**
+     * Conversation checks (decision 0046), folded into one deterministic
+     * verdict like the temporal set:
+     * - `research_offer` — the final turn's done event carries the research
+     *   OFFER and no research_run row exists (a knowledge question never
+     *   silently reaches the gate, let alone a search).
+     * - `unsourced_required` — the final stored answer carries at least one
+     *   canonical `{{unsourced}}` marker (per-claim origin honesty).
+     * - `smalltalk` — the final turn produced no sources and no citation
+     *   tokens, and its answer is a natural reply, not the nothing-on-record
+     *   fallback.
+     */
+    research_offer: z.boolean().optional(),
+    unsourced_required: z.boolean().optional(),
+    smalltalk: z.boolean().optional(),
   }),
 });
 type ChatCase = z.infer<typeof caseSchema>;
@@ -170,6 +185,8 @@ interface TurnResult {
   sourceCount: number;
   sourceStatuses: string[];
   citationViolations: number;
+  /** Whether the done event carried the research offer (decision 0046). */
+  researchOffer: boolean;
 }
 
 interface CaseScore {
@@ -188,6 +205,9 @@ interface CaseScore {
   /** The research-flow verdict (Part B; null = not a research case): gate →
    * approve → capture → cited synthesis → persisted web memories. */
   research: boolean | null;
+  /** The folded conversation verdict (decision 0046; null = no such checks):
+   * research offer without a silent search, unsourced marking, small talk. */
+  conversation: boolean | null;
   pass: boolean;
 }
 
@@ -506,6 +526,7 @@ async function main(): Promise<void> {
         let sourceCount = 0;
         let sourceStatuses: string[] = [];
         let citationViolations = 0;
+        let researchOffer = false;
         for await (const event of chat.ask(principal, question) as AsyncIterable<ChatStreamEvent>) {
           if (event.type === 'sources') {
             sourceCount = event.facts.length;
@@ -513,9 +534,17 @@ async function main(): Promise<void> {
           } else if (event.type === 'done') {
             answer = event.content;
             citationViolations = event.citationViolations;
+            researchOffer = Boolean(event.researchOffer);
           }
         }
-        turns.push({ question, answer, sourceCount, sourceStatuses, citationViolations });
+        turns.push({
+          question,
+          answer,
+          sourceCount,
+          sourceStatuses,
+          citationViolations,
+          researchOffer,
+        });
         console.log(
           `  Q: ${question}\n  A (${sourceCount} facts): ${stripCites(answer).slice(0, 220)}`,
         );
@@ -660,6 +689,34 @@ async function main(): Promise<void> {
         }
       }
 
+      // Conversation checks (decision 0046) — deterministic, folded like the
+      // temporal set.
+      const conversationChecks: (boolean | null)[] = [];
+      if (checks.research_offer) {
+        const runs = await db.execute<{ n: string }>(sql`
+          SELECT count(*)::text AS n FROM research_run WHERE owner_id = ${principal.userId}
+        `);
+        const silentRuns = Number(runs.rows[0]?.n ?? '0');
+        const offerOk = final.researchOffer && silentRuns === 0;
+        conversationChecks.push(offerOk);
+        console.log(
+          `  research_offer: ${String(offerOk)} (offered=${String(final.researchOffer)}, runs=${silentRuns} — a knowledge question must offer, never silently search)`,
+        );
+      }
+      if (checks.unsourced_required) {
+        conversationChecks.push(/\{\{unsourced\}\}/.test(final.answer));
+      }
+      if (checks.smalltalk) {
+        conversationChecks.push(
+          final.sourceCount === 0 &&
+            !/\{\{cite:/.test(final.answer) &&
+            final.answer.trim().length > 0 &&
+            !/don.?t have anything|nemam ništa/i.test(final.answer),
+        );
+      }
+      const conversationOk =
+        conversationChecks.length > 0 ? conversationChecks.every(Boolean) : null;
+
       const coverage = checks.coverage_facts
         ? await gradeCoverage(graderGateway, graderPrompt, final.answer, checks.coverage_facts)
         : null;
@@ -698,6 +755,7 @@ async function main(): Promise<void> {
         temporal: temporalApplied.length > 0 ? temporalApplied.every(Boolean) : null,
         taskCreated,
         research: researchOk,
+        conversation: conversationOk,
         pass: false,
       };
       score.pass = [
@@ -710,6 +768,7 @@ async function main(): Promise<void> {
         score.temporal,
         score.taskCreated,
         score.research,
+        score.conversation,
       ]
         .filter((v) => v !== null)
         .every(Boolean);
@@ -724,13 +783,14 @@ async function main(): Promise<void> {
   const cov = (s: CaseScore): string =>
     s.coverage === null ? '—' : `${(s.coverage * 100).toFixed(0)}%`;
   const table = [
-    '| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | task | research | overall |',
-    '|---|---|---|---|---|---|---|---|---|---|---|',
+    '| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | task | research | conversation | overall |',
+    '|---|---|---|---|---|---|---|---|---|---|---|---|',
     ...scores.map(
       (s) =>
         `| ${s.caseId} | ${cell(s.entityCorrect)} | ${cov(s)} | ${cell(s.hedgeMarked)} | ` +
         `${cell(s.noMechanics)} | ${cell(s.citationsValid)} | ${cell(s.nothingOnRecord)} | ` +
-        `${cell(s.temporal)} | ${cell(s.taskCreated)} | ${cell(s.research)} | ${s.pass ? 'PASS' : 'FAIL'} |`,
+        `${cell(s.temporal)} | ${cell(s.taskCreated)} | ${cell(s.research)} | ` +
+        `${cell(s.conversation)} | ${s.pass ? 'PASS' : 'FAIL'} |`,
     ),
   ].join('\n');
 
@@ -805,6 +865,7 @@ async function main(): Promise<void> {
         s.temporal,
         s.taskCreated,
         s.research,
+        s.conversation,
       ].some((v) => v === false),
     );
     const covered = scores.filter((s) => s.coverage !== null);

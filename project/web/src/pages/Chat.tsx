@@ -1,20 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ChatFactDto } from '@cogeto/shared';
-import { mapMarkersToCitations, scanAnswer } from '@cogeto/shared';
-import { askChat, fetchChatCaptureStatus, fetchChatMessages, rememberChatMessage } from '../api';
+import type { ChatFactDto, ChatResearchOffer } from '@cogeto/shared';
+import { mapMarkersToCitations, mapUnsourcedMarkers, scanAnswer } from '@cogeto/shared';
+import {
+  askChat,
+  fetchChatCaptureStatus,
+  fetchChatMessages,
+  proposeResearch,
+  rememberChatMessage,
+} from '../api';
 import type { Session } from '../auth/oidc';
 import { CitationChip } from '../components/CitationChip';
 import { MemoryDrawer } from '../components/MemoryDrawer';
 import { Shell } from '../components/Shell';
+import { UnsourcedChip } from '../components/UnsourcedChip';
 
 /**
- * Chat (S3-A/S3.5-A): grounded answers over the user's memories. The one
- * citation grammar is `{{cite:<uuid>}}` (decision 0007 ruling 2). Stored
- * messages already contain only canonical cites; live streaming text is
- * canonicalized here from the model's `[F#]` markers (via the SSE sources map)
- * and every non-conforming token is stripped — no raw marker ever reaches the
- * screen. Chips deep-link into the Memories governance drawer (S3-B).
+ * Chat (S3-A/S3.5-A): grounded answers over the user's memories, blended with
+ * marked model knowledge when the question asks about the wider world
+ * (decision 0046). The citation grammar is `{{cite:<uuid>}}` plus the
+ * `{{unsourced}}` marker (decisions 0007/0046). Stored messages already
+ * contain only canonical tokens; live streaming text is canonicalized here
+ * from the model's `[F#]`/`[U]` markers (via the SSE sources map) and every
+ * non-conforming token is stripped — no raw marker ever reaches the screen.
+ * Chips deep-link into the Memories governance drawer (S3-B).
  */
 function MessageBody({
   session,
@@ -27,10 +36,12 @@ function MessageBody({
   facts?: ChatFactDto[];
   onOpenMemory: (memoryId: string) => void;
 }) {
-  // Live text carries `[F#]` markers + a facts map; canonicalize first, then
-  // scan. Stored text has no facts map and is already canonical/sanitized.
+  // Live text carries `[F#]`/`[U]` markers + a facts map; canonicalize first,
+  // then scan. Stored text has no facts map and is already canonical/sanitized.
   const markerMap = new Map((facts ?? []).map((f) => [f.marker, f.memoryId]));
-  const canonical = facts ? mapMarkersToCitations(content, markerMap) : content;
+  const canonical = facts
+    ? mapUnsourcedMarkers(mapMarkersToCitations(content, markerMap))
+    : content;
   const validIds = facts ? new Set(facts.map((f) => f.memoryId)) : undefined;
   const { segments } = scanAnswer(canonical, validIds);
 
@@ -39,6 +50,7 @@ function MessageBody({
     <p className="whitespace-pre-wrap text-sm leading-relaxed">
       {segments.map((segment, i) => {
         if (segment.kind === 'text') return <span key={i}>{segment.text}</span>;
+        if (segment.kind === 'unsourced') return <UnsourcedChip key={i} />;
         ordinal += 1;
         return (
           <CitationChip
@@ -52,6 +64,38 @@ function MessageBody({
         );
       })}
     </p>
+  );
+}
+
+/**
+ * The research offer (decision 0046): a one-tap bridge from a knowledge
+ * answer into the EXISTING minimise-and-approve gate. Tapping proposes a run
+ * (nothing is sent) and lands on the Research page, where the gate opens as
+ * always. The offer is the bridge; the gate stays the gate.
+ */
+function ResearchOfferChip({ session, offer }: { session: Session; offer: ChatResearchOffer }) {
+  const propose = useMutation({
+    mutationFn: () => proposeResearch(session, offer.topic),
+    onSuccess: () => {
+      window.location.href = '/research';
+    },
+  });
+  return (
+    <div className="flex flex-wrap items-center gap-2 pl-1">
+      <button
+        type="button"
+        onClick={() => propose.mutate()}
+        disabled={propose.isPending}
+        className="rounded-full border border-brand-teal/40 bg-brand-teal/10 px-3 py-1 text-xs font-semibold text-brand-teal-ink transition-colors hover:bg-brand-teal/20 disabled:opacity-40"
+      >
+        {propose.isPending ? 'Preparing…' : 'Research this on the web →'}
+      </button>
+      <span className="text-xs text-slate-400">
+        {propose.isError
+          ? 'Couldn’t prepare that research — try the Research page.'
+          : 'You’ll see and approve exactly what is sent — nothing leaves until then.'}
+      </span>
+    </div>
   );
 }
 
@@ -143,6 +187,8 @@ export function Chat({ session }: { session: Session }) {
   const [liveQuestion, setLiveQuestion] = useState<string | null>(null);
   const [liveText, setLiveText] = useState('');
   const [liveFacts, setLiveFacts] = useState<ChatFactDto[]>([]);
+  /** The latest answer's research offer (0046) — ephemeral, cleared on the next ask. */
+  const [offer, setOffer] = useState<ChatResearchOffer | null>(null);
   const [openMemoryId, setOpenMemoryId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -164,10 +210,12 @@ export function Chat({ session }: { session: Session }) {
     setLiveQuestion(content);
     setLiveText('');
     setLiveFacts([]);
+    setOffer(null);
     try {
       await askChat(session, content, (event) => {
         if (event.type === 'sources') setLiveFacts(event.facts);
         else if (event.type === 'token') setLiveText((text) => text + event.text);
+        else if (event.type === 'done') setOffer(event.researchOffer ?? null);
         else if (event.type === 'error') {
           setFailed(true);
           // Specific copy for the daily budget / stream-timeout aborts (FIX-2).
@@ -198,14 +246,18 @@ export function Chat({ session }: { session: Session }) {
           {isPending && <p className="text-sm text-slate-400">Loading conversation…</p>}
           {empty && (
             <div className="rounded-md border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
-              <p className="font-medium text-slate-600">Ask about anything you have captured.</p>
+              <p className="font-medium text-slate-600">
+                Ask anything — every claim shows what it can prove.
+              </p>
               <p className="mt-1">
-                Answers come only from your memories — every claim carries a citation chip that
-                opens its source. Nothing on record yet? Capture a note on the{' '}
+                Answers ground in your own memories first (each claim carries a chip that opens its
+                source); anything from the model’s general knowledge is marked{' '}
+                <span className="italic">unsourced</span>, and the web is searched only when you ask
+                and approve. Start by capturing a note on the{' '}
                 <a href="/memories" className="text-brand-teal-ink hover:underline">
                   Memories
                 </a>{' '}
-                page first.
+                page, or just say hello.
               </p>
             </div>
           )}
@@ -248,12 +300,13 @@ export function Chat({ session }: { session: Session }) {
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-300 [animation-delay:150ms]" />
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-300 [animation-delay:300ms]" />
                     </span>
-                    Searching your memories…
+                    {liveFacts.length > 0 ? 'Answering from your memories…' : 'Thinking…'}
                   </p>
                 )}
               </div>
             </Bubble>
           )}
+          {offer && !liveQuestion && <ResearchOfferChip session={session} offer={offer} />}
           {failed && (
             <p role="alert" className="text-sm text-red-700">
               {failMessage ?? 'That answer didn’t come through. Try asking again.'}
@@ -274,7 +327,7 @@ export function Chat({ session }: { session: Session }) {
             id="chat-input"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Ask about your commitments, decisions, people…"
+            placeholder="Ask about your commitments, decisions, people — or anything at all…"
             className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-colors focus:border-brand-teal"
           />
           <button

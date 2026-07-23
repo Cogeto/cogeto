@@ -1,15 +1,15 @@
 import type { ChatFactDto } from '@cogeto/shared';
-import { mapMarkersToCitations, sanitizeAnswer } from '@cogeto/shared';
+import { mapMarkersToCitations, mapUnsourcedMarkers, sanitizeAnswer } from '@cogeto/shared';
 import type { MemoryChange } from '../../memory/index';
 import type { TaskRow } from '../../tasks/index';
-import type { TemporalIntent } from '../query-rewrite';
+import type { ConversationTurn, TemporalIntent } from '../query-rewrite';
 import type { RetrievalMode } from '../retrieval.service';
 
 /**
  * The answer prompt family (§B.7): versioned artifact in project/prompts/answer,
  * registered on worker boot alongside the ingestion families.
  */
-export const ANSWER_PROMPT = { family: 'answer', version: 'v0004' } as const;
+export const ANSWER_PROMPT = { family: 'answer', version: 'v0005' } as const;
 
 /** The zero-open-loops path (F3-B): a true "all clear", not a data gap. */
 export const NOTHING_OPEN =
@@ -20,6 +20,12 @@ export interface AnswerTemporalContext {
   changes?: MemoryChange[];
   /** Open/blocked tasks, when mode is tasks (decision 0013 ruling 7). */
   tasks?: TaskRow[];
+  /**
+   * Knowledge-class question (decision 0046): emits the `GENERAL KNOWLEDGE:
+   * allowed` line, permitting marked `[U]` statements from model knowledge.
+   * Memory-first stands: provided facts still ground and win.
+   */
+  knowledge?: boolean;
 }
 
 /** The zero-retrieval path: no facts, no generation from thin air. */
@@ -62,9 +68,15 @@ export function buildAnswerInput(
   const lines = [
     `MODE: ${mode}${extras.temporal ? ` (${extras.temporal.kind})` : ''}`,
     '',
-    'FACTS ON RECORD (your only permitted knowledge):',
-    ...blocks,
+    extras.knowledge
+      ? 'FACTS ON RECORD (your only knowledge of the user’s world):'
+      : 'FACTS ON RECORD (your only permitted knowledge):',
+    ...(blocks.length > 0 ? blocks : ['(none)']),
   ];
+
+  if (extras.knowledge) {
+    lines.push('', 'GENERAL KNOWLEDGE: allowed');
+  }
 
   if (extras.temporal?.at) {
     lines.push('', `ASKED ABOUT THE STATE AT: ${extras.temporal.at.toISOString().slice(0, 10)}`);
@@ -110,11 +122,26 @@ export function buildAnswerInput(
 }
 
 /**
+ * The smalltalk-mode input (decision 0046): no facts block, the recent turns
+ * for tone, the turn itself. The same answer artifact serves it — MODE gates
+ * the behavior.
+ */
+export function buildSmallTalkInput(history: ConversationTurn[], question: string): string {
+  const turns = history.length
+    ? history.map((t) => `${t.role}: ${t.content}`).join('\n')
+    : '(none)';
+  return ['MODE: smalltalk', '', 'RECENT TURNS:', turns, '', 'QUESTION:', question].join('\n');
+}
+
+/**
  * Canonicalize a raw model answer for storage and rendering (decision 0007
- * ruling 2): map the model's short `[F1]` markers to `{{cite:<uuid>}}`, then
- * strip EVERY other bracketed/braced token. The stored text is guaranteed to
- * contain only canonical cites to supplied memories; `violations` counts what
- * was stripped (metadata only — logged, never the content).
+ * ruling 2; extended by 0046): map the model's short `[F1]` markers to
+ * `{{cite:<uuid>}}` and its `[U]` markers to `{{unsourced}}`, then strip EVERY
+ * other bracketed/braced token. The stored text is guaranteed to contain only
+ * canonical cites to supplied memories and canonical unsourced markers;
+ * `violations` counts what was stripped (metadata only — logged, never the
+ * content). `[U]` is mapped in every mode: a model admitting a claim is its
+ * own knowledge is marked, never stripped into an unmarked claim.
  */
 export function toStoredAnswer(
   answer: string,
@@ -122,6 +149,6 @@ export function toStoredAnswer(
 ): { text: string; violations: number } {
   const markerMap = new Map(facts.map((fact) => [fact.marker, fact.memoryId]));
   const validIds = new Set(facts.map((fact) => fact.memoryId));
-  const mapped = mapMarkersToCitations(answer, markerMap);
+  const mapped = mapUnsourcedMarkers(mapMarkersToCitations(answer, markerMap));
   return sanitizeAnswer(mapped, validIds);
 }
