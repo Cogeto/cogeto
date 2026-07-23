@@ -168,21 +168,50 @@ function RememberAction({ session, messageId }: { session: Session; messageId: s
   );
 }
 
+/**
+ * A conversation turn (P6.9). Modern, ChatGPT-style: the user's message sits in a
+ * compact rounded bubble on the right; the assistant answers as clean flush text
+ * (no boxed bubble) so long, cited answers read like prose. The user bubble keeps
+ * the brand navy so its "Remember this" affordance stays legible.
+ */
 function Bubble({ role, children }: { role: 'user' | 'assistant'; children: React.ReactNode }) {
-  return (
-    <div className={`flex ${role === 'user' ? 'justify-end' : 'justify-start'}`}>
-      <div
-        className={`max-w-[85%] rounded-lg px-3 py-2 ${
-          role === 'user'
-            ? 'bg-brand-navy-deep text-white'
-            : 'border border-slate-200 bg-surface text-slate-800 shadow-sm'
-        }`}
-      >
-        {children}
+  if (role === 'user') {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-brand-navy-deep px-4 py-2.5 text-white">
+          {children}
+        </div>
       </div>
-    </div>
+    );
+  }
+  return <div className="max-w-none text-sm leading-relaxed text-slate-800">{children}</div>;
+}
+
+/** Up-arrow send glyph (inline SVG — no icon dependency). */
+function SendIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 19V5M5 12l7-7 7 7" />
+    </svg>
   );
 }
+
+/** Starter prompts shown on the empty conversation; they prefill (never auto-send). */
+const SUGGESTED_PROMPTS = [
+  'What did I promise this week?',
+  'Summarise my open commitments',
+  'What changed since last month?',
+  'Who is involved in my active work?',
+];
 
 export function Chat({ session }: { session: Session }) {
   const queryClient = useQueryClient();
@@ -209,6 +238,7 @@ export function Chat({ session }: { session: Session }) {
   const [inlineRun, setInlineRun] = useState<ResearchRunDto | null>(null);
   const [openMemoryId, setOpenMemoryId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Pin the view to the latest message: scroll the message pane itself (never
   // the page — the input stays fixed at the bottom) on history and stream
@@ -217,6 +247,19 @@ export function Chat({ session }: { session: Session }) {
     const pane = scrollRef.current;
     if (pane) pane.scrollTop = pane.scrollHeight;
   }, [history, liveText, liveQuestion, inlineRun]);
+
+  // Auto-grow the composer up to a cap; collapses back when the draft is cleared.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }, [draft]);
+
+  const prefill = (text: string) => {
+    setDraft(text);
+    inputRef.current?.focus();
+  };
 
   const send = async (text?: string, opts: { suppressOffer?: boolean } = {}) => {
     const content = (text ?? draft).trim();
@@ -269,27 +312,40 @@ export function Chat({ session }: { session: Session }) {
 
   return (
     <Shell session={session} title="Chat" active="chat" fullHeight width="reading">
-      <section className="flex min-h-0 flex-1 flex-col rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm">
-        <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+      <section className="flex min-h-0 flex-1 flex-col">
+        <div ref={scrollRef} className="min-h-0 flex-1 space-y-6 overflow-y-auto px-1 py-2">
           {isPending && <p className="text-sm text-slate-400">Loading conversation…</p>}
           {empty && (
-            <div className="rounded-md border border-dashed border-slate-300 bg-surface p-4 text-sm text-slate-500">
-              <p className="font-medium text-slate-600">
-                Ask anything. Every claim shows what it can prove.
-              </p>
-              <p className="mt-1">
-                Answers ground in your own memories first (each claim carries a chip that opens its
-                source); anything from the model’s general knowledge is marked{' '}
-                <span className="italic">unsourced</span>, and the web is searched only when you ask
-                and approve. Start by capturing a note on the{' '}
-                <a
-                  href="/memories"
-                  className="text-brand-teal-ink dark:text-brand-teal hover:underline"
-                >
-                  Memories
-                </a>{' '}
-                page, or just say hello.
-              </p>
+            <div className="flex h-full flex-col items-center justify-center gap-6 py-10 text-center">
+              <div className="max-w-md">
+                <img
+                  src="/brand/cogeto-final-icon.svg"
+                  alt=""
+                  aria-hidden="true"
+                  className="mx-auto mb-4 h-12 w-12"
+                />
+                <h2 className="text-xl font-semibold text-slate-800">
+                  What can I help you remember?
+                </h2>
+                <p className="mt-2 text-sm text-slate-500">
+                  Answers ground in your own memories first, each claim carrying a chip that opens
+                  its source. Anything from general knowledge is marked{' '}
+                  <span className="italic">unsourced</span>, and the web is searched only when you
+                  ask and approve.
+                </p>
+              </div>
+              <div className="flex flex-wrap justify-center gap-2">
+                {SUGGESTED_PROMPTS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => prefill(s)}
+                    className="rounded-full border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:border-brand-teal hover:text-brand-teal-ink dark:hover:text-brand-teal"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {history?.map((message) => (
@@ -370,7 +426,7 @@ export function Chat({ session }: { session: Session }) {
           )}
         </div>
         <form
-          className="mt-4 flex shrink-0 gap-2"
+          className="mt-3 shrink-0"
           onSubmit={(e) => {
             e.preventDefault();
             void send();
@@ -379,20 +435,43 @@ export function Chat({ session }: { session: Session }) {
           <label className="sr-only" htmlFor="chat-input">
             Ask a question
           </label>
-          <input
-            id="chat-input"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Ask about your commitments, decisions, people, or anything at all…"
-            className="flex-1 rounded-md border border-slate-300 bg-surface px-3 py-2 text-sm transition-colors focus:border-brand-teal"
-          />
-          <button
-            type="submit"
-            disabled={busy || !draft.trim()}
-            className="rounded-md bg-brand-teal px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-teal-ink disabled:opacity-40"
-          >
-            {busy ? 'Answering…' : 'Ask'}
-          </button>
+          {/* Centered pill with a soft teal focus-glow (reuses --shadow-glow). */}
+          <div className="flex items-end gap-2 rounded-2xl border border-slate-300 bg-surface px-3 py-2 shadow-sm transition-shadow focus-within:border-brand-teal focus-within:shadow-glow">
+            <textarea
+              id="chat-input"
+              ref={inputRef}
+              value={draft}
+              rows={1}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter sends; Shift+Enter inserts a newline.
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  void send();
+                }
+              }}
+              placeholder="Message Cogeto…"
+              className="max-h-40 flex-1 resize-none self-center bg-transparent py-1 text-sm leading-relaxed text-slate-800 outline-none placeholder:text-slate-400"
+            />
+            <button
+              type="submit"
+              disabled={busy || !draft.trim()}
+              aria-label="Send"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-teal text-white transition-colors hover:bg-brand-teal-ink disabled:opacity-40"
+            >
+              {busy ? (
+                <span
+                  className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                  aria-hidden="true"
+                />
+              ) : (
+                <SendIcon />
+              )}
+            </button>
+          </div>
+          <p className="mt-1.5 text-center text-[11px] text-slate-400">
+            Enter to send, Shift+Enter for a new line. Every claim shows what it can prove.
+          </p>
         </form>
       </section>
       {openMemoryId && (
