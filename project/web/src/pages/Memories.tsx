@@ -49,7 +49,7 @@ export function Memories({ session }: { session: Session }) {
   };
 
   return (
-    <Shell session={session} title="Memories" active="memories">
+    <Shell session={session} title="Memories" active="memories" width="wide">
       <div className="grid gap-3 md:grid-cols-2">
         <CaptureCard session={session} onCaptured={(id) => setPending((ids) => [...ids, id])} />
         <UploadCard

@@ -236,7 +236,7 @@ export function Tasks({ session }: { session: Session }) {
   });
 
   return (
-    <Shell session={session} title="Tasks" active="tasks">
+    <Shell session={session} title="Tasks" active="tasks" width="wide">
       <Tabs
         active={view}
         onChange={setView}

@@ -380,7 +380,7 @@ export function Review({ session }: { session: Session }) {
   });
 
   return (
-    <Shell session={session} title="Review" active="review">
+    <Shell session={session} title="Review" active="review" width="wide">
       <Tabs
         active={tab}
         onChange={setTab}

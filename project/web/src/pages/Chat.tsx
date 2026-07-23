@@ -268,7 +268,7 @@ export function Chat({ session }: { session: Session }) {
   const empty = !isPending && (history?.length ?? 0) === 0 && !liveQuestion;
 
   return (
-    <Shell session={session} title="Chat" active="chat" fullHeight>
+    <Shell session={session} title="Chat" active="chat" fullHeight width="reading">
       <section className="flex min-h-0 flex-1 flex-col rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm">
         <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
           {isPending && <p className="text-sm text-slate-400">Loading conversation…</p>}

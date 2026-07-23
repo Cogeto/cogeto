@@ -38,7 +38,7 @@ export function Timeline({ session }: { session: Session }) {
   };
 
   return (
-    <Shell session={session} title="Time travel" active="timeline">
+    <Shell session={session} title="Time travel" active="timeline" width="wide">
       <Card>
         <form
           className="flex flex-wrap items-end gap-2"

@@ -272,7 +272,7 @@ export function Forgotten({ session }: { session: Session }) {
   const receipts = receiptsQuery.data;
 
   return (
-    <Shell session={session} title="Forgotten" active="forgotten">
+    <Shell session={session} title="Forgotten" active="forgotten" width="wide">
       <Card>
         <div className="mb-1 flex flex-wrap items-center gap-3">
           <SectionTitle>Deletion receipts</SectionTitle>
