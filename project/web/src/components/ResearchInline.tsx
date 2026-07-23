@@ -124,7 +124,7 @@ export function ResearchInline({
   if (cancelled) {
     return (
       <Frame>
-        <p className="text-sm text-slate-600">Cancelled — nothing was sent.</p>
+        <p className="text-sm text-slate-600">Cancelled. Nothing was sent.</p>
         <button type="button" className={`${btnSecondary} mt-2`} onClick={onClose}>
           Dismiss
         </button>
@@ -144,7 +144,7 @@ export function ResearchInline({
           </p>
           <p className="text-xs text-slate-500">
             Nothing has been sent. This is the exact query that will reach public search engines if
-            you approve — edit it freely first.
+            you approve. Edit it freely first.
           </p>
           {run.minimisedQuery !== run.proposedQuery && (
             <p className="text-xs">
@@ -162,7 +162,7 @@ export function ResearchInline({
           />
           <p className="rounded bg-slate-50 px-2 py-1 text-xs text-slate-600">
             {run.minimiseReason}
-            {queryEdited && ' · You edited the query — your text is what will be sent.'}
+            {queryEdited && ' · You edited the query. Your text is what will be sent.'}
           </p>
           <div className="flex flex-wrap gap-2">
             <button
@@ -179,7 +179,7 @@ export function ResearchInline({
               disabled={cancel.isPending}
               onClick={() => cancel.mutate()}
             >
-              Cancel — send nothing
+              Cancel, send nothing
             </button>
           </div>
         </div>
@@ -188,7 +188,7 @@ export function ResearchInline({
       {run.status === 'approved' && results !== null && !captured && (
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Results — pick the pages worth reading
+            Results: pick the pages worth reading
           </p>
           {results.length === 0 ? (
             <p className="text-sm text-slate-500">
@@ -198,7 +198,7 @@ export function ResearchInline({
           ) : (
             <>
               <p className="text-xs text-slate-500">
-                Sent query: <span className="font-medium text-slate-700">{run.sentQuery}</span> —
+                Sent query: <span className="font-medium text-slate-700">{run.sentQuery}</span>,
                 recorded on this run and on every memory this research produces.
               </p>
               <ul className="max-h-64 space-y-2 overflow-y-auto">
@@ -220,7 +220,9 @@ export function ResearchInline({
                       <p className="truncate text-sm font-medium text-slate-800">
                         {r.title || r.url}
                       </p>
-                      <p className="break-all text-xs text-brand-teal-ink">{r.url}</p>
+                      <p className="break-all text-xs text-brand-teal-ink dark:text-brand-teal">
+                        {r.url}
+                      </p>
                       {r.snippet && <p className="text-xs text-slate-500">{r.snippet}</p>}
                     </div>
                   </li>
@@ -248,8 +250,8 @@ export function ResearchInline({
               {r.status === 'captured' ? (
                 <span className="text-slate-600">✓ {r.url}</span>
               ) : (
-                <span className="text-amber-700">
-                  ⨯ {r.url} — skipped ({r.detail})
+                <span className="text-amber-700 dark:text-amber-300">
+                  ⨯ {r.url} · skipped ({r.detail})
                 </span>
               )}
             </p>
@@ -269,12 +271,12 @@ export function ResearchInline({
           {settled && totalFacts > 0 && (
             <p className="text-sm text-slate-600">
               ✓ {capturedCount} page{capturedCount === 1 ? '' : 's'} captured, {totalFacts} fact
-              {totalFacts === 1 ? '' : 's'} remembered — answering from them now.
+              {totalFacts === 1 ? '' : 's'} remembered. Answering from them now.
             </p>
           )}
           {synthesise.isPending && (
             <p className="text-sm text-slate-500">
-              The pages didn’t yield structured facts — synthesising directly from the fetched pages
+              The pages didn’t yield structured facts. Synthesising directly from the fetched pages
               instead…
             </p>
           )}
@@ -285,7 +287,7 @@ export function ResearchInline({
         <div className="space-y-2">
           <p className="text-xs text-slate-500">
             The pages didn’t yield structured facts, so this answer is grounded directly in the
-            fetched pages — every claim traceable:
+            fetched pages, every claim traceable:
           </p>
           <ResearchAnswer answer={fallbackAnswer} />
           <button type="button" className={btnSecondary} onClick={onClose}>
@@ -295,7 +297,7 @@ export function ResearchInline({
       )}
 
       {error && (
-        <p role="alert" className="mt-2 text-sm text-red-700">
+        <p role="alert" className="mt-2 text-sm text-red-700 dark:text-red-300">
           {error}
         </p>
       )}
@@ -305,6 +307,8 @@ export function ResearchInline({
 
 function Frame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-brand-teal/30 bg-white p-3 shadow-sm">{children}</div>
+    <div className="rounded-lg border border-brand-teal/30 bg-surface p-3 shadow-sm">
+      {children}
+    </div>
   );
 }

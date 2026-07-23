@@ -48,9 +48,9 @@ function Stat({
 }) {
   const cls =
     tone === 'active'
-      ? 'bg-brand-teal-surface text-brand-teal-ink'
+      ? 'bg-brand-teal-surface dark:bg-brand-teal/15 text-brand-teal-ink dark:text-brand-teal'
       : tone === 'alert'
-        ? 'bg-red-100 text-red-700'
+        ? 'bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-300'
         : 'bg-slate-100 text-slate-600';
   return (
     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${cls}`}>
@@ -132,7 +132,7 @@ export function WorkerActivityPanel({ session }: { session: Session }) {
     data && data.summary.running === 0 && data.summary.queued === 0 && data.summary.waiting === 0;
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <section className="rounded-lg border border-slate-200 bg-surface p-4 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           Worker activity
@@ -147,7 +147,7 @@ export function WorkerActivityPanel({ session }: { session: Session }) {
 
       {isPending && <p className="text-sm text-slate-400">Loading…</p>}
       {isError && (
-        <p className="text-sm text-red-700" role="alert">
+        <p className="text-sm text-red-700 dark:text-red-300" role="alert">
           We couldn’t load worker activity.
         </p>
       )}
@@ -156,8 +156,8 @@ export function WorkerActivityPanel({ session }: { session: Session }) {
         <>
           <div className="mb-3 flex flex-wrap items-center gap-2">
             {idle ? (
-              <span className="rounded-full bg-brand-teal-surface px-2 py-0.5 text-xs font-semibold text-brand-teal-ink">
-                Idle — all jobs processed
+              <span className="rounded-full bg-brand-teal-surface dark:bg-brand-teal/15 px-2 py-0.5 text-xs font-semibold text-brand-teal-ink dark:text-brand-teal">
+                Idle, all jobs processed
               </span>
             ) : (
               <>
@@ -217,7 +217,7 @@ export function WorkerActivityPanel({ session }: { session: Session }) {
                     key={`${c.jobType}-${c.sourceId ?? i}`}
                     className="flex items-center gap-2 text-xs text-slate-500"
                   >
-                    <span className="text-brand-teal-ink">✓</span>
+                    <span className="text-brand-teal-ink dark:text-brand-teal">✓</span>
                     <span className="text-slate-600">{jobLabel(c.jobType)}</span>
                     {sourceLabel(c.sourceType, c.sourceId) && (
                       <span className="truncate text-slate-400">

@@ -160,29 +160,29 @@ function SpanRow({
       {/* Rail marker: teal for a currently-held fact, muted for a past one. */}
       <span
         aria-hidden="true"
-        className={`absolute -left-[27px] top-1.5 h-3 w-3 rounded-full border-2 border-white ${
+        className={`absolute -left-[27px] top-1.5 h-3 w-3 rounded-full border-2 border-surface ${
           span.current ? 'bg-brand-teal' : 'bg-slate-300'
         }`}
       />
       <div
         className={`rounded-lg border p-3 ${
           span.current
-            ? 'border-brand-teal/40 bg-brand-teal-surface/30'
-            : 'border-slate-200 bg-white'
+            ? 'border-brand-teal/40 bg-brand-teal-surface/30 dark:bg-brand-teal/10'
+            : 'border-slate-200 bg-surface'
         }`}
       >
         <button
           type="button"
           onClick={() => onOpenMemory(span.memory.id)}
           className="block w-full text-left text-sm text-slate-800 hover:underline"
-          title="Open this fact — its verification, provenance and source"
+          title="Open this fact: its verification, provenance and source"
         >
           {span.memory.content}
         </button>
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
           <StatusChip status={span.memory.status} />
           {span.current && (
-            <span className="rounded-full bg-brand-teal-surface px-2 py-0.5 font-semibold text-brand-teal-ink">
+            <span className="rounded-full bg-brand-teal-surface dark:bg-brand-teal/15 px-2 py-0.5 font-semibold text-brand-teal-ink dark:text-brand-teal">
               current
             </span>
           )}
@@ -194,7 +194,7 @@ function SpanRow({
             <button
               type="button"
               onClick={() => onOpenMemory(span.supersededBy!)}
-              className="text-brand-teal-ink hover:underline"
+              className="text-brand-teal-ink dark:text-brand-teal hover:underline"
             >
               → what replaced it
             </button>
@@ -237,8 +237,8 @@ function PointInTimePanel({
         />
       </label>
       <p className="text-xs text-slate-400">
-        What Cogeto understood about {subject} on {humanDate(toInstant(day))} — including facts
-        since replaced, each labelled with what happened to it later.
+        What Cogeto understood about {subject} on {humanDate(toInstant(day))}, including facts since
+        replaced, each labelled with what happened to it later.
       </p>
       {isPending && <SkeletonRows rows={3} label="Reconstructing that moment…" />}
       {isError && (
@@ -269,7 +269,9 @@ function PitFactRow({
   return (
     <li
       className={`rounded-lg border p-3 ${
-        past ? 'border-slate-200 bg-white' : 'border-brand-teal/40 bg-brand-teal-surface/30'
+        past
+          ? 'border-slate-200 bg-surface'
+          : 'border-brand-teal/40 bg-brand-teal-surface/30 dark:bg-brand-teal/10'
       }`}
     >
       <button
@@ -282,7 +284,7 @@ function PitFactRow({
       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
         <StatusChip status={fact.memory.status} />
         <span
-          className={`rounded-full px-2 py-0.5 font-semibold ${past ? PAST_CHIP : 'bg-brand-teal-surface text-brand-teal-ink'}`}
+          className={`rounded-full px-2 py-0.5 font-semibold ${past ? PAST_CHIP : 'bg-brand-teal-surface dark:bg-brand-teal/15 text-brand-teal-ink dark:text-brand-teal'}`}
         >
           {FATE_LABEL[fact.laterFate]}
         </span>
@@ -290,7 +292,7 @@ function PitFactRow({
           <button
             type="button"
             onClick={() => onOpenMemory(fact.supersededBy!)}
-            className="text-brand-teal-ink hover:underline"
+            className="text-brand-teal-ink dark:text-brand-teal hover:underline"
           >
             → what replaced it
           </button>
@@ -423,9 +425,9 @@ function ChangeRow({
   const question = `What changed about ${subject}, and what caused it, between ${humanDate(toInstant(fromDay))} and ${humanDate(toInstant(toDay))}?`;
   // Past-belief framing, same story the chat answer tells (decision 0012 ruling 6).
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
+    <div className="rounded-lg border border-slate-200 bg-surface p-3 text-sm">
       <p className="text-slate-700">
-        <span className="text-slate-400">In {humanDate(toInstant(fromDay))} — </span>
+        <span className="text-slate-400">In {humanDate(toInstant(fromDay))}, </span>
         <button
           type="button"
           onClick={() => onOpenMemory(change.before.id)}
@@ -442,14 +444,14 @@ function ChangeRow({
         <button
           type="button"
           onClick={() => onOpenMemory(change.after.id)}
-          className="rounded bg-brand-teal-surface px-1 font-medium text-brand-teal-ink hover:underline"
+          className="rounded bg-brand-teal-surface dark:bg-brand-teal/15 px-1 font-medium text-brand-teal-ink dark:text-brand-teal hover:underline"
         >
           “{change.after.content}”
         </button>
       </p>
       <a
         href={`/chat?q=${encodeURIComponent(question)}`}
-        className="mt-2 inline-block text-xs text-brand-teal-ink hover:underline"
+        className="mt-2 inline-block text-xs text-brand-teal-ink dark:text-brand-teal hover:underline"
       >
         Explain this change in chat →
       </a>
@@ -483,7 +485,9 @@ function DiffList({
             >
               <span
                 aria-hidden="true"
-                className={tone === 'add' ? 'text-brand-teal-ink' : 'text-slate-400'}
+                className={
+                  tone === 'add' ? 'text-brand-teal-ink dark:text-brand-teal' : 'text-slate-400'
+                }
               >
                 {tone === 'add' ? '+' : '−'}
               </span>

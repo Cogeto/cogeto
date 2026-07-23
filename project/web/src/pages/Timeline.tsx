@@ -48,7 +48,7 @@ export function Timeline({ session }: { session: Session }) {
           }}
         >
           <label className="flex flex-1 flex-col gap-1 text-sm text-slate-600">
-            Subject — a person, project, or topic
+            Subject: a person, project, or topic
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -65,7 +65,7 @@ export function Timeline({ session }: { session: Session }) {
           </button>
         </form>
         <p className="mt-2 text-xs text-slate-500">
-          See how your knowledge about a subject changed over time — what you believed then, what
+          See how your knowledge about a subject changed over time: what you believed then, what
           changed, and what caused it. Every claim links to its source.
         </p>
       </Card>
@@ -86,8 +86,8 @@ export function Timeline({ session }: { session: Session }) {
         </Card>
       ) : (
         <EmptyState icon="🕰" title="Pick a subject to travel through its history.">
-          Ask “what did I believe about X in March?” or “what changed about Y since last month?” —
-          here you get the visual answer. You can also open a memory and choose “Timeline”.
+          Ask “what did I believe about X in March?” or “what changed about Y since last month?”
+          Here you get the visual answer. You can also open a memory and choose “Timeline”.
         </EmptyState>
       )}
 

@@ -93,20 +93,20 @@ export function CitationChip({
     : target.past
       ? PAST_CHIP
       : isWeb
-        ? 'bg-brand-teal/10 text-brand-teal-ink'
+        ? 'bg-brand-teal/10 text-brand-teal-ink dark:text-brand-teal'
         : STATUS_CHIP[target.status];
   // Attribute a cited SHARED fact owned by someone else (O2-B).
   const sharedByOther = target.scope === 'shared' && target.ownerId !== me?.userId;
   const ownerLabel = target.ownerName ?? 'a teammate';
   const className = `mx-0.5 inline-flex items-center gap-1 rounded-full px-1.5 align-baseline text-xs font-semibold no-underline ${chipStyle}`;
   const webDetail = webSource
-    ? `${webSource.title ?? webSource.finalUrl} — fetched ${new Date(webSource.fetchedAt).toLocaleString()}`
+    ? `${webSource.title ?? webSource.finalUrl} · fetched ${new Date(webSource.fetchedAt).toLocaleString()}`
     : isWeb
       ? 'from the web'
       : null;
   const title = [target.claim, webDetail, sharedByOther ? `shared by ${ownerLabel}` : null]
     .filter(Boolean)
-    .join(' — ');
+    .join(' · ');
   const label = (
     <>
       {ordinal}
@@ -114,7 +114,7 @@ export function CitationChip({
       {warn && <span aria-label={target.status}>⚠ {statusLabel(target.status)}</span>}
       {!warn && target.past && <span aria-label="past belief">past</span>}
       {sharedByOther && (
-        <span aria-label={`shared by ${ownerLabel}`} className="text-sky-700">
+        <span aria-label={`shared by ${ownerLabel}`} className="text-sky-700 dark:text-sky-300">
           · {ownerLabel}
         </span>
       )}

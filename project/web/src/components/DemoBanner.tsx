@@ -7,7 +7,7 @@
 export function DemoBanner() {
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center">
-      <div className="pointer-events-auto mb-3 flex items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-4 py-1.5 text-xs text-slate-500 shadow-sm backdrop-blur">
+      <div className="pointer-events-auto mb-3 flex items-center gap-2 rounded-full border border-slate-200 bg-surface/95 px-4 py-1.5 text-xs text-slate-500 shadow-sm backdrop-blur">
         <span className="inline-block h-2 w-2 rounded-full bg-brand-teal" aria-hidden />
         <span>
           Live sandbox · <span className="font-medium text-slate-600">Ana Kovač</span> · fictional
@@ -18,7 +18,7 @@ export function DemoBanner() {
           href="https://cogeto.eu"
           target="_blank"
           rel="noreferrer"
-          className="font-semibold text-brand-teal-ink hover:underline"
+          className="font-semibold text-brand-teal-ink dark:text-brand-teal hover:underline"
         >
           Learn more
         </a>

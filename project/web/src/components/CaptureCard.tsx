@@ -58,7 +58,7 @@ export function CaptureCard({
         </label>
         <p className="ml-auto text-xs text-slate-400">
           {capture.isError ? (
-            <span className="text-red-700">Capture failed — try again.</span>
+            <span className="text-red-700 dark:text-red-300">Capture failed. Try again.</span>
           ) : (
             'Facts appear below once verified.'
           )}
@@ -98,7 +98,7 @@ export function PendingNote({
   }, [state, noteId, onSettled]);
 
   return (
-    <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500">
+    <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-surface px-3 py-2 text-sm text-slate-500">
       <span className="h-2 w-2 animate-pulse rounded-full bg-brand-teal" aria-hidden="true" />
       <span role="status">Remembering… extraction and verification are running.</span>
     </div>

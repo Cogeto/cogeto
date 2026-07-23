@@ -102,14 +102,14 @@ function ResearchOfferChip({
         type="button"
         onClick={() => propose.mutate()}
         disabled={propose.isPending}
-        className="rounded-full border border-brand-teal/40 bg-brand-teal/10 px-3 py-1 text-xs font-semibold text-brand-teal-ink transition-colors hover:bg-brand-teal/20 disabled:opacity-40"
+        className="rounded-full border border-brand-teal/40 bg-brand-teal/10 px-3 py-1 text-xs font-semibold text-brand-teal-ink dark:text-brand-teal transition-colors hover:bg-brand-teal/20 disabled:opacity-40"
       >
         {propose.isPending ? 'Preparing…' : 'Research this on the web →'}
       </button>
       <span className="text-xs text-slate-400">
         {propose.isError
-          ? 'Couldn’t prepare that research — try the Research page.'
-          : 'You’ll see and approve exactly what is sent — nothing leaves until then.'}
+          ? 'Couldn’t prepare that research. Try the Research page.'
+          : 'You’ll see and approve exactly what is sent. Nothing leaves until then.'}
       </span>
     </div>
   );
@@ -148,7 +148,7 @@ function RememberAction({ session, messageId }: { session: Session; messageId: s
         onClick={() => remember.mutate()}
         disabled={remember.isPending}
         className="mt-0.5 text-xs text-white/60 underline decoration-white/30 underline-offset-2 hover:text-white disabled:opacity-40"
-        title="Remember this message — it becomes memory through the normal pipeline"
+        title="Remember this message. It becomes memory through the normal pipeline"
       >
         {remember.isPending ? 'Remembering…' : 'Remember this'}
       </button>
@@ -175,7 +175,7 @@ function Bubble({ role, children }: { role: 'user' | 'assistant'; children: Reac
         className={`max-w-[85%] rounded-lg px-3 py-2 ${
           role === 'user'
             ? 'bg-brand-navy-deep text-white'
-            : 'border border-slate-200 bg-white text-slate-800 shadow-sm'
+            : 'border border-slate-200 bg-surface text-slate-800 shadow-sm'
         }`}
       >
         {children}
@@ -273,16 +273,19 @@ export function Chat({ session }: { session: Session }) {
         <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
           {isPending && <p className="text-sm text-slate-400">Loading conversation…</p>}
           {empty && (
-            <div className="rounded-md border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
+            <div className="rounded-md border border-dashed border-slate-300 bg-surface p-4 text-sm text-slate-500">
               <p className="font-medium text-slate-600">
-                Ask anything — every claim shows what it can prove.
+                Ask anything. Every claim shows what it can prove.
               </p>
               <p className="mt-1">
                 Answers ground in your own memories first (each claim carries a chip that opens its
                 source); anything from the model’s general knowledge is marked{' '}
                 <span className="italic">unsourced</span>, and the web is searched only when you ask
                 and approve. Start by capturing a note on the{' '}
-                <a href="/memories" className="text-brand-teal-ink hover:underline">
+                <a
+                  href="/memories"
+                  className="text-brand-teal-ink dark:text-brand-teal hover:underline"
+                >
                   Memories
                 </a>{' '}
                 page, or just say hello.
@@ -361,7 +364,7 @@ export function Chat({ session }: { session: Session }) {
             />
           )}
           {failed && (
-            <p role="alert" className="text-sm text-red-700">
+            <p role="alert" className="text-sm text-red-700 dark:text-red-300">
               {failMessage ?? 'That answer didn’t come through. Try asking again.'}
             </p>
           )}
@@ -380,8 +383,8 @@ export function Chat({ session }: { session: Session }) {
             id="chat-input"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Ask about your commitments, decisions, people — or anything at all…"
-            className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-colors focus:border-brand-teal"
+            placeholder="Ask about your commitments, decisions, people, or anything at all…"
+            className="flex-1 rounded-md border border-slate-300 bg-surface px-3 py-2 text-sm transition-colors focus:border-brand-teal"
           />
           <button
             type="submit"

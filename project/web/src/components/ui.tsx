@@ -53,8 +53,8 @@ export function Pill({
 export function SensitiveBadge() {
   return (
     <span
-      className={`${BADGE} bg-violet-100 text-violet-700`}
-      title="Sensitive — owner-only, off by default in retrieval"
+      className={`${BADGE} bg-violet-100 text-violet-700 dark:bg-violet-400/15 dark:text-violet-300`}
+      title="Sensitive: owner-only, off by default in retrieval"
     >
       <span aria-hidden="true">🔒</span>sensitive
     </span>
@@ -63,7 +63,10 @@ export function SensitiveBadge() {
 
 export function SharedBadge({ owner }: { owner?: string | null }) {
   return (
-    <span className={`${BADGE} bg-sky-100 text-sky-700`} title="Visible to your whole organization">
+    <span
+      className={`${BADGE} bg-sky-100 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300`}
+      title="Visible to your whole organization"
+    >
       <span aria-hidden="true">◇</span>shared{owner ? ` · ${owner}` : ''}
     </span>
   );
@@ -78,7 +81,7 @@ export function DormantBadge() {
   return (
     <span
       className={`${BADGE} bg-slate-100 text-slate-600`}
-      title="No activity for a while — gone quiet"
+      title="No activity for a while: gone quiet"
     >
       <span aria-hidden="true">☾</span>gone quiet
     </span>
@@ -130,7 +133,9 @@ export function VerdictChip({ verdict }: { verdict: string }) {
 export function CountBadge({ count, label }: { count: number; label: string }) {
   return (
     <span
-      className="rounded-full bg-amber-400 px-1.5 text-xs font-bold text-slate-900"
+      // amber-400 is a fixed badge color in both themes, so its ink must be
+      // theme-independent too: brand-navy (not the remapping slate-900).
+      className="rounded-full bg-amber-400 px-1.5 text-xs font-bold text-brand-navy"
       aria-label={`${count} ${label}`}
     >
       {count}
@@ -149,7 +154,7 @@ export const btnDanger =
 // ── Cards + section headings ─────────────────────────────────────────────────
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-lg border border-slate-200 bg-white p-4 shadow-sm ${className}`}>
+    <section className={`rounded-lg border border-slate-200 bg-surface p-4 shadow-sm ${className}`}>
       {children}
     </section>
   );
@@ -185,12 +190,14 @@ export function EmptyState({
   return (
     <section
       className={`rounded-lg border border-dashed p-8 text-center ${
-        tone === 'positive' ? 'border-brand-teal/40 bg-brand-teal-surface/40' : 'border-slate-300'
+        tone === 'positive'
+          ? 'border-brand-teal/40 bg-brand-teal-surface/40 dark:border-brand-teal/30 dark:bg-brand-teal/10'
+          : 'border-slate-300'
       }`}
     >
       {icon != null && (
         <div
-          className={`mx-auto mb-2 text-2xl ${tone === 'positive' ? 'text-brand-teal-ink' : 'text-slate-400'}`}
+          className={`mx-auto mb-2 text-2xl ${tone === 'positive' ? 'text-brand-teal-ink dark:text-brand-teal' : 'text-slate-400'}`}
           aria-hidden="true"
         >
           {icon}
@@ -207,7 +214,7 @@ export function ErrorState({ children, onRetry }: { children: ReactNode; onRetry
   return (
     <div
       role="alert"
-      className="flex flex-wrap items-center gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+      className="flex flex-wrap items-center gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
     >
       <span>{children}</span>
       {onRetry && (
@@ -256,7 +263,7 @@ export function Tabs<T extends string>({
           onClick={() => onChange(t.key)}
           className={`rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
             active === t.key
-              ? 'bg-white text-slate-800 shadow-sm'
+              ? 'bg-surface text-slate-800 shadow-sm'
               : 'text-slate-500 hover:text-slate-700'
           }`}
         >
@@ -305,13 +312,13 @@ export function Drawer({
 
   return (
     <div className="fixed inset-0 z-20">
-      <div className="absolute inset-0 bg-slate-900/30" aria-hidden="true" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50" aria-hidden="true" onClick={onClose} />
       <aside
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`absolute right-0 top-0 flex h-full w-full ${width} animate-drawer-in flex-col bg-white shadow-xl`}
+        className={`absolute right-0 top-0 flex h-full w-full ${width} animate-drawer-in flex-col bg-surface shadow-xl`}
       >
         <header className="flex shrink-0 items-center justify-between border-b border-slate-200 px-6 py-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</h2>

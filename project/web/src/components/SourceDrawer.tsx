@@ -192,8 +192,8 @@ export function SourceDrawer({
                   (fileQuery.data.discarded ? 'Discarded document' : 'Uploaded document')}
               </p>
               {fileQuery.data.discarded ? (
-                <p className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-700">
-                  Original discarded after extraction — only the derived memories remain (§A.9).
+                <p className="rounded bg-amber-50 dark:bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300">
+                  Original discarded after extraction. Only the derived memories remain (§A.9).
                   Provenance is intact; there is nothing to download.
                 </p>
               ) : (
@@ -225,7 +225,9 @@ export function SourceDrawer({
                   >
                     {download.isPending ? 'Preparing…' : 'Download original'}
                   </button>
-                  {downloadError && <p className="text-xs text-red-600">{downloadError}</p>}
+                  {downloadError && (
+                    <p className="text-xs text-red-600 dark:text-red-300">{downloadError}</p>
+                  )}
                 </>
               )}
             </div>
@@ -239,7 +241,7 @@ export function SourceDrawer({
           {chatQuery.data && (
             <div className="space-y-2">
               <p className="text-xs text-slate-500">
-                Remembered from chat — the highlighted message is the source; nearby turns are shown
+                Remembered from chat. The highlighted message is the source; nearby turns are shown
                 for context.
               </p>
               {chatQuery.data.turns.map((turn) => (
@@ -282,14 +284,14 @@ export function SourceDrawer({
                   {new Date(emailQuery.data.sentAt ?? emailQuery.data.receivedAt).toLocaleString()}
                 </p>
                 {emailQuery.data.isForward && emailQuery.data.originalCorrespondent && (
-                  <p className="mt-1 rounded bg-brand-teal/5 px-2 py-1 text-xs text-brand-teal-ink">
+                  <p className="mt-1 rounded bg-brand-teal/5 px-2 py-1 text-xs text-brand-teal-ink dark:text-brand-teal">
                     Originally from:{' '}
-                    <span className="font-medium">{emailQuery.data.originalCorrespondent}</span> — a
+                    <span className="font-medium">{emailQuery.data.originalCorrespondent}</span>. A
                     reply will go to them, not the forwarder.
                   </p>
                 )}
                 {emailQuery.data.isForward && !emailQuery.data.originalCorrespondent && (
-                  <p className="mt-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-700">
+                  <p className="mt-1 rounded bg-amber-50 dark:bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300">
                     This arrived as a forward; the original sender couldn’t be recovered, so a reply
                     will leave the recipient for you to fill in.
                   </p>
@@ -342,7 +344,7 @@ export function SourceDrawer({
                                 window.open(url, '_blank', 'noopener'),
                               )
                             }
-                            className="shrink-0 text-brand-teal-ink hover:underline"
+                            className="shrink-0 text-brand-teal-ink dark:text-brand-teal hover:underline"
                           >
                             Download
                           </button>
@@ -362,17 +364,17 @@ export function SourceDrawer({
                     Draft created. Review it on the{' '}
                     <a
                       href="/approvals"
-                      className="font-medium text-brand-teal-ink hover:underline"
+                      className="font-medium text-brand-teal-ink dark:text-brand-teal hover:underline"
                     >
                       Approvals
                     </a>{' '}
-                    page, then send it from your own mail client — Cogeto never sends mail.
+                    page, then send it from your own mail client. Cogeto never sends mail.
                   </p>
                 ) : (
                   <>
                     <p className="mb-2 text-xs text-slate-500">
                       Cogeto will write a suggested reply you can edit and send yourself. It never
-                      sends mail — you approve and send from your own client.
+                      sends mail. You approve and send from your own client.
                     </p>
                     <button
                       type="button"
@@ -382,7 +384,9 @@ export function SourceDrawer({
                     >
                       {draftReply.isPending ? 'Drafting…' : 'Draft reply'}
                     </button>
-                    {draftError && <p className="mt-2 text-xs text-red-600">{draftError}</p>}
+                    {draftError && (
+                      <p className="mt-2 text-xs text-red-600 dark:text-red-300">{draftError}</p>
+                    )}
                   </>
                 )}
               </div>
@@ -403,7 +407,7 @@ export function SourceDrawer({
                 {conclusionQuery.data.conclusionType === 'condition_met'
                   ? 'a task’s waiting condition was satisfied'
                   : 'a task concluded'}{' '}
-                (decision 0037) — this statement entered the normal pipeline like any other source.
+                (decision 0037). This statement entered the normal pipeline like any other source.
               </p>
               <p className="whitespace-pre-wrap text-sm text-slate-800">
                 {conclusionQuery.data.statement}
@@ -447,13 +451,13 @@ export function SourceDrawer({
                   href={webQuery.data.finalUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-brand-teal-ink hover:underline"
+                  className="text-brand-teal-ink dark:text-brand-teal hover:underline"
                 >
                   {webQuery.data.finalUrl}
                 </a>
               </p>
               <p className="text-xs text-slate-400">
-                Fetched {new Date(webQuery.data.fetchedAt).toLocaleString()} — facts from this page
+                Fetched {new Date(webQuery.data.fetchedAt).toLocaleString()}. Facts from this page
                 are “as of” that moment.
               </p>
               <p className="flex flex-wrap items-center gap-2 text-xs">
@@ -473,8 +477,8 @@ export function SourceDrawer({
 
       {deleteError && <ErrorState>{deleteError}</ErrorState>}
 
-      <section className="rounded-lg border border-red-200 p-3">
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-red-600">
+      <section className="rounded-lg border border-red-200 dark:border-red-500/30 p-3">
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-red-600 dark:text-red-300">
           Danger zone
         </h3>
         <p className="mb-2 text-xs text-slate-500">
@@ -484,7 +488,7 @@ export function SourceDrawer({
               (impactQuery.data.objectCount > 0
                 ? ` and ${impactQuery.data.objectCount} stored file${impactQuery.data.objectCount === 1 ? '' : 's'}`
                 : '') +
-              ' — permanently, with a signed receipt as proof.'
+              ', permanently, with a signed receipt as proof.'
             : 'Computing what deletion would remove…'}
         </p>
         <button

@@ -30,14 +30,14 @@ export function DemoLogin({ onSession }: { onSession: (session: Session) => void
     <main className="flex min-h-screen items-center justify-center bg-slate-50">
       <form
         onSubmit={(e) => void onSubmit(e)}
-        className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm"
+        className="w-full max-w-sm rounded-xl border border-slate-200 bg-surface p-8 shadow-sm"
       >
         <img
           src="/brand/cogeto-final-logo-horizontal.svg"
           alt="Cogeto"
           className="mx-auto mb-2 h-12"
         />
-        <p className="mb-6 text-center text-sm text-slate-500">Demo sandbox — sign in</p>
+        <p className="mb-6 text-center text-sm text-slate-500">Demo sandbox: sign in</p>
 
         <label className="mb-3 block text-left">
           <span className="mb-1 block text-xs font-medium text-slate-600">Username</span>
@@ -71,7 +71,7 @@ export function DemoLogin({ onSession }: { onSession: (session: Session) => void
         </button>
 
         {error && (
-          <p className="mt-4 text-center text-sm text-red-700" role="alert">
+          <p className="mt-4 text-center text-sm text-red-700 dark:text-red-300" role="alert">
             {error}
           </p>
         )}

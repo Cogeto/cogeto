@@ -37,7 +37,10 @@ export function ChatMarkdown({
         );
       if (piece.kind === 'code')
         return (
-          <code key={key} className="rounded bg-black/10 px-1 font-mono text-[0.85em]">
+          <code
+            key={key}
+            className="rounded bg-black/10 px-1 font-mono text-[0.85em] dark:bg-white/10"
+          >
             {piece.text}
           </code>
         );

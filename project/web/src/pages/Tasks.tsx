@@ -54,7 +54,7 @@ function ConclusionLinks({
           title={c.statement}
         >
           {c.conclusionType === 'condition_met'
-            ? 'condition met — see the fact it produced'
+            ? 'condition met: see the fact it produced'
             : 'produced this fact'}
         </button>
       ))}
@@ -89,7 +89,7 @@ function TaskRow({
 
   return (
     <li
-      className={`rounded-lg border border-l-4 bg-white p-3 shadow-sm ${
+      className={`rounded-lg border border-l-4 bg-surface p-3 shadow-sm ${
         settled
           ? 'border-l-slate-200 border-slate-200 opacity-70'
           : blocked
@@ -117,7 +117,11 @@ function TaskRow({
                 <EntityChip key={entity} name={entity} />
               ))}
             {due && !settled && (
-              <span className={due.overdue ? 'font-semibold text-red-600' : 'text-slate-500'}>
+              <span
+                className={
+                  due.overdue ? 'font-semibold text-red-600 dark:text-red-300' : 'text-slate-500'
+                }
+              >
                 {due.text}
               </span>
             )}
@@ -129,7 +133,7 @@ function TaskRow({
             )}
           </div>
           {blocked && task.conditionText && !task.conditionMet && (
-            <p className="mt-1.5 text-xs text-amber-800">
+            <p className="mt-1.5 text-xs text-amber-800 dark:text-amber-300">
               <span className="font-semibold">Waiting</span> {task.conditionText}.
             </p>
           )}
@@ -191,7 +195,7 @@ function TaskRow({
           </button>
         </div>
       </div>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-xs text-red-600 dark:text-red-300">{error}</p>}
     </li>
   );
 }
@@ -292,7 +296,7 @@ export function Tasks({ session }: { session: Session }) {
         rows.length === 0 &&
         (view === 'open' ? (
           <EmptyState icon="✓" tone="positive" title="Nothing is still open">
-            Tasks aren’t typed by hand — commitments you capture (“I’ll send Luka the offer”) become
+            Tasks aren’t typed by hand. Commitments you capture (“I’ll send Luka the offer”) become
             tasks automatically, derived from your memory.
           </EmptyState>
         ) : (

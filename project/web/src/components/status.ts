@@ -16,15 +16,33 @@ export interface StatusMeta {
   className: string;
 }
 
+// Dark variants (P6.8) tint each hue over the dark surface and lift the ink to a
+// light shade of the same hue, so every chip keeps AA contrast and its colorblind
+// distinctness (label + icon still carry the meaning). The neutral (slate) chips
+// need no dark: variant — the slate ramp remaps under :root.dark automatically.
 export const STATUS_META: Record<MemoryStatus, StatusMeta> = {
-  active: { label: 'active', icon: '●', className: 'bg-brand-teal-surface text-brand-teal-ink' },
+  active: {
+    label: 'active',
+    icon: '●',
+    className:
+      'bg-brand-teal-surface text-brand-teal-ink dark:bg-brand-teal/15 dark:text-brand-teal',
+  },
   user_approved: {
     label: 'approved',
     icon: '✓',
-    className: 'bg-brand-teal-surface text-brand-teal-ink',
+    className:
+      'bg-brand-teal-surface text-brand-teal-ink dark:bg-brand-teal/15 dark:text-brand-teal',
   },
-  uncertain: { label: 'uncertain', icon: '?', className: 'bg-amber-100 text-amber-800' },
-  contradicted: { label: 'contradicted', icon: '⚠', className: 'bg-red-100 text-red-700' },
+  uncertain: {
+    label: 'uncertain',
+    icon: '?',
+    className: 'bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300',
+  },
+  contradicted: {
+    label: 'contradicted',
+    icon: '⚠',
+    className: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+  },
   outdated: { label: 'outdated', icon: '○', className: 'bg-slate-100 text-slate-600' },
   replaced: { label: 'replaced', icon: '↻', className: 'bg-slate-100 text-slate-600' },
 };
@@ -49,11 +67,11 @@ export const statusLabel = (status: MemoryStatus): string => STATUS_META[status]
 export type Tone = 'positive' | 'warning' | 'danger' | 'neutral' | 'info';
 
 export const TONE_CLASS: Record<Tone, string> = {
-  positive: 'bg-brand-teal-surface text-brand-teal-ink',
-  warning: 'bg-amber-100 text-amber-800',
-  danger: 'bg-red-100 text-red-700',
+  positive: 'bg-brand-teal-surface text-brand-teal-ink dark:bg-brand-teal/15 dark:text-brand-teal',
+  warning: 'bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300',
+  danger: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
   neutral: 'bg-slate-100 text-slate-600',
-  info: 'bg-violet-100 text-violet-700',
+  info: 'bg-violet-100 text-violet-700 dark:bg-violet-400/15 dark:text-violet-300',
 };
 
 /** Past belief, client-side twin: replaced/outdated or interval closed. */

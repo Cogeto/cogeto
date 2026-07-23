@@ -21,7 +21,7 @@ export function Callback({ onSession }: { onSession: (session: Session) => void 
     <main className="flex min-h-screen items-center justify-center bg-slate-50">
       {error ? (
         <div className="text-center">
-          <p className="mb-3 text-sm text-red-600">{error}</p>
+          <p className="mb-3 text-sm text-red-600 dark:text-red-300">{error}</p>
           <a href="/" className="text-sm font-medium text-brand-navy underline">
             Back to sign-in
           </a>

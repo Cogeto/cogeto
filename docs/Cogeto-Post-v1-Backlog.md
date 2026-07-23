@@ -131,6 +131,13 @@ one-tap OFFER that only proposes; small talk answers naturally with no
 retrieval theatre. Seven live conversation eval cases (en + hr) joined the
 rule gate under the folded `conversation` verdict.
 
+**Surface polish (P6.8): DELIVERED** (2026-07-23, issues #213/#214, decision
+0048, no migration; notes in docs/notes/surface-polish.md). Dark mode as a
+first-class, default theme (one token set, two themes; re-derived status/chart
+palette AA-verified on dark; per-user toggle in Settings; pre-paint bootstrap, no
+flash) plus em/en dash removal from all product copy behind a forever-enforced
+`lint` guard. Frontend only, no new dependency.
+
 The assistant surface, affordable once local models exist.
 
 **What.** The user talks to Cogeto as they would to any capable assistant; it draws on memory, on the web when asked, and on the model's own knowledge, without a query syntax.

@@ -70,7 +70,7 @@ function IntegrityPanel({ session }: { session: Session }) {
               ))}
             <span className="text-xs text-slate-400">
               {data.lastSweepAt
-                ? `last sweep ${timeAgo(data.lastSweepAt)} — ${data.lastReport?.receiptsChecked ?? 0} receipt(s), ${data.lastReport?.identifiersChecked ?? 0} identifier(s) checked`
+                ? `last sweep ${timeAgo(data.lastSweepAt)}, ${data.lastReport?.receiptsChecked ?? 0} receipt(s), ${data.lastReport?.identifiersChecked ?? 0} identifier(s) checked`
                 : 'sweep has not run yet (nightly at 03:00, or run it on demand)'}
             </span>
           </div>
@@ -88,7 +88,9 @@ function IntegrityPanel({ session }: { session: Session }) {
                 <tbody>
                   {data.alerts.map((alert) => (
                     <tr key={alert.id} className="border-b border-slate-100 align-top">
-                      <td className="py-2 pr-3 font-medium text-red-700">{alert.kind}</td>
+                      <td className="py-2 pr-3 font-medium text-red-700 dark:text-red-300">
+                        {alert.kind}
+                      </td>
                       <td className="max-w-64 break-all py-2 pr-3 font-mono text-xs text-slate-600">
                         {alert.detail}
                       </td>
@@ -162,10 +164,13 @@ function DeadLetterTable({ session }: { session: Session }) {
                 <tr key={job.id} className="border-b border-slate-100 align-top">
                   <td className="py-2 pr-3 font-medium text-slate-700">{job.jobType}</td>
                   <td className="py-2 pr-3 text-xs text-slate-500">
-                    {job.sourceType ?? '—'}
+                    {job.sourceType ?? 'n/a'}
                     {job.sourceId ? ` / ${job.sourceId.slice(0, 8)}…` : ''}
                   </td>
-                  <td className="max-w-64 py-2 pr-3 text-xs text-red-700" title={job.error}>
+                  <td
+                    className="max-w-64 py-2 pr-3 text-xs text-red-700 dark:text-red-300"
+                    title={job.error}
+                  >
                     {job.error.length > 120 ? `${job.error.slice(0, 120)}…` : job.error}
                   </td>
                   <td className="py-2 pr-3 text-slate-500">{job.attempts}</td>

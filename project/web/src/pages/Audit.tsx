@@ -44,7 +44,10 @@ function AuditRow({ entry }: { entry: AuditEntryDto }) {
           {entry.entityType}
         </span>
         {link ? (
-          <a href={link} className="font-mono text-brand-teal-ink hover:underline">
+          <a
+            href={link}
+            className="font-mono text-brand-teal-ink dark:text-brand-teal hover:underline"
+          >
             {entry.entityId.length > 24 ? `${entry.entityId.slice(0, 24)}…` : entry.entityId}
           </a>
         ) : (
@@ -161,7 +164,7 @@ export function Audit({ session }: { session: Session }) {
         {isError && <ErrorState>We couldn’t load the audit trail.</ErrorState>}
         {data && data.items.length === 0 && (
           <EmptyState icon="🗒" title="No entries match these filters">
-            The audit trail records every consequential action — approvals, deletions, scope and
+            The audit trail records every consequential action: approvals, deletions, scope and
             settings changes. Clear the filters to see the full history.
           </EmptyState>
         )}

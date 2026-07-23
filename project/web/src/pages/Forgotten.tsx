@@ -110,7 +110,7 @@ function PrintableReceipt({ detail }: { detail: ReceiptDetailDto }) {
           wordBreak: 'break-all',
         }}
       >
-        {value ?? '—'}
+        {value ?? 'None'}
       </div>
     </div>
   );
@@ -124,7 +124,7 @@ function PrintableReceipt({ detail }: { detail: ReceiptDetailDto }) {
       >
         <div style={{ fontSize: '22px', fontWeight: 700, color: '#1c2150' }}>Cogeto</div>
         <div style={{ fontSize: '15px', color: '#334155' }}>
-          Deletion receipt — provable forgetting
+          Deletion receipt: provable forgetting
         </div>
       </div>
       {row('Receipt id', detail.id)}
@@ -186,7 +186,7 @@ function ReceiptDrawer({
   const field = (label: string, value: string | null) => (
     <div>
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="break-all font-mono text-xs text-slate-700">{value ?? '— (pending)'}</p>
+      <p className="break-all font-mono text-xs text-slate-700">{value ?? 'Pending'}</p>
     </div>
   );
 
@@ -208,7 +208,7 @@ function ReceiptDrawer({
                     : 'Available once the receipt is confirmed'
                 }
                 onClick={() => window.print()}
-                className="inline-flex items-center gap-1.5 rounded-md border border-brand-teal px-3 py-1.5 text-xs font-semibold text-brand-teal-ink transition-colors hover:bg-brand-teal-surface disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 rounded-md border border-brand-teal px-3 py-1.5 text-xs font-semibold text-brand-teal-ink dark:text-brand-teal transition-colors hover:bg-brand-teal-surface dark:hover:bg-brand-teal/15 disabled:opacity-40"
               >
                 Save as PDF
               </button>
@@ -243,7 +243,7 @@ function ReceiptDrawer({
           {field('Hash (SHA-256)', data.hash)}
           {field('Signature (ed25519, base64)', data.signature)}
           <p className="rounded-md bg-slate-50 p-2 text-xs text-slate-500">
-            The exported JSON contains this receipt plus the instance public key — a self-contained
+            The exported JSON contains this receipt plus the instance public key, a self-contained
             artifact anyone can verify without access to Cogeto. “Save as PDF” prints a clean,
             single-page certificate.
           </p>
@@ -289,7 +289,7 @@ export function Forgotten({ session }: { session: Session }) {
             ))}
         </div>
         <p className="mb-3 text-xs text-slate-500">
-          Receipts are permanent and cannot be deleted — that permanence is the point: each one is
+          Receipts are permanent and cannot be deleted. That permanence is the point: each one is
           hash-chained to the last and signed by this instance, so the record of what was forgotten
           can itself never be quietly rewritten.
         </p>
@@ -302,7 +302,7 @@ export function Forgotten({ session }: { session: Session }) {
           <EmptyState icon="🧾" title="No deletions yet">
             A deletion receipt is the signed, tamper-evident proof Cogeto issues when it permanently
             removes a source and everything derived from it. Delete a note from its source drawer
-            and the receipt appears here — permanently.
+            and the receipt appears here, permanently.
           </EmptyState>
         )}
         {receipts && receipts.length > 0 && (
@@ -328,7 +328,7 @@ export function Forgotten({ session }: { session: Session }) {
                       <button
                         type="button"
                         onClick={() => setOpenId(receipt.id)}
-                        className="text-left hover:text-brand-teal-ink"
+                        className="text-left hover:text-brand-teal-ink dark:hover:text-brand-teal"
                       >
                         {sourceLabel(receipt)}
                       </button>
@@ -349,7 +349,7 @@ export function Forgotten({ session }: { session: Session }) {
                       className="py-2 pr-3 text-xs text-slate-400"
                       title={receipt.confirmedAt ?? undefined}
                     >
-                      {receipt.confirmedAt ? timeAgo(receipt.confirmedAt) : '—'}
+                      {receipt.confirmedAt ? timeAgo(receipt.confirmedAt) : 'Not yet'}
                     </td>
                     <td className="py-2 pr-3">
                       <ReceiptStatus receipt={receipt} />
