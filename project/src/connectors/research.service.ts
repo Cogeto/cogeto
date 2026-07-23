@@ -7,6 +7,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import type { MemoryScope, Principal, WebProcessingState } from '@cogeto/shared';
@@ -21,7 +22,7 @@ import {
 } from '../infrastructure/index';
 import type { Db, ResearchQuota } from '../infrastructure/index';
 import { INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
-import { MemoryObjectStore } from '../memory/index';
+import { MemoryObjectStore, MemoryStore } from '../memory/index';
 import { ModelGateway } from '../model-gateway/index';
 import { sanitizeHtml } from './email-parse';
 import { minimiseQuery } from './research-minimise';
@@ -68,6 +69,11 @@ export class ResearchService {
     @Inject(RESEARCH_QUOTA) private readonly quota: ResearchQuota,
     @Inject(RESEARCH_OPTIONS) private readonly options: ResearchOptions,
     private readonly gateway: ModelGateway,
+    // The memory module's public interface (FilesService precedent): the
+    // progress feed counts a page's derived facts without touching tables.
+    // Optional so narrow test harnesses without a vector store still build;
+    // the app root always resolves it (MemoryModule is global).
+    @Optional() private readonly memories?: MemoryStore,
   ) {}
 
   /**
@@ -213,6 +219,40 @@ export class ResearchService {
       .from(webPage)
       .where(and(eq(webPage.researchRunId, runId), eq(webPage.ownerId, principal.userId)))
       .orderBy(webPage.createdAt);
+  }
+
+  /**
+   * The in-chat flow's honest wait (decision 0047): each captured page's
+   * pipeline state (queue-ledger derivation, the notes rule) plus how many
+   * facts it has yielded so far. Owner-gated via getRun; a run with no
+   * captured pages simply reports an empty list.
+   */
+  async runProgress(
+    principal: Principal,
+    runId: string,
+  ): Promise<
+    {
+      id: string;
+      url: string;
+      title: string | null;
+      state: WebProcessingState;
+      factCount: number;
+    }[]
+  > {
+    const run = await this.getRun(principal, runId);
+    if (!run) throw new NotFoundException();
+    const pages = await this.pagesForRun(principal, runId);
+    return Promise.all(
+      pages.map(async (page) => ({
+        id: page.id,
+        url: page.finalUrl,
+        title: page.title,
+        state: await this.getProcessingState(page.id),
+        factCount: this.memories
+          ? (await this.memories.listBySourceSystem('web', page.id)).length
+          : 0,
+      })),
+    );
   }
 
   /** The approved query behind a captured page (provenance, Part B). */

@@ -149,6 +149,7 @@ describe('research flow (integration: real Postgres + Qdrant, scripted gateway +
       { searchesMax: 100, pagesMax: 100, pagesPerRunMax: 5 },
       options,
       gateway,
+      store,
     );
   }, 180_000);
 
@@ -195,6 +196,12 @@ describe('research flow (integration: real Postgres + Qdrant, scripted gateway +
     expect(captured[0]).toMatchObject({ status: 'captured' });
     pageId = captured[0]!.status === 'captured' ? captured[0].id : '';
 
+    // The in-chat flow's honest wait (decision 0047): before the worker runs,
+    // the run's progress reports the page still extracting, zero facts.
+    const before = await research.runProgress(owner, runId);
+    expect(before).toHaveLength(1);
+    expect(before[0]).toMatchObject({ id: pageId, state: 'processing', factCount: 0 });
+
     await runWorker();
 
     // Durable web memories exist for reuse (the next question needs no search).
@@ -209,6 +216,18 @@ describe('research flow (integration: real Postgres + Qdrant, scripted gateway +
     const page = await research.getForOwner(owner, pageId);
     expect(page!.researchRunId).toBe(runId);
     expect(await research.sentQueryFor(page!)).toBe(sent);
+  });
+
+  it('research_run_progress: after extraction the progress feed reports done + fact counts; owner-gated', async () => {
+    const after = await research.runProgress(owner, runId);
+    expect(after).toHaveLength(1);
+    expect(after[0]!.state).toBe('done');
+    expect(after[0]!.factCount).toBeGreaterThanOrEqual(1);
+    expect(after[0]!.url).toContain('riva.example.org');
+    // A non-owner sees nothing — not even the page list.
+    await expect(
+      research.runProgress({ ...owner, userId: 'someone-else' }, runId),
+    ).rejects.toThrowError();
   });
 
   it('research_answer_cited: every web claim carries a URL + fetch-time citation; unknown markers are stripped; the memory claim cites a memory', async () => {

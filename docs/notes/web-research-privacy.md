@@ -50,7 +50,9 @@ it can never approve. Triggers are imperative and anchored (`research …`,
 `look up …`, `search the web for …`; hr `istraži …`, `potraži na webu …`);
 an ordinary question never searches (`not_ambient`). The Research page is the
 gate, the results picker, and the answer view; past runs list what was sent —
-or that nothing was.
+or that nothing was. Since decision 0047 the same gate also renders inline in
+the chat surface (same endpoints, same server-side approval, same audit) —
+see [`natural-conversation.md`](natural-conversation.md).
 
 ## The gate mechanism (why not the approval machine)
 

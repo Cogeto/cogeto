@@ -498,16 +498,22 @@ export class ChatService {
   ): AsyncGenerator<ChatStreamEvent> {
     yield { type: 'sources', facts: [] };
     let answer: string;
+    // The inline gate's handle (decision 0047): lets the chat surface open the
+    // SAME gate in place. Null when proposing failed.
+    let proposalRef: { runId: string } | null = null;
     try {
       const proposal = await this.researchResolver!.propose(principal, topic);
+      proposalRef = { runId: proposal.runId };
       answer =
         lang === 'hr'
           ? `Pripremio sam upit za istraživanje — ništa još nije poslano. ` +
             `Predloženi upit: "${proposal.minimisedQuery}" (${proposal.minimiseReason}) ` +
-            `Otvori stranicu Research, uredi ili odobri upit — tek tada išta napušta ovu instancu.`
+            `Uredi ili odobri upit ovdje u razgovoru (ili kasnije na stranici Research) — ` +
+            `tek tada išta napušta ovu instancu.`
           : `I've prepared a research query — nothing has been sent yet. ` +
             `Proposed query: "${proposal.minimisedQuery}" (${proposal.minimiseReason}) ` +
-            `Open the Research page to edit or approve it — only what you approve leaves this instance.`;
+            `Edit or approve it right here in the conversation (or later from the Research page) — ` +
+            `only what you approve leaves this instance.`;
     } catch (error) {
       this.logger.warn(
         `research_intent_failed: ${error instanceof Error ? error.message : 'error'}`,
@@ -522,7 +528,13 @@ export class ChatService {
       .insert(chatMessage)
       .values({ ownerId: principal.userId, role: 'assistant', content: answer })
       .returning();
-    yield { type: 'done', messageId: row!.id, content: answer, citationViolations: 0 };
+    yield {
+      type: 'done',
+      messageId: row!.id,
+      content: answer,
+      citationViolations: 0,
+      researchProposal: proposalRef,
+    };
   }
 
   private async *handleReplyIntent(

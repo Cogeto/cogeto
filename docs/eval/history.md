@@ -1023,3 +1023,38 @@ are the same day's full golden run (all gates PASS).
    checks all PASS, mean coverage 96.4% over 4 graded cases (gate ≥ 65%)**,
    with `query_rewrite/v0004` gaining the deterministic `USER-NAMED ENTITIES`
    assist that resolved the she→Marta drift in this run.
+
+## 2026-07-23 — chat eval (configuration=mistral-default · pipeline=mistral/mistral-small-latest · answer=mistral/mistral-medium-latest · answer-prompt=answer/v0005 · grader=mistral/mistral-medium-latest eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | task | research | conversation | overall |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| atlas_scope | — | 100% | — | PASS | PASS | — | — | — | — | — | PASS |
+| blended_origins_en | PASS | 100% | — | PASS | PASS | — | PASS | — | — | PASS | PASS |
+| changed_since | — | — | — | PASS | PASS | — | PASS | — | — | — | PASS |
+| closure_flow | — | — | — | PASS | PASS | — | PASS | — | — | — | PASS |
+| create_task_en_conditioned | — | — | — | — | — | — | PASS | PASS | — | — | PASS |
+| create_task_hr_uvjet | — | — | — | — | — | — | PASS | PASS | — | — | PASS |
+| default_no_time_travel | — | — | — | PASS | PASS | — | PASS | — | — | — | PASS |
+| followup_cross_capability | — | — | — | PASS | PASS | — | PASS | — | PASS | — | PASS |
+| knowledge_offer_en | — | — | — | PASS | PASS | — | — | — | — | PASS | PASS |
+| knowledge_offer_hr | — | — | — | PASS | PASS | — | PASS | — | — | PASS | PASS |
+| memory_beats_model | PASS | — | — | PASS | PASS | — | PASS | — | — | — | PASS |
+| nothing_on_record | — | — | — | — | — | PASS | — | — | — | — | PASS |
+| open_with_entity | — | — | — | PASS | PASS | — | PASS | — | — | — | PASS |
+| point_in_time_march | — | — | — | PASS | PASS | — | PASS | — | — | — | PASS |
+| previously_decided | — | 100% | — | PASS | PASS | — | PASS | — | — | — | PASS |
+| reply_hr_zadnja | — | — | — | — | — | — | PASS | — | — | — | PASS |
+| reply_to_ana | — | — | — | — | — | — | PASS | — | — | — | PASS |
+| research_keeps_subject_hr | — | — | — | PASS | — | — | PASS | — | PASS | — | PASS |
+| research_minimise_drop | — | — | — | PASS | — | — | PASS | — | PASS | — | PASS |
+| smalltalk_hvala_hr | — | — | — | PASS | PASS | — | — | — | — | PASS | PASS |
+| smalltalk_thanks | — | — | — | PASS | PASS | — | — | — | — | PASS | PASS |
+| whats_still_open | — | — | — | PASS | PASS | — | PASS | — | — | — | PASS |
+| who_is_ana | PASS | 86% | PASS | PASS | PASS | — | — | — | — | — | PASS |
+
+### Research-in-chat note — the chat table above (2026-07-23, decision 0047)
+
+Gated re-run on the research-in-chat branch (inline gate + progress feed + the
+concluding grounded turn; no prompt changes): **23/23 PASS, rule checks all
+PASS, mean coverage 96.4%** — the gate's server semantics are byte-identical,
+so the research cases pass unchanged.

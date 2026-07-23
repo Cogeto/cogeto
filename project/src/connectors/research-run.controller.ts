@@ -18,6 +18,7 @@ import type {
   ResearchAnswerDto,
   ResearchCaptureResponse,
   ResearchRunDto,
+  ResearchRunProgressDto,
 } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
@@ -140,6 +141,17 @@ export class ResearchRunController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ResearchRunDto> {
     return toDto(await this.research.cancel(request.principal, id));
+  }
+
+  /** The in-chat flow's progress feed (decision 0047): per-page pipeline
+   * state + derived-fact count. Owner-gated; read-only. */
+  @Get('runs/:id/progress')
+  async progress(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ResearchRunProgressDto> {
+    const pages = await this.research.runProgress(request.principal, id);
+    return { runId: id, pages };
   }
 
   /** Fetch the user-selected pages under this run (Part A capture, run-tagged). */

@@ -50,6 +50,7 @@ import type {
   TimelineDto,
   WebSourceDto,
   ResearchRunDto,
+  ResearchRunProgressDto,
   ResearchAnswerDto,
   ResearchCaptureResponse,
   ApproveResearchResponse,
@@ -386,6 +387,14 @@ export const proposeResearch = (session: Session, intent: string): Promise<Resea
   apiPost('/api/research/propose', { intent }, session);
 export const fetchResearchRuns = (session: Session): Promise<ResearchRunDto[]> =>
   apiGet('/api/research/runs', session);
+export const fetchResearchRun = (session: Session, id: string): Promise<ResearchRunDto> =>
+  apiGet(`/api/research/runs/${encodeURIComponent(id)}`, session);
+// The in-chat flow's honest wait (decision 0047): per-page pipeline progress.
+export const fetchResearchProgress = (
+  session: Session,
+  id: string,
+): Promise<ResearchRunProgressDto> =>
+  apiGet(`/api/research/runs/${encodeURIComponent(id)}/progress`, session);
 export const approveResearch = (
   session: Session,
   id: string,
