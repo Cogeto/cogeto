@@ -45,12 +45,23 @@ Order inside `ChatService.ask` (decision 0046 ruling 1):
   unsure means saying so; "nothing on record" stays for pure memory
   questions.
 
-## Research stays gated
+## Research stays gated — and the gate comes to chat (decision 0047)
 
 A knowledge question never silently searches. The answer arrives marked
 unsourced with a one-tap OFFER (`researchOffer` on the done event, ephemeral)
-that only PROPOSES a run and lands on the Research page — the existing
-show-edit-approve gate, unchanged. Chat still cannot approve anything.
+that only PROPOSES a run. Since decision 0047, the gate itself is embeddable
+in chat: a research turn's done event carries `researchProposal.runId`, and
+the chat surface opens the SAME show-edit-approve gate inline
+(`ResearchInline`) — approve/edit/cancel, the results picker, per-URL fetch
+outcomes, and an honest extraction wait fed by
+`GET /api/research/runs/:id/progress` (pipeline state + fact count per page).
+When extraction settles with facts, chat concludes by asking the topic as a
+normal visible turn — the answer streams grounded in the fresh web memories,
+persisted in the canonical grammar with web chips (URL + fetch time), covered
+by the deletion cascade; zero facts falls back to the page-grounded synthesis
+rendered in place. The backend chat turn still only proposes; approval remains
+the server-side run transition; the Research page stays the durable home
+(past runs, resume, full synthesis).
 
 ## Bounds
 

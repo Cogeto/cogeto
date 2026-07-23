@@ -426,6 +426,7 @@ async function main(): Promise<void> {
         { searchesMax: 100, pagesMax: 100, pagesPerRunMax: 8 },
         researchOptions,
         gateway,
+        memoryStore,
       );
       const researchResolver = new ChatResearchResolver(research);
       const chat = new ChatService(

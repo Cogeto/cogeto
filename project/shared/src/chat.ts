@@ -63,6 +63,17 @@ export interface ChatResearchOffer {
   topic: string;
 }
 
+/**
+ * A research turn's proposal handle (decision 0047): lets the chat surface
+ * open the SAME show-edit-approve gate inline. Carrying only the run id keeps
+ * the disclosure in one place — the SPA loads the run through the owner-gated
+ * research endpoints, exactly as the Research page does. Ephemeral, like the
+ * offer.
+ */
+export interface ChatResearchProposalRef {
+  runId: string;
+}
+
 /** Server-sent events on POST /api/chat, in order: sources → token* → done. */
 export type ChatStreamEvent =
   | { type: 'sources'; facts: ChatFactDto[] }
@@ -75,6 +86,9 @@ export type ChatStreamEvent =
       citationViolations: number;
       /** Present on knowledge-class answers when research is available (0046). */
       researchOffer?: ChatResearchOffer | null;
+      /** Present on a research turn that proposed a run (0047): the inline
+       * gate's handle. Nothing has been sent when this arrives. */
+      researchProposal?: ChatResearchProposalRef | null;
     }
   | {
       type: 'error';

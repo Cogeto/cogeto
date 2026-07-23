@@ -76,6 +76,25 @@ export interface ApproveResearchRequest {
   query: string;
 }
 
+/**
+ * One captured page's pipeline progress under a run (decision 0047 — the
+ * in-chat research flow's honest wait): the queue-ledger state plus how many
+ * facts the page has yielded so far.
+ */
+export interface ResearchRunPageProgressDto {
+  id: string;
+  url: string;
+  title: string | null;
+  state: WebProcessingState;
+  factCount: number;
+}
+
+/** GET /api/research/runs/:id/progress — owner-gated, chat's progress feed. */
+export interface ResearchRunProgressDto {
+  runId: string;
+  pages: ResearchRunPageProgressDto[];
+}
+
 /** Approval's result: discovery ran with the recorded query. */
 export interface ApproveResearchResponse {
   run: ResearchRunDto;

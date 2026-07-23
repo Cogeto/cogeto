@@ -105,6 +105,11 @@ describe('chat research intent (integration: real Postgres, stubbed seams)', () 
       'GDPR consent requirements CRM migration',
     );
     expect(done && done.type === 'done' ? done.content : '').toContain('Research page');
+    // The inline gate handle (decision 0047): the done event carries the run
+    // id so the chat surface can open the SAME gate in place.
+    expect(done && done.type === 'done' ? done.researchProposal : null).toEqual({
+      runId: '00000000-0000-4000-8000-000000000001',
+    });
     // No retrieval, no generation — the turn ended at the gate.
     expect(retrieveCalls).toBe(0);
   });

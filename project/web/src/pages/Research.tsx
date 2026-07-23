@@ -6,6 +6,7 @@ import type {
   ResearchCaptureResponse,
   ResearchRunDto,
 } from '@cogeto/shared';
+import { ResearchAnswer } from '../components/ResearchAnswer';
 import {
   approveResearch,
   cancelResearch,
@@ -396,45 +397,5 @@ export function Research({ session }: { session: Session }) {
         )}
       </Card>
     </Shell>
-  );
-}
-
-/** Render the answer with [W#]/[M#] markers as traceable citation links. */
-function ResearchAnswer({ answer }: { answer: ResearchAnswerDto }) {
-  const byMarker = useMemo(
-    () => new Map(answer.citations.map((c) => [c.marker, c])),
-    [answer.citations],
-  );
-  const parts = answer.answer.split(/(\[[WM]\d+\])/g);
-  return (
-    <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
-      {parts.map((part, i) => {
-        const citation = byMarker.get(part);
-        if (!citation) return <span key={i}>{part}</span>;
-        if (citation.kind === 'web') {
-          return (
-            <a
-              key={i}
-              href={citation.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={`${citation.title ?? citation.url} — fetched ${new Date(citation.fetchedAt).toLocaleString()}`}
-              className="mx-0.5 rounded bg-brand-teal/10 px-1 text-xs font-medium text-brand-teal-ink hover:underline"
-            >
-              {part}
-            </a>
-          );
-        }
-        return (
-          <a
-            key={i}
-            href={`/memories?open=${citation.memoryId}`}
-            className="mx-0.5 rounded bg-slate-100 px-1 text-xs font-medium text-slate-600 hover:underline"
-          >
-            {part}
-          </a>
-        );
-      })}
-    </p>
   );
 }

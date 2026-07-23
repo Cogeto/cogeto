@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ChatFactDto, ChatResearchOffer } from '@cogeto/shared';
+import type { ChatFactDto, ChatResearchOffer, ResearchRunDto } from '@cogeto/shared';
 import { mapMarkersToCitations, mapUnsourcedMarkers, scanAnswer } from '@cogeto/shared';
 import {
   askChat,
   fetchChatCaptureStatus,
   fetchChatMessages,
+  fetchResearchRun,
   proposeResearch,
   rememberChatMessage,
 } from '../api';
 import type { Session } from '../auth/oidc';
 import { CitationChip } from '../components/CitationChip';
 import { MemoryDrawer } from '../components/MemoryDrawer';
+import { ResearchInline } from '../components/ResearchInline';
 import { Shell } from '../components/Shell';
 import { UnsourcedChip } from '../components/UnsourcedChip';
 
@@ -70,15 +72,21 @@ function MessageBody({
 /**
  * The research offer (decision 0046): a one-tap bridge from a knowledge
  * answer into the EXISTING minimise-and-approve gate. Tapping proposes a run
- * (nothing is sent) and lands on the Research page, where the gate opens as
- * always. The offer is the bridge; the gate stays the gate.
+ * (nothing is sent) and opens the gate right here in the conversation
+ * (decision 0047). The offer is the bridge; the gate stays the gate.
  */
-function ResearchOfferChip({ session, offer }: { session: Session; offer: ChatResearchOffer }) {
+function ResearchOfferChip({
+  session,
+  offer,
+  onProposed,
+}: {
+  session: Session;
+  offer: ChatResearchOffer;
+  onProposed: (run: ResearchRunDto) => void;
+}) {
   const propose = useMutation({
     mutationFn: () => proposeResearch(session, offer.topic),
-    onSuccess: () => {
-      window.location.href = '/research';
-    },
+    onSuccess: (run) => onProposed(run),
   });
   return (
     <div className="flex flex-wrap items-center gap-2 pl-1">
@@ -189,6 +197,8 @@ export function Chat({ session }: { session: Session }) {
   const [liveFacts, setLiveFacts] = useState<ChatFactDto[]>([]);
   /** The latest answer's research offer (0046) — ephemeral, cleared on the next ask. */
   const [offer, setOffer] = useState<ChatResearchOffer | null>(null);
+  /** The inline research flow (0047): the SAME gate, embedded in the conversation. */
+  const [inlineRun, setInlineRun] = useState<ResearchRunDto | null>(null);
   const [openMemoryId, setOpenMemoryId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -198,10 +208,10 @@ export function Chat({ session }: { session: Session }) {
   useEffect(() => {
     const pane = scrollRef.current;
     if (pane) pane.scrollTop = pane.scrollHeight;
-  }, [history, liveText, liveQuestion]);
+  }, [history, liveText, liveQuestion, inlineRun]);
 
-  const send = async () => {
-    const content = draft.trim();
+  const send = async (text?: string, opts: { suppressOffer?: boolean } = {}) => {
+    const content = (text ?? draft).trim();
     if (!content || busy) return;
     setBusy(true);
     setFailed(false);
@@ -215,8 +225,18 @@ export function Chat({ session }: { session: Session }) {
       await askChat(session, content, (event) => {
         if (event.type === 'sources') setLiveFacts(event.facts);
         else if (event.type === 'token') setLiveText((text) => text + event.text);
-        else if (event.type === 'done') setOffer(event.researchOffer ?? null);
-        else if (event.type === 'error') {
+        else if (event.type === 'done') {
+          // The concluding turn after research never re-offers research (0047).
+          setOffer(opts.suppressOffer ? null : (event.researchOffer ?? null));
+          // A research turn proposed a run: open the SAME gate inline. Nothing
+          // has been sent — the run is loaded through the owner-gated research
+          // endpoints, exactly as the Research page loads it.
+          if (event.researchProposal) {
+            void fetchResearchRun(session, event.researchProposal.runId)
+              .then((run) => setInlineRun(run))
+              .catch(() => setInlineRun(null));
+          }
+        } else if (event.type === 'error') {
           setFailed(true);
           // Specific copy for the daily budget / stream-timeout aborts (FIX-2).
           if (event.code === 'model_budget_exceeded' || event.code === 'timeout') {
@@ -306,7 +326,32 @@ export function Chat({ session }: { session: Session }) {
               </div>
             </Bubble>
           )}
-          {offer && !liveQuestion && <ResearchOfferChip session={session} offer={offer} />}
+          {inlineRun && (
+            <ResearchInline
+              key={inlineRun.id}
+              session={session}
+              run={inlineRun}
+              onConclude={(topic) => {
+                setInlineRun(null);
+                void queryClient.invalidateQueries({ queryKey: ['research-runs'] });
+                void send(topic, { suppressOffer: true });
+              }}
+              onClose={() => {
+                setInlineRun(null);
+                void queryClient.invalidateQueries({ queryKey: ['research-runs'] });
+              }}
+            />
+          )}
+          {offer && !liveQuestion && !inlineRun && (
+            <ResearchOfferChip
+              session={session}
+              offer={offer}
+              onProposed={(run) => {
+                setOffer(null);
+                setInlineRun(run);
+              }}
+            />
+          )}
           {failed && (
             <p role="alert" className="text-sm text-red-700">
               {failMessage ?? 'That answer didn’t come through. Try asking again.'}
