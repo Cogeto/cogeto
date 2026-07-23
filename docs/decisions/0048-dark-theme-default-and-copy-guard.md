@@ -30,10 +30,14 @@ website; not yet to the app).
 - **Default + precedence:** dark is the default for new users and anonymous
   surfaces (login, demo login, Ana sandbox). Precedence: explicit user choice >
   stored preference > system hint (`prefers-color-scheme`) > default dark
-  (localStorage `cogeto-theme`). A pre-paint inline bootstrap in `index.html`
-  applies the theme before React mounts (no flash); `src/theme.ts` mirrors the
-  precedence and owns the Settings → Appearance toggle. The class-based `dark`
-  variant is authoritative over the media query.
+  (localStorage `cogeto-theme`). A pre-paint bootstrap applies the theme before
+  React mounts (no flash). It is an **external** same-origin file
+  (`public/theme-init.js`), not an inline script, because the SPA's strict CSP is
+  `script-src 'self'` with no `'unsafe-inline'` (QS-19) — an inline bootstrap is
+  blocked, which was the first defect found in testing. `main.tsx` re-applies the
+  resolved theme on mount as a safety net. `src/theme.ts` mirrors the precedence
+  and owns the Settings → Appearance toggle. The class-based `dark` variant is
+  authoritative over the media query.
 - **Load-bearing colors re-derived for dark** and verified AA against their real
   dark backgrounds (`theme-contrast.spec.ts`, pure WCAG math): the six lifecycle
   statuses plus `sensitive`/`shared`/dormant/past-belief, colorblind-distinguishable,

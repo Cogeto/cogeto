@@ -52,6 +52,9 @@ export default tseslint.config(
       '**/dist/**',
       '**/*.d.ts',
       'project/web/dist/**',
+      // Static assets served verbatim (brand SVGs, the CSP-safe theme bootstrap
+      // public/theme-init.js) — not part of the TS build or the copy guard.
+      'project/web/public/**',
       '.dependency-cruiser.cjs',
       // Standalone services with their own runtime + conventions (not the TS
       // workspace): the Python redaction sidecar and the Haraka mail plugins

@@ -136,8 +136,13 @@ CSS `invert()`).
 (`prefers-color-scheme`) > **default dark**. In practice the explicit choice *is*
 the stored preference (localStorage `cogeto-theme`); the system hint is consulted
 only when nothing is stored, and even then dark wins unless the system explicitly
-prefers light. A pre-paint inline bootstrap in `index.html` applies the theme to
-`<html>` before React mounts, so there is **no flash** of the wrong theme; the
+prefers light. A pre-paint bootstrap applies the theme to `<html>` before React
+mounts, so there is **no flash** of the wrong theme. It is an **external
+same-origin file** (`public/theme-init.js`), a classic render-blocking
+`<script src>` in `<head>` before the deferred module bundle — an inline script
+would be blocked by the SPA's strict CSP (`script-src 'self'`, no `'unsafe-inline'`;
+see `project/infra/docker/caddy/Caddyfile`). `main.tsx` also re-applies the
+resolved theme on mount as a safety net if that file is ever missing/blocked. The
 in-app toggle (Settings → Appearance) writes the choice and `src/theme.ts` mirrors
 the same precedence. The toggle follows the class-based `dark` variant
 (`@custom-variant dark`), authoritative over the raw media query.
