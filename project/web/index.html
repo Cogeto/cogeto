@@ -12,30 +12,13 @@
     />
     <title>Cogeto: verifiable memory</title>
     <!--
-      Theme bootstrap (P6.8). Runs before first paint so there is no flash of the
-      wrong theme. Precedence: explicit stored choice ('light'|'dark') > system
-      hint (prefers-color-scheme) > default dark. Mirrors resolveInitialTheme in
-      src/theme.ts (kept in sync; this copy cannot import a module). Any failure
-      falls back to dark, the product default.
+      Theme bootstrap (P6.8). An EXTERNAL same-origin file, not an inline script,
+      so it runs under the SPA's strict CSP (script-src 'self', no 'unsafe-inline').
+      A classic, render-blocking <script src> in <head> runs before the deferred
+      module bundle, so the theme is set before first paint (no flash). Logic and
+      precedence live in /theme-init.js, mirroring src/theme.ts.
     -->
-    <script>
-      (function () {
-        try {
-          var stored = localStorage.getItem('cogeto-theme');
-          var theme =
-            stored === 'light' || stored === 'dark'
-              ? stored
-              : window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
-                ? 'light'
-                : 'dark';
-          document.documentElement.classList.toggle('dark', theme === 'dark');
-          document.documentElement.dataset.theme = theme;
-        } catch (e) {
-          document.documentElement.classList.add('dark');
-          document.documentElement.dataset.theme = 'dark';
-        }
-      })();
-    </script>
+    <script src="/theme-init.js"></script>
   </head>
   <body class="bg-slate-50 text-slate-800">
     <div id="root"></div>

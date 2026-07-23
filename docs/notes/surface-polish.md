@@ -16,10 +16,14 @@ re-derived as navy-tinted deep neutrals (no pure black).
 - **Default + precedence:** dark is the default (new users, anonymous surfaces:
   login, demo login, Ana sandbox). Precedence: explicit user choice > stored
   preference > system hint (`prefers-color-scheme`) > default dark. localStorage
-  key `cogeto-theme`. Pre-paint bootstrap in `index.html` sets `<html class="dark">`
-  before React mounts (no flash); `src/theme.ts` mirrors the same precedence and
-  owns the Settings → Appearance toggle. Class-based `dark` variant
-  (`@custom-variant dark`) is authoritative over the media query.
+  key `cogeto-theme`. Pre-paint bootstrap sets `<html class="dark">` before React
+  mounts (no flash) via an **external** same-origin file (`public/theme-init.js`,
+  a classic blocking `<script src>` before the module) — an inline script is
+  blocked by the SPA's strict CSP (`script-src 'self'`; QS-19), which was the
+  first bug found after merge (dark applied in-session but not on reload).
+  `main.tsx` re-applies the resolved theme on mount as a safety net. `src/theme.ts`
+  mirrors the precedence and owns the Settings → Appearance toggle. Class-based
+  `dark` variant (`@custom-variant dark`) is authoritative over the media query.
 
 ### Hardcoded colors moved to tokens
 

@@ -85,24 +85,34 @@ describe('applyTheme / toggle persist and apply on <html>', () => {
   });
 });
 
-// ── no_flash: the theme is applied pre-paint ────────────────────────────────
-describe('no_flash: index.html sets the theme before the app script', () => {
+// ── no_flash: the theme is applied pre-paint, and CSP-safe ──────────────────
+describe('no_flash: an external bootstrap sets the theme before the app script', () => {
   const html = readFileSync(fileURLToPath(new URL('../index.html', import.meta.url)), 'utf8');
+  const initJs = readFileSync(
+    fileURLToPath(new URL('../public/theme-init.js', import.meta.url)),
+    'utf8',
+  );
 
-  it('has an inline bootstrap that toggles the dark class on documentElement', () => {
-    expect(html).toMatch(/document\.documentElement\.classList\.toggle\(\s*'dark'/);
-    expect(html).toContain("localStorage.getItem('cogeto-theme')");
+  it('references the bootstrap as an EXTERNAL same-origin script (CSP: script-src self)', () => {
+    // Inline <script> would be blocked by the strict CSP; it must be src=/theme-init.js.
+    expect(html).toContain('<script src="/theme-init.js"></script>');
+    expect(html).not.toMatch(/<script>\s*\(function/);
   });
 
   it('runs the bootstrap before the module bundle (so paint is never wrong)', () => {
-    const bootstrapAt = html.indexOf('classList.toggle');
+    const bootstrapAt = html.indexOf('/theme-init.js');
     const appAt = html.indexOf('src/main.tsx');
     expect(bootstrapAt).toBeGreaterThan(-1);
     expect(appAt).toBeGreaterThan(-1);
     expect(bootstrapAt).toBeLessThan(appAt);
   });
 
+  it('the bootstrap toggles the dark class from the stored choice', () => {
+    expect(initJs).toMatch(/document\.documentElement\.classList\.toggle\(\s*'dark'/);
+    expect(initJs).toContain("localStorage.getItem('cogeto-theme')");
+  });
+
   it('falls back to dark, the product default, on any bootstrap error', () => {
-    expect(html).toMatch(/catch[\s\S]*classList\.add\('dark'\)/);
+    expect(initJs).toMatch(/catch[\s\S]*classList\.add\('dark'\)/);
   });
 });
