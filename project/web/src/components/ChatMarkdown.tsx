@@ -48,7 +48,7 @@ export function ChatMarkdown({
     });
 
   return (
-    <div className="space-y-2 text-sm leading-relaxed">
+    <div className="space-y-2.5 text-[1.05rem] leading-[1.7]">
       {blocks.map((block, i) => {
         if (block.kind === 'divider')
           return <hr key={i} className="my-1 border-t border-current opacity-20" />;

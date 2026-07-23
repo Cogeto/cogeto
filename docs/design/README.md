@@ -147,6 +147,24 @@ in-app toggle (Settings → Appearance) writes the choice and `src/theme.ts` mir
 the same precedence. The toggle follows the class-based `dark` variant
 (`@custom-variant dark`), authoritative over the raw media query.
 
+## Surface reimagining (P6.9, decision 0049)
+
+The frame and the chat were reimagined from a mockup-approved design:
+
+- **One uniform width.** Every page uses a single centered column (fills the
+  screen to ~1280px, then centers) — no per-page tiers. Scrollbars are hidden
+  app-wide (still scrollable); full-height pages pin the app to the viewport so
+  only their inner pane scrolls.
+- **Sidebar.** Wider, with a bespoke family of Cogeto node-glyphs (a recurring
+  node/orbit motif), a teal active tint + indicator, and identity + sign-out at
+  the bottom. The header is a calm mono `Cogeto · <Page>` breadcrumb.
+- **Chat = Ask → Briefing.** The question is a heading; Cogeto answers as flush
+  prose along a teal evidence rail; every claim carries a mono provenance chip
+  (`◈ kind`, state-tinted), each answer closes with a "stands on" manifest, and
+  model knowledge is honestly marked amber (`◆ unsourced`). The composer is a
+  docked command bar with a teal focus-glow. Provenance is the identity, not a
+  chatbot skin.
+
 ## Component kit (`components/ui.tsx`)
 
 Use these instead of hand-rolling — they are the anti-drift layer:
