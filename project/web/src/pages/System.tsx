@@ -208,7 +208,7 @@ export function System({ session }: { session: Session }) {
   const me = useQuery({ queryKey: ['me'], queryFn: () => fetchMe(session), retry: 1 });
   if (me.data && !me.data.isAdmin) {
     return (
-      <Shell session={session} title="System" active="system" width="wide">
+      <Shell session={session} title="System" active="system">
         <Card>
           <EmptyState tone="neutral" title="The System view is the operator's surface">
             Job activity and the dead-letter queue require the administrator role. Your account
@@ -220,7 +220,7 @@ export function System({ session }: { session: Session }) {
     );
   }
   return (
-    <Shell session={session} title="System" active="system" width="wide">
+    <Shell session={session} title="System" active="system">
       <StatusPanel />
       <WorkerActivityPanel session={session} />
       <IntegrityPanel session={session} />

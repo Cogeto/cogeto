@@ -12,7 +12,7 @@ import { StatusPanel } from '../components/StatusPanel';
  */
 export function Dashboard({ session }: { session: Session }) {
   return (
-    <Shell session={session} title="Dashboard" active="dashboard" width="full">
+    <Shell session={session} title="Dashboard" active="dashboard">
       <AttentionSurface session={session} />
       <StatsPanel session={session} />
       <StatusPanel />

@@ -98,7 +98,7 @@ export function Audit({ session }: { session: Session }) {
   const reset = () => setPage(0);
 
   return (
-    <Shell session={session} title="Audit" active="audit" width="wide">
+    <Shell session={session} title="Audit" active="audit">
       <Card>
         <div className="mb-3 flex items-center gap-2">
           <SectionTitle>Audit trail</SectionTitle>

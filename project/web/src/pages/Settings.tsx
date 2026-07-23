@@ -50,7 +50,7 @@ export function Settings({ session }: { session: Session }) {
 
   return (
     <Shell session={session} title="Settings" active="settings">
-      <section className="mx-auto max-w-2xl space-y-5 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
+      <section className="space-y-5 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
         <div>
           <SectionTitle>Capture &amp; upload defaults</SectionTitle>
           <p className="mt-1 text-xs text-slate-400">
@@ -123,7 +123,7 @@ export function Settings({ session }: { session: Session }) {
 
       <PassportSection session={session} />
 
-      <section className="mt-4 mx-auto max-w-2xl space-y-2 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
+      <section className="mt-4 space-y-2 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
         <SectionTitle>Instance signing key</SectionTitle>
         <p className="text-xs text-slate-500">
           Every deletion receipt is signed with this instance's private key (§B.1). Anyone can
@@ -159,7 +159,7 @@ const THEMES: { key: Theme; label: string }[] = [
 function AppearanceSection() {
   const { theme, setTheme } = useTheme();
   return (
-    <section className="mt-4 mx-auto max-w-2xl space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
+    <section className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
       <div>
         <SectionTitle>Appearance</SectionTitle>
         <p className="mt-1 text-xs text-slate-400">
@@ -204,7 +204,7 @@ function ModelConfigSection({ session }: { session: Session }) {
   });
 
   return (
-    <section className="mt-4 mx-auto max-w-2xl space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
+    <section className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
       <div>
         <SectionTitle>Model configuration</SectionTitle>
         <p className="mt-1 text-xs text-slate-400">
@@ -296,7 +296,7 @@ function PassportSection({ session }: { session: Session }) {
   const pending = rows.some((row) => row.status === 'pending');
 
   return (
-    <section className="mt-4 mx-auto max-w-2xl space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
+    <section className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
       <SectionTitle>Export my data · Memory Passport</SectionTitle>
       <p className="text-xs text-slate-500">
         Download <span className="font-medium">everything</span> Cogeto knows for you: every fact
@@ -438,7 +438,7 @@ function EmailCaptureSection({ session }: { session: Session }) {
   const listed = new Set(allowlist.map((e) => e.value));
 
   return (
-    <section className="mt-4 mx-auto max-w-2xl space-y-4 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
+    <section className="mt-4 space-y-4 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
       <div>
         <SectionTitle>Email capture</SectionTitle>
         <p className="mt-1 text-xs text-slate-400">
