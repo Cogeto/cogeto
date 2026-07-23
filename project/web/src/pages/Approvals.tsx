@@ -235,7 +235,7 @@ export function Approvals({ session }: { session: Session }) {
   });
 
   return (
-    <Shell session={session} title="Approvals" active="approvals">
+    <Shell session={session} title="Approvals" active="approvals" width="wide">
       <Tabs
         active={tab}
         onChange={setTab}

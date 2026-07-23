@@ -13,6 +13,18 @@ import type { Session } from '../auth/oidc';
 import { Nav } from './Nav';
 import type { NavSection } from './Nav';
 
+/** Content-width tiers (P6.9). The column is centered (mx-auto) at a width that
+ * suits the page: reading text stays comfortable, data-dense pages get the room,
+ * the dashboard runs near-full. This replaces the single left-hugging max-w-3xl
+ * that left a dead gutter on wide screens. */
+export type ShellWidth = 'reading' | 'standard' | 'wide' | 'full';
+const COLUMN: Record<ShellWidth, string> = {
+  reading: 'max-w-3xl', // 48rem — long-form reading (chat, narrow forms)
+  standard: 'max-w-5xl', // 64rem — default
+  wide: 'max-w-7xl', // 80rem — tables, lists, grids
+  full: 'max-w-[90rem]', // 1440px cap — the instrument dashboard
+};
+
 /** The authenticated page frame: nav, identity header, content column. */
 export function Shell({
   session,
@@ -20,7 +32,7 @@ export function Shell({
   active,
   children,
   fullHeight = false,
-  wide = false,
+  width = 'standard',
 }: {
   session: Session;
   title: string;
@@ -28,8 +40,8 @@ export function Shell({
   children: ReactNode;
   /** Pin the page to the viewport: children scroll internally (chat). */
   fullHeight?: boolean;
-  /** Widen the content column for the instrument-style dashboard (Post-v1 P2). */
-  wide?: boolean;
+  /** Centered content-column width tier (P6.9). Defaults to `standard`. */
+  width?: ShellWidth;
 }) {
   const {
     data: me,
@@ -85,39 +97,45 @@ export function Shell({
         showSystem={me?.isAdmin === true}
       />
       <div className={fullHeight ? 'flex h-screen min-h-0 flex-1 flex-col' : 'flex-1'}>
-        <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-surface px-6 py-4">
-          <div>
-            <h1 className="text-lg font-semibold text-slate-800">{title}</h1>
-            {isPending && <p className="text-sm text-slate-400">Loading identity…</p>}
-            {isError && (
-              <p className="text-sm text-red-600 dark:text-red-300">Could not load /api/me.</p>
-            )}
-            {me && (
-              <p className="text-sm text-slate-500">
-                {me.name} · <span className="font-medium">{me.orgName}</span>
-              </p>
+        {/* Full-width app bar; its inner row shares the content column so the
+            title lines up with the page content (P6.9). */}
+        <header className="shrink-0 border-b border-slate-200 bg-surface">
+          <div
+            className={`mx-auto flex w-full items-center justify-between px-6 py-4 ${COLUMN[width]}`}
+          >
+            <div>
+              <h1 className="text-lg font-semibold text-slate-800">{title}</h1>
+              {isPending && <p className="text-sm text-slate-400">Loading identity…</p>}
+              {isError && (
+                <p className="text-sm text-red-600 dark:text-red-300">Could not load /api/me.</p>
+              )}
+              {me && (
+                <p className="text-sm text-slate-500">
+                  {me.name} · <span className="font-medium">{me.orgName}</span>
+                </p>
+              )}
+            </div>
+            {isDemoSession() ? (
+              // Sandbox: no sign-out (no account to leave); a subtle sandbox tag.
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand-teal-surface dark:bg-brand-teal/15 px-3 py-1 text-xs font-semibold text-brand-teal-ink dark:text-brand-teal">
+                <span aria-hidden="true">●</span> Live sandbox
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void logout()}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100"
+              >
+                Sign out
+              </button>
             )}
           </div>
-          {isDemoSession() ? (
-            // Sandbox: no sign-out (no account to leave); a subtle sandbox tag.
-            <span className="inline-flex items-center gap-1 rounded-full bg-brand-teal-surface dark:bg-brand-teal/15 px-3 py-1 text-xs font-semibold text-brand-teal-ink dark:text-brand-teal">
-              <span aria-hidden="true">●</span> Live sandbox
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void logout()}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100"
-            >
-              Sign out
-            </button>
-          )}
         </header>
         <main
           className={
             fullHeight
-              ? 'flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-6 p-6'
-              : `grid gap-6 p-6 ${wide ? 'max-w-5xl' : 'max-w-3xl'}`
+              ? `mx-auto flex w-full min-h-0 flex-1 flex-col gap-6 p-6 ${COLUMN[width]}`
+              : `mx-auto grid w-full gap-6 p-6 ${COLUMN[width]}`
           }
         >
           {children}
