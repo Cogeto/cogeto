@@ -8,31 +8,23 @@ import {
   fetchPendingApprovals,
   fetchTaskCount,
 } from '../api';
-import { isDemoSession, logout } from '../auth/oidc';
 import type { Session } from '../auth/oidc';
 import { Nav } from './Nav';
 import type { NavSection } from './Nav';
 
-/** Content-width tiers (P6.9). The column is centered (mx-auto) at a width that
- * suits the page: reading text stays comfortable, data-dense pages get the room,
- * the dashboard runs near-full. This replaces the single left-hugging max-w-3xl
- * that left a dead gutter on wide screens. */
-export type ShellWidth = 'reading' | 'standard' | 'wide' | 'full';
-const COLUMN: Record<ShellWidth, string> = {
-  reading: 'max-w-3xl', // 48rem — long-form reading (chat, narrow forms)
-  standard: 'max-w-5xl', // 64rem — default
-  wide: 'max-w-7xl', // 80rem — tables, lists, grids
-  full: 'max-w-[90rem]', // 1440px cap — the instrument dashboard
-};
+/** One uniform, fluid content width for every page (P6.9): fills the screen up to
+ * a roomy cap, then centers. Identical on every page — no per-page width. The
+ * full-width app bar shares this column so its title lines up with the content. */
+const COL = 'mx-auto w-full max-w-[80rem]';
 
-/** The authenticated page frame: nav, identity header, content column. */
+/** The authenticated page frame: sidebar (identity + sign-out live there now),
+ * a slim title bar, and the content column. */
 export function Shell({
   session,
   title,
   active,
   children,
   fullHeight = false,
-  width = 'standard',
 }: {
   session: Session;
   title: string;
@@ -40,14 +32,8 @@ export function Shell({
   children: ReactNode;
   /** Pin the page to the viewport: children scroll internally (chat). */
   fullHeight?: boolean;
-  /** Centered content-column width tier (P6.9). Defaults to `standard`. */
-  width?: ShellWidth;
 }) {
-  const {
-    data: me,
-    isPending,
-    isError,
-  } = useQuery({
+  const { data: me } = useQuery({
     queryKey: ['me'],
     queryFn: () => fetchMe(session),
     retry: 1,
@@ -95,47 +81,18 @@ export function Shell({
         tasksCount={taskCount?.open ?? 0}
         dashboardUnread={attention?.unreadCount ?? 0}
         showSystem={me?.isAdmin === true}
+        userName={me?.name}
+        orgName={me?.orgName}
       />
       <div className={fullHeight ? 'flex h-screen min-h-0 flex-1 flex-col' : 'flex-1'}>
-        {/* Full-width app bar; its inner row shares the content column so the
-            title lines up with the page content (P6.9). */}
         <header className="shrink-0 border-b border-slate-200 bg-surface">
-          <div
-            className={`mx-auto flex w-full items-center justify-between px-6 py-4 ${COLUMN[width]}`}
-          >
-            <div>
-              <h1 className="text-lg font-semibold text-slate-800">{title}</h1>
-              {isPending && <p className="text-sm text-slate-400">Loading identity…</p>}
-              {isError && (
-                <p className="text-sm text-red-600 dark:text-red-300">Could not load /api/me.</p>
-              )}
-              {me && (
-                <p className="text-sm text-slate-500">
-                  {me.name} · <span className="font-medium">{me.orgName}</span>
-                </p>
-              )}
-            </div>
-            {isDemoSession() ? (
-              // Sandbox: no sign-out (no account to leave); a subtle sandbox tag.
-              <span className="inline-flex items-center gap-1 rounded-full bg-brand-teal-surface dark:bg-brand-teal/15 px-3 py-1 text-xs font-semibold text-brand-teal-ink dark:text-brand-teal">
-                <span aria-hidden="true">●</span> Live sandbox
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => void logout()}
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100"
-              >
-                Sign out
-              </button>
-            )}
+          <div className={`${COL} flex items-center justify-between px-6 py-4`}>
+            <h1 className="text-lg font-semibold text-slate-800">{title}</h1>
           </div>
         </header>
         <main
           className={
-            fullHeight
-              ? `mx-auto flex w-full min-h-0 flex-1 flex-col gap-6 p-6 ${COLUMN[width]}`
-              : `mx-auto grid w-full gap-6 p-6 ${COLUMN[width]}`
+            fullHeight ? `${COL} flex min-h-0 flex-1 flex-col gap-6 p-6` : `${COL} grid gap-6 p-6`
           }
         >
           {children}

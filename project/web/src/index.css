@@ -136,6 +136,17 @@
   }
 }
 
+/* Hidden scrollbars app-wide (P6.9) — every surface stays scrollable, but the
+   bar itself never shows, so a centered column never sprouts a mid-screen track.
+   Keyboard, wheel, and touch scrolling are unaffected. */
+* {
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 /* Skeleton placeholder — used where loading content has a known shape. */
 .skeleton {
   background: linear-gradient(
