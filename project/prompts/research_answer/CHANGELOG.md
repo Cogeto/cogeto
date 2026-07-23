@@ -1,5 +1,16 @@
 # research_answer — changelog
 
+## v0002 — 2026-07-23 (Priority 6)
+
+The instruction-vs-question rule: a research QUESTION phrased as an
+instruction with an occasion attached ("research company X before Thursday's
+meeting", "istraži tvrtku X prije sastanka") is answered ABOUT the subject —
+the occasion says why the person is asking, never what information counts.
+Targets a live miss on `research_keeps_subject_hr` where the synthesiser
+declined ("no information about the company before Thursday's meeting") and
+cited nothing despite on-subject sources. Everything else verbatim from
+v0001.
+
 ## v0001 — 2026-07-22 (Priority 5 Part B, decision 0045)
 
 Initial version. Synthesises a research answer on the answer tier from the

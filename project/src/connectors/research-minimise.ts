@@ -18,7 +18,7 @@ import type { PromptArtifact } from '../model-gateway/index';
  * the failure mode is "review it yourself", not "silently sent".
  */
 
-export const RESEARCH_MINIMISE_PROMPT = { family: 'research_query_minimise', version: 'v0001' };
+export const RESEARCH_MINIMISE_PROMPT = { family: 'research_query_minimise', version: 'v0002' };
 
 const minimiseSchema = z.object({
   minimised_query: z.string().min(1),

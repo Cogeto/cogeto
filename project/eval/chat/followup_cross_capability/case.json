@@ -1,0 +1,41 @@
+{
+  "case_id": "followup_cross_capability",
+  "description": "The cross-capability follow-up script, live (decision 0046): 'Who is Ana?' → 'What is still open with her?' → 'Draft a reply to her last email' → 'Research her company'. Each turn routes correctly with the pronoun resolved across capability boundaries; the final turn only opens the research gate, and the approved flow completes with a cited answer.",
+  "anchor": "2026-07-23T09:00:00.000Z",
+  "notes": [
+    "Call with Ana Kovač at Adriatic Foods about the Atlas CRM Migration — she is our main contact there and leads the project on their side.",
+    "Ana asked me to prepare a risk register for the Atlas migration.",
+    "I promised to send Ana the revised import mapping for Atlas once she confirms the export format."
+  ],
+  "emails": [
+    {
+      "from": "Ana Kovač <ana.kovac@adriaticfoods.example>",
+      "subject": "Export format for the Atlas import",
+      "text": "Hi — could you confirm which export format you need from our side for the import mapping?",
+      "message_id": "<ana-export-format-1@adriaticfoods.example>"
+    }
+  ],
+  "script": [
+    "Who is Ana?",
+    "What is still open with her?",
+    "Draft a reply to her last email",
+    "Research her company"
+  ],
+  "checks": {
+    "must_include": ["nothing has been sent", "research page"],
+    "no_mechanics": true,
+    "citations_valid": true
+  },
+  "research": {
+    "pages": [
+      {
+        "url": "https://news.example.org/adriatic-foods-profile",
+        "title": "Adriatic Foods: company profile",
+        "html": "<html><head><title>Adriatic Foods: company profile</title></head><body><main><p>Adriatic Foods is a Croatian food producer headquartered in Zagreb, supplying retail chains across the Adriatic region since 1998.</p><p>The company employs around 450 people and reported revenue of 120 million euros in 2025.</p><p>Ana Kovač, who leads digital projects at Adriatic Foods, announced a modernisation of the company's customer systems, including a CRM migration planned for this year.</p></main></body></html>"
+      }
+    ],
+    "answer_must_include": ["Adriatic"],
+    "sent_query_must_exclude": [],
+    "sent_query_must_include": []
+  }
+}

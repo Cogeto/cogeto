@@ -101,3 +101,56 @@ describe('citation_never_leaks (F6)', () => {
     expect(violations).toBe(0);
   });
 });
+
+/**
+ * Per-claim provenance (decision 0046): a blended answer carries three origins
+ * — memory cites, web-memory cites, and the unsourced marker — and the strict
+ * grammar guarantee extends to all of them.
+ */
+describe('per-claim provenance (decision 0046)', () => {
+  it('claim_origins_rendered: a blended answer keeps memory cites, web cites, and unsourced markers; malformed tokens still stripped', () => {
+    const blended =
+      'Ana leads the migration [F1]. The regulation was updated in May [F2]. ' +
+      'Most vendors interpret this loosely [U]. Junk [F2, F9] and {{nonsense}} vanish. ' +
+      'Another general point [u].';
+    const { text, violations } = toStoredAnswer(blended, facts);
+
+    expect(text).toContain(`{{cite:${ID1}}}`);
+    expect(text).toContain(`{{cite:${ID2}}}`);
+    // Both [U] and lowercase [u] canonicalize; nothing else survives.
+    expect(text.match(/\{\{unsourced\}\}/g)).toHaveLength(2);
+    expect(text).not.toMatch(/\[[FUu]/);
+    expect(text).not.toContain('nonsense');
+    expect(violations).toBeGreaterThan(0);
+
+    // The renderer's scan yields exactly the three segment kinds, no leaks.
+    const scan = scanAnswer(text, new Set([ID1, ID2]));
+    const kinds = scan.segments.map((s) => s.kind);
+    expect(kinds).toContain('cite');
+    expect(kinds).toContain('unsourced');
+    for (const seg of scan.segments) {
+      if (seg.kind === 'text') noBraces(seg.text);
+    }
+    expect(scan.violations).toBe(0); // stored text is already clean
+  });
+
+  it('unsourced_never_cited: an unsourced segment carries no memory id and survives even with an empty facts map', () => {
+    const { text, violations } = toStoredAnswer('The directive took effect in 2018 [U].', []);
+    expect(text).toBe('The directive took effect in 2018 {{unsourced}}.');
+    expect(violations).toBe(0);
+
+    const scan = scanAnswer(text, new Set());
+    const unsourced = scan.segments.filter((s) => s.kind === 'unsourced');
+    expect(unsourced).toHaveLength(1);
+    // The segment type has no memoryId — it can never resolve to a source chip.
+    expect(unsourced[0]).toEqual({ kind: 'unsourced' });
+    expect(scan.segments.filter((s) => s.kind === 'cite')).toHaveLength(0);
+  });
+
+  it('a malformed unsourced token never leaks as text', () => {
+    const { text, violations } = toStoredAnswer('Claim {{unsourced} and {unsourced}} here.', []);
+    expect(text).not.toContain('unsourced');
+    expect(text).toContain('Claim');
+    expect(violations).toBeGreaterThan(0);
+  });
+});

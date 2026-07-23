@@ -111,3 +111,27 @@ One line per label change (docs/eval-golden-set.md §4 rule 5).
   gained the `research` case field (scripted pages + sent-query/answer checks)
   and a `research` column in the results table, folded into the all-must-pass
   rule gate.
+- 2026-07-23 (Priority 6 — natural conversation): chat-eval tick — 7
+  conversation cases. `knowledge_offer_en`/`knowledge_offer_hr` (a
+  general-knowledge question answers marked `{{unsourced}}` with the research
+  OFFER on the done event and ZERO research_run rows — never a silent search),
+  `blended_origins_en` (one answer blends a cited stored fact with marked
+  model knowledge), `memory_beats_model` (a stored October fiscal year beats
+  the model's January instinct, cited), `smalltalk_thanks`/`smalltalk_hvala_hr`
+  (compound thanks beyond the deterministic lexicon route to a natural reply —
+  no sources, no citations, no nothing-on-record), and
+  `followup_cross_capability` (the four-turn script: who is Ana → what is
+  still open with her → draft a reply to her last email → research her
+  company; pronouns resolve across capability boundaries and the final turn
+  only opens the gate). The harness gained the folded `conversation` verdict
+  (`research_offer`, `unsourced_required`, `smalltalk` case fields) and a
+  `conversation` column in the results table, part of the all-must-pass rule
+  gate. Croatian cases authored idiomatically, not translated.
+- 2026-07-23 (Priority 6, gate robustness): coverage grading widened from 2 to
+  4 cases — `previously_decided` and `blended_origins_en` gained
+  `coverage_facts` (both already carry deterministic must_include on the same
+  content, so the added judgments are stable). Decision 0036 gates coverage on
+  the MEAN across graded cases precisely so one noisy judgment cannot fail the
+  build; with only two graded cases a single low draw on the known
+  who_is_ana she→Marta flake could still breach the mean. Four graded cases
+  restore the intended arithmetic. More measurement, no gate lowered.

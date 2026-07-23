@@ -1,5 +1,17 @@
 # research_query_minimise — changelog
 
+## v0002 — 2026-07-23 (Priority 6)
+
+Hardens the subject rule against a live keep-subject miss observed on
+`research_keeps_subject_hr` (the minimiser dropped "Adriatic Foods" from
+"istraži tvrtku Adriatic Foods prije sastanka u četvrtak", leaving an
+unanswerable "tvrtku prije sastanka"): the rule now states explicitly that a
+"research company X" / "istraži tvrtku X" intent — with or without an occasion
+attached — is ABOUT X (drop the occasion, never the name), and three few-shot
+examples land the contrast (the en drop-the-client case, the hr keep-subject
+case verbatim, and an en keep-subject case). Everything else verbatim from
+v0001.
+
 ## v0001 — 2026-07-22 (Priority 5 Part B, decision 0044)
 
 Initial version. Rewrites a proposed web search query to the least-identifying

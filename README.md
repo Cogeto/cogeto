@@ -121,6 +121,18 @@ every memory the research produces, next to each page's URL and fetch time.
 Research is explicitly invoked: an ordinary question never triggers a search.
 See [`docs/notes/web-research-privacy.md`](docs/notes/web-research-privacy.md).
 
+**Natural conversation** ties it together: everything a good assistant does,
+and you always know which parts it can prove. You talk to Cogeto without any
+query syntax; it answers from your memories first, blends in the model's own
+knowledge when the question asks about the wider world, and offers web
+research when that would help (the offer only opens the approval gate; nothing
+is searched silently). Every claim visibly carries its origin, sentence by
+sentence: memory claims cite their inspectable sources, web claims carry URL
+and fetch time, and anything from the model's own knowledge is plainly marked
+**unsourced**. That marking is the feature. Cogeto is not a private ChatGPT;
+it is the assistant that tells you what it can back up.
+See [`docs/notes/natural-conversation.md`](docs/notes/natural-conversation.md).
+
 ## Links
 
 - **Website:** [cogeto.eu](https://cogeto.eu), including the whitepaper

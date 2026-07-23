@@ -39,4 +39,18 @@ describe('detectEmailReplyIntent (Session O4 — chat reply intent)', () => {
     // A real named target still survives the cleaning.
     expect(detectEmailReplyIntent('napiši odgovor na Aninu e-poruku')?.target).toBe('Aninu');
   });
+
+  it('entities fill in for a resolved pronoun only — never for "the last email" (decision 0046)', () => {
+    // The cross-capability follow-up: "her" resolved by the rewriter.
+    expect(detectEmailReplyIntent('draft a reply to her last email', ['Ana Kovač'])?.target).toBe(
+      'Ana Kovač',
+    );
+    // "zadnju e-poruku" means the MOST RECENT email — heuristic entity
+    // candidates (here the sentence-initial verb) must never become a phantom
+    // sender (the reply_hr_zadnja live regression).
+    expect(
+      detectEmailReplyIntent('Napiši odgovor na zadnju e-poruku', ['Napiši'])?.target,
+    ).toBeNull();
+    expect(detectEmailReplyIntent('draft a reply to the last email', ['Draft'])?.target).toBeNull();
+  });
 });

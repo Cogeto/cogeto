@@ -1,0 +1,21 @@
+{
+  "case_id": "blended_origins_en",
+  "description": "Per-claim origin correctness, live (decision 0046): a question spanning the user's world and the wider world blends both origins — the stored fact is cited ({{cite}} present), the general-knowledge half is marked {{unsourced}}, and the knowledge classification carries the research offer.",
+  "anchor": "2026-07-23T09:00:00.000Z",
+  "notes": [
+    "Adriatic Foods uses HubSpot as their CRM; the Atlas project migrates their data into it.",
+    "Ana Kovač at Adriatic Foods is the main contact for the Atlas CRM Migration."
+  ],
+  "script": ["What is HubSpot generally known for, and which CRM does Adriatic Foods use today?"],
+  "checks": {
+    "entity": { "mustMention": ["hubspot", "adriatic"], "notIdentity": [] },
+    "unsourced_required": true,
+    "no_mechanics": true,
+    "citations_valid": true,
+    "must_include": ["{{cite"],
+    "coverage_facts": [
+      "Adriatic Foods uses HubSpot as their CRM",
+      "HubSpot is known as a CRM / inbound marketing platform"
+    ]
+  }
+}

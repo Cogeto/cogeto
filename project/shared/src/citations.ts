@@ -1,12 +1,16 @@
 /**
- * The one citation marker grammar (decision 0007 ruling 2; owner test F6).
+ * The one citation marker grammar (decision 0007 ruling 2; owner test F6;
+ * extended by decision 0046 with the unsourced marker).
  *
- * Canonical, stored, renderer-trusted form: `{{cite:<memory-uuid>}}` and nothing
- * else. The answer model emits short `[F1]` markers; the backend post-processor
- * canonicalizes those to `{{cite:uuid}}` and then strips EVERY other bracketed or
- * braced token. The renderer trusts only the canonical form. A raw `[F2, F4]`,
- * a malformed brace, or a cite to an unknown id can never reach the user; each
- * stripped token is counted as a citation violation (metadata only).
+ * Canonical, stored, renderer-trusted forms: `{{cite:<memory-uuid>}}` and
+ * `{{unsourced}}`, and nothing else. The answer model emits short `[F1]`
+ * markers for grounded claims and `[U]` after a claim from its own general
+ * knowledge; the backend post-processor canonicalizes those and then strips
+ * EVERY other bracketed or braced token. The renderer trusts only the
+ * canonical forms. A raw `[F2, F4]`, a malformed brace, or a cite to an
+ * unknown id can never reach the user; each stripped token is counted as a
+ * citation violation (metadata only). An unsourced marker carries no id — it
+ * marks the preceding claim as the model's own knowledge, never a source.
  */
 
 const UUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
@@ -14,20 +18,25 @@ const UUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-
 /** Canonical citation token. Global; callers build fresh RegExp to avoid lastIndex bugs. */
 export const CITATION_RE = new RegExp(`\\{\\{cite:(${UUID})\\}\\}`, 'g');
 
+/** Canonical unsourced-claim token (decision 0046): model knowledge, marked. */
+export const UNSOURCED_TOKEN = '{{unsourced}}';
+
 /**
- * Any "special token" that must be classified: a canonical cite, or junk to
- * strip (double braces, single braces, or square brackets). Ordered so the
- * canonical cite is tried first.
+ * Any "special token" that must be classified: a canonical cite, the canonical
+ * unsourced marker, or junk to strip (double braces, single braces, or square
+ * brackets). Ordered so the canonical forms are tried first.
  */
 const TOKEN_RE = new RegExp(
   `\\{\\{cite:(${UUID})\\}\\}` + // 1: canonical cite (validate id)
+    `|(\\{\\{unsourced\\}\\})` + // 2: canonical unsourced marker
     `|\\{\\{[^{}]*\\}\\}` + // double-brace junk
     `|\\{[^{}]*\\}` + // single-brace junk
     `|\\[[^\\[\\]]*\\]`, // bracket junk, e.g. [F2, F4]
   'g',
 );
 
-export type AnswerSegment = { kind: 'text'; text: string } | { kind: 'cite'; memoryId: string };
+export type AnswerSegment =
+  { kind: 'text'; text: string } | { kind: 'cite'; memoryId: string } | { kind: 'unsourced' };
 
 export interface ScannedAnswer {
   segments: AnswerSegment[];
@@ -59,6 +68,10 @@ export function scanAnswer(text: string, validMemoryIds?: ReadonlySet<string>): 
     const citeId = m[1];
     if (citeId && (!validMemoryIds || validMemoryIds.has(citeId))) {
       segments.push({ kind: 'cite', memoryId: citeId });
+    } else if (m[2]) {
+      // The unsourced marker needs no id and is always valid: it claims
+      // nothing about the user's sources — it admits the absence of one.
+      segments.push({ kind: 'unsourced' });
     } else {
       violations += 1; // junk token, or a cite to an unsupplied id
     }
@@ -73,7 +86,11 @@ export function sanitizeAnswer(
   validMemoryIds?: ReadonlySet<string>,
 ): { text: string; violations: number } {
   const { segments, violations } = scanAnswer(text, validMemoryIds);
-  const out = segments.map((s) => (s.kind === 'text' ? s.text : `{{cite:${s.memoryId}}}`)).join('');
+  const out = segments
+    .map((s) =>
+      s.kind === 'text' ? s.text : s.kind === 'cite' ? `{{cite:${s.memoryId}}}` : UNSOURCED_TOKEN,
+    )
+    .join('');
   return { text: out, violations };
 }
 
@@ -95,4 +112,14 @@ export function mapMarkersToCitations(
       .map((id) => `{{cite:${id}}}`)
       .join('');
   });
+}
+
+/**
+ * Map the model's short `[U]` unsourced markers to the canonical
+ * `{{unsourced}}` token (decision 0046). Always applied: a model admitting a
+ * claim is its own knowledge is marked, never stripped into an unmarked claim.
+ * Case-insensitive and whitespace-tolerant, same posture as the `[F#]` map.
+ */
+export function mapUnsourcedMarkers(text: string): string {
+  return text.replace(/\[\s*U\s*\]/gi, UNSOURCED_TOKEN);
 }

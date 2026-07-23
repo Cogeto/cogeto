@@ -25,6 +25,10 @@
     "past_framing": true,
     "sources_status_includes": ["replaced"],
     "no_mechanics": true,
-    "citations_valid": true
+    "citations_valid": true,
+    "coverage_facts": [
+      "The workshops previously ran on Microsoft Teams",
+      "The workshops now run on Zoom (Teams was replaced)"
+    ]
   }
 }

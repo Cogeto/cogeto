@@ -6,6 +6,26 @@ self-contained search query + entity list, so multi-turn questions ("who is
 she?") retrieve their referent. Runs on the pipeline tier, bounded, with a
 graceful fallback to the raw query on timeout/error.
 
+## v0004 — 2026-07-23 (Priority 6)
+
+The conversational router's question class (decision 0046): output gains
+`question_class: "personal" | "knowledge" | "smalltalk"` with en + hr few-shots
+for each class and two contrast rules — "personal beats knowledge when both
+could apply" (a question about the user's OWN plan stays personal even when it
+names a company) and "smalltalk never names one of the user's people, projects,
+or organizations". The code-side veto guard mirrors the temporal/open-loops
+double guard: a smalltalk claim on a turn with entity candidates, and any
+knowledge/smalltalk claim on a turn that resolved a temporal, open-loops, or
+reply intent, are discarded to `personal` — the default and the failure mode.
+Also adds the `USER-NAMED ENTITIES` input line (computed deterministically
+from the user's OWN turns by the retrieval entity heuristic) with the rule
+that a pronoun's referent is almost always one of those names and a name
+appearing only inside assistant answers almost never captures it — the
+strongest signal yet against the recurring who_is_ana she→Marta flake (0036
+noted 13%/14%/0% coverage draws; it reproduced 2 of 3 live runs during
+Priority 6 development). Rewriting rules, temporal, and open-loops behavior
+unchanged from v0003.
+
 ## v0003 — 2026-07-05 (F3-B)
 
 Adds the open-loops intent (decision 0013 ruling 7): output gains

@@ -18,7 +18,7 @@ import { fuseAndRank } from './fusion';
 import type { RankedList, RetrievalSignal } from './fusion';
 import { queryEntityCandidates } from './query-entities';
 import { rewriteQuery } from './query-rewrite';
-import type { ConversationTurn, TemporalIntent } from './query-rewrite';
+import type { ConversationTurn, RewriteResult, TemporalIntent } from './query-rewrite';
 import { DEFAULT_TOP_K, PROFILE_CEILING, SIGNAL_FETCH_FACTOR } from './retrieval-config';
 
 export interface RetrieveOptions {
@@ -27,6 +27,12 @@ export interface RetrieveOptions {
   includeSensitive?: boolean;
   /** Recent conversation turns (oldest first) for pronoun/ellipsis rewriting (F3). */
   history?: ConversationTurn[];
+  /**
+   * A precomputed rewrite from the chat router (decision 0046): retrieval
+   * reuses it instead of calling the rewriter again, so routing + retrieval
+   * cost exactly one bounded pipeline-tier call per turn.
+   */
+  rewrite?: RewriteResult;
 }
 
 export interface RetrievedMemory {
@@ -85,14 +91,18 @@ export class RetrievalService {
     const topK = opts.topK ?? DEFAULT_TOP_K;
 
     // 1. Conversational rewriting (F3): resolve "who is she?" to its referent.
-    const rewrite = await rewriteQuery(
-      this.gateway,
-      opts.history ?? [],
-      query,
-      undefined,
-      undefined,
-      this.timeZone,
-    );
+    // The chat router precomputes this (decision 0046); other callers still
+    // rewrite here.
+    const rewrite =
+      opts.rewrite ??
+      (await rewriteQuery(
+        this.gateway,
+        opts.history ?? [],
+        query,
+        undefined,
+        undefined,
+        this.timeZone,
+      ));
     const searchQuery = rewrite.query;
     const entityCandidates = [
       ...new Set([...rewrite.entities, ...queryEntityCandidates(searchQuery)]),

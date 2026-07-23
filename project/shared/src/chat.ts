@@ -51,6 +51,18 @@ export interface ChatFactDto {
   supersededBy: string | null;
 }
 
+/**
+ * The research offer riding on a knowledge-class answer (decision 0046): a
+ * one-tap suggestion that leads into the existing minimise-and-approve gate.
+ * The offer is the bridge; the gate stays the gate — tapping it only PROPOSES
+ * a run (nothing leaves until approval on the Research page). Ephemeral: it
+ * accompanies the live answer and is not persisted.
+ */
+export interface ChatResearchOffer {
+  /** The self-contained topic the proposal would minimise and disclose. */
+  topic: string;
+}
+
 /** Server-sent events on POST /api/chat, in order: sources → token* → done. */
 export type ChatStreamEvent =
   | { type: 'sources'; facts: ChatFactDto[] }
@@ -61,6 +73,8 @@ export type ChatStreamEvent =
       content: string;
       /** Non-conforming citation tokens stripped from this answer (metadata only). */
       citationViolations: number;
+      /** Present on knowledge-class answers when research is available (0046). */
+      researchOffer?: ChatResearchOffer | null;
     }
   | {
       type: 'error';

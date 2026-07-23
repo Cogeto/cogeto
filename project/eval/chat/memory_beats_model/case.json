@@ -1,0 +1,16 @@
+{
+  "case_id": "memory_beats_model",
+  "description": "memory_beats_model, live (decision 0046): where general knowledge would contradict a stored fact (a fiscal year starting in October, not the usual January), the stored fact wins, is cited, and the answer never silently prefers the model's version.",
+  "anchor": "2026-07-23T09:00:00.000Z",
+  "notes": [
+    "Adriatic Foods runs its fiscal year from 1 October to 30 September — Ana confirmed this on the kickoff call.",
+    "Ana Kovač at Adriatic Foods is the main contact for the Atlas CRM Migration."
+  ],
+  "script": ["When does Adriatic Foods' fiscal year start? Isn't that usually January?"],
+  "checks": {
+    "entity": { "mustMention": ["october"], "notIdentity": [] },
+    "no_mechanics": true,
+    "citations_valid": true,
+    "must_include": ["october", "{{cite"]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "case_id": "knowledge_offer_en",
+  "description": "research_never_silent, live (decision 0046): a general-knowledge question answers from model knowledge with every claim marked {{unsourced}}, carries the research OFFER on the done event, and never creates a research run — the gate is reached only by tapping the offer.",
+  "anchor": "2026-07-23T09:00:00.000Z",
+  "script": [
+    "What does GDPR Article 17 actually require when a customer asks us to delete their data?"
+  ],
+  "checks": {
+    "research_offer": true,
+    "unsourced_required": true,
+    "no_mechanics": true,
+    "citations_valid": true
+  }
+}

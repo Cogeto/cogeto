@@ -20,7 +20,7 @@ import type { WebPageRow } from './persistence/tables';
  * survives into the record.
  */
 
-export const RESEARCH_ANSWER_PROMPT = { family: 'research_answer', version: 'v0001' };
+export const RESEARCH_ANSWER_PROMPT = { family: 'research_answer', version: 'v0002' };
 
 /** Caps that bound one synthesis call: pages and per-page excerpt length. */
 const MAX_PAGES = 8;
