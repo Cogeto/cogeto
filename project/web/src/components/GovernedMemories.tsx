@@ -59,7 +59,7 @@ function MemoryRow({
           <button
             type="button"
             onClick={selecting ? onToggleSelect : onOpen}
-            className="block w-full text-left text-sm text-slate-800 transition-colors hover:text-brand-teal-ink"
+            className="block w-full text-left text-sm text-slate-800 transition-colors hover:text-brand-teal-ink dark:hover:text-brand-teal"
           >
             {memory.content}
           </button>
@@ -162,7 +162,7 @@ export function GovernedMemories({
       </div>
 
       {requested && (
-        <p className="mb-3 rounded-md bg-brand-teal-surface px-3 py-2 text-sm text-brand-teal-ink">
+        <p className="mb-3 rounded-md bg-brand-teal-surface dark:bg-brand-teal/15 px-3 py-2 text-sm text-brand-teal-ink dark:text-brand-teal">
           Requested: “{requested}”. Decide it under{' '}
           <a href="/approvals" className="font-semibold underline">
             Approvals
@@ -175,10 +175,10 @@ export function GovernedMemories({
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-brand-teal/40 bg-brand-teal/5 px-3 py-2 text-sm">
           <span className="font-medium text-slate-700">{selected.size} selected</span>
           <span className="text-xs text-slate-500">
-            Bulk changes are consequential — they create a pending approval, not an instant edit.
+            Bulk changes are consequential. They create a pending approval, not an instant edit.
           </span>
           {requestBulkOutdate.isError && (
-            <span className="text-xs text-red-600">
+            <span className="text-xs text-red-600 dark:text-red-300">
               {requestBulkOutdate.error instanceof Error
                 ? requestBulkOutdate.error.message
                 : 'Request failed'}

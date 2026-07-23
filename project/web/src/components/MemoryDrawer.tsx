@@ -188,7 +188,7 @@ export function MemoryDrawer({
       <Drawer title="Memory" onClose={onClose}>
         {memoryQuery.isPending && <SkeletonRows rows={4} label="Loading memory…" />}
         {memoryQuery.isError && (
-          <ErrorState>This memory couldn’t be loaded — it may have been rejected.</ErrorState>
+          <ErrorState>This memory couldn’t be loaded. It may have been rejected.</ErrorState>
         )}
 
         {memory && (
@@ -223,13 +223,13 @@ export function MemoryDrawer({
               </p>
             )}
             {memory.temporalUnresolved.length > 0 && (
-              <p className="rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-700">
+              <p className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300">
                 ⚠ Date could not be resolved: {memory.temporalUnresolved.join(', ')}
               </p>
             )}
 
             {actionError && (
-              <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p className="rounded-md border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
                 {actionError}
               </p>
             )}
@@ -364,7 +364,9 @@ export function MemoryDrawer({
                 {otherSide ? (
                   <div className="space-y-2 text-sm">
                     <p className="text-slate-600">This memory conflicts with:</p>
-                    <p className="rounded-md bg-red-50 p-2 text-slate-800">{otherSide.content}</p>
+                    <p className="rounded-md bg-red-50 dark:bg-red-500/10 p-2 text-slate-800">
+                      {otherSide.content}
+                    </p>
                     {otherNoteQuery.data && (
                       <p className="whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs text-slate-600">
                         {otherNoteQuery.data.content}
@@ -402,7 +404,7 @@ export function MemoryDrawer({
                 </div>
               ) : (
                 <p className="text-sm text-slate-400">
-                  No verification pass — this version was authored by you.
+                  No verification pass. This version was authored by you.
                 </p>
               )}
             </Panel>
@@ -429,7 +431,7 @@ export function MemoryDrawer({
                 </button>
               ) : (
                 <p className="mt-2 text-xs text-slate-400">
-                  The source is private to its owner — deletion is owner-only.
+                  The source is private to its owner. Deletion is owner-only.
                 </p>
               )}
             </Panel>
@@ -459,14 +461,16 @@ export function MemoryDrawer({
                           {i === 0 ? 'original' : 'correction'} · {timeAgo(entry.createdAt)}
                         </span>
                         {entry.id === memory.id && (
-                          <span className="font-semibold text-brand-teal-ink">viewing</span>
+                          <span className="font-semibold text-brand-teal-ink dark:text-brand-teal">
+                            viewing
+                          </span>
                         )}
                       </p>
                     </li>
                   ))}
                 </ol>
               ) : (
-                <p className="text-sm text-slate-400">No corrections — this is the original.</p>
+                <p className="text-sm text-slate-400">No corrections. This is the original.</p>
               )}
             </Panel>
           </>

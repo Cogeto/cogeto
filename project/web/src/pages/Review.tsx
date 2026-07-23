@@ -33,7 +33,9 @@ function SourceWithSpan({ source, span }: { source: string; span: string | null 
   return (
     <p className="whitespace-pre-wrap">
       {source.slice(0, at)}
-      <mark className="rounded bg-amber-100 px-0.5">{span}</mark>
+      <mark className="rounded bg-amber-100 px-0.5 dark:bg-amber-400/20 dark:text-amber-100">
+        {span}
+      </mark>
       {source.slice(at + span.length)}
     </p>
   );
@@ -72,7 +74,7 @@ function ReviewItem({ session, memory }: { session: Session; memory: MemoryListI
   const busy = approve.isPending || reject.isPending;
 
   return (
-    <li className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <li className="rounded-lg border border-slate-200 bg-surface p-4 shadow-sm">
       <div className="grid gap-3 md:grid-cols-2">
         <div>
           <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -105,7 +107,7 @@ function ReviewItem({ session, memory }: { session: Session; memory: MemoryListI
         </div>
       </div>
       {error && (
-        <p className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="mt-2 rounded-md border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
           {error}
         </p>
       )}
@@ -164,13 +166,13 @@ function ContradictionSide({
   const isNewer = accent === 'newer';
   return (
     <div
-      className={`rounded-lg border-l-4 bg-white p-3 shadow-sm ${
+      className={`rounded-lg border-l-4 bg-surface p-3 shadow-sm ${
         isNewer ? 'border-l-brand-teal border-slate-200' : 'border-l-slate-400 border-slate-200'
       } border`}
     >
       <p
         className={`mb-1.5 text-[11px] font-bold uppercase tracking-wide ${
-          isNewer ? 'text-brand-teal-ink' : 'text-slate-500'
+          isNewer ? 'text-brand-teal-ink dark:text-brand-teal' : 'text-slate-500'
         }`}
       >
         {label}
@@ -222,8 +224,8 @@ function ContradictionItem({
   const busy = resolve.isPending;
 
   return (
-    <li className="rounded-lg border border-red-200 bg-red-50/40 p-4 shadow-sm">
-      <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-red-700">
+    <li className="rounded-lg border border-red-200 bg-red-50/40 p-4 shadow-sm dark:border-red-500/30 dark:bg-red-500/10">
+      <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-red-700 dark:text-red-300">
         <span aria-hidden="true">⚠</span>
         These two facts disagree
       </p>
@@ -235,7 +237,7 @@ function ContradictionItem({
           memory={contradiction.a}
         />
         <span
-          className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 rounded-full border border-red-200 bg-white px-2 py-0.5 text-[11px] font-bold uppercase text-red-600 md:block"
+          className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 rounded-full border border-red-200 dark:border-red-500/30 bg-surface px-2 py-0.5 text-[11px] font-bold uppercase text-red-600 dark:text-red-300 md:block"
           aria-hidden="true"
         >
           vs
@@ -254,7 +256,7 @@ function ContradictionItem({
         </p>
       )}
       {error && (
-        <p className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="mt-2 rounded-md border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
           {error}
         </p>
       )}
@@ -337,7 +339,7 @@ function ContradictionItem({
             disabled={busy}
             onClick={() => resolve.mutate({ action: 'dismiss' })}
             className={btnSecondary}
-            title="They don't actually conflict — restore both as they were"
+            title="They don't actually conflict. Restore both as they were"
           >
             Not a conflict
           </button>

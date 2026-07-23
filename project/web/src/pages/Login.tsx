@@ -18,7 +18,7 @@ export function Login() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50">
-      <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+      <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-surface p-8 text-center shadow-sm">
         <img
           src="/brand/cogeto-final-logo-horizontal.svg"
           alt="Cogeto"
@@ -34,7 +34,7 @@ export function Login() {
           {busy ? 'Redirecting…' : 'Sign in'}
         </button>
         {error && (
-          <p className="mt-4 text-sm text-red-700" role="alert">
+          <p className="mt-4 text-sm text-red-700 dark:text-red-300" role="alert">
             {error}
           </p>
         )}

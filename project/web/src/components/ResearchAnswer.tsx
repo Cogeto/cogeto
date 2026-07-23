@@ -24,8 +24,8 @@ export function ResearchAnswer({ answer }: { answer: ResearchAnswerDto }) {
               href={citation.url}
               target="_blank"
               rel="noopener noreferrer"
-              title={`${citation.title ?? citation.url} — fetched ${new Date(citation.fetchedAt).toLocaleString()}`}
-              className="mx-0.5 rounded bg-brand-teal/10 px-1 text-xs font-medium text-brand-teal-ink hover:underline"
+              title={`${citation.title ?? citation.url} · fetched ${new Date(citation.fetchedAt).toLocaleString()}`}
+              className="mx-0.5 rounded bg-brand-teal/10 px-1 text-xs font-medium text-brand-teal-ink dark:text-brand-teal hover:underline"
             >
               {part}
             </a>

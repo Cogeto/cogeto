@@ -18,6 +18,8 @@ import type { Session } from '../auth/oidc';
 import { Shell } from '../components/Shell';
 import { btnPrimary, btnSecondary, SectionTitle, Skeleton } from '../components/ui';
 import { timeAgo } from '../components/status';
+import { useTheme } from '../theme';
+import type { Theme } from '../theme';
 
 /** Settings (§A.9, O1-C): only real, wired toggles — every control does something today. */
 export function Settings({ session }: { session: Session }) {
@@ -48,7 +50,7 @@ export function Settings({ session }: { session: Session }) {
 
   return (
     <Shell session={session} title="Settings" active="settings">
-      <section className="max-w-2xl space-y-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="max-w-2xl space-y-5 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
         <div>
           <SectionTitle>Capture &amp; upload defaults</SectionTitle>
           <p className="mt-1 text-xs text-slate-400">
@@ -69,7 +71,7 @@ export function Settings({ session }: { session: Session }) {
               <span className="text-sm text-slate-700">
                 <span className="font-medium">Extract and discard by default</span>
                 <span className="block text-xs text-slate-400">
-                  Delete the original file after its facts are extracted — keep only the verified
+                  Delete the original file after its facts are extracted. Keep only the verified
                   memories. Nothing durable is stored; the derived memories retain full provenance.
                 </span>
               </span>
@@ -100,14 +102,20 @@ export function Settings({ session }: { session: Session }) {
               >
                 {save.isPending ? 'Saving…' : 'Save'}
               </button>
-              {saved && <span className="text-xs text-brand-teal-ink">Saved.</span>}
+              {saved && (
+                <span className="text-xs text-brand-teal-ink dark:text-brand-teal">Saved.</span>
+              )}
               {save.isError && (
-                <span className="text-xs text-red-700">Couldn’t save — try again.</span>
+                <span className="text-xs text-red-700 dark:text-red-300">
+                  Couldn’t save. Try again.
+                </span>
               )}
             </div>
           </>
         )}
       </section>
+
+      <AppearanceSection />
 
       <ModelConfigSection session={session} />
 
@@ -115,11 +123,11 @@ export function Settings({ session }: { session: Session }) {
 
       <PassportSection session={session} />
 
-      <section className="mt-4 max-w-2xl space-y-2 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="mt-4 max-w-2xl space-y-2 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
         <SectionTitle>Instance signing key</SectionTitle>
         <p className="text-xs text-slate-500">
           Every deletion receipt is signed with this instance's private key (§B.1). Anyone can
-          verify a receipt or the Forgotten ledger against the public key below — proof that a
+          verify a receipt or the Forgotten ledger against the public key below, proof that a
           deletion really happened, independent of Cogeto.
         </p>
         {publicKey.data ? (
@@ -137,6 +145,52 @@ export function Settings({ session }: { session: Session }) {
   );
 }
 
+const THEMES: { key: Theme; label: string }[] = [
+  { key: 'dark', label: 'Dark' },
+  { key: 'light', label: 'Light' },
+];
+
+/**
+ * Appearance (P6.8): the per-device light/dark choice. Dark is the product
+ * default; picking here writes localStorage and applies instantly on every
+ * surface, and the pre-paint bootstrap in index.html honours it on the next load
+ * with no flash. A segmented control, not a checkbox: two named, explicit states.
+ */
+function AppearanceSection() {
+  const { theme, setTheme } = useTheme();
+  return (
+    <section className="mt-4 max-w-2xl space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
+      <div>
+        <SectionTitle>Appearance</SectionTitle>
+        <p className="mt-1 text-xs text-slate-400">
+          Dark is the default. Your choice is remembered on this device and applies everywhere.
+        </p>
+      </div>
+      <div
+        role="group"
+        aria-label="Theme"
+        className="flex w-fit gap-1 rounded-lg bg-slate-200/70 p-1"
+      >
+        {THEMES.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            aria-pressed={theme === t.key}
+            onClick={() => setTheme(t.key)}
+            className={`rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
+              theme === t.key
+                ? 'bg-surface text-slate-800 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /**
  * Model configuration (decision 0040): READ-ONLY display of the active
  * provider configuration — the id the trust page joins on, the provider and
@@ -150,12 +204,12 @@ function ModelConfigSection({ session }: { session: Session }) {
   });
 
   return (
-    <section className="mt-4 max-w-2xl space-y-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="mt-4 max-w-2xl space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
       <div>
         <SectionTitle>Model configuration</SectionTitle>
         <p className="mt-1 text-xs text-slate-400">
           Read-only. The active providers and models are set by the operator in the instance
-          environment — API keys are never entered or shown here.
+          environment. API keys are never entered or shown here.
         </p>
       </div>
       {config.isPending && <Skeleton className="h-24 w-full" />}
@@ -167,8 +221,8 @@ function ModelConfigSection({ session }: { session: Session }) {
               {config.data.configurationId}
             </code>
             {!config.data.configured && (
-              <span className="text-xs text-amber-700">
-                no provider key set — model features are disabled
+              <span className="text-xs text-amber-700 dark:text-amber-300">
+                no provider key set, model features are disabled
               </span>
             )}
           </div>
@@ -196,7 +250,9 @@ function ModelConfigSection({ session }: { session: Session }) {
         </>
       )}
       {config.isError && (
-        <p className="text-xs text-red-700">Couldn’t load the model configuration.</p>
+        <p className="text-xs text-red-700 dark:text-red-300">
+          Couldn’t load the model configuration.
+        </p>
       )}
     </section>
   );
@@ -240,12 +296,12 @@ function PassportSection({ session }: { session: Session }) {
   const pending = rows.some((row) => row.status === 'pending');
 
   return (
-    <section className="mt-4 max-w-2xl space-y-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="mt-4 max-w-2xl space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
       <SectionTitle>Export my data · Memory Passport</SectionTitle>
       <p className="text-xs text-slate-500">
-        Download <span className="font-medium">everything</span> Cogeto knows for you — every fact
+        Download <span className="font-medium">everything</span> Cogeto knows for you: every fact
         with its status, provenance and full history, your derived tasks, and your deletion receipts
-        (still independently verifiable) — in an open, documented, versioned format. Your memory is
+        (still independently verifiable), in an open, documented, versioned format. Your memory is
         portable; leave whenever you want.
       </p>
 
@@ -259,8 +315,8 @@ function PassportSection({ session }: { session: Session }) {
         <span>
           <span className="font-medium">Include original files</span>
           <span className="block text-xs text-slate-400">
-            Attach the original bytes of files you uploaded (a full archive). Off by default —
-            provenance and metadata are always included either way.
+            Attach the original bytes of files you uploaded (a full archive). Off by default.
+            Provenance and metadata are always included either way.
           </span>
         </span>
       </label>
@@ -275,7 +331,9 @@ function PassportSection({ session }: { session: Session }) {
           {trigger.isPending || pending ? 'Preparing…' : 'Export my data'}
         </button>
         {trigger.isError && (
-          <span className="text-xs text-red-700">Couldn’t start the export — try again.</span>
+          <span className="text-xs text-red-700 dark:text-red-300">
+            Couldn’t start the export. Try again.
+          </span>
         )}
       </div>
 
@@ -290,14 +348,14 @@ function PassportSection({ session }: { session: Session }) {
               <span
                 className={`text-xs ${
                   row.status === 'failed'
-                    ? 'text-red-700'
+                    ? 'text-red-700 dark:text-red-300'
                     : row.status === 'ready'
-                      ? 'text-brand-teal-ink'
+                      ? 'text-brand-teal-ink dark:text-brand-teal'
                       : 'text-slate-400'
                 }`}
               >
                 {PASSPORT_STATUS_LABEL[row.status]}
-                {row.status === 'failed' && row.error ? ` — ${row.error}` : ''}
+                {row.status === 'failed' && row.error ? `: ${row.error}` : ''}
               </span>
               <span className="text-xs text-slate-400" title={row.createdAt}>
                 {timeAgo(row.createdAt)}
@@ -318,7 +376,7 @@ function PassportSection({ session }: { session: Session }) {
       )}
       <p className="text-xs text-slate-400">
         The format is open and documented at{' '}
-        <span className="font-mono">docs/passport-schema/</span> — anyone can read and verify a
+        <span className="font-mono">docs/passport-schema/</span>. Anyone can read and verify a
         Passport with only the schema and the instance public key above.
       </p>
     </section>
@@ -380,7 +438,7 @@ function EmailCaptureSection({ session }: { session: Session }) {
   const listed = new Set(allowlist.map((e) => e.value));
 
   return (
-    <section className="mt-4 max-w-2xl space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="mt-4 max-w-2xl space-y-4 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
       <div>
         <SectionTitle>Email capture</SectionTitle>
         <p className="mt-1 text-xs text-slate-400">
@@ -419,7 +477,7 @@ function EmailCaptureSection({ session }: { session: Session }) {
               </div>
             ) : (
               <p className="mt-1 text-xs text-slate-400">
-                Not configured yet — the operator sets this when provisioning the instance.
+                Not configured yet. The operator sets this when provisioning the instance.
               </p>
             )}
           </div>
@@ -446,7 +504,7 @@ function EmailCaptureSection({ session }: { session: Session }) {
                 </li>
               </ul>
               <p className="rounded-md bg-slate-50 p-2 text-slate-500">
-                Cogeto only ever receives <strong>what you forward</strong> — never your whole
+                Cogeto only ever receives <strong>what you forward</strong>, never your whole
                 mailbox, and never your password or account access.
               </p>
             </div>
@@ -458,7 +516,7 @@ function EmailCaptureSection({ session }: { session: Session }) {
               <p className="mt-1 text-sm text-slate-700">
                 <span className="font-mono">{config.data.selfAddress}</span>
                 <span className="ml-2 text-xs text-slate-400">
-                  your registered address — anything you forward or BCC is captured for you
+                  your registered address: anything you forward or BCC is captured for you
                 </span>
               </p>
             </div>
@@ -467,12 +525,12 @@ function EmailCaptureSection({ session }: { session: Session }) {
           <div>
             <div className="text-sm font-medium text-slate-700">Allowed senders</div>
             <p className="text-xs text-slate-400">
-              External senders whose mail becomes <strong>your</strong> memory — typically the
-              people you auto-forward from your provider. Other users keep their own lists.
+              External senders whose mail becomes <strong>your</strong> memory, typically the people
+              you auto-forward from your provider. Other users keep their own lists.
             </p>
             {allowlist.length === 0 ? (
-              <p className="mt-1 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
-                No external senders allowed yet — apart from your own address above, Cogeto is{' '}
+              <p className="mt-1 rounded-md border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-300">
+                No external senders allowed yet. Apart from your own address above, Cogeto is{' '}
                 <strong>closed by default</strong> and accepts no mail for you until you add an
                 address or domain here.
               </p>
@@ -493,7 +551,7 @@ function EmailCaptureSection({ session }: { session: Session }) {
                       type="button"
                       onClick={() => remove.mutate(entry.id)}
                       disabled={remove.isPending}
-                      className="shrink-0 text-xs text-red-700 hover:underline"
+                      className="shrink-0 text-xs text-red-700 dark:text-red-300 hover:underline"
                     >
                       Remove
                     </button>
@@ -545,8 +603,8 @@ function EmailCaptureSection({ session }: { session: Session }) {
             </button>
           </div>
           {add.isError && (
-            <p className="text-xs text-red-700">
-              {add.error instanceof Error ? add.error.message : 'Couldn’t add — check the value.'}
+            <p className="text-xs text-red-700 dark:text-red-300">
+              {add.error instanceof Error ? add.error.message : 'Couldn’t add. Check the value.'}
             </p>
           )}
 
@@ -578,7 +636,7 @@ function EmailCaptureSection({ session }: { session: Session }) {
                             r.fromAddr && add.mutate({ kind: 'address', value: r.fromAddr })
                           }
                           disabled={add.isPending}
-                          className="shrink-0 text-xs text-brand-teal-ink hover:underline"
+                          className="shrink-0 text-xs text-brand-teal-ink dark:text-brand-teal hover:underline"
                         >
                           Allow this sender
                         </button>

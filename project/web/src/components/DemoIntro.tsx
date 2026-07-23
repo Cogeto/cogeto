@@ -13,7 +13,7 @@ const TRIES: { n: number; title: string; body: string; href: string }[] = [
   {
     n: 1,
     title: 'Ask what Ana promised Marko',
-    body: 'Open chat and ask “What did Ana promise Marko?” — the answer cites the note it came from.',
+    body: 'Open chat and ask “What did Ana promise Marko?” The answer cites the note it came from.',
     href: '/chat',
   },
   {
@@ -25,7 +25,7 @@ const TRIES: { n: number; title: string; body: string; href: string }[] = [
   {
     n: 3,
     title: 'Delete Ana’s contract and watch the receipt',
-    body: 'In Forgotten, delete the Adriatic Foods consulting agreement and watch the deletion receipt confirm — hash-chained and signed.',
+    body: 'In Forgotten, delete the Adriatic Foods consulting agreement and watch the deletion receipt confirm, hash-chained and signed.',
     href: '/forgotten',
   },
 ];
@@ -41,12 +41,12 @@ export function DemoIntro() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/25 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onClick={dismiss}
       role="presentation"
     >
       <div
-        className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl"
+        className="w-full max-w-md rounded-xl border border-slate-200 bg-surface p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-1 flex items-start justify-between">
@@ -62,7 +62,7 @@ export function DemoIntro() {
         </div>
         <p className="mb-4 text-sm text-slate-500">
           This is <span className="font-medium text-slate-600">Ana Kovač’s</span> accrued,
-          verifiable memory — fictional data, safe to explore. Three things to try:
+          verifiable memory: fictional data, safe to explore. Three things to try:
         </p>
         <ol className="grid gap-3">
           {TRIES.map((t) => (
@@ -71,7 +71,7 @@ export function DemoIntro() {
                 href={t.href}
                 className="flex gap-3 rounded-lg border border-slate-200 p-3 text-left transition hover:border-brand-teal hover:bg-brand-teal/5"
               >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-teal-surface text-xs font-bold text-brand-teal-ink">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-teal-surface dark:bg-brand-teal/15 text-xs font-bold text-brand-teal-ink dark:text-brand-teal">
                   {t.n}
                 </span>
                 <span>

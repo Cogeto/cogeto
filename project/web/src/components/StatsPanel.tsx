@@ -15,14 +15,16 @@ import { donutArcs, seriesSummary, seriesTotal, sparklinePoints } from './charts
  * meaning by color alone.
  */
 
-/** Status → donut hue. AA legend labels carry the meaning; color only assists. */
+/** Status → donut hue. AA legend labels carry the meaning; color only assists.
+ * Hues are theme-aware CSS tokens (--chart-*, defined in index.css, re-derived
+ * for the dark surface) rather than baked hex, so the charts read in both themes. */
 const STATUS_COLOR: Record<MemoryStatus, string> = {
-  active: '#21c29a',
-  user_approved: '#0b6b57',
-  uncertain: '#d97706',
-  contradicted: '#dc2626',
-  outdated: '#64748b',
-  replaced: '#94a3b8',
+  active: 'var(--chart-active)',
+  user_approved: 'var(--chart-approved)',
+  uncertain: 'var(--chart-uncertain)',
+  contradicted: 'var(--chart-contradicted)',
+  outdated: 'var(--chart-outdated)',
+  replaced: 'var(--chart-replaced)',
 };
 const STATUS_ORDER: MemoryStatus[] = [
   'active',
@@ -96,7 +98,7 @@ function KpiRow({ data }: { data: DashboardStatsDto }) {
     { label: 'Approvals', value: data.approvalsPending, href: '/approvals' },
     {
       label: 'Oldest review',
-      value: oldestDays === null ? '—' : `${oldestDays}d`,
+      value: oldestDays === null ? 'None' : `${oldestDays}d`,
       href: '/review',
       title:
         oldestDays === null
@@ -111,7 +113,7 @@ function KpiRow({ data }: { data: DashboardStatsDto }) {
           key={t.label}
           href={t.href}
           title={t.title}
-          className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-brand-teal/50"
+          className="rounded-lg border border-slate-200 bg-surface p-3 shadow-sm transition-colors hover:border-brand-teal/50"
         >
           <div className="text-2xl font-semibold tabular-nums text-slate-800">{t.value}</div>
           <div className="mt-0.5 text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -152,7 +154,14 @@ function MemoryDonut({ data }: { data: DashboardStatsDto }) {
       ) : (
         <div className="flex items-center gap-5">
           <svg viewBox="0 0 100 100" className="h-28 w-28 shrink-0" role="img" aria-label={summary}>
-            <circle cx="50" cy="50" r={R} fill="none" stroke="#e2e8f0" strokeWidth="10" />
+            <circle
+              cx="50"
+              cy="50"
+              r={R}
+              fill="none"
+              stroke="var(--chart-track)"
+              strokeWidth="10"
+            />
             {arcs.map((a) => (
               <circle
                 key={a.key}
@@ -191,7 +200,7 @@ function MemoryDonut({ data }: { data: DashboardStatsDto }) {
               <li key={s.key}>
                 <a
                   href={`/memories?status=${s.key}`}
-                  className="flex items-center gap-2 text-sm text-slate-600 hover:text-brand-teal-ink"
+                  className="flex items-center gap-2 text-sm text-slate-600 hover:text-brand-teal-ink dark:hover:text-brand-teal"
                 >
                   <span
                     aria-hidden="true"
@@ -214,16 +223,19 @@ function MemoryDonut({ data }: { data: DashboardStatsDto }) {
 
 function TaskLoad({ data }: { data: DashboardStatsDto }) {
   const rows = [
-    { label: 'Open', value: data.tasks.open, color: '#21c29a' },
-    { label: 'Blocked', value: data.tasks.blocked, color: '#d97706' },
-    { label: 'Done', value: data.tasks.done, color: '#64748b' },
+    { label: 'Open', value: data.tasks.open, color: 'var(--chart-active)' },
+    { label: 'Blocked', value: data.tasks.blocked, color: 'var(--chart-uncertain)' },
+    { label: 'Done', value: data.tasks.done, color: 'var(--chart-outdated)' },
   ];
   const max = Math.max(1, ...rows.map((r) => r.value));
   return (
     <Card>
       <div className="mb-3 flex items-center justify-between">
         <SectionTitle as="h3">Task load</SectionTitle>
-        <a href="/tasks" className="text-xs font-semibold text-brand-teal-ink hover:underline">
+        <a
+          href="/tasks"
+          className="text-xs font-semibold text-brand-teal-ink dark:text-brand-teal hover:underline"
+        >
           Open tasks →
         </a>
       </div>
@@ -261,11 +273,14 @@ function SourcesSpark({ data }: { data: DashboardStatsDto }) {
     <Card>
       <div className="mb-1 flex items-center justify-between">
         <SectionTitle as="h3">Sources · last 30 days</SectionTitle>
-        <a href="/memories" className="text-xs font-semibold text-brand-teal-ink hover:underline">
+        <a
+          href="/memories"
+          className="text-xs font-semibold text-brand-teal-ink dark:text-brand-teal hover:underline"
+        >
           {grand} ingested →
         </a>
       </div>
-      <Spark values={totals} color="#21c29a" label={seriesSummary(data.sources)} />
+      <Spark values={totals} color="var(--chart-active)" label={seriesSummary(data.sources)} />
       <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
         {data.sources.keys.map((k) => (
           <li key={k}>
@@ -292,7 +307,7 @@ function DreamingSpark({ data }: { data: DashboardStatsDto }) {
         <div>
           <Spark
             values={merges}
-            color="#0b6b57"
+            color="var(--chart-approved)"
             label={`Merges: ${seriesTotal(data.dreaming, 'merges')}`}
           />
           <p className="mt-1 text-xs text-slate-500">
@@ -305,12 +320,12 @@ function DreamingSpark({ data }: { data: DashboardStatsDto }) {
         <div>
           <Spark
             values={conflicts}
-            color="#dc2626"
+            color="var(--chart-contradicted)"
             label={`Conflicts caught: ${seriesTotal(data.dreaming, 'conflicts')}`}
           />
           <a
             href="/review?tab=contradicted"
-            className="mt-1 block text-xs text-slate-500 hover:text-brand-teal-ink"
+            className="mt-1 block text-xs text-slate-500 hover:text-brand-teal-ink dark:hover:text-brand-teal"
           >
             <span className="font-semibold text-slate-700">
               {seriesTotal(data.dreaming, 'conflicts')}

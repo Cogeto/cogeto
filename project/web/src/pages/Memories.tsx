@@ -72,8 +72,8 @@ export function Memories({ session }: { session: Session }) {
         />
       ))}
       {failedCount > 0 && (
-        <p className="text-sm text-red-600">
-          {failedCount} capture{failedCount > 1 ? 's' : ''} failed processing — see System for the
+        <p className="text-sm text-red-600 dark:text-red-300">
+          {failedCount} capture{failedCount > 1 ? 's' : ''} failed processing. See System for the
           dead-letter queue.
         </p>
       )}

@@ -84,6 +84,23 @@ The `eval-gate` is secret-gated (QS-15): pull requests run the mocked
 build-only path (no API key, fork PRs run cleanly); the live golden-set gate
 runs on push to `main` after merge.
 
+### Product-copy dash guard (P6.8)
+
+The `lint` check also enforces a house style rule: **no em (—) or en (–) dashes
+in user-facing product copy.** A local ESLint rule
+(`copy/no-typographic-dashes`, defined inline in `eslint.config.mjs`, no new
+dependency) flags those characters in string literals, JSX text, and template
+literals under `project/web/src`. It inspects only those AST nodes, so **code
+comments are exempt** (they are out of scope and full of dashes). **Out of scope
+and excluded:** the specs/fixtures, code identifiers and comments, third-party
+output, user-entered data (including the seeded demo note bodies in
+`project/demo/seed/`, which simulate a user's own writing), historical records
+(audit entries, existing memories), backend log/error strings, docs authoring
+notes (not served to users), and CLI/log output where a dash is syntax. Rewrite
+each flagged dash with a comma, colon, period, or a restructured sentence, chosen
+for natural reading, never a mechanical hyphen. `index.html` copy is kept clean by
+hand (ESLint does not parse HTML).
+
 ## Versioning and releases
 
 The **git tag** and **`package.json` `version`** are the two sources of truth and

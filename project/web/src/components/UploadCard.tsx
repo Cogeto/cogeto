@@ -123,7 +123,7 @@ export function UploadCard({
         </label>
         <label
           className="flex items-center gap-1.5"
-          title="Delete the original after extraction — keep only the derived memories (§A.9)."
+          title="Delete the original after extraction. Keep only the derived memories (§A.9)."
         >
           <input
             type="checkbox"
@@ -135,13 +135,13 @@ export function UploadCard({
       </div>
 
       {effDiscard && (
-        <p className="mt-2 text-xs text-amber-800">
-          The uploaded file will be deleted once its facts are extracted — only the verified
-          memories are kept. This cannot be undone.
+        <p className="mt-2 text-xs text-amber-800 dark:text-amber-300">
+          The uploaded file will be deleted once its facts are extracted. Only the verified memories
+          are kept. This cannot be undone.
         </p>
       )}
       {error && (
-        <p className="mt-2 text-xs text-red-700" role="alert">
+        <p className="mt-2 text-xs text-red-700 dark:text-red-300" role="alert">
           {error}
         </p>
       )}
@@ -152,7 +152,7 @@ export function UploadCard({
 const STATE_LABEL: Record<FileProcessingState, string> = {
   processing: 'Extracting and verifying…',
   done: 'Done',
-  error: 'Extraction failed — the file could not be read.',
+  error: 'Extraction failed. The file could not be read.',
 };
 
 /** Polls one uploaded file's pipeline job until it settles. */
@@ -183,8 +183,8 @@ export function PendingUpload({
     <div
       className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${
         failed
-          ? 'border-red-200 bg-red-50 text-red-700'
-          : 'border-slate-200 bg-white text-slate-500'
+          ? 'border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300'
+          : 'border-slate-200 bg-surface text-slate-500'
       }`}
     >
       {!failed && (

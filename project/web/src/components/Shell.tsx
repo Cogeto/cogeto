@@ -85,11 +85,13 @@ export function Shell({
         showSystem={me?.isAdmin === true}
       />
       <div className={fullHeight ? 'flex h-screen min-h-0 flex-1 flex-col' : 'flex-1'}>
-        <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+        <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-surface px-6 py-4">
           <div>
             <h1 className="text-lg font-semibold text-slate-800">{title}</h1>
             {isPending && <p className="text-sm text-slate-400">Loading identity…</p>}
-            {isError && <p className="text-sm text-red-600">Could not load /api/me.</p>}
+            {isError && (
+              <p className="text-sm text-red-600 dark:text-red-300">Could not load /api/me.</p>
+            )}
             {me && (
               <p className="text-sm text-slate-500">
                 {me.name} · <span className="font-medium">{me.orgName}</span>
@@ -98,7 +100,7 @@ export function Shell({
           </div>
           {isDemoSession() ? (
             // Sandbox: no sign-out (no account to leave); a subtle sandbox tag.
-            <span className="inline-flex items-center gap-1 rounded-full bg-brand-teal-surface px-3 py-1 text-xs font-semibold text-brand-teal-ink">
+            <span className="inline-flex items-center gap-1 rounded-full bg-brand-teal-surface dark:bg-brand-teal/15 px-3 py-1 text-xs font-semibold text-brand-teal-ink dark:text-brand-teal">
               <span aria-hidden="true">●</span> Live sandbox
             </span>
           ) : (

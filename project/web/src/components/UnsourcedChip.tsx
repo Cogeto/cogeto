@@ -10,7 +10,7 @@ export function UnsourcedChip() {
   return (
     <span
       className="mx-0.5 inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-1.5 align-baseline text-xs font-medium text-slate-400"
-      title="Model knowledge — not from your sources. Cogeto marks these so you always know which claims it can prove."
+      title="Model knowledge, not from your sources. Cogeto marks these so you always know which claims it can prove."
       aria-label="model knowledge, not from your sources"
     >
       unsourced

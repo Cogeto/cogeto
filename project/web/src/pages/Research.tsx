@@ -149,7 +149,7 @@ export function Research({ session }: { session: Session }) {
   return (
     <Shell session={session} title="Research" active="research">
       <Card>
-        <SectionTitle>Ask the web — on your terms</SectionTitle>
+        <SectionTitle>Ask the web, on your terms</SectionTitle>
         <p className="mb-2 text-xs text-slate-500">
           Research is explicitly invoked and honest about what leaves: Cogeto minimises the query,
           shows you exactly what would be sent, and sends nothing until you approve it. Fetched
@@ -189,7 +189,7 @@ export function Research({ session }: { session: Session }) {
           <div className="space-y-2">
             <p className="text-xs text-slate-500">
               Nothing has been sent. This is the exact query that will reach public search engines
-              if you approve — edit it freely first.
+              if you approve. Edit it freely first.
             </p>
             {run.minimisedQuery !== run.proposedQuery && (
               <p className="text-xs">
@@ -207,7 +207,7 @@ export function Research({ session }: { session: Session }) {
             />
             <p className="rounded bg-slate-50 px-2 py-1 text-xs text-slate-600">
               {run.minimiseReason}
-              {queryEdited && ' · You edited the query — your text is what will be sent.'}
+              {queryEdited && ' · You edited the query. Your text is what will be sent.'}
             </p>
             <div className="flex gap-2">
               <button
@@ -224,7 +224,7 @@ export function Research({ session }: { session: Session }) {
                 disabled={cancel.isPending}
                 onClick={() => cancel.mutate(run.id)}
               >
-                Cancel — send nothing
+                Cancel, send nothing
               </button>
             </div>
           </div>
@@ -233,7 +233,7 @@ export function Research({ session }: { session: Session }) {
 
       {searched && (
         <Card>
-          <SectionTitle>Results — pick the pages worth reading</SectionTitle>
+          <SectionTitle>Results: pick the pages worth reading</SectionTitle>
           {results.length === 0 && (
             <EmptyState title="No results">
               The engines returned nothing for this query. Start a new research with different
@@ -243,7 +243,7 @@ export function Research({ session }: { session: Session }) {
           {results.length > 0 && (
             <>
               <p className="mb-2 text-xs text-slate-500">
-                Sent query: <span className="font-medium text-slate-700">{run.sentQuery}</span> —
+                Sent query: <span className="font-medium text-slate-700">{run.sentQuery}</span>,
                 recorded on this run and on every memory this research produces.
               </p>
               <ul className="space-y-2">
@@ -265,7 +265,9 @@ export function Research({ session }: { session: Session }) {
                       <p className="truncate text-sm font-medium text-slate-800">
                         {r.title || r.url}
                       </p>
-                      <p className="break-all text-xs text-brand-teal-ink">{r.url}</p>
+                      <p className="break-all text-xs text-brand-teal-ink dark:text-brand-teal">
+                        {r.url}
+                      </p>
                       {r.snippet && <p className="text-xs text-slate-500">{r.snippet}</p>}
                     </div>
                   </li>
@@ -293,10 +295,10 @@ export function Research({ session }: { session: Session }) {
               {captured.results.map((r) => (
                 <p key={r.url} className="text-xs">
                   {r.status === 'captured' ? (
-                    <span className="text-slate-600">✓ {r.url} — captured, extracting…</span>
+                    <span className="text-slate-600">✓ {r.url} · captured, extracting…</span>
                   ) : (
-                    <span className="text-amber-700">
-                      ⨯ {r.url} — skipped ({r.detail})
+                    <span className="text-amber-700 dark:text-amber-300">
+                      ⨯ {r.url} · skipped ({r.detail})
                     </span>
                   )}
                 </p>
@@ -318,7 +320,7 @@ export function Research({ session }: { session: Session }) {
 
       {answer && (
         <Card>
-          <SectionTitle>Answer — every claim traceable</SectionTitle>
+          <SectionTitle>Answer: every claim traceable</SectionTitle>
           <ResearchAnswer answer={answer} />
           <p className="mt-2 text-xs text-slate-400">
             Web citations link to the page as fetched; the facts persist as web memories you can
@@ -383,7 +385,7 @@ export function Research({ session }: { session: Session }) {
                 )}
                 {r.status === 'approved' && r.answer && (
                   <details className="mt-1">
-                    <summary className="cursor-pointer text-xs text-brand-teal-ink">
+                    <summary className="cursor-pointer text-xs text-brand-teal-ink dark:text-brand-teal">
                       View answer
                     </summary>
                     <p className="mt-1 whitespace-pre-wrap rounded border border-slate-200 p-2 text-xs text-slate-700">

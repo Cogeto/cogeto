@@ -1,10 +1,19 @@
 @import 'tailwindcss';
 
+/* Class-based dark variant (P6.8): `dark:` utilities follow the `.dark` class on
+   <html>, set pre-paint by the inline bootstrap in index.html — NOT the raw
+   prefers-color-scheme media query, so the in-app toggle is authoritative. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
- * Cogeto design tokens (O3-C). One home for the system; see docs/design/README.md.
- * Palette is brand-anchored (navy + teal from assets/brand — assets untouched).
- * Status semantics live in components/status.ts (AA-verified) and render through
- * one canonical <StatusChip>; nothing conveys state by color alone.
+ * Cogeto design tokens (O3-C; dark theme P6.8). One home for the system; see
+ * docs/design/README.md. Palette is brand-anchored (navy + teal from
+ * assets/brand — assets untouched). Two themes, one token set: light values live
+ * here in @theme; the dark theme re-derives the neutrals, one surface token, and
+ * the chart hues under :root.dark below (a hand-tuned dual palette, never a CSS
+ * invert() filter). Status semantics live in components/status.ts (AA-verified,
+ * with dark variants) and render through one canonical <StatusChip>; nothing
+ * conveys state by color alone.
  */
 @theme {
   --font-sans:
@@ -24,6 +33,13 @@
   --color-brand-teal-ink: #0b6b57;
   --color-brand-teal-surface: #e3f6f1;
 
+  /* Semantic surface token (P6.8). The one card/panel/header background that
+     cannot ride the slate ramp: white here means "surface", but `text-white`
+     means "ink on a colored control", so the two must not share a variable.
+     `bg-surface` replaces the old `bg-white` on every surface; the dark theme
+     re-points it below. On-color text keeps using `text-white`/`text-black`. */
+  --color-surface: #ffffff;
+
   /* Motion (subtle; all disabled under prefers-reduced-motion below) */
   --animate-worker-indeterminate: worker-indeterminate 1.3s ease-in-out infinite;
   --animate-drawer-in: drawer-in 0.16s ease-out;
@@ -37,10 +53,74 @@
   --shadow-glow: 0 10px 40px -18px rgba(33, 194, 154, 0.45);
 }
 
+/*
+ * Chart hues (P6.8). Hand-rolled SVG charts (StatsPanel) can't carry Tailwind
+ * classes on every stroke/fill, so their colors are tokens, theme-aware. Light
+ * values mirror the status palette; the dark values re-derive each so it reads
+ * on the dark surface (the deep-ink approved/outdated hues are lightened; the
+ * ring track darkens). Meaning never rides on color alone — every chart pairs
+ * with a legend or an aria text-equivalent.
+ */
+:root {
+  --chart-active: #21c29a;
+  --chart-approved: #0b6b57;
+  --chart-uncertain: #d97706;
+  --chart-contradicted: #dc2626;
+  --chart-outdated: #64748b;
+  --chart-replaced: #94a3b8;
+  --chart-track: #e2e8f0;
+}
+
+/*
+ * The dark theme (P6.8). One re-derivation of the neutral ramp (navy-tinted deep
+ * neutrals, no pure black), the surface token, the chart hues, and the native
+ * color-scheme. :root.dark (specificity 0,2,0) wins over Tailwind's :root @theme
+ * (0,1,0). Every `bg-slate-*` / `text-slate-*` / `border-slate-*` utility remaps
+ * automatically because Tailwind v4 compiles them to var(--color-slate-*).
+ * Accent ramps (amber/red/violet/sky/teal) are NOT remapped — on-color buttons
+ * keep their white ink; the tinted status/tone chips get explicit dark: variants
+ * in components/status.ts + ui.tsx instead.
+ */
+:root.dark {
+  color-scheme: dark;
+
+  /* Card / panel / header background (was bg-white). */
+  --color-surface: #171a2e;
+
+  /* Neutral ramp, roles preserved: low indices = deep surfaces/hairlines, high
+     indices = bright ink. Monotonic in lightness so every (bg-N / text-M) pair
+     stays legible. Contrast against canvas/surface is asserted in a Vitest test
+     (components/theme-contrast.spec.ts) and recorded in docs/notes. */
+  --color-slate-50: #0f1222; /* app canvas (was bg-slate-50) + recessed wells */
+  --color-slate-100: #1c2038; /* subtle fill / hover / code background */
+  --color-slate-200: #2b3050; /* borders, dividers */
+  --color-slate-300: #3c4368; /* stronger border, disabled ink */
+  --color-slate-400: #8b94b4; /* muted text (AA on canvas + surface) */
+  --color-slate-500: #a4adc9; /* secondary text */
+  --color-slate-600: #bcc4dd; /* body-secondary text */
+  --color-slate-700: #d3d9ec; /* strong text */
+  --color-slate-800: #e6eaf6; /* primary text */
+  --color-slate-900: #f1f4fb; /* headings */
+  --color-slate-950: #f8faff;
+
+  /* Charts, re-derived for the dark surface. */
+  --chart-active: #2dd4bf;
+  --chart-approved: #5eead4;
+  --chart-uncertain: #fbbf24;
+  --chart-contradicted: #f87171;
+  --chart-outdated: #94a3b8;
+  --chart-replaced: #cbd5e1;
+  --chart-track: #2b3050;
+}
+
 @layer base {
+  :root {
+    color-scheme: light;
+  }
   body {
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    background-color: var(--color-slate-50);
     color: var(--color-slate-800);
   }
 

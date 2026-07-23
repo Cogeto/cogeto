@@ -71,11 +71,11 @@ function EmailDraftPanel({ session, approvalId }: { session: Session; approvalId
   };
 
   return (
-    <div className="mt-3 rounded-md border border-slate-200 bg-white p-2">
+    <div className="mt-3 rounded-md border border-slate-200 bg-surface p-2">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="text-xs font-medium text-brand-teal-ink hover:underline"
+        className="text-xs font-medium text-brand-teal-ink dark:text-brand-teal hover:underline"
       >
         {open ? 'Hide draft' : 'View / send draft'}
       </button>
@@ -111,7 +111,7 @@ function EmailDraftPanel({ session, approvalId }: { session: Session; approvalId
               Open in mail client
             </a>
           </div>
-          <p className="text-xs text-amber-700">
+          <p className="text-xs text-amber-700 dark:text-amber-300">
             Cogeto does <strong>not</strong> send mail. Send this reply yourself from your own
             client.
           </p>
@@ -163,7 +163,7 @@ function PendingCard({ session, approval }: { session: Session; approval: Approv
           Expires {new Date(approval.expiresAt).toLocaleString()}
         </p>
       )}
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-xs text-red-600 dark:text-red-300">{error}</p>}
 
       <div className="mt-3 flex gap-2">
         <button
@@ -186,7 +186,7 @@ function PendingCard({ session, approval }: { session: Session; approval: Approv
         </button>
       </div>
       <p className="mt-2 text-xs text-slate-400">
-        Approving runs the action server-side in the worker — this is the only path; there is no
+        Approving runs the action server-side in the worker. This is the only path; there is no
         client-side shortcut.
       </p>
     </li>
@@ -206,7 +206,9 @@ function HistoryRow({ session, approval }: { session: Session; approval: Approva
             {when ? ` · ${timeAgo(when)}` : ''}
           </p>
           {approval.result && (
-            <p className="mt-0.5 text-xs text-brand-teal-ink">{approval.result}</p>
+            <p className="mt-0.5 text-xs text-brand-teal-ink dark:text-brand-teal">
+              {approval.result}
+            </p>
           )}
         </div>
         <ApprovalPill status={approval.status} />
