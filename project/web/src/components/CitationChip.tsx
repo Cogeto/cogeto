@@ -3,7 +3,7 @@ import type { ChatFactDto, MemoryStatus } from '@cogeto/shared';
 import { fetchMe, fetchMemory, fetchWebSource } from '../api';
 import type { Session } from '../auth/oidc';
 import { CITATION_STALE_MS } from '../query-invalidation';
-import { isPastFact, PAST_CHIP, STATUS_CHIP, statusLabel, WARN_STATUSES } from './status';
+import { isPastFact, statusLabel, WARN_STATUSES } from './status';
 
 /**
  * An inline citation chip in an assistant message. Live streams pass the fact
@@ -14,16 +14,34 @@ import { isPastFact, PAST_CHIP, STATUS_CHIP, statusLabel, WARN_STATUSES } from '
  * Clicking opens the governance drawer in place when the page provides an
  * onOpen handler (chat); otherwise it deep-links to /memories.
  */
+/** Friendly, short source kind for the provenance chip (P6.9). */
+function sourceKind(sourceType: string): string {
+  switch (sourceType) {
+    case 'user_note':
+    case 'note':
+      return 'note';
+    case 'email':
+      return 'email';
+    case 'web':
+      return 'web';
+    case 'file_upload':
+      return 'doc';
+    case 'chat':
+      return 'chat';
+    default:
+      return sourceType.replace(/_/g, ' ');
+  }
+}
+const shortDate = (iso: string): string =>
+  new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
 export function CitationChip({
   session,
-  ordinal,
   memoryId,
   fact,
   onOpen,
 }: {
   session: Session;
-  /** Position of this citation within its message, 1-based. */
-  ordinal: number;
   memoryId?: string;
   fact?: ChatFactDto;
   onOpen?: (memoryId: string) => void;
@@ -77,28 +95,32 @@ export function CitationChip({
 
   if (!target) {
     return (
-      <span className="mx-0.5 inline-block rounded-full bg-slate-100 px-1.5 text-xs text-slate-400">
-        {ordinal}
+      <span className="mx-0.5 inline-flex items-center gap-1 rounded-md border border-slate-200 px-1.5 align-baseline font-mono text-[0.72rem] text-slate-400">
+        <span aria-hidden="true">◈</span>source
       </span>
     );
   }
   const warn = WARN_STATUSES.includes(target.status);
   const isWeb = target.sourceType === 'web';
-  // Past belief renders muted and labeled "past" (decision 0012 ruling 6);
-  // a warning status still wins the styling contest — a disputed past fact
-  // stays visibly disputed. A web fact without a warning wears the teal web
-  // treatment (Priority 5 parity).
-  const chipStyle = warn
-    ? STATUS_CHIP[target.status]
-    : target.past
-      ? PAST_CHIP
-      : isWeb
-        ? 'bg-brand-teal/10 text-brand-teal-ink dark:text-brand-teal'
-        : STATUS_CHIP[target.status];
+  const kind = sourceKind(target.sourceType);
+  const dateLabel = fact?.validFrom ? shortDate(fact.validFrom) : null;
+  // Provenance chip (P6.9): a mono "◈ kind" token, tinted by state. Warning
+  // statuses win the styling contest (a disputed fact stays visibly disputed);
+  // then past-belief muted, then the teal/sky memory-vs-web split.
+  const tone =
+    target.status === 'contradicted'
+      ? 'border-red-400/40 bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300'
+      : target.status === 'uncertain'
+        ? 'border-amber-400/40 bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300'
+        : target.past
+          ? 'border-slate-300 bg-slate-100 text-slate-600'
+          : isWeb
+            ? 'border-sky-400/40 bg-sky-400/10 text-sky-700 dark:text-sky-300'
+            : 'border-brand-teal/30 bg-brand-teal/10 text-brand-teal-ink dark:text-brand-teal';
   // Attribute a cited SHARED fact owned by someone else (O2-B).
   const sharedByOther = target.scope === 'shared' && target.ownerId !== me?.userId;
   const ownerLabel = target.ownerName ?? 'a teammate';
-  const className = `mx-0.5 inline-flex items-center gap-1 rounded-full px-1.5 align-baseline text-xs font-semibold no-underline ${chipStyle}`;
+  const className = `mx-0.5 inline-flex items-center gap-1 rounded-md border px-1.5 align-baseline font-mono text-[0.72rem] font-medium no-underline transition-shadow hover:shadow-sm ${tone}`;
   const webDetail = webSource
     ? `${webSource.title ?? webSource.finalUrl} · fetched ${new Date(webSource.fetchedAt).toLocaleString()}`
     : isWeb
@@ -109,15 +131,21 @@ export function CitationChip({
     .join(' · ');
   const label = (
     <>
-      {ordinal}
-      {isWeb && <span aria-label="web source">web</span>}
-      {warn && <span aria-label={target.status}>⚠ {statusLabel(target.status)}</span>}
-      {!warn && target.past && <span aria-label="past belief">past</span>}
-      {sharedByOther && (
-        <span aria-label={`shared by ${ownerLabel}`} className="text-sky-700 dark:text-sky-300">
-          · {ownerLabel}
-        </span>
-      )}
+      <span aria-hidden="true" className="opacity-80">
+        ◈
+      </span>
+      {kind}
+      {dateLabel && <span className="font-normal opacity-70">· {dateLabel}</span>}
+      {warn && <span aria-hidden="true">· ⚠</span>}
+      {!warn && target.past && <span className="opacity-80">· past</span>}
+      {sharedByOther && <span className="text-sky-700 dark:text-sky-300">· {ownerLabel}</span>}
+      <span className="sr-only">
+        {' '}
+        citation from {kind}
+        {warn ? `, ${statusLabel(target.status)}` : ''}
+        {!warn && target.past ? ', past belief' : ''}
+        {sharedByOther ? `, shared by ${ownerLabel}` : ''}
+      </span>
     </>
   );
   return onOpen ? (
