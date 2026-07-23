@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ChatFactDto, ChatResearchOffer, ResearchRunDto } from '@cogeto/shared';
+import type { AnswerSegment, ChatFactDto, ChatResearchOffer, ResearchRunDto } from '@cogeto/shared';
 import { mapMarkersToCitations, mapUnsourcedMarkers, scanAnswer } from '@cogeto/shared';
 import {
   askChat,
@@ -11,6 +11,7 @@ import {
   rememberChatMessage,
 } from '../api';
 import type { Session } from '../auth/oidc';
+import { ChatMarkdown } from '../components/ChatMarkdown';
 import { CitationChip } from '../components/CitationChip';
 import { MemoryDrawer } from '../components/MemoryDrawer';
 import { ResearchInline } from '../components/ResearchInline';
@@ -47,25 +48,32 @@ function MessageBody({
   const validIds = facts ? new Set(facts.map((f) => f.memoryId)) : undefined;
   const { segments } = scanAnswer(canonical, validIds);
 
+  // Citation ordinals follow document order regardless of formatting (#211).
+  const ordinals = new Map<AnswerSegment, number>();
   let ordinal = 0;
+  for (const segment of segments) {
+    if (segment.kind === 'cite') {
+      ordinal += 1;
+      ordinals.set(segment, ordinal);
+    }
+  }
   return (
-    <p className="whitespace-pre-wrap text-sm leading-relaxed">
-      {segments.map((segment, i) => {
-        if (segment.kind === 'text') return <span key={i}>{segment.text}</span>;
-        if (segment.kind === 'unsourced') return <UnsourcedChip key={i} />;
-        ordinal += 1;
-        return (
+    <ChatMarkdown
+      segments={segments}
+      renderChip={(segment) =>
+        segment.kind === 'unsourced' ? (
+          <UnsourcedChip />
+        ) : (
           <CitationChip
-            key={i}
             session={session}
-            ordinal={ordinal}
+            ordinal={ordinals.get(segment) ?? 0}
             memoryId={segment.memoryId}
             fact={facts?.find((f) => f.memoryId === segment.memoryId)}
             onOpen={onOpenMemory}
           />
-        );
-      })}
-    </p>
+        )
+      }
+    />
   );
 }
 

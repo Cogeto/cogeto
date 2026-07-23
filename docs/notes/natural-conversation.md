@@ -63,6 +63,15 @@ rendered in place. The backend chat turn still only proposes; approval remains
 the server-side run transition; the Research page stays the durable home
 (past runs, resume, full synthesis).
 
+## Formatting (issue #211)
+
+Chat messages render a hand-rolled markdown-lite subset (bold, italic, inline
+code, bullet/numbered lists, `###` headings, `---` dividers) — no dependency,
+React-rendered, never innerHTML. Presentation only, applied AFTER the
+sanitize/scan step: chips stay atomic and ordered, malformed markup degrades
+to literal text, the strict grammar is untouched
+(`web/src/components/chat-markdown.ts` + `chat-markdown.spec.ts`).
+
 ## Bounds
 
 History window: 6 recent turns (`REWRITE_HISTORY_TURNS`) for the
