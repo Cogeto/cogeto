@@ -187,17 +187,17 @@ export function Nav({
                 aria-current={isActive ? 'page' : undefined}
                 className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-white/10 text-white'
-                    : 'text-white/70 hover:bg-white/5 hover:text-white'
+                    ? 'bg-brand-teal/15 text-white ring-1 ring-inset ring-brand-teal/25'
+                    : 'text-white/75 hover:bg-white/[0.07] hover:text-white'
                 }`}
               >
                 {isActive && (
-                  <span className="absolute -left-3 bottom-2 top-2 w-0.5 rounded-r bg-brand-teal" />
+                  <span className="absolute -left-3 bottom-1.5 top-1.5 w-1 rounded-r bg-brand-teal shadow-[0_0_10px_0] shadow-brand-teal/60" />
                 )}
                 <span
                   aria-hidden="true"
                   className={`grid h-5 w-5 shrink-0 place-items-center transition-colors ${
-                    isActive ? 'text-brand-teal' : 'text-white/60 group-hover:text-white/90'
+                    isActive ? 'text-brand-teal' : 'text-white/70 group-hover:text-brand-teal'
                   }`}
                 >
                   {ICONS[section.key]}

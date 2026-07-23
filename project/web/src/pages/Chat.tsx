@@ -203,7 +203,7 @@ function AskHeading({ time, children }: { time?: string; children: ReactNode }) 
       <span className="font-mono text-[0.68rem] uppercase tracking-[0.12em] text-slate-400">
         You{time ? ` · ${time}` : ''}
       </span>
-      <h2 className="mt-1.5 text-xl font-semibold leading-snug tracking-tight text-balance text-slate-800">
+      <h2 className="mt-1.5 text-2xl font-semibold leading-snug tracking-tight text-balance text-slate-800">
         {children}
       </h2>
     </div>

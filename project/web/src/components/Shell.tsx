@@ -73,7 +73,11 @@ export function Shell({
   });
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    // Full-height pages (chat) pin the whole app to the viewport so only their
+    // inner pane scrolls — otherwise the page itself scrolled past the content
+    // into empty space, dragging the sidebar with it (P6.9 fix). Normal pages
+    // keep min-h-screen and scroll the document as usual.
+    <div className={`flex bg-slate-50 ${fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
       <Nav
         active={active}
         reviewCount={(uncertain?.total ?? 0) + (contradictions?.length ?? 0)}
@@ -86,8 +90,16 @@ export function Shell({
       />
       <div className={fullHeight ? 'flex h-screen min-h-0 flex-1 flex-col' : 'flex-1'}>
         <header className="shrink-0 border-b border-slate-200 bg-surface">
-          <div className={`${COL} flex items-center justify-between px-6 py-4`}>
-            <h1 className="text-lg font-semibold text-slate-800">{title}</h1>
+          <div className={`${COL} flex items-center gap-2 px-6 py-3.5`}>
+            {/* A calm mono breadcrumb (P6.9): Cogeto · <Page>, left-aligned with
+                the content column. */}
+            <h1 className="font-mono text-[0.72rem] uppercase tracking-[0.14em]">
+              <span className="text-slate-400">Cogeto</span>
+              <span className="mx-1.5 text-slate-300 dark:text-slate-600" aria-hidden="true">
+                ·
+              </span>
+              <span className="font-semibold text-slate-700">{title}</span>
+            </h1>
           </div>
         </header>
         <main
