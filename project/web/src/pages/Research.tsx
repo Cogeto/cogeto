@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   DiscoveredPageDto,
@@ -67,6 +67,25 @@ export function Research({ session }: { session: Session }) {
     setError(null);
   };
 
+  /** Load a proposed run into the gate — the chat handoff and the list's
+   * "Review & approve" both land here. Nothing is sent by opening it. */
+  const resume = (r: ResearchRunDto) => {
+    reset();
+    setIntent(r.intent);
+    setRun(r);
+    setEditedQuery(r.minimisedQuery);
+  };
+
+  // Arriving from chat: the reply says "open the Research page to edit or
+  // approve it" — honour that by auto-opening the MOST RECENT proposed run
+  // when the page loads idle.
+  const latestProposed = runsQuery.data?.find((r) => r.status === 'proposed');
+  useEffect(() => {
+    if (!run && !answer && intent === '' && latestProposed) resume(latestProposed);
+    // Intentionally keyed on the id alone: resuming must not re-fire on every
+    // state change while the user is mid-flow.
+  }, [latestProposed?.id]);
+
   const propose = useMutation({
     mutationFn: () => proposeResearch(session, intent.trim()),
     onSuccess: async (dto) => {
@@ -90,7 +109,7 @@ export function Research({ session }: { session: Session }) {
   });
 
   const cancel = useMutation({
-    mutationFn: () => cancelResearch(session, run!.id),
+    mutationFn: (runId: string) => cancelResearch(session, runId),
     onSuccess: async () => {
       reset();
       await refreshRuns();
@@ -202,7 +221,7 @@ export function Research({ session }: { session: Session }) {
                 type="button"
                 className={btnDanger}
                 disabled={cancel.isPending}
-                onClick={() => cancel.mutate()}
+                onClick={() => cancel.mutate(run.id)}
               >
                 Cancel — send nothing
               </button>
@@ -322,7 +341,9 @@ export function Research({ session }: { session: Session }) {
               <li key={r.id} className="rounded-md bg-slate-50 p-2">
                 <p className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="font-medium text-slate-800">{r.intent}</span>
-                  <Pill tone={STATUS_TONE[r.status]}>{r.status}</Pill>
+                  <Pill tone={STATUS_TONE[r.status]}>
+                    {r.status === 'proposed' ? 'awaiting your approval' : r.status}
+                  </Pill>
                 </p>
                 <p className="text-xs text-slate-500">
                   {r.sentQuery ? (
@@ -337,6 +358,38 @@ export function Research({ session }: { session: Session }) {
                     · {new Date(r.createdAt).toLocaleString()}
                   </span>
                 </p>
+                {r.status === 'proposed' && (
+                  <p className="mt-1 flex gap-2">
+                    <button
+                      type="button"
+                      className={btnPrimary}
+                      onClick={() => {
+                        resume(r);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                    >
+                      Review &amp; approve
+                    </button>
+                    <button
+                      type="button"
+                      className={btnSecondary}
+                      disabled={cancel.isPending}
+                      onClick={() => cancel.mutate(r.id)}
+                    >
+                      Cancel
+                    </button>
+                  </p>
+                )}
+                {r.status === 'approved' && r.answer && (
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-xs text-brand-teal-ink">
+                      View answer
+                    </summary>
+                    <p className="mt-1 whitespace-pre-wrap rounded border border-slate-200 p-2 text-xs text-slate-700">
+                      {r.answer}
+                    </p>
+                  </details>
+                )}
               </li>
             ))}
           </ul>
