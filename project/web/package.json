@@ -13,7 +13,7 @@
   "dependencies": {
     "@cogeto/shared": "*",
     "@tanstack/react-query": "^5.101.3",
-    "react": "^19.1.0",
+    "react": "^19.2.8",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
