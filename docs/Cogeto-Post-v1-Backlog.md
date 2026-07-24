@@ -159,6 +159,24 @@ attention lines and conclusion phrasing gained deterministic hr tables).
 Conservative derived suggestions propose company/role from the user's own
 memories with source shown, accept-with-provenance, remembered dismissals.
 
+**Capabilities visibility and control (P6.7): DELIVERED** (2026-07-24, issues
+#244/#245/#246, decision 0055, no migration; notes in
+docs/notes/capabilities.md). Optional services stopped being invisible compose
+state: one authoritative registry (redaction fail-closed, research
+degrade-with-message, demo with its production guard, consoles
+enabled/disabled only, local-models with the decision-0041 probe reused) plus
+the two nightly jobs (dreaming, sweep) with last-run, last-result and a
+26-hour overdue threshold. Loud states (enabled+unreachable, overdue,
+failing) are prominent in the new System → Capabilities panel, named
+degradations in /api/health (additive fields; existing consumers untouched),
+and logged at warn on detection; snapshots cache for 20 s. `cogeto features`
+lists and idempotently enables/disables every capability (typed confirmation
+for redaction-off and the local-models embeddings switch; demo refused loudly
+on production; the research profile joined the pull-only deploy channel with
+SearXNG digest-pinned), and every app boot logs one exact-truth
+`Capabilities: ...` banner line. Attention-feed integration deliberately
+deferred (noted in the capabilities notes).
+
 **Surface polish (P6.8): DELIVERED** (2026-07-23, issues #213/#214, decision
 0048, no migration; notes in docs/notes/surface-polish.md). Dark mode as a
 first-class, default theme (one token set, two themes; re-derived status/chart

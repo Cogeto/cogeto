@@ -10,6 +10,7 @@
 #   cogeto configure  [--domain D] [--mistral-key K] [--regenerate NAME]
 #   cogeto upgrade    [X.Y.Z|latest]
 #   cogeto status
+#   cogeto features   [enable <id> | disable <id>] [--base-url URL]
 #   cogeto backup-info
 #
 # Global flags: --check (dry run: validate prerequisites, print the intended
@@ -139,6 +140,7 @@ Usage:
   cogeto configure  [--domain D] [--mistral-key K] [--regenerate NAME]
   cogeto upgrade    [X.Y.Z|latest]
   cogeto status
+  cogeto features   [enable <id> | disable <id>] [--base-url URL]
   cogeto backup-info
   cogeto --help
 
@@ -171,6 +173,19 @@ Subcommands:
                certificate state and renewal, last migration, queue depth and
                dead-letter count, deletion-sweep state. Green only when
                actually working.
+  features     Optional capabilities (P6.7, decision 0055). With no verb:
+               list every capability (redaction, research, demo, consoles,
+               local-models) with its configured state and, when the stack is
+               running, its live health from /api/health; with the stack down
+               the configured state is shown and health is stated as unknown.
+               'enable <id>' / 'disable <id>' edit the instance configuration
+               idempotently (COMPOSE_PROFILES + the capability's flags in
+               .env), bring the affected services up or down via compose,
+               wait for health, and print any operator TODOs. Disabling
+               redaction requires a typed confirmation (model calls would
+               send plaintext). Enabling demo is REFUSED on a production
+               instance. 'enable local-models' needs --base-url (the Ollama
+               runtime URL) and states the reindex consequence.
   backup-info  Exactly what to enable in the OVHcloud panel (roadmap D4 —
                the script itself performs no backups).
 
@@ -215,6 +230,46 @@ derive_inbound_subdomain() { printf 'in.%s' "$1"; }
 derive_mx_host() { printf 'mail.%s' "$1"; }
 derive_s3_origin() { printf 'https://s3.%s' "$1"; }
 
+# ── Capability helpers (P6.7, decision 0055) — pure, unit-tested ─────────────
+
+FEATURE_IDS="redaction research demo consoles local-models"
+
+feature_known() {
+  case " ${FEATURE_IDS} " in *" $1 "*) return 0 ;; *) return 1 ;; esac
+}
+
+# The compose profile a capability rides on (local-models has none: it is an
+# external runtime reached over the network, not a container of this stack).
+feature_profile() {
+  case "$1" in
+    redaction) echo "redaction" ;;
+    research)  echo "research" ;;
+    demo)      echo "demo" ;;
+    consoles)  echo "consoles" ;;
+    *)         echo "" ;;
+  esac
+}
+
+# COMPOSE_PROFILES list editing: comma-separated, normalized (no blanks, no
+# duplicates), idempotent — enable twice or disable twice is a no-op.
+profiles_has() {  # profiles_has LIST ID
+  case ",$(printf '%s' "$1" | tr -d ' ')," in *",$2,"*) return 0 ;; *) return 1 ;; esac
+}
+
+profiles_add() {  # profiles_add LIST ID → normalized list including ID
+  if profiles_has "$1" "$2"; then
+    printf '%s' "$(printf '%s' "$1" | tr -d ' ')"
+  elif [ -z "$(printf '%s' "$1" | tr -d ' ,')" ]; then
+    printf '%s' "$2"
+  else
+    printf '%s,%s' "$(printf '%s' "$1" | tr -d ' ')" "$2"
+  fi
+}
+
+profiles_remove() {  # profiles_remove LIST ID → normalized list without ID
+  printf '%s' "$1" | tr -d ' ' | tr ',' '\n' | grep -vx "$2" | grep -v '^$' | paste -sd, - || true
+}
+
 # Minimal domain sanity: at least one dot, valid label characters, no scheme.
 domain_valid() {
   printf '%s' "$1" | grep -Eq '^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$'
@@ -257,8 +312,10 @@ env_set() {  # env_set KEY VALUE — idempotent replace-or-append; value never l
   touch "$ENV_FILE"
   chmod 600 "$ENV_FILE"
   if grep -q "^${key}=" "$ENV_FILE"; then
-    # sed -i differs between GNU/BSD; a temp file is portable.
-    grep -v "^${key}=" "$ENV_FILE" > "${ENV_FILE}.tmp"
+    # sed -i differs between GNU/BSD; a temp file is portable. `|| true`: when
+    # the replaced key is the ONLY line, grep -v matches nothing and exits 1,
+    # which set -e would otherwise turn into a silent abort.
+    grep -v "^${key}=" "$ENV_FILE" > "${ENV_FILE}.tmp" || true
     printf '%s=%s\n' "$key" "$value" >> "${ENV_FILE}.tmp"
     chmod 600 "${ENV_FILE}.tmp"
     mv "${ENV_FILE}.tmp" "$ENV_FILE"
@@ -461,6 +518,10 @@ fetch_deploy_assets() {
   fetch_one "v${version}" "project/infra/deploy/docker-compose.deploy.yml" "$COGETO_ROOT/docker-compose.yml"
   fetch_one "v${version}" "project/infra/deploy/Caddyfile" "$COGETO_ROOT/Caddyfile"
   fetch_one "v${version}" "project/infra/docker/zitadel-init/init.mjs" "$COGETO_ROOT/zitadel-init/init.mjs"
+  # The research profile's SearXNG settings (decision 0055) — fetched with the
+  # other assets so `cogeto features enable research` works offline later.
+  run mkdir -p "$COGETO_ROOT/searxng"
+  fetch_one "v${version}" "project/infra/docker/searxng/settings.yml" "$COGETO_ROOT/searxng/settings.yml"
 }
 
 fetch_one() {
@@ -916,6 +977,300 @@ cmd_status() {
   echo "────────────────────────────────────────────────────────────────────────"
 }
 
+# ── features (P6.7, decision 0055) ────────────────────────────────────────────
+
+# Whether SERVICE exists in the instance's compose file under PROFILE. Returns
+# 0 = present, 1 = absent, 2 = cannot tell (no docker; --check on a dev box).
+compose_has_service() {  # compose_has_service SERVICE PROFILE
+  if ! command -v docker >/dev/null 2>&1; then return 2; fi
+  if [ ! -f "$COGETO_ROOT/docker-compose.yml" ]; then return 2; fi
+  if compose --profile "$2" config --services 2>/dev/null | grep -qx "$1"; then
+    return 0
+  fi
+  return 1
+}
+
+require_feature_service() {  # require_feature_service ID SERVICE PROFILE WHY_ABSENT
+  rfs_result=0
+  compose_has_service "$2" "$3" || rfs_result="$?"
+  case "$rfs_result" in
+    0) : ;;
+    *)
+      if [ "$rfs_result" = "1" ] && [ "$CHECK" -eq 0 ]; then
+        die "cannot enable ${1}: the '${2}' service is not in this instance's compose file. ${4}"
+      fi
+      warn "cannot verify the '${2}' service exists in the compose file (check mode continues; a real run refuses when it is absent)" ;;
+  esac
+}
+
+# The configured (env-level) state of one capability; health is separate.
+feature_configured() {  # feature_configured ID → enabled|disabled
+  profiles="$(env_get COMPOSE_PROFILES)"
+  case "$1" in
+    redaction)
+      [ "$(env_get REDACTION_ENABLED)" = "1" ] && { echo enabled; return; } ;;
+    research)
+      { profiles_has "$profiles" research || [ "$(env_get COGETO_RESEARCH_ENABLED)" = "1" ]; } \
+        && { echo enabled; return; } ;;
+    demo)
+      [ "$(env_get COGETO_DEMO_MODE)" = "1" ] && { echo enabled; return; } ;;
+    consoles)
+      { profiles_has "$profiles" consoles || [ "$(env_get COGETO_CONSOLES_ENABLED)" = "1" ]; } \
+        && { echo enabled; return; } ;;
+    local-models)
+      [ -n "$(env_get COGETO_OLLAMA_BASE_URL)" ] && { echo enabled; return; } ;;
+  esac
+  echo disabled
+}
+
+# Live capability + job report from /api/health (the same registry the System
+# panel shows). Fetched from inside the app container; fails → caller degrades.
+fetch_capability_report() {
+  compose exec -T app node -e '
+    fetch("http://127.0.0.1:3000/api/health")
+      .then((r) => r.json())
+      .then((j) => {
+        for (const c of j.capabilities ?? []) {
+          const mark = c.state === "on" ? "on " : c.state === "off" ? "off" : "UNREACHABLE";
+          const extra = c.error ? " — " + c.error : c.detail ? " — " + c.detail : "";
+          console.log("  " + c.id.padEnd(13) + mark + extra);
+        }
+        for (const job of j.jobs ?? []) {
+          const when = job.lastRunAt ? "last ran " + job.lastRunAt : "never ran";
+          const state = job.state === "ok" ? "" : " [" + job.state.toUpperCase() + "]";
+          const extra = job.error ? " — " + job.error : "";
+          console.log("  job:" + job.id.padEnd(9) + when + state + extra);
+        }
+        process.exit(0);
+      })
+      .catch((e) => { console.log("  health unreachable: " + e.message); process.exit(1); });
+  ' 2>/dev/null
+}
+
+wait_service_healthy() {  # wait_service_healthy SERVICE TIMEOUT_SECONDS
+  if [ "$CHECK" -eq 1 ]; then
+    say "[dry-run] would wait for '${1}' to report healthy"
+    return 0
+  fi
+  say "waiting for '${1}' to become healthy (up to ${2}s)..."
+  wsh_deadline=$(( $(date +%s) + $2 ))
+  while :; do
+    wsh_state="$(service_health "$1")"
+    if [ "$wsh_state" = "healthy" ] || [ "$wsh_state" = "running" ]; then
+      say "'${1}' is ${wsh_state}"
+      return 0
+    fi
+    if [ "$(date +%s)" -ge "$wsh_deadline" ]; then
+      warn "'${1}' did not become healthy in ${2}s (state: ${wsh_state}) — inspect: cd ${COGETO_ROOT} && docker compose logs --tail 50 ${1}"
+      return 1
+    fi
+    sleep 5
+  done
+}
+
+# Recreate the app + worker (they read the capability env) plus whatever else
+# changed, honouring the profile list now in .env.
+apply_feature_change() {
+  say "applying the new configuration (compose up -d --remove-orphans)"
+  run compose up -d --remove-orphans
+}
+
+# Stop and remove a disabled profile's service container. Compose does NOT
+# treat a profile-disabled service's running container as an orphan (it is
+# still defined in the file), so `up --remove-orphans` alone leaves it running
+# — observed in the P6.7 dev-stack verification. Tolerant: nothing to stop is
+# a no-op, and the deploy channel may not define the service at all.
+stop_profile_service() {  # stop_profile_service PROFILE SERVICE
+  run compose --profile "$1" stop "$2" || true
+  run compose --profile "$1" rm -f "$2" || true
+}
+
+features_list() {
+  say "optional capabilities of this instance (configured state from ${ENV_FILE}):"
+  for fid in $FEATURE_IDS; do
+    printf '  %-13s %s\n' "$fid" "$(feature_configured "$fid")"
+  done
+  app_state="$(service_health app 2>/dev/null || echo missing)"
+  if [ "$app_state" = "healthy" ]; then
+    echo
+    say "live health (/api/health — the same registry the System panel shows):"
+    fetch_capability_report || warn "could not read the live registry — see 'cogeto status'"
+  else
+    say "stack is not running (app: ${app_state}) — health unknown; start the stack and re-run"
+  fi
+  say "boot banner: every app start logs one 'Capabilities: ...' line with the same truth"
+}
+
+features_enable() {
+  fid="$1"; base_url="$2"
+  case "$fid" in
+    research)
+      require_feature_service research searxng research \
+        "On a deployed instance, upgrade first: the research profile ships with the deploy channel since decision 0055."
+      # SearXNG needs a per-instance server secret; generate once, keep stable.
+      if [ -z "$(env_get SEARXNG_SECRET)" ]; then
+        env_set SEARXNG_SECRET "$(gen_token)"
+      fi
+      # The deploy channel mounts ./searxng/settings.yml — fetch it (pinned to
+      # the installed version) when the compose file references it and it is
+      # not on disk yet. The dev checkout mounts the in-repo file instead.
+      if grep -q '\./searxng/settings.yml' "$COGETO_ROOT/docker-compose.yml" 2>/dev/null \
+        && [ ! -f "$COGETO_ROOT/searxng/settings.yml" ]; then
+        fetch_version="$(env_get COGETO_VERSION)"
+        run mkdir -p "$COGETO_ROOT/searxng"
+        fetch_one "v${fetch_version}" "project/infra/docker/searxng/settings.yml" "$COGETO_ROOT/searxng/settings.yml"
+      fi
+      env_set COMPOSE_PROFILES "$(profiles_add "$(env_get COMPOSE_PROFILES)" research)"
+      apply_feature_change
+      wait_service_healthy searxng 120 || true
+      wait_service_healthy app 120 || true
+      say "research is enabled: discovery runs on THIS instance (SearXNG, internal network only, no vendor, no API key; roughly 100-200 MB RAM). Nothing external to configure."
+      ;;
+    redaction)
+      require_feature_service redaction redaction redaction \
+        "The redaction sidecar is not part of the v1 deploy channel (decision 0030): its image is built from source, never published. It is available on a source checkout."
+      env_set REDACTION_ENABLED "1"
+      # QS-21 posture: with redaction on, also refuse to boot without it — the
+      # enable cannot silently regress to plaintext later.
+      env_set REDACTION_REQUIRED "1"
+      env_set COMPOSE_PROFILES "$(profiles_add "$(env_get COMPOSE_PROFILES)" redaction)"
+      apply_feature_change
+      wait_service_healthy redaction 300 || true
+      wait_service_healthy app 120 || true
+      say "redaction is enabled and FAIL-CLOSED: if the sidecar dies, model calls fail rather than send unredacted content"
+      todo_now "Memory: the redaction sidecar holds ~0.7-1 GB RSS (spaCy NER model) — confirm the instance has headroom ('free -m')"
+      ;;
+    demo)
+      # The production guard is respected LOUDLY (decision 0022 ruling 4).
+      if [ "$(env_get COGETO_PRODUCTION)" = "1" ] \
+        || grep -q "COGETO_PRODUCTION: '1'" "$COGETO_ROOT/docker-compose.yml" 2>/dev/null; then
+        die "REFUSING to enable demo: this is a PRODUCTION instance (COGETO_PRODUCTION=1). The demo publishes a shared session token to anyone — it must never run beside real data (decision 0022 ruling 1)."
+      fi
+      require_feature_service demo demo-seed demo \
+        "The demo profile is dev-only (decision 0030): its seed image is never published."
+      env_set COGETO_DEMO_MODE "1"
+      env_set COMPOSE_PROFILES "$(profiles_add "$(env_get COMPOSE_PROFILES)" demo)"
+      apply_feature_change
+      wait_service_healthy app 120 || true
+      todo_now "Demo credentials: docker compose logs demo-seed (or demo-credentials.txt) — the sandbox serves a SHARED session"
+      ;;
+    consoles)
+      require_feature_service consoles caddy-consoles consoles \
+        "The consoles profile is dev-only (decision 0030): its edge image is never published."
+      env_set COGETO_CONSOLES_ENABLED "1"
+      env_set COMPOSE_PROFILES "$(profiles_add "$(env_get COMPOSE_PROFILES)" consoles)"
+      apply_feature_change
+      wait_service_healthy app 120 || true
+      say "consoles are LOCALHOST-ONLY: https://minio.localhost:8443 and https://qdrant.localhost:8443 answer on 127.0.0.1 of this machine only (QS-4)"
+      ;;
+    local-models)
+      [ -n "$base_url" ] || base_url="$(env_get COGETO_OLLAMA_BASE_URL)"
+      [ -n "$base_url" ] || die "enable local-models needs --base-url <ollama runtime URL>, e.g. cogeto features enable local-models --base-url http://10.0.0.1:11434"
+      confirm_typed "enable local-models" "this switches the model configuration to the ollama-local preset (pipeline, answer AND embeddings on the local runtime). CHANGING THE EMBEDDINGS MODEL means the app refuses to start until the vector index is rebuilt (reindex re-embeds every memory via the runtime)."
+      env_set COGETO_PROVIDER_PRESET "ollama-local"
+      env_set COGETO_OLLAMA_BASE_URL "$base_url"
+      apply_feature_change
+      wait_service_healthy app 180 || true
+      todo_now "Pull the preset models on the Ollama host: ollama pull gemma3:12b && ollama pull bge-m3"
+      todo_now "If the app refuses to start with 'embedding model changed': run docker compose exec worker npm run reindex, then start again"
+      ;;
+  esac
+}
+
+features_disable() {
+  fid="$1"
+  case "$fid" in
+    research)
+      env_set COMPOSE_PROFILES "$(profiles_remove "$(env_get COMPOSE_PROFILES)" research)"
+      env_set COGETO_RESEARCH_ENABLED ""
+      apply_feature_change
+      stop_profile_service research searxng
+      say "research is disabled: the SearXNG container is stopped; research requests answer 'search unavailable'"
+      ;;
+    redaction)
+      # Destructive-adjacent (the whole point of the capability is that model
+      # calls never carry plaintext): the operator types the consequence away.
+      confirm_typed "disable redaction" "with redaction OFF, every model call sends PLAINTEXT (names, addresses, content) to the configured model provider."
+      env_set REDACTION_ENABLED ""
+      env_set REDACTION_REQUIRED ""
+      env_set COMPOSE_PROFILES "$(profiles_remove "$(env_get COMPOSE_PROFILES)" redaction)"
+      apply_feature_change
+      stop_profile_service redaction redaction
+      warn "redaction is now OFF — model calls send plaintext to the model provider"
+      ;;
+    demo)
+      env_set COGETO_DEMO_MODE ""
+      env_set COMPOSE_PROFILES "$(profiles_remove "$(env_get COMPOSE_PROFILES)" demo)"
+      apply_feature_change
+      stop_profile_service demo demo-seed
+      say "demo mode is disabled; the shared demo session is no longer served (seeded demo data remains until reset/removal)"
+      ;;
+    consoles)
+      env_set COGETO_CONSOLES_ENABLED ""
+      env_set COMPOSE_PROFILES "$(profiles_remove "$(env_get COMPOSE_PROFILES)" consoles)"
+      apply_feature_change
+      stop_profile_service consoles caddy-consoles
+      say "consoles are disabled"
+      ;;
+    local-models)
+      confirm_typed "disable local-models" "this returns the model configuration to the hosted default. CHANGING THE EMBEDDINGS MODEL BACK means the app refuses to start until reindex has re-embedded the vectors with the hosted model (costs API calls)."
+      env_set COGETO_PROVIDER_PRESET ""
+      env_set COGETO_OLLAMA_BASE_URL ""
+      apply_feature_change
+      wait_service_healthy app 180 || true
+      todo_now "If the app refuses to start with 'embedding model changed': run docker compose exec worker npm run reindex, then start again"
+      ;;
+  esac
+}
+
+cmd_features() {
+  verb=""; fid=""; base_url=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      enable|disable)
+        [ -z "$verb" ] || die "features: one verb per run (see --help)"
+        verb="$1"; shift ;;
+      --base-url) base_url="$2"; shift 2 ;;
+      *)
+        [ -n "$verb" ] && [ -z "$fid" ] || die "features: unknown argument '$1' (see --help)"
+        fid="$1"; shift ;;
+    esac
+  done
+  require_installed
+
+  if [ -z "$verb" ]; then
+    features_list
+    return 0
+  fi
+
+  [ -n "$fid" ] || die "features ${verb}: which capability? Valid ids: ${FEATURE_IDS}"
+  feature_known "$fid" || die "unknown capability '${fid}' — valid ids: ${FEATURE_IDS}"
+  require_root
+
+  state="$(feature_configured "$fid")"
+  if [ "$verb" = "enable" ] && [ "$state" = "enabled" ]; then
+    say "${fid} is already enabled — re-applying the configuration (idempotent)"
+  fi
+  if [ "$verb" = "disable" ] && [ "$state" = "disabled" ]; then
+    say "${fid} is already disabled — nothing to change"
+    print_checklist
+    return 0
+  fi
+
+  if [ "$verb" = "enable" ]; then
+    features_enable "$fid" "$base_url"
+  else
+    features_disable "$fid"
+  fi
+
+  if [ "$CHECK" -eq 0 ]; then
+    echo
+    say "resulting capability state:"
+    features_list
+  fi
+  print_checklist
+}
+
 # ── configure ─────────────────────────────────────────────────────────────────
 
 cmd_configure() {
@@ -1042,7 +1397,7 @@ main() {
       --check) CHECK=1; shift ;;
       --root)  COGETO_ROOT="$2"; shift 2 ;;
       --help|-h|help) usage; exit 0 ;;
-      install|configure|upgrade|status|backup-info)
+      install|configure|upgrade|status|features|backup-info)
         [ -z "$cmd" ] || die "only one subcommand per run (got '${cmd}' and '$1')"
         cmd="$1"; shift ;;
       *)
@@ -1057,6 +1412,7 @@ main() {
     configure)   cmd_configure "${args[@]+"${args[@]}"}" ;;
     upgrade)     cmd_upgrade "${args[@]+"${args[@]}"}" ;;
     status)      cmd_status "${args[@]+"${args[@]}"}" ;;
+    features)    cmd_features "${args[@]+"${args[@]}"}" ;;
     backup-info) cmd_backup_info ;;
     "")          usage; exit 1 ;;
   esac

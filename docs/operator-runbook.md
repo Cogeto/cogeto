@@ -291,6 +291,48 @@ Before recommending a local preset, read the measured per-task, per-language
 parity table in `docs/notes/local-models.md` — where all-local misses parity
 the mixed posture stays the recommendation, and the gap is stated there.
 
+### 4c. Optional capabilities — `cogeto features` (P6.7, decision 0055)
+
+You never need to remember compose profiles: `sudo cogeto features` is the
+one command for optional capabilities. It lists every capability (redaction,
+research, demo, consoles, local-models) with its configured state and, when
+the stack is running, its live health — the same registry the product shows
+in **System → Capabilities**, `/api/health` reports, and every app boot logs
+as one `Capabilities: ...` banner line.
+
+```
+sudo cogeto features                      # list + live health
+sudo cogeto features enable research      # SearXNG on this instance; nothing external
+sudo cogeto features disable research
+sudo cogeto features enable local-models --base-url http://<addr>:11434
+```
+
+What enable/disable does: edits `/srv/cogeto/.env` idempotently (the
+`COMPOSE_PROFILES` line plus the capability's own flags), re-applies the
+stack (`docker compose up -d --remove-orphans`), waits for health, and prints
+any operator TODOs. Notes per capability:
+
+- **research** — fully local discovery (SearXNG, ~100-200 MB RAM, internal
+  network only). The one optional profile in the deploy channel; nothing
+  external to configure.
+- **redaction** — source-checkout instances only (its image is not published;
+  decision 0030) — the script says so if asked. Disabling it requires typing
+  `disable redaction`: with it off, model calls send plaintext to the
+  provider.
+- **demo** — REFUSED on a production instance, loudly (decision 0022). Never
+  enable it beside real data.
+- **consoles** — dev-only profile; localhost-bound when present.
+- **local-models** — wraps section 4b: sets the `ollama-local` preset and the
+  base URL, and states the reindex consequence (typed confirmation both
+  ways). The model pulls and the reindex remain your steps; the TODO list
+  prints them.
+
+Health is honest: an enabled capability whose service is down shows
+**UNREACHABLE** here, in System, and degrades `/api/health` within ~30
+seconds (20 s registry cache + the panel's 10 s poll). The two nightly jobs
+(dreaming 03:30, sweep 03:00 UTC) report last run and go **overdue** after 26
+hours without a successful run (`COGETO_JOBS_OVERDUE_HOURS`).
+
 ---
 
 ## 5. Backups and restore (roadmap D4)

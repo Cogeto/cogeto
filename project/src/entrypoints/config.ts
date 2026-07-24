@@ -91,6 +91,34 @@ const configSchema = z
      * raw-HTML retention (decision 0043 — default off: clean text + URL only).
      */
     searxngUrl: z.url().optional(),
+    /**
+     * Capability visibility (P6.7, decision 0055). The process cannot see which
+     * compose profiles are active, so the active profile list is passed in via
+     * COGETO_COMPOSE_PROFILES (compose mirrors COMPOSE_PROFILES from .env — the
+     * operator script's `features` command maintains it). CLI `--profile` flags
+     * are invisible to the container; dev runs that use them can set the
+     * explicit per-capability flags below instead.
+     */
+    composeProfiles: z
+      .string()
+      .default('')
+      .transform((list) =>
+        list
+          .split(',')
+          .map((p) => p.trim().toLowerCase())
+          .filter((p) => p.length > 0),
+      ),
+    /** Explicit research enablement for `--profile research` dev runs. */
+    researchEnabled: envBool,
+    /** Explicit consoles enablement for `--profile consoles` dev runs. */
+    consolesEnabled: envBool,
+    /**
+     * Overdue threshold for the nightly jobs (dreaming 03:30, sweep 03:00 UTC):
+     * a job with no successful run within this window reports `overdue` in the
+     * capability registry (decision 0055). 26 h clears one nightly slot plus
+     * slack; raise it only for deliberately less frequent schedules.
+     */
+    jobsOverdueHours: z.coerce.number().positive().prefault(26),
     researchResultCap: z.coerce.number().int().positive().prefault(8),
     researchSearchTimeoutSeconds: z.coerce.number().int().positive().prefault(10),
     researchFetchTimeoutSeconds: z.coerce.number().int().positive().prefault(15),
@@ -239,6 +267,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
     mailIntakeRateWindowSeconds: env.COGETO_MAIL_INTAKE_RATE_WINDOW_SECONDS || undefined,
     mailSmtpAddress: env.COGETO_MAIL_SMTP_ADDRESS || undefined,
     searxngUrl: env.COGETO_SEARXNG_URL || undefined,
+    composeProfiles: env.COGETO_COMPOSE_PROFILES,
+    researchEnabled: env.COGETO_RESEARCH_ENABLED,
+    consolesEnabled: env.COGETO_CONSOLES_ENABLED,
+    jobsOverdueHours: env.COGETO_JOBS_OVERDUE_HOURS || undefined,
     researchResultCap: env.COGETO_RESEARCH_RESULT_CAP || undefined,
     researchSearchTimeoutSeconds: env.COGETO_RESEARCH_SEARCH_TIMEOUT_SECONDS || undefined,
     researchFetchTimeoutSeconds: env.COGETO_RESEARCH_FETCH_TIMEOUT_SECONDS || undefined,

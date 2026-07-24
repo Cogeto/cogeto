@@ -30,7 +30,8 @@ export type {
 } from './provider-config';
 // Local-runtime boot probe (decision 0041 ruling 2): fail loudly at startup,
 // never at first request. Called by the app, worker, and reindex entrypoints.
-export { assertLocalRuntimeReady, modelAvailable } from './local-runtime';
+export { assertLocalRuntimeReady, modelAvailable, probeLocalRuntime } from './local-runtime';
+export type { LocalRuntimeProbe } from './local-runtime';
 export type {
   CompletionRequest,
   CompletionResult,

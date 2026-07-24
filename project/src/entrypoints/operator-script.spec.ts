@@ -162,6 +162,9 @@ describe('operator script — install --check dry run', () => {
     expect(out).toContain('[dry-run] would fetch');
     // The fetched deploy assets are pinned to the release tag.
     expect(out).toContain('project/infra/deploy/docker-compose.deploy.yml');
+    // The research profile's SearXNG settings ship with the deploy assets
+    // (decision 0055) so `features enable research` works later.
+    expect(out).toContain('project/infra/docker/searxng/settings.yml');
   });
 
   it('prints the cosign verify commands for all three published images', () => {
@@ -274,6 +277,157 @@ describe('operator script — pure helpers', () => {
   });
 });
 
+describe('operator script — features (P6.7, decision 0055)', () => {
+  const withEnv = (env: string): string => {
+    const root = mkdtempSync(path.join(tmpdir(), 'cogeto-operator-features-'));
+    writeFileSync(path.join(root, '.env'), env, { mode: 0o600 });
+    return root;
+  };
+
+  it('--help documents the features subcommand and the capability set', () => {
+    const { out } = runScript(['--help']);
+    expect(out).toContain('cogeto features');
+    for (const id of ['redaction', 'research', 'demo', 'consoles', 'local-models']) {
+      expect(out).toContain(id);
+    }
+  });
+
+  it('refuses to run against a machine with no instance', () => {
+    const { status, out } = runScript(['features', '--check', '--root', GHOST_ROOT]);
+    expect(status).toBe(1);
+    expect(out).toContain('no instance found');
+  });
+
+  it('lists every capability with its configured state; health is honestly unknown with the stack down', () => {
+    const root = withEnv('COGETO_VERSION=9.9.9\nCOMPOSE_PROFILES=research\nREDACTION_ENABLED=1\n');
+    const { status, out } = runScript(['features', '--root', root]);
+    rmSync(root, { recursive: true, force: true });
+    expect(status).toBe(0);
+    expect(out).toMatch(/redaction\s+enabled/);
+    expect(out).toMatch(/research\s+enabled/);
+    expect(out).toMatch(/demo\s+disabled/);
+    expect(out).toMatch(/consoles\s+disabled/);
+    expect(out).toMatch(/local-models\s+disabled/);
+    expect(out).toContain('health unknown');
+  });
+
+  it('REFUSES to enable demo when the production flag is set — loudly', () => {
+    const root = withEnv('COGETO_VERSION=9.9.9\nCOGETO_PRODUCTION=1\n');
+    const { status, out } = runScript(['features', 'enable', 'demo', '--check', '--root', root]);
+    rmSync(root, { recursive: true, force: true });
+    expect(status).toBe(1);
+    expect(out).toContain('REFUSING');
+    expect(out).toContain('PRODUCTION');
+  });
+
+  it('an unknown id (and a missing id) lists the valid set', () => {
+    const root = withEnv('COGETO_VERSION=9.9.9\n');
+    const unknown = runScript(['features', 'enable', 'frobnicate', '--check', '--root', root]);
+    expect(unknown.status).toBe(1);
+    expect(unknown.out).toContain('redaction research demo consoles local-models');
+    const missing = runScript(['features', 'enable', '--check', '--root', root]);
+    rmSync(root, { recursive: true, force: true });
+    expect(missing.status).toBe(1);
+    expect(missing.out).toContain('redaction research demo consoles local-models');
+  });
+
+  it('--check enable research prints the intended edits and mutates nothing', () => {
+    const env = 'COGETO_VERSION=9.9.9\n';
+    const root = withEnv(env);
+    const { status, out } = runScript([
+      'features',
+      'enable',
+      'research',
+      '--check',
+      '--root',
+      root,
+    ]);
+    const after = readFileSync(path.join(root, '.env'), 'utf8');
+    rmSync(root, { recursive: true, force: true });
+    expect(status).toBe(0);
+    expect(out).toContain('would set SEARXNG_SECRET');
+    expect(out).toContain('would set COMPOSE_PROFILES');
+    expect(out).toContain('[dry-run] would run: compose up -d --remove-orphans');
+    expect(after).toBe(env); // dry run: the instance configuration is untouched
+  });
+
+  it('disabling redaction demands the typed confirmation with the plaintext consequence', () => {
+    const root = withEnv('COGETO_VERSION=9.9.9\nREDACTION_ENABLED=1\n');
+    const { status, out } = runScript([
+      'features',
+      'disable',
+      'redaction',
+      '--check',
+      '--root',
+      root,
+    ]);
+    rmSync(root, { recursive: true, force: true });
+    expect(status).toBe(0);
+    expect(out).toContain("would ask you to type 'disable redaction'");
+    expect(out).toContain('PLAINTEXT');
+  });
+
+  it('enable local-models without a runtime URL refuses and names --base-url', () => {
+    const root = withEnv('COGETO_VERSION=9.9.9\n');
+    const { status, out } = runScript([
+      'features',
+      'enable',
+      'local-models',
+      '--check',
+      '--root',
+      root,
+    ]);
+    rmSync(root, { recursive: true, force: true });
+    expect(status).toBe(1);
+    expect(out).toContain('--base-url');
+  });
+
+  it('disable is idempotent: an already-disabled capability is a stated no-op', () => {
+    const root = withEnv('COGETO_VERSION=9.9.9\n');
+    const { status, out } = runScript([
+      'features',
+      'disable',
+      'research',
+      '--check',
+      '--root',
+      root,
+    ]);
+    rmSync(root, { recursive: true, force: true });
+    expect(status).toBe(0);
+    expect(out).toContain('already disabled');
+  });
+
+  it('profile-list helpers are pure, normalized and idempotent', () => {
+    expect(helper("profiles_add '' research").out).toBe('research');
+    expect(helper("profiles_add 'research' research").out).toBe('research');
+    expect(helper("profiles_add 'demo, consoles' research").out).toBe('demo,consoles,research');
+    expect(helper("profiles_remove 'demo,research,consoles' research").out).toBe('demo,consoles');
+    expect(helper("profiles_remove 'research' research").out).toBe('');
+    expect(helper("profiles_has 'demo,research' research && echo yes").out).toBe('yes');
+    expect(helper("profiles_has 'demo' research || echo no").out).toBe('no');
+    expect(helper('feature_known redaction && echo yes').out).toBe('yes');
+    expect(helper('feature_known frobnicate || echo no').out).toBe('no');
+  });
+
+  it('config editing (env_set) is idempotent and keeps the file at mode 600', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'cogeto-operator-envset-'));
+    const envFile = path.join(root, '.env');
+    const r = spawnSync(
+      'bash',
+      [
+        '-c',
+        `source '${SCRIPT}'; CHECK=0; ENV_FILE='${envFile}'; ` +
+          'env_set COMPOSE_PROFILES research; env_set COMPOSE_PROFILES research; ' +
+          `cat '${envFile}'; stat -c '%a' '${envFile}' 2>/dev/null || stat -f '%Lp' '${envFile}'`,
+      ],
+      { encoding: 'utf8', timeout: 30_000 },
+    );
+    rmSync(root, { recursive: true, force: true });
+    const lines = r.stdout.trim().split('\n');
+    expect(lines).toEqual(['COMPOSE_PROFILES=research', '600']);
+  });
+});
+
 describe('deploy channel — hardening assertions (decision 0030)', () => {
   const deploy = read('project/infra/deploy/docker-compose.deploy.yml');
   const deployCaddy = read('project/infra/deploy/Caddyfile');
@@ -329,9 +483,16 @@ describe('deploy channel — hardening assertions (decision 0030)', () => {
   it('a customer instance is production: demo hard-refused, no dev profiles', () => {
     expect(deploy).toContain("COGETO_PRODUCTION: '1'");
     expect(deploy).not.toContain('COGETO_DEMO_MODE');
-    expect(deploy).not.toMatch(/profiles:/);
+    // The ONE optional profile in the deploy channel is `research` (decision
+    // 0055 — SearXNG is a digest-pinned upstream image, still pull-only). The
+    // dev-only profiles (demo, dev-seed, consoles) and the unpublished
+    // redaction sidecar stay absent.
+    const profiles = [...deploy.matchAll(/profiles:\s*\[([^\]]*)\]/g)].map((m) => m[1]!.trim());
+    expect(profiles).toEqual(["'research'"]);
     expect(deploy).not.toContain('demo-seed');
     expect(deploy).not.toContain('seed-object');
+    expect(deploy).not.toContain('caddy-consoles');
+    expect(deploy).not.toMatch(/^\s*redaction:/m);
   });
 
   it('Qdrant API-key auth is always on in the deploy stack (QS-4)', () => {

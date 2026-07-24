@@ -9,6 +9,7 @@ import {
 } from '../api';
 import type { Session } from '../auth/oidc';
 import { invalidateAfterJobRetry } from '../query-invalidation';
+import { CapabilitiesPanel } from '../components/CapabilitiesPanel';
 import { Shell } from '../components/Shell';
 import { StatusPanel } from '../components/StatusPanel';
 import { WorkerActivityPanel } from '../components/WorkerActivityPanel';
@@ -222,6 +223,7 @@ export function System({ session }: { session: Session }) {
   return (
     <Shell session={session} title="System" active="system">
       <StatusPanel />
+      <CapabilitiesPanel />
       <WorkerActivityPanel session={session} />
       <IntegrityPanel session={session} />
       <DeadLetterTable session={session} />

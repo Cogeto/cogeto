@@ -5,6 +5,7 @@ import { Pool } from 'pg';
 import { IntegritySweep, MemoryObjectStore } from '../memory/index';
 import { ModelGateway } from '../model-gateway/index';
 import { Public } from '../identity/index';
+import { CapabilitiesService } from './capabilities';
 import { COGETO_CONFIG } from './config';
 import type { CogetoConfig } from './config';
 
@@ -24,6 +25,7 @@ export class HealthController {
     private readonly objects: MemoryObjectStore,
     private readonly integrity: IntegritySweep,
     private readonly gateway: ModelGateway,
+    private readonly capabilities: CapabilitiesService,
   ) {
     this.pool = new Pool({ connectionString: config.databaseUrl, max: 2 });
   }
@@ -36,18 +38,29 @@ export class HealthController {
 
   @Get()
   async health(): Promise<HealthReport> {
-    const [postgres, qdrant, minio, minioEncryption, integrity, migrations, queue, gateway, mail] =
-      await Promise.all([
-        this.checkPostgres(),
-        this.checkHttp(`${this.config.qdrantUrl}/readyz`),
-        this.checkHttp(`${this.config.s3Url}/minio/health/live`),
-        this.checkBucketEncryption(),
-        this.checkIntegrity(),
-        this.checkMigrations(),
-        this.checkQueue(),
-        this.checkGateway(),
-        this.checkMail(),
-      ]);
+    const [
+      postgres,
+      qdrant,
+      minio,
+      minioEncryption,
+      integrity,
+      migrations,
+      queue,
+      gateway,
+      mail,
+      registry,
+    ] = await Promise.all([
+      this.checkPostgres(),
+      this.checkHttp(`${this.config.qdrantUrl}/readyz`),
+      this.checkHttp(`${this.config.s3Url}/minio/health/live`),
+      this.checkBucketEncryption(),
+      this.checkIntegrity(),
+      this.checkMigrations(),
+      this.checkQueue(),
+      this.checkGateway(),
+      this.checkMail(),
+      this.capabilities.snapshot(),
+    ]);
     const checks = {
       postgres,
       qdrant,
@@ -59,8 +72,14 @@ export class HealthController {
       gateway,
       mail,
     };
+    // P6.7 (decision 0055): loud capability/job states are named degradations —
+    // an enabled-but-unreachable capability or an overdue job is a broken
+    // instance, not a footnote. The fields are additive; `checks` is unchanged.
+    const loud = CapabilitiesService.loudness(registry);
     return {
-      status: Object.values(checks).every((c) => c.ok) ? 'ok' : 'degraded',
+      status: Object.values(checks).every((c) => c.ok) && loud.length === 0 ? 'ok' : 'degraded',
+      capabilities: registry.capabilities,
+      jobs: registry.jobs,
       checks,
     };
   }

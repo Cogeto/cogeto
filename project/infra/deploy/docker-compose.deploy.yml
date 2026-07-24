@@ -14,7 +14,11 @@
 #   • COGETO_PRODUCTION=1 is hardcoded — the demo seed/reset hard-refuse.
 #   • The demo / dev-seed / consoles / redaction profiles are absent: the first
 #     three are dev-only (their images are never published), and redaction is
-#     not part of the v1 deploy channel (decision 0030).
+#     not part of the v1 deploy channel (decision 0030). The ONE optional
+#     profile here is `research` (decision 0055): SearXNG is a digest-pinned
+#     upstream image, so it deploys pull-only like everything else. Enable it
+#     with `cogeto features enable research` (it maintains COMPOSE_PROFILES in
+#     .env and mirrors it into COGETO_COMPOSE_PROFILES for the app).
 #   • Qdrant API-key auth is always on (QS-4).
 #   • The edge terminates TLS with a real Let's Encrypt certificate: the
 #     production Caddyfile (./Caddyfile) is mounted over the baked-in dev one.
@@ -113,6 +117,30 @@ services:
       # from sender-routed email capture (decision 0031).
       COGETO_ADMIN_USER_EMAIL: ${ZITADEL_ADMIN_USERNAME:?}
       COGETO_MAIL_SMTP_ADDRESS: ${COGETO_MAIL_SMTP_ADDRESS:-mail:2525}
+      # Web research (Priority 5, decisions 0042/0043): discovery via the
+      # profile-gated SearXNG service below; with the profile down, research
+      # answers a typed "search unavailable", nothing crashes.
+      COGETO_SEARXNG_URL: ${COGETO_SEARXNG_URL:-http://searxng:8080}
+      COGETO_RESEARCH_RESULT_CAP: ${COGETO_RESEARCH_RESULT_CAP:-8}
+      COGETO_RESEARCH_SEARCH_TIMEOUT_SECONDS: ${COGETO_RESEARCH_SEARCH_TIMEOUT_SECONDS:-10}
+      COGETO_RESEARCH_FETCH_TIMEOUT_SECONDS: ${COGETO_RESEARCH_FETCH_TIMEOUT_SECONDS:-15}
+      COGETO_RESEARCH_FETCH_MAX_BYTES: ${COGETO_RESEARCH_FETCH_MAX_BYTES:-5242880}
+      COGETO_RESEARCH_PAGES_PER_RUN: ${COGETO_RESEARCH_PAGES_PER_RUN:-5}
+      COGETO_RESEARCH_RETAIN_HTML: ${COGETO_RESEARCH_RETAIN_HTML:-}
+      COGETO_DAILY_RESEARCH_SEARCHES: ${COGETO_DAILY_RESEARCH_SEARCHES:-40}
+      COGETO_DAILY_RESEARCH_PAGES: ${COGETO_DAILY_RESEARCH_PAGES:-100}
+      # Ollama local runtime (decision 0041) — set by `cogeto features enable
+      # local-models`; unset on the default hosted configuration.
+      COGETO_OLLAMA_BASE_URL: ${COGETO_OLLAMA_BASE_URL:-}
+      COGETO_OLLAMA_API_KEY: ${COGETO_OLLAMA_API_KEY:-}
+      COGETO_OLLAMA_TIMEOUT_PIPELINE_MS: ${COGETO_OLLAMA_TIMEOUT_PIPELINE_MS:-}
+      COGETO_OLLAMA_TIMEOUT_ANSWER_MS: ${COGETO_OLLAMA_TIMEOUT_ANSWER_MS:-}
+      COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS: ${COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS:-}
+      # Capability visibility (P6.7, decision 0055): the active profile list,
+      # mirrored from COMPOSE_PROFILES in .env (maintained by the operator
+      # script's `features` command), plus the jobs' overdue threshold.
+      COGETO_COMPOSE_PROFILES: ${COMPOSE_PROFILES:-}
+      COGETO_JOBS_OVERDUE_HOURS: ${COGETO_JOBS_OVERDUE_HOURS:-}
     volumes:
       - web-config:/web-config:ro
       # QS-9: the app mounts the PUBLIC-KEY-ONLY volume — an RCE in the
@@ -392,6 +420,37 @@ services:
         condition: service_completed_successfully
       preflight:
         condition: service_completed_successfully
+    restart: unless-stopped
+
+  # ── Web discovery (profile research; decisions 0042/0055) ───────────────────
+  # Self-hosted SearXNG, the one optional profile in the deploy channel: a
+  # digest-pinned upstream image (same digest as the dev stack — QS-25), so it
+  # stays pull-only. Internal-network only (no published ports; the edge never
+  # proxies it); reachable at http://searxng:8080. Enable/disable with
+  # `cogeto features enable research` — it maintains COMPOSE_PROFILES in .env
+  # and fetches ./searxng/settings.yml with the other deploy assets.
+  searxng:
+    profiles: ['research']
+    image: searxng/searxng@sha256:b8ca38ba06eea544d7555e88321e212ddc0d5c3c7de055419cfb2e5c6bf30812
+    environment:
+      SEARXNG_BASE_URL: http://searxng:8080/
+      # NOT the `${VAR:?}` form: compose interpolates the whole file before
+      # profile filtering, so a required var here would break `compose up` even
+      # with research off. `cogeto features enable research` generates it.
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-}
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -q
+        - --spider
+        - http://127.0.0.1:8080/healthz
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     restart: unless-stopped
 
   # ── Inbound mail (Session O4, decision 0028; roadmap D2) ────────────────────
