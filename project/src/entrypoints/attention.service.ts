@@ -131,7 +131,7 @@ export class AttentionService {
       items.push({
         key: 'review:uncertain',
         kind: 'review_uncertain',
-        title: `${uncertainCount} ${plural(uncertainCount, 'fact')} awaiting your review`,
+        title: `${plural(uncertainCount, 'fact')} awaiting your review`,
         timestamp: newest.toISOString(),
         href: '/review',
         count: uncertainCount,
@@ -146,7 +146,7 @@ export class AttentionService {
       items.push({
         key: 'review:contradicted',
         kind: 'review_contradicted',
-        title: `${contradictions.length} ${plural(contradictions.length, 'conflict')} to resolve`,
+        title: `${plural(contradictions.length, 'conflict')} to resolve`,
         timestamp: newest.toISOString(),
         href: '/review?tab=contradicted',
         count: contradictions.length,
