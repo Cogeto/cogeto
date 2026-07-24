@@ -411,7 +411,7 @@ export function Chat({ session }: { session: Session }) {
     <Shell session={session} title="Chat" active="chat" fullHeight>
       <section className="flex min-h-0 flex-1 flex-col">
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl px-2 py-4">
+          <div className="mx-auto max-w-3xl px-4 py-4">
             {isPending && <p className="text-sm text-slate-400">Loading conversation…</p>}
 
             {empty && (
@@ -525,7 +525,7 @@ export function Chat({ session }: { session: Session }) {
 
         {/* Docked command-bar composer */}
         <div className="shrink-0 pt-3">
-          <div className="mx-auto max-w-3xl px-2">
+          <div className="mx-auto max-w-3xl px-4">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
