@@ -109,6 +109,7 @@ describe('chat conversational routing (integration: real Postgres, scripted seam
   let retrieveCalls: number;
   let nextMemories: unknown[];
   let chat: ChatService;
+  let conversationId: string;
 
   beforeAll(async () => {
     tdb = await startTestDatabase();
@@ -124,6 +125,8 @@ describe('chat conversational routing (integration: real Postgres, scripted seam
       },
     } as unknown as RetrievalService;
     chat = new ChatService(tdb.db, retrieval, gateway, new UserDirectory(tdb.db), reply, research);
+    // All scripted turns share one conversation (P6.9), like the SPA's thread.
+    conversationId = (await chat.createConversation(owner)).id;
   }, 120_000);
 
   afterAll(async () => {
@@ -132,7 +135,7 @@ describe('chat conversational routing (integration: real Postgres, scripted seam
 
   it('smalltalk_natural: "thanks!" gets a natural reply — no retrieval, no model call, no citations', async () => {
     const before = { retrieve: retrieveCalls, streams: gateway.streamCalls.length };
-    const events = await collect(chat.ask(owner, 'thanks!'));
+    const events = await collect(chat.ask(owner, 'thanks!', conversationId));
     const done = doneOf(events);
 
     expect(retrieveCalls).toBe(before.retrieve); // no retrieval theatre
@@ -146,7 +149,7 @@ describe('chat conversational routing (integration: real Postgres, scripted seam
   });
 
   it('smalltalk_natural (hr): "hvala!" answers in Croatian', async () => {
-    const events = await collect(chat.ask(owner, 'hvala!'));
+    const events = await collect(chat.ask(owner, 'hvala!', conversationId));
     expect(doneOf(events).content).toContain('Nema na čemu');
   });
 
@@ -154,7 +157,9 @@ describe('chat conversational routing (integration: real Postgres, scripted seam
     gateway.structured = [rewriteOf('What can Cogeto help with?', { question_class: 'smalltalk' })];
     gateway.streamText = 'I keep track of what you capture and answer with sources.';
     const before = retrieveCalls;
-    const events = await collect(chat.ask(owner, 'so what exactly can you do for me?'));
+    const events = await collect(
+      chat.ask(owner, 'so what exactly can you do for me?', conversationId),
+    );
     const done = doneOf(events);
 
     expect(retrieveCalls).toBe(before); // still no retrieval
@@ -171,7 +176,9 @@ describe('chat conversational routing (integration: real Postgres, scripted seam
     const beforeProposals = research.proposals.length;
     nextMemories = [];
 
-    const events = await collect(chat.ask(owner, 'What does GDPR Article 17 require?'));
+    const events = await collect(
+      chat.ask(owner, 'What does GDPR Article 17 require?', conversationId),
+    );
     const done = doneOf(events);
 
     // Never a silent search: the research seam is untouched; the OFFER is the bridge.
@@ -190,7 +197,7 @@ describe('chat conversational routing (integration: real Postgres, scripted seam
     ];
     const beforeStreams = gateway.streamCalls.length;
     nextMemories = [];
-    const events = await collect(chat.ask(owner, 'What is our office door code?'));
+    const events = await collect(chat.ask(owner, 'What is our office door code?', conversationId));
     const done = doneOf(events);
 
     expect(done.content).toBe(NOTHING_ON_RECORD);
@@ -201,7 +208,9 @@ describe('chat conversational routing (integration: real Postgres, scripted seam
   it('classification failure falls back to the memory-question path', async () => {
     gateway.structured = []; // extractStructured throws → fallback
     nextMemories = [];
-    const events = await collect(chat.ask(owner, 'What does the EU AI Act say about logging?'));
+    const events = await collect(
+      chat.ask(owner, 'What does the EU AI Act say about logging?', conversationId),
+    );
     expect(doneOf(events).content).toBe(NOTHING_ON_RECORD);
   });
 
@@ -234,7 +243,11 @@ describe('chat conversational routing (integration: real Postgres, scripted seam
       },
     ];
     const events = await collect(
-      chat.ask(owner, 'What CRM does Adriatic Foods use, and what is HubSpot known for?'),
+      chat.ask(
+        owner,
+        'What CRM does Adriatic Foods use, and what is HubSpot known for?',
+        conversationId,
+      ),
     );
     const done = doneOf(events);
     expect(done.content).toContain(`{{cite:${MEM_ID}}}`);
@@ -250,13 +263,13 @@ describe('chat conversational routing (integration: real Postgres, scripted seam
         question_class: 'personal',
       }),
     ];
-    await collect(chat.ask(owner, 'draft a reply to her last email'));
+    await collect(chat.ask(owner, 'draft a reply to her last email', conversationId));
     expect(reply.targets.at(-1)).toBe('Ana Kovač');
   });
 
   it('cross-capability follow-up: "research her company" proposes with the resolved topic', async () => {
     gateway.structured = [rewriteOf("Ana Kovač's company", { entities: ['Ana Kovač'] })];
-    const events = await collect(chat.ask(owner, 'research her company'));
+    const events = await collect(chat.ask(owner, 'research her company', conversationId));
     expect(research.proposals.at(-1)).toBe("Ana Kovač's company");
     expect(doneOf(events).content).toContain('nothing has been sent');
   });

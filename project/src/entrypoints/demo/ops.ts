@@ -143,6 +143,17 @@ export async function ageWorld(pool: Pool, entries: AgeEntry[]): Promise<void> {
       ]);
     }
   }
+  // Conversations mirror their messages (P6.9): updated_at IS the last-message
+  // time, so the sidebar's recency order reads as weeks of accrual too.
+  await pool.query(`
+    UPDATE conversation c
+    SET created_at = sub.first_message, updated_at = sub.last_message
+    FROM (
+      SELECT conversation_id, min(created_at) AS first_message, max(created_at) AS last_message
+      FROM chat_message GROUP BY conversation_id
+    ) sub
+    WHERE sub.conversation_id = c.id
+  `);
 }
 
 /** Object keys of every uploaded file (for MinIO cleanup before truncation). */

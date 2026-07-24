@@ -11,7 +11,9 @@ import type { Principal } from '@cogeto/shared';
 export interface DemoApi {
   captureNote(text: string, scope?: 'private' | 'shared'): Promise<{ id: string }>;
   waitNote(id: string, timeoutMs?: number): Promise<void>;
-  rememberChat(text: string): Promise<{ messageId: string }>;
+  /** P6.9: a titled conversation for the sandbox sidebar (create + rename). */
+  createConversation(title: string): Promise<{ id: string }>;
+  rememberChat(text: string, conversationId: string): Promise<{ messageId: string }>;
   waitChat(messageId: string, timeoutMs?: number): Promise<void>;
   uploadFile(
     bytes: Buffer,
@@ -86,7 +88,19 @@ export function createDemoApi(baseUrl: string, accessToken: string): DemoApi {
       );
     },
 
-    async rememberChat(text) {
+    async createConversation(title) {
+      const { id } = await json<{ id: string }>('/api/chat/conversations', { method: 'POST' });
+      // The rename fixes the title (title_set_by_user), so the sandbox sidebar
+      // is deterministic — the auto-titler never rewrites it.
+      await json(`/api/chat/conversations/${id}/title`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ title }),
+      });
+      return { id };
+    },
+
+    async rememberChat(text, conversationId) {
       // POST /api/chat is an SSE stream; drain it so the turn is persisted. The
       // `done` event's messageId is the ASSISTANT reply — but only the USER
       // message can be remembered (decision 0021). Look it up by content and
@@ -94,14 +108,16 @@ export function createDemoApi(baseUrl: string, accessToken: string): DemoApi {
       const res = await call('/api/chat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content: text }),
+        body: JSON.stringify({ content: text, conversationId }),
       });
       if (!res.ok || !res.body) {
         throw new Error(`POST /api/chat → HTTP ${res.status}: ${await res.text()}`);
       }
       await drainSse(res.body);
-      const messages = await json<ChatMessage[]>('/api/chat/messages');
-      const userMessage = [...messages]
+      const page = await json<{ items: ChatMessage[] }>(
+        `/api/chat/conversations/${conversationId}/messages`,
+      );
+      const userMessage = [...page.items]
         .reverse()
         .find((m) => m.role === 'user' && m.content === text);
       if (!userMessage) {

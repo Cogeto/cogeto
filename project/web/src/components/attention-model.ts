@@ -91,7 +91,7 @@ export function surfaceState(query: {
 }
 
 /** Client-side sanity allowlist for a deep-link target (defense in depth). */
-const ROUTE_PREFIXES = ['/tasks', '/review', '/approvals', '/memories'];
+const ROUTE_PREFIXES = ['/tasks', '/review', '/approvals', '/memories', '/chat'];
 export function isKnownRoute(href: string): boolean {
   return ROUTE_PREFIXES.some((p) => href === p || href.startsWith(`${p}?`));
 }

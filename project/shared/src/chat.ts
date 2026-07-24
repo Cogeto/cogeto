@@ -4,6 +4,34 @@ import type { MemoryScope, MemoryStatus } from './memory';
 
 export interface ChatAskRequest {
   content: string;
+  /** The conversation this message is sent to (P6.9) — it always lands there. */
+  conversationId: string;
+}
+
+/**
+ * A conversation (P6.9; decision 0056): the workspace container in the chat
+ * sidebar. Memory is the continuity, conversations are workspaces — what
+ * Cogeto learned in one conversation is available in every other through
+ * memory retrieval; only raw turn context is scoped to the thread.
+ */
+export interface ConversationDto {
+  id: string;
+  /** NULL until auto-titled (or renamed) — the UI shows "New conversation". */
+  title: string | null;
+  /** True after a manual rename — the auto-titler never overwrites it. */
+  titleSetByUser: boolean;
+  archived: boolean;
+  createdAt: string;
+  /** Last-message time — the sidebar's recency order. */
+  updatedAt: string;
+  /** First characters of the last message, for the sidebar preview. */
+  lastMessagePreview: string | null;
+}
+
+/** GET /api/chat/conversations/:id/messages — the house { items, total } page. */
+export interface ChatMessagePage {
+  items: ChatMessageDto[];
+  total: number;
 }
 
 export type ChatRole = 'user' | 'assistant';
@@ -118,4 +146,9 @@ export interface ChatContextTurn {
 /** GET /api/chat/messages/:id/context — the message plus surrounding turns. */
 export interface ChatContextDto {
   turns: ChatContextTurn[];
+  /** The conversation the remembered message lives in (P6.9) — the source
+   * drawer frames the context with it and deep-links into the thread. */
+  conversationId: string;
+  /** The conversation's display title; null while untitled. */
+  conversationTitle: string | null;
 }

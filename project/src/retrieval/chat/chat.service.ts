@@ -10,9 +10,10 @@ import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import type {
   ChatContextDto,
   ChatFactDto,
-  ChatMessageDto,
+  ChatMessagePage,
   ChatRememberedDto,
   ChatStreamEvent,
+  ConversationDto,
   NoteProcessingState,
   Principal,
 } from '@cogeto/shared';
@@ -50,7 +51,9 @@ import { CHAT_REPLY_RESOLVER } from './chat-reply-resolver.port';
 import type { ChatReplyResolverPort } from './chat-reply-resolver.port';
 import { CHAT_RESEARCH_RESOLVER } from './chat-research-resolver.port';
 import type { ChatResearchResolverPort } from './chat-research-resolver.port';
-import { chatMessage } from '../persistence/tables';
+import { chatMessage, conversation } from '../persistence/tables';
+import type { ConversationRow } from '../persistence/tables';
+import { CONVERSATION_TITLE_JOB_TYPE } from './conversation-titler';
 import {
   ANSWER_PROMPT,
   buildAnswerInput,
@@ -62,10 +65,16 @@ import {
 
 /** How many facts the answer context receives (wider so aggregation fits, F5). */
 const ANSWER_FACTS_TOP_K = 12;
-/** How much history the chat page loads. */
+/** How much history the chat page loads per request (the default page size). */
 const HISTORY_LIMIT = 200;
-/** Turns of prior conversation the rewriter sees to resolve references (F3). */
+/** Turns of prior conversation the rewriter sees to resolve references (F3).
+ * Per conversation since P6.9 — another thread's raw turns never enter. */
 const REWRITE_HISTORY_TURNS = 6;
+/** Active (non-archived) conversations per user (P6.9, decision 0056): keeps
+ * the sidebar renderable and nudges archiving; archived ones are unlimited. */
+const MAX_ACTIVE_CONVERSATIONS = 100;
+/** Sidebar preview length — first characters of the last message. */
+const PREVIEW_CHARS = 120;
 
 /** Surrounding turns shown either side of a remembered message in its drawer. */
 const CONTEXT_TURNS = 2;
@@ -126,19 +135,117 @@ export class ChatService {
     private readonly tasksEngine?: TasksEngine,
   ) {}
 
-  async listMessages(principal: Principal): Promise<ChatMessageDto[]> {
+  /**
+   * The sidebar's conversation list (P6.9): the caller's own conversations,
+   * newest activity first, each with the last-message preview. Owner-gated by
+   * construction — the WHERE clause is the gate, like every chat query.
+   */
+  async listConversations(principal: Principal): Promise<ConversationDto[]> {
     const rows = await this.db
       .select()
-      .from(chatMessage)
-      .where(eq(chatMessage.ownerId, principal.userId))
-      .orderBy(asc(chatMessage.createdAt), asc(chatMessage.id))
-      .limit(HISTORY_LIMIT);
-    return rows.map((row) => ({
-      id: row.id,
-      role: row.role,
-      content: row.content,
-      createdAt: row.createdAt.toISOString(),
-    }));
+      .from(conversation)
+      .where(eq(conversation.ownerId, principal.userId))
+      .orderBy(desc(conversation.updatedAt), desc(conversation.id));
+    // Last message per conversation in one pass (DISTINCT ON) — the preview.
+    const previews = await this.db.execute(sql`
+      SELECT DISTINCT ON (conversation_id) conversation_id, content
+      FROM chat_message
+      WHERE owner_id = ${principal.userId}
+      ORDER BY conversation_id, created_at DESC, id DESC
+    `);
+    const previewByConversation = new Map(
+      (previews.rows as { conversation_id: string; content: string }[]).map((r) => [
+        r.conversation_id,
+        r.content,
+      ]),
+    );
+    return rows.map((row) => toConversationDto(row, previewByConversation.get(row.id) ?? null));
+  }
+
+  /** A new, untitled conversation — the sidebar's "New conversation" action. */
+  async createConversation(principal: Principal): Promise<ConversationDto> {
+    const active = await this.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(conversation)
+      .where(and(eq(conversation.ownerId, principal.userId), eq(conversation.archived, false)));
+    if ((active[0]?.count ?? 0) >= MAX_ACTIVE_CONVERSATIONS) {
+      throw new BadRequestException(
+        `you have ${MAX_ACTIVE_CONVERSATIONS} active conversations — archive or delete some first`,
+      );
+    }
+    const [row] = await this.db
+      .insert(conversation)
+      .values({ ownerId: principal.userId })
+      .returning();
+    return toConversationDto(row!, null);
+  }
+
+  /** Manual rename — wins forever: the auto-titler never overwrites it. */
+  async renameConversation(
+    principal: Principal,
+    conversationId: string,
+    title: string,
+  ): Promise<ConversationDto> {
+    await this.requireConversation(principal, conversationId);
+    const [row] = await this.db
+      .update(conversation)
+      .set({ title, titleSetByUser: true })
+      .where(eq(conversation.id, conversationId))
+      .returning();
+    return toConversationDto(row!, null);
+  }
+
+  /** Archive / unarchive — the safe alternative to deletion: everything kept,
+   * memories stay retrievable; the thread just leaves the active list. */
+  async setConversationArchived(
+    principal: Principal,
+    conversationId: string,
+    archived: boolean,
+  ): Promise<ConversationDto> {
+    await this.requireConversation(principal, conversationId);
+    const [row] = await this.db
+      .update(conversation)
+      .set({ archived })
+      .where(eq(conversation.id, conversationId))
+      .returning();
+    return toConversationDto(row!, null);
+  }
+
+  /**
+   * Messages of ONE conversation, ascending. Paged newest-first under the
+   * house limit/offset style: offset 0 is the latest window (the page the chat
+   * opens on); items within a page are returned oldest-first for display.
+   */
+  async listMessages(
+    principal: Principal,
+    conversationId: string,
+    page: { limit?: number; offset?: number } = {},
+  ): Promise<ChatMessagePage> {
+    await this.requireConversation(principal, conversationId);
+    const limit = page.limit ?? HISTORY_LIMIT;
+    const offset = page.offset ?? 0;
+    const [rows, totalRows] = await Promise.all([
+      this.db
+        .select()
+        .from(chatMessage)
+        .where(eq(chatMessage.conversationId, conversationId))
+        .orderBy(desc(chatMessage.createdAt), desc(chatMessage.id))
+        .limit(limit)
+        .offset(offset),
+      this.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(chatMessage)
+        .where(eq(chatMessage.conversationId, conversationId)),
+    ]);
+    return {
+      items: rows.reverse().map((row) => ({
+        id: row.id,
+        role: row.role,
+        content: row.content,
+        createdAt: row.createdAt.toISOString(),
+      })),
+      total: totalRows[0]?.count ?? 0,
+    };
   }
 
   /**
@@ -226,12 +333,14 @@ export class ChatService {
     const target = rows[0];
     if (!target) throw new NotFoundException(`message ${messageId} not found`);
 
+    // Surrounding turns come from the SAME conversation only (P6.9) — the
+    // drawer's framing must never blend another thread's turns in.
     const before = await this.db
       .select()
       .from(chatMessage)
       .where(
         and(
-          eq(chatMessage.ownerId, principal.userId),
+          eq(chatMessage.conversationId, target.conversationId),
           lte(chatMessage.createdAt, target.createdAt),
         ),
       )
@@ -242,7 +351,7 @@ export class ChatService {
       .from(chatMessage)
       .where(
         and(
-          eq(chatMessage.ownerId, principal.userId),
+          eq(chatMessage.conversationId, target.conversationId),
           gte(chatMessage.createdAt, target.createdAt),
         ),
       )
@@ -259,7 +368,16 @@ export class ChatService {
         createdAt: r.createdAt.toISOString(),
         isTarget: r.id === target.id,
       }));
-    return { turns };
+    const conversationRows = await this.db
+      .select({ title: conversation.title })
+      .from(conversation)
+      .where(eq(conversation.id, target.conversationId))
+      .limit(1);
+    return {
+      turns,
+      conversationId: target.conversationId,
+      conversationTitle: conversationRows[0]?.title ?? null,
+    };
   }
 
   /**
@@ -274,22 +392,33 @@ export class ChatService {
    * intent (with resolved anaphora), and the memory/knowledge answer paths.
    * Classification failure falls back to the memory-question path.
    */
-  async *ask(principal: Principal, content: string): AsyncGenerator<ChatStreamEvent> {
+  async *ask(
+    principal: Principal,
+    content: string,
+    conversationId: string,
+  ): AsyncGenerator<ChatStreamEvent> {
+    // The conversation resolves FIRST (owner-gated, 404 otherwise): a message
+    // always lands in the conversation it was sent to (P6.9), even if the
+    // client switches threads mid-stream.
+    await this.requireConversation(principal, conversationId);
     // The user's context (P6.6): timezone, profile, language — one PK read,
     // shaping every model call and deterministic reply in this turn.
     const ctx = await this.loadAskContext(principal);
-    // Prior turns (before this one) feed the conversational rewriter (F3).
-    const history = await this.recentTurns(principal);
+    // Prior turns (before this one) feed the conversational rewriter (F3) —
+    // from the CURRENT conversation only (P6.9): cross-thread continuity is
+    // memory retrieval's job, never raw turn context.
+    const history = await this.recentTurns(conversationId);
     const [userRow] = await this.db
       .insert(chatMessage)
-      .values({ ownerId: principal.userId, role: 'user', content })
+      .values({ ownerId: principal.userId, conversationId, role: 'user', content })
       .returning();
+    await this.touchConversation(conversationId, userRow!.createdAt);
 
     // Small talk, deterministic (decision 0046): a pure pleasantry gets a
     // natural reply — no retrieval, no model call, no citation theatre.
     const smallTalk = detectSmallTalk(content);
     if (smallTalk) {
-      yield* this.handleSmallTalk(principal, smallTalk);
+      yield* this.handleSmallTalk(principal, conversationId, smallTalk);
       return;
     }
 
@@ -300,7 +429,14 @@ export class ChatService {
     // directly); an ambiguous one asks; a bare trigger creates nothing.
     const createTask = detectCreateTaskIntent(content);
     if (createTask) {
-      yield* this.handleCreateTaskIntent(principal, userRow!.id, createTask, history, ctx);
+      yield* this.handleCreateTaskIntent(
+        principal,
+        conversationId,
+        userRow!.id,
+        createTask,
+        history,
+        ctx,
+      );
       return;
     }
 
@@ -323,7 +459,7 @@ export class ChatService {
             topic = resolved.query;
           }
         }
-        yield* this.handleResearchIntent(principal, topic, research.lang);
+        yield* this.handleResearchIntent(principal, conversationId, topic, research.lang);
         return;
       }
     }
@@ -336,7 +472,13 @@ export class ChatService {
     // Model-classified small talk / meta (beyond the lexicon): a natural,
     // brief answer-tier reply — still no retrieval.
     if (rewrite.questionClass === 'smalltalk') {
-      yield* this.handleModelSmallTalk(principal, content, history, ctx.answerBlock);
+      yield* this.handleModelSmallTalk(
+        principal,
+        conversationId,
+        content,
+        history,
+        ctx.answerBlock,
+      );
       return;
     }
 
@@ -346,7 +488,7 @@ export class ChatService {
     // creates an email reply draft (or asks / declines) — fast path, no
     // ingestion work, no sending. Then we return.
     if (this.replyResolver && rewrite.emailReply) {
-      yield* this.handleReplyIntent(principal, rewrite.emailReply.target);
+      yield* this.handleReplyIntent(principal, conversationId, rewrite.emailReply.target);
       return;
     }
 
@@ -406,17 +548,14 @@ export class ChatService {
       // Metadata only — never the answer content or tokens (pino rule).
       this.logger.warn(`citation_violation stripped=${violations}`);
     }
-    const [row] = await this.db
-      .insert(chatMessage)
-      .values({ ownerId: principal.userId, role: 'assistant', content: stored })
-      .returning();
+    const row = await this.storeAssistant(principal, conversationId, stored);
     // The research offer (decision 0046): every knowledge-class answer OFFERS
     // research as a one-tap bridge into the existing gate — never a silent
     // search. The offer carries the self-contained topic; tapping it proposes.
     const researchOffer = knowledge && this.researchResolver ? { topic: rewrite.query } : null;
     yield {
       type: 'done',
-      messageId: row!.id,
+      messageId: row.id,
       content: stored,
       citationViolations: violations,
       researchOffer,
@@ -475,6 +614,7 @@ export class ChatService {
    */
   private async *handleSmallTalk(
     principal: Principal,
+    conversationId: string,
     intent: SmallTalkIntent,
   ): AsyncGenerator<ChatStreamEvent> {
     yield { type: 'sources', facts: [] };
@@ -494,11 +634,8 @@ export class ChatService {
         };
     const answer = replies[intent.kind];
     yield { type: 'token', text: answer };
-    const [row] = await this.db
-      .insert(chatMessage)
-      .values({ ownerId: principal.userId, role: 'assistant', content: answer })
-      .returning();
-    yield { type: 'done', messageId: row!.id, content: answer, citationViolations: 0 };
+    const row = await this.storeAssistant(principal, conversationId, answer);
+    yield { type: 'done', messageId: row.id, content: answer, citationViolations: 0 };
   }
 
   /**
@@ -509,6 +646,7 @@ export class ChatService {
    */
   private async *handleModelSmallTalk(
     principal: Principal,
+    conversationId: string,
     content: string,
     history: ConversationTurn[],
     contextBlock?: string,
@@ -529,11 +667,8 @@ export class ChatService {
     if (violations > 0) {
       this.logger.warn(`citation_violation stripped=${violations}`);
     }
-    const [row] = await this.db
-      .insert(chatMessage)
-      .values({ ownerId: principal.userId, role: 'assistant', content: stored })
-      .returning();
-    yield { type: 'done', messageId: row!.id, content: stored, citationViolations: violations };
+    const row = await this.storeAssistant(principal, conversationId, stored);
+    yield { type: 'done', messageId: row.id, content: stored, citationViolations: violations };
   }
 
   /**
@@ -552,6 +687,7 @@ export class ChatService {
    */
   private async *handleResearchIntent(
     principal: Principal,
+    conversationId: string,
     topic: string,
     lang: 'en' | 'hr',
   ): AsyncGenerator<ChatStreamEvent> {
@@ -583,13 +719,10 @@ export class ChatService {
           : `I couldn't set up that research just now. Try again from the Research page.`;
     }
     yield { type: 'token', text: answer };
-    const [row] = await this.db
-      .insert(chatMessage)
-      .values({ ownerId: principal.userId, role: 'assistant', content: answer })
-      .returning();
+    const row = await this.storeAssistant(principal, conversationId, answer);
     yield {
       type: 'done',
-      messageId: row!.id,
+      messageId: row.id,
       content: answer,
       citationViolations: 0,
       researchProposal: proposalRef,
@@ -598,6 +731,7 @@ export class ChatService {
 
   private async *handleReplyIntent(
     principal: Principal,
+    conversationId: string,
     target: string | null,
   ): AsyncGenerator<ChatStreamEvent> {
     yield { type: 'sources', facts: [] };
@@ -628,11 +762,8 @@ export class ChatService {
     }
 
     yield { type: 'token', text: answer };
-    const [row] = await this.db
-      .insert(chatMessage)
-      .values({ ownerId: principal.userId, role: 'assistant', content: answer })
-      .returning();
-    yield { type: 'done', messageId: row!.id, content: answer, citationViolations: 0 };
+    const row = await this.storeAssistant(principal, conversationId, answer);
+    yield { type: 'done', messageId: row.id, content: answer, citationViolations: 0 };
   }
 
   /**
@@ -647,6 +778,7 @@ export class ChatService {
    */
   private async *handleCreateTaskIntent(
     principal: Principal,
+    conversationId: string,
     messageId: string,
     intent: CreateTaskIntent,
     history: ConversationTurn[],
@@ -655,7 +787,7 @@ export class ChatService {
     // The adoption form ("make a task from …", P6.5) targets an EXISTING
     // memory — resolve and adopt instead of capturing new content.
     if (intent.adoptReference !== null) {
-      yield* this.handleAdoptTaskIntent(principal, intent, history, ctx);
+      yield* this.handleAdoptTaskIntent(principal, conversationId, intent, history, ctx);
       return;
     }
     yield { type: 'sources', facts: [] };
@@ -725,11 +857,8 @@ export class ChatService {
       }
     }
     yield { type: 'token', text: answer };
-    const [row] = await this.db
-      .insert(chatMessage)
-      .values({ ownerId: principal.userId, role: 'assistant', content: answer })
-      .returning();
-    yield { type: 'done', messageId: row!.id, content: answer, citationViolations: 0 };
+    const row = await this.storeAssistant(principal, conversationId, answer);
+    yield { type: 'done', messageId: row.id, content: answer, citationViolations: 0 };
   }
 
   /**
@@ -743,6 +872,7 @@ export class ChatService {
    */
   private async *handleAdoptTaskIntent(
     principal: Principal,
+    conversationId: string,
     intent: CreateTaskIntent,
     history: ConversationTurn[],
     ctx?: AskContext,
@@ -798,28 +928,131 @@ export class ChatService {
       }
     }
     yield { type: 'token', text: answer };
-    const [row] = await this.db
-      .insert(chatMessage)
-      .values({ ownerId: principal.userId, role: 'assistant', content: answer })
-      .returning();
-    yield { type: 'done', messageId: row!.id, content: answer, citationViolations: 0 };
+    const row = await this.storeAssistant(principal, conversationId, answer);
+    yield { type: 'done', messageId: row.id, content: answer, citationViolations: 0 };
   }
 
-  /** The last few turns, oldest first — context for the rewriter (F3). */
-  private async recentTurns(principal: Principal): Promise<ConversationTurn[]> {
+  /** The last few turns of THIS conversation, oldest first — context for the
+   * rewriter (F3). Scoped per conversation (P6.9): a fact stated raw in one
+   * thread never rides another thread's turn context. */
+  private async recentTurns(conversationId: string): Promise<ConversationTurn[]> {
     const rows = await this.db
       .select({ role: chatMessage.role, content: chatMessage.content })
       .from(chatMessage)
-      .where(eq(chatMessage.ownerId, principal.userId))
+      .where(eq(chatMessage.conversationId, conversationId))
       .orderBy(desc(chatMessage.createdAt), desc(chatMessage.id))
       .limit(REWRITE_HISTORY_TURNS);
     return rows.reverse();
+  }
+
+  /** Controller pre-stream check (P6.9): 404 before SSE headers flush. */
+  async assertConversation(principal: Principal, conversationId: string): Promise<void> {
+    await this.requireConversation(principal, conversationId);
+  }
+
+  /** The owner's conversation or 404 — the gate every conversation-scoped
+   * call goes through (existence must not leak, like the saga's NotFound). */
+  private async requireConversation(
+    principal: Principal,
+    conversationId: string,
+  ): Promise<ConversationRow> {
+    const rows = await this.db
+      .select()
+      .from(conversation)
+      .where(and(eq(conversation.id, conversationId), eq(conversation.ownerId, principal.userId)))
+      .limit(1);
+    const row = rows[0];
+    if (!row) throw new NotFoundException(`conversation ${conversationId} not found`);
+    return row;
+  }
+
+  /**
+   * Every assistant reply lands through here: insert into the conversation it
+   * was asked in, bump the sidebar's recency, and — once the first exchange
+   * exists and the thread is still untitled — request the auto-title as a
+   * worker job (§A.3: the model call never runs in the request path; the
+   * enqueue is one transactional insert).
+   */
+  private async storeAssistant(
+    principal: Principal,
+    conversationId: string,
+    content: string,
+  ): Promise<{ id: string }> {
+    const [row] = await this.db
+      .insert(chatMessage)
+      .values({ ownerId: principal.userId, conversationId, role: 'assistant', content })
+      .returning();
+    await this.touchConversation(conversationId, row!.createdAt);
+    await this.maybeRequestTitle(principal, conversationId);
+    return { id: row!.id };
+  }
+
+  /** updated_at IS the last-message time (decision 0056). */
+  private async touchConversation(conversationId: string, at: Date): Promise<void> {
+    await this.db
+      .update(conversation)
+      .set({ updatedAt: at })
+      .where(eq(conversation.id, conversationId));
+  }
+
+  /**
+   * The auto-title request (P6.9): exactly ONCE per conversation — after its
+   * FIRST exchange, while untitled and never manually named. One transactional
+   * enqueue; the job retries with backoff on failure and, exhausted, parks in
+   * dead_letter with the thread simply staying "New conversation". Every later
+   * exchange costs one indexed count — no repeat enqueues, fast path intact.
+   */
+  private async maybeRequestTitle(principal: Principal, conversationId: string): Promise<void> {
+    const rows = await this.db
+      .select({ title: conversation.title, titleSetByUser: conversation.titleSetByUser })
+      .from(conversation)
+      .where(eq(conversation.id, conversationId))
+      .limit(1);
+    const row = rows[0];
+    if (!row || row.title !== null || row.titleSetByUser) return;
+    const replies = await this.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(chatMessage)
+      .where(
+        and(eq(chatMessage.conversationId, conversationId), eq(chatMessage.role, 'assistant')),
+      );
+    if ((replies[0]?.count ?? 0) !== 1) return;
+    await this.db.transaction((tx) =>
+      withTransactionalEnqueue(
+        tx,
+        {
+          type: 'conversation.title_requested',
+          payload: {
+            source_type: 'chat_conversation',
+            source_id: conversationId,
+            owner_id: principal.userId,
+          },
+        },
+        {
+          type: CONVERSATION_TITLE_JOB_TYPE,
+          payload: { source_type: 'chat_conversation', source_id: conversationId },
+        },
+      ),
+    );
   }
 
   private async getPrompt(): Promise<PromptArtifact> {
     this.prompt ??= await loadPrompt(ANSWER_PROMPT.family, ANSWER_PROMPT.version);
     return this.prompt;
   }
+}
+
+/** The wire form of a conversation row (P6.9). */
+function toConversationDto(row: ConversationRow, lastMessage: string | null): ConversationDto {
+  return {
+    id: row.id,
+    title: row.title,
+    titleSetByUser: row.titleSetByUser,
+    archived: row.archived,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    lastMessagePreview: lastMessage === null ? null : lastMessage.slice(0, PREVIEW_CHARS),
+  };
 }
 
 function toFactDto(hit: RetrievedMemory, index: number): ChatFactDto {

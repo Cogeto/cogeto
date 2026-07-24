@@ -5,7 +5,7 @@ import { startTestDatabase } from '../../testing/index';
 import type { TestDatabase } from '../../testing/index';
 import { NotesService, NotesSourceDeletion } from '../../connectors/index';
 import { DeletionSaga, MemoryStore, parseReceiptCounts } from '../../memory/index';
-import { chatMessage } from '../persistence/tables';
+import { chatMessage, conversation } from '../persistence/tables';
 import { CHAT_ANSWER_REDACTED, ChatAnswerCascade } from './chat-answer-cascade';
 
 const userA: Principal = {
@@ -38,10 +38,18 @@ describe('QS-7 chat-answer cascade (integration: real Postgres, real saga)', () 
     await tdb.stop();
   });
 
+  // Messages need a container since P6.9 — one per owner is enough here.
+  const conversationIds = new Map<string, string>();
   const insertMessage = async (ownerId: string, role: 'user' | 'assistant', content: string) => {
+    let conversationId = conversationIds.get(ownerId);
+    if (!conversationId) {
+      const [conv] = await tdb.db.insert(conversation).values({ ownerId }).returning();
+      conversationId = conv!.id;
+      conversationIds.set(ownerId, conversationId);
+    }
     const [row] = await tdb.db
       .insert(chatMessage)
-      .values({ ownerId, role, content })
+      .values({ ownerId, conversationId, role, content })
       .returning({ id: chatMessage.id });
     return row!.id;
   };

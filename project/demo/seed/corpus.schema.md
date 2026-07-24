@@ -19,7 +19,9 @@ item through the **real public HTTP API** — never a direct database insert.
                               //   as weeks of accrual and dormancy/supersession/
                               //   the digest render truthfully
       "role": "...",          // documentation of intent (what this note demonstrates)
-      "text": "..."           // the note body, exactly as fed to POST /api/notes
+      "text": "...",          // the note body, exactly as fed to POST /api/notes
+      "conversation": "..."   // chat items only (P6.9): the titled conversation this
+                              //   turn lands in; items sharing a title share the thread
     }
   ],
   "document": {               // the single uploaded PDF — the deletion-receipt object
@@ -35,8 +37,10 @@ item through the **real public HTTP API** — never a direct database insert.
 ## Channels
 
 - **`note`** → `POST /api/notes` (`{ content }`), then poll `GET /api/notes/:id/status`.
-- **`chat`** → `POST /api/chat` (`{ content }`, SSE; capture the `done.messageId`),
-  then `POST /api/chat/messages/:id/remember` (the explicit "remember this" flow,
+- **`chat`** → first `POST /api/chat/conversations` + `PUT …/:id/title` once per
+  distinct `conversation` title (P6.9), then `POST /api/chat`
+  (`{ content, conversationId }`, SSE), then
+  `POST /api/chat/messages/:id/remember` (the explicit "remember this" flow,
   decision 0021), then poll `GET /api/chat/messages/:id/capture-status`.
 - **`document`** → `POST /api/files` (multipart `file` + `scope`), then poll
   `GET /api/files/:key/status`.

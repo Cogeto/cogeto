@@ -16,7 +16,7 @@ import { RetrievalService } from '../retrieval.service';
 import { ChatService } from './chat.service';
 import { ChatSourceReader } from './chat.source-reader';
 import { ChatSourceDeletion } from './chat.source-deletion';
-import { chatMessage } from '../persistence/tables';
+import { chatMessage, conversation } from '../persistence/tables';
 
 const DIMS = 8;
 const EMBED = 'test-embed';
@@ -107,14 +107,22 @@ describe('chat capture (integration, real Postgres + Qdrant)', () => {
       reconciliation,
     });
 
+  // Messages need a container since P6.9 — one per owner is enough here.
+  const conversationIds = new Map<string, string>();
   const seedMessage = async (
     owner: string,
     role: 'user' | 'assistant',
     content: string,
   ): Promise<string> => {
+    let conversationId = conversationIds.get(owner);
+    if (!conversationId) {
+      const [conv] = await tdb.db.insert(conversation).values({ ownerId: owner }).returning();
+      conversationId = conv!.id;
+      conversationIds.set(owner, conversationId);
+    }
     const [row] = await tdb.db
       .insert(chatMessage)
-      .values({ ownerId: owner, role, content })
+      .values({ ownerId: owner, conversationId, role, content })
       .returning();
     return row!.id;
   };

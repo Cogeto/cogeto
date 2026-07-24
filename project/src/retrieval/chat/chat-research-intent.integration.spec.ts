@@ -69,6 +69,7 @@ describe('chat research intent (integration: real Postgres, stubbed seams)', () 
   let resolver: RecordingResolver;
   let retrieveCalls: number;
   let chat: ChatService;
+  let conversationId: string;
 
   beforeAll(async () => {
     tdb = await startTestDatabase();
@@ -88,6 +89,8 @@ describe('chat research intent (integration: real Postgres, stubbed seams)', () 
       undefined,
       resolver,
     );
+    // All scripted turns share one conversation (P6.9), like the SPA's thread.
+    conversationId = (await chat.createConversation(owner)).id;
   }, 120_000);
 
   afterAll(async () => {
@@ -95,7 +98,9 @@ describe('chat research intent (integration: real Postgres, stubbed seams)', () 
   });
 
   it('research_intent_gated: invocation proposes and discloses — it never searches first', async () => {
-    const events = await collect(chat.ask(owner, 'research GDPR consent for Adriatic Foods'));
+    const events = await collect(
+      chat.ask(owner, 'research GDPR consent for Adriatic Foods', conversationId),
+    );
     expect(resolver.proposals).toEqual(['GDPR consent for Adriatic Foods']);
     // The gate reply: deterministic, discloses the minimised query + reason,
     // states nothing has been sent, and points at the Research page.
@@ -115,7 +120,7 @@ describe('chat research intent (integration: real Postgres, stubbed seams)', () 
   });
 
   it('speaks Croatian when invoked in Croatian', async () => {
-    const events = await collect(chat.ask(owner, 'istraži rokove EU AI Acta'));
+    const events = await collect(chat.ask(owner, 'istraži rokove EU AI Acta', conversationId));
     expect(resolver.proposals.at(-1)).toBe('rokove EU AI Acta');
     const done = events.find((e) => e.type === 'done');
     expect(done && done.type === 'done' ? done.content : '').toContain('ništa još nije poslano');
@@ -123,7 +128,9 @@ describe('chat research intent (integration: real Postgres, stubbed seams)', () 
 
   it('not_ambient: an ordinary question touches retrieval, never the research seam', async () => {
     const before = resolver.proposals.length;
-    const events = await collect(chat.ask(owner, 'what did I promise Marko about the invoice?'));
+    const events = await collect(
+      chat.ask(owner, 'what did I promise Marko about the invoice?', conversationId),
+    );
     expect(resolver.proposals).toHaveLength(before); // research untouched
     expect(retrieveCalls).toBeGreaterThan(0); // normal retrieval ran
     const done = events.find((e) => e.type === 'done');

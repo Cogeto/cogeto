@@ -83,6 +83,20 @@ export async function captureCorpus(
 ): Promise<AgeEntry[]> {
   const entries: AgeEntry[] = [];
 
+  // Titled conversations (P6.9): chat items sharing a `conversation` title
+  // share the thread, so the sidebar demos with named workspaces while the
+  // captured knowledge stays reachable from every other conversation.
+  const conversationIds = new Map<string, string>();
+  const conversationFor = async (title: string): Promise<string> => {
+    let id = conversationIds.get(title);
+    if (!id) {
+      id = (await api.createConversation(title)).id;
+      conversationIds.set(title, id);
+      log(`  · conversation "${title}" → ${id}`);
+    }
+    return id;
+  };
+
   for (const note of corpus.notes) {
     if (note.channel === 'note') {
       const { id } = await api.captureNote(note.text);
@@ -90,7 +104,8 @@ export async function captureCorpus(
       entries.push({ sourceType: 'user_note', sourceId: id, daysAgo: note.daysAgo });
       log(`  · note ${note.id} → ${id}`);
     } else {
-      const { messageId } = await api.rememberChat(note.text);
+      const conversationId = await conversationFor(note.conversation ?? 'Radne bilješke');
+      const { messageId } = await api.rememberChat(note.text, conversationId);
       await api.waitChat(messageId);
       entries.push({ sourceType: 'chat', sourceId: messageId, daysAgo: note.daysAgo });
       log(`  · chat ${note.id} → ${messageId}`);

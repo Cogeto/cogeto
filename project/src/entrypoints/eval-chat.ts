@@ -584,7 +584,10 @@ async function main(): Promise<void> {
       }
       console.log(`  seeded ${testCase.notes.length} notes, ${testCase.facts.length} direct facts`);
 
-      // Run the scripted conversation.
+      // Run the scripted conversation — inside ONE conversation container
+      // (P6.9), exactly as the production surface would: the script's turns
+      // share turn context, other conversations' turns never enter.
+      const conversationRef = await chat.createConversation(principal);
       const turns: TurnResult[] = [];
       for (const question of testCase.script) {
         let answer = '';
@@ -592,7 +595,11 @@ async function main(): Promise<void> {
         let sourceStatuses: string[] = [];
         let citationViolations = 0;
         let researchOffer = false;
-        for await (const event of chat.ask(principal, question) as AsyncIterable<ChatStreamEvent>) {
+        for await (const event of chat.ask(
+          principal,
+          question,
+          conversationRef.id,
+        ) as AsyncIterable<ChatStreamEvent>) {
           if (event.type === 'sources') {
             sourceCount = event.facts.length;
             sourceStatuses = event.facts.map((f) => f.status);

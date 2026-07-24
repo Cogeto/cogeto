@@ -22,4 +22,14 @@ export class TasksCascade implements DerivedCascade {
       .returning({ id: task.id });
     return removed.length;
   }
+
+  /** Read-only twin for the confirm dialog's numbers (P6.9). */
+  async countForMemories(tx: Tx, memoryIds: string[]): Promise<number> {
+    if (memoryIds.length === 0) return 0;
+    const rows = await tx
+      .select({ id: task.id })
+      .from(task)
+      .where(inArray(task.derivedFromMemoryId, memoryIds));
+    return rows.length;
+  }
 }

@@ -10,6 +10,7 @@ import {
   ChatAnswerCascade,
   ChatSourceDeletion,
   ChatSourceModule,
+  ConversationSourceDeletion,
   RetrievalModule,
 } from '../retrieval/index';
 import { AgentsModule, ReplyDraftCascade, ReplyDraftCascadeModule } from '../agents/index';
@@ -91,6 +92,8 @@ export function createAppRootModule(config: CogetoConfig): unknown {
           adapters: [
             NotesSourceDeletion,
             ChatSourceDeletion,
+            // A whole conversation is a deletable source (P6.9, decision 0056).
+            ConversationSourceDeletion,
             EmailSourceDeletion,
             // Conclusion rows are deletable sources too (decision 0037).
             TaskConclusionSourceDeletion,

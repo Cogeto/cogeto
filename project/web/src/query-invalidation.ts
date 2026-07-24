@@ -80,5 +80,6 @@ export const invalidateAfterSourceDeletion = (qc: QueryClient): Promise<void> =>
     ['review-queue'],
     ['uncertain-count'],
     ['chat-messages'],
+    ['conversations'],
     ['dream-digest'],
   ]);

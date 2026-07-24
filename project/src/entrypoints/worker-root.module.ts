@@ -27,6 +27,7 @@ import {
   ChatSourceDeletion,
   ChatSourceModule,
   ChatSourceReader,
+  ConversationSourceDeletion,
 } from '../retrieval/index';
 import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG, mailOptions, redactionOptions, researchOptions } from './config';
@@ -78,6 +79,8 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
           adapters: [
             NotesSourceDeletion,
             ChatSourceDeletion,
+            // A whole conversation is a deletable source (P6.9, decision 0056).
+            ConversationSourceDeletion,
             EmailSourceDeletion,
             // Conclusion rows are deletable sources too (decision 0037).
             TaskConclusionSourceDeletion,

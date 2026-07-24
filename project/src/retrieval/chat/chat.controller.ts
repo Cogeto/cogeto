@@ -9,6 +9,8 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Put,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -17,9 +19,10 @@ import type { Response } from 'express';
 import { z } from 'zod';
 import type {
   ChatContextDto,
-  ChatMessageDto,
+  ChatMessagePage,
   ChatRememberedDto,
   ChatStreamEvent,
+  ConversationDto,
   NoteStatusDto,
 } from '@cogeto/shared';
 import { RateLimit, RateLimitGuard, SSE_LIMITS } from '../../infrastructure/index';
@@ -35,6 +38,24 @@ const askSchema = z.object({
     .string()
     .max(4_000, 'message is too long (max 4000 characters)')
     .refine((value) => value.trim().length > 0, 'message must not be blank'),
+  /** The conversation the message is sent to (P6.9) — it always lands there. */
+  conversationId: z.uuid(),
+});
+
+/** Rename bounds: one plain line, never blank. */
+const renameSchema = z.object({
+  title: z
+    .string()
+    .max(120, 'title is too long (max 120 characters)')
+    .refine((value) => value.trim().length > 0, 'title must not be blank'),
+});
+
+const archiveSchema = z.object({ archived: z.boolean() });
+
+/** House pagination (limit/offset) for messages-by-conversation. */
+const pageSchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).prefault(200),
+  offset: z.coerce.number().int().min(0).prefault(0),
 });
 
 @Controller('chat')
@@ -48,10 +69,60 @@ export class ChatController {
     @Inject(SSE_LIMITS) private readonly sse: SseLimits,
   ) {}
 
-  /** The persisted conversation, oldest first. */
-  @Get('messages')
-  async messages(@Req() request: AuthenticatedRequest): Promise<ChatMessageDto[]> {
-    return this.chat.listMessages(request.principal);
+  /** The sidebar's conversation list (P6.9): newest activity first. */
+  @Get('conversations')
+  async conversations(@Req() request: AuthenticatedRequest): Promise<ConversationDto[]> {
+    return this.chat.listConversations(request.principal);
+  }
+
+  /** A new, untitled conversation. */
+  @Post('conversations')
+  async createConversation(@Req() request: AuthenticatedRequest): Promise<ConversationDto> {
+    return this.chat.createConversation(request.principal);
+  }
+
+  /** Manual rename — wins forever over the auto-titler. */
+  @Put('conversations/:id/title')
+  async rename(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: unknown,
+  ): Promise<ConversationDto> {
+    const parsed = renameSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
+    }
+    return this.chat.renameConversation(request.principal, id, parsed.data.title.trim());
+  }
+
+  /** Archive / unarchive — the safe alternative to deletion. */
+  @Put('conversations/:id/archived')
+  async setArchived(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: unknown,
+  ): Promise<ConversationDto> {
+    const parsed = archiveSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
+    }
+    return this.chat.setConversationArchived(request.principal, id, parsed.data.archived);
+  }
+
+  /** One conversation's messages: offset 0 = the latest window, items oldest
+   * first within the page. Deleting a conversation is a SOURCE deletion —
+   * DELETE /api/sources/chat_conversation/:id — never a chat route (§A.7). */
+  @Get('conversations/:id/messages')
+  async messages(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: unknown,
+  ): Promise<ChatMessagePage> {
+    const parsed = pageSchema.safeParse(query ?? {});
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
+    }
+    return this.chat.listMessages(request.principal, id, parsed.data);
   }
 
   /** "Remember this" (decision 0021): capture a USER message via the pipeline. */
@@ -105,6 +176,10 @@ export class ChatController {
       throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
     }
 
+    // The conversation gate (P6.9): resolve BEFORE any header is sent, so a
+    // foreign or absent conversation is a normal 404, not a truncated stream.
+    await this.chat.assertConversation(request.principal, parsed.data.conversationId);
+
     // Concurrency cap (QS-14): reject BEFORE any header is sent, so the client
     // sees a normal 429 rather than a truncated stream.
     const userId = request.principal.userId;
@@ -147,7 +222,12 @@ export class ChatController {
       maxMs > 0 ? setTimeout(() => controller.abort(new Error('duration')), maxMs) : undefined;
     resetIdle();
 
-    const iterator = this.chat.ask(request.principal, parsed.data.content)[Symbol.asyncIterator]();
+    const stream = this.chat.ask(
+      request.principal,
+      parsed.data.content,
+      parsed.data.conversationId,
+    );
+    const iterator = stream[Symbol.asyncIterator]();
     try {
       for (;;) {
         const abortPromise = new Promise<never>((_, reject) => {

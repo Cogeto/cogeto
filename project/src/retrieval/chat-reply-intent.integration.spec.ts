@@ -99,9 +99,15 @@ describe('chat reply intent (integration: real Postgres + Qdrant, fake resolver)
     await Promise.all([tdb.stop(), qdrant.stop()]);
   });
 
+  let conversationId: string | undefined;
   const answerOf = async (question: string): Promise<string> => {
     let text = '';
-    for await (const event of chat.ask(user, question) as AsyncGenerator<ChatStreamEvent>) {
+    conversationId ??= (await chat.createConversation(user)).id;
+    for await (const event of chat.ask(
+      user,
+      question,
+      conversationId,
+    ) as AsyncGenerator<ChatStreamEvent>) {
       if (event.type === 'token') text += event.text;
     }
     return text;
