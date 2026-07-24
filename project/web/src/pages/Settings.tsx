@@ -201,7 +201,7 @@ function AppearanceSection() {
 function ResearchSection() {
   const { autoResearch, setAutoResearch } = useAutoResearch();
   return (
-    <section className="mt-4 mx-auto max-w-2xl space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
+    <section className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
       <div>
         <SectionTitle>Web research</SectionTitle>
         <p className="mt-1 text-xs text-slate-400">
