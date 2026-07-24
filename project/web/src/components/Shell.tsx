@@ -25,6 +25,7 @@ export function Shell({
   active,
   children,
   fullHeight = false,
+  leftRail,
 }: {
   session: Session;
   title: string;
@@ -32,6 +33,12 @@ export function Shell({
   children: ReactNode;
   /** Pin the page to the viewport: children scroll internally (chat). */
   fullHeight?: boolean;
+  /** A second full-height rail between the nav and the header/content column
+   * (P6.9: the conversations sidebar). Living OUTSIDE the column keeps the
+   * header breadcrumb and the content centered in the SAME remaining width,
+   * so they stay aligned — a rail inside the column would shift the content
+   * off the header's center line. */
+  leftRail?: ReactNode;
 }) {
   const { data: me } = useQuery({
     queryKey: ['me'],
@@ -91,6 +98,7 @@ export function Shell({
         userName={me?.name}
         orgName={me?.orgName}
       />
+      {leftRail}
       <div className={fullHeight ? 'flex h-screen min-h-0 flex-1 flex-col' : 'flex-1'}>
         <header className="shrink-0 border-b border-slate-200 bg-surface">
           {/* The header tops its content: full-height pages (chat) use the same
