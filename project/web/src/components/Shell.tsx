@@ -73,11 +73,14 @@ export function Shell({
   });
 
   return (
-    // Full-height pages (chat) pin the whole app to the viewport so only their
-    // inner pane scrolls — otherwise the page itself scrolled past the content
-    // into empty space, dragging the sidebar with it (P6.9 fix). Normal pages
-    // keep min-h-screen and scroll the document as usual.
-    <div className={`flex bg-slate-50 ${fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
+    // Full-height pages (chat) take the shell OUT of document flow entirely
+    // (fixed inset-0), so the document contributes zero scrollable height and
+    // only the chat's inner pane can scroll. `h-screen overflow-hidden` alone
+    // still let the whole page (sidebar and all) scroll into empty space in some
+    // environments; a fixed shell cannot (P6.9 fix). Normal pages stay in flow.
+    <div
+      className={`bg-slate-50 ${fullHeight ? 'fixed inset-0 flex overflow-hidden' : 'flex min-h-screen'}`}
+    >
       <Nav
         active={active}
         reviewCount={(uncertain?.total ?? 0) + (contradictions?.length ?? 0)}
