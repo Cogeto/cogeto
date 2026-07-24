@@ -14,7 +14,7 @@
     "@cogeto/shared": "*",
     "@tanstack/react-query": "^5.101.3",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
