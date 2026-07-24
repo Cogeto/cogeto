@@ -91,9 +91,20 @@ describe('chat (integration, real Postgres + real Qdrant, gateway mocked)', () =
     return row;
   };
 
+  // One conversation per principal (P6.9): asks land in it like the SPA's.
+  const conversations = new Map<string, string>();
+  const conversationFor = async (principal: Principal) => {
+    let id = conversations.get(principal.userId);
+    if (!id) {
+      id = (await chat.createConversation(principal)).id;
+      conversations.set(principal.userId, id);
+    }
+    return id;
+  };
   const collect = async (principal: Principal, question: string) => {
     const events = [];
-    for await (const event of chat.ask(principal, question)) events.push(event);
+    const conversationId = await conversationFor(principal);
+    for await (const event of chat.ask(principal, question, conversationId)) events.push(event);
     return events;
   };
 
@@ -180,8 +191,25 @@ describe('chat (integration, real Postgres + real Qdrant, gateway mocked)', () =
       const jobs = await tdb.pool.query('SELECT count(*)::int AS n FROM graphile_worker.jobs');
       return { outbox: outbox.rows[0].n as number, jobs: jobs.rows[0].n as number };
     };
+    // The ONE sanctioned enqueue is the auto-title request, fired exactly once
+    // after a conversation's first exchange (P6.9) — never ingestion work. A
+    // fresh conversation's first ask carries it; every later ask enqueues
+    // nothing at all.
+    const conversationId = (await chat.createConversation(userA)).id;
     const before = await counts();
-    await collect(userA, 'Anything new about Maja?');
-    expect(await counts()).toEqual(before);
+    const first = [];
+    for await (const event of chat.ask(userA, 'Anything new about Maja?', conversationId)) {
+      first.push(event);
+    }
+    const afterFirst = await counts();
+    expect(afterFirst).toEqual({ outbox: before.outbox + 1, jobs: before.jobs + 1 });
+    const titleJobs = await tdb.pool.query(
+      `SELECT count(*)::int AS n FROM graphile_worker.jobs WHERE task_identifier = 'conversation.title'`,
+    );
+    expect(titleJobs.rows[0].n as number).toBeGreaterThanOrEqual(1);
+    for await (const event of chat.ask(userA, 'And anything about Arkona?', conversationId)) {
+      void event;
+    }
+    expect(await counts()).toEqual(afterFirst);
   });
 });

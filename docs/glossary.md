@@ -122,6 +122,11 @@ name it in a decision record before coining a term in code.
 ## Product surfaces & features
 
 - **Chat** — the primary conversational surface (fast path lives behind it).
+- **Conversation** — a chat workspace container (P6.9, decision 0056): per-user
+  threads the sidebar creates, switches, renames, archives and deletes. Memory
+  is the continuity, conversations are workspaces — turn context is scoped to
+  one conversation; knowledge crosses threads through memory retrieval only.
+  Deleting one is a source deletion (`chat_conversation`) through the §A.7 saga.
 - **Dashboard** — the governance surface: see/search/edit/correct/delete memories,
   statuses, source links, receipts, dead-letter jobs.
 - **Connector** — a source integration; **two in v1**: **notes** and **email**

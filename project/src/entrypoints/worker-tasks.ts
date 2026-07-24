@@ -32,6 +32,8 @@ import {
   EMAIL_REFUSAL_RETENTION_JOB_TYPE,
 } from '../connectors/index';
 import type { EmailAllowlistService, EmailAuthorshipBackfill } from '../connectors/index';
+import { CONVERSATION_TITLE_JOB_TYPE } from '../retrieval/index';
+import type { ConversationTitler } from '../retrieval/index';
 import type { ModelGateway } from '../model-gateway/index';
 
 export interface WorkerTaskDeps {
@@ -46,6 +48,7 @@ export interface WorkerTaskDeps {
   passportExecutor: PassportExportExecutor;
   allowlist: EmailAllowlistService;
   authorshipBackfill: EmailAuthorshipBackfill;
+  conversationTitler: ConversationTitler;
   objects: MemoryObjectStore;
   gateway: ModelGateway;
   /** Bound to pino by the worker entrypoint. Counts only — never content. */
@@ -281,6 +284,23 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       const removed = await deps.allowlist.pruneRefusalsOlderThan();
       deps.log({ removed }, 'email refusal retention pass completed');
     }),
+
+    // The conversation auto-title (P6.9, decision 0056): one pipeline-tier
+    // call naming an untitled thread from its opening messages. Idempotency
+    // key ('chat_conversation', <conversation id>, this) — one attempt chain
+    // per conversation; the guarded UPDATE inside re-checks that no manual
+    // rename landed, so the user's title always wins.
+    [CONVERSATION_TITLE_JOB_TYPE]: idempotentTask(
+      db,
+      CONVERSATION_TITLE_JOB_TYPE,
+      async (tx, payload) => {
+        const { titled } = await deps.conversationTitler.run(tx, payload.source_id);
+        deps.log(
+          { source_type: payload.source_type, source_id: payload.source_id, titled },
+          'conversation title job completed',
+        );
+      },
+    ),
 
     // Embeds an edit's supersession successor (S3-B). Idempotency key:
     // ('memory', <memory id>, 'memory.embed') — a duplicate delivery skips.

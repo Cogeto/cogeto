@@ -11,6 +11,12 @@ export interface DeletionPreviewDto {
   sourceId: string;
   memoryCount: number;
   objectCount: number;
+  /** Chat messages a conversation deletion removes (P6.9); absent otherwise. */
+  messageCount?: number;
+  /** Enumerated memories the user explicitly approved — deleted knowingly. */
+  userApprovedCount?: number;
+  /** Tasks whose deriving memory is enumerated — they go with it. */
+  taskCount?: number;
 }
 
 /** GET /api/receipts/verify — walk of the full hash chain (§B.1). */
@@ -39,6 +45,8 @@ export interface ReceiptListItem {
   /** Assistant chat answers redacted because they cited the erased memories
    * (QS-7, decision 0025); 0 on pre-0025 receipts. */
   chatMessagesRedacted: number;
+  /** Chat messages removed with a conversation source (P6.9); 0 otherwise. */
+  chatMessagesRemoved: number;
   /** Enumeration time — when the deletion was requested. */
   requestedAt: string;
   confirmedAt: string | null;

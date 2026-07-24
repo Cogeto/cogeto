@@ -252,7 +252,8 @@
       "channel": "chat",
       "daysAgo": 3,
       "role": "chat 'remember this' -> commitment -> task (canon en-0028)",
-      "text": "I'll circulate the Q3 numbers to Marko once finance signs off."
+      "text": "I'll circulate the Q3 numbers to Marko once finance signs off.",
+      "conversation": "Q3 reporting"
     },
     {
       "id": "en-chat-training-decision",
@@ -260,7 +261,17 @@
       "channel": "chat",
       "daysAgo": 3,
       "role": "chat 'remember this' -> decision",
-      "text": "We decided the Atlas go-live training will be a half-day remote session."
+      "text": "We decided the Atlas go-live training will be a half-day remote session.",
+      "conversation": "Atlas go-live"
+    },
+    {
+      "id": "hr-chat-adriatic-aneks",
+      "lang": "hr",
+      "channel": "chat",
+      "daysAgo": 2,
+      "role": "chat 'remember this' -> fact (P6.9 conversation demo)",
+      "text": "Adriatic Foods traži novi cjenik prije potpisivanja aneksa ugovora.",
+      "conversation": "Priprema za Adriatic"
     }
   ],
   "document": {

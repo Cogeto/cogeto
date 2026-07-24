@@ -31,6 +31,11 @@ export const sourceTypeEnum = pgEnum('source_type', [
   // Fetched web pages (decision 0043): the source row is the connectors-owned
   // web_page record, migration 0027.
   'web',
+  // A whole chat conversation (P6.9, decision 0056): the source row is the
+  // retrieval-owned conversation record, migration 0031. No memory ever
+  // carries this value — chat memories cite their message ('chat'); it exists
+  // for conversation deletion receipts and the saga adapter.
+  'chat_conversation',
 ]);
 export const receiptStatusEnum = pgEnum('receipt_status', ['pending', 'confirmed']);
 export const factKindEnum = pgEnum('fact_kind', FACT_KINDS);

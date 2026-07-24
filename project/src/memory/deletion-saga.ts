@@ -107,6 +107,15 @@ export interface SourceDeletion {
 export interface SourceCascade {
   objectKeys: string[];
   fileSubSourceKeys: string[];
+  /**
+   * `chat` source ids (chat_message rows) whose derived memories fold into
+   * the SAME enumeration transaction and the SAME receipt (P6.9 — a
+   * conversation source owns its messages the way an email owns its
+   * attachments). The adapter's deleteSource removes the message rows; the
+   * saga enumerates + deletes their memories here. Optional and additive —
+   * the established enumeration-only extension pattern.
+   */
+  chatSubSourceIds?: string[];
 }
 
 export const SOURCE_DELETIONS = Symbol('SOURCE_DELETIONS');
@@ -123,6 +132,11 @@ export interface DerivedCascade {
   /** Names the artifact in counts_json (e.g. 'tasks'). */
   readonly artifact: string;
   cascadeForMemories(tx: Tx, memoryIds: string[]): Promise<number>;
+  /**
+   * Optional read-only twin of `cascadeForMemories` (P6.9): how many artifacts
+   * WOULD go — the confirm dialog's honest number. Never mutates.
+   */
+  countForMemories?(tx: Tx, memoryIds: string[]): Promise<number>;
   /**
    * Optional: cascade artifacts keyed by the SOURCE being deleted, not its
    * memories (SEC-4). A reply-draft approval derived from an email lives in
@@ -191,6 +205,11 @@ const countsSchema = z.object({
    * deletion marker (SEC-4; additive — optional so earlier receipts parse
    * unchanged; a count, not an identifier: the sweep ignores it). */
   reply_drafts_redacted: z.int().optional(),
+  /** Chat messages removed with a conversation source (P6.9; additive —
+   * optional so earlier receipts parse unchanged; a count, not an identifier:
+   * the message rows go via the adapter's deleteSource, the sweep verifies
+   * memories/points/objects as ever). */
+  chat_messages_removed: z.int().optional(),
   /** Qdrant point id = memory id (§A.4); duplicated for receipt readability. */
   point_ids: z.array(z.string()),
   object_keys: z.array(z.string()),
@@ -210,6 +229,12 @@ export interface DeletionPreview {
   sourceId: string;
   memoryCount: number;
   objectCount: number;
+  /** Chat messages a conversation deletion removes (P6.9); absent otherwise. */
+  messageCount?: number;
+  /** Enumerated memories the user had explicitly approved — deleted knowingly. */
+  userApprovedCount?: number;
+  /** Tasks whose deriving memory is enumerated — they go with it (0013 r.6). */
+  taskCount?: number;
 }
 
 function assertSourceType(value: string): SourceType {
@@ -254,6 +279,9 @@ export class DeletionSaga {
       );
       let memoryCount = rows.length;
       let objectCount = fileRow ? 1 : 0;
+      let messageCount: number | undefined;
+      let userApprovedCount: number | undefined;
+      let taskCount: number | undefined;
       // Fold in the cascaded members (email: raw + HTML objects, attachment file
       // sources and their memories) so the confirm dialog's numbers are honest.
       if (adapter?.enumerateCascade) {
@@ -271,8 +299,45 @@ export class DeletionSaga {
             .where(eq(fileMetadata.objectKey, fileKey));
           objectCount += exists.length;
         }
+        // Conversation members (P6.9): messages + their memories, and the two
+        // knowing-deletion counts the confirm surfaces (user_approved memories,
+        // tasks that go with their deriving memory).
+        if (cascade.chatSubSourceIds) {
+          messageCount = cascade.chatSubSourceIds.length;
+          const subRows =
+            cascade.chatSubSourceIds.length === 0
+              ? []
+              : await tx
+                  .select({ id: memory.id, status: memory.status })
+                  .from(memory)
+                  .where(
+                    and(
+                      eq(memory.sourceType, 'chat'),
+                      inArray(memory.sourceId, cascade.chatSubSourceIds),
+                    ),
+                  );
+          memoryCount += subRows.length;
+          userApprovedCount = subRows.filter((r) => r.status === 'user_approved').length;
+          taskCount = 0;
+          const subIds = subRows.map((r) => r.id);
+          if (subIds.length > 0) {
+            for (const derived of this.derivedCascades) {
+              if (derived.artifact === 'tasks' && derived.countForMemories) {
+                taskCount += await derived.countForMemories(tx, subIds);
+              }
+            }
+          }
+        }
       }
-      return { sourceType, sourceId, memoryCount, objectCount };
+      return {
+        sourceType,
+        sourceId,
+        memoryCount,
+        objectCount,
+        messageCount,
+        userApprovedCount,
+        taskCount,
+      };
     });
   }
 
@@ -330,6 +395,29 @@ export class DeletionSaga {
           const removedKey = await this.cascadeFileSubSource(tx, principal, fileKey, rows);
           if (removedKey) cascadeObjectKeys.push(removedKey);
         }
+      }
+      // Conversation members (P6.9): every message's chat-derived memories join
+      // the SAME enumeration and receipt. Pending per-message captures are
+      // cancelled first (QS-5); the message rows themselves go with the
+      // adapter's deleteSource below.
+      const chatMessagesRemoved = cascade?.chatSubSourceIds?.length ?? null;
+      if (cascade?.chatSubSourceIds && cascade.chatSubSourceIds.length > 0) {
+        if (this.ingestionGuard) {
+          for (const messageId of cascade.chatSubSourceIds) {
+            await this.ingestionGuard.cancelPending(tx, 'chat', messageId, { waitForRun: false });
+          }
+        }
+        const subRows = await tx
+          .select()
+          .from(memory)
+          .where(
+            and(eq(memory.sourceType, 'chat'), inArray(memory.sourceId, cascade.chatSubSourceIds)),
+          )
+          .for('update');
+        if (subRows.some((r) => r.ownerId !== principal.userId)) {
+          throw new NotFoundException(`source ${sourceType}/${sourceId} not found`);
+        }
+        rows.push(...subRows);
       }
 
       const memoryIds = rows.map((r) => r.id);
@@ -399,6 +487,7 @@ export class DeletionSaga {
         tasks_removed: tasksRemoved,
         chat_messages_redacted: chatMessagesRedacted,
         reply_drafts_redacted: replyDraftsRedacted,
+        ...(chatMessagesRemoved === null ? {} : { chat_messages_removed: chatMessagesRemoved }),
         point_ids: memoryIds,
         object_keys: objectKeys,
         superseded_by_nulled: nulledPointers,
@@ -435,6 +524,7 @@ export class DeletionSaga {
           contradictionsLifted: liftedPartners,
           chatMessagesRedacted,
           replyDraftsRedacted,
+          chatMessagesRemoved,
           // The QS-5 cancellation trace: how pending ingestion was resolved.
           ingestionCancellation: ingestion,
         },

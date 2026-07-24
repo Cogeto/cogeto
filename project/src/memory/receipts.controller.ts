@@ -142,6 +142,7 @@ export class ReceiptsController {
       memoryCount: counts.memory_count,
       objectCount: counts.object_keys.length,
       chatMessagesRedacted: counts.chat_messages_redacted ?? 0,
+      chatMessagesRemoved: counts.chat_messages_removed ?? 0,
       requestedAt: counts.enumerated_at,
       confirmedAt: row.confirmedAt?.toISOString() ?? null,
     };

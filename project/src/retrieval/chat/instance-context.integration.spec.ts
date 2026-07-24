@@ -97,6 +97,7 @@ describe('instance context in chat (integration: real Postgres, scripted gateway
   let userContext: UserContextService;
   let nextMemories: unknown[];
   let chat: ChatService;
+  let conversationId: string;
 
   beforeAll(async () => {
     tdb = await startTestDatabase();
@@ -116,6 +117,8 @@ describe('instance context in chat (integration: real Postgres, scripted gateway
       'Europe/Zagreb', // the instance timezone — the user's override must win
       userContext,
     );
+    // All scripted turns share one conversation (P6.9), like the SPA's thread.
+    conversationId = (await chat.createConversation(owner)).id;
   }, 120_000);
 
   afterAll(async () => {
@@ -142,7 +145,7 @@ describe('instance context in chat (integration: real Postgres, scripted gateway
     nextMemories = [factOf(MEM_ID, 'The migration cutover is planned.')];
 
     const before = new Date();
-    await collect(chat.ask(owner, 'What is due for the migration?'));
+    await collect(chat.ask(owner, 'What is due for the migration?', conversationId));
     const after = new Date();
 
     // Both calls carry a NOW line for the user's zone — not the instance's.
@@ -175,7 +178,7 @@ describe('instance context in chat (integration: real Postgres, scripted gateway
     gateway.streamText = 'Nothing pressing.';
     nextMemories = [factOf(MEM_ID, 'The migration cutover is planned.')];
 
-    await collect(chat.ask(owner, 'What is due for the migration?'));
+    await collect(chat.ask(owner, 'What is due for the migration?', conversationId));
     const answerInput = gateway.streamCalls[0]!;
     expect(answerInput).toContain('NOW: ');
     expect(answerInput).toContain('(Europe/Zagreb)'); // override cleared → instance zone
@@ -191,7 +194,7 @@ describe('instance context in chat (integration: real Postgres, scripted gateway
     gateway.structured = [rewriteOf('Where do I work?')];
     gateway.streamText = 'You have set MVT Solutions as your company in Settings.';
     nextMemories = [];
-    const settingsEvents = await collect(chat.ask(owner, 'Where do I work?'));
+    const settingsEvents = await collect(chat.ask(owner, 'Where do I work?', conversationId));
     const settingsDone = doneOf(settingsEvents);
     expect(settingsDone.content).toContain('MVT Solutions');
     expect(settingsDone.content).not.toContain('{{cite:');
@@ -201,7 +204,7 @@ describe('instance context in chat (integration: real Postgres, scripted gateway
     gateway.structured = [rewriteOf('Who leads the migration?')];
     gateway.streamText = 'Ana leads the migration [F1].';
     nextMemories = [factOf(MEM_ID, 'Ana leads the migration.')];
-    const citedEvents = await collect(chat.ask(owner, 'Who leads the migration?'));
+    const citedEvents = await collect(chat.ask(owner, 'Who leads the migration?', conversationId));
     expect(doneOf(citedEvents).content).toContain(`{{cite:${MEM_ID}}}`);
   });
 
@@ -211,7 +214,7 @@ describe('instance context in chat (integration: real Postgres, scripted gateway
     gateway.streamText = 'Nothing due.';
     nextMemories = [factOf(MEM_ID, 'The workshop is planned.')];
 
-    await collect(chat.ask(owner, 'What is due this week?'));
+    await collect(chat.ask(owner, 'What is due this week?', conversationId));
     const answerInput = gateway.streamCalls[0]!;
     expect(answerInput).toContain("LANGUAGE: answer in the language of the user's message");
     expect(answerInput).toContain('use Croatian');
@@ -223,7 +226,7 @@ describe('instance context in chat (integration: real Postgres, scripted gateway
     gateway.streamText = 'Ništa hitno.';
     nextMemories = [factOf(MEM_ID, 'The workshop is planned.')];
 
-    await collect(chat.ask(owner, 'What is due this week?'));
+    await collect(chat.ask(owner, 'What is due this week?', conversationId));
     expect(gateway.streamCalls[0]!).toContain('LANGUAGE: always answer in Croatian');
   });
 
@@ -233,7 +236,7 @@ describe('instance context in chat (integration: real Postgres, scripted gateway
     gateway.streamText = 'Plan je spreman.';
     nextMemories = [factOf(MEM_ID, 'The workshop is planned.')];
 
-    await collect(chat.ask(owner, 'Can you sažmi the workshop plan?'));
+    await collect(chat.ask(owner, 'Can you sažmi the workshop plan?', conversationId));
     expect(gateway.streamCalls[0]!).toContain('when it is mixed or ambiguous, use Croatian');
   });
 
@@ -250,7 +253,7 @@ describe('instance context in chat (integration: real Postgres, scripted gateway
     });
     gateway.structured = [rewriteOf('Tko vodi projekt Jadran?')];
     nextMemories = [];
-    const events = await collect(chat.ask(owner, 'Tko vodi projekt Jadran?'));
+    const events = await collect(chat.ask(owner, 'Tko vodi projekt Jadran?', conversationId));
     expect(doneOf(events).content).toContain('O tome još nemam ništa');
     expect(gateway.streamCalls).toHaveLength(0); // no model call, as before
   });

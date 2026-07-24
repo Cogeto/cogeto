@@ -15,6 +15,10 @@ const noteSchema = z.object({
   daysAgo: z.int().min(0).max(400),
   role: z.string().min(1),
   text: z.string().min(1).max(20_000),
+  /** Chat items only (P6.9): the titled conversation this turn belongs to —
+   * the sidebar demos with two or three named threads. Items sharing a title
+   * share the conversation. */
+  conversation: z.string().min(1).max(120).optional(),
 });
 
 const documentSchema = z.object({

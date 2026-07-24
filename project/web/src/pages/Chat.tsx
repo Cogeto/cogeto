@@ -5,8 +5,10 @@ import type { AnswerSegment, ChatFactDto, ChatResearchOffer, ResearchRunDto } fr
 import { mapMarkersToCitations, mapUnsourcedMarkers, scanAnswer } from '@cogeto/shared';
 import {
   askChat,
+  createConversation,
   fetchChatCaptureStatus,
   fetchChatMessages,
+  fetchConversations,
   fetchResearchRun,
   proposeResearch,
   rememberChatMessage,
@@ -14,6 +16,13 @@ import {
 import type { Session } from '../auth/oidc';
 import { ChatMarkdown } from '../components/ChatMarkdown';
 import { CitationChip } from '../components/CitationChip';
+import { ConversationSidebar } from '../components/ConversationSidebar';
+import {
+  chatLink,
+  conversationLabel,
+  initialConversationId,
+  parseChatLink,
+} from '../components/conversations-model';
 import { MemoryDrawer } from '../components/MemoryDrawer';
 import { ResearchInline } from '../components/ResearchInline';
 import { Shell } from '../components/Shell';
@@ -327,10 +336,29 @@ function buildTurns(history: ChatMessage[]): Turn[] {
 
 export function Chat({ session }: { session: Session }) {
   const queryClient = useQueryClient();
-  const { data: history, isPending } = useQuery({
-    queryKey: ['chat-messages'],
-    queryFn: () => fetchChatMessages(session),
+
+  // The conversation containers (P6.9): the deep link (?c=) wins, else the
+  // most recent conversation; a brand-new instance starts with none and the
+  // first send creates one.
+  const [link] = useState(() => parseChatLink(window.location.search));
+  const [activeId, setActiveId] = useState<string | null>(link.conversationId);
+  const [focusMessageId, setFocusMessageId] = useState<string | null>(link.messageId);
+  const { data: conversations } = useQuery({
+    queryKey: ['conversations'],
+    queryFn: () => fetchConversations(session),
   });
+  useEffect(() => {
+    if (activeId !== null || !conversations) return;
+    const initial = initialConversationId(conversations, link.conversationId);
+    if (initial) setActiveId(initial);
+  }, [activeId, conversations, link.conversationId]);
+
+  const { data: page, isPending } = useQuery({
+    queryKey: ['chat-messages', activeId],
+    queryFn: () => fetchChatMessages(session, activeId!),
+    enabled: activeId !== null,
+  });
+  const history = page?.items;
 
   // A ?q= param prefills the box — the timeline's "Explain in chat" hand-off
   // lands here with the question ready to send (never auto-sent).
@@ -351,13 +379,53 @@ export function Chat({ session }: { session: Session }) {
   const [openMemoryId, setOpenMemoryId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  /** The in-flight stream's abort handle: switching conversations detaches it. */
+  const streamRef = useRef<AbortController | null>(null);
 
   // Pin the view to the latest message: scroll the message pane itself (never
   // the page — the composer stays docked) on history and stream updates.
+  // A deep-linked message (?m=) wins once: scroll to it and highlight instead.
   useEffect(() => {
+    if (focusMessageId && history) {
+      const target = document.getElementById(`msg-${focusMessageId}`);
+      if (target) {
+        target.scrollIntoView({ block: 'center' });
+        target.classList.add('ring-2', 'ring-brand-teal/50', 'rounded-lg');
+        window.setTimeout(
+          () => target.classList.remove('ring-2', 'ring-brand-teal/50', 'rounded-lg'),
+          2500,
+        );
+        setFocusMessageId(null);
+        if (activeId) window.history.replaceState(null, '', chatLink(activeId));
+        return;
+      }
+    }
     const pane = scrollRef.current;
     if (pane) pane.scrollTop = pane.scrollHeight;
-  }, [history, liveText, liveQuestion, inlineRun]);
+  }, [history, liveText, liveQuestion, inlineRun, focusMessageId, activeId]);
+
+  // Keep the URL on the active conversation so reloads and links land right.
+  useEffect(() => {
+    if (activeId && !focusMessageId) window.history.replaceState(null, '', chatLink(activeId));
+  }, [activeId, focusMessageId]);
+
+  /** Switching threads (P6.9): detach any live stream, clear live state, load
+   * the target thread in place. The detached turn still lands server-side in
+   * the conversation it was sent to. */
+  const switchConversation = (id: string) => {
+    if (id === activeId) return;
+    streamRef.current?.abort();
+    streamRef.current = null;
+    setBusy(false);
+    setLiveQuestion(null);
+    setLiveText('');
+    setLiveFacts([]);
+    setOffer(null);
+    setInlineRun(null);
+    setFailed(false);
+    setFailMessage(null);
+    setActiveId(id);
+  };
 
   // Auto-grow the composer up to a cap; collapses back when the draft is cleared.
   useEffect(() => {
@@ -375,6 +443,20 @@ export function Chat({ session }: { session: Session }) {
   const send = async (text?: string, opts: { suppressOffer?: boolean } = {}) => {
     const content = (text ?? draft).trim();
     if (!content || busy) return;
+    // The first send on an empty instance creates the conversation it lands in.
+    let conversationId = activeId;
+    if (!conversationId) {
+      try {
+        const created = await createConversation(session);
+        conversationId = created.id;
+        setActiveId(created.id);
+        void queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      } catch (error) {
+        setFailed(true);
+        setFailMessage(error instanceof Error ? error.message : null);
+        return;
+      }
+    }
     setBusy(true);
     setFailed(false);
     setFailMessage(null);
@@ -383,8 +465,10 @@ export function Chat({ session }: { session: Session }) {
     setLiveText('');
     setLiveFacts([]);
     setOffer(null);
+    const controller = new AbortController();
+    streamRef.current = controller;
     try {
-      await askChat(session, content, (event) => {
+      await askChat(session, content, conversationId, (event) => {
         if (event.type === 'sources') setLiveFacts(event.facts);
         else if (event.type === 'token') setLiveText((prev) => prev + event.text);
         else if (event.type === 'done') {
@@ -417,12 +501,20 @@ export function Chat({ session }: { session: Session }) {
         }
       });
     } catch (error) {
-      // A pre-stream 429 (rate limit / too many streams) throws with the
-      // server's message; show it verbatim.
-      setFailed(true);
-      setFailMessage(error instanceof Error ? error.message : null);
+      // A detached stream (conversation switch) is intentional — not a failure.
+      if (!controller.signal.aborted) {
+        // A pre-stream 429 (rate limit / too many streams) throws with the
+        // server's message; show it verbatim.
+        setFailed(true);
+        setFailMessage(error instanceof Error ? error.message : null);
+      }
     }
-    await queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
+    if (streamRef.current === controller) streamRef.current = null;
+    if (controller.signal.aborted) return;
+    await queryClient.invalidateQueries({ queryKey: ['chat-messages', conversationId] });
+    // The sidebar's preview + recency move; the auto-title lands moments later
+    // via the worker, picked up by the sidebar's refetch.
+    void queryClient.invalidateQueries({ queryKey: ['conversations'] });
     setLiveQuestion(null);
     setLiveText('');
     setLiveFacts([]);
@@ -430,178 +522,232 @@ export function Chat({ session }: { session: Session }) {
   };
 
   const turns = history ? buildTurns(history as ChatMessage[]) : [];
-  const empty = !isPending && turns.length === 0 && !liveQuestion;
+  const loading = activeId !== null && isPending;
+  const empty = !loading && turns.length === 0 && !liveQuestion;
 
   return (
     <Shell session={session} title="Chat" active="chat" fullHeight>
-      <section className="flex min-h-0 flex-1 flex-col">
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl px-4 py-4">
-            {isPending && <p className="text-sm text-slate-400">Loading conversation…</p>}
-
-            {empty && (
-              <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 text-center">
-                <div className="grid h-14 w-14 place-items-center rounded-2xl border border-brand-teal/30 bg-brand-teal/10 text-brand-teal-ink dark:text-brand-teal">
-                  <CogetoMark />
-                </div>
-                <div className="max-w-md">
-                  <h2 className="text-2xl font-semibold tracking-tight text-slate-800">
-                    Ask your memory.
-                  </h2>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                    Every answer shows, sentence by sentence, what Cogeto can prove, and honestly
-                    marks what it can’t. The web is searched only when you ask and approve.
-                  </p>
-                </div>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {SUGGESTED_PROMPTS.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => prefill(s)}
-                      className="rounded-full border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:border-brand-teal hover:text-brand-teal-ink dark:hover:text-brand-teal"
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-10">
-              {turns.map((turn) => (
-                <article key={turn.key}>
-                  {turn.question && (
-                    <div>
-                      <AskHeading>{turn.question.content}</AskHeading>
-                      <RememberAction session={session} messageId={turn.question.id} />
-                    </div>
-                  )}
-                  {turn.answer && (
-                    <AnswerBlock>
-                      <MessageBody
-                        session={session}
-                        content={turn.answer.content}
-                        onOpenMemory={setOpenMemoryId}
-                      />
-                    </AnswerBlock>
-                  )}
-                </article>
+      <div className="flex min-h-0 flex-1">
+        {/* The conversations sidebar (P6.9, decision 0056) — desktop column. */}
+        <div className="hidden min-h-0 md:flex">
+          <ConversationSidebar
+            session={session}
+            activeId={activeId}
+            onSelect={switchConversation}
+            onCreated={(created) => switchConversation(created.id)}
+            onDeleted={(deletedId) => {
+              if (deletedId !== activeId) return;
+              const remaining = (conversations ?? []).filter((c) => c.id !== deletedId);
+              setActiveId(initialConversationId(remaining, null));
+            }}
+          />
+        </div>
+        <section className="flex min-h-0 flex-1 flex-col">
+          {/* Narrow screens: a compact picker in place of the sidebar column. */}
+          <div className="flex shrink-0 items-center gap-2 px-4 pb-2 md:hidden">
+            <label className="sr-only" htmlFor="conversation-picker">
+              Conversation
+            </label>
+            <select
+              id="conversation-picker"
+              value={activeId ?? ''}
+              onChange={(e) => switchConversation(e.target.value)}
+              className="min-w-0 flex-1 truncate rounded-lg border border-slate-300 bg-surface px-2 py-1.5 text-sm text-slate-700"
+            >
+              {(conversations ?? []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {conversationLabel(c)}
+                  {c.archived ? ' (archived)' : ''}
+                </option>
               ))}
+            </select>
+            <button
+              type="button"
+              onClick={() =>
+                void createConversation(session).then((created) => {
+                  void queryClient.invalidateQueries({ queryKey: ['conversations'] });
+                  switchConversation(created.id);
+                })
+              }
+              className="shrink-0 rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm text-slate-600 hover:border-brand-teal hover:text-brand-teal-ink dark:hover:text-brand-teal"
+            >
+              New
+            </button>
+          </div>
+          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-3xl px-4 py-4">
+              {loading && <p className="text-sm text-slate-400">Loading conversation…</p>}
 
-              {liveQuestion && (
-                <article>
-                  <AskHeading>{liveQuestion}</AskHeading>
-                  <AnswerBlock>
-                    <div aria-live="polite" aria-busy={!liveText}>
-                      {liveText ? (
-                        <MessageBody
-                          session={session}
-                          content={liveText}
-                          facts={liveFacts}
-                          onOpenMemory={setOpenMemoryId}
-                        />
-                      ) : (
-                        <ThinkingDots
-                          label={
-                            liveFacts.length > 0 ? 'Answering from your memories…' : 'Thinking…'
-                          }
-                        />
-                      )}
-                    </div>
-                  </AnswerBlock>
-                </article>
+              {empty && (
+                <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 text-center">
+                  <div className="grid h-14 w-14 place-items-center rounded-2xl border border-brand-teal/30 bg-brand-teal/10 text-brand-teal-ink dark:text-brand-teal">
+                    <CogetoMark />
+                  </div>
+                  <div className="max-w-md">
+                    <h2 className="text-2xl font-semibold tracking-tight text-slate-800">
+                      Ask your memory.
+                    </h2>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                      Every answer shows, sentence by sentence, what Cogeto can prove, and honestly
+                      marks what it can’t. The web is searched only when you ask and approve.
+                    </p>
+                    <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                      This is one conversation: a workspace for one thread of work. Anything
+                      captured here becomes memory and answers in every other conversation too.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {SUGGESTED_PROMPTS.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => prefill(s)}
+                        className="rounded-full border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:border-brand-teal hover:text-brand-teal-ink dark:hover:text-brand-teal"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
 
-              {inlineRun && (
-                <ResearchInline
-                  key={inlineRun.id}
-                  session={session}
-                  run={inlineRun}
-                  onConclude={(topic) => {
-                    setInlineRun(null);
-                    void queryClient.invalidateQueries({ queryKey: ['research-runs'] });
-                    void send(topic, { suppressOffer: true });
-                  }}
-                  onClose={() => {
-                    setInlineRun(null);
-                    void queryClient.invalidateQueries({ queryKey: ['research-runs'] });
-                  }}
-                />
-              )}
-              {offer && !liveQuestion && !inlineRun && (
-                <ResearchOfferChip
-                  session={session}
-                  offer={offer}
-                  onProposed={(run) => {
-                    setOffer(null);
-                    setInlineRun(run);
-                  }}
-                />
-              )}
-              {failed && (
-                <p role="alert" className="text-sm text-red-700 dark:text-red-300">
-                  {failMessage ?? 'That answer didn’t come through. Try asking again.'}
-                </p>
-              )}
+              <div className="space-y-10">
+                {turns.map((turn) => (
+                  <article key={turn.key}>
+                    {turn.question && (
+                      <div id={`msg-${turn.question.id}`}>
+                        <AskHeading>{turn.question.content}</AskHeading>
+                        <RememberAction session={session} messageId={turn.question.id} />
+                      </div>
+                    )}
+                    {turn.answer && (
+                      <div id={`msg-${turn.answer.id}`}>
+                        <AnswerBlock>
+                          <MessageBody
+                            session={session}
+                            content={turn.answer.content}
+                            onOpenMemory={setOpenMemoryId}
+                          />
+                        </AnswerBlock>
+                      </div>
+                    )}
+                  </article>
+                ))}
+
+                {liveQuestion && (
+                  <article>
+                    <AskHeading>{liveQuestion}</AskHeading>
+                    <AnswerBlock>
+                      <div aria-live="polite" aria-busy={!liveText}>
+                        {liveText ? (
+                          <MessageBody
+                            session={session}
+                            content={liveText}
+                            facts={liveFacts}
+                            onOpenMemory={setOpenMemoryId}
+                          />
+                        ) : (
+                          <ThinkingDots
+                            label={
+                              liveFacts.length > 0 ? 'Answering from your memories…' : 'Thinking…'
+                            }
+                          />
+                        )}
+                      </div>
+                    </AnswerBlock>
+                  </article>
+                )}
+
+                {inlineRun && (
+                  <ResearchInline
+                    key={inlineRun.id}
+                    session={session}
+                    run={inlineRun}
+                    onConclude={(topic) => {
+                      setInlineRun(null);
+                      void queryClient.invalidateQueries({ queryKey: ['research-runs'] });
+                      void send(topic, { suppressOffer: true });
+                    }}
+                    onClose={() => {
+                      setInlineRun(null);
+                      void queryClient.invalidateQueries({ queryKey: ['research-runs'] });
+                    }}
+                  />
+                )}
+                {offer && !liveQuestion && !inlineRun && (
+                  <ResearchOfferChip
+                    session={session}
+                    offer={offer}
+                    onProposed={(run) => {
+                      setOffer(null);
+                      setInlineRun(run);
+                    }}
+                  />
+                )}
+                {failed && (
+                  <p role="alert" className="text-sm text-red-700 dark:text-red-300">
+                    {failMessage ?? 'That answer didn’t come through. Try asking again.'}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Docked command-bar composer */}
-        <div className="shrink-0 pt-3">
-          <div className="mx-auto max-w-3xl px-4">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void send();
-              }}
-            >
-              <label className="sr-only" htmlFor="chat-input">
-                Ask a question
-              </label>
-              <div className="flex items-end gap-2.5 rounded-2xl border border-slate-300 bg-surface px-4 py-2.5 shadow-sm transition-shadow focus-within:border-brand-teal focus-within:shadow-glow">
-                <span className="self-center text-brand-teal" aria-hidden="true">
-                  <CogetoMark />
-                </span>
-                <textarea
-                  id="chat-input"
-                  ref={inputRef}
-                  value={draft}
-                  rows={1}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      void send();
-                    }
-                  }}
-                  placeholder="Ask your memory…"
-                  className="max-h-40 flex-1 resize-none self-center bg-transparent py-1 text-[0.95rem] leading-relaxed text-slate-800 outline-none placeholder:text-slate-400"
-                />
-                <button
-                  type="submit"
-                  disabled={busy || !draft.trim()}
-                  aria-label="Send"
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-teal text-white transition-transform hover:-translate-y-px hover:brightness-105 disabled:opacity-40"
-                >
-                  {busy ? (
-                    <span
-                      className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <SendIcon />
-                  )}
-                </button>
-              </div>
-              <p className="mt-2 text-center font-mono text-[0.66rem] tracking-[0.04em] text-slate-400">
-                Enter to send · Shift+Enter for a new line · every claim shows what it can prove
-              </p>
-            </form>
+          {/* Docked command-bar composer */}
+          <div className="shrink-0 pt-3">
+            <div className="mx-auto max-w-3xl px-4">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void send();
+                }}
+              >
+                <label className="sr-only" htmlFor="chat-input">
+                  Ask a question
+                </label>
+                <div className="flex items-end gap-2.5 rounded-2xl border border-slate-300 bg-surface px-4 py-2.5 shadow-sm transition-shadow focus-within:border-brand-teal focus-within:shadow-glow">
+                  <span className="self-center text-brand-teal" aria-hidden="true">
+                    <CogetoMark />
+                  </span>
+                  <textarea
+                    id="chat-input"
+                    ref={inputRef}
+                    value={draft}
+                    rows={1}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        void send();
+                      }
+                    }}
+                    placeholder="Ask your memory…"
+                    className="max-h-40 flex-1 resize-none self-center bg-transparent py-1 text-[0.95rem] leading-relaxed text-slate-800 outline-none placeholder:text-slate-400"
+                  />
+                  <button
+                    type="submit"
+                    disabled={busy || !draft.trim()}
+                    aria-label="Send"
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-teal text-white transition-transform hover:-translate-y-px hover:brightness-105 disabled:opacity-40"
+                  >
+                    {busy ? (
+                      <span
+                        className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <SendIcon />
+                    )}
+                  </button>
+                </div>
+                <p className="mt-2 text-center font-mono text-[0.66rem] tracking-[0.04em] text-slate-400">
+                  Enter to send · Shift+Enter for a new line · every claim shows what it can prove
+                </p>
+              </form>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
       {openMemoryId && (
         <MemoryDrawer
           session={session}

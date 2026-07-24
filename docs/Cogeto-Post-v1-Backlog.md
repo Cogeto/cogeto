@@ -177,6 +177,28 @@ SearXNG digest-pinned), and every app boot logs one exact-truth
 `Capabilities: ...` banner line. Attention-feed integration deliberately
 deferred (noted in the capabilities notes).
 
+**Multiple conversations (P6.9): DELIVERED** (2026-07-24, issues
+#248/#249/#250, decision 0056, migration 0031, prompt
+conversation_title/v0001; notes in docs/notes/conversations.md). Chat gained
+conversation containers under the governing sentence "memory is the
+continuity, conversations are workspaces": a sidebar to create, switch,
+rename inline, archive and delete threads; context assembly (rewriter,
+router, answer) reads turns from the CURRENT conversation only, while
+captured knowledge answers in every thread through retrieval as always.
+Existing history migrated into one "Earlier conversation" container per user
+with all chat provenance resolving. Auto-titles come from one pipeline-tier
+worker call after the first exchange (conservative and plain; a manual rename
+wins forever), untitled threads read "New conversation". Deleting a
+conversation is a source deletion through the saga, extended by enumeration
+only ('chat_conversation' + SourceCascade.chatSubSourceIds): one signed
+receipt counts the messages and the derived memories, the confirm dialog
+states those numbers with user-approved and task-deriving callouts, and
+archive is named as the safe alternative. Deep links
+(/chat?c=…&m=…) open the right thread at the right message; the source
+drawer frames chat provenance with the conversation title. Ana's sandbox
+seeds three titled conversations; the chat eval harness runs every case
+within a conversation container.
+
 **Surface polish (P6.8): DELIVERED** (2026-07-23, issues #213/#214, decision
 0048, no migration; notes in docs/notes/surface-polish.md). Dark mode as a
 first-class, default theme (one token set, two themes; re-derived status/chart

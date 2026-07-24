@@ -241,9 +241,18 @@ export function SourceDrawer({
           {chatQuery.data && (
             <div className="space-y-2">
               <p className="text-xs text-slate-500">
-                Remembered from chat. The highlighted message is the source; nearby turns are shown
-                for context.
+                From your conversation:{' '}
+                <span className="font-semibold text-slate-700">
+                  {chatQuery.data.conversationTitle ?? 'New conversation'}
+                </span>
+                . The highlighted message is the source; nearby turns are shown for context.
               </p>
+              <a
+                href={`/chat?c=${chatQuery.data.conversationId}&m=${encodeURIComponent(sourceId)}`}
+                className="inline-block text-xs font-semibold text-brand-teal-ink underline underline-offset-2 hover:opacity-80 dark:text-brand-teal"
+              >
+                Open in the conversation
+              </a>
               {chatQuery.data.turns.map((turn) => (
                 <div
                   key={turn.id}

@@ -32,7 +32,12 @@ import {
   EmailAuthorshipBackfill,
   EMAIL_REFUSAL_RETENTION_CRONTAB,
 } from '../connectors/index';
-import { ANSWER_PROMPT, QUERY_REWRITE_PROMPT } from '../retrieval/index';
+import {
+  ANSWER_PROMPT,
+  CONVERSATION_TITLE_PROMPT,
+  ConversationTitler,
+  QUERY_REWRITE_PROMPT,
+} from '../retrieval/index';
 import {
   assertLocalRuntimeReady,
   loadPrompt,
@@ -96,6 +101,7 @@ async function main(): Promise<void> {
     ANSWER_PROMPT,
     QUERY_REWRITE_PROMPT,
     CONTEXT_SUGGEST_PROMPT,
+    CONVERSATION_TITLE_PROMPT,
   ]) {
     const prompt = await loadPrompt(ref.family, ref.version);
     await recordPromptVersion(db, prompt);
@@ -136,6 +142,7 @@ async function main(): Promise<void> {
     passportExecutor: context.get(PassportExportExecutor),
     allowlist: context.get(EmailAllowlistService),
     authorshipBackfill: context.get(EmailAuthorshipBackfill),
+    conversationTitler: context.get(ConversationTitler),
     objects,
     gateway,
     log: (event, message) => logger.info(event, message),

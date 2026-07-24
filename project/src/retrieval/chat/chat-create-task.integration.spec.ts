@@ -126,9 +126,20 @@ describe('create a task from chat (decision 0038; real Postgres + Qdrant)', () =
     return { tasksEngine, chat, pipeline };
   };
 
+  // One conversation per principal (P6.9): asks land in it like the SPA's.
+  const conversationIds = new Map<string, string>();
   const ask = async (chat: ChatService, principal: Principal, content: string) => {
+    let conversationId = conversationIds.get(principal.userId);
+    if (!conversationId) {
+      conversationId = (await chat.createConversation(principal)).id;
+      conversationIds.set(principal.userId, conversationId);
+    }
     let answer = '';
-    for await (const event of chat.ask(principal, content) as AsyncIterable<ChatStreamEvent>) {
+    for await (const event of chat.ask(
+      principal,
+      content,
+      conversationId,
+    ) as AsyncIterable<ChatStreamEvent>) {
       if (event.type === 'done') answer = event.content;
     }
     return answer;

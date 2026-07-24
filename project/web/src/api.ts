@@ -20,7 +20,8 @@ import type {
   EmailReplyDraftView,
   EmailSourceDto,
   ChatContextDto,
-  ChatMessageDto,
+  ChatMessagePage,
+  ConversationDto,
   ChatRememberedDto,
   ChatStreamEvent,
   ContradictionDto,
@@ -498,8 +499,29 @@ export const fetchPassportExport = (session: Session, id: string): Promise<Passp
 export const fetchPassportDownload = (session: Session, id: string): Promise<PassportDownloadDto> =>
   apiGet(`/api/passport/exports/${id}/download`, session);
 
-export const fetchChatMessages = (session: Session): Promise<ChatMessageDto[]> =>
-  apiGet('/api/chat/messages', session);
+// Conversations (P6.9, decision 0056): the sidebar's containers. Memory is the
+// continuity, conversations are workspaces — deleting one is a SOURCE deletion
+// (deleteSource with type 'chat_conversation'), never a chat route.
+export const fetchConversations = (session: Session): Promise<ConversationDto[]> =>
+  apiGet('/api/chat/conversations', session);
+export const createConversation = (session: Session): Promise<ConversationDto> =>
+  apiPost('/api/chat/conversations', {}, session);
+export const renameConversation = (
+  session: Session,
+  id: string,
+  title: string,
+): Promise<ConversationDto> => apiPut(`/api/chat/conversations/${id}/title`, { title }, session);
+export const setConversationArchived = (
+  session: Session,
+  id: string,
+  archived: boolean,
+): Promise<ConversationDto> =>
+  apiPut(`/api/chat/conversations/${id}/archived`, { archived }, session);
+export const fetchChatMessages = (
+  session: Session,
+  conversationId: string,
+): Promise<ChatMessagePage> =>
+  apiGet(`/api/chat/conversations/${conversationId}/messages`, session);
 
 // Chat-derived memory capture (O2-C, decision 0021): "remember this" on a user
 // message routes it through the pipeline (source_type 'chat').
@@ -518,7 +540,9 @@ export const fetchChatContext = (session: Session, id: string): Promise<ChatCont
 export async function askChat(
   session: Session,
   content: string,
+  conversationId: string,
   onEvent: (event: ChatStreamEvent) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
   const response = await fetch('/api/chat', {
     method: 'POST',
@@ -526,7 +550,10 @@ export async function askChat(
       authorization: `Bearer ${session.accessToken}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, conversationId }),
+    // Switching conversations mid-stream detaches cleanly (P6.9): the message
+    // still lands server-side in the conversation it was sent to.
+    signal,
   });
   // A 429 (rate limit / too many concurrent streams, FIX-2) arrives BEFORE the
   // stream starts — surface the server's message as the UI copy.

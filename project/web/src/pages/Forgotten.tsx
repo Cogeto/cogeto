@@ -44,7 +44,10 @@ function ReceiptStatus({ receipt }: { receipt: ReceiptListItem }) {
 }
 
 function sourceLabel(receipt: ReceiptListItem): string {
-  const type = receipt.sourceType.replace('_', ' ');
+  const type =
+    receipt.sourceType === 'chat_conversation'
+      ? 'conversation'
+      : receipt.sourceType.replace('_', ' ');
   const id = receipt.sourceId.length > 24 ? `${receipt.sourceId.slice(0, 24)}…` : receipt.sourceId;
   return `${type} · ${id}`;
 }
@@ -337,6 +340,10 @@ export function Forgotten({ session }: { session: Session }) {
                       {receipt.memoryCount} memor{receipt.memoryCount === 1 ? 'y' : 'ies'} ·{' '}
                       {receipt.memoryCount} vector{receipt.memoryCount === 1 ? '' : 's'} ·{' '}
                       {receipt.objectCount} file{receipt.objectCount === 1 ? '' : 's'}
+                      {receipt.chatMessagesRemoved > 0 &&
+                        ` · ${receipt.chatMessagesRemoved} message${
+                          receipt.chatMessagesRemoved === 1 ? '' : 's'
+                        }`}
                       {receipt.chatMessagesRedacted > 0 &&
                         ` · ${receipt.chatMessagesRedacted} chat answer${
                           receipt.chatMessagesRedacted === 1 ? '' : 's'

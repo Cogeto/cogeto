@@ -18,6 +18,9 @@ const principal: Principal = {
 };
 const req = () => ({ principal }) as never;
 
+/** A valid uuid for the (P6.9) conversation the fake asks land in. */
+const CONV = '00000000-0000-4000-8000-0000000000c0';
+
 function fakeResponse(): Response & { events: ChatStreamEvent[]; ended: boolean } {
   const events: ChatStreamEvent[] = [];
   const res = {
@@ -56,6 +59,7 @@ describe('chat SSE limits (QS-14)', () => {
   it('caps concurrent streams per principal (429 before the stream starts)', async () => {
     const gate = deferred();
     const chat = {
+      async assertConversation() {},
       async *ask() {
         await gate.promise; // stream #1 hangs open
         yield { type: 'token', text: 'x' } as ChatStreamEvent;
@@ -64,9 +68,11 @@ describe('chat SSE limits (QS-14)', () => {
     const controller = new ChatController(chat, limits({ maxConcurrentPerPrincipal: 1 }));
 
     // Stream #1 opens and holds a slot (floating — it stays inside the loop).
-    const first = controller.ask(req(), { content: 'q1' }, fakeResponse());
+    const first = controller.ask(req(), { content: 'q1', conversationId: CONV }, fakeResponse());
     // Stream #2 must be rejected with a 429 before any header is sent.
-    await expect(controller.ask(req(), { content: 'q2' }, fakeResponse())).rejects.toMatchObject({
+    await expect(
+      controller.ask(req(), { content: 'q2', conversationId: CONV }, fakeResponse()),
+    ).rejects.toMatchObject({
       status: 429,
     });
 
@@ -77,6 +83,7 @@ describe('chat SSE limits (QS-14)', () => {
   it('aborts an over-long stream with a timeout error event', async () => {
     const chat = {
       // Never yields — the max-duration timer must fire and abort.
+      async assertConversation() {},
       async *ask() {
         await new Promise(() => undefined);
         yield { type: 'token', text: 'never' } as ChatStreamEvent;
@@ -87,7 +94,7 @@ describe('chat SSE limits (QS-14)', () => {
       limits({ idleTimeoutSeconds: 0.05, maxDurationSeconds: 0.05 }),
     );
     const res = fakeResponse();
-    await controller.ask(req(), { content: 'q' }, res);
+    await controller.ask(req(), { content: 'q', conversationId: CONV }, res);
 
     expect(res.ended).toBe(true);
     const error = res.events.find((e) => e.type === 'error');
@@ -97,13 +104,16 @@ describe('chat SSE limits (QS-14)', () => {
 
   it('releases the slot after a stream ends, so the next one is admitted', async () => {
     const chat = {
+      async assertConversation() {},
       async *ask() {
         yield { type: 'token', text: 'done' } as ChatStreamEvent;
       },
     } as unknown as ChatService;
     const controller = new ChatController(chat, limits({ maxConcurrentPerPrincipal: 1 }));
-    await controller.ask(req(), { content: 'q1' }, fakeResponse());
+    await controller.ask(req(), { content: 'q1', conversationId: CONV }, fakeResponse());
     // The first stream completed and freed the slot — this must not 429.
-    await expect(controller.ask(req(), { content: 'q2' }, fakeResponse())).resolves.toBeUndefined();
+    await expect(
+      controller.ask(req(), { content: 'q2', conversationId: CONV }, fakeResponse()),
+    ).resolves.toBeUndefined();
   });
 });
