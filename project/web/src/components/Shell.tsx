@@ -93,7 +93,15 @@ export function Shell({
       />
       <div className={fullHeight ? 'flex h-screen min-h-0 flex-1 flex-col' : 'flex-1'}>
         <header className="shrink-0 border-b border-slate-200 bg-surface">
-          <div className={`${COL} flex items-center gap-2 px-6 py-3.5`}>
+          {/* The header tops its content: full-height pages (chat) use the same
+              narrow, centered column as their content, so the breadcrumb sits
+              directly above the conversation instead of hanging off to the left
+              (P6.9). Other pages fill the wide column, where it already aligns. */}
+          <div
+            className={`flex items-center gap-2 py-3.5 ${
+              fullHeight ? 'mx-auto w-full max-w-3xl px-4' : `${COL} px-6`
+            }`}
+          >
             {/* A calm mono breadcrumb (P6.9): Cogeto · <Page>, left-aligned with
                 the content column. */}
             <h1 className="font-mono text-[0.72rem] uppercase tracking-[0.14em]">
