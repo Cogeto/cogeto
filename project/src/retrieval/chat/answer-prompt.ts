@@ -9,11 +9,28 @@ import type { RetrievalMode } from '../retrieval.service';
  * The answer prompt family (§B.7): versioned artifact in project/prompts/answer,
  * registered on worker boot alongside the ingestion families.
  */
-export const ANSWER_PROMPT = { family: 'answer', version: 'v0005' } as const;
+export const ANSWER_PROMPT = { family: 'answer', version: 'v0006' } as const;
 
 /** The zero-open-loops path (F3-B): a true "all clear", not a data gap. */
 export const NOTHING_OPEN =
   'Nothing is still open — every commitment on record is done or dismissed.';
+
+/**
+ * Localized forms of the two deterministic chat replies (decision 0052): a
+ * deterministic string cannot mirror the question's language, so it follows
+ * the anchor — the user's preferred language.
+ */
+export function nothingOpen(lang: 'en' | 'hr'): string {
+  return lang === 'hr'
+    ? 'Ništa više nije otvoreno — svaka zabilježena obveza je dovršena ili odbačena.'
+    : NOTHING_OPEN;
+}
+
+export function nothingOnRecord(lang: 'en' | 'hr'): string {
+  return lang === 'hr'
+    ? 'O tome još nemam ništa. Ako to zabilježiš kao bilješku na stranici Memories, zapamtit ću i moći odgovoriti sljedeći put.'
+    : NOTHING_ON_RECORD;
+}
 
 export interface AnswerTemporalContext {
   temporal?: TemporalIntent;
@@ -26,6 +43,12 @@ export interface AnswerTemporalContext {
    * Memory-first stands: provided facts still ground and win.
    */
   knowledge?: boolean;
+  /**
+   * The rendered now-block (P6.6, decision 0051): NOW + USER CONTEXT +
+   * LANGUAGE lines, built by infrastructure's buildContextBlock. Prepended
+   * before MODE; absent means the block simply does not appear.
+   */
+  context?: string;
 }
 
 /** The zero-retrieval path: no facts, no generation from thin air. */
@@ -66,6 +89,7 @@ export function buildAnswerInput(
   });
 
   const lines = [
+    ...(extras.context ? [extras.context, ''] : []),
     `MODE: ${mode}${extras.temporal ? ` (${extras.temporal.kind})` : ''}`,
     '',
     extras.knowledge
@@ -126,11 +150,24 @@ export function buildAnswerInput(
  * for tone, the turn itself. The same answer artifact serves it — MODE gates
  * the behavior.
  */
-export function buildSmallTalkInput(history: ConversationTurn[], question: string): string {
+export function buildSmallTalkInput(
+  history: ConversationTurn[],
+  question: string,
+  context?: string,
+): string {
   const turns = history.length
     ? history.map((t) => `${t.role}: ${t.content}`).join('\n')
     : '(none)';
-  return ['MODE: smalltalk', '', 'RECENT TURNS:', turns, '', 'QUESTION:', question].join('\n');
+  return [
+    ...(context ? [context, ''] : []),
+    'MODE: smalltalk',
+    '',
+    'RECENT TURNS:',
+    turns,
+    '',
+    'QUESTION:',
+    question,
+  ].join('\n');
 }
 
 /**

@@ -8,6 +8,10 @@ import type {
   AuditQuery,
   DashboardStatsDto,
   UserSettingsDto,
+  UserContextDto,
+  UpdateUserContextRequest,
+  ContextSuggestionsDto,
+  ContextSuggestionActionRequest,
   ModelConfigDto,
   UpdateUserSettingsRequest,
   AddEmailAllowlistEntryRequest,
@@ -325,6 +329,25 @@ export const updateSettings = (
 // provider configuration. Keys are operator-set and never pass through here.
 export const fetchModelConfig = (session: Session): Promise<ModelConfigDto> =>
   apiGet('/api/settings/model-config', session);
+
+// Instance context + language (P6.6, decisions 0051-0053).
+export const fetchUserContext = (session: Session): Promise<UserContextDto> =>
+  apiGet('/api/settings/context', session);
+export const updateUserContext = (
+  session: Session,
+  patch: UpdateUserContextRequest,
+): Promise<UserContextDto> => apiPut('/api/settings/context', patch, session);
+export const fetchContextSuggestions = (session: Session): Promise<ContextSuggestionsDto> =>
+  apiGet('/api/settings/context/suggestions', session);
+export const acceptContextSuggestion = (
+  session: Session,
+  request: ContextSuggestionActionRequest,
+): Promise<UserContextDto> => apiPost('/api/settings/context/suggestions/accept', request, session);
+export const dismissContextSuggestion = (
+  session: Session,
+  request: ContextSuggestionActionRequest,
+): Promise<{ dismissed: true }> =>
+  apiPost('/api/settings/context/suggestions/dismiss', request, session);
 
 // Email capture (Session O4): the inbound address, the sender allowlist, and
 // recent refusals for one-click allowlisting.

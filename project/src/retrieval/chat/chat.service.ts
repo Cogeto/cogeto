@@ -17,14 +17,18 @@ import type {
   Principal,
 } from '@cogeto/shared';
 import {
+  buildContextBlock,
   deadLetter,
   DEFAULT_INSTANCE_TIMEZONE,
   DRIZZLE,
+  EMPTY_USER_CONTEXT,
+  hasProfileContext,
   INSTANCE_TIMEZONE,
   jobExecution,
+  UserContextService,
   withTransactionalEnqueue,
 } from '../../infrastructure/index';
-import type { Db } from '../../infrastructure/index';
+import type { Db, UserContextRecord } from '../../infrastructure/index';
 import { INGESTION_PIPELINE_JOB_TYPE } from '../../ingestion/index';
 import { isPastBelief } from '../../memory/index';
 import { loadPrompt, ModelGateway } from '../../model-gateway/index';
@@ -50,8 +54,8 @@ import {
   ANSWER_PROMPT,
   buildAnswerInput,
   buildSmallTalkInput,
-  NOTHING_ON_RECORD,
-  NOTHING_OPEN,
+  nothingOnRecord,
+  nothingOpen,
   toStoredAnswer,
 } from './answer-prompt';
 
@@ -70,6 +74,14 @@ const CONTEXT_TURNS = 2;
  * No leading \b: JS \b is ASCII-only and would never match before "čim". */
 const CONDITION_HINT_RE =
   /(?:^|[^\p{L}])(?:after|once|when|as soon as|nakon što|kad(?:a)?|čim)\s+([^.;]{4,120})/iu;
+
+/** The per-turn user context (P6.6): record + effective tz + rendered blocks. */
+interface AskContext {
+  record: UserContextRecord;
+  timeZone: string;
+  rewriteBlock: string;
+  answerBlock: string;
+}
 
 /**
  * The chat area (S3-A). Asking a question is strictly fast path (§A.3): persist
@@ -103,6 +115,10 @@ export class ChatService {
     @Optional()
     @Inject(INSTANCE_TIMEZONE)
     private readonly timeZone: string = DEFAULT_INSTANCE_TIMEZONE,
+    /** Per-user context + language (P6.6). Absent in bare test harnesses —
+     * then the defaults apply (instance timezone, English, no profile). */
+    @Optional()
+    private readonly userContext?: UserContextService,
   ) {}
 
   async listMessages(principal: Principal): Promise<ChatMessageDto[]> {
@@ -254,6 +270,9 @@ export class ChatService {
    * Classification failure falls back to the memory-question path.
    */
   async *ask(principal: Principal, content: string): AsyncGenerator<ChatStreamEvent> {
+    // The user's context (P6.6): timezone, profile, language — one PK read,
+    // shaping every model call and deterministic reply in this turn.
+    const ctx = await this.loadAskContext(principal);
     // Prior turns (before this one) feed the conversational rewriter (F3).
     const history = await this.recentTurns(principal);
     const [userRow] = await this.db
@@ -276,7 +295,7 @@ export class ChatService {
     // directly); an ambiguous one asks; a bare trigger creates nothing.
     const createTask = detectCreateTaskIntent(content);
     if (createTask) {
-      yield* this.handleCreateTaskIntent(principal, userRow!.id, createTask, history);
+      yield* this.handleCreateTaskIntent(principal, userRow!.id, createTask, history, ctx);
       return;
     }
 
@@ -291,7 +310,7 @@ export class ChatService {
       if (research) {
         let topic = research.topic;
         if (ANAPHORA_RE.test(topic) && queryEntityCandidates(topic).length === 0) {
-          const resolved = await this.routerRewrite(history, topic);
+          const resolved = await this.routerRewrite(history, topic, {}, ctx);
           if (
             queryEntityCandidates(resolved.query).length > 0 ||
             !ANAPHORA_RE.test(resolved.query)
@@ -307,12 +326,12 @@ export class ChatService {
     // The router call (decision 0046): ONE bounded pipeline-tier call rewrites
     // the turn AND classifies it. Failure/timeout falls back to the raw query
     // with class 'personal' — the memory-question path.
-    const rewrite = await this.routerRewrite(history, content, { alwaysClassify: true });
+    const rewrite = await this.routerRewrite(history, content, { alwaysClassify: true }, ctx);
 
     // Model-classified small talk / meta (beyond the lexicon): a natural,
     // brief answer-tier reply — still no retrieval.
     if (rewrite.questionClass === 'smalltalk') {
-      yield* this.handleModelSmallTalk(principal, content, history);
+      yield* this.handleModelSmallTalk(principal, content, history, ctx.answerBlock);
       return;
     }
 
@@ -344,12 +363,17 @@ export class ChatService {
 
     let answer: string;
     if (retrieved.mode === 'tasks' && (retrieved.tasks?.length ?? 0) === 0) {
-      // Zero open loops is an ANSWER (all clear), not a data gap (F3-B).
-      answer = NOTHING_OPEN;
+      // Zero open loops is an ANSWER (all clear), not a data gap (F3-B). A
+      // deterministic string cannot mirror; it follows the anchor (0052).
+      answer = nothingOpen(ctx.record.preferredLanguage);
       yield { type: 'token', text: answer };
-    } else if (facts.length === 0 && !knowledge) {
+    } else if (facts.length === 0 && !knowledge && !hasProfileContext(ctx.record)) {
       // The zero-retrieval path: no model call, no generation from thin air.
-      answer = NOTHING_ON_RECORD;
+      // With profile context set (decision 0051), the model DOES answer: the
+      // settings are provided ground ("where do I work?" deserves the honest
+      // "you've set … in Settings" reply), the honest-gap rules still hold,
+      // and the sanitizer still strips any invented citation.
+      answer = nothingOnRecord(ctx.record.preferredLanguage);
       yield { type: 'token', text: answer };
     } else {
       const prompt = await this.getPrompt();
@@ -361,6 +385,7 @@ export class ChatService {
           changes: retrieved.changes,
           tasks: retrieved.tasks,
           knowledge,
+          context: ctx.answerBlock,
         }),
         tier: 'answer',
       });
@@ -393,11 +418,14 @@ export class ChatService {
     };
   }
 
-  /** The router's bounded rewrite call — shared fallback semantics (0046). */
+  /** The router's bounded rewrite call — shared fallback semantics (0046).
+   * With an ask context (P6.6), dates resolve against the USER's timezone and
+   * the rewriter input carries the now-block. */
   private routerRewrite(
     history: ConversationTurn[],
     question: string,
     options: { alwaysClassify?: boolean } = {},
+    ctx?: AskContext,
   ) {
     return rewriteQuery(
       this.gateway,
@@ -405,9 +433,34 @@ export class ChatService {
       question,
       undefined,
       undefined,
-      this.timeZone,
-      options,
+      ctx?.timeZone ?? this.timeZone,
+      { ...options, contextBlock: ctx?.rewriteBlock },
     );
+  }
+
+  /**
+   * The per-turn user context (P6.6): the stored record (or the defaults when
+   * the service is absent or the user never set anything), the effective
+   * timezone (user override, else instance), and the two rendered now-blocks —
+   * with the LANGUAGE rule for answer-tier calls, without it for the rewriter
+   * (whose output is JSON, not prose).
+   */
+  private async loadAskContext(principal: Principal): Promise<AskContext> {
+    let record: UserContextRecord = EMPTY_USER_CONTEXT;
+    try {
+      record = (await this.userContext?.get(principal.userId)) ?? EMPTY_USER_CONTEXT;
+    } catch {
+      // Context is an enhancement, never a gate: any read failure means the
+      // turn proceeds exactly as before P6.6.
+    }
+    const timeZone = record.timezone ?? this.timeZone;
+    const now = new Date();
+    return {
+      record,
+      timeZone,
+      rewriteBlock: buildContextBlock(record, now, timeZone),
+      answerBlock: buildContextBlock(record, now, timeZone, { language: true }),
+    };
   }
 
   /**
@@ -453,13 +506,14 @@ export class ChatService {
     principal: Principal,
     content: string,
     history: ConversationTurn[],
+    contextBlock?: string,
   ): AsyncGenerator<ChatStreamEvent> {
     yield { type: 'sources', facts: [] };
     const prompt = await this.getPrompt();
     let buffer = '';
     const stream = this.gateway.completeStream({
       system: prompt.content,
-      input: buildSmallTalkInput(history, content),
+      input: buildSmallTalkInput(history, content, contextBlock),
       tier: 'answer',
     });
     for await (const text of stream) {
@@ -591,6 +645,7 @@ export class ChatService {
     messageId: string,
     intent: CreateTaskIntent,
     history: ConversationTurn[],
+    ctx?: AskContext,
   ): AsyncGenerator<ChatStreamEvent> {
     yield { type: 'sources', facts: [] };
     const hr = intent.lang === 'hr';
@@ -607,7 +662,7 @@ export class ChatService {
       // holds the recent history). Conservative: if no named person or thing
       // survives resolution, ask instead of guessing.
       if (ANAPHORA_RE.test(instruction) && queryEntityCandidates(instruction).length === 0) {
-        const rewritten = await this.routerRewrite(history, instruction);
+        const rewritten = await this.routerRewrite(history, instruction, {}, ctx);
         if (
           queryEntityCandidates(rewritten.query).length > 0 ||
           !ANAPHORA_RE.test(rewritten.query)

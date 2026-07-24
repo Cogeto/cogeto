@@ -73,14 +73,19 @@ export class TasksDigestSection implements DigestTaskSectionPort {
     // 3. Dormant nudges — tasks the reminders pass flagged as gone quiet.
     const dormant = visible.filter((t) => t.dormantRemindedAt !== null);
 
+    const hr = ctx.locale === 'hr';
     const ordered: DreamDigestLine[] = [];
-    for (const t of due) if (take(t)) ordered.push(dueLine(t, now));
-    for (const t of unblocked) if (take(t)) ordered.push(line(`Now unblocked: ${label(t)}`));
-    for (const t of dormant) if (take(t)) ordered.push(line(`Gone quiet: ${label(t)}`));
+    for (const t of due) if (take(t)) ordered.push(dueLine(t, now, hr));
+    for (const t of unblocked)
+      if (take(t))
+        ordered.push(line(hr ? `Odblokirano: ${label(t)}` : `Now unblocked: ${label(t)}`));
+    for (const t of dormant)
+      if (take(t)) ordered.push(line(hr ? `Utihnulo: ${label(t)}` : `Gone quiet: ${label(t)}`));
 
     if (ordered.length <= MAX_TASK_LINES) return ordered;
     const shown = ordered.slice(0, MAX_TASK_LINES - 1);
-    shown.push(line(`…and ${ordered.length - (MAX_TASK_LINES - 1)} more tasks`));
+    const rest = ordered.length - (MAX_TASK_LINES - 1);
+    shown.push(line(hr ? `…i još ${rest} zadataka` : `…and ${rest} more tasks`));
     return shown;
   }
 }
@@ -89,14 +94,22 @@ function line(text: string): DreamDigestLine {
   return { text, href: TASKS_HREF, section: 'tasks' };
 }
 
-function dueLine(t: TaskRow, now: Date): DreamDigestLine {
+function dueLine(t: TaskRow, now: Date, hr: boolean): DreamDigestLine {
   const days = Math.round((t.due!.getTime() - now.getTime()) / MS_DAY);
   if (days < 0) {
     const n = -days;
-    return line(`Overdue by ${n === 1 ? '1 day' : `${n} days`}: ${label(t)}`);
+    return line(
+      hr
+        ? `Kasni ${n === 1 ? '1 dan' : `${n} dana`}: ${label(t)}`
+        : `Overdue by ${n === 1 ? '1 day' : `${n} days`}: ${label(t)}`,
+    );
   }
-  if (days === 0) return line(`Due today: ${label(t)}`);
-  return line(`Due ${days === 1 ? 'tomorrow' : `in ${days} days`}: ${label(t)}`);
+  if (days === 0) return line(hr ? `Rok danas: ${label(t)}` : `Due today: ${label(t)}`);
+  return line(
+    hr
+      ? `Rok ${days === 1 ? 'sutra' : `za ${days} dana`}: ${label(t)}`
+      : `Due ${days === 1 ? 'tomorrow' : `in ${days} days`}: ${label(t)}`,
+  );
 }
 
 /** A short handle for a task: its title, trimmed for a one-line digest entry. */

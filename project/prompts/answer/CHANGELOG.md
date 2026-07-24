@@ -4,6 +4,23 @@ Prompt family for the fast-path chat answerer (S3-A): answers only from the
 retrieved fact blocks, cites with inline `[F#]` markers, says plainly when the
 facts do not cover the question.
 
+## v0006 — 2026-07-24 (P6.6 instance context)
+
+Instance context and time awareness (decisions 0051/0052). Three new input
+lines: `NOW` (date, weekday, time in the user's own timezone — always
+present), `USER CONTEXT` (who the user is, exactly as set in their settings —
+absent when nothing is set), and `LANGUAGE` (the reply-language rule). A new
+"context informs, never sources" section freezes the honesty rule: context
+statements carry NO marker (neither `[F#]` nor `[U]`), context is never
+presented as remembered — a question about the context itself is answered
+"You've set … in Settings" in words, and provided facts always win over
+context; absent context is behaviorally invisible. The marked-claim rule in
+GENERAL KNOWLEDGE gains the matching exception for settings-attributed
+statements. The Language section now follows the LANGUAGE line: mirroring by
+default with the preferred language as tie-breaker for mixed/unclear input,
+always-preferred in strict mode, question-language fallback without the line.
+Everything else verbatim from v0005.
+
 ## v0005 — 2026-07-23 (Priority 6)
 
 Per-claim provenance across three origins (decision 0046). A new

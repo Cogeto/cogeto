@@ -19,6 +19,8 @@ export interface DemoApi {
     scope?: 'private' | 'shared',
   ): Promise<{ objectKey: string }>;
   waitFile(objectKey: string, timeoutMs?: number): Promise<void>;
+  /** P6.6: the demo persona's context (Ana speaks Croatian). Real endpoint. */
+  updateContext(patch: Record<string, unknown>): Promise<void>;
   me(): Promise<Principal>;
 }
 
@@ -134,6 +136,14 @@ export function createDemoApi(baseUrl: string, accessToken: string): DemoApi {
         (s) => s === 'done',
         (s) => s === 'error',
       );
+    },
+
+    async updateContext(patch) {
+      await json('/api/settings/context', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
     },
 
     me() {

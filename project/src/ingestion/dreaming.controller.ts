@@ -1,6 +1,6 @@
 import { Controller, Get, Inject, Optional, Req, UseGuards } from '@nestjs/common';
 import type { DreamDigestDto } from '@cogeto/shared';
-import { DRIZZLE } from '../infrastructure/index';
+import { DRIZZLE, UserContextService } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
@@ -25,12 +25,18 @@ export class DreamingController {
     // ingestion-only tests, where the digest is dreaming-only; present in the
     // app process via TasksModule.forDigest() (a global provider).
     @Optional() @Inject(DIGEST_TASK_SECTION) private readonly taskSection?: DigestTaskSectionPort,
+    /** Preferred language for digest copy (P6.6, decision 0052); optional. */
+    @Optional() private readonly userContext?: UserContextService,
   ) {}
 
   @Get('latest')
   async latest(@Req() request: AuthenticatedRequest): Promise<DreamDigestDto> {
+    const locale = await Promise.resolve(
+      this.userContext?.preferredLanguageFor(request.principal.userId),
+    ).catch(() => undefined);
     return buildDreamDigest(this.db, this.memoryStore, request.principal, {
       taskSection: this.taskSection,
+      locale,
     });
   }
 }

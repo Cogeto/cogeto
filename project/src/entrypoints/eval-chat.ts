@@ -7,10 +7,15 @@ import { Pool } from 'pg';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { GenericContainer, Wait } from 'testcontainers';
 import type { ChatStreamEvent, Principal } from '@cogeto/shared';
-import { applyMigrations, createDb } from '../infrastructure/index';
-import { createMemoryStore, MemoryObjectStore } from '../memory/index';
+import { applyMigrations, createDb, UserContextService } from '../infrastructure/index';
+import { createMemoryReconciliation, createMemoryStore, MemoryObjectStore } from '../memory/index';
 import type { MemoryRow } from '../memory/index';
-import { seedMemoryFromSource } from '../ingestion/index';
+import {
+  buildDreamDigest,
+  DreamingService,
+  ReconciliationService,
+  seedMemoryFromSource,
+} from '../ingestion/index';
 import { TasksEngine } from '../tasks/index';
 import { UserDirectory } from '../identity/index';
 import { ANSWER_PROMPT, ChatService, RetrievalService } from '../retrieval/index';
@@ -114,6 +119,17 @@ const caseSchema = z.object({
       sent_query_must_include: z.array(z.string()).default([]),
     })
     .optional(),
+  /** Per-case user context (P6.6, decision 0052): applied through the real
+   * UserContextService before the scripted turns. */
+  settings: z
+    .object({
+      display_name: z.string().optional(),
+      company: z.string().optional(),
+      role_title: z.string().optional(),
+      preferred_language: z.enum(['en', 'hr']).optional(),
+      language_strict: z.boolean().optional(),
+    })
+    .optional(),
   script: z.array(z.string()).min(1),
   checks: z.object({
     entity: z
@@ -162,6 +178,19 @@ const caseSchema = z.object({
     research_offer: z.boolean().optional(),
     unsourced_required: z.boolean().optional(),
     smalltalk: z.boolean().optional(),
+    /**
+     * Language checks (P6.6, decision 0052), folded into the conversation
+     * verdict:
+     * - `language` — the final answer's language, judged deterministically
+     *   (Croatian diacritics + stopword balance). With strict mode set this
+     *   proves an en question comes back hr; without it, mirroring.
+     * - `digest_language` — after the turns, the harness runs a REAL dreaming
+     *   cycle and builds the digest with the case's preferred language; the
+     *   lines must exist and speak it (Cogeto-initiated content anchors to
+     *   preferred_language, never the question's language).
+     */
+    language: z.enum(['en', 'hr']).optional(),
+    digest_language: z.enum(['en', 'hr']).optional(),
   }),
 });
 type ChatCase = z.infer<typeof caseSchema>;
@@ -289,6 +318,24 @@ function checkNothingOnRecord(answer: string): boolean {
   return /\b(do(?:es)?\s*n.?t\s+cover|not\s+covered|nothing\s+(?:on\s+record|to\s+answer|on\s+that|about)|do(?:es)?\s*n.?t\s+have\s+anything|have\s+nothing|no\s+(?:information|facts|record|relevant)|can.?not?\s+answer|suggest\s+capturing|captur\w*\s+.*note)\b/i.test(
     answer,
   );
+}
+
+/**
+ * Deterministic language judgment (P6.6): Croatian diacritics are a strong
+ * signal; a stopword balance decides otherwise. Names stay untranslated, so
+ * only function words count.
+ */
+const HR_DIACRITICS = /[čćžšđ]/i;
+const HR_WORDS =
+  /\b(je|su|za|još|nije|nema|sam|smo|ali|kao|ovo|ili|obveza|zadatak|zadaci|tjedan|tjedna|rok|dana|prema|koja|koji|radionica|sastanak)\b/gi;
+const EN_WORDS =
+  /\b(the|is|are|you|your|have|has|and|week|due|task|tasks|nothing|open|with|that|this|workshop|meeting)\b/gi;
+
+function checkLanguage(text: string, lang: 'en' | 'hr'): boolean {
+  const t = stripCites(text);
+  const hrScore = (t.match(HR_WORDS)?.length ?? 0) + (HR_DIACRITICS.test(t) ? 3 : 0);
+  const enScore = t.match(EN_WORDS)?.length ?? 0;
+  return lang === 'hr' ? hrScore > enScore : enScore > hrScore;
 }
 
 function checkHedge(answer: string, term: string): boolean {
@@ -429,6 +476,21 @@ async function main(): Promise<void> {
         memoryStore,
       );
       const researchResolver = new ChatResearchResolver(research);
+      // Per-case user context (P6.6): applied through the real service, so the
+      // chat path exercises the same now-block assembly as production.
+      const userContextService = new UserContextService(db);
+      if (testCase.settings) {
+        await userContextService.update(
+          { userId: principal.userId, orgId: principal.orgId },
+          {
+            displayName: testCase.settings.display_name ?? null,
+            company: testCase.settings.company ?? null,
+            roleTitle: testCase.settings.role_title ?? null,
+            preferredLanguage: testCase.settings.preferred_language,
+            languageStrict: testCase.settings.language_strict,
+          },
+        );
+      }
       const chat = new ChatService(
         db,
         retrieval,
@@ -436,6 +498,8 @@ async function main(): Promise<void> {
         new UserDirectory(db),
         replyResolver,
         researchResolver,
+        undefined,
+        userContextService,
       );
       const anchor = new Date(testCase.anchor);
 
@@ -713,6 +777,34 @@ async function main(): Promise<void> {
             !/\{\{cite:/.test(final.answer) &&
             final.answer.trim().length > 0 &&
             !/don.?t have anything|nemam ništa/i.test(final.answer),
+        );
+      }
+      if (checks.language) {
+        const languageOk = checkLanguage(final.answer, checks.language);
+        conversationChecks.push(languageOk);
+        console.log(`  language(${checks.language}): ${String(languageOk)}`);
+      }
+      if (checks.digest_language) {
+        // A REAL dreaming cycle over this case's seeded world, then the digest
+        // in the case's preferred language (decision 0052).
+        const { store: dreamStore, reconciliation } = createMemoryReconciliation({
+          db,
+          qdrant: { url: qdrantUrl, embeddingModel, collection },
+        });
+        const dreaming = new DreamingService(
+          db,
+          dreamStore,
+          new ReconciliationService(gateway, dreamStore, reconciliation),
+        );
+        await dreaming.run();
+        const digest = await buildDreamDigest(db, dreamStore, principal, {
+          locale: checks.digest_language,
+        });
+        const joined = digest.lines.map((l) => l.text).join(' ');
+        const digestOk = digest.lines.length > 0 && checkLanguage(joined, checks.digest_language);
+        conversationChecks.push(digestOk);
+        console.log(
+          `  digest_language(${checks.digest_language}): ${String(digestOk)} — ${joined || '(no lines)'}`,
         );
       }
       const conversationOk =

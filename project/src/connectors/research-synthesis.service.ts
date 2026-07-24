@@ -1,5 +1,18 @@
-import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import type { Principal, ResearchAnswerDto, ResearchCitationDto } from '@cogeto/shared';
+import {
+  buildContextBlock,
+  DEFAULT_INSTANCE_TIMEZONE,
+  EMPTY_USER_CONTEXT,
+  INSTANCE_TIMEZONE,
+  UserContextService,
+} from '../infrastructure/index';
 import { loadPrompt, ModelGateway } from '../model-gateway/index';
 import type { PromptArtifact } from '../model-gateway/index';
 import { RetrievalService } from '../retrieval/index';
@@ -20,7 +33,7 @@ import type { WebPageRow } from './persistence/tables';
  * survives into the record.
  */
 
-export const RESEARCH_ANSWER_PROMPT = { family: 'research_answer', version: 'v0002' };
+export const RESEARCH_ANSWER_PROMPT = { family: 'research_answer', version: 'v0003' };
 
 /** Caps that bound one synthesis call: pages and per-page excerpt length. */
 const MAX_PAGES = 8;
@@ -35,6 +48,12 @@ export class ResearchSynthesisService {
     private readonly research: ResearchService,
     private readonly retrieval: RetrievalService,
     private readonly gateway: ModelGateway,
+    /** Per-user context + language (P6.6). Absent in bare test harnesses. */
+    @Optional()
+    private readonly userContext?: UserContextService,
+    @Optional()
+    @Inject(INSTANCE_TIMEZONE)
+    private readonly instanceTimeZone: string = DEFAULT_INSTANCE_TIMEZONE,
   ) {}
 
   async synthesise(principal: Principal, runId: string): Promise<ResearchAnswerDto> {
@@ -67,10 +86,23 @@ export class ResearchSynthesisService {
       (m, i) => `[M${i + 1}] ${m.memory.content ?? '(withheld)'} (status: ${m.memory.status})`,
     );
 
+    // The now-block (P6.6): the clock for fetch-date freshness plus the
+    // reply-language rule. Any context-read failure degrades to no block.
+    const contextRecord = await Promise.resolve(this.userContext?.get(principal.userId))
+      .then((record) => record ?? EMPTY_USER_CONTEXT)
+      .catch(() => EMPTY_USER_CONTEXT);
+    const contextBlock = buildContextBlock(
+      contextRecord,
+      new Date(),
+      contextRecord.timezone ?? this.instanceTimeZone,
+      { language: true },
+    );
+
     this.prompt ??= await loadPrompt(RESEARCH_ANSWER_PROMPT.family, RESEARCH_ANSWER_PROMPT.version);
     const raw = await this.gateway.complete({
       system: this.prompt.content,
       input:
+        `${contextBlock}\n\n` +
         `QUESTION:\n${run.intent}\n\n` +
         `WEB SOURCES:\n${webBlocks.join('\n\n') || '(none)'}\n\n` +
         `KNOWN FACTS:\n${factBlocks.join('\n') || '(none)'}`,

@@ -1,5 +1,5 @@
 import { eq, gte } from 'drizzle-orm';
-import type { DreamDigestDto, DreamDigestLine, Principal } from '@cogeto/shared';
+import type { DreamDigestDto, DreamDigestLine, PreferredLanguage, Principal } from '@cogeto/shared';
 import type { Db } from '../infrastructure/index';
 import { MemoryStore } from '../memory/index';
 import type { MemoryRow } from '../memory/index';
@@ -27,15 +27,16 @@ export async function buildDreamDigest(
   db: Db,
   memoryStore: MemoryStore,
   principal: Principal,
-  opts: { taskSection?: DigestTaskSectionPort | null } = {},
+  opts: { taskSection?: DigestTaskSectionPort | null; locale?: PreferredLanguage } = {},
 ): Promise<DreamDigestDto> {
+  const locale = opts.locale ?? 'en';
   const run = await latestFinishedRun(db);
   // The consolidation section: the latest finished run's actions (empty when
   // there is no run yet). Capped and folded by buildLines.
   let dreamingLines: DreamDigestLine[] = [];
   if (run) {
     const actions = await db.select().from(dreamAction).where(eq(dreamAction.runId, run.id));
-    dreamingLines = (await buildDigestLines(memoryStore, principal, actions)).map((l) => ({
+    dreamingLines = (await buildDigestLines(memoryStore, principal, actions, locale)).map((l) => ({
       ...l,
       section: 'consolidation' as const,
     }));
@@ -43,7 +44,10 @@ export async function buildDreamDigest(
   // The tasks section: reminders + updates, independent of whether a dream run
   // exists (a due task must surface even on a store that never dreamt).
   const taskLines =
-    (await opts.taskSection?.taskLines(principal, { scopeFrom: run?.scopeFrom ?? null })) ?? [];
+    (await opts.taskSection?.taskLines(principal, {
+      scopeFrom: run?.scopeFrom ?? null,
+      locale,
+    })) ?? [];
   return {
     runId: run?.id ?? null,
     finishedAt: run?.finishedAt?.toISOString() ?? null,
@@ -63,47 +67,62 @@ export async function buildDigestLines(
   memoryStore: MemoryStore,
   principal: Principal,
   actions: DreamActionRow[],
+  locale: PreferredLanguage = 'en',
 ): Promise<DreamDigestLine[]> {
   if (actions.length === 0) return [];
   const ids = [...new Set(actions.map((a) => a.memoryId))];
   const rows = await memoryStore.getManyForPrincipal(principal, ids, { includeSensitive: true });
   const visible = new Map(rows.map((row) => [row.id, row]));
+  const hr = locale === 'hr';
 
   // Priority: conflicts first (they want attention), then merges and updates
-  // (the work done), then quiet commitments, then the aggregate.
+  // (the work done), then quiet commitments, then the aggregate. The line
+  // ORDER is locale-independent — the attention feed's dismissal keys index
+  // into it, so translation may never reorder or drop a line (decision 0052).
   const lines: DreamDigestLine[] = [];
   const byPass = (pass: DreamActionRow['pass']) =>
     actions.filter((a) => a.pass === pass && visible.has(a.memoryId));
 
   for (const action of byPass('contradiction')) {
+    const name = label(visible.get(action.memoryId)!);
     lines.push({
-      text: `Found a conflict about ${label(visible.get(action.memoryId)!)} — your call`,
+      text: hr
+        ? `Pronađen je sukob oko ${name} — tvoja odluka`
+        : `Found a conflict about ${name} — your call`,
       href: '/review?tab=contradicted',
     });
   }
   for (const action of byPass('dedup')) {
+    const name = label(visible.get(action.memoryId)!);
     lines.push({
-      text: `Merged two notes about ${label(visible.get(action.memoryId)!)}`,
+      text: hr ? `Spojene su dvije bilješke o ${name}` : `Merged two notes about ${name}`,
       href: `/memories?open=${action.memoryId}`,
     });
   }
   for (const action of byPass('supersession')) {
+    const name = label(visible.get(action.memoryId)!);
     lines.push({
-      text: `Updated ${label(visible.get(action.memoryId)!)} — a newer fact replaced an older one`,
+      text: hr
+        ? `Ažurirano ${name} — novija činjenica zamijenila je stariju`
+        : `Updated ${name} — a newer fact replaced an older one`,
       href: `/memories?open=${action.memoryId}`,
     });
   }
   for (const action of byPass('dormant')) {
+    const name = label(visible.get(action.memoryId)!);
     lines.push({
-      text: `A commitment about ${label(visible.get(action.memoryId)!)} has gone quiet`,
+      text: hr ? `Obveza oko ${name} je utihnula` : `A commitment about ${name} has gone quiet`,
       href: `/memories?open=${action.memoryId}`,
     });
   }
   const outdated = byPass('staleness');
   if (outdated.length > 0) {
     lines.push({
-      text:
-        outdated.length === 1
+      text: hr
+        ? outdated.length === 1
+          ? `Označen 1 zapis kao zastario — datum mu je prošao`
+          : `Označeno ${outdated.length} zapisa kao zastarjelo — datumi su im prošli`
+        : outdated.length === 1
           ? `Marked 1 memory outdated — its date passed`
           : `Marked ${outdated.length} memories outdated — their dates passed`,
       href: '/memories?status=outdated',
@@ -112,8 +131,9 @@ export async function buildDigestLines(
 
   if (lines.length > MAX_LINES) {
     const shown = lines.slice(0, MAX_LINES - 1);
+    const rest = lines.length - (MAX_LINES - 1);
     shown.push({
-      text: `…and ${lines.length - (MAX_LINES - 1)} more changes`,
+      text: hr ? `…i još ${rest} promjena` : `…and ${rest} more changes`,
       href: '/memories',
     });
     return shown;

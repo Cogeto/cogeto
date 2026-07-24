@@ -1,4 +1,4 @@
-import type { DreamDigestLine, Principal } from '@cogeto/shared';
+import type { DreamDigestLine, PreferredLanguage, Principal } from '@cogeto/shared';
 
 /**
  * The digest's TASKS section, provided by the tasks module (F3 handoff §3:
@@ -15,6 +15,9 @@ export interface DigestTaskContext {
    * boundary for the "newly unblocked" tasks line. Null when no run exists yet
    * (reminders still render; the unblocked line is skipped, having no anchor). */
   scopeFrom: Date | null;
+  /** The caller's preferred language (P6.6, decision 0052): system-initiated
+   * digest copy speaks it. Absent = en. */
+  locale?: PreferredLanguage;
 }
 
 export interface DigestTaskSectionPort {

@@ -1,0 +1,16 @@
+{
+  "case_id": "strict_mode_hr",
+  "description": "Strict language mode (P6.6, decision 0052): the user prefers Croatian and has strict mode on, so an ENGLISH question comes back in Croatian. Judged deterministically (diacritics + stopword balance); citations stay valid and no mechanics leak.",
+  "anchor": "2026-07-10T09:00:00.000Z",
+  "notes": [
+    "The Adriatic Foods workshop is scheduled for 21 July, and Marko owes me the requirements list before it."
+  ],
+  "settings": { "preferred_language": "hr", "language_strict": true },
+  "script": ["What is coming up with Adriatic Foods?"],
+  "checks": {
+    "language": "hr",
+    "must_include": ["21"],
+    "no_mechanics": true,
+    "citations_valid": true
+  }
+}

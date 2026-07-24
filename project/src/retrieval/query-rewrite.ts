@@ -16,7 +16,7 @@ import { REWRITE_TIMEOUT_MS } from './retrieval-config';
  * chrono resolver, never by the model. Any failure → default mode ('personal'
  * question class — the memory-question path), never an error.
  */
-export const QUERY_REWRITE_PROMPT = { family: 'query_rewrite', version: 'v0004' } as const;
+export const QUERY_REWRITE_PROMPT = { family: 'query_rewrite', version: 'v0005' } as const;
 
 export interface ConversationTurn {
   role: 'user' | 'assistant';
@@ -493,7 +493,11 @@ function toMostRecentPast(resolved: Date, now: Date): Date | null {
   return stepped.getTime() <= now.getTime() ? stepped : null;
 }
 
-function buildRewriteInput(history: ConversationTurn[], question: string): string {
+function buildRewriteInput(
+  history: ConversationTurn[],
+  question: string,
+  contextBlock?: string,
+): string {
   const turns = history.length
     ? history.map((t) => `${t.role}: ${t.content}`).join('\n')
     : '(none)';
@@ -509,6 +513,9 @@ function buildRewriteInput(history: ConversationTurn[], question: string): strin
     ),
   ].slice(0, 8);
   return [
+    // The now-block (P6.6, decision 0051): interpretation only — the prompt
+    // reiterates that dates stay verbatim and context never invents entities.
+    ...(contextBlock ? [contextBlock, ''] : []),
     'RECENT TURNS:',
     turns,
     '',
@@ -527,6 +534,12 @@ export interface RewriteOptions {
    * callers keep the cheap gating.
    */
   alwaysClassify?: boolean;
+  /**
+   * The rendered now-block (P6.6, decision 0051), prepended to the rewriter
+   * input. Interpretation-only by prompt contract; date resolution stays in
+   * the deterministic resolver via the `now`/`timeZone` parameters.
+   */
+  contextBlock?: string;
 }
 
 /**
@@ -563,7 +576,7 @@ export async function rewriteQuery(
     );
     const call = gateway.extractStructured(rewriteSchema, {
       system: prompt.content,
-      input: buildRewriteInput(history, question),
+      input: buildRewriteInput(history, question, options.contextBlock),
       tier: 'pipeline',
     });
     const result = await Promise.race([call, timeout]);

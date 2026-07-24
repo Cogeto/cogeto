@@ -26,7 +26,11 @@ import {
 import { APPROVAL_EXPIRY_CRONTAB, ApprovalExecutor, ApprovalService } from '../agents/index';
 import { TASK_PROMPTS, TASKS_REMINDERS_CRONTAB, TasksEngine } from '../tasks/index';
 import { PassportExportExecutor, PASSPORT_RETENTION_CRONTAB } from '../passport/index';
-import { EmailAllowlistService, EMAIL_REFUSAL_RETENTION_CRONTAB } from '../connectors/index';
+import {
+  CONTEXT_SUGGEST_PROMPT,
+  EmailAllowlistService,
+  EMAIL_REFUSAL_RETENTION_CRONTAB,
+} from '../connectors/index';
 import { ANSWER_PROMPT, QUERY_REWRITE_PROMPT } from '../retrieval/index';
 import {
   assertLocalRuntimeReady,
@@ -85,7 +89,13 @@ async function main(): Promise<void> {
 
   // Register the active prompt versions (§B.7) — also the immutability check:
   // a released version whose file hash changed fails the boot.
-  for (const ref of [...ACTIVE_PROMPTS, ...TASK_PROMPTS, ANSWER_PROMPT, QUERY_REWRITE_PROMPT]) {
+  for (const ref of [
+    ...ACTIVE_PROMPTS,
+    ...TASK_PROMPTS,
+    ANSWER_PROMPT,
+    QUERY_REWRITE_PROMPT,
+    CONTEXT_SUGGEST_PROMPT,
+  ]) {
     const prompt = await loadPrompt(ref.family, ref.version);
     await recordPromptVersion(db, prompt);
     logger.info(
