@@ -11,11 +11,27 @@ export interface ResearchSearchRequest {
   query: string;
 }
 
-/** One ranked discovery result the user can select for capture. */
+/** One ranked discovery result. `score` is SearXNG's aggregate relevance
+ * (higher = more relevant, null if absent); it drives auto-selection of the best
+ * sources so the user never has to pick (decision 0050). */
 export interface DiscoveredPageDto {
   url: string;
   title: string;
   snippet: string;
+  score: number | null;
+}
+
+/**
+ * Auto-select the best sources by relevance score (decision 0050): most-relevant
+ * first, nulls last but still preferred over dropping a result, capped at `k`.
+ * Pure + deterministic so it is unit-tested and identical on every surface.
+ */
+export function selectTopByScore(results: DiscoveredPageDto[], k = 3): string[] {
+  return [...results]
+    .map((r, i) => ({ r, i }))
+    .sort((a, b) => (b.r.score ?? -Infinity) - (a.r.score ?? -Infinity) || a.i - b.i)
+    .slice(0, k)
+    .map(({ r }) => r.url);
 }
 
 /**

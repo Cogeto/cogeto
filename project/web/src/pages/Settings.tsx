@@ -20,6 +20,7 @@ import { btnPrimary, btnSecondary, SectionTitle, Skeleton } from '../components/
 import { timeAgo } from '../components/status';
 import { useTheme } from '../theme';
 import type { Theme } from '../theme';
+import { useAutoResearch } from '../research-pref';
 
 /** Settings (§A.9, O1-C): only real, wired toggles — every control does something today. */
 export function Settings({ session }: { session: Session }) {
@@ -117,6 +118,8 @@ export function Settings({ session }: { session: Session }) {
 
       <AppearanceSection />
 
+      <ResearchSection />
+
       <ModelConfigSection session={session} />
 
       <EmailCaptureSection session={session} />
@@ -187,6 +190,40 @@ function AppearanceSection() {
           </button>
         ))}
       </div>
+    </section>
+  );
+}
+
+/**
+ * Research (decision 0050): when on, a chat answer that would offer web research
+ * just runs it — no tap, no gate, no picking. Off by default; stored per device.
+ */
+function ResearchSection() {
+  const { autoResearch, setAutoResearch } = useAutoResearch();
+  return (
+    <section className="mt-4 mx-auto max-w-2xl space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
+      <div>
+        <SectionTitle>Web research</SectionTitle>
+        <p className="mt-1 text-xs text-slate-400">
+          When Cogeto can’t answer from your memory, it can check the web. The sent query and the
+          sources it read are always shown and recorded in provenance.
+        </p>
+      </div>
+      <label className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          checked={autoResearch}
+          onChange={(e) => setAutoResearch(e.target.checked)}
+          className="mt-1"
+        />
+        <span className="text-sm text-slate-700">
+          <span className="font-medium">Research automatically</span>
+          <span className="block text-xs text-slate-400">
+            Skip the prompt: when an answer needs the web, Cogeto searches and reads the most
+            relevant sources on its own. Off by default, so nothing leaves without your tap.
+          </span>
+        </span>
+      </label>
     </section>
   );
 }
