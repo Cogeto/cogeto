@@ -231,7 +231,9 @@ export function ConversationSidebar({
       aria-label="Conversations"
       className="flex w-64 shrink-0 flex-col border-r border-slate-200"
     >
-      <div className="flex items-center justify-between px-3 pt-1 pb-2">
+      {/* Top padding mirrors the app bar's height so the rail heading sits on
+          the breadcrumb's baseline, not above it. */}
+      <div className="flex items-center justify-between px-3 pt-4.5 pb-2">
         <span className="font-mono text-[0.68rem] uppercase tracking-[0.12em] text-slate-400">
           Conversations
         </span>
