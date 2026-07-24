@@ -43,14 +43,38 @@ const DEVICE_SIGNOFF: RegExp = /^\s*(Sent from my\b|Poslano s\b|Get Outlook for\
  * so a plain single message is never emptied.
  */
 export function isolateEmailContent(text: string | null | undefined): string {
-  if (!text) return '';
+  return isolateEmailContentDetailed(text).content;
+}
+
+/**
+ * Where the isolated content came from (migration 0030; decision 0054) — the
+ * structural half of the email authorship rule. The extracted text is the
+ * message author's OWN words only when it is neither the inner content of a
+ * forwarded original (someone else wrote it) nor the quoted-history fallback
+ * (the body contained no new text of the author's at all).
+ */
+export interface IsolatedEmailContent {
+  content: string;
+  /** The content is a forwarded original's inner text — not the sender's words. */
+  forwarded: boolean;
+  /** Stripping consumed everything; the fallback returned quoted/whole text. */
+  quotedFallback: boolean;
+}
+
+export function isolateEmailContentDetailed(text: string | null | undefined): IsolatedEmailContent {
+  if (!text) return { content: '', forwarded: false, quotedFallback: false };
   const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const base = extractInnermostForward(normalized) ?? normalized;
+  const inner = extractInnermostForward(normalized);
+  const base = inner ?? normalized;
   const deQuoted = stripQuotedReply(base);
   const isolated = stripSignature(deQuoted).trim();
   // Never return empty for a non-empty input: if stripping consumed everything
   // (e.g. a body that was only a quote), fall back to the de-quoted-then-whole.
-  return isolated || deQuoted.trim() || normalized.trim();
+  return {
+    content: isolated || deQuoted.trim() || normalized.trim(),
+    forwarded: inner !== null,
+    quotedFallback: isolated === '' && (deQuoted.trim() !== '' || normalized.trim() !== ''),
+  };
 }
 
 /**

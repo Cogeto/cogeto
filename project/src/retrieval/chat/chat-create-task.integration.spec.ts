@@ -272,6 +272,77 @@ describe('create a task from chat (decision 0038; real Postgres + Qdrant)', () =
     expect(after.rows.every((r) => r.capture_content === null)).toBe(true);
   });
 
+  it('adopt_via_chat: "make a task from …" resolves the observed memory and adopts it; ambiguity asks', async () => {
+    const owner = `adopt-chat-${randomUUID()}`;
+    const principal = principalFor(owner);
+    const gateway = new ScriptedGateway(['Ana Kovač'], 'Ana Kovač');
+    const tasksEngine = new TasksEngine(tdb.db, store, gateway);
+    const retrieval = new RetrievalService(store, gateway, tasksEngine);
+    const chat = new ChatService(
+      tdb.db,
+      retrieval,
+      gateway,
+      new UserDirectory(tdb.db),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      tasksEngine,
+    );
+
+    // An OBSERVED obligation (uploaded contract → file source): the rule never
+    // derived a task from it.
+    const memory = await store.createFromFact(principal, {
+      content: 'Ana Kovač must deliver the CRM migration plan to Adriatic Foods by 15 August.',
+      scope: 'private',
+      sourceType: 'file',
+      sourceId: `contract-${randomUUID()}`,
+      kind: 'commitment',
+      entities: ['Ana Kovač', 'Adriatic Foods'],
+      subjectEntity: 'Ana Kovač',
+    });
+    expect(await tasksEngine.listForPrincipal(principal, { includeSettled: true })).toHaveLength(0);
+
+    // One confident match → adopted through the engine, audited.
+    const answer = await ask(chat, principal, 'Make a task from the CRM migration plan');
+    expect(answer).toContain('Adopted as your task');
+    const tasks = await tasksEngine.listForPrincipal(principal, { includeSettled: true });
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]!.adopted).toBe(true);
+    expect(tasks[0]!.derivedFromMemoryId).toBe(memory.id);
+    const audit = await tdb.pool.query(
+      `SELECT 1 FROM audit_log WHERE action = 'task.adopted' AND entity_id = $1`,
+      [tasks[0]!.id],
+    );
+    expect(audit.rows).toHaveLength(1);
+
+    // Ambiguity: two close matches → it lists them and asks, adopts nothing.
+    await store.createFromFact(principal, {
+      content: 'Marta Horvat will review the GDPR risk register this month.',
+      scope: 'private',
+      sourceType: 'file',
+      sourceId: `contract-${randomUUID()}`,
+      kind: 'commitment',
+      entities: ['Marta Horvat'],
+    });
+    await store.createFromFact(principal, {
+      content: 'Marta Horvat will update the GDPR risk register template.',
+      scope: 'private',
+      sourceType: 'file',
+      sourceId: `contract-${randomUUID()}`,
+      kind: 'commitment',
+      entities: ['Marta Horvat'],
+    });
+    const ambiguous = await ask(chat, principal, 'Make a task from the GDPR risk register');
+    expect(ambiguous).toContain('Which one');
+    expect(await tasksEngine.listForPrincipal(principal, { includeSettled: true })).toHaveLength(1);
+
+    // No match: declines and points at the drawer affordance, adopts nothing.
+    const none = await ask(chat, principal, 'Make a task from the submarine refit clause');
+    expect(none).toContain("couldn't find");
+    expect(await tasksEngine.listForPrincipal(principal, { includeSettled: true })).toHaveLength(1);
+  });
+
   it('chat_create_task_provenance: the deriving memory is the chat commitment with source_type chat', async () => {
     const owner = `create-prov-${randomUUID()}`;
     const principal = principalFor(owner);

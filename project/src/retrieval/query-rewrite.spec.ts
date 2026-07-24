@@ -117,18 +117,22 @@ describe('create_task intent detection (decision 0038)', () => {
     ).toEqual({
       instruction: 'send Ana the revised mapping once she confirms the format',
       lang: 'en',
+      adoptReference: null,
     });
     expect(detectCreateTaskIntent('remind me to follow up with Marko next week')).toEqual({
       instruction: 'follow up with Marko next week',
       lang: 'en',
+      adoptReference: null,
     });
     expect(detectCreateTaskIntent('add a task: chase the Baltic Retail contract')).toEqual({
       instruction: 'chase the Baltic Retail contract',
       lang: 'en',
+      adoptReference: null,
     });
     expect(detectCreateTaskIntent('Can you create a task to review the SOW?')).toEqual({
       instruction: 'review the SOW',
       lang: 'en',
+      adoptReference: null,
     });
   });
 
@@ -138,17 +142,55 @@ describe('create_task intent detection (decision 0038)', () => {
       detectCreateTaskIntent(
         'Napravi zadatak da pošaljem Ani revidirano mapiranje čim potvrdi format',
       ),
-    ).toEqual({ instruction: 'pošaljem Ani revidirano mapiranje čim potvrdi format', lang: 'hr' });
+    ).toEqual({
+      instruction: 'pošaljem Ani revidirano mapiranje čim potvrdi format',
+      lang: 'hr',
+      adoptReference: null,
+    });
     expect(detectCreateTaskIntent('podsjeti me da nazovem Marka')).toEqual({
       instruction: 'nazovem Marka',
       lang: 'hr',
+      adoptReference: null,
     });
   });
 
   it('a bare trigger yields a null instruction; the handler asks, creates nothing', async () => {
     const { detectCreateTaskIntent } = await import('./query-rewrite');
-    expect(detectCreateTaskIntent('Add a task')).toEqual({ instruction: null, lang: 'en' });
-    expect(detectCreateTaskIntent('Dodaj zadatak')).toEqual({ instruction: null, lang: 'hr' });
+    expect(detectCreateTaskIntent('Add a task')).toEqual({
+      instruction: null,
+      lang: 'en',
+      adoptReference: null,
+    });
+    expect(detectCreateTaskIntent('Dodaj zadatak')).toEqual({
+      instruction: null,
+      lang: 'hr',
+      adoptReference: null,
+    });
+  });
+
+  it('the adoption form ("from …") targets an existing memory (P6.5, decision 0054)', async () => {
+    const { detectCreateTaskIntent } = await import('./query-rewrite');
+    expect(detectCreateTaskIntent("Make a task from Ana's deadline in that contract")).toEqual({
+      instruction: null,
+      lang: 'en',
+      adoptReference: "Ana's deadline in that contract",
+    });
+    expect(detectCreateTaskIntent('turn that supplier obligation into a task')).toEqual({
+      instruction: null,
+      lang: 'en',
+      adoptReference: 'that supplier obligation',
+    });
+    expect(detectCreateTaskIntent('Napravi zadatak iz Anine obveze u ugovoru')).toEqual({
+      instruction: null,
+      lang: 'hr',
+      adoptReference: 'Anine obveze u ugovoru',
+    });
+    // The plain create form is untouched: "to" still captures new content.
+    expect(detectCreateTaskIntent('Make a task to send Ana the mapping')).toEqual({
+      instruction: 'send Ana the mapping',
+      lang: 'en',
+      adoptReference: null,
+    });
   });
 
   it('questions about tasks are vetoed — retrieval, not creation', async () => {

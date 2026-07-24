@@ -31,6 +31,7 @@ import {
 import type { Db, UserContextRecord } from '../../infrastructure/index';
 import { INGESTION_PIPELINE_JOB_TYPE } from '../../ingestion/index';
 import { isPastBelief } from '../../memory/index';
+import { TasksEngine } from '../../tasks/index';
 import { loadPrompt, ModelGateway } from '../../model-gateway/index';
 import type { PromptArtifact } from '../../model-gateway/index';
 import { UserDirectory } from '../../identity/index';
@@ -119,6 +120,10 @@ export class ChatService {
      * then the defaults apply (instance timezone, English, no profile). */
     @Optional()
     private readonly userContext?: UserContextService,
+    /** Adopt-as-task from chat (P6.5, decision 0054). Absent in bare test
+     * harnesses — then the adoption form declines gracefully. */
+    @Optional()
+    private readonly tasksEngine?: TasksEngine,
   ) {}
 
   async listMessages(principal: Principal): Promise<ChatMessageDto[]> {
@@ -647,6 +652,12 @@ export class ChatService {
     history: ConversationTurn[],
     ctx?: AskContext,
   ): AsyncGenerator<ChatStreamEvent> {
+    // The adoption form ("make a task from …", P6.5) targets an EXISTING
+    // memory — resolve and adopt instead of capturing new content.
+    if (intent.adoptReference !== null) {
+      yield* this.handleAdoptTaskIntent(principal, intent, history, ctx);
+      return;
+    }
     yield { type: 'sources', facts: [] };
     const hr = intent.lang === 'hr';
     let answer: string;
@@ -711,6 +722,79 @@ export class ChatService {
               `show on your Tasks page in a moment, derived from this conversation so its ` +
               `provenance points here.`;
         }
+      }
+    }
+    yield { type: 'token', text: answer };
+    const [row] = await this.db
+      .insert(chatMessage)
+      .values({ ownerId: principal.userId, role: 'assistant', content: answer })
+      .returning();
+    yield { type: 'done', messageId: row!.id, content: answer, citationViolations: 0 };
+  }
+
+  /**
+   * Adopt-as-task from chat (P6.5; decision 0054): resolve the referenced
+   * memory through the normal gated retrieval and adopt it through the
+   * EXISTING engine (audited as user-adopted). Reuses the create intent's
+   * conservative posture: one confident match adopts; an ambiguous reference
+   * lists the candidates and asks (creates nothing); no match declines and
+   * points to the memory drawer's button. Fast path: retrieval plus one
+   * engine insert — no ingestion work.
+   */
+  private async *handleAdoptTaskIntent(
+    principal: Principal,
+    intent: CreateTaskIntent,
+    history: ConversationTurn[],
+    ctx?: AskContext,
+  ): AsyncGenerator<ChatStreamEvent> {
+    yield { type: 'sources', facts: [] };
+    const hr = intent.lang === 'hr';
+    let answer: string;
+    let reference = intent.adoptReference!;
+    if (!this.tasksEngine) {
+      answer = hr
+        ? 'Preuzimanje zadatka iz memorije ovdje nije dostupno.'
+        : 'Adopting a task from a memory is not available here.';
+    } else {
+      // References to earlier turns resolve through the rewriter, like the
+      // create form.
+      if (ANAPHORA_RE.test(reference) && queryEntityCandidates(reference).length === 0) {
+        const rewritten = await this.routerRewrite(history, reference, {}, ctx);
+        if (
+          queryEntityCandidates(rewritten.query).length > 0 ||
+          !ANAPHORA_RE.test(rewritten.query)
+        ) {
+          reference = rewritten.query;
+        }
+      }
+      const result = await this.retrieval.retrieve(principal, reference, { history, topK: 5 });
+      // Adoption is owner-only: shared memories of others never qualify.
+      const own = result.memories.filter((hit) => hit.memory.ownerId === principal.userId);
+      const top = own[0];
+      const second = own[1];
+      const confident =
+        top !== undefined && (second === undefined || top.score >= second.score * 1.5);
+      if (!top) {
+        answer = hr
+          ? `Nisam pronašla zabilježenu činjenicu koja odgovara "${reference}". Otvorite ` +
+            `memoriju na stranici Memorije i upotrijebite "Make this a task", ili je prvo zabilježite.`
+          : `I couldn't find a remembered fact matching "${reference}". Open the memory on the ` +
+            `Memories page and use "Make this a task", or capture it first.`;
+      } else if (!confident) {
+        const options = own
+          .slice(0, 3)
+          .map((hit, i) => `${i + 1}. ${(hit.memory.content ?? '').slice(0, 100)}`)
+          .join('\n');
+        answer = hr
+          ? `Nekoliko zapamćenih činjenica odgovara "${reference}". Koju želite pretvoriti u zadatak?\n${options}`
+          : `Several remembered facts match "${reference}". Which one should become the task?\n${options}`;
+      } else {
+        const task = await this.tasksEngine.adoptFromMemory(principal, top.memory.id);
+        answer = hr
+          ? `Preuzeto kao vaš zadatak: "${task.title}". Izveden je iz te memorije i vidljiv na ` +
+            `stranici Zadaci; ponaša se kao svaki drugi zadatak.`
+          : `Adopted as your task: "${task.title}". It derives from that memory and shows on your ` +
+            `Tasks page; from here it behaves like any other task.`;
       }
     }
     yield { type: 'token', text: answer };

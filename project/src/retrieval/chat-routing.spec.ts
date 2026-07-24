@@ -44,6 +44,7 @@ describe('routing_matrix (decision 0046)', () => {
     expect(detectCreateTaskIntent('remind me to reply to Ana')).toEqual({
       instruction: 'reply to Ana',
       lang: 'en',
+      adoptReference: null,
     });
     expect(detectEmailReplyIntent("draft a reply to Ana's last email")).toEqual({
       target: 'Ana',

@@ -18,6 +18,11 @@ export {
 export { EmailIntakeService } from './email-intake.service';
 export type { MailEnvelope, IntakeResult } from './email-intake.service';
 export {
+  EmailAuthorshipBackfill,
+  EMAIL_AUTHORSHIP_BACKFILL_JOB_TYPE,
+} from './email-authorship-backfill';
+export type { AuthorshipBackfillReport } from './email-authorship-backfill';
+export {
   EmailAllowlistService,
   EMAIL_REFUSAL_RETENTION_JOB_TYPE,
   EMAIL_REFUSAL_RETENTION_CRONTAB,

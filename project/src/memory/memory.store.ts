@@ -46,6 +46,9 @@ export interface NewFact {
   subjectEntity?: string;
   /** The extractor's fact kind (migration 0011) — reconciliation matches on it. */
   kind?: FactKind;
+  /** Email-path authorship (migration 0030; decision 0054): true = the user's
+   * own new text; false = someone else's words; omit = unknown/not applicable. */
+  authoredByUser?: boolean;
   /** Raw temporal phrases code could not resolve (decision 0007 ruling 1). */
   temporalUnresolved?: string[];
   sensitive?: boolean;
@@ -1239,6 +1242,27 @@ export class MemoryStore {
       .limit(limit);
   }
 
+  /**
+   * Provenance-metadata backfill (migration 0030; decision 0054): stamps the
+   * email-path authorship flag on a source's derived memories. Deliberately
+   * narrow — it touches ONLY `authored_by_user` (structural metadata, not a
+   * status transition, so none of the aggregate's transition rules apply) and
+   * exists for the one-shot historical classification job; live rows get the
+   * flag at admission via NewFact.
+   */
+  async setAuthoredByUserBySourceSystem(
+    sourceType: SourceType,
+    sourceId: string,
+    authoredByUser: boolean,
+  ): Promise<number> {
+    const rows = await this.db
+      .update(memory)
+      .set({ authoredByUser })
+      .where(and(eq(memory.sourceType, sourceType), eq(memory.sourceId, sourceId)))
+      .returning({ id: memory.id });
+    return rows.length;
+  }
+
   private requireVectors(): MemoryVectorStore {
     if (!this.vectors) {
       throw new NotImplementedException(
@@ -1302,6 +1326,7 @@ export class MemoryStore {
         entities: fact.entities ?? [],
         subjectEntity: fact.subjectEntity,
         kind: fact.kind,
+        authoredByUser: fact.authoredByUser,
         temporalUnresolved: fact.temporalUnresolved ?? [],
         validFrom: fact.validFrom ?? new Date(),
         validUntil: fact.validUntil,

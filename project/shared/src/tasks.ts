@@ -13,6 +13,8 @@ export interface TaskDto {
   dormant: boolean;
   /** Derived from an uncertain memory awaiting Review (decision 0013 r2). */
   fromUncertain: boolean;
+  /** User-adopted from an observed memory ("Make this a task", decision 0054). */
+  adopted: boolean;
   derivedFromMemoryId: string;
   closedByMemoryId: string | null;
   createdAt: string;

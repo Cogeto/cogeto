@@ -130,8 +130,11 @@ name it in a decision record before coining a term in code.
   adds **web research** (Priority 5): fetched pages as `web` sources with URL
   provenance (decisions 0042/0043).
 - **Task** — an actionable item derived from memory (person, topic, condition,
-  status). Tasks read memory through its public interface; they never mutate it.
-  Owned by the `tasks` context.
+  status). Derivation is first-person only (decision 0054): notes, chat, and
+  the user's own email text derive; file, web, and system sources never do —
+  their observed obligations stay memories until the user **adopts** one
+  ("Make this a task"). Tasks read memory through its public interface; they
+  never mutate it. Owned by the `tasks` context.
 - **Task conclusion** — the fact derived when a task concludes (its condition is
   satisfied or it closes): a deterministic statement entering the normal pipeline
   with provenance `source_type = 'task_conclusion'` pointing at the durable

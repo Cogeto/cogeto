@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { z } from 'zod';
 import { evalConfigSchema, runGoldenEval, runReconcileEval } from '../ingestion/index';
 import type { EvalMetrics, ReconcileEvalMetrics } from '../ingestion/index';
-import { runTaskEval } from '../tasks/index';
+import { runDerivationTrapEval, runTaskEval } from '../tasks/index';
 import type { TaskEvalMetrics } from '../tasks/index';
 import { createModelGateway } from '../model-gateway/index';
 import { resolveEvalProviders, requireConfiguredProviders } from './eval-env';
@@ -101,6 +101,17 @@ async function main(): Promise<void> {
   );
   console.log(table);
   console.log('====================================================\n');
+
+  // ── Derivation traps (P6.5; decision 0054): hard assertions against the
+  // tasks module's REAL first-person predicate — a web page or document dense
+  // with obligations must yield its memories and ZERO tasks; the user's own
+  // email reply exactly one. Enforced unconditionally: a trap breach is a rule
+  // regression, never a model-variance question.
+  const traps = runDerivationTrapEval(result.derivationTraps);
+  console.log(
+    `derivation traps: ${traps.cases} case(s), ${traps.failures.length} failure(s)` +
+      (traps.failures.length > 0 ? `\n  ${traps.failures.join('\n  ')}` : ''),
+  );
 
   // Reconciliation pair cases (F2-A, decision 0010 ruling 9) — the same run,
   // so the trust score always reports extraction and reconciliation together.
@@ -238,6 +249,13 @@ async function main(): Promise<void> {
       `  ${ok ? 'PASS' : 'FAIL'}  ${metric.padEnd(24)} ${pct(value)}  (gate ≥ ${pct(gate)})`,
     );
   }
+  // Derivation traps are part of the standard gate (P6.5): a hard assertion,
+  // not a floor metric.
+  const trapsOk = traps.failures.length === 0;
+  if (!trapsOk) failures.push(`derivation_traps: ${traps.failures.join('; ')}`);
+  console.log(
+    `  ${trapsOk ? 'PASS' : 'FAIL'}  ${'derivation_traps'.padEnd(24)} ${traps.cases - traps.failures.length}/${traps.cases}  (hard assertion)`,
+  );
   console.log('===========================================================\n');
   if (failures.length > 0) {
     console.error(`GATE BREACH: ${failures.join('; ')}`);

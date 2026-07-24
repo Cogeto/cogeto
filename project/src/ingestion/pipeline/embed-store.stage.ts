@@ -77,6 +77,9 @@ export class EmbedStoreStage {
         entities: flattenEntities(fact),
         subjectEntity: fact.subject_entity ?? undefined,
         kind: fact.kind,
+        // Email-path authorship (decision 0054) — carried from the SourceReader,
+        // structural, never a model judgment.
+        authoredByUser: source.authoredByUser,
         sensitive: source.sensitive ?? false,
         validFrom,
         validUntil,

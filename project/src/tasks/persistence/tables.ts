@@ -42,6 +42,13 @@ export const task = pgTable(
     closedByMemoryId: uuid('closed_by_memory_id'),
     dormant: boolean('dormant').notNull().default(false),
     fromUncertain: boolean('from_uncertain').notNull().default(false),
+    /**
+     * User-adopted (migration 0030; decision 0054): the user turned an observed
+     * memory into this task ("Make this a task") — the first-person act the
+     * derivation rule requires. Adopted tasks behave identically afterwards and
+     * are never touched by the derivation-rule cleanup.
+     */
+    adopted: boolean('adopted').notNull().default(false),
     // Reminder state (migration 0017; F3 handoff §2): a set timestamp means a
     // pending reminder of that kind. The reminders pass stamps once per window;
     // close/dismiss and dormancy-resolution clear. NOT a second table — additive

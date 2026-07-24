@@ -29,6 +29,7 @@ import { PassportExportExecutor, PASSPORT_RETENTION_CRONTAB } from '../passport/
 import {
   CONTEXT_SUGGEST_PROMPT,
   EmailAllowlistService,
+  EmailAuthorshipBackfill,
   EMAIL_REFUSAL_RETENTION_CRONTAB,
 } from '../connectors/index';
 import { ANSWER_PROMPT, QUERY_REWRITE_PROMPT } from '../retrieval/index';
@@ -134,6 +135,7 @@ async function main(): Promise<void> {
     approvalExecutor: context.get(ApprovalExecutor),
     passportExecutor: context.get(PassportExportExecutor),
     allowlist: context.get(EmailAllowlistService),
+    authorshipBackfill: context.get(EmailAuthorshipBackfill),
     objects,
     gateway,
     log: (event, message) => logger.info(event, message),

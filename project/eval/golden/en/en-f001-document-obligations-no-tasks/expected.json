@@ -1,0 +1,35 @@
+{
+  "case_id": "en-f001",
+  "source_type": "file",
+  "source_date": "2026-07-20T09:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Ana Kovač will deliver the CRM migration plan to Adriatic Foods by 15 August 2026",
+      "kind": "commitment",
+      "entities": ["Ana Kovač", "Adriatic Foods"],
+      "condition": null,
+      "temporal": { "valid_until": "2026-08-15" },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Adriatic Foods will pay each invoice within 15 days of receipt",
+      "kind": "commitment",
+      "entities": ["Adriatic Foods"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "The appointment of a project sponsor by Adriatic Foods is still pending",
+      "kind": "open_loop",
+      "entities": ["Adriatic Foods"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": false
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported",
+  "expected_tasks": 0
+}

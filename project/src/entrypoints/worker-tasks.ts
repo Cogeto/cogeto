@@ -9,7 +9,7 @@ import {
   TASKS_BACKFILL_JOB_TYPE,
 } from '../ingestion/index';
 import type { DreamingService, IngestionPipeline, PipelineLog } from '../ingestion/index';
-import { TASKS_REMINDERS_JOB_TYPE } from '../tasks/index';
+import { TASKS_DERIVATION_CLEANUP_JOB_TYPE, TASKS_REMINDERS_JOB_TYPE } from '../tasks/index';
 import type { TasksEngine } from '../tasks/index';
 import {
   DELETION_JOB_TYPE,
@@ -27,8 +27,11 @@ import { APPROVAL_EXECUTE_JOB_TYPE, APPROVAL_EXPIRY_JOB_TYPE } from '../agents/i
 import type { ApprovalExecutor, ApprovalService } from '../agents/index';
 import { PASSPORT_EXPORT_JOB_TYPE, PASSPORT_RETENTION_JOB_TYPE } from '../passport/index';
 import type { PassportExportExecutor } from '../passport/index';
-import { EMAIL_REFUSAL_RETENTION_JOB_TYPE } from '../connectors/index';
-import type { EmailAllowlistService } from '../connectors/index';
+import {
+  EMAIL_AUTHORSHIP_BACKFILL_JOB_TYPE,
+  EMAIL_REFUSAL_RETENTION_JOB_TYPE,
+} from '../connectors/index';
+import type { EmailAllowlistService, EmailAuthorshipBackfill } from '../connectors/index';
 import type { ModelGateway } from '../model-gateway/index';
 
 export interface WorkerTaskDeps {
@@ -42,6 +45,7 @@ export interface WorkerTaskDeps {
   approvalExecutor: ApprovalExecutor;
   passportExecutor: PassportExportExecutor;
   allowlist: EmailAllowlistService;
+  authorshipBackfill: EmailAuthorshipBackfill;
   objects: MemoryObjectStore;
   gateway: ModelGateway;
   /** Bound to pino by the worker entrypoint. Counts only — never content. */
@@ -166,6 +170,24 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
     [TASKS_BACKFILL_JOB_TYPE]: recurring(TASKS_BACKFILL_JOB_TYPE, async () => {
       const report = await deps.tasksEngine.backfill((message) => deps.log({}, message));
       deps.log({ ...report }, 'tasks backfill completed');
+    }),
+
+    // The one-shot derivation-discipline chain (P6.5; decision 0054): migration
+    // 0030 enqueues the authorship backfill; the backfill classifies historical
+    // email rows, stamps their memories, and enqueues the cleanup, which
+    // removes phantom tasks with an audit entry per removal and prints the
+    // count summary. Both are idempotent by construction (IS NULL scan; no
+    // remaining candidates), single-flight against a double enqueue.
+    [EMAIL_AUTHORSHIP_BACKFILL_JOB_TYPE]: recurring(
+      EMAIL_AUTHORSHIP_BACKFILL_JOB_TYPE,
+      async () => {
+        const report = await deps.authorshipBackfill.run((message) => deps.log({}, message));
+        deps.log({ ...report }, 'email authorship backfill completed');
+      },
+    ),
+    [TASKS_DERIVATION_CLEANUP_JOB_TYPE]: recurring(TASKS_DERIVATION_CLEANUP_JOB_TYPE, async () => {
+      const report = await deps.tasksEngine.derivationCleanup((message) => deps.log({}, message));
+      deps.log({ ...report }, 'tasks derivation cleanup completed');
     }),
 
     // The nightly task reminders pass (F3 handoff §2) — scheduled 03:40 by the

@@ -189,6 +189,7 @@ export class EmailIntakeService {
         scope,
         matchedSender ?? headerFrom ?? '',
         rcpt ?? '',
+        recipient.selfRouted,
       );
       emailIds.push(result);
     }
@@ -205,7 +206,7 @@ export class EmailIntakeService {
   private async resolveRecipients(
     matchedSender: string | null,
     senderAuthenticated: boolean,
-  ): Promise<Array<{ userId: string; orgId: string }>> {
+  ): Promise<Array<{ userId: string; orgId: string; selfRouted: boolean }>> {
     if (!matchedSender) return [];
     const adminEmail = normalizeAddress(this.options.adminUserEmail);
     if (adminEmail && matchedSender === adminEmail) return [];
@@ -218,14 +219,16 @@ export class EmailIntakeService {
     // allowlist rule (which is an explicit per-user opt-in), not a hard refuse.
     const self = await this.directory.userByEmail(matchedSender);
     if (self && (senderAuthenticated || !this.options.requireAuthenticatedSender)) {
-      return [{ userId: self.userId, orgId: self.orgId }];
+      // Self-route = the message was written/sent BY the capture user — the
+      // structural authorship fact the derivation rule needs (decision 0054).
+      return [{ userId: self.userId, orgId: self.orgId, selfRouted: true }];
     }
 
     const ownerIds = await this.allowlist.ownersMatching(matchedSender);
     const users = await this.directory.usersByIds(ownerIds);
     return users
       .filter((u) => !adminEmail || (u.email ?? '').toLowerCase() !== adminEmail)
-      .map((u) => ({ userId: u.userId, orgId: u.orgId }));
+      .map((u) => ({ userId: u.userId, orgId: u.orgId, selfRouted: false }));
   }
 
   /** Store one recipient's copy + enqueue in the safe order (object-first,
@@ -237,6 +240,7 @@ export class EmailIntakeService {
     scope: MemoryScope,
     fromAddr: string,
     toAddr: string,
+    authoredByOwner: boolean,
   ): Promise<string> {
     const sensitive = false;
     const emailId = randomUUID();
@@ -315,6 +319,7 @@ export class EmailIntakeService {
           calendarSummary: summarizeCalendarInvites(parsed.attachments ?? []),
           headersJson: headerMap(parsed),
           hasAttachments: attachmentPlans.length > 0,
+          authoredByOwner,
         });
 
         for (const plan of attachmentPlans) {

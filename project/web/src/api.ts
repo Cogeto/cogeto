@@ -260,6 +260,11 @@ export const taskOperation = (
   id: string,
   op: 'reopen' | 'dismiss' | 'complete',
 ): Promise<TaskDto> => apiPost(`/api/tasks/${id}/${op}`, {}, session);
+// "Make this a task" (P6.5, decision 0054): adopt an observed memory as the
+// caller's own task through the existing derivation engine. Idempotent — a
+// memory that already carries a task returns it unchanged.
+export const adoptMemoryAsTask = (session: Session, memoryId: string): Promise<TaskDto> =>
+  apiPost('/api/tasks/adopt', { memoryId }, session);
 // Task conclusions (decision 0037): "this task produced this fact".
 export const fetchTaskConclusions = (session: Session, id: string): Promise<TaskConclusionDto[]> =>
   apiGet(`/api/tasks/${id}/conclusions`, session);

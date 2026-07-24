@@ -26,6 +26,14 @@ export interface SourceItem {
   scope?: MemoryScope;
   sensitive?: boolean;
   /**
+   * Email-path authorship (migration 0030; decision 0054): true when the
+   * content is the user's OWN new text (a self-routed message that is not a
+   * forwarded original), false when it is someone else's words, omitted when
+   * unknown or not applicable (non-email sources). Derived memories carry it;
+   * task derivation treats email as first-person ONLY when true.
+   */
+  authoredByUser?: boolean;
+  /**
    * Extract-and-discard (§A.9, F1 handoff §3): the transient staging object the
    * bytes were read from, present ONLY in discard mode. The pipeline schedules
    * its deletion AFTER the derived memories commit — so a discarded original is

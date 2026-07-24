@@ -5,10 +5,11 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, like, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Principal } from '@cogeto/shared';
 import {
+  auditLog,
   DRIZZLE,
   UserContextService,
   withTransactionalEnqueue,
@@ -31,6 +32,7 @@ import { buildConclusionStatement, toConclusionDto } from './task-conclusion';
 import type { ConclusionType, TaskConclusionDto } from './task-conclusion';
 import { gateForeignTasks } from './task-visibility';
 import { REMINDER_DUE_SOON_HORIZON_HOURS } from './reminders-config';
+import { DERIVING_KINDS, firstPersonSource } from './derivation-rule';
 
 /**
  * The task-derivation engine (decision 0013; glossary: Task, Open loops) —
@@ -57,6 +59,14 @@ export const TASK_PROMPTS = [TASK_CONDITION_PROMPT, TASK_CLOSURE_PROMPT] as cons
 export const TASKS_REMINDERS_JOB_TYPE = 'tasks_reminders';
 export const TASKS_REMINDERS_CRONTAB = `40 3 * * * ${TASKS_REMINDERS_JOB_TYPE}`;
 
+/**
+ * The one-shot derivation-rule cleanup (P6.5; decision 0054): removes tasks
+ * the pre-0030 rule derived from non-first-person sources. Enqueued by the
+ * email-authorship backfill once historical email rows are classified; the
+ * migration starts that chain.
+ */
+export const TASKS_DERIVATION_CLEANUP_JOB_TYPE = 'tasks_derivation_cleanup';
+
 const closureVerdictSchema = z.object({
   verdict: z.enum(['closes', 'progresses', 'unrelated']),
   reason: z.string().min(1),
@@ -66,8 +76,6 @@ const conditionVerdictSchema = z.object({
   reason: z.string().min(1),
 });
 
-/** Kinds that derive tasks (0013 ruling 2). */
-const DERIVING_KINDS = ['commitment', 'open_loop'] as const;
 /** Max judged tasks per incoming fact per run — mirrors F2's check cap. */
 const MAX_TASK_CHECKS = 3;
 /** Candidate pool cap per owner. */
@@ -86,6 +94,13 @@ export interface ReminderReport {
   dueRaised: number;
   dormantRaised: number;
   dormantCleared: number;
+}
+
+/** The derivation-rule cleanup's count summary (P6.5; decision 0054). */
+export interface DerivationCleanupReport {
+  removed: number;
+  sparedByInteraction: number;
+  sparedByConclusion: number;
 }
 
 export interface TaskListFilters {
@@ -166,7 +181,9 @@ export class TasksEngine {
   /**
    * The idempotent backfill (0013 ruling 2): historical commitments gain
    * tasks; UNIQUE makes re-runs no-ops. Deliberately model-free — judgments
-   * ride only on newly admitted facts.
+   * ride only on newly admitted facts. Gated by the SAME `derivable` rule as
+   * live admission (P6.5): before 0054 this path bypassed the source check,
+   * which would have silently re-derived every cleaned-up phantom nightly.
    */
   async backfill(log: (message: string) => void = () => undefined): Promise<TaskEngineReport> {
     const report = emptyReport();
@@ -176,7 +193,9 @@ export class TasksEngine {
     );
     await this.db.transaction(async (tx) => {
       for (const row of rows) {
-        report.derived += await this.deriveTask(tx, row);
+        if (this.derivable(row)) {
+          report.derived += await this.deriveTask(tx, row);
+        }
       }
       await this.maintain(tx, report, [...new Set(rows.map((r) => r.ownerId))]);
     });
@@ -239,6 +258,94 @@ export class TasksEngine {
     return report;
   }
 
+  /**
+   * The one-shot derivation-rule cleanup (P6.5; decision 0054 ruling 5):
+   * removes tasks the pre-0030 rule derived from non-first-person sources —
+   * file, web, calendar_event, and email content not authored by the user
+   * (the authorship backfill has classified historical email rows before this
+   * runs). Hard delete with one audit entry per removal: the rows were never
+   * valid derivations, their deriving MEMORIES stay untouched, and the audit
+   * trail preserves what was removed and why.
+   *
+   * NEVER touched, regardless of origin: adopted tasks, tasks the user has
+   * interacted with (any `user:` audit action on the task — complete, dismiss,
+   * reopen; interaction is adoption), and tasks referenced by a conclusion
+   * memory. Idempotent: a re-run finds no remaining candidates.
+   */
+  async derivationCleanup(
+    log: (message: string) => void = () => undefined,
+  ): Promise<DerivationCleanupReport> {
+    const report: DerivationCleanupReport = {
+      removed: 0,
+      sparedByInteraction: 0,
+      sparedByConclusion: 0,
+    };
+    await this.db.transaction(async (tx) => {
+      const all = await tx.select().from(task).for('update');
+      if (all.length === 0) return;
+      const memories = new Map(
+        (await this.memoryStore.getManySystem(all.map((t) => t.derivedFromMemoryId))).map((m) => [
+          m.id,
+          m,
+        ]),
+      );
+      const concluded = new Set(
+        (await tx.select({ taskId: taskConclusion.taskId }).from(taskConclusion))
+          .map((r) => r.taskId)
+          .filter((id): id is string => id !== null),
+      );
+      const userTouched = new Set(
+        (
+          await tx
+            .select({ entityId: auditLog.entityId })
+            .from(auditLog)
+            .where(and(eq(auditLog.entityType, 'task'), like(auditLog.actor, 'user:%')))
+        ).map((r) => r.entityId),
+      );
+      for (const t of all) {
+        if (t.adopted) continue; // adoption IS the first-person act
+        const deriving = memories.get(t.derivedFromMemoryId);
+        if (!deriving || firstPersonSource(deriving)) continue; // a valid derivation
+        if (userTouched.has(t.id)) {
+          report.sparedByInteraction += 1;
+          continue;
+        }
+        if (concluded.has(t.id)) {
+          report.sparedByConclusion += 1;
+          continue;
+        }
+        await tx.delete(task).where(eq(task.id, t.id));
+        await writeAudit(tx, {
+          actor: 'tasks_engine',
+          action: 'task.removed',
+          entityType: 'task',
+          entityId: t.id,
+          detail: {
+            cause: 'derivation_rule_migration',
+            memoryId: deriving.id,
+            sourceType: deriving.sourceType,
+          },
+          ownerId: t.ownerId,
+          orgId: await this.orgFor(t.ownerId),
+        });
+        report.removed += 1;
+      }
+      await writeAudit(tx, {
+        actor: 'tasks_engine',
+        action: 'task.derivation_cleanup',
+        entityType: 'task',
+        entityId: 'derivation-rule-migration',
+        detail: { ...report },
+      });
+    });
+    log(
+      `tasks derivation cleanup: ${report.removed} removed, ` +
+        `${report.sparedByInteraction} spared by interaction, ` +
+        `${report.sparedByConclusion} spared by conclusion`,
+    );
+    return report;
+  }
+
   // ── Derivation (deterministic; 0013 ruling 2) ───────────────────────────────
 
   private derivable(row: MemoryRow): boolean {
@@ -246,15 +353,18 @@ export class TasksEngine {
       row.kind !== null &&
       (DERIVING_KINDS as readonly string[]).includes(row.kind) &&
       (row.status === 'active' || row.status === 'uncertain') &&
-      // The loop guard (decision 0037 ruling 6): a conclusion memory records a
-      // COMPLETED obligation — it never derives a task, whatever kind the
-      // extractor assigned, so conclude → derive → conclude cannot cycle.
-      row.sourceType !== 'task_conclusion'
+      // The first-person rule (P6.5; decision 0054): only content the user
+      // authored derives — notes, chat, and the user's own email text. It
+      // subsumes the 0037 loop guard (a task_conclusion source is never
+      // first-person, so conclude → derive → conclude still cannot cycle).
+      firstPersonSource(row)
     );
   }
 
-  /** Inserts the task; the UNIQUE deriving-memory constraint is the idempotency. */
-  private async deriveTask(tx: Tx, row: MemoryRow): Promise<number> {
+  /** Inserts the task; the UNIQUE deriving-memory constraint is the idempotency.
+   * `adoptedBy` marks a user adoption (decision 0054): same structural mapping
+   * through the same engine, recorded and audited as the user's own act. */
+  private async deriveTask(tx: Tx, row: MemoryRow, adoptedBy?: Principal): Promise<number> {
     const conditionText = await this.conditionOf(row);
     const inserted = await tx
       .insert(task)
@@ -272,20 +382,43 @@ export class TasksEngine {
         due: row.validUntil,
         status: conditionText ? 'blocked_on_condition' : 'open',
         fromUncertain: row.status === 'uncertain',
+        adopted: adoptedBy !== undefined,
       })
       .onConflictDoNothing({ target: task.derivedFromMemoryId })
       .returning({ id: task.id });
     if (inserted.length === 0) return 0;
     await writeAudit(tx, {
-      actor: 'tasks_engine',
-      action: 'task.derived',
+      actor: adoptedBy ? `user:${adoptedBy.userId}` : 'tasks_engine',
+      action: adoptedBy ? 'task.adopted' : 'task.derived',
       entityType: 'task',
       entityId: inserted[0]!.id,
       detail: { memoryId: row.id, kind: row.kind, blocked: conditionText !== null },
       ownerId: row.ownerId,
-      orgId: await this.orgFor(row.ownerId),
+      orgId: adoptedBy ? adoptedBy.orgId : await this.orgFor(row.ownerId),
     });
     return 1;
+  }
+
+  /**
+   * User adoption (P6.5; decision 0054): "Make this a task" on any memory the
+   * caller owns. The adoption is the first-person act that satisfies the
+   * derivation rule, so the source type does not matter here — the observed
+   * obligation becomes the user's own through the EXISTING derivation mapping
+   * (title, condition, due, scope), audited as `task.adopted`. Idempotent: a
+   * memory that already carries a task returns that task unchanged.
+   */
+  async adoptFromMemory(principal: Principal, memoryId: string): Promise<TaskRow> {
+    return this.db.transaction(async (tx) => {
+      const row = (await this.memoryStore.getManySystem([memoryId]))[0];
+      // Owner-only, reported as NotFound so existence never leaks (the
+      // MemoryStore user-actor convention).
+      if (!row || row.ownerId !== principal.userId) {
+        throw new NotFoundException(`memory ${memoryId} not found`);
+      }
+      await this.deriveTask(tx, row, principal);
+      const tasks = await tx.select().from(task).where(eq(task.derivedFromMemoryId, memoryId));
+      return tasks[0]!;
+    });
   }
 
   /** The extractor's condition lives in the verification-era fact; the memory

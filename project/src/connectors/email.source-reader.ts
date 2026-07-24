@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { DRIZZLE } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import type { SourceItem, SourceReader } from '../ingestion/index';
-import { isolateEmailContent } from '../ingestion/index';
+import { isolateEmailContentDetailed } from '../ingestion/index';
 import { emailMessage } from './persistence/tables';
 
 /**
@@ -31,7 +31,18 @@ export class EmailSourceReader implements SourceReader {
     if (!row) return null;
 
     const subject = row.subject?.trim();
-    const body = isolateEmailContent(row.textBody);
+    const isolated = isolateEmailContentDetailed(row.textBody);
+    const body = isolated.content;
+    // Email-path authorship (decision 0054), structural on both axes: the copy
+    // was self-routed at intake (the authenticated sender IS the capture user)
+    // AND the isolated content is the sender's own new text — not a forwarded
+    // original's inner content, not the quoted-history fallback. A pre-0030 row
+    // (authored_by_owner NULL) stays unknown until the backfill classifies it;
+    // unknown never derives a task.
+    const authoredByUser =
+      row.authoredByOwner === null
+        ? undefined
+        : row.authoredByOwner && !isolated.forwarded && !isolated.quotedFallback;
     // Give the extractor the subject as a lead line — email facts often live in
     // the subject ("Deadline moved to Friday"). Falls back to the subject alone
     // when the body is empty (e.g. an HTML-only message with no text part).
@@ -51,6 +62,7 @@ export class EmailSourceReader implements SourceReader {
       createdAt: row.sentAt ?? row.receivedAt,
       scope: row.scope,
       sensitive: row.sensitive,
+      authoredByUser,
     };
   }
 

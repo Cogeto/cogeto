@@ -8,6 +8,12 @@ Responsibilities: task/reminder records, digest assembly, scheduling of recurrin
 slow-path jobs (via the queue, §A.3 — jobs are idempotent, key
 `(source_type, source_id, job_type)`).
 
+Derivation is first-person only (decision 0054, `derivation-rule.ts`): notes,
+chat, and the user's own email text derive; file/web/system sources never do —
+their observed obligations stay memories until the user adopts one ("Make this
+a task", audited as `task.adopted`). Condition satisfaction and closure remain
+source-agnostic.
+
 Owns: task/reminder/digest tables, plus `task_conclusion` — the durable
 provenance rows behind `source_type 'task_conclusion'` (decision 0037): when a
 task concludes, the engine records a conclusion row and enqueues the normal
