@@ -1232,7 +1232,9 @@ cmd_features() {
         verb="$1"; shift ;;
       --base-url) base_url="$2"; shift 2 ;;
       *)
-        [ -n "$verb" ] && [ -z "$fid" ] || die "features: unknown argument '$1' (see --help)"
+        if [ -z "$verb" ] || [ -n "$fid" ]; then
+          die "features: unknown argument '$1' (see --help)"
+        fi
         fid="$1"; shift ;;
     esac
   done
