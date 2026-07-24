@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
   NotFoundException,
@@ -25,6 +26,8 @@ const listQuerySchema = z.object({
   includeSettled: z.enum(['true', 'false']).optional(),
 });
 
+const adoptBodySchema = z.object({ memoryId: z.string().uuid() });
+
 function toDto(row: TaskRow): TaskDto {
   return {
     id: row.id,
@@ -37,6 +40,7 @@ function toDto(row: TaskRow): TaskDto {
     due: row.due?.toISOString() ?? null,
     dormant: row.dormant,
     fromUncertain: row.fromUncertain,
+    adopted: row.adopted,
     derivedFromMemoryId: row.derivedFromMemoryId,
     closedByMemoryId: row.closedByMemoryId,
     createdAt: row.createdAt.toISOString(),
@@ -94,6 +98,22 @@ export class TasksController {
     const dto = await this.engine.getConclusionForPrincipal(request.principal, id);
     if (!dto) throw new NotFoundException(`conclusion ${id} not found`);
     return dto;
+  }
+
+  /**
+   * "Make this a task" (P6.5; decision 0054): adopt an observed memory as the
+   * caller's own task through the existing derivation engine — the deliberate
+   * first-person act the derivation rule requires. Owner-only; idempotent (a
+   * memory that already carries a task returns it unchanged); audited as
+   * `task.adopted` inside the engine.
+   */
+  @Post('adopt')
+  async adopt(@Req() request: AuthenticatedRequest, @Body() body: unknown): Promise<TaskDto> {
+    const parsed = adoptBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
+    }
+    return toDto(await this.engine.adoptFromMemory(request.principal, parsed.data.memoryId));
   }
 
   @Post(':id/reopen')

@@ -63,6 +63,14 @@ export const memory = pgTable(
     subjectEntity: text('subject_entity'),
     /** The extractor's fact kind (migration 0011; decision 0010). NULL pre-F2. */
     kind: factKindEnum('kind'),
+    /**
+     * Email-path authorship (migration 0030; decision 0054): true when the fact
+     * came from the new content of a message the user wrote or sent themselves,
+     * false when it is someone else's words (inbound sender, forwarded
+     * original), NULL when unknown or not applicable (non-email sources).
+     * Task derivation treats email as first-person ONLY when this is true.
+     */
+    authoredByUser: boolean('authored_by_user'),
     validFrom: timestamp('valid_from', { withTimezone: true }),
     validUntil: timestamp('valid_until', { withTimezone: true }),
     supersededBy: uuid('superseded_by'),

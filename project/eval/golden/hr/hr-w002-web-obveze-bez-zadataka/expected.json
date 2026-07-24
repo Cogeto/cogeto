@@ -1,0 +1,35 @@
+{
+  "case_id": "hr-w002",
+  "source_type": "web",
+  "source_date": "2026-07-20T09:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Adriatic Foods isporučit će sve veleprodajne narudžbe u roku od 48 sati od potvrde",
+      "kind": "commitment",
+      "entities": ["Adriatic Foods"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Marko Novak slat će svakom partneru mjesečni izvod do 5. u mjesecu",
+      "kind": "commitment",
+      "entities": ["Marko Novak"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Potpisani aneks o kvaliteti za sezonu 2026. još nije zaprimljen",
+      "kind": "open_loop",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": false
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported",
+  "expected_tasks": 0
+}

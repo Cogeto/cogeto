@@ -83,6 +83,14 @@ export const emailMessage = pgTable(
     calendarSummary: text('calendar_summary'),
     headersJson: jsonb('headers_json').notNull().default({}),
     hasAttachments: boolean('has_attachments').notNull().default(false),
+    /**
+     * Intake-time routing fact (migration 0030; decision 0054): true when this
+     * copy was self-routed (decision 0031 rule 1 — the authenticated sender IS
+     * the capture user), false when allowlist-routed (someone else wrote it).
+     * NULL = pre-0030 row awaiting the authorship backfill. The SourceReader
+     * combines it with forward detection into the memories' authored_by_user.
+     */
+    authoredByOwner: boolean('authored_by_owner'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('email_message_owner_received_idx').on(t.ownerId, t.receivedAt)],

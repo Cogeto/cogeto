@@ -198,6 +198,13 @@ export interface CreateTaskIntent {
   instruction: string | null;
   /** Which language's trigger matched — picks the capture normalization. */
   lang: 'en' | 'hr';
+  /**
+   * Adoption form (P6.5; decision 0054): "make a task FROM …" references an
+   * EXISTING memory ("make a task from Ana's deadline in that contract") —
+   * resolve and adopt it rather than capturing new content. Null = the plain
+   * create form.
+   */
+  adoptReference: string | null;
 }
 
 const CREATE_TASK_PATTERNS: ReadonlyArray<{ lang: 'en' | 'hr'; re: RegExp }> = [
@@ -224,9 +231,37 @@ const CREATE_TASK_PATTERNS: ReadonlyArray<{ lang: 'en' | 'hr'; re: RegExp }> = [
 const CREATE_TASK_QUESTION_VETO =
   /^\s*(?:did|do|does|have|has|had|is|are|was|were|what|which|when|where|why|how|who|jesam|jesi|je\s*li|ima[mš]\s*li|što|sto|koji|koja|koje|kada|kad|gdje|zašto|zasto|kako|tko)\b/i;
 
+/**
+ * The adoption form (P6.5; decision 0054): "make a task from <reference>" and
+ * "turn <reference> into a task" (en + hr) target an EXISTING memory. Checked
+ * before the create patterns — "from" is not in their preposition set, so the
+ * two forms never shadow each other.
+ */
+const ADOPT_TASK_PATTERNS: ReadonlyArray<{ lang: 'en' | 'hr'; re: RegExp }> = [
+  {
+    lang: 'en',
+    re: /\b(?:make|create|add|open)\s+(?:me\s+)?a\s+(?:new\s+)?(?:task|to[- ]?do)\s+(?:from|out of)\s+(.+)$/i,
+  },
+  { lang: 'en', re: /\bturn\s+(.+?)\s+into\s+a\s+(?:task|to[- ]?do)\s*$/i },
+  {
+    lang: 'hr',
+    re: /\b(?:napravi|kreiraj|dodaj|otvori)\s+(?:mi\s+)?(?:novi\s+)?zadatak\s+(?:iz|od|na temelju)\s+(.+)$/i,
+  },
+  { lang: 'hr', re: /\bpretvori\s+(.+?)\s+u\s+zadatak\s*$/i },
+];
+
 /** Detect an explicit create-a-task request. Purely deterministic (no model). */
 export function detectCreateTaskIntent(question: string): CreateTaskIntent | null {
   if (CREATE_TASK_QUESTION_VETO.test(question)) return null;
+  for (const { lang, re } of ADOPT_TASK_PATTERNS) {
+    const match = re.exec(question);
+    if (!match) continue;
+    const raw = match[1]!
+      .trim()
+      .replace(/[.!?\s]+$/, '')
+      .trim();
+    return { instruction: null, lang, adoptReference: raw.length >= 3 ? raw : null };
+  }
   for (const { lang, re } of CREATE_TASK_PATTERNS) {
     const match = re.exec(question);
     if (!match) continue;
@@ -234,7 +269,7 @@ export function detectCreateTaskIntent(question: string): CreateTaskIntent | nul
       .trim()
       .replace(/[.!?\s]+$/, '')
       .trim();
-    return { instruction: raw.length >= 3 ? raw : null, lang };
+    return { instruction: raw.length >= 3 ? raw : null, lang, adoptReference: null };
   }
   return null;
 }

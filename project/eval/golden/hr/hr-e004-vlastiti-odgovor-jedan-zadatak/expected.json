@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-e004",
+  "source_type": "email",
+  "source_date": "2026-07-21T10:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Korisnica će Marku poslati potpisani aneks distribucijskog ugovora do četvrtka",
+      "kind": "commitment",
+      "entities": ["Marko"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "Marko će pripremiti izvještaj o izvozu do ponedjeljka (citirana povijest — već je vlastiti izvor)"
+  ],
+  "expected_relations": [],
+  "verification_expected": "supported",
+  "expected_tasks": 1,
+  "email_authored_by_owner": true
+}

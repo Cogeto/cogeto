@@ -48,7 +48,7 @@ export {
 } from './prompt-versions';
 export type { PromptVersionRef } from './prompt-versions';
 export { runGoldenEval, evalConfigSchema } from './eval-harness';
-export type { EvalConfig, EvalMetrics, EvalRunResult } from './eval-harness';
+export type { EvalConfig, EvalMetrics, EvalRunResult, DerivationTrapCase } from './eval-harness';
 export { runReconcileEval, loadPairCases, judgePair, pairCaseSchema } from './eval-reconcile';
 export type {
   PairCase,
@@ -77,9 +77,10 @@ export { resolveExpression } from './domain/temporal-resolver';
 // the golden-set harness so both isolate identically.
 export {
   isolateEmailContent,
+  isolateEmailContentDetailed,
   extractInnermostForward,
   stripQuotedReply,
   stripSignature,
   parseForwardedHeaders,
 } from './pipeline/email-preprocess';
-export type { ForwardedHeaders } from './pipeline/email-preprocess';
+export type { ForwardedHeaders, IsolatedEmailContent } from './pipeline/email-preprocess';

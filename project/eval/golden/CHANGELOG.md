@@ -145,3 +145,13 @@ One line per label change (docs/eval-golden-set.md §4 rule 5).
   (applied through the real UserContextService), the `language` check, and
   the `digest_language` check, all folded into the all-must-pass
   `conversation` verdict. No gate lowered.
+- 2026-07-24 (P6.5 — task-derivation discipline, decision 0054): six
+  derivation-trap cases. `en-w002`/`hr-w002` (a web page dense with obligation
+  language: memories yes, tasks ZERO), `en-f001`/`hr-f001` (the first `file`
+  source cases — an uploaded contract's extracted text: memories yes, tasks
+  ZERO), and `en-e004`/`hr-e004` (the user's OWN reply with one commitment in
+  new content plus another in quoted history: exactly ONE task). The case
+  schema gained `expected_tasks` (a hard assertion the eval entrypoint checks
+  against the tasks module's REAL first-person predicate, part of the standard
+  gate) and `email_authored_by_owner` (the fixture's declared intake routing).
+  No gate lowered.

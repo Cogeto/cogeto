@@ -131,6 +131,11 @@ function TaskRow({
                 <Pill tone="warning">unconfirmed</Pill>
               </a>
             )}
+            {task.adopted && (
+              <span title="You adopted this task from an observed memory">
+                <Pill tone="neutral">adopted</Pill>
+              </span>
+            )}
           </div>
           {blocked && task.conditionText && !task.conditionMet && (
             <p className="mt-1.5 text-xs text-amber-800 dark:text-amber-300">

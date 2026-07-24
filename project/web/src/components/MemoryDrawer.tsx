@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  adoptMemoryAsTask,
   approveMemory,
   changeMemoryScope,
   editMemory,
@@ -163,6 +164,18 @@ export function MemoryDrawer({
     },
     onError,
   });
+  // "Make this a task" (P6.5, decision 0054): the deliberate adoption of an
+  // observed obligation. Any owned memory qualifies; the server derives the
+  // task through the existing engine and audits it as user-adopted.
+  const [adoptedTaskTitle, setAdoptedTaskTitle] = useState<string | null>(null);
+  const adopt = useMutation({
+    mutationFn: () => adoptMemoryAsTask(session, memoryId),
+    onSuccess: async (result) => {
+      setAdoptedTaskTitle(result.title);
+      await refresh();
+    },
+    onError,
+  });
   const edit = useMutation({
     mutationFn: (content: string) => editMemory(session, memoryId, content),
     onSuccess: async (result) => {
@@ -181,7 +194,8 @@ export function MemoryDrawer({
     sensitive.isPending ||
     scope.isPending ||
     reject.isPending ||
-    edit.isPending;
+    edit.isPending ||
+    adopt.isPending;
 
   return (
     <>
@@ -292,6 +306,17 @@ export function MemoryDrawer({
                         Edit
                       </button>
                     )}
+                    {memory.status !== 'replaced' && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => adopt.mutate()}
+                        title="Turn this memory into a task you own. Observed obligations never become tasks on their own."
+                        className={btnSecondary}
+                      >
+                        Make this a task
+                      </button>
+                    )}
                     <label
                       className="ml-auto flex items-center gap-1.5 text-xs text-slate-600"
                       title="Shared facts are visible to everyone in your organization."
@@ -317,6 +342,14 @@ export function MemoryDrawer({
                       Sensitive
                     </label>
                   </div>
+                  {adoptedTaskTitle !== null && (
+                    <p className="mt-2 rounded-md bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+                      This is now your task, derived from this memory.{' '}
+                      <a href="/tasks" className="font-medium underline">
+                        Open Tasks
+                      </a>
+                    </p>
+                  )}
                   {editing && (
                     <form
                       className="mt-3 space-y-2"

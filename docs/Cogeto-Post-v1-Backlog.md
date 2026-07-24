@@ -131,6 +131,21 @@ one-tap OFFER that only proposes; small talk answers naturally with no
 retrieval theatre. Seven live conversation eval cases (en + hr) joined the
 rule gate under the folded `conversation` verdict.
 
+**Task-derivation discipline (P6.5): DELIVERED** (2026-07-24, issues
+#240/#241/#242, decision 0054, migration 0030; notes in
+docs/notes/task-derivation.md). Tasks derive ONLY from first-person sources:
+notes and chat derive; email derives only from the new content of a message
+the user wrote or sent (structural authorship from intake routing + forward
+detection, persisted as memory.authored_by_user); file, web, and system
+sources never derive — their obligations remain full memories, and condition
+satisfaction / closure stay source-agnostic. "Make this a task" (drawer, API,
+and the chat form "make a task from …") adopts any observed memory through
+the existing engine, audited as user-adopted. A one-shot migration chain
+removed the pre-rule phantom tasks (hard delete with per-removal audit,
+sparing everything user-touched or conclusion-referenced), and six golden
+derivation-trap cases (web/document: zero tasks; own reply + quoted history:
+exactly one) hard-assert the rule in the standard eval gate.
+
 **Instance context and time awareness (P6.6): DELIVERED** (2026-07-24, issues
 #236/#237/#238, decisions 0051/0052/0053, migration 0029; notes in
 docs/notes/instance-context.md). The model gains what it silently lacked: the

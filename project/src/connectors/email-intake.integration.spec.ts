@@ -551,8 +551,12 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     roles: ['admin'],
   };
   const ownedBy = async (emailId: string) =>
-    (await tdb.pool.query('SELECT owner_id, scope FROM email_message WHERE id = $1', [emailId]))
-      .rows[0] as { owner_id: string; scope: string };
+    (
+      await tdb.pool.query(
+        'SELECT owner_id, scope, authored_by_owner FROM email_message WHERE id = $1',
+        [emailId],
+      )
+    ).rows[0] as { owner_id: string; scope: string; authored_by_owner: boolean | null };
 
   it('self_sender_routes: the exact dry-run scenario — admin + customer registered, NO configuration, the customer forwards → captured for the customer', async () => {
     await directory.record(admin);
@@ -564,7 +568,11 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     expect(result.accepted).toBe(true);
     if (!result.accepted) return;
     expect(result.emailIds).toHaveLength(1);
-    expect((await ownedBy(result.emailIds[0]!)).owner_id).toBe(customer.userId);
+    const stored = await ownedBy(result.emailIds[0]!);
+    expect(stored.owner_id).toBe(customer.userId);
+    // Self-route = written by the capture user (P6.5, decision 0054): the
+    // intake-time routing fact task derivation builds on.
+    expect(stored.authored_by_owner).toBe(true);
   });
 
   it('sender_authentication_gate (SEC-1): a spoofed self-claim is not captured; an SPF-authenticated one is; the intake rate cap bites', async () => {
@@ -658,7 +666,11 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     expect(single.accepted).toBe(true);
     if (!single.accepted) return;
     expect(single.emailIds).toHaveLength(1);
-    expect((await ownedBy(single.emailIds[0]!)).owner_id).toBe(customer.userId);
+    const singleStored = await ownedBy(single.emailIds[0]!);
+    expect(singleStored.owner_id).toBe(customer.userId);
+    // Allowlist-route = someone else's words (P6.5, decision 0054): these
+    // copies must never read as authored by their capture user.
+    expect(singleStored.authored_by_owner).toBe(false);
   });
 
   it('default_scope_respected: a user whose default capture scope is shared captures email as shared', async () => {
