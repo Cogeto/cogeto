@@ -20,6 +20,10 @@ export interface DiscoveredPage {
   url: string;
   title: string;
   snippet: string;
+  /** SearXNG's aggregate relevance score (higher = more relevant), null if the
+   * engine did not provide one. Used to auto-select the best sources without
+   * asking the user to pick (decision 0050). */
+  score: number | null;
 }
 
 export type DiscoveryOutcome =
@@ -33,6 +37,7 @@ const searxResponseSchema = z.object({
         url: z.string(),
         title: z.string().default(''),
         content: z.string().nullish(),
+        score: z.number().nullish(),
       }),
     )
     .default([]),
@@ -88,7 +93,12 @@ export class WebDiscoveryService {
     const results = parsed.results
       .filter((r) => /^https?:\/\//i.test(r.url))
       .slice(0, this.options.resultCap)
-      .map((r) => ({ url: r.url, title: r.title, snippet: r.content ?? '' }));
+      .map((r) => ({
+        url: r.url,
+        title: r.title,
+        snippet: r.content ?? '',
+        score: r.score ?? null,
+      }));
     return { status: 'ok', results };
   }
 }

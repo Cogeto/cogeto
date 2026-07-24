@@ -18,6 +18,7 @@ import { MemoryDrawer } from '../components/MemoryDrawer';
 import { ResearchInline } from '../components/ResearchInline';
 import { Shell } from '../components/Shell';
 import { UnsourcedChip } from '../components/UnsourcedChip';
+import { getAutoResearch, setAutoResearch } from '../research-pref';
 
 /**
  * Chat, reimagined as "Ask → Briefing" (P6.9, decision 0049): the question is a
@@ -130,11 +131,25 @@ function ResearchOfferChip({
       >
         {propose.isPending ? 'Preparing…' : 'Research this on the web →'}
       </button>
-      <span className="text-xs text-slate-400">
-        {propose.isError
-          ? 'Couldn’t prepare that research. Try the Research page.'
-          : 'You’ll see and approve exactly what is sent. Nothing leaves until then.'}
-      </span>
+      {propose.isError ? (
+        <span className="text-xs text-slate-400">
+          Couldn’t prepare that research. Try the Research page.
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            // "Don't ask again": from now on, research runs automatically — and
+            // this one runs now too (decision 0050). Disable in Settings.
+            setAutoResearch(true);
+            propose.mutate();
+          }}
+          className="text-xs text-slate-400 underline underline-offset-2 transition-colors hover:text-slate-600"
+          title="Cogeto will check the web automatically from now on. You can turn this off in Settings."
+        >
+          Always do this automatically
+        </button>
+      )}
     </div>
   );
 }
@@ -373,15 +388,25 @@ export function Chat({ session }: { session: Session }) {
         if (event.type === 'sources') setLiveFacts(event.facts);
         else if (event.type === 'token') setLiveText((prev) => prev + event.text);
         else if (event.type === 'done') {
-          // The concluding turn after research never re-offers research (0047).
-          setOffer(opts.suppressOffer ? null : (event.researchOffer ?? null));
-          // A research turn proposed a run: open the SAME gate inline. Nothing
-          // has been sent — the run is loaded through the owner-gated research
-          // endpoints, exactly as the Research page loads it.
           if (event.researchProposal) {
+            // A research-class question already proposed a run: open it inline.
+            setOffer(null);
             void fetchResearchRun(session, event.researchProposal.runId)
               .then((run) => setInlineRun(run))
               .catch(() => setInlineRun(null));
+          } else {
+            // A knowledge answer may offer research. With auto-research on
+            // (decision 0050) the tap is implicit: propose + run it immediately;
+            // otherwise show the one-tap offer. (Concluding turns never re-offer.)
+            const nextOffer = opts.suppressOffer ? null : (event.researchOffer ?? null);
+            if (nextOffer && getAutoResearch()) {
+              setOffer(null);
+              void proposeResearch(session, nextOffer.topic)
+                .then((run) => setInlineRun(run))
+                .catch(() => setOffer(nextOffer));
+            } else {
+              setOffer(nextOffer);
+            }
           }
         } else if (event.type === 'error') {
           setFailed(true);

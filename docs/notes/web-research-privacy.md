@@ -95,3 +95,16 @@ sources with URL and fetch-time provenance.*
 3. Every web claim's `[W#]` links to the page (title + fetch time on hover);
    the facts appear under Memories as web sources; the source drawer shows
    URL, fetch time, AND the sent query; deleting the source issues a receipt.
+
+## Frictionless chat research (decision 0050, 2026-07-24)
+
+Owner UX change: in **chat**, the show-edit-approve gate and manual page-picking
+were removed. The "Research this on the web" tap is the consent; the minimised
+query is sent immediately; Cogeto auto-reads the **top 3 sources by SearXNG
+relevance score** (`selectTopByScore` in `@cogeto/shared`; discovery now keeps
+the `score` it used to discard). An opt-in **Research automatically** setting
+(`cogeto-auto-research`, localStorage, off by default; Settings → Web research +
+a "Always do this automatically" affordance) skips even the tap. Preserved: query
+minimisation, in-flow disclosure of the sent query + sources read, and
+`research_run.sent_query` provenance. The **Research page keeps the full
+edit/approve gate + manual selection** as the control surface.

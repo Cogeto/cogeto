@@ -26,12 +26,12 @@ const jsonResponse = (body: unknown, status = 200): Response =>
   });
 
 describe('searx_client_contract', () => {
-  it('parses ranked results (url, title, snippet) from the JSON API', async () => {
+  it('parses ranked results (url, title, snippet, score) from the JSON API', async () => {
     const service = new WebDiscoveryService(options());
     service.fetchImpl = async () =>
       jsonResponse({
         results: [
-          { url: 'https://example.org/a', title: 'A', content: 'about a' },
+          { url: 'https://example.org/a', title: 'A', content: 'about a', score: 1.8 },
           { url: 'https://example.org/b', title: 'B', content: null },
         ],
       });
@@ -39,8 +39,9 @@ describe('searx_client_contract', () => {
     expect(outcome).toEqual({
       status: 'ok',
       results: [
-        { url: 'https://example.org/a', title: 'A', snippet: 'about a' },
-        { url: 'https://example.org/b', title: 'B', snippet: '' },
+        { url: 'https://example.org/a', title: 'A', snippet: 'about a', score: 1.8 },
+        // A missing score parses to null (auto-selection sorts it last).
+        { url: 'https://example.org/b', title: 'B', snippet: '', score: null },
       ],
     });
   });
