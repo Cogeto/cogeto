@@ -233,6 +233,32 @@ export class DreamingService {
 }
 
 /** The latest finished run — the digest endpoint's anchor. */
+/**
+ * The dreaming job's face for the capability registry (P6.7, decision 0055):
+ * last successful run + whether the newest run is sitting unfinished (a crashed
+ * run leaves finished_at NULL — the only error signal this table carries).
+ */
+export interface DreamRunStatus {
+  lastFinishedAt: Date | null;
+  /** The last finished run's counts_json report (DreamReport shape), if any. */
+  lastCounts: Record<string, number> | null;
+  newestStartedAt: Date | null;
+  newestUnfinished: boolean;
+}
+
+export async function dreamRunStatus(db: Db): Promise<DreamRunStatus> {
+  const [newest, finished] = await Promise.all([
+    db.select().from(dreamRun).orderBy(desc(dreamRun.startedAt)).limit(1),
+    latestFinishedRun(db),
+  ]);
+  return {
+    lastFinishedAt: finished?.finishedAt ?? null,
+    lastCounts: (finished?.countsJson as Record<string, number> | null) ?? null,
+    newestStartedAt: newest[0]?.startedAt ?? null,
+    newestUnfinished: newest.length > 0 && newest[0]!.finishedAt === null,
+  };
+}
+
 export async function latestFinishedRun(db: Db): Promise<DreamRunRow | null> {
   const rows = await db
     .select()

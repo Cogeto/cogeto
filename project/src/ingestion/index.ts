@@ -15,8 +15,8 @@ export type { SourceReader, SourceItem } from './pipeline/source-reader';
 // owns the pipeline job type. Composition roots bind it into MemoryModule.
 export { PipelineIngestionGuard } from './pipeline/pipeline-guard';
 export type { PipelineLog } from './pipeline/pipeline-log';
-export { DreamingService, DREAM_JOB_TYPE, DREAM_CRONTAB } from './dreaming.service';
-export type { DreamReport } from './dreaming.service';
+export { DreamingService, DREAM_JOB_TYPE, DREAM_CRONTAB, dreamRunStatus } from './dreaming.service';
+export type { DreamReport, DreamRunStatus } from './dreaming.service';
 // The digest endpoint + the port the tasks module fills with its section
 // (F3 handoff §3). Exporting the controller lets the tasks module — the port's
 // implementor — integration-test the composed endpoint (tasks → ingestion).

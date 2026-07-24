@@ -6,6 +6,7 @@ import { assertAppKeyMount, describeErrorLine, runWithUsageContext } from '../in
 import { logRedactionState } from './redaction-boot';
 import { assertEmbeddingSpaceConsistent, logModelConfiguration } from './model-boot';
 import { assertLocalRuntimeReady } from '../model-gateway/index';
+import { CapabilitiesService, formatCapabilitiesBanner } from './capabilities';
 import { loadConfig } from './config';
 import { createLogger, PinoNestLogger } from './logger';
 import { createAppRootModule } from './app-root.module';
@@ -61,6 +62,19 @@ async function main(): Promise<void> {
   logger.info({ port: config.httpPort, mode }, `cogeto app listening — mode: ${mode}`);
   logRedactionState(logger, config);
   logModelConfiguration(logger, config); // decision 0040: state the active configuration id.
+  // P6.7 boot banner (decision 0055): one delimited line of exact capability
+  // truth, every boot — the same registry snapshot the panel and /api/health
+  // serve. Best-effort: a failed probe set must not take the app down, but the
+  // failure itself is stated, never swallowed into silence.
+  try {
+    const snapshot = await app.get(CapabilitiesService).snapshot();
+    logger.info({ banner: 'capabilities' }, formatCapabilitiesBanner(snapshot, new Date()));
+  } catch (error) {
+    logger.warn(
+      { banner: 'capabilities' },
+      `capability boot banner unavailable: ${describeErrorLine(error)}`,
+    );
+  }
 }
 
 // Top-level handlers log the error CLASS + a scrubbed, length-bounded message

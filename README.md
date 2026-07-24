@@ -121,6 +121,12 @@ every memory the research produces, next to each page's URL and fetch time.
 Research is explicitly invoked: an ordinary question never triggers a search.
 See [`docs/notes/web-research-privacy.md`](docs/notes/web-research-privacy.md).
 
+Optional capabilities are never invisible state: the System view, the
+`/api/health` endpoint, and a boot banner all report each one's true state
+(on, off, or enabled but unreachable, stated loudly), and the operator script
+toggles them with `cogeto features enable <id>` instead of remembered compose
+profiles. See [`docs/notes/capabilities.md`](docs/notes/capabilities.md).
+
 **Natural conversation** ties it together: everything a good assistant does,
 and you always know which parts it can prove. You talk to Cogeto without any
 query syntax; it answers from your memories first, blends in the model's own

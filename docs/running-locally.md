@@ -47,6 +47,7 @@ refuses known dev secrets on any non-localhost domain.
 | The Ana demo sandbox | `COGETO_DEMO_MODE=1 docker compose --profile demo up --build`; password printed by `docker compose logs demo-seed` |
 | Redaction tier (local NER before any model call) | `REDACTION_ENABLED=1 docker compose --profile redaction up --build` |
 | Logs | `docker compose logs -f app` (or `worker`, `mail`, `caddy`, `zitadel`) |
+| Capability states (P6.7) | System → Capabilities, `/api/health`, and the app boot log's `Capabilities: ...` banner. Note: CLI `--profile` flags are invisible to the containers — for the registry to show a profile-run capability as enabled, put it in `COMPOSE_PROFILES` in `.env` (then plain `docker compose up` activates it) or set the explicit flag (`COGETO_RESEARCH_ENABLED=1` / `COGETO_CONSOLES_ENABLED=1`; redaction and demo already have `REDACTION_ENABLED` / `COGETO_DEMO_MODE`). See [`notes/capabilities.md`](notes/capabilities.md). |
 
 ## Developing
 

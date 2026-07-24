@@ -33,6 +33,7 @@ import { COGETO_CONFIG, mailOptions, redactionOptions, researchOptions } from '.
 import type { CogetoConfig } from './config';
 import { AttentionController, DashboardController } from './attention.controller';
 import { AttentionService } from './attention.service';
+import { CapabilitiesService } from './capabilities';
 import { AuditController } from './audit.controller';
 import { HealthController } from './health.controller';
 import { InstanceController } from './instance.controller';
@@ -154,6 +155,9 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       // The attention/stats aggregator composes memory, tasks, agents and the
       // dreaming digest through their public interfaces (Post-v1 Priority 2).
       AttentionService,
+      // The capability registry (P6.7, decision 0055): /api/health's
+      // capability/job summaries and the boot banner read one snapshot.
+      CapabilitiesService,
       // Default-deny auth (QS-18): the bearer guard runs on EVERY route; only
       // routes marked @Public() (health/config/instance) opt out. A new
       // controller that forgets @UseGuards is closed, not silently open.
