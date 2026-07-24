@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { DatabaseModule, LimitsModule } from '../infrastructure/index';
+import { DatabaseModule, LimitsModule, UserContextModule } from '../infrastructure/index';
 import { IdentityModule } from '../identity/index';
 import { MemoryModule } from '../memory/index';
 import { IngestionModule, PipelineIngestionGuard } from '../ingestion/index';
@@ -46,6 +46,9 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       // + file source reader. Its model calls are unattributed, so the model
       // budget is off here (ModelGatewayModule without `budget`).
       LimitsModule.register(config.limits, config.timezone),
+      // Per-user context + language (P6.6): the worker's system-initiated
+      // copy (digest lines, conclusion phrasing) speaks preferred_language.
+      UserContextModule,
       // The worker serves no HTTP, but domain modules carry controllers whose
       // guards Nest resolves at init — the identity seam must be present here too.
       IdentityModule.register({

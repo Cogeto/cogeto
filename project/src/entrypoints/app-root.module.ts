@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
-import { DatabaseModule, LimitsModule } from '../infrastructure/index';
+import { DatabaseModule, LimitsModule, UserContextModule } from '../infrastructure/index';
 import { BearerAuthGuard, IdentityModule } from '../identity/index';
 import { ModelBudgetExceptionFilter } from './model-budget.filter';
 import { IngestionModule, PipelineIngestionGuard } from '../ingestion/index';
@@ -53,6 +53,8 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       // Abuse/DoS limits (FIX-2) — global, so the rate-limit guard, ingest
       // quota, SSE caps and model budget are injectable across controllers.
       LimitsModule.register(config.limits, config.timezone),
+      // Per-user context + language (P6.6) — global, same rationale.
+      UserContextModule,
       IdentityModule.register({
         internalBaseUrl: config.oidc.internalUrl,
         externalDomain: config.oidc.externalDomain,

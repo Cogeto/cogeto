@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -87,4 +88,38 @@ export const attentionDismissal = pgTable(
     dismissedAt: timestamp('dismissed_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.ownerId, t.itemKey] })],
+);
+
+/**
+ * Per-user instance context and language preference (migration 0029, decisions
+ * 0051/0052/0053). Lives here, not in a domain module, because the context
+ * feeds prompts in retrieval, connectors, ingestion and tasks alike — no
+ * single bounded context owns it (§A.1 rule 2), exactly like attention_state.
+ */
+export const userContext = pgTable('user_context', {
+  userId: text('user_id').primaryKey(),
+  orgId: text('org_id').notNull(),
+  displayName: text('display_name'),
+  company: text('company'),
+  roleTitle: text('role_title'),
+  aboutWork: text('about_work'),
+  /** Per-user IANA zone override; NULL = the instance timezone (QS-32). */
+  timezone: text('timezone'),
+  preferredLanguage: text('preferred_language').notNull().default('en'),
+  languageStrict: boolean('language_strict').notNull().default(false),
+  /** Provenance when a value was accepted from a suggestion (decision 0053). */
+  companySourceMemoryId: uuid('company_source_memory_id'),
+  roleTitleSourceMemoryId: uuid('role_title_source_memory_id'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const contextSuggestionDismissal = pgTable(
+  'context_suggestion_dismissal',
+  {
+    userId: text('user_id').notNull(),
+    field: text('field').notNull(),
+    value: text('value').notNull(),
+    dismissedAt: timestamp('dismissed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.field, t.value] })],
 );

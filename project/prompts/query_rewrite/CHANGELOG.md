@@ -6,6 +6,18 @@ self-contained search query + entity list, so multi-turn questions ("who is
 she?") retrieve their referent. Runs on the pipeline tier, bounded, with a
 graceful fallback to the raw query on timeout/error.
 
+## v0005 — 2026-07-24 (P6.6 instance context)
+
+Instance context (decision 0051): the input may open with `NOW` (date,
+weekday, time in the user's timezone) and `USER CONTEXT` (who the user is,
+from their settings). Both are interpretation-only: NOW does NOT relax the
+verbatim rule — date phrases are still copied exactly and never computed
+(resolution stays in the deterministic chrono resolver, now anchored to the
+user's timezone); USER CONTEXT lets a self-reference ("my company", "moja
+tvrtka") resolve to the value the user set, with one new few-shot, and never
+introduces an entity the turn did not refer to. Rewriting rules, temporal,
+open-loops, and question-class behavior unchanged from v0004.
+
 ## v0004 — 2026-07-23 (Priority 6)
 
 The conversational router's question class (decision 0046): output gains

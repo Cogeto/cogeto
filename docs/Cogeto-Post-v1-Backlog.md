@@ -131,6 +131,19 @@ one-tap OFFER that only proposes; small talk answers naturally with no
 retrieval theatre. Seven live conversation eval cases (en + hr) joined the
 rule gate under the folded `conversation` verdict.
 
+**Instance context and time awareness (P6.6): DELIVERED** (2026-07-24, issues
+#236/#237/#238, decisions 0051/0052/0053, migration 0029; notes in
+docs/notes/instance-context.md). The model gains what it silently lacked: the
+current date, time and weekday in the user's timezone (per-user override of the
+QS-32 instance zone; conversational dates still resolve deterministically), who
+the user is (Settings profile fields, phrased into a now-block that informs but
+is never citable — the honesty rule is frozen in answer/v0006), and which
+language Cogeto speaks (preferred_language anchors everything Cogeto initiates,
+replies mirror by default, strict mode opts into always-preferred; the digest,
+attention lines and conclusion phrasing gained deterministic hr tables).
+Conservative derived suggestions propose company/role from the user's own
+memories with source shown, accept-with-provenance, remembered dismissals.
+
 **Surface polish (P6.8): DELIVERED** (2026-07-23, issues #213/#214, decision
 0048, no migration; notes in docs/notes/surface-polish.md). Dark mode as a
 first-class, default theme (one token set, two themes; re-derived status/chart

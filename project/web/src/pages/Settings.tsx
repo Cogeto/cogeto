@@ -1,18 +1,28 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { EmailAllowlistKind, MemoryScope } from '@cogeto/shared';
+import type {
+  ContextSuggestionDto,
+  EmailAllowlistKind,
+  MemoryScope,
+  PreferredLanguage,
+} from '@cogeto/shared';
 import type { PassportExportDto } from '@cogeto/shared';
 import {
+  acceptContextSuggestion,
   addEmailAllowlistEntry,
+  dismissContextSuggestion,
+  fetchContextSuggestions,
   fetchEmailConfig,
   fetchInstancePublicKey,
   fetchModelConfig,
   fetchPassportDownload,
   fetchPassportExports,
   fetchSettings,
+  fetchUserContext,
   removeEmailAllowlistEntry,
   triggerPassportExport,
   updateSettings,
+  updateUserContext,
 } from '../api';
 import type { Session } from '../auth/oidc';
 import { Shell } from '../components/Shell';
@@ -116,6 +126,8 @@ export function Settings({ session }: { session: Session }) {
         )}
       </section>
 
+      <ProfileContextSection session={session} />
+
       <AppearanceSection />
 
       <ResearchSection />
@@ -145,6 +157,276 @@ export function Settings({ session }: { session: Session }) {
         )}
       </section>
     </Shell>
+  );
+}
+
+const LANGUAGES: { key: PreferredLanguage; label: string }[] = [
+  { key: 'en', label: 'English' },
+  { key: 'hr', label: 'Hrvatski' },
+];
+
+/** The browser's IANA zone list; falls back to a minimal set if unsupported. */
+function timeZoneOptions(): string[] {
+  try {
+    return Intl.supportedValuesOf('timeZone');
+  } catch {
+    return ['Europe/Zagreb', 'Europe/Berlin', 'Europe/London', 'UTC'];
+  }
+}
+
+/**
+ * Profile and context (P6.6, decisions 0051/0052): who the user is, their
+ * timezone, and which language Cogeto speaks. Everything here is settings, not
+ * memory: it shapes how answers are phrased and interpreted, and is never a
+ * citable fact. Suggestions (decision 0053) propose company/role values found
+ * in the user's own memories; nothing applies without an explicit accept.
+ */
+function ProfileContextSection({ session }: { session: Session }) {
+  const queryClient = useQueryClient();
+  const context = useQuery({
+    queryKey: ['user-context'],
+    queryFn: () => fetchUserContext(session),
+  });
+  const suggestions = useQuery({
+    queryKey: ['context-suggestions'],
+    queryFn: () => fetchContextSuggestions(session),
+  });
+
+  const [displayName, setDisplayName] = useState('');
+  const [company, setCompany] = useState('');
+  const [roleTitle, setRoleTitle] = useState('');
+  const [aboutWork, setAboutWork] = useState('');
+  const [timezone, setTimezone] = useState('');
+  const [language, setLanguage] = useState<PreferredLanguage>('en');
+  const [strict, setStrict] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (context.data) {
+      setDisplayName(context.data.displayName ?? '');
+      setCompany(context.data.company ?? '');
+      setRoleTitle(context.data.roleTitle ?? '');
+      setAboutWork(context.data.aboutWork ?? '');
+      setTimezone(context.data.timezone ?? '');
+      setLanguage(context.data.preferredLanguage);
+      setStrict(context.data.languageStrict);
+    }
+  }, [context.data]);
+
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['user-context'] });
+    await queryClient.invalidateQueries({ queryKey: ['context-suggestions'] });
+  };
+
+  const save = useMutation({
+    mutationFn: () =>
+      updateUserContext(session, {
+        displayName: displayName.trim() || null,
+        company: company.trim() || null,
+        roleTitle: roleTitle.trim() || null,
+        aboutWork: aboutWork.trim() || null,
+        timezone: timezone || null,
+        preferredLanguage: language,
+        languageStrict: strict,
+      }),
+    onSuccess: async () => {
+      setSaved(true);
+      await refresh();
+      setTimeout(() => setSaved(false), 2500);
+    },
+  });
+
+  const accept = useMutation({
+    mutationFn: (s: ContextSuggestionDto) =>
+      acceptContextSuggestion(session, {
+        field: s.field,
+        value: s.value,
+        sourceMemoryId: s.sourceMemoryId,
+      }),
+    onSuccess: refresh,
+  });
+  const dismiss = useMutation({
+    mutationFn: (s: ContextSuggestionDto) =>
+      dismissContextSuggestion(session, {
+        field: s.field,
+        value: s.value,
+        sourceMemoryId: s.sourceMemoryId,
+      }),
+    onSuccess: refresh,
+  });
+
+  const inputClass = 'w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-700';
+
+  return (
+    <section className="mt-4 space-y-4 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
+      <div>
+        <SectionTitle>Profile &amp; context</SectionTitle>
+        <p className="mt-1 text-xs text-slate-400">
+          Tells Cogeto who you are, which timezone your days run in, and which language it should
+          speak. These are settings, not memories: they shape phrasing and interpretation, and are
+          never cited as facts.
+        </p>
+      </div>
+
+      {context.isPending && <Skeleton className="h-40 w-full" />}
+      {context.data && (
+        <>
+          {(suggestions.data?.suggestions.length ?? 0) > 0 && (
+            <div className="space-y-2 rounded-md border border-brand-teal/40 bg-brand-teal/5 p-3">
+              {suggestions.data!.suggestions.map((s) => (
+                <div key={`${s.field}:${s.value}`} className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-slate-700">
+                    {s.field === 'company'
+                      ? `It looks like you work at ${s.value}`
+                      : `It looks like your role is ${s.value}`}{' '}
+                    <span className="text-xs text-slate-400">
+                      (from your {s.sourceLabel} of{' '}
+                      {new Date(s.sourceDate).toLocaleDateString('en-GB', {
+                        day: 'numeric',
+                        month: 'long',
+                      })}
+                      )
+                    </span>
+                    . Use as context?
+                  </span>
+                  <button
+                    type="button"
+                    className={btnSecondary}
+                    disabled={accept.isPending}
+                    onClick={() => accept.mutate(s)}
+                  >
+                    Use it
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs text-slate-400 underline hover:text-slate-600"
+                    disabled={dismiss.isPending}
+                    onClick={() => dismiss.mutate(s)}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm text-slate-700">
+              <span className="font-medium">Your name</span>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="How Cogeto addresses you"
+                className={`mt-1 ${inputClass}`}
+                maxLength={120}
+              />
+            </label>
+            <label className="block text-sm text-slate-700">
+              <span className="font-medium">Company</span>
+              <input
+                type="text"
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                className={`mt-1 ${inputClass}`}
+                maxLength={160}
+              />
+            </label>
+            <label className="block text-sm text-slate-700">
+              <span className="font-medium">Role</span>
+              <input
+                type="text"
+                value={roleTitle}
+                onChange={(e) => setRoleTitle(e.target.value)}
+                className={`mt-1 ${inputClass}`}
+                maxLength={120}
+              />
+            </label>
+            <label className="block text-sm text-slate-700">
+              <span className="font-medium">Timezone</span>
+              <select
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+                className={`mt-1 ${inputClass}`}
+              >
+                <option value="">Instance default ({context.data.effectiveTimezone})</option>
+                {timeZoneOptions().map((zone) => (
+                  <option key={zone} value={zone}>
+                    {zone}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-sm text-slate-700 sm:col-span-2">
+              <span className="font-medium">About your work</span>
+              <input
+                type="text"
+                value={aboutWork}
+                onChange={(e) => setAboutWork(e.target.value)}
+                placeholder="One line, e.g. fractional CTO work for industrial SMEs"
+                className={`mt-1 ${inputClass}`}
+                maxLength={240}
+              />
+            </label>
+          </div>
+
+          <div className="space-y-2">
+            <label className="flex items-center gap-3 text-sm text-slate-700">
+              <span className="font-medium">Language</span>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as PreferredLanguage)}
+                className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+              >
+                {LANGUAGES.map((l) => (
+                  <option key={l.key} value={l.key}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs text-slate-400">
+                The digest and everything Cogeto starts on its own speaks this language. Replies
+                mirror the language you write in.
+              </span>
+            </label>
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={strict}
+                onChange={(e) => setStrict(e.target.checked)}
+                className="mt-1"
+              />
+              <span className="text-sm text-slate-700">
+                <span className="font-medium">Always answer in my language</span>
+                <span className="block text-xs text-slate-400">
+                  Replies come back in your preferred language no matter which language you asked
+                  in.
+                </span>
+              </span>
+            </label>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              disabled={save.isPending}
+              onClick={() => save.mutate()}
+              className={btnPrimary}
+            >
+              {save.isPending ? 'Saving…' : 'Save'}
+            </button>
+            {saved && (
+              <span className="text-xs text-brand-teal-ink dark:text-brand-teal">Saved.</span>
+            )}
+            {save.isError && (
+              <span className="text-xs text-red-700 dark:text-red-300">
+                Couldn't save. Try again.
+              </span>
+            )}
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 

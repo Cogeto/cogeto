@@ -43,6 +43,12 @@ export { minimiseQuery, RESEARCH_MINIMISE_PROMPT } from './research-minimise';
 export type { MinimisedQuery } from './research-minimise';
 export { ChatResearchResolver } from './chat-research-resolver';
 export { ResearchSynthesisService, RESEARCH_ANSWER_PROMPT } from './research-synthesis.service';
+export { UserContextController } from './user-context.controller';
+export {
+  ContextSuggestionsService,
+  CONTEXT_SUGGEST_PROMPT,
+  deriveCandidate,
+} from './context-suggestions.service';
 export { ResearchChatModule } from './research-chat.module';
 export { WebDiscoveryService } from './web-discovery.service';
 export type { DiscoveryOutcome, DiscoveredPage } from './web-discovery.service';

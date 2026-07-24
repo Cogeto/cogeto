@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { MemoryScope, MemoryStatus, Principal, TaskStatus } from '@cogeto/shared';
 import { startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
+import { UserContextService } from '../infrastructure/index';
 import { MemoryReconciliation, MemoryStore } from '../memory/index';
 import type { MemoryRow } from '../memory/index';
 import { TasksEngine } from '../tasks/index';
@@ -45,7 +46,14 @@ describe('dashboard stats (integration, real Postgres)', () => {
           id: `a-${i}`,
         })),
     } as unknown as ApprovalService;
-    attention = new AttentionService(tdb.db, store, reconciliation, tasks, fakeApprovals);
+    attention = new AttentionService(
+      tdb.db,
+      store,
+      reconciliation,
+      tasks,
+      fakeApprovals,
+      new UserContextService(tdb.db),
+    );
   });
   afterAll(async () => {
     await tdb.stop();

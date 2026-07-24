@@ -9,7 +9,12 @@ import type {
   DashboardStatsDto,
   Principal,
 } from '@cogeto/shared';
-import { attentionDismissal, attentionState, DRIZZLE } from '../infrastructure/index';
+import {
+  attentionDismissal,
+  attentionState,
+  DRIZZLE,
+  UserContextService,
+} from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { MemoryReconciliation, MemoryStore } from '../memory/index';
 import { TasksEngine } from '../tasks/index';
@@ -60,22 +65,28 @@ export class AttentionService {
     private readonly reconciliation: MemoryReconciliation,
     private readonly tasks: TasksEngine,
     private readonly approvals: ApprovalService,
+    private readonly userContext: UserContextService,
   ) {}
 
   // ── Feed ────────────────────────────────────────────────────────────────────
 
   async getFeed(principal: Principal): Promise<AttentionFeedDto> {
     const now = new Date();
+    // Attention lines are Cogeto-initiated copy: they speak the user's
+    // preferred language (P6.6, decision 0052).
+    const hr =
+      (await this.userContext.preferredLanguageFor(principal.userId).catch(() => 'en' as const)) ===
+      'hr';
     const [lastSeenAt, dismissed] = await Promise.all([
       this.lastSeenAt(principal.userId),
       this.dismissedKeys(principal.userId),
     ]);
 
     const groups = await Promise.all([
-      this.taskItems(principal, now),
-      this.reviewItems(principal),
-      this.approvalItems(principal),
-      this.digestItems(principal),
+      this.taskItems(principal, now, hr),
+      this.reviewItems(principal, hr),
+      this.approvalItems(principal, hr),
+      this.digestItems(principal, hr),
     ]);
     const raw = groups.flat().filter((item) => !dismissed.has(item.key));
 
@@ -97,11 +108,12 @@ export class AttentionService {
   private async taskItems(
     principal: Principal,
     now: Date,
+    hr: boolean,
   ): Promise<Omit<AttentionItem, 'unread'>[]> {
     const tasks = await this.tasks.attentionTasksForPrincipal(principal);
     const items: Omit<AttentionItem, 'unread'>[] = [];
     for (const task of tasks) {
-      const classified = classifyTask(task, now);
+      const classified = classifyTask(task, now, hr);
       if (classified) items.push(classified);
     }
     // Dormant nudges are the calmest; keep the count honest but bounded.
@@ -109,7 +121,10 @@ export class AttentionService {
   }
 
   /** The two review queues as live counts (never dismissible). */
-  private async reviewItems(principal: Principal): Promise<Omit<AttentionItem, 'unread'>[]> {
+  private async reviewItems(
+    principal: Principal,
+    hr: boolean,
+  ): Promise<Omit<AttentionItem, 'unread'>[]> {
     const [uncertainCount, uncertainNewest, contradictions] = await Promise.all([
       this.memoryStore.countForPrincipal(principal, {
         status: 'uncertain',
@@ -131,7 +146,9 @@ export class AttentionService {
       items.push({
         key: 'review:uncertain',
         kind: 'review_uncertain',
-        title: `${plural(uncertainCount, 'fact')} awaiting your review`,
+        title: hr
+          ? `${hrCount(uncertainCount, 'činjenica čeka', 'činjenice čekaju', 'činjenica čeka')} tvoju provjeru`
+          : `${plural(uncertainCount, 'fact')} awaiting your review`,
         timestamp: newest.toISOString(),
         href: '/review',
         count: uncertainCount,
@@ -146,7 +163,9 @@ export class AttentionService {
       items.push({
         key: 'review:contradicted',
         kind: 'review_contradicted',
-        title: `${plural(contradictions.length, 'conflict')} to resolve`,
+        title: hr
+          ? `${hrCount(contradictions.length, 'sukob', 'sukoba', 'sukoba')} za rješavanje`
+          : `${plural(contradictions.length, 'conflict')} to resolve`,
         timestamp: newest.toISOString(),
         href: '/review?tab=contradicted',
         count: contradictions.length,
@@ -157,13 +176,18 @@ export class AttentionService {
   }
 
   /** Pending consequential actions awaiting a decision (never dismissible). */
-  private async approvalItems(principal: Principal): Promise<Omit<AttentionItem, 'unread'>[]> {
+  private async approvalItems(
+    principal: Principal,
+    hr: boolean,
+  ): Promise<Omit<AttentionItem, 'unread'>[]> {
     const pending = await this.approvals.listPending(principal);
     return capGroup(
       pending.map((approval) => ({
         key: `approval:${approval.id}`,
         kind: 'approval_pending' as const,
-        title: `Waiting for your approval — ${approval.summary}`,
+        title: hr
+          ? `Čeka tvoje odobrenje — ${approval.summary}`
+          : `Waiting for your approval — ${approval.summary}`,
         timestamp: approval.createdAt ?? new Date(0).toISOString(),
         href: '/approvals',
         dismissible: false,
@@ -172,10 +196,15 @@ export class AttentionService {
   }
 
   /** Last night's consolidation — the digest lines, each dismissible. */
-  private async digestItems(principal: Principal): Promise<Omit<AttentionItem, 'unread'>[]> {
+  private async digestItems(
+    principal: Principal,
+    hr: boolean,
+  ): Promise<Omit<AttentionItem, 'unread'>[]> {
     // No task section here: task attention comes from `taskItems`, so the two
     // never double-count. Consolidation lines only.
-    const digest = await buildDreamDigest(this.db, this.memoryStore, principal, {});
+    const digest = await buildDreamDigest(this.db, this.memoryStore, principal, {
+      locale: hr ? 'hr' : 'en',
+    });
     if (!digest.runId || !digest.finishedAt) return [];
     const consolidation = digest.lines.filter((l) => l.section !== 'tasks');
     return consolidation.map((line, index) => ({
@@ -308,7 +337,11 @@ const SOURCE_FAMILY: Record<string, string> = {
   file: 'files',
 };
 
-function classifyTask(task: AttentionTask, now: Date): Omit<AttentionItem, 'unread'> | null {
+function classifyTask(
+  task: AttentionTask,
+  now: Date,
+  hr: boolean,
+): Omit<AttentionItem, 'unread'> | null {
   const nowMs = now.getTime();
   if (task.due) {
     const dueMs = task.due.getTime();
@@ -317,7 +350,9 @@ function classifyTask(task: AttentionTask, now: Date): Omit<AttentionItem, 'unre
       return {
         key: `task:${task.id}:overdue`,
         kind: 'task_overdue',
-        title: `Overdue by ${plural(days, 'day')}: ${trim(task.title)}`,
+        title: hr
+          ? `Kasni ${days === 1 ? '1 dan' : `${days} dana`}: ${trim(task.title)}`
+          : `Overdue by ${plural(days, 'day')}: ${trim(task.title)}`,
         timestamp: task.due.toISOString(),
         href: '/tasks',
         dismissible: false,
@@ -325,11 +360,21 @@ function classifyTask(task: AttentionTask, now: Date): Omit<AttentionItem, 'unre
     }
     if (dueMs <= nowMs + DUE_SOON_HOURS * MS_HOUR) {
       const days = Math.round((dueMs - nowMs) / MS_DAY);
-      const when = days <= 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
+      const when = hr
+        ? days <= 0
+          ? 'danas'
+          : days === 1
+            ? 'sutra'
+            : `za ${days} dana`
+        : days <= 0
+          ? 'today'
+          : days === 1
+            ? 'tomorrow'
+            : `in ${days} days`;
       return {
         key: `task:${task.id}:due`,
         kind: 'task_due_soon',
-        title: `Due ${when}: ${trim(task.title)}`,
+        title: hr ? `Rok ${when}: ${trim(task.title)}` : `Due ${when}: ${trim(task.title)}`,
         // The moment it entered the due-soon window (past), so "new" is honest.
         timestamp: new Date(dueMs - DUE_SOON_HOURS * MS_HOUR).toISOString(),
         href: '/tasks',
@@ -341,7 +386,7 @@ function classifyTask(task: AttentionTask, now: Date): Omit<AttentionItem, 'unre
     return {
       key: `task:${task.id}:dormant`,
       kind: 'task_dormant',
-      title: `Gone quiet: ${trim(task.title)}`,
+      title: hr ? `Utihnulo: ${trim(task.title)}` : `Gone quiet: ${trim(task.title)}`,
       timestamp: task.updatedAt.toISOString(),
       href: '/tasks',
       dismissible: false,
@@ -388,6 +433,15 @@ function earliest(a: Date | null, b: Date | null): Date | null {
 
 function plural(n: number, noun: string): string {
   return n === 1 ? `1 ${noun}` : `${n} ${noun}s`;
+}
+
+/** Croatian count phrase: singular (1), paucal (2-4), genitive (5+). */
+function hrCount(n: number, one: string, few: string, many: string): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${n} ${one}`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${n} ${few}`;
+  return `${n} ${many}`;
 }
 
 function trim(title: string): string {

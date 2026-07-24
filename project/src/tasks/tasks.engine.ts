@@ -8,7 +8,12 @@ import {
 import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Principal } from '@cogeto/shared';
-import { DRIZZLE, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
+import {
+  DRIZZLE,
+  UserContextService,
+  withTransactionalEnqueue,
+  writeAudit,
+} from '../infrastructure/index';
 import { UserDirectory } from '../identity/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { MemoryStore } from '../memory/index';
@@ -120,6 +125,9 @@ export class TasksEngine {
     private readonly gateway: ModelGateway,
     /** Org resolution for audit stamping (QS-13, decision 0025); DI provides it. */
     @Optional() private readonly directory?: UserDirectory,
+    /** Per-user language (P6.6, decision 0052) for conclusion phrasing;
+     * absent in bare harnesses — then conclusions phrase in English. */
+    @Optional() private readonly userContext?: UserContextService,
   ) {}
 
   /** Org for audit stamping: the owner's org via the directory, else null. */
@@ -648,6 +656,11 @@ export class TasksEngine {
     byFact: MemoryRow | null,
   ): Promise<void> {
     const deriving = (await this.memoryStore.getManySystem([current.derivedFromMemoryId]))[0];
+    // The owner's preferred language (decision 0052) — a read failure never
+    // blocks a conclusion; it just phrases in English.
+    const locale = await Promise.resolve(
+      this.userContext?.preferredLanguageFor(current.ownerId),
+    ).catch(() => undefined);
     const statement = buildConclusionStatement({
       type,
       taskTitle: current.title,
@@ -655,6 +668,7 @@ export class TasksEngine {
       concludedAt: byFact ? (byFact.validFrom ?? byFact.createdAt) : new Date(),
       triggerContent: byFact?.content ?? null,
       conditionText: current.conditionText,
+      locale,
     });
     const inserted = await tx
       .insert(taskConclusion)

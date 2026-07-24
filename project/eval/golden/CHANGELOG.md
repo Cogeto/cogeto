@@ -135,3 +135,13 @@ One line per label change (docs/eval-golden-set.md §4 rule 5).
   build; with only two graded cases a single low draw on the known
   who_is_ana she→Marta flake could still breach the mean. Four graded cases
   restore the intended arithmetic. More measurement, no gate lowered.
+- 2026-07-24 (P6.6 — instance context): chat-eval tick — 2 language cases
+  (decision 0052). `strict_mode_hr` (strict mode + hr preference: an ENGLISH
+  question must come back in Croatian, judged by a deterministic diacritics +
+  stopword balance; citations stay valid, no mechanics leak) and
+  `digest_hr_preferred` (a REAL dreaming cycle over a lapsed-validity fact;
+  the digest lines must exist and speak Croatian — Cogeto-initiated content
+  anchors to preferred_language). The harness gained per-case `settings`
+  (applied through the real UserContextService), the `language` check, and
+  the `digest_language` check, all folded into the all-must-pass
+  `conversation` verdict. No gate lowered.

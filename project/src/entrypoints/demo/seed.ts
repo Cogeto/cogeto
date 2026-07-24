@@ -35,6 +35,16 @@ export async function seedDemoWorld(deps: SeedWorldDeps): Promise<DemoEndState> 
   const log = deps.log ?? noop;
   const corpus = deps.corpus ?? (await loadCorpus());
 
+  // Ana's context (P6.6): the demo persona prefers Croatian, so the sandbox
+  // digest demonstrates the language anchor (decision 0052). Set through the
+  // real settings endpoint like every other demo write; a failure only logs.
+  try {
+    await deps.api.updateContext({ displayName: 'Ana', preferredLanguage: 'hr' });
+    log('set the demo persona context (Ana, preferred language hr)');
+  } catch (error) {
+    log(`  ⚠ could not set demo persona context: ${(error as Error).message}`);
+  }
+
   log(`seeding ${corpus.notes.length} notes + 1 document through the public API…`);
   const ageEntries = await captureCorpus(deps.api, corpus, log);
 

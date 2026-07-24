@@ -1,4 +1,4 @@
-import type { TaskConclusionDto } from '@cogeto/shared';
+import type { PreferredLanguage, TaskConclusionDto } from '@cogeto/shared';
 import type { TaskConclusionRow } from './persistence/tables';
 
 export type { TaskConclusionDto };
@@ -7,8 +7,9 @@ export type { TaskConclusionDto };
  * Deterministic conclusion phrasing (decision 0037 ruling 4): the statement is
  * composed from task fields and the triggering fact — NO model call, so the
  * conclusion path can never be gated, garbled, or delayed by a model. Quoted
- * source text keeps its original language; the connective phrasing is English
- * in v1 (the extractor is bilingual and normalizes downstream).
+ * source text keeps its original language; the connective phrasing follows the
+ * owner's preferred language (P6.6, decision 0052 — en/hr string tables, still
+ * deterministic; the extractor is bilingual and normalizes downstream).
  */
 
 export type ConclusionType = 'closed' | 'condition_met';
@@ -25,6 +26,8 @@ export interface ConclusionInput {
   triggerContent: string | null;
   /** The task's waiting condition (condition_met conclusions only). */
   conditionText?: string | null;
+  /** The owner's preferred language for the connective phrasing; default en. */
+  locale?: PreferredLanguage;
 }
 
 /** Quoted fragments are capped so a pathological title cannot balloon the
@@ -36,9 +39,10 @@ const clip = (text: string): string => {
   return t.length > QUOTE_CAP ? `${t.slice(0, QUOTE_CAP - 1)}…` : t;
 };
 
-/** 14 July 2026 — fixed locale + UTC so the statement is fully deterministic. */
-export function conclusionDate(date: Date): string {
-  return new Intl.DateTimeFormat('en-GB', {
+/** 14 July 2026 / 14. srpnja 2026. — fixed per-locale format + UTC so the
+ * statement is fully deterministic. */
+export function conclusionDate(date: Date, locale: PreferredLanguage = 'en'): string {
+  return new Intl.DateTimeFormat(locale === 'hr' ? 'hr-HR' : 'en-GB', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -47,24 +51,30 @@ export function conclusionDate(date: Date): string {
 }
 
 export function buildConclusionStatement(input: ConclusionInput): string {
+  const locale = input.locale ?? 'en';
+  const hr = locale === 'hr';
   const title = clip(input.taskTitle);
-  const recorded = conclusionDate(input.recordedAt);
-  const concluded = conclusionDate(input.concludedAt);
+  const recorded = conclusionDate(input.recordedAt, locale);
+  const concluded = conclusionDate(input.concludedAt, locale);
   if (input.type === 'condition_met') {
-    const condition = clip(input.conditionText ?? 'the stated condition');
+    const condition = clip(input.conditionText ?? (hr ? 'navedeni uvjet' : 'the stated condition'));
     const trigger = clip(input.triggerContent ?? '');
-    return (
-      `${trigger} — on ${concluded} this satisfied the condition "${condition}" ` +
-      `for the commitment "${title}" recorded on ${recorded}.`
-    );
+    return hr
+      ? `${trigger} — dana ${concluded} time je ispunjen uvjet "${condition}" ` +
+          `za obvezu "${title}" zabilježenu ${recorded}`
+      : `${trigger} — on ${concluded} this satisfied the condition "${condition}" ` +
+          `for the commitment "${title}" recorded on ${recorded}.`;
   }
   if (input.triggerContent) {
-    return (
-      `${clip(input.triggerContent)} — on ${concluded} this completed the commitment ` +
-      `"${title}" recorded on ${recorded}.`
-    );
+    return hr
+      ? `${clip(input.triggerContent)} — dana ${concluded} time je dovršena obveza ` +
+          `"${title}" zabilježena ${recorded}`
+      : `${clip(input.triggerContent)} — on ${concluded} this completed the commitment ` +
+          `"${title}" recorded on ${recorded}.`;
   }
-  return `The commitment "${title}" recorded on ${recorded} was completed on ${concluded}.`;
+  return hr
+    ? `Obveza "${title}" zabilježena ${recorded} dovršena je ${concluded}`
+    : `The commitment "${title}" recorded on ${recorded} was completed on ${concluded}.`;
 }
 
 export function toConclusionDto(

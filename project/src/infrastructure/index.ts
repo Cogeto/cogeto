@@ -38,7 +38,26 @@ export {
   deadLetter,
   attentionState,
   attentionDismissal,
+  userContext,
+  contextSuggestionDismissal,
 } from './persistence/tables';
+// Per-user instance context + language preference (P6.6, decisions 0051-0053).
+export {
+  UserContextService,
+  normalizeValue,
+  hasProfileContext,
+  EMPTY_USER_CONTEXT,
+} from './user-context';
+export type { UserContextRecord } from './user-context';
+export { UserContextModule } from './user-context.module';
+export {
+  buildContextBlock,
+  formatNow,
+  formatUserContext,
+  formatLanguageRule,
+  LANGUAGE_NAMES,
+} from './context-block';
+export type { ContextBlockOptions } from './context-block';
 // Abuse/DoS limits (FIX-2: QS-2, QS-6, QS-14). Types + tokens live here so the
 // guards enforce them inside domain modules without importing an entrypoint.
 export {

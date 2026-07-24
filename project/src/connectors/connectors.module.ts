@@ -9,6 +9,8 @@ import { FilesService } from './files.service';
 import { FileSourceReader } from './file.source-reader';
 import { SettingsController } from './settings.controller';
 import { UserSettingsService } from './user-settings.service';
+import { UserContextController } from './user-context.controller';
+import { ContextSuggestionsService } from './context-suggestions.service';
 import { FILE_UPLOAD_OPTIONS } from './file-upload-options';
 import type { FileUploadOptions } from './file-upload-options';
 import { EmailIntakeService } from './email-intake.service';
@@ -62,6 +64,7 @@ export class ConnectorsModule {
         NotesController,
         FilesController,
         SettingsController,
+        UserContextController,
         EmailIntakeController,
         EmailSettingsController,
         EmailSourceController,
@@ -74,6 +77,7 @@ export class ConnectorsModule {
         FilesService,
         FileSourceReader,
         UserSettingsService,
+        ContextSuggestionsService,
         EmailIntakeService,
         EmailAllowlistService,
         EmailSourceReader,

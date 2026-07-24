@@ -1,5 +1,14 @@
 # research_answer — changelog
 
+## v0003 — 2026-07-24 (P6.6 instance context)
+
+Instance context (decisions 0051/0052): the input may open with `NOW` (the
+clock, not a source — for judging fetch-date freshness and relative time,
+never cited) and `LANGUAGE` (the reply-language rule: mirror by default with
+the preferred language as tie-breaker, always-preferred in strict mode,
+question-language fallback without the line). Everything else verbatim from
+v0002.
+
 ## v0002 — 2026-07-23 (Priority 6)
 
 The instruction-vs-question rule: a research QUESTION phrased as an
