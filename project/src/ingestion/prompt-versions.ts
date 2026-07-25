@@ -11,6 +11,11 @@ export interface PromptVersionRef {
 
 export const EXTRACTION_PROMPT: PromptVersionRef = { family: 'extraction', version: 'v0002' };
 export const VERIFICATION_PROMPT: PromptVersionRef = { family: 'verification', version: 'v0004' };
+/** The batch form of v0004 (decision 0057) — multi-fact sources only. */
+export const VERIFICATION_BATCH_PROMPT: PromptVersionRef = {
+  family: 'verification',
+  version: 'v0005',
+};
 export const RECONCILE_DEDUP_PROMPT: PromptVersionRef = {
   family: 'reconcile_dedup',
   version: 'v0001',
@@ -23,6 +28,7 @@ export const RECONCILE_CONTRADICTION_PROMPT: PromptVersionRef = {
 export const ACTIVE_PROMPTS: readonly PromptVersionRef[] = [
   EXTRACTION_PROMPT,
   VERIFICATION_PROMPT,
+  VERIFICATION_BATCH_PROMPT,
   RECONCILE_DEDUP_PROMPT,
   RECONCILE_CONTRADICTION_PROMPT,
 ];

@@ -57,6 +57,20 @@ class ScriptedJudgeGateway extends ModelGateway {
     return EMBED;
   }
   async extractStructured<T>(schema: ZodType<T>, request: StructuredExtractionRequest): Promise<T> {
+    // Batched verification (decision 0057; verification/v0005): multi-fact
+    // sources verify in one enveloped call — every claim supported, scripted.
+    if (request.input.startsWith('CLAIMS UNDER REVIEW')) {
+      const batch = {
+        verdicts: [...request.input.matchAll(/CLAIM (\d+):/g)].map((m) => ({
+          claim: Number(m[1]),
+          verdict: 'supported',
+          reason: 'scripted',
+        })),
+      };
+      const parsedBatch = schema.safeParse(batch);
+      if (!parsedBatch.success) throw new Error('scripted batch output failed schema');
+      return parsedBatch.data;
+    }
     const raw = request.system.includes('FULFILLED') ? this.closure() : this.condition();
     const parsed = schema.safeParse(raw);
     if (!parsed.success) throw new ModelGatewayError('scripted output failed schema', false);
@@ -92,6 +106,20 @@ class ScriptedPipelineGateway extends ModelGateway {
     return EMBED;
   }
   async extractStructured<T>(schema: ZodType<T>, request: StructuredExtractionRequest): Promise<T> {
+    // Batched verification (decision 0057; verification/v0005): multi-fact
+    // sources verify in one enveloped call — every claim supported, scripted.
+    if (request.input.startsWith('CLAIMS UNDER REVIEW')) {
+      const batch = {
+        verdicts: [...request.input.matchAll(/CLAIM (\d+):/g)].map((m) => ({
+          claim: Number(m[1]),
+          verdict: 'supported',
+          reason: 'scripted',
+        })),
+      };
+      const parsedBatch = schema.safeParse(batch);
+      if (!parsedBatch.success) throw new Error('scripted batch output failed schema');
+      return parsedBatch.data;
+    }
     const isVerify = request.input.startsWith('CLAIM UNDER REVIEW');
     const isReconcile = request.input.startsWith('FACT A:');
     const raw = isReconcile

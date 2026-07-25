@@ -68,6 +68,20 @@ class ScriptedGateway extends ModelGateway {
     return EMBED_MODEL;
   }
   async extractStructured<T>(schema: ZodType<T>, request: StructuredExtractionRequest): Promise<T> {
+    // Batched verification (decision 0057; verification/v0005): multi-fact
+    // sources verify in one enveloped call — every claim supported, scripted.
+    if (request.input.startsWith('CLAIMS UNDER REVIEW')) {
+      const batch = {
+        verdicts: [...request.input.matchAll(/CLAIM (\d+):/g)].map((m) => ({
+          claim: Number(m[1]),
+          verdict: 'supported',
+          reason: 'scripted',
+        })),
+      };
+      const parsedBatch = schema.safeParse(batch);
+      if (!parsedBatch.success) throw new Error('scripted batch output failed schema');
+      return parsedBatch.data;
+    }
     const isVerify = request.input.startsWith('CLAIM UNDER REVIEW');
     const isReconcile = request.input.startsWith('FACT A:');
     let raw: unknown;

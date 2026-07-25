@@ -109,3 +109,26 @@ of the instance is unaffected.
 `extraction_pipeline_tier`, `web_source_provenance`, `web_facts_temporal`,
 `web_deletion_cascade`, `research_budget_enforced`. Golden: `en-w001` +
 `hr-w001` (fetcher-output fixtures; see the golden CHANGELOG).
+
+## Speed and conclusion (decision 0057, 2026-07-25)
+
+Big pages stopped being slow and leaving the chat stopped losing the answer:
+
+- **Focused extraction**: pages captured under an approved run store
+  `web_page.extraction_text` — the 6 chunks most relevant to the sent query,
+  ranked by embeddings only at capture time; the reader prefers it, the full
+  `retained_text` stays the source of record. Small or query-less pages skip
+  it (NULL) and extract whole.
+- **Web fact budget**: `WEB_MAX_FACTS = 30` (pipeline.service) over the QS-6
+  cap of 100 — reference pages contribute salient facts, not page noise.
+- **Batched verification**: multi-fact sources verify 10 claims per call via
+  `verification/v0005` (v0004's rubric, batch envelope); single-fact sources
+  keep v0004. An omitted claim is conservatively unsupported.
+- **Server-side conclusion**: when a run's last page settles (done or
+  dead-lettered), the worker's `research.conclude` job synthesises and STORES
+  the answer (`research_run.status = 'concluded'`, migration 0032). The
+  worker synthesis has no retrieval, so stored answers cite pages only.
+- **Chat resume**: the chat page re-mounts the newest in-flight or
+  concluded-but-unseen run (48 h window); a concluded run replays the stored
+  answer via `POST /runs/:id/synthesise` (no model call, marks seen);
+  `answer_seen_at` retires it from the resume surface.

@@ -10,6 +10,7 @@ import {
   fetchChatMessages,
   fetchConversations,
   fetchResearchRun,
+  fetchResearchRuns,
   proposeResearch,
   rememberChatMessage,
 } from '../api';
@@ -25,6 +26,7 @@ import {
 } from '../components/conversations-model';
 import { MemoryDrawer } from '../components/MemoryDrawer';
 import { ResearchInline } from '../components/ResearchInline';
+import { pickResumeRun } from '../components/research-resume';
 import { Shell } from '../components/Shell';
 import { UnsourcedChip } from '../components/UnsourcedChip';
 import { getAutoResearch, setAutoResearch } from '../research-pref';
@@ -376,6 +378,22 @@ export function Chat({ session }: { session: Session }) {
   const [offer, setOffer] = useState<ChatResearchOffer | null>(null);
   /** The inline research flow (0047): the SAME gate, embedded in the conversation. */
   const [inlineRun, setInlineRun] = useState<ResearchRunDto | null>(null);
+  /** Resume research that ran on without us (decision 0057): an approved run
+   * still extracting, or a concluded one whose stored answer was never seen,
+   * re-mounts the inline view — the response survives leaving the chat. */
+  const resumedRef = useRef(false);
+  const { data: researchRuns } = useQuery({
+    queryKey: ['research-runs'],
+    queryFn: () => fetchResearchRuns(session),
+  });
+  useEffect(() => {
+    if (resumedRef.current || inlineRun || !researchRuns) return;
+    const resume = pickResumeRun(researchRuns, new Date());
+    if (resume) {
+      resumedRef.current = true;
+      setInlineRun(resume);
+    }
+  }, [researchRuns, inlineRun]);
   const [openMemoryId, setOpenMemoryId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);

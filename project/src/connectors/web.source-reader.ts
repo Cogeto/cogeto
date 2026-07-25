@@ -23,7 +23,11 @@ export class WebSourceReader implements SourceReader {
     const rows = await this.db.select().from(webPage).where(eq(webPage.id, sourceId)).limit(1);
     const row = rows[0];
     if (!row) return null;
-    const content = row.title ? `${row.title}\n\n${row.retainedText}` : row.retainedText;
+    // The focused extraction view wins when present (decision 0057): the
+    // chunks most relevant to the run's approved query, ranked at capture
+    // time. retained_text remains the full source of record.
+    const text = row.extractionText ?? row.retainedText;
+    const content = row.title ? `${row.title}\n\n${text}` : text;
     return {
       sourceType: this.sourceType,
       sourceId: row.id,

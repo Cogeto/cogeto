@@ -11,6 +11,7 @@ import {
   FileSourceReader,
   NotesSourceDeletion,
   NotesSourceReader,
+  ResearchSynthesisService,
   WebSourceDeletion,
   WebSourceReader,
 } from '../connectors/index';
@@ -132,7 +133,15 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         exportRetentionHours: PASSPORT_EXPORT_RETENTION_HOURS,
       }),
     ],
-    providers: [{ provide: COGETO_CONFIG, useValue: config }],
+    providers: [
+      { provide: COGETO_CONFIG, useValue: config },
+      // The worker's synthesis for server-side research conclusion (decision
+      // 0057): composed HERE (not in ConnectorsModule) because retrieval is
+      // deliberately absent in this process — the @Optional seam makes the
+      // stored answer web-only ([W#]), while the app's ResearchChatModule
+      // instance keeps memory citations for interactive synthesis.
+      ResearchSynthesisService,
+    ],
   })
   class WorkerRootModule {}
 

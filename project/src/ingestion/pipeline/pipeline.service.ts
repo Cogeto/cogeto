@@ -20,6 +20,10 @@ import { SOURCE_READERS } from './source-reader';
 import type { SourceReader } from './source-reader';
 import { VerifyStage } from './verify.stage';
 
+/** The web-source fact budget (decision 0057): a fetched page is reference
+ * material — it contributes salient facts, never the QS-6 worst-case hundred. */
+export const WEB_MAX_FACTS = 30;
+
 /**
  * The job type connectors enqueue (via the outbox, in the capture transaction).
  * Idempotency key: (source_type, source_id, 'ingestion.pipeline') — §A.3.
@@ -155,12 +159,17 @@ export class IngestionPipeline {
     // The facts array is capped (QS-6) so a pathological source cannot fan out
     // into thousands of verify/reconcile/embed calls and memory rows.
     let facts = await this.extractStage.run(source, chunks);
-    if (facts.length > this.parseCaps.maxFacts) {
-      log(
-        { stage: 'extract', ...ref, cappedFacts: this.parseCaps.maxFacts },
-        'fact count capped (QS-6)',
-      );
-      facts = facts.slice(0, this.parseCaps.maxFacts);
+    // Web pages get a tighter fact budget (decision 0057): reference material
+    // contributes its salient facts, not a hundred rows of page noise — and
+    // the cap bounds the verify/reconcile/embed fan-out that made big pages
+    // slow. First-person sources keep the full QS-6 cap.
+    const maxFacts =
+      payload.source_type === 'web'
+        ? Math.min(this.parseCaps.maxFacts, WEB_MAX_FACTS)
+        : this.parseCaps.maxFacts;
+    if (facts.length > maxFacts) {
+      log({ stage: 'extract', ...ref, cappedFacts: maxFacts }, 'fact count capped (QS-6)');
+      facts = facts.slice(0, maxFacts);
     }
     summary.extracted = facts.length;
 

@@ -57,6 +57,8 @@ function toDto(row: ResearchRunRow): ResearchRunDto {
     createdAt: row.createdAt.toISOString(),
     approvedAt: row.approvedAt?.toISOString() ?? null,
     cancelledAt: row.cancelledAt?.toISOString() ?? null,
+    concludedAt: row.concludedAt?.toISOString() ?? null,
+    answerSeenAt: row.answerSeenAt?.toISOString() ?? null,
   };
 }
 
@@ -169,12 +171,24 @@ export class ResearchRunController {
     return { results };
   }
 
-  /** The answer-tier synthesis with per-claim [W#]/[M#] provenance. */
+  /** The answer-tier synthesis with per-claim [W#]/[M#] provenance. A run the
+   * worker already concluded replays its STORED answer (decision 0057). */
   @Post('runs/:id/synthesise')
   async synthesise(
     @Req() request: AuthenticatedRequest,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ResearchAnswerDto> {
     return this.synthesis.synthesise(request.principal, id);
+  }
+
+  /** The owner saw the stored answer (decision 0057): the chat resume surface
+   * stops showing this run. Idempotent. */
+  @Post('runs/:id/seen')
+  async seen(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<{ ok: true }> {
+    await this.research.markAnswerSeen(request.principal, id);
+    return { ok: true };
   }
 }

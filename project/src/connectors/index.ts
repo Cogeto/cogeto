@@ -42,6 +42,9 @@ export { MAIL_OPTIONS } from './mail-options';
 export type { MailOptions } from './mail-options';
 // Web research (Priority 5 Part A, decisions 0042/0043).
 export { ResearchService } from './research.service';
+// Server-side research conclusion (decision 0057): the settle-watcher the
+// worker calls after each web page's pipeline job, and the conclusion job type.
+export { ResearchConclusionService, RESEARCH_CONCLUDE_JOB_TYPE } from './research-conclude';
 // Part B (decisions 0044/0045): minimisation, the gate, chat seam, synthesis —
 // ResearchChatModule is composed ONLY into the app root (needs retrieval).
 export { minimiseQuery, RESEARCH_MINIMISE_PROMPT } from './research-minimise';

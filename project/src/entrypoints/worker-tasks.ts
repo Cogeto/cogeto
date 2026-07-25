@@ -32,6 +32,8 @@ import {
   EMAIL_REFUSAL_RETENTION_JOB_TYPE,
 } from '../connectors/index';
 import type { EmailAllowlistService, EmailAuthorshipBackfill } from '../connectors/index';
+import { RESEARCH_CONCLUDE_JOB_TYPE } from '../connectors/index';
+import type { ResearchConclusionService, ResearchSynthesisService } from '../connectors/index';
 import { CONVERSATION_TITLE_JOB_TYPE } from '../retrieval/index';
 import type { ConversationTitler } from '../retrieval/index';
 import type { ModelGateway } from '../model-gateway/index';
@@ -49,6 +51,8 @@ export interface WorkerTaskDeps {
   allowlist: EmailAllowlistService;
   authorshipBackfill: EmailAuthorshipBackfill;
   conversationTitler: ConversationTitler;
+  researchConcluder: ResearchConclusionService;
+  researchSynthesis: ResearchSynthesisService;
   objects: MemoryObjectStore;
   gateway: ModelGateway;
   /** Bound to pino by the worker entrypoint. Counts only — never content. */
@@ -107,8 +111,29 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
           },
           'ingestion pipeline completed',
         );
+        // Research conclusion trigger (decision 0057): when this was a run's
+        // web page and every page of the run has settled, enqueue the
+        // conclusion — in THIS transaction, so the enqueue commits with the
+        // page's own job_execution claim and can never be lost between them.
+        if (payload.source_type === 'web') {
+          await deps.researchConcluder.afterPageProcessed(tx, payload.source_id);
+        }
       },
     ),
+
+    // The research conclusion (decision 0057): synthesise + STORE the run's
+    // answer once its last page settled — whether or not anyone is watching,
+    // so leaving the chat mid-research no longer loses the response. A plain
+    // task (like the passport export): conclusion is idempotent by
+    // construction (only an 'approved' run concludes; 'concluded' is
+    // terminal), failures retry with backoff and park in dead_letter with the
+    // run still approved (visible, retryable).
+    [RESEARCH_CONCLUDE_JOB_TYPE]: async (rawPayload) => {
+      const runId = (rawPayload as { source_id?: unknown }).source_id;
+      if (typeof runId !== 'string' || !runId) return;
+      const { concluded } = await deps.researchSynthesis.concludeRun(runId);
+      deps.log({ source_id: runId, concluded }, 'research conclusion completed');
+    },
 
     // Saga steps 2–3 (§A.7): Qdrant points + MinIO objects, then receipt
     // confirmation with chain hash + signature — all one attempt, so the

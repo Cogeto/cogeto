@@ -12,6 +12,8 @@ import {
   cancelResearch,
   captureResearchPages,
   fetchResearchProgress,
+  fetchResearchRun,
+  markResearchSeen,
   synthesiseResearch,
 } from '../api';
 import type { Session } from '../auth/oidc';
@@ -98,39 +100,68 @@ export function ResearchInline({
     onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
   });
 
-  // The tap was the approval: auto-run the whole flow once, on mount.
+  // On mount (decision 0057): a fresh proposal auto-approves (the tap WAS the
+  // approval); a run the worker already CONCLUDED replays its stored answer
+  // (the synthesise endpoint returns it without a model call and marks it
+  // seen); a resumed APPROVED run just watches — the worker owns conclusion.
   useEffect(() => {
-    if (startedRef.current || run.status !== 'proposed') return;
+    if (startedRef.current) return;
     startedRef.current = true;
-    approve.mutate();
+    if (initialRun.status === 'proposed') approve.mutate();
+    else if (initialRun.status === 'concluded' && initialRun.answer) synthesise.mutate();
   }, []);
 
   const capturedCount = useMemo(
     () => captured?.results.filter((r) => r.status === 'captured').length ?? 0,
     [captured],
   );
+  /** A run mounted mid-flight (chat resume): no local capture state exists —
+   * the pages and their states come from the progress feed alone. */
+  const resumed = initialRun.status === 'approved';
 
   // Honest wait: poll the run's pipeline progress while any page is extracting.
   const progress = useQuery({
     queryKey: ['research-progress', run.id],
     queryFn: () => fetchResearchProgress(session, run.id),
-    enabled: capturedCount > 0 && !fallbackAnswer && !cancelled,
+    enabled: (capturedCount > 0 || resumed) && !fallbackAnswer && !cancelled,
     refetchInterval: (query) =>
       query.state.data?.pages.some((p) => p.state === 'processing') ? 2000 : false,
   });
   const pages = progress.data?.pages ?? [];
+  const tracking = capturedCount > 0 || (resumed && pages.length > 0);
   const extracting =
-    capturedCount > 0 && (progress.isPending || pages.some((p) => p.state === 'processing'));
+    tracking && (progress.isPending || pages.some((p) => p.state === 'processing'));
   const totalFacts = pages.reduce((sum, p) => sum + p.factCount, 0);
-  const settled = capturedCount > 0 && !progress.isPending && !extracting;
+  const settled = tracking && !progress.isPending && !extracting;
 
-  // Conclude once: facts → chat asks the topic (grounded); no facts → synthesise.
+  // Conclude once: facts → chat asks the topic (grounded); no facts →
+  // synthesise. Either way the run is marked seen, so a later server-side
+  // conclusion of the same run never re-surfaces it (decision 0057).
   useEffect(() => {
     if (!settled || concludedRef.current || fallbackAnswer || cancelled) return;
     concludedRef.current = true;
-    if (totalFacts > 0) onConclude(run.intent);
-    else synthesise.mutate();
+    if (totalFacts > 0) {
+      void markResearchSeen(session, run.id).catch(() => undefined);
+      onConclude(run.intent);
+    } else {
+      synthesise.mutate();
+    }
   }, [settled, totalFacts, fallbackAnswer, cancelled]);
+
+  // A resumed run with no pages yet (or whose worker concluded while we were
+  // polling): follow the run row itself until it turns concluded.
+  const runQuery = useQuery({
+    queryKey: ['research-run', run.id],
+    queryFn: () => fetchResearchRun(session, run.id),
+    enabled: resumed && !fallbackAnswer && !cancelled,
+    refetchInterval: (query) => (query.state.data?.status === 'approved' ? 2500 : false),
+  });
+  useEffect(() => {
+    if (runQuery.data?.status === 'concluded' && !concludedRef.current && !fallbackAnswer) {
+      concludedRef.current = true;
+      synthesise.mutate(); // replays the stored answer, marks it seen
+    }
+  }, [runQuery.data?.status, fallbackAnswer]);
 
   if (cancelled) {
     return (
@@ -144,8 +175,10 @@ export function ResearchInline({
   }
 
   const disclosedQuery = run.sentQuery ?? run.minimisedQuery;
-  const searching = results === null && !captured;
+  const searching = initialRun.status === 'proposed' && results === null && !captured;
   const noResults = results !== null && results.length === 0 && !captured;
+  /** True when this mount shows work that ran while the user was away. */
+  const replay = initialRun.status !== 'proposed';
 
   return (
     <Frame>
@@ -190,6 +223,36 @@ export function ResearchInline({
         </div>
       )}
 
+      {/* A resumed run (decision 0057): pages and states from the progress
+          feed alone — the capture happened before this mount. */}
+      {resumed && !captured && !fallbackAnswer && (
+        <div className="mt-2 space-y-1">
+          {pages.map((p) => (
+            <p key={p.id} className="truncate text-xs text-slate-600">
+              {p.state === 'processing' ? '· ' : '✓ '}
+              {p.url}
+            </p>
+          ))}
+          {(extracting || pages.length === 0) && (
+            <PulseLine
+              label={
+                pages.length === 0
+                  ? 'Picking research back up…'
+                  : `Still extracting from ${pages.length} page${pages.length === 1 ? '' : 's'}…${
+                      totalFacts > 0 ? ` ${totalFacts} remembered so far.` : ''
+                    }`
+              }
+            />
+          )}
+          {settled && totalFacts > 0 && (
+            <p className="text-sm text-slate-600">
+              ✓ {pages.length} page{pages.length === 1 ? '' : 's'} read, {totalFacts} fact
+              {totalFacts === 1 ? '' : 's'} remembered. Answering from them now.
+            </p>
+          )}
+        </div>
+      )}
+
       {captured && !fallbackAnswer && (
         <div className="mt-2 space-y-1">
           {captured.results.map((r) => (
@@ -227,8 +290,9 @@ export function ResearchInline({
       {fallbackAnswer && (
         <div className="space-y-2">
           <p className="text-xs text-slate-500">
-            The pages didn’t yield structured facts, so this answer is grounded directly in the
-            sources Cogeto read, every claim traceable:
+            {replay
+              ? 'Cogeto finished this research while you were away. The answer, grounded in the sources it read:'
+              : 'The pages didn’t yield structured facts, so this answer is grounded directly in the sources Cogeto read, every claim traceable:'}
           </p>
           <ResearchAnswer answer={fallbackAnswer} />
           <button type="button" className={btnSecondary} onClick={onClose}>

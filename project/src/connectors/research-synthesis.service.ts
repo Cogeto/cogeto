@@ -46,7 +46,11 @@ export class ResearchSynthesisService {
 
   constructor(
     private readonly research: ResearchService,
-    private readonly retrieval: RetrievalService,
+    /** Absent in the WORKER composition (decision 0057): server-side
+     * conclusion synthesises web-only ([W#] citations); the interactive app
+     * path always has it, so memory claims still cite memories there. */
+    @Optional()
+    private readonly retrieval: RetrievalService | undefined,
     private readonly gateway: ModelGateway,
     /** Per-user context + language (P6.6). Absent in bare test harnesses. */
     @Optional()
@@ -59,20 +63,66 @@ export class ResearchSynthesisService {
   async synthesise(principal: Principal, runId: string): Promise<ResearchAnswerDto> {
     const run = await this.research.getRun(principal, runId);
     if (!run) throw new NotFoundException();
+    const pages = (await this.research.pagesForRun(principal, runId)).slice(0, MAX_PAGES);
+    // A concluded run replays its STORED answer (decision 0057) — the worker
+    // may have finished while nobody was watching; asking again re-resolves
+    // the web citations without another model call.
+    if (run.status === 'concluded' && run.answer) {
+      await this.research.markAnswerSeen(principal, runId);
+      const { answer, citations } = resolveMarkers(run.answer, pages, []);
+      return { runId, answer, citations };
+    }
     if (run.status !== 'approved') {
       throw new UnprocessableEntityException('synthesis needs an approved research run');
     }
-    const pages = (await this.research.pagesForRun(principal, runId)).slice(0, MAX_PAGES);
     if (pages.length === 0) {
       throw new UnprocessableEntityException('capture at least one page before synthesising');
     }
+    const result = await this.synthesiseCore(principal, runId, run.intent, pages);
+    // Interactive path: the user is watching the answer render — seen now.
+    await this.research.recordConclusion(runId, result.answer, { seen: true });
+    return result;
+  }
 
+  /**
+   * The worker's conclusion (decision 0057): runs when the last captured page
+   * settles, whether or not anyone is watching. Idempotent by construction —
+   * only an 'approved' run concludes, and 'concluded' is terminal. Retrieval
+   * is absent in the worker, so the stored answer cites pages ([W#]) only.
+   */
+  async concludeRun(runId: string): Promise<{ concluded: boolean }> {
+    const run = await this.research.getRunById(runId);
+    if (!run || run.status !== 'approved') return { concluded: false };
+    const owner: Principal = {
+      userId: run.ownerId,
+      name: '',
+      email: null,
+      orgId: '',
+      orgName: '',
+      roles: [],
+    };
+    const pages = (await this.research.pagesForRun(owner, runId)).slice(0, MAX_PAGES);
+    if (pages.length === 0) return { concluded: false };
+    const result = await this.synthesiseCore(owner, runId, run.intent, pages);
+    await this.research.recordConclusion(runId, result.answer, { seen: false });
+    return { concluded: true };
+  }
+
+  private async synthesiseCore(
+    principal: Principal,
+    runId: string,
+    intent: string,
+    pages: WebPageRow[],
+  ): Promise<ResearchAnswerDto> {
     // Remembered facts join the sources so memory claims cite memories —
-    // retrieval is scope-gated as always; failures degrade to web-only.
-    const memories = await this.retrieval
-      .retrieve(principal, run.intent)
-      .then((result) => result.memories.slice(0, MAX_MEMORY_FACTS))
-      .catch(() => []);
+    // retrieval is scope-gated as always; failures (or the worker's absent
+    // retrieval) degrade to web-only.
+    const memories = this.retrieval
+      ? await this.retrieval
+          .retrieve(principal, intent)
+          .then((result) => result.memories.slice(0, MAX_MEMORY_FACTS))
+          .catch(() => [])
+      : [];
 
     const webBlocks = pages.map((page, i) => {
       const fetched = page.fetchedAt.toISOString().slice(0, 10);
@@ -103,14 +153,13 @@ export class ResearchSynthesisService {
       system: this.prompt.content,
       input:
         `${contextBlock}\n\n` +
-        `QUESTION:\n${run.intent}\n\n` +
+        `QUESTION:\n${intent}\n\n` +
         `WEB SOURCES:\n${webBlocks.join('\n\n') || '(none)'}\n\n` +
         `KNOWN FACTS:\n${factBlocks.join('\n') || '(none)'}`,
       tier: 'answer',
     });
 
     const { answer, citations } = resolveMarkers(raw.text, pages, memories);
-    await this.research.recordAnswer(runId, answer);
     return { runId, answer, citations };
   }
 }

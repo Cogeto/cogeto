@@ -440,6 +440,10 @@ export const captureResearchPages = (
   apiPost(`/api/research/runs/${encodeURIComponent(id)}/capture`, { urls }, session);
 export const synthesiseResearch = (session: Session, id: string): Promise<ResearchAnswerDto> =>
   apiPost(`/api/research/runs/${encodeURIComponent(id)}/synthesise`, {}, session);
+// The stored answer was seen (decision 0057): the chat resume surface stops
+// showing this run.
+export const markResearchSeen = (session: Session, id: string): Promise<{ ok: true }> =>
+  apiPost(`/api/research/runs/${encodeURIComponent(id)}/seen`, {}, session);
 
 // Reply drafts (Session O4 — email source). Drafting is a consequential action;
 // Cogeto never sends — the finalised draft is presented for the user to send.

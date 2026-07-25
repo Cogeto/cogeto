@@ -34,6 +34,8 @@ const STATUS_TONE: Record<ResearchRunDto['status'], Tone> = {
   proposed: 'warning',
   approved: 'positive',
   cancelled: 'neutral',
+  // The terminal success state (decision 0057): answer stored server-side.
+  concluded: 'positive',
 };
 
 /**
