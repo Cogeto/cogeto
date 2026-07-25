@@ -235,6 +235,10 @@ export const researchRun = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     approvedAt: timestamp('approved_at', { withTimezone: true }),
     cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+    /** The chat conversation this run was invoked from (migration 0033) —
+     * where the concluded answer is appended as a persistent assistant
+     * message. NULL for Research-page runs. Value reference, no FK. */
+    conversationId: uuid('conversation_id'),
     /** Server-side conclusion (migration 0032): when the worker stored the answer. */
     concludedAt: timestamp('concluded_at', { withTimezone: true }),
     /** When the owner saw the stored answer — the chat resume surface shows a

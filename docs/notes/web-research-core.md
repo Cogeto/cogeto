@@ -132,3 +132,17 @@ Big pages stopped being slow and leaving the chat stopped losing the answer:
   concluded-but-unseen run (48 h window); a concluded run replays the stored
   answer via `POST /runs/:id/synthesise` (no model call, marks seen);
   `answer_seen_at` retires it from the resume surface.
+
+## Answers land in the conversation (decision 0058, 2026-07-25)
+
+The 0057 resume surface's buttons were wrong in the field: "Add to
+conversation" re-asked the topic (nothing-on-record when synthesis was the
+fallback) and Done lost the answer from the thread. Now: a chat-proposed run
+records `research_run.conversation_id` (migration 0033); on conclusion the
+answer is APPENDED to that conversation as a persistent assistant message
+([M#] markers become {{cite}} chips, [W#] become numbered entries over a
+Sources block), through the retrieval-owned CONVERSATION_APPEND seam
+(ConversationScribe; connectors never touches chat tables). The guarded
+conclusion write (WHERE status = 'approved') makes worker/interactive races
+single-delivery. The inline card is progress-only and closes itself; chat
+resumes ONLY approved in-flight runs.

@@ -13,8 +13,12 @@ import { ResearchService } from './research.service';
 export class ChatResearchResolver implements ChatResearchResolverPort {
   constructor(private readonly research: ResearchService) {}
 
-  async propose(principal: Principal, intent: string): Promise<ChatResearchProposal> {
-    const run = await this.research.propose(principal, intent);
+  async propose(
+    principal: Principal,
+    intent: string,
+    conversationId: string | null = null,
+  ): Promise<ChatResearchProposal> {
+    const run = await this.research.propose(principal, intent, conversationId);
     return {
       runId: run.id,
       intent: run.intent,

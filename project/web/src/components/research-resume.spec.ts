@@ -3,9 +3,10 @@ import type { ResearchRunDto } from '@cogeto/shared';
 import { pickResumeRun, RESUME_WINDOW_HOURS } from './research-resume';
 
 /**
- * research_resume (decision 0057): which run the chat page picks back up —
- * an approved run still in flight, or a concluded one whose stored answer was
- * never seen; stale and terminal-and-seen runs never resume.
+ * research_resume (decisions 0057/0058): the chat page resumes ONLY an
+ * approved run still in flight, to show progress. Concluded runs never resume
+ * (their answer is a persistent message in the conversation, issue #259);
+ * seen, cancelled, proposed, and stale runs never resume either.
  */
 
 const NOW = new Date('2026-07-25T12:00:00Z');
@@ -28,39 +29,36 @@ const run = (over: Partial<ResearchRunDto> & Pick<ResearchRunDto, 'id'>): Resear
 });
 
 describe('research_resume', () => {
-  it('resumes an approved run still in flight', () => {
-    expect(pickResumeRun([run({ id: 'r1' })], NOW)?.id).toBe('r1');
-  });
-
-  it('resumes a concluded run whose stored answer was never seen; newest wins', () => {
+  it('resumes an approved run still in flight; newest wins', () => {
     const runs = [
-      run({ id: 'older', status: 'concluded', answer: 'a', concludedAt: hoursAgo(10) }),
-      run({ id: 'newer', status: 'concluded', answer: 'b', concludedAt: hoursAgo(1) }),
+      run({ id: 'older', approvedAt: hoursAgo(10) }),
+      run({ id: 'newer', approvedAt: hoursAgo(1) }),
     ];
     expect(pickResumeRun(runs, NOW)?.id).toBe('newer');
   });
 
+  it('concluded runs never resume: their answer lives in the conversation (issue #259)', () => {
+    const runs = [
+      run({ id: 'done', status: 'concluded', answer: 'a', concludedAt: hoursAgo(1) }),
+      run({
+        id: 'done-unseen',
+        status: 'concluded',
+        answer: 'b',
+        concludedAt: hoursAgo(1),
+        answerSeenAt: null,
+      }),
+    ];
+    expect(pickResumeRun(runs, NOW)).toBeNull();
+  });
+
   it('never resumes seen, cancelled, proposed, or stale runs', () => {
     const runs = [
-      run({
-        id: 'seen',
-        status: 'concluded',
-        answer: 'a',
-        concludedAt: hoursAgo(1),
-        answerSeenAt: hoursAgo(1),
-      }),
-      // Issue #257: an orphaned pre-0057 run stuck in 'approved' whose answer
-      // surface was already acknowledged must NOT haunt every chat load.
+      // Issue #257: an orphaned run stuck in 'approved' whose surface was
+      // already acknowledged must NOT haunt every chat load.
       run({ id: 'approved-but-seen', answerSeenAt: hoursAgo(1) }),
       run({ id: 'cancelled', status: 'cancelled', approvedAt: null, cancelledAt: hoursAgo(1) }),
       run({ id: 'proposed', status: 'proposed', approvedAt: null, sentQuery: null }),
       run({ id: 'stale', approvedAt: hoursAgo(RESUME_WINDOW_HOURS + 1) }),
-      run({
-        id: 'stale-concluded',
-        status: 'concluded',
-        answer: 'a',
-        concludedAt: hoursAgo(RESUME_WINDOW_HOURS + 1),
-      }),
     ];
     expect(pickResumeRun(runs, NOW)).toBeNull();
   });

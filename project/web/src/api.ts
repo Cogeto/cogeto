@@ -412,8 +412,18 @@ export const fetchWebSource = (session: Session, id: string): Promise<WebSourceD
   apiGet(`/api/research/${encodeURIComponent(id)}/source`, session);
 
 // Research runs (Part B): propose → show-edit-approve gate → capture → synthesis.
-export const proposeResearch = (session: Session, intent: string): Promise<ResearchRunDto> =>
-  apiPost('/api/research/propose', { intent }, session);
+// `conversationId` (issue #259): the invoking chat thread — the concluded
+// answer is appended there automatically.
+export const proposeResearch = (
+  session: Session,
+  intent: string,
+  conversationId?: string,
+): Promise<ResearchRunDto> =>
+  apiPost(
+    '/api/research/propose',
+    conversationId ? { intent, conversationId } : { intent },
+    session,
+  );
 export const fetchResearchRuns = (session: Session): Promise<ResearchRunDto[]> =>
   apiGet('/api/research/runs', session);
 export const fetchResearchRun = (session: Session, id: string): Promise<ResearchRunDto> =>

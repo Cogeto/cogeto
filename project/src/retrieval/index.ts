@@ -52,6 +52,10 @@ export {
   CONVERSATION_TITLE_PROMPT,
   sanitizeTitle,
 } from './chat/conversation-titler';
+// The conversation-append seam (issue #259; decision 0058): research answers
+// land in the conversation they were invoked from. Retrieval owns port + impl.
+export { CONVERSATION_APPEND, ConversationScribe } from './chat/conversation-scribe';
+export type { ConversationAppendPort } from './chat/conversation-scribe';
 // QS-7 (decision 0025): the deletion saga's cascade over assistant answers
 // that cite erased memories — bound into MemoryModule's derivedCascades.
 export { ChatAnswerCascade, CHAT_ANSWER_REDACTED } from './chat/chat-answer-cascade';

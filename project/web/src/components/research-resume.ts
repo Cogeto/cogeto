@@ -1,16 +1,13 @@
 import type { ResearchRunDto } from '@cogeto/shared';
 
 /**
- * Which research run should the chat page resume (decision 0057)? Pure so the
- * rule is unit-testable:
- *
- * - an APPROVED run whose work may still be in flight (the user left mid-parse
- *   and the worker kept going), or
- * - a CONCLUDED run whose stored answer the owner has never seen.
- *
- * Both fade after {@link RESUME_WINDOW_HOURS}: stale runs live on the Research
- * page, not in the chat. Newest first; proposed/cancelled runs never resume
- * (the gate was never taken, or was declined).
+ * Which research run should the chat page resume (decisions 0057/0058)? Pure
+ * so the rule is unit-testable. ONLY an APPROVED run still in flight resumes
+ * — to show live progress. Concluded runs never resume: their answer is a
+ * persistent message in the conversation (issue #259), or, for Research-page
+ * runs, lives there. Seen runs never resume whatever their status (#257 —
+ * no acknowledged run may haunt the chat), and everything fades after
+ * {@link RESUME_WINDOW_HOURS}.
  */
 export const RESUME_WINDOW_HOURS = 48;
 
@@ -18,16 +15,9 @@ export function pickResumeRun(runs: ResearchRunDto[], now: Date): ResearchRunDto
   const cutoff = now.getTime() - RESUME_WINDOW_HOURS * 3_600_000;
   const fresh = (iso: string | null) => iso !== null && new Date(iso).getTime() >= cutoff;
   const candidates = runs.filter(
-    (run) =>
-      // A seen answer never resumes, WHATEVER the status (issue #257): a run
-      // orphaned in 'approved' (pre-0057 pages settled with no conclusion
-      // trigger) must not haunt every chat load once acknowledged.
-      run.answerSeenAt === null &&
-      ((run.status === 'approved' && fresh(run.approvedAt)) ||
-        (run.status === 'concluded' && fresh(run.concludedAt))),
+    (run) => run.answerSeenAt === null && run.status === 'approved' && fresh(run.approvedAt),
   );
   if (candidates.length === 0) return null;
-  const at = (run: ResearchRunDto) =>
-    new Date(run.concludedAt ?? run.approvedAt ?? run.createdAt).getTime();
+  const at = (run: ResearchRunDto) => new Date(run.approvedAt ?? run.createdAt).getTime();
   return candidates.sort((a, b) => at(b) - at(a))[0] ?? null;
 }

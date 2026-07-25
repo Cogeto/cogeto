@@ -19,7 +19,13 @@ export interface ChatResearchProposal {
 }
 
 export interface ChatResearchResolverPort {
-  propose(principal: Principal, intent: string): Promise<ChatResearchProposal>;
+  /** `conversationId` (issue #259): the thread the research was invoked from —
+   * the concluded answer is appended there as a persistent assistant message. */
+  propose(
+    principal: Principal,
+    intent: string,
+    conversationId?: string | null,
+  ): Promise<ChatResearchProposal>;
 }
 
 export const CHAT_RESEARCH_RESOLVER = Symbol('CHAT_RESEARCH_RESOLVER');

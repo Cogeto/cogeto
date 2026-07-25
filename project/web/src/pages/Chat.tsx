@@ -122,14 +122,17 @@ function MessageBody({
 function ResearchOfferChip({
   session,
   offer,
+  conversationId,
   onProposed,
 }: {
   session: Session;
   offer: ChatResearchOffer;
+  /** The invoking thread (issue #259) — the concluded answer lands there. */
+  conversationId: string | null;
   onProposed: (run: ResearchRunDto) => void;
 }) {
   const propose = useMutation({
-    mutationFn: () => proposeResearch(session, offer.topic),
+    mutationFn: () => proposeResearch(session, offer.topic, conversationId ?? undefined),
     onSuccess: (run) => onProposed(run),
   });
   return (
@@ -503,7 +506,7 @@ export function Chat({ session }: { session: Session }) {
             const nextOffer = opts.suppressOffer ? null : (event.researchOffer ?? null);
             if (nextOffer && getAutoResearch()) {
               setOffer(null);
-              void proposeResearch(session, nextOffer.topic)
+              void proposeResearch(session, nextOffer.topic, conversationId ?? undefined)
                 .then((run) => setInlineRun(run))
                 .catch(() => setOffer(nextOffer));
             } else {
@@ -685,11 +688,6 @@ export function Chat({ session }: { session: Session }) {
                   key={inlineRun.id}
                   session={session}
                   run={inlineRun}
-                  onConclude={(topic) => {
-                    setInlineRun(null);
-                    void queryClient.invalidateQueries({ queryKey: ['research-runs'] });
-                    void send(topic, { suppressOffer: true });
-                  }}
                   onClose={() => {
                     setInlineRun(null);
                     void queryClient.invalidateQueries({ queryKey: ['research-runs'] });
@@ -700,6 +698,7 @@ export function Chat({ session }: { session: Session }) {
                 <ResearchOfferChip
                   session={session}
                   offer={offer}
+                  conversationId={activeId}
                   onProposed={(run) => {
                     setOffer(null);
                     setInlineRun(run);

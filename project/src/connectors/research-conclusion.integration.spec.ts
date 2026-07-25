@@ -11,6 +11,7 @@ import type { MemoryObjectStore, MemoryStore } from '../memory/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { CompletionResult, StructuredExtractionRequest } from '../model-gateway/index';
 import { createIngestionPipeline, INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
+import { ConversationScribe } from '../retrieval/index';
 import { ResearchService } from './research.service';
 import { ResearchSynthesisService } from './research-synthesis.service';
 import { ResearchConclusionService, RESEARCH_CONCLUDE_JOB_TYPE } from './research-conclude';
@@ -169,7 +170,15 @@ describe('research conclusion (integration: real Postgres + Qdrant, scripted gat
       store,
     );
     // The WORKER composition (decision 0057): no retrieval — web-only answers.
-    synthesis = new ResearchSynthesisService(research, undefined, gateway);
+    // The append seam (issue #259) is the real retrieval-owned scribe.
+    synthesis = new ResearchSynthesisService(
+      research,
+      undefined,
+      gateway,
+      undefined,
+      undefined,
+      new ConversationScribe(tdb.db),
+    );
     concluder = new ResearchConclusionService();
   }, 180_000);
 
@@ -208,8 +217,16 @@ describe('research conclusion (integration: real Postgres + Qdrant, scripted gat
 
   let runId: string;
 
-  it('research_concludes_server_side: the worker stores the answer once the last page settles — nobody watching', async () => {
-    const run = await research.propose(owner, 'harbour fees in Split');
+  it('research_concludes_server_side: the worker stores the answer once the last page settles — nobody watching — and lands it in the conversation', async () => {
+    // The invoking conversation (issue #259): the concluded answer must land
+    // here as a persistent assistant message, automatically.
+    const conversationId = (
+      await tdb.pool.query<{ id: string }>(
+        `INSERT INTO conversation (owner_id) VALUES ($1) RETURNING id`,
+        [owner.userId],
+      )
+    ).rows[0]!.id;
+    const run = await research.propose(owner, 'harbour fees in Split', conversationId);
     await research.approveAndSearch(owner, run.id, 'harbour fees Split');
     runId = run.id;
     const captured = await research.capture(
@@ -228,11 +245,44 @@ describe('research conclusion (integration: real Postgres + Qdrant, scripted gat
     const concluded = await research.getRun(owner, runId);
     expect(concluded!.status).toBe('concluded');
     expect(concluded!.concludedAt).not.toBeNull();
-    expect(concluded!.answerSeenAt).toBeNull(); // nobody was watching
     expect(concluded!.answer).toContain('12 EUR');
     expect(concluded!.answer).toContain('[W1]');
     expect(concluded!.answer).not.toContain('[W9]'); // invented marker stripped
     expect(gateway.completeCalls).toBe(1);
+    // Delivered into the thread (issue #259): a persistent assistant message
+    // with numbered web references + a Sources block — and that counts as
+    // seen, so the run never haunts the resume surface.
+    expect(concluded!.answerSeenAt).not.toBeNull();
+    const appended = await tdb.pool.query<{ role: string; content: string }>(
+      `SELECT role, content FROM chat_message WHERE conversation_id = $1`,
+      [concluded!.conversationId],
+    );
+    expect(appended.rows).toHaveLength(1);
+    expect(appended.rows[0]!.role).toBe('assistant');
+    expect(appended.rows[0]!.content).toContain('12 EUR');
+    expect(appended.rows[0]!.content).toContain('[1]');
+    expect(appended.rows[0]!.content).toContain('Sources:');
+    expect(appended.rows[0]!.content).toContain('harbour.example.org');
+    expect(appended.rows[0]!.content).not.toContain('[W1]'); // thread form only
+  });
+
+  it('conversationless runs conclude without appending and stay unseen (Research page owns them)', async () => {
+    const run = await research.propose(owner, 'standalone harbour question');
+    await research.approveAndSearch(owner, run.id, 'standalone harbour question');
+    const captured = await research.capture(
+      owner,
+      ['https://harbour.example.org/small-standalone'],
+      'private',
+      run.id,
+    );
+    expect(captured[0]).toMatchObject({ status: 'captured' });
+    await runWorker();
+    await runWorker();
+    const concluded = await research.getRun(owner, run.id);
+    expect(concluded!.status).toBe('concluded');
+    expect(concluded!.answerSeenAt).toBeNull(); // nobody watching, nowhere to land
+    const messages = await tdb.pool.query(`SELECT 1 FROM chat_message`);
+    expect(messages.rows).toHaveLength(1); // only the first test's appended answer
   });
 
   it('resume_replay_marks_seen: synthesise on a concluded run replays the stored answer without a model call', async () => {

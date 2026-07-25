@@ -697,7 +697,7 @@ export class ChatService {
     // SAME gate in place. Null when proposing failed.
     let proposalRef: { runId: string } | null = null;
     try {
-      const proposal = await this.researchResolver!.propose(principal, topic);
+      const proposal = await this.researchResolver!.propose(principal, topic, conversationId);
       proposalRef = { runId: proposal.runId };
       answer =
         lang === 'hr'
