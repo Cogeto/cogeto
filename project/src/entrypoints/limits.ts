@@ -78,6 +78,15 @@ export function buildLimits(env: NodeJS.ProcessEnv, demoMode: boolean): LimitsCo
         20,
       ),
       pagesPerRunMax: num(env.COGETO_RESEARCH_PAGES_PER_RUN, 5),
+      // Named skills (decision 0059): the plan gate caps how many approved
+      // queries one run may hold; the engine reads at most this many pages per
+      // query. The daily research budgets above apply unchanged inside every
+      // skill search and capture.
+      skillQueriesMax: num(env.COGETO_SKILL_MAX_QUERIES, 6),
+      skillPagesPerQuery: Math.min(
+        num(env.COGETO_SKILL_PAGES_PER_QUERY, 3),
+        num(env.COGETO_RESEARCH_PAGES_PER_RUN, 5),
+      ),
     },
     sse: {
       maxConcurrentPerPrincipal: pick(

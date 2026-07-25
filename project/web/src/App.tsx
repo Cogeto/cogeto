@@ -17,6 +17,7 @@ import { Audit } from './pages/Audit';
 import { Memories } from './pages/Memories';
 import { Review } from './pages/Review';
 import { Settings } from './pages/Settings';
+import { Skills } from './pages/Skills';
 import { System } from './pages/System';
 import { Tasks } from './pages/Tasks';
 import { Timeline } from './pages/Timeline';
@@ -99,6 +100,8 @@ function renderPage(session: Session) {
       return <Chat session={session} />;
     case '/research':
       return <Research session={session} />;
+    case '/skills':
+      return <Skills session={session} />;
     case '/timeline':
       return <Timeline session={session} />;
     case '/tasks':

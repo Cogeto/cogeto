@@ -24,6 +24,11 @@ export type {
   ChatResearchResolverPort,
   ChatResearchProposal,
 } from './chat/chat-research-resolver.port';
+// The chat → skill seam (Priority 7, decision 0059): same pattern again.
+export { CHAT_SKILL_RESOLVER } from './chat/chat-skill-resolver.port';
+export type { ChatSkillResolverPort, ChatSkillProposal } from './chat/chat-skill-resolver.port';
+export { detectSkillBriefIntent } from './query-rewrite';
+export type { SkillBriefIntent } from './query-rewrite';
 // The chat → email-reply seam (Session O4): retrieval defines the port,
 // connectors implements it, the app root binds it (like the SourceReader family).
 export { CHAT_REPLY_RESOLVER } from './chat/chat-reply-resolver.port';

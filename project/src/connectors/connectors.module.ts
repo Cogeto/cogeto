@@ -34,6 +34,8 @@ import { WebDiscoveryService } from './web-discovery.service';
 import { WebFetchService } from './web-fetch';
 import { WebSourceReader } from './web.source-reader';
 import { WebSourceDeletion } from './web.source-deletion';
+import { SkillRunService } from './skills/skill-run.service';
+import { SkillEngine } from './skills/skill-engine';
 
 export interface ConnectorsModuleOptions {
   /** File-upload knobs from validated config (default 25 MB, §A.9 short TTL). */
@@ -93,6 +95,11 @@ export class ConnectorsModule {
         WebFetchService,
         WebSourceReader,
         WebSourceDeletion,
+        // Named skills (Priority 7, decision 0059): the run record + the
+        // engine live in BOTH roots (the app approves plans, the worker
+        // advances); the planner + controller are app-only (SkillsModule).
+        SkillRunService,
+        SkillEngine,
         { provide: FILE_UPLOAD_OPTIONS, useValue: options.fileUpload },
         { provide: MAIL_OPTIONS, useValue: options.mail },
         { provide: RESEARCH_OPTIONS, useValue: options.research },
@@ -114,6 +121,8 @@ export class ConnectorsModule {
         ResearchConclusionService,
         WebSourceReader,
         WebSourceDeletion,
+        SkillRunService,
+        SkillEngine,
       ],
     };
   }

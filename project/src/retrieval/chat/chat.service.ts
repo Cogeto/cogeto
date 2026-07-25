@@ -43,6 +43,7 @@ import {
   ANAPHORA_RE,
   detectCreateTaskIntent,
   detectResearchIntent,
+  detectSkillBriefIntent,
   detectSmallTalk,
   rewriteQuery,
 } from '../query-rewrite';
@@ -51,6 +52,8 @@ import { CHAT_REPLY_RESOLVER } from './chat-reply-resolver.port';
 import type { ChatReplyResolverPort } from './chat-reply-resolver.port';
 import { CHAT_RESEARCH_RESOLVER } from './chat-research-resolver.port';
 import type { ChatResearchResolverPort } from './chat-research-resolver.port';
+import { CHAT_SKILL_RESOLVER } from './chat-skill-resolver.port';
+import type { ChatSkillResolverPort } from './chat-skill-resolver.port';
 import { chatMessage, conversation } from '../persistence/tables';
 import type { ConversationRow } from '../persistence/tables';
 import { CONVERSATION_TITLE_JOB_TYPE } from './conversation-titler';
@@ -133,6 +136,12 @@ export class ChatService {
      * harnesses — then the adoption form declines gracefully. */
     @Optional()
     private readonly tasksEngine?: TasksEngine,
+    /** The chat → skill seam (Priority 7, decision 0059). Appended LAST so
+     * positional harness constructions keep working; absent in the worker —
+     * then the brief intent is simply inactive. */
+    @Optional()
+    @Inject(CHAT_SKILL_RESOLVER)
+    private readonly skillResolver?: ChatSkillResolverPort,
   ) {}
 
   /**
@@ -440,6 +449,18 @@ export class ChatService {
       return;
     }
 
+    // Skill-brief intent (Priority 7, decision 0059): checked BEFORE the
+    // research patterns so "research X before Thursday" becomes a brief, not
+    // a plain search. This turn only starts PLANNING (gather + propose
+    // queries); nothing leaves until the plan is approved on the run view.
+    if (this.skillResolver) {
+      const brief = detectSkillBriefIntent(content);
+      if (brief) {
+        yield* this.handleSkillBriefIntent(principal, conversationId, brief.subject, brief.lang);
+        return;
+      }
+    }
+
     // Research intent (Priority 5 Part B, decision 0045): deterministic,
     // explicitly invoked — an imperative research verb, never an ordinary
     // question. This turn only OPENS the gate (minimise + record a proposed
@@ -726,6 +747,60 @@ export class ChatService {
       content: answer,
       citationViolations: 0,
       researchProposal: proposalRef,
+    };
+  }
+
+  /**
+   * The skill-brief opener (Priority 7, decision 0059): start planning —
+   * gather from memory, propose the query plan — and hand the user the run
+   * view, where the plan gate lives. Deterministic confirmation text; an
+   * ambiguous subject asks and creates nothing.
+   */
+  private async *handleSkillBriefIntent(
+    principal: Principal,
+    conversationId: string,
+    subject: string,
+    lang: 'en' | 'hr',
+  ): AsyncGenerator<ChatStreamEvent> {
+    yield { type: 'sources', facts: [] };
+    let answer: string;
+    let runRef: { runId: string } | null = null;
+    try {
+      const proposal = await this.skillResolver!.propose(principal, subject);
+      if (proposal.status === 'ambiguous') {
+        const list = proposal.candidates.map((c, i) => `${i + 1}. ${c}`).join('\n');
+        answer =
+          lang === 'hr'
+            ? `Na koga točno misliš? Poznajem više njih:\n\n${list}\n\nReci puno ime i pripremit ću brief.`
+            : `Which one do you mean? I know more than one:\n\n${list}\n\nTell me the full name and I'll prepare the brief.`;
+      } else {
+        runRef = { runId: proposal.runId };
+        answer =
+          lang === 'hr'
+            ? `Pripremam brief o "${subject}". Provjerio sam što već znaš i predložio ` +
+              `${proposal.queryCount} ${proposal.queryCount === 1 ? 'pretragu' : 'pretrage'} — ` +
+              `ništa još nije poslano. Otvori tijek na stranici Skills, odobri ili uredi ` +
+              `plan pretraga, i prati svaki korak kako nastaje.`
+            : `I'm preparing a brief on "${subject}". I've checked what you already know and ` +
+              `proposed ${proposal.queryCount} ${proposal.queryCount === 1 ? 'search' : 'searches'} — ` +
+              `nothing has been sent yet. Open the run on the Skills page to approve or edit ` +
+              `the search plan, and watch each step as it happens.`;
+      }
+    } catch (error) {
+      this.logger.warn(`skill_intent_failed: ${error instanceof Error ? error.message : 'error'}`);
+      answer =
+        lang === 'hr'
+          ? `Trenutno ne mogu pripremiti brief. Pokušaj ponovno sa stranice Skills.`
+          : `I couldn't start that brief just now. Try again from the Skills page.`;
+    }
+    yield { type: 'token', text: answer };
+    const row = await this.storeAssistant(principal, conversationId, answer);
+    yield {
+      type: 'done',
+      messageId: row.id,
+      content: answer,
+      citationViolations: 0,
+      skillRun: runRef,
     };
   }
 

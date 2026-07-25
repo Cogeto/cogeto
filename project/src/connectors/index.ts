@@ -66,3 +66,13 @@ export { WebSourceReader } from './web.source-reader';
 export { WebSourceDeletion } from './web.source-deletion';
 export { RESEARCH_OPTIONS } from './research-options';
 export type { ResearchOptions } from './research-options';
+// Named skills (Priority 7, decision 0059): the runtime (both roots), the
+// app-only SkillsModule (planner + controller + chat seam), the registry.
+export { SkillRunService, SKILL_ADVANCE_JOB_TYPE } from './skills/skill-run.service';
+export { SkillEngine, SKILL_BRIEF_PROMPT, resolveBriefMarkers } from './skills/skill-engine';
+export { SkillPlanner, SKILL_PLAN_PROMPT, ambiguousCandidates } from './skills/skill-planner';
+export { SkillsModule } from './skills/skills.module';
+export { ChatSkillResolver } from './skills/chat-skill-resolver';
+export { getSkill, listSkills, RESEARCH_BRIEF_SKILL } from './skills/skill-registry';
+export type { SkillDefinition, SkillStepDef } from './skills/skill-registry';
+export { selectPagesForSubject } from './skills/page-select';

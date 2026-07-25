@@ -1,0 +1,38 @@
+{
+  "case_id": "skill_brief_en",
+  "description": "The research-brief skill, live (Priority 7, decision 0059): the chat turn starts planning and sends nothing; the plan gate approves two queries and removes the rest; fixture pages extract through the real pipeline; the brief cites the seeded memory and the web with URL + fetch time; the seeded contradiction surfaces in the verify step; the fixture obligation becomes no task.",
+  "anchor": "2026-07-21T09:00:00.000Z",
+  "facts": [
+    {
+      "content": "Agreed 30-day payment terms with Adriatic Foods for the wholesale contract",
+      "kind": "decision",
+      "entities": ["Adriatic Foods"],
+      "subject_entity": "Adriatic Foods"
+    },
+    {
+      "content": "Adriatic Foods has 20 employees",
+      "kind": "fact",
+      "entities": ["Adriatic Foods"],
+      "subject_entity": "Adriatic Foods",
+      "contradicted": true
+    }
+  ],
+  "script": ["research Adriatic Foods before Thursday"],
+  "checks": {
+    "must_include": ["nothing has been sent", "skills"],
+    "no_mechanics": true
+  },
+  "skill": {
+    "pages": [
+      {
+        "url": "https://adriaticfoods.example.org/about",
+        "title": "Adriatic Foods",
+        "html": "<html><head><title>Adriatic Foods</title></head><body><main><p>Adriatic Foods is a wholesale food distributor based in Split, employing around two hundred people as of 2026.</p><p>In July 2026 the company opened a new distribution warehouse in Zadar.</p><p>Suppliers must submit the RC-1 compliance form by 1 September 2026.</p></main></body></html>"
+      }
+    ],
+    "brief_must_include": ["Adriatic"],
+    "expect_contradiction": true,
+    "expect_memory_citation": true,
+    "language": "en"
+  }
+}

@@ -139,6 +139,22 @@ and fetch time, and anything from the model's own knowledge is plainly marked
 it is the assistant that tells you what it can back up.
 See [`docs/notes/natural-conversation.md`](docs/notes/natural-conversation.md).
 
+**Named skills** are the payoff of all of the above: agents whose every step
+is inspectable, every fact sourced, and every consequential action waits for
+you. The first skill does a whole job end to end: say "research Adriatic Foods
+before Thursday" and Cogeto gathers what you already know, proposes minimised
+searches that you approve, edit, or remove in one interaction (nothing leaves
+until you do), reads the approved pages through the normal pipeline, and hands
+back a brief where what you knew cites your memories, what is new cites its
+URL and fetch time, and contradictions between the two are stated, never
+silently resolved. Suggested next steps are proposals: accepting one adopts it
+as a task through the audited adoption path, and nothing exists until you
+accept. The finished run stays open forever, with every search sent, page
+fetched, and memory created one click away. Because the approval machine and
+the audit log existed before there was anything to govern, this category is
+native here; competitors cannot enter it without rebuilding their foundations.
+See [`docs/notes/named-skills.md`](docs/notes/named-skills.md).
+
 ## Links
 
 - **Website:** [cogeto.eu](https://cogeto.eu), including the whitepaper

@@ -235,6 +235,24 @@ The assistant surface, affordable once local models exist.
 
 ## Priority 7 — Named skills (L, Release D)
 
+**Status: DELIVERED** (2026-07-25, issues #261/#262/#263 — decision 0059,
+migration 0034, prompts skill_plan/v0001 + skill_brief/v0001; notes in
+docs/notes/named-skills.md). One skill shipped whole, per the "ship one skill
+well" rule: **research a company or person before a meeting**
+(skills/research_brief/v0001). A code-defined, versioned skill runtime with a
+durable per-step log (every search sent, page fetched, memory created and the
+brief one click away, forever); the research gate preserved at plan
+granularity (N ordinary research_run rows approved in one interaction — edit
+any, remove any; provenance identical to manual research); worker-side,
+resumable, budget-capped execution with graceful partial completion; a brief
+that integrates memory with the web under per-claim provenance and speaks
+preferred_language; and proposed actions that only ever ADOPT through the
+existing tasks endpoint — nothing exists until accepted. Surfaces: the chat
+intent ("research X before Thursday", "prep me on …", hr forms), the Skills
+page with the live run view, a Dashboard pointer. Evals skill_brief_en/hr
+joined the rule gate; the Ana sandbox runs the skill on bundled fixture pages,
+never the live web. This was the roadmap's final code item.
+
 The visible payoff, built on the research engine from Priority 5.
 
 **What.** Two or three skills that each do a whole job end to end and leave memory and an artifact behind: research a company before a meeting; prepare me for tomorrow; the weekly review of what moved, stalled, and is owed. Each shows its steps, cites everything, and routes consequential actions through approval.
@@ -256,7 +274,7 @@ The visible payoff, built on the research engine from Priority 5.
 | 4 | Local models via Ollama ✅ delivered | B | L (staged) | 3 | Sovereignty + economics foundation |
 | 5 | Web research + query minimisation ✅ delivered | C1 | L | 4 for economics | The research capability, privately |
 | 6 | Natural conversation ✅ delivered | C2 | L | 4 | The surface users live in |
-| 7 | Named skills | D | L | 5 | The visible, inimitable payoff |
+| 7 | Named skills ✅ delivered | D | L | 5 | The visible, inimitable payoff |
 
 **Order to build:** 1a and 1b together first (small, high value, no dependencies), then 2 (standalone, high daily value), then 3 and 4 as one model-provider workstream (BYOK into local), then 5 and 6 as the assistant, then 7. Reorder only against Phase 0 evidence, and only 5/6-before-4 with the margin numbers in hand.
 

@@ -302,6 +302,59 @@ const RESEARCH_PATTERNS: ReadonlyArray<{ lang: 'en' | 'hr'; re: RegExp }> = [
   },
 ];
 
+/** A detected skill-brief request (Priority 7, decision 0059). */
+export interface SkillBriefIntent {
+  /** The subject to brief on (a company or a person), verbatim. */
+  subject: string;
+  lang: 'en' | 'hr';
+}
+
+/**
+ * The research-brief skill's triggers (decision 0059), anchored imperatives
+ * like the research patterns — a skill is invoked, never inferred. Two forms:
+ * a prep/brief verb ("prep me on Marko", "brief me on Adriatic Foods";
+ * hr "pripremi me za sastanak s X"), or a research imperative with an occasion
+ * ("research Adriatic Foods before Thursday" — the occasion signals a
+ * MEETING brief, not a plain search). Checked BEFORE the research patterns so
+ * the more specific intent wins.
+ */
+const SKILL_BRIEF_PATTERNS: ReadonlyArray<{ lang: 'en' | 'hr'; re: RegExp }> = [
+  {
+    lang: 'en',
+    re: /^\s*(?:please\s+)?(?:prep(?:are)?\s+me\s+(?:on|for)|brief\s+me\s+on)\s+(?:my\s+meeting\s+with\s+|the\s+meeting\s+with\s+|a\s+meeting\s+with\s+)?(.+?)(?:\s+before\s+.+)?$/i,
+  },
+  {
+    lang: 'en',
+    re: /^\s*(?:please\s+)?research\s+(.+?)\s+before\s+.+$/i,
+  },
+  {
+    lang: 'hr',
+    re: /^\s*(?:molim(?:\s+te)?\s+)?pripremi\s+me\s+za\s+(?:sastanak\s+s(?:a)?\s+)?(.+?)(?:\s+prije\s+.+)?$/iu,
+  },
+  {
+    lang: 'hr',
+    re: /^\s*(?:molim(?:\s+te)?\s+)?istraži\s+(.+?)\s+prije\s+.+$/iu,
+  },
+];
+
+/** Detect an explicit brief request. Purely deterministic (no model). */
+export function detectSkillBriefIntent(question: string): SkillBriefIntent | null {
+  for (const { lang, re } of SKILL_BRIEF_PATTERNS) {
+    const match = re.exec(question);
+    if (!match) continue;
+    const subject = (match[1] ?? '')
+      .trim()
+      // A leading article/descriptor before the name adds nothing: "the
+      // company Adriatic Foods" → "Adriatic Foods" (hr "tvrtku X" → "X").
+      .replace(/^(?:the\s+company\s+|company\s+|tvrtk[ua]\s+)/iu, '')
+      .replace(/[.!?\s]+$/, '')
+      .trim();
+    if (subject.length < 2) return null; // a bare trigger proposes nothing
+    return { subject, lang };
+  }
+  return null;
+}
+
 /** Detect an explicit research request. Purely deterministic (no model). */
 export function detectResearchIntent(question: string): ResearchIntent | null {
   for (const { lang, re } of RESEARCH_PATTERNS) {

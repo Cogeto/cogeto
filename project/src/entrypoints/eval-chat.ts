@@ -23,10 +23,14 @@ import { ActionRegistry, ApprovalService } from '../agents/index';
 import {
   ChatReplyResolver,
   ChatResearchResolver,
+  ChatSkillResolver,
   EmailReplyDraftService,
   EmailSourceService,
   ResearchService,
   ResearchSynthesisService,
+  SkillEngine,
+  SkillPlanner,
+  SkillRunService,
   WebDiscoveryService,
   WebFetchService,
 } from '../connectors/index';
@@ -79,6 +83,10 @@ const factSeedSchema = z.object({
   valid_from: z.string().optional(),
   valid_until: z.string().optional(),
   supersedes: z.int().min(0).optional(),
+  /** Seed this fact already reconciliation-flagged (skill contradiction cases):
+   * the deterministic input state; live contradiction DETECTION has its own
+   * reconcile suite. */
+  contradicted: z.boolean().optional(),
 });
 
 /** Seeded email_message rows (Session O4 — chat reply-intent cases). */
@@ -117,6 +125,30 @@ const caseSchema = z.object({
        * been dropped (minimise_drops_client) / kept (minimise_keeps_subject). */
       sent_query_must_exclude: z.array(z.string()).default([]),
       sent_query_must_include: z.array(z.string()).default([]),
+    })
+    .optional(),
+  /**
+   * Skill cases (Priority 7, decision 0059): the script's last turn invokes
+   * the research-brief skill; the harness stands in for the user at the plan
+   * gate (approves the first two LIVE-planned queries verbatim, removes the
+   * rest — exercising removal), stands in for the worker (fixture pages, real
+   * pipeline stages, real task engine), and asserts on the finished run: a
+   * complete step log, memory + web citations on the brief, contradiction
+   * counts surfaced, zero tasks created, resolved-only markers.
+   */
+  skill: z
+    .object({
+      pages: z
+        .array(z.object({ url: z.string(), html: z.string(), title: z.string().optional() }))
+        .min(1),
+      /** Substrings the brief must contain (kept loose — live model). */
+      brief_must_include: z.array(z.string()).default([]),
+      /** The seeded contradicted fact must surface in the verify step. */
+      expect_contradiction: z.boolean().default(false),
+      /** The brief must cite at least one pre-existing (seeded) memory. */
+      expect_memory_citation: z.boolean().default(true),
+      /** The brief's language (decision 0052 anchor), judged deterministically. */
+      language: z.enum(['en', 'hr']).optional(),
     })
     .optional(),
   /** Per-case user context (P6.6, decision 0052): applied through the real
@@ -234,6 +266,9 @@ interface CaseScore {
   /** The research-flow verdict (Part B; null = not a research case): gate →
    * approve → capture → cited synthesis → persisted web memories. */
   research: boolean | null;
+  /** The skill-run verdict (Priority 7; null = not a skill case): plan gate →
+   * worker steps → a cited brief, contradictions surfaced, zero tasks. */
+  skill: boolean | null;
   /** The folded conversation verdict (decision 0046; null = no such checks):
    * research offer without a silent search, unsourced marking, small talk. */
   conversation: boolean | null;
@@ -445,7 +480,7 @@ async function main(): Promise<void> {
         fetchMaxBytes: 1024 * 1024,
         retainHtml: false,
       };
-      const evalPages = testCase.research?.pages ?? [];
+      const evalPages = testCase.research?.pages ?? testCase.skill?.pages ?? [];
       const discovery = new WebDiscoveryService(researchOptions);
       discovery.fetchImpl = async () =>
         new Response(
@@ -470,12 +505,24 @@ async function main(): Promise<void> {
         fetcher,
         objects,
         new DailyCounters(),
-        { searchesMax: 100, pagesMax: 100, pagesPerRunMax: 8 },
+        {
+          searchesMax: 100,
+          pagesMax: 100,
+          pagesPerRunMax: 8,
+          skillQueriesMax: 6,
+          skillPagesPerQuery: 3,
+        },
         researchOptions,
         gateway,
         memoryStore,
       );
       const researchResolver = new ChatResearchResolver(research);
+      // The skill seam (Priority 7, decision 0059): the planner runs LIVE
+      // (real retrieval + the skill_plan prompt); execution below is the
+      // harness standing in for the worker.
+      const skillRuns = new SkillRunService(db);
+      const skillPlanner = new SkillPlanner(retrieval, research, skillRuns, gateway);
+      const skillResolver = new ChatSkillResolver(skillPlanner, skillRuns);
       // Per-case user context (P6.6): applied through the real service, so the
       // chat path exercises the same now-block assembly as production.
       const userContextService = new UserContextService(db);
@@ -500,6 +547,8 @@ async function main(): Promise<void> {
         researchResolver,
         undefined,
         userContextService,
+        undefined,
+        skillResolver,
       );
       const anchor = new Date(testCase.anchor);
 
@@ -581,6 +630,16 @@ async function main(): Promise<void> {
         await db.transaction((tx) =>
           tasksEngine.processSource(tx, 'user_note', `chat-eval-${testCase.case_id}-fact-${i}`),
         );
+      }
+      // Pre-flagged disputes (skill contradiction cases): the seeded fact
+      // enters already `contradicted` — deterministic input state; live
+      // contradiction DETECTION is the reconcile suite's job.
+      for (let i = 0; i < testCase.facts.length; i++) {
+        if (testCase.facts[i]!.contradicted) {
+          await db.execute(
+            sql`UPDATE memory SET status = 'contradicted' WHERE id = ${seededRows[i]!.id}`,
+          );
+        }
       }
       console.log(`  seeded ${testCase.notes.length} notes, ${testCase.facts.length} direct facts`);
 
@@ -761,6 +820,141 @@ async function main(): Promise<void> {
         }
       }
 
+      // Skill cases (Priority 7, decision 0059): the chat turn started
+      // planning; now stand in for the user at the plan gate and for the
+      // worker's advance, then assert on the finished run.
+      let skillOk: boolean | null = null;
+      if (testCase.skill) {
+        try {
+          const runRows = await db.execute<{ id: string; status: string }>(sql`
+            SELECT id, status FROM skill_run
+            WHERE owner_id = ${principal.userId} ORDER BY created_at DESC LIMIT 1
+          `);
+          const runRow = runRows.rows[0];
+          if (!runRow || runRow.status !== 'awaiting_approval') {
+            console.log(
+              `  skill: no run awaiting approval after the chat turn (status=${runRow?.status ?? 'none'}) — FAIL`,
+            );
+            skillOk = false;
+          } else {
+            const engine = new SkillEngine(
+              db,
+              skillRuns,
+              research,
+              gateway,
+              memoryStore,
+              {
+                searchesMax: 100,
+                pagesMax: 100,
+                pagesPerRunMax: 8,
+                skillQueriesMax: 6,
+                skillPagesPerQuery: 1,
+              },
+              userContextService,
+            );
+            // The plan gate, one interaction: keep the first two LIVE-planned
+            // queries verbatim, remove the rest (removal is part of the claim).
+            const plan = await research.runsForSkill(runRow.id);
+            const kept = plan.slice(0, 2);
+            await engine.approvePlan(
+              principal,
+              runRow.id,
+              kept.map((r) => ({ researchRunId: r.id, query: r.minimisedQuery })),
+            );
+            // Advance 1: discovery + capture through the real gate machinery.
+            await engine.advance(runRow.id);
+            // The worker's stand-in per captured page: real pipeline stages,
+            // the settle ledger, and the REAL task engine (decision 0054:
+            // web never derives — asserted below).
+            const pages = await db.execute<{ id: string; title: string | null; text: string }>(sql`
+              SELECT wp.id, wp.title, wp.retained_text AS text FROM web_page wp
+              JOIN research_run rr ON rr.id = wp.research_run_id
+              WHERE rr.skill_run_id = ${runRow.id}
+            `);
+            for (const page of pages.rows) {
+              await seedMemoryFromSource({
+                db,
+                gateway,
+                memoryStore,
+                source: {
+                  sourceType: 'web',
+                  sourceId: page.id,
+                  ownerId: principal.userId,
+                  content: page.title ? `${page.title}\n\n${page.text}` : page.text,
+                  createdAt: anchor,
+                },
+              });
+              await db.transaction((tx) => tasksEngine.processSource(tx, 'web', page.id));
+              await db.execute(sql`
+                INSERT INTO job_execution (source_type, source_id, job_type)
+                VALUES ('web', ${page.id}, 'ingestion.pipeline')
+                ON CONFLICT DO NOTHING
+              `);
+            }
+            // Advance to completion: verify → the LIVE brief → proposals.
+            await engine.advance(runRow.id);
+            const done = await skillRuns.getRun(principal, runRow.id);
+            const steps = await skillRuns.steps(runRow.id);
+            const brief = done?.brief ?? '';
+            const citations = (done?.briefCitations ?? []) as {
+              kind: string;
+              memoryId?: string;
+              url?: string;
+              fetchedAt?: string;
+            }[];
+            const seededIds = new Set(seededRows.map((r) => r.id));
+            const completed = done?.status === 'completed';
+            const logComplete = steps.every(
+              (s) => s.status === 'completed' || s.status === 'skipped',
+            );
+            const memoryCited =
+              !testCase.skill.expect_memory_citation ||
+              citations.some((c) => c.kind === 'memory' && seededIds.has(c.memoryId ?? ''));
+            const webCited = citations.some((c) => c.kind === 'web' && !!c.url && !!c.fetchedAt);
+            const included = testCase.skill.brief_must_include.every((sub) =>
+              brief.toLowerCase().includes(sub.toLowerCase()),
+            );
+            const verifyLinks = steps.find((s) => s.stepKey === 'verify')?.links as
+              { counts?: { contradicted?: number } } | undefined;
+            const contradictionOk =
+              !testCase.skill.expect_contradiction || (verifyLinks?.counts?.contradicted ?? 0) >= 1;
+            const webTasks = await db.execute<{ n: string }>(sql`
+              SELECT count(*)::text AS n FROM task t
+              JOIN memory m ON m.id = t.derived_from_memory_id
+              WHERE m.source_type = 'web' AND m.owner_id = ${principal.userId}
+            `);
+            const noTasks = Number(webTasks.rows[0]?.n ?? '0') === 0;
+            const languageOk =
+              !testCase.skill.language || checkLanguage(brief, testCase.skill.language);
+            const removedOk = (await research.runsForSkill(runRow.id)).every(
+              (r) => kept.some((k) => k.id === r.id) || r.status === 'cancelled',
+            );
+            skillOk =
+              completed &&
+              logComplete &&
+              memoryCited &&
+              webCited &&
+              included &&
+              contradictionOk &&
+              noTasks &&
+              languageOk &&
+              removedOk;
+            console.log(
+              `  skill: completed=${String(completed)} log=${String(logComplete)} ` +
+                `memoryCited=${String(memoryCited)} webCited=${String(webCited)} ` +
+                `include=${String(included)} contradiction=${String(contradictionOk)} ` +
+                `noTasks=${String(noTasks)} language=${String(languageOk)} removed=${String(removedOk)}` +
+                `\n  brief: ${brief.slice(0, 220)}`,
+            );
+          }
+        } catch (error) {
+          console.log(
+            `  skill flow FAILED: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          skillOk = false;
+        }
+      }
+
       // Conversation checks (decision 0046) — deterministic, folded like the
       // temporal set.
       const conversationChecks: (boolean | null)[] = [];
@@ -855,6 +1049,7 @@ async function main(): Promise<void> {
         temporal: temporalApplied.length > 0 ? temporalApplied.every(Boolean) : null,
         taskCreated,
         research: researchOk,
+        skill: skillOk,
         conversation: conversationOk,
         pass: false,
       };
@@ -868,6 +1063,7 @@ async function main(): Promise<void> {
         score.temporal,
         score.taskCreated,
         score.research,
+        score.skill,
         score.conversation,
       ]
         .filter((v) => v !== null)
@@ -883,14 +1079,14 @@ async function main(): Promise<void> {
   const cov = (s: CaseScore): string =>
     s.coverage === null ? '—' : `${(s.coverage * 100).toFixed(0)}%`;
   const table = [
-    '| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | task | research | conversation | overall |',
-    '|---|---|---|---|---|---|---|---|---|---|---|---|',
+    '| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | task | research | skill | conversation | overall |',
+    '|---|---|---|---|---|---|---|---|---|---|---|---|---|',
     ...scores.map(
       (s) =>
         `| ${s.caseId} | ${cell(s.entityCorrect)} | ${cov(s)} | ${cell(s.hedgeMarked)} | ` +
         `${cell(s.noMechanics)} | ${cell(s.citationsValid)} | ${cell(s.nothingOnRecord)} | ` +
         `${cell(s.temporal)} | ${cell(s.taskCreated)} | ${cell(s.research)} | ` +
-        `${cell(s.conversation)} | ${s.pass ? 'PASS' : 'FAIL'} |`,
+        `${cell(s.skill)} | ${cell(s.conversation)} | ${s.pass ? 'PASS' : 'FAIL'} |`,
     ),
   ].join('\n');
 
@@ -965,6 +1161,7 @@ async function main(): Promise<void> {
         s.temporal,
         s.taskCreated,
         s.research,
+        s.skill,
         s.conversation,
       ].some((v) => v === false),
     );

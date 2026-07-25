@@ -33,6 +33,9 @@ import {
   EMAIL_REFUSAL_RETENTION_CRONTAB,
   ResearchConclusionService,
   ResearchSynthesisService,
+  SKILL_BRIEF_PROMPT,
+  SKILL_PLAN_PROMPT,
+  SkillEngine,
 } from '../connectors/index';
 import {
   ANSWER_PROMPT,
@@ -104,6 +107,8 @@ async function main(): Promise<void> {
     QUERY_REWRITE_PROMPT,
     CONTEXT_SUGGEST_PROMPT,
     CONVERSATION_TITLE_PROMPT,
+    SKILL_PLAN_PROMPT,
+    SKILL_BRIEF_PROMPT,
   ]) {
     const prompt = await loadPrompt(ref.family, ref.version);
     await recordPromptVersion(db, prompt);
@@ -147,6 +152,7 @@ async function main(): Promise<void> {
     conversationTitler: context.get(ConversationTitler),
     researchConcluder: context.get(ResearchConclusionService),
     researchSynthesis: context.get(ResearchSynthesisService),
+    skillEngine: context.get(SkillEngine),
     objects,
     gateway,
     log: (event, message) => logger.info(event, message),

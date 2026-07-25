@@ -379,6 +379,9 @@ export function Chat({ session }: { session: Session }) {
   const [liveFacts, setLiveFacts] = useState<ChatFactDto[]>([]);
   /** The latest answer's research offer (0046) — ephemeral, cleared on the next ask. */
   const [offer, setOffer] = useState<ChatResearchOffer | null>(null);
+  // A skill run proposed from chat (Priority 7, decision 0059): the run view
+  // owns the gate and the live progress — chat just hands over the handle.
+  const [skillRunId, setSkillRunId] = useState<string | null>(null);
   /** The inline research flow (0047): the SAME gate, embedded in the conversation. */
   const [inlineRun, setInlineRun] = useState<ResearchRunDto | null>(null);
   /** Resume research that ran on without us (decision 0057): an approved run
@@ -443,6 +446,7 @@ export function Chat({ session }: { session: Session }) {
     setLiveFacts([]);
     setOffer(null);
     setInlineRun(null);
+    setSkillRunId(null);
     setFailed(false);
     setFailMessage(null);
     setActiveId(id);
@@ -486,6 +490,7 @@ export function Chat({ session }: { session: Session }) {
     setLiveText('');
     setLiveFacts([]);
     setOffer(null);
+    setSkillRunId(null);
     const controller = new AbortController();
     streamRef.current = controller;
     try {
@@ -493,6 +498,7 @@ export function Chat({ session }: { session: Session }) {
         if (event.type === 'sources') setLiveFacts(event.facts);
         else if (event.type === 'token') setLiveText((prev) => prev + event.text);
         else if (event.type === 'done') {
+          if (event.skillRun) setSkillRunId(event.skillRun.runId);
           if (event.researchProposal) {
             // A research-class question already proposed a run: open it inline.
             setOffer(null);
@@ -693,6 +699,14 @@ export function Chat({ session }: { session: Session }) {
                     void queryClient.invalidateQueries({ queryKey: ['research-runs'] });
                   }}
                 />
+              )}
+              {skillRunId && !liveQuestion && (
+                <a
+                  href={`/skills?run=${encodeURIComponent(skillRunId)}`}
+                  className="inline-flex items-center gap-2 rounded-full border border-brand-teal/40 bg-brand-teal/10 px-3.5 py-1.5 text-sm font-medium text-brand-teal-ink transition-colors hover:bg-brand-teal/20 dark:text-brand-teal"
+                >
+                  Open the brief run: approve the search plan and watch each step →
+                </a>
               )}
               {offer && !liveQuestion && !inlineRun && (
                 <ResearchOfferChip

@@ -18,6 +18,7 @@ launch post, and partner email (§B.9, scope §8.4). Governing decision:
 | Path | What it is |
 |---|---|
 | `seed/corpus.json` | The authored fictional world — ~31 first-person notes (en + hr) fed through the real API. Format: `seed/corpus.schema.md`. |
+| `seed/web-fixtures.json` | The sandbox's "public web" (decision 0059): fictional Adriatic Foods pages served by discovery and the fetcher on a demo instance, so research and the research-brief skill demo end to end. **A demo instance never searches the live web.** |
 | `assets/adriatic-foods-consulting-agreement.pdf` | The uploaded document — the deletion-receipt demo object. Regenerate with `assets/build-agreement.mjs`. |
 
 The seed/reset **code** lives in `project/src/entrypoints/demo/` (composition
@@ -41,15 +42,22 @@ With `COGETO_DEMO_MODE=1`, a demo instance re-seeds itself on a schedule (defaul
 every 6 hours, `COGETO_DEMO_RESET_CRON`) — demo instances only, never a customer
 instance.
 
-## The three demo moments (the script)
+## The four demo moments (the script)
 
 1. **Ask what Ana promised Marko.** Chat → "What did Ana promise Marko?" → a
    cited answer about the revised Atlas proposal, conditional on Marko confirming
    the Q3 budget.
 2. **Resolve the contradiction in Review.** The Atlas go-live is recorded as both
    September 1 and October 1 — resolve it live and watch the memory settle.
-3. **Delete Ana's contract and watch the receipt.** Delete the Adriatic Foods
+3. **Run the research-brief skill.** Skills → "Adriatic Foods" (or chat:
+   "pripremi me za sastanak s Adriatic Foods") → watch the steps advance,
+   approve the search plan at the gate, and read the brief: what Ana knows is
+   memory-cited, what the (fixture) web says carries URL + fetch time, and the
+   proposed action waits for acceptance. Every page comes from
+   `seed/web-fixtures.json` — the sandbox never touches the live web.
+4. **Delete Ana's contract and watch the receipt.** Delete the Adriatic Foods
    consulting agreement and watch the deletion receipt confirm — hash-chained,
-   signed, exportable. This is the money moment.
+   signed, exportable. This is the money moment, closed out by the skill run
+   just before it.
 
 Everything is fictional (decision 0022 ruling 3).

@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs';
+import * as path from 'node:path';
 import { z } from 'zod';
 import { buildLimits } from './limits';
+import { demoRoot } from './demo/corpus';
 import type { LimitsConfig } from '../infrastructure/index';
 import { resolveModelProviders } from '../model-gateway/index';
 import type { ResolvedModelProviders } from '../model-gateway/index';
@@ -356,6 +359,7 @@ export function researchOptions(config: CogetoConfig): {
   fetchTimeoutMs: number;
   fetchMaxBytes: number;
   retainHtml: boolean;
+  fixtures?: { url: string; title: string; html: string }[];
 } {
   return {
     searxngUrl: config.searxngUrl ?? null,
@@ -364,7 +368,26 @@ export function researchOptions(config: CogetoConfig): {
     fetchTimeoutMs: config.researchFetchTimeoutSeconds * 1000,
     fetchMaxBytes: config.researchFetchMaxBytes,
     retainHtml: config.researchRetainHtml,
+    // The Ana sandbox never searches the live web (decision 0059): on a demo
+    // instance, discovery and the fetcher serve the bundled fixture pages, so
+    // research and the research-brief skill demo end to end deterministically.
+    ...(config.demoMode ? { fixtures: loadDemoWebFixtures() } : {}),
   };
+}
+
+/** The bundled demo web fixtures (project/demo/seed/web-fixtures.json). A
+ * missing/invalid file degrades to none — research then reports unavailable,
+ * never a live search. */
+function loadDemoWebFixtures(): { url: string; title: string; html: string }[] {
+  try {
+    const file = path.join(demoRoot(), 'seed', 'web-fixtures.json');
+    const parsed = z
+      .array(z.object({ url: z.string(), title: z.string(), html: z.string() }))
+      .parse(JSON.parse(readFileSync(file, 'utf8')));
+    return parsed;
+  } catch {
+    return [];
+  }
 }
 
 /**

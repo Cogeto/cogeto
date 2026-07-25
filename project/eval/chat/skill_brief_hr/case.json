@@ -1,0 +1,33 @@
+{
+  "case_id": "skill_brief_hr",
+  "description": "The research-brief skill in Croatian (decisions 0052/0059): the hr trigger starts planning with a deterministic hr confirmation; the brief is Cogeto-initiated, so it speaks preferred_language (hr) even over English sources; memory and web citations hold; the fixture obligation becomes no task.",
+  "anchor": "2026-07-21T09:00:00.000Z",
+  "settings": { "preferred_language": "hr" },
+  "facts": [
+    {
+      "content": "Dogovoreni uvjeti plaćanja od 30 dana s tvrtkom Adriatic Foods",
+      "kind": "decision",
+      "entities": ["Adriatic Foods"],
+      "subject_entity": "Adriatic Foods"
+    }
+  ],
+  "script": ["pripremi me za sastanak s Adriatic Foods"],
+  "checks": {
+    "must_include": ["ništa još nije poslano"],
+    "no_mechanics": true,
+    "language": "hr"
+  },
+  "skill": {
+    "pages": [
+      {
+        "url": "https://adriaticfoods.example.org/about",
+        "title": "Adriatic Foods",
+        "html": "<html><head><title>Adriatic Foods</title></head><body><main><p>Adriatic Foods is a wholesale food distributor based in Split, employing around two hundred people as of 2026.</p><p>In July 2026 the company opened a new distribution warehouse in Zadar.</p><p>Suppliers must submit the RC-1 compliance form by 1 September 2026.</p></main></body></html>"
+      }
+    ],
+    "brief_must_include": ["Adriatic"],
+    "expect_contradiction": false,
+    "expect_memory_citation": true,
+    "language": "hr"
+  }
+}

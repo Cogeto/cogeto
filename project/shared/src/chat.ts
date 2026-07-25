@@ -1,4 +1,5 @@
 import type { MemoryScope, MemoryStatus } from './memory';
+import type { ChatSkillRunRef } from './skills';
 
 /** Chat DTOs (S3-A): POST /api/chat (SSE) and the persisted conversation. */
 
@@ -117,6 +118,10 @@ export type ChatStreamEvent =
       /** Present on a research turn that proposed a run (0047): the inline
        * gate's handle. Nothing has been sent when this arrives. */
       researchProposal?: ChatResearchProposalRef | null;
+      /** Present on a skill turn that proposed a run (decision 0059): the run
+       * view's handle. Nothing has been sent when this arrives — the plan
+       * gate lives on the run view. */
+      skillRun?: ChatSkillRunRef | null;
     }
   | {
       type: 'error';

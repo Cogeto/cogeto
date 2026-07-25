@@ -52,6 +52,19 @@ export class WebDiscoveryService {
   constructor(@Inject(RESEARCH_OPTIONS) private readonly options: ResearchOptions) {}
 
   async search(query: string): Promise<DiscoveryOutcome> {
+    // Fixture-backed discovery (decision 0059, the Ana sandbox): the demo
+    // composition serves ITS pages for every query — nothing real is searched.
+    if (this.options.fixtures?.length) {
+      return {
+        status: 'ok',
+        results: this.options.fixtures.slice(0, this.options.resultCap).map((page, i) => ({
+          url: page.url,
+          title: page.title,
+          snippet: '',
+          score: this.options.fixtures!.length - i,
+        })),
+      };
+    }
     if (!this.options.searxngUrl) {
       return {
         status: 'unavailable',
