@@ -183,6 +183,10 @@ export const webPage = pgTable(
     title: text('title'),
     fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull(),
     retainedText: text('retained_text').notNull(),
+    /** The focused extraction view (migration 0032; decision 0057): the
+     * chunks most relevant to the run's sent query, ranked by embeddings at
+     * capture time. NULL = extract from retainedText as before. */
+    extractionText: text('extraction_text'),
     rawObjectKey: text('raw_object_key'),
     // The research run whose approved query led to this page (Part B,
     // migration 0028) — the provenance chain memory → web_page →
@@ -198,11 +202,14 @@ export const webPage = pgTable(
 
 export type WebPageRow = typeof webPage.$inferSelect;
 
-/** The gate's three states (decision 0045): discovery runs ONLY from 'approved'. */
+/** The gate's states (decision 0045): discovery runs ONLY from 'approved'.
+ * 'concluded' (migration 0032; decision 0057) is the terminal success state —
+ * the worker synthesised and stored the answer after the last page settled. */
 export const researchRunStatusEnum = pgEnum('research_run_status', [
   'proposed',
   'approved',
   'cancelled',
+  'concluded',
 ]);
 
 /**
@@ -228,6 +235,11 @@ export const researchRun = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     approvedAt: timestamp('approved_at', { withTimezone: true }),
     cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+    /** Server-side conclusion (migration 0032): when the worker stored the answer. */
+    concludedAt: timestamp('concluded_at', { withTimezone: true }),
+    /** When the owner saw the stored answer — the chat resume surface shows a
+     * run until this is set, never after. */
+    answerSeenAt: timestamp('answer_seen_at', { withTimezone: true }),
   },
   (t) => [index('research_run_owner_created_idx').on(t.ownerId, t.createdAt)],
 );

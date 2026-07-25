@@ -60,7 +60,9 @@ export type WebProcessingState = 'processing' | 'done' | 'failed';
 
 /* ── Research runs: the show-edit-approve gate (Part B, decisions 0044/0045) ── */
 
-export type ResearchRunStatus = 'proposed' | 'approved' | 'cancelled';
+/** 'concluded' (decision 0057): the worker synthesised and stored the answer
+ * after the last captured page settled — the terminal success state. */
+export type ResearchRunStatus = 'proposed' | 'approved' | 'cancelled' | 'concluded';
 
 export interface ProposeResearchRequest {
   /** What the user asked for, verbatim (search box input or chat message). */
@@ -85,6 +87,11 @@ export interface ResearchRunDto {
   createdAt: string;
   approvedAt: string | null;
   cancelledAt: string | null;
+  /** Server-side conclusion (decision 0057): when the answer was stored. */
+  concludedAt: string | null;
+  /** When the owner saw the stored answer — the chat resume surface shows a
+   * run until this is set, never after. */
+  answerSeenAt: string | null;
 }
 
 export interface ApproveResearchRequest {

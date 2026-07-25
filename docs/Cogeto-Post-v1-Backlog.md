@@ -105,6 +105,18 @@ in every derived memory's provenance), explicit chat/UI invocation, and
 answer-tier synthesis with per-claim [W#]/[M#]/(unsourced) citations. Live
 research chat-eval cases judge the query that actually leaves.
 
+**Speed + conclusion follow-up (2026-07-25, issues #254/#255, decision 0057,
+migration 0032, prompt verification/v0005).** Big pages stopped being slow:
+capture-time focused extraction (query-ranked chunks by embeddings only, the
+reader prefers `extraction_text`), a web fact budget (WEB_MAX_FACTS 30), and
+batched verification (10 claims per call; single-fact sources keep v0004) cut
+a large page from 150 to 250 sequential model calls to roughly 15 to 20. And
+research now concludes SERVER-SIDE: when the last captured page settles, the
+worker's `research.conclude` job synthesises and stores the answer on the run
+(status 'concluded'); the chat page resumes in-flight or unseen-concluded
+runs and replays the stored answer, so leaving the chat mid-research no
+longer loses the response.
+
 The research capability, with the privacy honesty improvement from the notes folded in.
 
 **Architecture.** No crawler. Discovery is a self-hosted SearXNG container inside the instance (queries public engines, returns URLs, no API key, no vendor, no query logging, roughly 100 to 200 MB RAM, zero cost). Retrieval is a narrow Cogeto-owned fetcher that pulls selected pages, extracts readable content, respects robots, and caps page count. Extracted text enters the existing pipeline and becomes facts with URL provenance, verification, statuses, and validity intervals, ageing and superseding like any other source.

@@ -21,7 +21,7 @@ import {
   writeAudit,
 } from '../infrastructure/index';
 import type { Db, ResearchQuota } from '../infrastructure/index';
-import { INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
+import { chunkContent, INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
 import { MemoryObjectStore, MemoryStore } from '../memory/index';
 import { ModelGateway } from '../model-gateway/index';
 import { sanitizeHtml } from './email-parse';
@@ -55,6 +55,13 @@ export type CaptureResult =
   | { url: string; status: 'skipped'; reason: string; detail: string };
 
 const CLEANUP_ATTEMPTS = 3;
+
+/** The focused-extraction thresholds (decision 0057): pages splitting into
+ * fewer chunks than FOCUS_MIN_CHUNKS are cheap enough to extract whole; bigger
+ * ones keep only the FOCUS_TOP_CHUNKS most query-relevant chunks (embeddings
+ * only — no model calls) for the extractor, in document order. */
+const FOCUS_MIN_CHUNKS = 7;
+const FOCUS_TOP_CHUNKS = 6;
 
 @Injectable()
 export class ResearchService {
@@ -203,6 +210,13 @@ export class ResearchService {
     return rows[0] ?? null;
   }
 
+  /** System read for the worker's conclusion job (decision 0057) — no
+   * principal exists there; the row's own ownerId scopes everything after. */
+  async getRunById(runId: string): Promise<ResearchRunRow | null> {
+    const rows = await this.db.select().from(researchRun).where(eq(researchRun.id, runId)).limit(1);
+    return rows[0] ?? null;
+  }
+
   async listRuns(principal: Principal, limit = 50): Promise<ResearchRunRow[]> {
     return this.db
       .select()
@@ -294,8 +308,9 @@ export class ResearchService {
     scope: MemoryScope = 'private',
     researchRunId: string | null = null,
   ): Promise<CaptureResult[]> {
+    let run: ResearchRunRow | null = null;
     if (researchRunId) {
-      const run = await this.getRun(principal, researchRunId);
+      run = await this.getRun(principal, researchRunId);
       if (!run) throw new NotFoundException();
       if (run.status !== 'approved') {
         throw new ConflictException('capture requires an approved research run');
@@ -349,6 +364,13 @@ export class ResearchService {
         }
       }
 
+      // The focused extraction view (decision 0057): rank the page's chunks
+      // against the run's approved query by embeddings alone and keep the most
+      // relevant ones for the extractor. retained_text stays complete.
+      const extractionText = run?.sentQuery
+        ? await this.focusExtractionText(run.sentQuery, page.text)
+        : null;
+
       try {
         await this.db.transaction(async (tx) => {
           await tx.insert(webPage).values({
@@ -360,6 +382,7 @@ export class ResearchService {
             title: page.title,
             fetchedAt: page.fetchedAt,
             retainedText: page.text,
+            extractionText,
             rawObjectKey,
             researchRunId,
           });
@@ -422,9 +445,75 @@ export class ResearchService {
     return failed.length > 0 ? 'failed' : 'processing';
   }
 
-  /** Persist the synthesised answer on its run (owner already verified). */
-  async recordAnswer(runId: string, answer: string): Promise<void> {
-    await this.db.update(researchRun).set({ answer }).where(eq(researchRun.id, runId));
+  /**
+   * Persist the synthesised answer and conclude the run (decision 0057) —
+   * the terminal success state. `seen` marks the answer acknowledged in the
+   * same write (the interactive path: the user is watching it render).
+   */
+  async recordConclusion(runId: string, answer: string, opts: { seen: boolean }): Promise<void> {
+    const now = new Date();
+    await this.db
+      .update(researchRun)
+      .set({
+        answer,
+        status: 'concluded',
+        concludedAt: now,
+        ...(opts.seen ? { answerSeenAt: now } : {}),
+      })
+      .where(eq(researchRun.id, runId));
+  }
+
+  /** The owner saw the stored answer — the chat resume surface stops showing
+   * this run (decision 0057). Idempotent. */
+  async markAnswerSeen(principal: Principal, runId: string): Promise<void> {
+    const run = await this.getRun(principal, runId);
+    if (!run) throw new NotFoundException();
+    if (run.answerSeenAt) return;
+    await this.db
+      .update(researchRun)
+      .set({ answerSeenAt: new Date() })
+      .where(eq(researchRun.id, runId));
+  }
+
+  /**
+   * The relevance pre-pass (decision 0057): split the page with the SAME
+   * chunker extraction uses, embed the query + every chunk in ONE batch (no
+   * completion calls), and keep the top-scoring chunks in document order.
+   * Small pages return null (extract whole, as before); any failure degrades
+   * to null too — focusing is an optimisation, never a gate.
+   */
+  private async focusExtractionText(query: string, text: string): Promise<string | null> {
+    try {
+      const chunks = chunkContent(text);
+      if (chunks.length < FOCUS_MIN_CHUNKS) return null;
+      const vectors = await this.gateway.embed([query, ...chunks.map((c) => c.text)]);
+      const queryVector = vectors[0];
+      if (!queryVector) return null;
+      const kept = new Set(
+        chunks
+          .map((chunk) => ({
+            index: chunk.index,
+            score: cosineSimilarity(queryVector, vectors[chunk.index + 1] ?? []),
+          }))
+          .sort((a, b) => b.score - a.score)
+          .slice(0, FOCUS_TOP_CHUNKS)
+          .map((s) => s.index),
+      );
+      this.log.log(
+        `focused extraction: kept ${kept.size}/${chunks.length} chunks for one captured page`,
+      );
+      return chunks
+        .filter((chunk) => kept.has(chunk.index))
+        .map((chunk) => chunk.text)
+        .join('\n\n');
+    } catch (error) {
+      this.log.warn(
+        `focus_extraction_failed (falling back to the full page): ${
+          error instanceof Error ? error.message : 'error'
+        }`,
+      );
+      return null;
+    }
   }
 
   /** Abort-window cleanup (the email-intake rule): the sweep is the backstop. */
@@ -440,4 +529,19 @@ export class ResearchService {
       }
     }
   }
+}
+
+/** Plain cosine over the gateway's embedding vectors (the focus pre-pass). */
+function cosineSimilarity(a: number[], b: number[]): number {
+  if (a.length === 0 || a.length !== b.length) return -1;
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    dot += a[i]! * b[i]!;
+    normA += a[i]! * a[i]!;
+    normB += b[i]! * b[i]!;
+  }
+  const denominator = Math.sqrt(normA) * Math.sqrt(normB);
+  return denominator === 0 ? -1 : dot / denominator;
 }

@@ -31,6 +31,8 @@ import {
   EmailAllowlistService,
   EmailAuthorshipBackfill,
   EMAIL_REFUSAL_RETENTION_CRONTAB,
+  ResearchConclusionService,
+  ResearchSynthesisService,
 } from '../connectors/index';
 import {
   ANSWER_PROMPT,
@@ -143,6 +145,8 @@ async function main(): Promise<void> {
     allowlist: context.get(EmailAllowlistService),
     authorshipBackfill: context.get(EmailAuthorshipBackfill),
     conversationTitler: context.get(ConversationTitler),
+    researchConcluder: context.get(ResearchConclusionService),
+    researchSynthesis: context.get(ResearchSynthesisService),
     objects,
     gateway,
     log: (event, message) => logger.info(event, message),

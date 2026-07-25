@@ -10,6 +10,9 @@ export {
 export type { PipelineSummary, CreatePipelineOptions } from './pipeline/pipeline.service';
 export { SOURCE_READERS } from './pipeline/source-reader';
 export type { SourceReader, SourceItem } from './pipeline/source-reader';
+// The shared chunker (decision 0057): connectors' capture-time relevance
+// pre-pass splits pages with the SAME boundaries extraction will use.
+export { chunkContent, CHUNK_MAX_CHARS } from './pipeline/chunk';
 // The deletion saga's pending-ingestion cancellation (QS-5, decision 0024) —
 // memory defines the IngestionGuard port; this module implements it because it
 // owns the pipeline job type. Composition roots bind it into MemoryModule.

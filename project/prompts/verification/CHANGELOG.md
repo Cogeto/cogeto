@@ -1,5 +1,15 @@
 # verification — changelog
 
+- **v0005** (2026-07-25, decision 0057): the BATCH form of v0004 — identical
+  rubric, calibration rules, Croatian guidance and examples, verbatim; only
+  the envelope changes. Input carries N numbered claim/passage/context blocks
+  (`CLAIMS UNDER REVIEW: N claims`), each judged independently against its own
+  evidence; output is `{ "verdicts": [ { "claim", "verdict", "reason" } ] }`,
+  one entry per claim in order. Used when a source yields more than one fact
+  (batches of up to 10 — a 100-fact web page drops from 100 verification
+  calls to 10); single-fact sources keep v0004 unchanged. A claim missing
+  from the reply is treated as unsupported (conservative, admission-safe).
+
 - **v0004** (2026-07-05, F2-B): the iteration v0003's measured run demanded
   (owner-sanctioned "v0004 if needed"). Debug verdicts on the failing hr cases
   exposed one true verifier bug — "listopadu" judged as November (hr-0006) —

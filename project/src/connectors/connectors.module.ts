@@ -27,6 +27,7 @@ import { MAIL_OPTIONS } from './mail-options';
 import type { MailOptions } from './mail-options';
 import { ResearchController } from './research.controller';
 import { ResearchService } from './research.service';
+import { ResearchConclusionService } from './research-conclude';
 import { RESEARCH_OPTIONS } from './research-options';
 import type { ResearchOptions } from './research-options';
 import { WebDiscoveryService } from './web-discovery.service';
@@ -87,6 +88,7 @@ export class ConnectorsModule {
         EmailSourceService,
         MailIntakeGuard,
         ResearchService,
+        ResearchConclusionService,
         WebDiscoveryService,
         WebFetchService,
         WebSourceReader,
@@ -109,6 +111,7 @@ export class ConnectorsModule {
         EmailSourceDeletion,
         EmailSourceService,
         ResearchService,
+        ResearchConclusionService,
         WebSourceReader,
         WebSourceDeletion,
       ],

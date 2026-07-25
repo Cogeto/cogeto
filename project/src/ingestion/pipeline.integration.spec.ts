@@ -13,9 +13,13 @@ import type { StructuredExtractionRequest } from '../model-gateway/index';
 import type { CandidateFact } from './domain/candidate-fact';
 import { EmbedStoreStage } from './pipeline/embed-store.stage';
 import { ExtractStage } from './pipeline/extract.stage';
-import { IngestionPipeline, INGESTION_PIPELINE_JOB_TYPE } from './pipeline/pipeline.service';
+import {
+  IngestionPipeline,
+  INGESTION_PIPELINE_JOB_TYPE,
+  WEB_MAX_FACTS,
+} from './pipeline/pipeline.service';
 import { ReconciliationService } from './pipeline/reconcile.stage';
-import { VERIFICATION_PROMPT } from './prompt-versions';
+import { VERIFICATION_BATCH_PROMPT } from './prompt-versions';
 import type { SourceItem, SourceReader } from './pipeline/source-reader';
 import { VerifyStage } from './pipeline/verify.stage';
 
@@ -60,6 +64,9 @@ class ScriptedGateway extends ModelGateway {
 
   async extractStructured<T>(schema: ZodType<T>, request: StructuredExtractionRequest): Promise<T> {
     const isVerify = request.input.startsWith('CLAIM UNDER REVIEW');
+    // The batched form (decision 0057; verification/v0005): split the numbered
+    // claim blocks and answer each through the same scripted verdict rule.
+    const isVerifyBatch = request.input.startsWith('CLAIMS UNDER REVIEW');
     // Stage 6 (F2-A) may probe pairs of stored facts; these tests exercise
     // stages 1–5, so the judge conservatively rules every pair unrelated.
     const isReconcile = request.input.startsWith('FACT A:');
@@ -67,9 +74,17 @@ class ScriptedGateway extends ModelGateway {
       ? request.system.includes('same_fact')
         ? { verdict: 'distinct', reason: 'scripted', merged_content: null }
         : { verdict: 'compatible', direction: null, reason: 'scripted' }
-      : isVerify
-        ? (this.verifyCalls++, this.verifyOutput(request.input))
-        : (this.extractCalls++, this.extractOutput());
+      : isVerifyBatch
+        ? (this.verifyCalls++,
+          {
+            verdicts: [...request.input.matchAll(/CLAIM (\d+):\n([^\n]*)/g)].map((m) => ({
+              claim: Number(m[1]),
+              ...(this.verifyOutput(`CLAIM UNDER REVIEW:\n${m[2]}`) as object),
+            })),
+          })
+        : isVerify
+          ? (this.verifyCalls++, this.verifyOutput(request.input))
+          : (this.extractCalls++, this.extractOutput());
     const parsed = schema.safeParse(raw);
     if (!parsed.success) {
       throw new ModelGatewayError('structured output failed schema validation twice', false);
@@ -258,7 +273,9 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
     expect(summary.verdicts).toEqual({ supported: 1, partial: 1, unsupported: 1 });
     expect(summary.admitted).toEqual({ active: 1, uncertain: 2 });
     expect(summary.embedded).toBe(3);
-    expect(gateway.verifyCalls).toBe(3); // one gateway call per fact (§B.3)
+    // Batched verification (decision 0057): three facts → ONE gateway call,
+    // each claim still judged independently against its own passage (§B.3).
+    expect(gateway.verifyCalls).toBe(1);
 
     const { rows } = await memoriesFor(sourceId);
     const byContent = new Map(rows.map((r) => [r.content, r]));
@@ -280,8 +297,11 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
     );
     for (const row of results.rows) {
       expect(row.reason.length).toBeGreaterThan(0);
-      // Pin to the ACTIVE version so a prompt bump doesn't silently stale this.
-      expect(row.pv).toBe(`${VERIFICATION_PROMPT.family}/${VERIFICATION_PROMPT.version}`);
+      // Pin to the ACTIVE batch version (decision 0057) so a prompt bump
+      // doesn't silently stale this — multi-fact sources verify batched.
+      expect(row.pv).toBe(
+        `${VERIFICATION_BATCH_PROMPT.family}/${VERIFICATION_BATCH_PROMPT.version}`,
+      );
     }
 
     // Stage 5 wrote one point per admitted memory (uncertain ones included —
@@ -358,6 +378,48 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
     expect(summary.chunks).toBe(1); // capped from several
     expect(summary.extracted).toBe(1); // facts capped
     expect((await memoriesFor(sourceId)).rows).toHaveLength(1);
+  });
+
+  it('web_fact_cap: a web source is capped at WEB_MAX_FACTS salient facts (decision 0057)', async () => {
+    const webReader = new (class implements SourceReader {
+      readonly sourceType = 'web' as const;
+      readonly sources = new Map<string, SourceItem>();
+      add(content: string): string {
+        const sourceId = randomUUID();
+        this.sources.set(sourceId, {
+          sourceType: this.sourceType,
+          sourceId,
+          ownerId: 'user-pipeline',
+          content,
+          createdAt: new Date('2026-07-02T10:00:00Z'),
+        });
+        return sourceId;
+      }
+      async load(sourceId: string): Promise<SourceItem | null> {
+        return this.sources.get(sourceId) ?? null;
+      }
+      async existsForAdmission(_tx: unknown, sourceId: string): Promise<boolean> {
+        return this.sources.has(sourceId);
+      }
+    })();
+    const gateway = new ScriptedGateway(() => ({
+      facts: Array.from({ length: 35 }, (_, i) =>
+        fact(`The regulations page states distinct rule number ${i} about mooring.`),
+      ),
+    }));
+    const pipeline = new IngestionPipeline(
+      [webReader],
+      new ExtractStage(gateway),
+      new VerifyStage(gateway),
+      new EmbedStoreStage(gateway, store),
+      new ReconciliationService(gateway, store, new MemoryReconciliation(tdb.db, store)),
+    );
+    const sourceId = webReader.add('A fetched page dense with obligation-shaped rules.');
+    const summary = await tdb.db.transaction((tx) =>
+      pipeline.run(tx, { source_type: 'web', source_id: sourceId }),
+    );
+    expect(summary.extracted).toBe(WEB_MAX_FACTS); // 35 → 30, web-only budget
+    expect(gateway.verifyCalls).toBe(3); // 30 claims / 10 per batched call
   });
 
   it('abstention: an empty-content source stores zero memories and completes cleanly', async () => {
