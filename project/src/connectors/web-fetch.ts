@@ -170,7 +170,23 @@ export class WebFetchService {
   constructor(
     @Inject(RESEARCH_OPTIONS) private readonly options: ResearchOptions,
     @Optional() @Inject(PARSE_CAPS) private readonly parseCaps: ParseCaps = DEFAULT_PARSE_CAPS,
-  ) {}
+  ) {
+    // Fixture-backed fetching (decision 0059, the Ana sandbox): the demo
+    // composition serves ITS pages' HTML — nothing real is fetched. The whole
+    // parse path (readability extraction, caps) still runs on the fixture.
+    const fixtures = options.fixtures;
+    if (fixtures?.length) {
+      this.resolveAddresses = async () => ['203.0.113.10'];
+      this.fetchImpl = async (input) => {
+        const url = String(input instanceof Request ? input.url : input);
+        if (url.endsWith('/robots.txt')) return new Response('not found', { status: 404 });
+        const page = fixtures.find((p) => url.startsWith(p.url));
+        return page
+          ? new Response(page.html, { status: 200, headers: { 'content-type': 'text/html' } })
+          : new Response('not found', { status: 404 });
+      };
+    }
+  }
 
   async fetchPage(requestedUrl: string): Promise<FetchOutcome> {
     const skip = (reason: FetchSkipReason, detail: string): FetchOutcome => ({

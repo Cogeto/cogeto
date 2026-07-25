@@ -59,6 +59,9 @@ import type {
   ResearchAnswerDto,
   ResearchCaptureResponse,
   ApproveResearchResponse,
+  ProposeSkillRunResponse,
+  SkillRunDto,
+  SkillRunDetailDto,
   PointInTimeDto,
   TimelineDiffDto,
   PassportExportDto,
@@ -454,6 +457,34 @@ export const synthesiseResearch = (session: Session, id: string): Promise<Resear
 // showing this run.
 export const markResearchSeen = (session: Session, id: string): Promise<{ ok: true }> =>
   apiPost(`/api/research/runs/${encodeURIComponent(id)}/seen`, {}, session);
+
+// Named skills (Priority 7, decision 0059): propose → the plan gate → the
+// live run view → the brief. Accepting a proposed action is adoptMemoryAsTask
+// (the existing tasks endpoint); setSkillActionState only records the decision.
+export const proposeSkillRun = (
+  session: Session,
+  skillId: string,
+  subject: string,
+): Promise<ProposeSkillRunResponse> => apiPost('/api/skills/runs', { skillId, subject }, session);
+export const fetchSkillRuns = (session: Session): Promise<SkillRunDto[]> =>
+  apiGet('/api/skills/runs', session);
+export const fetchSkillRun = (session: Session, id: string): Promise<SkillRunDetailDto> =>
+  apiGet(`/api/skills/runs/${encodeURIComponent(id)}`, session);
+export const approveSkillPlan = (
+  session: Session,
+  id: string,
+  queries: { researchRunId: string; query: string }[],
+): Promise<SkillRunDetailDto> =>
+  apiPost(`/api/skills/runs/${encodeURIComponent(id)}/plan`, { queries }, session);
+export const cancelSkillRun = (session: Session, id: string): Promise<SkillRunDetailDto> =>
+  apiPost(`/api/skills/runs/${encodeURIComponent(id)}/cancel`, {}, session);
+export const setSkillActionState = (
+  session: Session,
+  id: string,
+  memoryId: string,
+  state: 'accepted' | 'dismissed',
+): Promise<SkillRunDetailDto> =>
+  apiPost(`/api/skills/runs/${encodeURIComponent(id)}/actions`, { memoryId, state }, session);
 
 // Reply drafts (Session O4 — email source). Drafting is a consequential action;
 // Cogeto never sends — the finalised draft is presented for the user to send.

@@ -131,6 +131,16 @@ export class CapabilitiesService {
    * COGETO_COMPOSE_PROFILES) or the explicit flag; SearXNG's /healthz decides. */
   private async research(checkedAt: string): Promise<CapabilitySummary> {
     const base = { id: 'research' as const, checkedAt };
+    // The Ana sandbox (decision 0059): research runs on bundled fixture pages,
+    // never the live web — honest in the panel, no SearXNG probe.
+    if (this.config.demoMode) {
+      return {
+        ...base,
+        state: 'on',
+        probed: false,
+        detail: 'sandbox: web discovery serves bundled fixture pages, never the live web',
+      };
+    }
     const enabled = this.config.composeProfiles.includes('research') || this.config.researchEnabled;
     if (!enabled) return { ...base, state: 'off', probed: false };
     if (!this.config.searxngUrl) {

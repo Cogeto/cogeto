@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { deadLetter, jobExecution, withTransactionalEnqueue } from '../infrastructure/index';
 import type { Tx } from '../infrastructure/index';
 import { INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
 import { researchRun, webPage } from './persistence/tables';
+import { SKILL_ADVANCE_JOB_TYPE } from './skills/skill-run.service';
 
 /** The server-side conclusion job (decision 0057): synthesise + store the
  * run's answer once the last captured page's extraction settles. */
@@ -33,12 +34,21 @@ export class ResearchConclusionService {
     if (!runId) return false;
 
     const runRows = await tx
-      .select({ status: researchRun.status, ownerId: researchRun.ownerId })
+      .select({
+        status: researchRun.status,
+        ownerId: researchRun.ownerId,
+        skillRunId: researchRun.skillRunId,
+      })
       .from(researchRun)
       .where(eq(researchRun.id, runId))
       .limit(1);
     const run = runRows[0];
     if (!run || run.status !== 'approved') return false;
+
+    // A skill run's query (decision 0059): the skill advances when ALL pages
+    // of ALL its research runs settle — its runs stay 'approved' (no per-run
+    // answers) and the brief is the conclusion.
+    if (run.skillRunId) return this.afterSkillPageProcessed(tx, run.skillRunId);
 
     const pages = await tx
       .select({ id: webPage.id })
@@ -60,6 +70,48 @@ export class ResearchConclusionService {
       },
     );
     this.log.log(`research run ${runId}: all pages settled — conclusion enqueued`);
+    return true;
+  }
+
+  /** The skill branch of the settle-watcher (decision 0059 ruling 5). A
+   * duplicate enqueue from two pages settling concurrently is harmless: the
+   * advance job is re-runnable and its steps compare-and-set. */
+  private async afterSkillPageProcessed(tx: Tx, skillRunId: string): Promise<boolean> {
+    const planRuns = await tx
+      .select({ id: researchRun.id, ownerId: researchRun.ownerId })
+      .from(researchRun)
+      .where(
+        and(eq(researchRun.skillRunId, skillRunId), inArray(researchRun.status, ['approved'])),
+      );
+    if (planRuns.length === 0) return false;
+    const pages = await tx
+      .select({ id: webPage.id })
+      .from(webPage)
+      .where(
+        inArray(
+          webPage.researchRunId,
+          planRuns.map((r) => r.id),
+        ),
+      );
+    for (const page of pages) {
+      if (!(await this.pageSettled(tx, page.id))) return false;
+    }
+    await withTransactionalEnqueue(
+      tx,
+      {
+        type: 'skill_run.extracted',
+        payload: {
+          source_type: 'skill_run',
+          source_id: skillRunId,
+          owner_id: planRuns[0]!.ownerId,
+        },
+      },
+      {
+        type: SKILL_ADVANCE_JOB_TYPE,
+        payload: { source_type: 'skill_run', source_id: skillRunId },
+      },
+    );
+    this.log.log(`skill run ${skillRunId}: all pages settled — advance enqueued`);
     return true;
   }
 

@@ -18,6 +18,19 @@ export interface ResearchOptions {
   /** Retain the sanitised raw HTML as a scoped MinIO object (decision 0043 —
    * default off: the extracted clean text + URL are the source of record). */
   retainHtml: boolean;
+  /**
+   * Fixture-backed web (decision 0059, the Ana sandbox): when present,
+   * discovery returns exactly these pages and the fetcher serves their HTML —
+   * NOTHING real is searched or fetched. Set only by the demo composition;
+   * production instances never populate it.
+   */
+  fixtures?: WebFixturePage[];
+}
+
+export interface WebFixturePage {
+  url: string;
+  title: string;
+  html: string;
 }
 
 export const RESEARCH_OPTIONS = Symbol('RESEARCH_OPTIONS');

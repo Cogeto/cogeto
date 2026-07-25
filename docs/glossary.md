@@ -146,6 +146,20 @@ name it in a decision record before coining a term in code.
   `task_conclusion` row, which links the task, its deriving memory, and the
   triggering memory (decision 0037). The one sanctioned way `tasks` causes a
   memory to exist; it never mutates one.
+- **Skill** — a named, versioned, code-defined multi-step workflow with a
+  declared plan of typed steps (decision 0059); registry-versioned like prompts
+  (`research_brief`/`v0001`), never user-programmable in v1. Owned by the
+  `connectors` context beside the research machinery it orchestrates.
+- **Skill run** — one skill invocation: the `skill_run` row plus its
+  `skill_run_step` log (per-step status, summaries, links to every produced
+  artifact). The step log is the inspectability claim; the plan-approval pause
+  is a stored state. Statuses: `planning`, `awaiting_approval`, `running`,
+  `awaiting_input`, `completed`, `failed`, `cancelled`.
+- **Brief** — the research-brief skill's durable artifact: a structured,
+  per-claim-cited document ([M#] memories, [W#] pages with URL + fetch time,
+  `(unsourced)` model knowledge) stored on the run with resolved citations,
+  speaking `preferred_language`. Proposed actions on a brief are adoption
+  proposals — never created tasks.
 - **Open loops** — commitments and follow-ups without a recorded resolution.
 - **Digest** — the daily summary produced by `tasks`.
 - **Dreaming** — the nightly consolidation job; its surfaced summary is the

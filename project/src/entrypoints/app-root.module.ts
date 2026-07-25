@@ -20,6 +20,7 @@ import {
   EmailSourceDeletion,
   NotesSourceDeletion,
   ResearchChatModule,
+  SkillsModule,
   WebSourceDeletion,
 } from '../connectors/index';
 import {
@@ -135,6 +136,10 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       // The research gate + chat → research resolver + synthesis (Priority 5
       // Part B) — app-only for the same reason; the worker never researches.
       ResearchChatModule,
+      // Named skills (Priority 7, decision 0059): the planner + run surface +
+      // chat → skill resolver — app-only (planning needs retrieval); the
+      // engine's execution reaches the worker as the skill.advance job.
+      SkillsModule,
       // The Memory Passport (§B.5, decision 0029): export trigger/status/download.
       // Assembly is a worker job; the app only creates requests and serves reads.
       PassportModule.register({

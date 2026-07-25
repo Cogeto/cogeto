@@ -32,8 +32,12 @@ import {
   EMAIL_REFUSAL_RETENTION_JOB_TYPE,
 } from '../connectors/index';
 import type { EmailAllowlistService, EmailAuthorshipBackfill } from '../connectors/index';
-import { RESEARCH_CONCLUDE_JOB_TYPE } from '../connectors/index';
-import type { ResearchConclusionService, ResearchSynthesisService } from '../connectors/index';
+import { RESEARCH_CONCLUDE_JOB_TYPE, SKILL_ADVANCE_JOB_TYPE } from '../connectors/index';
+import type {
+  ResearchConclusionService,
+  ResearchSynthesisService,
+  SkillEngine,
+} from '../connectors/index';
 import { CONVERSATION_TITLE_JOB_TYPE } from '../retrieval/index';
 import type { ConversationTitler } from '../retrieval/index';
 import type { ModelGateway } from '../model-gateway/index';
@@ -53,6 +57,7 @@ export interface WorkerTaskDeps {
   conversationTitler: ConversationTitler;
   researchConcluder: ResearchConclusionService;
   researchSynthesis: ResearchSynthesisService;
+  skillEngine: SkillEngine;
   objects: MemoryObjectStore;
   gateway: ModelGateway;
   /** Bound to pino by the worker entrypoint. Counts only — never content. */
@@ -133,6 +138,20 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       if (typeof runId !== 'string' || !runId) return;
       const { concluded } = await deps.researchSynthesis.concludeRun(runId);
       deps.log({ source_id: runId, concluded }, 'research conclusion completed');
+    },
+
+    // The skill advance (Priority 7, decision 0059): execute every step of a
+    // running skill run that can run now, checkpoint each, and stop where the
+    // run must wait (extraction settling — the settle-watcher re-enqueues).
+    // A plain task like the conclusion: re-runnable by design (steps
+    // compare-and-set, searches recorded, capture guarded by existing pages);
+    // failures retry with backoff and park visibly in dead_letter with the
+    // failing step marked on the run's log.
+    [SKILL_ADVANCE_JOB_TYPE]: async (rawPayload) => {
+      const runId = (rawPayload as { source_id?: unknown }).source_id;
+      if (typeof runId !== 'string' || !runId) return;
+      const { advanced } = await deps.skillEngine.advance(runId);
+      deps.log({ source_id: runId, advanced }, 'skill advance completed');
     },
 
     // Saga steps 2–3 (§A.7): Qdrant points + MinIO objects, then receipt

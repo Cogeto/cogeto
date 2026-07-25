@@ -7,6 +7,7 @@ export type NavSection =
   | 'memories'
   | 'chat'
   | 'research'
+  | 'skills'
   | 'timeline'
   | 'tasks'
   | 'review'
@@ -21,6 +22,7 @@ const ENABLED: { key: NavSection; label: string; href: string }[] = [
   { key: 'memories', label: 'Memories', href: '/memories' },
   { key: 'chat', label: 'Chat', href: '/chat' },
   { key: 'research', label: 'Research', href: '/research' },
+  { key: 'skills', label: 'Skills', href: '/skills' },
   { key: 'timeline', label: 'Time travel', href: '/timeline' },
   { key: 'tasks', label: 'Tasks', href: '/tasks' },
   { key: 'review', label: 'Review', href: '/review' },
@@ -75,6 +77,17 @@ const ICONS: Record<NavSection, ReactNode> = {
     <svg viewBox="0 0 20 20" {...G}>
       <circle cx="9" cy="9" r="4.6" />
       <path d="M12.6 12.6 16.5 16.5" />
+    </svg>
+  ),
+  // The skill run: an orbit of steps advancing around the verification node.
+  skills: (
+    <svg viewBox="0 0 20 20" {...G}>
+      <path d="M10 3a7 7 0 1 1-7 7" />
+      <path d="M3 10a7 7 0 0 1 2-4.9" opacity="0.4" />
+      <circle cx="10" cy="10" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="10" cy="3" r="1.3" />
+      <circle cx="17" cy="10" r="1.3" />
+      <circle cx="10" cy="17" r="1.3" />
     </svg>
   ),
   timeline: (

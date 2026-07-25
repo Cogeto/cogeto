@@ -125,6 +125,52 @@ export class ResearchService {
   }
 
   /**
+   * A skill plan's query (decision 0059 ruling 3): an ordinary proposed run,
+   * tagged with its skill run. Minimisation happened at generation (the
+   * skill_plan prompt), so the pre-minimised text and its reason are recorded
+   * verbatim — the gate shows them exactly as manual research shows the
+   * minimise pass's output. Sends NOTHING.
+   */
+  async proposeForSkill(
+    principal: Principal,
+    skillRunId: string,
+    proposal: { intent: string; query: string; reason: string },
+  ): Promise<ResearchRunRow> {
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(researchRun)
+        .values({
+          ownerId: principal.userId,
+          intent: proposal.intent,
+          proposedQuery: proposal.query,
+          minimisedQuery: proposal.query,
+          minimiseReason: proposal.reason,
+          skillRunId,
+        })
+        .returning();
+      await writeAudit(tx, {
+        actor: `user:${principal.userId}`,
+        action: 'research_run.proposed',
+        entityType: 'research_run',
+        entityId: row!.id,
+        detail: { skill_run_id: skillRunId },
+        orgId: principal.orgId,
+        ownerId: principal.userId,
+      });
+      return row!;
+    });
+  }
+
+  /** A skill run's plan queries, oldest first (the gate's list). */
+  async runsForSkill(skillRunId: string): Promise<ResearchRunRow[]> {
+    return this.db
+      .select()
+      .from(researchRun)
+      .where(eq(researchRun.skillRunId, skillRunId))
+      .orderBy(researchRun.createdAt);
+  }
+
+  /**
    * The ONLY path to discovery (decision 0045): explicit approval records the
    * exact (possibly user-edited) query text on the run, then sends it. An
    * already-approved run may re-run discovery with the SAME recorded query
@@ -136,9 +182,22 @@ export class ResearchService {
     runId: string,
     query: string,
   ): Promise<{ run: ResearchRunRow; search: DiscoveryOutcome }> {
+    const run = await this.approveQuery(principal, runId, query);
+    const search = await this.search(principal, run.sentQuery!);
+    return { run, search };
+  }
+
+  /**
+   * Approval without discovery (decision 0059): the skill plan gate flips each
+   * kept run to approved with its (possibly edited) text in ONE interaction;
+   * the worker's advance job runs discovery afterwards via
+   * {@link searchApproved}. The 0045 invariant is untouched — discovery still
+   * happens only against an approved run's immutable sent_query.
+   */
+  async approveQuery(principal: Principal, runId: string, query: string): Promise<ResearchRunRow> {
     const sentQuery = query.trim();
     if (!sentQuery) throw new ConflictException('the approved query must not be blank');
-    const run = await this.db.transaction(async (tx) => {
+    return this.db.transaction(async (tx) => {
       const rows = await tx
         .select()
         .from(researchRun)
@@ -173,7 +232,23 @@ export class ResearchService {
       });
       return updated!;
     });
-    const search = await this.search(principal, sentQuery);
+  }
+
+  /**
+   * Discovery for an ALREADY-approved run (decision 0059): the skill advance
+   * job's search step. Uses the immutable recorded sent_query; budget-gated
+   * exactly like the interactive path.
+   */
+  async searchApproved(
+    principal: Principal,
+    runId: string,
+  ): Promise<{ run: ResearchRunRow; search: DiscoveryOutcome }> {
+    const run = await this.getRun(principal, runId);
+    if (!run) throw new NotFoundException();
+    if (run.status !== 'approved' || !run.sentQuery) {
+      throw new ConflictException('discovery requires an approved research run');
+    }
+    const search = await this.search(principal, run.sentQuery);
     return { run, search };
   }
 

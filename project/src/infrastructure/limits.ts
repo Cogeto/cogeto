@@ -39,6 +39,10 @@ export interface ResearchQuota {
   pagesMax: number;
   /** Max pages fetched by a single capture request (the per-research cap). */
   pagesPerRunMax: number;
+  /** Max queries in one skill run's approved plan (decision 0059 ruling 5). */
+  skillQueriesMax: number;
+  /** Max pages the skill engine captures per approved query (≤ pagesPerRunMax). */
+  skillPagesPerQuery: number;
 }
 
 export interface SseLimits {

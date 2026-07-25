@@ -1,11 +1,12 @@
 import { useState } from 'react';
 
 /**
- * Ana sandbox (decision 0022 §4): a first-visit overlay suggesting three things
- * to try, in order. Dismissible and never blocking — a click anywhere (including
+ * Ana sandbox (decision 0022 §4): a first-visit overlay suggesting things to
+ * try, in order. Dismissible and never blocking — a click anywhere (including
  * the backdrop) dismisses it, and it is remembered per browser so it shows once.
- * No signup prompt; the third suggestion is the money moment (the deletion
- * receipt). Only rendered when a demo session is active.
+ * No signup prompt; the last suggestion is the money moment (the deletion
+ * receipt), set up by the skill run just before it (decision 0059). Only
+ * rendered when a demo session is active.
  */
 const SEEN_KEY = 'cogeto.demo.introSeen';
 
@@ -24,6 +25,12 @@ const TRIES: { n: number; title: string; body: string; href: string }[] = [
   },
   {
     n: 3,
+    title: 'Prep Ana for a meeting with a skill',
+    body: 'On Skills, brief her on Adriatic Foods: approve the search plan, watch every step, and read the sourced brief. The sandbox web is fixture pages, never live.',
+    href: '/skills',
+  },
+  {
+    n: 4,
     title: 'Delete Ana’s contract and watch the receipt',
     body: 'In Forgotten, delete the Adriatic Foods consulting agreement and watch the deletion receipt confirm, hash-chained and signed.',
     href: '/forgotten',
@@ -62,7 +69,7 @@ export function DemoIntro() {
         </div>
         <p className="mb-4 text-sm text-slate-500">
           This is <span className="font-medium text-slate-600">Ana Kovač’s</span> accrued,
-          verifiable memory: fictional data, safe to explore. Three things to try:
+          verifiable memory: fictional data, safe to explore. Things to try:
         </p>
         <ol className="grid gap-3">
           {TRIES.map((t) => (
