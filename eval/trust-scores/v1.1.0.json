@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "generated_by": {
+    "release": "v1.1.0",
+    "commit": "0b8c0def1a9e0178672aa5771689d3d4ed9a8baa",
+    "harness": "extraction/v0002 + verification/v0004 · reconcile_dedup/v0001 + reconcile_contradiction/v0001 · thresholds v1 + chat answer/v0006 · grader eval-coverage/v0001",
+    "generated_at": "2026-07-25T18:53:16.505Z",
+    "backfilled": false
+  },
+  "configurations": [
+    {
+      "id": "mistral-default",
+      "models": {
+        "pipeline": "mistral-small-latest",
+        "answer": "mistral-medium-latest",
+        "embedding": "mistral-embed"
+      },
+      "redaction": false,
+      "corpus": {
+        "golden_cases": 76,
+        "reconcile_pairs": 20,
+        "chat_cases": 27,
+        "per_language": [
+          {
+            "language": "en",
+            "golden_cases": 37
+          },
+          {
+            "language": "hr",
+            "golden_cases": 39
+          }
+        ]
+      },
+      "metrics": {
+        "per_language": [
+          {
+            "language": "en",
+            "golden_cases": 37,
+            "extraction_precision": 0.8461538461538461,
+            "extraction_recall": 0.9615384615384616,
+            "verification_agreement": 0.8611111111111112,
+            "dedup_accuracy": 1,
+            "contradiction_recall": 1
+          },
+          {
+            "language": "hr",
+            "golden_cases": 39,
+            "extraction_precision": 0.7352941176470589,
+            "extraction_recall": 0.9038461538461539,
+            "verification_agreement": 0.868421052631579,
+            "dedup_accuracy": 0.8333333333333334,
+            "contradiction_recall": 1
+          }
+        ],
+        "aggregate": {
+          "extraction_precision": 0.7894736842105263,
+          "extraction_recall": 0.9326923076923077,
+          "verification_agreement": 0.8648648648648649,
+          "dedup_accuracy": 0.9285714285714286,
+          "contradiction_recall": 1
+        },
+        "chat": {
+          "cases": 27,
+          "passed": 27,
+          "failed": []
+        }
+      }
+    }
+  ]
+}
