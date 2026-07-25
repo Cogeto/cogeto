@@ -15,9 +15,10 @@ import {
 } from '../infrastructure/index';
 import { loadPrompt, ModelGateway } from '../model-gateway/index';
 import type { PromptArtifact } from '../model-gateway/index';
-import { RetrievalService } from '../retrieval/index';
+import { CONVERSATION_APPEND, RetrievalService } from '../retrieval/index';
+import type { ConversationAppendPort } from '../retrieval/index';
 import { ResearchService } from './research.service';
-import type { WebPageRow } from './persistence/tables';
+import type { ResearchRunRow, WebPageRow } from './persistence/tables';
 
 /**
  * Sourced synthesis (Priority 5 Part B, decision 0045): the answer step of a
@@ -58,6 +59,11 @@ export class ResearchSynthesisService {
     @Optional()
     @Inject(INSTANCE_TIMEZONE)
     private readonly instanceTimeZone: string = DEFAULT_INSTANCE_TIMEZONE,
+    /** The conversation-append seam (issue #259; retrieval owns it): where a
+     * chat-invoked run's concluded answer lands as a persistent message. */
+    @Optional()
+    @Inject(CONVERSATION_APPEND)
+    private readonly conversationAppend?: ConversationAppendPort,
   ) {}
 
   async synthesise(principal: Principal, runId: string): Promise<ResearchAnswerDto> {
@@ -80,7 +86,10 @@ export class ResearchSynthesisService {
     }
     const result = await this.synthesiseCore(principal, runId, run.intent, pages);
     // Interactive path: the user is watching the answer render — seen now.
-    await this.research.recordConclusion(runId, result.answer, { seen: true });
+    // The guarded write races the worker's conclusion; only the winner
+    // delivers into the conversation (issue #259).
+    const won = await this.research.recordConclusion(runId, result.answer, { seen: true });
+    if (won) await this.deliverToConversation(run, result);
     return result;
   }
 
@@ -104,8 +113,38 @@ export class ResearchSynthesisService {
     const pages = (await this.research.pagesForRun(owner, runId)).slice(0, MAX_PAGES);
     if (pages.length === 0) return { concluded: false };
     const result = await this.synthesiseCore(owner, runId, run.intent, pages);
-    await this.research.recordConclusion(runId, result.answer, { seen: false });
-    return { concluded: true };
+    // Delivered into its conversation counts as seen (issue #259): the answer
+    // is a persistent message in the thread, not a pending surface.
+    const won = await this.research.recordConclusion(runId, result.answer, {
+      seen: run.conversationId !== null,
+    });
+    if (won) await this.deliverToConversation(run, result);
+    return { concluded: won };
+  }
+
+  /**
+   * Lands a concluded answer in the conversation it was invoked from (issue
+   * #259) — automatically, as a persistent assistant message: [M#] markers
+   * become real citation chips, [W#] markers become numbered entries in a
+   * Sources block. Research-page runs (no conversation) skip this; a deleted
+   * conversation skips silently (the answer stays on the run).
+   */
+  private async deliverToConversation(
+    run: ResearchRunRow,
+    result: ResearchAnswerDto,
+  ): Promise<void> {
+    if (!run.conversationId || !this.conversationAppend) return;
+    const contextRecord = await Promise.resolve(this.userContext?.get(run.ownerId))
+      .then((record) => record ?? EMPTY_USER_CONTEXT)
+      .catch(() => EMPTY_USER_CONTEXT);
+    const content = buildThreadMessage(
+      result.answer,
+      result.citations,
+      contextRecord.preferredLanguage === 'hr' ? 'hr' : 'en',
+    );
+    await this.conversationAppend
+      .append(run.ownerId, run.conversationId, content)
+      .catch(() => undefined);
   }
 
   private async synthesiseCore(
@@ -162,6 +201,40 @@ export class ResearchSynthesisService {
     const { answer, citations } = resolveMarkers(raw.text, pages, memories);
     return { runId, answer, citations };
   }
+}
+
+/**
+ * The thread form of a concluded answer (issue #259): memory markers become
+ * canonical {{cite:<uuid>}} chips the chat renderer resolves; web markers
+ * become numbered references with a Sources block naming title, URL and fetch
+ * date. The literals follow the user's language anchor (decision 0052).
+ */
+export function buildThreadMessage(
+  answer: string,
+  citations: ResearchCitationDto[],
+  language: 'en' | 'hr',
+): string {
+  const byMarker = new Map(citations.map((c) => [c.marker, c]));
+  const webOrder: Extract<ResearchCitationDto, { kind: 'web' }>[] = [];
+  const text = answer.replace(/\[([WM])(\d+)\]/g, (whole) => {
+    const cite = byMarker.get(whole);
+    if (!cite) return '';
+    if (cite.kind === 'memory') return `{{cite:${cite.memoryId}}}`;
+    let at = webOrder.findIndex((c) => c.marker === whole);
+    if (at === -1) {
+      webOrder.push(cite);
+      at = webOrder.length - 1;
+    }
+    return `[${at + 1}]`;
+  });
+  const sources = webOrder.map((c, i) => {
+    const fetched = c.fetchedAt.slice(0, 10);
+    return `${i + 1}. ${c.title ?? c.url} (${c.url}, ${language === 'hr' ? 'dohvaćeno' : 'fetched'} ${fetched})`;
+  });
+  return [
+    text.trim(),
+    ...(sources.length > 0 ? ['', language === 'hr' ? 'Izvori:' : 'Sources:', ...sources] : []),
+  ].join('\n');
 }
 
 /**

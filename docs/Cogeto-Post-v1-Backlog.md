@@ -115,7 +115,10 @@ research now concludes SERVER-SIDE: when the last captured page settles, the
 worker's `research.conclude` job synthesises and stores the answer on the run
 (status 'concluded'); the chat page resumes in-flight or unseen-concluded
 runs and replays the stored answer, so leaving the chat mid-research no
-longer loses the response.
+longer loses the response. Amended by decision 0058 (issue #259, migration
+0033): a chat-proposed run records its conversation, and the concluded answer
+is appended THERE as a persistent assistant message, automatically — the
+inline card is progress-only, and chat resumes only approved in-flight runs.
 
 The research capability, with the privacy honesty improvement from the notes folded in.
 

@@ -31,6 +31,9 @@ const proposeSchema = z.object({
     .string()
     .max(500, 'research request is too long (max 500 characters)')
     .refine((value) => value.trim().length > 0, 'research request must not be blank'),
+  /** The invoking chat conversation (issue #259) — the concluded answer is
+   * appended there. Absent for Research-page proposals. */
+  conversationId: z.uuid().optional(),
 });
 
 const approveSchema = z.object({
@@ -87,7 +90,13 @@ export class ResearchRunController {
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
     }
-    return toDto(await this.research.propose(request.principal, parsed.data.intent.trim()));
+    return toDto(
+      await this.research.propose(
+        request.principal,
+        parsed.data.intent.trim(),
+        parsed.data.conversationId ?? null,
+      ),
+    );
   }
 
   @Get('runs')

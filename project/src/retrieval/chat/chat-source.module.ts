@@ -4,6 +4,7 @@ import { ChatSourceDeletion } from './chat.source-deletion';
 import { ChatAnswerCascade } from './chat-answer-cascade';
 import { ConversationSourceDeletion } from './conversation.source-deletion';
 import { ConversationTitler } from './conversation-titler';
+import { CONVERSATION_APPEND, ConversationScribe } from './conversation-scribe';
 
 /**
  * The chat source ports (decision 0021) as a GLOBAL slim module: the pipeline
@@ -26,6 +27,10 @@ import { ConversationTitler } from './conversation-titler';
     ConversationSourceDeletion,
     ChatAnswerCascade,
     ConversationTitler,
+    ConversationScribe,
+    // The conversation-append seam (issue #259): research (connectors)
+    // injects the token; retrieval owns the implementation and the tables.
+    { provide: CONVERSATION_APPEND, useExisting: ConversationScribe },
   ],
   exports: [
     ChatSourceReader,
@@ -33,6 +38,8 @@ import { ConversationTitler } from './conversation-titler';
     ConversationSourceDeletion,
     ChatAnswerCascade,
     ConversationTitler,
+    ConversationScribe,
+    CONVERSATION_APPEND,
   ],
 })
 export class ChatSourceModule {}

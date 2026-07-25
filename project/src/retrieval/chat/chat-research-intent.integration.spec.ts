@@ -25,8 +25,14 @@ const owner: Principal = {
 
 class RecordingResolver implements ChatResearchResolverPort {
   proposals: string[] = [];
-  async propose(_principal: Principal, intent: string): Promise<ChatResearchProposal> {
+  conversationIds: (string | null | undefined)[] = [];
+  async propose(
+    _principal: Principal,
+    intent: string,
+    conversationId?: string | null,
+  ): Promise<ChatResearchProposal> {
     this.proposals.push(intent);
+    this.conversationIds.push(conversationId);
     return {
       runId: '00000000-0000-4000-8000-000000000001',
       intent,
@@ -102,6 +108,9 @@ describe('chat research intent (integration: real Postgres, stubbed seams)', () 
       chat.ask(owner, 'research GDPR consent for Adriatic Foods', conversationId),
     );
     expect(resolver.proposals).toEqual(['GDPR consent for Adriatic Foods']);
+    // The invoking conversation rides the proposal (issue #259) — the
+    // concluded answer lands there as a persistent message.
+    expect(resolver.conversationIds).toEqual([conversationId]);
     // The gate reply: deterministic, discloses the minimised query + reason,
     // states nothing has been sent, and points at the Research page.
     const done = events.find((e) => e.type === 'done');

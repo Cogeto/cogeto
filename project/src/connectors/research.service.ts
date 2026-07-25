@@ -89,7 +89,11 @@ export class ResearchService {
    * proposed query is the intent verbatim (chat strips its trigger verb first);
    * minimisation rewrites it to the least-identifying serving form.
    */
-  async propose(principal: Principal, intent: string): Promise<ResearchRunRow> {
+  async propose(
+    principal: Principal,
+    intent: string,
+    conversationId: string | null = null,
+  ): Promise<ResearchRunRow> {
     const proposedQuery = intent.trim();
     const minimised = await minimiseQuery(this.gateway, intent, proposedQuery);
     return this.db.transaction(async (tx) => {
@@ -101,6 +105,9 @@ export class ResearchService {
           proposedQuery,
           minimisedQuery: minimised.minimised,
           minimiseReason: minimised.reason,
+          // The invoking conversation (issue #259): where the concluded
+          // answer is appended. NULL for Research-page runs.
+          conversationId,
         })
         .returning();
       // Structural audit only (QS-1): the transition, never the query text —
@@ -447,12 +454,15 @@ export class ResearchService {
 
   /**
    * Persist the synthesised answer and conclude the run (decision 0057) —
-   * the terminal success state. `seen` marks the answer acknowledged in the
-   * same write (the interactive path: the user is watching it render).
+   * the terminal success state. GUARDED on 'approved' so a racing worker and
+   * interactive conclusion cannot both win (issue #259): the loser returns
+   * false and must not append or re-deliver anything. `seen` marks the answer
+   * acknowledged in the same write (watched interactively, or delivered into
+   * its conversation).
    */
-  async recordConclusion(runId: string, answer: string, opts: { seen: boolean }): Promise<void> {
+  async recordConclusion(runId: string, answer: string, opts: { seen: boolean }): Promise<boolean> {
     const now = new Date();
-    await this.db
+    const updated = await this.db
       .update(researchRun)
       .set({
         answer,
@@ -460,7 +470,9 @@ export class ResearchService {
         concludedAt: now,
         ...(opts.seen ? { answerSeenAt: now } : {}),
       })
-      .where(eq(researchRun.id, runId));
+      .where(and(eq(researchRun.id, runId), eq(researchRun.status, 'approved')))
+      .returning({ id: researchRun.id });
+    return updated.length > 0;
   }
 
   /** The owner saw the stored answer — the chat resume surface stops showing

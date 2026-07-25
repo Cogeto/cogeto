@@ -67,6 +67,10 @@ export type ResearchRunStatus = 'proposed' | 'approved' | 'cancelled' | 'conclud
 export interface ProposeResearchRequest {
   /** What the user asked for, verbatim (search box input or chat message). */
   intent: string;
+  /** The invoking chat conversation (issue #259) — the concluded answer is
+   * appended there as a persistent assistant message. Absent from the
+   * Research page. */
+  conversationId?: string;
 }
 
 /**

@@ -1,11 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import type {
-  DiscoveredPageDto,
-  ResearchAnswerDto,
-  ResearchCaptureResponse,
-  ResearchRunDto,
-} from '@cogeto/shared';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { DiscoveredPageDto, ResearchCaptureResponse, ResearchRunDto } from '@cogeto/shared';
 import { selectTopByScore } from '@cogeto/shared';
 import {
   approveResearch,
@@ -14,47 +9,41 @@ import {
   fetchResearchProgress,
   fetchResearchRun,
   markResearchSeen,
-  synthesiseResearch,
 } from '../api';
 import type { Session } from '../auth/oidc';
 import { btnSecondary } from './ui';
-import { ResearchAnswer } from './ResearchAnswer';
 
 /** How many of the most-relevant sources to read automatically (decision 0050). */
 const TOP_K = 3;
 
 /**
- * The research flow, inline in chat (decisions 0047 + 0050). Frictionless: the
- * "Research this on the web" tap WAS the approval, so this auto-approves the
- * minimised query, auto-selects the top {@link TOP_K} sources by SearXNG
- * relevance score, and reads them — no gate, no page-picking. The exact query
- * that left and the sources read are disclosed here and recorded in every
- * derived memory's provenance (the honesty mechanism is preserved; only the
- * pre-send preview is gone). When the pages yield facts, chat asks the topic as
- * a grounded turn; when they don't, the page-grounded synthesis is the fallback.
- * The standalone Research page keeps the full edit/approve gate for control.
+ * The research flow, inline in chat (decisions 0047 + 0050 + 0058). This card
+ * is PROGRESS ONLY: the tap was the approval, the top sources are read
+ * automatically, and when the run concludes the answer arrives in the
+ * conversation as a persistent assistant message (appended server-side,
+ * issue #259) — so the card refreshes the thread and closes itself. It never
+ * sends a chat turn on the user's behalf and shows no buttons beyond Cancel
+ * while searching. Resumed in-flight runs behave identically: watch, then
+ * hand over to the thread.
  */
 export function ResearchInline({
   session,
   run: initialRun,
-  onConclude,
   onClose,
 }: {
   session: Session;
   run: ResearchRunDto;
-  /** Extraction finished with facts — chat asks `topic` as a visible turn. */
-  onConclude: (topic: string) => void;
   onClose: () => void;
 }) {
+  const queryClient = useQueryClient();
   const [run, setRun] = useState(initialRun);
   const [results, setResults] = useState<DiscoveredPageDto[] | null>(null);
   const [readUrls, setReadUrls] = useState<string[]>([]);
   const [captured, setCaptured] = useState<ResearchCaptureResponse | null>(null);
-  const [fallbackAnswer, setFallbackAnswer] = useState<ResearchAnswerDto | null>(null);
   const [cancelled, setCancelled] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const concludedRef = useRef(false);
   const startedRef = useRef(false);
+  const closedRef = useRef(false);
 
   const capture = useMutation({
     mutationFn: (urls: string[]) => captureResearchPages(session, run.id, urls),
@@ -91,81 +80,48 @@ export function ResearchInline({
     onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
   });
 
-  const synthesise = useMutation({
-    mutationFn: () => synthesiseResearch(session, run.id),
-    onSuccess: (dto) => {
-      setError(null);
-      setFallbackAnswer(dto);
-    },
-    onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
-  });
-
-  // On mount (decision 0057): a fresh proposal auto-approves (the tap WAS the
-  // approval); a run the worker already CONCLUDED replays its stored answer
-  // (the synthesise endpoint returns it without a model call and marks it
-  // seen); a resumed APPROVED run just watches — the worker owns conclusion.
+  // The tap was the approval: a fresh proposal auto-runs once, on mount.
+  // A resumed run (already approved) just watches.
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
     if (initialRun.status === 'proposed') approve.mutate();
-    else if (initialRun.status === 'concluded' && initialRun.answer) synthesise.mutate();
   }, []);
 
   const capturedCount = useMemo(
     () => captured?.results.filter((r) => r.status === 'captured').length ?? 0,
     [captured],
   );
-  /** A run mounted mid-flight (chat resume): no local capture state exists —
-   * the pages and their states come from the progress feed alone. */
-  const resumed = initialRun.status === 'approved';
+  /** Mounted mid-flight (chat resume): pages come from the progress feed. */
+  const resumed = initialRun.status !== 'proposed';
 
-  // Honest wait: poll the run's pipeline progress while any page is extracting.
+  // Honest wait: poll the pipeline progress while any page is extracting.
   const progress = useQuery({
     queryKey: ['research-progress', run.id],
     queryFn: () => fetchResearchProgress(session, run.id),
-    enabled: (capturedCount > 0 || resumed) && !fallbackAnswer && !cancelled,
+    enabled: (capturedCount > 0 || resumed) && !cancelled,
     refetchInterval: (query) =>
-      query.state.data?.pages.some((p) => p.state === 'processing') ? 2000 : false,
+      query.state.data?.pages.some((p) => p.state === 'processing') ? 2000 : 4000,
   });
   const pages = progress.data?.pages ?? [];
-  const tracking = capturedCount > 0 || (resumed && pages.length > 0);
-  const extracting =
-    tracking && (progress.isPending || pages.some((p) => p.state === 'processing'));
+  const extracting = pages.some((p) => p.state === 'processing');
   const totalFacts = pages.reduce((sum, p) => sum + p.factCount, 0);
-  const settled = tracking && !progress.isPending && !extracting;
 
-  // Conclude once. The FRESH flow (the user tapped, is watching): facts →
-  // chat asks the topic as a grounded turn; no facts → synthesise. Marked
-  // seen either way so a later server-side conclusion never re-surfaces it.
-  // A RESUMED run NEVER auto-sends (issue #257 — a page refresh must not post
-  // a message on the user's behalf): it synthesises instead, which also
-  // concludes a run orphaned in 'approved' from before the conclusion job
-  // existed, stores + replays its answer, and marks it seen.
-  useEffect(() => {
-    if (!settled || concludedRef.current || fallbackAnswer || cancelled) return;
-    concludedRef.current = true;
-    if (!resumed && totalFacts > 0) {
-      void markResearchSeen(session, run.id).catch(() => undefined);
-      onConclude(run.intent);
-    } else {
-      synthesise.mutate();
-    }
-  }, [settled, totalFacts, fallbackAnswer, cancelled]);
-
-  // A resumed run with no pages yet (or whose worker concluded while we were
-  // polling): follow the run row itself until it turns concluded.
+  // The handover (issue #259): when the run concludes, the answer is already
+  // a persistent message in this conversation — refresh the thread and close.
   const runQuery = useQuery({
     queryKey: ['research-run', run.id],
     queryFn: () => fetchResearchRun(session, run.id),
-    enabled: resumed && !fallbackAnswer && !cancelled,
-    refetchInterval: (query) => (query.state.data?.status === 'approved' ? 2500 : false),
+    enabled: (capturedCount > 0 || resumed) && !cancelled,
+    refetchInterval: (query) => (query.state.data?.status === 'concluded' ? false : 2500),
   });
   useEffect(() => {
-    if (runQuery.data?.status === 'concluded' && !concludedRef.current && !fallbackAnswer) {
-      concludedRef.current = true;
-      synthesise.mutate(); // replays the stored answer, marks it seen
-    }
-  }, [runQuery.data?.status, fallbackAnswer]);
+    if (runQuery.data?.status !== 'concluded' || closedRef.current) return;
+    closedRef.current = true;
+    void queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
+    void queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    onClose();
+  }, [runQuery.data?.status]);
 
   if (cancelled) {
     return (
@@ -181,27 +137,25 @@ export function ResearchInline({
   const disclosedQuery = run.sentQuery ?? run.minimisedQuery;
   const searching = initialRun.status === 'proposed' && results === null && !captured;
   const noResults = results !== null && results.length === 0 && !captured;
-  /** True when this mount shows work that ran while the user was away. */
-  const replay = initialRun.status !== 'proposed';
+  /** A resumed run with nothing captured can never conclude — say so. */
+  const resumedEmpty = resumed && progress.isSuccess && pages.length === 0;
 
   return (
     <Frame>
       {/* What left, and what Cogeto is reading — disclosed, not asked. */}
-      {!fallbackAnswer && (
-        <p className="text-xs text-slate-500">
-          <span className="font-mono text-[0.64rem] uppercase tracking-[0.12em] text-slate-400">
-            Web
-          </span>{' '}
-          searched <span className="font-medium text-slate-700">“{disclosedQuery}”</span>
-          {readUrls.length > 0 && (
-            <>
-              {' '}
-              · reading the top {readUrls.length} source{readUrls.length === 1 ? '' : 's'} by
-              relevance
-            </>
-          )}
-        </p>
-      )}
+      <p className="text-xs text-slate-500">
+        <span className="font-mono text-[0.64rem] uppercase tracking-[0.12em] text-slate-400">
+          Web
+        </span>{' '}
+        searched <span className="font-medium text-slate-700">“{disclosedQuery}”</span>
+        {readUrls.length > 0 && (
+          <>
+            {' '}
+            · reading the top {readUrls.length} source{readUrls.length === 1 ? '' : 's'} by
+            relevance
+          </>
+        )}
+      </p>
 
       {searching && (
         <div className="mt-1 flex items-center justify-between">
@@ -227,37 +181,7 @@ export function ResearchInline({
         </div>
       )}
 
-      {/* A resumed run (decision 0057): pages and states from the progress
-          feed alone — the capture happened before this mount. */}
-      {resumed && !captured && !fallbackAnswer && (
-        <div className="mt-2 space-y-1">
-          {pages.map((p) => (
-            <p key={p.id} className="truncate text-xs text-slate-600">
-              {p.state === 'processing' ? '· ' : '✓ '}
-              {p.url}
-            </p>
-          ))}
-          {(extracting || pages.length === 0) && (
-            <PulseLine
-              label={
-                pages.length === 0
-                  ? 'Picking research back up…'
-                  : `Still extracting from ${pages.length} page${pages.length === 1 ? '' : 's'}…${
-                      totalFacts > 0 ? ` ${totalFacts} remembered so far.` : ''
-                    }`
-              }
-            />
-          )}
-          {settled && totalFacts > 0 && (
-            <p className="text-sm text-slate-600">
-              ✓ {pages.length} page{pages.length === 1 ? '' : 's'} read, {totalFacts} fact
-              {totalFacts === 1 ? '' : 's'} remembered. Answering from them now.
-            </p>
-          )}
-        </div>
-      )}
-
-      {captured && !fallbackAnswer && (
+      {captured && (
         <div className="mt-2 space-y-1">
           {captured.results.map((r) => (
             <p key={r.url} className="truncate text-xs">
@@ -270,52 +194,49 @@ export function ResearchInline({
               )}
             </p>
           ))}
-          {extracting && (
-            <PulseLine
-              label={`Extracting and verifying facts from ${capturedCount} page${
-                capturedCount === 1 ? '' : 's'
-              }…${totalFacts > 0 ? ` ${totalFacts} remembered so far.` : ''}`}
-            />
-          )}
-          {settled && totalFacts > 0 && (
-            <p className="text-sm text-slate-600">
-              ✓ {capturedCount} page{capturedCount === 1 ? '' : 's'} read, {totalFacts} fact
-              {totalFacts === 1 ? '' : 's'} remembered. Answering from them now.
-            </p>
-          )}
-          {synthesise.isPending && (
-            <p className="text-sm text-slate-500">
-              The pages didn’t yield structured facts. Synthesising directly from them instead…
-            </p>
-          )}
         </div>
       )}
 
-      {fallbackAnswer && (
-        <div className="space-y-2">
-          <p className="text-xs text-slate-500">
-            {replay
-              ? 'Cogeto finished this research while you were away. The answer, grounded in the sources it read:'
-              : 'The pages didn’t yield structured facts, so this answer is grounded directly in the sources Cogeto read, every claim traceable:'}
-          </p>
-          <ResearchAnswer answer={fallbackAnswer} />
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className={btnSecondary}
-              onClick={() => onConclude(run.intent)}
-              title="Ask this in the conversation so the answer becomes part of the thread"
-            >
-              Add to conversation
-            </button>
-            <button type="button" className={btnSecondary} onClick={onClose}>
-              Done
-            </button>
-            <span className="text-xs text-slate-400">
-              Done keeps this answer on the Research page.
-            </span>
-          </div>
+      {/* A resumed run: pages and states from the progress feed alone. */}
+      {resumed && !captured && pages.length > 0 && (
+        <div className="mt-2 space-y-1">
+          {pages.map((p) => (
+            <p key={p.id} className="truncate text-xs text-slate-600">
+              {p.state === 'processing' ? '· ' : '✓ '}
+              {p.url}
+            </p>
+          ))}
         </div>
+      )}
+
+      {resumedEmpty ? (
+        <div className="mt-1 space-y-2">
+          <p className="text-sm text-slate-500">
+            This research never read any pages, so there is nothing to wait for.
+          </p>
+          <button
+            type="button"
+            className={btnSecondary}
+            onClick={() => {
+              void markResearchSeen(session, run.id).catch(() => undefined);
+              onClose();
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : (
+        (capturedCount > 0 || (resumed && pages.length > 0)) && (
+          <div className="mt-1">
+            <PulseLine
+              label={
+                extracting
+                  ? `Extracting and verifying facts…${totalFacts > 0 ? ` ${totalFacts} remembered so far.` : ''}`
+                  : 'Writing the answer into this conversation…'
+              }
+            />
+          </div>
+        )
       )}
 
       {error && (
