@@ -134,13 +134,17 @@ export function ResearchInline({
   const totalFacts = pages.reduce((sum, p) => sum + p.factCount, 0);
   const settled = tracking && !progress.isPending && !extracting;
 
-  // Conclude once: facts → chat asks the topic (grounded); no facts →
-  // synthesise. Either way the run is marked seen, so a later server-side
-  // conclusion of the same run never re-surfaces it (decision 0057).
+  // Conclude once. The FRESH flow (the user tapped, is watching): facts →
+  // chat asks the topic as a grounded turn; no facts → synthesise. Marked
+  // seen either way so a later server-side conclusion never re-surfaces it.
+  // A RESUMED run NEVER auto-sends (issue #257 — a page refresh must not post
+  // a message on the user's behalf): it synthesises instead, which also
+  // concludes a run orphaned in 'approved' from before the conclusion job
+  // existed, stores + replays its answer, and marks it seen.
   useEffect(() => {
     if (!settled || concludedRef.current || fallbackAnswer || cancelled) return;
     concludedRef.current = true;
-    if (totalFacts > 0) {
+    if (!resumed && totalFacts > 0) {
       void markResearchSeen(session, run.id).catch(() => undefined);
       onConclude(run.intent);
     } else {
@@ -295,9 +299,22 @@ export function ResearchInline({
               : 'The pages didn’t yield structured facts, so this answer is grounded directly in the sources Cogeto read, every claim traceable:'}
           </p>
           <ResearchAnswer answer={fallbackAnswer} />
-          <button type="button" className={btnSecondary} onClick={onClose}>
-            Done
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className={btnSecondary}
+              onClick={() => onConclude(run.intent)}
+              title="Ask this in the conversation so the answer becomes part of the thread"
+            >
+              Add to conversation
+            </button>
+            <button type="button" className={btnSecondary} onClick={onClose}>
+              Done
+            </button>
+            <span className="text-xs text-slate-400">
+              Done keeps this answer on the Research page.
+            </span>
+          </div>
         </div>
       )}
 
