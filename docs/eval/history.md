@@ -1274,3 +1274,91 @@ so the research cases pass unchanged.
 | strict_mode_hr | — | — | — | PASS | PASS | — | PASS | — | — | PASS | PASS |
 | whats_still_open | — | — | — | PASS | PASS | — | PASS | — | — | — | PASS |
 | who_is_ana | PASS | 86% | PASS | PASS | PASS | — | — | — | — | — | PASS |
+
+## 2026-07-25 — chat eval (configuration=ollama-local · pipeline=ollama/gemma3:12b · answer=ollama/gemma3:12b · answer-prompt=answer/v0006 · grader=ollama/gemma3:12b eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | task | research | skill | conversation | overall |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| atlas_scope | — | 100% | — | PASS | PASS | — | — | — | — | — | — | PASS |
+| blended_origins_en | PASS | 100% | — | PASS | PASS | — | PASS | — | — | — | PASS | PASS |
+| changed_since | — | — | — | PASS | PASS | — | PASS | — | — | — | — | PASS |
+| closure_flow | — | — | — | PASS | PASS | — | PASS | — | — | — | — | PASS |
+| create_task_en_conditioned | — | — | — | — | — | — | PASS | PASS | — | — | — | PASS |
+| create_task_hr_uvjet | — | — | — | — | — | — | PASS | FAIL | — | — | — | FAIL |
+| default_no_time_travel | — | — | — | PASS | PASS | — | PASS | — | — | — | — | PASS |
+| digest_hr_preferred | — | — | — | — | — | — | — | — | — | — | PASS | PASS |
+| followup_cross_capability | — | — | — | PASS | PASS | — | PASS | — | FAIL | — | — | FAIL |
+| knowledge_offer_en | — | — | — | PASS | PASS | — | — | — | — | — | PASS | PASS |
+| knowledge_offer_hr | — | — | — | PASS | PASS | — | PASS | — | — | — | PASS | PASS |
+| memory_beats_model | PASS | — | — | PASS | PASS | — | PASS | — | — | — | — | PASS |
+| nothing_on_record | — | — | — | — | — | FAIL | — | — | — | — | — | FAIL |
+| open_with_entity | — | — | — | PASS | PASS | — | PASS | — | — | — | — | PASS |
+| point_in_time_march | — | — | — | PASS | PASS | — | PASS | — | — | — | — | PASS |
+| previously_decided | — | 100% | — | PASS | PASS | — | PASS | — | — | — | — | PASS |
+| reply_hr_zadnja | — | — | — | — | — | — | PASS | — | — | — | — | PASS |
+| reply_to_ana | — | — | — | — | — | — | PASS | — | — | — | — | PASS |
+| research_keeps_subject_hr | — | — | — | PASS | — | — | PASS | — | PASS | — | — | PASS |
+| research_minimise_drop | — | — | — | PASS | — | — | PASS | — | PASS | — | — | PASS |
+| skill_brief_en | — | — | — | PASS | — | — | PASS | — | — | PASS | — | PASS |
+| skill_brief_hr | — | — | — | PASS | — | — | PASS | — | — | PASS | PASS | PASS |
+| smalltalk_hvala_hr | — | — | — | PASS | PASS | — | — | — | — | — | PASS | PASS |
+| smalltalk_thanks | — | — | — | PASS | PASS | — | — | — | — | — | PASS | PASS |
+| strict_mode_hr | — | — | — | PASS | PASS | — | PASS | — | — | — | PASS | PASS |
+| whats_still_open | — | — | — | PASS | PASS | — | PASS | — | — | — | — | PASS |
+| who_is_ana | FAIL | 14% | PASS | PASS | PASS | — | — | — | — | — | — | FAIL |
+
+## 2026-07-25 — extraction/v0002 + verification/v0004 (thresholds v1, 76 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 37 | 84.4% (54/64) | 96.2% (50/52) | 91.7% (33/36) |
+| hr | 39 | 73.1% (49/67) | 86.5% (45/52) | 89.5% (34/38) |
+| aggregate | 76 | 78.6% (103/131) | 91.3% (95/104) | 90.5% (67/74) |
+
+## 2026-07-25 — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 20 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 5 | 100.0% (8/8) | 6 | 75.0% (3/4) | 100.0% (3/3) | 0/1 | 0 |
+| hr | 4 | 83.3% (5/6) | 5 | 100.0% (3/3) | 100.0% (3/3) | — | 0 |
+| aggregate | 9 | 92.9% (13/14) | 11 | 85.7% (6/7) | 100.0% (6/6) | 0/1 | 0 |
+
+## 2026-07-25 — task_closure/v0001 + task_condition/v0001 (12 pairs)
+
+| set | closure pairs | closure accuracy | condition pairs | condition accuracy |
+|---|---|---|---|---|
+| en | 4 | 100.0% (6/6) | 2 | 100.0% (2/2) |
+| hr | 4 | 100.0% (6/6) | 2 | 100.0% (2/2) |
+| aggregate | 8 | 100.0% (12/12) | 4 | 100.0% (4/4) |
+
+## 2026-07-25 — chat eval (configuration=mistral-default · pipeline=mistral/mistral-small-latest · answer=mistral/mistral-medium-latest · answer-prompt=answer/v0006 · grader=mistral/mistral-medium-latest eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | task | research | skill | conversation | overall |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| atlas_scope | — | 50% | — | PASS | PASS | — | — | — | — | — | — | FAIL |
+| blended_origins_en | PASS | 100% | — | PASS | PASS | — | PASS | — | — | — | PASS | PASS |
+| changed_since | — | — | — | PASS | PASS | — | PASS | — | — | — | — | PASS |
+| closure_flow | — | — | — | PASS | PASS | — | PASS | — | — | — | — | PASS |
+| create_task_en_conditioned | — | — | — | — | — | — | PASS | PASS | — | — | — | PASS |
+| create_task_hr_uvjet | — | — | — | — | — | — | PASS | PASS | — | — | — | PASS |
+| default_no_time_travel | — | — | — | PASS | PASS | — | PASS | — | — | — | — | PASS |
+| digest_hr_preferred | — | — | — | — | — | — | — | — | — | — | PASS | PASS |
+| followup_cross_capability | — | — | — | PASS | PASS | — | PASS | — | PASS | — | — | PASS |
+| knowledge_offer_en | — | — | — | PASS | PASS | — | — | — | — | — | PASS | PASS |
+| knowledge_offer_hr | — | — | — | PASS | PASS | — | PASS | — | — | — | PASS | PASS |
+| memory_beats_model | PASS | — | — | PASS | PASS | — | PASS | — | — | — | — | PASS |
+| nothing_on_record | — | — | — | — | — | PASS | — | — | — | — | — | PASS |
+| open_with_entity | — | — | — | PASS | PASS | — | PASS | — | — | — | — | PASS |
+| point_in_time_march | — | — | — | PASS | PASS | — | PASS | — | — | — | — | PASS |
+| previously_decided | — | 100% | — | PASS | PASS | — | PASS | — | — | — | — | PASS |
+| reply_hr_zadnja | — | — | — | — | — | — | PASS | — | — | — | — | PASS |
+| reply_to_ana | — | — | — | — | — | — | PASS | — | — | — | — | PASS |
+| research_keeps_subject_hr | — | — | — | PASS | — | — | PASS | — | PASS | — | — | PASS |
+| research_minimise_drop | — | — | — | PASS | — | — | PASS | — | PASS | — | — | PASS |
+| skill_brief_en | — | — | — | PASS | — | — | PASS | — | — | PASS | — | PASS |
+| skill_brief_hr | — | — | — | PASS | — | — | PASS | — | — | PASS | PASS | PASS |
+| smalltalk_hvala_hr | — | — | — | PASS | PASS | — | — | — | — | — | PASS | PASS |
+| smalltalk_thanks | — | — | — | PASS | PASS | — | — | — | — | — | PASS | PASS |
+| strict_mode_hr | — | — | — | PASS | PASS | — | PASS | — | — | — | PASS | PASS |
+| whats_still_open | — | — | — | PASS | PASS | — | PASS | — | — | — | — | PASS |
+| who_is_ana | PASS | 14% | PASS | PASS | PASS | — | — | — | — | — | — | FAIL |
