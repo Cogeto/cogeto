@@ -19,8 +19,12 @@ export function pickResumeRun(runs: ResearchRunDto[], now: Date): ResearchRunDto
   const fresh = (iso: string | null) => iso !== null && new Date(iso).getTime() >= cutoff;
   const candidates = runs.filter(
     (run) =>
-      (run.status === 'approved' && fresh(run.approvedAt)) ||
-      (run.status === 'concluded' && run.answerSeenAt === null && fresh(run.concludedAt)),
+      // A seen answer never resumes, WHATEVER the status (issue #257): a run
+      // orphaned in 'approved' (pre-0057 pages settled with no conclusion
+      // trigger) must not haunt every chat load once acknowledged.
+      run.answerSeenAt === null &&
+      ((run.status === 'approved' && fresh(run.approvedAt)) ||
+        (run.status === 'concluded' && fresh(run.concludedAt))),
   );
   if (candidates.length === 0) return null;
   const at = (run: ResearchRunDto) =>

@@ -49,6 +49,9 @@ describe('research_resume', () => {
         concludedAt: hoursAgo(1),
         answerSeenAt: hoursAgo(1),
       }),
+      // Issue #257: an orphaned pre-0057 run stuck in 'approved' whose answer
+      // surface was already acknowledged must NOT haunt every chat load.
+      run({ id: 'approved-but-seen', answerSeenAt: hoursAgo(1) }),
       run({ id: 'cancelled', status: 'cancelled', approvedAt: null, cancelledAt: hoursAgo(1) }),
       run({ id: 'proposed', status: 'proposed', approvedAt: null, sentQuery: null }),
       run({ id: 'stale', approvedAt: hoursAgo(RESUME_WINDOW_HOURS + 1) }),
