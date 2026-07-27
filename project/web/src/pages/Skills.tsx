@@ -12,7 +12,7 @@ import {
   setSkillActionState,
 } from '../api';
 import type { Session } from '../auth/oidc';
-import { ResearchAnswer } from '../components/ResearchAnswer';
+import { BriefAnswer } from '../components/BriefAnswer';
 import { Shell } from '../components/Shell';
 import { briefExportText, gateOpen, runIsLive, runStatusLine } from '../components/skills-model';
 import type { Tone } from '../components/status';
@@ -401,9 +401,7 @@ function SkillRunView({ session, runId }: { session: Session; runId: string }) {
             </button>
           </div>
           <div className="mt-3">
-            <ResearchAnswer
-              answer={{ runId: run.id, answer: run.brief, citations: run.briefCitations }}
-            />
+            <BriefAnswer brief={run.brief} citations={run.briefCitations} />
           </div>
         </Card>
       )}
