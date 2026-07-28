@@ -91,7 +91,7 @@
       "lang": "en",
       "channel": "note",
       "daysAgo": 10,
-      "role": "PROMINENT open commitment to Marko WITH condition -> blocked task; the 'what did Ana promise Marko' answer",
+      "role": "PROMINENT open commitment to Marko WITH a stated condition — an open loop that reads as waiting; the 'what did Ana promise Marko' answer",
       "text": "Promised Marko I'd send him the revised Atlas migration proposal — but only once he confirms the Q3 budget on his side. Told him end of next week is realistic if the budget lands in time."
     },
     {
@@ -171,7 +171,7 @@
       "lang": "en",
       "channel": "note",
       "daysAgo": 5,
-      "role": "open commitment -> task (canon en-0009/0017)",
+      "role": "open commitment — a standing open loop (canon en-0009/0017)",
       "text": "Marko asked me to put together a risk register for Atlas — he needs it by Monday."
     },
     {
@@ -179,7 +179,7 @@
       "lang": "en",
       "channel": "note",
       "daysAgo": 8,
-      "role": "open loop WITH condition -> blocked task (canon en-0011)",
+      "role": "open loop WITH a stated condition (canon en-0011)",
       "text": "HubSpot contact cleanup has to happen before the Atlas import. That's blocked on Marko sending me the export format first."
     },
     {
@@ -187,7 +187,7 @@
       "lang": "en",
       "channel": "note",
       "daysAgo": 21,
-      "role": "DORMANT task: an old commitment gone quiet (>14 days, no follow-up)",
+      "role": "DORMANT: an old commitment gone quiet (>14 days, no follow-up) — the dormant_flag the attention feed reads",
       "text": "I still owe Thomas at Baltic Retail the vendor risk register. Need to pull it together and send it over."
     },
     {
@@ -227,7 +227,7 @@
       "lang": "hr",
       "channel": "note",
       "daysAgo": 4,
-      "role": "Croatian commitment -> task (to Marta)",
+      "role": "Croatian commitment — a standing open loop (to Marta)",
       "text": "Marti do kraja tjedna poslati finalnu tablicu mapiranja za Atlas migraciju."
     },
     {
@@ -251,7 +251,7 @@
       "lang": "en",
       "channel": "chat",
       "daysAgo": 3,
-      "role": "chat 'remember this' -> commitment -> task (canon en-0028)",
+      "role": "chat 'remember this' -> commitment, a standing open loop (canon en-0028)",
       "text": "I'll circulate the Q3 numbers to Marko once finance signs off.",
       "conversation": "Q3 reporting"
     },
