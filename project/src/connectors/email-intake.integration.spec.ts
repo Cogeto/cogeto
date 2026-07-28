@@ -585,7 +585,7 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     const stored = await ownedBy(result.emailIds[0]!);
     expect(stored.owner_id).toBe(customer.userId);
     // Self-route = written by the capture user (P6.5, decision 0054): the
-    // intake-time routing fact task derivation builds on.
+    // intake-time routing fact the pipeline stamps onto derived memories.
     expect(stored.authored_by_owner).toBe(true);
   });
 

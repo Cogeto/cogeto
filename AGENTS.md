@@ -57,8 +57,9 @@ over every other document.
 ## Async & jobs (§A.3, scope §6)
 
 - [ ] **Slow-path work never runs in the request path**: extraction, dedup,
-      contradiction checks, consolidation, reminders, deletion sagas, action
-      execution are worker jobs. The fast path is retrieval + answering only.
+      contradiction checks, consolidation, deletion sagas, action execution,
+      skill runs and passport exports are worker jobs. The fast path is
+      retrieval + answering only.
 - [ ] Enqueue is **transactional via the outbox** — nothing can be ingested and
       silently unprocessed.
 - [ ] Jobs are **idempotent** with key `(source_type, source_id, job_type)`;

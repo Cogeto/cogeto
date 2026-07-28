@@ -27,8 +27,6 @@ export const invalidateAfterGovernance = (qc: QueryClient): Promise<void> =>
     ['review-queue'],
     ['uncertain-count'],
     ['contradictions'],
-    ['tasks'],
-    ['task-count'],
   ]);
 
 /** A contradiction was resolved (confirm/correct/dismiss). */
@@ -39,23 +37,11 @@ export const invalidateAfterContradiction = (qc: QueryClient): Promise<void> =>
     ['memories'],
     ['memory'],
     ['uncertain-count'],
-    ['tasks'],
-    ['task-count'],
   ]);
-
-/** A task was settled (reopen/dismiss/complete). */
-export const invalidateAfterTaskOp = (qc: QueryClient): Promise<void> =>
-  invalidate(qc, [['tasks'], ['task-count']]);
 
 /** An approval was confirmed (approve/reject); its effect may outdate memories. */
 export const invalidateAfterApproval = (qc: QueryClient): Promise<void> =>
-  invalidate(qc, [
-    ['pending-approvals'],
-    ['approval-history'],
-    ['memories'],
-    ['memory'],
-    ['task-count'],
-  ]);
+  invalidate(qc, [['pending-approvals'], ['approval-history'], ['memories'], ['memory']]);
 
 /** A parked job was retried from the System view. */
 export const invalidateAfterJobRetry = (qc: QueryClient): Promise<void> =>
@@ -63,7 +49,7 @@ export const invalidateAfterJobRetry = (qc: QueryClient): Promise<void> =>
 
 /**
  * A source was truly deleted — the widest cascade (§A.7/§B.1): the memories, the
- * Forgotten ledger + chain, the sweep surface, derived tasks and contradictions,
+ * Forgotten ledger + chain, the sweep surface, contradictions,
  * and any chat turn that cited the erased facts.
  */
 export const invalidateAfterSourceDeletion = (qc: QueryClient): Promise<void> =>
@@ -74,8 +60,6 @@ export const invalidateAfterSourceDeletion = (qc: QueryClient): Promise<void> =>
     ['receipts'],
     ['chain-status'],
     ['integrity'],
-    ['tasks'],
-    ['task-count'],
     ['contradictions'],
     ['review-queue'],
     ['uncertain-count'],

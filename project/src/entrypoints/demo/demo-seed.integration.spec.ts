@@ -118,19 +118,39 @@ describe('Ana sandbox seed/reset (integration: real Postgres + Qdrant + MinIO)',
 
   /** Builds a world shaped exactly as the pipeline + dreaming produce it. */
   async function buildWorld(): Promise<string> {
-    // 8 active facts, one a Marko commitment (the demo answer).
+    // 8 active facts, one a Marko commitment (the demo answer). Three of them
+    // are standing OPEN LOOPS (decision 0060): commitment/open_loop kinds in a
+    // status that still stands — one due-dated, one gone quiet.
     const markoId = await fact(
       'Promised Marko the revised Atlas proposal once he confirms the Q3 budget.',
       { kind: 'commitment', entities: ['Marko'] },
     );
     const activeIds = [markoId];
-    for (let i = 0; i < 7; i += 1) {
+    activeIds.push(
+      await fact('Owe Ana the Atlas risk register.', {
+        kind: 'commitment',
+        entities: ['Ana'],
+      }),
+    );
+    activeIds.push(
+      await fact('Still waiting on the notary for the lease annex.', { kind: 'open_loop' }),
+    );
+    for (let i = 0; i < 5; i += 1) {
       activeIds.push(
         await fact(`Active fact number ${i}: Atlas migration detail ${i}.`, {
           kind: i % 2 ? 'decision' : 'fact',
         }),
       );
     }
+    // A due date on one open loop, and a dormant flag on another — the two
+    // signals the attention feed reads.
+    await tdb.pool.query(
+      `UPDATE memory SET valid_until = now() + interval '2 days' WHERE id = $1`,
+      [activeIds[1]],
+    );
+    await tdb.pool.query(`INSERT INTO dormant_flag (memory_id, reason) VALUES ($1, 'quiet')`, [
+      activeIds[2],
+    ]);
 
     // Contradiction pair (relation + both contradicted).
     const goliveA = await fact('Atlas CRM Migration go-live is September 1.', { kind: 'decision' });
@@ -160,13 +180,6 @@ describe('Ana sandbox seed/reset (integration: real Postgres + Qdrant + MinIO)',
       sourceId: objectKey,
     });
 
-    // Three derived tasks: blocked-on-condition, dormant, open.
-    await insertTask(activeIds[0]!, 'blocked_on_condition', {
-      condition: 'after Marko confirms the Q3 budget',
-    });
-    await insertTask(activeIds[1]!, 'open', { dormant: true });
-    await insertTask(activeIds[2]!, 'open', {});
-
     // Embed the world so Qdrant carries points (what reset must clear).
     await reindexMemories({
       db: tdb.db,
@@ -177,24 +190,6 @@ describe('Ana sandbox seed/reset (integration: real Postgres + Qdrant + MinIO)',
     });
     return objectKey;
   }
-
-  const insertTask = (
-    memoryId: string,
-    status: string,
-    opts: { condition?: string; dormant?: boolean },
-  ): Promise<unknown> =>
-    tdb.pool.query(
-      `INSERT INTO task (owner_id, scope, derived_from_memory_id, title, status, condition_text, dormant)
-       VALUES ($1, 'private', $2, $3, $4, $5, $6)`,
-      [
-        principal.userId,
-        memoryId,
-        'derived task',
-        status,
-        opts.condition ?? null,
-        opts.dormant ?? false,
-      ],
-    );
 
   const qdrantPointCount = async (): Promise<number> => {
     const res = await fetch(`${qdrant.url}/collections/memories/points/count`, {
@@ -220,7 +215,9 @@ describe('Ana sandbox seed/reset (integration: real Postgres + Qdrant + MinIO)',
     expect(state.statusCounts['contradicted']).toBeGreaterThanOrEqual(2);
     expect(state.statusCounts['outdated']).toBeGreaterThanOrEqual(1);
     expect(state.statusCounts['uncertain']).toBeGreaterThanOrEqual(1);
-    expect(state.blockedTasks).toBeGreaterThanOrEqual(1);
+    expect(state.openLoops).toBeGreaterThanOrEqual(3);
+    expect(state.dueDatedLoops).toBeGreaterThanOrEqual(1);
+    expect(state.dormantLoops).toBeGreaterThanOrEqual(1);
     expect(state.documentMemories).toBeGreaterThanOrEqual(1);
     expect(state.markoCommitments).toBeGreaterThanOrEqual(1);
   });
@@ -246,7 +243,6 @@ describe('Ana sandbox seed/reset (integration: real Postgres + Qdrant + MinIO)',
     expect(truncated).not.toContain('cogeto_migrations');
     expect(truncated).not.toContain('prompt_registry');
     expect(await count('memory')).toBe(0);
-    expect(await count('task')).toBe(0);
     expect(await count('file_metadata')).toBe(0);
     expect(await count('memory_relation')).toBe(0);
     expect(await qdrantPointCount()).toBe(0);
@@ -259,7 +255,7 @@ describe('Ana sandbox seed/reset (integration: real Postgres + Qdrant + MinIO)',
     expect(after.hardFailures).toHaveLength(0);
     expect(after.memories).toBe(before.memories);
     expect(after.statusCounts).toEqual(before.statusCounts);
-    expect(after.tasks).toBe(before.tasks);
+    expect(after.openLoops).toBe(before.openLoops);
     expect(after.contradictionRelations).toBe(before.contradictionRelations);
     expect(after.documentMemories).toBe(before.documentMemories);
   });

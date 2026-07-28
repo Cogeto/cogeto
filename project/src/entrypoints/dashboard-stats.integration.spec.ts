@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { MemoryScope, MemoryStatus, Principal, TaskStatus } from '@cogeto/shared';
+import type { MemoryScope, MemoryStatus, Principal } from '@cogeto/shared';
 import { startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
 import { UserContextService } from '../infrastructure/index';
 import { MemoryReconciliation, MemoryStore } from '../memory/index';
 import type { MemoryRow } from '../memory/index';
-import { TasksEngine } from '../tasks/index';
+import { RetrievalService } from '../retrieval/index';
 import type { ModelGateway } from '../model-gateway/index';
 import type { ApprovalService } from '../agents/index';
 import { AttentionService } from './attention.service';
@@ -39,7 +39,7 @@ describe('dashboard stats (integration, real Postgres)', () => {
     tdb = await startTestDatabase();
     store = new MemoryStore(tdb.db);
     const reconciliation = new MemoryReconciliation(tdb.db, store);
-    const tasks = new TasksEngine(tdb.db, store, throwingGateway);
+    const retrieval = new RetrievalService(store, throwingGateway, tdb.db);
     const fakeApprovals = {
       listPending: async (principal: Principal) =>
         Array.from({ length: pendingByOwner.get(principal.userId) ?? 0 }, (_, i) => ({
@@ -50,7 +50,7 @@ describe('dashboard stats (integration, real Postgres)', () => {
       tdb.db,
       store,
       reconciliation,
-      tasks,
+      retrieval,
       fakeApprovals,
       new UserContextService(tdb.db),
     );
@@ -86,13 +86,10 @@ describe('dashboard stats (integration, real Postgres)', () => {
     return row;
   };
 
-  const seedTask = async (owner: string, status: TaskStatus): Promise<void> => {
-    const mem = await seedMemory(owner);
-    await tdb.pool.query(
-      `INSERT INTO task (owner_id, scope, derived_from_memory_id, title, status)
-       VALUES ($1, 'private', $2, 'a task', $3)`,
-      [owner, mem.id, status],
-    );
+  /** One standing open loop: a commitment memory in a status that still stands. */
+  const seedOpenLoop = async (owner: string, status: MemoryStatus = 'active'): Promise<void> => {
+    const mem = await seedMemory(owner, { status });
+    await tdb.pool.query(`UPDATE memory SET kind = 'commitment' WHERE id = $1`, [mem.id]);
   };
 
   const seedDreamAction = async (
@@ -140,16 +137,20 @@ describe('dashboard stats (integration, real Postgres)', () => {
     expect(stats.review.uncertain).toBe(2);
   });
 
-  it('stats_correct: task counts are exact, owner-scoped', async () => {
-    const owner = `task-${randomUUID()}`;
-    await seedTask(owner, 'open');
-    await seedTask(owner, 'open');
-    await seedTask(owner, 'blocked_on_condition');
-    await seedTask(owner, 'done');
-    await seedTask(owner, 'dismissed');
+  it('stats_correct: the open-loop count is exact and owner-scoped', async () => {
+    const owner = `loops-${randomUUID()}`;
+    await seedOpenLoop(owner);
+    await seedOpenLoop(owner);
+    await seedOpenLoop(owner, 'uncertain'); // unconfirmed, but still standing
+    // Settled and disputed obligations are not open loops.
+    await seedOpenLoop(owner, 'outdated');
+    await seedOpenLoop(owner, 'replaced');
+    // A non-obligation fact never counts, whatever its status.
+    await seedMemory(owner);
 
     const stats = await attention.getStats(principalFor(owner));
-    expect(stats.tasks).toEqual({ open: 2, blocked: 1, done: 1, dismissed: 1 });
+    expect(stats.openLoops).toBe(3);
+    expect((await attention.getStats(principalFor(`other-${randomUUID()}`))).openLoops).toBe(0);
   });
 
   it('stats_correct: source series is grouped, windowed, and zero-filled', async () => {
@@ -239,7 +240,7 @@ describe('dashboard stats (integration, real Postgres)', () => {
       const runId = rows[0]!.id;
       for (let i = 0; i < multiplier; i += 1) {
         await seedMemory(owner, { status: 'uncertain' });
-        await seedTask(owner, 'open');
+        await seedOpenLoop(owner);
         await seedDreamAction(owner, 'dedup', runId);
       }
     };

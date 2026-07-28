@@ -93,7 +93,7 @@ export const attentionDismissal = pgTable(
 /**
  * Per-user instance context and language preference (migration 0029, decisions
  * 0051/0052/0053). Lives here, not in a domain module, because the context
- * feeds prompts in retrieval, connectors, ingestion and tasks alike — no
+ * feeds prompts in retrieval, connectors and ingestion alike — no
  * single bounded context owns it (§A.1 rule 2), exactly like attention_state.
  */
 export const userContext = pgTable('user_context', {

@@ -38,7 +38,7 @@ export class EmailSourceReader implements SourceReader {
     // AND the isolated content is the sender's own new text — not a forwarded
     // original's inner content, not the quoted-history fallback. A pre-0030 row
     // (authored_by_owner NULL) stays unknown until the backfill classifies it;
-    // unknown never derives a task.
+    // unknown stays unknown.
     const authoredByUser =
       row.authoredByOwner === null
         ? undefined

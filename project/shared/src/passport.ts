@@ -7,8 +7,20 @@
  * into every manifest — third parties read the schema for that version.
  */
 
-/** The published format version. Bump on any breaking schema change. */
-export const PASSPORT_VERSION = '1.0';
+/**
+ * The published format version. Bump on any breaking schema change.
+ *
+ * 2.0 (decision 0060) removed `tasks.json` and the manifest's required `tasks`
+ * count when the task subsystem went — a breaking change under decision 0029
+ * ruling 2, so the version bumped and `docs/passport-schema/` publishes the new
+ * schema alongside the 1.0 one. Archives stamped `1.0` stay readable and
+ * verifiable forever against the 1.0 schema; new exports are always 2.0.
+ */
+export const PASSPORT_VERSION = '2.0';
+
+/** Every version this codebase has ever published, newest first — the docs
+ * keep a schema for each, and `1.0` archives remain valid artifacts. */
+export const PASSPORT_VERSIONS_PUBLISHED = ['2.0', '1.0'] as const;
 
 /**
  * Export lifecycle: `pending` while the worker assembles it, `ready` when the

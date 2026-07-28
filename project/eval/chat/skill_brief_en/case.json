@@ -1,6 +1,6 @@
 {
   "case_id": "skill_brief_en",
-  "description": "The research-brief skill, live (Priority 7, decision 0059): the chat turn starts planning and sends nothing; the plan gate approves two queries and removes the rest; fixture pages extract through the real pipeline; the brief cites the seeded memory and the web with URL + fetch time; the seeded contradiction surfaces in the verify step; the fixture obligation becomes no task.",
+  "description": "The research-brief skill, live (Priority 7, decision 0059): the chat turn starts planning and sends nothing; the plan gate approves two queries and removes the rest; fixture pages extract through the real pipeline; the brief cites the seeded memory and the web with URL + fetch time; the seeded contradiction surfaces in the verify step; the run creates nothing of its own (decision 0060).",
   "anchor": "2026-07-21T09:00:00.000Z",
   "facts": [
     {

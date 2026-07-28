@@ -8,7 +8,7 @@ import type { SkillStepKind } from '@cogeto/shared';
  *
  * v1 ships exactly one skill. Adding a second means adding a definition here,
  * its prompt families, and its step handlers in the engine — never a change to
- * the runtime's governance (the gate, the no-direct-tasks rule, budgets).
+ * the runtime's governance (the gate, the creates-nothing rule, budgets).
  */
 
 export interface SkillStepDef {
@@ -27,14 +27,19 @@ export interface SkillDefinition {
   steps: SkillStepDef[];
 }
 
-/** skills/research_brief/v0001 — research a company or person before a meeting. */
+/** skills/research_brief/v0002 — research a company or person before a meeting. */
 export const RESEARCH_BRIEF_SKILL: SkillDefinition = {
   id: 'research_brief',
-  version: 'v0001',
+  // v0002 (decision 0060): the `propose_actions` step went with the task
+  // subsystem — a skill proposed adoption of an observed obligation as a task,
+  // and there is nothing to adopt into. Skills are versioned like prompts, so
+  // the plan change bumps the version; runs recorded under v0001 keep their
+  // step log and stay readable against the v0001 declaration.
+  version: 'v0002',
   name: 'Research a company or person before a meeting',
   description:
     'Gathers what you already know, proposes minimised searches for your approval, ' +
-    'reads the approved pages, and writes a sourced brief with proposed next steps.',
+    'reads the approved pages, and writes a sourced brief.',
   steps: [
     { key: 'gather_memory', kind: 'gather_from_memory', title: 'Checking what you already know' },
     {
@@ -46,7 +51,6 @@ export const RESEARCH_BRIEF_SKILL: SkillDefinition = {
     { key: 'read_pages', kind: 'fetch_and_extract', title: 'Reading the selected pages' },
     { key: 'verify', kind: 'verify', title: 'Verifying and reconciling what was found' },
     { key: 'write_brief', kind: 'synthesise', title: 'Writing the brief' },
-    { key: 'propose_actions', kind: 'propose_actions', title: 'Proposing next steps' },
   ],
 };
 

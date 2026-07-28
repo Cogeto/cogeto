@@ -81,7 +81,7 @@ export function isPastFact(status: MemoryStatus, validUntil: string | null): boo
 }
 
 /**
- * Relative due rendering for task rows (F3 handoff §4): "in 3 days", "due
+ * Relative due rendering for due-dated rows (F3 handoff §4): "in 3 days", "due
  * today", "overdue by 2 days". `overdue` drives the red treatment.
  */
 export function dueLabel(iso: string): { text: string; overdue: boolean } {

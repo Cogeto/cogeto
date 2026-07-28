@@ -6,6 +6,21 @@ self-contained search query + entity list, so multi-turn questions ("who is
 she?") retrieve their referent. Runs on the pipeline tier, bounded, with a
 graceful fallback to the raw query on timeout/error.
 
+## v0006 — 2026-07-28 (V2.0 item 3.1 — task removal)
+
+Open loops are memory-backed (decision 0060), and the rewriter is the one
+place where the removal is user-visible: with no task objects left, a turn
+phrased in to-do language is no longer a request against a feature, it is
+simply how people ask the open-loops question. `open_loops` gains the rule
+that "what's on my to-do list", "which tasks are still open", "koji su mi
+zadaci otvoreni" classify as `open_loops` — classify by what the question
+WANTS, never by the noun it uses — with one en few-shot. The deterministic
+create-a-task intent that used to intercept "make a task to …" before the
+router is gone entirely (decision 0038 retired); nothing in this prompt
+changes for it, since detection was always code-side. Rewriting rules,
+temporal, question-class, and the instance-context handling are unchanged
+from v0005.
+
 ## v0005 — 2026-07-24 (P6.6 instance context)
 
 Instance context (decision 0051): the input may open with `NOW` (date,

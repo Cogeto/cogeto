@@ -30,7 +30,7 @@ export interface SourceItem {
    * content is the user's OWN new text (a self-routed message that is not a
    * forwarded original), false when it is someone else's words, omitted when
    * unknown or not applicable (non-email sources). Derived memories carry it;
-   * task derivation treats email as first-person ONLY when true.
+   * structural provenance metadata: true = the user wrote this text.
    */
   authoredByUser?: boolean;
   /**

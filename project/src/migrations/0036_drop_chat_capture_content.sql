@@ -1,0 +1,21 @@
+-- Migration 0036 — drop `chat_message.capture_content` (V2.0 item 3.1;
+-- decision 0060).
+--
+-- The column (migration 0025) held the normalized commitment text a
+-- `create_task` chat intent captured from a turn — the pipeline's extraction
+-- input for that one flow, and its only writer. The intent went with the task
+-- subsystem in 0035 (decision 0038 retired by 0060), so the column now has no
+-- producer; the chat SourceReader reads the raw message again, as it does for
+-- every "remember this" capture.
+--
+-- Nothing provenance-bearing is lost. `chat_message.content` — the §A.6
+-- provenance target every chat-derived memory points at — is untouched, and
+-- memories already extracted from a capture keep their own content and their
+-- pointer to the message row.
+--
+-- Separate from 0035 on purpose: 0035 had already been applied on the
+-- development instance when this drop was identified, and the ledger records
+-- migration NAMES, not checksums — so a schema statement added to an applied
+-- file would silently never run. Schema changes always get a new number.
+
+ALTER TABLE chat_message DROP COLUMN IF EXISTS capture_content;

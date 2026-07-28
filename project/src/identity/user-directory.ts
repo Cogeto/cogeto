@@ -21,7 +21,7 @@ export class UserDirectory {
   /**
    * The org a user belongs to, or null when the directory has never seen them
    * (QS-13, decision 0025): how system-actor audit writers (reconciliation,
-   * task derivation, staleness transitions) stamp org_id on entries that have
+   * staleness transitions, consolidation) stamp org_id on entries that have
    * an owner but no Principal in scope. Name-book semantics apply: this never
    * grants visibility, it only labels the trail.
    */

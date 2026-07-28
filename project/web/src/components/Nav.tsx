@@ -9,7 +9,6 @@ export type NavSection =
   | 'research'
   | 'skills'
   | 'timeline'
-  | 'tasks'
   | 'review'
   | 'approvals'
   | 'forgotten'
@@ -24,7 +23,6 @@ const ENABLED: { key: NavSection; label: string; href: string }[] = [
   { key: 'research', label: 'Research', href: '/research' },
   { key: 'skills', label: 'Skills', href: '/skills' },
   { key: 'timeline', label: 'Time travel', href: '/timeline' },
-  { key: 'tasks', label: 'Tasks', href: '/tasks' },
   { key: 'review', label: 'Review', href: '/review' },
   { key: 'approvals', label: 'Approvals', href: '/approvals' },
   { key: 'forgotten', label: 'Forgotten', href: '/forgotten' },
@@ -34,7 +32,6 @@ const ENABLED: { key: NavSection; label: string; href: string }[] = [
 ];
 
 const BADGE_LABEL: Partial<Record<NavSection, string>> = {
-  tasks: 'open tasks',
   review: 'items to review',
   approvals: 'pending approvals',
 };
@@ -96,12 +93,6 @@ const ICONS: Record<NavSection, ReactNode> = {
       <path d="M10 6v4l2.6 1.6" />
     </svg>
   ),
-  tasks: (
-    <svg viewBox="0 0 20 20" {...G}>
-      <circle cx="10" cy="10" r="7" />
-      <path d="M6.8 10.2 9 12.4 13.4 8" />
-    </svg>
-  ),
   review: (
     <svg viewBox="0 0 20 20" {...G}>
       <path d="M10 2.6 16.5 5.4v4.3c0 4-2.7 6.6-6.5 7.7C6.2 16.3 3.5 13.7 3.5 9.7V5.4z" />
@@ -156,7 +147,6 @@ export function Nav({
   active,
   reviewCount,
   approvalsCount,
-  tasksCount,
   dashboardUnread = 0,
   showSystem = false,
   userName,
@@ -165,7 +155,6 @@ export function Nav({
   active: NavSection;
   reviewCount?: number;
   approvalsCount?: number;
-  tasksCount?: number;
   /** Unread attention items — a calm dot on the Dashboard item (Post-v1 P2). */
   dashboardUnread?: number;
   /** System is an operator surface (admin role, QS-10) — hidden for plain
@@ -175,7 +164,6 @@ export function Nav({
   orgName?: string;
 }) {
   const badges: Partial<Record<NavSection, number>> = {
-    tasks: tasksCount ?? 0,
     review: reviewCount ?? 0,
     approvals: approvalsCount ?? 0,
   };

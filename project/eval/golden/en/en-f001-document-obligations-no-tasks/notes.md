@@ -1,6 +1,9 @@
-Derivation trap (P6.5, decision 0054): an uploaded document (extracted text)
-dense with contractual obligations. Uploading a contract must never create
-tasks — the obligations belong to the document's parties as observed facts.
-All become memories; `expected_tasks: 0` is the hard assertion against the
-real first-person predicate. The user adopts any clause that genuinely is
-theirs via "Make this a task".
+Observed-obligation case: an uploaded document (extracted text) dense with
+contractual obligations belonging to the document's parties, not to the user.
+Every clause must land as a memory — extracted, verified, citable — so the
+answer path can cite it, and the extractor must not turn third-party
+obligations into claims about the user.
+
+Originally a P6.5 derivation trap (decision 0054, `expected_tasks: 0`). The
+task subsystem was removed in 2.0 (decision 0060), so the task assertion is
+gone; the case id is kept so published scores stay comparable.

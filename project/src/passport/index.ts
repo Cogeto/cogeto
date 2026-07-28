@@ -19,11 +19,10 @@ export type { PassportInput, AssembledPassport, PassportSubject } from './passpo
 export {
   manifestSchema,
   memoriesDocSchema,
-  tasksDocSchema,
   receiptsDocSchema,
   sha256Hex,
   PASSPORT_PATHS,
 } from './passport-format';
-export type { Manifest, MemoryExport, TaskExport, ReceiptExport } from './passport-format';
+export type { Manifest, MemoryExport, ReceiptExport } from './passport-format';
 export { createZip, readZip } from './zip';
 export type { ZipEntry } from './zip';

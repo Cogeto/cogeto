@@ -1,19 +1,17 @@
 import type { ChatFactDto } from '@cogeto/shared';
 import { mapMarkersToCitations, mapUnsourcedMarkers, sanitizeAnswer } from '@cogeto/shared';
 import type { MemoryChange } from '../../memory/index';
-import type { TaskRow } from '../../tasks/index';
 import type { ConversationTurn, TemporalIntent } from '../query-rewrite';
-import type { RetrievalMode } from '../retrieval.service';
+import type { OpenLoop, RetrievalMode } from '../retrieval.service';
 
 /**
  * The answer prompt family (§B.7): versioned artifact in project/prompts/answer,
  * registered on worker boot alongside the ingestion families.
  */
-export const ANSWER_PROMPT = { family: 'answer', version: 'v0006' } as const;
+export const ANSWER_PROMPT = { family: 'answer', version: 'v0007' } as const;
 
 /** The zero-open-loops path (F3-B): a true "all clear", not a data gap. */
-export const NOTHING_OPEN =
-  'Nothing is still open — every commitment on record is done or dismissed.';
+export const NOTHING_OPEN = 'Nothing is still open — nothing on record is waiting on you.';
 
 /**
  * Localized forms of the two deterministic chat replies (decision 0052): a
@@ -22,7 +20,7 @@ export const NOTHING_OPEN =
  */
 export function nothingOpen(lang: 'en' | 'hr'): string {
   return lang === 'hr'
-    ? 'Ništa više nije otvoreno — svaka zabilježena obveza je dovršena ili odbačena.'
+    ? 'Ništa više nije otvoreno — ništa zabilježeno ne čeka na tebe.'
     : NOTHING_OPEN;
 }
 
@@ -35,8 +33,8 @@ export function nothingOnRecord(lang: 'en' | 'hr'): string {
 export interface AnswerTemporalContext {
   temporal?: TemporalIntent;
   changes?: MemoryChange[];
-  /** Open/blocked tasks, when mode is tasks (decision 0013 ruling 7). */
-  tasks?: TaskRow[];
+  /** What is still standing, when mode is open_loops (decision 0060). */
+  openLoops?: OpenLoop[];
   /**
    * Knowledge-class question (decision 0046): emits the `GENERAL KNOWLEDGE:
    * allowed` line, permitting marked `[U]` statements from model knowledge.
@@ -105,18 +103,15 @@ export function buildAnswerInput(
   if (extras.temporal?.at) {
     lines.push('', `ASKED ABOUT THE STATE AT: ${extras.temporal.at.toISOString().slice(0, 10)}`);
   }
-  if (extras.tasks && extras.tasks.length > 0) {
-    lines.push('', 'OPEN LOOPS (the tasks still standing — answer from THESE):');
-    for (const t of extras.tasks) {
-      const marker = markerById.get(t.derivedFromMemoryId);
+  if (extras.openLoops && extras.openLoops.length > 0) {
+    lines.push('', 'OPEN LOOPS (what is still standing — answer from THESE):');
+    for (const loop of extras.openLoops) {
+      const marker = markerById.get(loop.memory.id);
       const parts = [
-        `- ${marker ? `[${marker}] ` : ''}${t.title}`,
-        t.status === 'blocked_on_condition' && t.conditionText
-          ? `| waiting on: ${t.conditionText}`
-          : '',
-        t.due ? `| due: ${t.due.toISOString().slice(0, 10)}` : '',
-        t.dormant ? '| quiet for a while' : '',
-        t.fromUncertain ? '| unconfirmed (awaiting review)' : '',
+        `- ${marker ? `[${marker}] ` : ''}${(loop.memory.content ?? '').trim()}`,
+        loop.memory.validUntil ? `| due: ${loop.memory.validUntil.toISOString().slice(0, 10)}` : '',
+        loop.dormant ? '| quiet for a while' : '',
+        loop.memory.status === 'uncertain' ? '| unconfirmed' : '',
       ].filter(Boolean);
       lines.push(parts.join(' '));
     }

@@ -16,9 +16,9 @@ export interface DemoEndState {
   memories: number;
   contradictionRelations: number;
   replaced: number;
-  tasks: number;
-  blockedTasks: number;
-  dormantTasks: number;
+  openLoops: number;
+  dueDatedLoops: number;
+  dormantLoops: number;
   documentMemories: number;
   markoCommitments: number;
   hardFailures: string[];
@@ -26,7 +26,15 @@ export interface DemoEndState {
 }
 
 const MIN_ACTIVE = 8;
-const MIN_TASKS = 3;
+/** The world must contain standing obligations — the open-loops answer's input
+ * (decision 0060: read from memory, no derived table behind them). */
+const MIN_OPEN_LOOPS = 3;
+
+/** Kinds and statuses that make a memory an OPEN LOOP — the same definition
+ * MemoryStore.openLoopsForPrincipal applies, kept in SQL here because the
+ * assertions read the seeded database directly. */
+const OPEN_LOOP_PREDICATE = `kind IN ('commitment', 'open_loop')
+     AND status IN ('active', 'user_approved', 'uncertain')`;
 
 export async function inspectEndState(pool: Pool, ownerId: string): Promise<DemoEndState> {
   const statusRows = await pool.query<{ status: string; n: string }>(
@@ -47,13 +55,19 @@ export async function inspectEndState(pool: Pool, ownerId: string): Promise<Demo
        WHERE kind = 'contradicts' AND resolution IS NULL`,
   );
   const replaced = statusCounts['replaced'] ?? 0;
-  const tasks = await one('SELECT count(*)::text AS n FROM task WHERE owner_id = $1', [ownerId]);
-  const blockedTasks = await one(
-    `SELECT count(*)::text AS n FROM task WHERE owner_id = $1 AND status = 'blocked_on_condition'`,
+  const openLoops = await one(
+    `SELECT count(*)::text AS n FROM memory WHERE owner_id = $1 AND ${OPEN_LOOP_PREDICATE}`,
     [ownerId],
   );
-  const dormantTasks = await one(
-    `SELECT count(*)::text AS n FROM task WHERE owner_id = $1 AND dormant = true`,
+  const dueDatedLoops = await one(
+    `SELECT count(*)::text AS n FROM memory
+       WHERE owner_id = $1 AND valid_until IS NOT NULL AND ${OPEN_LOOP_PREDICATE}`,
+    [ownerId],
+  );
+  const dormantLoops = await one(
+    `SELECT count(*)::text AS n FROM dormant_flag f
+       JOIN memory m ON m.id = f.memory_id
+      WHERE m.owner_id = $1 AND f.cleared_at IS NULL`,
     [ownerId],
   );
   const documentMemories = await one(
@@ -89,8 +103,10 @@ export async function inspectEndState(pool: Pool, ownerId: string): Promise<Demo
   );
   need(outdated >= 1, `expected ≥ 1 outdated (lapsed) memory, got ${outdated}`);
   need(uncertain >= 1, `expected ≥ 1 uncertain (hedged) memory, got ${uncertain}`);
-  need(tasks >= MIN_TASKS, `expected ≥ ${MIN_TASKS} derived tasks, got ${tasks}`);
-  need(blockedTasks >= 1, `expected ≥ 1 blocked-on-condition task, got ${blockedTasks}`);
+  need(
+    openLoops >= MIN_OPEN_LOOPS,
+    `expected ≥ ${MIN_OPEN_LOOPS} standing open loops, got ${openLoops}`,
+  );
   need(
     documentMemories >= 1,
     `expected ≥ 1 memory derived from the uploaded document, got ${documentMemories}`,
@@ -101,16 +117,20 @@ export async function inspectEndState(pool: Pool, ownerId: string): Promise<Demo
   );
 
   want(replaced >= 1, `expected a supersession chain (≥1 replaced memory), got ${replaced}`);
-  want(dormantTasks >= 1, `expected ≥ 1 dormant task, got ${dormantTasks}`);
+  want(
+    dueDatedLoops >= 1,
+    `expected ≥ 1 due-dated open loop (the attention feed's input), got ${dueDatedLoops}`,
+  );
+  want(dormantLoops >= 1, `expected ≥ 1 memory gone quiet (dormant flag), got ${dormantLoops}`);
 
   return {
     statusCounts,
     memories,
     contradictionRelations,
     replaced,
-    tasks,
-    blockedTasks,
-    dormantTasks,
+    openLoops,
+    dueDatedLoops,
+    dormantLoops,
     documentMemories,
     markoCommitments,
     hardFailures,
@@ -136,7 +156,7 @@ export function summarize(state: DemoEndState): string {
   return (
     `memories=${state.memories} [${statuses}] · ` +
     `contradiction-relations=${state.contradictionRelations} · replaced=${state.replaced} · ` +
-    `tasks=${state.tasks} (blocked=${state.blockedTasks}, dormant=${state.dormantTasks}) · ` +
+    `open-loops=${state.openLoops} (due-dated=${state.dueDatedLoops}, quiet=${state.dormantLoops}) · ` +
     `document-memories=${state.documentMemories} · marko-commitments=${state.markoCommitments}`
   );
 }

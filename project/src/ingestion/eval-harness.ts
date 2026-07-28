@@ -51,13 +51,7 @@ const expectedFileSchema = z.object({
   must_not_extract: z.array(z.string()).default([]),
   expected_relations: z.array(z.unknown()).default([]),
   verification_expected: z.enum(['supported', 'partial', 'unsupported']).optional(),
-  /**
-   * Derivation trap (P6.5; decision 0054): hard-assert how many TASKS this
-   * case's extraction would derive under the first-person rule. The eval
-   * entrypoint checks it against the tasks module's REAL predicate.
-   */
-  expected_tasks: z.number().int().min(0).optional(),
-  /** Email trap cases: the fixture's declared intake routing (self-sent?). */
+  /** Email cases: the fixture's declared intake routing (self-sent?). */
   email_authored_by_owner: z.boolean().optional(),
 });
 
@@ -83,30 +77,12 @@ export interface EvalMetrics {
   verificationAgreement: number;
 }
 
-/**
- * A derivation-trap case's collected inputs (P6.5) — structurally identical to
- * the tasks module's DerivationTrapInput; defined here too because ingestion
- * never imports tasks (the dependency runs the other way). The eval entrypoint
- * bridges the two.
- */
-export interface DerivationTrapCase {
-  caseId: string;
-  lang: string;
-  sourceType: SourceType;
-  authoredByUser: boolean | null;
-  expectedTasks: number;
-  factKinds: (string | null)[];
-}
-
 export interface EvalRunResult {
   perLanguage: EvalMetrics[];
   aggregate: EvalMetrics;
   config: EvalConfig;
   promptVersions: string;
   caseCount: number;
-  /** Cases carrying `expected_tasks` — checked by the eval entrypoint against
-   * the real derivation rule (P6.5). */
-  derivationTraps: DerivationTrapCase[];
 }
 
 interface LoadedCase {
@@ -155,10 +131,10 @@ async function loadCases(goldenDir: string): Promise<LoadedCase[]> {
       .sort();
     for (const dir of caseDirs) {
       const base = path.join(goldenDir, lang, dir);
-      // Pair cases (pair.json — F2-A; task-pair.json — F3-B) belong to their
-      // own harnesses; this one scores extraction cases only.
+      // Pair cases (pair.json — F2-A) belong to the reconciliation harness;
+      // this one scores extraction cases only.
       const entries = await readdir(base);
-      if (entries.includes('pair.json') || entries.includes('task-pair.json')) continue;
+      if (entries.includes('pair.json')) continue;
       const source = await readFile(path.join(base, 'source.txt'), 'utf8');
       const expected = expectedFileSchema.parse(
         JSON.parse(await readFile(path.join(base, 'expected.json'), 'utf8')),
@@ -210,8 +186,6 @@ export async function runGoldenEval(options: {
 
   const byLang = new Map<string, EvalMetrics>();
   const aggregate = emptyMetrics('aggregate');
-  const derivationTraps: DerivationTrapCase[] = [];
-
   for (const testCase of cases) {
     const metrics = byLang.get(testCase.lang) ?? emptyMetrics(testCase.lang);
     byLang.set(testCase.lang, metrics);
@@ -228,7 +202,7 @@ export async function runGoldenEval(options: {
     const isEmail = testCase.expected.source_type === 'email';
     // Web cases carry the fetcher's OUTPUT (clean readable text) as source.txt —
     // production preprocessing happened before the pipeline, so no prep here.
-    // File cases likewise carry the extracted document text (P6.5 traps).
+    // File cases likewise carry the extracted document text.
     const isWeb = testCase.expected.source_type === 'web';
     const isFile = testCase.expected.source_type === 'file';
     const isolated = isEmail ? isolateEmailContentDetailed(testCase.source) : null;
@@ -241,7 +215,7 @@ export async function runGoldenEval(options: {
           ? 'file'
           : 'user_note';
     // The email authorship verdict, exactly as the SourceReader computes it
-    // live (P6.5): the fixture declares the intake routing; the forward /
+    // live: the fixture declares the intake routing; the forward /
     // quoted-fallback half comes from the isolation itself.
     const authoredByUser =
       isEmail && isolated
@@ -272,30 +246,7 @@ export async function runGoldenEval(options: {
       metrics.mustExtractLabels += mustExtract;
       aggregate.cases += 1;
       aggregate.mustExtractLabels += mustExtract;
-      if (testCase.expected.expected_tasks !== undefined) {
-        // A failed trap case still reaches the check — with no facts, a
-        // nonzero expectation fails loudly rather than passing by accident.
-        derivationTraps.push({
-          caseId: testCase.caseId,
-          lang: testCase.lang,
-          sourceType,
-          authoredByUser,
-          expectedTasks: testCase.expected.expected_tasks,
-          factKinds: [],
-        });
-      }
       continue;
-    }
-
-    if (testCase.expected.expected_tasks !== undefined) {
-      derivationTraps.push({
-        caseId: testCase.caseId,
-        lang: testCase.lang,
-        sourceType,
-        authoredByUser,
-        expectedTasks: testCase.expected.expected_tasks,
-        factKinds: facts.map((fact) => fact.kind ?? null),
-      });
     }
 
     // Semantic matching: greedy best-similarity assignment, expected → fact.
@@ -386,6 +337,5 @@ export async function runGoldenEval(options: {
     config,
     promptVersions: `${EXTRACTION_PROMPT.family}/${EXTRACTION_PROMPT.version} + ${VERIFICATION_PROMPT.family}/${VERIFICATION_PROMPT.version}`,
     caseCount: cases.length,
-    derivationTraps,
   };
 }

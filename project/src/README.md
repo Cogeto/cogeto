@@ -1,7 +1,7 @@
 # src/ — application source root
 
 One directory per DDD bounded context (Addendum §A.1): `memory`, `ingestion`, `retrieval`,
-`agents`, `connectors`, `tasks`, `identity`, `model-gateway`, plus `entrypoints` (app, worker).
+`agents`, `connectors`, `identity`, `model-gateway`, plus `entrypoints` (app, worker).
 
 Module rules (binding, CI-enforced — Addendum §A.1):
 1. Each module exposes exactly **one public interface**; internals are private.

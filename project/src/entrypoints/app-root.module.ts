@@ -23,12 +23,6 @@ import {
   SkillsModule,
   WebSourceDeletion,
 } from '../connectors/index';
-import {
-  TaskConclusionSourceDeletion,
-  TaskConclusionSourceModule,
-  TasksCascade,
-  TasksModule,
-} from '../tasks/index';
 import { PassportModule, PASSPORT_EXPORT_RETENTION_HOURS } from '../passport/index';
 import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG, mailOptions, redactionOptions, researchOptions } from './config';
@@ -96,17 +90,15 @@ export function createAppRootModule(config: CogetoConfig): unknown {
             // A whole conversation is a deletable source (P6.9, decision 0056).
             ConversationSourceDeletion,
             EmailSourceDeletion,
-            // Conclusion rows are deletable sources too (decision 0037).
-            TaskConclusionSourceDeletion,
             // Web pages are deletable sources (Priority 5 Part A, 0043).
             WebSourceDeletion,
           ],
         },
         derivedCascades: {
-          imports: [TasksModule.forApi(), ChatSourceModule, ReplyDraftCascadeModule],
-          // Tasks are deleted with their memories; assistant answers citing
-          // erased memories are redacted (QS-7, decision 0025).
-          adapters: [TasksCascade, ChatAnswerCascade, ReplyDraftCascade],
+          imports: [ChatSourceModule, ReplyDraftCascadeModule],
+          // Assistant answers citing erased memories are redacted (QS-7,
+          // decision 0025); reply drafts grounded on the source are too (SEC-4).
+          adapters: [ChatAnswerCascade, ReplyDraftCascade],
         },
         // Delete-vs-ingestion serialization (QS-5, decision 0024): the saga
         // cancels a source's pending pipeline run inside its enumeration tx.
@@ -114,7 +106,6 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       }),
       RetrievalModule,
       ChatSourceModule, // the chat source-deletion adapter for the delete endpoint
-      TaskConclusionSourceModule, // ditto for task conclusions (decision 0037)
       IngestionModule.forQueries(), // verification + dreaming read endpoints
       AgentsModule,
       ConnectorsModule.register({
@@ -125,10 +116,6 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         mail: mailOptions(config),
         research: researchOptions(config),
       }),
-      TasksModule.forApi(),
-      // The digest's TASKS section as a global provider, so ingestion's digest
-      // endpoint can inject it without importing tasks (O2-A; F3 handoff §3).
-      TasksModule.forDigest(),
       // Reply drafting + the chat → reply resolver (O4) — app-only (needs
       // RetrievalService + ApprovalService); the worker never drafts. Global, so
       // ChatService resolves CHAT_REPLY_RESOLVER.
@@ -160,8 +147,9 @@ export function createAppRootModule(config: CogetoConfig): unknown {
     ],
     providers: [
       { provide: COGETO_CONFIG, useValue: config },
-      // The attention/stats aggregator composes memory, tasks, agents and the
-      // dreaming digest through their public interfaces (Post-v1 Priority 2).
+      // The attention/stats aggregator composes memory, retrieval's open-loops
+      // read, agents and the dreaming digest through their public interfaces
+      // (Post-v1 Priority 2).
       AttentionService,
       // The capability registry (P6.7, decision 0055): /api/health's
       // capability/job summaries and the boot banner read one snapshot.

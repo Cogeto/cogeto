@@ -30,6 +30,5 @@
   ],
   "must_not_extract": [],
   "expected_relations": [],
-  "verification_expected": "supported",
-  "expected_tasks": 0
+  "verification_expected": "supported"
 }

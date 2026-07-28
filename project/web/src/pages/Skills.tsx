@@ -3,13 +3,11 @@ import type { FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SkillRunDetailDto, SkillRunDto, SkillRunStepDto } from '@cogeto/shared';
 import {
-  adoptMemoryAsTask,
   approveSkillPlan,
   cancelSkillRun,
   fetchSkillRun,
   fetchSkillRuns,
   proposeSkillRun,
-  setSkillActionState,
 } from '../api';
 import type { Session } from '../auth/oidc';
 import { BriefAnswer } from '../components/BriefAnswer';
@@ -219,20 +217,6 @@ function SkillRunView({ session, runId }: { session: Session; runId: string }) {
     onSuccess: refresh,
     onError: (e: Error) => setError(e.message),
   });
-  const decide = useMutation({
-    mutationFn: async (input: { memoryId: string; state: 'accepted' | 'dismissed' }) => {
-      // Accepting IS the existing adoption path (audited user-adopted, decision
-      // 0054); the skill run only records the decision on the proposal.
-      if (input.state === 'accepted') await adoptMemoryAsTask(session, input.memoryId);
-      return setSkillActionState(session, runId, input.memoryId, input.state);
-    },
-    onSuccess: (detail) => {
-      refresh(detail);
-      void queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    },
-    onError: (e: Error) => setError(e.message),
-  });
-
   if (runQuery.isPending) {
     return (
       <Card>
@@ -403,59 +387,6 @@ function SkillRunView({ session, runId }: { session: Session; runId: string }) {
           <div className="mt-3">
             <BriefAnswer brief={run.brief} citations={run.briefCitations} />
           </div>
-        </Card>
-      )}
-
-      {run.proposedActions.length > 0 && (
-        <Card>
-          <SectionTitle>Proposed actions</SectionTitle>
-          <p className="mt-1 text-sm text-slate-600">
-            Nothing here exists yet. Accepting adopts the underlying memory as a task, audited as
-            your decision; dismissing just records that you passed.
-          </p>
-          <ul className="mt-3 space-y-2">
-            {run.proposedActions.map((action) => (
-              <li
-                key={action.memoryId}
-                className="flex items-center gap-3 rounded-lg border border-slate-200 p-3"
-              >
-                <a
-                  href={`/memories?open=${action.memoryId}`}
-                  className="min-w-0 flex-1 truncate text-sm text-slate-800 hover:underline"
-                >
-                  {action.title}
-                </a>
-                {action.state === 'proposed' ? (
-                  <span className="flex shrink-0 gap-2">
-                    <button
-                      type="button"
-                      className={btnPrimary}
-                      disabled={decide.isPending}
-                      onClick={() =>
-                        decide.mutate({ memoryId: action.memoryId, state: 'accepted' })
-                      }
-                    >
-                      Accept as task
-                    </button>
-                    <button
-                      type="button"
-                      className={btnSecondary}
-                      disabled={decide.isPending}
-                      onClick={() =>
-                        decide.mutate({ memoryId: action.memoryId, state: 'dismissed' })
-                      }
-                    >
-                      Dismiss
-                    </button>
-                  </span>
-                ) : (
-                  <Pill tone={action.state === 'accepted' ? 'positive' : 'neutral'}>
-                    {action.state}
-                  </Pill>
-                )}
-              </li>
-            ))}
-          </ul>
         </Card>
       )}
     </div>

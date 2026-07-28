@@ -6,8 +6,6 @@ import type { TestDatabase, TestQdrant } from '../testing/index';
 import { createMemoryStore } from '../memory/index';
 import type { MemoryRow, MemoryStore, NewFact } from '../memory/index';
 import { UserDirectory } from '../identity/index';
-import { TasksEngine } from '../tasks/index';
-import { ModelGateway } from '../model-gateway/index';
 
 /**
  * The cross-user scope proof (O2-B). Two Principals in ONE org (A, B) plus a
@@ -36,32 +34,11 @@ const principal = (userId: string, orgId: string): Principal => ({
   roles: [],
 });
 
-/** Only embed() is used (query vector); the rest never fires in this suite. */
-class FixedGateway extends ModelGateway {
-  complete(): never {
-    throw new Error('unused');
-  }
-  // eslint-disable-next-line require-yield -- unused
-  async *completeStream(): AsyncIterable<string> {
-    throw new Error('unused');
-  }
-  async embed(): Promise<number[][]> {
-    return [VEC];
-  }
-  embeddingModelId(): string {
-    return EMBED;
-  }
-  async extractStructured<T>(): Promise<T> {
-    throw new Error('unused');
-  }
-}
-
 describe('cross-user scope isolation (integration, real Postgres + Qdrant)', () => {
   let tdb: TestDatabase;
   let qdrant: TestQdrant;
   let store: MemoryStore;
   let directory: UserDirectory;
-  let tasks: TasksEngine;
 
   // org alpha: A and B; org beta: C.
   const orgAlpha = `alpha-${randomUUID()}`;
@@ -78,7 +55,6 @@ describe('cross-user scope isolation (integration, real Postgres + Qdrant)', () 
     });
     await store.ensureIndexReady();
     directory = new UserDirectory(tdb.db);
-    tasks = new TasksEngine(tdb.db, store, new FixedGateway());
     await Promise.all([directory.record(A), directory.record(B), directory.record(C)]);
   });
   afterAll(async () => {
@@ -227,46 +203,81 @@ describe('cross-user scope isolation (integration, real Postgres + Qdrant)', () 
     // asserted here. In production C authenticates against a different instance.
   });
 
-  it('tasks_shared_visible_read_only: A’s shared commitment task is visible to B but only A settles it', async () => {
-    const src = randomUUID();
+  it('open_loops_shared_visible: A’s shared commitment reaches B’s open loops', async () => {
     const sharedCommit = await store.createFromFact(A, {
       content: 'You will circulate the Puffin summary.',
       scope: 'shared',
       sourceType: 'user_note',
-      sourceId: src,
+      sourceId: randomUUID(),
       entities: ['Puffin'],
       kind: 'commitment',
       embeddingModel: EMBED,
     } as NewFact);
-    await tdb.db.transaction((tx) => tasks.processSource(tx, 'user_note', src));
 
-    const bTasks = await tasks.listForPrincipal(B);
-    const bIds = new Set(bTasks.map((t) => t.derivedFromMemoryId));
-    expect(bIds).toContain(sharedCommit.id); // shared task visible org-wide
-
-    const t = bTasks.find((x) => x.derivedFromMemoryId === sharedCommit.id)!;
-    // B cannot settle it — owner-only ops 404.
-    await expect(tasks.complete(B, t.id)).rejects.toThrow(/not found/i);
-    await expect(tasks.dismiss(B, t.id)).rejects.toThrow(/not found/i);
-    // A can.
-    const done = await tasks.complete(A, t.id);
-    expect(done.status).toBe('done');
+    const bLoops = await store.openLoopsForPrincipal(B);
+    expect(bLoops.map((m) => m.id)).toContain(sharedCommit.id);
   });
 
-  it('tasks_private_not_visible_to_peer: A’s private commitment task never reaches B', async () => {
-    const src = randomUUID();
-    await store.createFromFact(A, {
+  it('open_loops_private_not_visible_to_peer: A’s private commitment never reaches B', async () => {
+    const priv = await store.createFromFact(A, {
       content: 'You will file the private Gecko report.',
       scope: 'private',
       sourceType: 'user_note',
-      sourceId: src,
+      sourceId: randomUUID(),
       entities: ['Gecko'],
       kind: 'commitment',
       embeddingModel: EMBED,
     } as NewFact);
-    await tdb.db.transaction((tx) => tasks.processSource(tx, 'user_note', src));
-    const bIds = new Set((await tasks.listForPrincipal(B)).map((t) => t.title));
-    expect([...bIds].some((title) => title.includes('Gecko'))).toBe(false);
+    const bLoops = await store.openLoopsForPrincipal(B);
+    expect(bLoops.map((m) => m.id)).not.toContain(priv.id);
+    expect(bLoops.some((m) => (m.content ?? '').includes('Gecko'))).toBe(false);
+    // …and A still sees their own.
+    expect((await store.openLoopsForPrincipal(A)).map((m) => m.id)).toContain(priv.id);
+  });
+
+  it('open_loops_sensitive_gated: a sensitive commitment needs the owner’s opt-in', async () => {
+    const sensitive = await store.createFromFact(A, {
+      content: 'You will renegotiate the confidential Osprey retainer.',
+      scope: 'shared',
+      sourceType: 'user_note',
+      sourceId: randomUUID(),
+      entities: ['Osprey'],
+      kind: 'commitment',
+      sensitive: true,
+      embeddingModel: EMBED,
+    } as NewFact);
+    // Excluded by default, even for the owner.
+    expect((await store.openLoopsForPrincipal(A)).map((m) => m.id)).not.toContain(sensitive.id);
+    // Returned to the owner on explicit opt-in …
+    expect(
+      (await store.openLoopsForPrincipal(A, { includeSensitive: true })).map((m) => m.id),
+    ).toContain(sensitive.id);
+    // … and never to a peer, opt-in or not.
+    expect(
+      (await store.openLoopsForPrincipal(B, { includeSensitive: true })).map((m) => m.id),
+    ).not.toContain(sensitive.id);
+  });
+
+  it('open_loops_settled_excluded: outdated/replaced commitments stop standing', async () => {
+    const src = randomUUID();
+    const commitment = await store.createFromFact(A, {
+      content: 'You will send the Kestrel invoice.',
+      scope: 'private',
+      sourceType: 'user_note',
+      sourceId: src,
+      entities: ['Kestrel'],
+      kind: 'commitment',
+      embeddingModel: EMBED,
+    } as NewFact);
+    expect((await store.openLoopsForPrincipal(A)).map((m) => m.id)).toContain(commitment.id);
+
+    await store.transition(
+      { kind: 'user', userId: A.userId },
+      commitment.id,
+      'outdated',
+      'settled in the integration test',
+    );
+    expect((await store.openLoopsForPrincipal(A)).map((m) => m.id)).not.toContain(commitment.id);
   });
 
   it('review_own_only: a peer’s shared uncertain fact is readable but NOT in B’s Review queue', async () => {

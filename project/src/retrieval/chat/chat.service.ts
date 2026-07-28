@@ -32,16 +32,14 @@ import {
 import type { Db, UserContextRecord } from '../../infrastructure/index';
 import { INGESTION_PIPELINE_JOB_TYPE } from '../../ingestion/index';
 import { isPastBelief } from '../../memory/index';
-import { TasksEngine } from '../../tasks/index';
 import { loadPrompt, ModelGateway } from '../../model-gateway/index';
 import type { PromptArtifact } from '../../model-gateway/index';
 import { UserDirectory } from '../../identity/index';
 import { RetrievalService } from '../retrieval.service';
 import type { RetrievedMemory } from '../retrieval.service';
-import type { ConversationTurn, CreateTaskIntent, SmallTalkIntent } from '../query-rewrite';
+import type { ConversationTurn, SmallTalkIntent } from '../query-rewrite';
 import {
   ANAPHORA_RE,
-  detectCreateTaskIntent,
   detectResearchIntent,
   detectSkillBriefIntent,
   detectSmallTalk,
@@ -81,12 +79,6 @@ const PREVIEW_CHARS = 120;
 
 /** Surrounding turns shown either side of a remembered message in its drawer. */
 const CONTEXT_TURNS = 2;
-
-/** Mirrors the task engine's condition heuristic (decision 0013 ruling 2) for
- * the create-task confirmation text ONLY — derivation re-detects downstream.
- * No leading \b: JS \b is ASCII-only and would never match before "čim". */
-const CONDITION_HINT_RE =
-  /(?:^|[^\p{L}])(?:after|once|when|as soon as|nakon što|kad(?:a)?|čim)\s+([^.;]{4,120})/iu;
 
 /** The per-turn user context (P6.6): record + effective tz + rendered blocks. */
 interface AskContext {
@@ -132,10 +124,6 @@ export class ChatService {
      * then the defaults apply (instance timezone, English, no profile). */
     @Optional()
     private readonly userContext?: UserContextService,
-    /** Adopt-as-task from chat (P6.5, decision 0054). Absent in bare test
-     * harnesses — then the adoption form declines gracefully. */
-    @Optional()
-    private readonly tasksEngine?: TasksEngine,
     /** The chat → skill seam (Priority 7, decision 0059). Appended LAST so
      * positional harness constructions keep working; absent in the worker —
      * then the brief intent is simply inactive. */
@@ -394,10 +382,10 @@ export class ChatService {
    * citation map before tokens arrive), then token deltas, then done with the
    * stored form of the answer.
    *
-   * Routing (decision 0046) — one router, all capabilities, in this order:
-   * deterministic guards first (small-talk lexicon, create-task, research),
-   * then ONE bounded pipeline-tier call (the rewriter, now also the
-   * classifier) whose result routes model-classified small talk, the reply
+   * Routing (decision 0046, amended by 0060) — one router, all capabilities,
+   * in this order: deterministic guards first (small-talk lexicon, skill
+   * brief, research), then ONE bounded pipeline-tier call (the rewriter, now
+   * also the classifier) whose result routes model-classified small talk, the reply
    * intent (with resolved anaphora), and the memory/knowledge answer paths.
    * Classification failure falls back to the memory-question path.
    */
@@ -431,24 +419,6 @@ export class ChatService {
       return;
     }
 
-    // Create-a-task intent (decision 0038): checked BEFORE the reply intent so
-    // "remind me to reply to Ana" makes a task, not a draft. Deterministic
-    // detection; a clear request routes this very message through the normal
-    // chat capture → extraction → task derivation path (never a task row
-    // directly); an ambiguous one asks; a bare trigger creates nothing.
-    const createTask = detectCreateTaskIntent(content);
-    if (createTask) {
-      yield* this.handleCreateTaskIntent(
-        principal,
-        conversationId,
-        userRow!.id,
-        createTask,
-        history,
-        ctx,
-      );
-      return;
-    }
-
     // Skill-brief intent (Priority 7, decision 0059): checked BEFORE the
     // research patterns so "research X before Thursday" becomes a brief, not
     // a plain search. This turn only starts PLANNING (gather + propose
@@ -466,7 +436,7 @@ export class ChatService {
     // question. This turn only OPENS the gate (minimise + record a proposed
     // run); NOTHING is sent until the user approves on the Research page.
     // A topic leaning on earlier turns ("research her company") resolves
-    // through the rewriter first, same as create-task references.
+    // through the rewriter first.
     if (this.researchResolver) {
       const research = detectResearchIntent(content);
       if (research) {
@@ -530,7 +500,7 @@ export class ChatService {
     yield { type: 'sources', facts };
 
     let answer: string;
-    if (retrieved.mode === 'tasks' && (retrieved.tasks?.length ?? 0) === 0) {
+    if (retrieved.mode === 'open_loops' && (retrieved.openLoops?.length ?? 0) === 0) {
       // Zero open loops is an ANSWER (all clear), not a data gap (F3-B). A
       // deterministic string cannot mirror; it follows the anchor (0052).
       answer = nothingOpen(ctx.record.preferredLanguage);
@@ -551,7 +521,7 @@ export class ChatService {
         input: buildAnswerInput(facts, content, retrieved.mode, {
           temporal: retrieved.temporal,
           changes: retrieved.changes,
-          tasks: retrieved.tasks,
+          openLoops: retrieved.openLoops,
           knowledge,
           context: ctx.answerBlock,
         }),
@@ -836,172 +806,6 @@ export class ChatService {
       answer = `I couldn't draft that reply just now. You can open the email and use "Draft reply" on it.`;
     }
 
-    yield { type: 'token', text: answer };
-    const row = await this.storeAssistant(principal, conversationId, answer);
-    yield { type: 'done', messageId: row.id, content: answer, citationViolations: 0 };
-  }
-
-  /**
-   * The create-a-task chat flow (decision 0038). The user's own message is the
-   * capture: a clear instruction stores its normalized commitment form on the
-   * message and enqueues the NORMAL ingestion pipeline on it (source_type
-   * 'chat'), so extraction, verification, admission and task derivation run
-   * exactly as for a written note — this method never creates a task row and
-   * never sends or mutates anything else. Ambiguity asks; a bare trigger
-   * creates nothing. Fast path: the only model call is the (bounded, optional)
-   * rewriter used to resolve references to earlier turns.
-   */
-  private async *handleCreateTaskIntent(
-    principal: Principal,
-    conversationId: string,
-    messageId: string,
-    intent: CreateTaskIntent,
-    history: ConversationTurn[],
-    ctx?: AskContext,
-  ): AsyncGenerator<ChatStreamEvent> {
-    // The adoption form ("make a task from …", P6.5) targets an EXISTING
-    // memory — resolve and adopt instead of capturing new content.
-    if (intent.adoptReference !== null) {
-      yield* this.handleAdoptTaskIntent(principal, conversationId, intent, history, ctx);
-      return;
-    }
-    yield { type: 'sources', facts: [] };
-    const hr = intent.lang === 'hr';
-    let answer: string;
-    if (!intent.instruction) {
-      answer = hr
-        ? `Nema ničega što bi se moglo pretvoriti u zadatak. Recite mi što zadatak treba ` +
-          `sadržavati — npr. "napravi zadatak da pošaljem Ani mapiranje čim potvrdi format".`
-        : `I couldn't find anything actionable to turn into a task. Tell me what it should ` +
-          `say — for example, "make a task to send Ana the revised mapping once she confirms the format".`;
-    } else {
-      let instruction = intent.instruction;
-      // References to earlier turns resolve through the rewriter (it already
-      // holds the recent history). Conservative: if no named person or thing
-      // survives resolution, ask instead of guessing.
-      if (ANAPHORA_RE.test(instruction) && queryEntityCandidates(instruction).length === 0) {
-        const rewritten = await this.routerRewrite(history, instruction, {}, ctx);
-        if (
-          queryEntityCandidates(rewritten.query).length > 0 ||
-          !ANAPHORA_RE.test(rewritten.query)
-        ) {
-          instruction = rewritten.query;
-        }
-      }
-      if (ANAPHORA_RE.test(instruction) && queryEntityCandidates(instruction).length === 0) {
-        answer = hr
-          ? `Želim taj zadatak zabilježiti točno, ali ne mogu razaznati na koga ili što se ` +
-            `"${intent.instruction}" odnosi. Recite mi osobu ili stavku (i eventualni uvjet), pa ću ga izraditi.`
-          : `I want to get that task right, but I can't tell who or what "${intent.instruction}" ` +
-            `refers to. Tell me the person or item (and any condition), and I'll create it.`;
-      } else {
-        // The capture (§A.3): normalized commitment text on the message + the
-        // pipeline enqueue, one transaction — same contract as "remember this".
-        const captureContent = `${intent.lang === 'hr' ? 'Zadatak' : 'Task'}: ${instruction}`;
-        await this.db.transaction(async (tx) => {
-          await tx.update(chatMessage).set({ captureContent }).where(eq(chatMessage.id, messageId));
-          await withTransactionalEnqueue(
-            tx,
-            {
-              type: 'chat.task_requested',
-              payload: { source_type: 'chat', source_id: messageId, owner_id: principal.userId },
-            },
-            {
-              type: INGESTION_PIPELINE_JOB_TYPE,
-              payload: { source_type: 'chat', source_id: messageId },
-            },
-          );
-        });
-        const condition = CONDITION_HINT_RE.exec(instruction)?.[0]?.trim() ?? null;
-        if (hr) {
-          answer = condition
-            ? `Zabilježeno kao zadatak: "${instruction}" — čekat će na "${condition}". ` +
-              `Upravo se izrađuje i uskoro će se pojaviti na stranici Zadaci; izveden je iz ` +
-              `ovog razgovora, pa izvor pokazuje ovamo.`
-            : `Zabilježeno kao zadatak: "${instruction}". Upravo se izrađuje i uskoro će se ` +
-              `pojaviti na stranici Zadaci; izveden je iz ovog razgovora, pa izvor pokazuje ovamo.`;
-        } else {
-          answer = condition
-            ? `I've captured that as a task: "${instruction}" — it will wait on "${condition}". ` +
-              `It's being created now and will show on your Tasks page in a moment, derived from ` +
-              `this conversation so its provenance points here.`
-            : `I've captured that as a task: "${instruction}". It's being created now and will ` +
-              `show on your Tasks page in a moment, derived from this conversation so its ` +
-              `provenance points here.`;
-        }
-      }
-    }
-    yield { type: 'token', text: answer };
-    const row = await this.storeAssistant(principal, conversationId, answer);
-    yield { type: 'done', messageId: row.id, content: answer, citationViolations: 0 };
-  }
-
-  /**
-   * Adopt-as-task from chat (P6.5; decision 0054): resolve the referenced
-   * memory through the normal gated retrieval and adopt it through the
-   * EXISTING engine (audited as user-adopted). Reuses the create intent's
-   * conservative posture: one confident match adopts; an ambiguous reference
-   * lists the candidates and asks (creates nothing); no match declines and
-   * points to the memory drawer's button. Fast path: retrieval plus one
-   * engine insert — no ingestion work.
-   */
-  private async *handleAdoptTaskIntent(
-    principal: Principal,
-    conversationId: string,
-    intent: CreateTaskIntent,
-    history: ConversationTurn[],
-    ctx?: AskContext,
-  ): AsyncGenerator<ChatStreamEvent> {
-    yield { type: 'sources', facts: [] };
-    const hr = intent.lang === 'hr';
-    let answer: string;
-    let reference = intent.adoptReference!;
-    if (!this.tasksEngine) {
-      answer = hr
-        ? 'Preuzimanje zadatka iz memorije ovdje nije dostupno.'
-        : 'Adopting a task from a memory is not available here.';
-    } else {
-      // References to earlier turns resolve through the rewriter, like the
-      // create form.
-      if (ANAPHORA_RE.test(reference) && queryEntityCandidates(reference).length === 0) {
-        const rewritten = await this.routerRewrite(history, reference, {}, ctx);
-        if (
-          queryEntityCandidates(rewritten.query).length > 0 ||
-          !ANAPHORA_RE.test(rewritten.query)
-        ) {
-          reference = rewritten.query;
-        }
-      }
-      const result = await this.retrieval.retrieve(principal, reference, { history, topK: 5 });
-      // Adoption is owner-only: shared memories of others never qualify.
-      const own = result.memories.filter((hit) => hit.memory.ownerId === principal.userId);
-      const top = own[0];
-      const second = own[1];
-      const confident =
-        top !== undefined && (second === undefined || top.score >= second.score * 1.5);
-      if (!top) {
-        answer = hr
-          ? `Nisam pronašla zabilježenu činjenicu koja odgovara "${reference}". Otvorite ` +
-            `memoriju na stranici Memorije i upotrijebite "Make this a task", ili je prvo zabilježite.`
-          : `I couldn't find a remembered fact matching "${reference}". Open the memory on the ` +
-            `Memories page and use "Make this a task", or capture it first.`;
-      } else if (!confident) {
-        const options = own
-          .slice(0, 3)
-          .map((hit, i) => `${i + 1}. ${(hit.memory.content ?? '').slice(0, 100)}`)
-          .join('\n');
-        answer = hr
-          ? `Nekoliko zapamćenih činjenica odgovara "${reference}". Koju želite pretvoriti u zadatak?\n${options}`
-          : `Several remembered facts match "${reference}". Which one should become the task?\n${options}`;
-      } else {
-        const task = await this.tasksEngine.adoptFromMemory(principal, top.memory.id);
-        answer = hr
-          ? `Preuzeto kao vaš zadatak: "${task.title}". Izveden je iz te memorije i vidljiv na ` +
-            `stranici Zadaci; ponaša se kao svaki drugi zadatak.`
-          : `Adopted as your task: "${task.title}". It derives from that memory and shows on your ` +
-            `Tasks page; from here it behaves like any other task.`;
-      }
-    }
     yield { type: 'token', text: answer };
     const row = await this.storeAssistant(principal, conversationId, answer);
     yield { type: 'done', messageId: row.id, content: answer, citationViolations: 0 };

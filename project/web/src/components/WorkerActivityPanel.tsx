@@ -8,12 +8,10 @@ import { timeAgo } from './status';
 /** Human names for the queue's job types (the worker's own vocabulary). */
 const JOB_LABELS: Record<string, string> = {
   'ingestion.pipeline': 'Extracting & verifying',
-  'tasks.derive': 'Deriving tasks',
   'deletion.execute': 'Deleting',
   'memory.embed': 'Embedding',
   deletion_sweep: 'Integrity sweep',
   dreaming_cycle: 'Dreaming',
-  tasks_backfill: 'Task backfill',
   echo: 'Echo',
 };
 const jobLabel = (type: string): string => JOB_LABELS[type] ?? type;

@@ -29,17 +29,10 @@ CREATE TABLE task (
 CREATE INDEX task_owner_status_idx ON task (owner_id, status);
 CREATE INDEX task_due_idx ON task (due) WHERE status IN ('open', 'blocked_on_condition');
 
--- One-shot historical backfill (decision 0013 ruling 2): enqueue the
--- idempotent tasks backfill job so pre-F3 commitments gain tasks. Guarded —
--- on a fresh clone the graphile schema does not exist yet at migrate time,
--- and there is nothing to backfill there anyway (the nightly dreaming cycle
--- also re-enqueues it, so nothing is ever missed).
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'graphile_worker') THEN
-    PERFORM graphile_worker.add_job(
-      'tasks_backfill',
-      json_build_object('source_type', 'tasks_backfill', 'source_id', 'migration-0014')::json
-    );
-  END IF;
-END $$;
+-- NEUTRALIZED in 2.0 (decision 0060). This migration once enqueued the
+-- one-shot `tasks_backfill` job here (decision 0013 ruling 2). The job type no
+-- longer exists: leaving the enqueue would park a permanently failing job on
+-- every fresh database, since migrations replay from 0001. The schema above is
+-- untouched — it still creates exactly what it always created, and migration
+-- 0035 drops it again — so replaying the file remains correct; only the
+-- side effect on a queue that no longer has a handler is removed.

@@ -25,8 +25,14 @@ export const sourceTypeEnum = pgEnum('source_type', [
   'email',
   'calendar_event',
   'file',
-  // Engine-derived task conclusions (decision 0037): the source row is the
-  // tasks-owned task_conclusion record, migration 0025.
+  // DEFUNCT (decision 0060). Engine-derived task conclusions (decision 0037)
+  // whose source row was the tasks-owned task_conclusion record. The task
+  // subsystem is gone and migration 0035 dropped that table after erasing
+  // every memory that pointed at it through the deletion saga — but a
+  // Postgres enum value cannot be dropped, so the value stays here as
+  // permanent, documented residue. Nothing writes it, nothing reads it, and no
+  // code path may treat encountering it as an error: it is a known value with
+  // no live producer. Listed in DEFUNCT_SOURCE_TYPES below.
   'task_conclusion',
   // Fetched web pages (decision 0043): the source row is the connectors-owned
   // web_page record, migration 0027.
@@ -37,6 +43,19 @@ export const sourceTypeEnum = pgEnum('source_type', [
   // for conversation deletion receipts and the saga adapter.
   'chat_conversation',
 ]);
+/**
+ * Source types the product no longer produces (decision 0060). Postgres cannot
+ * drop an enum value, so they remain valid members of `source_type` forever.
+ * `calendar_event` joined them when calendar left v1 (roadmap revision);
+ * `task_conclusion` joined them when the task subsystem was removed.
+ *
+ * The contract for every reader: a defunct value is KNOWN, not unexpected. No
+ * switch may throw on it, no sweep arm may flag it as unrecognised. It should
+ * simply have no rows — and after migration 0035 it provably has none, since
+ * that migration refuses to run while any survive.
+ */
+export const DEFUNCT_SOURCE_TYPES = ['calendar_event', 'task_conclusion'] as const;
+
 export const receiptStatusEnum = pgEnum('receipt_status', ['pending', 'confirmed']);
 export const factKindEnum = pgEnum('fact_kind', FACT_KINDS);
 export const memoryRelationKindEnum = pgEnum('memory_relation_kind', ['contradicts']);
@@ -73,7 +92,7 @@ export const memory = pgTable(
      * came from the new content of a message the user wrote or sent themselves,
      * false when it is someone else's words (inbound sender, forwarded
      * original), NULL when unknown or not applicable (non-email sources).
-     * Task derivation treats email as first-person ONLY when this is true.
+     * Structural provenance metadata: true = the user wrote this text.
      */
     authoredByUser: boolean('authored_by_user'),
     validFrom: timestamp('valid_from', { withTimezone: true }),

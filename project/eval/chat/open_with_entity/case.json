@@ -1,6 +1,6 @@
 {
   "case_id": "open_with_entity",
-  "description": "F3-B: entity-scoped open loops — only Luka's task, never Ana's (decision 0013 ruling 7).",
+  "description": "Entity-scoped open loops from memory (decision 0060): only Luka's standing commitment, never Ana's — the entity narrowing happens inside the gated memory read.",
   "anchor": "2026-07-01T09:00:00.000Z",
   "facts": [
     {

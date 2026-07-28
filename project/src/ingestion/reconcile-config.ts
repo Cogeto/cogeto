@@ -44,12 +44,13 @@ export const DEDUP_CANDIDATE_STATUSES: MemoryStatus[] = ['active', 'user_approve
  */
 export const CONTRADICTION_CANDIDATE_STATUSES: MemoryStatus[] = ['active', 'user_approved'];
 
-/** Kinds that can contradict (0010 ruling 6): open loops are tasks, not claims. */
+/** Kinds that can contradict (0010 ruling 6): an open loop is an obligation,
+ * not a claim about the world, so it never contradicts one. */
 export const CONTRADICTION_KINDS: FactKind[] = ['fact', 'decision', 'preference', 'commitment'];
 
 /**
  * Dreaming (decision 0011): commitments with no activity for this long are
- * flagged dormant — recorded for the digest and the F3 task engine, never a
+ * flagged dormant — recorded for the digest and the open-loops read, never a
  * status transition.
  */
 export const DORMANT_SILENCE_DAYS = 14;

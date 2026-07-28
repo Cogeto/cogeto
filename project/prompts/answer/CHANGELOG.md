@@ -4,6 +4,21 @@ Prompt family for the fast-path chat answerer (S3-A): answers only from the
 retrieved fact blocks, cites with inline `[F#]` markers, says plainly when the
 facts do not cover the question.
 
+## v0007 — 2026-07-28 (V2.0 item 3.1 — task removal)
+
+The open-loops answer is memory-backed (decision 0060). MODE `tasks` becomes
+MODE `open_loops`, and the section that governs it is rewritten off the task
+vocabulary: the `OPEN LOOPS` block now lists remembered commitment/open-loop
+facts in the user's own words rather than derived task rows, so due dates come
+from the fact's own validity (`due:`), "waiting on" is read from what the fact
+itself states rather than from a task's condition field, and "unconfirmed"
+means the fact's status is `uncertain` rather than a task derived from one.
+The "never list a completed or dismissed obligation" rule is replaced by the
+stronger structural guarantee it now rests on: settled facts never reach the
+block at all, so the answerer must not speculate about completion. Everything
+else — citation grammar, `[U]` marking, past-belief framing, entity profiles,
+small talk, language — is unchanged from v0006.
+
 ## v0006 — 2026-07-24 (P6.6 instance context)
 
 Instance context and time awareness (decisions 0051/0052). Three new input

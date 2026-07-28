@@ -1,8 +1,10 @@
 {
   "case_id": "skill_brief_hr",
-  "description": "The research-brief skill in Croatian (decisions 0052/0059): the hr trigger starts planning with a deterministic hr confirmation; the brief is Cogeto-initiated, so it speaks preferred_language (hr) even over English sources; memory and web citations hold; the fixture obligation becomes no task.",
+  "description": "The research-brief skill in Croatian (decisions 0052/0059): the hr trigger starts planning with a deterministic hr confirmation; the brief is Cogeto-initiated, so it speaks preferred_language (hr) even over English sources; memory and web citations hold; the run creates nothing of its own (decision 0060).",
   "anchor": "2026-07-21T09:00:00.000Z",
-  "settings": { "preferred_language": "hr" },
+  "settings": {
+    "preferred_language": "hr"
+  },
   "facts": [
     {
       "content": "Dogovoreni uvjeti plaćanja od 30 dana s tvrtkom Adriatic Foods",

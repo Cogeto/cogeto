@@ -8,7 +8,7 @@ v1 routed everything to the **Mistral API** (EU/zero-retention DPA terms; still 
 default). Post-v1 Priority 3 (decision 0040) added bring-your-own-key adapters —
 **OpenAI-compatible** (base URL + key; also the doorway for a local runtime) and
 **Anthropic** (no embeddings API — never eligible for the embeddings tier) — selected
-per instance and per task tier by configuration, resolved and validated at boot by
+per instance and per tier by configuration, resolved and validated at boot by
 `provider-config.ts`. Behind the same seam, sequenced by the Addendum: redaction mode
 is a CPU NER layer in front of every provider `[v1]` (§B.8); local models via the
 OpenAI-compatible adapter `[Priority 4]` (§A.10 — staged, eval-gated).

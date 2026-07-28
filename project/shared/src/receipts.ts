@@ -15,8 +15,6 @@ export interface DeletionPreviewDto {
   messageCount?: number;
   /** Enumerated memories the user explicitly approved — deleted knowingly. */
   userApprovedCount?: number;
-  /** Tasks whose deriving memory is enumerated — they go with it. */
-  taskCount?: number;
 }
 
 /** GET /api/receipts/verify — walk of the full hash chain (§B.1). */

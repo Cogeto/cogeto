@@ -123,15 +123,15 @@ describe('model-gateway seam — prompt registry (integration)', () => {
   });
 
   it('loads a versioned prompt and pins its version format', async () => {
-    const prompt = await loadPrompt('task_closure', 'v0001');
-    expect(prompt.family).toBe('task_closure');
+    const prompt = await loadPrompt('verification', 'v0001');
+    expect(prompt.family).toBe('verification');
     expect(prompt.version).toBe('v0001');
     expect(prompt.contentHash).toMatch(/^[0-9a-f]{64}$/);
-    await expect(loadPrompt('task_closure', 'v1')).rejects.toThrow(/must look like v0001/);
+    await expect(loadPrompt('verification', 'v1')).rejects.toThrow(/must look like v0001/);
   });
 
   it('records a version once and refuses a changed body (immutability)', async () => {
-    const prompt = await loadPrompt('task_closure', 'v0001');
+    const prompt = await loadPrompt('verification', 'v0001');
     await recordPromptVersion(tdb.db, prompt); // first insert
     await recordPromptVersion(tdb.db, prompt); // idempotent no-op
     const tampered = {

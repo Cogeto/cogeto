@@ -21,18 +21,11 @@ ALTER TABLE memory ADD COLUMN authored_by_user boolean;
 ALTER TABLE email_message ADD COLUMN authored_by_owner boolean;
 ALTER TABLE task ADD COLUMN adopted boolean NOT NULL DEFAULT false;
 
--- One-shot cleanup chain (decision 0054 ruling 5), via the migration-enqueue
--- pattern of 0014: first the email-authorship backfill (connectors classifies
--- historical email_message rows and stamps their memories), which then enqueues
--- the tasks derivation cleanup (the engine removes phantom tasks with an audit
--- entry per removal). Guarded — on a fresh clone the graphile schema does not
--- exist yet, and there is nothing to classify or clean there anyway.
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'graphile_worker') THEN
-    PERFORM graphile_worker.add_job(
-      'email_authorship_backfill',
-      json_build_object('source_type', 'email_authorship_backfill', 'source_id', 'migration-0030')::json
-    );
-  END IF;
-END $$;
+-- NEUTRALIZED in 2.0 (decision 0060). This migration once enqueued the
+-- one-shot `email_authorship_backfill` job, which chained to the tasks
+-- derivation cleanup (decision 0054 ruling 5). Both job types went with the
+-- task subsystem; leaving the enqueue would park a permanently failing job on
+-- every fresh database, since migrations replay from 0001. The columns above
+-- are untouched and still added exactly as before — `memory.authored_by_user`
+-- and `email_message.authored_by_owner` remain as structural provenance
+-- metadata, written at admission by the pipeline.

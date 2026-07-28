@@ -9,6 +9,7 @@ export type {
   RetrievedMemory,
   RetrievalResult,
   RetrievalMode,
+  OpenLoop,
 } from './retrieval.service';
 export type { ConversationTurn } from './query-rewrite';
 export {

@@ -17,9 +17,9 @@ export interface GroupMeta {
 
 /** Which display group each kind belongs to. */
 const KIND_GROUP: Record<AttentionKind, AttentionGroup> = {
-  task_overdue: 'tasks',
-  task_due_soon: 'tasks',
-  task_dormant: 'quiet',
+  open_loop_overdue: 'open_loops',
+  open_loop_due_soon: 'open_loops',
+  open_loop_quiet: 'quiet',
   review_uncertain: 'review',
   review_contradicted: 'review',
   approval_pending: 'approvals',
@@ -27,10 +27,16 @@ const KIND_GROUP: Record<AttentionKind, AttentionGroup> = {
 };
 
 /** Display order of the groups — most-pressing first. */
-export const GROUP_ORDER: AttentionGroup[] = ['tasks', 'quiet', 'review', 'approvals', 'overnight'];
+export const GROUP_ORDER: AttentionGroup[] = [
+  'open_loops',
+  'quiet',
+  'review',
+  'approvals',
+  'overnight',
+];
 
 export const GROUP_META: Record<AttentionGroup, GroupMeta> = {
-  tasks: { key: 'tasks', label: 'Due & overdue', icon: '◷' },
+  open_loops: { key: 'open_loops', label: 'Due & overdue', icon: '◷' },
   quiet: { key: 'quiet', label: 'Gone quiet', icon: '☾' },
   review: { key: 'review', label: 'Waiting on your review', icon: '?' },
   approvals: { key: 'approvals', label: 'Awaiting your approval', icon: '✓' },
@@ -39,9 +45,9 @@ export const GROUP_META: Record<AttentionGroup, GroupMeta> = {
 
 /** Per-kind glyph — every item shows this, so meaning never rides on color. */
 export const KIND_ICON: Record<AttentionKind, string> = {
-  task_overdue: '⚠',
-  task_due_soon: '◷',
-  task_dormant: '☾',
+  open_loop_overdue: '⚠',
+  open_loop_due_soon: '◷',
+  open_loop_quiet: '☾',
   review_uncertain: '?',
   review_contradicted: '⚠',
   approval_pending: '✓',
@@ -91,7 +97,7 @@ export function surfaceState(query: {
 }
 
 /** Client-side sanity allowlist for a deep-link target (defense in depth). */
-const ROUTE_PREFIXES = ['/tasks', '/review', '/approvals', '/memories', '/chat'];
+const ROUTE_PREFIXES = ['/review', '/approvals', '/memories', '/chat'];
 export function isKnownRoute(href: string): boolean {
   return ROUTE_PREFIXES.some((p) => href === p || href.startsWith(`${p}?`));
 }

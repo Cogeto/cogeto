@@ -14,7 +14,6 @@ export * from './principal';
 export * from './receipts';
 export * from './research';
 export * from './skills';
-export * from './tasks';
 export * from './timeline';
 export * from './user-context';
 export * from './passport';

@@ -3,11 +3,10 @@ import type { Principal } from '@cogeto/shared';
 import { loadInstanceSigner } from '../infrastructure/index';
 import type { InstanceSigner } from '../infrastructure/index';
 import { MemoryFileStore, MemoryObjectStore, MemoryStore, type MemoryRow } from '../memory/index';
-import { TasksEngine, type TaskRow } from '../tasks/index';
 import { UserDirectory } from '../identity/index';
 import { assemblePassport } from './passport-assembler';
 import type { ZipEntry } from './zip';
-import type { MemoryExport, TaskExport } from './passport-format';
+import type { MemoryExport } from './passport-format';
 import { PASSPORT_PATHS } from './passport-format';
 import { PassportExportStore } from './passport.store';
 import { PASSPORT_OPTIONS } from './passport.options';
@@ -23,8 +22,8 @@ function ownerPrincipal(userId: string, orgId: string | null): Principal {
 /**
  * The Memory Passport export job (§B.5, decision 0029) — worker-run because it
  * can be large (§A.3: slow-path work never blocks a request). It re-reads
- * everything through the Principal-gated interfaces (MemoryStore, TasksEngine,
- * the owner-scoped receipts read), assembles the signed artifact, and stores it
+ * everything through the Principal-gated interfaces (MemoryStore and the
+ * owner-scoped receipts read), assembles the signed artifact, and stores it
  * as a short-lived, owner-scoped object. A user can only ever export what they
  * are entitled to see — enforced by the same gates as every other read.
  */
@@ -35,7 +34,6 @@ export class PassportExportExecutor {
 
   constructor(
     private readonly memory: MemoryStore,
-    private readonly tasks: TasksEngine,
     private readonly objects: MemoryObjectStore,
     private readonly files: MemoryFileStore,
     private readonly store: PassportExportStore,
@@ -51,9 +49,8 @@ export class PassportExportExecutor {
     const principal = ownerPrincipal(request.userId, request.orgId);
 
     // Gated reads — the export is exactly what this principal may see.
-    const [memoryRows, taskRows, receipts] = await Promise.all([
+    const [memoryRows, receipts] = await Promise.all([
       this.memory.listAllForPrincipal(principal, { includeSensitive: true }),
-      this.tasks.listForPrincipal(principal, { includeSettled: true }),
       this.memory.confirmedReceiptsForOwner(principal.userId),
     ]);
 
@@ -90,7 +87,6 @@ export class PassportExportExecutor {
     const { zip, sizeBytes } = assemblePassport({
       subject: { userId: principal.userId, displayName },
       memories,
-      tasks: taskRows.map(toTaskExport),
       receipts,
       attachments,
       instancePublicKeyPem: signer.publicKeyPem,
@@ -104,7 +100,7 @@ export class PassportExportExecutor {
     const expiresAt = new Date(now.getTime() + this.options.exportRetentionHours * 3_600_000);
     await this.store.markReady(exportId, objectKey, sizeBytes, now, expiresAt);
     this.logger.log(
-      `passport export ${exportId} ready: ${memories.length} memories, ${taskRows.length} tasks, ` +
+      `passport export ${exportId} ready: ${memories.length} memories, ` +
         `${receipts.length} receipts, ${attachments.length} attachments, ${sizeBytes} bytes`,
     );
     return { objectKey, sizeBytes };
@@ -203,21 +199,5 @@ export function toMemoryExport(
         : null,
       attachment_path: file?.attachmentPath ?? null,
     },
-  };
-}
-
-export function toTaskExport(row: TaskRow): TaskExport {
-  return {
-    id: row.id,
-    title: row.title,
-    status: row.status,
-    condition_text: row.conditionText,
-    due: row.due?.toISOString() ?? null,
-    dormant: row.dormant,
-    from_uncertain: row.fromUncertain,
-    derived_from_memory_id: row.derivedFromMemoryId,
-    scope: row.scope,
-    created_at: row.createdAt.toISOString(),
-    updated_at: row.updatedAt?.toISOString() ?? null,
   };
 }

@@ -6,8 +6,6 @@ import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { MemoryStore } from '../memory/index';
 import { buildDreamDigest } from './dream-digest';
-import { DIGEST_TASK_SECTION } from './digest-task-port';
-import type { DigestTaskSectionPort } from './digest-task-port';
 
 /**
  * The plain digest (§B.6 v1 form; decision 0011). A thin wrapper over
@@ -21,10 +19,6 @@ export class DreamingController {
   constructor(
     @Inject(DRIZZLE) private readonly db: Db,
     private readonly memoryStore: MemoryStore,
-    // The tasks module fills this (F3 handoff §3). Optional: absent in
-    // ingestion-only tests, where the digest is dreaming-only; present in the
-    // app process via TasksModule.forDigest() (a global provider).
-    @Optional() @Inject(DIGEST_TASK_SECTION) private readonly taskSection?: DigestTaskSectionPort,
     /** Preferred language for digest copy (P6.6, decision 0052); optional. */
     @Optional() private readonly userContext?: UserContextService,
   ) {}
@@ -35,7 +29,6 @@ export class DreamingController {
       this.userContext?.preferredLanguageFor(request.principal.userId),
     ).catch(() => undefined);
     return buildDreamDigest(this.db, this.memoryStore, request.principal, {
-      taskSection: this.taskSection,
       locale,
     });
   }

@@ -16,9 +16,7 @@ import {
   type ConfirmedReceipt,
   type MemoryStore,
 } from '../memory/index';
-import { TasksEngine } from '../tasks/index';
 import { UserDirectory } from '../identity/index';
-import type { ModelGateway } from '../model-gateway/index';
 import { ensureInstanceKeys, loadInstanceSigner } from '../infrastructure/index';
 import { PassportExportExecutor } from './passport-export.executor';
 import { PassportExportStore } from './passport.store';
@@ -72,11 +70,9 @@ describe('memory passport export (integration)', () => {
     await objects.ensureBucket();
     keyDir = await mkdtemp(join(tmpdir(), 'passport-key-'));
     await ensureInstanceKeys(keyDir);
-    const tasks = new TasksEngine(tdb.db, store, {} as unknown as ModelGateway);
     passportStore = new PassportExportStore(tdb.db);
     executor = new PassportExportExecutor(
       store,
-      tasks,
       objects,
       new MemoryFileStore(tdb.db),
       passportStore,
@@ -149,13 +145,12 @@ describe('memory passport export (integration)', () => {
     const entries = new Map(readZip(object.body).map((e) => [e.path, e.data]));
     return {
       memories: JSON.parse(entries.get(PASSPORT_PATHS.memories)!.toString()),
-      tasks: JSON.parse(entries.get(PASSPORT_PATHS.tasks)!.toString()),
       receipts: JSON.parse(entries.get(PASSPORT_PATHS.receipts)!.toString()),
       manifest: JSON.parse(entries.get(PASSPORT_PATHS.manifest)!.toString()),
     };
   };
 
-  it('passport_completeness: every memory, its history + chain, tasks and receipts are present', async () => {
+  it('passport_completeness: every memory, its history + chain, and receipts are present', async () => {
     const owner = `pp-complete-${randomUUID()}`;
     const v1 = await seed(owner, 'Atlas costs 100 EUR.', { validFrom: new Date('2026-01-01') });
     const { successor: v2 } = await store.supersede({ kind: 'user', userId: owner }, v1.id, {
@@ -169,11 +164,6 @@ describe('memory passport export (integration)', () => {
     });
     const shared = await seed(owner, 'Atlas is shared org-wide.', { scope: 'shared' });
     const sensitive = await seed(owner, 'Atlas secret discount.', { sensitive: true });
-    // A task derived from v2, and a confirmed receipt.
-    await tdb.pool.query(
-      `INSERT INTO task (owner_id, scope, derived_from_memory_id, title, status) VALUES ($1,'private',$2,$3,'open')`,
-      [owner, v2.id, 'Send the Atlas quote'],
-    );
     const receiptId = await seedReceipt(owner);
 
     const out = await runAndOpen(owner);
@@ -185,9 +175,6 @@ describe('memory passport export (integration)', () => {
     expect(v1Doc.superseded_by).toBe(v2.id); // the supersession chain
     expect(out.memories.count).toBe(out.memories.memories.length);
 
-    expect(out.tasks.tasks.map((t: { title: string }) => t.title)).toContain(
-      'Send the Atlas quote',
-    );
     expect(out.receipts.receipts.map((r: { id: string }) => r.id)).toContain(receiptId);
     // The exported receipt still verifies against its chain and the included key.
     expect(

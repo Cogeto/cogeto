@@ -83,7 +83,7 @@ name it in a decision record before coining a term in code.
 - **Modular monolith** — one codebase; bounded contexts as internal modules; two
   deployable processes (§A.1).
 - **Bounded context / module** — one directory under `project/src/`: `memory`,
-  `ingestion`, `retrieval`, `agents`, `connectors`, `tasks`, `identity`,
+  `ingestion`, `retrieval`, `agents`, `connectors`, `identity`,
   `model-gateway`. One public interface each; no module touches another's tables.
 - **Seam** — a leaf module isolating an external dependency: **identity** (Zitadel)
   and **model-gateway** (Mistral). Seams import no domain module.
@@ -134,18 +134,6 @@ name it in a decision record before coining a term in code.
   is dropped from v1 (Roadmap Revision; reconsidered only post-2.0). Post-v1
   adds **web research** (Priority 5): fetched pages as `web` sources with URL
   provenance (decisions 0042/0043).
-- **Task** — an actionable item derived from memory (person, topic, condition,
-  status). Derivation is first-person only (decision 0054): notes, chat, and
-  the user's own email text derive; file, web, and system sources never do —
-  their observed obligations stay memories until the user **adopts** one
-  ("Make this a task"). Tasks read memory through its public interface; they
-  never mutate it. Owned by the `tasks` context.
-- **Task conclusion** — the fact derived when a task concludes (its condition is
-  satisfied or it closes): a deterministic statement entering the normal pipeline
-  with provenance `source_type = 'task_conclusion'` pointing at the durable
-  `task_conclusion` row, which links the task, its deriving memory, and the
-  triggering memory (decision 0037). The one sanctioned way `tasks` causes a
-  memory to exist; it never mutates one.
 - **Skill** — a named, versioned, code-defined multi-step workflow with a
   declared plan of typed steps (decision 0059); registry-versioned like prompts
   (`research_brief`/`v0001`), never user-programmable in v1. Owned by the
@@ -158,10 +146,17 @@ name it in a decision record before coining a term in code.
 - **Brief** — the research-brief skill's durable artifact: a structured,
   per-claim-cited document ([M#] memories, [W#] pages with URL + fetch time,
   `(unsourced)` model knowledge) stored on the run with resolved citations,
-  speaking `preferred_language`. Proposed actions on a brief are adoption
-  proposals — never created tasks.
-- **Open loops** — commitments and follow-ups without a recorded resolution.
-- **Digest** — the daily summary produced by `tasks`.
+  speaking `preferred_language`. A brief creates nothing: it reads, searches
+  and writes, and every fact it surfaces is already a memory.
+- **Open loops** — commitments and follow-ups that still stand. **Memory-backed
+  since 2.0** (decision 0060): an open loop IS a memory whose `kind` is
+  `commitment` or `open_loop` and whose status still stands (`active`,
+  `user_approved`, `uncertain` — never `outdated`, `replaced` or
+  `contradicted`). Its due date is the memory's own `valid_until`; "gone quiet"
+  is ingestion's `dormant_flag`. There is no derived table, no separate
+  lifecycle, and nothing to create: the same gated read answers the founding
+  question in chat and fills the attention surface, so "still open" means one
+  thing everywhere.
 - **Dreaming** — the nightly consolidation job; its surfaced summary is the
   **dreaming digest card** (§B.6, v1.x).
 - **Redaction mode** — per-tenant toggle: local CPU NER pseudonymizes sensitive

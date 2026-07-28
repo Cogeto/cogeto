@@ -19,7 +19,6 @@ import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import { ChatSourceReader, ConversationSourceDeletion } from '../retrieval/index';
 import { createIngestionPipeline } from '../ingestion/index';
-import { TasksCascade, TasksEngine } from '../tasks/index';
 import { MemoryStore } from './memory.store';
 import { MemoryReconciliation } from './reconciliation';
 import { MemoryVectorStore } from './persistence/vector-store';
@@ -38,10 +37,10 @@ import type { ConfirmedReceipt } from './domain/receipt-chain';
  * §A.7 saga, extended by enumeration only:
  *
  *   conversation_deletion_cascade — the thread's messages AND every memory
- *     derived from them (and their vectors, and their derived tasks) are gone
+ *     derived from them (and their vectors) are gone
  *     under ONE signed receipt whose counts are honest.
  *   delete_confirm_counts — the preview's numbers (messages, memories,
- *     user_approved, tasks) match exactly what the enumeration then removes.
+ *     user_approved) match exactly what the enumeration then removes.
  */
 
 const DIMS = 8;
@@ -93,9 +92,6 @@ class ScriptedGateway extends ModelGateway {
       raw = { verdict: 'supported', reason: 'scripted' };
     } else if (request.input.startsWith('FACT A:')) {
       raw = { verdict: 'distinct', reason: 'scripted', merged_content: null };
-    } else if (request.input.includes('TASK:')) {
-      // Task-engine judgment calls — inert here.
-      raw = { met: false, reason: 'scripted' };
     } else {
       const content = request.input.split('SOURCE CONTENT:\n')[1] ?? request.input;
       raw = {
@@ -152,9 +148,7 @@ describe('conversation deletion cascade (integration: real Postgres + Qdrant + M
     });
     await objects.ensureBucket();
     store = new MemoryStore(tdb.db, vectors);
-    saga = new DeletionSaga(tdb.db, [new ConversationSourceDeletion()], vectors, [
-      new TasksCascade(),
-    ]);
+    saga = new DeletionSaga(tdb.db, [new ConversationSourceDeletion()], vectors);
     executor = new DeletionExecutor(vectors, objects, keyDir);
   }, 180_000);
 
@@ -194,7 +188,7 @@ describe('conversation deletion cascade (integration: real Postgres + Qdrant + M
     return { conv, message };
   };
 
-  it('conversation_deletion_cascade + delete_confirm_counts: messages, memories, vectors and tasks gone under one honest receipt', async () => {
+  it('conversation_deletion_cascade + delete_confirm_counts: messages, memories and vectors gone under one honest receipt', async () => {
     const { conv, message } = await seedConversation(owner.userId);
     const m1 = await message('user', `I will send Marko the mapping ${randomUUID()}`);
     const m2 = await message('user', `The Meridian archive moved to Vault B ${randomUUID()}`);
@@ -204,12 +198,6 @@ describe('conversation deletion cascade (integration: real Postgres + Qdrant + M
     for (const id of [m1, m2]) {
       await tdb.db.transaction((tx) => pipeline().run(tx, { source_type: 'chat', source_id: id }));
     }
-    // The commitment derives a task (first-person chat source, decision 0054).
-    const tasksEngine = new TasksEngine(tdb.db, store, gateway);
-    await tdb.db.transaction((tx) => tasksEngine.processSource(tx, 'chat', m1));
-    const taskRows = await tdb.pool.query(`SELECT id FROM task`);
-    expect(taskRows.rows.length).toBe(1);
-
     const memoryRows = await tdb.pool.query<{ id: string }>(
       `SELECT id FROM memory WHERE source_type = 'chat' AND source_id IN ($1, $2)`,
       [m1, m2],
@@ -227,7 +215,6 @@ describe('conversation deletion cascade (integration: real Postgres + Qdrant + M
     expect(preview.messageCount).toBe(3);
     expect(preview.memoryCount).toBe(memoryIds.length);
     expect(preview.userApprovedCount).toBe(1);
-    expect(preview.taskCount).toBe(1);
     expect(preview.objectCount).toBe(0);
 
     // A stranger can neither preview nor delete it (existence must not leak).
@@ -238,7 +225,7 @@ describe('conversation deletion cascade (integration: real Postgres + Qdrant + M
       /not found/i,
     );
 
-    // Saga step one: conversation, messages, memories and the task are gone.
+    // Saga step one: conversation, messages and memories are gone.
     const { receiptId } = await saga.requestSourceDeletion(owner, 'chat_conversation', conv);
     const left = async (table: string, where: string, params: unknown[]) =>
       (await tdb.pool.query(`SELECT 1 FROM ${table} WHERE ${where}`, params)).rows.length;
@@ -247,7 +234,6 @@ describe('conversation deletion cascade (integration: real Postgres + Qdrant + M
     expect(await left('memory', `source_type = 'chat' AND source_id IN ($1, $2)`, [m1, m2])).toBe(
       0,
     );
-    expect((await tdb.pool.query(`SELECT 1 FROM task`)).rows.length).toBe(0);
 
     // Steps two + three: vectors erased, receipt confirmed, chain verifies.
     await runWorker();
@@ -257,11 +243,13 @@ describe('conversation deletion cascade (integration: real Postgres + Qdrant + M
     expect(receipt['status']).toBe('confirmed');
     expect((await vectors.retrievePayloads(memoryIds)).size).toBe(0);
 
-    // The honest receipt: every memory id, the message count, the task count.
+    // The honest receipt: every memory id and the message count.
     const counts = parseReceiptCounts(receipt['counts_json']);
     expect(new Set(counts.memory_ids)).toEqual(new Set(memoryIds));
     expect(counts.chat_messages_removed).toBe(3);
-    expect(counts.tasks_removed).toBe(1);
+    // Never written again since decision 0060 — but still parseable (the
+    // schema keeps it optional forever so historical receipts verify).
+    expect(counts.tasks_removed).toBeUndefined();
     expect(counts.object_keys).toEqual([]);
 
     const rows = (await tdb.pool.query(`SELECT * FROM deletion_receipt WHERE status = 'confirmed'`))

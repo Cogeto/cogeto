@@ -3,8 +3,6 @@ import * as path from 'node:path';
 import { z } from 'zod';
 import { evalConfigSchema, runGoldenEval, runReconcileEval } from '../ingestion/index';
 import type { EvalMetrics, ReconcileEvalMetrics } from '../ingestion/index';
-import { runDerivationTrapEval, runTaskEval } from '../tasks/index';
-import type { TaskEvalMetrics } from '../tasks/index';
 import { createModelGateway } from '../model-gateway/index';
 import { resolveEvalProviders, requireConfiguredProviders } from './eval-env';
 import { configurationForEmission, emitPartial } from './trust-scores';
@@ -102,17 +100,6 @@ async function main(): Promise<void> {
   console.log(table);
   console.log('====================================================\n');
 
-  // ── Derivation traps (P6.5; decision 0054): hard assertions against the
-  // tasks module's REAL first-person predicate — a web page or document dense
-  // with obligations must yield its memories and ZERO tasks; the user's own
-  // email reply exactly one. Enforced unconditionally: a trap breach is a rule
-  // regression, never a model-variance question.
-  const traps = runDerivationTrapEval(result.derivationTraps);
-  console.log(
-    `derivation traps: ${traps.cases} case(s), ${traps.failures.length} failure(s)` +
-      (traps.failures.length > 0 ? `\n  ${traps.failures.join('\n  ')}` : ''),
-  );
-
   // Reconciliation pair cases (F2-A, decision 0010 ruling 9) — the same run,
   // so the trust score always reports extraction and reconciliation together.
   console.log('reconciliation pairs:');
@@ -135,36 +122,12 @@ async function main(): Promise<void> {
   console.log(reconcileTable);
   console.log('=======================================================\n');
 
-  // Task-judgment pairs (F3-B, decision 0013 ruling 3) — same run, same
-  // trust-score page.
-  console.log('task pairs:');
-  const taskEval = await runTaskEval({
-    gateway,
-    goldenDir: GOLDEN_DIR,
-    log: (message) => console.log(`  ${message}`),
-  });
-  const taskRow = (m: TaskEvalMetrics): string =>
-    `| ${m.label} | ${m.closurePairs} | ${pct(m.closureAccuracy)} (${m.closureEarned}/${m.closureWeight}` +
-    `${m.falseClosures ? `, ${m.falseClosures} FALSE CLOSE${m.falseClosures > 1 ? 'S' : ''}` : ''}) ` +
-    `| ${m.conditionPairs} | ${pct(m.conditionAccuracy)} (${m.conditionCorrect}/${m.conditionPairs}) |`;
-  const taskTable = [
-    '| set | closure pairs | closure accuracy | condition pairs | condition accuracy |',
-    '|---|---|---|---|---|',
-    ...taskEval.perLanguage.map(taskRow),
-    taskRow(taskEval.aggregate),
-  ].join('\n');
-  console.log('\n================= TASK PAIR RESULTS =================');
-  console.log(`prompts: task_closure/v0001 + task_condition/v0001 · ${taskEval.pairCount} pairs`);
-  console.log(taskTable);
-  console.log('=====================================================\n');
-
   await mkdir(path.dirname(HISTORY_FILE), { recursive: true });
   const stamp = new Date().toISOString().slice(0, 10);
   await appendFile(
     HISTORY_FILE,
     `\n## ${stamp} — ${result.promptVersions} (thresholds v${result.config.version}, ${result.caseCount} cases)\n\n${table}\n` +
-      `\n## ${stamp} — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v${reconcile.configVersion}, ${reconcile.pairCount} pairs)\n\n${reconcileTable}\n` +
-      `\n## ${stamp} — task_closure/v0001 + task_condition/v0001 (${taskEval.pairCount} pairs)\n\n${taskTable}\n`,
+      `\n## ${stamp} — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v${reconcile.configVersion}, ${reconcile.pairCount} pairs)\n\n${reconcileTable}\n`,
     'utf8',
   );
   console.log(`appended to ${path.relative(REPO_ROOT, HISTORY_FILE)}`);
@@ -249,13 +212,6 @@ async function main(): Promise<void> {
       `  ${ok ? 'PASS' : 'FAIL'}  ${metric.padEnd(24)} ${pct(value)}  (gate ≥ ${pct(gate)})`,
     );
   }
-  // Derivation traps are part of the standard gate (P6.5): a hard assertion,
-  // not a floor metric.
-  const trapsOk = traps.failures.length === 0;
-  if (!trapsOk) failures.push(`derivation_traps: ${traps.failures.join('; ')}`);
-  console.log(
-    `  ${trapsOk ? 'PASS' : 'FAIL'}  ${'derivation_traps'.padEnd(24)} ${traps.cases - traps.failures.length}/${traps.cases}  (hard assertion)`,
-  );
   console.log('===========================================================\n');
   if (failures.length > 0) {
     console.error(`GATE BREACH: ${failures.join('; ')}`);

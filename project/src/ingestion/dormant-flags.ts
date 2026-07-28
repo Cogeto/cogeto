@@ -3,11 +3,11 @@ import type { Db } from '../infrastructure/index';
 import { dormantFlag } from './persistence/tables';
 
 /**
- * The dormant-flag consumption API the F2 handoff promised the task engine
- * (docs/handoff/F2-dreaming.md §3; decision 0013 ruling 5): ingestion owns
- * the table; the tasks module reads and clears flags ONLY through these.
- * Dreaming writes flags and clears them when a memory leaves `active`; the
- * task engine clears them when the derived task closes or is dismissed.
+ * The dormant-flag consumption API (docs/handoff/F2-dreaming.md §3): ingestion
+ * owns the table; every other module reads and clears flags ONLY through
+ * these. Dreaming writes flags and clears them when a memory leaves `active`.
+ * Since decision 0060 the reader is retrieval's open-loops query, which turns
+ * an open flag into the "gone quiet" marker on a standing obligation.
  */
 
 export interface OpenDormantFlag {

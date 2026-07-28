@@ -24,12 +24,10 @@ import {
   SWEEP_CRONTAB,
 } from '../memory/index';
 import { APPROVAL_EXPIRY_CRONTAB, ApprovalExecutor, ApprovalService } from '../agents/index';
-import { TASK_PROMPTS, TASKS_REMINDERS_CRONTAB, TasksEngine } from '../tasks/index';
 import { PassportExportExecutor, PASSPORT_RETENTION_CRONTAB } from '../passport/index';
 import {
   CONTEXT_SUGGEST_PROMPT,
   EmailAllowlistService,
-  EmailAuthorshipBackfill,
   EMAIL_REFUSAL_RETENTION_CRONTAB,
   ResearchConclusionService,
   ResearchSynthesisService,
@@ -102,7 +100,6 @@ async function main(): Promise<void> {
   // a released version whose file hash changed fails the boot.
   for (const ref of [
     ...ACTIVE_PROMPTS,
-    ...TASK_PROMPTS,
     ANSWER_PROMPT,
     QUERY_REWRITE_PROMPT,
     CONTEXT_SUGGEST_PROMPT,
@@ -143,12 +140,10 @@ async function main(): Promise<void> {
     deletionExecutor: context.get(DeletionExecutor),
     integritySweep: context.get(IntegritySweep),
     dreaming: context.get(DreamingService),
-    tasksEngine: context.get(TasksEngine),
     approvalService: context.get(ApprovalService),
     approvalExecutor: context.get(ApprovalExecutor),
     passportExecutor: context.get(PassportExportExecutor),
     allowlist: context.get(EmailAllowlistService),
-    authorshipBackfill: context.get(EmailAuthorshipBackfill),
     conversationTitler: context.get(ConversationTitler),
     researchConcluder: context.get(ResearchConclusionService),
     researchSynthesis: context.get(ResearchSynthesisService),
@@ -203,19 +198,17 @@ async function main(): Promise<void> {
     pgPool: pool,
     concurrency: 2,
     taskList,
-    // Nightly schedule (graphile cron): the 03:00 integrity sweep (§A.7 step 4),
-    // the 03:30 dreaming cycle (§B.6; decision 0011), then the 03:40 task
-    // reminders pass (F3 handoff §2 — one more crontab LINE, never a second
-    // scheduler), plus the every-5-minute approval expiry pass (§A.8; O1-B), plus
-    // the demo reset on a demo instance. On-demand sweep/dream go through their
-    // entrypoints instead.
+    // Nightly schedule (graphile cron): the 03:00 integrity sweep (§A.7 step 4)
+    // and the 03:30 dreaming cycle (§B.6; decision 0011), plus the
+    // every-5-minute approval expiry pass (§A.8; O1-B), plus the demo reset on a
+    // demo instance. On-demand sweep/dream go through their entrypoints instead.
     //
     // QS-39: graphile cron honours the process timezone, so the worker container
     // pins TZ=UTC (compose) — these times are UTC and DST never shifts them. A
     // DST transition can still make a wall-clock hour repeat/skip on non-UTC
     // hosts; the single-flight advisory lock on each recurring job (worker-tasks)
     // makes a double-fire a clean skip, and the jobs are idempotent by design.
-    crontab: `${SWEEP_CRONTAB}\n${DREAM_CRONTAB}\n${TASKS_REMINDERS_CRONTAB}\n${APPROVAL_EXPIRY_CRONTAB}\n${PASSPORT_RETENTION_CRONTAB}\n${EMAIL_REFUSAL_RETENTION_CRONTAB}${demoLine}`,
+    crontab: `${SWEEP_CRONTAB}\n${DREAM_CRONTAB}\n${APPROVAL_EXPIRY_CRONTAB}\n${PASSPORT_RETENTION_CRONTAB}\n${EMAIL_REFUSAL_RETENTION_CRONTAB}${demoLine}`,
     noHandleSignals: true,
   });
   logger.info('cogeto worker started (graphile runner + task registry)');

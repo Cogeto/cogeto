@@ -11,9 +11,9 @@ import {
 } from './attention-model';
 
 const ALL_KINDS: AttentionKind[] = [
-  'task_overdue',
-  'task_due_soon',
-  'task_dormant',
+  'open_loop_overdue',
+  'open_loop_due_soon',
+  'open_loop_quiet',
   'review_uncertain',
   'review_contradicted',
   'approval_pending',
@@ -25,7 +25,7 @@ const item = (kind: AttentionKind, over: Partial<AttentionItem> = {}): Attention
   kind,
   title: `A ${kind} item`,
   timestamp: '2026-07-20T00:00:00.000Z',
-  href: '/tasks',
+  href: '/memories',
   dismissible: kind === 'digest_change',
   unread: false,
   ...over,
@@ -44,13 +44,13 @@ describe('attention-model', () => {
   it('groups items in the fixed display order with per-group unread counts', () => {
     const items = [
       item('digest_change', { href: '/memories?open=1', unread: true }),
-      item('task_overdue', { unread: true }),
+      item('open_loop_overdue', { unread: true }),
       item('review_uncertain', { href: '/review', count: 3 }),
-      item('task_due_soon'),
+      item('open_loop_due_soon'),
     ];
     const groups = groupItems(items);
-    // tasks (overdue + due_soon) comes before review, which comes before overnight.
-    expect(groups.map((g) => g.group.key)).toEqual(['tasks', 'review', 'overnight']);
+    // open loops (overdue + due_soon) come before review, then overnight.
+    expect(groups.map((g) => g.group.key)).toEqual(['open_loops', 'review', 'overnight']);
     expect(groups[0]!.items).toHaveLength(2);
     expect(groups[0]!.unread).toBe(1); // only the overdue one is unread
     expect(groups.every((g) => GROUP_ORDER.includes(g.group.key))).toBe(true);
@@ -65,7 +65,6 @@ describe('attention-model', () => {
 
   it('deep_links_resolve: every server-emitted attention target is a known route', () => {
     const emitted = [
-      '/tasks',
       '/review',
       '/review?tab=contradicted',
       '/approvals',

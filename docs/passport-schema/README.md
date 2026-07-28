@@ -1,4 +1,4 @@
-# Cogeto Memory Passport — open format (v1.0)
+# Cogeto Memory Passport — open format (current: v2.0)
 
 The **Memory Passport** is a complete, portable export of a user's data from
 Cogeto, in an **open, documented, versioned** format. You are not locked in: this
@@ -18,16 +18,28 @@ bytes are exactly what the manifest hashed):
 | `manifest.json`     | Signed index: version, timestamp, instance public key, per-document SHA-256 |
 | `manifest.json.sig` | Detached ed25519 signature (base64) over the exact bytes of `manifest.json` |
 | `memories.json`     | Every memory, full validity/supersession history (not just current state)   |
-| `tasks.json`        | Tasks derived from memories, with conditions and status                     |
 | `receipts.json`     | Deletion receipts, still independently verifiable against their chain        |
 | `README.txt`        | A short human pointer (generated into each archive)                         |
 | `attachments/…`     | Original file bytes — only if the user chose "include original files"        |
 
-Every document is described by a JSON Schema (Draft 2020-12) here:
-`manifest.schema.json`, `memories.schema.json`, `tasks.schema.json`,
-`receipts.schema.json`. Every document carries `passport_version` (`"1.0"`); a
-breaking change bumps it and publishes a new schema, and old versions stay
-readable.
+Every document is described by a JSON Schema (Draft 2020-12), published per
+version in a directory of its own: [`2.0/`](2.0/) is what new exports use,
+[`1.0/`](1.0/) stays published for archives made before the 2.0 release. Every
+document carries `passport_version`; a breaking change bumps it and publishes a
+new schema, and **old versions stay readable forever** — read an archive against
+the schema directory matching its own `passport_version`.
+
+## Versions
+
+| Version | Status | Documents | What changed |
+| --- | --- | --- | --- |
+| **2.0** | current | `manifest.json`, `memories.json`, `receipts.json` | Removed `tasks.json` and the manifest's required `tasks` count, when the task subsystem was removed from the product (decision 0060). Nothing else changed: memories, receipts, provenance, hashing and signing are byte-identical in shape to 1.0. |
+| 1.0 | historical, still valid | `manifest.json`, `memories.json`, `tasks.json`, `receipts.json` | The original published format. A 1.0 archive remains a complete, verifiable artifact; verify it against [`1.0/`](1.0/) exactly as before. |
+
+A Cogeto instance writes exactly one version — the current one — and its
+validator accepts only that version for new exports. Reading is the open part:
+any 1.0 archive you already hold verifies unchanged, because verification uses
+the bytes and the key inside the archive, never the server.
 
 ## What's included (and what isn't)
 
@@ -81,6 +93,7 @@ over the hex `hash` string.
 
 ## Sample
 
-[`sample/`](sample/) holds a small, **fictional** Passport (Ana, a demo persona).
+Each version directory holds a small, **fictional** sample Passport (Ana, a demo
+persona) under `sample/` — [`2.0/sample/`](2.0/sample/) for the current format.
 It is illustrative: its hashes and signatures are placeholders, not real crypto —
 generate a real Passport from Settings → "Export my data" to see live values.

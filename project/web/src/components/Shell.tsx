@@ -6,7 +6,6 @@ import {
   fetchMe,
   fetchMemories,
   fetchPendingApprovals,
-  fetchTaskCount,
 } from '../api';
 import type { Session } from '../auth/oidc';
 import { Nav } from './Nav';
@@ -64,12 +63,6 @@ export function Shell({
     queryFn: () => fetchPendingApprovals(session),
     refetchInterval: 30_000,
   });
-  // The tasks badge: open + blocked, owner-scoped (F3 handoff §4).
-  const { data: taskCount } = useQuery({
-    queryKey: ['task-count'],
-    queryFn: () => fetchTaskCount(session),
-    refetchInterval: 30_000,
-  });
   // The dashboard attention indicator (Post-v1 P2): unread since last viewed.
   // Shares the ['attention'] cache with the dashboard surface, so opening the
   // dashboard (which marks seen) clears this dot.
@@ -92,7 +85,6 @@ export function Shell({
         active={active}
         reviewCount={(uncertain?.total ?? 0) + (contradictions?.length ?? 0)}
         approvalsCount={pendingApprovals?.length ?? 0}
-        tasksCount={taskCount?.open ?? 0}
         dashboardUnread={attention?.unreadCount ?? 0}
         showSystem={me?.isAdmin === true}
         userName={me?.name}

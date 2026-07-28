@@ -65,8 +65,8 @@ automatically (for owner-name display). You only create the user in Zitadel.
 
 1. They open the instance URL, are redirected to Zitadel, sign in (password or
    SSO), and land on the dashboard.
-2. **Empty states are correct everywhere:** no memories, no tasks, an empty
-   Review queue, an empty Forgotten list, no digest panel. Nothing errors.
+2. **Empty states are correct everywhere:** no memories, no open loops, an
+   empty Review queue, an empty Forgotten list, no digest panel. Nothing errors.
 3. They capture a note — scope defaults to their Settings default (**private**
    until they change it). Private facts are theirs alone.
 4. If a teammate has captured **shared** facts, the new user sees them in

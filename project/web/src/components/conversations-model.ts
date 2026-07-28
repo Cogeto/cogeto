@@ -62,15 +62,12 @@ export function chatLink(conversationId: string, messageId?: string): string {
 /**
  * The delete confirmation, stating exactly what the saga will do — built from
  * the preview endpoint's numbers, never guessed. Archive is offered as the
- * safe alternative; user-approved memories and derived tasks are called out so
- * the user deletes knowingly.
+ * safe alternative; user-approved memories are called out so the user deletes
+ * knowingly.
  */
 export function deleteConversationConfirm(
   label: string,
-  preview: Pick<
-    DeletionPreviewDto,
-    'memoryCount' | 'messageCount' | 'userApprovedCount' | 'taskCount'
-  >,
+  preview: Pick<DeletionPreviewDto, 'memoryCount' | 'messageCount' | 'userApprovedCount'>,
 ): string {
   const messages = preview.messageCount ?? 0;
   const memories = preview.memoryCount;
@@ -84,11 +81,6 @@ export function deleteConversationConfirm(
   if ((preview.userApprovedCount ?? 0) > 0) {
     knowing.push(
       `${preview.userApprovedCount} of those memories ${preview.userApprovedCount === 1 ? 'was' : 'were'} approved by you`,
-    );
-  }
-  if ((preview.taskCount ?? 0) > 0) {
-    knowing.push(
-      `${preview.taskCount} task${preview.taskCount === 1 ? '' : 's'} derived from them will be removed too`,
     );
   }
   if (knowing.length > 0) lines.push(`Note: ${knowing.join('; ')}.`);

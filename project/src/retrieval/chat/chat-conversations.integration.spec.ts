@@ -12,7 +12,6 @@ import { applyMigrations } from '../../infrastructure/index';
 import { createMemoryReconciliation } from '../../memory/index';
 import type { MemoryStore } from '../../memory/index';
 import { createIngestionPipeline } from '../../ingestion/index';
-import { TasksEngine } from '../../tasks/index';
 import { UserDirectory } from '../../identity/index';
 import { ModelGateway, ModelGatewayError } from '../../model-gateway/index';
 import type { StructuredExtractionRequest } from '../../model-gateway/index';
@@ -160,8 +159,7 @@ describe('multiple conversations (integration, real Postgres + Qdrant)', () => {
   });
 
   const scriptedChat = (gateway: ScriptedGateway) => {
-    const tasksEngine = new TasksEngine(tdb.db, store, gateway);
-    const retrieval = new RetrievalService(store, gateway, tasksEngine);
+    const retrieval = new RetrievalService(store, gateway, tdb.db);
     return new ChatService(tdb.db, retrieval, gateway, new UserDirectory(tdb.db));
   };
   const drain = async (events: AsyncGenerator<ChatStreamEvent>) => {

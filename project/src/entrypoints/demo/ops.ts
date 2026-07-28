@@ -65,7 +65,7 @@ export async function deadLetterCount(pool: Pool): Promise<number> {
 
 /**
  * Waits until the queue is empty AND stays empty across two checks (so a job
- * that just enqueued a follow-on — the pipeline enqueues task-derive/embed —
+ * that just enqueued a follow-on — the pipeline enqueues the embed job —
  * doesn't read as drained). Fails if any job dead-letters.
  */
 export async function waitForQuiescence(
