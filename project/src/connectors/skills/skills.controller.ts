@@ -19,7 +19,6 @@ import type {
   SkillRunDetailDto,
   SkillRunDto,
   SkillRunStepDto,
-  SkillProposedActionDto,
   SkillStepKind,
   SkillStepLinks,
 } from '@cogeto/shared';
@@ -56,11 +55,6 @@ const planSchema = z.object({
     )
     .min(1, 'approve at least one query, or cancel the run')
     .max(20),
-});
-
-const actionSchema = z.object({
-  memoryId: z.uuid(),
-  state: z.enum(['accepted', 'dismissed']),
 });
 
 function toRunDto(row: SkillRunRow): SkillRunDto {
@@ -110,10 +104,8 @@ function toPlanDto(row: ResearchRunRow): SkillPlanQueryDto {
 
 /**
  * The skill surface (Priority 7; decision 0059) — propose → the plan gate →
- * the live run view → the brief and its proposed actions. Composed only into
- * the app root (SkillsModule): planning needs retrieval; execution stays the
- * worker's. Accepting a proposed action is NOT here — that is
- * POST /api/tasks/adopt; this surface only records the decision.
+ * the live run view → the brief. Composed only into the app root
+ * (SkillsModule): planning needs retrieval; execution stays the worker's.
  */
 @Controller('skills')
 @UseGuards(BearerAuthGuard)
@@ -185,26 +177,6 @@ export class SkillsController {
     return this.detail(request.principal, run);
   }
 
-  /** Record accept/dismiss on a proposal (accept itself = /api/tasks/adopt). */
-  @Post('runs/:id/actions')
-  async actionState(
-    @Req() request: AuthenticatedRequest,
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: unknown,
-  ): Promise<SkillRunDetailDto> {
-    const parsed = actionSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
-    const run = await this.runs.setActionState(
-      request.principal,
-      id,
-      parsed.data.memoryId,
-      parsed.data.state,
-    );
-    return this.detail(request.principal, run);
-  }
-
   private async detail(principal: Principal, run: SkillRunRow): Promise<SkillRunDetailDto> {
     const [steps, planRuns] = await Promise.all([
       this.runs.steps(run.id),
@@ -216,7 +188,6 @@ export class SkillsController {
       plan: planRuns.map(toPlanDto),
       brief: run.brief,
       briefCitations: (run.briefCitations as ResearchCitationDto[]) ?? [],
-      proposedActions: (run.proposedActions as SkillProposedActionDto[]) ?? [],
     };
   }
 }

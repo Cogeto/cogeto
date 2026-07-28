@@ -17,16 +17,16 @@ import {
 } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { MemoryReconciliation, MemoryStore } from '../memory/index';
-import { TasksEngine } from '../tasks/index';
-import type { AttentionTask } from '../tasks/index';
+import { RetrievalService } from '../retrieval/index';
+import type { OpenLoop } from '../retrieval/index';
 import { ApprovalService } from '../agents/index';
 import { buildDreamDigest, dreamingActivityForPrincipal } from '../ingestion/index';
 
 /**
  * The "what needs my attention" surface and the dashboard statistics (Post-v1
  * Priority 2, decision 0039). Both are COMPUTED per Principal — a thin derived
- * layer over signals the instance already produces (tasks, the review queues,
- * pending approvals, the dreaming digest). The only materialized state is the
+ * layer over signals the instance already produces (the open loops read from
+ * memory, the review queues, pending approvals, the dreaming digest). The only materialized state is the
  * read-state pair (`attention_state`, `attention_dismissal`).
  *
  * Composition root placement (entrypoints): the surface spans four bounded
@@ -36,7 +36,7 @@ import { buildDreamDigest, dreamingActivityForPrincipal } from '../ingestion/ind
  * module (§A.1).
  */
 
-/** A task within this window is "due soon" (past this it is simply overdue). */
+/** An open loop within this window is "due soon" (past it, simply overdue). */
 const DUE_SOON_HOURS = 72;
 /** Days of history the dashboard series cover — a bounded, cheap window. */
 const STATS_WINDOW_DAYS = 30;
@@ -48,11 +48,11 @@ const MS_DAY = 86_400_000;
 
 /** Display priority — most-pressing first; ties break on recency. */
 const PRIORITY: Record<AttentionKind, number> = {
-  task_overdue: 0,
+  open_loop_overdue: 0,
   review_contradicted: 1,
   approval_pending: 2,
-  task_due_soon: 3,
-  task_dormant: 4,
+  open_loop_due_soon: 3,
+  open_loop_quiet: 4,
   review_uncertain: 5,
   digest_change: 6,
 };
@@ -63,7 +63,9 @@ export class AttentionService {
     @Inject(DRIZZLE) private readonly db: Db,
     private readonly memoryStore: MemoryStore,
     private readonly reconciliation: MemoryReconciliation,
-    private readonly tasks: TasksEngine,
+    /** The one open-loops query (decision 0060) — the same read the chat
+     * answer uses, so "still open" means one thing across the product. */
+    private readonly retrieval: RetrievalService,
     private readonly approvals: ApprovalService,
     private readonly userContext: UserContextService,
   ) {}
@@ -83,7 +85,7 @@ export class AttentionService {
     ]);
 
     const groups = await Promise.all([
-      this.taskItems(principal, now, hr),
+      this.openLoopItems(principal, now, hr),
       this.reviewItems(principal, hr),
       this.approvalItems(principal, hr),
       this.digestItems(principal, hr),
@@ -104,19 +106,19 @@ export class AttentionService {
     };
   }
 
-  /** Tasks due soon / overdue / gone quiet — owner-scoped, classified. */
-  private async taskItems(
+  /** Open loops due soon / overdue / gone quiet — gated, then classified. */
+  private async openLoopItems(
     principal: Principal,
     now: Date,
     hr: boolean,
   ): Promise<Omit<AttentionItem, 'unread'>[]> {
-    const tasks = await this.tasks.attentionTasksForPrincipal(principal);
+    const loops = await this.retrieval.openLoops(principal);
     const items: Omit<AttentionItem, 'unread'>[] = [];
-    for (const task of tasks) {
-      const classified = classifyTask(task, now, hr);
+    for (const loop of loops) {
+      const classified = classifyOpenLoop(loop, now, hr);
       if (classified) items.push(classified);
     }
-    // Dormant nudges are the calmest; keep the count honest but bounded.
+    // Quiet nudges are the calmest; keep the count honest but bounded.
     return capGroup(items);
   }
 
@@ -200,14 +202,11 @@ export class AttentionService {
     principal: Principal,
     hr: boolean,
   ): Promise<Omit<AttentionItem, 'unread'>[]> {
-    // No task section here: task attention comes from `taskItems`, so the two
-    // never double-count. Consolidation lines only.
     const digest = await buildDreamDigest(this.db, this.memoryStore, principal, {
       locale: hr ? 'hr' : 'en',
     });
     if (!digest.runId || !digest.finishedAt) return [];
-    const consolidation = digest.lines.filter((l) => l.section !== 'tasks');
-    return consolidation.map((line, index) => ({
+    return digest.lines.map((line, index) => ({
       // Content-free key: run id + position in the deterministic line order.
       key: `digest:${digest.runId}:${index}`,
       kind: 'digest_change' as const,
@@ -263,7 +262,7 @@ export class AttentionService {
   async getStats(principal: Principal): Promise<DashboardStatsDto> {
     const [
       memoryByStatus,
-      tasks,
+      openLoops,
       sourceRows,
       dreamRows,
       oldestUncertain,
@@ -272,7 +271,7 @@ export class AttentionService {
       pending,
     ] = await Promise.all([
       this.memoryStore.statusCountsForPrincipal(principal),
-      this.tasks.statusCountsForPrincipal(principal),
+      this.retrieval.openLoops(principal),
       this.memoryStore.sourceDailyCountsForPrincipal(principal, STATS_WINDOW_DAYS),
       dreamingActivityForPrincipal(this.db, this.memoryStore, principal, STATS_WINDOW_DAYS),
       this.memoryStore.oldestUncertainAtForPrincipal(principal),
@@ -315,7 +314,7 @@ export class AttentionService {
     return {
       memoryByStatus,
       memoryTotal,
-      tasks,
+      openLoops: openLoops.length,
       sources,
       dreaming,
       review: {
@@ -328,8 +327,9 @@ export class AttentionService {
   }
 }
 
-/** Source-type → chart family. calendar/task_conclusion are engine/derived, not
- * user-ingested sources, so they are excluded from the "sources" chart. */
+/** Source-type → chart family. calendar/task_conclusion are engine/derived (the
+ * latter defunct since decision 0060), not user-ingested sources, so they are
+ * excluded from the "sources" chart. */
 const SOURCE_FAMILY: Record<string, string> = {
   user_note: 'notes',
   chat: 'notes',
@@ -337,24 +337,33 @@ const SOURCE_FAMILY: Record<string, string> = {
   file: 'files',
 };
 
-function classifyTask(
-  task: AttentionTask,
+/**
+ * One open loop → at most one attention line (decision 0060). Due date is the
+ * memory's own `valid_until`; "gone quiet" is ingestion's dormant flag; the
+ * deep link opens the fact itself in the memory drawer, where its provenance
+ * and validity live.
+ */
+function classifyOpenLoop(
+  loop: OpenLoop,
   now: Date,
   hr: boolean,
 ): Omit<AttentionItem, 'unread'> | null {
+  const { memory } = loop;
+  const href = `/memories?open=${memory.id}`;
+  const title = trim(memory.content ?? '');
   const nowMs = now.getTime();
-  if (task.due) {
-    const dueMs = task.due.getTime();
+  if (memory.validUntil) {
+    const dueMs = memory.validUntil.getTime();
     if (dueMs < nowMs) {
       const days = Math.max(1, Math.round((nowMs - dueMs) / MS_DAY));
       return {
-        key: `task:${task.id}:overdue`,
-        kind: 'task_overdue',
+        key: `loop:${memory.id}:overdue`,
+        kind: 'open_loop_overdue',
         title: hr
-          ? `Kasni ${days === 1 ? '1 dan' : `${days} dana`}: ${trim(task.title)}`
-          : `Overdue by ${plural(days, 'day')}: ${trim(task.title)}`,
-        timestamp: task.due.toISOString(),
-        href: '/tasks',
+          ? `Kasni ${days === 1 ? '1 dan' : `${days} dana`}: ${title}`
+          : `Overdue by ${plural(days, 'day')}: ${title}`,
+        timestamp: memory.validUntil.toISOString(),
+        href,
         dismissible: false,
       };
     }
@@ -372,23 +381,23 @@ function classifyTask(
             ? 'tomorrow'
             : `in ${days} days`;
       return {
-        key: `task:${task.id}:due`,
-        kind: 'task_due_soon',
-        title: hr ? `Rok ${when}: ${trim(task.title)}` : `Due ${when}: ${trim(task.title)}`,
+        key: `loop:${memory.id}:due`,
+        kind: 'open_loop_due_soon',
+        title: hr ? `Rok ${when}: ${title}` : `Due ${when}: ${title}`,
         // The moment it entered the due-soon window (past), so "new" is honest.
         timestamp: new Date(dueMs - DUE_SOON_HOURS * MS_HOUR).toISOString(),
-        href: '/tasks',
+        href,
         dismissible: false,
       };
     }
   }
-  if (task.dormant) {
+  if (loop.dormant) {
     return {
-      key: `task:${task.id}:dormant`,
-      kind: 'task_dormant',
-      title: hr ? `Utihnulo: ${trim(task.title)}` : `Gone quiet: ${trim(task.title)}`,
-      timestamp: task.updatedAt.toISOString(),
-      href: '/tasks',
+      key: `loop:${memory.id}:quiet`,
+      kind: 'open_loop_quiet',
+      title: hr ? `Utihnulo: ${title}` : `Gone quiet: ${title}`,
+      timestamp: memory.updatedAt.toISOString(),
+      href,
       dismissible: false,
     };
   }

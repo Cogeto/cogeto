@@ -281,9 +281,10 @@ export const skillStepStatusEnum = pgEnum('skill_step_status', [
 /**
  * One skill invocation (Priority 7; decision 0059; migration 0034): a named,
  * versioned, code-defined workflow's durable run record. The brief + its
- * resolved citations persist here (renderable forever, citation links live);
- * proposed_actions holds adoption proposals ONLY — a skill never creates a
- * task (decision 0054), accepting a proposal goes through /api/tasks/adopt.
+ * resolved citations persist here (renderable forever, citation links live).
+ * A skill creates nothing of its own (decision 0060): it reads, searches, and
+ * writes a brief — the adoption-proposal column went with the task subsystem
+ * (migration 0035).
  */
 export const skillRun = pgTable(
   'skill_run',
@@ -299,7 +300,6 @@ export const skillRun = pgTable(
     status: skillRunStatusEnum('status').notNull().default('planning'),
     brief: text('brief'),
     briefCitations: jsonb('brief_citations'),
-    proposedActions: jsonb('proposed_actions').notNull().default([]),
     failureReason: text('failure_reason'),
     startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
     finishedAt: timestamp('finished_at', { withTimezone: true }),

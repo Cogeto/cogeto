@@ -223,7 +223,7 @@ describe('research-brief skill: the brief (integration)', () => {
     const retrieval = {
       retrieve: async (_p: unknown, _q: unknown, opts: { rewrite?: { openLoops?: unknown } }) => {
         if ((opts.rewrite as { openLoops: unknown }).openLoops) {
-          return { memories: [], mode: 'tasks', tasks: [] };
+          return { memories: [], mode: 'open_loops', openLoops: [] };
         }
         return {
           memories: [

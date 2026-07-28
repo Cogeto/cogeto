@@ -16,7 +16,7 @@ import { REWRITE_TIMEOUT_MS } from './retrieval-config';
  * chrono resolver, never by the model. Any failure → default mode ('personal'
  * question class — the memory-question path), never an error.
  */
-export const QUERY_REWRITE_PROMPT = { family: 'query_rewrite', version: 'v0005' } as const;
+export const QUERY_REWRITE_PROMPT = { family: 'query_rewrite', version: 'v0006' } as const;
 
 export interface ConversationTurn {
   role: 'user' | 'assistant';
@@ -133,6 +133,12 @@ export const TEMPORAL_HINT_RE = new RegExp(
 /**
  * The open-loops hint lexicon (decision 0013 ruling 7), en + hr — the same
  * enable-and-veto double guard as temporal.
+ *
+ * The to-do wordings ("open tasks", "to-dos", "zadaci") deliberately SURVIVE
+ * the 2.0 task removal (decision 0060): they are how people ask about the
+ * commitments Cogeto remembers, not names of anything Cogeto still builds.
+ * Dropping them would have made the day-one question answerable in fewer
+ * phrasings than before.
  */
 export const OPEN_LOOPS_HINT_RE = new RegExp(
   [
@@ -187,92 +193,6 @@ export const REPLY_EMAIL_HINT_RE = new RegExp(
   ].join('|'),
   'i',
 );
-
-/** Create-a-task intent (decision 0038): the explicit conversational request
- * to turn something into a task ("make a task to…", "remind me to…",
- * "dodaj zadatak: …"). Deterministic like the reply intent — the lexicon both
- * detects the request and extracts the instruction; no model decides WHETHER. */
-export interface CreateTaskIntent {
-  /** The task instruction with the trigger phrase stripped; null = the
-   * trigger fired but carried nothing actionable. */
-  instruction: string | null;
-  /** Which language's trigger matched — picks the capture normalization. */
-  lang: 'en' | 'hr';
-  /**
-   * Adoption form (P6.5; decision 0054): "make a task FROM …" references an
-   * EXISTING memory ("make a task from Ana's deadline in that contract") —
-   * resolve and adopt it rather than capturing new content. Null = the plain
-   * create form.
-   */
-  adoptReference: string | null;
-}
-
-const CREATE_TASK_PATTERNS: ReadonlyArray<{ lang: 'en' | 'hr'; re: RegExp }> = [
-  {
-    lang: 'en',
-    re: /\b(?:make|create|add|open|set up)\s+(?:me\s+)?a\s+(?:new\s+)?(?:task|to[- ]?do)(?:\s+(?:to|for|about)\s+(.+)|\s*[:–—-]\s+(.+))?\s*$/i,
-  },
-  { lang: 'en', re: /\bnew task\s*[:–—-]\s*(.+)$/i },
-  { lang: 'en', re: /\bremind me to\s+(.+)$/i },
-  {
-    lang: 'hr',
-    re: /\b(?:napravi|kreiraj|dodaj|otvori|stavi)\s+(?:mi\s+)?(?:novi\s+)?zadatak(?:\s+(?:da|za)\s+(.+)|\s*[:–—-]\s+(.+))?\s*$/i,
-  },
-  { lang: 'hr', re: /\bnovi zadatak\s*[:–—-]\s*(.+)$/i },
-  { lang: 'hr', re: /\bpodsjeti me (?:da|na)\s+(.+)$/i },
-];
-
-/**
- * The question veto: a turn ASKING about tasks ("did I make a task for
- * Marko?", "imam li zadatak…") is retrieval, not creation. Leading
- * interrogatives that request information veto the intent; polite request
- * forms ("can you make a task to…") deliberately do not.
- */
-const CREATE_TASK_QUESTION_VETO =
-  /^\s*(?:did|do|does|have|has|had|is|are|was|were|what|which|when|where|why|how|who|jesam|jesi|je\s*li|ima[mš]\s*li|što|sto|koji|koja|koje|kada|kad|gdje|zašto|zasto|kako|tko)\b/i;
-
-/**
- * The adoption form (P6.5; decision 0054): "make a task from <reference>" and
- * "turn <reference> into a task" (en + hr) target an EXISTING memory. Checked
- * before the create patterns — "from" is not in their preposition set, so the
- * two forms never shadow each other.
- */
-const ADOPT_TASK_PATTERNS: ReadonlyArray<{ lang: 'en' | 'hr'; re: RegExp }> = [
-  {
-    lang: 'en',
-    re: /\b(?:make|create|add|open)\s+(?:me\s+)?a\s+(?:new\s+)?(?:task|to[- ]?do)\s+(?:from|out of)\s+(.+)$/i,
-  },
-  { lang: 'en', re: /\bturn\s+(.+?)\s+into\s+a\s+(?:task|to[- ]?do)\s*$/i },
-  {
-    lang: 'hr',
-    re: /\b(?:napravi|kreiraj|dodaj|otvori)\s+(?:mi\s+)?(?:novi\s+)?zadatak\s+(?:iz|od|na temelju)\s+(.+)$/i,
-  },
-  { lang: 'hr', re: /\bpretvori\s+(.+?)\s+u\s+zadatak\s*$/i },
-];
-
-/** Detect an explicit create-a-task request. Purely deterministic (no model). */
-export function detectCreateTaskIntent(question: string): CreateTaskIntent | null {
-  if (CREATE_TASK_QUESTION_VETO.test(question)) return null;
-  for (const { lang, re } of ADOPT_TASK_PATTERNS) {
-    const match = re.exec(question);
-    if (!match) continue;
-    const raw = match[1]!
-      .trim()
-      .replace(/[.!?\s]+$/, '')
-      .trim();
-    return { instruction: null, lang, adoptReference: raw.length >= 3 ? raw : null };
-  }
-  for (const { lang, re } of CREATE_TASK_PATTERNS) {
-    const match = re.exec(question);
-    if (!match) continue;
-    const raw = (match[1] ?? match[2] ?? '')
-      .trim()
-      .replace(/[.!?\s]+$/, '')
-      .trim();
-    return { instruction: raw.length >= 3 ? raw : null, lang, adoptReference: null };
-  }
-  return null;
-}
 
 export interface ResearchIntent {
   /** The research topic (the turn minus its trigger verb), verbatim. */
@@ -535,7 +455,7 @@ export function shouldRewrite(question: string): boolean {
   );
 }
 
-/** The open-loops veto guard: no hint in the raw question, no tasks mode. */
+/** The open-loops veto guard: no hint in the raw question, no open-loops mode. */
 export function resolveOpenLoopsIntent(
   rawQuestion: string,
   claimed: { entity: string | null } | null,

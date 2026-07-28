@@ -26,7 +26,7 @@ import { ConversationSidebar } from './ConversationSidebar';
  *   deep_links_open_conversation — /chat?c=<conversation>&m=<message> parses,
  *     round-trips, and wins over recency when choosing the open conversation.
  *   delete_confirm_counts — the confirm dialog's text carries the preview's
- *     exact numbers, calls out user-approved memories and derived tasks, and
+ *     exact numbers, calls out user-approved memories, and
  *     names archive as the safe alternative.
  *   sidebar_a11y — axe passes on the rendered sidebar.
  */
@@ -129,22 +129,19 @@ describe('delete_confirm_counts', () => {
       memoryCount: 4,
       messageCount: 12,
       userApprovedCount: 1,
-      taskCount: 2,
     });
     expect(text).toContain('its 12 messages');
     expect(text).toContain('the 4 memories derived from them');
     expect(text).toContain('signed receipt');
     expect(text).toContain('1 of those memories was approved by you');
-    expect(text).toContain('2 tasks derived from them will be removed too');
     expect(text).toContain('Archiving keeps everything instead');
   });
 
-  it('omits the knowing-deletion note when nothing approved or task-deriving is affected', () => {
+  it('omits the knowing-deletion note when nothing approved is affected', () => {
     const text = deleteConversationConfirm('Quick questions', {
       memoryCount: 0,
       messageCount: 2,
       userApprovedCount: 0,
-      taskCount: 0,
     });
     expect(text).toContain('its 2 messages');
     expect(text).toContain('the 0 memories');

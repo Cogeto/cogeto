@@ -2,6 +2,24 @@
 
 One line per label change (docs/eval-golden-set.md §4 rule 5).
 
+- 2026-07-28 (V2.0 item 3.1 — task removal, decision 0060): removed the 12
+  task-judgment pairs (`en-t001`–`en-t006`, `hr-t001`–`hr-t006`) and the
+  `task-pair.json` case format with them — closure and condition judgments were
+  the task engine's, and the engine is gone. Removed the `expected_tasks` field
+  from the case schema and the six derivation-trap assertions that used it
+  (`en-e004`/`hr-e004`, `en-f001`/`hr-f001`, `en-w002`/`hr-w002`); those six
+  cases **stay in the corpus with their ids and every extraction label
+  unchanged** — they are still the thread-isolation and observed-obligation
+  cases they always were, and keeping the ids keeps published scores
+  comparable. Chat suite: `create_task_en_conditioned`, `create_task_hr_uvjet`
+  and `closure_flow` removed (all three exercised deleted behavior);
+  `whats_still_open` and `open_with_entity` **kept and re-pointed at the
+  memory-backed open-loops path**, which they pass unchanged — the founding
+  question still answers from `commitment`/`open_loop` memories with citations,
+  due dates from `valid_until`. Gate surface: the `derivation_traps` hard
+  assertion is retired; extraction, verification and reconciliation floors are
+  untouched. Totals: en 48, hr 48 case dirs; chat 24 cases.
+
 - 2026-07-03 (S2-A): seeded `en-0001` (canonical conditional commitment) and
   `en-0002` (designed overreach: discussed amount must not become a decision).
 - 2026-07-03 (S2-B): golden set v0 — added `en-0003`–`en-0008` and

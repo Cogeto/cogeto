@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { desc, eq, isNotNull, isNull } from 'drizzle-orm';
-import { DRIZZLE, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
+import { DRIZZLE, writeAudit } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { MemoryStore } from '../memory/index';
 import type { MemoryRow } from '../memory/index';
@@ -28,7 +28,7 @@ import { DORMANT_SILENCE_DAYS, DREAM_FIRST_RUN_LOOKBACK_HOURS } from './reconcil
  *        the consolidation job — glossary).
  *   4b.  dormant flags — active commitments quiet beyond the silence window
  *        are FLAGGED (dormant_flag, never a transition) for the digest and
- *        the F3 task engine; flags whose memory left `active` are cleared.
+ *        the open-loops read; flags whose memory left `active` are cleared.
  *
  * Idempotent by construction (the 0010 ruling 7 mechanisms plus the unique
  * open-flag index and the staleness status filter); resumable — a crashed run
@@ -144,16 +144,6 @@ export class DreamingService {
       }
     }
     report.flagsCleared = await this.clearSettledFlags();
-
-    // Nightly task backfill (decision 0013 ruling 2): idempotent — the
-    // UNIQUE deriving-memory constraint makes re-derivation a no-op.
-    await this.db.transaction((tx) =>
-      withTransactionalEnqueue(
-        tx,
-        { type: 'dreaming.finished', payload: { run_id: runId } },
-        { type: 'tasks_backfill', payload: { source_type: 'tasks_backfill', source_id: runId } },
-      ),
-    );
 
     const finishedAt = new Date();
     await this.db

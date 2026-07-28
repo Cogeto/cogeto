@@ -55,7 +55,7 @@ describe('SkillPlanner.propose', () => {
       retrieve: vi.fn(
         async (_p: unknown, _q: unknown, opts: { rewrite?: { openLoops?: unknown } }) =>
           (opts.rewrite as { openLoops: unknown }).openLoops
-            ? { memories: [], mode: 'tasks', tasks: [] }
+            ? { memories: [], mode: 'open_loops', openLoops: [] }
             : {
                 memories: [
                   { memory: row({ subjectEntity: 'Marko Kovač', entities: ['Marko Kovač'] }) },

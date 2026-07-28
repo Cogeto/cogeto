@@ -121,6 +121,22 @@ export type FilteredSearchOptions = SearchOptions & MemoryFilters;
 /** The job the edit path enqueues: embed the supersession successor (worker). */
 export const MEMORY_EMBED_JOB_TYPE = 'memory.embed';
 
+// ── Open loops (V2.0 item 3.1, decision 0060) ────────────────────────────────
+
+/** The two kinds that ARE open loops — the extractor's own labels. */
+export const OPEN_LOOP_KINDS = ['commitment', 'open_loop'] as const;
+
+/**
+ * The statuses a standing obligation may carry. `replaced`/`outdated` are past
+ * belief and `contradicted` is disputed — none of the three is "still open".
+ * `uncertain` stays in: an unconfirmed promise is still a promise (the answer
+ * path frames it softly), which is the same admission rule extraction uses.
+ */
+export const OPEN_LOOP_STATUSES = ['active', 'user_approved', 'uncertain'] as const;
+
+/** Read cap, mirroring every other bounded engine read. */
+const OPEN_LOOP_POOL = 200;
+
 // ── Temporal read contracts (decision 0012) ──────────────────────────────────
 
 /** SQL-first temporal candidate cap; Qdrant only ranks within it (ruling 3). */
@@ -203,6 +219,45 @@ export class MemoryStore {
       .orderBy(desc(memory.createdAt), memory.id)
       .limit(Math.min(opts.limit ?? 50, 200))
       .offset(opts.offset ?? 0);
+  }
+
+  /**
+   * The open loops (V2.0 item 3.1, decision 0060): the caller's standing
+   * commitments and open items, read straight from memory — no derived table
+   * behind it. Kinds `commitment`/`open_loop`, gated exactly like every other
+   * read, narrowed to the statuses that still STAND (`replaced`, `outdated`
+   * and `contradicted` are closed or disputed, never "still open"), optionally
+   * scoped to one entity, ordered by due date (`valid_until`) first so the
+   * most pressing surface at the top.
+   *
+   * This is the durable core of the day-one question — "what did I decide,
+   * promise, and commit to, and what is still open?" — and it needs no schema
+   * of its own: the extractor already labels the kind and the temporal pass
+   * already fills `valid_until`.
+   */
+  async openLoopsForPrincipal(
+    principal: Principal,
+    opts: ReadOptions & { entity?: string; limit?: number } = {},
+  ): Promise<MemoryRow[]> {
+    const rows = await this.db
+      .select()
+      .from(memory)
+      .where(
+        and(
+          this.visibleTo(principal, opts),
+          inArray(memory.kind, OPEN_LOOP_KINDS as unknown as FactKind[]),
+          inArray(memory.status, OPEN_LOOP_STATUSES as unknown as MemoryStatus[]),
+        ),
+      )
+      .orderBy(sql`${memory.validUntil} ASC NULLS LAST`, desc(memory.updatedAt), memory.id)
+      .limit(Math.min(opts.limit ?? OPEN_LOOP_POOL, OPEN_LOOP_POOL));
+    const wanted = opts.entity?.trim().toLowerCase();
+    if (!wanted) return rows;
+    return rows.filter(
+      (row) =>
+        row.entities.some((e) => e.toLowerCase().includes(wanted)) ||
+        (row.subjectEntity !== null && row.subjectEntity.toLowerCase().includes(wanted)),
+    );
   }
 
   /**
@@ -618,9 +673,9 @@ export class MemoryStore {
    * the Qdrant payload's `scope` field move together, so a shared→private demote
    * takes effect in vector search the instant it commits (a demoted leak is
    * still a leak — AGENTS.md §A.4). setPayload runs last: if it throws the row
-   * write rolls back and the retry converges. Task visibility follows the
-   * memory — the tasks engine gates its shared arm through the deriving memory's
-   * readability, and re-syncs task.scope on its next pass.
+   * write rolls back and the retry converges. Everything derived from a
+   * memory follows the memory: there is no second visibility rule to keep in
+   * step (decision 0060).
    */
   async setScope(principal: Principal, memoryId: string, scope: MemoryScope): Promise<MemoryRow> {
     const actor: MemoryActor = { kind: 'user', userId: principal.userId };
@@ -1218,7 +1273,7 @@ export class MemoryStore {
     return this.db.select().from(memory).where(inArray(memory.id, memoryIds));
   }
 
-  /** A source's derived memories — the task engine's derivation input (0013 r2). */
+  /** A source's derived memories — the skill runtime's gather input. */
   async listBySourceSystem(sourceType: SourceType, sourceId: string): Promise<MemoryRow[]> {
     return this.db
       .select()
@@ -1227,7 +1282,7 @@ export class MemoryStore {
       .orderBy(memory.createdAt, memory.id);
   }
 
-  /** Kind/status scan — the task backfill's input (0013 ruling 2). */
+  /** Kind/status scan — a system-level sweep primitive. */
   async listByKindsSystem(
     kinds: FactKind[],
     statuses: MemoryStatus[],

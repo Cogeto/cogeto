@@ -11,4 +11,5 @@ dedup, contradiction, consolidation) lives here, governed by Addendum §B.7:
 Convention (finalize in the first coding session): one directory per prompt family,
 numbered files, a CHANGELOG per family.
 
-Consumed by `src/ingestion` and `src/tasks` via `model-gateway` calls.
+Consumed by `src/ingestion`, `src/retrieval` and `src/connectors` via
+`model-gateway` calls.

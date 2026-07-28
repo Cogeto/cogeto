@@ -121,15 +121,15 @@ export interface SourceCascade {
 export const SOURCE_DELETIONS = Symbol('SOURCE_DELETIONS');
 
 /**
- * Port for cascading DERIVED artifacts (tasks, future derivations) when their
- * memories are erased (decision 0013 ruling 6) — the third of the family
+ * Port for cascading DERIVED artifacts (chat answers, reply drafts, future
+ * derivations) when their memories are erased (decision 0013 ruling 6) — the third of the family
  * after SourceReader and SourceDeletion: memory defines it, the deriving
  * module implements it, composition roots bind it. Implementations delete
  * their own rows inside the enumeration transaction and return the count for
  * the receipt; the FK CASCADE remains as the safety net.
  */
 export interface DerivedCascade {
-  /** Names the artifact in counts_json (e.g. 'tasks'). */
+  /** Names the artifact in counts_json (e.g. 'chat_messages'). */
   readonly artifact: string;
   cascadeForMemories(tx: Tx, memoryIds: string[]): Promise<number>;
   /**
@@ -191,9 +191,19 @@ const countsSchema = z.object({
   requested_by: z.string(),
   memory_ids: z.array(z.string()),
   memory_count: z.int(),
-  /** Derived tasks removed with the memories (F3-B, additive — optional so
-   * pre-F3 receipts parse unchanged; a count, not an identifier: the sweep
-   * ignores it). */
+  /**
+   * Derived tasks removed with the memories (F3-B).
+   *
+   * PERMANENTLY OPTIONAL, and never written again (V2.0 item 3.1, decision
+   * 0060). The task subsystem is gone, so no new receipt carries this field —
+   * but every receipt that already does must keep parsing AND keep hashing to
+   * the same value. The chain hashes the STORED counts_json verbatim
+   * (canonicalize is unchanged and must stay unchanged), so a historical
+   * receipt verifies exactly as it did before the removal. Removing the field
+   * from this schema would break the executor's parse of those receipts; this
+   * line is a contract, not dead code. Covered by
+   * `receipt-chain-tasks-removed.spec.ts`.
+   */
   tasks_removed: z.int().optional(),
   /** Assistant chat answers whose stored citations referenced erased memories,
    * redacted to a deletion marker (FIX-1 QS-7, decision 0025; additive —
@@ -233,8 +243,6 @@ export interface DeletionPreview {
   messageCount?: number;
   /** Enumerated memories the user had explicitly approved — deleted knowingly. */
   userApprovedCount?: number;
-  /** Tasks whose deriving memory is enumerated — they go with it (0013 r.6). */
-  taskCount?: number;
 }
 
 function assertSourceType(value: string): SourceType {
@@ -253,7 +261,7 @@ export class DeletionSaga {
     @Optional() @Inject(SOURCE_DELETIONS) adapters: SourceDeletion[] = [],
     /** Payload sync for lifted contradiction partners (0010 ruling 8). */
     @Optional() private readonly vectors?: MemoryVectorStore,
-    /** Derived-artifact cascades (0013 ruling 6) — tasks today. */
+    /** Derived-artifact cascades (0013 ruling 6). */
     @Optional() @Inject(DERIVED_CASCADES) private readonly derivedCascades: DerivedCascade[] = [],
     /** Pending-ingestion cancellation (QS-5, decision 0024) — always bound by
      * the composition roots; optional only for legacy test harnesses. */
@@ -281,7 +289,6 @@ export class DeletionSaga {
       let objectCount = fileRow ? 1 : 0;
       let messageCount: number | undefined;
       let userApprovedCount: number | undefined;
-      let taskCount: number | undefined;
       // Fold in the cascaded members (email: raw + HTML objects, attachment file
       // sources and their memories) so the confirm dialog's numbers are honest.
       if (adapter?.enumerateCascade) {
@@ -299,9 +306,8 @@ export class DeletionSaga {
             .where(eq(fileMetadata.objectKey, fileKey));
           objectCount += exists.length;
         }
-        // Conversation members (P6.9): messages + their memories, and the two
-        // knowing-deletion counts the confirm surfaces (user_approved memories,
-        // tasks that go with their deriving memory).
+        // Conversation members (P6.9): messages + their memories, plus the
+        // knowing-deletion count the confirm surfaces (user_approved memories).
         if (cascade.chatSubSourceIds) {
           messageCount = cascade.chatSubSourceIds.length;
           const subRows =
@@ -318,15 +324,6 @@ export class DeletionSaga {
                   );
           memoryCount += subRows.length;
           userApprovedCount = subRows.filter((r) => r.status === 'user_approved').length;
-          taskCount = 0;
-          const subIds = subRows.map((r) => r.id);
-          if (subIds.length > 0) {
-            for (const derived of this.derivedCascades) {
-              if (derived.artifact === 'tasks' && derived.countForMemories) {
-                taskCount += await derived.countForMemories(tx, subIds);
-              }
-            }
-          }
         }
       }
       return {
@@ -336,7 +333,6 @@ export class DeletionSaga {
         objectCount,
         messageCount,
         userApprovedCount,
-        taskCount,
       };
     });
   }
@@ -436,12 +432,10 @@ export class DeletionSaga {
       // Derived-artifact cascades (0013 ruling 6): counted deletes inside the
       // enumeration transaction, before the memory rows go (the FK CASCADE
       // stays as the safety net).
-      let tasksRemoved = 0;
       let chatMessagesRedacted = 0;
       let replyDraftsRedacted = 0;
       for (const cascade of this.derivedCascades) {
         const removed = await cascade.cascadeForMemories(tx, memoryIds);
-        if (cascade.artifact === 'tasks') tasksRemoved += removed;
         // QS-7 (decision 0025): assistant answers that cited erased memories
         // are redacted to a deletion marker by the chat cascade; the receipt
         // counts them so the erasure claim is complete, not just row-deep.
@@ -484,7 +478,9 @@ export class DeletionSaga {
         requested_by: principal.userId,
         memory_ids: memoryIds,
         memory_count: memoryIds.length,
-        tasks_removed: tasksRemoved,
+        // `tasks_removed` is deliberately ABSENT from new receipts (decision
+        // 0060) and stays optional in the schema forever, so the historical
+        // ones that carry it still parse and still verify.
         chat_messages_redacted: chatMessagesRedacted,
         reply_drafts_redacted: replyDraftsRedacted,
         ...(chatMessagesRemoved === null ? {} : { chat_messages_removed: chatMessagesRemoved }),

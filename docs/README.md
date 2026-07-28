@@ -77,4 +77,5 @@ connector order and the Gmail/CASA path).
 ## History
 
 - [`sessions/`](sessions/) — per-session engineering logs (what was built, decided, and verified).
-- [`handoff/`](handoff/) — frozen inter-session contracts (deletion saga, dreaming, tasks).
+- [`handoff/`](handoff/) — frozen inter-session contracts (deletion saga,
+  dreaming, and the retired task engine, kept as history).

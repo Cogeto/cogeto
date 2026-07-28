@@ -103,11 +103,12 @@ export interface DreamDigestLine {
   /** SPA route the line deep-links to; always resolvable for the caller. */
   href: string;
   /**
-   * Which panel section the line belongs to (O2-A): the nightly consolidation
-   * or the tasks reminders/updates. Optional for back-compat; absent reads as
-   * `consolidation`. The digest is one surface with two sections (F3 §3).
+   * Which panel section the line belongs to. Since V2.0 (decision 0060) the
+   * digest has exactly one section — the nightly consolidation; the tasks
+   * section went with the task subsystem. Optional, absent reads as
+   * `consolidation`.
    */
-  section?: 'consolidation' | 'tasks';
+  section?: 'consolidation';
 }
 
 export interface DreamDigestDto {

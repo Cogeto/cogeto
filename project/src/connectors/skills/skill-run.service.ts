@@ -1,12 +1,6 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
-import type {
-  Principal,
-  SkillProposedActionDto,
-  SkillRunStatus,
-  SkillStepLinks,
-  SkillStepStatus,
-} from '@cogeto/shared';
+import type { Principal, SkillRunStatus, SkillStepLinks, SkillStepStatus } from '@cogeto/shared';
 import { DRIZZLE, writeAudit } from '../../infrastructure/index';
 import type { Db } from '../../infrastructure/index';
 import { skillRun, skillRunStep } from '../persistence/tables';
@@ -189,7 +183,6 @@ export class SkillRunService {
     patch: Partial<{
       brief: string;
       briefCitations: unknown;
-      proposedActions: SkillProposedActionDto[];
       failureReason: string;
     }> = {},
   ): Promise<SkillRunRow | null> {
@@ -201,7 +194,6 @@ export class SkillRunService {
         status: to,
         ...(patch.brief !== undefined ? { brief: patch.brief } : {}),
         ...(patch.briefCitations !== undefined ? { briefCitations: patch.briefCitations } : {}),
-        ...(patch.proposedActions !== undefined ? { proposedActions: patch.proposedActions } : {}),
         ...(patch.failureReason !== undefined ? { failureReason: patch.failureReason } : {}),
         ...(terminal ? { finishedAt: new Date() } : {}),
       })
@@ -255,43 +247,5 @@ export class SkillRunService {
       principal.orgId,
     );
     return updated;
-  }
-
-  /** Record the user's decision on one proposed action. Accepting happened
-   * through POST /api/tasks/adopt — this only marks the proposal. */
-  async setActionState(
-    principal: Principal,
-    runId: string,
-    memoryId: string,
-    state: 'accepted' | 'dismissed',
-  ): Promise<SkillRunRow> {
-    return this.db.transaction(async (tx) => {
-      const rows = await tx
-        .select()
-        .from(skillRun)
-        .where(and(eq(skillRun.id, runId), eq(skillRun.ownerId, principal.userId)))
-        .for('update');
-      const run = rows[0];
-      if (!run) throw new NotFoundException();
-      const actions = (run.proposedActions as SkillProposedActionDto[]) ?? [];
-      const target = actions.find((a) => a.memoryId === memoryId);
-      if (!target) throw new NotFoundException();
-      target.state = state;
-      const [updated] = await tx
-        .update(skillRun)
-        .set({ proposedActions: actions })
-        .where(eq(skillRun.id, runId))
-        .returning();
-      await writeAudit(tx, {
-        actor: `user:${principal.userId}`,
-        action: `skill_run.action_${state}`,
-        entityType: 'skill_run',
-        entityId: runId,
-        detail: { memory_id: memoryId },
-        orgId: principal.orgId,
-        ownerId: principal.userId,
-      });
-      return updated!;
-    });
   }
 }

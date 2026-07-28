@@ -20,15 +20,12 @@ export { PipelineIngestionGuard } from './pipeline/pipeline-guard';
 export type { PipelineLog } from './pipeline/pipeline-log';
 export { DreamingService, DREAM_JOB_TYPE, DREAM_CRONTAB, dreamRunStatus } from './dreaming.service';
 export type { DreamReport, DreamRunStatus } from './dreaming.service';
-// The digest endpoint + the port the tasks module fills with its section
-// (F3 handoff §3). Exporting the controller lets the tasks module — the port's
-// implementor — integration-test the composed endpoint (tasks → ingestion).
+// The digest endpoint. Since decision 0060 the digest has exactly one section
+// (the nightly consolidation) — the tasks section went with the subsystem.
 export { DreamingController } from './dreaming.controller';
 // The digest builder — reused by the attention feed (Post-v1 Priority 2) so
 // there is one digest, gated once — plus the dreaming activity series.
 export { buildDreamDigest, buildDigestLines, dreamingActivityForPrincipal } from './dream-digest';
-export { DIGEST_TASK_SECTION } from './digest-task-port';
-export type { DigestTaskSectionPort, DigestTaskContext } from './digest-task-port';
 export { ReconciliationService, ReconcileJudge, buildPairInput } from './pipeline/reconcile.stage';
 export type {
   ReconcileFactView,
@@ -51,7 +48,7 @@ export {
 } from './prompt-versions';
 export type { PromptVersionRef } from './prompt-versions';
 export { runGoldenEval, evalConfigSchema } from './eval-harness';
-export type { EvalConfig, EvalMetrics, EvalRunResult, DerivationTrapCase } from './eval-harness';
+export type { EvalConfig, EvalMetrics, EvalRunResult } from './eval-harness';
 export { runReconcileEval, loadPairCases, judgePair, pairCaseSchema } from './eval-reconcile';
 export type {
   PairCase,
@@ -60,17 +57,11 @@ export type {
   ReconcileEvalResult,
 } from './eval-reconcile';
 export { seedMemoryFromSource } from './eval-seed';
-// The dormant-flag consumption API (F2 handoff §3): the task engine's window
-// into ingestion's dormant_flag table — read and clear, never write.
+// The dormant-flag consumption API (F2 handoff §3): the read-and-clear window
+// into ingestion's dormant_flag table. Retrieval's open-loops read consumes it
+// to mark an obligation "gone quiet" (decision 0060); never a write.
 export { listOpenDormantFlags, clearDormantFlag } from './dormant-flags';
 export type { OpenDormantFlag } from './dormant-flags';
-/**
- * Cross-module events the pipeline emits (decision 0013 ruling 2): ingestion
- * defines the job-type constants; tasks registers the handlers via the worker
- * composition root. Dependency direction stays tasks → ingestion, never back.
- */
-export const TASK_DERIVE_JOB_TYPE = 'tasks.derive';
-export const TASKS_BACKFILL_JOB_TYPE = 'tasks_backfill';
 // The S3.5 deterministic date resolver (decision 0007 ruling 1) — reused by
 // temporal query understanding (decision 0012 ruling 2); never duplicated.
 export { resolveExpression } from './domain/temporal-resolver';

@@ -80,7 +80,6 @@ describe('briefExportText', () => {
         },
         { kind: 'memory', marker: '[M1]', memoryId: 'm1' },
       ],
-      proposedActions: [],
     };
     const text = briefExportText(detail);
     expect(text).toContain('# Research a company or person before a meeting: Adriatic Foods');

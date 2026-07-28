@@ -48,10 +48,6 @@ import type {
   ReceiptDetailDto,
   ReceiptListItem,
   ResolveContradictionRequest,
-  TaskConclusionDto,
-  TaskCountDto,
-  TaskDto,
-  TaskStatus,
   TimelineDto,
   WebSourceDto,
   ResearchRunDto,
@@ -242,39 +238,6 @@ export const dismissAttentionItem = (session: Session, key: string): Promise<Att
 export const fetchDashboardStats = (session: Session): Promise<DashboardStatsDto> =>
   apiGet('/api/dashboard/stats', session);
 
-// The Tasks surface (O2-A, decision 0013; F3 handoff §4). Views map to status
-// filters; the remaining filters (due window, dormant-only, from_uncertain)
-// refine client-side over the capped list.
-export const fetchTasks = (
-  session: Session,
-  params: { status?: TaskStatus; includeSettled?: boolean; entity?: string } = {},
-): Promise<TaskDto[]> => {
-  const search = new URLSearchParams();
-  if (params.status) search.set('status', params.status);
-  if (params.includeSettled) search.set('includeSettled', 'true');
-  if (params.entity?.trim()) search.set('entity', params.entity.trim());
-  const qs = search.toString();
-  return apiGet(`/api/tasks${qs ? `?${qs}` : ''}`, session);
-};
-// The nav badge: open + blocked, owner-scoped (F3 handoff §4).
-export const fetchTaskCount = (session: Session): Promise<TaskCountDto> =>
-  apiGet('/api/tasks/count', session);
-export const taskOperation = (
-  session: Session,
-  id: string,
-  op: 'reopen' | 'dismiss' | 'complete',
-): Promise<TaskDto> => apiPost(`/api/tasks/${id}/${op}`, {}, session);
-// "Make this a task" (P6.5, decision 0054): adopt an observed memory as the
-// caller's own task through the existing derivation engine. Idempotent — a
-// memory that already carries a task returns it unchanged.
-export const adoptMemoryAsTask = (session: Session, memoryId: string): Promise<TaskDto> =>
-  apiPost('/api/tasks/adopt', { memoryId }, session);
-// Task conclusions (decision 0037): "this task produced this fact".
-export const fetchTaskConclusions = (session: Session, id: string): Promise<TaskConclusionDto[]> =>
-  apiGet(`/api/tasks/${id}/conclusions`, session);
-export const fetchTaskConclusion = (session: Session, id: string): Promise<TaskConclusionDto> =>
-  apiGet(`/api/tasks/conclusions/${id}`, session);
-
 // The contradicted queue (F2-A, decision 0010): open contradictions where both
 // facts belong to the caller, and the three owner resolutions.
 export const fetchContradictions = (session: Session): Promise<ContradictionDto[]> =>
@@ -459,8 +422,7 @@ export const markResearchSeen = (session: Session, id: string): Promise<{ ok: tr
   apiPost(`/api/research/runs/${encodeURIComponent(id)}/seen`, {}, session);
 
 // Named skills (Priority 7, decision 0059): propose → the plan gate → the
-// live run view → the brief. Accepting a proposed action is adoptMemoryAsTask
-// (the existing tasks endpoint); setSkillActionState only records the decision.
+// live run view → the brief.
 export const proposeSkillRun = (
   session: Session,
   skillId: string,
@@ -478,14 +440,6 @@ export const approveSkillPlan = (
   apiPost(`/api/skills/runs/${encodeURIComponent(id)}/plan`, { queries }, session);
 export const cancelSkillRun = (session: Session, id: string): Promise<SkillRunDetailDto> =>
   apiPost(`/api/skills/runs/${encodeURIComponent(id)}/cancel`, {}, session);
-export const setSkillActionState = (
-  session: Session,
-  id: string,
-  memoryId: string,
-  state: 'accepted' | 'dismissed',
-): Promise<SkillRunDetailDto> =>
-  apiPost(`/api/skills/runs/${encodeURIComponent(id)}/actions`, { memoryId, state }, session);
-
 // Reply drafts (Session O4 — email source). Drafting is a consequential action;
 // Cogeto never sends — the finalised draft is presented for the user to send.
 export const draftEmailReply = (

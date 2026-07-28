@@ -15,13 +15,6 @@ import {
   WebSourceDeletion,
   WebSourceReader,
 } from '../connectors/index';
-import {
-  TaskConclusionSourceDeletion,
-  TaskConclusionSourceModule,
-  TaskConclusionSourceReader,
-  TasksCascade,
-  TasksModule,
-} from '../tasks/index';
 import { PassportModule, PASSPORT_EXPORT_RETENTION_HOURS } from '../passport/index';
 import {
   ChatAnswerCascade,
@@ -36,7 +29,7 @@ import type { CogetoConfig } from './config';
 
 /**
  * Composition root of the worker process — all slow-path jobs (§A.1): the
- * ingestion pipeline, reconciliation, deletion sagas, reminders, approved-action
+ * ingestion pipeline, reconciliation, deletion sagas, approved-action
  * execution. This is where ingestion's source-reader port meets the connector
  * implementations — the only place allowed to know both sides.
  */
@@ -83,17 +76,15 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
             // A whole conversation is a deletable source (P6.9, decision 0056).
             ConversationSourceDeletion,
             EmailSourceDeletion,
-            // Conclusion rows are deletable sources too (decision 0037).
-            TaskConclusionSourceDeletion,
             // Web pages are deletable sources (Priority 5 Part A, 0043).
             WebSourceDeletion,
           ],
         },
         derivedCascades: {
-          imports: [TasksModule.register(), ChatSourceModule, ReplyDraftCascadeModule],
-          // Tasks are deleted with their memories; assistant answers citing
-          // erased memories are redacted (QS-7, decision 0025).
-          adapters: [TasksCascade, ChatAnswerCascade, ReplyDraftCascade],
+          imports: [ChatSourceModule, ReplyDraftCascadeModule],
+          // Assistant answers citing erased memories are redacted (QS-7,
+          // decision 0025); reply drafts grounded on the source are too (SEC-4).
+          adapters: [ChatAnswerCascade, ReplyDraftCascade],
         },
         // Delete-vs-ingestion serialization (QS-5, decision 0024): the saga
         // cancels a source's pending pipeline run inside its enumeration tx.
@@ -101,7 +92,6 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       }),
       // ChatSourceReader gives ingestion a stage-1 reader for source_type 'chat';
       // EmailSourceReader adds source_type 'email' (Session O4);
-      // TaskConclusionSourceReader adds 'task_conclusion' (decision 0037);
       // WebSourceReader adds 'web' (Priority 5 Part A, decision 0043).
       IngestionModule.register({
         readers: [
@@ -109,12 +99,10 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
           FileSourceReader,
           ChatSourceReader,
           EmailSourceReader,
-          TaskConclusionSourceReader,
           WebSourceReader,
         ],
       }),
       ChatSourceModule,
-      TaskConclusionSourceModule,
       AgentsModule,
       ConnectorsModule.register({
         fileUpload: {
@@ -124,7 +112,6 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         mail: mailOptions(config),
         research: researchOptions(config),
       }),
-      TasksModule.register(),
       // The Memory Passport export + retention jobs run here (§A.3 slow path);
       // the worker holds the private signing key to sign each manifest.
       PassportModule.register({

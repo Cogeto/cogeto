@@ -30,7 +30,7 @@ with an optional local redaction tier so PII never leaves your machine.
   what changed it. "Which CRM were we using in March?" is answered as the past,
   never stated as the present.
 - **The Memory Passport.** One click exports everything (all facts with full
-  history, statuses, provenance, tasks, and your deletion receipts) as a signed
+  history, statuses, provenance, and your deletion receipts) as a signed
   archive in a [published open format](docs/passport-schema/). Independently
   verifiable outside Cogeto. Leave whenever you want.
 
@@ -61,8 +61,8 @@ COGETO_DEMO_MODE=1 docker compose --profile demo up --build
 ```
 
 This seeds a fictional consultant ("Ana Kovač") with weeks of accrued memory
-through the real public API: contradictions to resolve, lapsed facts, derived
-tasks, a signed deletion receipt. The sandbox is gated behind a generated
+through the real public API: contradictions to resolve, lapsed facts, standing
+commitments, a signed deletion receipt. The sandbox is gated behind a generated
 password (printed by the seed job: `docker compose logs demo-seed`). Never run
 the demo profile on an instance holding real data.
 
@@ -92,14 +92,14 @@ it that way. Cogeto is **model-agnostic, literally**: the gateway ships
 adapters for **Mistral (EU-hosted, the default)**, any **OpenAI-compatible
 endpoint** (base URL plus key), **Anthropic**, and a **local Ollama runtime**,
 so inference can stay entirely on your own hardware. You bring your own key
-and pick a provider and model per task tier in the instance environment: a
+and pick a provider and model per tier in the instance environment: a
 cheap model for high-volume ingestion, a stronger one for answers you read,
 and an embeddings model. The `ollama-local` preset puts all three tiers on
 your Ollama host (multilingual `bge-m3` embeddings included, no API key
 needed), and mixed postures such as hosted answers over local embeddings are
 one environment variable away; see
 [`docs/notes/local-models.md`](docs/notes/local-models.md) for setup and the
-measured per-task, per-language parity against the hosted default. One caveat,
+measured per-tier, per-language parity against the hosted default. One caveat,
 stated plainly: Anthropic has no embeddings API, so an Anthropic configuration
 pairs its answer or pipeline models with Mistral, OpenAI-compatible, or local
 embeddings; the instance validates this at boot. Every configuration is
@@ -147,10 +147,9 @@ searches that you approve, edit, or remove in one interaction (nothing leaves
 until you do), reads the approved pages through the normal pipeline, and hands
 back a brief where what you knew cites your memories, what is new cites its
 URL and fetch time, and contradictions between the two are stated, never
-silently resolved. Suggested next steps are proposals: accepting one adopts it
-as a task through the audited adoption path, and nothing exists until you
-accept. The finished run stays open forever, with every search sent, page
-fetched, and memory created one click away. Because the approval machine and
+silently resolved. The run creates nothing of its own: everything it surfaces
+is a memory or a page you can open. The finished run stays open forever, with
+every search sent, page fetched, and memory created one click away. Because the approval machine and
 the audit log existed before there was anything to govern, this category is
 native here; competitors cannot enter it without rebuilding their foundations.
 See [`docs/notes/named-skills.md`](docs/notes/named-skills.md).

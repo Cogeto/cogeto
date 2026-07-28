@@ -15,7 +15,7 @@ import { contextSuggestionDismissal, userContext } from './persistence/tables';
  * Per-user instance context (P6.6, decisions 0051/0052/0053): who the user is,
  * which timezone their "today" lives in, and which language Cogeto speaks.
  * Lives in infrastructure because the context feeds prompts and copy in
- * retrieval, connectors, ingestion and tasks alike — no domain module owns it.
+ * retrieval, connectors and ingestion alike — no domain module owns it.
  *
  * The values here are settings, not memories: they shape phrasing and
  * interpretation but are never citable facts (decision 0051). Audit entries

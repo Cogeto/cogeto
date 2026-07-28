@@ -3,7 +3,13 @@ import { Inject, Injectable, Optional } from '@nestjs/common';
 import { and, asc, desc, eq, gt, inArray, isNotNull, notInArray, sql } from 'drizzle-orm';
 import { auditLog, DRIZZLE, loadInstancePublicKey, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
-import { deletionReceipt, fileMetadata, integrityAlert, memory } from './persistence/tables';
+import {
+  DEFUNCT_SOURCE_TYPES,
+  deletionReceipt,
+  fileMetadata,
+  integrityAlert,
+  memory,
+} from './persistence/tables';
 import type { SourceType } from './persistence/tables';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
@@ -189,6 +195,14 @@ export class IntegritySweep {
     // resurrections are detected receipt-side above).
     found.push(...(await this.findOrphanedMemories()));
 
+    // Defunct-provenance arm (decision 0060): a source_type the product no
+    // longer produces is a KNOWN value, never an error — but a memory still
+    // carrying one has provenance pointing at a table that no longer exists,
+    // which is precisely an orphan. Migration 0035 makes this impossible going
+    // forward (it refuses to drop while any survive); this arm is the standing
+    // proof, so the residue can never rot silently.
+    found.push(...(await this.findDefunctProvenance()));
+
     // Orphan-object arm (QS-28, decision 0025): every bucket object must be a
     // file_metadata row's bytes or a staging object inside its cleanup window.
     const orphanObjects = await this.findOrphanedObjects();
@@ -272,6 +286,27 @@ export class IntegritySweep {
       kind: row.kind,
       detail: row.detail,
       detectedAt: row.detectedAt.toISOString(),
+    }));
+  }
+
+  /**
+   * Memories whose `source_type` is defunct (decision 0060) — their source
+   * table is gone, so their §A.6 provenance cannot resolve. Expected to return
+   * nothing forever; if it ever does not, the erase-before-drop ordering was
+   * bypassed and the rows need the deletion saga.
+   */
+  private async findDefunctProvenance(): Promise<
+    { receiptId: string | null; kind: AlertKind; detail: string }[]
+  > {
+    const rows = await this.db
+      .select({ id: memory.id, sourceType: memory.sourceType })
+      .from(memory)
+      .where(inArray(memory.sourceType, [...DEFUNCT_SOURCE_TYPES]))
+      .limit(200);
+    return rows.map((row) => ({
+      receiptId: null,
+      kind: 'orphaned_memory' as AlertKind,
+      detail: `${row.id} (defunct source_type '${row.sourceType}')`,
     }));
   }
 

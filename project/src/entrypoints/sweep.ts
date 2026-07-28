@@ -2,7 +2,6 @@ import { Pool } from 'pg';
 import { createDb } from '../infrastructure/index';
 import { createIntegritySweep } from '../memory/index';
 import { EmailSourceDeletion, NotesSourceDeletion, WebSourceDeletion } from '../connectors/index';
-import { TaskConclusionSourceDeletion } from '../tasks/index';
 import { ChatSourceDeletion, ConversationSourceDeletion } from '../retrieval/index';
 import { loadConfig } from './config';
 
@@ -42,7 +41,6 @@ async function main(): Promise<void> {
         new ChatSourceDeletion(),
         new ConversationSourceDeletion(),
         new EmailSourceDeletion(),
-        new TaskConclusionSourceDeletion(),
         new WebSourceDeletion(),
       ],
     });

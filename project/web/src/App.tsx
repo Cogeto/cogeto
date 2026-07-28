@@ -19,7 +19,6 @@ import { Review } from './pages/Review';
 import { Settings } from './pages/Settings';
 import { Skills } from './pages/Skills';
 import { System } from './pages/System';
-import { Tasks } from './pages/Tasks';
 import { Timeline } from './pages/Timeline';
 
 /** Tiny path switch — a router dependency is still not justified. */
@@ -104,8 +103,6 @@ function renderPage(session: Session) {
       return <Skills session={session} />;
     case '/timeline':
       return <Timeline session={session} />;
-    case '/tasks':
-      return <Tasks session={session} />;
     case '/review':
       return <Review session={session} />;
     case '/approvals':

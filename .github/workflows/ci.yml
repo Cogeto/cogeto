@@ -152,11 +152,11 @@ jobs:
             echo "relevant=true" >> "$GITHUB_OUTPUT"   # first push / force-push: run
             echo "::notice::base commit unavailable — running the live gates"
           elif git diff --name-only "$BEFORE" "${{ github.sha }}" \
-              | grep -qE '^(project/prompts/|project/eval/|project/src/(model-gateway|ingestion|retrieval)/|project/src/entrypoints/eval|project/src/tasks/)'; then
+              | grep -qE '^(project/prompts/|project/eval/|project/src/(model-gateway|ingestion|retrieval|memory)/|project/src/entrypoints/eval)'; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
           else
             echo "relevant=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=live eval SKIPPED::No quality-relevant paths in this push (prompts, model-gateway, ingestion, retrieval, eval corpus/harness) — the live golden-set + chat gates did not run (decision 0036)."
+            echo "::warning title=live eval SKIPPED::No quality-relevant paths in this push (prompts, model-gateway, ingestion, retrieval, memory, eval corpus/harness) — the live golden-set + chat gates did not run (decision 0036)."
           fi
 
       - name: Check for the eval secret (push to main only)

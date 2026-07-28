@@ -1,11 +1,11 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import type { MemoryStatus, Principal } from '@cogeto/shared';
 import { TEMPORAL_STATUS_MULTIPLIERS } from '@cogeto/shared';
-import { DEFAULT_INSTANCE_TIMEZONE, INSTANCE_TIMEZONE } from '../infrastructure/index';
+import { DEFAULT_INSTANCE_TIMEZONE, DRIZZLE, INSTANCE_TIMEZONE } from '../infrastructure/index';
+import type { Db } from '../infrastructure/index';
+import { listOpenDormantFlags } from '../ingestion/index';
 import { MemoryStore } from '../memory/index';
 import type { MemoryChange, MemoryRow } from '../memory/index';
-import { TasksEngine } from '../tasks/index';
-import type { TaskRow } from '../tasks/index';
 import { ModelGateway } from '../model-gateway/index';
 import {
   byStatusThenRecency,
@@ -44,7 +44,19 @@ export interface RetrievedMemory {
 }
 
 /** What retrieval decided, so the answerer can adapt (F1/F4, F3-A, F3-B). */
-export type RetrievalMode = 'default' | 'entity_profile' | 'temporal' | 'tasks';
+export type RetrievalMode = 'default' | 'entity_profile' | 'temporal' | 'open_loops';
+
+/**
+ * One standing obligation (V2.0 item 3.1, decision 0060): the memory itself,
+ * plus the one signal that does not live on it — ingestion's dormant flag.
+ * Its due date is the memory's own `valid_until`; its wording is the memory's
+ * own content, so the answer cites the fact directly.
+ */
+export interface OpenLoop {
+  memory: MemoryRow;
+  /** Ingestion's dormant flag stands open for this memory: it has gone quiet. */
+  dormant: boolean;
+}
 
 export interface RetrievalResult {
   memories: RetrievedMemory[];
@@ -55,8 +67,8 @@ export interface RetrievalResult {
   temporal?: TemporalIntent;
   /** The change events, when the temporal kind is change_since. */
   changes?: MemoryChange[];
-  /** The open/blocked tasks, when mode is tasks (decision 0013 ruling 7). */
-  tasks?: TaskRow[];
+  /** What is still standing, when mode is open_loops (decision 0060). */
+  openLoops?: OpenLoop[];
 }
 
 /**
@@ -76,7 +88,13 @@ export class RetrievalService {
   constructor(
     private readonly memoryStore: MemoryStore,
     private readonly gateway: ModelGateway,
-    private readonly tasksEngine: TasksEngine,
+    /**
+     * Read-only handle for ingestion's dormant-flag consumption API (F2
+     * handoff §3) — the one open-loops signal that is not on the memory row.
+     * Optional so bare test constructions need no database; without it open
+     * loops simply carry no "gone quiet" marker.
+     */
+    @Optional() @Inject(DRIZZLE) private readonly db?: Db,
     // Instance timezone for relative-date resolution in query rewriting (QS-32).
     @Optional()
     @Inject(INSTANCE_TIMEZONE)
@@ -108,22 +126,16 @@ export class RetrievalService {
       ...new Set([...rewrite.entities, ...queryEntityCandidates(searchQuery)]),
     ];
 
-    // 2. Open-loops mode (F3-B, decision 0013 ruling 7): the day-one
-    // question's second half. Owner-scoped task reads; citations resolve to
-    // the deriving memories through the gated read.
+    // 2. Open-loops mode (F3-B; memory-backed since V2.0 item 3.1, decision
+    // 0060): the day-one question's second half, straight from the gated
+    // memory read — the facts ARE the open loops, so every line the answerer
+    // writes cites the fact it rests on.
     if (rewrite.openLoops) {
-      const tasks = await this.tasksEngine.listForPrincipal(principal, {
-        entity: rewrite.openLoops.entity ?? undefined,
-      });
-      const derivingRows = await this.memoryStore.getManyForPrincipal(
-        principal,
-        tasks.map((t) => t.derivedFromMemoryId),
-        opts,
-      );
+      const openLoops = await this.openLoops(principal, rewrite.openLoops.entity, opts);
       return {
-        memories: derivingRows.map((memory) => ({ memory, score: 0, signals: [] })),
-        mode: 'tasks',
-        tasks,
+        memories: openLoops.map(({ memory }) => ({ memory, score: 0, signals: [] })),
+        mode: 'open_loops',
+        openLoops,
       };
     }
 
@@ -163,6 +175,29 @@ export class RetrievalService {
       );
     }
     return { memories: results, mode: 'default' };
+  }
+
+  /**
+   * The open loops themselves (decision 0060): one gated memory read for the
+   * standing commitments and open items, then ingestion's dormant flags
+   * layered on. Public so the composition roots (attention, the skill
+   * planner) assemble their "awaiting you" surfaces from exactly this query
+   * rather than a second, drifting definition of "still open".
+   */
+  async openLoops(
+    principal: Principal,
+    entity: string | null = null,
+    opts: RetrieveOptions = {},
+  ): Promise<OpenLoop[]> {
+    const rows = await this.memoryStore.openLoopsForPrincipal(principal, {
+      entity: entity ?? undefined,
+      includeSensitive: opts.includeSensitive,
+    });
+    if (rows.length === 0) return [];
+    const dormant = this.db
+      ? new Set((await listOpenDormantFlags(this.db)).map((flag) => flag.memoryId))
+      : new Set<string>();
+    return rows.map((memory) => ({ memory, dormant: dormant.has(memory.id) }));
   }
 
   /**

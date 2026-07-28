@@ -232,18 +232,6 @@ export class IngestionPipeline {
       'reconciliation complete',
     );
 
-    // Task derivation (decision 0013 ruling 2): a cross-module EVENT, in the
-    // same transaction as admission — the tasks engine derives and judges in
-    // its own idempotent job. Nothing admitted → nothing to derive or judge.
-    if (admitted.length > 0) {
-      await withTransactionalEnqueue(
-        tx,
-        { type: 'source.processed', payload: ref },
-        { type: 'tasks.derive', payload: ref },
-      );
-      log({ stage: 'tasks_enqueue', ...ref }, 'task derivation enqueued');
-    }
-
     // Extract-and-discard (§A.9, F1 handoff §3): schedule the staging object's
     // deletion in THIS transaction — it fires only when the derived memories
     // commit, so the original is discarded only after extraction is durable.

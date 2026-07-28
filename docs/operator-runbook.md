@@ -201,7 +201,8 @@ allowlisted for the test.
       counting the memories and objects it erased.
 - [ ] **Passport export**: **Settings → Export my data · Memory Passport** →
       export completes and the `.zip` downloads (contains `manifest.json`,
-      `manifest.json.sig`, `memories.json`, `tasks.json`, `receipts.json`).
+      `manifest.json.sig`, `memories.json`, `receipts.json`; the manifest is
+      stamped `passport_version 2.0`).
 - [ ] **Status still green** after all of the above (the deletion sweep and
       queue stay clean): `sudo ./cogeto status`.
 
@@ -246,7 +247,8 @@ onto a yellow instance.
      click a citation to open the memory and its provenance.
    - **Review**: where uncertain or contradicted facts wait for their
      judgement; nothing is silently believed.
-   - **Tasks**: commitments become open loops with reminders.
+   - **Dashboard**: commitments and follow-ups that still stand surface as
+     open loops — due, overdue, or gone quiet — each opening the fact behind it.
    - **Forgotten**: delete something and show the signed receipt — deletion
      is provable, not promised.
    - **Time travel** and the **Memory Passport** (Settings): knowledge has
@@ -287,7 +289,7 @@ To run tiers on a customer-owned **Ollama** host:
    pulled (the error names the exact `ollama pull` command). Settings → Model
    configuration shows the active configuration id.
 
-Before recommending a local preset, read the measured per-task, per-language
+Before recommending a local preset, read the measured per-tier, per-language
 parity table in `docs/notes/local-models.md` — where all-local misses parity
 the mixed posture stays the recommendation, and the gap is stated there.
 
@@ -357,7 +359,7 @@ The snapshot images the whole disk, which includes every Docker volume and
 
 | Data | Where | Must be restorable? |
 | --- | --- | --- |
-| **Postgres** (memories, receipts, tasks, audit — the source of truth) | `pg-data` volume | **Yes** |
+| **Postgres** (memories, receipts, audit — the source of truth) | `pg-data` volume | **Yes** |
 | **MinIO** (original files, email raws, SSE-encrypted) | `minio-data` volume | **Yes** |
 | **Receipt-signing keypair** | `instance-keys` volume (exists nowhere else) | **Yes** — without it the receipt chain cannot continue |
 | Instance config + secrets | `/srv/cogeto/.env` (+ vault copy) | **Yes** |
@@ -449,6 +451,24 @@ then delete the rehearsal instance.
    real rollback is a **backup restore** (section 5c) — which is why the
    rehearsal matters.
 6. Record the upgrade (version, date, reindex yes/no) in the tracker.
+
+### 6a. Upgrading past 2.0 — one pre-migration step, only if the instance ever ran tasks
+
+2.0 removes the task subsystem (decision 0060). Instances created at 2.0 or
+later need nothing here. An instance that ran an earlier version and holds
+memories with `task_conclusion` provenance must erase them **through the
+deletion saga** (signed receipts, exactly like any other deletion) before the
+schema migration drops the table their provenance points at:
+
+```sh
+docker compose run --rm worker \
+  node project/src/dist/entrypoints/erase-task-conclusions.js
+```
+
+It prints `nothing to erase` and exits 0 when there is nothing to do, so
+running it is always safe. If it is skipped, the migration **stops with a clear
+error** naming this command rather than proceeding — the ordering cannot be
+lost silently.
 
 ---
 

@@ -20,7 +20,7 @@ themselves, and those all pass through the seam.
 ## The EU-hosted default
 
 v1 routes model and embedding calls to the **Mistral API** under EU-hosted,
-zero-retention DPA terms. Per-task tiers keep cost and exposure proportionate: a
+zero-retention DPA terms. Per-tier models keep cost and exposure proportionate: a
 cheaper model for high-volume ingestion, a stronger one for the answers you read.
 Nothing about the architecture phones home — there is no telemetry channel back to
 the project.

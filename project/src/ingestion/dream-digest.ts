@@ -6,7 +6,6 @@ import type { MemoryRow } from '../memory/index';
 import { dreamAction, dreamRun } from './persistence/tables';
 import type { DreamActionRow, DreamPass } from './persistence/tables';
 import { latestFinishedRun } from './dreaming.service';
-import type { DigestTaskSectionPort } from './digest-task-port';
 
 /**
  * The dreaming digest, assembled from the latest finished run (§B.6 v1 form;
@@ -27,7 +26,7 @@ export async function buildDreamDigest(
   db: Db,
   memoryStore: MemoryStore,
   principal: Principal,
-  opts: { taskSection?: DigestTaskSectionPort | null; locale?: PreferredLanguage } = {},
+  opts: { locale?: PreferredLanguage } = {},
 ): Promise<DreamDigestDto> {
   const locale = opts.locale ?? 'en';
   const run = await latestFinishedRun(db);
@@ -41,19 +40,12 @@ export async function buildDreamDigest(
       section: 'consolidation' as const,
     }));
   }
-  // The tasks section: reminders + updates, independent of whether a dream run
-  // exists (a due task must surface even on a store that never dreamt).
-  const taskLines =
-    (await opts.taskSection?.taskLines(principal, {
-      scopeFrom: run?.scopeFrom ?? null,
-      locale,
-    })) ?? [];
   return {
     runId: run?.id ?? null,
     finishedAt: run?.finishedAt?.toISOString() ?? null,
-    // Silence on empty (F2 §2 / F3 §3): an empty run AND an empty task set
-    // render no panel — the frontend hides on `lines.length === 0`.
-    lines: [...dreamingLines, ...taskLines],
+    // Silence on empty (F2 §2): an empty run renders no panel — the frontend
+    // hides on `lines.length === 0`.
+    lines: dreamingLines,
   };
 }
 

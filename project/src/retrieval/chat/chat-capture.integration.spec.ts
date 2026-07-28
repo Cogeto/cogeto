@@ -8,7 +8,6 @@ import { createMemoryReconciliation } from '../../memory/index';
 import type { MemoryStore } from '../../memory/index';
 import { createIngestionPipeline } from '../../ingestion/index';
 import type { IngestionPipeline } from '../../ingestion/index';
-import { TasksEngine } from '../../tasks/index';
 import { UserDirectory } from '../../identity/index';
 import { ModelGateway, ModelGatewayError } from '../../model-gateway/index';
 import type { StructuredExtractionRequest } from '../../model-gateway/index';
@@ -172,21 +171,6 @@ describe('chat capture (integration, real Postgres + Qdrant)', () => {
     expect(rows.length).toBeGreaterThanOrEqual(1);
     expect(rows[0]!.status).toBe('active');
     expect(rows[0]!.scope).toBe('private'); // chat capture defaults private (ruling 6)
-  });
-
-  it('chat_commitment_derives_a_task: a commitment stated in chat derives a task like a note', async () => {
-    const owner = `chat-task-${randomUUID()}`;
-    const principal = principalFor(owner);
-    const id = await seedMessage(owner, 'user', 'I will send Marko the signed contract.');
-    await runPipeline(pipelineWith(new ScriptedGateway('commitment')), id);
-
-    // The task engine derives from the chat-sourced memory exactly as for a note.
-    const engine = new TasksEngine(tdb.db, store, new ScriptedGateway());
-    const report = await tdb.db.transaction((tx) => engine.processSource(tx, 'chat', id));
-    expect(report.derived).toBe(1);
-    const tasks = await engine.listForPrincipal(principal);
-    expect(tasks).toHaveLength(1);
-    expect(tasks[0]!.title).toContain('contract');
   });
 
   it('remember_refuses_assistant_and_foreign, captures own: the audited affordance gates role + owner', async () => {

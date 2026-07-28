@@ -30,7 +30,7 @@ import { SKILL_ADVANCE_JOB_TYPE, SkillRunService } from './skill-run.service';
 /**
  * The skill runtime (decision 0059), end to end against real Postgres + Qdrant
  * with a scripted gateway and scripted web: run_lifecycle, gate_preserved,
- * no_direct_tasks, run_resumable, budget_caps_run, actions_proposed_not_taken.
+ * creates_nothing, run_resumable, budget_caps_run.
  */
 
 const DIMS = 8;
@@ -225,7 +225,7 @@ describe('skill runtime (integration: real Postgres + Qdrant, scripted gateway +
     ({
       retrieve: async (_p: unknown, _q: unknown, opts: { rewrite?: { openLoops?: unknown } }) => {
         if (opts.rewrite && (opts.rewrite as { openLoops: unknown }).openLoops) {
-          return { memories: [], mode: 'tasks', tasks: [] };
+          return { memories: [], mode: 'open_loops', openLoops: [] };
         }
         const rows = await tdb.pool.query<{ id: string }>(
           `SELECT id FROM memory WHERE owner_id = $1 AND source_type = 'user_note'`,
@@ -319,9 +319,6 @@ describe('skill runtime (integration: real Postgres + Qdrant, scripted gateway +
       )
     ).rows.map((r) => r.action);
 
-  const taskCount = async (): Promise<number> =>
-    Number((await tdb.pool.query(`SELECT count(*)::int AS n FROM task`)).rows[0]!.n);
-
   let firstRunId: string;
 
   it('run_lifecycle + gate_preserved: plan → gate (nothing sent) → edited approval → worker advance → completed, with a complete step log', async () => {
@@ -341,7 +338,6 @@ describe('skill runtime (integration: real Postgres + Qdrant, scripted gateway +
       ['read_pages', 'pending'],
       ['verify', 'pending'],
       ['write_brief', 'pending'],
-      ['propose_actions', 'pending'],
     ]);
     const gatherLinks = planned[0]!.links as SkillStepLinks;
     expect(gatherLinks.memoryIds).toContain(seededMemoryId);
@@ -399,30 +395,15 @@ describe('skill runtime (integration: real Postgres + Qdrant, scripted gateway +
     ]);
   });
 
-  it('no_direct_tasks + actions_proposed_not_taken: the web obligation becomes a proposal, never a task', async () => {
-    // The skills code path has no task creation anywhere; the pipeline's own
-    // derivation discipline (decision 0054: web never derives) is enforced by
-    // its golden traps. Here: zero task rows exist after a full run, and the
-    // obligation surfaced as an adoption PROPOSAL.
-    expect(await taskCount()).toBe(0);
+  it('creates_nothing: a full run produces a brief and NO durable artifact of its own', async () => {
+    // The skill runtime reads, searches and writes a brief. Since decision 0060
+    // there is nothing task-shaped left for it to propose, so the run's ONLY
+    // durable outputs are its step log, its research runs, and the brief.
     const run = await runs.getRun(owner, firstRunId);
-    const actions = run!.proposedActions as { memoryId: string; title: string; state: string }[];
-    expect(actions.length).toBeGreaterThanOrEqual(1);
-    expect(actions.every((a) => a.state === 'proposed')).toBe(true);
-    const obligation = actions.find((a) => a.title.includes('RC-1'));
-    expect(obligation).toBeTruthy();
-
-    // Dismissing marks the proposal; accepting is recorded the same way (the
-    // adoption itself is POST /api/tasks/adopt, audited user-adopted there).
-    const dismissed = await runs.setActionState(
-      owner,
-      firstRunId,
-      obligation!.memoryId,
-      'dismissed',
-    );
-    const after = dismissed.proposedActions as { memoryId: string; state: string }[];
-    expect(after.find((a) => a.memoryId === obligation!.memoryId)!.state).toBe('dismissed');
-    expect(await taskCount()).toBe(0); // still nothing exists
+    expect(run!.brief).toBeTruthy();
+    const steps = await runs.steps(firstRunId);
+    expect(steps.map((s) => s.stepKey)).not.toContain('propose_actions');
+    expect(steps.every((s) => s.status === 'completed' || s.status === 'skipped')).toBe(true);
   });
 
   it('run_resumable: a re-delivered advance changes nothing on a finished run; mid-run re-delivery never duplicates searches or pages', async () => {

@@ -11,6 +11,11 @@ import { PASSPORT_VERSION } from '@cogeto/shared';
  * them, so a drift between the artifact and its documented format fails the
  * build.
  *
+ * These schemas describe the CURRENT version only: they accept
+ * `passport_version: '2.0'` and nothing else, which is exactly the validator
+ * contract decision 0029 ruling 2 asks for — new exports are one version, and
+ * a 1.0 archive is read against the 1.0 schema still published in the docs.
+ *
  * Nothing here reaches for a table or a gate — assembly consumes already-gated
  * rows the executor fetched through the Principal-scoped interfaces. This module
  * is pure format + hashing.
@@ -21,7 +26,6 @@ export const PASSPORT_PATHS = {
   manifest: 'manifest.json',
   manifestSig: 'manifest.json.sig',
   memories: 'memories.json',
-  tasks: 'tasks.json',
   receipts: 'receipts.json',
   readme: 'README.txt',
   attachmentsDir: 'attachments',
@@ -82,28 +86,6 @@ export const memoriesDocSchema = z.object({
   memories: z.array(memoryExportSchema),
 });
 
-// ── tasks.json ───────────────────────────────────────────────────────────────
-export const taskExportSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  status: z.string(),
-  condition_text: z.string().nullable(),
-  due: z.string().nullable(),
-  dormant: z.boolean(),
-  from_uncertain: z.boolean(),
-  derived_from_memory_id: z.string(),
-  scope: z.enum(['private', 'shared']),
-  created_at: z.string(),
-  updated_at: z.string().nullable(),
-});
-export type TaskExport = z.infer<typeof taskExportSchema>;
-
-export const tasksDocSchema = z.object({
-  passport_version: z.literal(PASSPORT_VERSION),
-  count: z.int().nonnegative(),
-  tasks: z.array(taskExportSchema),
-});
-
 // ── receipts.json ────────────────────────────────────────────────────────────
 /** Exactly the fields `verifyChain` needs — the receipt stays independently checkable. */
 export const receiptExportSchema = z.object({
@@ -147,7 +129,6 @@ export const manifestSchema = z.object({
   options: z.object({ include_originals: z.boolean() }),
   counts: z.object({
     memories: z.int().nonnegative(),
-    tasks: z.int().nonnegative(),
     receipts: z.int().nonnegative(),
     attachments: z.int().nonnegative(),
   }),

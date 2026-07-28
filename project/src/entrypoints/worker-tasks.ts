@@ -5,12 +5,8 @@ import {
   DREAM_JOB_TYPE,
   FILE_DISCARD_CLEANUP_JOB_TYPE,
   INGESTION_PIPELINE_JOB_TYPE,
-  TASK_DERIVE_JOB_TYPE,
-  TASKS_BACKFILL_JOB_TYPE,
 } from '../ingestion/index';
 import type { DreamingService, IngestionPipeline, PipelineLog } from '../ingestion/index';
-import { TASKS_DERIVATION_CLEANUP_JOB_TYPE, TASKS_REMINDERS_JOB_TYPE } from '../tasks/index';
-import type { TasksEngine } from '../tasks/index';
 import {
   DELETION_JOB_TYPE,
   MEMORY_EMBED_JOB_TYPE,
@@ -27,11 +23,8 @@ import { APPROVAL_EXECUTE_JOB_TYPE, APPROVAL_EXPIRY_JOB_TYPE } from '../agents/i
 import type { ApprovalExecutor, ApprovalService } from '../agents/index';
 import { PASSPORT_EXPORT_JOB_TYPE, PASSPORT_RETENTION_JOB_TYPE } from '../passport/index';
 import type { PassportExportExecutor } from '../passport/index';
-import {
-  EMAIL_AUTHORSHIP_BACKFILL_JOB_TYPE,
-  EMAIL_REFUSAL_RETENTION_JOB_TYPE,
-} from '../connectors/index';
-import type { EmailAllowlistService, EmailAuthorshipBackfill } from '../connectors/index';
+import { EMAIL_REFUSAL_RETENTION_JOB_TYPE } from '../connectors/index';
+import type { EmailAllowlistService } from '../connectors/index';
 import { RESEARCH_CONCLUDE_JOB_TYPE, SKILL_ADVANCE_JOB_TYPE } from '../connectors/index';
 import type {
   ResearchConclusionService,
@@ -48,12 +41,10 @@ export interface WorkerTaskDeps {
   deletionExecutor: DeletionExecutor;
   integritySweep: IntegritySweep;
   dreaming: DreamingService;
-  tasksEngine: TasksEngine;
   approvalService: ApprovalService;
   approvalExecutor: ApprovalExecutor;
   passportExecutor: PassportExportExecutor;
   allowlist: EmailAllowlistService;
-  authorshipBackfill: EmailAuthorshipBackfill;
   conversationTitler: ConversationTitler;
   researchConcluder: ResearchConclusionService;
   researchSynthesis: ResearchSynthesisService;
@@ -192,59 +183,6 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
     [DREAM_JOB_TYPE]: recurring(DREAM_JOB_TYPE, async () => {
       const report = await deps.dreaming.run(deps.log);
       deps.log({ ...report }, 'dreaming cycle completed (scheduled)');
-    }),
-
-    // Task derivation + judgments per processed source (decision 0013 ruling
-    // 2): the pipeline enqueues it transactionally after stage 6; the engine
-    // derives (UNIQUE-idempotent) and judges closure/condition, all inside
-    // this job's idempotency transaction.
-    [TASK_DERIVE_JOB_TYPE]: idempotentTask(db, TASK_DERIVE_JOB_TYPE, async (tx, payload) => {
-      const report = await deps.tasksEngine.processSource(
-        tx,
-        payload.source_type,
-        payload.source_id,
-      );
-      deps.log(
-        { source_type: payload.source_type, source_id: payload.source_id, ...report },
-        'task engine pass completed',
-      );
-    }),
-
-    // The idempotent historical backfill (0013 ruling 2): enqueued once by
-    // migration 0014 and nightly by the dreaming cycle. Like the sweep, NOT
-    // idempotentTask — recurring; the UNIQUE deriving-memory constraint makes
-    // its effects idempotent instead.
-    [TASKS_BACKFILL_JOB_TYPE]: recurring(TASKS_BACKFILL_JOB_TYPE, async () => {
-      const report = await deps.tasksEngine.backfill((message) => deps.log({}, message));
-      deps.log({ ...report }, 'tasks backfill completed');
-    }),
-
-    // The one-shot derivation-discipline chain (P6.5; decision 0054): migration
-    // 0030 enqueues the authorship backfill; the backfill classifies historical
-    // email rows, stamps their memories, and enqueues the cleanup, which
-    // removes phantom tasks with an audit entry per removal and prints the
-    // count summary. Both are idempotent by construction (IS NULL scan; no
-    // remaining candidates), single-flight against a double enqueue.
-    [EMAIL_AUTHORSHIP_BACKFILL_JOB_TYPE]: recurring(
-      EMAIL_AUTHORSHIP_BACKFILL_JOB_TYPE,
-      async () => {
-        const report = await deps.authorshipBackfill.run((message) => deps.log({}, message));
-        deps.log({ ...report }, 'email authorship backfill completed');
-      },
-    ),
-    [TASKS_DERIVATION_CLEANUP_JOB_TYPE]: recurring(TASKS_DERIVATION_CLEANUP_JOB_TYPE, async () => {
-      const report = await deps.tasksEngine.derivationCleanup((message) => deps.log({}, message));
-      deps.log({ ...report }, 'tasks derivation cleanup completed');
-    }),
-
-    // The nightly task reminders pass (F3 handoff §2) — scheduled 03:40 by the
-    // crontab in worker.ts, after the dreaming cycle's dormancy sync. Like the
-    // sweep, NOT idempotentTask (recurring, not one-shot per key); it is
-    // idempotent by construction — reminders stamp only when unset, so a
-    // re-delivered pass raises nothing new.
-    [TASKS_REMINDERS_JOB_TYPE]: recurring(TASKS_REMINDERS_JOB_TYPE, async () => {
-      const report = await deps.tasksEngine.runReminders((message) => deps.log({}, message));
-      deps.log({ ...report }, 'task reminders pass completed');
     }),
 
     // Extract-and-discard staging cleanup (§A.9, O1-C): deletes the transient

@@ -8,7 +8,6 @@ import {
   type Manifest,
   type MemoryExport,
   type ReceiptExport,
-  type TaskExport,
 } from './passport-format';
 
 export interface PassportSubject {
@@ -19,7 +18,6 @@ export interface PassportSubject {
 export interface PassportInput {
   subject: PassportSubject;
   memories: MemoryExport[];
-  tasks: TaskExport[];
   receipts: ReceiptExport[];
   /** Original bytes to include under `attachments/`, when include_originals. */
   attachments: ZipEntry[];
@@ -48,7 +46,6 @@ Read it:
   manifest.json.sig  detached ed25519 signature over manifest.json
   memories.json    every fact, with status, scope, provenance and the full
                    validity/supersession history (not just the current state)
-  tasks.json       tasks derived from your memories, with conditions and status
   receipts.json    your deletion receipts, still independently verifiable
   attachments/     original files, if you chose to include them
 
@@ -57,8 +54,9 @@ Verify it (using only this archive and the published schema):
   2. For each entry in manifest.documents, SHA-256 the file and compare.
   3. Verify each receipt in receipts.json against its hash chain and the key.
 
-The format is documented at docs/passport-schema/ in the Cogeto repository,
-version ${PASSPORT_VERSION}.
+The format is documented at docs/passport-schema/${PASSPORT_VERSION}/ in the
+Cogeto repository. Every document in this archive carries
+passport_version ${PASSPORT_VERSION}; read it against that schema directory.
 `;
 
 /**
@@ -74,11 +72,6 @@ export function assemblePassport(input: PassportInput): AssembledPassport {
     count: input.memories.length,
     memories: input.memories,
   });
-  const tasksBytes = documentBytes({
-    passport_version: PASSPORT_VERSION,
-    count: input.tasks.length,
-    tasks: input.tasks,
-  });
   const receiptsBytes = documentBytes({
     passport_version: PASSPORT_VERSION,
     count: input.receipts.length,
@@ -90,7 +83,6 @@ export function assemblePassport(input: PassportInput): AssembledPassport {
   // Every non-manifest document, with its content hash (attachments included).
   const documentEntries: ZipEntry[] = [
     { path: PASSPORT_PATHS.memories, data: memoriesBytes },
-    { path: PASSPORT_PATHS.tasks, data: tasksBytes },
     { path: PASSPORT_PATHS.receipts, data: receiptsBytes },
     { path: PASSPORT_PATHS.readme, data: readmeBytes },
     ...input.attachments,
@@ -113,7 +105,6 @@ export function assemblePassport(input: PassportInput): AssembledPassport {
     options: { include_originals: input.includeOriginals },
     counts: {
       memories: input.memories.length,
-      tasks: input.tasks.length,
       receipts: input.receipts.length,
       attachments: input.attachments.length,
     },

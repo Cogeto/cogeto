@@ -6,14 +6,15 @@ import type { TestDatabase } from '../testing/index';
 import { UserContextService } from '../infrastructure/index';
 import { MemoryReconciliation, MemoryStore } from '../memory/index';
 import type { MemoryRow } from '../memory/index';
-import { TasksEngine } from '../tasks/index';
+import { RetrievalService } from '../retrieval/index';
 import type { ModelGateway } from '../model-gateway/index';
 import type { ApprovalService } from '../agents/index';
 import { AttentionService } from './attention.service';
 
 /**
  * The attention feed (Post-v1 Priority 2, decision 0039): a COMPUTED, gated
- * layer over tasks / review / approvals / the dreaming digest. Pure-Postgres —
+ * layer over open loops / review / approvals / the dreaming digest.
+ * Pure-Postgres —
  * none of the read paths touch Qdrant, so the test needs no vector store.
  *
  * ApprovalService is faked (its own gating is tested in agents/*) so this suite
@@ -41,7 +42,7 @@ describe('attention feed (integration, real Postgres)', () => {
   let tdb: TestDatabase;
   let store: MemoryStore;
   let reconciliation: MemoryReconciliation;
-  let tasks: TasksEngine;
+  let retrieval: RetrievalService;
   const pendingByOwner = new Map<string, ApprovalDto[]>();
 
   const fakeApprovals = {
@@ -55,12 +56,12 @@ describe('attention feed (integration, real Postgres)', () => {
     tdb = await startTestDatabase();
     store = new MemoryStore(tdb.db);
     reconciliation = new MemoryReconciliation(tdb.db, store);
-    tasks = new TasksEngine(tdb.db, store, throwingGateway);
+    retrieval = new RetrievalService(store, throwingGateway, tdb.db);
     attention = new AttentionService(
       tdb.db,
       store,
       reconciliation,
-      tasks,
+      retrieval,
       fakeApprovals,
       new UserContextService(tdb.db),
     );
@@ -100,7 +101,12 @@ describe('attention feed (integration, real Postgres)', () => {
     return row;
   };
 
-  const seedTask = async (
+  /**
+   * An open loop, exactly as the instance produces one since decision 0060: a
+   * commitment memory, its due date on `valid_until`, its "gone quiet" state
+   * in ingestion's dormant_flag. No derived table involved.
+   */
+  const seedOpenLoop = async (
     owner: string,
     opts: { title?: string; scope?: MemoryScope; due?: Date | null; dormant?: boolean } = {},
   ): Promise<string> => {
@@ -108,19 +114,16 @@ describe('attention feed (integration, real Postgres)', () => {
       content: opts.title ?? 'a commitment',
       scope: opts.scope,
     });
-    const { rows } = await tdb.pool.query<{ id: string }>(
-      `INSERT INTO task (owner_id, scope, derived_from_memory_id, title, status, due, dormant, updated_at)
-       VALUES ($1, $2, $3, $4, 'open', $5, $6, now()) RETURNING id`,
-      [
-        owner,
-        opts.scope ?? 'private',
+    await tdb.pool.query(`UPDATE memory SET kind = 'commitment', valid_until = $2 WHERE id = $1`, [
+      mem.id,
+      opts.due ?? null,
+    ]);
+    if (opts.dormant) {
+      await tdb.pool.query(`INSERT INTO dormant_flag (memory_id, reason) VALUES ($1, 'quiet')`, [
         mem.id,
-        opts.title ?? 'A commitment',
-        opts.due ?? null,
-        opts.dormant ?? false,
-      ],
-    );
-    return rows[0]!.id;
+      ]);
+    }
+    return mem.id;
   };
 
   const seedContradiction = async (owner: string): Promise<void> => {
@@ -154,8 +157,11 @@ describe('attention feed (integration, real Postgres)', () => {
     const p = principalFor(owner);
 
     const overdue = new Date(Date.now() - 3 * 86_400_000);
-    await seedTask(owner, { title: 'Send Marko the proposal', due: overdue });
-    await seedTask(owner, { title: 'Follow up with the notary', dormant: true });
+    const overdueId = await seedOpenLoop(owner, {
+      title: 'Send Marko the proposal',
+      due: overdue,
+    });
+    await seedOpenLoop(owner, { title: 'Follow up with the notary', dormant: true });
     await seedMemory(owner, { content: 'unsure fact', status: 'uncertain' });
     await seedContradiction(owner);
     const { runId, memId } = await seedDigestRun(owner);
@@ -178,8 +184,8 @@ describe('attention feed (integration, real Postgres)', () => {
 
     const feed = await attention.getFeed(p);
     const kinds = feed.items.map((i) => i.kind);
-    expect(kinds).toContain('task_overdue');
-    expect(kinds).toContain('task_dormant');
+    expect(kinds).toContain('open_loop_overdue');
+    expect(kinds).toContain('open_loop_quiet');
     expect(kinds).toContain('review_uncertain');
     expect(kinds).toContain('review_contradicted');
     expect(kinds).toContain('approval_pending');
@@ -191,9 +197,12 @@ describe('attention feed (integration, real Postgres)', () => {
       expect(() => new Date(item.timestamp).toISOString()).not.toThrow();
       expect(item.href.startsWith('/')).toBe(true);
     }
-    // Deep links resolve: the overdue link goes to /tasks; the digest merge link
+    // Deep links resolve: the overdue link opens the FACT itself in the memory
+    // drawer (where its due date and provenance live); the digest merge link
     // opens a memory that exists for the caller.
-    expect(feed.items.find((i) => i.kind === 'task_overdue')!.href).toBe('/tasks');
+    expect(feed.items.find((i) => i.kind === 'open_loop_overdue')!.href).toBe(
+      `/memories?open=${overdueId}`,
+    );
     const digest = feed.items.find((i) => i.kind === 'digest_change')!;
     expect(digest.href).toBe(`/memories?open=${memId}`);
     expect(digest.key).toBe(`digest:${runId}:0`);
@@ -201,7 +210,7 @@ describe('attention feed (integration, real Postgres)', () => {
     // A live count is never dismissible.
     expect(feed.items.find((i) => i.kind === 'review_uncertain')!.dismissible).toBe(false);
     // The most-pressing item (overdue) sorts first.
-    expect(feed.items[0]!.kind).toBe('task_overdue');
+    expect(feed.items[0]!.kind).toBe('open_loop_overdue');
     pendingByOwner.delete(owner);
   });
 
@@ -211,7 +220,10 @@ describe('attention feed (integration, real Postgres)', () => {
     const alice = `alice-${randomUUID()}`;
     const bob = `bob-${randomUUID()}`;
 
-    await seedTask(alice, { title: 'Alice private task', due: new Date(Date.now() - 86_400_000) });
+    await seedOpenLoop(alice, {
+      title: 'Alice private commitment',
+      due: new Date(Date.now() - 86_400_000),
+    });
     await seedMemory(alice, { content: 'alice secret', status: 'uncertain' });
     await seedContradiction(alice);
     await seedDigestRun(alice);
@@ -226,7 +238,7 @@ describe('attention feed (integration, real Postgres)', () => {
 
     const statsBob = await attention.getStats(principalFor(bob, 'org-b'));
     expect(statsBob.memoryTotal).toBe(0);
-    expect(statsBob.tasks.open).toBe(0);
+    expect(statsBob.openLoops).toBe(0);
     expect(statsBob.review.uncertain).toBe(0);
     expect(statsBob.review.contradicted).toBe(0);
   });
@@ -268,8 +280,15 @@ describe('attention feed (integration, real Postgres)', () => {
     expect(afterSeen.unreadCount).toBe(0);
     expect(afterSeen.items.find((i) => i.kind === 'review_uncertain')!.unread).toBe(false);
 
-    // A brand-new uncertain fact re-raises the indicator.
-    await seedMemory(owner, { content: 'new unsure', status: 'uncertain' });
+    // A brand-new uncertain fact re-raises the indicator. Its created_at is
+    // stamped a second past the seen mark rather than left to the wall clock:
+    // "unread" is a strict timestamp comparison, and a row written inside the
+    // same millisecond as markSeen is genuinely not newer than it.
+    const fresh = await seedMemory(owner, { content: 'new unsure', status: 'uncertain' });
+    await tdb.pool.query(
+      `UPDATE memory SET created_at = now() + interval '1 second' WHERE id = $1`,
+      [fresh.id],
+    );
     const afterNew = await attention.getFeed(p);
     expect(afterNew.unreadCount).toBeGreaterThanOrEqual(1);
     expect(afterNew.items.find((i) => i.kind === 'review_uncertain')!.unread).toBe(true);

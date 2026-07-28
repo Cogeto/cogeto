@@ -8,7 +8,7 @@ import { donutArcs, seriesSummary, seriesTotal, sparklinePoints } from './charts
 
 /**
  * The dashboard statistics (Post-v1 Priority 2): real, gated numbers a
- * professional wants at a glance — memory by status, task load, sources over
+ * professional wants at a glance — memory by status, sources over
  * time, dreaming activity, and the oldest unresolved review item — each
  * deep-linking to the filtered view behind it. Hand-rolled SVG charts (no
  * charting dependency); every chart carries a text equivalent and never encodes
@@ -69,7 +69,6 @@ export function StatsPanel({ session }: { session: Session }) {
       <KpiRow data={data} />
       <div className="grid gap-4 md:grid-cols-2">
         <MemoryDonut data={data} />
-        <TaskLoad data={data} />
         <SourcesSpark data={data} />
         <DreamingSpark data={data} />
       </div>
@@ -89,7 +88,7 @@ function KpiRow({ data }: { data: DashboardStatsDto }) {
         );
   const tiles = [
     { label: 'Memories', value: data.memoryTotal, href: '/memories' },
-    { label: 'Open tasks', value: data.tasks.open + data.tasks.blocked, href: '/tasks' },
+    { label: 'Still open', value: data.openLoops, href: '/' },
     {
       label: 'To review',
       value: data.review.uncertain + data.review.contradicted,
@@ -214,49 +213,6 @@ function MemoryDonut({ data }: { data: DashboardStatsDto }) {
             ))}
           </ul>
         </div>
-      )}
-    </Card>
-  );
-}
-
-// ── Task load (compact bars) ──────────────────────────────────────────────────
-
-function TaskLoad({ data }: { data: DashboardStatsDto }) {
-  const rows = [
-    { label: 'Open', value: data.tasks.open, color: 'var(--chart-active)' },
-    { label: 'Blocked', value: data.tasks.blocked, color: 'var(--chart-uncertain)' },
-    { label: 'Done', value: data.tasks.done, color: 'var(--chart-outdated)' },
-  ];
-  const max = Math.max(1, ...rows.map((r) => r.value));
-  return (
-    <Card>
-      <div className="mb-3 flex items-center justify-between">
-        <SectionTitle as="h3">Task load</SectionTitle>
-        <a
-          href="/tasks"
-          className="text-xs font-semibold text-brand-teal-ink dark:text-brand-teal hover:underline"
-        >
-          Open tasks →
-        </a>
-      </div>
-      <ul className="space-y-2.5">
-        {rows.map((r) => (
-          <li key={r.label} className="flex items-center gap-3">
-            <span className="w-16 shrink-0 text-xs font-medium text-slate-500">{r.label}</span>
-            <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
-              <span
-                className="block h-full rounded-full"
-                style={{ width: `${(r.value / max) * 100}%`, backgroundColor: r.color }}
-              />
-            </span>
-            <span className="w-6 shrink-0 text-right text-sm font-semibold tabular-nums text-slate-800">
-              {r.value}
-            </span>
-          </li>
-        ))}
-      </ul>
-      {data.tasks.dismissed > 0 && (
-        <p className="mt-2 text-xs text-slate-400">{data.tasks.dismissed} dismissed</p>
       )}
     </Card>
   );

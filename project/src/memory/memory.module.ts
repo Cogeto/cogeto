@@ -40,8 +40,9 @@ export interface MemoryModuleOptions {
    * the composition root, mirroring ingestion's SourceReader port (§A.1).
    */
   sourceDeletions?: { imports?: ModuleMetadata['imports']; adapters: Type<SourceDeletion>[] };
-  /** Derived-artifact cascades (0013 ruling 6) — tasks today, bound like the
-   * source deletions: memory defines the port, the deriving module implements. */
+  /** Derived-artifact cascades (0013 ruling 6) — chat answers and reply drafts
+   * today, bound like the source deletions: memory defines the port, the
+   * deriving module implements. */
   derivedCascades?: { imports?: ModuleMetadata['imports']; adapters: Type<DerivedCascade>[] };
   /**
    * Pending-ingestion cancellation for the deletion saga (QS-5, decision

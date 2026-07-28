@@ -10,6 +10,7 @@ backed by an inspectable artifact — with human-approved agents on top.
 
 | Doc | Read it when |
 |---|---|
+| `docs/Cogeto-V2-Plan.md` | **Before any 2.0 work — BINDING for the current cycle.** The complete 2.0 plan, version by version. Note on capabilities: the **task subsystem and reminders were removed in V2.0 item 3.1/3.2** (decision 0060, migration 0035) — Cogeto has no tasks, no to-dos and no reminders. What survives is **open loops**: commitment/open_loop memories read straight from the memory table, due-dated by `valid_until`, surfaced in chat and on the attention feed. This file is otherwise stale below and its full rewrite is V2.0 item 3.7. |
 | `docs/Cogeto-v1-Roadmap-Revision.md` | **For the remaining v1 plan — read before any O4–O7 work.** BINDING. Supersedes the Model-Split roadmap's O4/O5/O6 + v1.x list and the Addendum §A.11 connector order: calendar is dropped from v1, email arrives via a per-tenant receive-only Haraka forwarding server (no OAuth/CASA), operations are script-driven, v1 scope is locked. |
 | `docs/Cogeto-v1-Addendum-Verifiable-Memory.md` | **Always, first.** Binding architecture decisions (Part A) + feature set with v1/v1.x/Later tags (Part B). Wins over every other doc on conflict — **except** the remaining-plan items (O4–O7, connector set, v1 scope), where the Roadmap Revision above supersedes it (notably §A.11 connector order + Gmail/CASA). |
 | `docs/Cogeto-v1-scope.md` | For product scope, users, positioning, business model. |

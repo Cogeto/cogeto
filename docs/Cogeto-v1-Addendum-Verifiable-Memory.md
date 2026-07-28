@@ -15,9 +15,9 @@
 The spec's component table (§4.5 of the Specification) describes **code boundaries, not deployable services.** Per tenant, exactly **two application processes** are deployed:
 
 - **app** — web (chat + dashboard), API, connectors, approval endpoints.
-- **worker** — all slow-path jobs (extraction, dedup, contradiction checks, consolidation/dreaming, reminders, deletion sagas).
+- **worker** — all slow-path jobs (extraction, dedup, contradiction checks, consolidation/dreaming, reminders, deletion sagas). *(2.0: reminders removed — decision 0060.)*
 
-Both are built from one codebase organized as **DDD bounded contexts** (modules): `memory` (core domain), `ingestion`, `retrieval`, `agents`, `connectors`, `tasks`, `identity` (Zitadel seam), `model-gateway` (Mistral seam). Module rules, enforced by import-linting / architecture tests in CI:
+Both are built from one codebase organized as **DDD bounded contexts** (modules): `memory` (core domain), `ingestion`, `retrieval`, `agents`, `connectors`, `tasks`, `identity` (Zitadel seam), `model-gateway` (Mistral seam). *(2.0: the `tasks` context was removed — decision 0060; open loops are memory-backed.)* Module rules, enforced by import-linting / architecture tests in CI:
 
 1. Each module exposes exactly one public interface; internals are private.
 2. **No module reads or writes another module's tables.**

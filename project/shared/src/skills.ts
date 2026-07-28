@@ -37,7 +37,6 @@ export const SKILL_STEP_KINDS = [
   'fetch_and_extract',
   'verify',
   'synthesise',
-  'propose_actions',
 ] as const;
 
 export type SkillStepKind = (typeof SKILL_STEP_KINDS)[number];
@@ -86,14 +85,6 @@ export interface SkillPlanQueryDto {
   sentQuery: string | null;
 }
 
-/** A proposed action: an adoption proposal grounded in a specific memory.
- * Nothing exists until the user accepts (via POST /api/tasks/adopt). */
-export interface SkillProposedActionDto {
-  memoryId: string;
-  title: string;
-  state: 'proposed' | 'accepted' | 'dismissed';
-}
-
 export interface SkillRunDto {
   id: string;
   skillId: string;
@@ -108,14 +99,13 @@ export interface SkillRunDto {
   createdAt: string;
 }
 
-/** The full run view: the step log, the query plan, the brief, the actions. */
+/** The full run view: the step log, the query plan and the brief. */
 export interface SkillRunDetailDto extends SkillRunDto {
   steps: SkillRunStepDto[];
   plan: SkillPlanQueryDto[];
   /** The durable brief ([M#]/[W#] markers); null until synthesised. */
   brief: string | null;
   briefCitations: ResearchCitationDto[];
-  proposedActions: SkillProposedActionDto[];
 }
 
 export interface ProposeSkillRunRequest {
@@ -133,11 +123,6 @@ export type ProposeSkillRunResponse =
  * approve; everything omitted is cancelled and never leaves. */
 export interface ApproveSkillPlanRequest {
   queries: { researchRunId: string; query: string }[];
-}
-
-export interface SkillActionStateRequest {
-  memoryId: string;
-  state: 'accepted' | 'dismissed';
 }
 
 /** A skill run proposed from chat (decision 0059): the done event's handle —

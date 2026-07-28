@@ -94,8 +94,8 @@ export class SkillPlanner {
     const cleanSubject = subject.trim();
 
     // 1. Gather what memory knows (entity-profile mode, scope-gated as
-    // always) plus the open loops involving the subject. Deterministic:
-    // pre-built rewrites, no rewriter call.
+    // always) plus the open loops involving the subject — both memory reads
+    // since decision 0060. Deterministic: pre-built rewrites, no rewriter call.
     const [profile, loops] = await Promise.all([
       this.retrieval.retrieve(principal, `tell me about ${cleanSubject}`, {
         rewrite: profileRewrite(cleanSubject),
@@ -117,7 +117,7 @@ export class SkillPlanner {
     // checkpoint their outcome so the finished log reads complete.
     const run = await this.runs.createRun(principal, skill, cleanSubject);
     const profileIds = profile.memories.map((m) => m.memory.id);
-    const loopIds = (loops.tasks ?? []).map((t) => t.derivedFromMemoryId);
+    const loopIds = (loops.openLoops ?? []).map((loop) => loop.memory.id);
     await this.runs.claimStep(run.id, 'gather_memory');
     await this.runs.patchStep(run.id, 'gather_memory', {
       inputsSummary: `Entity profile for "${cleanSubject}"`,

@@ -3,9 +3,9 @@ import type { MemoryStatus } from './memory';
 /**
  * Post-v1 Priority 2 — the in-app "what needs my attention" surface and the
  * dashboard statistics. Both are COMPUTED per Principal over signals the
- * instance already produces (tasks, review queues, approvals, the dreaming
- * digest); only the minimal read-state (last_seen_at + dismissed keys) is
- * materialized. See docs/notes/dashboard-notifications.md and decision 0039.
+ * instance already produces (open loops read from memory, review queues,
+ * approvals, the dreaming digest); only the minimal read-state (last_seen_at
+ * + dismissed keys) is materialized. See docs/notes/dashboard-notifications.md and decision 0039.
  *
  * Every item and every number is Principal-scoped through the existing gated
  * reads — nothing crosses a user or an org boundary, and notification text
@@ -14,9 +14,9 @@ import type { MemoryStatus } from './memory';
 
 /** Attention item kinds — each maps to a display group and a deep-link target. */
 export type AttentionKind =
-  | 'task_overdue'
-  | 'task_due_soon'
-  | 'task_dormant'
+  | 'open_loop_overdue'
+  | 'open_loop_due_soon'
+  | 'open_loop_quiet'
   | 'review_uncertain'
   | 'review_contradicted'
   | 'approval_pending'
@@ -27,7 +27,7 @@ export type AttentionKind =
  * from `kind` on the client (see web/src/components/attention-model.ts) so the
  * server stays a flat, typed list.
  */
-export type AttentionGroup = 'tasks' | 'quiet' | 'review' | 'approvals' | 'overnight';
+export type AttentionGroup = 'open_loops' | 'quiet' | 'review' | 'approvals' | 'overnight';
 
 /** One line in the attention feed. */
 export interface AttentionItem {
@@ -77,14 +77,6 @@ export interface AttentionDismissDto {
 /** Gated memory counts by lifecycle status — the "memory by status" visual. */
 export type MemoryStatusCounts = Record<MemoryStatus, number>;
 
-/** Owner-scoped task counts — open vs blocked vs done vs dismissed. */
-export interface TaskStatusCounts {
-  open: number;
-  blocked: number;
-  done: number;
-  dismissed: number;
-}
-
 /** One UTC day in a bounded daily series. `date` is `YYYY-MM-DD`. */
 export interface DailyPoint {
   date: string;
@@ -104,7 +96,8 @@ export interface DailySeries {
 export interface DashboardStatsDto {
   memoryByStatus: MemoryStatusCounts;
   memoryTotal: number;
-  tasks: TaskStatusCounts;
+  /** How many commitments and open items still stand (decision 0060). */
+  openLoops: number;
   /** Distinct sources ingested per UTC day, grouped into notes / email / files. */
   sources: DailySeries;
   /** Dreaming consolidation activity per UTC day (merges, conflicts caught). */

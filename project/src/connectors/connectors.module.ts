@@ -14,7 +14,6 @@ import { ContextSuggestionsService } from './context-suggestions.service';
 import { FILE_UPLOAD_OPTIONS } from './file-upload-options';
 import type { FileUploadOptions } from './file-upload-options';
 import { EmailIntakeService } from './email-intake.service';
-import { EmailAuthorshipBackfill } from './email-authorship-backfill';
 import { EmailAllowlistService } from './email-allowlist.service';
 import { EmailSourceReader } from './email.source-reader';
 import { EmailSourceDeletion } from './email.source-deletion';
@@ -83,7 +82,6 @@ export class ConnectorsModule {
         UserSettingsService,
         ContextSuggestionsService,
         EmailIntakeService,
-        EmailAuthorshipBackfill,
         EmailAllowlistService,
         EmailSourceReader,
         EmailSourceDeletion,
@@ -112,7 +110,6 @@ export class ConnectorsModule {
         FileSourceReader,
         UserSettingsService,
         EmailIntakeService,
-        EmailAuthorshipBackfill,
         EmailAllowlistService,
         EmailSourceReader,
         EmailSourceDeletion,

@@ -18,10 +18,8 @@ import {
   memoriesDocSchema,
   receiptsDocSchema,
   sha256Hex,
-  tasksDocSchema,
   PASSPORT_PATHS,
   type MemoryExport,
-  type TaskExport,
 } from './passport-format';
 
 /**
@@ -63,20 +61,6 @@ const memory = (over: Partial<MemoryExport> = {}): MemoryExport => ({
   ...over,
 });
 
-const task: TaskExport = {
-  id: 't1',
-  title: 'Send the proposal',
-  status: 'open',
-  condition_text: null,
-  due: null,
-  dormant: false,
-  from_uncertain: false,
-  derived_from_memory_id: 'm2',
-  scope: 'private',
-  created_at: '2026-07-14T00:00:00.000Z',
-  updated_at: null,
-};
-
 /** A genuinely-signed single-link receipt chain (genesis → this receipt). */
 function signedReceipt(): ConfirmedReceipt {
   const payload = {
@@ -105,7 +89,6 @@ function assemble(over: Partial<PassportInput> = {}) {
       memory({ id: 'm1' }),
       memory({ id: 'm2', status: 'user_approved', superseded_by: null, valid_until: null }),
     ],
-    tasks: [task],
     receipts: [signedReceipt()],
     attachments: [],
     instancePublicKeyPem: publicKeyPem,
@@ -127,9 +110,6 @@ describe('passport assembler (pure)', () => {
         .success,
     ).toBe(true);
     expect(
-      tasksDocSchema.safeParse(JSON.parse(entries.get(PASSPORT_PATHS.tasks)!.toString())).success,
-    ).toBe(true);
-    expect(
       receiptsDocSchema.safeParse(JSON.parse(entries.get(PASSPORT_PATHS.receipts)!.toString()))
         .success,
     ).toBe(true);
@@ -145,13 +125,12 @@ describe('passport assembler (pure)', () => {
     // promise forbids. Validate each generated document against its own schema.
     const schemaDir = resolve(
       dirname(fileURLToPath(import.meta.url)),
-      '../../../docs/passport-schema',
+      '../../../docs/passport-schema/2.0',
     );
     const load = (name: string): object =>
       JSON.parse(readFileSync(resolve(schemaDir, name), 'utf8')) as object;
     const cases: ReadonlyArray<[path: string, schema: string]> = [
       [PASSPORT_PATHS.memories, 'memories.schema.json'],
-      [PASSPORT_PATHS.tasks, 'tasks.schema.json'],
       [PASSPORT_PATHS.receipts, 'receipts.schema.json'],
       [PASSPORT_PATHS.manifest, 'manifest.schema.json'],
     ];
@@ -175,7 +154,7 @@ describe('passport assembler (pure)', () => {
   it('passport_manifest_hashes: each document matches its manifest hash and byte length', () => {
     const { entries } = assemble();
     const manifest = JSON.parse(entries.get(PASSPORT_PATHS.manifest)!.toString());
-    expect(manifest.documents.length).toBeGreaterThanOrEqual(4); // memories, tasks, receipts, README
+    expect(manifest.documents.length).toBeGreaterThanOrEqual(3); // memories, receipts, README
     for (const doc of manifest.documents) {
       const bytes = entries.get(doc.path);
       expect(bytes, `document ${doc.path} present`).toBeDefined();
@@ -183,11 +162,11 @@ describe('passport assembler (pure)', () => {
       expect(bytes!.length).toBe(doc.bytes);
     }
     // Tampering with a document breaks its recorded hash.
-    const tampered = Buffer.from('{"passport_version":"1.0","count":0,"tasks":[]}\n');
-    const tasksDoc = manifest.documents.find(
-      (d: { path: string }) => d.path === PASSPORT_PATHS.tasks,
+    const tampered = Buffer.from('{"passport_version":"2.0","count":0,"memories":[]}\n');
+    const memoriesDoc = manifest.documents.find(
+      (d: { path: string }) => d.path === PASSPORT_PATHS.memories,
     );
-    expect(sha256Hex(tampered)).not.toBe(tasksDoc.sha256);
+    expect(sha256Hex(tampered)).not.toBe(memoriesDoc.sha256);
   });
 
   it('the manifest is signed and verifies against the included public key', () => {

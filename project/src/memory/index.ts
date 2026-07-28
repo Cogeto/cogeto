@@ -1,7 +1,12 @@
 /** Public interface of the memory bounded context (§A.1 rule 1). */
 export { MemoryModule } from './memory.module';
 export type { MemoryModuleOptions } from './memory.module';
-export { MemoryStore, MEMORY_EMBED_JOB_TYPE } from './memory.store';
+export {
+  MemoryStore,
+  MEMORY_EMBED_JOB_TYPE,
+  OPEN_LOOP_KINDS,
+  OPEN_LOOP_STATUSES,
+} from './memory.store';
 export { TimelineService } from './timeline.service';
 export {
   DeletionSaga,

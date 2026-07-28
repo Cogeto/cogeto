@@ -7,12 +7,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { and, eq, inArray } from 'drizzle-orm';
-import type {
-  Principal,
-  ResearchCitationDto,
-  SkillProposedActionDto,
-  SkillStepLinks,
-} from '@cogeto/shared';
+import type { Principal, ResearchCitationDto, SkillStepLinks } from '@cogeto/shared';
 import {
   buildContextBlock,
   DEFAULT_INSTANCE_TIMEZONE,
@@ -42,8 +37,6 @@ const MAX_BRIEF_PAGES = 12;
 const PAGE_EXCERPT_CHARS = 4000;
 const MAX_BRIEF_FACTS = 14;
 const MAX_BRIEF_LOOPS = 6;
-const MAX_PROPOSED_ACTIONS = 5;
-const ACTION_TITLE_CHARS = 140;
 
 /**
  * The skill engine (decision 0059): everything after the plan gate. The app
@@ -53,9 +46,8 @@ const ACTION_TITLE_CHARS = 140;
  * from the rows alone, budget-capped with graceful partial completion.
  *
  * Governance lives elsewhere and is only USED here: discovery and capture go
- * through ResearchService (the 0045 gate, budgets, SSRF guard); tasks are
- * never created (proposals reference memories; accepting goes through
- * /api/tasks/adopt).
+ * through ResearchService (the 0045 gate, budgets, SSRF guard); a skill
+ * reads, searches and writes a brief, and creates nothing else.
  */
 @Injectable()
 export class SkillEngine {
@@ -189,10 +181,6 @@ export class SkillEngine {
       if (pending('write_brief')) {
         if (!(await stillRunning())) return { advanced: false };
         await this.executeBrief(owner, run);
-      }
-      if (pending('propose_actions')) {
-        if (!(await stillRunning())) return { advanced: false };
-        await this.executeProposeActions(owner, run);
       }
     } catch (error) {
       // A cancelled run stops cleanly between steps; anything else marks the
@@ -475,48 +463,6 @@ export class SkillEngine {
     });
   }
 
-  /**
-   * Deterministic adoption proposals (decision 0059 ruling 4): observed
-   * obligations — commitment/open_loop memories from sources that never
-   * derive tasks on their own. Nothing is created; each proposal references
-   * the memory the user can adopt.
-   */
-  private async executeProposeActions(owner: Principal, run: SkillRunRow): Promise<void> {
-    await this.runs.claimStep(run.id, 'propose_actions');
-    const gatherLinks = await this.stepLinks(run.id, 'gather_memory');
-    const pages = await this.pagesForSkillRun(owner, run.id);
-    const candidates: MemoryRow[] = [];
-    for (const page of pages) {
-      candidates.push(...(await this.memories.listBySourceSystem('web', page.id)));
-    }
-    candidates.push(...(await this.memories.getManySystem(gatherLinks.memoryIds ?? [])));
-    const seen = new Set<string>();
-    const actions: SkillProposedActionDto[] = [];
-    for (const row of candidates) {
-      if (seen.has(row.id)) continue;
-      seen.add(row.id);
-      if (row.kind !== 'commitment' && row.kind !== 'open_loop') continue;
-      if (firstPersonDerivable(row)) continue; // those derive on their own
-      if (row.status === 'replaced' || row.status === 'outdated') continue;
-      if (!row.content) continue;
-      actions.push({
-        memoryId: row.id,
-        title: row.content.slice(0, ACTION_TITLE_CHARS),
-        state: 'proposed',
-      });
-      if (actions.length >= MAX_PROPOSED_ACTIONS) break;
-    }
-    await this.runs.transition(run.id, 'running', 'running', { proposedActions: actions });
-    await this.runs.finishStep(run.id, 'propose_actions', {
-      status: actions.length === 0 ? 'skipped' : 'completed',
-      outputsSummary:
-        actions.length === 0
-          ? 'No actions to propose'
-          : `${actions.length} ${actions.length === 1 ? 'action' : 'actions'} proposed — nothing exists until you accept`,
-      links: { memoryIds: actions.map((a) => a.memoryId), counts: { actions: actions.length } },
-    });
-  }
-
   private async pagesForSkillRun(owner: Principal, runId: string): Promise<WebPageRow[]> {
     const planRuns = await this.research.runsForSkill(runId);
     const pages: WebPageRow[] = [];
@@ -536,13 +482,6 @@ export class SkillEngine {
  * with the REAL org captured at propose time, so §A.6 object keys hold. */
 function ownerPrincipal(run: SkillRunRow): Principal {
   return { userId: run.ownerId, name: '', email: null, orgId: run.orgId, orgName: '', roles: [] };
-}
-
-/** The first-person rule's derivable side (decision 0054): these sources
- * derive tasks on their own, so proposing adoption would duplicate them. */
-function firstPersonDerivable(row: MemoryRow): boolean {
-  if (row.sourceType === 'user_note' || row.sourceType === 'chat') return true;
-  return row.sourceType === 'email' && row.authoredByUser === true;
 }
 
 function isDailyBudget(error: unknown): boolean {

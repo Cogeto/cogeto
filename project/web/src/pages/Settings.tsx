@@ -619,8 +619,8 @@ function PassportSection({ session }: { session: Session }) {
       <SectionTitle>Export my data · Memory Passport</SectionTitle>
       <p className="text-xs text-slate-500">
         Download <span className="font-medium">everything</span> Cogeto knows for you: every fact
-        with its status, provenance and full history, your derived tasks, and your deletion receipts
-        (still independently verifiable), in an open, documented, versioned format. Your memory is
+        with its status, provenance and full history, and your deletion receipts (still
+        independently verifiable), in an open, documented, versioned format. Your memory is
         portable; leave whenever you want.
       </p>
 
