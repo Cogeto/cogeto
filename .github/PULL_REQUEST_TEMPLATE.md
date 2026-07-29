@@ -1,5 +1,5 @@
-<!-- Title must be a Conventional Commit (feat:/fix:/chore:/docs:/refactor:/test:/ci:)
-     — we squash-merge, so your title becomes the commit on main and a release-notes line. -->
+<!-- Title must be a Conventional Commit (feat:/fix:/chore:/docs:/refactor:/test:/ci:):
+     we squash-merge, so your title becomes the commit on main and a release-notes line. -->
 
 ## What and why
 
@@ -12,4 +12,4 @@
 - [ ] Docs updated where behavior contradicts them; what changed and why is stated in this PR
 - [ ] Any golden-set/eval cases added use **fictional data only** (docs/eval-golden-set.md)
 - [ ] No memory content, secrets, or tokens in logs or fixtures
-- [ ] First contribution? The CLA bot will ask you to sign with **one comment** — see [CONTRIBUTING.md](../CONTRIBUTING.md#the-cla-honestly)
+- [ ] First contribution? The CLA bot will ask you to sign with **one comment**. See [CONTRIBUTING.md](./CONTRIBUTING.md#the-cla-honestly)

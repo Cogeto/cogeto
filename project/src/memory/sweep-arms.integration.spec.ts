@@ -158,16 +158,16 @@ describe('sweep arms + (integration: real Postgres + Qdrant + MinIO)', () => {
     );
     await sweep.run();
     const details = await alertsOf('orphaned_object');
-    expect(details.some((d) => d.startsWith(`${rawKey} `))).toBe(false);
-    expect(details.some((d) => d.startsWith(`${htmlKey} `))).toBe(false);
-    expect(details.some((d) => d.startsWith(`${abandonedKey} `))).toBe(true);
+    expect(details.some((d) => d.startsWith(`${rawKey}: `))).toBe(false);
+    expect(details.some((d) => d.startsWith(`${htmlKey}: `))).toBe(false);
+    expect(details.some((d) => d.startsWith(`${abandonedKey}: `))).toBe(true);
 
     // Without the adapter (the pre-fix sweep), the same retained email WOULD be
     // flagged — proving the adapter is what makes retention legitimate.
     await clearAlerts();
     await sweepWith(0).run();
     const blind = await alertsOf('orphaned_object');
-    expect(blind.some((d) => d.startsWith(`${rawKey} `))).toBe(true);
+    expect(blind.some((d) => d.startsWith(`${rawKey}: `))).toBe(true);
 
     await clearAlerts();
     await tdb.pool.query(`DELETE FROM email_message WHERE id = $1`, [emailId]);

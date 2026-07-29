@@ -53,7 +53,7 @@ export async function minimiseQuery(
     return {
       original: proposedQuery,
       minimised: proposedQuery,
-      reason: 'minimisation was unavailable — review the query yourself before approving',
+      reason: 'minimisation was unavailable, review the query yourself before approving',
     };
   }
 }

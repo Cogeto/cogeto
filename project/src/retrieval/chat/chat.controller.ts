@@ -259,7 +259,7 @@ export class ChatController {
       if (error instanceof ModelBudgetExceededError) {
         write({ type: 'error', message: error.message, code: 'model_budget_exceeded' });
       } else {
-        write({ type: 'error', message: 'answer generation failed — try again' });
+        write({ type: 'error', message: 'answer generation failed, try again' });
       }
     } finally {
       if (idleTimer) clearTimeout(idleTimer);

@@ -13,24 +13,24 @@ Memory in Cogeto is *derived* from a source (a note, a document, an email). A
 source's derived memories carry that source's provenance, so deleting the source
 enumerates and erases everything derived from it across:
 
-- **Postgres** — the memory rows and, for file sources, the `file_metadata`
-  pointer rows.
-- **Qdrant** — the vector points for those memories.
-- **MinIO** — the stored original object bytes.
+- **Postgres**: the memory rows and, for file sources, the `file_metadata`
+ pointer rows.
+- **Qdrant**: the vector points for those memories.
+- **MinIO**: the stored original object bytes.
 
 The saga runs in two parts:
 
 1. **One Postgres transaction (app):** enumerate the derived memories by
-   provenance `FOR UPDATE`, delete them, delete file metadata and collect object
-   keys, delete the source row, insert a `pending` receipt with a `counts_json`
-   of exactly what will be erased, enqueue the worker job through the outbox, and
-   write the audit row. Any failure aborts the whole thing.
+ provenance `FOR UPDATE`, delete them, delete file metadata and collect object
+ keys, delete the source row, insert a `pending` receipt with a `counts_json`
+ of exactly what will be erased, enqueue the worker job through the outbox, and
+ write the audit row. Any failure aborts the whole thing.
 2. **One idempotent worker attempt:** delete the Qdrant points, delete the MinIO
-   objects, then confirm the receipt with its chain hash and signature in the
-   same idempotency transaction. If an external delete fails, the confirmation
-   rolls back and retries; on exhaustion the job parks in the dead-letter table
-   with the receipt still `pending`. **A receipt can never read `confirmed` while
-   any enumerated identifier could still exist.**
+ objects, then confirm the receipt with its chain hash and signature in the
+ same idempotency transaction. If an external delete fails, the confirmation
+ rolls back and retries; on exhaustion the job parks in the dead-letter table
+ with the receipt still `pending`. **A receipt can never read `confirmed` while
+ any enumerated identifier could still exist.**
 
 Authorization is owner-only, checked against the source row *and* every derived
 memory row; a mismatch returns `NotFound` so existence never leaks.
@@ -45,7 +45,7 @@ SHA-256; the signature covers that hash.
 
 Receipts are **hash-chained**: each links to the previous confirmed receipt via
 `prev_hash`, back to a fixed genesis constant. Crucially, **linkage defines the
-chain order, never timestamps** — confirmation serializes on an advisory lock and
+chain order, never timestamps**, confirmation serializes on an advisory lock and
 finds the tip as "the confirmed receipt no other confirmed receipt links to," so
 clock skew cannot fork or reorder the chain, and more than one tip is treated as
 corruption and refused. A golden-hash test pins the canonicalization forever so
@@ -58,8 +58,8 @@ as the saga confirms it). No API route mutates a receipt.
 ## The nightly sweep detects, never repairs
 
 A nightly integrity sweep re-derives every confirmed receipt's identifiers from
-its `counts_json` and verifies they are still absent — no memory rows, no Qdrant
-points, no objects — and re-verifies the whole hash chain. Any reappearance
+its `counts_json` and verifies they are still absent: no memory rows, no Qdrant
+points, no objects, and re-verifies the whole hash chain. Any reappearance
 becomes a persistent `integrity_alert`. It is **never auto-deleted or
 auto-repaired**: an identifier that came back after a signed promise means a human
 must find out how (a restored backup, a manual write, an index rebuild), and an
@@ -69,36 +69,36 @@ surface in `GET /api/health` and the System view.
 ## How you verify it
 
 - **Verify the whole chain:** `GET /api/receipts/verify` walks genesis to tip,
-  recomputing every hash and checking every signature.
+ recomputing every hash and checking every signature.
 - **Verify one exported receipt independently:** `GET /api/instance/public-key`
-  serves the instance's public key **unauthenticated**, so anyone holding an
-  exported receipt can check its signature without access to the instance.
+ serves the instance's public key **unauthenticated**, so anyone holding an
+ exported receipt can check its signature without access to the instance.
 - **Detect a silently dropped receipt from a single exported copy:** every
-  exported receipt embeds a `chainTip` = `{ hash, confirmedCount }` at export time. Re-run verify later: if the tip you recorded no longer appears, or
-  the confirmed count has gone *down*, a receipt was removed or the chain
-  truncated. This turns a silent operator tamper into a checkable discrepancy from
-  an independently held artifact.
+ exported receipt embeds a `chainTip` = `{ hash, confirmedCount }` at export time. Re-run verify later: if the tip you recorded no longer appears, or
+ the confirmed count has gone *down*, a receipt was removed or the chain
+ truncated. This turns a silent operator tamper into a checkable discrepancy from
+ an independently held artifact.
 
 ## Related guarantees and residual notes
 
 - **Cross-source supersession chains:** deleting source S removes only S's
-  members; a surviving memory from a different source whose pointer referenced a
-  deleted row has that pointer nulled, and the receipt records it — erasure of S
-  must not be reconstructable from what survives.
+ members; a surviving memory from a different source whose pointer referenced a
+ deleted row has that pointer nulled, and the receipt records it, erasure of S
+ must not be reconstructable from what survives.
 - **Discard-mode uploads** (extract-and-discard on) never write the original bytes
-  to MinIO at all; deleting such a source still yields a receipt covering the
-  derived memories, with zero object keys.
+ to MinIO at all; deleting such a source still yields a receipt covering the
+ derived memories, with zero object keys.
 - **The chain tip is an anti-tamper anchor, not a proof of completeness.** Proving
-  that *everything* promised was erased is the sweep's job; the tip proves the
-  ledger itself was not quietly truncated.
+ that *everything* promised was erased is the sweep's job; the tip proves the
+ ledger itself was not quietly truncated.
 - **Key loss:** the MinIO encryption master key and the signing key live in the
-  instance's secrets and are backed up with them. Losing the encryption key makes
-  stored objects unreadable by design.
+ instance's secrets and are backed up with them. Losing the encryption key makes
+ stored objects unreadable by design.
 
 ## Where this lives in the code
 
 - Saga: `project/src/memory/deletion-saga.ts`
 - Sweep arms: `project/src/memory/` (integrity sweep, orphan/absence detectors)
 - Tests: `project/src/memory/deletion.integration.spec.ts`,
-  `email-deletion-cascade.integration.spec.ts`,
-  `sweep-arms.integration.spec.ts`
+ `email-deletion-cascade.integration.spec.ts`,
+ `sweep-arms.integration.spec.ts`

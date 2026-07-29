@@ -19,5 +19,5 @@ assignees: ''
 
 ## Eval cases (if this touches extraction/retrieval quality)
 
-<!-- Golden-set contributions are welcome and FICTIONAL DATA ONLY — no real
+<!-- Golden-set contributions are welcome and FICTIONAL DATA ONLY: no real
      people, companies, addresses, or events. Format: docs/eval-golden-set.md. -->

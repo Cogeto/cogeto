@@ -1,4 +1,4 @@
-# agents — bounded context
+# agents: bounded context
 
 Human-approved agent execution. Owns the **server-side approval state machine**
 (Addendum §A.8): consequential actions persist as rows moving through

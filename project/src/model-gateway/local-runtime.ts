@@ -64,9 +64,9 @@ export async function probeLocalRuntime(
       ok: false,
       error:
         `Ollama runtime unreachable at ${baseUrl} ` +
-        `(${error instanceof Error ? error.message : String(error)}) — check that the runtime is ` +
-        `up and that this container can reach the address in COGETO_OLLAMA_BASE_URL ` +
-        `, then start again.`,
+        `(${error instanceof Error ? error.message : String(error)}), check that the runtime is ` +
+        `up and that this container can reach the address in COGETO_OLLAMA_BASE_URL, ` +
+        `then start again.`,
     };
   }
 
@@ -78,7 +78,7 @@ export async function probeLocalRuntime(
         missing
           .map(
             (model) =>
-              `model "${model}" is not available on the Ollama runtime at ${baseUrl} — ` +
+              `model "${model}" is not available on the Ollama runtime at ${baseUrl}, ` +
               `run \`ollama pull ${model}\` on the Ollama host`,
           )
           .join('; ') + `, then start again.`,

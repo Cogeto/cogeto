@@ -10,7 +10,7 @@ Cogeto's source code is licensed under the **AGPLv3** (see [`LICENSE`](LICENSE))
 
 ## Permitted use (nominative / descriptive)
 
-You may use the "Cogeto" name **truthfully and descriptively** to refer to the project — for example:
+You may use the "Cogeto" name **truthfully and descriptively** to refer to the project, for example:
 
 - Stating that your product "works with Cogeto," "is based on Cogeto," or "is a fork of Cogeto."
 - Referring to Cogeto in articles, tutorials, talks, reviews, and comparisons.
@@ -22,7 +22,7 @@ Such use must be accurate, must use the name only as much as needed to refer to 
 Without prior written permission from the Maintainer, you may **not**:
 
 - Use the "Cogeto" name or logo in a way that **implies endorsement, affiliation, or sponsorship** by the Maintainer.
-- **Name a fork, distribution, product, or hosted service "Cogeto"** — or use a confusingly similar name, domain, social‑media handle, or app name. Please give your fork its own distinct name; you may truthfully state that it is *derived from* or *based on* Cogeto.
+- **Name a fork, distribution, product, or hosted service "Cogeto"**, or use a confusingly similar name, domain, social‑media handle, or app name. Please give your fork its own distinct name; you may truthfully state that it is *derived from* or *based on* Cogeto.
 - **Offer a hosted or managed service under the "Cogeto" name**, even if you are running the AGPL‑licensed code or hold a commercial license. Running the software does not grant the right to trade under the brand.
 - Use the logo in a **modified, recolored, or redrawn form**, alter its proportions, or use the Marks in any way likely to cause confusion as to the origin of goods or services.
 - Register or attempt to register the Marks, or any confusingly similar mark, name, or domain, anywhere.
@@ -30,10 +30,10 @@ Without prior written permission from the Maintainer, you may **not**:
 ## Relationship to the other licenses
 
 - **AGPLv3** governs your rights in the *code*.
-- The **commercial license** can waive AGPL obligations for the *code* — but grants **no** rights in the Marks.
+- The **commercial license** can waive AGPL obligations for the *code*, but grants **no** rights in the Marks.
 - This **Trademark Policy** governs use of the *name and logo* and applies regardless of which software license you hold.
 
-If you need brand rights beyond the nominative use described above — for example to co‑brand, resell under the Cogeto name, or use the logo in marketing — you must obtain separate written permission.
+If you need brand rights beyond the nominative use described above, for example to co‑brand, resell under the Cogeto name, or use the logo in marketing, you must obtain separate written permission.
 
 ## Questions and permissions
 

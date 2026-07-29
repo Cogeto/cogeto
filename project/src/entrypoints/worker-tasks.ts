@@ -72,7 +72,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
     async () => {
       const outcome = await runSingleFlight(db, name, body);
       if (!outcome.ran) {
-        deps.log({ job: name }, `${name} skipped — another run holds the single-flight lock`);
+        deps.log({ job: name }, `${name} skipped, another run holds the single-flight lock`);
       }
     };
   return {

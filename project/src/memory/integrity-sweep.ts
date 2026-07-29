@@ -397,7 +397,7 @@ export class IntegritySweep {
       alerts.push({
         receiptId: null,
         kind: 'orphaned_object',
-        detail: `${key} — staging object outlived its cleanup window; original bytes not erased`,
+        detail: `${key}: staging object outlived its cleanup window; original bytes not erased`,
       });
     }
     for (const { key } of durableKeys) {
@@ -405,7 +405,7 @@ export class IntegritySweep {
       alerts.push({
         receiptId: null,
         kind: 'orphaned_object',
-        detail: `${key} — object present with no owning record (file_metadata or a connector's retained source); bytes outside any receipt`,
+        detail: `${key}: object present with no owning record (file_metadata or a connector's retained source); bytes outside any receipt`,
       });
     }
     return { scanned: objects.length, alerts };
@@ -464,7 +464,7 @@ export class IntegritySweep {
             receiptId: null,
             kind: 'payload_mismatch',
             detail:
-              `${row.id} — indexed point missing; run reindex. Recall-only: ` +
+              `${row.id}: indexed point missing; run reindex. Recall-only: ` +
               'retrieval re-gates through Postgres, this is not a leak',
           });
           continue;
@@ -488,7 +488,7 @@ export class IntegritySweep {
           receiptId: null,
           kind: 'payload_mismatch',
           detail:
-            `${row.id} — stale index payload (${stale.join(', ')}); self-healed by ` +
+            `${row.id}: stale index payload (${stale.join(', ')}); self-healed by ` +
             're-upsert. Recall/consistency only, not a leak: retrieval re-gates ' +
             'every hit through Postgres',
         });

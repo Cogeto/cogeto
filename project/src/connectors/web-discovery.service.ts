@@ -69,7 +69,7 @@ export class WebDiscoveryService {
       return {
         status: 'unavailable',
         reason:
-          'search is not configured on this instance — bring the `research` compose profile up',
+          'search is not configured on this instance, bring the `research` compose profile up',
       };
     }
     const target = new URL('/search', this.options.searxngUrl);
@@ -88,11 +88,11 @@ export class WebDiscoveryService {
     } catch {
       // Network failure / timeout — never the query in the log line.
       this.log.warn('discovery request failed (network or timeout)');
-      return { status: 'unavailable', reason: 'search is unavailable right now — try again' };
+      return { status: 'unavailable', reason: 'search is unavailable right now, try again' };
     }
     if (!response.ok) {
       this.log.warn(`discovery request failed (status ${response.status})`);
-      return { status: 'unavailable', reason: 'search is unavailable right now — try again' };
+      return { status: 'unavailable', reason: 'search is unavailable right now, try again' };
     }
 
     let parsed: z.infer<typeof searxResponseSchema>;
@@ -100,7 +100,7 @@ export class WebDiscoveryService {
       parsed = searxResponseSchema.parse(await response.json());
     } catch {
       this.log.warn('discovery response was not the expected JSON shape');
-      return { status: 'unavailable', reason: 'search is unavailable right now — try again' };
+      return { status: 'unavailable', reason: 'search is unavailable right now, try again' };
     }
 
     const results = parsed.results

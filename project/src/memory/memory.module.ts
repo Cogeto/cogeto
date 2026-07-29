@@ -67,7 +67,7 @@ export class MemoryModule {
     // a vector store — transitions and supersession must fail loudly, never
     // silently skip their Qdrant payload sync, if Qdrant is miswired.
     if (!options.qdrantUrl) {
-      throw new Error('MemoryModule.register: qdrantUrl is required — /');
+      throw new Error('MemoryModule.register: qdrantUrl is required, /');
     }
     return {
       module: MemoryModule,

@@ -12,14 +12,14 @@ beginning. The persistence layer is a pluggable interface with a Postgres
 implementation: a snapshot table (run id, step, state blob, parent pointer) plus a
 pending-writes table for updates produced but not yet folded into a snapshot.
 
-**Rationale:** Anything that can pause for a human **must** be persistent — an
+**Rationale:** Anything that can pause for a human **must** be persistent, an
 approval can arrive hours later, after deploys and restarts. In-memory agent state
 and "the run object lives in the web process" are disqualifying designs.
 
 **Application:** Cogeto does not need a general graph runtime, but it needs exactly
 this property for the approval flow: the *action row in Postgres is the checkpoint*.
 Draft content, grounding context, and target are all columns/JSON on the
-`agent_action` row — the run can always resume from the row alone.
+`agent_action` row: the run can always resume from the row alone.
 
 ## 2. Human-in-the-loop as a first-class pause, not a callback
 
@@ -32,18 +32,18 @@ implements the same idea as "guards": configurable checkpoints (on input, on out
 on dangerous tool use) that halt work pending an approval callback.
 
 **Rationale:** Callback- or websocket-based approval couples the pause to a live
-connection; interrupts survive disconnects and make pending approvals *listable* —
+connection; interrupts survive disconnects and make pending approvals *listable*:
 which is precisely what an approval inbox UI needs.
 
 **Two costs to design around:**
 - **Re-execution semantics:** the studied framework re-runs the interrupted step from
-  its start upon resume — all code before the pause executes twice. Side effects
+  its start upon resume: all code before the pause executes twice. Side effects
   before a pause must be idempotent or absent.
 - **Decision provenance:** the resume payload (who approved, when, what exactly they
   saw) must be persisted, or the audit trail has a hole at its most important link.
 
 **Application:** Cogeto's state machine (`draft → pending_approval → approved →
-executed`, + `rejected`, `expired` — Addendum §A.8) is the interrupt pattern with the
+executed`, + `rejected`, `expired`, Addendum §A.8) is the interrupt pattern with the
 graph machinery removed: the pause is a row in `pending_approval`; the "resume
 invocation" is the authenticated confirm endpoint flipping it to `approved`; the
 worker is the only executor. Design rule from the re-execution cost: **the confirm
@@ -66,7 +66,7 @@ never deciding; the dead-letter handles the world refusing the action.
 ## 4. Exactly-once is a lie; idempotent at-least-once is the contract
 
 **Pattern:** Durable runtimes persist writes before advancing and replay them on
-resume — giving at-least-once execution of any side-effecting step. Every studied
+resume, giving at-least-once execution of any side-effecting step. Every studied
 design converges on the same discipline: external effects must be idempotent
 (idempotency keys on outbound calls), because a crash between "sent the email" and
 "recorded that we sent it" *will* happen.
@@ -85,14 +85,14 @@ timeline/trace log (timestamp, actor, input, output) that its dashboard renders.
 
 **Application:** Cogeto v1 needs the modest version: every approval-state transition
 and every job state change is an audit row; the dashboard reads those tables. Token
-streaming applies only to chat drafting. No event-bus infrastructure — the audit
+streaming applies only to chat drafting. No event-bus infrastructure: the audit
 tables *are* the event log (and the outbox already gives ordered domain events).
 
 ## 6. Composition machinery a single-product system should refuse
 
-The studied framework's power features — nested subgraphs with namespace-isolated
+The studied framework's power features, nested subgraphs with namespace-isolated
 checkpoints, dynamic fan-out to parallel branches, channel reducers with
-associativity requirements, time-travel replay across checkpoint history — solve
+associativity requirements, time-travel replay across checkpoint history, solve
 problems Cogeto v1 does not have. Costs they impose: schema bloat (per-channel
 versioning), replay fragility (any nondeterminism corrupts resumption), and a
 steep debugging curve. The multi-agent platform's inter-agent work-routing daemon
@@ -101,7 +101,7 @@ pays off only past many concurrent autonomous workers.
 
 **Application:** Cogeto's agent work is linear per action (draft → approve →
 execute). A state-machine column plus the job queue covers it. Revisit orchestration
-frameworks only if v-next introduces genuinely branching multi-step agent plans —
+frameworks only if v-next introduces genuinely branching multi-step agent plans:
 and even then, prefer extending the action table with a parent/plan id first.
 
 ## 7. The worker as sole executor (privilege separation)
@@ -114,11 +114,11 @@ after external approval.
 **Application:** Cogeto hardens this into privilege separation (§A.8): the app
 process can create drafts and flip approval state (authenticated + audit-logged);
 **only the worker executes**, and it executes only rows in `approved`. The app
-process needs no credentials for outbound effects (SMTP, external APIs) — a
+process needs no credentials for outbound effects (SMTP, external APIs), a
 compromised web surface cannot send email. This is the security payoff of the
 state-machine design, worth preserving through every refactor.
 
-## Application to Cogeto — summary
+## Application to Cogeto: summary
 
 | Pattern | Cogeto realization |
 |---|---|
@@ -133,5 +133,5 @@ state-machine design, worth preserving through every refactor.
 | Decider/actor privilege separation | only the worker executes; app holds no outbound credentials |
 
 One-line takeaway: an approval system is a durable-execution system with exactly one
-interrupt point — build the persistence and idempotency discipline of an agent
+interrupt point, build the persistence and idempotency discipline of an agent
 runtime, and none of its graph machinery.

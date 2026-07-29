@@ -51,7 +51,7 @@ describe('config_validation_matrix — every invalid combination fails boot with
         COGETO_MISTRAL_API_KEY: 'k',
       }),
     ).toThrowError(
-      /no model configured for the answer tier on provider "anthropic" — set COGETO_MODEL_ANSWER/,
+      /no model configured for the answer tier on provider "anthropic": set COGETO_MODEL_ANSWER/,
     );
   });
 

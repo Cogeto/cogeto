@@ -1,4 +1,4 @@
-# connectors — bounded context
+# connectors: bounded context
 
 Source integrations: **notes** (manual and quick capture), **email**, **files**, and
 **web pages**. Email arrives by forwarding into a per-tenant,
@@ -6,17 +6,16 @@ receive-only **Haraka** SMTP container (no OAuth, no CASA, no sending). Calendar
 dropped from v1 (reconsidered only post-2.0). Notes first for zero OAuth friction.
 
 Responsibilities: sync with external sources, normalize items, and emit ingestion
-events **transactionally via the outbox** (§A.3) — an item can never be ingested
+events **transactionally via the outbox** (§A.3): an item can never be ingested
 and silently unprocessed. Keeps sync state (delta/history tokens) per source.
 
-Owns: the `note` table (S2-A), the email tables (O4), the `web_page` table
-(Post-v1 Priority 5 Part A — web research, decisions 0042/0043), and later
+Owns: the `note` table (S2-A), the email tables (O4), the `web_page` table (web research), and later
 connector sync-state and token tables (tokens encrypted).
 
 May depend on: `identity` (per-user auth context), the outbox, and `ingestion`'s
-public interface (the job-type constant and the `SourceReader` port it implements —
+public interface (the job-type constant and the `SourceReader` port it implements:
 dependency points connectors → ingestion, never the reverse). Never touches
-memory tables — extraction belongs to `ingestion`.
+memory tables, extraction belongs to `ingestion`.
 
 S2-A surface: `POST /api/notes` (capture + transactional pipeline enqueue),
 `GET /api/notes/:id` (source drawer), `GET /api/notes/:id/status` (pipeline poll),

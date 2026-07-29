@@ -26,14 +26,14 @@ backed by an inspectable artifact, with human-approved agents on top.
 
 ## Repo shape
 
-- `project/src/` — modular monolith: one directory per bounded context, two
+- `project/src/`: modular monolith: one directory per bounded context, two
   entrypoints (app, worker). Module rules: `project/src/README.md` (§A.1).
-- `project/web/` — chat + dashboard frontend. `project/prompts/` — versioned prompt
-  artifacts (§B.7). `project/infra/` — compose stack; `docker compose up` is the
-  contract (§A.2). `project/eval/` — golden set and chat cases.
-- `docs/` — architecture, features, security, operations, research.
+- `project/web/`, chat + dashboard frontend. `project/prompts/`, versioned prompt
+  artifacts (§B.7). `project/infra/`, compose stack; `docker compose up` is the
+  contract (§A.2). `project/eval/`, golden set and chat cases.
+- `docs/`: architecture, features, security, operations, research.
 - Application tests live under `project/src/`, next to the code they exercise (Vitest).
-- `assets/brand/` — canonical logo files (trademarked, not AGPL: see TRADEMARK.md).
+- `assets/brand/`: canonical logo files (trademarked, not AGPL: see TRADEMARK.md).
   Reuse from here; never generate, recreate, or modify the logo.
 
 ## Current state

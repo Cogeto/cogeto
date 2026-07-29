@@ -43,7 +43,7 @@ async function main(): Promise<void> {
     );
     process.exit(1);
   }
-  console.log('reindex OK — point count matches embeddable memories');
+  console.log('reindex OK, point count matches embeddable memories');
 }
 
 main().catch((error: unknown) => {

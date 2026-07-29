@@ -16,12 +16,12 @@ import {
  */
 function main(): void {
   if (isLocalhostDeployment(process.env)) {
-    console.log('preflight: localhost dev instance — dev secret defaults permitted');
+    console.log('preflight: localhost dev instance, dev secret defaults permitted');
     return;
   }
   const offenders = findKnownDevSecrets(process.env);
   if (offenders.length === 0) {
-    console.log('preflight: no known dev secrets in use — deployment secrets look overridden');
+    console.log('preflight: no known dev secrets in use, deployment secrets look overridden');
     return;
   }
   // Throws with the offending variable names; the container exits non-zero and

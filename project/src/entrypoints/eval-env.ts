@@ -35,7 +35,7 @@ export function requireConfiguredProviders(
 ): void {
   if (!providers.configured) {
     console.error(
-      `${harness} needs a configured model provider — set COGETO_MISTRAL_API_KEY or a ` +
+      `${harness} needs a configured model provider, set COGETO_MISTRAL_API_KEY or a ` +
         `COGETO_PROVIDER_* configuration (env or repo-root .env); the harness is live-only`,
     );
     process.exit(2);

@@ -145,7 +145,7 @@ export function mergePartial(existing: PartialFile | null, incoming: PartialFile
   if (!existing) return incoming;
   if (existing.configuration.id !== incoming.configuration.id) {
     throw new Error(
-      `partial merge refused: configuration id mismatch (${existing.configuration.id} vs ${incoming.configuration.id}) — emit different configurations to different files`,
+      `partial merge refused: configuration id mismatch (${existing.configuration.id} vs ${incoming.configuration.id}), emit different configurations to different files`,
     );
   }
   return {
@@ -193,7 +193,7 @@ export function publishTrustScores(args: PublishArgs): { file: string; index: st
   const outFile = path.join(args.outDir, `${args.version}.json`);
   if (existsSync(outFile)) {
     throw new Error(
-      `refusing to overwrite ${outFile} — release trust-score files are immutable. ` +
+      `refusing to overwrite ${outFile}, release trust-score files are immutable. ` +
         `If the numbers are wrong, publish a note in the NEXT release; never rewrite history.`,
     );
   }
@@ -205,7 +205,7 @@ export function publishTrustScores(args: PublishArgs): { file: string; index: st
   const ids = new Set(partials.map((p) => p.configuration.id));
   if (ids.size !== partials.length) {
     throw new Error(
-      'duplicate configuration ids across partials — merge same-id runs into one file first',
+      'duplicate configuration ids across partials, merge same-id runs into one file first',
     );
   }
 

@@ -18,7 +18,7 @@ import type { DemoEndState } from './assertions';
 /** Thrown when a reset can't start because another already holds the lock. */
 export class DemoResetInProgressError extends Error {
   constructor() {
-    super('a demo reset is already in progress — skipping this one');
+    super('a demo reset is already in progress, skipping this one');
     this.name = 'DemoResetInProgressError';
   }
 }

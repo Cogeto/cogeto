@@ -191,7 +191,7 @@ export class UnconfiguredModelGateway extends ModelGateway {
   // without a model key; report "not configured" but stay ok so it doesn't
   // degrade the whole instance.
   override async reachable(): Promise<GatewayReachability> {
-    return { ok: true, detail: 'model gateway not configured — model features disabled' };
+    return { ok: true, detail: 'model gateway not configured, model features disabled' };
   }
 }
 

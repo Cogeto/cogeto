@@ -12,7 +12,7 @@ assignees: ''
 
 ## Reproduction
 
-<!-- Minimal steps. For pipeline/extraction issues, include the INPUT TEXT —
+<!-- Minimal steps. For pipeline/extraction issues, include the INPUT TEXT:
      fictional data only, never real people, companies, or events. -->
 
 1.

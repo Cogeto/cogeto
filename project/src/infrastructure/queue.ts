@@ -186,7 +186,7 @@ export function idempotentTask(
           } catch (writeError) {
             if (writeAttempt >= DEAD_LETTER_WRITE_ATTEMPTS) {
               helpers.logger.error(
-                `job ${jobType}: dead_letter write failed ${writeAttempt}x — re-throwing so it ` +
+                `job ${jobType}: dead_letter write failed ${writeAttempt}x, re-throwing so it ` +
                   `parks as graphile permanent-failure (health will flag it): ` +
                   describeErrorLine(writeError),
               );

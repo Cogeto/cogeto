@@ -41,7 +41,7 @@ export class NotesService {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
           error: 'Too Many Requests',
           code: 'daily_capture_limit',
-          message: `daily capture limit reached (${this.quota.captureMax}) — try again tomorrow`,
+          message: `daily capture limit reached (${this.quota.captureMax}), try again tomorrow`,
         },
         HttpStatus.TOO_MANY_REQUESTS,
       );

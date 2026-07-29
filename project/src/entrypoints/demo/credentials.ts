@@ -109,7 +109,7 @@ export function credentialsBanner(c: DemoCredentials): string {
   return [
     '',
     bar,
-    '  DEMO SANDBOX LOGIN — sign in at the app with these:',
+    '  DEMO SANDBOX LOGIN, sign in at the app with these:',
     `    username: ${c.username}`,
     `    password: ${c.password}`,
     '  (also written to demo-credentials.txt on the demo-config volume)',

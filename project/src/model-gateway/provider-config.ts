@@ -160,7 +160,7 @@ const read = (env: NodeJS.ProcessEnv, name: string): string | undefined => {
 function parseProvider(name: string, value: string): ModelProviderId {
   if ((MODEL_PROVIDER_IDS as readonly string[]).includes(value)) return value as ModelProviderId;
   throw new ModelProviderConfigError(
-    `${name}="${value}" is not a known provider — use one of: ${MODEL_PROVIDER_IDS.join(' | ')}`,
+    `${name}="${value}" is not a known provider, use one of: ${MODEL_PROVIDER_IDS.join(' | ')}`,
   );
 }
 
@@ -178,7 +178,7 @@ export function resolveModelProviders(
   const presetName = read(env, 'COGETO_PROVIDER_PRESET');
   if (presetName && !PROVIDER_PRESETS[presetName]) {
     throw new ModelProviderConfigError(
-      `COGETO_PROVIDER_PRESET="${presetName}" is not a known preset — use one of: ${Object.keys(
+      `COGETO_PROVIDER_PRESET="${presetName}" is not a known preset, use one of: ${Object.keys(
         PROVIDER_PRESETS,
       ).join(' | ')}`,
     );
@@ -234,7 +234,7 @@ export function resolveModelProviders(
         const model = modelVar ?? fallback;
         if (!model) {
           throw new ModelProviderConfigError(
-            `no model configured for the ${tier} tier on provider "${provider}" — set COGETO_MODEL_${TIER_SUFFIX[tier]}`,
+            `no model configured for the ${tier} tier on provider "${provider}": set COGETO_MODEL_${TIER_SUFFIX[tier]}`,
           );
         }
         tiers[tier] = { provider, model };
@@ -247,7 +247,7 @@ export function resolveModelProviders(
   // Embeddings capability gate (ruling 3): fail at boot, never at first embed.
   if (!EMBEDDING_CAPABLE.includes(tiers.embedding.provider)) {
     throw new ModelProviderConfigError(
-      `provider "${tiers.embedding.provider}" has no embeddings API — the embeddings tier must use ` +
+      `provider "${tiers.embedding.provider}" has no embeddings API: the embeddings tier must use ` +
         `one of: ${EMBEDDING_CAPABLE.join(' | ')} (set COGETO_PROVIDER_EMBEDDINGS)`,
     );
   }
@@ -280,7 +280,7 @@ export function resolveModelProviders(
       throw new ModelProviderConfigError(
         `provider "ollama" is selected for ${TIERS.filter(
           (tier) => tiers[tier].provider === 'ollama',
-        ).join(', ')} but COGETO_OLLAMA_BASE_URL is not set — set it to the Ollama runtime root ` +
+        ).join(', ')} but COGETO_OLLAMA_BASE_URL is not set, set it to the Ollama runtime root ` +
           `(e.g. http://10.0.0.1:11434)`,
       );
     }

@@ -459,7 +459,7 @@ export class MemoryReconciliation {
     const loser = winnerSide === 'a' ? rowB : rowA;
     if (winner.status !== 'contradicted' || loser.status !== 'contradicted') {
       throw new BadRequestException(
-        'a memory in this contradiction changed since detection — review it in Memories, then dismiss or correct instead',
+        'a memory in this contradiction changed since detection, review it in Memories, then dismiss or correct instead',
       );
     }
     const confirmed = await this.store.transitionInTx(

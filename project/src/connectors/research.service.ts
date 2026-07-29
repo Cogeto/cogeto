@@ -206,12 +206,12 @@ export class ResearchService {
       const row = rows[0];
       if (!row) throw new NotFoundException();
       if (row.status === 'cancelled') {
-        throw new ConflictException('this research was cancelled — propose it again');
+        throw new ConflictException('this research was cancelled, propose it again');
       }
       if (row.status === 'approved') {
         if (row.sentQuery !== sentQuery) {
           throw new ConflictException(
-            'this research already ran with a different approved query — propose a new one',
+            'this research already ran with a different approved query, propose a new one',
           );
         }
         return row; // retry with the SAME recorded query — no state change
@@ -264,7 +264,7 @@ export class ResearchService {
       if (!row) throw new NotFoundException();
       if (row.status === 'cancelled') return row;
       if (row.status === 'approved') {
-        throw new ConflictException('this research already ran — its query has left');
+        throw new ConflictException('this research already ran: its query has left');
       }
       const [updated] = await tx
         .update(researchRun)
@@ -370,7 +370,7 @@ export class ResearchService {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
           error: 'Too Many Requests',
           code: 'daily_research_limit',
-          message: `daily research search limit reached (${this.quota.searchesMax}) — try again tomorrow`,
+          message: `daily research search limit reached (${this.quota.searchesMax}), try again tomorrow`,
         },
         HttpStatus.TOO_MANY_REQUESTS,
       );
@@ -416,7 +416,7 @@ export class ResearchService {
           url,
           status: 'skipped',
           reason: 'limit_reached',
-          detail: `daily research page limit reached (${this.quota.pagesMax}) — try again tomorrow`,
+          detail: `daily research page limit reached (${this.quota.pagesMax}), try again tomorrow`,
         });
         continue;
       }

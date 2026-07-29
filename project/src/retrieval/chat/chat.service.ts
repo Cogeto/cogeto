@@ -167,7 +167,7 @@ export class ChatService {
       .where(and(eq(conversation.ownerId, principal.userId), eq(conversation.archived, false)));
     if ((active[0]?.count ?? 0) >= MAX_ACTIVE_CONVERSATIONS) {
       throw new BadRequestException(
-        `you have ${MAX_ACTIVE_CONVERSATIONS} active conversations — archive or delete some first`,
+        `you have ${MAX_ACTIVE_CONVERSATIONS} active conversations, archive or delete some first`,
       );
     }
     const [row] = await this.db
@@ -261,7 +261,7 @@ export class ChatService {
     if (!message) throw new NotFoundException(`message ${messageId} not found`);
     if (message.role !== 'user') {
       throw new BadRequestException(
-        'only your own messages can be remembered — the assistant’s replies are never captured',
+        'only your own messages can be remembered: the assistant’s replies are never captured',
       );
     }
     await this.db.transaction((tx) =>
@@ -612,15 +612,15 @@ export class ChatService {
     const hr = intent.lang === 'hr';
     const replies: Record<SmallTalkIntent['kind'], string> = hr
       ? {
-          thanks: 'Nema na čemu — drago mi je da je pomoglo.',
+          thanks: 'Nema na čemu, drago mi je da je pomoglo.',
           greeting: 'Bok! Kako mogu pomoći?',
-          farewell: 'Pozdrav — tu sam kad zatrebaš.',
+          farewell: 'Pozdrav, tu sam kad zatrebaš.',
           ack: 'Super. Mogu li još s čime pomoći?',
         }
       : {
-          thanks: 'You’re welcome — glad it helped.',
+          thanks: 'You’re welcome, glad it helped.',
           greeting: 'Hi! What can I help you with?',
-          farewell: 'Take care — I’ll be here when you need me.',
+          farewell: 'Take care, I’ll be here when you need me.',
           ack: 'Great. Anything else I can help with?',
         };
     const answer = replies[intent.kind];
@@ -692,11 +692,11 @@ export class ChatService {
       proposalRef = { runId: proposal.runId };
       answer =
         lang === 'hr'
-          ? `Pripremio sam upit za istraživanje — ništa još nije poslano. ` +
+          ? `Pripremio sam upit za istraživanje, ništa još nije poslano. ` +
             `Predloženi upit: "${proposal.minimisedQuery}" (${proposal.minimiseReason}) ` +
             `Uredi ili odobri upit ovdje u razgovoru (ili kasnije na stranici Research). ` +
             `tek tada išta napušta ovu instancu.`
-          : `I've prepared a research query — nothing has been sent yet. ` +
+          : `I've prepared a research query, nothing has been sent yet. ` +
             `Proposed query: "${proposal.minimisedQuery}" (${proposal.minimiseReason}) ` +
             `Edit or approve it right here in the conversation (or later from the Research page). ` +
             `only what you approve leaves this instance.`;
@@ -798,8 +798,8 @@ export class ChatService {
       } else {
         const draft = await this.replyResolver!.createDraft(principal, candidates[0]!.emailId);
         answer = draft.recipientResolved
-          ? `I've drafted a reply to ${draft.to}. Open the Approvals page to review it, then send it from your own mail client — Cogeto never sends mail for you.`
-          : `I've drafted a reply, but this message looks forwarded and I couldn't work out the original recipient. Open the Approvals page, set the recipient, then send it yourself — Cogeto never sends mail.`;
+          ? `I've drafted a reply to ${draft.to}. Open the Approvals page to review it, then send it from your own mail client, Cogeto never sends mail for you.`
+          : `I've drafted a reply, but this message looks forwarded and I couldn't work out the original recipient. Open the Approvals page, set the recipient, then send it yourself, Cogeto never sends mail.`;
       }
     } catch (error) {
       this.logger.warn(`reply_intent_failed: ${error instanceof Error ? error.message : 'error'}`);

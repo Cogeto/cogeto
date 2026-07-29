@@ -119,7 +119,7 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
         } catch (error) {
           if (isTimeoutError(error)) {
             throw new ModelGatewayError(
-              `${this.label} ${tier} call timed out after ${timeoutMs} ms — raise ` +
+              `${this.label} ${tier} call timed out after ${timeoutMs} ms, raise ` +
                 `COGETO_OLLAMA_TIMEOUT_${suffix}_MS or use a smaller/faster model`,
               false,
               error,
@@ -137,7 +137,7 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
       ) {
         throw new ModelGatewayError(
           `model "${model}" is not available on the Ollama runtime at ` +
-            `${this.localRuntime.rootUrl} — run \`ollama pull ${model}\` on the Ollama host`,
+            `${this.localRuntime.rootUrl}, run \`ollama pull ${model}\` on the Ollama host`,
           false,
           error,
         );

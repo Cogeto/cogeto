@@ -53,7 +53,7 @@ function buildVectors(options: CreateMemoryStoreOptions): MemoryVectorStore | un
   if (options.qdrant) return new MemoryVectorStore(options.qdrant);
   if (!options.sqlOnly) {
     throw new Error(
-      'createMemoryStore: no qdrant options — a vector-less MemoryStore silently has no ' +
+      'createMemoryStore: no qdrant options: a vector-less MemoryStore silently has no ' +
         'index; pass `sqlOnly: true` ONLY for test/fixture paths that never exercise ' +
         'search, transitions or supersession',
     );

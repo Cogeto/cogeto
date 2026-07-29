@@ -13,12 +13,12 @@ export function logRedactionState(logger: Logger, config: CogetoConfig): void {
   if (config.redactionEnabled) {
     logger.info(
       { redaction: 'on', url: config.redactionUrl },
-      'redaction ON — outbound model calls are pseudonymized (fail-closed if the sidecar is unreachable)',
+      'redaction ON, outbound model calls are pseudonymized (fail-closed if the sidecar is unreachable)',
     );
   } else {
     logger.warn(
       { redaction: 'off' },
-      'redaction OFF — model calls send PLAINTEXT to the model provider. If you intended the redaction profile, set REDACTION_ENABLED=1 (or REDACTION_REQUIRED=1 to refuse boot without it).',
+      'redaction OFF, model calls send PLAINTEXT to the model provider. If you intended the redaction profile, set REDACTION_ENABLED=1 (or REDACTION_REQUIRED=1 to refuse boot without it).',
     );
   }
 }

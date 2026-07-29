@@ -1,4 +1,4 @@
-# Cogeto — Evaluation Golden Set Specification
+# Cogeto: Evaluation Golden Set Specification
 
 *Governs the eval harness (Addendum §B.4). The harness is built alongside the extractor (§A.11), not after it. Its published output is the trust score. This spec defines the corpus format, labeling rules, metrics, and CI gates; the harness implementation follows it.*
 
@@ -17,25 +17,25 @@ Extraction quality is the product. The golden set is the hand-labeled corpus tha
 
 ```json
 {
-  "case_id": "en-0042",
-  "source_type": "email",
-  "expected_memories": [
-    {
-      "content_gist": "Ana will send the revised proposal to Marko",
-      "kind": "commitment",
-      "entities": ["Ana", "Marko"],
-      "condition": "after Marko confirms the budget",
-      "temporal": { "valid_from": "source_date" },
-      "must_extract": true
-    }
-  ],
-  "must_not_extract": [
-    "pleasantries, signatures, quoted earlier thread content"
-  ],
-  "expected_relations": [
-    { "type": "supersedes", "target_case": "en-0038" }
-  ],
-  "verification_expected": "supported"
+ "case_id": "en-0042",
+ "source_type": "email",
+ "expected_memories": [
+ {
+ "content_gist": "Ana will send the revised proposal to Marko",
+ "kind": "commitment",
+ "entities": ["Ana", "Marko"],
+ "condition": "after Marko confirms the budget",
+ "temporal": { "valid_from": "source_date" },
+ "must_extract": true
+ }
+ ],
+ "must_not_extract": [
+ "pleasantries, signatures, quoted earlier thread content"
+ ],
+ "expected_relations": [
+ { "type": "supersedes", "target_case": "en-0038" }
+ ],
+ "verification_expected": "supported"
 }
 ```
 

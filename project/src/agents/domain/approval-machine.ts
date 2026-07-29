@@ -34,7 +34,7 @@ export function checkApprovalTransition(
     allowed: false,
     reason:
       EDGES[from].length === 0
-        ? `${from} is terminal — no further transitions`
+        ? `${from} is terminal: no further transitions`
         : `illegal approval transition ${from} → ${to} (from ${from}, only ${EDGES[from].join(', ')})`,
   };
 }

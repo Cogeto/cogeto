@@ -1320,7 +1320,7 @@ export class MemoryStore {
   private requireVectors(): MemoryVectorStore {
     if (!this.vectors) {
       throw new NotImplementedException(
-        'MemoryStore was constructed without a vector store (Qdrant) — register MemoryModule with a qdrantUrl',
+        'MemoryStore was constructed without a vector store (Qdrant), register MemoryModule with a qdrantUrl',
       );
     }
     return this.vectors;
@@ -1365,7 +1365,7 @@ export class MemoryStore {
     // where the database could not (an empty string satisfies a NOT NULL column).
     if (!ownerId.trim() || !fact.sourceType || !fact.sourceId.trim()) {
       throw new BadRequestException(
-        'a memory requires owner_id, source_type and source_id — no orphans, ever (§A.6)',
+        'a memory requires owner_id, source_type and source_id: no orphans, ever (§A.6)',
       );
     }
     const [row] = await tx

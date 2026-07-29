@@ -55,7 +55,7 @@ describe('boot_probe', () => {
       vi.fn(async () => tags('bge-m3:latest')),
     );
     await expect(assertLocalRuntimeReady(providers(OLLAMA_ENV))).rejects.toThrow(
-      /model "gemma3:12b" is not available on the Ollama runtime at http:\/\/10\.0\.0\.1:11434 — run `ollama pull gemma3:12b`/,
+      /model "gemma3:12b" is not available on the Ollama runtime at http:\/\/10\.0\.0\.1:11434, run `ollama pull gemma3:12b`/,
     );
   });
 

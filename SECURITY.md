@@ -1,8 +1,8 @@
 # Security Policy
 
-Cogeto's product promise is verifiable trust — deletion receipts, integrity
-sweeps, published audits. That only means something if security reports are
-taken seriously. They are.
+Cogeto's product promise is verifiable trust: deletion receipts, integrity
+sweeps, and protections documented in the open. That only means something if
+security reports are taken seriously. They are.
 
 ## Reporting a vulnerability
 
@@ -24,8 +24,8 @@ Croatian are both fine.
   confirmed vulnerabilities **within 90 days** (faster for anything actively
   dangerous). Coordinated disclosure: we ask you to hold public details until
   a fix is released; we'll credit you in the release notes unless you prefer
-  otherwise. There is currently no bug bounty — we're honest about that — but
-  reports are genuinely valued and acted on.
+  otherwise. There is currently no bug bounty, and we would rather say so plainly
+  than imply one. Reports are genuinely valued and acted on.
 
 ## Scope
 
@@ -34,7 +34,7 @@ Croatian are both fine.
 - This repository: the application (app, worker, SPA), the compose stacks, the
   operator script, and the published release images
   (`cogeto/cogeto`, `cogeto/cogeto-edge`, `cogeto/cogeto-mail`).
-- **The public demo sandbox is explicitly in scope** — it holds only fictional
+- **The public demo sandbox is explicitly in scope**: it holds only fictional
   data and exists to be poked at. Please keep it usable for others (no
   volumetric/DoS testing).
 

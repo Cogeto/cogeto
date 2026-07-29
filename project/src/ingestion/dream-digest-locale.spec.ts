@@ -44,14 +44,14 @@ describe('initiated_content_in_preferred', () => {
     const en = await buildDigestLines(store, owner, actions, 'en');
     const hr = await buildDigestLines(store, owner, actions, 'hr');
     expect(en.map((l) => l.text)).toEqual([
-      'Found a conflict about Adriatic Foods — your call',
+      'Found a conflict about Adriatic Foods: your call',
       'A commitment about Marko has gone quiet',
     ]);
     expect(hr.map((l) => l.text)).toEqual([
-      'Pronađen je sukob oko Adriatic Foods — tvoja odluka',
+      'Pronađen je sukob oko Adriatic Foods: tvoja odluka',
       'Obveza oko Marko je utihnula',
     ]);
-    // Same order, same hrefs — only the language differs.
+    // Same order, same hrefs: only the language differs.
     expect(hr.map((l) => l.href)).toEqual(en.map((l) => l.href));
   });
 

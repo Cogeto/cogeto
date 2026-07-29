@@ -26,7 +26,7 @@ async function main(): Promise<void> {
 
     if (await alreadySeeded(pool, ownerId)) {
       const state = await inspectEndState(pool, ownerId);
-      console.log(`demo already seeded — ${summarize(state)}`);
+      console.log(`demo already seeded, ${summarize(state)}`);
       // Surface the (unchanged) login so the operator can sign in.
       console.log(
         credentialsBanner({ username: session.loginUsername, password: session.loginPassword }),

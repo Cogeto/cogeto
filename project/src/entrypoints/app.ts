@@ -56,7 +56,7 @@ async function main(): Promise<void> {
     : config.demoMode
       ? 'DEMO SANDBOX (publishes a shared session token to anyone)'
       : 'standard (customer instance; no demo session served)';
-  logger.info({ port: config.httpPort, mode }, `cogeto app listening — mode: ${mode}`);
+  logger.info({ port: config.httpPort, mode }, `cogeto app listening, mode: ${mode}`);
   logRedactionState(logger, config);
   logModelConfiguration(logger, config); // State the active configuration id.
   // boot banner: one delimited line of exact capability

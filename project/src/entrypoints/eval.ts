@@ -53,7 +53,7 @@ function reconcileRow(m: ReconcileEvalMetrics): string {
     `${m.falseMerges ? `, ${m.falseMerges} FALSE MERGE${m.falseMerges > 1 ? 'S' : ''}` : ''}) ` +
     `| ${m.contradictionPairs} | ${pct(m.contradictionPrecision)} (${m.correctContradictions}/${m.flaggedContradictions}) ` +
     `| ${pct(m.contradictionRecall)} (${m.correctContradictions}/${m.expectedContradictions}) ` +
-    `| ${m.supersedesPairs ? `${m.supersedesCorrect}/${m.supersedesPairs}` : '—'} ` +
+    `| ${m.supersedesPairs ? `${m.supersedesCorrect}/${m.supersedesPairs}` : ''} ` +
     `| ${m.candidateMisses} |`
   );
 }
@@ -73,7 +73,7 @@ async function main(): Promise<void> {
       `answer ${providers.tiers.answer.provider}/${providers.tiers.answer.model} · ` +
       `embeddings ${providers.tiers.embedding.provider}/${providers.tiers.embedding.model})`,
   );
-  if (redaction) console.log(`redaction: ON (sidecar ${redaction.url}) — measuring the delta`);
+  if (redaction) console.log(`redaction: ON (sidecar ${redaction.url}), measuring the delta`);
 
   console.log(`golden set: ${GOLDEN_DIR}`);
   console.log(
@@ -126,8 +126,8 @@ async function main(): Promise<void> {
   const stamp = new Date().toISOString().slice(0, 10);
   await appendFile(
     HISTORY_FILE,
-    `\n## ${stamp} — ${result.promptVersions} (thresholds v${result.config.version}, ${result.caseCount} cases)\n\n${table}\n` +
-      `\n## ${stamp} — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v${reconcile.configVersion}, ${reconcile.pairCount} pairs)\n\n${reconcileTable}\n`,
+    `\n## ${stamp}, ${result.promptVersions} (thresholds v${result.config.version}, ${result.caseCount} cases)\n\n${table}\n` +
+      `\n## ${stamp}, reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v${reconcile.configVersion}, ${reconcile.pairCount} pairs)\n\n${reconcileTable}\n`,
     'utf8',
   );
   console.log(`appended to ${path.relative(REPO_ROOT, HISTORY_FILE)}`);

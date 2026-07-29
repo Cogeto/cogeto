@@ -11,14 +11,14 @@
 
 Cogeto is released as open source under the **GNU Affero General Public License, version 3 (AGPLv3)**. Our business is operating managed, EU‑hosted private instances, and we also offer a **commercial (proprietary) license** to organizations that cannot accept AGPLv3 obligations.
 
-To keep that model workable, We must be able to license the entire codebase — including your contribution — under **both** the AGPLv3 **and** other terms (including commercial terms). Under copyright law We cannot do that with your contribution unless you give Us permission. This Contributor License Agreement ("**Agreement**") is that permission.
+To keep that model workable, We must be able to license the entire codebase, including your contribution, under **both** the AGPLv3 **and** other terms (including commercial terms). Under copyright law We cannot do that with your contribution unless you give Us permission. This Contributor License Agreement ("**Agreement**") is that permission.
 
 Signing it does **not** take your rights away. Except where you choose the assignment option in Section 12, **you keep the copyright in your contribution** and remain free to use it however you like. You are granting Us a broad, irrevocable license so the project can be sustainably licensed and dual‑licensed. This is the same mechanism used by comparable protected open‑core projects.
 
 This document contains two agreements. Sign the one that applies to you:
 
-- **Part A — Individual CLA**: for individuals contributing on their own behalf.
-- **Part B — Entity CLA**: for a company or other legal entity contributing through its employees or agents.
+- **Part A: Individual CLA**: for individuals contributing on their own behalf.
+- **Part B: Entity CLA**: for a company or other legal entity contributing through its employees or agents.
 
 ---
 
@@ -34,7 +34,7 @@ If you are accepting on behalf of an entity, you represent that you are authoriz
 
 ---
 
-# Part A — Individual Contributor License Agreement
+# Part A: Individual Contributor License Agreement
 
 By accepting this Part A, **You** (the individual identified in the acceptance block or by the account submitting the Contribution) agree with Cogeto as follows.
 
@@ -128,7 +128,7 @@ Date:                 ______________________________________
 
 ---
 
-# Part B — Entity (Corporate) Contributor License Agreement
+# Part B: Entity (Corporate) Contributor License Agreement
 
 This Part B applies where Contributions are made by a legal entity (a "**Corporation**") through its employees, contractors, or agents (each a "**Designated Employee**"). By accepting this Part B, the Corporation and Cogeto agree as follows.
 
@@ -176,7 +176,7 @@ Signature:                     ______________________________________
 Date:                          ______________________________________
 ```
 
-### Schedule A — Initial contribution (optional)
+### Schedule A: Initial contribution (optional)
 
 Briefly describe any initial or in‑bulk Contribution being made on execution (leave blank if none):
 
@@ -185,7 +185,7 @@ _______________________________________________________________________
 _______________________________________________________________________
 ```
 
-### Schedule B — Designated Employees authorized to Submit Contributions
+### Schedule B: Designated Employees authorized to Submit Contributions
 
 | # | Full name | Username / handle | Email | Date added |
 |---|-----------|-------------------|-------|------------|
@@ -197,7 +197,7 @@ _______________________________________________________________________
 
 ---
 
-## Appendix — Optional copyright‑assignment variant (Section 12 reference)
+## Appendix: Optional copyright‑assignment variant (Section 12 reference)
 
 Some stewards prefer full **copyright assignment** rather than a broad license. If Cogeto elects that stronger model, replace Section A.2 with the following, subject to legal review (assignment of future copyright and blanket moral‑rights waivers are restricted or invalid in some EU civil‑law jurisdictions):
 

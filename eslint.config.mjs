@@ -77,9 +77,28 @@ export default tseslint.config(
     },
   },
   {
-    // Product-copy dash guard: only web source copy, never the specs/fixtures.
-    files: ['project/web/src/**/*.ts', 'project/web/src/**/*.tsx'],
-    ignores: ['**/*.spec.ts', '**/*.spec.tsx', '**/*.test.ts', '**/*.test.tsx'],
+    // Product-copy dash guard over every string a user or operator can read:
+    // the SPA's copy and the backend's messages, log lines, and digests alike.
+    // Specs and fixtures are exempt (they assert on third-party output), and
+    // the rule inspects only literals, JSX text, and template chunks, so code
+    // comments are exempt by construction.
+    files: [
+      'project/web/src/**/*.ts',
+      'project/web/src/**/*.tsx',
+      'project/src/**/*.ts',
+      'project/shared/src/**/*.ts',
+    ],
+    ignores: [
+      '**/*.spec.ts',
+      '**/*.spec.tsx',
+      '**/*.test.ts',
+      '**/*.test.tsx',
+      // Prompt assembly is model-facing, not product copy. These build the text
+      // sent to a model, they are versioned with the prompt families they serve,
+      // and the golden-set gate is what polices changes to them.
+      'project/src/retrieval/chat/answer-prompt.ts',
+      'project/src/infrastructure/context-block.ts',
+    ],
     plugins: { copy: copyPlugin },
     rules: { 'copy/no-typographic-dashes': 'error' },
   },

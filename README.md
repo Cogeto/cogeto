@@ -29,8 +29,8 @@ local redaction tier so PII never leaves your machine.
 - **Per-claim provenance.** Answers cite their sources sentence by sentence. Memory
   claims carry inspectable chips, web claims carry URL and fetch time, and anything
   from the model's own knowledge is plainly marked **unsourced**. That marking is the
-  feature: Cogeto is not a private ChatGPT, it is the assistant that tells you what it
-  can back up.
+  feature. Cogeto is not a private ChatGPT; it is the assistant that tells you what
+  it can back up.
 - **The Memory Passport.** One click exports everything, with full history, statuses,
   provenance, and your receipts, as a signed archive in a
   [published open format](docs/passport-schema/) that verifies outside Cogeto.

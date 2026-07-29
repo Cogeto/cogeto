@@ -36,7 +36,7 @@ const DEFAULT_MAX_TOKENS = 8192;
  * mode on current models (and rejects assistant prefill), so the JSON contract
  * is instruction + fence-strip + the shared Zod repair loop (ruling 2). */
 const JSON_ONLY_INSTRUCTION =
-  'Respond with a single valid JSON object only — no prose before or after it, no Markdown code fence.';
+  'Respond with a single valid JSON object only: no prose before or after it, no Markdown code fence.';
 
 interface MessagesResponse {
   content?: { type?: string; text?: unknown }[];
@@ -166,14 +166,14 @@ export class AnthropicModelGateway extends ModelGateway {
    * keeps the embeddings tier off this adapter; reaching this is a bug. */
   async embed(): Promise<number[][]> {
     throw new ModelGatewayError(
-      'anthropic has no embeddings API — the embeddings tier must use another provider',
+      'anthropic has no embeddings API: the embeddings tier must use another provider',
       false,
     );
   }
 
   embeddingModelId(): string {
     throw new ModelGatewayError(
-      'anthropic has no embeddings API — the embeddings tier must use another provider',
+      'anthropic has no embeddings API: the embeddings tier must use another provider',
       false,
     );
   }

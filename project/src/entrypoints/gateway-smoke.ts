@@ -20,7 +20,7 @@ async function main(): Promise<void> {
   const providers = resolveModelProviders(process.env, { redacted: redaction !== undefined });
   if (!providers.configured) {
     console.log(
-      'gateway:smoke SKIPPED — set COGETO_MISTRAL_API_KEY (or a COGETO_PROVIDER_* ' +
+      'gateway:smoke SKIPPED, set COGETO_MISTRAL_API_KEY (or a COGETO_PROVIDER_* ' +
         'configuration) to run a live structured extraction against the configured provider.',
     );
     return;

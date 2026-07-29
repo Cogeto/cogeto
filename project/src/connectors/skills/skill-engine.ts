@@ -242,7 +242,7 @@ export class SkillEngine {
       } catch (error) {
         if (isDailyBudget(error)) {
           budgetStopped = true;
-          notes.push('daily research budget reached — continuing with what was gathered');
+          notes.push('daily research budget reached, continuing with what was gathered');
           await this.checkpointSearch(run.id, searched, pageIds, notes);
           continue;
         }
@@ -265,7 +265,7 @@ export class SkillEngine {
           if (result.status === 'captured') pageIds.push(result.id);
           else if (result.reason === 'limit_reached') {
             budgetStopped = true;
-            notes.push('daily page budget reached — continuing with what was gathered');
+            notes.push('daily page budget reached, continuing with what was gathered');
           }
         }
       } else {
@@ -338,7 +338,7 @@ export class SkillEngine {
       status: pages.length === 0 ? 'skipped' : 'completed',
       outputsSummary:
         pages.length === 0
-          ? 'No pages to read — the brief draws on memory alone'
+          ? 'No pages to read: the brief draws on memory alone'
           : `${pages.length} ${pages.length === 1 ? 'page' : 'pages'} read, ${facts} ${facts === 1 ? 'fact' : 'facts'} extracted` +
             (failed > 0 ? ` (${failed} failed permanently)` : ''),
       links: { pageIds: pages.map((p) => p.id), counts: { pages: pages.length, facts, failed } },
@@ -458,7 +458,7 @@ export class SkillEngine {
     });
     await this.runs.finishStep(run.id, 'write_brief', {
       status: 'completed',
-      outputsSummary: `Brief written — ${memoryCites} memory ${memoryCites === 1 ? 'citation' : 'citations'}, ${webCites} web`,
+      outputsSummary: `Brief written, ${memoryCites} memory ${memoryCites === 1 ? 'citation' : 'citations'}, ${webCites} web`,
       links: { counts: { memoryCitations: memoryCites, webCitations: webCites } },
     });
   }

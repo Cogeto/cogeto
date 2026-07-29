@@ -758,7 +758,7 @@ export class DeletionExecutor {
     if (tips.length === 0) return GENESIS_HASH;
     if (tips.length > 1) {
       throw new Error(
-        `deletion receipt chain has ${tips.length} tips — refusing to extend a corrupted chain`,
+        `deletion receipt chain has ${tips.length} tips, refusing to extend a corrupted chain`,
       );
     }
     return tips[0]!.hash;

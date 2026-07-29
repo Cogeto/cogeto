@@ -72,7 +72,7 @@ export class VerifyStage {
             : {
                 fact,
                 verdict: 'unsupported',
-                reason: 'no verdict returned for this claim — treated as unsupported',
+                reason: 'no verdict returned for this claim, treated as unsupported',
                 promptVersion,
               },
         );

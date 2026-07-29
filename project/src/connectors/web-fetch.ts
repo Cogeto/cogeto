@@ -351,7 +351,7 @@ export class WebFetchService {
       }
       // 4xx/5xx → no readable robots file; the standard treats it as no rules.
     } catch {
-      this.log.debug(`robots.txt unreadable for ${origin} — treating as no rules`);
+      this.log.debug(`robots.txt unreadable for ${origin}, treating as no rules`);
     }
     this.robotsCache.set(origin, body);
     return body;

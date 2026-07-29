@@ -1,9 +1,9 @@
-# Cogeto Memory Passport — open format (current: v2.0)
+# Cogeto Memory Passport: open format (current: v2.0)
 
 The **Memory Passport** is a complete, portable export of a user's data from
 Cogeto, in an **open, documented, versioned** format. You are not locked in: this
 directory is the whole specification. Anyone can read a Passport, and verify its
-integrity, with only these schemas and the public key inside the archive — no
+integrity, with only these schemas and the public key inside the archive, no
 Cogeto code or service required.
 
 Format and rationale: [`../features/memory-passport.md`](../features/memory-passport.md).
@@ -13,20 +13,20 @@ Format and rationale: [`../features/memory-passport.md`](../features/memory-pass
 A Passport is a single `.zip` (entries stored uncompressed, so each document's
 bytes are exactly what the manifest hashed):
 
-| Path                | What it is                                                                 |
+| Path | What it is |
 | ------------------- | -------------------------------------------------------------------------- |
-| `manifest.json`     | Signed index: version, timestamp, instance public key, per-document SHA-256 |
+| `manifest.json` | Signed index: version, timestamp, instance public key, per-document SHA-256 |
 | `manifest.json.sig` | Detached ed25519 signature (base64) over the exact bytes of `manifest.json` |
-| `memories.json`     | Every memory, full validity/supersession history (not just current state)   |
-| `receipts.json`     | Deletion receipts, still independently verifiable against their chain        |
-| `README.txt`        | A short human pointer (generated into each archive)                         |
-| `attachments/…`     | Original file bytes — only if the user chose "include original files"        |
+| `memories.json` | Every memory, full validity/supersession history (not just current state) |
+| `receipts.json` | Deletion receipts, still independently verifiable against their chain |
+| `README.txt` | A short human pointer (generated into each archive) |
+| `attachments/…` | Original file bytes: only if the user chose "include original files" |
 
 Every document is described by a JSON Schema (Draft 2020-12), published per
 version in a directory of its own: [`2.0/`](2.0/) is what new exports use,
 [`1.0/`](1.0/) stays published for archives made before the 2.0 release. Every
 document carries `passport_version`; a breaking change bumps it and publishes a
-new schema, and **old versions stay readable forever** — read an archive against
+new schema, and **old versions stay readable forever**: read an archive against
 the schema directory matching its own `passport_version`.
 
 ## Versions
@@ -36,44 +36,44 @@ the schema directory matching its own `passport_version`.
 | **2.0** | current | `manifest.json`, `memories.json`, `receipts.json` | Removed `tasks.json` and the manifest's required `tasks` count, when the task subsystem was removed from the product. Nothing else changed: memories, receipts, provenance, hashing and signing are byte-identical in shape to 1.0. |
 | 1.0 | historical, still valid | `manifest.json`, `memories.json`, `tasks.json`, `receipts.json` | The original published format. A 1.0 archive remains a complete, verifiable artifact; verify it against [`1.0/`](1.0/) exactly as before. |
 
-A Cogeto instance writes exactly one version — the current one — and its
+A Cogeto instance writes exactly one version, the current one, and its
 validator accepts only that version for new exports. Reading is the open part:
 any 1.0 archive you already hold verifies unchanged, because verification uses
 the bytes and the key inside the archive, never the server.
 
 ## What's included (and what isn't)
 
-- **All of your memories** you may see — every lifecycle status, including
-  `replaced`/`outdated`, each with content, status, scope, the `sensitive` flag,
-  entities, `subject_entity`, `valid_from`/`valid_until`, `superseded_by`, and
-  provenance. The **full temporal record** reconstructs from the export alone:
-  the set of all versions plus the `superseded_by` pointers is the complete
-  history and supersession chains.
+- **All of your memories** you may see: every lifecycle status, including
+ `replaced`/`outdated`, each with content, status, scope, the `sensitive` flag,
+ entities, `subject_entity`, `valid_from`/`valid_until`, `superseded_by`, and
+ provenance. The **full temporal record** reconstructs from the export alone:
+ the set of all versions plus the `superseded_by` pointers is the complete
+ history and supersession chains.
 - **Shared data you can legitimately see** is included, each fact marked
-  `owned_by_me: false` with its `owner_id`. **Another user's private data is never
-  included.** A teammate's original file bytes and file metadata are never
-  included — attachments and file provenance resolve for your **own** uploads only.
+ `owned_by_me: false` with its `owner_id`. **Another user's private data is never
+ included.** A teammate's original file bytes and file metadata are never
+ included, attachments and file provenance resolve for your **own** uploads only.
 - **Sensitive data** is included in **your own** export, clearly marked with the
-  `sensitive` flag.
+ `sensitive` flag.
 - **Original files**: reference-only by default (metadata + provenance). Turn on
-  "include original files" to attach the original bytes of your uploads under
-  `attachments/`. Email raw originals are reference + metadata only in v1.
+ "include original files" to attach the original bytes of your uploads under
+ `attachments/`. Email raw originals are reference + metadata only in v1.
 - **Deletion receipts** are exported in full (hashes, signatures, the instance
-  public key) so they remain verifiable outside Cogeto.
+ public key) so they remain verifiable outside Cogeto.
 
 ## Verify a Passport (using only this archive + the schemas)
 
 1. **Schema.** Validate each document against its schema above.
 2. **Manifest signature.** Verify `manifest.json.sig` (base64 ed25519) against the
-   exact bytes of `manifest.json`, using `manifest.instance.public_key_pem`. You
-   can cross-check that key against the instance endpoint `GET /api/instance/public-key`.
+ exact bytes of `manifest.json`, using `manifest.instance.public_key_pem`. You
+ can cross-check that key against the instance endpoint `GET /api/instance/public-key`.
 3. **Document hashes.** For each entry in `manifest.documents`, compute the
-   SHA-256 of the file's bytes and confirm it equals `sha256` and that the byte
-   length equals `bytes`.
+ SHA-256 of the file's bytes and confirm it equals `sha256` and that the byte
+ length equals `bytes`.
 4. **Receipts.** For each receipt in `receipts.json`, recompute its `hash` from
-   the canonical payload (see below) and verify its `signature` against
-   `instance_public_key_pem`; walk the chain by `prev_hash` from the genesis
-   constant `cogeto:deletion-receipt-chain:genesis`.
+ the canonical payload (see below) and verify its `signature` against
+ `instance_public_key_pem`; walk the chain by `prev_hash` from the genesis
+ constant `cogeto:deletion-receipt-chain:genesis`.
 
 Example (OpenSSL, manifest signature):
 
@@ -94,6 +94,6 @@ over the hex `hash` string.
 ## Sample
 
 Each version directory holds a small, **fictional** sample Passport (Ana, a demo
-persona) under `sample/` — [`2.0/sample/`](2.0/sample/) for the current format.
-It is illustrative: its hashes and signatures are placeholders, not real crypto —
+persona) under `sample/`, [`2.0/sample/`](2.0/sample/) for the current format.
+It is illustrative: its hashes and signatures are placeholders, not real crypto:
 generate a real Passport from Settings → "Export my data" to see live values.

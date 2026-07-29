@@ -151,7 +151,7 @@ export class SkillPlanner {
     }
     await this.runs.finishStep(run.id, 'plan_searches', {
       status: 'completed',
-      outputsSummary: `${runIds.length} ${runIds.length === 1 ? 'search' : 'searches'} proposed — awaiting your approval`,
+      outputsSummary: `${runIds.length} ${runIds.length === 1 ? 'search' : 'searches'} proposed, awaiting your approval`,
       links: { researchRunIds: runIds, counts: { queries: runIds.length } },
     });
     const updated = await this.runs.transition(run.id, 'planning', 'awaiting_approval');
@@ -199,7 +199,7 @@ export class SkillPlanner {
 
 /** The deterministic plan when the planning model is unavailable. */
 export function fallbackQueries(subject: string): { query: string; reason: string }[] {
-  const reason = 'planning was unavailable — review this query yourself before approving';
+  const reason = 'planning was unavailable, review this query yourself before approving';
   return [
     { query: subject, reason },
     { query: `${subject} news`, reason },

@@ -127,7 +127,7 @@ async function main(): Promise<void> {
   } catch (error) {
     logger.warn(
       { err: error, dir: config.instanceKeyDir },
-      'could not ensure instance keys (read-only mount without keys?) — signing will fail until the migrate job runs',
+      'could not ensure instance keys (read-only mount without keys?), signing will fail until the migrate job runs',
     );
   }
 
@@ -184,7 +184,7 @@ async function main(): Promise<void> {
         // another reset already holds the lock — skip cleanly, don't fail
         // the job (which would retry into the running reset).
         if (error instanceof DemoResetInProgressError) {
-          logger.info({}, 'scheduled demo reset skipped — another reset in progress');
+          logger.info({}, 'scheduled demo reset skipped, another reset in progress');
           return;
         }
         throw error;

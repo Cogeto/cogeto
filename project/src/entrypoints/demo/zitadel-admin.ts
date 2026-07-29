@@ -119,7 +119,7 @@ async function ensureMachineUser(
   const created = await zRequest(opts, 'POST', '/management/v1/users/machine', pat, {
     userName: opts.userName,
     name: opts.displayName,
-    description: 'Ana sandbox demo Principal — fictional, disposable.',
+    description: 'Ana sandbox demo Principal, fictional, disposable.',
     accessTokenType: 'ACCESS_TOKEN_TYPE_BEARER',
   });
   if (created.status === 200 && typeof created.body['userId'] === 'string') {

@@ -44,7 +44,7 @@ async function main(): Promise<void> {
       )
     ).rows[0]?.owner_id;
   if (!userId) {
-    console.error('no memories exist yet — capture a note first');
+    console.error('no memories exist yet, capture a note first');
     process.exit(2);
   }
   const principal: Principal = {

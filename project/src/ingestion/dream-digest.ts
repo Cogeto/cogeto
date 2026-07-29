@@ -79,8 +79,8 @@ export async function buildDigestLines(
     const name = label(visible.get(action.memoryId)!);
     lines.push({
       text: hr
-        ? `Pronađen je sukob oko ${name} — tvoja odluka`
-        : `Found a conflict about ${name} — your call`,
+        ? `Pronađen je sukob oko ${name}: tvoja odluka`
+        : `Found a conflict about ${name}: your call`,
       href: '/review?tab=contradicted',
     });
   }
@@ -95,8 +95,8 @@ export async function buildDigestLines(
     const name = label(visible.get(action.memoryId)!);
     lines.push({
       text: hr
-        ? `Ažurirano ${name} — novija činjenica zamijenila je stariju`
-        : `Updated ${name} — a newer fact replaced an older one`,
+        ? `Ažurirano ${name}, novija činjenica zamijenila je stariju`
+        : `Updated ${name}: a newer fact replaced an older one`,
       href: `/memories?open=${action.memoryId}`,
     });
   }
@@ -112,11 +112,11 @@ export async function buildDigestLines(
     lines.push({
       text: hr
         ? outdated.length === 1
-          ? `Označen 1 zapis kao zastario — datum mu je prošao`
-          : `Označeno ${outdated.length} zapisa kao zastarjelo — datumi su im prošli`
+          ? `Označen 1 zapis kao zastario, datum mu je prošao`
+          : `Označeno ${outdated.length} zapisa kao zastarjelo, datumi su im prošli`
         : outdated.length === 1
-          ? `Marked 1 memory outdated — its date passed`
-          : `Marked ${outdated.length} memories outdated — their dates passed`,
+          ? `Marked 1 memory outdated: its date passed`
+          : `Marked ${outdated.length} memories outdated: their dates passed`,
       href: '/memories?status=outdated',
     });
   }

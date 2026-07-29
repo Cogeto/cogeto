@@ -27,7 +27,7 @@ export class ModelGatewayNotConfiguredError extends ModelGatewayError {
  */
 export class ModelBudgetExceededError extends ModelGatewayError {
   constructor() {
-    super('daily usage limit reached — please try again tomorrow', false);
+    super('daily usage limit reached, please try again tomorrow', false);
     this.name = 'ModelBudgetExceededError';
   }
 }

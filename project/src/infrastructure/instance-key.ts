@@ -79,13 +79,13 @@ export async function loadInstancePublicKey(dir: string): Promise<string> {
 export async function assertAppKeyMount(dir: string): Promise<void> {
   if (await exists(path.join(dir, PRIVATE_KEY_FILE))) {
     throw new Error(
-      `the private signing key is readable at ${dir} — the app must mount only the ` +
+      `the private signing key is readable at ${dir}: the app must mount only the ` +
         `public half. Check the instance-pubkey volume mount.`,
     );
   }
   if (!(await exists(path.join(dir, PUBLIC_KEY_FILE)))) {
     throw new Error(
-      `the instance public key is missing at ${dir} — the migrate job publishes it ` +
+      `the instance public key is missing at ${dir}: the migrate job publishes it ` +
         `(COGETO_INSTANCE_PUBKEY_DIR)`,
     );
   }
@@ -118,7 +118,7 @@ async function readKey(file: string): Promise<string> {
     return await readFile(file, 'utf8');
   } catch (error) {
     throw new Error(
-      `instance signing key not found at ${file} — the migrate init job generates it ` +
+      `instance signing key not found at ${file}: the migrate init job generates it ` +
         `on first boot (COGETO_INSTANCE_KEY_DIR): ${String(error)}`,
       { cause: error },
     );

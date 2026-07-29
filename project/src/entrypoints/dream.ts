@@ -18,7 +18,7 @@ import { loadConfig, redactionOptions } from './config';
 async function main(): Promise<void> {
   const config = loadConfig();
   if (!config.modelProviders.configured) {
-    console.error('dream needs MISTRAL_API_KEY — the reconcile passes are model confirmations');
+    console.error('dream needs MISTRAL_API_KEY: the reconcile passes are model confirmations');
     process.exit(2);
   }
   const pool = new Pool({ connectionString: config.databaseUrl });

@@ -73,7 +73,7 @@ export class RateLimitGuard implements CanActivate {
         {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
           error: 'Too Many Requests',
-          message: `rate limit reached for ${bucket} — retry in ${retryAfter}s`,
+          message: `rate limit reached for ${bucket}, retry in ${retryAfter}s`,
           retryAfterSeconds: retryAfter,
         },
         HttpStatus.TOO_MANY_REQUESTS,

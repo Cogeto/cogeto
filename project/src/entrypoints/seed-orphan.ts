@@ -26,7 +26,7 @@ async function main(): Promise<void> {
       },
     });
     if (!planted) {
-      console.error('no confirmed receipt with enumerated points found — delete a source first');
+      console.error('no confirmed receipt with enumerated points found, delete a source first');
       process.exit(1);
     }
     console.log('planted an orphan Qdrant point for the sweep drill:');

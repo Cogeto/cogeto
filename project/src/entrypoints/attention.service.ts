@@ -188,8 +188,8 @@ export class AttentionService {
         key: `approval:${approval.id}`,
         kind: 'approval_pending' as const,
         title: hr
-          ? `Čeka tvoje odobrenje — ${approval.summary}`
-          : `Waiting for your approval — ${approval.summary}`,
+          ? `Čeka tvoje odobrenje, ${approval.summary}`
+          : `Waiting for your approval, ${approval.summary}`,
         timestamp: approval.createdAt ?? new Date(0).toISOString(),
         href: '/approvals',
         dismissible: false,

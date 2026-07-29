@@ -209,7 +209,7 @@ const configSchema = z
   .refine((c) => !c.redactionRequired || c.redactionEnabled, {
     path: ['redactionEnabled'],
     error:
-      'REDACTION_REQUIRED is set but REDACTION_ENABLED is not — refusing to boot without redaction',
+      'REDACTION_REQUIRED is set but REDACTION_ENABLED is not, refusing to boot without redaction',
   });
 
 export type CogetoConfig = z.infer<typeof configSchema> & {
@@ -240,7 +240,7 @@ export function assertDemoAllowed(config: Pick<CogetoConfig, 'demoMode' | 'produ
   }
   if (!config.demoMode) {
     throw new Error(
-      'refusing to run a demo tool without COGETO_DEMO_MODE=1 — the demo profile ' +
+      'refusing to run a demo tool without COGETO_DEMO_MODE=1: the demo profile ' +
         'is never enabled on a customer instance',
     );
   }

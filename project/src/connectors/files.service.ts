@@ -138,7 +138,7 @@ export class FilesService {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
           error: 'Too Many Requests',
           code: 'daily_upload_limit',
-          message: `daily upload limit reached (${this.quota.uploadMax}) — try again tomorrow`,
+          message: `daily upload limit reached (${this.quota.uploadMax}), try again tomorrow`,
         },
         HttpStatus.TOO_MANY_REQUESTS,
       );
@@ -413,7 +413,7 @@ export class FilesService {
     }
     if (sniffed) return sniffed;
     throw new BadRequestException(
-      `unsupported file type '${file.mimeType}' — only PDF and DOCX are accepted`,
+      `unsupported file type '${file.mimeType}': only PDF and DOCX are accepted`,
     );
   }
 }

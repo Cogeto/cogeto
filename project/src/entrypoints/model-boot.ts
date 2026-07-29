@@ -15,7 +15,7 @@ export function logModelConfiguration(logger: Logger, config: CogetoConfig): voi
   if (!p.configured) {
     logger.warn(
       { configuration: 'unconfigured' },
-      'model gateway not configured — model features disabled until a provider key is set',
+      'model gateway not configured, model features disabled until a provider key is set',
     );
     return;
   }
@@ -28,7 +28,7 @@ export function logModelConfiguration(logger: Logger, config: CogetoConfig): voi
       answer: tier('answer'),
       embeddings: tier('embedding'),
     },
-    `model configuration ${p.id} — pipeline ${tier('pipeline')}, answer ${tier('answer')}, embeddings ${tier('embedding')}`,
+    `model configuration ${p.id}, pipeline ${tier('pipeline')}, answer ${tier('answer')}, embeddings ${tier('embedding')}`,
   );
 }
 

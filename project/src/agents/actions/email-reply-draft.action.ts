@@ -50,9 +50,9 @@ function isRecipientVerified(p: EmailReplyDraftPayload): boolean {
 
 /** The recipient line for the preview — flags a body-recovered, unverified address. */
 function recipientLine(p: EmailReplyDraftPayload): string {
-  if (!isRecipientResolved(p)) return 'To: (recipient not recovered — set it before sending)';
+  if (!isRecipientResolved(p)) return 'To: (recipient not recovered, set it before sending)';
   if (!isRecipientVerified(p)) {
-    return `To (suggested from the forwarded message — VERIFY before sending): ${p.to}`;
+    return `To (suggested from the forwarded message, VERIFY before sending): ${p.to}`;
   }
   return `To: ${p.to}`;
 }
@@ -79,9 +79,9 @@ export function buildEmailReplyDraftAction(): ActionDefinition<EmailReplyDraftPa
     preview: (p) => [
       recipientLine(p),
       `Subject: ${p.subject || '(no subject)'}`,
-      '—',
+      '',
       ...bodyPreview(p.body),
-      '—',
+      '',
       'Cogeto does NOT send email. Approving finalises this draft for you to copy,' +
         ' download as .eml, or open in your own mail client and send yourself.',
     ],
@@ -94,7 +94,7 @@ export function buildEmailReplyDraftAction(): ActionDefinition<EmailReplyDraftPa
       // call. Audit detail stays content-free: counts/booleans, never the
       // drafted body (which lives on the owner-gated approval payload).
       return {
-        summary: `Reply draft to ${p.to} finalised — not sent (send it from your own client)`,
+        summary: `Reply draft to ${p.to} finalised, not sent (send it from your own client)`,
         detail: { recipient: p.to, finalised: true, sent: false, requestedBy: ctx.userId },
       };
     },

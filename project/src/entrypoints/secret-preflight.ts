@@ -81,7 +81,7 @@ export function assertProductionSecrets(env: NodeJS.ProcessEnv = process.env): v
   if (offenders.length === 0) return;
   throw new Error(
     `refusing to boot: known DEV secret value(s) in use on a non-localhost deployment ` +
-      `(COGETO_EXTERNAL_DOMAIN is not localhost) — override before exposing this instance: ` +
+      `(COGETO_EXTERNAL_DOMAIN is not localhost), override before exposing this instance: ` +
       offenders.join(', ') +
       ` (see .env.example and Technical Architecture §10)`,
   );

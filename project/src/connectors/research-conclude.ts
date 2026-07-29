@@ -69,7 +69,7 @@ export class ResearchConclusionService {
         payload: { source_type: 'research_run', source_id: runId },
       },
     );
-    this.log.log(`research run ${runId}: all pages settled — conclusion enqueued`);
+    this.log.log(`research run ${runId}: all pages settled, conclusion enqueued`);
     return true;
   }
 
@@ -111,7 +111,7 @@ export class ResearchConclusionService {
         payload: { source_type: 'skill_run', source_id: skillRunId },
       },
     );
-    this.log.log(`skill run ${skillRunId}: all pages settled — advance enqueued`);
+    this.log.log(`skill run ${skillRunId}: all pages settled, advance enqueued`);
     return true;
   }
 

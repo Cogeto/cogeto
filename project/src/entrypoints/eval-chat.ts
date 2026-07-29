@@ -407,7 +407,7 @@ async function main(): Promise<void> {
   if (graderProviders) {
     console.log(
       `grader override: ${graderProviders.tiers.answer.provider}/${graderProviders.tiers.answer.model} ` +
-        '(COGETO_PROVIDER_GRADER/COGETO_MODEL_GRADER) — note this when publishing',
+        '(COGETO_PROVIDER_GRADER/COGETO_MODEL_GRADER), note this when publishing',
     );
   }
   const graderPrompt = (await loadPrompt(COVERAGE_PROMPT.family, COVERAGE_PROMPT.version)).content;
@@ -674,7 +674,7 @@ async function main(): Promise<void> {
           `);
           const run = runs.rows[0];
           if (!run || run.status !== 'proposed') {
-            console.log(`  research: no proposed run after the chat turn — FAIL`);
+            console.log(`  research: no proposed run after the chat turn, FAIL`);
             researchOk = false;
           } else {
             const { search } = await research.approveAndSearch(
@@ -756,7 +756,7 @@ async function main(): Promise<void> {
           const runRow = runRows.rows[0];
           if (!runRow || runRow.status !== 'awaiting_approval') {
             console.log(
-              `  skill: no run awaiting approval after the chat turn (status=${runRow?.status ?? 'none'}) — FAIL`,
+              `  skill: no run awaiting approval after the chat turn (status=${runRow?.status ?? 'none'}), FAIL`,
             );
             skillOk = false;
           } else {
@@ -880,7 +880,7 @@ async function main(): Promise<void> {
         const offerOk = final.researchOffer && silentRuns === 0;
         conversationChecks.push(offerOk);
         console.log(
-          `  research_offer: ${String(offerOk)} (offered=${String(final.researchOffer)}, runs=${silentRuns} — a knowledge question must offer, never silently search)`,
+          `  research_offer: ${String(offerOk)} (offered=${String(final.researchOffer)}, runs=${silentRuns}: a knowledge question must offer, never silently search)`,
         );
       }
       if (checks.unsourced_required) {
@@ -919,7 +919,7 @@ async function main(): Promise<void> {
         const digestOk = digest.lines.length > 0 && checkLanguage(joined, checks.digest_language);
         conversationChecks.push(digestOk);
         console.log(
-          `  digest_language(${checks.digest_language}): ${String(digestOk)} — ${joined || '(no lines)'}`,
+          `  digest_language(${checks.digest_language}): ${String(digestOk)}, ${joined || '(no lines)'}`,
         );
       }
       const conversationOk =
@@ -987,9 +987,9 @@ async function main(): Promise<void> {
     await Promise.all([pg.stop(), qdrant.stop()]);
   }
 
-  const cell = (v: boolean | null): string => (v === null ? '—' : v ? 'PASS' : 'FAIL');
+  const cell = (v: boolean | null): string => (v === null ? '' : v ? 'PASS' : 'FAIL');
   const cov = (s: CaseScore): string =>
-    s.coverage === null ? '—' : `${(s.coverage * 100).toFixed(0)}%`;
+    s.coverage === null ? '' : `${(s.coverage * 100).toFixed(0)}%`;
   const table = [
     '| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | research | skill | conversation | overall |',
     '|---|---|---|---|---|---|---|---|---|---|---|---|---|',
@@ -1015,7 +1015,7 @@ async function main(): Promise<void> {
 
   await mkdir(path.dirname(HISTORY_FILE), { recursive: true });
   const stamp = new Date().toISOString().slice(0, 10);
-  await appendFile(HISTORY_FILE, `\n## ${stamp} — chat eval (${versions})\n\n${table}\n`, 'utf8');
+  await appendFile(HISTORY_FILE, `\n## ${stamp}, chat eval (${versions})\n\n${table}\n`, 'utf8');
   console.log(`appended to ${path.relative(REPO_ROOT, HISTORY_FILE)}`);
 
   // Trust-score emission (O7): --emit-json <path> merges the
@@ -1095,7 +1095,7 @@ async function main(): Promise<void> {
       );
     }
     if (breaches.length > 0) {
-      console.error(`GATE BREACH: ${breaches.join('; ')} — failing the build`);
+      console.error(`GATE BREACH: ${breaches.join('; ')}, failing the build`);
       process.exitCode = 1;
     }
   }
