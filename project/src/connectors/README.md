@@ -1,7 +1,7 @@
 # connectors — bounded context
 
-Source integrations — **two in v1** (per [`docs/Cogeto-v1-Roadmap-Revision.md`](../../../docs/Cogeto-v1-Roadmap-Revision.md), BINDING): **notes** (manual/quick capture)
-and **email** — built in that order. Email arrives by forwarding into a per-tenant,
+Source integrations: **notes** (manual and quick capture), **email**, **files**, and
+**web pages**. Email arrives by forwarding into a per-tenant,
 receive-only **Haraka** SMTP container (no OAuth, no CASA, no sending). Calendar is
 dropped from v1 (reconsidered only post-2.0). Notes first for zero OAuth friction.
 

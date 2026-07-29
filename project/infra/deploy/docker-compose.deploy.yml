@@ -456,7 +456,7 @@ services:
   # ── Inbound mail (Session O4, decision 0028; roadmap D2) ────────────────────
   # Per-tenant, RECEIVE-ONLY Haraka SMTP. The allowlist (the real acceptance
   # gate) lives in the app; DNS/MX wiring is printed by the operator script's
-  # checklist (docs/notes/email-inbound.md).
+  # checklist (docs/operations/email-inbound.md).
   mail:
     image: cogeto/cogeto-mail:${COGETO_VERSION:?}
     environment:

@@ -1,10 +1,10 @@
 # Ana sandbox (`--profile demo`)
 
 The public sandbox persona — the single artifact that appears in every pitch,
-launch post, and partner email (§B.9, scope §8.4). Governing decision:
-[`docs/decisions/0022-ana-sandbox-rulings.md`](../../docs/decisions/0022-ana-sandbox-rulings.md).
+launch post, and partner email (§B.9, scope §8.4). Rules and rationale:
+[`../../docs/features/demo-sandbox.md`](../../docs/features/demo-sandbox.md).
 
-> ⚠️ **SECURITY — read before deploying (decision 0022 ruling 1).**
+> ⚠️ **SECURITY — read before deploying.**
 > The demo instance publishes a working Zitadel access token to anyone who loads
 > the page (the pre-authenticated demo Principal). This is acceptable **only**
 > because the instance holds **no real data** and is disposable.
@@ -18,7 +18,7 @@ launch post, and partner email (§B.9, scope §8.4). Governing decision:
 | Path | What it is |
 |---|---|
 | `seed/corpus.json` | The authored fictional world — ~31 first-person notes (en + hr) fed through the real API. Format: `seed/corpus.schema.md`. |
-| `seed/web-fixtures.json` | The sandbox's "public web" (decision 0059): fictional Adriatic Foods pages served by discovery and the fetcher on a demo instance, so research and the research-brief skill demo end to end. **A demo instance never searches the live web.** |
+| `seed/web-fixtures.json` | The sandbox's "public web": fictional Adriatic Foods pages served by discovery and the fetcher on a demo instance, so research and the research-brief skill demo end to end. **A demo instance never searches the live web.** |
 | `assets/adriatic-foods-consulting-agreement.pdf` | The uploaded document — the deletion-receipt demo object. Regenerate with `assets/build-agreement.mjs`. |
 
 The seed/reset **code** lives in `project/src/entrypoints/demo/` (composition
@@ -60,4 +60,4 @@ instance.
    signed, exportable. This is the money moment, closed out by the skill run
    just before it.
 
-Everything is fictional (decision 0022 ruling 3).
+Everything is fictional.

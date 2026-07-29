@@ -19,8 +19,7 @@ twice.
 
 ## The lifecycle
 
-The permitted transitions (decision
-[0015](../decisions/0015-approval-state-machine.md), ruling 2):
+The permitted transitions:
 
 ```
 draft -> pending_approval            (submit)
@@ -83,5 +82,4 @@ nothing** on its own.
 - Confirm service + worker executor: `project/src/agents/approval.service.ts`,
   `project/src/agents/approval.executor.ts`
 - Confirm endpoint: `POST /api/approvals/:id`
-- Design: decision [0015](../decisions/0015-approval-state-machine.md) (Addendum
-  §A.8, the approval gate)
+- Contract: Addendum §A.8, plus [`../features/approvals.md`](../features/approvals.md)

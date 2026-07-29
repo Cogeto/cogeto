@@ -81,9 +81,9 @@ the live gate runs on `main` after merge.
 - Every prompt that decides what Cogeto remembers is a **versioned artifact**
   in `project/prompts/` — numbered, immutable once released, changelogged.
   Never edit a released prompt in place; add a new version.
-- Notable decisions (structure, dependencies, schema commitments, renames) get
-  a numbered record in [`docs/decisions/`](docs/decisions/) — short, honest,
-  stating what was decided and why. Read the neighboring records for the tone.
+- The decision trail is the issue and the pull request. State plainly what you
+  decided and why in the PR body, and update the affected documentation in the
+  same change.
 - New dependencies need maintainer sign-off before the PR.
 
 ## The CLA, honestly

@@ -8,10 +8,9 @@ and the commands you'll want at hand.
 
 ## The model: pull-only, signed, single-tenant
 
-- **One instance = one customer.** Isolation is a deployment boundary
-  (decision 0019), not a row filter. There is no multi-tenant mode.
+- **One instance = one customer.** Isolation is a deployment boundary, not a row filter. There is no multi-tenant mode.
 - **A production instance never builds.** It pulls three prebuilt images per
-  release, each **cosign-signed** by the release pipeline (decision 0030):
+  release, each **cosign-signed** by the release pipeline:
 
   | Image | Contents |
   | --- | --- |

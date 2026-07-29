@@ -25,9 +25,7 @@ are in the Docker Hub overviews ([`../dockerhub/`](../dockerhub/)) and the
 
 On the repository side, `main` is protected (no direct pushes; third-party and
 bot PRs require review), release tags are protected against deletion and
-update, and GitHub Actions workflows pin their actions by commit SHA. The launch
-platform audit ([`../audits/launch-platform-audit.md`](../audits/launch-platform-audit.md))
-records the full configuration and its verification.
+update, and GitHub Actions workflows pin their actions by commit SHA.
 
 ## Per-instance secrets
 
@@ -81,7 +79,4 @@ personal data.
   `project/src/entrypoints/secret-preflight.ts`
 - Deployment hardening checks: `project/src/entrypoints/deployment-hardening.spec.ts`
 - Logging redaction: `project/src/entrypoints/logger.ts`
-- Encryption + signing key: decision
-  [0008](../decisions/0008-deletion-saga-and-encryption.md); edge config in
-  `project/infra/deploy/Caddyfile`
-- Platform configuration audit: [`../audits/launch-platform-audit.md`](../audits/launch-platform-audit.md)
+- Edge config:   `project/infra/deploy/Caddyfile`

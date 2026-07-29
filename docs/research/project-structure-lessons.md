@@ -84,9 +84,9 @@ hygiene: exactly one TODO comment in ~170k lines, consistent naming conventions
 build. That discipline is why the codebase stayed navigable at scale.
 
 **Application:** Cogeto already has the skeleton: specs + Addendum in `docs/`,
-decision records in `docs/decisions/`, research in `docs/research/`. The rule to
+feature docs in `docs/features/`, research in `docs/research/`. The rule to
 adopt: **behavior changes that contradict a doc update the doc in the same change**;
-decision records are numbered and short; naming conventions are set once (first
+naming conventions are set once (first
 coding session) and enforced by lint. TODOs in code require an issue reference or
 they fail review.
 
@@ -115,8 +115,8 @@ interfaces are defined — before the second implementation, not after.
 those that didn't, couldn't.
 
 **Application:** Cogeto: migrations numbered from 0001 (§A.6); prompts versioned,
-immutable once released, changelogged, CI-evaluated (§B.7); decision records
-numbered (`docs/decisions/`). One discipline, three artifact types.
+immutable once released, changelogged, CI-evaluated (§B.7). One discipline, two
+artifact types.
 
 ## Application to Cogeto — summary
 

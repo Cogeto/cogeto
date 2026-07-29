@@ -5,8 +5,7 @@
 the account (Addendum §A.6; scope doc §4.2). Everyone you add here is a member of
 the same org and can therefore see each other's **shared**-scope memory; nobody
 outside the instance can. Cross-tenant isolation is a *deployment* boundary
-(separate instances), not something you configure per user — see
-[decision 0019](../decisions/0019-cross-org-isolation-deployment-boundary.md).
+(separate instances), not something you configure per user —.
 
 There is **no app-side provisioning step**: Cogeto derives the Principal straight
 from the Zitadel token on first request and records the user in its directory
@@ -32,8 +31,7 @@ automatically (for owner-name display). You only create the user in Zitadel.
 3. **Create the user.** Left nav **Users** → **+ New**.
    - Fill **Email**, **First/Last name**, **Username**. The **email matters
      twice**: it is their login identity AND it routes their inbound email
-     capture — mail they forward from this address is captured for them
-     (decision 0031), so register the address they actually send from.
+     capture — mail they forward from this address is captured for them, so register the address they actually send from.
    - Choose **Set initial password** and hand it over out-of-band. Do **not**
      use "Send an email invitation" on a standard instance — Cogeto
      deliberately has no outbound SMTP (it never sends mail), so the

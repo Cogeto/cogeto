@@ -18,8 +18,7 @@ enumerates and erases everything derived from it across:
 - **Qdrant** — the vector points for those memories.
 - **MinIO** — the stored original object bytes.
 
-The saga runs in two parts (decision
-[0008](../decisions/0008-deletion-saga-and-encryption.md), ruling 4):
+The saga runs in two parts:
 
 1. **One Postgres transaction (app):** enumerate the derived memories by
    provenance `FOR UPDATE`, delete them, delete file metadata and collect object
@@ -40,7 +39,7 @@ memory row; a mismatch returns `NotFound` so existence never leaks.
 
 Each confirmed receipt is signed with the instance's own **ed25519 key**,
 generated at first boot into a protected volume and never placed in the repo or
-image (decision 0008, ruling 2). The signed payload is canonicalized
+image. The signed payload is canonicalized
 deterministically (sorted keys at every depth, stable array order) and hashed with
 SHA-256; the signature covers that hash.
 
@@ -54,8 +53,7 @@ the format cannot drift.
 
 Receipts are also **permanent**: a database trigger forbids `DELETE` outright and
 allows `UPDATE` only while a receipt is still `pending` (the one legal transition,
-as the saga confirms it). No API route mutates a receipt (decision
-[0009](../decisions/0009-sweep-forgotten-and-upload-contract.md), ruling 2).
+as the saga confirms it). No API route mutates a receipt.
 
 ## The nightly sweep detects, never repairs
 
@@ -65,7 +63,7 @@ points, no objects — and re-verifies the whole hash chain. Any reappearance
 becomes a persistent `integrity_alert`. It is **never auto-deleted or
 auto-repaired**: an identifier that came back after a signed promise means a human
 must find out how (a restored backup, a manual write, an index rebuild), and an
-automated "fix" would destroy the evidence (decision 0009, ruling 1). Alerts
+automated "fix" would destroy the evidence. Alerts
 surface in `GET /api/health` and the System view.
 
 ## How you verify it
@@ -76,9 +74,7 @@ surface in `GET /api/health` and the System view.
   serves the instance's public key **unauthenticated**, so anyone holding an
   exported receipt can check its signature without access to the instance.
 - **Detect a silently dropped receipt from a single exported copy:** every
-  exported receipt embeds a `chainTip` = `{ hash, confirmedCount }` at export time
-  (decision [0026](../decisions/0026-token-revocation-window-and-receipt-chain-anchor.md),
-  ruling 2). Re-run verify later: if the tip you recorded no longer appears, or
+  exported receipt embeds a `chainTip` = `{ hash, confirmedCount }` at export time. Re-run verify later: if the tip you recorded no longer appears, or
   the confirmed count has gone *down*, a receipt was removed or the chain
   truncated. This turns a silent operator tamper into a checkable discrepancy from
   an independently held artifact.
@@ -88,10 +84,10 @@ surface in `GET /api/health` and the System view.
 - **Cross-source supersession chains:** deleting source S removes only S's
   members; a surviving memory from a different source whose pointer referenced a
   deleted row has that pointer nulled, and the receipt records it — erasure of S
-  must not be reconstructable from what survives (decision 0008, ruling 5).
+  must not be reconstructable from what survives.
 - **Discard-mode uploads** (extract-and-discard on) never write the original bytes
   to MinIO at all; deleting such a source still yields a receipt covering the
-  derived memories, with zero object keys (decision 0009, ruling 4).
+  derived memories, with zero object keys.
 - **The chain tip is an anti-tamper anchor, not a proof of completeness.** Proving
   that *everything* promised was erased is the sweep's job; the tip proves the
   ledger itself was not quietly truncated.
@@ -106,7 +102,3 @@ surface in `GET /api/health` and the System view.
 - Tests: `project/src/memory/deletion.integration.spec.ts`,
   `email-deletion-cascade.integration.spec.ts`,
   `sweep-arms.integration.spec.ts`
-- Design: decisions
-  [0008](../decisions/0008-deletion-saga-and-encryption.md),
-  [0009](../decisions/0009-sweep-forgotten-and-upload-contract.md),
-  [0026](../decisions/0026-token-revocation-window-and-receipt-chain-anchor.md)

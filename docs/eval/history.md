@@ -154,8 +154,7 @@ against this baseline.
 
 > Note: a degraded-prompt gate demonstration ran on 2026-07-05 (verification
 > agreement 8.8%, build failed with exit 1, as designed). Its rows are
-> deliberately not part of this history — the demo is documented in
-> docs/sessions/F2-B.md ("Gate proof"). Honest numbers only means honest
+> deliberately not part of this history. Honest numbers only means honest
 > MEASUREMENTS; a sabotage drill is not a measurement.
 
 ## 2026-07-05 — extraction/v0002 + verification/v0004 (thresholds v1, 36 cases)

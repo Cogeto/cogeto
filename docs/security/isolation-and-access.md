@@ -11,8 +11,7 @@ is a **scope gate** with owner-only writes.
 Cogeto is **single-tenant** — one customer, one instance, its own Postgres,
 Qdrant, MinIO, and identity provider organization. Two customers never share a
 database, so there is no query in which one customer could observe another's rows.
-This is a deliberate owner decision (decision
-[0019](../decisions/0019-cross-org-isolation-deployment-boundary.md)): rather than
+This is a deliberate owner decision: rather than
 add an `org_id` column and an org predicate to every gate — redundant under
 single-tenant and exactly the gold-plating the architecture warns against — the
 deployment itself is the isolation. Introducing multi-tenant row gating would be a
@@ -35,7 +34,7 @@ Within the single instance, memory visibility is governed by one gate:
   content edit, uncertain-rejection, and the deletion saga all owner-check via row
   lock or enumeration and return `NotFound` to a non-owner (existence must not
   leak). The UI mirrors this by hiding controls, but **the server is the
-  authority** (decision [0020](../decisions/0020-shared-scope-surface-rules.md)).
+  authority**.
 - **Scope changes are two-store and immediate.** Changing a memory's scope moves
   the Postgres row and the Qdrant payload together, so a `shared -> private` demote
   takes effect in vector search the instant it commits — a demoted leak is still a
@@ -52,9 +51,7 @@ memory module's cross-user test suite.
 
 Requests are authenticated through the **identity seam**, which validates a bearer
 token against the instance's OIDC identity provider. Two properties are worth
-stating precisely (decision
-[0026](../decisions/0026-token-revocation-window-and-receipt-chain-anchor.md),
-ruling 1):
+stating precisely:
 
 - **Local pre-validation.** Before trusting anything, the seam decodes the JWT
   locally and checks the issuer against the configured issuer and the audience
@@ -76,7 +73,7 @@ routes.
 `GET /api/audit` is an org-scoped, read-only trail. Within the single org, members
 share one organization, so the trail legitimately shows all members' actions — but
 it records **ids, statuses, reasons, and counts only, never memory or note
-content** (decision 0020, ruling 6). Deletion receipts are visible to the actor
+content**. Deletion receipts are visible to the actor
 who performed the deletion (the owner), while instance-wide chain verification and
 the integrity sweep still cover every receipt — that is operator integrity, not a
 per-user view.
@@ -89,7 +86,7 @@ per-user view.
   `org_id` (their rows are NULL-org and reach the reader via the `IS NULL` arm).
   Under single-tenant this is the same one org; stamping `org_id` on every writer
   is the right step before any future where more than one org shares
-  infrastructure (ties to decision 0019).
+  infrastructure when more than one org shares infrastructure.
 
 ## Where this lives in the code
 
@@ -97,7 +94,3 @@ per-user view.
   Qdrant `buildGateFilter`, aggregate methods)
 - Identity seam (token validation, admin guard): `project/src/identity/`
 - Audit reader: `project/src/entrypoints/` (`audit.integration.spec.ts`)
-- Design: decisions
-  [0019](../decisions/0019-cross-org-isolation-deployment-boundary.md),
-  [0020](../decisions/0020-shared-scope-surface-rules.md),
-  [0026](../decisions/0026-token-revocation-window-and-receipt-chain-anchor.md)

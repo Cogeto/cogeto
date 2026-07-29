@@ -97,9 +97,9 @@ Consequential actions (send message, delete data, external write, bulk memory ch
 
 ### A.11 Build sequencing
 
-> **Superseded on connector order and the Gmail/CASA path by [`Cogeto-v1-Roadmap-Revision.md`](Cogeto-v1-Roadmap-Revision.md) (BINDING).** Calendar is dropped from v1; email arrives by forwarding into a per-tenant, receive-only **Haraka** SMTP server (no OAuth, no CASA, no Gmail scope assessment, no sending). The connector set is **notes then email**. Where this section and the Revision disagree, the Revision wins. The rest of this section (Notes-first rationale, eval-harness timing) stands.
+> **Superseded on connector order and the Gmail/CASA path.** Calendar is dropped from v1; email arrives by forwarding into a per-tenant, receive-only **Haraka** SMTP server (no OAuth, no CASA, no Gmail scope assessment, no sending). The connector set is **notes then email**. The rest of this section (Notes-first rationale, eval-harness timing) stands.
 
-Vertical slice on **Notes first** — zero OAuth friction, exercises the entire pipeline (ingest → extract → embed → reconcile → retrieve → dashboard → deletion cascade) and unlocks the Ana sandbox before any consent screen. Then **email**, which arrives by forwarding into the per-tenant receive-only Haraka server — no OAuth, no CASA, no mailbox credentials. (Calendar, formerly sequenced between notes and email, is dropped from v1 per the Revision; meeting invites already arrive as email.)
+Vertical slice on **Notes first** — zero OAuth friction, exercises the entire pipeline (ingest → extract → embed → reconcile → retrieve → dashboard → deletion cascade) and unlocks the Ana sandbox before any consent screen. Then **email**, which arrives by forwarding into the per-tenant receive-only Haraka server — no OAuth, no CASA, no mailbox credentials. (Calendar, formerly sequenced between notes and email, is dropped from v1; meeting invites already arrive as email.)
 
 The **eval harness (§B.4) is built alongside the extractor, not after it.** Extraction quality is the product.
 

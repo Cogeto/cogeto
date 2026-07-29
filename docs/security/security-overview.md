@@ -64,8 +64,7 @@ rest:
 - Same-domain email impersonation, which SPF alone cannot stop (see the
   anti-spoofing doc's residual limits).
 - Multi-tenant row-level isolation: v1 relies on the deployment boundary instead,
-  a deliberate owner decision (decision
-  [0019](../decisions/0019-cross-org-isolation-deployment-boundary.md)).
+  a deliberate owner decision.
 
 The authoritative scope for **vulnerability reports** is the repository-root
 [`SECURITY.md`](../../SECURITY.md).

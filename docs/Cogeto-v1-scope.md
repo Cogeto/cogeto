@@ -73,7 +73,7 @@ Critical boundary: **Zitadel answers "who is this user and what org/roles do the
 - **Notes** (manual capture / quick text in)
 - **Email** — arrives by forwarding into a per-tenant, receive-only Haraka SMTP container (no OAuth/CASA, no sending). Meeting invites already arrive as email and flow in through this path.
 
-Two is enough to deliver §3. **Calendar is dropped from v1** (Roadmap Revision — calendar entries are triggers, not durable facts; reconsidered only post-2.0). More connectors are a Later expansion, not a v1 requirement. See [`docs/Cogeto-v1-Roadmap-Revision.md`](Cogeto-v1-Roadmap-Revision.md) (BINDING).
+Two is enough to deliver §3. **Calendar is dropped**: calendar entries are triggers, not durable facts, and are reconsidered only post-2.0. More connectors are a Later expansion, not a requirement.
 
 ### 4.7 Tasks, reminders, digests
 Memory turns into action: todos, reminders, follow-ups, an "open loops" list, a daily digest, and meeting prep. Cogeto extracts structure from a quick note — *"Send proposal to Luka after he confirms budget"* becomes person, topic, condition, task, and status.

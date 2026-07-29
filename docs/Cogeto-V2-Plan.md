@@ -1,6 +1,6 @@
 # Cogeto 2.0 — Complete Plan
 
-**Status: FOR CONFIRMATION.** Every confirmed item from the 2.0 discussion is in this document, assigned to a version, with priority and difficulty. Section 10 is a traceability checklist: if something you asked for is not there, it was missed and must be added. Nothing in this plan is optional-by-omission.
+**Status: BINDING.** This is the plan of record for the 2.0 cycle and supersedes every earlier roadmap. Every confirmed item from the 2.0 discussion is here, assigned to a version, with priority and difficulty. Section 10 is a traceability checklist: if something you asked for is not there, it was missed and must be added. Nothing in this plan is optional-by-omission.
 
 Difficulty: **S** = days · **M** = one to two weeks · **L** = multi-week · **XL** = a month or more.
 Priority: **P0** = blocks the version · **P1** = core of the version · **P2** = valuable, can slip one version.

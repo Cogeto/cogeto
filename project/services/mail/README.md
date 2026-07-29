@@ -1,11 +1,10 @@
 # cogeto-mail — per-tenant, receive-only inbound SMTP (Haraka)
 
-Session O4, [decision 0028](../../../docs/decisions/0028-inbound-email-design.md);
-roadmap [D2](../../../docs/Cogeto-v1-Roadmap-Revision.md). One more container in
+One more container in
 the single-tenant deployment. It accepts forwarded mail for **one** inbound
 address, applies recipient/size/rate hygiene, and hands the **full raw message**
 to the Cogeto app over an internal authenticated HTTP endpoint. It **never
-sends** — outbound is disabled (decision 0028 ruling 4). No dependency on the
+sends** — outbound is disabled. No dependency on the
 TypeScript workspace.
 
 ## Shape
@@ -21,7 +20,7 @@ haraka/plugins/cogeto_rcpt   accept ONLY the instance inbound address (else SMTP
 haraka/plugins/cogeto_deliver POST raw RFC822 to the app; map HTTP verdict → SMTP reply
 ```
 
-## Acceptance flow (decision 0028 rulings 6/7)
+## Acceptance flow
 
 1. **RCPT** — `cogeto_rcpt` accepts only `COGETO_MAIL_INBOUND_ADDRESS`; anything
    else is `550`.
@@ -50,7 +49,7 @@ per-sender state.
 The container speaks plain SMTP on 2525; the deployment maps the standard
 inbound port `25 → 2525`. Inbound STARTTLS with the instance certificate and the
 `in.<instance>` **MX** record are provisioning concerns handed to O6 — see
-[`docs/notes/email-inbound.md`](../../../docs/notes/email-inbound.md) for the
+[`docs/operations/email-inbound.md`](../../../docs/operations/email-inbound.md) for the
 exact DNS/MX/SPF/PTR requirements and the local test-send steps.
 
 Local development uses `scripts/dev/send-test-email.mjs` to submit fixtures over

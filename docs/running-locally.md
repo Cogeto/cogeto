@@ -42,12 +42,12 @@ refuses known dev secrets on any non-localhost domain.
 | The app (SPA + API + login) | `https://localhost` (Caddy → app + Zitadel on one origin) |
 | Aggregate health | `https://localhost/api/health` (public by design) |
 | Zitadel console (manage users) | `https://localhost/ui/console` — same admin login |
-| Infra consoles (MinIO, Qdrant) + the S3 presign origin | dev-only profile: `docker compose --profile consoles up -d`, then `https://minio.localhost:8443`, `https://qdrant.localhost:8443`, `https://s3.localhost:8443` — after adding the `*.localhost` hosts entries (decision 0017) |
-| Inbound test email (no real DNS) | `node scripts/dev/send-test-email.mjs` — see [`notes/email-inbound.md`](notes/email-inbound.md) |
+| Infra consoles (MinIO, Qdrant) + the S3 presign origin | dev-only profile: `docker compose --profile consoles up -d`, then `https://minio.localhost:8443`, `https://qdrant.localhost:8443`, `https://s3.localhost:8443` — after adding the `*.localhost` hosts entries |
+| Inbound test email (no real DNS) | `node scripts/dev/send-test-email.mjs` — see [`operations/email-inbound.md`](operations/email-inbound.md) |
 | The Ana demo sandbox | `COGETO_DEMO_MODE=1 docker compose --profile demo up --build`; password printed by `docker compose logs demo-seed` |
 | Redaction tier (local NER before any model call) | `REDACTION_ENABLED=1 docker compose --profile redaction up --build` |
 | Logs | `docker compose logs -f app` (or `worker`, `mail`, `caddy`, `zitadel`) |
-| Capability states (P6.7) | System → Capabilities, `/api/health`, and the app boot log's `Capabilities: ...` banner. Note: CLI `--profile` flags are invisible to the containers — for the registry to show a profile-run capability as enabled, put it in `COMPOSE_PROFILES` in `.env` (then plain `docker compose up` activates it) or set the explicit flag (`COGETO_RESEARCH_ENABLED=1` / `COGETO_CONSOLES_ENABLED=1`; redaction and demo already have `REDACTION_ENABLED` / `COGETO_DEMO_MODE`). See [`notes/capabilities.md`](notes/capabilities.md). |
+| Capability states (P6.7) | System → Capabilities, `/api/health`, and the app boot log's `Capabilities: ...` banner. Note: CLI `--profile` flags are invisible to the containers — for the registry to show a profile-run capability as enabled, put it in `COMPOSE_PROFILES` in `.env` (then plain `docker compose up` activates it) or set the explicit flag (`COGETO_RESEARCH_ENABLED=1` / `COGETO_CONSOLES_ENABLED=1`; redaction and demo already have `REDACTION_ENABLED` / `COGETO_DEMO_MODE`). See [`features/capabilities.md`](features/capabilities.md). |
 
 ## Developing
 
@@ -71,7 +71,7 @@ eval harness needs a model key: `MISTRAL_API_KEY=... npm run eval`.
   `--port 2525` to the test-send script.
 - **File downloads don't resolve** — presigned URLs use the
   `https://s3.localhost:8443` origin, which needs the `consoles` profile up
-  and the `*.localhost` hosts entries (decision 0017).
+  and the `*.localhost` hosts entries.
 - **Chat/extraction returns a model-gateway error** — no `COGETO_MISTRAL_API_KEY`
   set. That's the designed behavior, not a crash.
 - **A one-shot init container "exited (0)"** — normal: `preflight`, `migrate`,
@@ -90,4 +90,4 @@ eval harness needs a model key: `MISTRAL_API_KEY=... npm run eval`.
 `mail` (receive-only inbound SMTP) · `postgres` (source of truth) · `qdrant`
 (rebuildable vector index) · `minio` (encrypted originals) · `zitadel`
 (identity) — plus one-shot init jobs. Architecture rationale:
-[`Cogeto-Technical-Architecture.md`](Cogeto-Technical-Architecture.md).
+[`architecture.md`](architecture.md).

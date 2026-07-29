@@ -12,7 +12,7 @@ script prints a value (DNS records, secrets, checklists), **copy from its
 output** — this runbook tells you where those values go, not what they are.
 
 Developer-facing notes on the script live in
-[`docs/notes/operator-script.md`](notes/operator-script.md).
+[`docs/operations/operator-script.md`](operations/operator-script.md).
 
 ---
 
@@ -260,8 +260,8 @@ onto a yellow instance.
 The default configuration is EU-hosted Mistral (`sudo ./cogeto configure
 --mistral-key <key>` at install). Everything below is optional and per
 instance; the full reference is
-[`docs/notes/model-providers.md`](notes/model-providers.md) (bring-your-own-key)
-and [`docs/notes/local-models.md`](notes/local-models.md) (local runtime,
+[`docs/features/models.md`](features/models.md) (bring-your-own-key)
+and [`docs/features/models.md`](features/models.md) (local runtime,
 decision 0041).
 
 To run tiers on a customer-owned **Ollama** host:
@@ -290,7 +290,7 @@ To run tiers on a customer-owned **Ollama** host:
    configuration shows the active configuration id.
 
 Before recommending a local preset, read the measured per-tier, per-language
-parity table in `docs/notes/local-models.md` — where all-local misses parity
+parity table in `docs/features/models.md` — where all-local misses parity
 the mixed posture stays the recommendation, and the gap is stated there.
 
 ### 4c. Optional capabilities — `cogeto features` (P6.7, decision 0055)

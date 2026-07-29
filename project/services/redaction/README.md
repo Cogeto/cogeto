@@ -3,9 +3,9 @@
 A stateless, CPU-only Python service that detects and **pseudonymizes** sensitive
 entities so PII never leaves the instance in an external model call — *"PII never
 leaves your box, even though a frontier model answers you."* Governing decisions:
-[`0002`](../../../docs/decisions/0002-technology-stack.md) (Python only where a
+`0002` (Python only where a
 model runs, isolated behind the gateway seam) and
-[`0023`](../../../docs/decisions/0023-redaction-embedding-tradeoff.md) (the
+`0023` (the
 embedding trade-off).
 
 ## Architectural boundary (non-negotiable)
@@ -51,7 +51,7 @@ Redaction covers the **configured entity categories only**. It cannot guarantee
 that *no* sensitive information leaves in free text — an unusual name the NER
 misses, or a sensitive fact phrased without a named entity, can still pass
 through. It is a strong, honest reduction of exposure, not a proof of zero
-leakage. Embeddings are pseudonymized too (decision 0023), which degrades
+leakage. Embeddings are pseudonymized too, which degrades
 retrieval quality; local embeddings are the v1.x path that removes the trade-off.
 
 ## Enable it

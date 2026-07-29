@@ -13,10 +13,9 @@ assignees: ''
 
 ## Proposed direction (optional)
 
-<!-- If you have one. Note that architecture decisions in
-     docs/Cogeto-v1-Addendum-Verifiable-Memory.md and docs/decisions/ are
-     binding — proposals that conflict with them need a stronger case, not a
-     smaller diff. -->
+<!-- If you have one. Note that the architecture decisions in
+     docs/Cogeto-v1-Addendum-Verifiable-Memory.md are binding: proposals that
+     conflict with them need a stronger case, not a smaller diff. -->
 
 ## Eval cases (if this touches extraction/retrieval quality)
 

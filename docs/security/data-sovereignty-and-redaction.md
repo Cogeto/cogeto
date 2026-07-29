@@ -37,8 +37,7 @@ sidecar** in front of the model seam. When it is on, a decorator around the gate
 - **Fails closed.** If the sidecar is unreachable, the call fails rather than
   sending plaintext. Real text is never sent as a fallback.
 
-Embeddings are deliberately redacted too (decision
-[0023](../decisions/0023-redaction-embedding-tradeoff.md)). The tempting shortcut —
+Embeddings are deliberately redacted too. The tempting shortcut —
 "the vector store is local, so skip embeddings" — is wrong: Qdrant is local, but
 the *embedding call itself* goes to the provider, so real entity text in that
 request would leave the box and defeat the whole guarantee. Redacting embeddings
@@ -92,9 +91,9 @@ produces. Pages are fetched by the tenant's own instance (no third-party
 research API) via the self-hosted SearXNG container, which keeps no query logs.
 The honest claim is "you see precisely what leaves, and you approve it" —
 never "nothing leaves." Decisions
-[0044](../decisions/0044-research-query-minimisation.md) /
-[0045](../decisions/0045-research-gate-and-invocation.md); mechanics in
-[`../notes/web-research-privacy.md`](../notes/web-research-privacy.md).
+0044 /
+0045; mechanics in
+[`../features/web-research.md`](../features/web-research.md).
 
 ## Where this lives in the code
 
@@ -103,5 +102,4 @@ never "nothing leaves." Decisions
 - Redaction decorator: `project/src/model-gateway/redacting.gateway.ts`
 - Sidecar: `project/services/redaction/`
 - Tests: `project/src/model-gateway/redaction.spec.ts`
-- Design: decision [0023](../decisions/0023-redaction-embedding-tradeoff.md);
-  seam rationale in `project/src/model-gateway/README.md`
+- Seam rationale in `project/src/model-gateway/README.md`

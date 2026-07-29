@@ -8,8 +8,7 @@ tag and `package.json` `version` are the two sources of truth and must agree
 
 1. **The bump PR.** Land a `chore: release vX.Y.Z` pull request that bumps
    `package.json` (`npm version X.Y.Z --no-git-tag-version`) — nothing else;
-   the operator script resolves versions from GitHub Releases at run time
-   (decision 0033). Squash-merge after the five required checks.
+   the operator script resolves versions from GitHub Releases at run time. Squash-merge after the five required checks.
 2. **The tag.** On the merged `main`:
 
    ```sh
@@ -45,10 +44,10 @@ tag and `package.json` `version` are the two sources of truth and must agree
 | `cogeto/cogeto-mail:X.Y.Z` (+ `:latest`) | Docker Hub, cosign-signed |
 | SBOM (`cogeto-X.Y.Z.sbom.spdx.json`) | cosign attestation + GitHub Release asset |
 | Release notes (grouped by feat/fix/docs/chore) | GitHub Release |
-| **Trust scores** (`eval/trust-scores/vX.Y.Z.json` + rebuilt `index.json`) | committed to `main` via an auto-merged PR (decision 0032) |
+| **Trust scores** (`eval/trust-scores/vX.Y.Z.json` + rebuilt `index.json`) | committed to `main` via an auto-merged PR |
 | Deploy assets consumed at the tag (`project/infra/deploy/`, the zitadel-init script) | the tagged source tree |
 
-### Trust scores (decision 0032)
+### Trust scores
 
 After the images are pushed and the Release exists, the pipeline runs the
 live eval + chat suites for the **default model configuration**, emits the
@@ -67,7 +66,7 @@ release**: on failure it reports loudly with the manual-retry commands. The
   makes the title the commit on `main`.
 - The `eval-gate` runs live on push to `main`; a release should never be cut
   on a red main.
-- The installable set is governed by GitHub release flags (decision 0033):
+- The installable set is governed by GitHub release flags:
   the operator script installs the newest non-pre-release by default and
   refuses flagged (retired) or unpublished versions. There is no pinned
   version constant to maintain.
@@ -87,7 +86,7 @@ release**: on failure it reports loudly with the manual-retry commands. The
 
 - **2026-07-17 (v1.0.3):** trust-scores publish validated fully hands-off (fresh branch per run → checks trigger → self-merge).
 
-## Retiring a release (decision 0033)
+## Retiring a release
 
 Flag it as a pre-release — GitHub UI ("Edit release → Set as a pre-release")
 or:

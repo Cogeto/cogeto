@@ -130,7 +130,7 @@ CSS `invert()`).
   dormant, and past-belief is re-derived to pass AA against its real dark
   background and stay colorblind-distinguishable; chips keep their label + icon, so
   meaning is never color-only. Measured ratios and the programmatic contrast test
-  (`theme-contrast.spec.ts`) are recorded in `docs/notes/surface-polish.md`.
+  (`theme-contrast.spec.ts`) live beside the tokens they check.
 
 **Precedence (decided):** explicit user choice > stored preference > system hint
 (`prefers-color-scheme`) > **default dark**. In practice the explicit choice *is*
@@ -147,7 +147,7 @@ in-app toggle (Settings → Appearance) writes the choice and `src/theme.ts` mir
 the same precedence. The toggle follows the class-based `dark` variant
 (`@custom-variant dark`), authoritative over the raw media query.
 
-## Surface reimagining (P6.9, decision 0049)
+## Surface reimagining
 
 The frame and the chat were reimagined from a mockup-approved design:
 

@@ -11,5 +11,4 @@ Module rules (binding, CI-enforced — Addendum §A.1):
 5. Any module may depend on the two seams (`identity`, `model-gateway`) via their
    public interfaces; domain modules never import each other's internals.
 
-Directory names may be adapted to the chosen stack's naming rules (e.g. `model_gateway`)
-in the first coding session — record the rename in `docs/decisions/`.
+

@@ -48,10 +48,11 @@ Croatian are both fine.
 - The marketing website (report it via the same address, but it is a separate,
   static codebase).
 
-## Our own audits are public — deliberately
+## How the protections work is public
 
-The repository's security and implementation-gap audits, including every
-finding and its resolution, are published in [`docs/audits/`](docs/audits/).
-Cogeto asks users to trust it with their working memory; the least it can do
-is show its own homework. Reading those audits is also the fastest way to see
-which classes of issues have already been considered and hardened.
+Cogeto asks users to trust it with their working memory, so the mechanisms are
+documented rather than asserted. [`docs/security/`](docs/security/README.md)
+describes each protection, the guarantee it makes, its residual limits stated
+plainly, and the co-located tests that enforce it on every build. That is the
+fastest way to see which classes of issue have already been considered and
+hardened, and to check the claims yourself against the code.

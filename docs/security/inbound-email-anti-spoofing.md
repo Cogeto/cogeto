@@ -118,5 +118,5 @@ discriminates correctly.
 - Tests: `email-intake.integration.spec.ts`, `email-allowlist.integration.spec.ts`,
   `mail-intake.guard.spec.ts` (co-located under `project/src/`, run in CI)
 - Design rationale: decisions
-  [`0028-inbound-email-design`](../decisions/0028-inbound-email-design.md) and
-  [`0031-sender-routed-inbound-email`](../decisions/0031-sender-routed-inbound-email.md)
+  `0028-inbound-email-design` and
+  `0031-sender-routed-inbound-email`

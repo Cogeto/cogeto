@@ -25,8 +25,7 @@ claim inspectable (you can always open the artifact a memory came from).
 Provenance is **polymorphic**: `source_id` points at different tables depending on
 `source_type`, and for discard-mode uploads it points at *no durable row at all*
 (the original bytes were intentionally never stored). Postgres cannot express a
-foreign key across that shape, and the alternatives were both rejected (decision
-[0024](../decisions/0024-provenance-integrity-enforcement.md)):
+foreign key across that shape, and the alternatives were both rejected:
 
 - **Per-type FK columns** would break the frozen schema and *still* could not
   cover the discard-mode case that most needs it.
@@ -100,4 +99,3 @@ data. No orphan is silently tolerated.
 - Sweep orphan arm: `project/src/memory/` (integrity sweep)
 - Tests: `project/src/ingestion/pipeline/extract-guard.spec.ts`,
   `project/src/memory/sweep-arms.integration.spec.ts`
-- Design: decision [0024](../decisions/0024-provenance-integrity-enforcement.md)

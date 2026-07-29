@@ -6,7 +6,7 @@ directory is the whole specification. Anyone can read a Passport, and verify its
 integrity, with only these schemas and the public key inside the archive — no
 Cogeto code or service required.
 
-Binding format decision: [`docs/decisions/0029-memory-passport-format.md`](../decisions/0029-memory-passport-format.md).
+Format and rationale: [`../features/memory-passport.md`](../features/memory-passport.md).
 
 ## The archive
 
@@ -33,7 +33,7 @@ the schema directory matching its own `passport_version`.
 
 | Version | Status | Documents | What changed |
 | --- | --- | --- | --- |
-| **2.0** | current | `manifest.json`, `memories.json`, `receipts.json` | Removed `tasks.json` and the manifest's required `tasks` count, when the task subsystem was removed from the product (decision 0060). Nothing else changed: memories, receipts, provenance, hashing and signing are byte-identical in shape to 1.0. |
+| **2.0** | current | `manifest.json`, `memories.json`, `receipts.json` | Removed `tasks.json` and the manifest's required `tasks` count, when the task subsystem was removed from the product. Nothing else changed: memories, receipts, provenance, hashing and signing are byte-identical in shape to 1.0. |
 | 1.0 | historical, still valid | `manifest.json`, `memories.json`, `tasks.json`, `receipts.json` | The original published format. A 1.0 archive remains a complete, verifiable artifact; verify it against [`1.0/`](1.0/) exactly as before. |
 
 A Cogeto instance writes exactly one version — the current one — and its
