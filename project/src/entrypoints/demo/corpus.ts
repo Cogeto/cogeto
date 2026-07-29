@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { z } from 'zod';
 
 /**
- * Loads and validates the Ana sandbox corpus (decision 0022). The authored world
+ * Loads and validates the Ana sandbox corpus. The authored world
  * lives in `project/demo/`; this reads it, never fabricates it. The seed feeds
  * every item through the real public HTTP API — see `./seed.ts`.
  */
@@ -15,7 +15,7 @@ const noteSchema = z.object({
   daysAgo: z.int().min(0).max(400),
   role: z.string().min(1),
   text: z.string().min(1).max(20_000),
-  /** Chat items only (P6.9): the titled conversation this turn belongs to —
+  /** Chat items only: the titled conversation this turn belongs to —
    * the sidebar demos with two or three named threads. Items sharing a title
    * share the conversation. */
   conversation: z.string().min(1).max(120).optional(),

@@ -66,7 +66,7 @@ class FlowGateway extends ModelGateway {
     return EMBED_MODEL;
   }
   async extractStructured<T>(schema: ZodType<T>, request: StructuredExtractionRequest): Promise<T> {
-    // Batched verification (decision 0057; verification/v0005): multi-fact
+    // Batched verification (verification/v0005): multi-fact
     // sources verify in one enveloped call — every claim supported, scripted.
     if (request.input.startsWith('CLAIMS UNDER REVIEW')) {
       const batch = {
@@ -210,7 +210,7 @@ describe('research flow (integration: real Postgres + Qdrant, scripted gateway +
     expect(captured[0]).toMatchObject({ status: 'captured' });
     pageId = captured[0]!.status === 'captured' ? captured[0].id : '';
 
-    // The in-chat flow's honest wait (decision 0047): before the worker runs,
+    // The in-chat flow's honest wait: before the worker runs,
     // the run's progress reports the page still extracting, zero facts.
     const before = await research.runProgress(owner, runId);
     expect(before).toHaveLength(1);

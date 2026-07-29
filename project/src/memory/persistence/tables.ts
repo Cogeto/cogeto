@@ -25,7 +25,7 @@ export const sourceTypeEnum = pgEnum('source_type', [
   'email',
   'calendar_event',
   'file',
-  // DEFUNCT (decision 0060). Engine-derived task conclusions (decision 0037)
+  // DEFUNCT. Engine-derived task conclusions
   // whose source row was the tasks-owned task_conclusion record. The task
   // subsystem is gone and migration 0035 dropped that table after erasing
   // every memory that pointed at it through the deletion saga — but a
@@ -34,17 +34,17 @@ export const sourceTypeEnum = pgEnum('source_type', [
   // code path may treat encountering it as an error: it is a known value with
   // no live producer. Listed in DEFUNCT_SOURCE_TYPES below.
   'task_conclusion',
-  // Fetched web pages (decision 0043): the source row is the connectors-owned
+  // Fetched web pages: the source row is the connectors-owned
   // web_page record, migration 0027.
   'web',
-  // A whole chat conversation (P6.9, decision 0056): the source row is the
+  // A whole chat conversation: the source row is the
   // retrieval-owned conversation record, migration 0031. No memory ever
   // carries this value — chat memories cite their message ('chat'); it exists
   // for conversation deletion receipts and the saga adapter.
   'chat_conversation',
 ]);
 /**
- * Source types the product no longer produces (decision 0060). Postgres cannot
+ * Source types the product no longer produces. Postgres cannot
  * drop an enum value, so they remain valid members of `source_type` forever.
  * `calendar_event` joined them when calendar left v1 (roadmap revision);
  * `task_conclusion` joined them when the task subsystem was removed.
@@ -75,20 +75,20 @@ export const memory = pgTable(
     status: memoryStatusEnum('status').notNull().default('active'),
     sensitive: boolean('sensitive').notNull().default(false),
     /**
-     * Extracted entities, flat (decision 0006 ruling 2). The generated
+     * Extracted entities, flat. The generated
      * content_tsv column and the trigram/tsvector indexes are deliberately not
      * mapped — they are query-side artifacts of migration 0005, referenced via
      * raw SQL in the search primitives only.
      */
     entities: text('entities').array().notNull().default([]),
-    /** Raw temporal phrases code could not resolve (migration 0007, decision 0007). */
+    /** Raw temporal phrases code could not resolve (migration 0007). */
     temporalUnresolved: text('temporal_unresolved').array().notNull().default([]),
     /** The entity this fact is primarily ABOUT (migration 0008; F1/F4). NULL pre-v0002. */
     subjectEntity: text('subject_entity'),
-    /** The extractor's fact kind (migration 0011; decision 0010). NULL pre-F2. */
+    /** The extractor's fact kind (migration 0011). NULL pre-F2. */
     kind: factKindEnum('kind'),
     /**
-     * Email-path authorship (migration 0030; decision 0054): true when the fact
+     * Email-path authorship (migration 0030): true when the fact
      * came from the new content of a message the user wrote or sent themselves,
      * false when it is someone else's words (inbound sender, forwarded
      * original), NULL when unknown or not applicable (non-email sources).
@@ -151,7 +151,7 @@ export const integrityAlert = pgTable('integrity_alert', {
 });
 
 /**
- * Pairs of memories reconciliation flagged (migration 0011; decision 0010
+ * Pairs of memories reconciliation flagged (migration 0011;
  * ruling 2). `a` is the incoming (newer) fact at detection time, `b` the
  * existing one; prior statuses enable dismiss-restoration. Any row — resolved
  * or not — is a permanent tombstone: the pair is never re-detected. The
@@ -168,7 +168,7 @@ export const memoryRelation = pgTable(
     aPriorStatus: memoryStatusEnum('a_prior_status').notNull(),
     bPriorStatus: memoryStatusEnum('b_prior_status').notNull(),
     detectedAt: timestamp('detected_at', { withTimezone: true }).notNull().defaultNow(),
-    /** The model's explanation of the conflict (migration 0020, QS-1): lives on
+    /** The model's explanation of the conflict (migration 0020): lives on
      * this owner-gated row — NEVER in the org-readable audit trail — and is
      * erased with the pair (FK CASCADE). NULL on pre-0020 rows. */
     reason: text('reason'),

@@ -12,7 +12,7 @@ import type { CogetoConfig } from './config';
 /**
  * GET /api/health — aggregate reachability of Postgres, Qdrant, MinIO for the
  * dashboard status panel. GET /api/health/live — container liveness only.
- * Lives in the entrypoint (deployment concern, not domain). Public (QS-18):
+ * Lives in the entrypoint (deployment concern, not domain). Public
  * liveness/readiness must answer without a token.
  */
 @Public()
@@ -72,7 +72,7 @@ export class HealthController {
       gateway,
       mail,
     };
-    // P6.7 (decision 0055): loud capability/job states are named degradations —
+    // loud capability/job states are named degradations —
     // an enabled-but-unreachable capability or an overdue job is a broken
     // instance, not a footnote. The fields are additive; `checks` is unchanged.
     const loud = CapabilitiesService.loudness(registry);
@@ -98,21 +98,21 @@ export class HealthController {
         latencyMs: Date.now() - started,
         ...(enabled
           ? { detail: 'SSE-S3 default encryption on' }
-          : { error: 'bucket reports NO default encryption (see decision 0008)' }),
+          : { error: 'bucket reports NO default encryption (see the deletion documentation)' }),
       };
     } catch (error) {
       return { ok: false, latencyMs: Date.now() - started, error: message(error) };
     }
   }
 
-  /** Queue depth + dead-letter + graphile permanent-failure count (S3-B, QS-34). */
+  /** Queue depth + dead-letter + graphile permanent-failure count. */
   private async checkQueue(): Promise<QueueHealthCheck> {
     const started = Date.now();
     try {
       const [jobs, parked, failed] = await Promise.all([
         this.pool.query<{ n: string }>('SELECT count(*)::text AS n FROM graphile_worker.jobs'),
         this.pool.query<{ n: string }>('SELECT count(*)::text AS n FROM dead_letter'),
-        // QS-34: jobs that exhausted their retries and will not run again. Our
+        // jobs that exhausted their retries and will not run again. Our
         // dead_letter write is best-effort under DB pressure (queue.ts retries),
         // so surfacing graphile's own permanent-failure count is the backstop
         // alert — a parked job that never made it into dead_letter still shows.
@@ -149,7 +149,7 @@ export class HealthController {
   }
 
   /**
-   * Model-gateway reachability (QS-35) — cheap and cached in the gateway (≤1
+   * Model-gateway reachability — cheap and cached in the gateway (≤1
    * provider probe per 30s), so a dashboard poll never hammers Mistral. An
    * unconfigured gateway reports ok (model features are simply off).
    */
@@ -200,7 +200,7 @@ export class HealthController {
   }
 
   /**
-   * Inbound-mail liveness (Session O4): a TCP connect to the Haraka SMTP
+   * Inbound-mail liveness: a TCP connect to the Haraka SMTP
    * listener (COGETO_MAIL_SMTP_ADDRESS, e.g. mail:2525). Unset → the instance
    * runs without the mail service; report ok with a "not configured" detail so
    * the check never falsely degrades a mail-less deployment.

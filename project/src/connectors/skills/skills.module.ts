@@ -5,7 +5,7 @@ import { SkillPlanner } from './skill-planner';
 import { SkillsController } from './skills.controller';
 
 /**
- * The skill flow's app-only composition (Priority 7, decision 0059) — the
+ * The skill flow's app-only composition — the
  * ResearchChatModule shape: planning needs RetrievalService (the entity
  * profile), so this is composed ONLY into the app root, never the worker
  * (whose skill intent stays inert; execution reaches the worker as the

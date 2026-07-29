@@ -3,7 +3,7 @@ import { demoLogin } from '../auth/oidc';
 import type { Session } from '../auth/oidc';
 
 /**
- * The Ana sandbox password gate (decision 0027). The demo is no longer auto-open:
+ * The Ana sandbox password gate. The demo is no longer auto-open
  * the operator signs in with the demo username + the GENERATED password printed
  * by the seed/reset job (and written to demo-credentials.txt). On success the
  * returned session is installed and the tab becomes the demo Principal.

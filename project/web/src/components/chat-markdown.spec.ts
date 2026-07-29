@@ -3,7 +3,7 @@ import type { AnswerSegment } from '@cogeto/shared';
 import { parseChatBlocks } from './chat-markdown';
 
 /**
- * Markdown-lite parsing (issue #211): presentation only, after the sanitize
+ * Markdown-lite parsing: presentation only, after the sanitize
  * step — chips stay atomic and in order, malformed markup degrades to plain
  * text, and nothing here can resurrect a stripped token.
  */

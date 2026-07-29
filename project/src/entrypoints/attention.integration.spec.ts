@@ -12,7 +12,7 @@ import type { ApprovalService } from '../agents/index';
 import { AttentionService } from './attention.service';
 
 /**
- * The attention feed (Post-v1 Priority 2, decision 0039): a COMPUTED, gated
+ * The attention feed: a COMPUTED, gated
  * layer over open loops / review / approvals / the dreaming digest.
  * Pure-Postgres —
  * none of the read paths touch Qdrant, so the test needs no vector store.
@@ -102,7 +102,7 @@ describe('attention feed (integration, real Postgres)', () => {
   };
 
   /**
-   * An open loop, exactly as the instance produces one since decision 0060: a
+   * An open loop, exactly as the instance produces one since: a
    * commitment memory, its due date on `valid_until`, its "gone quiet" state
    * in ingestion's dormant_flag. No derived table involved.
    */
@@ -281,7 +281,7 @@ describe('attention feed (integration, real Postgres)', () => {
     expect(afterSeen.items.find((i) => i.kind === 'review_uncertain')!.unread).toBe(false);
 
     // A brand-new uncertain fact re-raises the indicator. Its created_at is
-    // stamped a second past the seen mark rather than left to the wall clock:
+    // stamped a second past the seen mark rather than left to the wall clock
     // "unread" is a strict timestamp comparison, and a row written inside the
     // same millisecond as markSeen is genuinely not newer than it.
     const fresh = await seedMemory(owner, { content: 'new unsure', status: 'uncertain' });

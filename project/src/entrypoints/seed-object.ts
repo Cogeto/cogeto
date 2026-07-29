@@ -10,7 +10,7 @@ import { loadConfig } from './config';
  * and one derived memory, so the deletion saga's object-removal leg is
  * exercisable before file upload exists (arrives in O1).
  *
- * Usage:
+ * Usage
  *   npm run seed:object -- --owner <zitadel user id> --org <zitadel org id>
  *
  * The owner id must be YOUR user id (GET /api/me shows it) — the saga is
@@ -37,7 +37,7 @@ async function main(): Promise<void> {
   const pool = new Pool({ connectionString: config.databaseUrl });
   try {
     const db = createDb(pool);
-    // sqlOnly (QS-26): the fixture only inserts a memory row; the demo's
+    // sqlOnly: the fixture only inserts a memory row; the demo's
     // cascade covers vectors through the saga, not through this store.
     const store = createMemoryStore({ db, sqlOnly: true });
     const objects = new MemoryObjectStore({

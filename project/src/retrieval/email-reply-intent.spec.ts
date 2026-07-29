@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { detectEmailReplyIntent } from './query-rewrite';
 
-describe('detectEmailReplyIntent (Session O4 — chat reply intent)', () => {
+describe('detectEmailReplyIntent', () => {
   it('detects a reply request and extracts the named target', () => {
     expect(detectEmailReplyIntent("draft a reply to Ana's last email")?.target).toBe('Ana');
     expect(detectEmailReplyIntent('reply to Marko')?.target).toBe('Marko');
@@ -28,7 +28,7 @@ describe('detectEmailReplyIntent (Session O4 — chat reply intent)', () => {
     expect(detectEmailReplyIntent('odgovori na Aninu poruku')).not.toBeNull();
   });
 
-  it('the joined "e-poruka"/"e-mail" strips whole — no phantom "e-" sender (issue #78)', () => {
+  it('the joined "e-poruka"/"e-mail" strips whole — no phantom "e-" sender', () => {
     // The live gate's reply_hr_zadnja case, verbatim: "the last email" with no
     // named sender must resolve to a null target (most recent email wins).
     const hr = detectEmailReplyIntent('Napiši odgovor na zadnju e-poruku');
@@ -40,7 +40,7 @@ describe('detectEmailReplyIntent (Session O4 — chat reply intent)', () => {
     expect(detectEmailReplyIntent('napiši odgovor na Aninu e-poruku')?.target).toBe('Aninu');
   });
 
-  it('entities fill in for a resolved pronoun only — never for "the last email" (decision 0046)', () => {
+  it('entities fill in for a resolved pronoun only — never for "the last email"', () => {
     // The cross-capability follow-up: "her" resolved by the rewriter.
     expect(detectEmailReplyIntent('draft a reply to her last email', ['Ana Kovač'])?.target).toBe(
       'Ana Kovač',

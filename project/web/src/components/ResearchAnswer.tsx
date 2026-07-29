@@ -3,8 +3,8 @@ import type { ResearchAnswerDto } from '@cogeto/shared';
 
 /**
  * Render a research answer's [W#]/[M#] markers as traceable citation links
- * (Priority 5 Part B). Shared by the Research page and the in-chat research
- * flow (decision 0047).
+ *. Shared by the Research page and the in-chat research
+ * flow.
  */
 export function ResearchAnswer({ answer }: { answer: ResearchAnswerDto }) {
   const byMarker = useMemo(

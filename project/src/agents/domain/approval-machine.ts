@@ -2,7 +2,7 @@ import type { ApprovalStatus } from '@cogeto/shared';
 
 /**
  * The approval aggregate's single transition function (Addendum §A.8, §A.1
- * rule 4). Legal edges — everything else is refused with a typed reason:
+ * rule 4). Legal edges — everything else is refused with a typed reason
  *
  *   draft            → pending_approval        (submit for a decision)
  *   pending_approval → approved | rejected | expired

@@ -68,7 +68,7 @@ class ScriptedGateway extends ModelGateway {
     return EMBED_MODEL;
   }
   async extractStructured<T>(schema: ZodType<T>, request: StructuredExtractionRequest): Promise<T> {
-    // Batched verification (decision 0057; verification/v0005): multi-fact
+    // Batched verification (verification/v0005): multi-fact
     // sources verify in one enveloped call — every claim supported, scripted.
     if (request.input.startsWith('CLAIMS UNDER REVIEW')) {
       const batch = {
@@ -181,7 +181,7 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     adminUserEmail: 'admin@instance.test',
     intakeToken: 'test-token',
     // The routing tests predate SPF; keep the self-route open here and exercise
-    // the SEC-1 authentication gate + intake cap in their own test with a
+    // the authentication gate + intake cap in their own test with a
     // strict-options intake service.
     requireAuthenticatedSender: false,
     intakeMaxPerSenderPerWindow: 0,
@@ -546,7 +546,7 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     expect(await objectCount()).toBe(objsBefore); // raw + attachment both cleaned
   });
 
-  // ── Sender routing (decision 0031) ─────────────────────────────────────────
+  // ── Sender routing ─────────────────────────────────────────
 
   const customer: Principal = {
     userId: 'user-customer',
@@ -584,12 +584,12 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     expect(result.emailIds).toHaveLength(1);
     const stored = await ownedBy(result.emailIds[0]!);
     expect(stored.owner_id).toBe(customer.userId);
-    // Self-route = written by the capture user (P6.5, decision 0054): the
+    // Self-route = written by the capture user: the
     // intake-time routing fact the pipeline stamps onto derived memories.
     expect(stored.authored_by_owner).toBe(true);
   });
 
-  it('sender_authentication_gate (SEC-1): a spoofed self-claim is not captured; an SPF-authenticated one is; the intake rate cap bites', async () => {
+  it('sender_authentication_gate (): a spoofed self-claim is not captured; an SPF-authenticated one is; the intake rate cap bites', async () => {
     await directory.record(customer);
     // A strict instance: require SPF authentication, cap at 2 messages/sender.
     const strict = new EmailIntakeService(
@@ -608,7 +608,7 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     );
 
     // (a) Spoofed From claiming to be the customer, but SPF FAILS → refused,
-    //     never stored as the customer (the exact SEC-1 attack).
+    //     never stored as the customer (the exact attack).
     const spoof = await strict.intake(
       rawEmail({ from: `Customer <${customer.email}>`, text: 'injected fact.' }),
       { mailFrom: customer.email, rcptTo: INBOUND, spfResult: 'fail' },
@@ -682,7 +682,7 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     expect(single.emailIds).toHaveLength(1);
     const singleStored = await ownedBy(single.emailIds[0]!);
     expect(singleStored.owner_id).toBe(customer.userId);
-    // Allowlist-route = someone else's words (P6.5, decision 0054): these
+    // Allowlist-route = someone else's words: these
     // copies must never read as authored by their capture user.
     expect(singleStored.authored_by_owner).toBe(false);
   });

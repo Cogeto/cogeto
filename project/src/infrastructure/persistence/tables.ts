@@ -29,7 +29,7 @@ export const auditLog = pgTable('audit_log', {
   detailJson: jsonb('detail_json'),
   /** Org for org-scoped reads (migration 0016); NULL = system/global entry. */
   orgId: text('org_id'),
-  /** Whose artifact the entry concerns (migration 0020, QS-1/QS-13): the
+  /** Whose artifact the entry concerns (migration 0020): the
    * reader returns detail_json only to this owner; NULL = system entry. */
   ownerId: text('owner_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -68,7 +68,7 @@ export const deadLetter = pgTable('dead_letter', {
 });
 
 /**
- * Attention read-state (migration 0026, decision 0039). The attention feed and
+ * Attention read-state (migration 0026). The attention feed and
  * dashboard stats are computed; these two content-free per-user tables are the
  * only materialized state. They live here — not in a domain module — because
  * the surface spans every context and none owns it (§A.1 rule 2), exactly like
@@ -91,8 +91,7 @@ export const attentionDismissal = pgTable(
 );
 
 /**
- * Per-user instance context and language preference (migration 0029, decisions
- * 0051/0052/0053). Lives here, not in a domain module, because the context
+ * Per-user instance context and language preference (migration 0029). Lives here, not in a domain module, because the context
  * feeds prompts in retrieval, connectors and ingestion alike — no
  * single bounded context owns it (§A.1 rule 2), exactly like attention_state.
  */
@@ -103,11 +102,11 @@ export const userContext = pgTable('user_context', {
   company: text('company'),
   roleTitle: text('role_title'),
   aboutWork: text('about_work'),
-  /** Per-user IANA zone override; NULL = the instance timezone (QS-32). */
+  /** Per-user IANA zone override; NULL = the instance timezone. */
   timezone: text('timezone'),
   preferredLanguage: text('preferred_language').notNull().default('en'),
   languageStrict: boolean('language_strict').notNull().default(false),
-  /** Provenance when a value was accepted from a suggestion (decision 0053). */
+  /** Provenance when a value was accepted from a suggestion. */
   companySourceMemoryId: uuid('company_source_memory_id'),
   roleTitleSourceMemoryId: uuid('role_title_source_memory_id'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

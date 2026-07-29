@@ -6,7 +6,7 @@ import { dormantFlag } from './persistence/tables';
  * The dormant-flag consumption API (docs/handoff/F2-dreaming.md §3): ingestion
  * owns the table; every other module reads and clears flags ONLY through
  * these. Dreaming writes flags and clears them when a memory leaves `active`.
- * Since decision 0060 the reader is retrieval's open-loops query, which turns
+ * Since the reader is retrieval's open-loops query, which turns
  * an open flag into the "gone quiet" marker on a standing obligation.
  */
 

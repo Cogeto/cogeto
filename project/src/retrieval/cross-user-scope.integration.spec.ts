@@ -8,10 +8,10 @@ import type { MemoryRow, MemoryStore, NewFact } from '../memory/index';
 import { UserDirectory } from '../identity/index';
 
 /**
- * The cross-user scope proof (O2-B). Two Principals in ONE org (A, B) plus a
+ * The cross-user scope proof. Two Principals in ONE org (A, B) plus a
  * third in ANOTHER org (C) — exercising every read path the gates guard and
  * every write path they own. Cross-org isolation for SHARED rows is a
- * deployment boundary (decision 0019), not a row gate: this suite proves the
+ * deployment boundary, not a row gate: this suite proves the
  * same-org contract exhaustively and the cross-org PRIVATE isolation the owner
  * gate does enforce; shared cross-org is called out in the session log as
  * deployment-enforced, not row-tested.
@@ -199,7 +199,7 @@ describe('cross-user scope isolation (integration, real Postgres + Qdrant)', () 
     expect(await visIds(C)).not.toContain(priv.id);
     expect(await vecIds(C)).not.toContain(priv.id);
     // NOTE: a SHARED fact is NOT row-isolated across orgs — that boundary is the
-    // single-tenant deployment (decision 0019), so it is deliberately not
+    // single-tenant deployment, so it is deliberately not
     // asserted here. In production C authenticates against a different instance.
   });
 

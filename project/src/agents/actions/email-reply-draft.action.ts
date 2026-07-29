@@ -3,7 +3,7 @@ import { EMAIL_REPLY_DRAFT_ACTION } from '@cogeto/shared';
 import type { ActionDefinition } from '../action-types';
 
 /**
- * Reply drafts (Session O4 — email source). Drafting a reply to an email is a
+ * Reply drafts. Drafting a reply to an email is a
  * consequential action, but its effect is a NON-SENDING finalisation (roadmap
  * O4; the "send" seam realised as finalisation): on approval the draft is marked
  * finalised and presented to the user, who sends it from their own client.
@@ -12,13 +12,13 @@ import type { ActionDefinition } from '../action-types';
  * network, no external write. It only records that the draft is finalised. The
  * draft itself (subject + body) is presented via GET /api/approvals/:id/email-
  * draft. The body lives on the approval payload (not the audit trail, which stays
- * content-free per QS-1).
+ * content-free).
  */
 // Backward-compatibility rule: a stored approval payload must keep parsing after
 // this schema grows, or already-created drafts 400 on read/execute. So fields
 // added after the first release are OPTIONAL here (absent → the pre-field
 // default), and the drafting service still always sets them on new drafts. Using
-// `.optional()` (not `.default()`) also keeps the schema's input and output types
+// `.optional` (not `.default`) also keeps the schema's input and output types
 // equal, satisfying ActionDefinition<P>'s invariant ZodType<P>.
 const payloadSchema = z.object({
   // Empty when the recipient could not be recovered from a forward — the user
@@ -27,7 +27,7 @@ const payloadSchema = z.object({
   // Added in the reply-triggers unit; a legacy draft without it had a real
   // recipient (the sender), so absent is treated as resolved.
   recipientResolved: z.boolean().optional(),
-  // False when the recipient was recovered from the forwarded body (SEC-3) — a
+  // False when the recipient was recovered from the forwarded body — a
   // suggestion to verify. Optional for backward-compat; absent → verified.
   recipientVerified: z.boolean().optional(),
   subject: z.string().max(998),
@@ -72,7 +72,7 @@ export function buildEmailReplyDraftAction(): ActionDefinition<EmailReplyDraftPa
     initialStatus: 'pending_approval',
     ttlSeconds: 7 * 24 * 60 * 60, // a week to send it (or not)
     // The summary + body preview are the user's content; show them only to the
-    // requester and let only the requester confirm/reject (SEC-5).
+    // requester and let only the requester confirm/reject.
     contentBearing: true,
     summarize: (p) =>
       isRecipientResolved(p) ? `Draft reply to ${p.to}` : 'Draft reply (set recipient)',
@@ -91,7 +91,7 @@ export function buildEmailReplyDraftAction(): ActionDefinition<EmailReplyDraftPa
     execute: async (_tx, ctx, p) => {
       // Finalisation ONLY — deliberately NO send path. The draft is now ready for
       // the user to send from their own client; the effect makes no external
-      // call. Audit detail stays content-free (QS-1): counts/booleans, never the
+      // call. Audit detail stays content-free: counts/booleans, never the
       // drafted body (which lives on the owner-gated approval payload).
       return {
         summary: `Reply draft to ${p.to} finalised — not sent (send it from your own client)`,

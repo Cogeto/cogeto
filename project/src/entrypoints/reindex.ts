@@ -15,7 +15,7 @@ async function main(): Promise<void> {
   const config = loadConfig();
   const pool = new Pool({ connectionString: config.databaseUrl });
   const db = createDb(pool);
-  // Redaction wraps embeddings too (decision 0023): a reindex under redaction
+  // Redaction wraps embeddings too: a reindex under redaction
   // must re-embed pseudonymized text, matching how the vectors were first made.
   const gateway = createModelGateway({
     providers: config.modelProviders,

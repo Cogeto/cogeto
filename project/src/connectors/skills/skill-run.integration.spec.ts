@@ -28,7 +28,7 @@ import { SkillPlanner } from './skill-planner';
 import { SKILL_ADVANCE_JOB_TYPE, SkillRunService } from './skill-run.service';
 
 /**
- * The skill runtime (decision 0059), end to end against real Postgres + Qdrant
+ * The skill runtime, end to end against real Postgres + Qdrant
  * with a scripted gateway and scripted web: run_lifecycle, gate_preserved,
  * creates_nothing, run_resumable, budget_caps_run.
  */
@@ -396,7 +396,7 @@ describe('skill runtime (integration: real Postgres + Qdrant, scripted gateway +
   });
 
   it('creates_nothing: a full run produces a brief and NO durable artifact of its own', async () => {
-    // The skill runtime reads, searches and writes a brief. Since decision 0060
+    // The skill runtime reads, searches and writes a brief. Since
     // there is nothing task-shaped left for it to propose, so the run's ONLY
     // durable outputs are its step log, its research runs, and the brief.
     const run = await runs.getRun(owner, firstRunId);

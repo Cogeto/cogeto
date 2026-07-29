@@ -32,7 +32,7 @@ export const verificationResult = pgTable('verification_result', {
   verdict: verificationVerdictEnum('verdict').notNull(),
   reason: text('reason').notNull(),
   promptVersion: text('prompt_version').notNull(),
-  /** The extractor's cited source passage (migration 0006); NULL pre-S3-B. */
+  /** The extractor's cited source passage (migration 0006); NULL pre-. */
   sourceSpan: text('source_span'),
   /** The tentative wording that made this memory uncertain (migration 0008; F7). */
   hedgePhrase: text('hedge_phrase'),
@@ -43,7 +43,7 @@ export type VerificationResultRow = typeof verificationResult.$inferSelect;
 export type VerificationVerdict = (typeof verificationVerdictEnum.enumValues)[number];
 
 /**
- * The dreaming cycle's tables (migration 0012; decision 0011). Ingestion-owned:
+ * The dreaming cycle's tables (migration 0012). Ingestion-owned
  * dreaming is the consolidation half of the pipeline. Memory-referencing
  * columns FK with CASCADE for the deletion saga only — reads resolve memory
  * details through the gated MemoryStore API, never a join.

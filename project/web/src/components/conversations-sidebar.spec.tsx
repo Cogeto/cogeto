@@ -17,7 +17,7 @@ import {
 import { ConversationSidebar } from './ConversationSidebar';
 
 /**
- * The conversations sidebar (P6.9, decision 0056):
+ * The conversations sidebar
  *
  *   sidebar_lifecycle — create/rename/archive/switch states are correct in the
  *     model (labels, previews, the active/archived split, next selection after

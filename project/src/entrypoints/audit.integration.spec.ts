@@ -84,7 +84,7 @@ describe('audit_read_scoped (integration: real Postgres)', () => {
     expect(overlap).toHaveLength(0);
   });
 
-  it('detail_owner_gated: entries are org-visible but detail is returned only to the stamped owner (QS-1/QS-13)', async () => {
+  it('detail_owner_gated: entries are org-visible but detail is returned only to the stamped owner', async () => {
     // Two users in the SAME org — the org gate admits both; the detail gate
     // must still separate them.
     const a2: Principal = { ...userA, userId: 'peer-x1' };
@@ -116,8 +116,8 @@ describe('audit_read_scoped (integration: real Postgres)', () => {
     expect(sys?.detailWithheld).toBeUndefined();
   });
 
-  it('scrub_migration: pre-existing rows carrying a free-text reason are redacted, and the scrub is itself audited (QS-1)', async () => {
-    // A legacy-shaped row, as written before decision 0025: model free-text
+  it('scrub_migration: pre-existing rows carrying a free-text reason are redacted, and the scrub is itself audited', async () => {
+    // A legacy-shaped row, as written before: model free-text
     // paraphrasing private memory content, org-NULL (the pre-0025 writers).
     await writeAudit(tdb.db, {
       actor: 'reconciliation',

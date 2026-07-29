@@ -5,7 +5,7 @@ import type { IdentityOptions } from './identity-options';
 import type { AuthenticatedRequest } from './bearer-auth.guard';
 
 /**
- * Requires the operator/admin project role (FIX-3 QS-10). Runs AFTER the global
+ * Requires the operator/admin project role. Runs AFTER the global
  * BearerAuthGuard has attached the Principal (so `roles` is populated). Gates
  * the System-view queue endpoints, whose reads expose cross-user source ids and
  * whose retry replays any parked job — an operator concern, not per-user data.

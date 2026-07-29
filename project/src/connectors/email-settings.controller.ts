@@ -27,7 +27,7 @@ const addEntrySchema = z.object({
 });
 
 /**
- * /api/email — the owner's Email capture surface (Session O4, decision 0028):
+ * /api/email — the owner's Email capture surface
  * the inbound address (read-only) with its forwarding-setup guidance, the sender
  * allowlist (view/add/remove, audited), and recent refusals for one-click
  * allowlisting.
@@ -48,7 +48,7 @@ export class EmailSettingsController {
     ]);
     return {
       inboundAddress: this.options.inboundAddress,
-      // The caller's own address is implicitly trusted (decision 0031 rule 1).
+      // The caller's own address is implicitly trusted (rule 1).
       selfAddress: request.principal.email ?? null,
       allowlist,
       recentRefusals,

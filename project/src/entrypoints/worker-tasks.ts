@@ -62,7 +62,7 @@ export interface WorkerTaskDeps {
  * delivery provably changes nothing.
  */
 export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
-  // Single-flight wrapper for the RECURRING nightly jobs (QS-39): a slow run
+  // Single-flight wrapper for the RECURRING nightly jobs: a slow run
   // must not overlap the next cron fire (or a DST double-fire). The named
   // advisory lock lets the second concurrent runner skip cleanly instead of
   // running in parallel. These jobs are idempotent by construction, so a skip is
@@ -107,7 +107,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
           },
           'ingestion pipeline completed',
         );
-        // Research conclusion trigger (decision 0057): when this was a run's
+        // Research conclusion trigger: when this was a run's
         // web page and every page of the run has settled, enqueue the
         // conclusion — in THIS transaction, so the enqueue commits with the
         // page's own job_execution claim and can never be lost between them.
@@ -117,7 +117,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       },
     ),
 
-    // The research conclusion (decision 0057): synthesise + STORE the run's
+    // The research conclusion: synthesise + STORE the run's
     // answer once its last page settled — whether or not anyone is watching,
     // so leaving the chat mid-research no longer loses the response. A plain
     // task (like the passport export): conclusion is idempotent by
@@ -131,7 +131,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       deps.log({ source_id: runId, concluded }, 'research conclusion completed');
     },
 
-    // The skill advance (Priority 7, decision 0059): execute every step of a
+    // The skill advance: execute every step of a
     // running skill run that can run now, checkpoint each, and stop where the
     // run must wait (extraction settling — the settle-watcher re-enqueues).
     // A plain task like the conclusion: re-runnable by design (steps
@@ -175,7 +175,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       deps.log({ ...report }, 'integrity sweep completed');
     }),
 
-    // The nightly dreaming cycle (§B.6 plain form; decision 0011) — scheduled
+    // The nightly dreaming cycle (§B.6 plain form) — scheduled
     // 03:30, after the 03:00 sweep; on demand via `npm run dream`. Like the
     // sweep, deliberately NOT idempotentTask (a recurring job, not a one-shot
     // per source); its effects are idempotent by construction — reconcile
@@ -185,7 +185,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       deps.log({ ...report }, 'dreaming cycle completed (scheduled)');
     }),
 
-    // Extract-and-discard staging cleanup (§A.9, O1-C): deletes the transient
+    // Extract-and-discard staging cleanup (§A.9): deletes the transient
     // staging object once its extraction is durable (enqueued by the pipeline
     // in the memories' transaction), plus a delayed backstop enqueued at upload
     // that fires even if extraction never succeeded. Absent object = success.
@@ -198,7 +198,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       deps.log({ source_id: stagingKey }, 'discard staging object deleted');
     },
 
-    // Approval execution (§A.8, O1-B) — the ONLY place a consequential effect
+    // Approval execution (§A.8) — the ONLY place a consequential effect
     // runs. Guarded key ('approval', <id>, this): a duplicate delivery claims
     // nothing and the effect runs at most once; the executor also refuses any
     // row not in `approved`. The confirm endpoint (app) only enqueued this.
@@ -214,7 +214,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
           { source_type: payload.source_type, source_id: payload.source_id, ...result },
           'approval execution completed',
         );
-        // QS-27: the bulk-outdate effect's Qdrant payload sync runs here, AFTER
+        // the bulk-outdate effect's Qdrant payload sync runs here, AFTER
         // the transaction commits and its row locks release.
         return afterCommit;
       },
@@ -229,7 +229,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       deps.log({ expired }, 'approval expiry pass completed');
     }),
 
-    // The Memory Passport export (§B.5, decision 0029) — worker-run because it
+    // The Memory Passport export (§B.5) — worker-run because it
     // can be large (§A.3). A plain task: assembly re-reads through the gated
     // interfaces and writes an idempotent object + status, so a retry overwrites
     // rather than duplicates. On error the row is marked failed (visible in
@@ -259,7 +259,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       deps.log({ ...report }, 'passport retention pass completed');
     }),
 
-    // Prune refused-mail records past the retention window (SEC-6/GAP-6) —
+    // Prune refused-mail records past the retention window (/GAP-6) —
     // bounds the retained third-party sender PII and the table's growth on the
     // public inbound port. Recurring + idempotent; single-flight.
     [EMAIL_REFUSAL_RETENTION_JOB_TYPE]: recurring(EMAIL_REFUSAL_RETENTION_JOB_TYPE, async () => {
@@ -267,7 +267,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       deps.log({ removed }, 'email refusal retention pass completed');
     }),
 
-    // The conversation auto-title (P6.9, decision 0056): one pipeline-tier
+    // The conversation auto-title: one pipeline-tier
     // call naming an untitled thread from its opening messages. Idempotency
     // key ('chat_conversation', <conversation id>, this) — one attempt chain
     // per conversation; the guarded UPDATE inside re-checks that no manual
@@ -284,7 +284,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       },
     ),
 
-    // Embeds an edit's supersession successor (S3-B). Idempotency key:
+    // Embeds an edit's supersession successor. Idempotency key
     // ('memory', <memory id>, 'memory.embed') — a duplicate delivery skips.
     [MEMORY_EMBED_JOB_TYPE]: idempotentTask(db, MEMORY_EMBED_JOB_TYPE, async (tx, payload) => {
       const { embedded } = await runMemoryEmbedJob(tx, deps.memoryStore, deps.gateway, payload);

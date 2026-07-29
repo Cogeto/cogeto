@@ -39,7 +39,7 @@ const MAX_BRIEF_FACTS = 14;
 const MAX_BRIEF_LOOPS = 6;
 
 /**
- * The skill engine (decision 0059): everything after the plan gate. The app
+ * The skill engine: everything after the plan gate. The app
  * calls {@link approvePlan} (the ONE-interaction gate) and {@link cancel};
  * the worker's re-runnable `skill.advance` job calls {@link advance}, which
  * claims the next step, executes it, checkpoints, and continues — resumable
@@ -67,7 +67,7 @@ export class SkillEngine {
   ) {}
 
   /**
-   * The plan gate, one interaction (decision 0059 ruling 3): every kept query
+   * The plan gate, one interaction: every kept query
    * (possibly edited) flips its research run to approved with the text as
    * sent_query; every omitted query is cancelled and never leaves. The run
    * moves to `running` and the advance job is enqueued transactionally with
@@ -210,7 +210,7 @@ export class SkillEngine {
    * Discovery + capture for every approved query, through ResearchService
    * verbatim (budgets, robots, SSRF guard, focused extraction). Budget
    * exhaustion is graceful: the remaining queries are noted as skipped and the
-   * run continues with what was gathered (decision 0059 ruling 5).
+   * run continues with what was gathered.
    */
   private async executeGatedSearch(owner: Principal, run: SkillRunRow): Promise<void> {
     await this.runs.claimStep(run.id, 'gated_search');
@@ -422,7 +422,7 @@ export class SkillEngine {
       return `- ${marker}${row.content ?? '(withheld)'} (status: ${row.status})`;
     });
 
-    // The brief is Cogeto-initiated (decision 0052): the LANGUAGE line is
+    // The brief is Cogeto-initiated: the LANGUAGE line is
     // forced to the strict/anchor form so it always speaks preferred_language.
     const contextRecord = await Promise.resolve(this.userContext?.get(run.ownerId))
       .then((record) => record ?? EMPTY_USER_CONTEXT)

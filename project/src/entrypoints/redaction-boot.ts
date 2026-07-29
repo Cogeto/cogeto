@@ -2,7 +2,7 @@ import type { Logger } from 'pino';
 import type { CogetoConfig } from './config';
 
 /**
- * Loud boot log of the EFFECTIVE redaction posture (QS-21). The process cannot
+ * Loud boot log of the EFFECTIVE redaction posture. The process cannot
  * see which compose profiles are active, so it states plainly what it will
  * actually do: INFO when redaction is on (every outbound model call is
  * pseudonymized, fail-closed), a prominent WARN when it is off (plaintext

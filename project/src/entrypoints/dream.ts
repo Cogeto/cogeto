@@ -6,8 +6,8 @@ import { createModelGateway } from '../model-gateway/index';
 import { loadConfig, redactionOptions } from './config';
 
 /**
- * dream — the on-demand dreaming cycle (§B.6 plain form; decision 0011). The
- * same four passes the worker runs nightly at 03:30, runnable any time:
+ * dream — the on-demand dreaming cycle (§B.6 plain form). The
+ * same four passes the worker runs nightly at 03:30, runnable any time
  *
  *   npm run dream                                    (local / published ports)
  *   docker compose exec worker node project/src/dist/entrypoints/dream.js
@@ -43,7 +43,7 @@ async function main(): Promise<void> {
     );
     const report = await dreaming.run((event, message) => console.log(`  ${message}`, event));
     console.log(
-      `dream: run ${report.runId} [${report.scopeFrom} → ${report.scopeTo}] — ` +
+      `dream: run ${report.runId} [${report.scopeFrom} → ${report.scopeTo}]: ` +
         `${report.considered} fact(s) considered across ${report.ownersProcessed} owner(s); ` +
         `${report.merged} merged (${report.enriched} enriched), ${report.contradictions} conflict(s), ` +
         `${report.superseded} superseded, ${report.outdated} outdated, ` +

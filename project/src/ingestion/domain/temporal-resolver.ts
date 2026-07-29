@@ -1,23 +1,23 @@
 import * as chrono from 'chrono-node';
 
 /**
- * Deterministic relative-date resolution (decision 0007 ruling 1; owner test
+ * Deterministic relative-date resolution (owner test
  * F8). Models never do calendar arithmetic: the extractor emits raw temporal
  * expressions verbatim, and this code resolves them against the note's
  * created_at anchor. The anchor is a UTC instant; the calendar date it lands on
- * is computed in the configured INSTANCE TIMEZONE (QS-32, default Europe/Zagreb)
+ * is computed in the configured INSTANCE TIMEZONE (default Europe/Zagreb)
  * so "today" for a note written at 23:30 local resolves to the local calendar
  * day, not the UTC one. Once the local calendar date is fixed, all arithmetic is
  * UTC-midnight math so results stay host-timezone independent — the golden cases
  * pin an anchor date (mid-day, so the local date matches UTC) and must stay
  * stable forever.
  *
- * F8 rules encoded here:
+ * F8 rules encoded here
  * - weekday names resolve to the NEXT occurrence strictly after the anchor
  *   date (anchor Friday 2026-07-03: "Monday" → 07-06, "Thursday" → 07-09);
  *   the anchor's own weekday resolves to +7, never to the anchor itself.
  * - "last/past/previous <weekday>" resolves BACKWARD to the most recent prior
- *   occurrence (QS-29): anchor Friday 2026-07-03, "last Monday" → 06-29.
+ *   occurrence: anchor Friday 2026-07-03, "last Monday" → 06-29.
  * - "in N days/weeks/months" adds to the anchor ("in two weeks" → 07-17);
  *   "N days/weeks/months ago" subtracts ("two weeks ago" → 06-19).
  * - "by X" is a valid_until; a plain point/valid_from expression sets valid_from.
@@ -25,7 +25,7 @@ import * as chrono from 'chrono-node';
  *   detail drawer can flag "date could not be resolved".
  */
 
-/** Default instance timezone for calendar-date resolution (QS-32). */
+/** Default instance timezone for calendar-date resolution. */
 export const DEFAULT_TIMEZONE = 'Europe/Zagreb';
 
 export type TemporalKind = 'valid_from' | 'valid_until' | 'point';
@@ -76,8 +76,8 @@ function atUtcMidnight(d: Date): Date {
 
 /**
  * The calendar date the anchor lands on in `timeZone`, as UTC midnight of that
- * local date (QS-32). Using Intl to read the local Y/M/D keeps the result a UTC
- * instant whose `toISOString().slice(0,10)` IS the local calendar date, so all
+ * local date. Using Intl to read the local Y/M/D keeps the result a UTC
+ * instant whose `toISOString.slice(0,10)` IS the local calendar date, so all
  * downstream UTC-midnight arithmetic stays timezone-independent and the golden
  * cases stay stable.
  */
@@ -111,7 +111,7 @@ function nextWeekday(base: Date, dow: number): Date {
   return addUtcDays(base, delta);
 }
 
-/** The previous occurrence of `dow` strictly before the base date (QS-29). */
+/** The previous occurrence of `dow` strictly before the base date. */
 function prevWeekday(base: Date, dow: number): Date {
   let delta = (base.getUTCDay() - dow + 7) % 7;
   if (delta === 0) delta = 7;
@@ -148,7 +148,7 @@ export function resolveExpression(
   const text = raw.trim().toLowerCase();
   if (!text) return null;
 
-  // Fix the anchor to its calendar date in the instance timezone (QS-32); all
+  // Fix the anchor to its calendar date in the instance timezone; all
   // arithmetic below is UTC-midnight math on this normalized base.
   const base = zonedMidnight(anchor, timeZone);
 
@@ -156,8 +156,8 @@ export function resolveExpression(
   if (/\btomorrow\b/.test(text)) return addUtcDays(base, 1);
   if (/\byesterday\b/.test(text)) return addUtcDays(base, -1);
 
-  // "N days/weeks/months ago" — subtracted from the anchor (QS-29). Checked
-  // before "in N" so a stray "in ... ago" can't be misrouted.
+  // "N days/weeks/months ago" — subtracted from the anchor. Checked
+  // before "in N" so a stray "in... ago" can't be misrouted.
   const agoMatch = text.match(/\b([a-z]+|\d+)\s+(day|days|week|weeks|month|months)\s+ago\b/);
   if (agoMatch) {
     const n = parseCount(agoMatch[1]!);
@@ -182,7 +182,7 @@ export function resolveExpression(
   }
 
   // Weekday names, with any of the usual lead-ins. "last/past/previous" resolve
-  // BACKWARD (QS-29); every other lead-in resolves forward.
+  // BACKWARD; every other lead-in resolves forward.
   const wdMatch = text.match(
     /\b(last|past|previous|by|before|on|this|next|coming|the)?\s*(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/,
   );
@@ -194,7 +194,7 @@ export function resolveExpression(
   }
 
   // chrono fallback for absolute/other forms. Backward-leaning phrases disable
-  // forwardDate so chrono resolves "last …"/"… ago" into the past (QS-29).
+  // forwardDate so chrono resolves "last …"/"… ago" into the past.
   const forward = !/\b(ago|last|past|previous)\b/.test(text);
   return chronoResolve(raw, base, forward);
 }

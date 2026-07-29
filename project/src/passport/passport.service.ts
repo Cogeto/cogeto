@@ -8,7 +8,7 @@ import { PASSPORT_OPTIONS } from './passport.options';
 import type { PassportOptions } from './passport.options';
 
 /**
- * The Memory Passport surface (§B.5, decision 0029) — trigger an export, poll
+ * The Memory Passport surface (§B.5) — trigger an export, poll
  * its status, and hand back a short-lived signed download URL. Assembly is a
  * worker job (§A.3); this service only creates the request (transactionally
  * enqueuing the job) and reads owner-scoped status.

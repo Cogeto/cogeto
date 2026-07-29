@@ -7,7 +7,7 @@ import type { IdentityOptions } from './identity-options';
 
 /**
  * GET /api/me — the authenticated Principal for the dashboard shell, plus the
- * server-computed `isAdmin` flag (the configured admin role, QS-10) so the SPA
+ * server-computed `isAdmin` flag (the configured admin role) so the SPA
  * can hide operator surfaces (System) from plain users without hardcoding a
  * role name. Display-gating only: AdminGuard stays the enforcement on the
  * admin endpoints themselves.

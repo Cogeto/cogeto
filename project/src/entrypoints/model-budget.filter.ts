@@ -4,7 +4,7 @@ import type { Response } from 'express';
 import { ModelBudgetExceededError } from '../model-gateway/index';
 
 /**
- * Maps a spent daily model budget (FIX-2 QS-2) to HTTP 429 for ordinary JSON
+ * Maps a spent daily model budget to HTTP 429 for ordinary JSON
  * endpoints. The chat SSE endpoint handles it itself (headers are already sent
  * mid-stream), so this filter only fires when the response has not started —
  * it re-throws otherwise so the stream handler's own error path runs.

@@ -9,8 +9,8 @@ import { latestFinishedRun } from './dreaming.service';
 
 /**
  * The dreaming digest, assembled from the latest finished run (§B.6 v1 form;
- * decision 0011). Extracted from DreamingController so BOTH the digest endpoint
- * and the attention feed (Post-v1 Priority 2) build the same lines from one
+ *). Extracted from DreamingController so BOTH the digest endpoint
+ * and the attention feed build the same lines from one
  * place — never a second, drifting digest.
  *
  * Owner scoping falls out of the gates: memory details resolve ONLY through the
@@ -70,7 +70,7 @@ export async function buildDigestLines(
   // Priority: conflicts first (they want attention), then merges and updates
   // (the work done), then quiet commitments, then the aggregate. The line
   // ORDER is locale-independent — the attention feed's dismissal keys index
-  // into it, so translation may never reorder or drop a line (decision 0052).
+  // into it, so translation may never reorder or drop a line.
   const lines: DreamDigestLine[] = [];
   const byPass = (pass: DreamActionRow['pass']) =>
     actions.filter((a) => a.pass === pass && visible.has(a.memoryId));

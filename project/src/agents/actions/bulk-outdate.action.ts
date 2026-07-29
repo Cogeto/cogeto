@@ -5,7 +5,7 @@ import type { MemoryStore } from '../../memory/index';
 import type { ActionDefinition } from '../action-types';
 
 /**
- * The one wired consequential action (O1-B §3): mark N of the owner's filtered
+ * The one wired consequential action (§3): mark N of the owner's filtered
  * memories `outdated`. In-system, real, and reversible (outdated → active), so
  * it is fully testable with no external dependency. The effect goes through the
  * Memory aggregate, which owns the eligibility rules (skips `user_approved`,
@@ -55,7 +55,7 @@ export function buildBulkOutdateAction(memory: MemoryStore): ActionDefinition<Bu
       return {
         summary: `Marked ${changed.length} outdated${skipped.length ? `, skipped ${skipped.length}` : ''}`,
         detail: { changed, skipped },
-        // QS-27: sync the changed points' Qdrant payload AFTER commit, outside
+        // sync the changed points' Qdrant payload AFTER commit, outside
         // the row-lock window (idempotent; the payload sweep is the backstop).
         afterCommit:
           changed.length > 0 ? () => memory.syncStatusPayloads(changed, 'outdated') : undefined,

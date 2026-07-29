@@ -28,7 +28,7 @@ export interface RetrieveOptions {
   /** Recent conversation turns (oldest first) for pronoun/ellipsis rewriting (F3). */
   history?: ConversationTurn[];
   /**
-   * A precomputed rewrite from the chat router (decision 0046): retrieval
+   * A precomputed rewrite from the chat router: retrieval
    * reuses it instead of calling the rewriter again, so routing + retrieval
    * cost exactly one bounded pipeline-tier call per turn.
    */
@@ -43,11 +43,11 @@ export interface RetrievedMemory {
   signals: RetrievalSignal[];
 }
 
-/** What retrieval decided, so the answerer can adapt (F1/F4, F3-A, F3-B). */
+/** What retrieval decided, so the answerer can adapt (F1/F4). */
 export type RetrievalMode = 'default' | 'entity_profile' | 'temporal' | 'open_loops';
 
 /**
- * One standing obligation (V2.0 item 3.1, decision 0060): the memory itself,
+ * One standing obligation: the memory itself,
  * plus the one signal that does not live on it — ingestion's dormant flag.
  * Its due date is the memory's own `valid_until`; its wording is the memory's
  * own content, so the answer cites the fact directly.
@@ -63,11 +63,11 @@ export interface RetrievalResult {
   mode: RetrievalMode;
   /** The entity a profile was built for, when mode is entity_profile. */
   focusEntity?: string;
-  /** The classified temporal intent, when mode is temporal (decision 0012). */
+  /** The classified temporal intent, when mode is temporal. */
   temporal?: TemporalIntent;
   /** The change events, when the temporal kind is change_since. */
   changes?: MemoryChange[];
-  /** What is still standing, when mode is open_loops (decision 0060). */
+  /** What is still standing, when mode is open_loops. */
   openLoops?: OpenLoop[];
 }
 
@@ -75,10 +75,10 @@ export interface RetrievalResult {
  * Hybrid retrieval (§A.5): three gated signals from the memory module's public
  * interface — vector (Qdrant), keyword FTS, trigram entity match — fused with
  * reciprocal rank fusion, then the status multipliers. This module never
- * touches a table or a client (decision 0003 ruling 2); every row it handles
+ * touches a table or a client; every row it handles
  * already passed the scope/sensitive gates inside the memory module's SQL.
  *
- * Fast path (S3.5-B): one bounded rewriter call resolves conversational
+ * Fast path: one bounded rewriter call resolves conversational
  * references (F3); an entity-profile question triggers an exhaustive gather of
  * that entity's memories (F1/F4); a project/topic question with a dominant
  * entity widens once via entity search before answering (F5).
@@ -95,7 +95,7 @@ export class RetrievalService {
      * loops simply carry no "gone quiet" marker.
      */
     @Optional() @Inject(DRIZZLE) private readonly db?: Db,
-    // Instance timezone for relative-date resolution in query rewriting (QS-32).
+    // Instance timezone for relative-date resolution in query rewriting.
     @Optional()
     @Inject(INSTANCE_TIMEZONE)
     private readonly timeZone: string = DEFAULT_INSTANCE_TIMEZONE,
@@ -109,7 +109,7 @@ export class RetrievalService {
     const topK = opts.topK ?? DEFAULT_TOP_K;
 
     // 1. Conversational rewriting (F3): resolve "who is she?" to its referent.
-    // The chat router precomputes this (decision 0046); other callers still
+    // The chat router precomputes this; other callers still
     // rewrite here.
     const rewrite =
       opts.rewrite ??
@@ -126,8 +126,7 @@ export class RetrievalService {
       ...new Set([...rewrite.entities, ...queryEntityCandidates(searchQuery)]),
     ];
 
-    // 2. Open-loops mode (F3-B; memory-backed since V2.0 item 3.1, decision
-    // 0060): the day-one question's second half, straight from the gated
+    // 2. Open-loops mode (memory-backed since): the day-one question's second half, straight from the gated
     // memory read — the facts ARE the open loops, so every line the answerer
     // writes cites the fact it rests on.
     if (rewrite.openLoops) {
@@ -139,7 +138,7 @@ export class RetrievalService {
       };
     }
 
-    // 3. Temporal mode (F3-A, decision 0012): explicit intent only — the
+    // 3. Temporal mode: explicit intent only — the
     // rewriter classified it AND the raw question carried a temporal hint.
     if (rewrite.temporal) {
       return this.temporalRetrieve(principal, searchQuery, entityCandidates, rewrite.temporal, {
@@ -178,7 +177,7 @@ export class RetrievalService {
   }
 
   /**
-   * The open loops themselves (decision 0060): one gated memory read for the
+   * The open loops themselves: one gated memory read for the
    * standing commitments and open items, then ingestion's dormant flags
    * layered on. Public so the composition roots (attention, the skill
    * planner) assemble their "awaiting you" surfaces from exactly this query
@@ -201,7 +200,7 @@ export class RetrievalService {
   }
 
   /**
-   * Temporal retrieval (decision 0012): 'previous' is the standard fused
+   * Temporal retrieval: 'previous' is the standard fused
    * search with the exclusion lifted (temporal multipliers) — past facts rank
    * nearly on par and carry their history; 'point_in_time' and 'change_since'
    * use the memory module's temporal primitives. Gates unchanged everywhere.

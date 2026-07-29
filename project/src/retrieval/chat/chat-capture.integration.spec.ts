@@ -39,7 +39,7 @@ class ScriptedGateway extends ModelGateway {
     return EMBED;
   }
   async extractStructured<T>(schema: ZodType<T>, request: StructuredExtractionRequest): Promise<T> {
-    // Batched verification (decision 0057; verification/v0005): multi-fact
+    // Batched verification (verification/v0005): multi-fact
     // sources verify in one enveloped call — every claim supported, scripted.
     if (request.input.startsWith('CLAIMS UNDER REVIEW')) {
       const batch = {
@@ -120,7 +120,7 @@ describe('chat capture (integration, real Postgres + Qdrant)', () => {
       reconciliation,
     });
 
-  // Messages need a container since P6.9 — one per owner is enough here.
+  // Messages need a container since — one per owner is enough here.
   const conversationIds = new Map<string, string>();
   const seedMessage = async (
     owner: string,
@@ -157,7 +157,7 @@ describe('chat capture (integration, real Postgres + Qdrant)', () => {
     expect(item?.sourceType).toBe('chat');
     expect(item?.ownerId).toBe(owner);
     expect(item?.content).toContain('contract');
-    // The assistant's own reply can never become a source item (decision 0021 r4).
+    // The assistant's own reply can never become a source item (r4).
     expect(await reader.load(assistantId)).toBeNull();
   });
 

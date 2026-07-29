@@ -44,7 +44,7 @@ import { configurationForEmission, emitPartial, TRUST_SCORES_SCHEMA_VERSION } fr
 const EVAL_INBOUND = 'capture@in.localhost';
 
 /**
- * npm run eval:chat — the chat-answer eval suite (S3.5-A §2). It seeds a FRESH
+ * npm run eval:chat — the chat-answer eval suite (§2). It seeds a FRESH
  * test instance (Testcontainers Postgres + Qdrant) with each case's notes
  * through the REAL pipeline (extract → verify → embed + store, live model),
  * then runs the case's scripted conversation through the REAL chat path
@@ -69,7 +69,7 @@ const HISTORY_FILE = path.join(REPO_ROOT, 'docs', 'eval', 'history.md');
 const COVERAGE_PROMPT = { family: 'eval-coverage', version: 'v0001' } as const;
 
 /**
- * Direct-fact seeding (F3-A): temporal cases need deterministic supersession
+ * Direct-fact seeding: temporal cases need deterministic supersession
  * chains and fixed interval dates — extraction quality is scored elsewhere.
  * `supersedes` points at an earlier fact by index; seeding runs the REAL
  * supersession mechanics (interval close, replaced, pointer).
@@ -82,13 +82,13 @@ const factSeedSchema = z.object({
   valid_from: z.string().optional(),
   valid_until: z.string().optional(),
   supersedes: z.int().min(0).optional(),
-  /** Seed this fact already reconciliation-flagged (skill contradiction cases):
+  /** Seed this fact already reconciliation-flagged (skill contradiction cases)
    * the deterministic input state; live contradiction DETECTION has its own
    * reconcile suite. */
   contradicted: z.boolean().optional(),
 });
 
-/** Seeded email_message rows (Session O4 — chat reply-intent cases). */
+/** Seeded email_message rows. */
 const emailSeedSchema = z.object({
   from: z.string().min(1),
   subject: z.string().optional(),
@@ -102,10 +102,10 @@ const caseSchema = z.object({
   anchor: z.string(),
   notes: z.array(z.string()).default([]),
   facts: z.array(factSeedSchema).default([]),
-  /** Emails to seed for a draft-a-reply case (Session O4). */
+  /** Emails to seed for a draft-a-reply case. */
   emails: z.array(emailSeedSchema).default([]),
   /**
-   * Research cases (Priority 5 Part B): a scripted public web (discovery
+   * Research cases: a scripted public web (discovery
    * returns these pages; the fetcher serves their HTML — nothing real is
    * fetched in the harness). After the chat turns open the gate, the harness
    * stands in for the user at the Research page: it approves the LIVE
@@ -127,7 +127,7 @@ const caseSchema = z.object({
     })
     .optional(),
   /**
-   * Skill cases (Priority 7, decision 0059): the script's last turn invokes
+   * Skill cases: the script's last turn invokes
    * the research-brief skill; the harness stands in for the user at the plan
    * gate (approves the first two LIVE-planned queries verbatim, removes the
    * rest — exercising removal), stands in for the worker (fixture pages, real
@@ -146,11 +146,11 @@ const caseSchema = z.object({
       expect_contradiction: z.boolean().default(false),
       /** The brief must cite at least one pre-existing (seeded) memory. */
       expect_memory_citation: z.boolean().default(true),
-      /** The brief's language (decision 0052 anchor), judged deterministically. */
+      /** The brief's language (anchor), judged deterministically. */
       language: z.enum(['en', 'hr']).optional(),
     })
     .optional(),
-  /** Per-case user context (P6.6, decision 0052): applied through the real
+  /** Per-case user context: applied through the real
    * UserContextService before the scripted turns. */
   settings: z
     .object({
@@ -176,14 +176,14 @@ const caseSchema = z.object({
     must_include: z.array(z.string()).optional(),
     /** Substrings the final answer must NOT contain (settled obligations). */
     must_exclude: z.array(z.string()).optional(),
-    /** The answer must frame past belief as past (decision 0012 ruling 6). */
+    /** The answer must frame past belief as past. */
     past_framing: z.boolean().optional(),
     /** The final turn's sources must include / must not include these statuses. */
     sources_status_includes: z.array(z.string()).optional(),
     sources_status_excludes: z.array(z.string()).optional(),
     /**
-     * Conversation checks (decision 0046), folded into one deterministic
-     * verdict like the temporal set:
+     * Conversation checks, folded into one deterministic
+     * verdict like the temporal set
      * - `research_offer` — the final turn's done event carries the research
      *   OFFER and no research_run row exists (a knowledge question never
      *   silently reaches the gate, let alone a search).
@@ -197,8 +197,8 @@ const caseSchema = z.object({
     unsourced_required: z.boolean().optional(),
     smalltalk: z.boolean().optional(),
     /**
-     * Language checks (P6.6, decision 0052), folded into the conversation
-     * verdict:
+     * Language checks, folded into the conversation
+     * verdict
      * - `language` — the final answer's language, judged deterministically
      *   (Croatian diacritics + stopword balance). With strict mode set this
      *   proves an en question comes back hr; without it, mirroring.
@@ -232,7 +232,7 @@ interface TurnResult {
   sourceCount: number;
   sourceStatuses: string[];
   citationViolations: number;
-  /** Whether the done event carried the research offer (decision 0046). */
+  /** Whether the done event carried the research offer. */
   researchOffer: boolean;
 }
 
@@ -245,15 +245,15 @@ interface CaseScore {
   noMechanics: boolean | null;
   citationsValid: boolean | null;
   nothingOnRecord: boolean | null;
-  /** The F3-A temporal checks folded into one verdict (null = not a temporal case). */
+  /** The temporal checks folded into one verdict (null = not a temporal case). */
   temporal: boolean | null;
   /** The research-flow verdict (Part B; null = not a research case): gate →
    * approve → capture → cited synthesis → persisted web memories. */
   research: boolean | null;
-  /** The skill-run verdict (Priority 7; null = not a skill case): plan gate →
+  /** The skill-run verdict (null = not a skill case): plan gate →
    * worker steps → a cited brief with contradictions surfaced. */
   skill: boolean | null;
-  /** The folded conversation verdict (decision 0046; null = no such checks):
+  /** The folded conversation verdict (null = no such checks)
    * research offer without a silent search, unsourced marking, small talk. */
   conversation: boolean | null;
   pass: boolean;
@@ -264,7 +264,7 @@ const PAST_FRAMING_RE =
   /\b(until|previously|used to|no longer|was|were|at the time|as of|before|earlier|since then|replaced|changed to|prije|do\s|više ne|bilo je|bila je|tada|od tada|zamijenjen)\b/i;
 
 /**
- * The eval grader follows the answer tier unless overridden (decision 0040
+ * The eval grader follows the answer tier unless overridden (
  * ruling 3): COGETO_PROVIDER_GRADER / COGETO_MODEL_GRADER re-bind ONLY the
  * grading calls (harness-only vars, never read by the instance). An override
  * changes comparability — note it when publishing.
@@ -340,7 +340,7 @@ function checkNothingOnRecord(answer: string): boolean {
 }
 
 /**
- * Deterministic language judgment (P6.6): Croatian diacritics are a strong
+ * Deterministic language judgment: Croatian diacritics are a strong
  * signal; a stopword balance decides otherwise. Names stay untranslated, so
  * only function words count.
  */
@@ -394,7 +394,7 @@ async function main(): Promise<void> {
   const gateway = createModelGateway({
     providers,
     redaction,
-    // Deterministic sampling for comparable runs (decision 0035): stabilizes
+    // Deterministic sampling for comparable runs: stabilizes
     // both the answers under test and the coverage grader (where the provider
     // accepts a temperature — 0040 ruling 1).
     temperature: 0,
@@ -441,7 +441,7 @@ async function main(): Promise<void> {
       });
       await memoryStore.ensureIndexReady();
       const retrieval = new RetrievalService(memoryStore, gateway, db);
-      // The chat → email-reply resolver (Session O4): draft-a-reply cases seed
+      // The chat → email-reply resolver: draft-a-reply cases seed
       // emails and exercise the real drafting path (the confirmation text is
       // deterministic; the model only writes the draft body, which is not graded).
       // The object store is never called for seeded text emails.
@@ -500,13 +500,13 @@ async function main(): Promise<void> {
         memoryStore,
       );
       const researchResolver = new ChatResearchResolver(research);
-      // The skill seam (Priority 7, decision 0059): the planner runs LIVE
+      // The skill seam: the planner runs LIVE
       // (real retrieval + the skill_plan prompt); execution below is the
       // harness standing in for the worker.
       const skillRuns = new SkillRunService(db);
       const skillPlanner = new SkillPlanner(retrieval, research, skillRuns, gateway);
       const skillResolver = new ChatSkillResolver(skillPlanner, skillRuns);
-      // Per-case user context (P6.6): applied through the real service, so the
+      // Per-case user context: applied through the real service, so the
       // chat path exercises the same now-block assembly as production.
       const userContextService = new UserContextService(db);
       if (testCase.settings) {
@@ -534,7 +534,7 @@ async function main(): Promise<void> {
       );
       const anchor = new Date(testCase.anchor);
 
-      // Seed emails (Session O4 reply-intent cases) directly — no public seed API.
+      // Seed emails ( reply-intent cases) directly — no public seed API.
       for (let i = 0; i < testCase.emails.length; i++) {
         const e = testCase.emails[i]!;
         await db.execute(sql`
@@ -565,7 +565,7 @@ async function main(): Promise<void> {
           },
         });
       }
-      // Direct-fact seeding (F3-A): fixed dates + real supersession mechanics.
+      // Direct-fact seeding: fixed dates + real supersession mechanics.
       const seededRows: MemoryRow[] = [];
       for (let i = 0; i < testCase.facts.length; i++) {
         const seed = testCase.facts[i]!;
@@ -619,7 +619,7 @@ async function main(): Promise<void> {
       console.log(`  seeded ${testCase.notes.length} notes, ${testCase.facts.length} direct facts`);
 
       // Run the scripted conversation — inside ONE conversation container
-      // (P6.9), exactly as the production surface would: the script's turns
+      //, exactly as the production surface would: the script's turns
       // share turn context, other conversations' turns never enter.
       const conversationRef = await chat.createConversation(principal);
       const turns: TurnResult[] = [];
@@ -743,7 +743,7 @@ async function main(): Promise<void> {
         }
       }
 
-      // Skill cases (Priority 7, decision 0059): the chat turn started
+      // Skill cases: the chat turn started
       // planning; now stand in for the user at the plan gate and for the
       // worker's advance, then assert on the finished run.
       let skillOk: boolean | null = null;
@@ -869,7 +869,7 @@ async function main(): Promise<void> {
         }
       }
 
-      // Conversation checks (decision 0046) — deterministic, folded like the
+      // Conversation checks — deterministic, folded like the
       // temporal set.
       const conversationChecks: (boolean | null)[] = [];
       if (checks.research_offer) {
@@ -901,7 +901,7 @@ async function main(): Promise<void> {
       }
       if (checks.digest_language) {
         // A REAL dreaming cycle over this case's seeded world, then the digest
-        // in the case's preferred language (decision 0052).
+        // in the case's preferred language.
         const { store: dreamStore, reconciliation } = createMemoryReconciliation({
           db,
           qdrant: { url: qdrantUrl, embeddingModel, collection },
@@ -931,7 +931,7 @@ async function main(): Promise<void> {
       if (coverage && coverage.missed.length > 0) {
         console.log(`  coverage misses: ${coverage.missed.join(' | ')}`);
       }
-      // The F3-A temporal checks (all deterministic), folded into one verdict.
+      // The temporal checks (all deterministic), folded into one verdict.
       const temporalChecks: (boolean | null)[] = [
         checks.must_include
           ? checks.must_include.every((s) => final.answer.toLowerCase().includes(s.toLowerCase()))
@@ -1018,7 +1018,7 @@ async function main(): Promise<void> {
   await appendFile(HISTORY_FILE, `\n## ${stamp} — chat eval (${versions})\n\n${table}\n`, 'utf8');
   console.log(`appended to ${path.relative(REPO_ROOT, HISTORY_FILE)}`);
 
-  // Trust-score emission (O7, decision 0032): --emit-json <path> merges the
+  // Trust-score emission (O7): --emit-json <path> merges the
   // chat summary into the partial `npm run eval -- --emit-json` started (order
   // does not matter; the file merges per configuration id). Emitted before the
   // gate check so a breach still records honest numbers.
@@ -1030,7 +1030,7 @@ async function main(): Promise<void> {
   }
   if (emitPath) {
     // The ACTIVE configuration, from the same resolver the gateway was built
-    // with (decision 0040 ruling 5) — id and models are exact by construction.
+    // with — id and models are exact by construction.
     const { id, models } = configurationForEmission(providers);
     emitPartial(emitPath, {
       schema_version: TRUST_SCORES_SCHEMA_VERSION,
@@ -1052,7 +1052,7 @@ async function main(): Promise<void> {
     console.log(`trust-score partial (chat) emitted → ${emitPath}`);
   }
 
-  // Gate mode (decision 0036): each signal gated by its reliability. The
+  // Gate mode: each signal gated by its reliability. The
   // rule-based checks (entity, hedge, no-mechanics, citations,
   // nothing-on-record, temporal) are deterministic and stay all-must-pass;
   // the LLM-judged coverage gates on the MEAN across coverage-graded cases

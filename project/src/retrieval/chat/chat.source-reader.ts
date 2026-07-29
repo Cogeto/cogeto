@@ -6,7 +6,7 @@ import type { SourceItem, SourceReader } from '../../ingestion/index';
 import { chatMessage } from '../persistence/tables';
 
 /**
- * Ingestion's stage-1 port for source_type 'chat' (decision 0021): the pipeline
+ * Ingestion's stage-1 port for source_type 'chat': the pipeline
  * reads a remembered chat message through this, never the chat_message table
  * directly (§A.1 rule 2). Loads ONLY `user` messages — the assistant's own
  * output is never evidence about the world (ruling 4), so an assistant id can
@@ -32,14 +32,14 @@ export class ChatSourceReader implements SourceReader {
       sourceId: row.id,
       ownerId: row.ownerId,
       // "Remember this" extracts the message itself — the one capture path
-      // (the create_task normalization went with decision 0060).
+      // (the create_task normalization went with).
       content: row.content,
       createdAt: row.createdAt,
     };
   }
 
   /**
-   * Admission checkpoint (decision 0024): KEY SHARE serializes against the
+   * Admission checkpoint: KEY SHARE serializes against the
    * deletion saga's FOR UPDATE + DELETE on this chat row — see SourceReader.
    */
   async existsForAdmission(tx: Tx, sourceId: string): Promise<boolean> {

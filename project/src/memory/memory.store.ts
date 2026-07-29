@@ -23,13 +23,13 @@ import type { MemoryActor } from './domain/transition';
 import { intervalHoldsAtSql } from './domain/interval';
 
 /**
- * Public interface of the memory module (§A.1 rule 1; decision 0003 ruling 2).
+ * Public interface of the memory module (§A.1 rule 1).
  *
  * Every read REQUIRES a Principal and applies the scope and sensitive gates
  * inside the query builder — an unscoped read is unrepresentable through this
  * interface. Raw table access stays private to this module.
  *
- * Gates (hard, never score factors — §A.5 as amended by 0003 ruling 3):
+ * Gates (hard, never score factors — §A.5 as amended by 0003 ruling 3)
  * - scope:     own rows, or rows with scope 'shared'.
  * - sensitive: excluded by default; returned ONLY to the owner, ONLY on
  *   explicit per-query opt-in.
@@ -40,16 +40,16 @@ export interface NewFact {
   scope: MemoryScope;
   sourceType: SourceType;
   sourceId: string;
-  /** Extracted entity names, flat (decision 0006 ruling 2) — the §A.5 entity signal. */
+  /** Extracted entity names, flat — the §A.5 entity signal. */
   entities?: string[];
   /** The entity this fact is primarily ABOUT (F1/F4) — distinct from mentions. */
   subjectEntity?: string;
   /** The extractor's fact kind (migration 0011) — reconciliation matches on it. */
   kind?: FactKind;
-  /** Email-path authorship (migration 0030; decision 0054): true = the user's
+  /** Email-path authorship (migration 0030): true = the user's
    * own new text; false = someone else's words; omit = unknown/not applicable. */
   authoredByUser?: boolean;
-  /** Raw temporal phrases code could not resolve (decision 0007 ruling 1). */
+  /** Raw temporal phrases code could not resolve. */
   temporalUnresolved?: string[];
   sensitive?: boolean;
   validFrom?: Date;
@@ -68,7 +68,7 @@ export interface ReadOptions {
   includeSensitive?: boolean;
 }
 
-/** Dashboard filters (S3-B) — WHERE clauses, composed with the gates, never after them. */
+/** Dashboard filters — WHERE clauses, composed with the gates, never after them. */
 export interface MemoryFilters {
   scope?: MemoryScope;
   status?: MemoryStatus;
@@ -77,7 +77,7 @@ export interface MemoryFilters {
   /** Trigram-matched against the stored entities array. */
   entity?: string;
   /**
-   * Owner-only (O2-B): narrows the already-gated result to the caller's OWN
+   * Owner-only: narrows the already-gated result to the caller's OWN
    * rows, dropping the shared arm. Review uses it — you review only your own
    * uncertain facts, never a peer's shared ones (which you cannot action).
    */
@@ -105,8 +105,8 @@ export interface ScoredMemory {
 export interface SearchOptions extends ReadOptions {
   topK: number;
   /**
-   * Reconciliation candidate narrowing (decision 0010 ruling 6) — additive
-   * pre-filters ON TOP of the gates, inside the vector query, never after it:
+   * Reconciliation candidate narrowing — additive
+   * pre-filters ON TOP of the gates, inside the vector query, never after it
    * exact scope, own rows only (drops the shared-scope arm of the gate), and
    * a status allowlist. Retrieval callers pass none of these.
    */
@@ -121,7 +121,7 @@ export type FilteredSearchOptions = SearchOptions & MemoryFilters;
 /** The job the edit path enqueues: embed the supersession successor (worker). */
 export const MEMORY_EMBED_JOB_TYPE = 'memory.embed';
 
-// ── Open loops (V2.0 item 3.1, decision 0060) ────────────────────────────────
+// ── Open loops ────────────────────────────────
 
 /** The two kinds that ARE open loops — the extractor's own labels. */
 export const OPEN_LOOP_KINDS = ['commitment', 'open_loop'] as const;
@@ -137,7 +137,7 @@ export const OPEN_LOOP_STATUSES = ['active', 'user_approved', 'uncertain'] as co
 /** Read cap, mirroring every other bounded engine read. */
 const OPEN_LOOP_POOL = 200;
 
-// ── Temporal read contracts (decision 0012) ──────────────────────────────────
+// ── Temporal read contracts ──────────────────────────────────
 
 /** SQL-first temporal candidate cap; Qdrant only ranks within it (ruling 3). */
 const TEMPORAL_CANDIDATE_CAP = 200;
@@ -185,7 +185,7 @@ export class MemoryStore {
     @Inject(DRIZZLE) private readonly db: Db,
     /** Optional so pure-Postgres tests need no Qdrant; DI always provides it. */
     @Optional() private readonly vectors?: MemoryVectorStore,
-    /** Org resolution for audit stamping (QS-13, decision 0025) — optional so
+    /** Org resolution for audit stamping — optional so
      * bare test/fixture constructions still work (their entries stay NULL-org;
      * detail is owner-gated regardless). DI provides it. */
     @Optional() private readonly directory?: UserDirectory,
@@ -222,7 +222,7 @@ export class MemoryStore {
   }
 
   /**
-   * The open loops (V2.0 item 3.1, decision 0060): the caller's standing
+   * The open loops: the caller's standing
    * commitments and open items, read straight from memory — no derived table
    * behind it. Kinds `commitment`/`open_loop`, gated exactly like every other
    * read, narrowed to the statuses that still STAND (`replaced`, `outdated`
@@ -230,7 +230,7 @@ export class MemoryStore {
    * scoped to one entity, ordered by due date (`valid_until`) first so the
    * most pressing surface at the top.
    *
-   * This is the durable core of the day-one question — "what did I decide,
+   * This is the durable core of the day-one question"what did I decide,
    * promise, and commit to, and what is still open?" — and it needs no schema
    * of its own: the extractor already labels the kind and the temporal pass
    * already fills `valid_until`.
@@ -261,7 +261,7 @@ export class MemoryStore {
   }
 
   /**
-   * A subject's memories for the time-travel view (decision 0012): rows this
+   * A subject's memories for the time-travel view: rows this
    * name is ABOUT — matched against `subject_entity` (the extractor's primary
    * subject, F1/F4) OR the `entities` mentions array, both by trigram — in ANY
    * lifecycle status (the past is the point). A gated read like
@@ -366,7 +366,7 @@ export class MemoryStore {
 
   /**
    * Gated memory counts by lifecycle status — the dashboard's "memory by
-   * status" visual (Post-v1 Priority 2). ONE grouped query under the same
+   * status" visual. ONE grouped query under the same
    * `visibleTo` gate as every read: own + visible-shared rows, the caller's own
    * sensitive rows included (the owner's governance view, like the Memories
    * list). Absent statuses read as zero. Cheap and constant-size (≤6 rows).
@@ -436,7 +436,7 @@ export class MemoryStore {
   }
 
   /**
-   * The supersession chain through a memory, oldest → newest (§B.2, S3-B
+   * The supersession chain through a memory, oldest → newest (§B.2,
    * history panel): follows superseded_by forward and its inverse backward.
    * Every hop passes the same gates as any read.
    */
@@ -507,10 +507,10 @@ export class MemoryStore {
    * The transition body, composable into a caller's transaction — how
    * reconciliation (pipeline stage 6, the contradiction resolutions) makes
    * status changes commit atomically with the relation rows and, in stage 6,
-   * with the not-yet-committed incoming facts (decision 0010 ruling 1).
+   * with the not-yet-committed incoming facts.
    *
    * `reason` is advisory context for the CALLER only and is deliberately NOT
-   * persisted (QS-1, decision 0025): it can be model free-text naming private
+   * persisted: it can be model free-text naming private
    * memory values, and the audit trail is org-readable and outlives deletion.
    * Durable explanations live on owner-gated domain rows instead
    * (memory_relation.reason, verification_result.reason).
@@ -522,7 +522,7 @@ export class MemoryStore {
     to: MemoryStatus,
     _reason?: string,
     /**
-     * When false, the Qdrant payload sync is DEFERRED to the caller (QS-27):
+     * When false, the Qdrant payload sync is DEFERRED to the caller
      * the caller collects the id and batches setPayload after the transaction
      * commits, via {@link syncStatusPayloads}, so a bulk transition never holds
      * row locks across per-row Qdrant HTTP calls. Defaults to true — the single
@@ -551,7 +551,7 @@ export class MemoryStore {
     });
     // Keep the Qdrant payload copy honest (§A.4), point op last: a failure
     // rolls the row back and the caller retries — the two stores converge.
-    // requireVectors, exactly like the toggles (QS-26): a store wired without
+    // requireVectors, exactly like the toggles: a store wired without
     // Qdrant must throw here, never silently leave the point saying 'active'.
     if (opts.syncPayload !== false) {
       await this.requireVectors().setPayload(memoryId, { status: to });
@@ -561,11 +561,10 @@ export class MemoryStore {
 
   /**
    * Batch the Qdrant `status` payload sync for already-committed transitions
-   * (QS-27) — the deferred half of a `transitionInTx({ syncPayload: false })`
+   * — the deferred half of a `transitionInTx({ syncPayload: false })`
    * bulk change. Runs AFTER the caller's transaction commits, so no row lock is
    * held while these HTTP calls fan out. Idempotent (setPayload no-ops on a
-   * not-yet-embedded point); the nightly payload-consistency sweep (decision
-   * 0025) reconciles anything a transient Qdrant failure here leaves stale.
+   * not-yet-embedded point); the nightly payload-consistency sweep  reconciles anything a transient Qdrant failure here leaves stale.
    */
   async syncStatusPayloads(memoryIds: string[], status: MemoryStatus): Promise<void> {
     const vectors = this.requireVectors();
@@ -576,8 +575,8 @@ export class MemoryStore {
 
   /**
    * Bulk "mark outdated" for an owner's own memories — the effect behind the
-   * approved bulk action (O1-B §3), run inside the approval executor's job
-   * transaction. The Memory aggregate owns the eligibility rules (§A.1 rule 4):
+   * approved bulk action (§3), run inside the approval executor's job
+   * transaction. The Memory aggregate owns the eligibility rules (§A.1 rule 4)
    *
    * - foreign rows (owner_id ≠ ownerId) are skipped, never touched (defence in
    *   depth — the approval was authorized against the owner at create time);
@@ -589,11 +588,11 @@ export class MemoryStore {
    *
    * Reversible: the owner can re-affirm any of these (outdated → active).
    *
-   * Qdrant is NOT touched here (QS-27): the transitions run PG-only and the
+   * Qdrant is NOT touched here: the transitions run PG-only and the
    * caller batches the payload sync for `changed` AFTER the transaction commits
    * (via {@link syncStatusPayloads}), so this loop never holds up to 500 row
    * locks across 500 sequential Qdrant HTTP calls. The nightly payload sweep
-   * (decision 0025) is the backstop if that deferred sync misses one.
+   * is the backstop if that deferred sync misses one.
    */
   async bulkMarkOutdatedForOwner(
     tx: Tx,
@@ -634,7 +633,7 @@ export class MemoryStore {
 
   /**
    * Sensitive is a hard gate (0003 ruling 3) — its payload copy in Qdrant must
-   * change in the same act as the row. Two-store pattern (S2-B): row update +
+   * change in the same act as the row. Two-store pattern: row update +
    * audit in the transaction, the point payload write last; a failed payload
    * write rolls everything back and a retry converges (setPayload is
    * idempotent; a not-yet-embedded memory has no point and that is a no-op).
@@ -668,14 +667,14 @@ export class MemoryStore {
   }
 
   /**
-   * Scope change (O2-B) — the private↔shared visibility switch, owner-only and
+   * Scope change — the private↔shared visibility switch, owner-only and
    * audited, in the SAME two-store pattern as the sensitive toggle: the row and
    * the Qdrant payload's `scope` field move together, so a shared→private demote
    * takes effect in vector search the instant it commits (a demoted leak is
    * still a leak — AGENTS.md §A.4). setPayload runs last: if it throws the row
    * write rolls back and the retry converges. Everything derived from a
    * memory follows the memory: there is no second visibility rule to keep in
-   * step (decision 0060).
+   * step.
    */
   async setScope(principal: Principal, memoryId: string, scope: MemoryScope): Promise<MemoryRow> {
     const actor: MemoryActor = { kind: 'user', userId: principal.userId };
@@ -826,7 +825,7 @@ export class MemoryStore {
   /**
    * The supersession body, composable into a caller's transaction — how the
    * reconciliation merge enriches a survivor atomically with the merge itself
-   * (decision 0010 ruling 4).
+   *.
    */
   async supersedeInTx(
     tx: Tx,
@@ -878,7 +877,7 @@ export class MemoryStore {
       orgId: await this.orgFor(old.ownerId),
     });
     // Payload copy honesty (§A.4): the predecessor's point now says replaced.
-    // requireVectors like the toggles (QS-26) — never a silent skip.
+    // requireVectors like the toggles — never a silent skip.
     await this.requireVectors().setPayload(old.id, { status: 'replaced' });
     return { predecessor: predecessor as MemoryRow, successor };
   }
@@ -913,7 +912,7 @@ export class MemoryStore {
 
   /**
    * Keyword full-text search over the generated content_tsv column (migration
-   * 0005; decision 0006 ruling 1: simple config + unaccent). The scope and
+   * 0005;: simple config + unaccent). The scope and
    * sensitive gates are WHERE clauses in the same query — no post-filtering.
    * Scores are ts_rank_cd with normalization 32 (rank/(rank+1)), i.e. [0,1).
    */
@@ -941,7 +940,7 @@ export class MemoryStore {
   }
 
   /**
-   * Trigram entity match (decision 0006 ruling 2): query names against the
+   * Trigram entity match: query names against the
    * entities array, fuzzy via pg_trgm's % operator (its similarity threshold),
    * gated exactly like every other read. Score = best similarity between any
    * stored entity and any queried name, already in [0,1].
@@ -1020,7 +1019,7 @@ export class MemoryStore {
     return rows[0] ?? null;
   }
 
-  // ── Temporal primitives (decision 0012; §A.5 temporal lift, §B.2) ──────────
+  // ── Temporal primitives (§A.5 temporal lift, §B.2) ──────────
 
   /**
    * Facts holding at instant t — in ANY lifecycle status (replaced and
@@ -1085,7 +1084,7 @@ export class MemoryStore {
 
   /**
    * What changed since `since`, for the caller's visible memories: the exact
-   * event set of decision 0012 ruling 4 — learned / status_changed /
+   * event set of — learned / status_changed /
    * superseded — newest first. Erased memories resolve to no row and produce
    * no event (their ledger is the Forgotten section, §B.1).
    */
@@ -1115,7 +1114,7 @@ export class MemoryStore {
           inArray(auditLog.action, [...CHANGE_STATUS_ACTIONS, ...CHANGE_SUPERSEDE_ACTIONS]),
           eq(auditLog.entityType, 'memory'),
           gte(auditLog.createdAt, since),
-          // QS-31: restrict to the caller's OWN memory events BEFORE the limit.
+          // restrict to the caller's OWN memory events BEFORE the limit.
           // Without this the query scans all owners' events and, on a busy
           // instance, another owner's changes push the caller's out of the
           // window — silently missing from "what changed since". Memory
@@ -1208,7 +1207,7 @@ export class MemoryStore {
 
   /**
    * Stored embeddings by memory id — how the dreaming batch driver rebuilds
-   * ReconcileInputs without re-embedding (decision 0011). Ids the caller
+   * ReconcileInputs without re-embedding. Ids the caller
    * holds already passed a gated read; rows never embedded simply drop out.
    */
   async retrieveEmbeddings(memoryIds: string[]): Promise<Map<string, number[]>> {
@@ -1216,7 +1215,7 @@ export class MemoryStore {
     return this.requireVectors().retrieveVectors(memoryIds);
   }
 
-  // ── System reads for the dreaming driver (decision 0011) ───────────────────
+  // ── System reads for the dreaming driver ───────────────────
   // Worker-only machine reads, the out-of-module mirror of the sweep's
   // in-module scans: no Principal because the caller is the nightly job
   // covering every owner. They feed reconciliation, whose candidate reads and
@@ -1298,7 +1297,7 @@ export class MemoryStore {
   }
 
   /**
-   * Provenance-metadata backfill (migration 0030; decision 0054): stamps the
+   * Provenance-metadata backfill (migration 0030): stamps the
    * email-path authorship flag on a source's derived memories. Deliberately
    * narrow — it touches ONLY `authored_by_user` (structural metadata, not a
    * status transition, so none of the aggregate's transition rules apply) and

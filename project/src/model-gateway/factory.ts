@@ -12,7 +12,7 @@ import type { ModelUsageMeter } from '../infrastructure/index';
 /**
  * Redaction wiring passed to the gateway factory (Addendum B.8). Enabled only on
  * the `redaction` profile; when off, the factory returns the underlying gateway
- * unchanged (byte-identical behavior — `redaction_off_noop`).
+ * unchanged (byte-identical behavior`redaction_off_noop`).
  */
 export interface RedactionConfig {
   enabled: boolean;
@@ -22,16 +22,16 @@ export interface RedactionConfig {
 }
 
 export interface CreateModelGatewayOptions {
-  /** The resolved per-tier provider configuration (decision 0040). Absent or
+  /** The resolved per-tier provider configuration. Absent or
    * unconfigured → the process boots; model calls fail with a typed error. */
   providers?: ResolvedModelProviders;
-  /** Sampling temperature for free-text completions (decision 0035); the eval
+  /** Sampling temperature for free-text completions; the eval
    * harness pins 0, production leaves unset. Providers that reject sampling
    * parameters (Anthropic) ignore it — 0040 ruling 1. */
   temperature?: number;
   redaction?: RedactionConfig;
   /**
-   * Per-user daily model budget (FIX-2 QS-2). When present, the gateway is
+   * Per-user daily model budget. When present, the gateway is
    * wrapped so user-attributed calls are capped and metered; absent (eval,
    * smokes) leaves all calls unmetered.
    */
@@ -42,7 +42,7 @@ export interface CreateModelGatewayOptions {
  * The single construction point for the model gateway (§A.10). Every process —
  * the DI module AND the bare entrypoints (eval, dream, reindex, …) — builds the
  * gateway here, so the redaction and budget decorators wrap ALL model traffic
- * uniformly and nothing can bypass them — for EVERY provider (decision 0040:
+ * uniformly and nothing can bypass them — for EVERY provider (
  * `redaction_applies_all_providers`, `budget_applies_all_providers`).
  *
  * Decorator order (outermost first): budget → redaction → provider(s). The
@@ -116,7 +116,7 @@ function buildProviderGateway(
         });
         break;
       case 'ollama': {
-        // The local flavor of the OpenAI-compatible adapter (decision 0041
+        // The local flavor of the OpenAI-compatible adapter (
         // ruling 1): same HTTP surface under <root>/v1, local knobs on top —
         // per-tier timeouts, the tags probe, the `ollama pull` 404 hint. The
         // resolver refused boot without the base URL; the belt mirrors the

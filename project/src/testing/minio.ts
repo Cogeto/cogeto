@@ -3,7 +3,7 @@ import type { StartedTestContainer } from 'testcontainers';
 
 /**
  * Integration-test MinIO: the same image the compose stack runs, with the
- * single-node KMS key set so bucket encryption (SSE-S3, decision 0008) is
+ * single-node KMS key set so bucket encryption (SSE-S3) is
  * testable exactly as deployed. Credentials mirror the compose dev defaults.
  */
 export interface TestMinio {

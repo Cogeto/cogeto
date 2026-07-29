@@ -1,5 +1,5 @@
 /**
- * Per-instance model provider configuration (decision 0040 ruling 3). One pure
+ * Per-instance model provider configuration. One pure
  * resolver turns the environment into a validated, per-tier provider binding —
  * the SAME resolver for app, worker, bare entrypoints and the eval harness, so
  * the boot log, Settings and the trust-score emission can never disagree about
@@ -25,7 +25,7 @@ export interface TierBinding {
 }
 
 /**
- * Local Ollama runtime binding (decision 0041). `baseUrl` is the runtime ROOT
+ * Local Ollama runtime binding. `baseUrl` is the runtime ROOT
  * (never `/v1` — the adapter derives the OpenAI-compatible surface and the
  * probe endpoint from it). Per-tier timeouts default higher than hosted
  * providers: first-token latency on consumer hardware is seconds, not
@@ -47,7 +47,7 @@ export interface ResolvedModelProviders {
   /** API keys per provider — never logged, stored, or serialized to any DTO. */
   keys: Partial<Record<ModelProviderId, string>>;
   endpoints: { openaiBaseUrl: string; anthropicBaseUrl: string };
-  /** Present only when a tier is bound to the local runtime (decision 0041). */
+  /** Present only when a tier is bound to the local runtime. */
   ollama: OllamaRuntimeConfig | null;
   redacted: boolean;
 }
@@ -81,7 +81,7 @@ export const PROVIDER_PRESETS: Record<string, PresetTiers> = {
     answer: { provider: 'anthropic', model: 'claude-sonnet-4-6' },
     embedding: { provider: 'mistral', model: 'mistral-embed' },
   },
-  // All three tiers on the local Ollama runtime (decision 0041 ruling 4):
+  // All three tiers on the local Ollama runtime
   // generation on the pulled Gemma variant, embeddings on bge-m3 (multilingual,
   // 1024 dimensions). Requires COGETO_OLLAMA_BASE_URL; needs no API key.
   'ollama-local': {
@@ -259,7 +259,7 @@ export function resolveModelProviders(
   if (openaiKey) keys.openai = openaiKey;
   const anthropicKey = read(env, 'COGETO_ANTHROPIC_API_KEY');
   if (anthropicKey) keys.anthropic = anthropicKey;
-  // The local runtime requires no real key (decision 0041 ruling 1): a dummy
+  // The local runtime requires no real key: a dummy
   // bearer is synthesized unless the operator fronts the runtime with an
   // authenticating proxy — so the missing-key refusal below never fires for
   // ollama while staying exactly as strict for every hosted provider.
@@ -268,7 +268,7 @@ export function resolveModelProviders(
   const referenced = [...new Set(TIERS.map((tier) => tiers[tier].provider))];
   const missingKeys = referenced.filter((provider) => !keys[provider]);
 
-  // Local runtime binding (decision 0041 ruling 1): the base URL has NO
+  // Local runtime binding: the base URL has NO
   // default — localhost, LAN, and WireGuard addresses are all deployment
   // choices — so a tier bound to ollama without it refuses boot naming the
   // variable. A pasted `/v1` suffix is tolerated and stripped: the config
@@ -328,7 +328,7 @@ export function resolveModelProviders(
   };
 }
 
-/** Per-tier local timeout (decision 0041 ruling 2), independently settable. */
+/** Per-tier local timeout, independently settable. */
 function readTimeoutMs(
   env: NodeJS.ProcessEnv,
   name: string,

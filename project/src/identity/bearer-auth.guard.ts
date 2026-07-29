@@ -13,9 +13,9 @@ export interface AuthenticatedRequest extends Request {
 
 /**
  * Guards API routes: extracts the Bearer token and attaches the Principal.
- * Registered as a GLOBAL guard (APP_GUARD, QS-18), so authentication is
+ * Registered as a GLOBAL guard (APP_GUARD), so authentication is
  * DEFAULT-DENY — a controller is protected without remembering `@UseGuards`.
- * The four intentionally-public routes opt out with `@Public()`.
+ * The four intentionally-public routes opt out with `@Public`.
  */
 @Injectable()
 export class BearerAuthGuard implements CanActivate {
@@ -37,7 +37,7 @@ export class BearerAuthGuard implements CanActivate {
       throw new UnauthorizedException('missing bearer token');
     }
     request.principal = await this.identity.resolvePrincipal(header.slice('Bearer '.length));
-    // Attribute this request's model calls to the principal (FIX-2 QS-2): fills
+    // Attribute this request's model calls to the principal: fills
     // in the per-request usage scope opened by the app's middleware, so the
     // gateway budget decorator can meter/cap by user without a seam change.
     setUsageUser(request.principal.userId);

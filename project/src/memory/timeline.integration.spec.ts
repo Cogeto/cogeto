@@ -22,7 +22,7 @@ const principalFor = (userId: string): Principal => ({
 });
 
 /**
- * The time-travel read composition (decision 0012) against a real supersession
+ * The time-travel read composition against a real supersession
  * chain. The service invents nothing — it shapes MemoryStore's gated primitives
  * — so these tests pin the visible contract: ordered spans with successors and
  * sources, gates that hold at every point in time, a correct diff, and parity

@@ -7,8 +7,8 @@ import type { ZodType } from 'zod';
  */
 
 /**
- * Per-task model tier (decision 0007 ruling 3). Task sites request a TIER, never
- * a vendor model string — the gateway maps tiers to concrete models from config:
+ * Per-task model tier. Task sites request a TIER, never
+ * a vendor model string — the gateway maps tiers to concrete models from config
  * - `pipeline` — extraction, verification, future consolidation (cheaper model).
  * - `answer`   — chat synthesis and the eval grader (stronger general model).
  * Each method has a sensible default tier, so most callers name none.
@@ -24,7 +24,7 @@ export interface CompletionRequest {
 }
 
 /**
- * Provider-reported token usage, normalized (decision 0040 ruling 4): each
+ * Provider-reported token usage, normalized: each
  * adapter maps its upstream's field names into this one shape so the budget
  * decorator can charge real counts where the provider reports them.
  */
@@ -56,7 +56,7 @@ export abstract class ModelGateway {
   abstract completeStream(request: CompletionRequest): AsyncIterable<string>;
   /**
    * Requests JSON output, parses it, and validates it against the Zod schema.
-   * The input type is free so schemas may use .default() for omitted fields.
+   * The input type is free so schemas may use.default for omitted fields.
    */
   abstract extractStructured<T>(
     schema: ZodType<T, unknown>,
@@ -65,14 +65,14 @@ export abstract class ModelGateway {
   /** Batched; one vector per input text, in order. */
   abstract embed(texts: string[]): Promise<number[][]>;
   /**
-   * The identifier of the model embed() uses — recorded per memory
+   * The identifier of the model embed uses — recorded per memory
    * (embedding_model, migration 0004) so reindex knows when re-embedding
    * is required.
    */
   abstract embeddingModelId(): string;
 
   /**
-   * Cheap, cached reachability probe for the health surface (QS-35) — never on a
+   * Cheap, cached reachability probe for the health surface — never on a
    * request hot path. The base default assumes reachable (in-memory/test
    * gateways are always up); the Mistral impl does a real cached probe,
    * Unconfigured reports "not configured" (still ok — model features are simply

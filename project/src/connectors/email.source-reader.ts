@@ -7,10 +7,10 @@ import { isolateEmailContentDetailed } from '../ingestion/index';
 import { emailMessage } from './persistence/tables';
 
 /**
- * Ingestion's stage-1 port for source_type 'email' (Session O4, decision 0028):
+ * Ingestion's stage-1 port for source_type 'email'
  * the pipeline reads an accepted email through this exactly like a note or file,
  * and the SAME downstream stages run. The extraction input is the NEW content of
- * this message — `isolateEmailContent` unwraps a forwarded original and strips
+ * this message`isolateEmailContent` unwraps a forwarded original and strips
  * quoted reply history + signatures (thread-aware; avoids re-extracting quoted
  * history that is already its own source). The full bodies remain retained on the
  * row untouched. Never touches memory tables — extraction belongs to ingestion.
@@ -33,7 +33,7 @@ export class EmailSourceReader implements SourceReader {
     const subject = row.subject?.trim();
     const isolated = isolateEmailContentDetailed(row.textBody);
     const body = isolated.content;
-    // Email-path authorship (decision 0054), structural on both axes: the copy
+    // Email-path authorship, structural on both axes: the copy
     // was self-routed at intake (the authenticated sender IS the capture user)
     // AND the isolated content is the sender's own new text — not a forwarded
     // original's inner content, not the quoted-history fallback. A pre-0030 row
@@ -67,7 +67,7 @@ export class EmailSourceReader implements SourceReader {
   }
 
   /**
-   * Admission checkpoint (decision 0024): KEY SHARE serializes against the
+   * Admission checkpoint: KEY SHARE serializes against the
    * deletion saga's FOR UPDATE + DELETE of this email row. The saga's coverage
    * of email sources (rows, attachments, raw/HTML objects) ships alongside this.
    */

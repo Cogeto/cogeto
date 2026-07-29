@@ -4,11 +4,11 @@ import { resolveTemporalExpressions } from './temporal-resolver';
 import type { ResolvedInterval } from './temporal-resolver';
 
 /**
- * The extractor's output contract (S2-A §3) and the verifier's verdict contract
+ * The extractor's output contract (§3) and the verifier's verdict contract
  * (§B.3). Both are Zod-validated at the gateway boundary: output that fails the
  * schema is never stored — it surfaces as a retryable job failure.
  *
- * FACT_KINDS lives in @cogeto/shared since F2-A: the memory table stores kind
+ * FACT_KINDS lives in @cogeto/shared since: the memory table stores kind
  * (migration 0011) and the two must never drift.
  */
 
@@ -28,10 +28,10 @@ const temporalSchema = z.object({
 });
 
 /**
- * New temporal contract (decision 0007 ruling 1): the extractor emits raw
+ * New temporal contract: the extractor emits raw
  * expressions and code resolves them. v0001 emits none (defaults to []), so the
  * old resolved `temporal` fields still drive dates until v0002 ships in
- * S3.5-B — nothing breaks mid-session.
+ * — nothing breaks mid-session.
  */
 export const temporalExpressionSchema = z.object({
   /** The source phrase verbatim, e.g. "by Monday". */
@@ -76,7 +76,7 @@ export const candidateFactSchema = z.object({
 /**
  * A single chunk (~1.5k tokens) cannot legitimately contain hundreds of durable
  * facts; a response claiming that many is pathological output, so the array is
- * capped (FIX-2 QS-6 — `.max()`). This is the per-chunk guard; the pipeline
+ * capped (— `.max`). This is the per-chunk guard; the pipeline
  * additionally caps the TOTAL facts per source to a configurable limit.
  */
 export const MAX_FACTS_PER_CHUNK = 200;
@@ -97,7 +97,7 @@ export const verificationOutputSchema = z.object({
 
 export type VerificationOutput = z.infer<typeof verificationOutputSchema>;
 
-/** Batched verification (decision 0057; verification/v0005): one entry per
+/** Batched verification (verification/v0005): one entry per
  * numbered claim. `claim` is 1-based, matching the input blocks. */
 export const verificationBatchOutputSchema = z.object({
   verdicts: z.array(
@@ -112,8 +112,7 @@ export const verificationBatchOutputSchema = z.object({
 export type VerificationBatchOutput = z.infer<typeof verificationBatchOutputSchema>;
 
 /**
- * Resolve a fact's validity interval against the note anchor (§A.6, decision
- * 0007 ruling 1). Accepts BOTH contracts so nothing breaks mid-session:
+ * Resolve a fact's validity interval against the note anchor (§A.6). Accepts BOTH contracts so nothing breaks mid-session
  * - new form: `temporal_expressions` are resolved deterministically by code;
  * - old form (v0001): already-resolved ISO strings pass through unchanged.
  * The new form wins when present.

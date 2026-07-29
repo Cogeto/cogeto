@@ -12,12 +12,12 @@ import { loadConfig } from './config';
 
 /**
  * erase-task-conclusions — the one-shot that MUST run before migration 0035
- * (V2.0 item 3.1; decision 0060).
+ *.
  *
  * `task_conclusion` memories carry provenance pointing at `task_conclusion`
- * rows (decision 0037). Dropping that table with the memories still present
+ * rows. Dropping that table with the memories still present
  * would strand their §A.6 provenance and trip the integrity sweep's orphan arm
- * (decision 0024). So the memories are erased the only way memories are ever
+ *. So the memories are erased the only way memories are ever
  * erased: THROUGH the deletion saga — one enumeration transaction per source,
  * a signed receipt each, Qdrant points and MinIO objects removed, receipt
  * confirmed. The erasure is provable afterwards, exactly like a user's own.

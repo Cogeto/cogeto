@@ -17,7 +17,7 @@ const owner: Principal = {
 };
 
 /**
- * embed_change_requires_reindex (decision 0040 ruling 3): the boot guard's
+ * embed_change_requires_reindex: the boot guard's
  * query — stored vectors from a different embeddings model than the active one
  * are reported (→ the app/worker refuse to start until reindex); rows embedded
  * with the active model or not yet embedded never block.

@@ -8,7 +8,7 @@ import { ActionRegistry } from './action-registry';
 
 /**
  * The ONLY place a consequential effect runs (§A.8) — the worker, never the
- * app. Invoked from the `approval.execute` job wrapped in the S1-B execution
+ * app. Invoked from the `approval.execute` job wrapped in the execution
  * guard (idempotentTask keyed `(approval, <id>, approval.execute)`), so a
  * duplicate delivery claims nothing and the effect runs at most once. Belt and
  * suspenders: it also refuses any row not in `approved`, and treats an already
@@ -47,12 +47,12 @@ export class ApprovalExecutor {
       entityType: 'approval',
       entityId: approvalId,
       // summary/detail are counts + ids by the ActionDefinition contract —
-      // never memory content (QS-1, decision 0025).
+      // never memory content.
       detail: { actionType: row.actionType, summary: result.summary, ...result.detail },
       orgId: row.orgId ?? undefined,
       ownerId: ctx.userId,
     });
-    // The effect's after-commit continuation (QS-27) bubbles to the idempotent
+    // The effect's after-commit continuation bubbles to the idempotent
     // task wrapper, which runs it once this transaction commits.
     return { alreadyExecuted: false, afterCommit: result.afterCommit };
   }

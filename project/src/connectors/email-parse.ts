@@ -1,7 +1,7 @@
 import type { EmailAllowlistKind } from '@cogeto/shared';
 
 /**
- * Pure, deterministic email helpers (decision 0028) — no I/O, no parser: sender
+ * Pure, deterministic email helpers — no I/O, no parser: sender
  * normalization + allowlist matching, a conservative HTML sanitizer for the
  * retained/display HTML, and a quoted-history stripper used ONLY to build the
  * extraction input (the full bodies are always retained verbatim). Unit-tested
@@ -58,7 +58,7 @@ export function normalizeAllowlistValue(kind: EmailAllowlistKind, raw: string): 
 }
 
 /**
- * The acceptance decision (decision 0028 ruling 2): the message's matched sender
+ * The acceptance decision: the message's matched sender
  * must be an `address` entry, or its domain must be a `domain` entry. An empty
  * allowlist matches nothing (closed by default). Subdomains are not implicitly
  * included — the exact domain must be listed.
@@ -78,7 +78,7 @@ export function senderMatchesAllowlist(
 }
 
 /**
- * The sender used for allowlist matching (decision 0028 ruling 2a): the verified
+ * The sender used for allowlist matching (ruling 2a): the verified
  * envelope sender (SMTP MAIL FROM) when present, else the header From.
  */
 export function matchSender(
@@ -90,7 +90,7 @@ export function matchSender(
 
 /**
  * A conservative, dependency-free HTML sanitizer for the RETAINED/display HTML
- * (decision 0028 ruling 5): drops executable and remote-active constructs
+ * drops executable and remote-active constructs
  * (<script>/<style>/<iframe>/<object>/<embed>/<link>/<meta>), inline event
  * handlers (on*), and javascript:/vbscript: URLs. The HTML is stored for display
  * and future use, never rendered as active content in v1. This is defense in
@@ -113,7 +113,7 @@ export function sanitizeHtml(html: string | null | undefined): string | null {
 }
 
 // Extraction-input isolation (quoted-history / signature / forwarded stripping)
-// lives in ingestion as `isolateEmailContent` (Session O4 — email source): it is
+// lives in ingestion as `isolateEmailContent`: it is
 // an extraction-preprocessing concern shared with the golden-set harness, not a
 // retention concern. This module keeps only sender/allowlist normalization and
 // the retention-side HTML sanitizer above.

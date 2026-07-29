@@ -4,8 +4,8 @@ import { memory } from './persistence/tables';
 import { dimensionsFor, MemoryVectorStore } from './persistence/vector-store';
 
 /**
- * Embedding-space integrity (decision 0040 ruling 3): `memory.embedding_model`
- * records each vector's producer (decision 0005 r3). Serving with vectors from
+ * Embedding-space integrity: `memory.embedding_model`
+ * records each vector's producer (r3). Serving with vectors from
  * a DIFFERENT model than the active one silently mixes embedding spaces, so
  * boot refuses until `npm run reindex` re-embeds them. Recall-only rows
  * (`embedding_model IS NULL`) never block.
@@ -22,7 +22,7 @@ export async function listForeignEmbeddingModels(db: Db, activeModel: string): P
 }
 
 /**
- * The DIMENSION half of the guard (decision 0041 ruling 5): the model-name
+ * The DIMENSION half of the guard: the model-name
  * check above cannot see a collection whose vector size disagrees with the
  * active model (a half-finished migration, a restored snapshot). Returns the
  * disagreement, or null when consistent — a missing/empty collection is

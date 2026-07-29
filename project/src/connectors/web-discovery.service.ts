@@ -4,7 +4,7 @@ import { RESEARCH_OPTIONS } from './research-options';
 import type { ResearchOptions } from './research-options';
 
 /**
- * Discovery (decision 0042): given a query, the self-hosted SearXNG instance
+ * Discovery: given a query, the self-hosted SearXNG instance
  * returns ranked public URLs with title and snippet. Discovery is a DISTINCT
  * capability from model inference — it never goes through the model gateway,
  * carries its own caps, and degrades to a typed, user-surfaceable
@@ -22,7 +22,7 @@ export interface DiscoveredPage {
   snippet: string;
   /** SearXNG's aggregate relevance score (higher = more relevant), null if the
    * engine did not provide one. Used to auto-select the best sources without
-   * asking the user to pick (decision 0050). */
+   * asking the user to pick. */
   score: number | null;
 }
 
@@ -52,7 +52,7 @@ export class WebDiscoveryService {
   constructor(@Inject(RESEARCH_OPTIONS) private readonly options: ResearchOptions) {}
 
   async search(query: string): Promise<DiscoveryOutcome> {
-    // Fixture-backed discovery (decision 0059, the Ana sandbox): the demo
+    // Fixture-backed discovery (the Ana sandbox): the demo
     // composition serves ITS pages for every query — nothing real is searched.
     if (this.options.fixtures?.length) {
       return {
@@ -74,7 +74,7 @@ export class WebDiscoveryService {
     }
     const target = new URL('/search', this.options.searxngUrl);
     // POST keeps the query out of URLs and any request-line/access logging —
-    // part of the no-query-logging posture (decision 0042).
+    // part of the no-query-logging posture.
     const form = new URLSearchParams({ q: query, format: 'json' });
 
     let response: Response;

@@ -18,9 +18,9 @@ export const CHAT_ANSWER_REDACTED =
 const IDS_PER_STATEMENT = 100;
 
 /**
- * QS-7 (decision 0025): the deletion saga's DerivedCascade over chat answers.
+ * the deletion saga's DerivedCascade over chat answers.
  * A stored assistant message carries its citation linkage inline as canonical
- * `{{cite:<memory id>}}` tokens (decision 0007 ruling 2) — so any answer whose
+ * `{{cite:<memory id>}}` tokens — so any answer whose
  * stored text cites an erased memory is found by that token, INCLUDING every
  * historical answer, and redacted to a deletion marker inside the enumeration
  * transaction. Runs across owners deliberately: a peer's answer that quoted the
@@ -31,7 +31,7 @@ const IDS_PER_STATEMENT = 100;
  * Idempotent by construction: redaction removes the cite tokens, so a later
  * deletion can never match (or double-count) an already-redacted answer.
  * User messages are never touched — they are the user's own words and remain
- * deletable as sources in their own right (decision 0021).
+ * deletable as sources in their own right.
  */
 @Injectable()
 export class ChatAnswerCascade implements DerivedCascade {

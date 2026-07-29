@@ -2,12 +2,12 @@ import type { CapabilitySummary, ScheduledJobSummary } from '@cogeto/shared';
 import type { Tone } from './status';
 
 /**
- * The Capabilities panel's pure model (P6.7, decision 0055): registry entries
+ * The Capabilities panel's pure model: registry entries
  * from /api/health mapped to the words the panel shows. Kept out of the
  * component so `panel_renders_states` can pin every state's copy without a
  * DOM. Rules: state is never conveyed by colour alone (label + icon always),
  * loud states say the CONSEQUENCE in user terms, and disabled capabilities
- * say how to enable via the operator flow (the web app never toggles them:
+ * say how to enable via the operator flow (the web app never toggles them
  * no docker-level privilege in the product).
  */
 

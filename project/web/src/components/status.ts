@@ -1,7 +1,7 @@
 import type { MemoryStatus } from '@cogeto/shared';
 
 /**
- * The status vocabulary for the whole SPA (O3-C). Status is load-bearing
+ * The status vocabulary for the whole SPA. Status is load-bearing
  * information, so each of the six lifecycle states gets an AA-contrast color
  * (verified: 5.3–6.9:1) AND a distinct label + icon — never color alone, and
  * colorblind-distinguishable (active vs approved, outdated vs replaced differ by
@@ -16,10 +16,10 @@ export interface StatusMeta {
   className: string;
 }
 
-// Dark variants (P6.8) tint each hue over the dark surface and lift the ink to a
+// Dark variants tint each hue over the dark surface and lift the ink to a
 // light shade of the same hue, so every chip keeps AA contrast and its colorblind
 // distinctness (label + icon still carry the meaning). The neutral (slate) chips
-// need no dark: variant — the slate ramp remaps under :root.dark automatically.
+// need no dark: variant — the slate ramp remaps under:root.dark automatically.
 export const STATUS_META: Record<MemoryStatus, StatusMeta> = {
   active: {
     label: 'active',
@@ -54,7 +54,7 @@ export const STATUS_CHIP: Record<MemoryStatus, string> = Object.fromEntries(
 
 export const WARN_STATUSES: MemoryStatus[] = ['uncertain', 'contradicted'];
 
-/** Muted chip for past-belief facts in chat (F3-A, decision 0012 ruling 6). */
+/** Muted chip for past-belief facts in chat. */
 export const PAST_CHIP = 'bg-slate-100 text-slate-600 border border-slate-300';
 
 export const statusLabel = (status: MemoryStatus): string => STATUS_META[status].label;

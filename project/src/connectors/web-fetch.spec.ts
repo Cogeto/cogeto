@@ -4,7 +4,7 @@ import { isPrivateAddress, robotsAllows, WebFetchService } from './web-fetch';
 import type { ResearchOptions } from './research-options';
 
 /**
- * fetcher_hardening — the narrow fetcher's guarantees (decision 0042): SSRF
+ * fetcher_hardening — the narrow fetcher's guarantees: SSRF
  * refusals (schemes, private/loopback/link-local targets, redirects into
  * them), robots.txt honoured, size/type caps enforced, and no script
  * execution — script content can never reach extracted text.

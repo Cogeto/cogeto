@@ -33,8 +33,8 @@ import { verifyChain } from './domain/receipt-chain';
 import type { ConfirmedReceipt } from './domain/receipt-chain';
 
 /**
- * Conversation deletion (P6.9; decision 0056) — a source deletion through the
- * §A.7 saga, extended by enumeration only:
+ * Conversation deletion — a source deletion through the
+ * §A.7 saga, extended by enumeration only
  *
  *   conversation_deletion_cascade — the thread's messages AND every memory
  *     derived from them (and their vectors) are gone
@@ -73,7 +73,7 @@ class ScriptedGateway extends ModelGateway {
     return EMBED_MODEL;
   }
   async extractStructured<T>(schema: ZodType<T>, request: StructuredExtractionRequest): Promise<T> {
-    // Batched verification (decision 0057; verification/v0005): multi-fact
+    // Batched verification (verification/v0005): multi-fact
     // sources verify in one enveloped call — every claim supported, scripted.
     if (request.input.startsWith('CLAIMS UNDER REVIEW')) {
       const batch = {
@@ -247,7 +247,7 @@ describe('conversation deletion cascade (integration: real Postgres + Qdrant + M
     const counts = parseReceiptCounts(receipt['counts_json']);
     expect(new Set(counts.memory_ids)).toEqual(new Set(memoryIds));
     expect(counts.chat_messages_removed).toBe(3);
-    // Never written again since decision 0060 — but still parseable (the
+    // Never written again since — but still parseable (the
     // schema keeps it optional forever so historical receipts verify).
     expect(counts.tasks_removed).toBeUndefined();
     expect(counts.object_keys).toEqual([]);

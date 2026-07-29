@@ -69,9 +69,9 @@ const ANSWER_FACTS_TOP_K = 12;
 /** How much history the chat page loads per request (the default page size). */
 const HISTORY_LIMIT = 200;
 /** Turns of prior conversation the rewriter sees to resolve references (F3).
- * Per conversation since P6.9 — another thread's raw turns never enter. */
+ * Per conversation since — another thread's raw turns never enter. */
 const REWRITE_HISTORY_TURNS = 6;
-/** Active (non-archived) conversations per user (P6.9, decision 0056): keeps
+/** Active (non-archived) conversations per user: keeps
  * the sidebar renderable and nudges archiving; archived ones are unlimited. */
 const MAX_ACTIVE_CONVERSATIONS = 100;
 /** Sidebar preview length — first characters of the last message. */
@@ -80,7 +80,7 @@ const PREVIEW_CHARS = 120;
 /** Surrounding turns shown either side of a remembered message in its drawer. */
 const CONTEXT_TURNS = 2;
 
-/** The per-turn user context (P6.6): record + effective tz + rendered blocks. */
+/** The per-turn user context: record + effective tz + rendered blocks. */
 interface AskContext {
   record: UserContextRecord;
   timeZone: string;
@@ -89,10 +89,10 @@ interface AskContext {
 }
 
 /**
- * The chat area (S3-A). Asking a question is strictly fast path (§A.3): persist
+ * The chat area. Asking a question is strictly fast path (§A.3): persist
  * → retrieve → generate — deliberately NO enqueue and no ingestion-stage work.
  *
- * Capture is separate and explicit (decision 0021): `rememberMessage` routes a
+ * Capture is separate and explicit: `rememberMessage` routes a
  * USER message through the normal pipeline (source_type 'chat'). The persisted
  * chat_message rows are those memories' §A.6 provenance targets. The assistant's
  * own replies are never captured.
@@ -107,24 +107,24 @@ export class ChatService {
     private readonly retrieval: RetrievalService,
     private readonly gateway: ModelGateway,
     private readonly directory: UserDirectory,
-    /** The chat → email-reply seam (Session O4). Absent in the worker and bare
+    /** The chat → email-reply seam. Absent in the worker and bare
      * test harnesses — then the reply intent is simply inactive. */
     @Optional() @Inject(CHAT_REPLY_RESOLVER) private readonly replyResolver?: ChatReplyResolverPort,
-    /** The chat → research seam (Priority 5 Part B). Absent in the worker —
+    /** The chat → research seam. Absent in the worker —
      * then the research intent is simply inactive. */
     @Optional()
     @Inject(CHAT_RESEARCH_RESOLVER)
     private readonly researchResolver?: ChatResearchResolverPort,
-    // Instance timezone for the router's precomputed rewrite (QS-32 parity
+    // Instance timezone for the router's precomputed rewrite (parity
     // with retrieval's own rewriter call).
     @Optional()
     @Inject(INSTANCE_TIMEZONE)
     private readonly timeZone: string = DEFAULT_INSTANCE_TIMEZONE,
-    /** Per-user context + language (P6.6). Absent in bare test harnesses —
+    /** Per-user context + language. Absent in bare test harnesses —
      * then the defaults apply (instance timezone, English, no profile). */
     @Optional()
     private readonly userContext?: UserContextService,
-    /** The chat → skill seam (Priority 7, decision 0059). Appended LAST so
+    /** The chat → skill seam. Appended LAST so
      * positional harness constructions keep working; absent in the worker —
      * then the brief intent is simply inactive. */
     @Optional()
@@ -133,7 +133,7 @@ export class ChatService {
   ) {}
 
   /**
-   * The sidebar's conversation list (P6.9): the caller's own conversations,
+   * The sidebar's conversation list: the caller's own conversations,
    * newest activity first, each with the last-message preview. Owner-gated by
    * construction — the WHERE clause is the gate, like every chat query.
    */
@@ -246,7 +246,7 @@ export class ChatService {
   }
 
   /**
-   * "Remember this" (decision 0021): route a USER message through the normal
+   * "Remember this": route a USER message through the normal
    * pipeline (source_type 'chat', source_id = message id). Transactional via the
    * outbox (§A.3), idempotency-keyed so a double-click captures at most once. The
    * assistant's replies are refused — its output is not evidence about the world.
@@ -317,7 +317,7 @@ export class ChatService {
   }
 
   /**
-   * The chat context behind a remembered memory's source drawer (decision 0021):
+   * The chat context behind a remembered memory's source drawer
    * the message plus a couple of surrounding turns, owner-scoped, framed so the
    * provenance reads as a conversation rather than a note body.
    */
@@ -330,7 +330,7 @@ export class ChatService {
     const target = rows[0];
     if (!target) throw new NotFoundException(`message ${messageId} not found`);
 
-    // Surrounding turns come from the SAME conversation only (P6.9) — the
+    // Surrounding turns come from the SAME conversation only — the
     // drawer's framing must never blend another thread's turns in.
     const before = await this.db
       .select()
@@ -382,7 +382,7 @@ export class ChatService {
    * citation map before tokens arrive), then token deltas, then done with the
    * stored form of the answer.
    *
-   * Routing (decision 0046, amended by 0060) — one router, all capabilities,
+   * Routing (amended by 0060) — one router, all capabilities,
    * in this order: deterministic guards first (small-talk lexicon, skill
    * brief, research), then ONE bounded pipeline-tier call (the rewriter, now
    * also the classifier) whose result routes model-classified small talk, the reply
@@ -395,14 +395,14 @@ export class ChatService {
     conversationId: string,
   ): AsyncGenerator<ChatStreamEvent> {
     // The conversation resolves FIRST (owner-gated, 404 otherwise): a message
-    // always lands in the conversation it was sent to (P6.9), even if the
+    // always lands in the conversation it was sent to, even if the
     // client switches threads mid-stream.
     await this.requireConversation(principal, conversationId);
-    // The user's context (P6.6): timezone, profile, language — one PK read,
+    // The user's context: timezone, profile, language — one PK read,
     // shaping every model call and deterministic reply in this turn.
     const ctx = await this.loadAskContext(principal);
     // Prior turns (before this one) feed the conversational rewriter (F3) —
-    // from the CURRENT conversation only (P6.9): cross-thread continuity is
+    // from the CURRENT conversation only: cross-thread continuity is
     // memory retrieval's job, never raw turn context.
     const history = await this.recentTurns(conversationId);
     const [userRow] = await this.db
@@ -411,7 +411,7 @@ export class ChatService {
       .returning();
     await this.touchConversation(conversationId, userRow!.createdAt);
 
-    // Small talk, deterministic (decision 0046): a pure pleasantry gets a
+    // Small talk, deterministic: a pure pleasantry gets a
     // natural reply — no retrieval, no model call, no citation theatre.
     const smallTalk = detectSmallTalk(content);
     if (smallTalk) {
@@ -419,7 +419,7 @@ export class ChatService {
       return;
     }
 
-    // Skill-brief intent (Priority 7, decision 0059): checked BEFORE the
+    // Skill-brief intent: checked BEFORE the
     // research patterns so "research X before Thursday" becomes a brief, not
     // a plain search. This turn only starts PLANNING (gather + propose
     // queries); nothing leaves until the plan is approved on the run view.
@@ -431,7 +431,7 @@ export class ChatService {
       }
     }
 
-    // Research intent (Priority 5 Part B, decision 0045): deterministic,
+    // Research intent: deterministic,
     // explicitly invoked — an imperative research verb, never an ordinary
     // question. This turn only OPENS the gate (minimise + record a proposed
     // run); NOTHING is sent until the user approves on the Research page.
@@ -455,7 +455,7 @@ export class ChatService {
       }
     }
 
-    // The router call (decision 0046): ONE bounded pipeline-tier call rewrites
+    // The router call: ONE bounded pipeline-tier call rewrites
     // the turn AND classifies it. Failure/timeout falls back to the raw query
     // with class 'personal' — the memory-question path.
     const rewrite = await this.routerRewrite(history, content, { alwaysClassify: true }, ctx);
@@ -473,7 +473,7 @@ export class ChatService {
       return;
     }
 
-    // Draft-a-reply intent (Session O4): deterministic detection on the raw
+    // Draft-a-reply intent: deterministic detection on the raw
     // turn; the router's resolved entities let "draft a reply to her last
     // email" reach the right sender. If the resolver is wired, this turn
     // creates an email reply draft (or asks / declines) — fast path, no
@@ -483,7 +483,7 @@ export class ChatService {
       return;
     }
 
-    // Memory-first (decision 0046): retrieval runs for BOTH personal and
+    // Memory-first: retrieval runs for BOTH personal and
     // knowledge questions — grounded facts always come first; general
     // knowledge supplements, marked, never replaces.
     const knowledge = rewrite.questionClass === 'knowledge';
@@ -493,7 +493,7 @@ export class ChatService {
       rewrite,
     });
     const facts = retrieved.memories.map((hit, i) => toFactDto(hit, i));
-    // Attribute cited shared facts to their owner (O2-B) — name-only; the gates
+    // Attribute cited shared facts to their owner — name-only; the gates
     // already decided these were visible to the caller.
     const names = await this.directory.displayNames(facts.map((f) => f.ownerId));
     for (const fact of facts) fact.ownerName = names.get(fact.ownerId) ?? null;
@@ -501,13 +501,13 @@ export class ChatService {
 
     let answer: string;
     if (retrieved.mode === 'open_loops' && (retrieved.openLoops?.length ?? 0) === 0) {
-      // Zero open loops is an ANSWER (all clear), not a data gap (F3-B). A
+      // Zero open loops is an ANSWER (all clear), not a data gap. A
       // deterministic string cannot mirror; it follows the anchor (0052).
       answer = nothingOpen(ctx.record.preferredLanguage);
       yield { type: 'token', text: answer };
     } else if (facts.length === 0 && !knowledge && !hasProfileContext(ctx.record)) {
       // The zero-retrieval path: no model call, no generation from thin air.
-      // With profile context set (decision 0051), the model DOES answer: the
+      // With profile context set, the model DOES answer: the
       // settings are provided ground ("where do I work?" deserves the honest
       // "you've set … in Settings" reply), the honest-gap rules still hold,
       // and the sanitizer still strips any invented citation.
@@ -540,7 +540,7 @@ export class ChatService {
       this.logger.warn(`citation_violation stripped=${violations}`);
     }
     const row = await this.storeAssistant(principal, conversationId, stored);
-    // The research offer (decision 0046): every knowledge-class answer OFFERS
+    // The research offer: every knowledge-class answer OFFERS
     // research as a one-tap bridge into the existing gate — never a silent
     // search. The offer carries the self-contained topic; tapping it proposes.
     const researchOffer = knowledge && this.researchResolver ? { topic: rewrite.query } : null;
@@ -554,7 +554,7 @@ export class ChatService {
   }
 
   /** The router's bounded rewrite call — shared fallback semantics (0046).
-   * With an ask context (P6.6), dates resolve against the USER's timezone and
+   * With an ask context, dates resolve against the USER's timezone and
    * the rewriter input carries the now-block. */
   private routerRewrite(
     history: ConversationTurn[],
@@ -574,7 +574,7 @@ export class ChatService {
   }
 
   /**
-   * The per-turn user context (P6.6): the stored record (or the defaults when
+   * The per-turn user context: the stored record (or the defaults when
    * the service is absent or the user never set anything), the effective
    * timezone (user override, else instance), and the two rendered now-blocks —
    * with the LANGUAGE rule for answer-tier calls, without it for the rewriter
@@ -586,7 +586,7 @@ export class ChatService {
       record = (await this.userContext?.get(principal.userId)) ?? EMPTY_USER_CONTEXT;
     } catch {
       // Context is an enhancement, never a gate: any read failure means the
-      // turn proceeds exactly as before P6.6.
+      // turn proceeds exactly as before.
     }
     const timeZone = record.timezone ?? this.timeZone;
     const now = new Date();
@@ -599,8 +599,8 @@ export class ChatService {
   }
 
   /**
-   * Deterministic small talk (decision 0046): a natural, brief reply in the
-   * matched language. No retrieval, no model call, no citations — "thanks!"
+   * Deterministic small talk: a natural, brief reply in the
+   * matched language. No retrieval, no model call, no citations"thanks!"
    * never earns a source chip or a "nothing on record".
    */
   private async *handleSmallTalk(
@@ -630,7 +630,7 @@ export class ChatService {
   }
 
   /**
-   * Model-classified small talk / meta (decision 0046): pleasantries and
+   * Model-classified small talk / meta: pleasantries and
    * questions about Cogeto itself that the lexicon does not cover ("what can
    * you do?"). A brief answer-tier reply with the recent turns for tone — no
    * retrieval, and the sanitizer still guarantees no marker can leak.
@@ -663,8 +663,8 @@ export class ChatService {
   }
 
   /**
-   * The draft-a-reply chat flow (Session O4). Resolve the target email against
-   * the owner's recent emails, then act like a thoughtful assistant:
+   * The draft-a-reply chat flow. Resolve the target email against
+   * the owner's recent emails, then act like a thoughtful assistant
    *  - 0 matches      → say so, point to the drawer's "Draft reply".
    *  - >1 for a NAMED target → list the candidates and ask which (create nothing).
    *  - 1 (or "the last one") → create the draft via the approval path and confirm
@@ -684,7 +684,7 @@ export class ChatService {
   ): AsyncGenerator<ChatStreamEvent> {
     yield { type: 'sources', facts: [] };
     let answer: string;
-    // The inline gate's handle (decision 0047): lets the chat surface open the
+    // The inline gate's handle: lets the chat surface open the
     // SAME gate in place. Null when proposing failed.
     let proposalRef: { runId: string } | null = null;
     try {
@@ -694,11 +694,11 @@ export class ChatService {
         lang === 'hr'
           ? `Pripremio sam upit za istraživanje — ništa još nije poslano. ` +
             `Predloženi upit: "${proposal.minimisedQuery}" (${proposal.minimiseReason}) ` +
-            `Uredi ili odobri upit ovdje u razgovoru (ili kasnije na stranici Research) — ` +
+            `Uredi ili odobri upit ovdje u razgovoru (ili kasnije na stranici Research). ` +
             `tek tada išta napušta ovu instancu.`
           : `I've prepared a research query — nothing has been sent yet. ` +
             `Proposed query: "${proposal.minimisedQuery}" (${proposal.minimiseReason}) ` +
-            `Edit or approve it right here in the conversation (or later from the Research page) — ` +
+            `Edit or approve it right here in the conversation (or later from the Research page). ` +
             `only what you approve leaves this instance.`;
     } catch (error) {
       this.logger.warn(
@@ -721,7 +721,7 @@ export class ChatService {
   }
 
   /**
-   * The skill-brief opener (Priority 7, decision 0059): start planning —
+   * The skill-brief opener: start planning —
    * gather from memory, propose the query plan — and hand the user the run
    * view, where the plan gate lives. Deterministic confirmation text; an
    * ambiguous subject asks and creates nothing.
@@ -748,11 +748,11 @@ export class ChatService {
         answer =
           lang === 'hr'
             ? `Pripremam brief o "${subject}". Provjerio sam što već znaš i predložio ` +
-              `${proposal.queryCount} ${proposal.queryCount === 1 ? 'pretragu' : 'pretrage'} — ` +
+              `${proposal.queryCount} ${proposal.queryCount === 1 ? 'pretragu' : 'pretrage'}: ` +
               `ništa još nije poslano. Otvori tijek na stranici Skills, odobri ili uredi ` +
               `plan pretraga, i prati svaki korak kako nastaje.`
             : `I'm preparing a brief on "${subject}". I've checked what you already know and ` +
-              `proposed ${proposal.queryCount} ${proposal.queryCount === 1 ? 'search' : 'searches'} — ` +
+              `proposed ${proposal.queryCount} ${proposal.queryCount === 1 ? 'search' : 'searches'}: ` +
               `nothing has been sent yet. Open the run on the Skills page to approve or edit ` +
               `the search plan, and watch each step as it happens.`;
       }
@@ -791,7 +791,7 @@ export class ChatService {
         const list = candidates
           .map(
             (c, i) =>
-              `${i + 1}. ${c.from} — "${c.subject ?? '(no subject)'}" (${new Date(c.receivedAt).toLocaleDateString()})`,
+              `${i + 1}. ${c.from}, "${c.subject ?? '(no subject)'}" (${new Date(c.receivedAt).toLocaleDateString()})`,
           )
           .join('\n');
         answer = `I found more than one email that might match "${target}". Which one should I reply to?\n\n${list}\n\nTell me the sender or subject and I'll draft it.`;
@@ -812,7 +812,7 @@ export class ChatService {
   }
 
   /** The last few turns of THIS conversation, oldest first — context for the
-   * rewriter (F3). Scoped per conversation (P6.9): a fact stated raw in one
+   * rewriter (F3). Scoped per conversation: a fact stated raw in one
    * thread never rides another thread's turn context. */
   private async recentTurns(conversationId: string): Promise<ConversationTurn[]> {
     const rows = await this.db
@@ -824,7 +824,7 @@ export class ChatService {
     return rows.reverse();
   }
 
-  /** Controller pre-stream check (P6.9): 404 before SSE headers flush. */
+  /** Controller pre-stream check: 404 before SSE headers flush. */
   async assertConversation(principal: Principal, conversationId: string): Promise<void> {
     await this.requireConversation(principal, conversationId);
   }
@@ -866,7 +866,7 @@ export class ChatService {
     return { id: row!.id };
   }
 
-  /** updated_at IS the last-message time (decision 0056). */
+  /** updated_at IS the last-message time. */
   private async touchConversation(conversationId: string, at: Date): Promise<void> {
     await this.db
       .update(conversation)
@@ -875,7 +875,7 @@ export class ChatService {
   }
 
   /**
-   * The auto-title request (P6.9): exactly ONCE per conversation — after its
+   * The auto-title request: exactly ONCE per conversation — after its
    * FIRST exchange, while untitled and never manually named. One transactional
    * enqueue; the job retries with backoff on failure and, exhausted, parks in
    * dead_letter with the thread simply staying "New conversation". Every later
@@ -921,7 +921,7 @@ export class ChatService {
   }
 }
 
-/** The wire form of a conversation row (P6.9). */
+/** The wire form of a conversation row. */
 function toConversationDto(row: ConversationRow, lastMessage: string | null): ConversationDto {
   return {
     id: row.id,
@@ -950,7 +950,7 @@ function toFactDto(hit: RetrievedMemory, index: number): ChatFactDto {
     validFrom: hit.memory.validFrom?.toISOString() ?? null,
     validUntil: hit.memory.validUntil?.toISOString() ?? null,
     signals: hit.signals,
-    // The past-framing data contract (decision 0012 ruling 6): computed here,
+    // The past-framing data contract: computed here,
     // consumed by the answer prompt AND the UI chip — testable without a model.
     pastBelief: isPastBelief(hit.memory),
     supersededBy: hit.memory.supersededBy,

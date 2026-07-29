@@ -28,7 +28,7 @@ import { SkillPlanner } from './skill-planner';
 import { SKILL_ADVANCE_JOB_TYPE, SkillRunService } from './skill-run.service';
 
 /**
- * The research-brief skill's brief (issue #262): memory integration, web
+ * The research-brief skill's brief: memory integration, web
  * citation with URL + fetch time, contradiction surfacing, and the anchor
  * language — against real Postgres + Qdrant with a scripted gateway.
  */
@@ -197,7 +197,7 @@ describe('research-brief skill: the brief (integration)', () => {
       store,
     );
     runs = new SkillRunService(tdb.db);
-    // The user's language anchor is hr (decision 0052): the brief is
+    // The user's language anchor is hr: the brief is
     // Cogeto-initiated, so it must speak Croatian whatever the scaffolding.
     const userContext = {
       get: async () => ({ ...EMPTY_USER_CONTEXT, preferredLanguage: 'hr' as const }),
@@ -328,7 +328,7 @@ describe('research-brief skill: the brief (integration)', () => {
     expect(run!.brief).toContain('Contradictions and open questions');
   });
 
-  it('the brief speaks the anchor language (decision 0052): the LANGUAGE line is forced strict', async () => {
+  it('the brief speaks the anchor language: the LANGUAGE line is forced strict', async () => {
     expect(gateway.lastBriefInput).toContain(
       'LANGUAGE: always answer in Croatian, whatever language',
     );

@@ -1,5 +1,5 @@
 /**
- * Ana sandbox (decision 0022 §4): a subtle, permanent banner in demo mode — a
+ * Ana sandbox (§4): a subtle, permanent banner in demo mode — a
  * live sandbox with fictional data that resets periodically, and a single
  * unobtrusive link to cogeto.eu. No signup prompts anywhere. Fixed to the bottom
  * so it never shifts page layout; pointer-events pass through except the link.

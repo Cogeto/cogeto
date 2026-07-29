@@ -34,13 +34,13 @@ export interface MailEnvelope {
    * The SMTP SPF verdict for the envelope sender, from the Haraka `spf` plugin
    * (via the `x-cogeto-spf` intake header): 'pass' | 'fail' | 'softfail' |
    * 'neutral' | 'none' | 'temperror' | 'permperror'. Null when unknown (e.g. a
-   * dev instance without the plugin). Drives the SEC-1 authentication gate.
+   * dev instance without the plugin). Drives the authentication gate.
    */
   spfResult?: string | null;
 }
 
 /** The intake verdict the internal endpoint maps to an SMTP response (ruling 7).
- * Sender-routed capture (decision 0031) can store a copy per matching user,
+ * Sender-routed capture can store a copy per matching user,
  * hence a list of stored email ids. */
 export type IntakeResult =
   | { accepted: true; emailIds: string[] }
@@ -57,8 +57,7 @@ interface PreparedObject {
 }
 
 /**
- * Inbound email intake (Session O4, decision 0028; routing revised by decision
- * 0031): parse the raw RFC822, resolve the RECIPIENT USERS from the sender —
+ * Inbound email intake (, routing revised by): parse the raw RFC822, resolve the RECIPIENT USERS from the sender —
  * a registered user's own address routes to that user; otherwise every user
  * whose personal allowlist matches the sender receives a copy; otherwise the
  * message is refused (closed by default; the bootstrap admin account never
@@ -70,20 +69,20 @@ interface PreparedObject {
  *
  * A refused message stores NOTHING but a metadata-only refusal row. Storage is
  * reached only through the memory module's object-store + file-metadata ports
- * (decision 0003 ruling 2); this service owns the email_* tables.
+ *; this service owns the email_* tables.
  */
 @Injectable()
 export class EmailIntakeService {
   private readonly logger = new Logger(EmailIntakeService.name);
   /**
-   * In-process per-sender fixed-window intake counter (SEC-2). A single-tenant
+   * In-process per-sender fixed-window intake counter. A single-tenant
    * instance runs one app process, so an in-memory window is sufficient and
    * needs no Redis; it bounds the ingestion/model spend one internet sender can
    * drive before the allowlist/routing checks even run.
    */
   private readonly intakeWindows = new Map<string, { count: number; resetAt: number }>();
 
-  /** True if this sender is still under the per-window intake cap (SEC-2). */
+  /** True if this sender is still under the per-window intake cap (). */
   private withinIntakeRate(sender: string | null): boolean {
     const max = this.options.intakeMaxPerSenderPerWindow;
     if (!max || max <= 0) return true; // cap disabled
@@ -124,15 +123,15 @@ export class EmailIntakeService {
     const envelopeSender = normalizeAddress(envelope.mailFrom);
     const spf = (envelope.spfResult ?? '').trim().toLowerCase();
 
-    // (0a) Hard SPF failure (SEC-1) — the sender's domain publishes SPF and this
-    //      host is NOT authorised: a forgery. Refuse BEFORE parsing (SEC-2 — no
+    // (0a) Hard SPF failure — the sender's domain publishes SPF and this
+    //      host is NOT authorised: a forgery. Refuse BEFORE parsing ( — no
     //      MIME work, no model spend on spoofed mail).
     if (spf === 'fail' || spf === 'softfail') {
       await this.refuse(envelope, envelopeSender, 'spf_failed');
       return { accepted: false, status: 'refused', reason: 'sender failed SPF authentication' };
     }
 
-    // (0b) Per-sender intake rate cap (SEC-2) — bound the ingestion/model spend
+    // (0b) Per-sender intake rate cap — bound the ingestion/model spend
     //      one internet sender can drive. Checked before parsing.
     if (!this.withinIntakeRate(envelopeSender)) {
       await this.refuse(envelope, envelopeSender, 'rate_limited');
@@ -151,9 +150,9 @@ export class EmailIntakeService {
       return { accepted: false, status: 'bad_recipient', reason: 'recipient not accepted here' };
     }
 
-    // (2) Sender-routed recipients (decision 0031) — refuse rather than guess.
+    // (2) Sender-routed recipients — refuse rather than guess.
     //     The self-route (registered user → self) requires an AUTHENTICATED
-    //     sender (SEC-1) so a spoofed From cannot inject that user's memory.
+    //     sender so a spoofed From cannot inject that user's memory.
     const recipients = await this.resolveRecipients(matchedSender, senderAuthenticated);
     if (recipients.length === 0) {
       await this.refuse(envelope, matchedSender, 'sender_not_recognized');
@@ -176,7 +175,7 @@ export class EmailIntakeService {
     }
 
     // (4) One retained copy per recipient, each under that user's default
-    //     capture scope. A mid-loop failure aborts with copies already stored:
+    //     capture scope. A mid-loop failure aborts with copies already stored
     //     Haraka receives a transient 451 and retries — thread-aware dedup and
     //     idempotent pipeline jobs absorb the re-delivery.
     const emailIds: string[] = [];
@@ -212,7 +211,7 @@ export class EmailIntakeService {
     if (adminEmail && matchedSender === adminEmail) return [];
 
     // Rule 1 (self-route): a message claiming to be FROM a registered user is
-    // captured for them ONLY when the sender is authenticated (SEC-1) — else a
+    // captured for them ONLY when the sender is authenticated — else a
     // spoofed From would inject memory into that user's account. When SPF
     // authentication is not required (a closed test instance), the legacy
     // behaviour is kept. An unauthenticated self-claim falls through to the
@@ -220,7 +219,7 @@ export class EmailIntakeService {
     const self = await this.directory.userByEmail(matchedSender);
     if (self && (senderAuthenticated || !this.options.requireAuthenticatedSender)) {
       // Self-route = the message was written/sent BY the capture user — the
-      // structural authorship fact the derivation rule needs (decision 0054).
+      // structural authorship fact the derivation rule needs.
       return [{ userId: self.userId, orgId: self.orgId, selfRouted: true }];
     }
 
@@ -399,7 +398,7 @@ export class EmailIntakeService {
     reason: string,
   ): Promise<void> {
     // Metadata only — never a body (ruling 7). Refusals carry no owner under
-    // sender routing (nobody matched — decision 0031); a null owner makes the
+    // sender routing (nobody matched); a null owner makes the
     // refusal visible to every user's "Recently refused" so any of them can
     // claim the sender. Best-effort; a logging failure must not turn a clean
     // refusal into a 500.

@@ -48,7 +48,7 @@ const uploadFlagsSchema = z.object({
  * embed+store → reconcile). Deletion is NOT here: a file source is deleted
  * through the existing /api/sources saga, unchanged (F1 handoff).
  *
- * :key is the object key (path segments URL-encoded by the caller), exactly
+ * key is the object key (path segments URL-encoded by the caller), exactly
  * like the source-deletion routes.
  */
 @Controller('files')
@@ -71,7 +71,7 @@ export class FilesController {
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
     }
-    // Omitted flags fall back to the user's saved defaults (§A.9, O1-C).
+    // Omitted flags fall back to the user's saved defaults (§A.9).
     const defaults = await this.settings.get(request.principal);
     const { objectKey } = await this.files.upload(
       request.principal,

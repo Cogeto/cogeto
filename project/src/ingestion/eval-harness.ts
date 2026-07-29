@@ -21,14 +21,14 @@ import { EXTRACTION_PROMPT, VERIFICATION_PROMPT } from './prompt-versions';
  * embedding cosine similarity of claim vs content_gist meets the versioned
  * threshold AND the label's entities are sufficiently covered by the fact.
  *
- * Verification agreement v0 rule (spec §5, operationalized):
+ * Verification agreement v0 rule (spec §5, operationalized)
  * - `verification_expected: "supported"` — the case agrees when every fact
  *   matched to an expected label got verdict `supported`.
  * - `verification_expected: "unsupported"` (designed-trap cases) — the case
  *   agrees when no extracted fact OUTSIDE the expected labels was admitted as
  *   `supported` AND unhedged: extractor abstention, verifier demotion, and the
  *   extractor's hedge flag (which admits the fact as `uncertain` regardless of
- *   verdict — the S3.5-B admission rule) all count as correct trap handling.
+ *   verdict — the admission rule) all count as correct trap handling.
  *   A faithfully hedged stray is `supported` by design (v0002 calibration)
  *   yet never remembered as active — the trap checks what gets REMEMBERED.
  */
@@ -45,7 +45,7 @@ const expectedMemorySchema = z.object({
 const expectedFileSchema = z.object({
   case_id: z.string(),
   source_type: z.string().default('user_note'),
-  /** Per-case anchor (S3.5-A): pins relative-date cases to a fixed date forever. */
+  /** Per-case anchor: pins relative-date cases to a fixed date forever. */
   source_date: z.string().optional(),
   expected_memories: z.array(expectedMemorySchema).default([]),
   must_not_extract: z.array(z.string()).default([]),
@@ -131,7 +131,7 @@ async function loadCases(goldenDir: string): Promise<LoadedCase[]> {
       .sort();
     for (const dir of caseDirs) {
       const base = path.join(goldenDir, lang, dir);
-      // Pair cases (pair.json — F2-A) belong to the reconciliation harness;
+      // Pair cases (pair.json) belong to the reconciliation harness;
       // this one scores extraction cases only.
       const entries = await readdir(base);
       if (entries.includes('pair.json')) continue;
@@ -196,7 +196,7 @@ export async function runGoldenEval(options: {
       ? new Date(testCase.expected.source_date)
       : referenceTime;
     // Email cases run through the SAME thread-aware pre-processing the email
-    // SourceReader applies (Session O4): quoted history, signatures, and
+    // SourceReader applies: quoted history, signatures, and
     // forwarding wrappers are isolated before extraction, so a threaded case
     // scores on its new content only — exactly as production would see it.
     const isEmail = testCase.expected.source_type === 'email';
@@ -299,7 +299,7 @@ export async function runGoldenEval(options: {
     let agreed: boolean | null = null;
     if (expectedVerdict === 'unsupported') {
       // Hedged strays are admitted `uncertain` whatever the verdict says
-      // (admission rule, S3.5-B) — the trap is only sprung by a stray the
+      // (admission rule) — the trap is only sprung by a stray the
       // system would remember as active.
       const straySupported = verified.filter(
         (v, i) => !factMatched[i] && v.verdict === 'supported' && !v.fact.hedged,

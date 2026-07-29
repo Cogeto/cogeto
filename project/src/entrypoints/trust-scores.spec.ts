@@ -18,7 +18,7 @@ import {
 import type { PartialFile } from './trust-scores';
 
 /**
- * Trust scores (O7, decision 0032): the published per-release quality record.
+ * Trust scores (O7): the published per-release quality record.
  * Covers — schema validation of the example + every backfilled release file,
  * index integrity (every listed file exists, newest-first, nothing unlisted),
  * the immutability guard, and the partial-emission merge.
@@ -93,7 +93,7 @@ const chatPartial = (id = 'mistral-default'): PartialFile => ({
   },
 });
 
-describe('trust scores — published files validate (decision 0032)', () => {
+describe('trust scores — published files validate', () => {
   it('the published example is schema-valid', () => {
     const example = JSON.parse(readFileSync(path.join(SCHEMA_DIR, 'example.json'), 'utf8'));
     expect(() => trustScoresDocumentSchema.parse(example)).not.toThrow();
@@ -165,7 +165,7 @@ describe('trust scores — emission and merge', () => {
 });
 
 /**
- * eval_emission_config_correct (decision 0040 ruling 5): both harnesses emit
+ * eval_emission_config_correct: both harnesses emit
  * the configuration through this one helper over the SAME resolver the gateway
  * boots with — the emitted id and models are the exact active configuration.
  */
@@ -207,7 +207,7 @@ describe('eval_emission_config_correct', () => {
     expect(emission.id).toMatch(/^[a-z0-9][a-z0-9-]*$/);
   });
 
-  it('emits the local configurations with correct ids (decision 0041 ruling 6)', () => {
+  it('emits the local configurations with correct ids', () => {
     // All-local: the ollama-local preset id.
     const allLocal = configurationForEmission(
       resolveModelProviders(
@@ -271,7 +271,7 @@ describe('trust scores — publish (immutability + index)', () => {
     expect(index).toEqual([{ version: 'v1.2.3', date: '2026-07-16', path: 'v1.2.3.json' }]);
   });
 
-  it('REFUSES to overwrite an existing release file (immutable — decision 0032)', () => {
+  it('REFUSES to overwrite an existing release file (immutable)', () => {
     const dir = tmp();
     const partial = writePartial(dir);
     const args = {

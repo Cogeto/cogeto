@@ -3,13 +3,13 @@ import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 /**
- * Demo login credentials (decision 0027, revising 0022 ruling 1). The sandbox is
+ * Demo login credentials (revising 0022 ruling 1). The sandbox is
  * no longer auto-open: instead of the app publishing Ana's bearer token on the
  * public /api/config, the operator logs in with a username + a GENERATED
  * password that only they (via the seed/reset logs or the credentials file) can
  * see. This module owns generating, persisting, and surfacing that password.
  *
- * Two files live next to the demo session file (same demo-config volume):
+ * Two files live next to the demo session file (same demo-config volume)
  *  - `demo-login.json`  — machine-readable { username, password }, read by the
  *    app to verify a POST /api/config/demo-login attempt. World-readable (0644)
  *    like the session file, because the app runs as a different uid.
@@ -20,7 +20,7 @@ import { dirname, join } from 'node:path';
  * demo bootstrap (zitadel-admin, http-client, …).
  */
 
-/** The fixed sandbox login name (decision 0027). The password rotates; this does not. */
+/** The fixed sandbox login name. The password rotates; this does not. */
 export const DEMO_USERNAME = 'ana@cogeto.localhost';
 
 export interface DemoCredentials {
@@ -65,7 +65,7 @@ export async function readDemoLogin(demoSessionFile: string): Promise<DemoCreden
 
 async function writeWorldReadable(file: string, content: string): Promise<void> {
   await mkdir(dirname(file), { recursive: true }).catch(() => undefined);
-  // 0644 ON PURPOSE (mirrors the session file, decision 0022): the seed job runs
+  // 0644 ON PURPOSE (mirrors the session file): the seed job runs
   // as root but the app process (uid `node`) must read demo-login.json.
   await writeFile(file, content, { mode: 0o644 });
   await chmod(file, 0o644).catch(() => undefined);
@@ -93,7 +93,7 @@ export async function ensureDemoCredentials(
 
 function credentialsText(c: DemoCredentials): string {
   return [
-    'Cogeto demo sandbox login (decision 0027)',
+    'Cogeto demo sandbox login',
     `  username: ${c.username}`,
     `  password: ${c.password}`,
     '',

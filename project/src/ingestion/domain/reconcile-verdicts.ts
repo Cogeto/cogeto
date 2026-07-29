@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /**
- * Output contracts of the two reconciliation prompt families (decision 0010;
+ * Output contracts of the two reconciliation prompt families (
  * §B.7). Zod-validated at the gateway boundary: output that fails the schema
  * is a retryable job failure, never an action.
  *

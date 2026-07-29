@@ -6,7 +6,7 @@ import { ChatController } from './chat.controller';
 import type { ChatService } from './chat.service';
 import type { SseLimits } from '../../infrastructure/index';
 
-/** FIX-2 QS-14: concurrent-stream cap + idle/max-duration abort on chat SSE. */
+/**: concurrent-stream cap + idle/max-duration abort on chat SSE. */
 
 const principal: Principal = {
   userId: 'user-a',
@@ -18,7 +18,7 @@ const principal: Principal = {
 };
 const req = () => ({ principal }) as never;
 
-/** A valid uuid for the (P6.9) conversation the fake asks land in. */
+/** A valid uuid for the conversation the fake asks land in. */
 const CONV = '00000000-0000-4000-8000-0000000000c0';
 
 function fakeResponse(): Response & { events: ChatStreamEvent[]; ended: boolean } {
@@ -55,7 +55,7 @@ const limits = (over: Partial<SseLimits> = {}): SseLimits => ({
   ...over,
 });
 
-describe('chat SSE limits (QS-14)', () => {
+describe('chat SSE limits', () => {
   it('caps concurrent streams per principal (429 before the stream starts)', async () => {
     const gate = deferred();
     const chat = {

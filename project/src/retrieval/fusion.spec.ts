@@ -4,7 +4,7 @@ import { fuseAndRank } from './fusion';
 import type { RankedList } from './fusion';
 
 /**
- * fusion_multipliers: the S3-A named test. Pure — seeded ranks in, deterministic
+ * fusion_multipliers: the named test. Pure — seeded ranks in, deterministic
  * fused order out; the §A.5 status multipliers applied exactly.
  */
 

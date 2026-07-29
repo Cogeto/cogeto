@@ -20,7 +20,7 @@ function ownerPrincipal(userId: string, orgId: string | null): Principal {
 }
 
 /**
- * The Memory Passport export job (§B.5, decision 0029) — worker-run because it
+ * The Memory Passport export job (§B.5) — worker-run because it
  * can be large (§A.3: slow-path work never blocks a request). It re-reads
  * everything through the Principal-gated interfaces (MemoryStore and the
  * owner-scoped receipts read), assembles the signed artifact, and stores it

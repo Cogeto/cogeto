@@ -4,9 +4,9 @@ import { EMPTY_USER_CONTEXT } from './user-context';
 import type { UserContextRecord } from './user-context';
 
 /**
- * The now-block builder (P6.6, decision 0051): the NOW line is always present
+ * The now-block builder: the NOW line is always present
  * and timezone-correct; unset profile fields are ABSENT (no placeholders); the
- * LANGUAGE line follows the three rules of decision 0052.
+ * LANGUAGE line follows the three rules of.
  */
 
 const record = (overrides: Partial<UserContextRecord>): UserContextRecord => ({

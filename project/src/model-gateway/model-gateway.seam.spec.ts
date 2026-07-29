@@ -66,7 +66,7 @@ describe('model-gateway seam — error classification', () => {
 });
 
 describe('model-gateway seam — tier selection + structured validation', () => {
-  it('selects the pipeline vs answer model per task (decision 0007 r3)', async () => {
+  it('selects the pipeline vs answer model per task ( r3)', async () => {
     const g = new MistralModelGateway({ apiKey: 'k', pipelineModel: 'PIPE', answerModel: 'ANS' });
     const spy = vi.spyOn(clientOf(g).chat, 'complete').mockResolvedValue(jsonResponse('{}'));
 
@@ -157,7 +157,7 @@ function sources(dir: string, acc: string[] = []): string[] {
 
 describe('model-gateway seam — architecture (no_provider_leakage)', () => {
   // SDK import names AND raw endpoint hostnames (the fetch-based adapters have
-  // no SDK to catch via dependency-cruiser — decision 0040 ruling 1).
+  // no SDK to catch via dependency-cruiser).
   const PROVIDER_MARKERS =
     /@mistralai|@anthropic-ai|from ['"]openai['"]|api\.openai\.com|api\.anthropic\.com|api\.mistral\.ai/;
 

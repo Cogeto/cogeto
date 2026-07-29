@@ -6,7 +6,7 @@ import type { Db } from '../infrastructure/index';
 import { appUser } from './persistence/tables';
 
 /**
- * The user directory (O2-B) — the identity seam's local name book. Records each
+ * The user directory — the identity seam's local name book. Records each
  * Principal on authentication so shared-memory surfaces can name an owner
  * without a per-owner Zitadel call. Reads are name-only; the directory never
  * grants visibility — the memory gates alone decide what a caller sees.
@@ -20,7 +20,7 @@ export class UserDirectory {
 
   /**
    * The org a user belongs to, or null when the directory has never seen them
-   * (QS-13, decision 0025): how system-actor audit writers (reconciliation,
+   * how system-actor audit writers (reconciliation,
    * staleness transitions, consolidation) stamp org_id on entries that have
    * an owner but no Principal in scope. Name-book semantics apply: this never
    * grants visibility, it only labels the trail.
@@ -42,7 +42,7 @@ export class UserDirectory {
 
   /**
    * The registered user whose email matches (case-insensitive), for
-   * sender-routed email capture (decision 0031 rule 1). Name-book semantics:
+   * sender-routed email capture (rule 1). Name-book semantics
    * this grants no visibility, it only names the user a message belongs to.
    */
   async userByEmail(email: string): Promise<{ userId: string; orgId: string } | null> {
@@ -57,7 +57,7 @@ export class UserDirectory {
 
   /**
    * Directory rows for a set of user ids (sender-routed capture resolves
-   * allowlist owners to full users; decision 0031 rule 2). Unknown ids are
+   * allowlist owners to full users; rule 2). Unknown ids are
    * simply absent from the result.
    */
   async usersByIds(
@@ -71,7 +71,7 @@ export class UserDirectory {
     return rows;
   }
 
-  /** Upsert on login/refresh — "provision the Principal", keep the name fresh. */
+  /** Upsert on login/refresh"provision the Principal", keep the name fresh. */
   async record(principal: Principal): Promise<void> {
     if (!principal.userId) return;
     await this.db

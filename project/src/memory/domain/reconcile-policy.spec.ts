@@ -16,7 +16,7 @@ const party = (
   validUntil: opts.validUntil ? new Date(opts.validUntil) : null,
 });
 
-describe('reconcile policy (unit — decision 0010 rulings 3, 4, 5, 7)', () => {
+describe('reconcile policy (unit — 7)', () => {
   it('survivor: the newer memory wins by default', () => {
     const older = party('old', 'active', '2026-07-01');
     const newer = party('new', 'active', '2026-07-03');

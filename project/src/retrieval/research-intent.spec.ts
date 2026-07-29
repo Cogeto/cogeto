@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { detectResearchIntent } from './query-rewrite';
 
 /**
- * The research trigger is explicit invocation, never inference (decision
- * 0045): imperative research verbs anchored to the start of the turn, en+hr.
+ * The research trigger is explicit invocation, never inference : imperative research verbs anchored to the start of the turn, en+hr.
  * `not_ambient` is the contract's negative half — an ordinary question about a
  * company, a law, or the web must NEVER read as a research request.
  */

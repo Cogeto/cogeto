@@ -43,8 +43,7 @@ export type AlertKind =
   | 'object_present'
   | 'chain_broken'
   /**
-   * A memory row whose provenance no longer resolves (QS-5/QS-37, decision
-   * 0024): either its (source_type, source_id) matches a confirmed receipt's
+   * A memory row whose provenance no longer resolves : either its (source_type, source_id) matches a confirmed receipt's
    * source but the id is not in that receipt (a post-receipt resurrection), or
    * its source row no longer exists. Either way the "no orphans, ever"
    * invariant is broken — an integrity violation, never auto-repaired.
@@ -52,14 +51,14 @@ export type AlertKind =
   | 'orphaned_memory'
   /**
    * An object in the bucket with no file_metadata row and no staging excuse
-   * (QS-28, decision 0025): PII bytes outside any receipt's reach — e.g. a
+   * PII bytes outside any receipt's reach — e.g. a
    * failed compensating delete after an aborted upload. Never auto-repaired
    * (deleting bytes is the saga's monopoly): the owner investigates.
    */
   | 'orphaned_object'
   /**
    * A live memory row whose Qdrant payload disagrees on a gate-relevant field
-   * (QS-16, decision 0025): a payload write that survived a failed commit.
+   * a payload write that survived a failed commit.
    * Retrieval re-gates every hit through Postgres, so this is a RECALL/
    * consistency defect, never a leak. Self-healed by a targeted payload
    * re-upsert; the alert records that it happened.
@@ -69,11 +68,11 @@ export type AlertKind =
 export interface SweepReport {
   receiptsChecked: number;
   identifiersChecked: number;
-  /** Bucket objects examined by the orphan-object arm (QS-28). */
+  /** Bucket objects examined by the orphan-object arm. */
   objectsScanned: number;
-  /** Live rows compared against their Qdrant payloads (QS-16). */
+  /** Live rows compared against their Qdrant payloads. */
   payloadsChecked: number;
-  /** Stale payloads re-upserted by the self-heal (QS-16). */
+  /** Stale payloads re-upserted by the self-heal. */
   payloadsHealed: number;
   /** Alerts newly written this run (0 on a re-run over known violations). */
   newAlerts: number;
@@ -86,7 +85,7 @@ export interface SweepReport {
 /** Tuning for the sweep's newer arms; tests override, production defaults. */
 export interface SweepOptions {
   /**
-   * Objects younger than this are never orphans (QS-28): stored-mode uploads
+   * Objects younger than this are never orphans: stored-mode uploads
    * PUT the bytes BEFORE the metadata transaction commits, and staging
    * objects have a 15-minute cleanup backstop — 60 minutes comfortably clears
    * both without masking real residue for more than one night.
@@ -97,7 +96,7 @@ export interface SweepOptions {
 export const SWEEP_OPTIONS = Symbol('SWEEP_OPTIONS');
 
 const DEFAULT_OBJECT_GRACE_MINUTES = 60;
-/** QS-16 page size: the full scan runs in id-keyset pages of this many rows. */
+/** page size: the full scan runs in id-keyset pages of this many rows. */
 const PAYLOAD_PAGE_SIZE = 500;
 
 export interface IntegrityAlertRecord {
@@ -123,7 +122,7 @@ export class IntegritySweep {
     private readonly vectors: MemoryVectorStore,
     private readonly objects: MemoryObjectStore,
     @Inject(INSTANCE_KEY_DIR) private readonly instanceKeyDir: string,
-    /** Source-row existence probes for the orphan arm (decision 0024) — the
+    /** Source-row existence probes for the orphan arm — the
      * same adapters the saga binds; file sources are covered receipt-side. */
     @Optional() @Inject(SOURCE_DELETIONS) sourceAdapters: SourceDeletion[] = [],
     @Optional() @Inject(SWEEP_OPTIONS) private readonly options?: SweepOptions,
@@ -164,7 +163,7 @@ export class IntegritySweep {
         }
       }
 
-      // Orphan arm, receipt side (QS-5, decision 0024): a receipted source is
+      // Orphan arm, receipt side: a receipted source is
       // provably deleted, so ANY memory row whose provenance still points at
       // it — including ids minted after enumeration by a racing pipeline run —
       // is a resurrection. Ids in the receipt are covered above; this catches
@@ -187,7 +186,7 @@ export class IntegritySweep {
       }
     }
 
-    // Orphan arm, source side (QS-5/QS-37, decision 0024): memories whose
+    // Orphan arm, source side: memories whose
     // source row no longer exists — historical residue and any deletion path
     // that bypassed provenance. Probed through the saga's SourceDeletion
     // adapters (row-backed types only; 'file' is intentionally absent: a
@@ -195,7 +194,7 @@ export class IntegritySweep {
     // resurrections are detected receipt-side above).
     found.push(...(await this.findOrphanedMemories()));
 
-    // Defunct-provenance arm (decision 0060): a source_type the product no
+    // Defunct-provenance arm: a source_type the product no
     // longer produces is a KNOWN value, never an error — but a memory still
     // carrying one has provenance pointing at a table that no longer exists,
     // which is precisely an orphan. Migration 0035 makes this impossible going
@@ -203,12 +202,12 @@ export class IntegritySweep {
     // proof, so the residue can never rot silently.
     found.push(...(await this.findDefunctProvenance()));
 
-    // Orphan-object arm (QS-28, decision 0025): every bucket object must be a
+    // Orphan-object arm: every bucket object must be a
     // file_metadata row's bytes or a staging object inside its cleanup window.
     const orphanObjects = await this.findOrphanedObjects();
     found.push(...orphanObjects.alerts);
 
-    // Payload-consistency arm (QS-16, decision 0025): live rows vs their
+    // Payload-consistency arm: live rows vs their
     // Qdrant payload copies, self-healed by targeted re-upsert.
     const payloads = await this.reconcilePayloads();
     found.push(...payloads.alerts);
@@ -243,7 +242,7 @@ export class IntegritySweep {
       chainOk: chain.ok,
       ...(chain.error ? { chainError: chain.error } : {}),
     };
-    // The sweep's own ledger entry — status() reads the latest of these.
+    // The sweep's own ledger entry — status reads the latest of these.
     await writeAudit(this.db, {
       actor: 'integrity_sweep',
       action: 'sweep.completed',
@@ -290,7 +289,7 @@ export class IntegritySweep {
   }
 
   /**
-   * Memories whose `source_type` is defunct (decision 0060) — their source
+   * Memories whose `source_type` is defunct — their source
    * table is gone, so their §A.6 provenance cannot resolve. Expected to return
    * nothing forever; if it ever does not, the erase-before-drop ordering was
    * bypassed and the rows need the deletion saga.
@@ -311,7 +310,7 @@ export class IntegritySweep {
   }
 
   /**
-   * Source-side orphan detection (decision 0024). For each adapter-backed
+   * Source-side orphan detection. For each adapter-backed
    * source type: group live memories by (source_type, source_id), probe the
    * source row through the adapter, and on a miss RE-READ the memories in the
    * same transaction — the saga deletes memories and their source atomically,
@@ -349,7 +348,7 @@ export class IntegritySweep {
   }
 
   /**
-   * QS-28 (decision 0025): objects in the bucket unaccounted for by
+   * objects in the bucket unaccounted for by
    * file_metadata. Anything younger than the grace window is skipped — the
    * stored-upload PUT lands before its metadata transaction commits, and
    * staging objects live legitimately until the 15-minute cleanup backstop.
@@ -369,7 +368,7 @@ export class IntegritySweep {
 
     const aged = objects
       .filter((o) => o.lastModified < cutoff)
-      // Passport export objects (decision 0029) are backed by the passport
+      // Passport export objects are backed by the passport
       // module's own ledger and retention, not file_metadata; skip them here so
       // a legitimate short-lived export is never mis-flagged as an orphan.
       .filter((o) => o.key.split('/')[2] !== 'exports');
@@ -384,7 +383,7 @@ export class IntegritySweep {
         .from(fileMetadata)
         .where(inArray(fileMetadata.objectKey, batch));
       for (const row of rows) known.add(row.objectKey);
-      // Connector-owned objects recorded outside file_metadata (issue #62):
+      // Connector-owned objects recorded outside file_metadata
       // retained email raw originals / externalised HTML live on email_message.
       // Ask each adapter which keys its live rows own — an abandoned object
       // with no row matches nothing and is still flagged.
@@ -413,7 +412,7 @@ export class IntegritySweep {
   }
 
   /**
-   * QS-16 (decision 0025): compares every embedded live row's gate-relevant
+   * compares every embedded live row's gate-relevant
    * fields (owner_id, scope, status, sensitive) against its Qdrant payload
    * and re-upserts the payload on mismatch (idempotent — the same targeted
    * setPayload the write paths use). FULL scan, not a sample: the cost is one

@@ -20,7 +20,7 @@ import {
 } from './conversations-model';
 
 /**
- * The conversations sidebar (P6.9, decision 0056): workspaces over one memory.
+ * The conversations sidebar: workspaces over one memory.
  * Create, switch, rename inline, archive to a collapsed section, and delete,
  * where deletion is the SOURCE deletion through the saga, confirmed with the
  * preview's real numbers and archive named as the safe alternative.

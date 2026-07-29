@@ -91,7 +91,7 @@ export class ApprovalService {
     const row = await this.db.transaction(async (tx) => {
       const current = await this.lockForOrg(tx, principal, id);
       // A content-bearing approval (e.g. a reply draft) is personal to its
-      // requester — only they may approve/reject it (SEC-5). A teammate is told
+      // requester — only they may approve/reject it. A teammate is told
       // it does not exist rather than leaking its existence.
       if (
         this.registry.get(current.actionType).contentBearing &&
@@ -202,8 +202,8 @@ export class ApprovalService {
   }
 
   /**
-   * The finalised reply draft (Session O4): the drafted subject + body, plus a
-   * ready-to-open mailto: and a downloadable .eml. OWNER-only (the body is
+   * The finalised reply draft: the drafted subject + body, plus a
+   * ready-to-open mailto: and a downloadable.eml. OWNER-only (the body is
    * content) — a foreign requester, even in the same org, is NotFound. Returned
    * for any status; the UI presents the copy/send affordances once approved.
    * Cogeto never sends: `sent` is always false.
@@ -229,7 +229,7 @@ export class ApprovalService {
       to: payload.to,
       // Legacy drafts (created before the field existed) are treated as resolved.
       recipientResolved: payload.recipientResolved !== false,
-      // A body-recovered recipient is a suggestion to verify (SEC-3); legacy
+      // A body-recovered recipient is a suggestion to verify; legacy
       // drafts (field absent) are treated as verified.
       recipientVerified: payload.recipientVerified !== false,
       subject: payload.subject,
@@ -257,7 +257,7 @@ export class ApprovalService {
     const payload = def.schema.safeParse(row.payloadJson);
     // A content-bearing approval's summary + preview render the requester's
     // content; a non-requester in the same org sees a content-free placeholder
-    // (SEC-5). The full artifact is owner-gated at its own endpoint.
+    //. The full artifact is owner-gated at its own endpoint.
     const contentGated = def.contentBearing === true && row.requestedBy !== viewerId;
     return {
       id: row.id,
@@ -305,7 +305,7 @@ function buildMailto(p: EmailReplyDraftPayload): string {
 }
 
 /**
- * A minimal RFC822 .eml the user downloads and sends from any client. It carries
+ * A minimal RFC822.eml the user downloads and sends from any client. It carries
  * the threading headers so the reply lands in the right conversation. No From
  * (the user's own client fills it) and, deliberately, no send — this is a file.
  */

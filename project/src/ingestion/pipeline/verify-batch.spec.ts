@@ -6,7 +6,7 @@ import type { CandidateFact } from '../domain/candidate-fact';
 import { buildVerificationBatchInput, VerifyStage } from './verify.stage';
 
 /**
- * Batched verification mechanics (decision 0057), model-free:
+ * Batched verification mechanics, model-free
  *
  *   batched_verification — multi-fact runs batch 10 claims per call; every
  *     claim keeps its own passage + context in the numbered envelope; a claim

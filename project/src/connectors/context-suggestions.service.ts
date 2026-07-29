@@ -8,9 +8,9 @@ import { MemoryStore } from '../memory/index';
 import type { MemoryRow } from '../memory/index';
 
 /**
- * Derived context suggestions (P6.6 Issue C, decision 0053). Cogeto often
+ * Derived context suggestions (Issue C). Cogeto often
  * already knows the user's company or role from their own memories; this
- * service proposes those values for the Settings fields — conservatively:
+ * service proposes those values for the Settings fields — conservatively
  *
  *  - deterministic candidate rules over the user's OWN active/user-approved
  *    memories (first-person phrasing only), then

@@ -82,7 +82,7 @@ function MemoryRow({
   );
 }
 
-/** The governed memory list (S3-B): search, filters, pagination, drawer on click. */
+/** The governed memory list: search, filters, pagination, drawer on click. */
 export function GovernedMemories({
   session,
   onOpen,

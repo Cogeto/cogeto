@@ -10,7 +10,7 @@ import type { Chunk } from './chunk';
 /** How much source text around the cited span the verifier sees. */
 const CONTEXT_WINDOW_CHARS = 240;
 
-/** Claims judged per batched call (decision 0057): a 100-fact source is 10
+/** Claims judged per batched call: a 100-fact source is 10
  * calls, not 100. Each claim still carries its own passage + context and is
  * judged independently by the prompt's contract. */
 export const VERIFY_BATCH_SIZE = 10;
@@ -28,7 +28,7 @@ export interface VerifiedFact {
  * with the same rubric). The verdict decides admission: supported → active,
  * partial/unsupported → uncertain.
  *
- * Call shape (decision 0057): a single-fact source keeps the one-claim contract
+ * Call shape: a single-fact source keeps the one-claim contract
  * (verification/v0004) unchanged; multi-fact sources are judged in batches of
  * VERIFY_BATCH_SIZE through the batch form (verification/v0005 — the same
  * rubric, an enveloped input/output). A claim the reply omits is treated as

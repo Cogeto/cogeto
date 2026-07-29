@@ -30,7 +30,7 @@ import { IntegritySweep } from './integrity-sweep';
  * provable forgetting. There is deliberately NO update or delete route — the
  * database freeze trigger (migration 0010) backs the same rule below the API.
  *
- * Scoping (decision 0009): the ledger shows the caller's own receipts
+ * Scoping: the ledger shows the caller's own receipts
  * (counts_json.requested_by, which sits inside the signed payload); chain
  * verification always walks ALL confirmed receipts — integrity is instance-wide.
  */
@@ -107,7 +107,7 @@ export class ReceiptsController {
       prevHash: row.prevHash,
       signature: row.signature,
       signedAt: row.signedAt?.toISOString() ?? null,
-      // QS-23: stamp the ledger's chain tip onto the exported receipt as an
+      // stamp the ledger's chain tip onto the exported receipt as an
       // external anchor. A later verify must still contain this tip and show a
       // confirmed count ≥ this one — a dropped receipt moves the tip.
       chainTip,
@@ -115,7 +115,7 @@ export class ReceiptsController {
   }
 
   /**
-   * The chain tip (QS-23): the newest confirmed receipt — the one whose hash no
+   * The chain tip: the newest confirmed receipt — the one whose hash no
    * other confirmed receipt references as prev_hash — plus the confirmed count.
    */
   private async chainTip(): Promise<{ hash: string | null; confirmedCount: number }> {

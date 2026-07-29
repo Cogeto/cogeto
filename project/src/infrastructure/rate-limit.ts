@@ -13,7 +13,7 @@ import { RATE_LIMIT_OPTIONS } from './limits';
 import type { RateLimitBuckets } from './limits';
 
 /**
- * Per-principal request rate limiting (FIX-2 QS-2). A lightweight in-process
+ * Per-principal request rate limiting. A lightweight in-process
  * fixed-window limiter — no new dependency, right-sized for the single app
  * process that serves one tenant (§A.2). Apply with `@RateLimit('<bucket>')` on
  * a route; the guard keys on the authenticated principal, so it must run AFTER

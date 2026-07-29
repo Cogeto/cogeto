@@ -1,7 +1,7 @@
 import type { Principal } from '@cogeto/shared';
 
 /**
- * The chat → skill seam (Priority 7, decision 0059) — the CHAT_RESEARCH_RESOLVER
+ * The chat → skill seam — the CHAT_RESEARCH_RESOLVER
  * pattern: retrieval defines the port, connectors implements it, the APP
  * composition root binds it. ChatService never imports connectors; the worker
  * never binds it, so the skill intent is inert there.

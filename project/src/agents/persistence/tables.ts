@@ -1,9 +1,9 @@
 import { index, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 /**
- * Tables owned by the agents module (migration 0001, §A.8; O1-B support columns
+ * Tables owned by the agents module (migration 0001, §A.8; support columns
  * in migration 0015). Module-private. The approval state machine goes live in
- * O1-B; the schema has been contractual from day one (0003 ruling 1).
+ *; the schema has been contractual from day one (0003 ruling 1).
  */
 
 export const approvalStatusEnum = pgEnum('approval_status', [

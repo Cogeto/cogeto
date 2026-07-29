@@ -9,7 +9,7 @@ import { EmailReplyDraftService } from './email-reply-draft.service';
 const bodySchema = z.object({ intent: z.string().max(500).optional() }).partial();
 
 /**
- * POST /api/email/:id/reply-draft (Session O4 — email source): draft a reply to
+ * POST /api/email/:id/reply-draft: draft a reply to
  * an email the caller owns. The draft is created as an `email_reply_draft`
  * approval (consequential action) — Cogeto never sends; on approval the draft is
  * finalised and presented for the user to send from their own client. This is

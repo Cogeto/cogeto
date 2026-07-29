@@ -6,7 +6,7 @@ import { EmailReplyController } from './email-reply.controller';
 import { ChatReplyResolver } from './chat-reply-resolver';
 
 /**
- * The reply-drafting composition (Session O4 — email reply triggers). Groups the
+ * The reply-drafting composition. Groups the
  * app-only reply pieces — the drafter, its HTTP endpoint, and the chat → reply
  * resolver — and imports the modules they need (RetrievalService for context,
  * ApprovalService for the approval path).

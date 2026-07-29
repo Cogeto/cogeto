@@ -6,7 +6,7 @@ import { ActionRegistry } from './action-registry';
 import { ReplyDraftCascade } from './reply-draft-cascade';
 
 /**
- * agents — the server-side approval state machine (Addendum §A.8):
+ * agents — the server-side approval state machine (Addendum §A.8)
  * draft → pending_approval → approved → executed (+ rejected, expired).
  * The confirm endpoint (app) only transitions state; execution happens ONLY in
  * the worker via ApprovalExecutor. Effects reach the memory aggregate through
@@ -23,7 +23,7 @@ import { ReplyDraftCascade } from './reply-draft-cascade';
 export class AgentsModule {}
 
 /**
- * The reply-draft deletion cascade (SEC-4), bound into the memory saga's
+ * The reply-draft deletion cascade, bound into the memory saga's
  * derivedCascades. Kept in its OWN module — it has no dependency on the approval
  * state machine or the memory store (it only redacts the `approval` table by
  * source id) — so the memory module can import it without a cycle.

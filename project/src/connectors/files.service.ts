@@ -34,7 +34,7 @@ import type { FileUploadOptions } from './file-upload-options';
 const FILE_PIPELINE_MAX_ATTEMPTS = 3;
 
 /** Abort-window cleanup retries: quick in-line attempts before handing the
- * orphan to the nightly sweep's orphan-object arm (QS-28, decision 0025). */
+ * orphan to the nightly sweep's orphan-object arm. */
 const CLEANUP_ATTEMPTS = 3;
 const CLEANUP_RETRY_DELAY_MS = 250;
 
@@ -64,11 +64,11 @@ function toStagingKey(sourceKey: string): string {
 
 /**
  * The file source (F1 handoff) — the notes source's sibling in connectors, but
- * its bytes and metadata live in the memory module (decision 0003 ruling 2), so
+ * its bytes and metadata live in the memory module, so
  * this orchestrates the memory module's object store + file-metadata port and
  * the shared outbox; it owns no table of its own.
  *
- * Transactional ingestion (§A.3, handoff §1) — the safe order:
+ * Transactional ingestion (§A.3, handoff §1) — the safe order
  *   1. PUT the bytes to MinIO under the minted key (object-first).
  *   2. In ONE transaction: insert file_metadata (via the memory port) AND
  *      enqueue the pipeline job through the outbox (metadata-commit gating).
@@ -93,7 +93,7 @@ export class FilesService {
   ) {}
 
   /**
-   * Compensating delete for the upload abort window (QS-28, decision 0025):
+   * Compensating delete for the upload abort window
    * the metadata transaction failed, so the just-written object is a true
    * orphan. Retried in-line with a short backoff and LOGGED on every failure
    * (object keys are identifiers, never content — pino rule holds); if all
@@ -130,7 +130,7 @@ export class FilesService {
         `file exceeds the ${this.options.uploadMaxBytes}-byte upload limit`,
       );
     }
-    // Per-user daily upload cap (FIX-2 QS-6): bounds the parse + pipeline work a
+    // Per-user daily upload cap: bounds the parse + pipeline work a
     // single user (or the shared demo principal) can drive in a day.
     if (this.counters.get(principal.userId, 'upload') >= this.quota.uploadMax) {
       throw new HttpException(
@@ -200,7 +200,7 @@ export class FilesService {
       });
     } catch (error) {
       // (3) abort-window cleanup: the transaction left no metadata and no job,
-      // so the object is a true orphan — remove it. Logged + retried (QS-28):
+      // so the object is a true orphan — remove it. Logged + retried
       // a swallowed failure here used to leave PII bytes in the bucket forever.
       await this.cleanupOrphanObject(objectKey);
       throw error;
@@ -275,7 +275,7 @@ export class FilesService {
       });
     } catch (error) {
       // Abort-window cleanup: no job enqueued, so the staging object is a true
-      // orphan — remove it. Logged + retried (QS-28); the sweep's orphan arm
+      // orphan — remove it. Logged + retried; the sweep's orphan arm
       // is the backstop if every attempt fails.
       await this.cleanupOrphanObject(stagingKey);
       throw error;
@@ -325,7 +325,7 @@ export class FilesService {
   /**
    * A short-lived signed download URL (§A.9), or null when the caller may not
    * have it. Owner always; a non-owner only for a SHARED, NON-sensitive file in
-   * their own org — sensitive files never leave their owner (decision 0003).
+   * their own org — sensitive files never leave their owner.
    */
   async getDownloadUrl(
     principal: Principal,

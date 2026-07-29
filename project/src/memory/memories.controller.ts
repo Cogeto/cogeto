@@ -44,7 +44,7 @@ const sensitiveSchema = z.object({ sensitive: z.boolean() });
 const scopeSchema = z.object({ scope: z.enum(MEMORY_SCOPES) });
 
 /**
- * The dashboard's memory surface (S3-B) — thin routes over the MemoryStore
+ * The dashboard's memory surface — thin routes over the MemoryStore
  * aggregate. Every read passes the gates; every action is owner-checked and
  * audited inside the aggregate; illegal transitions surface as typed 400s
  * whose message the UI shows verbatim.
@@ -57,7 +57,7 @@ export class MemoriesController {
     private readonly directory: UserDirectory,
   ) {}
 
-  /** Attach owner display names (O2-B) so shared rows owned by others are
+  /** Attach owner display names so shared rows owned by others are
    * attributable in the list and drawer. Name-only — visibility was already
    * decided by the gates the store applied. */
   private async withOwnerNames(items: MemoryListItem[]): Promise<MemoryListItem[]> {
@@ -128,7 +128,7 @@ export class MemoriesController {
     return this.withOwnerNames(rows.map(toListItem));
   }
 
-  /** Review approval: uncertain → user_approved, owner-only (S3-B). */
+  /** Review approval: uncertain → user_approved, owner-only. */
   @Post(':id/approve')
   async approve(
     @Req() request: AuthenticatedRequest,
@@ -170,7 +170,7 @@ export class MemoriesController {
     return toListItem(row);
   }
 
-  /** Scope change (O2-B): private↔shared, owner-only, row + Qdrant payload. */
+  /** Scope change: private↔shared, owner-only, row + Qdrant payload. */
   @Post(':id/scope')
   async setScope(
     @Req() request: AuthenticatedRequest,

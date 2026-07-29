@@ -2,7 +2,7 @@ import { QdrantClient } from '@qdrant/js-client-rest';
 import type { MemoryScope, MemoryStatus, Principal } from '@cogeto/shared';
 
 /**
- * The Qdrant side of the memory module's storage (decision 0003 ruling 2: the
+ * The Qdrant side of the memory module's storage (: the
  * memory module owns ALL storage access, including the Qdrant client — this
  * file is module-private and the only place in the system that imports the
  * Qdrant client, enforced by dependency-cruiser).
@@ -18,22 +18,22 @@ export const MEMORY_COLLECTION = 'memories';
 /**
  * Vector size per embed model; reindex re-embeds when the model changes.
  * Every embeddings model a provider preset can select MUST have an explicit
- * entry (issue #177: a missing entry silently fell back to 1024 and OpenAI's
- * 1536-dim vectors failed at upsert) — `embedding_dimensions_cover_presets`
+ * entry (: a missing entry silently fell back to 1024 and OpenAI's
+ * 1536-dim vectors failed at upsert)`embedding_dimensions_cover_presets`
  * enforces this.
  */
 const EMBEDDING_DIMENSIONS: Record<string, number> = {
   'mistral-embed': 1024,
   'text-embedding-3-small': 1536,
   'text-embedding-3-large': 3072,
-  // Local multilingual embeddings via Ollama (decision 0041 ruling 5).
+  // Local multilingual embeddings via Ollama.
   'bge-m3': 1024,
 };
 const DEFAULT_DIMENSIONS = 1024;
 
 export function dimensionsFor(embeddingModel: string): number {
   // Ollama model names may carry a `:tag` suffix (`bge-m3:latest`); the
-  // dimension is a property of the base model (decision 0041 ruling 5).
+  // dimension is a property of the base model.
   const base = embeddingModel.split(':')[0]!;
   return EMBEDDING_DIMENSIONS[embeddingModel] ?? EMBEDDING_DIMENSIONS[base] ?? DEFAULT_DIMENSIONS;
 }
@@ -74,7 +74,7 @@ export interface GateFilter {
 
 /**
  * The scope + sensitive gates as a native Qdrant payload pre-filter — the
- * exact mirror of MemoryStore.visibleTo (§A.4/§A.5; 0003 ruling 3):
+ * exact mirror of MemoryStore.visibleTo (§A.4/§A.5; 0003 ruling 3)
  * - scope: own rows OR scope = shared;
  * - sensitive: excluded by default; with explicit opt-in, still owner-only.
  * Pure and exported so tests can assert the filter itself, not just behavior.
@@ -93,7 +93,7 @@ export function buildGateFilter(
 export interface MemoryVectorStoreOptions {
   url: string;
   embeddingModel: string;
-  /** Qdrant API key (QS-4). Sent as the `api-key` header on every request; the
+  /** Qdrant API key. Sent as the `api-key` header on every request; the
    * default compose stack keeps Qdrant internal with no key. */
   apiKey?: string;
   /** Test override; production derives from the embed model. */
@@ -116,7 +116,7 @@ export class MemoryVectorStore {
 
   /**
    * Idempotent: safe to run on every worker boot. Reindex passes
-   * `recreateOnDimensionMismatch` (issue #179): an embeddings-model switch with
+   * `recreateOnDimensionMismatch`: an embeddings-model switch with
    * a different vector size must DROP and recreate the collection — Postgres is
    * the truth and this index is rebuildable (§A.4) — or every upsert fails with
    * a dimension error. Normal boot keeps create-if-missing semantics.
@@ -156,7 +156,7 @@ export class MemoryVectorStore {
   }
 
   /** The existing collection's vector size, or null when unreadable/absent —
-   * public for the boot-time dimension guard (decision 0041 ruling 5). */
+   * public for the boot-time dimension guard. */
   async indexDimensions(): Promise<number | null> {
     try {
       const info = await this.client.getCollection(this.collection);
@@ -221,7 +221,7 @@ export class MemoryVectorStore {
 
   /**
    * Updates the payload copy of gate/filter fields on an existing point —
-   * how status/sensitive changes propagate to the index (S3-B). Idempotent;
+   * how status/sensitive changes propagate to the index. Idempotent;
    * a missing point (row not yet embedded) is a no-op, not an error.
    */
   async setPayload(id: string, payload: Partial<MemoryPointPayload>): Promise<void> {

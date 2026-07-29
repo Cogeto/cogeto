@@ -6,12 +6,12 @@ import type { SourceItem, SourceReader } from '../ingestion/index';
 import { webPage } from './persistence/tables';
 
 /**
- * Ingestion's stage-1 port for source_type 'web' (Priority 5 Part A). The
+ * Ingestion's stage-1 port for source_type 'web'. The
  * extraction input is the retained readable text (already boilerplate-stripped
  * by the fetcher), prefixed with the page title so titled claims extract with
  * their subject. `createdAt` is the FETCH time — relative temporal expressions
  * on a web page resolve against when Cogeto read it, which is exactly the
- * "as of" the provenance promises (decision 0043).
+ * "as of" the provenance promises.
  */
 @Injectable()
 export class WebSourceReader implements SourceReader {
@@ -23,7 +23,7 @@ export class WebSourceReader implements SourceReader {
     const rows = await this.db.select().from(webPage).where(eq(webPage.id, sourceId)).limit(1);
     const row = rows[0];
     if (!row) return null;
-    // The focused extraction view wins when present (decision 0057): the
+    // The focused extraction view wins when present: the
     // chunks most relevant to the run's approved query, ranked at capture
     // time. retained_text remains the full source of record.
     const text = row.extractionText ?? row.retainedText;
@@ -40,7 +40,7 @@ export class WebSourceReader implements SourceReader {
   }
 
   /**
-   * Admission checkpoint (decision 0024): KEY SHARE serializes against the
+   * Admission checkpoint: KEY SHARE serializes against the
    * deletion saga's FOR UPDATE + DELETE on this web_page row — see SourceReader.
    */
   async existsForAdmission(tx: Tx, sourceId: string): Promise<boolean> {

@@ -1,5 +1,5 @@
 /**
- * Ana sandbox demo tooling (decision 0022) — composition-root code shared by the
+ * Ana sandbox demo tooling — composition-root code shared by the
  * demo-seed / demo-reset entrypoints and the worker's scheduled reset. Excluded
  * from production images (see the Dockerfile). Not a domain module: it drives
  * the system through the public HTTP API and, as an ops tool, touches tables

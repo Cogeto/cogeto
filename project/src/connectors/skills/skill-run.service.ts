@@ -7,13 +7,13 @@ import { skillRun, skillRunStep } from '../persistence/tables';
 import type { SkillRunRow, SkillRunStepRow } from '../persistence/tables';
 import type { SkillDefinition } from './skill-registry';
 
-/** The worker's re-runnable advance job (decision 0059 ruling 5). */
+/** The worker's re-runnable advance job. */
 export const SKILL_ADVANCE_JOB_TYPE = 'skill.advance';
 
 const TERMINAL_STATUSES: readonly SkillRunStatus[] = ['completed', 'failed', 'cancelled'];
 
 /**
- * The skill run record and its step log (decision 0059 rulings 2 and 5) —
+ * The skill run record and its step log —
  * rows only, no orchestration: transitions are compare-and-set so the
  * re-runnable advance job and a concurrent cancel always have exactly one
  * winner, and every run transition audits structurally (never content).
@@ -222,7 +222,7 @@ export class SkillRunService {
   }
 
   /**
-   * Cancel cleanly (decision 0059 ruling 5): the run stops at the next step
+   * Cancel cleanly: the run stops at the next step
    * boundary and keeps everything already produced. Idempotent; terminal runs
    * refuse.
    */

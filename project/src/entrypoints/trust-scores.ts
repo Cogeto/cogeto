@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { ResolvedModelProviders } from '../model-gateway/index';
 
 /**
- * Trust scores (O7, decision 0032) — the machine-readable per-release quality
+ * Trust scores (O7) — the machine-readable per-release quality
  * record the public website renders. This module is the single source of the
  * format: the Zod mirror of the PUBLISHED JSON Schema
  * (docs/trust-scores-schema/), the partial-emission helpers the eval
@@ -17,7 +17,7 @@ import type { ResolvedModelProviders } from '../model-gateway/index';
 
 export const TRUST_SCORES_SCHEMA_VERSION = '1.0';
 
-/** Default model tiers (mirrors .env.example / the gateway defaults). */
+/** Default model tiers (mirrors.env.example / the gateway defaults). */
 export const DEFAULT_MODELS = {
   pipeline: 'mistral-small-latest',
   answer: 'mistral-medium-latest',
@@ -103,7 +103,7 @@ export type TrustConfiguration = z.infer<typeof configurationSchema>;
 export const partialFileSchema = z.object({
   schema_version: z.literal(TRUST_SCORES_SCHEMA_VERSION),
   harness: z.string().min(1),
-  // Explicit partial shape (zod 4 removed .deepPartial()): identity fields are
+  // Explicit partial shape (zod 4 removed.deepPartial): identity fields are
   // required; corpus/metrics are optional and one-level partial. A harness
   // side that emits a section must emit it complete — stricter at depth >= 2
   // than the old deepPartial, which loudly rejects half-written sections
@@ -126,7 +126,7 @@ export const indexEntrySchema = z.object({
 export const indexSchema = z.array(indexEntrySchema);
 
 /**
- * The configuration identity an eval run emits (decision 0040 ruling 5): both
+ * The configuration identity an eval run emits: both
  * harnesses resolve the SAME provider configuration the instance would boot
  * with, so `configuration.id` and the per-tier models are exact by
  * construction. Ids are the website's join key — the derivation (preset name
@@ -190,7 +190,7 @@ export interface PublishArgs {
 /**
  * The release-side publish: merge configuration partials into ONE immutable
  * release file + regenerate the index. Refuses to overwrite an existing
- * version file (release files are immutable — decision 0032); the index is
+ * version file (release files are immutable); the index is
  * rebuilt from the directory so it can never list a missing file.
  */
 export function publishTrustScores(args: PublishArgs): { file: string; index: string } {
@@ -200,7 +200,7 @@ export function publishTrustScores(args: PublishArgs): { file: string; index: st
   const outFile = path.join(args.outDir, `${args.version}.json`);
   if (existsSync(outFile)) {
     throw new Error(
-      `refusing to overwrite ${outFile} — release trust-score files are immutable (decision 0032). ` +
+      `refusing to overwrite ${outFile} — release trust-score files are immutable. ` +
         `If the numbers are wrong, publish a note in the NEXT release; never rewrite history.`,
     );
   }

@@ -13,9 +13,9 @@ const ACTORS: MemoryActor[] = [
 ];
 
 /**
- * The full expected matrix, stated independently of the implementation:
+ * The full expected matrix, stated independently of the implementation
  * which actor kinds may SET each target status (Addendum §A.1 rule 4,
- * glossary, S1-B prompt). `replaced` is reachable only via supersession and
+ * glossary, prompt). `replaced` is reachable only via supersession and
  * is terminal; same-status transitions are no-ops and rejected.
  */
 const EXPECTED_OWNERS: Record<MemoryStatus, ActorKind[]> = {
@@ -37,8 +37,8 @@ describe('memory transition matrix (unit)', () => {
             from !== 'replaced' &&
             from !== to &&
             to !== 'replaced' &&
-            // Approval is a review verdict: uncertain (S3-B review approval)
-            // or contradicted (F2-A confirm resolution — decision 0010 r3).
+            // Approval is a review verdict: uncertain (review approval)
+            // or contradicted (confirm resolution — r3).
             !(to === 'user_approved' && from !== 'uncertain' && from !== 'contradicted')
               ? EXPECTED_OWNERS[to].includes(actor.kind)
               : false;
@@ -51,9 +51,8 @@ describe('memory transition matrix (unit)', () => {
         }
       }
     }
-    // 22 legal transitions exist; a change to this number is a domain decision
-    // (21 after S3-B narrowed user_approved to uncertain→approved; +1 in F2-A
-    // for contradicted→user_approved, the confirm resolution — decision 0010).
+    // 22 legal transitions exist; a change to this number is a domain decision,
+    // not a refactor.
     expect(allowedCount).toBe(22);
   });
 

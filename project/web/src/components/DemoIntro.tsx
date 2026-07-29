@@ -1,11 +1,11 @@
 import { useState } from 'react';
 
 /**
- * Ana sandbox (decision 0022 §4): a first-visit overlay suggesting things to
+ * Ana sandbox (§4): a first-visit overlay suggesting things to
  * try, in order. Dismissible and never blocking — a click anywhere (including
  * the backdrop) dismisses it, and it is remembered per browser so it shows once.
  * No signup prompt; the last suggestion is the money moment (the deletion
- * receipt), set up by the skill run just before it (decision 0059). Only
+ * receipt), set up by the skill run just before it. Only
  * rendered when a demo session is active.
  */
 const SEEN_KEY = 'cogeto.demo.introSeen';

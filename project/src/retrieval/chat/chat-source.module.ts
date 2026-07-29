@@ -7,8 +7,8 @@ import { ConversationTitler } from './conversation-titler';
 import { CONVERSATION_APPEND, ConversationScribe } from './conversation-scribe';
 
 /**
- * The chat source ports (decision 0021) as a GLOBAL slim module: the pipeline
- * reader and the deletion adapters for source_type 'chat' and (P6.9)
+ * The chat source ports as a GLOBAL slim module: the pipeline
+ * reader and the deletion adapters for source_type 'chat' and
  * 'chat_conversation', plus the conversation auto-titler the worker's
  * `conversation.title` job runs. Global + standalone (only the global DRIZZLE
  * and ModelGateway providers) so BOTH composition roots resolve them — the
@@ -28,7 +28,7 @@ import { CONVERSATION_APPEND, ConversationScribe } from './conversation-scribe';
     ChatAnswerCascade,
     ConversationTitler,
     ConversationScribe,
-    // The conversation-append seam (issue #259): research (connectors)
+    // The conversation-append seam: research (connectors)
     // injects the token; retrieval owns the implementation and the tables.
     { provide: CONVERSATION_APPEND, useExisting: ConversationScribe },
   ],

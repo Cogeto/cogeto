@@ -89,7 +89,7 @@ describe('email reply draft — approval finalises, never sends (integration)', 
     const created = await service.create(userA, EMAIL_REPLY_DRAFT_ACTION, draftPayload);
     expect(created.status).toBe('pending_approval');
 
-    // The draft is presented — copy-ready body, a mailto:, and a .eml. Never sent.
+    // The draft is presented — copy-ready body, a mailto:, and a.eml. Never sent.
     const before = await service.getEmailDraft(userA, created.id);
     expect(before.sent).toBe(false);
     expect(before.status).toBe('pending_approval');
@@ -111,7 +111,7 @@ describe('email reply draft — approval finalises, never sends (integration)', 
     expect(after.status).toBe('executed');
     expect(after.sent).toBe(false); // STILL not sent — Cogeto has no send path
 
-    // The execution audit is content-free (QS-1) and records sent=false — the
+    // The execution audit is content-free and records sent=false — the
     // drafted body never enters the audit trail.
     const audit = await tdb.pool.query<{ detail: Record<string, unknown> }>(
       "SELECT detail_json AS detail FROM audit_log WHERE action = 'approval.executed' AND entity_id = $1",

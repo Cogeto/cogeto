@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 /**
- * In-process per-user, per-day counters (FIX-2 QS-2/QS-6). Backs both the model
+ * In-process per-user, per-day counters. Backs both the model
  * budget and the capture/upload quota. A single app process serves one tenant
  * (§A.2), so an in-memory counter is the right weight: it stops a runaway loop
  * or an anonymous demo visitor from draining the model budget within the

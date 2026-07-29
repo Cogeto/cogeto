@@ -1,10 +1,10 @@
 import type { ResearchRunDto } from '@cogeto/shared';
 
 /**
- * Which research run should the chat page resume (decisions 0057/0058)? Pure
+ * Which research run should the chat page resume? Pure
  * so the rule is unit-testable. ONLY an APPROVED run still in flight resumes
  * — to show live progress. Concluded runs never resume: their answer is a
- * persistent message in the conversation (issue #259), or, for Research-page
+ * persistent message in the conversation, or, for Research-page
  * runs, lives there. Seen runs never resume whatever their status (#257 —
  * no acknowledged run may haunt the chat), and everything fades after
  * {@link RESUME_WINDOW_HOURS}.

@@ -3,7 +3,7 @@ import { resolveModelProviders } from '../model-gateway/index';
 import { buildModelConfigDto } from './model-config.controller';
 
 /**
- * settings_display_accurate (decision 0040): the read-only Settings section
+ * settings_display_accurate: the read-only Settings section
  * renders the RUNNING configuration truthfully — id, provider/model per tier,
  * redaction posture — and can never leak key material.
  */

@@ -110,7 +110,7 @@ export async function completeLogin(callbackUrl: string): Promise<Session> {
 const DEMO_FLAG_KEY = 'cogeto.demo';
 
 /**
- * Password-gated sandbox login (decision 0027): exchange the operator's demo
+ * Password-gated sandbox login: exchange the operator's demo
  * username + generated password at POST /api/config/demo-login for the session
  * token, then install it. Throws on bad credentials. The token is never served
  * on GET /api/config — the sandbox is no longer auto-open.
@@ -128,7 +128,7 @@ export async function demoLogin(username: string, password: string): Promise<Ses
 }
 
 /**
- * Ana sandbox (decision 0022/0027): install the demo session token obtained from
+ * Ana sandbox: install the demo session token obtained from
  * the password gate, so the tab is authenticated as the demo Principal. The
  * token is a real Zitadel PAT; only the local expiry is synthetic (far out).
  */
@@ -165,9 +165,9 @@ export function loadSession(): Session | null {
 }
 
 /**
- * Clears the stored session WITHOUT an IdP round-trip (QS-36). Used when the API
+ * Clears the stored session WITHOUT an IdP round-trip. Used when the API
  * returns 401 (token expired/revoked — recall the 10s Principal cache bound,
- * decision 0026): the app drops the dead session and re-derives its auth posture
+ *): the app drops the dead session and re-derives its auth posture
  * from a fresh /api/config. The demo flag is left intact so a demo tab
  * re-installs its published session rather than falling to the login screen.
  */

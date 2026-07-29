@@ -8,7 +8,7 @@ import { PassportService } from './passport.service';
 const triggerSchema = z.object({ includeOriginals: z.boolean().optional() }).default({});
 
 /**
- * /api/passport — the Memory Passport (§B.5, decision 0029). Every route is
+ * /api/passport — the Memory Passport (§B.5). Every route is
  * owner-scoped: a user triggers, polls, and downloads only their OWN export, and
  * the artifact contains only what they are entitled to see (the gates run in the
  * worker's assembly reads).

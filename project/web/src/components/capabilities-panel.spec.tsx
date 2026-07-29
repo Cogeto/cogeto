@@ -7,7 +7,7 @@ import { capabilityView, jobView } from './capabilities-model';
 import { CapabilitiesSection } from './CapabilitiesPanel';
 
 /**
- * The Capabilities panel (P6.7, decision 0055):
+ * The Capabilities panel
  *
  *   panel_renders_states — every capability/job state renders with its correct
  *     plain-language messaging from fixtures (consequence on loud states,

@@ -10,7 +10,7 @@ import { dimensionsFor, MemoryVectorStore } from './persistence/vector-store';
 import { reindexMemories } from './reindex';
 
 /**
- * Local embeddings via the reindex flow (decision 0041 ruling 5; issue #182):
+ * Local embeddings via the reindex flow
  * switching the embeddings model to bge-m3 recreates the collection at the new
  * model's dimension and re-embeds everything from Postgres; while the index
  * and configuration disagree the dimension guard reports the mismatch (boot

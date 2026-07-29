@@ -32,7 +32,7 @@ const userB: Principal = {
   roles: [],
 };
 // A SECOND user in userA's org — a teammate. Content-bearing approvals (reply
-// drafts) must hide their content from them and refuse their confirm (SEC-5).
+// drafts) must hide their content from them and refuse their confirm.
 const userA2: Principal = {
   userId: 'user-a2',
   name: 'User A2',
@@ -50,7 +50,7 @@ describe('approval state machine (integration: real Postgres + Qdrant)', () => {
   let executor: ApprovalExecutor;
 
   beforeAll(async () => {
-    // Real Qdrant since QS-26: the approved bulk-outdate transitions memories,
+    // Real Qdrant since: the approved bulk-outdate transitions memories,
     // and transitions now REQUIRE the vector store (no silent payload skip).
     [tdb, qdrant] = await Promise.all([startTestDatabase(), startTestQdrant()]);
     store = createMemoryStore({
@@ -78,7 +78,7 @@ describe('approval state machine (integration: real Postgres + Qdrant)', () => {
       tdb.db,
       APPROVAL_EXECUTE_JOB_TYPE,
       async (tx, payload) => {
-        // Return the after-commit thunk (QS-27) so the deferred Qdrant payload
+        // Return the after-commit thunk so the deferred Qdrant payload
         // sync runs once the transaction commits, exactly as the worker does.
         return (await executor.execute(tx, payload.source_id)).afterCommit;
       },
@@ -162,7 +162,7 @@ describe('approval state machine (integration: real Postgres + Qdrant)', () => {
     expect(await statusOf(m1)).toBe('active');
   });
 
-  it('bulk_outdate_syncs_qdrant_after_commit (QS-27): the bulk effect defers the per-row Qdrant payload sync to after the transaction, and the points end outdated', async () => {
+  it('bulk_outdate_syncs_qdrant_after_commit: the bulk effect defers the per-row Qdrant payload sync to after the transaction, and the points end outdated', async () => {
     const m1 = await makeMemory(userA, 'active');
     const m2 = await makeMemory(userA, 'active');
     // Give the memories real Qdrant points so the payload sync is observable
@@ -179,7 +179,7 @@ describe('approval state machine (integration: real Postgres + Qdrant)', () => {
     await runWorker();
 
     // PG committed the transition; the deferred after-commit step then synced
-    // the Qdrant payloads (QS-27) — no row lock was held across those calls.
+    // the Qdrant payloads — no row lock was held across those calls.
     expect(await statusOf(m1)).toBe('outdated');
     expect(await pointStatus(m1)).toBe('outdated');
     expect(await pointStatus(m2)).toBe('outdated');
@@ -239,7 +239,7 @@ describe('approval state machine (integration: real Postgres + Qdrant)', () => {
     await runWorker();
     expect(await auditCount('approval.executed', approval.id)).toBe(1);
 
-    // Re-deliver the same job: the S1-B guard claims nothing (key exists) and
+    // Re-deliver the same job: the guard claims nothing (key exists) and
     // the executor would also no-op an already-executed row.
     await enqueueExecute(approval.id);
     await runWorker();
@@ -248,7 +248,7 @@ describe('approval state machine (integration: real Postgres + Qdrant)', () => {
     expect(await statusOf(m2)).toBe('outdated');
   });
 
-  it('approval_concurrent_confirm (QS-30): two parallel approves — one wins, the effect runs exactly once', async () => {
+  it('approval_concurrent_confirm: two parallel approves — one wins, the effect runs exactly once', async () => {
     const m = await makeMemory(userA, 'active');
     const approval = await service.create(userA, BULK_OUTDATE_ACTION, { memoryIds: [m] });
 
@@ -343,7 +343,7 @@ describe('approval state machine (integration: real Postgres + Qdrant)', () => {
     expect(await auditCount('approval.expired', e.id)).toBe(1);
   });
 
-  it('reply_draft_owner_gated (SEC-5): a teammate sees no content and cannot confirm a reply draft', async () => {
+  it('reply_draft_owner_gated (): a teammate sees no content and cannot confirm a reply draft', async () => {
     const payload = {
       to: 'ana@adriatic-foods.hr',
       recipientResolved: true,

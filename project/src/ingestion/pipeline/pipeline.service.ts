@@ -20,8 +20,8 @@ import { SOURCE_READERS } from './source-reader';
 import type { SourceReader } from './source-reader';
 import { VerifyStage } from './verify.stage';
 
-/** The web-source fact budget (decision 0057): a fetched page is reference
- * material — it contributes salient facts, never the QS-6 worst-case hundred. */
+/** The web-source fact budget: a fetched page is reference
+ * material — it contributes salient facts, never the worst-case hundred. */
 export const WEB_MAX_FACTS = 30;
 
 /**
@@ -51,7 +51,7 @@ export interface PipelineSummary {
   /**
    * `source_missing`: the source vanished before the run started (stage 1).
    * `source_deleted`: the deletion saga erased the source DURING the run —
-   * the admission checkpoint aborted before any row was written (QS-5).
+   * the admission checkpoint aborted before any row was written.
    */
   skipped?: 'source_missing' | 'source_deleted';
 }
@@ -59,11 +59,11 @@ export interface PipelineSummary {
 /**
  * One worker job per source item, orchestrating the six pipeline stages
  * (glossary): ingest → chunk → extract → verify → embed + store → reconcile.
- * All six stages are real since F2-A (decision 0010).
+ * All six stages are real since.
  *
  * The whole run executes inside the job's idempotency transaction (`tx`), so
  * a retry after any failure — malformed model output, a failed Qdrant write —
- * leaves no partial rows behind (decision 0004 ruling 3; 0005 for the
+ * leaves no partial rows behind (0005 for the
  * two-store ordering). Model calls hold the transaction open; acceptable at
  * worker concurrency 2 for note-sized sources, revisit for bulk connectors.
  */
@@ -75,7 +75,7 @@ export class IngestionPipeline {
     private readonly verifyStage: VerifyStage,
     private readonly embedStoreStage: EmbedStoreStage,
     private readonly reconciliationService: ReconciliationService,
-    /** Parse/extraction caps (QS-6); optional so bare/test builds still work. */
+    /** Parse/extraction caps; optional so bare/test builds still work. */
     @Optional() @Inject(PARSE_CAPS) private readonly parseCaps: ParseCaps = DEFAULT_PARSE_CAPS,
   ) {}
 
@@ -105,7 +105,7 @@ export class IngestionPipeline {
     };
     const ref = { source_type: payload.source_type, source_id: payload.source_id };
 
-    // Run lock (QS-5, decision 0024): announces this in-flight run to the
+    // Run lock: announces this in-flight run to the
     // deletion saga's cancellation probe. idempotentTask already takes it for
     // worker deliveries; re-acquiring here (advisory xact locks are reentrant)
     // extends the guarantee to every direct pipeline.run caller (tests, eval).
@@ -128,7 +128,7 @@ export class IngestionPipeline {
       return summary;
     }
 
-    // Stage 2 — chunk: transient values, never rows. Parse caps (QS-6) bound
+    // Stage 2 — chunk: transient values, never rows. Parse caps bound
     // the work a single source can drive: text length (defense in depth over
     // the file extractor's own cap, covering every source type) and chunk count
     // (which bounds the per-chunk extraction model calls). Over-cap input is
@@ -141,34 +141,31 @@ export class IngestionPipeline {
     if (content.length < source.content.length) {
       log(
         { stage: 'chunk', ...ref, cappedTextChars: this.parseCaps.maxTextChars },
-        'source text capped (QS-6)',
+        'source text capped',
       );
     }
     let chunks = chunkContent(content);
     if (chunks.length > this.parseCaps.maxChunks) {
-      log(
-        { stage: 'chunk', ...ref, cappedChunks: this.parseCaps.maxChunks },
-        'chunk count capped (QS-6)',
-      );
+      log({ stage: 'chunk', ...ref, cappedChunks: this.parseCaps.maxChunks }, 'chunk count capped');
       chunks = chunks.slice(0, this.parseCaps.maxChunks);
     }
     summary.chunks = chunks.length;
 
     // Stage 3 — extract: empty content short-circuits with zero model calls;
     // a durable-fact-free source legitimately yields [] (calibrated abstention).
-    // The facts array is capped (QS-6) so a pathological source cannot fan out
+    // The facts array is capped so a pathological source cannot fan out
     // into thousands of verify/reconcile/embed calls and memory rows.
     let facts = await this.extractStage.run(source, chunks);
-    // Web pages get a tighter fact budget (decision 0057): reference material
+    // Web pages get a tighter fact budget: reference material
     // contributes its salient facts, not a hundred rows of page noise — and
     // the cap bounds the verify/reconcile/embed fan-out that made big pages
-    // slow. First-person sources keep the full QS-6 cap.
+    // slow. First-person sources keep the full cap.
     const maxFacts =
       payload.source_type === 'web'
         ? Math.min(this.parseCaps.maxFacts, WEB_MAX_FACTS)
         : this.parseCaps.maxFacts;
     if (facts.length > maxFacts) {
-      log({ stage: 'extract', ...ref, cappedFacts: maxFacts }, 'fact count capped (QS-6)');
+      log({ stage: 'extract', ...ref, cappedFacts: maxFacts }, 'fact count capped');
       facts = facts.slice(0, maxFacts);
     }
     summary.extracted = facts.length;
@@ -181,7 +178,7 @@ export class IngestionPipeline {
       'verification pass complete',
     );
 
-    // Admission checkpoint (QS-5, decision 0024): the source may have been
+    // Admission checkpoint: the source may have been
     // deleted by the saga while the model stages above held this transaction
     // open. Re-verify — with a KEY SHARE row lock, in THIS transaction — that
     // the durable source row still exists before writing anything. If the
@@ -219,7 +216,7 @@ export class IngestionPipeline {
       'facts embedded and stored',
     );
 
-    // Stage 6 — reconcile (decision 0010): new facts vs the owner's existing
+    // Stage 6 — reconcile: new facts vs the owner's existing
     // memory, inside the same idempotency transaction as their admission.
     summary.reconcile = await this.reconciliationService.reconcile(
       tx,
@@ -255,7 +252,7 @@ export interface CreatePipelineOptions {
   gateway: ModelGateway;
   store: MemoryStore;
   reconciliation: MemoryReconciliation;
-  /** Parse/extraction caps (QS-6); the generous defaults apply when omitted. */
+  /** Parse/extraction caps; the generous defaults apply when omitted. */
   parseCaps?: ParseCaps;
 }
 

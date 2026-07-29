@@ -3,9 +3,9 @@ import { loadPrompt, ModelGateway } from '../model-gateway/index';
 import type { PromptArtifact } from '../model-gateway/index';
 
 /**
- * Query minimisation (Priority 5 Part B, decision 0044): rewrite a proposed
+ * Query minimisation: rewrite a proposed
  * search query to the least-identifying form that still serves the research
- * intent, BEFORE the gate shows it (decision 0045). Pseudonymising a query
+ * intent, BEFORE the gate shows it. Pseudonymising a query
  * breaks it — the redaction sidecar's NER swap cannot do this — so the
  * backlog's "redaction-tier pass" is realised as a small-model rewrite on the
  * pipeline tier through the normal gateway (itself redaction-wrapped when the
@@ -28,7 +28,7 @@ const minimiseSchema = z.object({
 });
 
 export interface MinimisedQuery {
-  /** The proposed query, unchanged — always reported alongside (decision 0044). */
+  /** The proposed query, unchanged — always reported alongside. */
   original: string;
   minimised: string;
   reason: string;

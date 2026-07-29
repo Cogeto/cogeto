@@ -68,12 +68,12 @@ const HEARTBEAT_INTERVAL_MS = 10_000;
 async function main(): Promise<void> {
   const config = loadConfig();
   const logger = createLogger(config.logLevel);
-  logRedactionState(logger, config); // QS-21: state the effective posture loudly.
-  logModelConfiguration(logger, config); // decision 0040: state the active configuration id.
-  // Embedding-space guard (decision 0040 ruling 3): a changed embeddings
+  logRedactionState(logger, config); //: state the effective posture loudly.
+  logModelConfiguration(logger, config); // State the active configuration id.
+  // Embedding-space guard: a changed embeddings
   // model refuses boot until reindex has re-embedded the stored vectors.
   await assertEmbeddingSpaceConsistent(config);
-  // Local-runtime probe (decision 0041 ruling 2): an unreachable Ollama
+  // Local-runtime probe: an unreachable Ollama
   // runtime or a never-pulled model refuses boot, never fails at first request.
   await assertLocalRuntimeReady(config.modelProviders);
 
@@ -83,7 +83,7 @@ async function main(): Promise<void> {
   );
   context.enableShutdownHooks();
 
-  // QS-38: explicit pool ceiling. This pool backs BOTH the graphile runner and
+  // explicit pool ceiling. This pool backs BOTH the graphile runner and
   // the job handlers' idempotency transactions (which the pipeline holds open
   // across model calls), so it must clear worker concurrency (2) with headroom
   // for the single-flight locks and graphile's own connections.
@@ -96,7 +96,7 @@ async function main(): Promise<void> {
   });
   const db = createDb(pool);
 
-  // Register the active prompt versions (§B.7) — also the immutability check:
+  // Register the active prompt versions (§B.7) — also the immutability check
   // a released version whose file hash changed fails the boot.
   for (const ref of [
     ...ACTIVE_PROMPTS,
@@ -153,7 +153,7 @@ async function main(): Promise<void> {
     log: (event, message) => logger.info(event, message),
   });
 
-  // Ana sandbox (decision 0022 ruling 2): the scheduled reset is registered +
+  // Ana sandbox: the scheduled reset is registered +
   // scheduled ONLY on a demo instance — never on a customer instance. It reuses
   // the demo Principal from the seed job and runs the same wipe-and-reseed
   // routine. One more crontab LINE (demoLine), never a second scheduler.
@@ -176,12 +176,12 @@ async function main(): Promise<void> {
           excludeTask: DEMO_RESET_JOB_TYPE, // don't count our own running job
           log: (message) => logger.info({}, message),
         });
-        // A reset rotates the sandbox login password (decision 0027); surface it.
+        // A reset rotates the sandbox login password; surface it.
         const creds = await ensureDemoCredentials(config.demoSessionFile, { rotate: true });
         logger.info({}, credentialsBanner(creds));
         logger.info({}, 'scheduled demo reset completed');
       } catch (error) {
-        // QS-33: another reset already holds the lock — skip cleanly, don't fail
+        // another reset already holds the lock — skip cleanly, don't fail
         // the job (which would retry into the running reset).
         if (error instanceof DemoResetInProgressError) {
           logger.info({}, 'scheduled demo reset skipped — another reset in progress');
@@ -199,11 +199,11 @@ async function main(): Promise<void> {
     concurrency: 2,
     taskList,
     // Nightly schedule (graphile cron): the 03:00 integrity sweep (§A.7 step 4)
-    // and the 03:30 dreaming cycle (§B.6; decision 0011), plus the
-    // every-5-minute approval expiry pass (§A.8; O1-B), plus the demo reset on a
+    // and the 03:30 dreaming cycle (§B.6), plus the
+    // every-5-minute approval expiry pass (§A.8), plus the demo reset on a
     // demo instance. On-demand sweep/dream go through their entrypoints instead.
     //
-    // QS-39: graphile cron honours the process timezone, so the worker container
+    // graphile cron honours the process timezone, so the worker container
     // pins TZ=UTC (compose) — these times are UTC and DST never shifts them. A
     // DST transition can still make a wall-clock hour repeat/skip on non-UTC
     // hosts; the single-flight advisory lock on each recurring job (worker-tasks)
@@ -236,7 +236,7 @@ async function main(): Promise<void> {
 
 // Top-level handlers log the error class + a scrubbed, bounded message only —
 // never the raw error (stack / `received …` can carry secrets or model output),
-// QS-22.
+//.
 process.on('unhandledRejection', (reason: unknown) => {
   console.error(`unhandledRejection: ${describeErrorLine(reason)}`);
 });

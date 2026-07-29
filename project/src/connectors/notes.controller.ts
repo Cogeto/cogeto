@@ -19,7 +19,7 @@ import type { AuthenticatedRequest } from '../identity/index';
 import { NotesService } from './notes.service';
 import { UserSettingsService } from './user-settings.service';
 
-/** Zod at the boundary: non-blank, bounded content; optional scope (O2-B). */
+/** Zod at the boundary: non-blank, bounded content; optional scope. */
 const captureSchema = z.object({
   content: z
     .string()
@@ -48,7 +48,7 @@ export class NotesController {
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
     }
-    // An omitted scope falls back to the user's saved default (§A.9, O1-C) —
+    // An omitted scope falls back to the user's saved default (§A.9) —
     // the same rule uploads follow, so the Settings toggle now governs BOTH.
     const scope = parsed.data.scope ?? (await this.settings.get(request.principal)).defaultScope;
     const row = await this.notes.createNote(request.principal, parsed.data.content, scope);

@@ -8,7 +8,7 @@ import { HealthController } from './health.controller';
 import type { CogetoConfig } from './config';
 
 /**
- * The capability registry against real Postgres (P6.7, decision 0055):
+ * The capability registry against real Postgres
  *
  *   health_additive — /api/health keeps its existing `checks` contract
  *     byte-for-byte (the operator script and the status panel iterate it) and
@@ -68,7 +68,7 @@ describe('capability registry (integration, real Postgres)', () => {
     );
     const report = await controller.health();
 
-    // The pre-P6.7 consumers (operator script, status panel) iterate exactly
+    // The pre- consumers (operator script, status panel) iterate exactly
     // these keys — additive means they never change.
     expect(Object.keys(report.checks)).toEqual([
       'postgres',

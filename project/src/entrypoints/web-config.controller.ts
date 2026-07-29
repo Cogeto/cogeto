@@ -23,8 +23,8 @@ const demoLoginSchema = z.object({
 
 /**
  * GET /api/config — OIDC parameters for the SPA (unauthenticated by design — the
- * SPA needs them before login; QS-18 @Public). POST /api/config/demo-login — the
- * password gate for the Ana sandbox (decision 0027): the operator exchanges the
+ * SPA needs them before login; @Public). POST /api/config/demo-login — the
+ * password gate for the Ana sandbox: the operator exchanges the
  * generated username + password for the demo session token. The token is NEVER
  * served on GET /api/config anymore — the sandbox is no longer auto-open.
  */
@@ -36,7 +36,7 @@ export class WebConfigController {
   @Get()
   async webConfig(): Promise<WebConfig> {
     const base = await this.readBaseConfig();
-    // Ana sandbox (decision 0022/0027) — FAIL-CLOSED (QS-3). Production or a
+    // Ana sandbox — FAIL-CLOSED. Production or a
     // non-demo (customer) instance never exposes the sandbox at all. On a demo
     // instance we advertise the PASSWORD-GATED login once the seed has minted
     // credentials + a session; the token itself is not disclosed here.

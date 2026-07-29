@@ -44,7 +44,7 @@ const FATE_LABEL: Record<LaterFate, string> = {
 };
 
 /**
- * The time-travel surface (decision 0012) — one subject's honest, inspectable
+ * The time-travel surface — one subject's honest, inspectable
  * past. Three readings over the same gated primitives: the full history as
  * spans, the subject as understood at a chosen instant, and the diff between two
  * instants phrased in the F3 past-belief framing. No new visual vocabulary: the
@@ -423,7 +423,7 @@ function ChangeRow({
 }) {
   // "Explain this change" hands off to chat with the question ready (never auto-sent).
   const question = `What changed about ${subject}, and what caused it, between ${humanDate(toInstant(fromDay))} and ${humanDate(toInstant(toDay))}?`;
-  // Past-belief framing, same story the chat answer tells (decision 0012 ruling 6).
+  // Past-belief framing, same story the chat answer tells.
   return (
     <div className="rounded-lg border border-slate-200 bg-surface p-3 text-sm">
       <p className="text-slate-700">

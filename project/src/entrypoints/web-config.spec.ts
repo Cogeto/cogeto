@@ -7,11 +7,11 @@ import { WebConfigController } from './web-config.controller';
 import type { CogetoConfig } from './config';
 
 /**
- * Ana sandbox is FAIL-CLOSED (QS-3) and, since decision 0027, PASSWORD-GATED: the
+ * Ana sandbox is FAIL-CLOSED and, since, PASSWORD-GATED: the
  * token is never served on GET /api/config; the SPA advertises a login and the
  * operator exchanges username + generated password at POST /api/config/demo-login.
  */
-describe('web-config demo password gate (QS-3, decision 0027)', () => {
+describe('web-config demo password gate', () => {
   let dir: string;
   let webConfigFile: string;
   let sessionFile: string;

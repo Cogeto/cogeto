@@ -50,7 +50,7 @@ const STATUS_LABEL: Record<SkillRunDto['status'], string> = {
 const runLink = (id: string) => `/skills?run=${encodeURIComponent(id)}`;
 
 /**
- * The skill surface (Priority 7, decision 0059). One skill in v1: research a
+ * The skill surface. One skill in v1: research a
  * company or person before a meeting. The run view IS the claim: every step
  * inspectable as it happens, the query plan approved before anything leaves,
  * every brief claim clickable to its source, and proposed actions that wait.

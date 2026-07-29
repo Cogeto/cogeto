@@ -1,7 +1,7 @@
 import type { Principal } from '@cogeto/shared';
 
 /**
- * The chat → research seam (Priority 5 Part B, decision 0045) — the same
+ * The chat → research seam — the same
  * cross-module pattern as CHAT_REPLY_RESOLVER: retrieval defines the port,
  * connectors implements it (ResearchService), the APP composition root binds
  * it. ChatService never imports connectors; the worker never binds it, so the
@@ -19,7 +19,7 @@ export interface ChatResearchProposal {
 }
 
 export interface ChatResearchResolverPort {
-  /** `conversationId` (issue #259): the thread the research was invoked from —
+  /** `conversationId`: the thread the research was invoked from —
    * the concluded answer is appended there as a persistent assistant message. */
   propose(
     principal: Principal,

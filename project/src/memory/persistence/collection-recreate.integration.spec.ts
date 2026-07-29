@@ -4,7 +4,7 @@ import type { TestQdrant } from '../../testing/index';
 import { MemoryVectorStore } from './vector-store';
 
 /**
- * reindex_recreates_collection_on_dimension_change (issue #179): switching to
+ * reindex_recreates_collection_on_dimension_change: switching to
  * an embeddings model with a different vector size must let reindex DROP and
  * recreate the collection — otherwise every upsert fails with a dimension
  * error. Normal boot (no flag) keeps create-if-missing semantics.

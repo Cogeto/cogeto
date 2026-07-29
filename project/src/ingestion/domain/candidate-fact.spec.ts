@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { extractionOutputSchema, MAX_FACTS_PER_CHUNK } from './candidate-fact';
 
-/** FIX-2 QS-6: the extractor's facts array carries a `.max()` cap. */
-describe('extraction output cap (QS-6)', () => {
+/**: the extractor's facts array carries a `.max` cap. */
+describe('extraction output cap', () => {
   const fact = {
     claim: 'x',
     kind: 'fact',

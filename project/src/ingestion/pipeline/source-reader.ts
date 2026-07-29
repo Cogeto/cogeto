@@ -26,7 +26,7 @@ export interface SourceItem {
   scope?: MemoryScope;
   sensitive?: boolean;
   /**
-   * Email-path authorship (migration 0030; decision 0054): true when the
+   * Email-path authorship (migration 0030): true when the
    * content is the user's OWN new text (a self-routed message that is not a
    * forwarded original), false when it is someone else's words, omitted when
    * unknown or not applicable (non-email sources). Derived memories carry it;
@@ -47,7 +47,7 @@ export interface SourceReader {
   readonly sourceType: SourceType;
   load(sourceId: string): Promise<SourceItem | null>;
   /**
-   * The admission checkpoint (decision 0024): re-verifies INSIDE the pipeline's
+   * The admission checkpoint: re-verifies INSIDE the pipeline's
    * idempotency transaction, after the slow model stages and immediately before
    * any memory row is inserted, that the durable source row still exists.
    * Implementations MUST run the check on `tx` with a shared row lock

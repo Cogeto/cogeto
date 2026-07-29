@@ -9,7 +9,7 @@ import type { ConfirmedReceipt } from './receipt-chain';
 import { parseReceiptCounts } from '../deletion-saga';
 
 /**
- * receipt_chain_survives_task_removal (V2.0 item 3.1, decision 0060 — risk
+ * receipt_chain_survives_task_removal (— risk
  * point 1).
  *
  * `counts_json.tasks_removed` was written into signed, hash-chained deletion
@@ -18,7 +18,7 @@ import { parseReceiptCounts } from '../deletion-saga';
  * and `verifyChain` are unchanged, new receipts simply omit the field, and the
  * schema keeps it optional forever.
  *
- * The fixture below is a receipt as the pre-2.0 saga wrote it — `tasks_removed`
+ * The fixture below is a receipt as the pre-2.0 saga wrote it`tasks_removed`
  * present, in the exact key order the old code emitted (canonicalization sorts,
  * so the order is a red herring the test deliberately includes). It is hashed
  * and signed with a real instance key, then verified with the CURRENT code.
@@ -39,7 +39,7 @@ const HISTORICAL_COUNTS = {
   enumerated_at: '2026-05-04T09:12:33.481Z',
 };
 
-describe('receipt_chain_survives_task_removal (decision 0060)', () => {
+describe('receipt_chain_survives_task_removal', () => {
   let signer: InstanceSigner;
   let publicKeyPem: string;
 
@@ -85,7 +85,7 @@ describe('receipt_chain_survives_task_removal (decision 0060)', () => {
     // historical receipt on every instance would have silently stopped
     // verifying. The literal below was computed with the pre-removal code.
     expect(canonicalize({ b: 1, a: { d: 2, c: [3, 1] } })).toBe('{"a":{"c":[3,1],"d":2},"b":1}');
-    // tasks_removed sorts between superseded_by_nulled and… nothing special:
+    // tasks_removed sorts between superseded_by_nulled and… nothing special
     // it is an ordinary key, which is exactly why keeping it optional suffices.
     expect(canonicalize(HISTORICAL_COUNTS)).toContain('"tasks_removed":3');
     expect(canonicalize(HISTORICAL_COUNTS)).toBe(

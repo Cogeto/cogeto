@@ -24,7 +24,7 @@ import { MemoryFileStore } from './file-store';
 
 export interface MemoryModuleOptions {
   qdrantUrl: string;
-  /** Qdrant API key (QS-4); forwarded to the client. */
+  /** Qdrant API key; forwarded to the client. */
   qdrantApiKey?: string;
   /** Determines the collection's vector size; recorded per memory. */
   embeddingModel: string;
@@ -33,7 +33,7 @@ export interface MemoryModuleOptions {
   /** Object storage — the saga's byte-deletion leg + encryption check (0008);
    * `publicUrl` is the browser-reachable origin for presigned URLs (O1, §A.9). */
   s3: { url: string; publicUrl?: string; accessKey: string; secretKey: string; bucket: string };
-  /** Where the instance signing keypair lives (§B.1, decision 0008). */
+  /** Where the instance signing keypair lives (§B.1). */
   instanceKeyDir: string;
   /**
    * Source-deletion adapters for source rows owned by other modules — bound by
@@ -45,8 +45,7 @@ export interface MemoryModuleOptions {
    * deriving module implements. */
   derivedCascades?: { imports?: ModuleMetadata['imports']; adapters: Type<DerivedCascade>[] };
   /**
-   * Pending-ingestion cancellation for the deletion saga (QS-5, decision
-   * 0024) — REQUIRED so no production wiring can silently ship without the
+   * Pending-ingestion cancellation for the deletion saga  — REQUIRED so no production wiring can silently ship without the
    * delete-vs-ingestion serialization. Implemented by the ingestion module
    * (PipelineIngestionGuard); must be dependency-free (instantiated here).
    */
@@ -54,21 +53,21 @@ export interface MemoryModuleOptions {
 }
 
 /**
- * memory — core domain (Addendum §A.1, §A.6; decision 0003 ruling 2).
+ * memory — core domain (Addendum §A.1, §A.6).
  * Owns ALL storage access for memory data: the Postgres tables, the Qdrant
  * client AND the object-storage client (module-private — no other module may
  * import them; dependency-cruiser rule). Registered once by each composition
  * root with its storage options; global like the seams so consumers inject
- * MemoryStore without re-options (decision 0004 ruling 4 pattern).
+ * MemoryStore without re-options (pattern).
  */
 @Module({})
 export class MemoryModule {
   static register(options: MemoryModuleOptions): DynamicModule {
-    // Boot assertion (QS-26): a production-configured memory module ALWAYS has
+    // Boot assertion: a production-configured memory module ALWAYS has
     // a vector store — transitions and supersession must fail loudly, never
     // silently skip their Qdrant payload sync, if Qdrant is miswired.
     if (!options.qdrantUrl) {
-      throw new Error('MemoryModule.register: qdrantUrl is required — see decision 0024 / QS-26');
+      throw new Error('MemoryModule.register: qdrantUrl is required — /');
     }
     return {
       module: MemoryModule,

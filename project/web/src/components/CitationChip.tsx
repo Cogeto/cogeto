@@ -9,12 +9,12 @@ import { isPastFact, statusLabel, WARN_STATUSES } from './status';
  * An inline citation chip in an assistant message. Live streams pass the fact
  * from the SSE sources event; persisted messages resolve the memory id via
  * GET /api/memories/:id. Uncertain and contradicted facts are visibly marked.
- * A web-sourced fact (Priority 5) renders as a web chip carrying its URL and
- * fetch time, matching the research answer's treatment (decision 0046).
+ * A web-sourced fact renders as a web chip carrying its URL and
+ * fetch time, matching the research answer's treatment.
  * Clicking opens the governance drawer in place when the page provides an
  * onOpen handler (chat); otherwise it deep-links to /memories.
  */
-/** Friendly, short source kind for the provenance chip (P6.9). */
+/** Friendly, short source kind for the provenance chip. */
 function sourceKind(sourceType: string): string {
   switch (sourceType) {
     case 'user_note':
@@ -52,7 +52,7 @@ export function CitationChip({
     queryFn: () => fetchMemory(session, lookupId!),
     enabled: Boolean(lookupId),
     // A cited memory's status is refreshed by targeted invalidation on any
-    // governance mutation (QS-36); this stale window just bounds passive drift.
+    // governance mutation; this stale window just bounds passive drift.
     staleTime: CITATION_STALE_MS,
   });
   const { data: me } = useQuery({ queryKey: ['me'], queryFn: () => fetchMe(session) });
@@ -84,7 +84,7 @@ export function CitationChip({
       : null;
 
   // A web-sourced fact resolves its page for the URL + fetch-time treatment
-  // (built in Priority 5); the drawer still holds the full provenance.
+  // (built in); the drawer still holds the full provenance.
   const webSourceId = target?.sourceType === 'web' ? target.sourceId : undefined;
   const { data: webSource } = useQuery({
     queryKey: ['web-source', webSourceId],
@@ -104,7 +104,7 @@ export function CitationChip({
   const isWeb = target.sourceType === 'web';
   const kind = sourceKind(target.sourceType);
   const dateLabel = fact?.validFrom ? shortDate(fact.validFrom) : null;
-  // Provenance chip (P6.9): a mono "◈ kind" token, tinted by state. Warning
+  // Provenance chip: a mono "◈ kind" token, tinted by state. Warning
   // statuses win the styling contest (a disputed fact stays visibly disputed);
   // then past-belief muted, then the teal/sky memory-vs-web split.
   const tone =
@@ -117,7 +117,7 @@ export function CitationChip({
           : isWeb
             ? 'border-sky-400/40 bg-sky-400/10 text-sky-700 dark:text-sky-300'
             : 'border-brand-teal/30 bg-brand-teal/10 text-brand-teal-ink dark:text-brand-teal';
-  // Attribute a cited SHARED fact owned by someone else (O2-B).
+  // Attribute a cited SHARED fact owned by someone else.
   const sharedByOther = target.scope === 'shared' && target.ownerId !== me?.userId;
   const ownerLabel = target.ownerName ?? 'a teammate';
   const className = `mx-0.5 inline-flex items-center gap-1 rounded-md border px-1.5 align-baseline font-mono text-[0.72rem] font-medium no-underline transition-shadow hover:shadow-sm ${tone}`;

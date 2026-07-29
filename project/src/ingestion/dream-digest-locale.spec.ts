@@ -5,7 +5,7 @@ import { buildDigestLines } from './dream-digest';
 import type { DreamActionRow } from './persistence/tables';
 
 /**
- * initiated_content_in_preferred (P6.6, decision 0052): everything Cogeto
+ * initiated_content_in_preferred: everything Cogeto
  * INITIATES speaks the user's preferred language. The digest lines are
  * deterministic string tables, so an hr user's digest comes back in Croatian
  * with the line ORDER unchanged (the attention feed's dismissal keys index

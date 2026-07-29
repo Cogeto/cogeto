@@ -6,7 +6,7 @@ import { buildAnswerInput } from './chat/answer-prompt';
 
 const NOW = new Date('2026-07-05T12:00:00Z');
 
-describe('temporal intent guards (unit — decision 0012 ruling 2)', () => {
+describe('temporal intent guards (unit)', () => {
   it('temporal_explicit_only: a plain question never activates the mode', () => {
     const plainQuestions = [
       'What is the Atlas budget?',
@@ -72,7 +72,7 @@ describe('temporal intent guards (unit — decision 0012 ruling 2)', () => {
   });
 });
 
-describe('past_framing_contract (unit — decision 0012 ruling 6)', () => {
+describe('past_framing_contract (unit)', () => {
   const baseRow = {
     validFrom: new Date('2026-03-01'),
     validUntil: null as Date | null,

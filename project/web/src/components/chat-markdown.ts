@@ -1,13 +1,13 @@
 import type { AnswerSegment } from '@cogeto/shared';
 
 /**
- * Markdown-lite for chat messages (issue #211): the hand-rolled,
+ * Markdown-lite for chat messages: the hand-rolled,
  * dependency-free subset the answer model actually emits — bold, italic,
  * inline code, bullet and numbered lists, `###` headings, `---` dividers,
  * paragraph breaks. Everything else stays literal, and malformed markup
  * degrades to plain text (an unclosed `**` simply renders its asterisks).
  *
- * This is PRESENTATION ONLY and runs after the citation sanitize/scan step:
+ * This is PRESENTATION ONLY and runs after the citation sanitize/scan step
  * chips arrive as atomic segments, keep their positions and order, and never
  * participate in formatting runs (a style opened before a chip and "closed"
  * after it stays literal — degrading, never guessing). The strict-grammar

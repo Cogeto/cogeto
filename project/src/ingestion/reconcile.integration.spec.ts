@@ -15,7 +15,7 @@ const DIMS = 8;
 const EMBED_MODEL = 'test-embed';
 
 /**
- * Stage 6 end to end (decision 0010) against real Postgres + Qdrant, with the
+ * Stage 6 end to end against real Postgres + Qdrant, with the
  * judge scripted at the ModelGateway seam for determinism — live model
  * behavior is the reconciliation pair eval's job (§B.4).
  *
@@ -358,7 +358,7 @@ describe('reconciliation stage 6 (integration, real Postgres + Qdrant, scripted 
     });
     expect(await auditCount('memory.contradiction_detected', relations[0]!.id)).toBe(1);
 
-    // QS-1 (decision 0025): the model's explanation lives on the owner-gated
+    // the model's explanation lives on the owner-gated
     // relation row; the org-readable audit detail carries ids only — no
     // free-text 'reason' key, ever.
     const { rows: reasonRows } = await tdb.pool.query<{ reason: string | null }>(

@@ -7,7 +7,7 @@ import {
   stripSignature,
 } from './email-preprocess';
 
-describe('email extraction pre-processing (thread-aware; Session O4)', () => {
+describe('email extraction pre-processing (thread-aware;)', () => {
   it('quote_stripping: quoted history and signatures are excluded; only new content remains', () => {
     const body = [
       'Hi Marko,',

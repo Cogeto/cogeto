@@ -5,7 +5,7 @@ import type { AuthenticatedRequest } from '../identity/index';
 import { EmailSourceService } from './email-source.service';
 
 /**
- * GET /api/email/:id/source (Session O4 — email reply triggers): the email
+ * GET /api/email/:id/source: the email
  * reading view behind an email memory's source drawer — the full retained
  * message (sender, recipients, subject, body, attachments) plus the recovered
  * original correspondent for a forward. Owner-only.

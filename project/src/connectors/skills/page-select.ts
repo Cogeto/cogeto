@@ -1,7 +1,7 @@
 import type { DiscoveredPageDto } from '@cogeto/shared';
 
 /**
- * The skill engine's page selection (decision 0059 ruling 5): relevance first
+ * The skill engine's page selection: relevance first
  * (the SearXNG score, exactly like chat's auto-selection), with a preference
  * for primary sources — a page whose HOST carries the subject's name (the
  * subject's own site) outranks a same-scored third-party mention. Pure and

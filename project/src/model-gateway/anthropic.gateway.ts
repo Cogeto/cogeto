@@ -44,12 +44,12 @@ interface MessagesResponse {
 }
 
 /**
- * Anthropic adapter (decision 0040): the Messages API over plain HTTPS — no
+ * Anthropic adapter: the Messages API over plain HTTPS — no
  * SDK dependency. No embeddings API exists, so this adapter is never eligible
- * for the embeddings tier (boot validation enforces it; embed() is a typed
+ * for the embeddings tier (boot validation enforces it; embed is a typed
  * failure if ever reached). Current Anthropic models reject sampling
  * parameters, so no temperature is sent — the documented deviation from
- * decision 0035 (see 0040 ruling 1).
+ * (see 0040 ruling 1).
  */
 export class AnthropicModelGateway extends ModelGateway {
   private readonly baseUrl: string;
@@ -166,14 +166,14 @@ export class AnthropicModelGateway extends ModelGateway {
    * keeps the embeddings tier off this adapter; reaching this is a bug. */
   async embed(): Promise<number[][]> {
     throw new ModelGatewayError(
-      'anthropic has no embeddings API — the embeddings tier must use another provider (decision 0040 ruling 3)',
+      'anthropic has no embeddings API — the embeddings tier must use another provider',
       false,
     );
   }
 
   embeddingModelId(): string {
     throw new ModelGatewayError(
-      'anthropic has no embeddings API — the embeddings tier must use another provider (decision 0040 ruling 3)',
+      'anthropic has no embeddings API — the embeddings tier must use another provider',
       false,
     );
   }

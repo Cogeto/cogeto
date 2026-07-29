@@ -15,7 +15,7 @@ function email(over: Partial<ReplyTargetSource>): ReplyTargetSource {
   };
 }
 
-describe('resolveReplyTarget — forwarded-addressing recovery (Session O4)', () => {
+describe('resolveReplyTarget — forwarded-addressing recovery', () => {
   it('forwarded_reply_addressing: a directly-received email replies to its actual From', () => {
     const t = resolveReplyTarget(email({ fromAddr: 'Ana <ana@adriatic-foods.hr>' }), OWNER);
     expect(t.to).toBe('ana@adriatic-foods.hr');
@@ -44,7 +44,7 @@ describe('resolveReplyTarget — forwarded-addressing recovery (Session O4)', ()
     );
     expect(t.to).toBe('ana@adriatic-foods.hr'); // Ana, NOT the forwarder
     expect(t.resolved).toBe(true);
-    // Recovered from the forwarded BODY — a suggestion to verify, not trusted (SEC-3).
+    // Recovered from the forwarded BODY — a suggestion to verify, not trusted.
     expect(t.recipientVerified).toBe(false);
     expect(t.isForward).toBe(true);
     expect(t.originalCorrespondent).toContain('ana@adriatic-foods.hr');

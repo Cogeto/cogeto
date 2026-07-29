@@ -14,7 +14,7 @@ import { MEMORY_SCOPES } from '@cogeto/shared';
 
 /**
  * Tables owned by the connectors module (migration 0003; user_settings in
- * 0016). Module-private. `note` holds the notes connector's source rows:
+ * 0016). Module-private. `note` holds the notes connector's source rows
  * memories extracted from a note carry provenance source_type = 'user_note',
  * source_id = note.id (§A.6).
  */
@@ -30,7 +30,7 @@ export const note = pgTable(
     ownerId: text('owner_id').notNull(),
     content: text('content').notNull(),
     // The capture-time scope (migration 0018); the source reader passes it to
-    // the pipeline so derived memories inherit it (O2-B).
+    // the pipeline so derived memories inherit it.
     scope: scopeEnum('scope').notNull().default('private'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -54,7 +54,7 @@ export const userSettings = pgTable('user_settings', {
 export type UserSettingsRow = typeof userSettings.$inferSelect;
 
 /**
- * Inbound email (Session O4, decision 0028; migration 0021). Owned by
+ * Inbound email (, migration 0021). Owned by
  * connectors. `email_message` + its raw MinIO object are the complete retained
  * message (full retention, ruling 5); memories extracted from an email carry
  * provenance source_type = 'email', source_id = email_message.id (§A.6).
@@ -84,8 +84,8 @@ export const emailMessage = pgTable(
     headersJson: jsonb('headers_json').notNull().default({}),
     hasAttachments: boolean('has_attachments').notNull().default(false),
     /**
-     * Intake-time routing fact (migration 0030; decision 0054): true when this
-     * copy was self-routed (decision 0031 rule 1 — the authenticated sender IS
+     * Intake-time routing fact (migration 0030): true when this
+     * copy was self-routed (rule 1 — the authenticated sender IS
      * the capture user), false when allowlist-routed (someone else wrote it).
      * NULL = pre-0030 row awaiting the authorship backfill. The SourceReader
      * combines it with forward detection into the memories' authored_by_user.
@@ -122,7 +122,7 @@ export const emailAttachment = pgTable(
 
 export type EmailAttachmentRow = typeof emailAttachment.$inferSelect;
 
-/** The two allowlist entry kinds (decision 0028 ruling 2a). */
+/** The two allowlist entry kinds (ruling 2a). */
 export const emailAllowlistKindEnum = pgEnum('email_allowlist_kind', ['address', 'domain']);
 
 /**
@@ -165,7 +165,7 @@ export const emailRefusal = pgTable(
 export type EmailRefusalRow = typeof emailRefusal.$inferSelect;
 
 /**
- * Fetched web pages (Priority 5 Part A; decision 0043; migration 0027). Owned
+ * Fetched web pages (migration 0027). Owned
  * by connectors. The retained extracted text + URL are the complete source of
  * record (raw HTML optionally externalised to `rawObjectKey`); memories
  * extracted from a page carry provenance source_type = 'web',
@@ -183,7 +183,7 @@ export const webPage = pgTable(
     title: text('title'),
     fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull(),
     retainedText: text('retained_text').notNull(),
-    /** The focused extraction view (migration 0032; decision 0057): the
+    /** The focused extraction view (migration 0032): the
      * chunks most relevant to the run's sent query, ranked by embeddings at
      * capture time. NULL = extract from retainedText as before. */
     extractionText: text('extraction_text'),
@@ -202,8 +202,8 @@ export const webPage = pgTable(
 
 export type WebPageRow = typeof webPage.$inferSelect;
 
-/** The gate's states (decision 0045): discovery runs ONLY from 'approved'.
- * 'concluded' (migration 0032; decision 0057) is the terminal success state —
+/** The gate's states: discovery runs ONLY from 'approved'.
+ * 'concluded' (migration 0032) is the terminal success state —
  * the worker synthesised and stored the answer after the last page settled. */
 export const researchRunStatusEnum = pgEnum('research_run_status', [
   'proposed',
@@ -213,9 +213,9 @@ export const researchRunStatusEnum = pgEnum('research_run_status', [
 ]);
 
 /**
- * A research run (Priority 5 Part B; decision 0045; migration 0028) — the
+ * A research run (migration 0028) — the
  * auditable record of one research invocation: the user's intent, the proposed
- * query, the minimised query + reason (decision 0044), and — only after
+ * query, the minimised query + reason, and — only after
  * explicit approval — the EXACT text that left the instance (`sentQuery`,
  * post-edit). "You see precisely what leaves, and you approve it" is enforced
  * here, not in the UI.
@@ -245,7 +245,7 @@ export const researchRun = pgTable(
      * run until this is set, never after. */
     answerSeenAt: timestamp('answer_seen_at', { withTimezone: true }),
     /** The skill run this research run is one approved-plan query of
-     * (migration 0034; decision 0059). Same-module value reference, no FK:
+     * (migration 0034). Same-module value reference, no FK
      * the research run is the immutable record of what left and must outlive
      * any future skill-run pruning. NULL for manual research. */
     skillRunId: uuid('skill_run_id'),
@@ -258,7 +258,7 @@ export const researchRun = pgTable(
 
 export type ResearchRunRow = typeof researchRun.$inferSelect;
 
-/** Skill run lifecycle (decision 0059): the gate pause (awaiting_approval) is
+/** Skill run lifecycle: the gate pause (awaiting_approval) is
  * a stored state; completed/failed/cancelled are terminal. */
 export const skillRunStatusEnum = pgEnum('skill_run_status', [
   'planning',
@@ -279,10 +279,10 @@ export const skillStepStatusEnum = pgEnum('skill_step_status', [
 ]);
 
 /**
- * One skill invocation (Priority 7; decision 0059; migration 0034): a named,
+ * One skill invocation (migration 0034): a named,
  * versioned, code-defined workflow's durable run record. The brief + its
  * resolved citations persist here (renderable forever, citation links live).
- * A skill creates nothing of its own (decision 0060): it reads, searches, and
+ * A skill creates nothing of its own: it reads, searches, and
  * writes a brief — the adoption-proposal column went with the task subsystem
  * (migration 0035).
  */
@@ -311,7 +311,7 @@ export const skillRun = pgTable(
 export type SkillRunRow = typeof skillRun.$inferSelect;
 
 /**
- * The step log (decision 0059 ruling 2) — the inspectability claim as rows:
+ * The step log — the inspectability claim as rows
  * per step, its status, inputs/outputs summary, and links to everything it
  * produced. UNIQUE (skill_run_id, step_key) is the checkpoint claim the
  * re-runnable advance job compare-and-sets.

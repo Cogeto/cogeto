@@ -21,7 +21,7 @@ import { ChatService } from './chat.service';
 import { ChatSourceReader } from './chat.source-reader';
 
 /**
- * Multiple conversations (P6.9; decision 0056) — the model and its scoping:
+ * Multiple conversations — the model and its scoping
  *
  *   messages_scoped       — context assembly for a reply uses ONLY the current
  *                           conversation's turns; a fact stated raw in
@@ -97,7 +97,7 @@ class CaptureGateway extends ModelGateway {
     return EMBED;
   }
   async extractStructured<T>(schema: ZodType<T>, request: StructuredExtractionRequest): Promise<T> {
-    // Batched verification (decision 0057; verification/v0005): multi-fact
+    // Batched verification (verification/v0005): multi-fact
     // sources verify in one enveloped call — every claim supported, scripted.
     if (request.input.startsWith('CLAIMS UNDER REVIEW')) {
       const batch = {
@@ -259,7 +259,7 @@ describe('multiple conversations (integration, real Postgres + Qdrant)', () => {
     const two = await chat.createConversation(principal);
 
     // Start a stream in conversation 1, then detach after the first event —
-    // the controller's abort path does exactly this via iterator.return().
+    // the controller's abort path does exactly this via iterator.return.
     const stream = chat.ask(principal, 'Long question in thread one', one.id);
     const iterator = stream[Symbol.asyncIterator]();
     await iterator.next();

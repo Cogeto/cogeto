@@ -10,12 +10,12 @@ import { approval } from './persistence/tables';
  * email + the user's memories) and is keyed by the email SOURCE id on the
  * approval payload — not by a memory id — so the memory-keyed cascades miss it.
  * Without this, deleting an email left the model-drafted reply readable on the
- * approvals surface while the signed receipt claimed complete erasure (SEC-4).
+ * approvals surface while the signed receipt claimed complete erasure.
  *
  * On email-source deletion this redacts the drafted body (and subject/recipient)
  * of every reply-draft approval that referenced the source, to a deletion
  * marker — the chat-answer cascade's timeline-preserving redaction pattern
- * (QS-7). The row and its audit trail survive; only the derived content goes.
+ *. The row and its audit trail survive; only the derived content goes.
  * Idempotent: an already-redacted draft is not re-counted. Lives in the agents
  * module (it owns `approval`) and implements memory's DerivedCascade port; the
  * saga never touches this table itself (§A.1).

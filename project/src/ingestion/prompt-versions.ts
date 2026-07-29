@@ -11,7 +11,7 @@ export interface PromptVersionRef {
 
 export const EXTRACTION_PROMPT: PromptVersionRef = { family: 'extraction', version: 'v0002' };
 export const VERIFICATION_PROMPT: PromptVersionRef = { family: 'verification', version: 'v0004' };
-/** The batch form of v0004 (decision 0057) — multi-fact sources only. */
+/** The batch form of v0004 — multi-fact sources only. */
 export const VERIFICATION_BATCH_PROMPT: PromptVersionRef = {
   family: 'verification',
   version: 'v0005',

@@ -27,7 +27,7 @@ export class DatabaseModule {
       providers: [
         {
           provide: PG_POOL,
-          // QS-38: an explicit, configurable pool ceiling (default 20 here in the
+          // an explicit, configurable pool ceiling (default 20 here in the
           // absence of a caller value — composition roots pass config.pgPoolMax).
           useFactory: () =>
             new Pool({ connectionString: options.databaseUrl, max: options.poolMax ?? 20 }),

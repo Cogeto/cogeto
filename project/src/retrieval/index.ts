@@ -19,18 +19,18 @@ export {
   REPLY_EMAIL_HINT_RE,
 } from './query-rewrite';
 export type { EmailReplyIntent, ResearchIntent } from './query-rewrite';
-// The chat → research seam (Priority 5 Part B): same pattern as the reply seam.
+// The chat → research seam: same pattern as the reply seam.
 export { CHAT_RESEARCH_RESOLVER } from './chat/chat-research-resolver.port';
 export type {
   ChatResearchResolverPort,
   ChatResearchProposal,
 } from './chat/chat-research-resolver.port';
-// The chat → skill seam (Priority 7, decision 0059): same pattern again.
+// The chat → skill seam: same pattern again.
 export { CHAT_SKILL_RESOLVER } from './chat/chat-skill-resolver.port';
 export type { ChatSkillResolverPort, ChatSkillProposal } from './chat/chat-skill-resolver.port';
 export { detectSkillBriefIntent } from './query-rewrite';
 export type { SkillBriefIntent } from './query-rewrite';
-// The chat → email-reply seam (Session O4): retrieval defines the port,
+// The chat → email-reply seam: retrieval defines the port,
 // connectors implements it, the app root binds it (like the SourceReader family).
 export { CHAT_REPLY_RESOLVER } from './chat/chat-reply-resolver.port';
 export type {
@@ -44,12 +44,12 @@ export type { RetrievalSignal } from './fusion';
 // surface stays the ChatController.
 export { ChatService } from './chat/chat.service';
 export { ANSWER_PROMPT } from './chat/answer-prompt';
-// The chat source ports for source_type 'chat' (decision 0021): the composition
+// The chat source ports for source_type 'chat': the composition
 // roots bind these into ingestion's readers and the memory deletion saga.
 export { ChatSourceModule } from './chat/chat-source.module';
 export { ChatSourceReader } from './chat/chat.source-reader';
 export { ChatSourceDeletion } from './chat/chat.source-deletion';
-// P6.9 (decision 0056): conversation containers — the 'chat_conversation'
+// conversation containers — the 'chat_conversation'
 // deletion adapter and the worker's auto-title job.
 export { ConversationSourceDeletion } from './chat/conversation.source-deletion';
 export {
@@ -58,10 +58,10 @@ export {
   CONVERSATION_TITLE_PROMPT,
   sanitizeTitle,
 } from './chat/conversation-titler';
-// The conversation-append seam (issue #259; decision 0058): research answers
+// The conversation-append seam: research answers
 // land in the conversation they were invoked from. Retrieval owns port + impl.
 export { CONVERSATION_APPEND, ConversationScribe } from './chat/conversation-scribe';
 export type { ConversationAppendPort } from './chat/conversation-scribe';
-// QS-7 (decision 0025): the deletion saga's cascade over assistant answers
+// the deletion saga's cascade over assistant answers
 // that cite erased memories — bound into MemoryModule's derivedCascades.
 export { ChatAnswerCascade, CHAT_ANSWER_REDACTED } from './chat/chat-answer-cascade';

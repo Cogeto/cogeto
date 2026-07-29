@@ -13,7 +13,7 @@ import { EmailReplyDraftService } from './email-reply-draft.service';
  * O4). ChatService resolves a "draft a reply to Ana" request through this port
  * without importing connectors: it finds the candidate emails and, on a
  * confident match, creates the draft through the existing approval path. Never
- * sends — `createDraft` only produces a pending approval. Composed only into the
+ * sends`createDraft` only produces a pending approval. Composed only into the
  * app root (via EmailReplyModule).
  */
 @Injectable()

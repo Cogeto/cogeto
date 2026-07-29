@@ -31,7 +31,7 @@ const proposeSchema = z.object({
     .string()
     .max(500, 'research request is too long (max 500 characters)')
     .refine((value) => value.trim().length > 0, 'research request must not be blank'),
-  /** The invoking chat conversation (issue #259) — the concluded answer is
+  /** The invoking chat conversation — the concluded answer is
    * appended there. Absent for Research-page proposals. */
   conversationId: z.uuid().optional(),
 });
@@ -66,7 +66,7 @@ function toDto(row: ResearchRunRow): ResearchRunDto {
 }
 
 /**
- * The research-run surface (Priority 5 Part B; decisions 0044/0045) —
+ * The research-run surface —
  * propose → (edit) → approve-or-cancel → capture → synthesise. Composed only
  * into the app root (ResearchChatModule): research is an interactive flow,
  * never worker work. Discovery has NO other HTTP path — the Part A raw search
@@ -154,7 +154,7 @@ export class ResearchRunController {
     return toDto(await this.research.cancel(request.principal, id));
   }
 
-  /** The in-chat flow's progress feed (decision 0047): per-page pipeline
+  /** The in-chat flow's progress feed: per-page pipeline
    * state + derived-fact count. Owner-gated; read-only. */
   @Get('runs/:id/progress')
   async progress(
@@ -181,7 +181,7 @@ export class ResearchRunController {
   }
 
   /** The answer-tier synthesis with per-claim [W#]/[M#] provenance. A run the
-   * worker already concluded replays its STORED answer (decision 0057). */
+   * worker already concluded replays its STORED answer. */
   @Post('runs/:id/synthesise')
   async synthesise(
     @Req() request: AuthenticatedRequest,
@@ -190,7 +190,7 @@ export class ResearchRunController {
     return this.synthesis.synthesise(request.principal, id);
   }
 
-  /** The owner saw the stored answer (decision 0057): the chat resume surface
+  /** The owner saw the stored answer: the chat resume surface
    * stops showing this run. Idempotent. */
   @Post('runs/:id/seen')
   async seen(

@@ -88,7 +88,7 @@ async function exportReceiptJson(detail: ReceiptDetailDto): Promise<void> {
 }
 
 /**
- * The print/PDF artifact (decision 0022 §4 — the money screenshot). Hidden on
+ * The print/PDF artifact (§4 — the money screenshot). Hidden on
  * screen (`.receipt-print`); the print stylesheet shows only this. A clean,
  * single-page deletion certificate anyone can save as PDF from the browser.
  */

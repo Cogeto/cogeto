@@ -13,8 +13,8 @@ import { AttentionService } from './attention.service';
 const dismissSchema = z.object({ key: z.string().min(1).max(200) });
 
 /**
- * /api/attention — the in-app "what needs my attention" surface (Post-v1
- * Priority 2). A computed, Principal-gated feed plus the honest unread state.
+ * /api/attention — the in-app "what needs my attention" surface (
+ *). A computed, Principal-gated feed plus the honest unread state.
  * The service owns all gating and composition; these routes stay thin.
  */
 @Controller('attention')

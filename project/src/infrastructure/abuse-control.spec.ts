@@ -5,8 +5,8 @@ import { InMemoryModelBudget } from './model-budget';
 import { RateLimitGuard } from './rate-limit';
 import type { RateLimitBuckets } from './limits';
 
-/** FIX-2 QS-2: rate limiting, the daily model budget, and daily counters. */
-describe('abuse control (QS-2)', () => {
+/**: rate limiting, the daily model budget, and daily counters. */
+describe('abuse control', () => {
   const buckets: RateLimitBuckets = {
     windowSeconds: 60,
     chat: 2,

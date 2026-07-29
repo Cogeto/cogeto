@@ -3,7 +3,7 @@ import type { ZodType } from 'zod';
 import { ModelGatewayError } from './errors';
 
 /**
- * Shared provider plumbing (decision 0040 rulings 1–2): the retry/error
+ * Shared provider plumbing (–2): the retry/error
  * classification, the fetch-based HTTP + SSE transport the non-SDK adapters
  * use, and the ONE structured-output repair loop every adapter goes through.
  * Module-private to the gateway — nothing here is exported from the index.
@@ -11,7 +11,7 @@ import { ModelGatewayError } from './errors';
 
 export const MAX_RETRIES = 5;
 export const RETRY_BASE_MS = 800;
-/** Reachability probe cache window (QS-35) — health polls reuse it. */
+/** Reachability probe cache window — health polls reuse it. */
 export const REACHABILITY_TTL_MS = 30_000;
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -61,8 +61,7 @@ export async function callWithRetry<T>(
     try {
       return await fn();
     } catch (error) {
-      // Already classified by the adapter (e.g. a local timeout — decision
-      // 0041 ruling 2): respect its retryable flag, never re-wrap.
+      // Already classified by the adapter (e.g. a local timeout —): respect its retryable flag, never re-wrap.
       if (error instanceof ModelGatewayError) {
         if (error.retryable && attempt < maxRetries) {
           await sleep(baseMs * 2 ** attempt);
@@ -166,7 +165,7 @@ export function stripJsonFence(text: string): string {
 }
 
 /**
- * The ONE structured-output contract (decision 0040 ruling 2): parse the
+ * The ONE structured-output contract: parse the
  * adapter's JSON text, validate against the Zod schema, and on a schema
  * violation retry EXACTLY once with the validation issues appended. Non-JSON
  * output and a second schema failure are fatal typed errors; provider errors

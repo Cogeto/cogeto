@@ -7,7 +7,7 @@ import { loadPrompt, ModelGateway } from '../../model-gateway/index';
 import type { PromptArtifact } from '../../model-gateway/index';
 import { chatMessage, conversation } from '../persistence/tables';
 
-/** The auto-title worker job (P6.9; decision 0056). Idempotency key:
+/** The auto-title worker job. Idempotency key
  * ('chat_conversation', <conversation id>, this) — one attempt chain per
  * conversation; a later manual state change is always respected. */
 export const CONVERSATION_TITLE_JOB_TYPE = 'conversation.title';
@@ -25,7 +25,7 @@ const TITLE_MAX_CHARS = 60;
 const titleSchema = z.object({ title: z.string() });
 
 /**
- * Names an untitled conversation from its opening messages (P6.9): one
+ * Names an untitled conversation from its opening messages: one
  * pipeline-tier call, conservative and plain. Runs in the worker (§A.3 — the
  * model call never sits in the request path). The user's manual rename always
  * wins: the guarded UPDATE re-checks `title IS NULL AND NOT title_set_by_user`

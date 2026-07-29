@@ -5,7 +5,7 @@ import {
 } from './secret-preflight';
 
 /**
- * preflight — a one-shot init container (FIX-2 QS-8) that runs BEFORE zitadel,
+ * preflight — a one-shot init container that runs BEFORE zitadel,
  * migrate, app and worker. It is the only process handed every secret env var
  * (POSTGRES/MinIO/Zitadel/KMS), so it is where "no known dev secret on a
  * reachable host" is enforced instance-wide: a misconfigured production stack

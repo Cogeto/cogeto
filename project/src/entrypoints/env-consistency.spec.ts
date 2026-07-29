@@ -3,9 +3,9 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
- * env_consistency (O1-C, closes gap-audit 2.10/5.3): every COGETO_* env var the
+ * env_consistency (closes gap-audit 2.10/5.3): every COGETO_* env var the
  * app reads is documented where an operator can find it (.env.example or
- * docker-compose.yml), and every COGETO_* in .env.example is actually used
+ * docker-compose.yml), and every COGETO_* in.env.example is actually used
  * (read by code or wired in compose). No container needed — pure file reads.
  */
 
@@ -18,7 +18,7 @@ const DEV_ONLY = new Set([
   'COGETO_EVAL_GATE',
   'COGETO_SEED_ORG',
   'COGETO_SEED_OWNER',
-  // Test-only: vitest points the demo corpus loader at project/demo (decision 0022).
+  // Test-only: vitest points the demo corpus loader at project/demo.
   'COGETO_DEMO_DIR',
 ]);
 

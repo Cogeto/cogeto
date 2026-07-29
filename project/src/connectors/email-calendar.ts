@@ -1,5 +1,5 @@
 /**
- * Calendar-invite parsing for inbound email (Session O4 — GAP-4). A meeting
+ * Calendar-invite parsing for inbound email. A meeting
  * invite arrives as a `text/calendar` MIME part (or an `.ics` attachment); its
  * event details — summary, start/end, location, organizer — live in a VEVENT,
  * not in the human-written body. Without parsing it, an invite-only email

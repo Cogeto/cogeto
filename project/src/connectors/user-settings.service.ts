@@ -6,7 +6,7 @@ import type { Db } from '../infrastructure/index';
 import { userSettings } from './persistence/tables';
 
 /**
- * Per-user capture/upload defaults (§A.9; O1-C Settings). One row per user,
+ * Per-user capture/upload defaults (§A.9; Settings). One row per user,
  * created on first write — a read with no row returns the column defaults. Every
  * update is audited (org-scoped), so the trust surface shows preference changes.
  */
@@ -29,7 +29,7 @@ export class UserSettingsService {
 
   /**
    * The default capture scope for one user by id (no Principal available in
-   * the email intake, which acts for the resolved recipient — decision 0031).
+   * the email intake, which acts for the resolved recipient).
    * No row → the column default, private.
    */
   async defaultScopeFor(userId: string): Promise<'private' | 'shared'> {

@@ -1,5 +1,5 @@
 /**
- * Web-research wiring (Priority 5 Part A; decisions 0042/0043) — resolved from
+ * Web-research wiring — resolved from
  * validated config by the composition roots, injected where discovery and the
  * fetcher enforce it. Values, not env reads: only entrypoints touch the
  * environment.
@@ -15,11 +15,11 @@ export interface ResearchOptions {
   fetchTimeoutMs: number;
   /** Hard cap on a fetched response body, bytes; larger pages are skipped. */
   fetchMaxBytes: number;
-  /** Retain the sanitised raw HTML as a scoped MinIO object (decision 0043 —
+  /** Retain the sanitised raw HTML as a scoped MinIO object (—
    * default off: the extracted clean text + URL are the source of record). */
   retainHtml: boolean;
   /**
-   * Fixture-backed web (decision 0059, the Ana sandbox): when present,
+   * Fixture-backed web (the Ana sandbox): when present,
    * discovery returns exactly these pages and the fetcher serves their HTML —
    * NOTHING real is searched or fetched. Set only by the demo composition;
    * production instances never populate it.

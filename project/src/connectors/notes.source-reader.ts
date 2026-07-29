@@ -25,14 +25,14 @@ export class NotesSourceReader implements SourceReader {
       sourceId: row.id,
       ownerId: row.ownerId,
       content: row.content,
-      // The capture-time scope (O2-B); memories inherit it in embed-store.
+      // The capture-time scope; memories inherit it in embed-store.
       scope: row.scope,
       createdAt: row.createdAt,
     };
   }
 
   /**
-   * Admission checkpoint (decision 0024): KEY SHARE serializes against the
+   * Admission checkpoint: KEY SHARE serializes against the
    * deletion saga's FOR UPDATE + DELETE on this note row — see SourceReader.
    */
   async existsForAdmission(tx: Tx, sourceId: string): Promise<boolean> {

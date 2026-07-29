@@ -1,5 +1,5 @@
 /**
- * The unsourced-claim affordance (decision 0046): renders the canonical
+ * The unsourced-claim affordance: renders the canonical
  * `{{unsourced}}` marker after a claim from the model's own general knowledge.
  * Deliberately calm — the marking is a feature, not a warning: it is how the
  * user always knows which parts of an answer Cogeto can prove and which parts

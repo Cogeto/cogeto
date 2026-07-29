@@ -3,7 +3,7 @@ import https from 'node:https';
 import { readFile } from 'node:fs/promises';
 
 /**
- * Provisions the demo Principal in Zitadel (decision 0022 ruling 1): a machine
+ * Provisions the demo Principal in Zitadel: a machine
  * user (display name "Ana Kovač") with a personal access token. The PAT is a
  * real bearer token — it resolves through the unchanged BearerAuthGuard →
  * userinfo path, so the sandbox authenticates for real; it simply hands the
@@ -119,7 +119,7 @@ async function ensureMachineUser(
   const created = await zRequest(opts, 'POST', '/management/v1/users/machine', pat, {
     userName: opts.userName,
     name: opts.displayName,
-    description: 'Ana sandbox demo Principal (decision 0022) — fictional, disposable.',
+    description: 'Ana sandbox demo Principal — fictional, disposable.',
     accessTokenType: 'ACCESS_TOKEN_TYPE_BEARER',
   });
   if (created.status === 200 && typeof created.body['userId'] === 'string') {

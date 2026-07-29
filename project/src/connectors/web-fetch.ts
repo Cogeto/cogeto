@@ -9,9 +9,9 @@ import { RESEARCH_OPTIONS } from './research-options';
 import type { ResearchOptions } from './research-options';
 
 /**
- * The narrow, server-side fetcher (decision 0042): given URLs the user
+ * The narrow, server-side fetcher: given URLs the user
  * selected from discovery, it retrieves each page from THIS instance and
- * reduces it to clean text. Narrow by construction:
+ * reduces it to clean text. Narrow by construction
  *
  * - http(s) only, and never to a private, loopback, or link-local address —
  *   every hop (including each redirect target) is DNS-resolved and checked
@@ -84,7 +84,7 @@ function isPrivateV4(address: string): boolean {
   }
   const [a, b] = parts as [number, number, number, number];
   return (
-    a === 0 || // 0.0.0.0/8 — "this network"
+    a === 0 || // 0.0.0.0/8"this network"
     a === 10 || // 10.0.0.0/8
     a === 127 || // 127.0.0.0/8 loopback
     (a === 100 && b >= 64 && b <= 127) || // 100.64.0.0/10 CGNAT
@@ -171,7 +171,7 @@ export class WebFetchService {
     @Inject(RESEARCH_OPTIONS) private readonly options: ResearchOptions,
     @Optional() @Inject(PARSE_CAPS) private readonly parseCaps: ParseCaps = DEFAULT_PARSE_CAPS,
   ) {
-    // Fixture-backed fetching (decision 0059, the Ana sandbox): the demo
+    // Fixture-backed fetching (the Ana sandbox): the demo
     // composition serves ITS pages' HTML — nothing real is fetched. The whole
     // parse path (readability extraction, caps) still runs on the fixture.
     const fixtures = options.fixtures;

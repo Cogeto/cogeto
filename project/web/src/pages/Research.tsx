@@ -34,12 +34,12 @@ const STATUS_TONE: Record<ResearchRunDto['status'], Tone> = {
   proposed: 'warning',
   approved: 'positive',
   cancelled: 'neutral',
-  // The terminal success state (decision 0057): answer stored server-side.
+  // The terminal success state: answer stored server-side.
   concluded: 'positive',
 };
 
 /**
- * The research surface (Priority 5 Part B; decisions 0044/0045). The flow IS
+ * The research surface. The flow IS
  * the privacy mechanism: propose → the gate shows exactly what would leave
  * (minimised, with the reason) → the user edits/approves/cancels → only then
  * does discovery run → the user picks pages → capture → a cited synthesis.

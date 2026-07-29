@@ -5,7 +5,7 @@ import { STATUS_META, TONE_CLASS } from './status';
 import type { Tone } from './status';
 
 /**
- * The canonical UI kit (O3-C). One home for chips, badges, buttons, cards,
+ * The canonical UI kit. One home for chips, badges, buttons, cards,
  * states, and the drawer — so the whole app reads as one system and status
  * color (load-bearing information) is defined once, AA-verified, never drifts.
  * Every chip carries a text label (and often an icon): nothing is color-only.

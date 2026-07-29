@@ -1,6 +1,6 @@
 /**
  * Public interface of the passport bounded context (§A.1 rule 1) — the Memory
- * Passport (§B.5, decision 0029). The composition roots register the module and
+ * Passport (§B.5). The composition roots register the module and
  * the worker wires the export + retention jobs; assembly internals stay private.
  */
 export { PassportModule } from './passport.module';

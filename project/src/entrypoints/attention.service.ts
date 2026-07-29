@@ -23,8 +23,8 @@ import { ApprovalService } from '../agents/index';
 import { buildDreamDigest, dreamingActivityForPrincipal } from '../ingestion/index';
 
 /**
- * The "what needs my attention" surface and the dashboard statistics (Post-v1
- * Priority 2, decision 0039). Both are COMPUTED per Principal — a thin derived
+ * The "what needs my attention" surface and the dashboard statistics (
+ *). Both are COMPUTED per Principal — a thin derived
  * layer over signals the instance already produces (the open loops read from
  * memory, the review queues, pending approvals, the dreaming digest). The only materialized state is the
  * read-state pair (`attention_state`, `attention_dismissal`).
@@ -63,7 +63,7 @@ export class AttentionService {
     @Inject(DRIZZLE) private readonly db: Db,
     private readonly memoryStore: MemoryStore,
     private readonly reconciliation: MemoryReconciliation,
-    /** The one open-loops query (decision 0060) — the same read the chat
+    /** The one open-loops query — the same read the chat
      * answer uses, so "still open" means one thing across the product. */
     private readonly retrieval: RetrievalService,
     private readonly approvals: ApprovalService,
@@ -75,7 +75,7 @@ export class AttentionService {
   async getFeed(principal: Principal): Promise<AttentionFeedDto> {
     const now = new Date();
     // Attention lines are Cogeto-initiated copy: they speak the user's
-    // preferred language (P6.6, decision 0052).
+    // preferred language.
     const hr =
       (await this.userContext.preferredLanguageFor(principal.userId).catch(() => 'en' as const)) ===
       'hr';
@@ -328,7 +328,7 @@ export class AttentionService {
 }
 
 /** Source-type → chart family. calendar/task_conclusion are engine/derived (the
- * latter defunct since decision 0060), not user-ingested sources, so they are
+ * latter defunct since), not user-ingested sources, so they are
  * excluded from the "sources" chart. */
 const SOURCE_FAMILY: Record<string, string> = {
   user_note: 'notes',
@@ -338,7 +338,7 @@ const SOURCE_FAMILY: Record<string, string> = {
 };
 
 /**
- * One open loop → at most one attention line (decision 0060). Due date is the
+ * One open loop → at most one attention line. Due date is the
  * memory's own `valid_until`; "gone quiet" is ingestion's dormant flag; the
  * deep link opens the fact itself in the memory drawer, where its provenance
  * and validity live.

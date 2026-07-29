@@ -11,7 +11,7 @@ import type { ModelGateway } from '../model-gateway/index';
 import type { ApprovalService } from '../agents/index';
 import { AttentionService } from './attention.service';
 
-/** Post-v1 Priority 2 (decision 0039): GET /api/dashboard/stats — cheap, gated
+/**: GET /api/dashboard/stats — cheap, gated
  * aggregates. Pure-Postgres; ApprovalService faked (its own gating tested in agents). */
 
 const principalFor = (userId: string, orgId = 'org-a'): Principal => ({

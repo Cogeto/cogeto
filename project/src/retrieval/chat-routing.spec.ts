@@ -11,14 +11,14 @@ import {
 } from './query-rewrite';
 
 /**
- * routing_matrix (decision 0046): every intent the conversational router
+ * routing_matrix: every intent the conversational router
  * serves classifies correctly through its deterministic layer — including the
  * tricky adjacents ("what is open with Ana" vs "who is Ana" vs "research
  * Ana's company"). The model-classified classes (knowledge/smalltalk beyond
  * the lexicon) are covered by resolveQuestionClass with its veto guard; the
  * end-to-end routes are exercised in chat-conversation.integration.spec.ts.
  */
-describe('routing_matrix (decision 0046)', () => {
+describe('routing_matrix', () => {
   const noIntent = { temporal: null, openLoops: null, emailReply: null };
 
   it('the tricky adjacents: open-loops vs entity-profile vs research on the same entity', () => {
@@ -49,7 +49,7 @@ describe('routing_matrix (decision 0046)', () => {
   });
 
   /**
-   * routing_order (decision 0060): the create-task intent used to run BEFORE
+   * routing_order: the create-task intent used to run BEFORE
    * the reply intent, so "remind me to reply to Ana" made a task rather than a
    * draft. With it gone, the surviving deterministic guards must still fire in
    * the order chat.service.ts applies them — small talk, then skill brief,
@@ -96,7 +96,7 @@ describe('routing_matrix (decision 0046)', () => {
     expect(TEMPORAL_HINT_RE.test('what did we previously decide about the platform?')).toBe(true);
     expect(TEMPORAL_HINT_RE.test('when is the workshop?')).toBe(false);
     expect(OPEN_LOOPS_HINT_RE.test('što je još otvoreno oko Adriatic Foodsa?')).toBe(true);
-    // To-do wording still reaches the open-loops path (query_rewrite/v0006):
+    // To-do wording still reaches the open-loops path (query_rewrite/v0006)
     // it is how people ask, not the name of a feature.
     expect(OPEN_LOOPS_HINT_RE.test("what's on my to-do list?")).toBe(true);
     expect(OPEN_LOOPS_HINT_RE.test('koji su mi zadaci otvoreni?')).toBe(true);

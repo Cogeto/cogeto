@@ -3,11 +3,11 @@ import type { MemoryStatus } from '@cogeto/shared';
 /**
  * The Memory aggregate's single transition function (§A.1 rule 4).
  *
- * Ownership of transitions (Addendum, glossary, S1-B prompt):
+ * Ownership of transitions (Addendum, glossary, prompt)
  * - `contradicted`  — only reconciliation.
  * - `user_approved` — only the user, and only FROM `uncertain` or
- *   `contradicted`: it is a review verdict (S3-B review approval; F2-A
- *   contradiction "confirm" resolution — decision 0010 ruling 3), not a
+ *   `contradicted`: it is a review verdict (review approval;
+ *   contradiction "confirm" resolution), not a
  *   general blessing of any memory.
  * - `outdated`      — consolidation or the user.
  * - `uncertain`     — only the verification pass (§B.3 demotion).
@@ -34,7 +34,7 @@ const TRANSITION_OWNERS: Record<MemoryStatus, readonly ActorKind[]> = {
   outdated: ['consolidation', 'user'],
   uncertain: ['verification'],
   active: ['user'],
-  replaced: [], // only supersede() — see MemoryStore.supersede
+  replaced: [], // only supersede — see MemoryStore.supersede
 };
 
 export function checkTransition(

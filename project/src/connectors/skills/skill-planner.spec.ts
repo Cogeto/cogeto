@@ -36,7 +36,7 @@ describe('ambiguousCandidates (ambiguous_subject_asks, the pure rule)', () => {
 
   it('one candidate, whole-word only, empty subject → never ambiguous', () => {
     expect(ambiguousCandidates('Marko', [row({ entities: ['Marko Kovač'] })])).toEqual([]);
-    // "Marko" must match as a whole word — "Markov trg" is a different name.
+    // "Marko" must match as a whole word"Markov trg" is a different name.
     expect(
       ambiguousCandidates('Marko', [
         row({ entities: ['Markov trg'] }),

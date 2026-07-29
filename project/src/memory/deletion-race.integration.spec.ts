@@ -53,7 +53,7 @@ function deferred(): { promise: Promise<void>; resolve: () => void } {
 /**
  * A scripted gateway whose EXTRACTION stage blocks until the test releases it —
  * the controllable stand-in for the real 5–30 s model-call window in which the
- * QS-5 race lives. Verification and reconciliation answer immediately.
+ * race lives. Verification and reconciliation answer immediately.
  */
 class SlowExtractionGateway extends ModelGateway {
   readonly extractionStarted = deferred();
@@ -74,7 +74,7 @@ class SlowExtractionGateway extends ModelGateway {
   }
 
   async extractStructured<T>(schema: ZodType<T>, request: StructuredExtractionRequest): Promise<T> {
-    // Batched verification (decision 0057; verification/v0005): multi-fact
+    // Batched verification (verification/v0005): multi-fact
     // sources verify in one enveloped call — every claim supported, scripted.
     if (request.input.startsWith('CLAIMS UNDER REVIEW')) {
       const batch = {
@@ -123,7 +123,7 @@ class SlowExtractionGateway extends ModelGateway {
   }
 }
 
-describe('QS-5 delete-vs-ingestion race (integration: real Postgres + Qdrant, real saga + pipeline)', () => {
+describe(' delete-vs-ingestion race (integration: real Postgres + Qdrant, real saga + pipeline)', () => {
   let tdb: TestDatabase;
   let qdrant: TestQdrant;
   let minio: TestMinio;
@@ -162,7 +162,7 @@ describe('QS-5 delete-vs-ingestion race (integration: real Postgres + Qdrant, re
       [],
       new PipelineIngestionGuard(),
     );
-    // Real MinIO: the sweep's orphan-object arm (QS-28) lists the bucket, so
+    // Real MinIO: the sweep's orphan-object arm lists the bucket, so
     // a placeholder endpoint would fail the sweep assertions below.
     const objects = new MemoryObjectStore({
       url: minio.url,
@@ -330,7 +330,7 @@ describe('QS-5 delete-vs-ingestion race (integration: real Postgres + Qdrant, re
 
   it('orphan_sweep_arm: a memory whose source row no longer exists is flagged as an integrity violation within one sweep', async () => {
     // Simulate historical residue: a memory row pointing at a note that was
-    // never (or no longer is) there — exactly what QS-5 could leave behind
+    // never (or no longer is) there — exactly what could leave behind
     // before the fix, and what a restored backup can reintroduce.
     const ghostNoteId = '00000000-0000-4000-8000-00000000dead';
     const orphan = await store.createFromFact(userA, {

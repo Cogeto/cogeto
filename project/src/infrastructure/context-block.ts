@@ -2,15 +2,15 @@ import type { PreferredLanguage } from '@cogeto/shared';
 import type { UserContextRecord } from './user-context';
 
 /**
- * The now-block (P6.6, decision 0051): the small labeled context block every
+ * The now-block: the small labeled context block every
  * answer-tier and rewriter call receives. Pure assembly, no I/O.
  *
- * Shape rules, frozen in the decision record:
+ * Shape rules, frozen in the decision record
  *  - The NOW line is always present: date, weekday and time in the user's
  *    effective timezone.
  *  - USER CONTEXT appears only when at least one profile field is set; unset
  *    fields are ABSENT — no "company: unknown", no placeholders.
- *  - LANGUAGE (decision 0052) states the reply-language rule: mirroring by
+ *  - LANGUAGE states the reply-language rule: mirroring by
  *    default with preferred_language as the tie-breaker, or always
  *    preferred_language in strict mode. Callers that produce structured JSON
  *    (the rewriter) omit it.

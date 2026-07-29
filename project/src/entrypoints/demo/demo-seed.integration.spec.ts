@@ -16,7 +16,7 @@ import { assertEndState, inspectEndState } from './assertions';
 import { fileObjectKeys, truncateDomainTables } from './ops';
 
 /**
- * demo_seed_asserts + demo_reset_idempotent (decision 0022, §B.9) against real
+ * demo_seed_asserts + demo_reset_idempotent (§B.9) against real
  * Postgres + Qdrant + MinIO. These cover the demo-specific, deterministic code —
  * the end-state assertion harness and the reset wipe — using a world shaped
  * exactly as the pipeline produces it. (The full HTTP-seed → extract → dream path
@@ -27,7 +27,7 @@ import { fileObjectKeys, truncateDomainTables } from './ops';
 const DIMS = 8;
 const EMBED = 'test-embed';
 
-/** Minimal gateway: only embed() is used (by reindex). */
+/** Minimal gateway: only embed is used (by reindex). */
 class FakeGateway extends ModelGateway {
   complete(): never {
     throw new Error('unused');
@@ -119,7 +119,7 @@ describe('Ana sandbox seed/reset (integration: real Postgres + Qdrant + MinIO)',
   /** Builds a world shaped exactly as the pipeline + dreaming produce it. */
   async function buildWorld(): Promise<string> {
     // 8 active facts, one a Marko commitment (the demo answer). Three of them
-    // are standing OPEN LOOPS (decision 0060): commitment/open_loop kinds in a
+    // are standing OPEN LOOPS: commitment/open_loop kinds in a
     // status that still stands — one due-dated, one gone quiet.
     const markoId = await fact(
       'Promised Marko the revised Atlas proposal once he confirms the Q3 budget.',

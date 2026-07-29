@@ -6,7 +6,7 @@ import { MemoryStore } from './memory.store';
 import type { NewFact } from './memory.store';
 
 /**
- * fts_gated / entity_gated: the S3-A named tests. Pure Postgres — the gates
+ * fts_gated / entity_gated: the named tests. Pure Postgres — the gates
  * are WHERE clauses inside the primitives' SQL, so the assertions run against
  * real seeded data, no Qdrant involved.
  */
@@ -81,7 +81,7 @@ describe('memory search primitives (integration, real Postgres)', () => {
     expect(scores).toEqual([...scores].sort((x, y) => y - x));
   });
 
-  it('fts matches across diacritics (simple + unaccent — decision 0006 ruling 1)', async () => {
+  it('fts matches across diacritics (simple + unaccent)', async () => {
     const row = await store.createFromFact(
       userA,
       fact('Siniša je potvrdio budžet za Križevce u petak'),

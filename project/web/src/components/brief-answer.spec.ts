@@ -14,7 +14,7 @@ const citations: ResearchCitationDto[] = [
   { kind: 'memory', marker: '[M1]', memoryId: 'm1' },
 ];
 
-describe('briefSegments (issue #268)', () => {
+describe('briefSegments', () => {
   it('turns known markers into atomic chip segments and keeps prose intact', () => {
     const segments = briefSegments(
       '### Who they are\nA distributor. [W1] You knew. [M1]',

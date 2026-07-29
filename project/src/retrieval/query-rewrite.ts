@@ -6,9 +6,9 @@ import { queryEntityCandidates } from './query-entities';
 import { REWRITE_TIMEOUT_MS } from './retrieval-config';
 
 /**
- * Conversational query rewriting (decision 0007 ruling 4; F3) + temporal
- * intent (decision 0012 ruling 2; F3-A) + the conversational router's
- * question class (decision 0046). One bounded model call resolves
+ * Conversational query rewriting (F3) + temporal
+ * intent + the conversational router's
+ * question class. One bounded model call resolves
  * pronouns/ellipsis into a self-contained query and classifies temporal
  * intent — but temporal is DOUBLE-GUARDED deterministically: the model is
  * consulted for it only when the raw question carries a temporal hint, and a
@@ -38,14 +38,14 @@ export interface OpenLoopsIntent {
   entity: string | null;
 }
 
-/** Draft-a-reply intent (Session O4 — email reply triggers). */
+/** Draft-a-reply intent. */
 export interface EmailReplyIntent {
   /** The named person/sender to reply to; null = "reply to that/the last one". */
   target: string | null;
 }
 
 /**
- * The router's question class (decision 0046): what kind of turn this is.
+ * The router's question class: what kind of turn this is.
  * - `personal` — a question about the user's own world; memory answers it
  *   (the default, and the fallback on every classification failure).
  * - `knowledge` — a question about the wider world, answerable from general
@@ -61,13 +61,13 @@ export interface RewriteResult {
   query: string;
   /** Entities the query is about, from the rewriter or the heuristic fallback. */
   entities: string[];
-  /** Temporal intent (decision 0012 ruling 2); null = default retrieval. */
+  /** Temporal intent; null = default retrieval. */
   temporal: TemporalIntent | null;
-  /** Open-loops intent (decision 0013 ruling 7); null = default retrieval. */
+  /** Open-loops intent; null = default retrieval. */
   openLoops: OpenLoopsIntent | null;
-  /** Draft-a-reply intent (Session O4); null = not a reply request. */
+  /** Draft-a-reply intent; null = not a reply request. */
   emailReply: EmailReplyIntent | null;
-  /** The router's question class (decision 0046); 'personal' on any failure. */
+  /** The router's question class; 'personal' on any failure. */
   questionClass: QuestionClass;
 }
 
@@ -94,7 +94,7 @@ export const ANAPHORA_RE =
   /\b(she|her|hers|he|him|his|it|its|they|them|their|theirs|this|that|these|those)\b/i;
 
 /**
- * The temporal-hint lexicon (decision 0012 ruling 2), en + hr: the enable AND
+ * The temporal-hint lexicon, en + hr: the enable AND
  * veto guard. Plain questions can never classify temporal — a model claim
  * without a hint in the RAW question is discarded.
  */
@@ -131,11 +131,11 @@ export const TEMPORAL_HINT_RE = new RegExp(
 );
 
 /**
- * The open-loops hint lexicon (decision 0013 ruling 7), en + hr — the same
+ * The open-loops hint lexicon, en + hr — the same
  * enable-and-veto double guard as temporal.
  *
  * The to-do wordings ("open tasks", "to-dos", "zadaci") deliberately SURVIVE
- * the 2.0 task removal (decision 0060): they are how people ask about the
+ * the 2.0 task removal: they are how people ask about the
  * commitments Cogeto remembers, not names of anything Cogeto still builds.
  * Dropping them would have made the day-one question answerable in fewer
  * phrasings than before.
@@ -169,7 +169,7 @@ export const OPEN_LOOPS_HINT_RE = new RegExp(
 );
 
 /**
- * Draft-a-reply hint lexicon (Session O4), en + hr. Deliberately anchored on
+ * Draft-a-reply hint lexicon, en + hr. Deliberately anchored on
  * reply/response verbs WITH a target/context so it does not fire on the everyday
  * sense of "answer"/"reply".
  */
@@ -201,7 +201,7 @@ export interface ResearchIntent {
 }
 
 /**
- * Explicit research triggers (Priority 5 Part B, decision 0045). Imperative
+ * Explicit research triggers. Imperative
  * verbs ANCHORED to the start of the turn, so research is invoked, never
  * inferred: an ordinary question — even one about a company or a law — must
  * never reach a search engine on its own (`not_ambient`). "search for" is
@@ -222,7 +222,7 @@ const RESEARCH_PATTERNS: ReadonlyArray<{ lang: 'en' | 'hr'; re: RegExp }> = [
   },
 ];
 
-/** A detected skill-brief request (Priority 7, decision 0059). */
+/** A detected skill-brief request. */
 export interface SkillBriefIntent {
   /** The subject to brief on (a company or a person), verbatim. */
   subject: string;
@@ -230,8 +230,8 @@ export interface SkillBriefIntent {
 }
 
 /**
- * The research-brief skill's triggers (decision 0059), anchored imperatives
- * like the research patterns — a skill is invoked, never inferred. Two forms:
+ * The research-brief skill's triggers, anchored imperatives
+ * like the research patterns — a skill is invoked, never inferred. Two forms
  * a prep/brief verb ("prep me on Marko", "brief me on Adriatic Foods";
  * hr "pripremi me za sastanak s X"), or a research imperative with an occasion
  * ("research Adriatic Foods before Thursday" — the occasion signals a
@@ -290,15 +290,15 @@ export function detectResearchIntent(question: string): ResearchIntent | null {
   return null;
 }
 
-/** A deterministically detected small-talk turn (decision 0046). */
+/** A deterministically detected small-talk turn. */
 export interface SmallTalkIntent {
   kind: 'thanks' | 'greeting' | 'farewell' | 'ack';
   lang: 'en' | 'hr';
 }
 
 /**
- * The small-talk lexicon (decision 0046): pure pleasantries matched as the
- * WHOLE turn only — "thanks!" routes here; "thanks, and who is Ana?" never
+ * The small-talk lexicon: pure pleasantries matched as the
+ * WHOLE turn only"thanks!" routes here; "thanks, and who is Ana?" never
  * does. These answer deterministically with no retrieval and no model call;
  * anything past the lexicon is the model classifier's job (with its veto).
  */
@@ -360,7 +360,7 @@ export function detectSmallTalk(question: string): SmallTalkIntent | null {
 }
 
 /**
- * The question-class veto guard (decision 0046), same double-guard posture as
+ * The question-class veto guard, same double-guard posture as
  * temporal/open-loops: the model's classification is honored only when nothing
  * deterministic contradicts it. A turn that names a person/organization, or
  * that resolved a temporal/open-loops/reply intent, is never small talk; a
@@ -405,7 +405,7 @@ export function detectEmailReplyIntent(
   let target = rawTarget ? cleanReplyTarget(rawTarget) : null;
   // A pronoun/demonstrative target normalizes to null BEFORE the entities
   // fallback, so a rewriter-resolved referent ("her" → "Ana Kovač") can fill
-  // in (decision 0046 cross-capability follow-ups).
+  // in (cross-capability follow-ups).
   const pronounTarget = Boolean(
     target && /^(that|this|it|the last( one)?|latest|last|him|her|them)$/i.test(target),
   );
@@ -429,12 +429,12 @@ function cleanReplyTarget(raw: string): string {
     .replace(/\b(last|latest|recent|zadnj\w*|posljednj\w*)\b/gi, '')
     // The joined Croatian "e-poruka" (and e-mail/email) must strip WHOLE —
     // a surviving "e-" remnant once became a phantom sender the resolver
-    // searched for (issue #78; the live gate caught it on reply_hr_zadnja).
+    // searched for (the live gate caught it on reply_hr_zadnja).
     .replace(/\b(?:e[- ]?)?(mail|message|msg|note|poruk\w*|mejl\w*)\b/gi, '')
     .replace(/^(the|that|this|a|an)\s+/i, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
-  // A remnant of only punctuation/hyphens is no target at all — "no named
+  // A remnant of only punctuation/hyphens is no target at all"no named
   // sender" correctly resolves to the most recent email downstream.
   return /^[\s\-–—'’"]*$/.test(cleaned) ? '' : cleaned;
 }
@@ -489,7 +489,7 @@ export function resolveTemporalIntent(
 }
 
 /**
- * The S3.5 resolver prefers FORWARD dates (it was built for deadlines — "by
+ * The S3.5 resolver prefers FORWARD dates (it was built for deadlines"by
  * Monday"); temporal queries look BACKWARD ("in March" asked in July means
  * last March). Policy, not a second date engine: a future resolution steps
  * back one year; still future → unresolvable.
@@ -509,7 +509,7 @@ function buildRewriteInput(
   const turns = history.length
     ? history.map((t) => `${t.role}: ${t.content}`).join('\n')
     : '(none)';
-  // Deterministic subject assist (decision 0046): the names the USER has
+  // Deterministic subject assist: the names the USER has
   // raised in their own turns. A pronoun's referent is almost always one of
   // these — a person who appears only inside assistant answers (a mentioned
   // subcontractor, a recipient) does not capture the pronoun. Computed by the
@@ -521,7 +521,7 @@ function buildRewriteInput(
     ),
   ].slice(0, 8);
   return [
-    // The now-block (P6.6, decision 0051): interpretation only — the prompt
+    // The now-block: interpretation only — the prompt
     // reiterates that dates stay verbatim and context never invents entities.
     ...(contextBlock ? [contextBlock, ''] : []),
     'RECENT TURNS:',
@@ -537,13 +537,13 @@ function buildRewriteInput(
 export interface RewriteOptions {
   /**
    * Run the model classification even for turns `shouldRewrite` would skip
-   * (decision 0046): the chat router needs the question class on every turn —
+   * the chat router needs the question class on every turn —
    * a self-contained knowledge question carries no lexical hint. Non-chat
    * callers keep the cheap gating.
    */
   alwaysClassify?: boolean;
   /**
-   * The rendered now-block (P6.6, decision 0051), prepended to the rewriter
+   * The rendered now-block, prepended to the rewriter
    * input. Interpretation-only by prompt contract; date resolution stays in
    * the deterministic resolver via the `now`/`timeZone` parameters.
    */
@@ -592,11 +592,11 @@ export async function rewriteQuery(
     const entities = result.entities.map((e) => e.trim()).filter(Boolean);
     const resolvedEntities =
       entities.length > 0 ? entities : queryEntityCandidates(result.rewritten_query);
-    // Veto guard + deterministic date resolution (decision 0012 ruling 2).
+    // Veto guard + deterministic date resolution.
     const temporal = resolveTemporalIntent(question, result.temporal, now, timeZone);
     const openLoops = resolveOpenLoopsIntent(question, result.open_loops);
     // Deterministic — detected from the raw question; the rewriter's entities
-    // (which resolve anaphora) improve the target fallback (Session O4).
+    // (which resolve anaphora) improve the target fallback.
     const emailReply = detectEmailReplyIntent(question, resolvedEntities);
     return {
       query: result.rewritten_query.trim() || question,
@@ -604,7 +604,7 @@ export async function rewriteQuery(
       temporal,
       openLoops,
       emailReply,
-      // The router's class, deterministically vetoed (decision 0046).
+      // The router's class, deterministically vetoed.
       questionClass: resolveQuestionClass(question, result.question_class, {
         temporal,
         openLoops,

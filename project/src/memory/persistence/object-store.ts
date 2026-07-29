@@ -1,15 +1,15 @@
 import { createHash, createHmac } from 'node:crypto';
 
 /**
- * The object-storage side of the memory module (decision 0003 ruling 2: the
+ * The object-storage side of the memory module (: the
  * memory module owns ALL storage access for memory data — file bytes included;
- * decision 0008). A minimal S3 SigV4 client over fetch + node:crypto: the
+ *). A minimal S3 SigV4 client over fetch + node:crypto: the
  * deletion saga's object removal, the seed fixture's upload, the bucket
- * encryption check AND (O1, decision 0014) the file-upload put/get + presigned
+ * encryption check AND (O1) the file-upload put/get + presigned
  * download URL. A handful of operations, which does not justify a full SDK
  * dependency (owner sign-off would be required for one).
  *
- * MinIO-specific assumptions, fine for the single-tenant stack (§A.2):
+ * MinIO-specific assumptions, fine for the single-tenant stack (§A.2)
  * path-style addressing and the default region.
  */
 
@@ -131,7 +131,7 @@ export class MemoryObjectStore {
 
   /**
    * Full bucket listing (ListObjectsV2, paginated) — the integrity sweep's
-   * orphan-object arm (QS-28, decision 0025): every key must be accounted for
+   * orphan-object arm: every key must be accounted for
    * by a file_metadata row or be a staging object inside its cleanup window.
    * `lastModified` powers the mid-upload grace window (the bytes land before
    * the metadata transaction commits, so freshly-written keys are not orphans).

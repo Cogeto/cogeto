@@ -8,7 +8,7 @@ import {
   senderMatchesAllowlist,
 } from './email-parse';
 
-describe('email-parse (pure helpers, decision 0028)', () => {
+describe('email-parse (pure helpers)', () => {
   describe('normalizeAddress', () => {
     it('lower-cases and strips display name + angle brackets', () => {
       expect(normalizeAddress('Ana Kova <Ana@Adriatic-Foods.HR>')).toBe('ana@adriatic-foods.hr');
@@ -98,5 +98,5 @@ describe('email-parse (pure helpers, decision 0028)', () => {
 
   // Quoted-history / signature / forwarded isolation moved to ingestion's
   // `isolateEmailContent` (email-preprocess.spec.ts) — it is an extraction
-  // concern shared with the golden-set harness (Session O4 — email source).
+  // concern shared with the golden-set harness.
 });

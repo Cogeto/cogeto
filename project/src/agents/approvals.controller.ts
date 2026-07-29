@@ -60,8 +60,8 @@ export class ApprovalsController {
   }
 
   /**
-   * The finalised reply draft (Session O4 — email source): the drafted subject +
-   * body, a prefilled mailto:, and a downloadable .eml, for the user to send from
+   * The finalised reply draft: the drafted subject +
+   * body, a prefilled mailto:, and a downloadable.eml, for the user to send from
    * their OWN client. Cogeto never sends. Owner-only (the body is content).
    */
   @Get(':id/email-draft')

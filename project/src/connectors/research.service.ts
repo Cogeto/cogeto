@@ -35,7 +35,7 @@ import type { DiscoveryOutcome } from './web-discovery.service';
 import { WebFetchService } from './web-fetch';
 
 /**
- * Web research (Priority 5 Part A; decisions 0042/0043): explicitly invoked,
+ * Web research: explicitly invoked,
  * never ambient. `search` runs one discovery query; `capture` fetches the URLs
  * the user selected and turns each page into a first-class web source — the
  * row, its domain event and its pipeline job commit together (§A.3), exactly
@@ -43,7 +43,7 @@ import { WebFetchService } from './web-fetch';
  * source_type = 'web' → web_page.id, and their temporal anchor is the fetch
  * time, so "as of when?" is always answerable.
  *
- * Budgets (the existing FIX-2 infrastructure): searches and fetched pages are
+ * Budgets (the existing infrastructure): searches and fetched pages are
  * each capped per user per day, and one capture request is capped at
  * `pagesPerRunMax` pages — bounding both spend and blast radius before any
  * model work happens.
@@ -56,7 +56,7 @@ export type CaptureResult =
 
 const CLEANUP_ATTEMPTS = 3;
 
-/** The focused-extraction thresholds (decision 0057): pages splitting into
+/** The focused-extraction thresholds: pages splitting into
  * fewer chunks than FOCUS_MIN_CHUNKS are cheap enough to extract whole; bigger
  * ones keep only the FOCUS_TOP_CHUNKS most query-relevant chunks (embeddings
  * only — no model calls) for the extractor, in document order. */
@@ -84,7 +84,7 @@ export class ResearchService {
   ) {}
 
   /**
-   * Open the gate (Part B, decisions 0044/0045): minimise the query and record
+   * Open the gate (Part B): minimise the query and record
    * a PROPOSED run. Sends NOTHING — discovery runs only from `approve`. The
    * proposed query is the intent verbatim (chat strips its trigger verb first);
    * minimisation rewrites it to the least-identifying serving form.
@@ -105,12 +105,12 @@ export class ResearchService {
           proposedQuery,
           minimisedQuery: minimised.minimised,
           minimiseReason: minimised.reason,
-          // The invoking conversation (issue #259): where the concluded
+          // The invoking conversation: where the concluded
           // answer is appended. NULL for Research-page runs.
           conversationId,
         })
         .returning();
-      // Structural audit only (QS-1): the transition, never the query text —
+      // Structural audit only: the transition, never the query text —
       // the text lives on the owner-gated run row itself.
       await writeAudit(tx, {
         actor: `user:${principal.userId}`,
@@ -125,7 +125,7 @@ export class ResearchService {
   }
 
   /**
-   * A skill plan's query (decision 0059 ruling 3): an ordinary proposed run,
+   * A skill plan's query: an ordinary proposed run,
    * tagged with its skill run. Minimisation happened at generation (the
    * skill_plan prompt), so the pre-minimised text and its reason are recorded
    * verbatim — the gate shows them exactly as manual research shows the
@@ -171,7 +171,7 @@ export class ResearchService {
   }
 
   /**
-   * The ONLY path to discovery (decision 0045): explicit approval records the
+   * The ONLY path to discovery: explicit approval records the
    * exact (possibly user-edited) query text on the run, then sends it. An
    * already-approved run may re-run discovery with the SAME recorded query
    * (an engine hiccup is retryable); a different text needs a new run — the
@@ -188,7 +188,7 @@ export class ResearchService {
   }
 
   /**
-   * Approval without discovery (decision 0059): the skill plan gate flips each
+   * Approval without discovery: the skill plan gate flips each
    * kept run to approved with its (possibly edited) text in ONE interaction;
    * the worker's advance job runs discovery afterwards via
    * {@link searchApproved}. The 0045 invariant is untouched — discovery still
@@ -235,7 +235,7 @@ export class ResearchService {
   }
 
   /**
-   * Discovery for an ALREADY-approved run (decision 0059): the skill advance
+   * Discovery for an ALREADY-approved run: the skill advance
    * job's search step. Uses the immutable recorded sent_query; budget-gated
    * exactly like the interactive path.
    */
@@ -292,7 +292,7 @@ export class ResearchService {
     return rows[0] ?? null;
   }
 
-  /** System read for the worker's conclusion job (decision 0057) — no
+  /** System read for the worker's conclusion job — no
    * principal exists there; the row's own ownerId scopes everything after. */
   async getRunById(runId: string): Promise<ResearchRunRow | null> {
     const rows = await this.db.select().from(researchRun).where(eq(researchRun.id, runId)).limit(1);
@@ -318,7 +318,7 @@ export class ResearchService {
   }
 
   /**
-   * The in-chat flow's honest wait (decision 0047): each captured page's
+   * The in-chat flow's honest wait: each captured page's
    * pipeline state (queue-ledger derivation, the notes rule) plus how many
    * facts it has yielded so far. Owner-gated via getRun; a run with no
    * captured pages simply reports an empty list.
@@ -431,7 +431,7 @@ export class ResearchService {
       const { page } = outcome;
       const id = randomUUID();
 
-      // Optional raw-HTML retention (decision 0043): sanitised (scripts and
+      // Optional raw-HTML retention: sanitised (scripts and
       // handlers stripped — the email-intake rule) and object-first, so the tx
       // below can reference the key knowing the bytes exist.
       let rawObjectKey: string | null = null;
@@ -446,7 +446,7 @@ export class ResearchService {
         }
       }
 
-      // The focused extraction view (decision 0057): rank the page's chunks
+      // The focused extraction view: rank the page's chunks
       // against the run's approved query by embeddings alone and keep the most
       // relevant ones for the extractor. retained_text stays complete.
       const extractionText = run?.sentQuery
@@ -528,9 +528,9 @@ export class ResearchService {
   }
 
   /**
-   * Persist the synthesised answer and conclude the run (decision 0057) —
+   * Persist the synthesised answer and conclude the run —
    * the terminal success state. GUARDED on 'approved' so a racing worker and
-   * interactive conclusion cannot both win (issue #259): the loser returns
+   * interactive conclusion cannot both win: the loser returns
    * false and must not append or re-deliver anything. `seen` marks the answer
    * acknowledged in the same write (watched interactively, or delivered into
    * its conversation).
@@ -551,7 +551,7 @@ export class ResearchService {
   }
 
   /** The owner saw the stored answer — the chat resume surface stops showing
-   * this run (decision 0057). Idempotent. */
+   * this run. Idempotent. */
   async markAnswerSeen(principal: Principal, runId: string): Promise<void> {
     const run = await this.getRun(principal, runId);
     if (!run) throw new NotFoundException();
@@ -563,7 +563,7 @@ export class ResearchService {
   }
 
   /**
-   * The relevance pre-pass (decision 0057): split the page with the SAME
+   * The relevance pre-pass: split the page with the SAME
    * chunker extraction uses, embed the query + every chunk in ONE batch (no
    * completion calls), and keep the top-scoring chunks in document order.
    * Small pages return null (extract whole, as before); any failure degrades

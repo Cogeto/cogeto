@@ -1,14 +1,12 @@
 import type { ResolvedModelProviders } from './provider-config';
 
 /**
- * Boot-time probe of the local Ollama runtime (decision 0041 ruling 2):
- * misconfiguration fails loudly at startup, never at first request. When any
+ * Boot-time probe of the local Ollama runtime: a misconfiguration fails loudly at startup, never at first request. When any
  * tier resolves to the local provider, the app, worker, and reindex
  * entrypoints call this before serving — an unreachable runtime or a model
  * that was never pulled refuses boot with the exact fix.
  *
- * The probe itself is shared with the capability registry (P6.7, decision
- * 0055): `probeLocalRuntime` reports instead of throwing, so /api/health can
+ * The probe itself is shared with the capability registry : `probeLocalRuntime` reports instead of throwing, so /api/health can
  * show a runtime that died AFTER a successful boot without duplicating this
  * logic.
  */
@@ -68,7 +66,7 @@ export async function probeLocalRuntime(
         `Ollama runtime unreachable at ${baseUrl} ` +
         `(${error instanceof Error ? error.message : String(error)}) — check that the runtime is ` +
         `up and that this container can reach the address in COGETO_OLLAMA_BASE_URL ` +
-        `(decision 0041 ruling 2), then start again.`,
+        `, then start again.`,
     };
   }
 

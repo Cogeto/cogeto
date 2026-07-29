@@ -13,7 +13,7 @@ import type { SkillRunRow } from '../persistence/tables';
 
 export const SKILL_PLAN_PROMPT = { family: 'skill_plan', version: 'v0001' };
 
-/** The plan's hard bounds (decision 0059 ruling 5): the prompt asks for 3–6;
+/** The plan's hard bounds: the prompt asks for 3–6;
  * the code enforces the ceiling whatever the model returns. */
 export const MAX_PLAN_QUERIES = 6;
 
@@ -66,7 +66,7 @@ export interface SkillAmbiguity {
 }
 
 /**
- * Planning (decision 0059 ruling 5): the propose-request half of a skill run —
+ * Planning: the propose-request half of a skill run —
  * disambiguate the subject, gather what memory knows (entity-profile mode),
  * plan the minimised queries, and stop at the gate (`awaiting_approval`).
  * Composed app-only (needs RetrievalService), the ResearchChatModule shape.
@@ -95,7 +95,7 @@ export class SkillPlanner {
 
     // 1. Gather what memory knows (entity-profile mode, scope-gated as
     // always) plus the open loops involving the subject — both memory reads
-    // since decision 0060. Deterministic: pre-built rewrites, no rewriter call.
+    // since. Deterministic: pre-built rewrites, no rewriter call.
     const [profile, loops] = await Promise.all([
       this.retrieval.retrieve(principal, `tell me about ${cleanSubject}`, {
         rewrite: profileRewrite(cleanSubject),
@@ -105,7 +105,7 @@ export class SkillPlanner {
       }),
     ]);
 
-    // 2. Ambiguity asks BEFORE planning (issue #262): a bare token matching
+    // 2. Ambiguity asks BEFORE planning: a bare token matching
     // several distinct known entities creates nothing and lists them.
     const candidates = ambiguousCandidates(
       cleanSubject,
@@ -207,7 +207,7 @@ export function fallbackQueries(subject: string): { query: string; reason: strin
 }
 
 /**
- * Distinct known entities a bare subject could mean (issue #262): stored
+ * Distinct known entities a bare subject could mean: stored
  * entity names that contain the subject as a whole word but are not the
  * subject itself. Two or more → ask, create nothing. An exact stored match
  * means the subject is already precise.
