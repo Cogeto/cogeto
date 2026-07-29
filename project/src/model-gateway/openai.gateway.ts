@@ -66,7 +66,7 @@ interface EmbeddingsResponse {
  * OpenAI-compatible adapter: base URL + key + model names over
  * plain HTTPS — no SDK dependency, and deliberately compatible with any server
  * speaking the OpenAI chat/embeddings API shape. The only place in the system
- * that talks to such an endpoint (§A.10; `no_provider_leakage`).
+ * that talks to such an endpoint (spec §12.1; `no_provider_leakage`).
  */
 export class OpenAiCompatibleModelGateway extends ModelGateway {
   private readonly baseUrl: string;

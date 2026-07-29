@@ -15,8 +15,8 @@ import { note } from './persistence/tables';
 import type { NoteRow } from './persistence/tables';
 
 /**
- * The notes source (§A.11 — Notes first). Capture is transactional via the
- * outbox (§A.3): the note row, its domain event and its pipeline job commit
+ * The notes source ( — Notes first). Capture is transactional via the
+ * outbox (spec §15.4): the note row, its domain event and its pipeline job commit
  * together — a captured note can never be silently unprocessed.
  */
 @Injectable()

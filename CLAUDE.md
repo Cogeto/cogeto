@@ -10,27 +10,27 @@ backed by an inspectable artifact, with human-approved agents on top.
 
 | Doc | Read it when |
 |---|---|
-| [`docs/Cogeto-V2-Plan.md`](docs/Cogeto-V2-Plan.md) | **Before any 2.0 work. BINDING.** The complete 2.0 plan, version by version, with priority and difficulty. |
-| [`docs/Cogeto-v1-Addendum-Verifiable-Memory.md`](docs/Cogeto-v1-Addendum-Verifiable-Memory.md) | **The architecture authority.** Binding decisions (Part A) plus the feature set (Part B). Wins over every other doc on an architecture question. Cited everywhere as §A.x / §B.x. |
-| [`docs/architecture.md`](docs/architecture.md) | Stack rationale, the two processes, the module map, the pipeline, the seams, local infrastructure. |
+| [`docs/cogeto-specification.md`](docs/cogeto-specification.md) | **The normative rules.** MUST is a rule whose violation is a defect. Wins over every other doc. Cited as spec §N. |
+| [`docs/cogeto-v2-plan.md`](docs/cogeto-v2-plan.md) | **Before any 2.0 work. BINDING.** The complete 2.0 plan, version by version, with priority and difficulty. |
+| [`docs/cogeto-technical-architecture.md`](docs/cogeto-technical-architecture.md) | How it is built: deployment, module structure, the pipeline, access gates, the model gateway, trust machinery. |
+| [`docs/cogeto-verified-memory.md`](docs/cogeto-verified-memory.md) | What is stored, what is guaranteed, and how each guarantee is enforced. |
 | [`docs/features/`](docs/features/) | How a feature actually behaves and why. Start here before changing one. |
 | [`docs/security/`](docs/security/) | **Single entry point for security and safety**: how the protections work, how to verify them, and the co-located tests. |
 | [`docs/engineering-workflow.md`](docs/engineering-workflow.md) | **Before opening any issue, branch, or PR.** The delivery loop, Conventional Commits, required checks, tag-driven releases. |
 | [`docs/glossary.md`](docs/glossary.md) | The ubiquitous language. Names in code must match it. |
 | [`docs/eval-golden-set.md`](docs/eval-golden-set.md) | Corpus format, metrics, CI gates. Read before touching the extractor, a prompt, or the harness. |
 | [`docs/research/*.md`](docs/research/) | **Required before implementing the matching area.** See the table in `docs/research/README.md`. |
-| [`docs/Cogeto-v1-scope.md`](docs/Cogeto-v1-scope.md) | Product scope, users, positioning, business model. |
-| `docs/Cogeto-v1-Specification.docx` | Full product spec (binary; owner-maintained). |
+| [`docs/cogeto-scope.md`](docs/cogeto-scope.md) | What Cogeto is, who it is for, what is in and out of scope, licensing. |
 | [`docs/operator-runbook.md`](docs/operator-runbook.md) + [`docs/operations/`](docs/operations/) | Running a customer instance. |
-| `project/README.md` + per-directory READMEs | Orientation: what lives there, allowed dependencies, governing Addendum section. |
+| `project/README.md` + per-directory READMEs | Orientation: what lives there, allowed dependencies, the specification rules that govern it. |
 
 ## Repo shape
 
 - `project/src/`: modular monolith: one directory per bounded context, two
-  entrypoints (app, worker). Module rules: `project/src/README.md` (§A.1).
+  entrypoints (app, worker). Module rules: `project/src/README.md` (spec §15).
 - `project/web/`, chat + dashboard frontend. `project/prompts/`, versioned prompt
-  artifacts (§B.7). `project/infra/`, compose stack; `docker compose up` is the
-  contract (§A.2). `project/eval/`, golden set and chat cases.
+  artifacts (spec §12.3). `project/infra/`, compose stack; `docker compose up` is the
+  contract. `project/eval/`, golden set and chat cases.
 - `docs/`: architecture, features, security, operations, research.
 - Application tests live under `project/src/`, next to the code they exercise (Vitest).
 - `assets/brand/`: canonical logo files (trademarked, not AGPL: see TRADEMARK.md).
@@ -65,7 +65,7 @@ Issue, branch, and pull-request operations are performed via `gh` as the owner.
 ## Coding conventions
 
 TypeScript strict mode. ESLint + Prettier. dependency-cruiser enforces the module map
-in CI (§A.1). Zod at every boundary. pino for logging: never memory content or tokens
+in CI (spec §15). Zod at every boundary. pino for logging: never memory content or tokens
 in logs. Tests: Vitest (unit), Testcontainers (integration), Playwright (e2e).
 Vocabulary per [`docs/glossary.md`](docs/glossary.md).
 
@@ -75,16 +75,16 @@ substitute a mechanical hyphen. Enforced by the `lint` check.
 
 ## Definition of done
 
-- `docker compose up` still reaches login on a fresh clone (§A.2).
-- CI module-boundary checks pass (§A.1); no cross-module table access.
-- The binding invariant tests pass: scope-leak, deletion-cascade (§A.7),
-  approval-gate (§A.8), golden-set eval gate (§B.4).
+- `docker compose up` still reaches login on a fresh clone.
+- CI module-boundary checks pass (spec §15); no cross-module table access.
+- The binding invariant tests pass: scope-leak, deletion-cascade (spec §11.1),
+  approval-gate, golden-set eval gate (spec §14).
 - Docs updated in the same change when behavior contradicts them.
 
 ## Needs owner sign-off (ask first)
 
 - Any new dependency, framework, or the stack choice itself.
-- Any deviation from an Addendum Part A decision or the §A.6 schema commitments.
+- Any deviation from a MUST rule in the specification.
 - Git: **never run git commands unless explicitly asked.** The owner manages git.
 - **NEVER add AI attribution to any git artifact. This is strictly forbidden.** No
   `Co-Authored-By` trailer, no "Generated with", no AI-authorship or "assisted by"

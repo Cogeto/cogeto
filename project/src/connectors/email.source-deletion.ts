@@ -16,7 +16,7 @@ import { emailAttachment, emailMessage } from './persistence/tables';
  *   derived memories). The saga folds all of these into the SAME receipt, so the
  *   erasure is honest and complete — zero residue across every store.
  *
- * Never touches memory/file_metadata tables (§A.1 rule 2) — that is the saga's
+ * Never touches memory/file_metadata tables (spec §15 rule 2) — that is the saga's
  * job; this adapter only reads its own connector tables and deletes its own row.
  */
 @Injectable()

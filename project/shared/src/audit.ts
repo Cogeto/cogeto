@@ -1,4 +1,4 @@
-/** Audit-log reader DTOs (§A.8/§B.1; — closes the write-only-audit gap). */
+/** Audit-log reader DTOs (/spec §11.1; — closes the write-only-audit gap). */
 
 export interface AuditEntryDto {
   id: string;

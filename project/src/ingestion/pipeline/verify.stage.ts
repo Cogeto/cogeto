@@ -23,7 +23,7 @@ export interface VerifiedFact {
 }
 
 /**
- * Stage 4 (verify): the independent §B.3 pass — through a prompt family that
+ * Stage 4 (verify): the independent spec §2 pass — through a prompt family that
  * shares no wording or rubric with the extractor (no grading your own homework
  * with the same rubric). The verdict decides admission: supported → active,
  * partial/unsupported → uncertain.

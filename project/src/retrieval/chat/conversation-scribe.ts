@@ -8,7 +8,7 @@ import { chatMessage, conversation } from '../persistence/tables';
  * The conversation-append seam. Retrieval owns
  * the chat tables, so it owns BOTH the port and the implementation; the
  * research side (connectors) injects the token @Optional and never touches a
- * chat table (§A.1 rule 2). Used to land a concluded research answer in the
+ * chat table (spec §15 rule 2). Used to land a concluded research answer in the
  * conversation it was invoked from — as a persistent assistant message.
  */
 export const CONVERSATION_APPEND = Symbol('CONVERSATION_APPEND');

@@ -191,7 +191,7 @@ describe('chat capture (integration, real Postgres + Qdrant)', () => {
 
     const result = await chat.rememberMessage(principal, mineId);
     expect(result.messageId).toBe(mineId);
-    // It enqueued transactionally via the outbox (§A.3) for the chat source.
+    // It enqueued transactionally via the outbox (spec §15.4) for the chat source.
     const { rows } = await tdb.pool.query<{ n: string }>(
       `SELECT count(*)::text AS n FROM outbox_event
        WHERE event_type = 'chat.remembered' AND payload->>'source_id' = $1`,

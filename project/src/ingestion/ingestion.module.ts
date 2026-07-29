@@ -20,9 +20,9 @@ export interface IngestionModuleOptions {
 
 /**
  * ingestion — the ingest → chunk → extract → verify → embed + store → reconcile
- * pipeline (scope §4.9, Addendum §B.3). Pipeline work is worker-only. Source
+ * pipeline (scope §4.9, spec §2). Pipeline work is worker-only. Source
  * readers are bound by the composition root: connectors depend on ingestion's
- * port, never the reverse, so the module graph stays acyclic (§A.1).
+ * port, never the reverse, so the module graph stays acyclic (spec §15).
  */
 @Module({})
 export class IngestionModule {

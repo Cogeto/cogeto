@@ -1,4 +1,4 @@
-/** Deletion receipt DTOs (§B.1,). */
+/** Deletion receipt DTOs (spec §11.1). */
 
 /** POST-side response of DELETE /api/sources/:type/:id — the saga's handle. */
 export interface DeletionRequestedDto {
@@ -17,7 +17,7 @@ export interface DeletionPreviewDto {
   userApprovedCount?: number;
 }
 
-/** GET /api/receipts/verify — walk of the full hash chain (§B.1). */
+/** GET /api/receipts/verify — walk of the full hash chain (spec §11.1). */
 export interface ChainVerificationDto {
   ok: boolean;
   /** Receipts that verified, in chain order. */
@@ -76,7 +76,7 @@ export interface ReceiptDetailDto extends ReceiptListItem {
   chainTip: ChainTipAnchor;
 }
 
-/** One sweep discrepancy (§A.7 step 4) — permanent until investigated. */
+/** One sweep discrepancy (spec §11.1 step 4) — permanent until investigated. */
 export interface IntegrityAlertDto {
   id: string;
   receiptId: string | null;

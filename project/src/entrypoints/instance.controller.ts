@@ -6,7 +6,7 @@ import type { CogetoConfig } from './config';
 
 /**
  * GET /api/instance/public-key — the shareable half of the instance signing
- * keypair (§B.1). Unauthenticated by design, like /api/health
+ * keypair (spec §11.1). Unauthenticated by design, like /api/health
  * a public key is public, and anyone holding an exported deletion receipt must
  * be able to fetch it to verify the signature independently.
  */

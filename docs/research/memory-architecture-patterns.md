@@ -71,8 +71,8 @@ be **pre-filtered inside the store's query**, not post-filtered in app code.
 returns another user's memories.
 
 **Application:** Cogeto goes further than any studied system: `owner_id` and `scope`
-are NOT NULL columns (Addendum §A.6), Qdrant carries payload copies with payload
-indexes (§A.4), and app-side post-filtering is forbidden outright. The studied
+are NOT NULL columns (the specification), Qdrant carries payload copies with payload
+indexes (spec §4.2), and app-side post-filtering is forbidden outright. The studied
 systems' entry-point validation ("no operation without an owner") is worth copying
 verbatim as a code-review rule.
 
@@ -115,7 +115,7 @@ Every studied system exhibits some of these; Cogeto's design must close each:
 
 1. **Hallucinated extractions stored as-is**: prompt-only "no fabrication" rules are
    the sole guard in studied systems. → Cogeto: the independent verification pass
-   (Addendum §B.3) demotes unsupported facts to `uncertain` before they count.
+   (spec §2) demotes unsupported facts to `uncertain` before they count.
 2. **Contradiction accumulation**: "likes coffee" and "hates coffee" coexist forever;
    downstream apps must disambiguate. → Cogeto: reconciliation sets `contradicted`
    (with a visible warning at retrieval) and supersession sets `replaced`.
@@ -123,7 +123,7 @@ Every studied system exhibits some of these; Cogeto's design must close each:
    status transitions + interval closes; nothing is silently lost.
 4. **Orphaned derived data**: entity links / index entries left dangling after
    partial failures, with warnings logged and nothing retried. → Cogeto: outbox +
-   idempotent jobs + the nightly reconciliation sweep (§A.7 step 4).
+   idempotent jobs + the nightly reconciliation sweep (spec §11.1 step 4).
 5. **No provenance**: facts with no record of what produced them, making audit and
    cascade-deletion impossible. → Cogeto: NOT NULL provenance is the schema's most
    load-bearing constraint.
@@ -149,9 +149,9 @@ regress it. The systems that publish benchmark numbers built the harness early.
 | Hash dedup then semantic dedup | ingestion store-step hash; reconciliation merge → `replaced` |
 | Scope-ids validated at every entry point | NOT NULL `owner_id`/`scope`, forbidden post-filtering |
 | History store on all mutations | status transitions + validity intervals (never destroy) |
-| Prompt-only hallucination guards (insufficient) | verification pass → `uncertain` (§B.3) |
-| Narrow vector-store interface, normalized scores | Qdrant adapter + `reindex` command (§A.4) |
-| Ingest→search→judge eval harness | golden set + CI gate, built with the extractor (§B.4) |
+| Prompt-only hallucination guards (insufficient) | verification pass → `uncertain` (spec §2) |
+| Narrow vector-store interface, normalized scores | Qdrant adapter + `reindex` command (spec §4.2) |
+| Ingest→search→judge eval harness | golden set + CI gate, built with the extractor (spec §14) |
 
 The one-line takeaway: the studied systems prove the *pipeline shape* (additive,
 hash-dedup, scope-filtered, narrow store interface) and prove by omission why

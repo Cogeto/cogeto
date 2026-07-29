@@ -16,7 +16,7 @@ import { MEMORY_SCOPES } from '@cogeto/shared';
  * Tables owned by the connectors module (migration 0003; user_settings in
  * 0016). Module-private. `note` holds the notes connector's source rows
  * memories extracted from a note carry provenance source_type = 'user_note',
- * source_id = note.id (§A.6).
+ * source_id = note.id.
  */
 
 // References the existing `scope` PG type (migration 0001) by name — not a new
@@ -40,7 +40,7 @@ export const note = pgTable(
 export type NoteRow = typeof note.$inferSelect;
 
 /**
- * Per-user capture/upload defaults (§A.9; migration 0016). One row per user,
+ * Per-user capture/upload defaults (migration 0016). One row per user,
  * created on first write — a read with no row returns the column defaults.
  */
 export const userSettings = pgTable('user_settings', {
@@ -54,10 +54,10 @@ export const userSettings = pgTable('user_settings', {
 export type UserSettingsRow = typeof userSettings.$inferSelect;
 
 /**
- * Inbound email (, migration 0021). Owned by
+ * Inbound email (migration 0021). Owned by
  * connectors. `email_message` + its raw MinIO object are the complete retained
  * message (full retention, ruling 5); memories extracted from an email carry
- * provenance source_type = 'email', source_id = email_message.id (§A.6).
+ * provenance source_type = 'email', source_id = email_message.id.
  */
 export const emailMessage = pgTable(
   'email_message',
@@ -169,7 +169,7 @@ export type EmailRefusalRow = typeof emailRefusal.$inferSelect;
  * by connectors. The retained extracted text + URL are the complete source of
  * record (raw HTML optionally externalised to `rawObjectKey`); memories
  * extracted from a page carry provenance source_type = 'web',
- * source_id = web_page.id (§A.6), and their temporal anchor is `fetchedAt`.
+ * source_id = web_page.id, and their temporal anchor is `fetchedAt`.
  */
 export const webPage = pgTable(
   'web_page',
@@ -292,7 +292,7 @@ export const skillRun = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     ownerId: text('owner_id').notNull(),
     /** The owner's org, captured at propose time — the worker executes as the
-     * owner and §A.6 object keys need the real org segment there. */
+     * owner and object keys need the real org segment there. */
     orgId: text('org_id').notNull().default(''),
     skillId: text('skill_id').notNull(),
     skillVersion: text('skill_version').notNull(),

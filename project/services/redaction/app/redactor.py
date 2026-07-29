@@ -1,4 +1,4 @@
-"""Reversible, consistent pseudonymization (Addendum B.8, decision 0002 language
+"""Reversible, consistent pseudonymization (spec §12.2, decision 0002 language
 boundary). Detection is Presidio (Python is where the NER model runs); the
 pseudonymization/re-identification below is pure string logic, split out so it is
 unit-testable without loading the spaCy model.

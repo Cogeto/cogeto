@@ -11,7 +11,7 @@ import { DOCX_CONTENT_TYPE, PDF_CONTENT_TYPE } from '@cogeto/shared';
  *
  * A parse failure is a PERMANENT error (corrupt/unsupported bytes): it must
  * surface as an error state and yield ZERO memories — never a fabricated one
- * (§B.3, scope §4.9). Callers let it propagate so the pipeline job dead-letters
+ * (spec §2, scope §4.9). Callers let it propagate so the pipeline job dead-letters
  * and the file's status reads `error`.
  */
 
@@ -52,7 +52,7 @@ const DEFAULT_EXTRACT_CAPS: ExtractCaps = { maxTextChars: 1_000_000, timeoutSeco
  * Extracts text, routing on the resolved content type (declared type, else
  * sniffed). Unknown/unsupported types, parse failures, a parse that exceeds the
  * wall-clock timeout, and text over the length cap all throw
- * PermanentExtractionError (no fabricated memory, §B.3).
+ * PermanentExtractionError (no fabricated memory, spec §2).
  */
 export async function extractDocumentText(
   buffer: Buffer,

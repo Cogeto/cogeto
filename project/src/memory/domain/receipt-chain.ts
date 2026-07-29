@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { verifyWithPublicKey } from '../../infrastructure/index';
 
 /**
- * The deletion receipt hash chain (§B.1) — pure functions only.
+ * The deletion receipt hash chain (spec §11.1) — pure functions only.
  *
  * Each confirmed receipt's canonical payload is SHA-256 hashed with the
  * previous confirmed receipt's hash inside it (prev_hash), forming a

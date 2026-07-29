@@ -1,5 +1,5 @@
 /**
- * Retrieval constants in one place (§A.5; research: retrieval-and-pipeline §1).
+ * Retrieval constants in one place (spec §3.4; research: retrieval-and-pipeline §1).
  * Tuning happens here, backed by eval evidence — never inline at call sites.
  */
 
@@ -21,7 +21,7 @@ export const REWRITE_TIMEOUT_MS = 4000;
 /**
  * Capitalized tokens that are sentence mechanics, not names — the filter for
  * the fast-path query-entity heuristic (no model call, v1). English + Croatian,
- * matching the served languages of the golden set (§B.4).
+ * matching the served languages of the golden set (spec §14).
  */
 export const QUERY_ENTITY_STOPWORDS = new Set(
   [

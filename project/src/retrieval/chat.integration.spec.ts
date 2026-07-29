@@ -185,7 +185,7 @@ describe('chat (integration, real Postgres + real Qdrant, gateway mocked)', () =
     expect(gateway.streamRequests.length).toBe(callsBefore);
   });
 
-  it('chat_fast_path: asking a question enqueues no pipeline work (§A.3 — fast path is retrieval + answering only)', async () => {
+  it('chat_fast_path: asking a question enqueues no pipeline work (spec §15.4 — fast path is retrieval + answering only)', async () => {
     const counts = async () => {
       const outbox = await tdb.pool.query('SELECT count(*)::int AS n FROM outbox_event');
       const jobs = await tdb.pool.query('SELECT count(*)::int AS n FROM graphile_worker.jobs');

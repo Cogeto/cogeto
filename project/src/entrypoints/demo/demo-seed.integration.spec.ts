@@ -16,7 +16,7 @@ import { assertEndState, inspectEndState } from './assertions';
 import { fileObjectKeys, truncateDomainTables } from './ops';
 
 /**
- * demo_seed_asserts + demo_reset_idempotent (§B.9) against real
+ * demo_seed_asserts + demo_reset_idempotent against real
  * Postgres + Qdrant + MinIO. These cover the demo-specific, deterministic code —
  * the end-state assertion harness and the reset wipe — using a world shaped
  * exactly as the pipeline produces it. (The full HTTP-seed → extract → dream path

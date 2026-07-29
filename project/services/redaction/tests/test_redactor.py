@@ -1,6 +1,6 @@
 """Pure pseudonymization logic (no spaCy needed → fast, deterministic).
 
-redaction_roundtrip and redaction_consistent (Addendum B.8) at the sidecar level.
+redaction_roundtrip and redaction_consistent (spec §12.2) at the sidecar level.
 Detection quality (Presidio) is validated separately by test_presidio.py, which
 skips unless the model is installed.
 """

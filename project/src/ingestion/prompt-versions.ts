@@ -1,5 +1,5 @@
 /**
- * The prompt versions the pipeline currently runs (§B.7). Bumping a version
+ * The prompt versions the pipeline currently runs (spec §12.3). Bumping a version
  * here (after adding the new numbered artifact + changelog entry) is what
  * activates it; the worker registers these in prompt_registry on boot, which
  * also enforces immutability of released versions via the content hash.

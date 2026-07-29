@@ -14,7 +14,7 @@ const updateSchema = z
   .partial();
 
 /**
- * /api/settings — the owner's per-user capture/upload defaults (§A.9).
+ * /api/settings — the owner's per-user capture/upload defaults.
  * Only real, wired toggles: the extract-and-discard default and the default
  * scope. The instance public key shown in the UI is served separately by
  * /api/instance/public-key (F1); Settings does not duplicate it.

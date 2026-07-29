@@ -1,13 +1,13 @@
 # memory: core domain (bounded context)
 
 The `Memory` aggregate and everything that makes memory trustworthy: the memory and
-`file_metadata` tables (schema: Addendum §A.6), status transitions (§A.1 rule 4: only
+`file_metadata` tables (schema: the specification), status transitions (spec §15 rule 4: only
 reconciliation sets `contradicted`, only the user sets `user-approved`, only the deletion
-saga hard-deletes), validity intervals (§B.2), the **deletion saga + receipts** (§A.7,
-§B.1), and the `reindex` command that rebuilds Qdrant from Postgres (§A.4).
+saga hard-deletes), validity intervals (spec §6), the **deletion saga + receipts** (spec §11.1,
+spec §11.1), and the `reindex` command that rebuilds Qdrant from Postgres (spec §4.2).
 
 Owns: memory, file_metadata, and deletion-receipt tables. Postgres is the source of
-truth; Qdrant is a rebuildable index (§A.4).
+truth; Qdrant is a rebuildable index (spec §4.2).
 
 May depend on: `model-gateway` (embeddings), `identity` (principals). Everyone else
 reaches memory only through its public interface or domain events: never its tables
@@ -43,7 +43,7 @@ sensitive gates as native payload filters inside the query: never app-side.
 ## Reindex
 
 Rebuilds Qdrant entirely from Postgres: the disaster-recovery and
-embed-model-migration path (§A.4). Idempotent; re-embeds **only** rows whose
+embed-model-migration path (spec §4.2). Idempotent; re-embeds **only** rows whose
 stored `embedding_model` differs from the configured one (or whose point is
 missing), reuses existing vectors otherwise, sweeps orphan points, then verifies
 `point count == embeddable memories` and **exits nonzero on mismatch**:

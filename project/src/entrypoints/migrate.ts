@@ -4,10 +4,10 @@ import { Pool } from 'pg';
 import { applyMigrations, ensureInstanceKeys, PUBLIC_KEY_FILE } from '../infrastructure/index';
 
 /**
- * migrate — one-shot init container (§A.2: migrations never run on app boot).
+ * migrate — one-shot init container (: migrations never run on app boot).
  * Applies pending reviewable SQL migrations (0001 contractual core, 0002
  * infrastructure) and the Graphile Worker schema,
- * and generates the instance signing keypair on first boot (§B.1): this job is
+ * and generates the instance signing keypair on first boot (spec §11.1): this job is
  * the only writer of the instance-keys volume.
  */
 async function main(): Promise<void> {

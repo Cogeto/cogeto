@@ -34,7 +34,7 @@ import type { ConfirmedReceipt } from './domain/receipt-chain';
 
 /**
  * Conversation deletion — a source deletion through the
- * §A.7 saga, extended by enumeration only
+ * spec §11.1 saga, extended by enumeration only
  *
  *   conversation_deletion_cascade — the thread's messages AND every memory
  *     derived from them (and their vectors) are gone

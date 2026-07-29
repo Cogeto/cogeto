@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 
 /**
- * The seed's end-state assertions (§B.9). After the corpus has
+ * The seed's end-state assertions. After the corpus has
  * been fed through the real pipeline and one dreaming cycle has run, the
  * fictional world must have materialized as designed — a silently wrong sandbox
  * is worse than none, so the seed FAILS LOUDLY when a hard assertion does not

@@ -1,7 +1,7 @@
 # Ana sandbox (`--profile demo`)
 
 The public sandbox persona: the single artifact that appears in every pitch,
-launch post, and partner email (§B.9, scope §8.4). Rules and rationale:
+launch post, and partner email (scope §8.4). Rules and rationale:
 [`../../docs/features/demo-sandbox.md`](../../docs/features/demo-sandbox.md).
 
 > ⚠️ **SECURITY, read before deploying.**

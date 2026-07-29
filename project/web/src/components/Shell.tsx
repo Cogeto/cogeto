@@ -57,7 +57,7 @@ export function Shell({
     queryFn: () => fetchContradictions(session),
     refetchInterval: 30_000,
   });
-  // The approvals badge: pending consequential actions awaiting a decision (§A.8).
+  // The approvals badge: pending consequential actions awaiting a decision.
   const { data: pendingApprovals } = useQuery({
     queryKey: ['pending-approvals'],
     queryFn: () => fetchPendingApprovals(session),

@@ -32,7 +32,7 @@ import { useTheme } from '../theme';
 import type { Theme } from '../theme';
 import { useAutoResearch } from '../research-pref';
 
-/** Settings (§A.9): only real, wired toggles — every control does something today. */
+/** Settings: only real, wired toggles — every control does something today. */
 export function Settings({ session }: { session: Session }) {
   const queryClient = useQueryClient();
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => fetchSettings(session) });
@@ -141,7 +141,7 @@ export function Settings({ session }: { session: Session }) {
       <section className="mt-4 space-y-2 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
         <SectionTitle>Instance signing key</SectionTitle>
         <p className="text-xs text-slate-500">
-          Every deletion receipt is signed with this instance's private key (§B.1). Anyone can
+          Every deletion receipt is signed with this instance's private key (spec §11.1). Anyone can
           verify a receipt or the Forgotten ledger against the public key below, proof that a
           deletion really happened, independent of Cogeto.
         </p>
@@ -585,7 +585,7 @@ const PASSPORT_STATUS_LABEL: Record<PassportExportDto['status'], string> = {
 };
 
 /**
- * Memory Passport (§B.5): a complete, documented, versioned
+ * Memory Passport (spec §11.4): a complete, documented, versioned
  * export of the user's own data — the anti-lock-in promise made real. Assembly
  * runs in the worker; this polls the request and hands back a short-lived signed
  * download. The artifact is an open format documented in docs/passport-schema/.
@@ -716,7 +716,7 @@ const REFUSAL_REASON_LABEL: Record<string, string> = {
 const CLAIMABLE_REASONS = new Set(['sender_not_recognized', 'sender_not_allowlisted', 'no_owner']);
 
 /**
- * Email capture (, sender routing per)
+ * Email capture (sender routing per)
  * the instance's inbound address, the caller's always-trusted own address, the
  * personal allowlist that routes external senders to them, and recent refusals
  * with one-click claiming where allowlisting can actually help.

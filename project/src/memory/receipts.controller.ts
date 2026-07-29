@@ -26,7 +26,7 @@ import { INSTANCE_KEY_DIR, parseReceiptCounts } from './deletion-saga';
 import { IntegritySweep } from './integrity-sweep';
 
 /**
- * /api/receipts — the Forgotten ledger (§B.1): permanent, read-only records of
+ * /api/receipts — the Forgotten ledger (spec §11.1): permanent, read-only records of
  * provable forgetting. There is deliberately NO update or delete route — the
  * database freeze trigger (migration 0010) backs the same rule below the API.
  *
@@ -157,7 +157,7 @@ export class ReceiptsController {
 }
 
 /**
- * /api/integrity — the sweep's face in the System view (§A.7 step 4): last run,
+ * /api/integrity — the sweep's face in the System view (spec §11.1 step 4): last run,
  * result, and the open alert list. Alerts are never auto-cleared; they mean a
  * human must look.
  */

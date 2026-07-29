@@ -1,7 +1,7 @@
 import { QUERY_ENTITY_STOPWORDS } from './retrieval-config';
 
 /**
- * The fast-path query-entity heuristic (v1, §A.5): capitalized tokens are
+ * The fast-path query-entity heuristic (v1, spec §3.4): capitalized tokens are
  * candidate names — no model call. The actual "matched against known entities"
  * happens in SQL, where entitySearch trigram-matches these candidates against
  * the stored entities of memories the principal may see. A false candidate

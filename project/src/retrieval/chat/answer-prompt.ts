@@ -5,7 +5,7 @@ import type { ConversationTurn, TemporalIntent } from '../query-rewrite';
 import type { OpenLoop, RetrievalMode } from '../retrieval.service';
 
 /**
- * The answer prompt family (§B.7): versioned artifact in project/prompts/answer,
+ * The answer prompt family (spec §12.3): versioned artifact in project/prompts/answer,
  * registered on worker boot alongside the ingestion families.
  */
 export const ANSWER_PROMPT = { family: 'answer', version: 'v0007' } as const;

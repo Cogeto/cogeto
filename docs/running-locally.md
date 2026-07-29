@@ -1,6 +1,6 @@
 # Running Cogeto locally
 
-The standing contract (Addendum §A.2): **`docker compose up` on a fresh clone
+The standing contract (the specification): **`docker compose up` on a fresh clone
 reaches a usable login**: zero configuration. Everything below is detail
 around that one command.
 
@@ -90,4 +90,4 @@ eval harness needs a model key: `MISTRAL_API_KEY=... npm run eval`.
 `mail` (receive-only inbound SMTP) · `postgres` (source of truth) · `qdrant`
 (rebuildable vector index) · `minio` (encrypted originals) · `zitadel`
 (identity), plus one-shot init jobs. Architecture rationale:
-[`architecture.md`](architecture.md).
+[`cogeto-technical-architecture.md`](cogeto-technical-architecture.md).

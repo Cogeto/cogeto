@@ -31,13 +31,13 @@ export interface MemoryModuleOptions {
   /** Test override for the vector size. */
   dimensions?: number;
   /** Object storage — the saga's byte-deletion leg + encryption check (0008);
-   * `publicUrl` is the browser-reachable origin for presigned URLs (O1, §A.9). */
+   * `publicUrl` is the browser-reachable origin for presigned URLs (O1). */
   s3: { url: string; publicUrl?: string; accessKey: string; secretKey: string; bucket: string };
-  /** Where the instance signing keypair lives (§B.1). */
+  /** Where the instance signing keypair lives (spec §11.1). */
   instanceKeyDir: string;
   /**
    * Source-deletion adapters for source rows owned by other modules — bound by
-   * the composition root, mirroring ingestion's SourceReader port (§A.1).
+   * the composition root, mirroring ingestion's SourceReader port (spec §15).
    */
   sourceDeletions?: { imports?: ModuleMetadata['imports']; adapters: Type<SourceDeletion>[] };
   /** Derived-artifact cascades (0013 ruling 6) — chat answers and reply drafts
@@ -53,7 +53,7 @@ export interface MemoryModuleOptions {
 }
 
 /**
- * memory — core domain (Addendum §A.1, §A.6).
+ * memory — core domain (spec §15).
  * Owns ALL storage access for memory data: the Postgres tables, the Qdrant
  * client AND the object-storage client (module-private — no other module may
  * import them; dependency-cruiser rule). Registered once by each composition

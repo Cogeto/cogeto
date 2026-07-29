@@ -1,7 +1,7 @@
 import { index, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 /**
- * Tables owned by the agents module (migration 0001, §A.8; support columns
+ * Tables owned by the agents module (migration 0001,; support columns
  * in migration 0015). Module-private. The approval state machine goes live in
  *; the schema has been contractual from day one (0003 ruling 1).
  */

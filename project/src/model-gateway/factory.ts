@@ -10,7 +10,7 @@ import type { ModelProviderId, ResolvedModelProviders } from './provider-config'
 import type { ModelUsageMeter } from '../infrastructure/index';
 
 /**
- * Redaction wiring passed to the gateway factory (Addendum B.8). Enabled only on
+ * Redaction wiring passed to the gateway factory (spec §12.2). Enabled only on
  * the `redaction` profile; when off, the factory returns the underlying gateway
  * unchanged (byte-identical behavior`redaction_off_noop`).
  */
@@ -39,7 +39,7 @@ export interface CreateModelGatewayOptions {
 }
 
 /**
- * The single construction point for the model gateway (§A.10). Every process —
+ * The single construction point for the model gateway (spec §12.1). Every process —
  * the DI module AND the bare entrypoints (eval, dream, reindex, …) — builds the
  * gateway here, so the redaction and budget decorators wrap ALL model traffic
  * uniformly and nothing can bypass them — for EVERY provider (

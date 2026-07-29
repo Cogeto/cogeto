@@ -3,14 +3,14 @@ import { STATUS_MULTIPLIERS } from '@cogeto/shared';
 import { RRF_K } from './retrieval-config';
 
 /**
- * Reciprocal rank fusion with the §A.5 status multipliers, as a pure function
+ * Reciprocal rank fusion with the spec §3.4 status multipliers, as a pure function
  * so the fusion_multipliers test needs no containers.
  *
  * Order of operations is binding: the scope/sensitive gates already ran INSIDE
  * each signal's query (never here), RRF fuses the surviving ranks, and the
  * status multiplier scales the fused score. `replaced` multiplies to 0 and is
  * excluded from default retrieval; temporal queries will lift that exclusion
- * when time-travel lands (§B.2 — not in v1 retrieval).
+ * when time-travel lands (spec §6 — not in v1 retrieval).
  */
 
 export type RetrievalSignal = 'vector' | 'fts' | 'entity';
@@ -49,7 +49,7 @@ export function fuseAndRank(
     const status = statusOf(memoryId);
     if (status === undefined) continue; // not resolvable through the gated read
     const multiplied = score * multipliers[status];
-    if (multiplied <= 0) continue; // replaced ×0 — excluded in default mode (§A.5)
+    if (multiplied <= 0) continue; // replaced ×0 — excluded in default mode (spec §3.4)
     hits.push({ memoryId, score: multiplied, signals });
   }
   // Deterministic: score desc, id asc as the tie-break.

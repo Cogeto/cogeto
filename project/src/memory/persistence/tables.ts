@@ -12,7 +12,7 @@ import {
 import { FACT_KINDS, MEMORY_SCOPES, MEMORY_STATUSES, RELATION_RESOLUTIONS } from '@cogeto/shared';
 
 /**
- * Tables owned by the memory module (migration 0001; §A.6 as amended by 0003).
+ * Tables owned by the memory module (migration 0001; as amended by 0003).
  * Module-private: never importable from another module (dependency-cruiser
  * persistence rule). All access goes through the MemoryStore public interface.
  */
@@ -130,14 +130,14 @@ export const deletionReceipt = pgTable('deletion_receipt', {
   status: receiptStatusEnum('status').notNull().default('pending'),
   prevHash: text('prev_hash'),
   hash: text('hash'),
-  /** ed25519 signature over `hash`, base64 (§B.1; migration 0009). */
+  /** ed25519 signature over `hash`, base64 (spec §11.1; migration 0009). */
   signature: text('signature'),
   signedAt: timestamp('signed_at', { withTimezone: true }),
   confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
 });
 
 /**
- * Discrepancies found by the nightly integrity sweep (§A.7 step 4, migration
+ * Discrepancies found by the nightly integrity sweep (spec §11.1 step 4, migration
  * 0010). The dedupe unique index (expression-based, not mapped here) makes
  * re-detection idempotent: one row per (receipt, kind, identifier), however
  * many runs re-find it.

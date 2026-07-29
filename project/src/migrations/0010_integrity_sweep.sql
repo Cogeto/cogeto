@@ -1,5 +1,5 @@
 -- Migration 0010 — nightly integrity sweep + receipt permanence (Session F1-B,
--- Addendum §A.7 step 4, §B.1; decision 0009).
+-- the specification §A.7 step 4, §B.1; decision 0009).
 
 -- ── integrity_alert: one row per discrepancy the sweep finds ──────────────────
 -- kind: memory_row_present | qdrant_point_present | object_present | chain_broken

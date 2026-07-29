@@ -9,7 +9,7 @@ import { createHash, createHmac } from 'node:crypto';
  * download URL. A handful of operations, which does not justify a full SDK
  * dependency (owner sign-off would be required for one).
  *
- * MinIO-specific assumptions, fine for the single-tenant stack (§A.2)
+ * MinIO-specific assumptions, fine for the single-tenant stack
  * path-style addressing and the default region.
  */
 
@@ -25,7 +25,7 @@ export interface ObjectStoreOptions {
   bucket: string;
   /**
    * Browser-reachable origin used ONLY when signing presigned download URLs
-   * (§A.9). Defaults to `url`; set it when MinIO's internal hostname is not
+   *. Defaults to `url`; set it when MinIO's internal hostname is not
    * reachable from the browser (the usual case behind an edge proxy). The host
    * MinIO ultimately receives must match this origin's host, so the deployment
    * must proxy it with the Host header preserved (see the O1 owner checklist).
@@ -113,7 +113,7 @@ export class MemoryObjectStore {
     };
   }
 
-  /** True deletion contract (§A.7): an absent object is success, not an error. */
+  /** True deletion contract (spec §11.1): an absent object is success, not an error. */
   async deleteObject(key: string): Promise<void> {
     const response = await this.request('DELETE', this.objectPath(key), '');
     // S3 DELETE returns 204 even for keys that do not exist.
@@ -159,7 +159,7 @@ export class MemoryObjectStore {
   }
 
   /**
-   * A short-lived SigV4 presigned GET URL (§A.9): the download link the source
+   * A short-lived SigV4 presigned GET URL: the download link the source
    * drawer hands the browser. Signing is offline (no network) — only the host
    * header is signed, the payload is UNSIGNED. The controller gates WHO may
    * call this (owner-only; sensitive files never leave the owner — 0003).
@@ -211,7 +211,7 @@ export class MemoryObjectStore {
   /**
    * Does the bucket report default encryption (SSE-S3)? The compose stack turns
    * it on in minio-init (`mc encrypt set`); this is the programmatic assertion
-   * surfaced in the health check (§A.9, audit 3.9).
+   * surfaced in the health check (audit 3.9).
    */
   async encryptionEnabled(): Promise<boolean> {
     const response = await this.request('GET', `/${this.options.bucket}`, 'encryption=');

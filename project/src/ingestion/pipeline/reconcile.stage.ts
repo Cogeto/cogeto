@@ -102,7 +102,7 @@ export function buildPairInput(a: ReconcileFactView, b: ReconcileFactView): stri
 /**
  * The model-confirmation half, DB-free: loads the two versioned prompts and
  * judges a pair. Shared verbatim by stage 6 and the eval harness so measured
- * behavior IS shipped behavior (§B.4).
+ * behavior IS shipped behavior (spec §14).
  */
 export class ReconcileJudge {
   private dedupPrompt?: PromptArtifact;
@@ -338,7 +338,7 @@ export class ReconciliationService {
     return candidates.sort((x, y) => (y.similarity ?? -1) - (x.similarity ?? -1));
   }
 
-  /** Cited source passages give the judge evidence, not just claims (§B.3 spirit). */
+  /** Cited source passages give the judge evidence, not just claims (spec §2 spirit). */
   private async loadSpans(tx: Tx, memoryIds: string[]): Promise<Map<string, string | null>> {
     if (memoryIds.length === 0) return new Map();
     const rows = await tx

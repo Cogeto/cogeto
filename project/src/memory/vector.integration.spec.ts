@@ -82,7 +82,7 @@ describe('memory vector index (integration, real Postgres + real Qdrant)', () =>
   };
 
   it('vector_search_gated: B private and sensitive points never reach A — native Qdrant filters', async () => {
-    // The filter itself first: gates must be IN the query (§A.4), and the
+    // The filter itself first: gates must be IN the query (spec §4.2), and the
     // opt-in variant still restricts sensitive rows to the caller's own.
     expect(buildGateFilter(userA, {})).toEqual({
       must: [

@@ -28,7 +28,7 @@ import { COGETO_CONFIG, mailOptions, redactionOptions, researchOptions } from '.
 import type { CogetoConfig } from './config';
 
 /**
- * Composition root of the worker process — all slow-path jobs (§A.1): the
+ * Composition root of the worker process — all slow-path jobs (spec §15): the
  * ingestion pipeline, reconciliation, deletion sagas, approved-action
  * execution. This is where ingestion's source-reader port meets the connector
  * implementations — the only place allowed to know both sides.
@@ -112,7 +112,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         mail: mailOptions(config),
         research: researchOptions(config),
       }),
-      // The Memory Passport export + retention jobs run here (§A.3 slow path);
+      // The Memory Passport export + retention jobs run here (spec §15.4 slow path);
       // the worker holds the private signing key to sign each manifest.
       PassportModule.register({
         instanceKeyDir: config.instanceKeyDir,

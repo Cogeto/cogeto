@@ -11,7 +11,7 @@ export interface ModelGatewayModuleOptions {
   /** The resolved per-tier provider configuration. Absent or
    * unconfigured → the process boots normally; model calls fail with a typed error. */
   providers?: ResolvedModelProviders;
-  /** Redaction mode (Addendum B.8) — wraps the gateway when enabled. */
+  /** Redaction mode (spec §12.2) — wraps the gateway when enabled. */
   redaction?: RedactionConfig;
   /**
    * Per-user daily model budget. When true, the gateway is wrapped
@@ -22,7 +22,7 @@ export interface ModelGatewayModuleOptions {
 }
 
 /**
- * model-gateway — leaf seam for ALL model and embedding calls (§A.10). Routes
+ * model-gateway — leaf seam for ALL model and embedding calls (spec §12.1). Routes
  * per-tier to the configured provider adapters; no other
  * module may import a provider client or reach a provider endpoint
  * (dependency-cruiser rules + the `no_provider_leakage` test).

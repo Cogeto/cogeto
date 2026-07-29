@@ -17,7 +17,7 @@ import { ModelGatewayError } from './errors';
 import { reidentifyDeep, reidentifyStream, reidentifyText } from './redaction-utils';
 
 /**
- * Redaction mode gateway wiring (Addendum B.8; 0023).
+ * Redaction mode gateway wiring (spec §12.2; 0023).
  * redaction_in_path / redaction_fail_closed / redaction_off_noop are here; the
  * detection + pseudonymize/reidentify correctness (redaction_roundtrip,
  * redaction_consistent) live in the Python sidecar's tests.

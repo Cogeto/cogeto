@@ -17,7 +17,7 @@ import { AdminGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 
 /**
- * /api/jobs — the dashboard's System view over the queue's own ledgers (§A.3).
+ * /api/jobs — the dashboard's System view over the queue's own ledgers (spec §15.4).
  * Lives in the entrypoint: queue plumbing is infrastructure, not domain.
  *
  * ADMIN-ONLY: activity/dead-letter expose cross-user source ids and

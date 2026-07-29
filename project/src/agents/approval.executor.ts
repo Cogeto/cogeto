@@ -7,7 +7,7 @@ import type { ApprovalRow } from './persistence/tables';
 import { ActionRegistry } from './action-registry';
 
 /**
- * The ONLY place a consequential effect runs (§A.8) — the worker, never the
+ * The ONLY place a consequential effect runs — the worker, never the
  * app. Invoked from the `approval.execute` job wrapped in the execution
  * guard (idempotentTask keyed `(approval, <id>, approval.execute)`), so a
  * duplicate delivery claims nothing and the effect runs at most once. Belt and

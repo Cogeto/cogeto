@@ -18,7 +18,7 @@ import { approval } from './persistence/tables';
  *. The row and its audit trail survive; only the derived content goes.
  * Idempotent: an already-redacted draft is not re-counted. Lives in the agents
  * module (it owns `approval`) and implements memory's DerivedCascade port; the
- * saga never touches this table itself (§A.1).
+ * saga never touches this table itself (spec §15).
  */
 const REDACTED_BODY = '[redacted: the email this reply was drafted from was deleted]';
 

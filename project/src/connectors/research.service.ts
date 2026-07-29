@@ -38,7 +38,7 @@ import { WebFetchService } from './web-fetch';
  * Web research: explicitly invoked,
  * never ambient. `search` runs one discovery query; `capture` fetches the URLs
  * the user selected and turns each page into a first-class web source — the
- * row, its domain event and its pipeline job commit together (§A.3), exactly
+ * row, its domain event and its pipeline job commit together (spec §15.4), exactly
  * like a note or an email. Derived memories carry provenance
  * source_type = 'web' → web_page.id, and their temporal anchor is the fetch
  * time, so "as of when?" is always answerable.

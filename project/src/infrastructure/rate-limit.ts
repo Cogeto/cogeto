@@ -15,7 +15,7 @@ import type { RateLimitBuckets } from './limits';
 /**
  * Per-principal request rate limiting. A lightweight in-process
  * fixed-window limiter — no new dependency, right-sized for the single app
- * process that serves one tenant (§A.2). Apply with `@RateLimit('<bucket>')` on
+ * process that serves one tenant. Apply with `@RateLimit('<bucket>')` on
  * a route; the guard keys on the authenticated principal, so it must run AFTER
  * the bearer guard (list it as a method guard on a controller already guarded
  * by BearerAuthGuard). A bucket configured to 0 is unlimited.

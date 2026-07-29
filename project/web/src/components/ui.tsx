@@ -106,7 +106,7 @@ export function EntityChip({
   );
 }
 
-/** Verification verdict (§B.3) → tone. */
+/** Verification verdict (spec §2) → tone. */
 export function VerdictChip({ verdict }: { verdict: string }) {
   const tone: Tone =
     verdict === 'supported' ? 'positive' : verdict === 'unsupported' ? 'danger' : 'warning';

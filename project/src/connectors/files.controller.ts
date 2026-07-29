@@ -71,7 +71,7 @@ export class FilesController {
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
     }
-    // Omitted flags fall back to the user's saved defaults (§A.9).
+    // Omitted flags fall back to the user's saved defaults.
     const defaults = await this.settings.get(request.principal);
     const { objectKey } = await this.files.upload(
       request.principal,
@@ -113,7 +113,7 @@ export class FilesController {
     return source;
   }
 
-  /** A short-lived signed download URL (§A.9); sensitive files gate to the owner. */
+  /** A short-lived signed download URL; sensitive files gate to the owner. */
   @Get(':key/download')
   async download(
     @Req() request: AuthenticatedRequest,

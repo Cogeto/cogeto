@@ -57,7 +57,7 @@ export interface WorkerTaskDeps {
 
 /**
  * The worker's task registry (composition root — modules contribute tasks as
- * their slices ship). `echo` is the §A.3 round-trip demo: its observable effect
+ * their slices ship). `echo` is the spec §15.4 round-trip demo: its observable effect
  * is one audit row, written in the idempotency transaction, so a duplicate
  * delivery provably changes nothing.
  */
@@ -145,7 +145,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       deps.log({ source_id: runId, advanced }, 'skill advance completed');
     },
 
-    // Saga steps 2–3 (§A.7): Qdrant points + MinIO objects, then receipt
+    // Saga steps 2–3 (spec §11.1): Qdrant points + MinIO objects, then receipt
     // confirmation with chain hash + signature — all one attempt, so the
     // receipt can never confirm while an enumerated identifier could still
     // exist. Idempotency key: ('deletion_receipt', <receipt id>, this) —
@@ -165,7 +165,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       );
     }),
 
-    // The nightly integrity sweep (§A.7 step 4) — scheduled by the crontab in
+    // The nightly integrity sweep (spec §11.1 step 4) — scheduled by the crontab in
     // worker.ts, also runnable on demand (sweep entrypoint). Deliberately NOT
     // wrapped in idempotentTask: that key fires once ever, a sweep recurs. Its
     // effects are idempotent by construction instead — alert inserts dedupe on
@@ -175,7 +175,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       deps.log({ ...report }, 'integrity sweep completed');
     }),
 
-    // The nightly dreaming cycle (§B.6 plain form) — scheduled
+    // The nightly dreaming cycle ( plain form) — scheduled
     // 03:30, after the 03:00 sweep; on demand via `npm run dream`. Like the
     // sweep, deliberately NOT idempotentTask (a recurring job, not a one-shot
     // per source); its effects are idempotent by construction — reconcile
@@ -185,7 +185,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       deps.log({ ...report }, 'dreaming cycle completed (scheduled)');
     }),
 
-    // Extract-and-discard staging cleanup (§A.9): deletes the transient
+    // Extract-and-discard staging cleanup: deletes the transient
     // staging object once its extraction is durable (enqueued by the pipeline
     // in the memories' transaction), plus a delayed backstop enqueued at upload
     // that fires even if extraction never succeeded. Absent object = success.
@@ -198,7 +198,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       deps.log({ source_id: stagingKey }, 'discard staging object deleted');
     },
 
-    // Approval execution (§A.8) — the ONLY place a consequential effect
+    // Approval execution — the ONLY place a consequential effect
     // runs. Guarded key ('approval', <id>, this): a duplicate delivery claims
     // nothing and the effect runs at most once; the executor also refuses any
     // row not in `approved`. The confirm endpoint (app) only enqueued this.
@@ -229,8 +229,8 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       deps.log({ expired }, 'approval expiry pass completed');
     }),
 
-    // The Memory Passport export (§B.5) — worker-run because it
-    // can be large (§A.3). A plain task: assembly re-reads through the gated
+    // The Memory Passport export (spec §11.4) — worker-run because it
+    // can be large (spec §15.4). A plain task: assembly re-reads through the gated
     // interfaces and writes an idempotent object + status, so a retry overwrites
     // rather than duplicates. On error the row is marked failed (visible in
     // Settings) and rethrown so graphile retries with backoff; a persistent
@@ -250,7 +250,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       }
     },
 
-    // The hourly Passport retention pass (§B.5): deletes ready export objects
+    // The hourly Passport retention pass (spec §11.4): deletes ready export objects
     // past their expiry and marks the rows expired — the "short-lived
     // downloadable" promise. Recurring + idempotent by construction (an expired
     // row is skipped next pass); single-flight so a slow run never overlaps.

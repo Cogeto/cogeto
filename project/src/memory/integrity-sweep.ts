@@ -19,7 +19,7 @@ import { verifyChain } from './domain/receipt-chain';
 import type { ConfirmedReceipt } from './domain/receipt-chain';
 
 /**
- * The nightly reconciliation sweep (§A.7 step 4): for every CONFIRMED receipt,
+ * The nightly reconciliation sweep (spec §11.1 step 4): for every CONFIRMED receipt,
  * re-derive the enumerated identifiers from counts_json and verify absence —
  * no memory rows with those ids, no Qdrant points, no objects at those keys.
  * A hit means the saga's promise was broken after the fact (restored backup,
@@ -290,7 +290,7 @@ export class IntegritySweep {
 
   /**
    * Memories whose `source_type` is defunct — their source
-   * table is gone, so their §A.6 provenance cannot resolve. Expected to return
+   * table is gone, so their provenance cannot resolve. Expected to return
    * nothing forever; if it ever does not, the erase-before-drop ordering was
    * bypassed and the rows need the deletion saga.
    */
@@ -355,7 +355,7 @@ export class IntegritySweep {
    * Past the window: a staging key means the discard cleanup never ran; any
    * other key with no metadata row means a failed compensating delete (or a
    * write outside the upload path) left PII bytes no receipt can ever cover.
-   * Detection only — deleting bytes stays the saga's monopoly (§A.7).
+   * Detection only — deleting bytes stays the saga's monopoly (spec §11.1).
    */
   private async findOrphanedObjects(): Promise<{
     scanned: number;
@@ -458,7 +458,7 @@ export class IntegritySweep {
       for (const row of page) {
         const payload = payloads.get(row.id);
         if (!payload) {
-          // An embedded row with no point: rebuildable state (§A.4) — reindex
+          // An embedded row with no point: rebuildable state (spec §4.2) — reindex
           // restores it; recall-only, so no self-heal here (no vector to write).
           alerts.push({
             receiptId: null,

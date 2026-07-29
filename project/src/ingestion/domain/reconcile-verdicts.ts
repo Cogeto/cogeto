@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 /**
  * Output contracts of the two reconciliation prompt families (
- * §B.7). Zod-validated at the gateway boundary: output that fails the schema
+ * spec §12.3). Zod-validated at the gateway boundary: output that fails the schema
  * is a retryable job failure, never an action.
  *
  * Conservatism is structural, not just prompted: anything other than an exact

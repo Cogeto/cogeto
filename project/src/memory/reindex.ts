@@ -7,7 +7,7 @@ import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryStore } from './memory.store';
 
 /**
- * Rebuilds the Qdrant index from Postgres (§A.4: "the reindex command must
+ * Rebuilds the Qdrant index from Postgres (spec §4.2: "the reindex command must
  * always work" — the disaster-recovery and migration path in one). Owned by
  * the memory module (0003 ruling 2); entrypoints call this function and never
  * see a Qdrant type.
@@ -58,7 +58,7 @@ export async function reindexMemories(options: ReindexOptions): Promise<ReindexR
     collection: options.collection,
   });
   const store = new MemoryStore(options.db, vectors);
-  // Reindex is the rebuild path (§A.4): an embeddings-model switch with a new
+  // Reindex is the rebuild path (spec §4.2): an embeddings-model switch with a new
   // vector size drops and recreates the collection here.
   await vectors.ensureCollection({ recreateOnDimensionMismatch: true });
 
@@ -135,7 +135,7 @@ export async function reindexMemories(options: ReindexOptions): Promise<ReindexR
   }
 
   // Orphan sweep: a point whose row is gone (rolled-back pipeline attempt,
-  // pre-saga deletion) is index noise — Postgres is the truth (§A.4).
+  // pre-saga deletion) is index noise — Postgres is the truth (spec §4.2).
   const orphans = (await vectors.listPointIds()).filter((id) => !embeddableIds.has(id));
   await vectors.deletePoints(orphans);
   report.orphansRemoved = orphans.length;

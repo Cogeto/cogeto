@@ -9,13 +9,13 @@ export interface DomainEvent {
 
 export interface JobSpec {
   type: string;
-  /** Must carry source_type + source_id — the idempotency key (§A.3). */
+  /** Must carry source_type + source_id — the idempotency key (spec §15.4). */
   payload: { source_type: string; source_id: string } & Record<string, unknown>;
   maxAttempts?: number;
 }
 
 /**
- * Transactional enqueue — the outbox (§A.3): the domain event and its job are
+ * Transactional enqueue — the outbox (spec §15.4): the domain event and its job are
  * written in the CALLER's transaction, in the same commit as the state change.
  * Nothing can be ingested and silently unprocessed; a rolled-back transaction
  * leaves neither an event nor a job.

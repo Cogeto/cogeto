@@ -24,7 +24,7 @@ export interface AdmittedMemory {
  * transaction
  *
  *   1. one batched embed call for all claims (model work before any write);
- *   2. Postgres rows — memory (status per the §B.3 verdict, embedding_model
+ *   2. Postgres rows — memory (status per the spec §2 verdict, embedding_model
  *      recorded) + verification_result, inside `tx`;
  *   3. Qdrant points LAST, id = memory id.
  *
@@ -32,7 +32,7 @@ export interface AdmittedMemory {
  * the job retries — never a duplicate row. Points written before the failure
  * can survive as orphans (ids that no longer exist in Postgres); they are
  * invisible to reads (hits are resolved through gated Postgres reads) and are
- * swept by reindex / the §A.7 nightly job. Postgres stays the source of truth.
+ * swept by reindex / the spec §11.1 nightly job. Postgres stays the source of truth.
  */
 @Injectable()
 export class EmbedStoreStage {

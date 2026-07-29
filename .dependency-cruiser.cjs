@@ -1,5 +1,5 @@
 /**
- * Module-boundary rules (AGENTS.md "Modules", Addendum §A.1, decision 0003 ruling 2),
+ * Module-boundary rules (AGENTS.md "Modules", spec §15, decision 0003 ruling 2),
  * enforced in CI via `npm run boundaries`.
  */
 const DOMAIN_MODULES = 'memory|ingestion|retrieval|agents|connectors';

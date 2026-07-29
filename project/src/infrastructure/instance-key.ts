@@ -4,7 +4,7 @@ import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 
 /**
- * The instance signing keypair (§B.1): one ed25519 key per
+ * The instance signing keypair (spec §11.1): one ed25519 key per
  * instance, generated at first boot by the migrate init job into a dedicated
  * volume — never into the repo or the image. Deletion receipts are signed with
  * the private key; the public key is served at GET /api/instance/public-key so

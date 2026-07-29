@@ -3,7 +3,7 @@ import type { Principal } from '@cogeto/shared';
 import type { Tx } from '../infrastructure/index';
 
 /**
- * The action-type contract (§A.8), kept separate from the registry class so an
+ * The action-type contract, kept separate from the registry class so an
  * action module and the registry can both depend on it without a cycle.
  */
 

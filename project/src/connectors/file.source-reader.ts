@@ -19,14 +19,14 @@ function toStagingKey(sourceKey: string): string {
  * stages run — never a fork. Two storage modes
  *
  * - **Stored**: a `file_metadata` row + a durable object at the source key.
- * - **Discard** (§A.9, handoff §3): no `file_metadata`, no durable object; the
+ * - **Discard** (handoff §3): no `file_metadata`, no durable object; the
  *   bytes are staged at the key's staging twin, carrying owner/scope/sensitive
  *   in the object's metadata (there is no row to read them from). The returned
  *   SourceItem sets `stagingKey`, and the pipeline deletes it once the derived
  *   memories commit.
  *
  * Never touches file_metadata or MinIO directly — both are the memory module's
- * (§A.1 rule 2), reached only through its public interfaces.
+ * (spec §15 rule 2), reached only through its public interfaces.
  */
 @Injectable()
 export class FileSourceReader implements SourceReader {

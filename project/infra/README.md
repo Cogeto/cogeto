@@ -1,7 +1,7 @@
 # infra: packaging & provisioning
 
 Everything that turns the codebase into a running per-tenant instance.
-Governed by Addendum §A.2: **`docker compose up` is the contract**: one command on
+Governed by the specification: **`docker compose up` is the contract**: one command on
 a fresh clone must reach a usable login, or the build is broken.
 
 - `docker/`: Dockerfile, Caddyfile, init-container scripts. The
@@ -14,9 +14,9 @@ a fresh clone must reach a usable login, or the build is broken.
  (`cogeto/cogeto`, `cogeto/cogeto-edge`, `cogeto/cogeto-mail`) and never
  build. Mirror root-compose changes here (the operator spec enforces it).
 
-Requirements (§A.2): healthchecks + `service_healthy` ordering; migrations as a
+Requirements: healthchecks + `service_healthy` ordering; migrations as a
 one-shot init container (never on app boot); Zitadel bootstrapped by provisioning
 config (first org, admin, OIDC app: zero clicks); MinIO bucket init job;
-`--profile demo` seeds the Ana sandbox persona (§B.9).
+`--profile demo` seeds the Ana sandbox persona.
 
 Depends on: the app/worker images built from `project/src/`. No source code here.

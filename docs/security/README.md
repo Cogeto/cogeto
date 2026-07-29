@@ -13,7 +13,7 @@ territory.
 
 ## Reporting a vulnerability
 
-- **[`SECURITY.md`](././SECURITY.md)** (repository root): how to report
+- **[`SECURITY.md`](../../SECURITY.md)** (repository root): how to report
  privately, what to expect, and what is in and out of scope. **Customer
  instances are out of scope without the owner's written authorization; the public
  demo sandbox is explicitly in scope.**

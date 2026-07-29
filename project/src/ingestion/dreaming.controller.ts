@@ -8,7 +8,7 @@ import { MemoryStore } from '../memory/index';
 import { buildDreamDigest } from './dream-digest';
 
 /**
- * The plain digest (§B.6 v1 form). A thin wrapper over
+ * The plain digest ( v1 form). A thin wrapper over
  * {@link buildDreamDigest} — the same builder the attention feed (
  *) reuses, so there is exactly one digest, gated once. Owner scoping
  * falls out of the gates inside the builder.

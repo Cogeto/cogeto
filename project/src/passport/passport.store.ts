@@ -12,11 +12,11 @@ import type { PassportExportRow } from './persistence/tables';
 export const PASSPORT_EXPORT_JOB_TYPE = 'passport_export';
 /** The recurring retention pass that expires short-lived export artifacts. */
 export const PASSPORT_RETENTION_JOB_TYPE = 'passport_retention';
-/** Hourly retention sweep (§B.5): deletes export objects past their expiry. */
+/** Hourly retention sweep (spec §11.4): deletes export objects past their expiry. */
 export const PASSPORT_RETENTION_CRONTAB = `30 * * * * ${PASSPORT_RETENTION_JOB_TYPE}`;
 
 /**
- * The passport export ledger (§B.5) — module-private CRUD over
+ * The passport export ledger (spec §11.4) — module-private CRUD over
  * the request/status rows. Owner-scoping is enforced on every read: an export
  * row is only ever returned to the user who created it.
  */

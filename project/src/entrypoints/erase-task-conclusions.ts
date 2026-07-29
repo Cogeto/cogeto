@@ -16,7 +16,7 @@ import { loadConfig } from './config';
  *
  * `task_conclusion` memories carry provenance pointing at `task_conclusion`
  * rows. Dropping that table with the memories still present
- * would strand their §A.6 provenance and trip the integrity sweep's orphan arm
+ * would strand their provenance and trip the integrity sweep's orphan arm
  *. So the memories are erased the only way memories are ever
  * erased: THROUGH the deletion saga — one enumeration transaction per source,
  * a signed receipt each, Qdrant points and MinIO objects removed, receipt
@@ -34,7 +34,7 @@ import { loadConfig } from './config';
  * The last surviving piece of task_conclusion knowledge, kept here in the
  * composition root rather than in a module: the saga needs a SourceDeletion
  * adapter to authorize and to remove the source row, and the module that used
- * to provide one is gone. Raw SQL is deliberate and permitted here (§A.1 —
+ * to provide one is gone. Raw SQL is deliberate and permitted here (spec §15 —
  * entrypoints are the composition root); the table itself disappears with the
  * next migration.
  */

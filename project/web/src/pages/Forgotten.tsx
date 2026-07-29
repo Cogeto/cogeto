@@ -17,7 +17,7 @@ import {
 } from '../components/ui';
 
 /**
- * Forgotten (§B.1): the permanent, read-only ledger of deletion receipts —
+ * Forgotten (spec §11.1): the permanent, read-only ledger of deletion receipts —
  * newest first, each backed by the hash chain and the instance signature.
  * Pending receipts poll until the worker confirms; sweep-flagged receipts
  * show as alerting. Receipts cannot be deleted; that permanence is the point.

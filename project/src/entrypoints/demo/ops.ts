@@ -101,7 +101,7 @@ export async function waitForQuiescence(
   }
 }
 
-/** Enqueues one dreaming cycle onto the running worker (§B.6). */
+/** Enqueues one dreaming cycle onto the running worker. */
 export async function enqueueDream(pool: Pool): Promise<void> {
   await pool.query(`SELECT graphile_worker.add_job('dreaming_cycle', payload := '{}'::json)`);
 }

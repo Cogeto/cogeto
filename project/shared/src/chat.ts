@@ -68,7 +68,7 @@ export interface ChatFactDto {
   sourceId: string;
   validFrom: string | null;
   validUntil: string | null;
-  /** Which §A.5 retrieval signals surfaced this fact. */
+  /** Which spec §3.4 retrieval signals surfaced this fact. */
   signals: string[];
   /**
    * Past belief: replaced/outdated, or interval

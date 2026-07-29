@@ -24,7 +24,7 @@ import {
   SkeletonRows,
 } from '../components/ui';
 
-/** The sweep's face (§A.7 step 4): last run, chain status, open alert list. */
+/** The sweep's face (spec §11.1 step 4): last run, chain status, open alert list. */
 function IntegrityPanel({ session }: { session: Session }) {
   const integrity = useQuery({
     queryKey: ['integrity'],

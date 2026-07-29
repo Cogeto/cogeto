@@ -507,7 +507,7 @@ describe('deploy channel — hardening assertions', () => {
     expect(deployCaddy).toContain('{$COGETO_EXTERNAL_DOMAIN}');
     expect(deployCaddy).toContain('email {$COGETO_ACME_EMAIL}');
     expect(deployCaddy).not.toContain('local_certs');
-    // The presign origin (§A.9) rides the same edge.
+    // The presign origin rides the same edge.
     expect(deployCaddy).toContain('s3.{$COGETO_EXTERNAL_DOMAIN}');
   });
 

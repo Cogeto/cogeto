@@ -5,9 +5,9 @@ import type { SourceDeletion } from '../memory/index';
 import { note } from './persistence/tables';
 
 /**
- * The deletion saga's source port for source_type 'user_note' (§A.7): the
+ * The deletion saga's source port for source_type 'user_note' (spec §11.1): the
  * saga deletes the note row through this, inside its enumeration transaction,
- * never through the note table (§A.1 rule 2). Bound to SOURCE_DELETIONS by
+ * never through the note table (spec §15 rule 2). Bound to SOURCE_DELETIONS by
  * the composition roots — the mirror of NotesSourceReader.
  */
 @Injectable()

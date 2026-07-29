@@ -37,7 +37,7 @@ import { SkillRunService } from './skills/skill-run.service';
 import { SkillEngine } from './skills/skill-engine';
 
 export interface ConnectorsModuleOptions {
-  /** File-upload knobs from validated config (default 25 MB, §A.9 short TTL). */
+  /** File-upload knobs from validated config (default 25 MB, short TTL). */
   fileUpload: FileUploadOptions;
   /** Inbound-email knobs from validated config. */
   mail: MailOptions;
@@ -46,7 +46,7 @@ export interface ConnectorsModuleOptions {
 }
 
 /**
- * connectors — notes, files, then email (§A.11).
+ * connectors — notes, files, then email.
  * shipped notes; O1 added the file source; O4 adds email — a per-tenant,
  * receive-only Haraka SMTP server feeding the SAME pipeline (source_type
  * 'email'). Registered once per process and marked global so the source readers

@@ -33,7 +33,7 @@ import { buildDreamDigest, dreamingActivityForPrincipal } from '../ingestion/ind
  * contexts, so it lives with the other cross-cutting controllers (audit, jobs)
  * and reaches each module ONLY through its public interface — every count and
  * every line comes back already gated, never a raw table read of a domain
- * module (§A.1).
+ * module (spec §15).
  */
 
 /** An open loop within this window is "due soon" (past it, simply overdue). */

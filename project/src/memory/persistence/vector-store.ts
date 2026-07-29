@@ -7,7 +7,7 @@ import type { MemoryScope, MemoryStatus, Principal } from '@cogeto/shared';
  * file is module-private and the only place in the system that imports the
  * Qdrant client, enforced by dependency-cruiser).
  *
- * Contract (§A.4): Postgres is the source of truth; this collection is a
+ * Contract (spec §4.2): Postgres is the source of truth; this collection is a
  * rebuildable index. Point id = memory id; the payload carries copies of the
  * gate and filter fields so scope/sensitive are enforced INSIDE the vector
  * query, never by app-side post-filtering.
@@ -74,7 +74,7 @@ export interface GateFilter {
 
 /**
  * The scope + sensitive gates as a native Qdrant payload pre-filter — the
- * exact mirror of MemoryStore.visibleTo (§A.4/§A.5; 0003 ruling 3)
+ * exact mirror of MemoryStore.visibleTo (spec §4.2/spec §3.4; 0003 ruling 3)
  * - scope: own rows OR scope = shared;
  * - sensitive: excluded by default; with explicit opt-in, still owner-only.
  * Pure and exported so tests can assert the filter itself, not just behavior.
@@ -118,7 +118,7 @@ export class MemoryVectorStore {
    * Idempotent: safe to run on every worker boot. Reindex passes
    * `recreateOnDimensionMismatch`: an embeddings-model switch with
    * a different vector size must DROP and recreate the collection — Postgres is
-   * the truth and this index is rebuildable (§A.4) — or every upsert fails with
+   * the truth and this index is rebuildable (spec §4.2) — or every upsert fails with
    * a dimension error. Normal boot keeps create-if-missing semantics.
    */
   async ensureCollection(options: { recreateOnDimensionMismatch?: boolean } = {}): Promise<void> {
@@ -135,7 +135,7 @@ export class MemoryVectorStore {
         vectors: { size: this.dimensions, distance: 'Cosine' },
       });
     }
-    // Payload indexes on the gate/filter fields (§A.4). Re-creation is a no-op.
+    // Payload indexes on the gate/filter fields (spec §4.2). Re-creation is a no-op.
     const indexes: { field: string; schema: 'keyword' | 'bool' }[] = [
       { field: 'owner_id', schema: 'keyword' },
       { field: 'scope', schema: 'keyword' },

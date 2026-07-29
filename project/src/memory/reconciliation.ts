@@ -30,10 +30,10 @@ import type { PolicyParty } from './domain/reconcile-policy';
  * half behind the pure policy in domain/reconcile-policy.ts. The ingestion
  * reconciliation service decides WHICH pairs to check and what the model
  * ruled; every state change lands here, so the invariants stay aggregate-owned
- * (§A.1 rule 4)
+ * (spec §15 rule 4)
  *
  * - merges and reconciliation supersessions close intervals and point
- *   `superseded_by` — history is never destroyed (§B.2);
+ *   `superseded_by` — history is never destroyed (spec §6);
  * - only reconciliation sets `contradicted`, recording prior statuses in the
  *   relation row for dismiss-restoration;
  * - a `user_approved` memory is never touched except to pair it into a
@@ -311,7 +311,7 @@ export class MemoryReconciliation {
   }
 
   /**
-   * `supersedes` verdict (0010 ruling 7): §B.2 mechanics against the existing
+   * `supersedes` verdict (0010 ruling 7): spec §6 mechanics against the existing
    * winner — interval closed, loser `replaced`, pointer set. The caller ran
    * the direction guard; this re-checks it defensively and skips rather than
    * ever superseding ambiguously.
@@ -539,7 +539,7 @@ export class MemoryReconciliation {
   }
 
   /**
-   * The §B.2 close: loser → `replaced`, interval closed, pointer at the
+   * The spec §6 close: loser → `replaced`, interval closed, pointer at the
    * existing target row (no new row — this is what distinguishes a merge /
    * reconciliation supersession from edit-supersession). Payload copy last.
    */

@@ -9,7 +9,7 @@ const DEAD_LETTER_WRITE_ATTEMPTS = 3;
 const DEAD_LETTER_RETRY_MS = 200;
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
-/** The §A.3 idempotency key: one row in job_execution = the job ran (or was cancelled). */
+/** The spec §15.4 idempotency key: one row in job_execution = the job ran (or was cancelled). */
 export interface JobIdempotencyKey {
   sourceType: string;
   sourceId: string;
@@ -100,7 +100,7 @@ export type IdempotentJobPayload = z.infer<typeof idempotentPayloadSchema>;
 export type AfterCommit = () => Promise<void>;
 
 /**
- * Wraps a job handler with the §A.3 contract
+ * Wraps a job handler with the spec §15.4 contract
  *
  * - **Idempotency**: the handler's effect and an INSERT into job_execution under
  *   the unique key (source_type, source_id, job_type) share one transaction —

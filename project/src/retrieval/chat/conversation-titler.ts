@@ -26,7 +26,7 @@ const titleSchema = z.object({ title: z.string() });
 
 /**
  * Names an untitled conversation from its opening messages: one
- * pipeline-tier call, conservative and plain. Runs in the worker (§A.3 — the
+ * pipeline-tier call, conservative and plain. Runs in the worker (spec §15.4 — the
  * model call never sits in the request path). The user's manual rename always
  * wins: the guarded UPDATE re-checks `title IS NULL AND NOT title_set_by_user`
  * at write time, so a rename that lands mid-call is never overwritten.

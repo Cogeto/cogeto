@@ -1,4 +1,4 @@
-# Eval history — golden-set results per run (§B.4)
+# Eval history — golden-set results per run (spec §14)
 
 Appended by `npm run eval`. These numbers become the published trust score once
 the CI gates turn on (Session 4). Honest numbers only — a dip ships with an

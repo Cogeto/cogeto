@@ -25,7 +25,7 @@ export interface DraftReplyResult {
 /**
  * The reply-drafting system prompt. NOT a memory-deciding prompt (it drafts an
  * outbound message, never decides what to remember), so it is an inline constant
- * rather than a versioned golden-set artifact (§B.7 governs memory-deciding
+ * rather than a versioned golden-set artifact (spec §12.3 governs memory-deciding
  * prompts). Grounds the draft strictly in the retrieved context so the model
  * never invents commitments the user has not made.
  */

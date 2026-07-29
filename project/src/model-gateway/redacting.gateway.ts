@@ -10,12 +10,12 @@ import type { RedactionPort } from './redaction-client';
 import { reidentifyDeep, reidentifyStream, reidentifyText } from './redaction-utils';
 
 /**
- * Redaction mode (Addendum B.8; 0023): a gateway decorator that
+ * Redaction mode (spec §12.2; 0023): a gateway decorator that
  * pseudonymizes the payload text BEFORE every outbound model call and
  * re-identifies the response BEFORE it reaches any caller. The wrapped gateway
  * (Mistral) only ever sees pseudonyms.
  *
- * - The `system` prompt is a versioned, PII-free artifact (§B.7) and is passed
+ * - The `system` prompt is a versioned, PII-free artifact (spec §12.3) and is passed
  *   through untouched; only the `input` (the user/document/fact text) is redacted.
  * - Embeddings are redacted too: the embed call goes to Mistral,
  *   so leaving real entities in it would defeat redaction. There is nothing to

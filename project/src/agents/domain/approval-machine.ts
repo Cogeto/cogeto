@@ -1,7 +1,7 @@
 import type { ApprovalStatus } from '@cogeto/shared';
 
 /**
- * The approval aggregate's single transition function (Addendum §A.8, §A.1
+ * The approval aggregate's single transition function (the specification, spec §15
  * rule 4). Legal edges — everything else is refused with a typed reason
  *
  *   draft            → pending_approval        (submit for a decision)

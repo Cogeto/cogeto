@@ -17,7 +17,7 @@ the image version, generates `.env` with per-instance secrets, and brings the
 stack up. Never `docker compose up` this file by hand without a populated
 `.env`: every secret is required and missing values fail loudly by design.
 
-Dev/local work keeps using the repo-root `docker-compose.yml` (§A.2:
+Dev/local work keeps using the repo-root `docker-compose.yml` (:
 `docker compose up` on a fresh clone is the contract). When you change the
 root compose or the dev Caddyfile, mirror the change here: the operator spec
 (`project/src/entrypoints/operator-script.spec.ts`) asserts the two stacks

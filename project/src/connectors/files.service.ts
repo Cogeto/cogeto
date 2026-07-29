@@ -48,7 +48,7 @@ export interface UploadedFile {
 export interface UploadFlags {
   scope: MemoryScope;
   sensitive: boolean;
-  /** Extract-and-discard (§A.9): keep no original after extraction. */
+  /** Extract-and-discard: keep no original after extraction. */
   discard: boolean;
 }
 
@@ -68,7 +68,7 @@ function toStagingKey(sourceKey: string): string {
  * this orchestrates the memory module's object store + file-metadata port and
  * the shared outbox; it owns no table of its own.
  *
- * Transactional ingestion (§A.3, handoff §1) — the safe order
+ * Transactional ingestion (spec §15.4, handoff §1) — the safe order
  *   1. PUT the bytes to MinIO under the minted key (object-first).
  *   2. In ONE transaction: insert file_metadata (via the memory port) AND
  *      enqueue the pipeline job through the outbox (metadata-commit gating).
@@ -146,7 +146,7 @@ export class FilesService {
     const contentType = this.resolveContentType(file);
     this.counters.add(principal.userId, 'upload', 1);
 
-    // Object key contract (§A.6, handoff §1): {orgId}/{userId}/{scope}/file-{uuid},
+    // Object key contract (handoff §1): {orgId}/{userId}/{scope}/file-{uuid},
     // first segment the Zitadel org id — minted before anything is written, the
     // provenance anchor of every derived memory. Same in both modes.
     const objectKey = `${principal.orgId}/${principal.userId}/${flags.scope}/file-${randomUUID()}`;
@@ -210,7 +210,7 @@ export class FilesService {
   }
 
   /**
-   * Extract-and-discard mode (§A.9, F1 handoff §3): NO durable object, NO
+   * Extract-and-discard mode (F1 handoff §3): NO durable object, NO
    * file_metadata row. The bytes are staged at {org}/{user}/staging/file-{uuid}
    * (the object key's staging twin); the pipeline reads them, derives memories
    * with full provenance to the byte-less source key, and — in the SAME
@@ -323,7 +323,7 @@ export class FilesService {
   }
 
   /**
-   * A short-lived signed download URL (§A.9), or null when the caller may not
+   * A short-lived signed download URL, or null when the caller may not
    * have it. Owner always; a non-owner only for a SHARED, NON-sensitive file in
    * their own org — sensitive files never leave their owner.
    */

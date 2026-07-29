@@ -1,5 +1,5 @@
 /**
- * Memory vocabulary (docs/glossary.md; Addendum §A.6).
+ * Memory vocabulary (docs/glossary.md; the specification).
  *
  * Six lifecycle statuses plus an orthogonal `sensitive` boolean flag.
  * Statuses are score multipliers in retrieval; `scope` and `sensitive` are hard gates.
@@ -34,7 +34,7 @@ export const RELATION_RESOLUTIONS = [
 ] as const;
 export type RelationResolution = (typeof RELATION_RESOLUTIONS)[number];
 
-/** Retrieval score multipliers per status (Addendum §A.5). */
+/** Retrieval score multipliers per status (spec §3.4). */
 export const STATUS_MULTIPLIERS: Record<MemoryStatus, number> = {
   active: 1.0,
   user_approved: 1.0,
@@ -45,7 +45,7 @@ export const STATUS_MULTIPLIERS: Record<MemoryStatus, number> = {
 };
 
 /**
- * Temporal-mode multipliers: the §A.5 temporal lift.
+ * Temporal-mode multipliers: the spec §3.4 temporal lift.
  * Past facts are the point of the query, so replaced/outdated rank nearly on
  * par; statuses stay multipliers, gates stay gates.
  */

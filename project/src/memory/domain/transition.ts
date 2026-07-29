@@ -1,21 +1,21 @@
 import type { MemoryStatus } from '@cogeto/shared';
 
 /**
- * The Memory aggregate's single transition function (§A.1 rule 4).
+ * The Memory aggregate's single transition function (spec §15 rule 4).
  *
- * Ownership of transitions (Addendum, glossary, prompt)
+ * Ownership of transitions (the specification, glossary, prompt)
  * - `contradicted`  — only reconciliation.
  * - `user_approved` — only the user, and only FROM `uncertain` or
  *   `contradicted`: it is a review verdict (review approval;
  *   contradiction "confirm" resolution), not a
  *   general blessing of any memory.
  * - `outdated`      — consolidation or the user.
- * - `uncertain`     — only the verification pass (§B.3 demotion).
+ * - `uncertain`     — only the verification pass (spec §2 demotion).
  * - `active`        — only the user (re-affirming / correcting a memory).
  * - `replaced`      — never via transition: only supersession sets it, closing
- *   `valid_until` and pointing `superseded_by` at the successor (§B.2).
+ *   `valid_until` and pointing `superseded_by` at the successor (spec §6).
  * - `replaced` is terminal: history rows never transition again.
- * - Hard delete happens only in the deletion saga (§A.7) — not a transition.
+ * - Hard delete happens only in the deletion saga (spec §11.1) — not a transition.
  */
 export type MemoryActor =
   | { kind: 'user'; userId: string }

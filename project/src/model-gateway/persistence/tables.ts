@@ -1,6 +1,6 @@
 import { pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 
-/** Prompt registry (§B.7, migration 0002): versions are immutable once recorded. */
+/** Prompt registry (spec §12.3, migration 0002): versions are immutable once recorded. */
 export const promptRegistry = pgTable(
   'prompt_registry',
   {

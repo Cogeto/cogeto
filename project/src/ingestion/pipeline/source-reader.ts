@@ -6,7 +6,7 @@ import type { SourceType } from '../../memory/index';
  * Stage 1 (ingest) port: the pipeline reads source items through this
  * interface. Connector modules implement it for their source types and the
  * composition root binds the implementations (SOURCE_READERS), so ingestion
- * never touches a connector's tables (§A.1 rule 2) and never imports a
+ * never touches a connector's tables (spec §15 rule 2) and never imports a
  * connector module (no cycle: connectors → ingestion only).
  */
 
@@ -34,7 +34,7 @@ export interface SourceItem {
    */
   authoredByUser?: boolean;
   /**
-   * Extract-and-discard (§A.9, F1 handoff §3): the transient staging object the
+   * Extract-and-discard (F1 handoff §3): the transient staging object the
    * bytes were read from, present ONLY in discard mode. The pipeline schedules
    * its deletion AFTER the derived memories commit — so a discarded original is
    * removed only once its extraction is durable (never a memory-loss window).

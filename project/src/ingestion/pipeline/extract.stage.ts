@@ -11,7 +11,7 @@ import type { SourceItem } from './source-reader';
  * Stage 3 (extract): structured extraction of candidate facts per chunk via
  * the versioned extraction prompt. Output is Zod-validated at the gateway;
  * malformed output throws and is never stored — the job retries with backoff
- * and dead-letters if it never conforms (§A.3).
+ * and dead-letters if it never conforms (spec §15.4).
  */
 @Injectable()
 export class ExtractStage {

@@ -17,7 +17,7 @@ const EMBED_MODEL = 'test-embed';
 /**
  * Stage 6 end to end against real Postgres + Qdrant, with the
  * judge scripted at the ModelGateway seam for determinism — live model
- * behavior is the reconciliation pair eval's job (§B.4).
+ * behavior is the reconciliation pair eval's job (spec §14).
  *
  * Vector control: the mid contradiction band needs an exact similarity, so
  * tests hand-build vectors — BASE = [1,0,…]; MID_BAND has raw cosine 0.7
@@ -604,7 +604,7 @@ describe('reconciliation stage 6 (integration, real Postgres + Qdrant, scripted 
   });
 
   it('supersedes_direction_guard: ambiguous direction routes to contradiction, never silent supersession', async () => {
-    // Unambiguous: the model's winner is also temporally later → §B.2 close.
+    // Unambiguous: the model's winner is also temporally later → spec §6 close.
     {
       const owner = freshOwner('guard-clean');
       const gateway = new ScriptedJudgeGateway(undefined, () => ({

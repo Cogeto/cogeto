@@ -1,4 +1,4 @@
--- Migration 0002 — async infrastructure (Addendum §A.3) and the prompt registry (§B.7).
+-- Migration 0002 — async infrastructure (the specification §A.3) and the prompt registry (§B.7).
 -- Kept out of 0001 so the contractual core stays exactly the §A.6 set (0003 ruling 1).
 
 -- Domain events written in the same transaction as the state change they describe.

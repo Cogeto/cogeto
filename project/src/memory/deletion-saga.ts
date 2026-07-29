@@ -23,8 +23,8 @@ import { hashReceiptPayload, GENESIS_HASH } from './domain/receipt-chain';
 import { liftContradictionsBeforeDeletion } from './reconciliation';
 
 /**
- * The deletion saga (§A.7, §B.1) — the ONLY path that hard-deletes memories
- * (§A.1 rule 4). Three steps across three stores
+ * The deletion saga (spec §11.1, spec §11.1) — the ONLY path that hard-deletes memories
+ * (spec §15 rule 4). Three steps across three stores
  *
  *   1. requestSourceDeletion — ONE Postgres transaction: enumerate + delete the
  *      derived memory rows, delete file metadata, delete the source row, write
@@ -38,8 +38,8 @@ import { liftContradictionsBeforeDeletion } from './reconciliation';
  *      identifier could still exist: confirmation and the external legs share
  *      one attempt — an external failure rolls the confirmation back.
  *
- * Correctness of enumeration (Addendum §B.1's provability argument): every
- * memory row carries NOT NULL provenance (§A.6) and every write path preserves
+ * Correctness of enumeration (spec §11.1's provability argument): every
+ * memory row carries NOT NULL provenance and every write path preserves
  * it — including edit-supersession, which copies the predecessor's provenance
  * onto the successor. So "all memories derived from source S" IS the provenance
  * query, and same-source supersession chains are enumerated in full by
@@ -65,7 +65,7 @@ export const DELETION_JOB_SOURCE_TYPE = 'deletion_receipt';
  * exact mirror of ingestion's SourceReader port): the memory module defines
  * it, connector modules implement it, the composition root binds the two —
  * the saga never touches a connector's tables and the module graph stays
- * acyclic (§A.1 rule 2). `file` sources are handled inside this module via
+ * acyclic (spec §15 rule 2). `file` sources are handled inside this module via
  * file_metadata and need no adapter.
  */
 export interface SourceDeletion {
@@ -92,7 +92,7 @@ export interface SourceDeletion {
    * that store objects recorded elsewhere (email: raw originals + externalised
    * HTML on email_message) answer here so retained bytes are never mis-flagged
    * as orphans — while a genuinely abandoned object (no row) still is. The
-   * probe reads only the connector's own tables (§A.1). Optional — note/chat
+   * probe reads only the connector's own tables (spec §15). Optional — note/chat
    * sources store no objects.
    */
   ownsObjectKeys?(db: DbOrTx, keys: readonly string[]): Promise<string[]>;
@@ -219,7 +219,7 @@ const countsSchema = z.object({
    * the message rows go via the adapter's deleteSource, the sweep verifies
    * memories/points/objects as ever). */
   chat_messages_removed: z.int().optional(),
-  /** Qdrant point id = memory id (§A.4); duplicated for receipt readability. */
+  /** Qdrant point id = memory id (spec §4.2); duplicated for receipt readability. */
   point_ids: z.array(z.string()),
   object_keys: z.array(z.string()),
   superseded_by_nulled: z.array(z.string()),
@@ -690,7 +690,7 @@ export class DeletionExecutor {
 
     const counts = countsSchema.parse(receipt.countsJson);
 
-    // Step two — external deletion. Absent identifiers are success (§A.7)
+    // Step two — external deletion. Absent identifiers are success (spec §11.1)
     // Qdrant point deletion by id ignores missing points; S3 DELETE returns
     // 204 for missing keys. That is what makes retries safe.
     await this.vectors.deletePoints(counts.point_ids);

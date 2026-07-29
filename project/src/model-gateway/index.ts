@@ -1,4 +1,4 @@
-/** Public interface of the model-gateway seam (§A.1 rule 1). */
+/** Public interface of the model-gateway seam (spec §15 rule 1). */
 export { ModelGatewayModule } from './model-gateway.module';
 export type { ModelGatewayModuleOptions } from './model-gateway.module';
 export { ModelGateway } from './model-gateway.service';
@@ -46,7 +46,7 @@ export {
 export { loadPrompt, recordPromptVersion } from './prompt-loader';
 export type { PromptArtifact } from './prompt-loader';
 // Gateway construction goes through this factory everywhere so the redaction
-// decorator (Addendum B.8) wraps ALL model traffic — no path bypasses it.
+// decorator (spec §12.2) wraps ALL model traffic — no path bypasses it.
 export { createModelGateway } from './factory';
 export type { CreateModelGatewayOptions, RedactionConfig } from './factory';
 // The decorator + its port are exported for tests; the RedactionClient (the only

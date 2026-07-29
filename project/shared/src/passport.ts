@@ -1,5 +1,5 @@
 /**
- * Memory Passport DTOs (§B.5) — the API surface for the export mechanism.
+ * Memory Passport DTOs (spec §11.4) — the API surface for the export mechanism.
  *
  * The Passport itself (the downloadable artifact) is an OPEN, versioned format
  * documented in `docs/passport-schema/`; these types are only the request/status

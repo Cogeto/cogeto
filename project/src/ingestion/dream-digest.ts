@@ -8,7 +8,7 @@ import type { DreamActionRow, DreamPass } from './persistence/tables';
 import { latestFinishedRun } from './dreaming.service';
 
 /**
- * The dreaming digest, assembled from the latest finished run (§B.6 v1 form;
+ * The dreaming digest, assembled from the latest finished run ( v1 form;
  *). Extracted from DreamingController so BOTH the digest endpoint
  * and the attention feed build the same lines from one
  * place — never a second, drifting digest.

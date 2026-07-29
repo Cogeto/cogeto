@@ -14,7 +14,7 @@ const ACTORS: MemoryActor[] = [
 
 /**
  * The full expected matrix, stated independently of the implementation
- * which actor kinds may SET each target status (Addendum §A.1 rule 4,
+ * which actor kinds may SET each target status (spec §15 rule 4,
  * glossary, prompt). `replaced` is reachable only via supersession and
  * is terminal; same-status transitions are no-ops and rejected.
  */

@@ -27,7 +27,7 @@ export interface SeedWorldDeps {
 
 /**
  * Feeds the corpus through the public API, ages it to weeks of accrual, runs one
- * dreaming cycle, and asserts the end state (§B.9). The single
+ * dreaming cycle, and asserts the end state. The single
  * shared routine behind the init job, the scheduled reset, and the tests — so
  * every path exercises the real pipeline identically.
  */

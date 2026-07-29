@@ -1,8 +1,8 @@
 # answer — the chat answerer prompt family
 
-Grounded synthesis for the fast-path chat (§A.5): answers ONLY from the retrieved
+Grounded synthesis for the fast-path chat (spec §3.4): answers ONLY from the retrieved
 fact blocks, cites every claim, says plainly when the facts do not cover the
-question. Versioned like every prompt (§B.7); the active version is `answer/v0001`.
+question. Versioned like every prompt (spec §12.3); the active version is `answer/v0001`.
 
 ## Citation grammar (decision 0007 ruling 2 — one grammar, strictly enforced)
 

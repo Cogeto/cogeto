@@ -7,7 +7,7 @@ import { chatMessage, conversation } from '../persistence/tables';
 /**
  * The deletion saga's source port for source_type 'chat_conversation' (
  *, extending): deleting a conversation is
- * a SOURCE deletion through the §A.7 saga — never a chat route. The cascade
+ * a SOURCE deletion through the spec §11.1 saga — never a chat route. The cascade
  * enumerates the conversation's messages as `chat` sub-sources, so every
  * memory derived from them (and its vector) joins the SAME enumeration
  * transaction and the ONE signed receipt; deleteSource then removes the

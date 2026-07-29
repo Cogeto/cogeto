@@ -27,9 +27,9 @@ const querySchema = z.object({
 });
 
 /**
- * /api/audit — the read-only audit trail (§A.8/§B.1; closes the
+ * /api/audit — the read-only audit trail (/spec §11.1; closes the
  * write-only-audit gap, audit finding 2.4). Reverse-chronological, filterable,
- * paginated. Org-scoped (§A.4): a caller sees only their org's entries plus
+ * paginated. Org-scoped (spec §4.2): a caller sees only their org's entries plus
  * system/global (null-org) ones — never another org's. Read-only forever: this
  * controller exposes GET only, and the table's append-only trigger (migration
  * 0001) enforces immutability below the API.

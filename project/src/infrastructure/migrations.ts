@@ -6,7 +6,7 @@ import { runMigrations as runGraphileMigrations } from 'graphile-worker';
 /**
  * Applies pending SQL migrations from project/src/migrations in filename order,
  * recording each in the cogeto_migrations ledger, and installs/updates the
- * Graphile Worker schema. Used by the migrate init container (§A.2 — never on
+ * Graphile Worker schema. Used by the migrate init container ( — never on
  * app boot) and by the integration-test harness.
  */
 const DEFAULT_MIGRATIONS_DIR = path.resolve(__dirname, '..', '..', 'migrations');
