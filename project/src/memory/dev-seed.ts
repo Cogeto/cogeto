@@ -39,7 +39,7 @@ export async function seedObjectFixture(options: SeedObjectOptions): Promise<See
       `Cogeto dev fixture object seeded ${new Date().toISOString()} for ${principal.userId}`,
     'utf8',
   );
-  // Object key contract (§A.6): tenant/user/scope/file-{uuid}, tenant = org id.
+  // Object key contract: tenant/user/scope/file-{uuid}, tenant = org id.
   const objectKey = `${principal.orgId}/${principal.userId}/private/file-${randomUUID()}`;
 
   await objects.putObject(objectKey, bytes);
@@ -74,7 +74,7 @@ export interface SeededOrphan {
 /**
  * DEV/TEST-ONLY orphan drill: plants a stray Qdrant point whose id matches an
  * identifier a CONFIRMED receipt promised gone — exactly the discrepancy the
- * nightly sweep exists to catch (§A.7 step 4). Returns null when no confirmed
+ * nightly sweep exists to catch (spec §11.1 step 4). Returns null when no confirmed
  * receipt with enumerated points exists yet (delete something first).
  */
 export async function seedOrphanPoint(options: SeedOrphanOptions): Promise<SeededOrphan | null> {

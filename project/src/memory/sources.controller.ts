@@ -5,7 +5,7 @@ import type { AuthenticatedRequest } from '../identity/index';
 import { DeletionSaga } from './deletion-saga';
 
 /**
- * /api/sources — source-level true deletion (§A.7, §B.1). DELETE starts the
+ * /api/sources — source-level true deletion (spec §11.1, spec §11.1). DELETE starts the
  * saga: the response's receiptId is the handle to the pending receipt that
  * the worker confirms once Qdrant and MinIO acknowledged. The saga owns all
  * authorization (owner-only) and validation; these routes stay thin.

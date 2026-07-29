@@ -1,6 +1,6 @@
 # Trust scores: the published per-release quality record
 
-Cogeto measures itself before it ships (§B.4) and **publishes the numbers**:
+Cogeto measures itself before it ships (spec §14) and **publishes the numbers**:
 one JSON file per release under [`eval/trust-scores/`](../../eval/trust-scores/),
 rendered by the public trust-score page on cogeto.eu. This directory is the
 open contract for that data, treated with the same schema-stability care as

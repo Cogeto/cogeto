@@ -8,7 +8,7 @@ import { PASSPORT_OPTIONS } from './passport.options';
 import type { PassportOptions } from './passport.options';
 
 /**
- * passport — the Memory Passport (§B.5): a complete, documented,
+ * passport — the Memory Passport (spec §11.4): a complete, documented,
  * versioned export of a user's own data. It composes the memory module's gated
  * reads + object store (like retrieval composes them),
  * owns only its request/status ledger, and signs the manifest with the instance

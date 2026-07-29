@@ -57,7 +57,7 @@ interface PreparedObject {
 }
 
 /**
- * Inbound email intake (, routing revised by): parse the raw RFC822, resolve the RECIPIENT USERS from the sender —
+ * Inbound email intake (routing revised by): parse the raw RFC822, resolve the RECIPIENT USERS from the sender —
  * a registered user's own address routes to that user; otherwise every user
  * whose personal allowlist matches the sender receives a copy; otherwise the
  * message is refused (closed by default; the bootstrap admin account never

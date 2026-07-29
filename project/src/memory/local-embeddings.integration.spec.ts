@@ -123,7 +123,7 @@ describe('local embeddings with reindex (integration, real Postgres + real Qdran
     ).toEqual({ expected: 1024, actual: 1536 });
 
     // The way out: reindex recreates the collection at 1024 and re-embeds
-    // everything from Postgres — the §A.4 source-of-truth rebuild.
+    // everything from Postgres — the spec §4.2 source-of-truth rebuild.
     const progress: string[] = [];
     const report = await reindexMemories({
       db: tdb.db,

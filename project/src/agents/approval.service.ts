@@ -26,7 +26,7 @@ import {
 const HISTORY_STATUSES = ['executed', 'rejected', 'expired'] as const;
 
 /**
- * The approval state machine's write + query surface (§A.8). The confirm
+ * The approval state machine's write + query surface. The confirm
  * endpoint calls `confirm` — which ONLY flips state and (on approve) enqueues
  * the worker execution job through the outbox; it never runs an effect. The
  * scheduled pass calls `expireStale`. All transitions are audit-logged.
@@ -79,7 +79,7 @@ export class ApprovalService {
   /**
    * The authenticated confirm transition (approve|reject) — the ONLY approval
    * path. Owner org only (a foreign-org approval is NotFound, never leaked).
-   * Approve → `approved` + enqueue the execution job (worker-only, §A.8);
+   * Approve → `approved` + enqueue the execution job (worker-only);
    * reject → `rejected`. Nothing else happens here.
    */
   async confirm(

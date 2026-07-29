@@ -33,7 +33,7 @@ const configSchema = z
     s3Url: z.url(),
     /**
      * Browser-reachable object-storage origin for presigned download URLs (O1,
-     * §A.9). Defaults to s3Url; set COGETO_S3_PUBLIC_URL when MinIO's internal
+     *). Defaults to s3Url; set COGETO_S3_PUBLIC_URL when MinIO's internal
      * hostname is not reachable from the browser (see the O1 owner checklist).
      */
     s3PublicUrl: z.url().optional(),
@@ -42,7 +42,7 @@ const configSchema = z
     s3AccessKey: z.string().min(1).default('cogeto'),
     s3SecretKey: z.string().min(1).default('cogeto-dev-password'),
     s3Bucket: z.string().min(1).default('cogeto'),
-    /** Instance signing keypair directory (§B.1). The local
+    /** Instance signing keypair directory (spec §11.1). The local
      * default is gitignored; compose mounts the instance-keys volume. */
     instanceKeyDir: z.string().min(1).default('.instance-keys'),
     /** File-upload cap (O1) — default 25 MB; PDFs/DOCX only. */
@@ -51,7 +51,7 @@ const configSchema = z
       .int()
       .positive()
       .prefault(25 * 1024 * 1024),
-    /** Presigned download-URL lifetime in seconds (§A.9 — short-lived). */
+    /** Presigned download-URL lifetime in seconds ( — short-lived). */
     downloadUrlTtlSeconds: z.coerce.number().int().positive().prefault(300),
     /**
      * Inbound email. The instance's unique inbound
@@ -186,7 +186,7 @@ const configSchema = z
      * with (written by zitadel FirstInstance; mounted like zitadel-init). */
     zitadelPatFile: z.string().min(1).default('/machinekey/pat.txt'),
     /**
-     * Redaction mode (Addendum B.8; language boundary). `REDACTION_*`
+     * Redaction mode (spec §12.2; language boundary). `REDACTION_*`
      * (not COGETO_-prefixed) — set by the `redaction` compose profile. When on, the
      * gateway pseudonymizes every outbound model call and fails closed if the
      * sidecar is unreachable. `REDACTION_URL` is required when enabled.
@@ -297,7 +297,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
     demoResetCron: env.COGETO_DEMO_RESET_CRON || undefined,
     demoAppUrl: env.COGETO_DEMO_APP_URL || undefined,
     zitadelPatFile: env.COGETO_ZITADEL_PAT_FILE || undefined,
-    // Redaction mode (Addendum B.8) — REDACTION_* namespace, set by the profile.
+    // Redaction mode (spec §12.2) — REDACTION_* namespace, set by the profile.
     redactionEnabled: env.REDACTION_ENABLED,
     redactionUrl: env.REDACTION_URL || undefined,
     redactionRequired: env.REDACTION_REQUIRED,
@@ -390,7 +390,7 @@ function loadDemoWebFixtures(): { url: string; title: string; html: string }[] {
 }
 
 /**
- * Redaction wiring for the model-gateway factory (Addendum B.8). Undefined when
+ * Redaction wiring for the model-gateway factory (spec §12.2). Undefined when
  * off, so every construction site passes it uniformly and the decorator wraps all
  * model traffic only on the `redaction` profile.
  */

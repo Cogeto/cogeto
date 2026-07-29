@@ -117,7 +117,7 @@ export class MemoriesController {
     return (await this.withOwnerNames([toListItem(row)]))[0]!;
   }
 
-  /** The supersession chain, oldest → newest — the history panel (§B.2). */
+  /** The supersession chain, oldest → newest — the history panel (spec §6). */
   @Get(':id/chain')
   async chain(
     @Req() request: AuthenticatedRequest,

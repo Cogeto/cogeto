@@ -6,7 +6,7 @@ receive-only **Haraka** SMTP container (no OAuth, no CASA, no sending). Calendar
 dropped from v1 (reconsidered only post-2.0). Notes first for zero OAuth friction.
 
 Responsibilities: sync with external sources, normalize items, and emit ingestion
-events **transactionally via the outbox** (§A.3): an item can never be ingested
+events **transactionally via the outbox** (spec §15.4): an item can never be ingested
 and silently unprocessed. Keeps sync state (delta/history tokens) per source.
 
 Owns: the `note` table (S2-A), the email tables (O4), the `web_page` table (web research), and later

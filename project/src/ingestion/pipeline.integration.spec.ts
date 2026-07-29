@@ -274,7 +274,7 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
     expect(summary.admitted).toEqual({ active: 1, uncertain: 2 });
     expect(summary.embedded).toBe(3);
     // Batched verification: three facts → ONE gateway call,
-    // each claim still judged independently against its own passage (§B.3).
+    // each claim still judged independently against its own passage (spec §2).
     expect(gateway.verifyCalls).toBe(1);
 
     const { rows } = await memoriesFor(sourceId);

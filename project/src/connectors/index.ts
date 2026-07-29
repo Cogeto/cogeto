@@ -1,4 +1,4 @@
-/** Public interface of the connectors bounded context (§A.1 rule 1). */
+/** Public interface of the connectors bounded context (spec §15 rule 1). */
 export { ConnectorsModule } from './connectors.module';
 export type { ConnectorsModuleOptions } from './connectors.module';
 export { NotesService } from './notes.service';

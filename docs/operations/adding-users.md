@@ -2,7 +2,7 @@
 
 **Audience:** the operator of a single Cogeto instance. **Model:** Cogeto is
 **single-tenant**: one Zitadel *organization* per instance, and that org *is*
-the account (Addendum §A.6; scope doc §4.2). Everyone you add here is a member of
+the account. Everyone you add here is a member of
 the same org and can therefore see each other's **shared**-scope memory; nobody
 outside the instance can. Cross-tenant isolation is a *deployment* boundary
 (separate instances), not something you configure per user, .
@@ -80,4 +80,4 @@ Their **private** memory remains in the instance (owned data is not auto-purged)
 use the in-app deletion saga to remove specific sources if required. Their
 **shared** memory stays visible to the org (it was contributed to the shared
 pool). True erasure of a departed user's data is an operator action via the
-deletion surface, tracked by signed receipts (§B.1).
+deletion surface, tracked by signed receipts (spec §11.1).

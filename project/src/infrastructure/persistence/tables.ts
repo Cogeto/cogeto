@@ -16,7 +16,7 @@ import {
  *
  * audit_log lives here, not in a domain module: every module appends audit rows
  * (memory transitions, approval decisions, deletions), and module-owned tables
- * may not be touched cross-module (§A.1 rule 2). Append-only is enforced by a
+ * may not be touched cross-module (spec §15 rule 2). Append-only is enforced by a
  * database trigger (see migration 0001).
  */
 
@@ -71,7 +71,7 @@ export const deadLetter = pgTable('dead_letter', {
  * Attention read-state (migration 0026). The attention feed and
  * dashboard stats are computed; these two content-free per-user tables are the
  * only materialized state. They live here — not in a domain module — because
- * the surface spans every context and none owns it (§A.1 rule 2), exactly like
+ * the surface spans every context and none owns it (spec §15 rule 2), exactly like
  * audit_log.
  */
 export const attentionState = pgTable('attention_state', {
@@ -93,7 +93,7 @@ export const attentionDismissal = pgTable(
 /**
  * Per-user instance context and language preference (migration 0029). Lives here, not in a domain module, because the context
  * feeds prompts in retrieval, connectors and ingestion alike — no
- * single bounded context owns it (§A.1 rule 2), exactly like attention_state.
+ * single bounded context owns it (spec §15 rule 2), exactly like attention_state.
  */
 export const userContext = pgTable('user_context', {
   userId: text('user_id').primaryKey(),

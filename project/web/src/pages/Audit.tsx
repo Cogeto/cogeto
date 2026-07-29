@@ -72,7 +72,7 @@ function AuditRow({ entry }: { entry: AuditEntryDto }) {
   );
 }
 
-/** The read-only audit trail (§A.8/§B.1): who did what, filterable + paged. */
+/** The read-only audit trail (/spec §11.1): who did what, filterable + paged. */
 export function Audit({ session }: { session: Session }) {
   const [actor, setActor] = useState('');
   const [action, setAction] = useState('');

@@ -60,7 +60,7 @@ export interface MemoryPage {
   total: number;
 }
 
-/** GET /api/memories/:id/verification — the §B.3 verdict that earned the status. */
+/** GET /api/memories/:id/verification — the spec §2 verdict that earned the status. */
 export interface VerificationDto {
   verdict: 'supported' | 'partial' | 'unsupported';
   reason: string;
@@ -92,7 +92,7 @@ export type ResolveContradictionRequest =
   | { action: 'dismiss' };
 
 /**
- * GET /api/dreaming/latest — the plain digest (§B.6 v1 form)
+ * GET /api/dreaming/latest — the plain digest ( v1 form)
  * the most recent finished dreaming run's actions as at most six
  * human-phrased, deep-linked lines, scoped to the caller's own memories.
  * `lines: []` means render nothing — silent nights produce no panel.
@@ -116,7 +116,7 @@ export interface DreamDigestDto {
   lines: DreamDigestLine[];
 }
 
-/** GET /api/jobs/dead-letter — parked jobs, dashboard-visible (§A.3). */
+/** GET /api/jobs/dead-letter — parked jobs, dashboard-visible (spec §15.4). */
 export interface DeadLetterJobDto {
   id: string;
   jobType: string;

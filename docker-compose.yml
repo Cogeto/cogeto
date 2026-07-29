@@ -1,4 +1,4 @@
-# Cogeto per-tenant stack (Addendum §A.2: `docker compose up` is the contract).
+# Cogeto per-tenant stack (the specification §A.2: `docker compose up` is the contract).
 # Eight containers (incl. the receive-only inbound mail server, Session O4) plus
 # one-shot init jobs plus an optional redaction profile (decision 0003 ruling 5).
 # Works with zero configuration on a fresh clone; every variable can be

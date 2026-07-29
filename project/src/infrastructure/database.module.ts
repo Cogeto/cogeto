@@ -15,7 +15,7 @@ class PoolLifecycle implements OnApplicationShutdown {
 /**
  * Global database provider: one Pool + one drizzle handle per process,
  * registered once by the composition root. Modules inject DRIZZLE/PG_POOL;
- * which tables they may touch is governed by §A.1 rule 2 and the
+ * which tables they may touch is governed by spec §15 rule 2 and the
  * dependency-cruiser persistence rule, not by connection ownership.
  */
 @Global()

@@ -1,4 +1,4 @@
-/** Public interface of the agents bounded context (§A.1 rule 1). */
+/** Public interface of the agents bounded context (spec §15 rule 1). */
 export { AgentsModule, ReplyDraftCascadeModule } from './agents.module';
 export { ReplyDraftCascade } from './reply-draft-cascade';
 export { ApprovalService } from './approval.service';

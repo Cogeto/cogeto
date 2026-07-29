@@ -11,7 +11,7 @@ import type { FileUploadOptions } from './file-upload-options';
  * size cap enforced by multer itself (a stock FileInterceptor's limit is fixed
  * at decoration time — this injects the runtime value instead). The worker
  * needs the bytes only briefly; memory storage is right for note-sized docs at
- * worker concurrency 2 (§A.3). Text fields (scope, sensitive) land on req.body.
+ * worker concurrency 2 (spec §15.4). Text fields (scope, sensitive) land on req.body.
  */
 @Injectable()
 export class DocumentUploadInterceptor implements NestInterceptor {

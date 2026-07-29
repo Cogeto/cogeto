@@ -70,7 +70,7 @@ export async function resetDemoWorld(deps: ResetDeps): Promise<DemoEndState> {
     log(`  · truncated ${truncated.length} table(s)`);
 
     // 4. Qdrant: reindex from the now-empty Postgres removes every orphan point
-    //    (§A.4 — the reindex path must always work).
+    //    (spec §4.2 — the reindex path must always work).
     const report = await reindexMemories({
       db: deps.db,
       gateway: deps.gateway,

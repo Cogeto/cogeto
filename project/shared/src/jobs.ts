@@ -1,4 +1,4 @@
-/** Worker activity DTOs (O1) — the System page's live view of the queue (§A.3). */
+/** Worker activity DTOs (O1) — the System page's live view of the queue (spec §15.4). */
 
 export interface WorkerJobDto {
   jobType: string;

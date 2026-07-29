@@ -31,14 +31,14 @@ export interface FileSourceDto {
   uploadDate: string;
   state: FileProcessingState;
   /**
-   * Extract-and-discard (§A.9): the original was deleted after extraction —
+   * Extract-and-discard: the original was deleted after extraction —
    * provenance and the derived memories remain, but there is nothing to
    * download. The drawer shows "original discarded after extraction".
    */
   discarded: boolean;
 }
 
-/** GET /api/files/:key/download — a short-lived signed URL (§A.9), owner-gated. */
+/** GET /api/files/:key/download — a short-lived signed URL, owner-gated. */
 export interface FileDownloadDto {
   url: string;
   expiresInSeconds: number;

@@ -1,4 +1,4 @@
-"""Cogeto redaction sidecar (Addendum B.8; decision 0002 language boundary).
+"""Cogeto redaction sidecar (spec §12.2; decision 0002 language boundary).
 
 A stateless internal HTTP service — the ONLY caller is the model gateway. It
 never touches a database and stores nothing: /pseudonymize returns the mapping to

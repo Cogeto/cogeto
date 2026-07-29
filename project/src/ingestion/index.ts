@@ -1,4 +1,4 @@
-/** Public interface of the ingestion bounded context (§A.1 rule 1). */
+/** Public interface of the ingestion bounded context (spec §15 rule 1). */
 export { IngestionModule } from './ingestion.module';
 export type { IngestionModuleOptions } from './ingestion.module';
 export {

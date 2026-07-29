@@ -60,7 +60,7 @@ passport_version ${PASSPORT_VERSION}; read it against that schema directory.
 `;
 
 /**
- * Assemble the Passport artifact (§B.5) from already-gated data — pure format,
+ * Assemble the Passport artifact (spec §11.4) from already-gated data — pure format,
  * hashing, signing and zipping; no I/O, no gates (the executor did the gated
  * reads). The manifest lists every document with its SHA-256 so the archive is
  * self-checking, and is signed with the instance key so its integrity verifies

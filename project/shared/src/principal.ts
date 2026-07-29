@@ -9,7 +9,7 @@ export interface Principal {
   name: string;
   /** Primary email, when the profile scope provides one. */
   email: string | null;
-  /** Zitadel organization id — also the tenant / first object-key segment (§A.6). */
+  /** Zitadel organization id — also the tenant / first object-key segment. */
   orgId: string;
   /** Organization display name. */
   orgName: string;

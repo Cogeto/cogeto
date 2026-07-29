@@ -1,4 +1,4 @@
-# Redaction sidecar (Addendum B.8). CPU-only; pinned for reproducible fleet builds.
+# Redaction sidecar (spec §12.2). CPU-only; pinned for reproducible fleet builds.
 #
 # This is the human-readable TOP-LEVEL input. The Dockerfile does NOT install from
 # here — it installs from the fully hash-locked requirements.lock (compiled from

@@ -5,12 +5,12 @@ import type { RankedList } from './fusion';
 
 /**
  * fusion_multipliers: the named test. Pure — seeded ranks in, deterministic
- * fused order out; the §A.5 status multipliers applied exactly.
+ * fused order out; the spec §3.4 status multipliers applied exactly.
  */
 
 const statuses = (map: Record<string, MemoryStatus>) => (id: string) => map[id];
 
-describe('reciprocal rank fusion + status multipliers (§A.5)', () => {
+describe('reciprocal rank fusion + status multipliers (spec §3.4)', () => {
   it('fuses deterministically: same seeded ranks, same order, every time', () => {
     const lists: RankedList[] = [
       { signal: 'vector', ids: ['m1', 'm2', 'm3'] },
@@ -48,7 +48,7 @@ describe('reciprocal rank fusion + status multipliers (§A.5)', () => {
     expect(hits[1]!.score).toBeCloseTo(hits[0]!.score * 0.2, 10);
   });
 
-  it('applies the full §A.5 table on equal raw ranks', () => {
+  it('applies the full spec §3.4 table on equal raw ranks', () => {
     const ids = ['a-active', 'b-approved', 'c-uncertain', 'd-contradicted', 'e-outdated'];
     // Every id at rank 1 of its own signal-shaped list → equal RRF base.
     const lists: RankedList[] = ids.map((id) => ({ signal: 'fts', ids: [id] }));

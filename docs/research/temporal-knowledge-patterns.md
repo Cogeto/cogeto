@@ -72,7 +72,7 @@ before any model call:
 decide *whether the claims conflict*, never *what the timestamps imply*.
 
 **Application:** This is the core of Cogeto's interval-maintenance step in
-reconciliation (Addendum §B.2 v1: "interval maintenance in reconciliation").
+reconciliation (spec §6 v1: "interval maintenance in reconciliation").
 Implement as pure functions with property tests. It is the most unit-testable part
 of the whole memory engine.
 
@@ -84,7 +84,7 @@ maintained and indexed. The studied system stores the fields but leaves filterin
 consumers; production use demands indexes on both interval bounds.
 
 **Application:** Cogeto's temporal retrieval ("what did we previously decide?") lifts
-the `outdated`/`replaced` exclusion and applies the interval clause (Addendum §A.5).
+the `outdated`/`replaced` exclusion and applies the interval clause (spec §3.4).
 Index `valid_from`/`valid_until` in migration 0001. The v1.x diff view ("what changed
 about X since March") is two point-in-time queries and a diff: no new machinery if
 intervals are right from day one.
@@ -130,7 +130,7 @@ The studied system pays costs a per-tenant product must refuse:
 - **Full graph modeling (entities as nodes, facts as edges, community detection,
   graph-distance reranking)**, powerful for multi-hop reasoning, unjustified for
   "what did I promise whom." Cogeto keeps entities as extracted references on fact
-  rows (trigram-matchable, §A.5), not as a graph.
+  rows (trigram-matchable, spec §3.4), not as a graph.
 - **Unbounded invalidated-history retention with no archival story**: fine for a
   developer tool; a privacy product must pair "never destroy on supersession" with
   "truly destroy on user deletion," which is exactly the saga/receipt split.
@@ -143,7 +143,7 @@ The studied system pays costs a per-tenant product must refuse:
 | Invalidate, never delete on learning | interval close + `replaced`/`outdated`; deletion saga is separate |
 | Duplicate vs contradiction candidate sets | reconciliation's two-list arbitration; material-difference rule |
 | Interval arithmetic before model calls | pure-function supersession logic, property-tested |
-| Point-in-time WHERE clause | temporal retrieval (§A.5) + indexed interval bounds |
+| Point-in-time WHERE clause | temporal retrieval (spec §3.4) + indexed interval bounds |
 | Reference-time resolution at extraction | source timestamp injected into every extraction job |
 | Source episodes + provenance refs | NOT NULL `source_type`/`source_id`; cascade = provenance lookup |
 | (refused) per-item LLM call fan-out, graph backends, communities | batch calls; Postgres+Qdrant; no graph in v1 |

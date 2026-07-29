@@ -1,7 +1,7 @@
 import type { ZodType } from 'zod';
 
 /**
- * Provider-neutral model seam (scope §5.1, §A.10): complete / extractStructured /
+ * Provider-neutral model seam (scope §5.1, spec §12.1): complete / extractStructured /
  * embed — never a wrapper around one vendor's types. Swapping backends may not
  * touch callers.
  */
@@ -40,7 +40,7 @@ export interface CompletionResult {
 }
 
 export interface StructuredExtractionRequest {
-  /** The system prompt — a versioned artifact loaded via the prompt loader (§B.7). */
+  /** The system prompt — a versioned artifact loaded via the prompt loader (spec §12.3). */
   system: string;
   input: string;
   /** Defaults to `pipeline` — structured extraction is slow-path ingestion work. */
@@ -50,7 +50,7 @@ export interface StructuredExtractionRequest {
 export abstract class ModelGateway {
   abstract complete(request: CompletionRequest): Promise<CompletionResult>;
   /**
-   * Streaming completion for the fast path (chat, §A.5): yields text deltas in
+   * Streaming completion for the fast path (chat, spec §3.4): yields text deltas in
    * order. Same seam rule as everything else — no provider types leak out.
    */
   abstract completeStream(request: CompletionRequest): AsyncIterable<string>;

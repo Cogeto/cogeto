@@ -1,4 +1,4 @@
--- Migration 0001 — the contractual core (Addendum §A.6 as amended by decision 0003).
+-- Migration 0001 — the contractual core (the specification §A.6 as amended by decision 0003).
 -- Enums and the memory, file_metadata, deletion_receipt, approval, audit_log tables.
 -- Reviewable SQL by design: this schema is contractual (scope, provenance NOT NULL,
 -- six lifecycle statuses + orthogonal sensitive flag, validity intervals).

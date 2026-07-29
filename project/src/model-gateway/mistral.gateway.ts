@@ -34,7 +34,7 @@ const DEFAULT_EMBED_MODEL = 'mistral-embed';
 const EMBED_BATCH_SIZE = 128;
 
 /**
- * The only place in the system that touches the Mistral client (§A.10) —
+ * The only place in the system that touches the Mistral client (spec §12.1) —
  * enforced by a dependency-cruiser rule. Maps model tiers (
  * ruling 3) to concrete Mistral models; callers never name a model string.
  * Retry/error classification and the structured repair loop are the shared

@@ -35,7 +35,7 @@ export function UploadCard({
   session: Session;
   onUploaded: (objectKey: string, filename: string) => void;
 }) {
-  // Prefill scope + discard from the user's saved defaults (§A.9).
+  // Prefill scope + discard from the user's saved defaults.
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => fetchSettings(session) });
   const [scope, setScope] = useState<MemoryScope | null>(null);
   const [sensitive, setSensitive] = useState(false);
@@ -123,7 +123,7 @@ export function UploadCard({
         </label>
         <label
           className="flex items-center gap-1.5"
-          title="Delete the original after extraction. Keep only the derived memories (§A.9)."
+          title="Delete the original after extraction. Keep only the derived memories."
         >
           <input
             type="checkbox"

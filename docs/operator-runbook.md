@@ -359,7 +359,7 @@ The snapshot images the whole disk, which includes every Docker volume and
 | **Receipt-signing keypair** | `instance-keys` volume (exists nowhere else) | **Yes**: without it the receipt chain cannot continue |
 | Instance config + secrets | `/srv/cogeto/.env` (+ vault copy) | **Yes** |
 | Zitadel (users) + its bootstrap PAT | Postgres + `zitadel-machinekey` volume | Yes (rides along) |
-| **Qdrant** (vector index) | `qdrant-data` volume | **No: rebuildable**: `reindex` reconstructs it from Postgres (§A.4) |
+| **Qdrant** (vector index) | `qdrant-data` volume | **No: rebuildable**: `reindex` reconstructs it from Postgres (spec §4.2) |
 | Caddy certificates | `caddy-data` volume | No: reissued automatically |
 
 ### 5c. Restore procedure: **rehearsed, not assumed**

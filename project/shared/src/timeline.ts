@@ -1,7 +1,7 @@
 import type { MemoryListItem } from './notes';
 
 /**
- * Time-travel DTOs (§B.2): the presentation surface over the
+ * Time-travel DTOs (spec §6): the presentation surface over the
  * memory module's temporal primitives (pointInTime, changesSince, the
  * supersession chain). No new retrieval semantics or schema live here — these
  * types only *shape* what those primitives already return so the timeline UI

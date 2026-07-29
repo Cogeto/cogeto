@@ -12,7 +12,7 @@ import type { CandidateFact } from './domain/candidate-fact';
 import { EXTRACTION_PROMPT, VERIFICATION_PROMPT } from './prompt-versions';
 
 /**
- * The golden-set eval harness v0 (docs/eval-golden-set.md; §B.4): runs
+ * The golden-set eval harness v0 (docs/eval-golden-set.md; spec §14): runs
  * ingest → chunk → extract → verify over the labeled corpus against the live
  * gateway and scores it. Stage 5 (embedding into Qdrant) is off — matching
  * uses ad-hoc embeddings only. No CI gates yet (Session 4 turns them on).

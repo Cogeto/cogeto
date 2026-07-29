@@ -6,7 +6,7 @@ import { assertLocalRuntimeReady, createModelGateway } from '../model-gateway/in
 import { loadConfig, redactionOptions } from './config';
 
 /**
- * reindex — rebuilds the Qdrant index from Postgres (§A.4; memory README).
+ * reindex — rebuilds the Qdrant index from Postgres (spec §4.2; memory README).
  * Run inside the stack: `docker compose exec app npm run reindex` (or worker).
  * Exits nonzero when the final point count does not match the embeddable rows.
  * Without an API key it still runs, but fails if any row needs re-embedding.

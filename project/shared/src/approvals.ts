@@ -1,4 +1,4 @@
-/** Approval state-machine DTOs (Addendum §A.8). */
+/** Approval state-machine DTOs (the specification). */
 
 export const APPROVAL_STATUSES = [
   'draft',

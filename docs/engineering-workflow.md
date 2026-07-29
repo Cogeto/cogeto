@@ -72,10 +72,10 @@ These five checks must be green before a PR can merge (branch protection on
 | Check | What it enforces |
 | ------------ | ------------------------------------------------------------------- |
 | `lint` | ESLint + Prettier |
-| `boundaries` | dependency-cruiser module map (§A.1): no cross-module table access |
+| `boundaries` | dependency-cruiser module map (spec §15): no cross-module table access |
 | `test` | Vitest (unit) + Testcontainers (integration) |
 | `build` | backend compile (`tsc`) + Vite frontend build |
-| `eval-gate` | golden-set gate (§B.4): prompt/model/pipeline regressions fail |
+| `eval-gate` | golden-set gate (spec §14): prompt/model/pipeline regressions fail |
 
 A sixth CI job, `docker-build`, builds the production amd64 image without
 pushing so the Dockerfile stays green; it is **not** required to merge.
@@ -86,7 +86,7 @@ runs on push to `main` after merge.
 
 ### Product-copy dash guard
 
-The `lint` check also enforces a house style rule: **no em (,) or en (,) dashes
+The `lint` check also enforces a house style rule: **no em () or en () dashes
 in user-facing product copy.** A local ESLint rule
 (`copy/no-typographic-dashes`, defined inline in `eslint.config.mjs`, no new
 dependency) flags those characters in string literals, JSX text, and template

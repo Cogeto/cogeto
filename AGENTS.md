@@ -4,13 +4,15 @@ Non-negotiables for anyone working in this repository. Verify your work against 
 checklist before finishing. Day-to-day workflow and the doc map are in
 [`CLAUDE.md`](CLAUDE.md).
 
-**Authority.** [`docs/Cogeto-V2-Plan.md`](docs/Cogeto-V2-Plan.md) is binding for what
-gets built in the current cycle.
-[`docs/Cogeto-v1-Addendum-Verifiable-Memory.md`](docs/Cogeto-v1-Addendum-Verifiable-Memory.md)
-(cited below as §A.x / §B.x) is the authority on how it is built, and wins over every
-other document on an architecture question.
+**Authority.** [`docs/cogeto-specification.md`](docs/cogeto-specification.md) is the
+normative rulebook: MUST marks a rule whose violation is a defect. It wins over every
+other document, and the section numbers cited below are its.
+[`docs/cogeto-v2-plan.md`](docs/cogeto-v2-plan.md) is binding for what gets built in the
+current cycle, and
+[`docs/cogeto-technical-architecture.md`](docs/cogeto-technical-architecture.md)
+describes the shape it is built in.
 
-## Data model (§A.6, §B.2)
+## Data model (spec §1, §3, §6)
 
 - [ ] Every memory row carries `owner_id` (NOT NULL), `scope` enum
       (`private`|`shared`, NOT NULL), provenance `source_type` + `source_id`
@@ -24,14 +26,14 @@ other document on an architecture question.
 - [ ] Status transitions are owned by the `Memory` aggregate: only reconciliation
       sets `contradicted`; only the user sets `user_approved`; only the deletion
       saga hard-deletes, with the single audited exception of review rejection.
-      Supersession closes intervals; it never destroys history (§B.2). Editing a
+      Supersession closes intervals; it never destroys history (spec §3.6, §6.2). Editing a
       memory's content **is** supersession, never mutation.
 - [ ] Object keys: `tenant/user/scope/file-{uuid}`, first segment = Zitadel
-      organization ID, never a constant (§A.6).
+      organization ID, never a constant.
 - [ ] A **defunct** `source_type` value is a *known* value, never an unexpected one.
       No switch may throw on it and no sweep arm may flag it as unrecognised.
 
-## Access and retrieval (§A.4, §A.5)
+## Access and retrieval (spec §4, §7)
 
 - [ ] **No query path returns memories without scope filtering.** Unscoped queries
       must be unrepresentable in the retrieval module's API.
@@ -40,16 +42,16 @@ other document on an architecture question.
       is forbidden. A demoted leak is still a leak. Sensitive memories are excluded
       from default retrieval, returned only to their owner, and only on explicit
       per-query opt-in.
-- [ ] Statuses are **score multipliers on top of the gates** (§A.5); `replaced` is
+- [ ] Statuses are **score multipliers on top of the gates** (spec §3.4); `replaced` is
       excluded from default retrieval; temporal queries lift the `outdated` and
       `replaced` exclusion but **never** weaken a hard gate.
 - [ ] The interval predicate exists **once** (`memory/domain/interval.ts`), as a SQL
       fragment and a pure TypeScript twin tested against each other. No query, view,
       or answer-side check may hand-roll it.
 - [ ] **Postgres is the source of truth; Qdrant is a rebuildable index.** Nothing
-      exists only in Qdrant; `reindex` must always work (§A.4).
+      exists only in Qdrant; `reindex` must always work.
 
-## Seams (§A.10, scope §4.5/§5.1)
+## Seams (spec §12)
 
 - [ ] All LLM and embedding calls go through the `model-gateway` interface. No direct
       provider SDK or endpoint usage anywhere else. Call sites request a **tier**,
@@ -59,7 +61,7 @@ other document on an architecture question.
       Cogeto's own logic.
 - [ ] Only `entrypoints` reads the environment.
 
-## Modules (§A.1)
+## Modules (spec §15)
 
 - [ ] One public interface per module; internals private. **No module reads or writes
       another module's tables.** Cross-module communication is domain events via the
@@ -69,7 +71,7 @@ other document on an architecture question.
       defined by the owning module and implemented by the caller, bound at the
       composition root.
 
-## Async and jobs (§A.3, scope §6)
+## Async and jobs (spec §15.4)
 
 - [ ] **Slow-path work never runs in the request path**: extraction, dedup,
       contradiction checks, consolidation, deletion sagas, action execution, skill
@@ -83,7 +85,7 @@ other document on an architecture question.
       (sweep, dreaming) are the sanctioned exception to the wrapper and must be
       idempotent by construction instead.
 
-## Deletion (§A.7, §B.1)
+## Deletion (spec §11)
 
 - [ ] Deletion is the **saga**: one Postgres transaction (memory rows + file metadata
       + receipt row `pending` + outbox enqueue) → worker deletes Qdrant points and
@@ -100,7 +102,7 @@ other document on an architecture question.
 - [ ] Never change the receipt canonicalization or chain verification. A byte of
       difference invalidates every historical receipt on every instance.
 
-## Approval (§A.8)
+## Approval
 
 - [ ] Consequential actions (send message, delete data, external write, bulk memory
       change) execute **only from server-side `approved` state**
@@ -116,7 +118,7 @@ other document on an architecture question.
       extraction inputs, never stored rows. Originals live in MinIO; extracted facts
       in Postgres and Qdrant.
 - [ ] Every extracted fact passes the independent verification pass before counting
-      as `active`; unsupported or partial becomes `uncertain` (§B.3).
+      as `active`; unsupported or partial becomes `uncertain` (spec §2.3).
 - [ ] **No content in `audit_log.detail_json`, ever.** Ids, kinds, transition names,
       counts, booleans. Never memory, note, or chat content, and never model free
       text. Explanations live on the owner-gated domain row they serve.
@@ -124,7 +126,7 @@ other document on an architecture question.
 - [ ] Extraction **fabricates nothing**. A parse or model failure produces zero
       memories, never an invented one.
 
-## Prompts and evaluation (§B.4, §B.7)
+## Prompts and evaluation (spec §12.3, §14)
 
 - [ ] Every prompt that decides what Cogeto remembers is a **versioned artifact** in
       `project/prompts/`: numbered, immutable once released, changelogged.
@@ -154,7 +156,7 @@ other document on an architecture question.
       loop: [`docs/engineering-workflow.md`](docs/engineering-workflow.md).
 - [ ] Application tests live under `project/src/`, next to the code they exercise
       (Vitest).
-- [ ] New dependencies, frameworks, and Addendum deviations need owner sign-off
+- [ ] New dependencies, frameworks, and the specification deviations need owner sign-off
       (full list in `CLAUDE.md`).
 - [ ] Read the matching [`docs/research/`](docs/research/) file before implementing
       memory, ingestion, retrieval, agents, or pipeline code.

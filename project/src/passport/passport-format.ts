@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { PASSPORT_VERSION } from '@cogeto/shared';
 
 /**
- * The Memory Passport format contract (§B.5, decision record 0029) — the
+ * The Memory Passport format contract (spec §11.4, decision record 0029) — the
  * IN-CODE authority for the artifact's shape, mirrored by the published JSON
  * Schema in `docs/passport-schema/` (both stamped with `passport_version`; kept
  * in lockstep). The executor builds documents that satisfy these schemas and

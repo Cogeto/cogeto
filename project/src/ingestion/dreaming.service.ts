@@ -13,7 +13,7 @@ import type { PipelineLog } from './pipeline/pipeline-log';
 import { DORMANT_SILENCE_DAYS, DREAM_FIRST_RUN_LOOKBACK_HOURS } from './reconcile-config';
 
 /**
- * The dreaming cycle (§B.6 plain form): the nightly
+ * The dreaming cycle ( plain form): the nightly
  * consolidation job. Incremental — the scope window runs from the last
  * FINISHED run to now, covering the day's newly admitted facts and the
  * memories they touched, never the whole store. Four passes

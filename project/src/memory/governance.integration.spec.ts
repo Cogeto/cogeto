@@ -115,7 +115,7 @@ describe('memory governance (integration, real Postgres + real Qdrant)', () => {
 
     expect(successor.status).toBe('user_approved');
     expect(successor.content).toBe('Maja owes the Q2 AND Q3 figures by Friday');
-    // Same provenance — an edit does not orphan the fact (§A.6, 0006 ruling 3).
+    // Same provenance — an edit does not orphan the fact (0006 ruling 3).
     expect(successor.sourceType).toBe(original.sourceType);
     expect(successor.sourceId).toBe(original.sourceId);
     expect(predecessor.status).toBe('replaced');
@@ -141,7 +141,7 @@ describe('memory governance (integration, real Postgres + real Qdrant)', () => {
     );
     const vecs = await vectors.retrieveVectors([successor.id]);
     expect(vecs.has(successor.id)).toBe(true);
-    // The predecessor's payload copy tells the truth too (§A.4).
+    // The predecessor's payload copy tells the truth too (spec §4.2).
     const payloads = await vectors.retrievePayloads([predecessor.id]);
     expect(payloads.get(predecessor.id)?.status).toBe('replaced');
 

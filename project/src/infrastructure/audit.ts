@@ -16,7 +16,7 @@ export interface AuditEntry {
    * outlives deletion and leaks across users.
    */
   detail?: Record<string, unknown>;
-  /** Zitadel org for org-scoped audit reads (§A.4). NULL = system/global entry. */
+  /** Zitadel org for org-scoped audit reads (spec §4.2). NULL = system/global entry. */
   orgId?: string;
   /**
    * The user whose artifact this entry concerns.

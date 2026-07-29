@@ -5,9 +5,9 @@ import type { SourceDeletion } from '../../memory/index';
 import { chatMessage } from '../persistence/tables';
 
 /**
- * The deletion saga's source port for source_type 'chat' (§A.7;
+ * The deletion saga's source port for source_type 'chat' (spec §11.1;
  * ruling 7): the saga deletes the chat_message row through this, inside its
- * enumeration transaction, never through the table (§A.1 rule 2). The mirror of
+ * enumeration transaction, never through the table (spec §15 rule 2). The mirror of
  * ChatSourceReader — so a chat-derived memory's source deletion erases the
  * originating turn along with the derived memories and vectors, under one signed
  * receipt, exactly like a note.

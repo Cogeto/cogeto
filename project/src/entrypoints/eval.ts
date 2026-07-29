@@ -9,7 +9,7 @@ import { configurationForEmission, emitPartial } from './trust-scores';
 import { TRUST_SCORES_SCHEMA_VERSION } from './trust-scores';
 
 /**
- * npm run eval — the golden-set harness (§B.4; docs/eval-golden-set.md) against
+ * npm run eval — the golden-set harness (spec §14; docs/eval-golden-set.md) against
  * the live gateway. Prints per-language + aggregate metrics prominently and
  * appends them, with prompt versions, to docs/eval/history.md. No CI gates yet
  * (Session 4 turns them on).
@@ -25,7 +25,7 @@ const CONFIG_FILE = path.join(REPO_ROOT, 'project', 'eval', 'eval-config.json');
 const GATES_FILE = path.join(REPO_ROOT, 'project', 'eval', 'gates.json');
 const HISTORY_FILE = path.join(REPO_ROOT, 'docs', 'eval', 'history.md');
 
-/** The §B.4 CI gates: aggregate metrics, ratchet-up-only. */
+/** The spec §14 CI gates: aggregate metrics, ratchet-up-only. */
 const gatesSchema = z.object({
   version: z.number(),
   gates: z.object({
@@ -189,7 +189,7 @@ async function main(): Promise<void> {
     console.log(`trust-score partial emitted → ${emitPath}`);
   }
 
-  // ── The §B.4 gates: aggregate metrics vs gates.json ───────
+  // ── The spec §14 gates: aggregate metrics vs gates.json ───────
   // Always printed; enforced (exit 1) when COGETO_EVAL_GATE=1 — the CI mode
   // and `npm run eval:gate`. Ratchet up only; lowering needs a decision record.
   const { version: gatesVersion, gates } = gatesSchema.parse(
@@ -216,7 +216,7 @@ async function main(): Promise<void> {
   if (failures.length > 0) {
     console.error(`GATE BREACH: ${failures.join('; ')}`);
     if (process.env.COGETO_EVAL_GATE === '1') {
-      console.error('failing the build (§B.4: regressions fail the build)');
+      console.error('failing the build (spec §14: regressions fail the build)');
       process.exitCode = 1;
     } else {
       console.error('advisory run (set COGETO_EVAL_GATE=1 to enforce)');

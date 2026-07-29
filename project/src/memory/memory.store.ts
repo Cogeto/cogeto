@@ -23,13 +23,13 @@ import type { MemoryActor } from './domain/transition';
 import { intervalHoldsAtSql } from './domain/interval';
 
 /**
- * Public interface of the memory module (§A.1 rule 1).
+ * Public interface of the memory module (spec §15 rule 1).
  *
  * Every read REQUIRES a Principal and applies the scope and sensitive gates
  * inside the query builder — an unscoped read is unrepresentable through this
  * interface. Raw table access stays private to this module.
  *
- * Gates (hard, never score factors — §A.5 as amended by 0003 ruling 3)
+ * Gates (hard, never score factors — spec §3.4 as amended by 0003 ruling 3)
  * - scope:     own rows, or rows with scope 'shared'.
  * - sensitive: excluded by default; returned ONLY to the owner, ONLY on
  *   explicit per-query opt-in.
@@ -40,7 +40,7 @@ export interface NewFact {
   scope: MemoryScope;
   sourceType: SourceType;
   sourceId: string;
-  /** Extracted entity names, flat — the §A.5 entity signal. */
+  /** Extracted entity names, flat — the spec §3.4 entity signal. */
   entities?: string[];
   /** The entity this fact is primarily ABOUT (F1/F4) — distinct from mentions. */
   subjectEntity?: string;
@@ -55,7 +55,7 @@ export interface NewFact {
   validFrom?: Date;
   validUntil?: Date;
   /**
-   * Ingestion stores unverified facts as `uncertain` (§B.3); default `active`.
+   * Ingestion stores unverified facts as `uncertain` (spec §2); default `active`.
    * `user_approved` exists for edit-supersession successors only (0006 ruling 3).
    */
   initialStatus?: 'active' | 'uncertain' | 'user_approved';
@@ -299,7 +299,7 @@ export class MemoryStore {
 
   /**
    * Every memory the principal may see (own + visible shared), in ANY lifecycle
-   * status, for a full data export (§B.5, the Memory Passport). Paged internally
+   * status, for a full data export (spec §11.4, the Memory Passport). Paged internally
    * so the export is COMPLETE beyond the dashboard's list cap; the same
    * `visibleTo` gate as every read, so a user can only ever export what they are
    * entitled to see. `includeSensitive` returns only the caller's OWN sensitive
@@ -327,7 +327,7 @@ export class MemoryStore {
 
   /**
    * The caller's confirmed deletion receipts, in the shape `verifyChain`
-   * consumes (§B.5) — owner-scoped by the signed payload's `requested_by`, the
+   * consumes (spec §11.4) — owner-scoped by the signed payload's `requested_by`, the
    * same gate the Forgotten ledger uses. Exported into a Passport, each receipt
    * stays independently verifiable against the chain and the instance key.
    */
@@ -436,7 +436,7 @@ export class MemoryStore {
   }
 
   /**
-   * The supersession chain through a memory, oldest → newest (§B.2,
+   * The supersession chain through a memory, oldest → newest (spec §6,
    * history panel): follows superseded_by forward and its inverse backward.
    * Every hop passes the same gates as any read.
    */
@@ -480,7 +480,7 @@ export class MemoryStore {
   }
 
   /**
-   * Admission path for the ingestion pipeline (§B.3): the verification pass
+   * Admission path for the ingestion pipeline (spec §2): the verification pass
    * decides `initialStatus` (supported → active, partial/unsupported →
    * uncertain) and admits the fact inside the pipeline job's transaction, so
    * admission and the job's idempotency row commit atomically.
@@ -549,7 +549,7 @@ export class MemoryStore {
       ownerId: row.ownerId,
       orgId: await this.orgFor(row.ownerId),
     });
-    // Keep the Qdrant payload copy honest (§A.4), point op last: a failure
+    // Keep the Qdrant payload copy honest (spec §4.2), point op last: a failure
     // rolls the row back and the caller retries — the two stores converge.
     // requireVectors, exactly like the toggles: a store wired without
     // Qdrant must throw here, never silently leave the point saying 'active'.
@@ -576,7 +576,7 @@ export class MemoryStore {
   /**
    * Bulk "mark outdated" for an owner's own memories — the effect behind the
    * approved bulk action (§3), run inside the approval executor's job
-   * transaction. The Memory aggregate owns the eligibility rules (§A.1 rule 4)
+   * transaction. The Memory aggregate owns the eligibility rules (spec §15 rule 4)
    *
    * - foreign rows (owner_id ≠ ownerId) are skipped, never touched (defence in
    *   depth — the approval was authorized against the owner at create time);
@@ -671,7 +671,7 @@ export class MemoryStore {
    * audited, in the SAME two-store pattern as the sensitive toggle: the row and
    * the Qdrant payload's `scope` field move together, so a shared→private demote
    * takes effect in vector search the instant it commits (a demoted leak is
-   * still a leak — AGENTS.md §A.4). setPayload runs last: if it throws the row
+   * still a leak — AGENTS.md spec §4.2). setPayload runs last: if it throws the row
    * write rolls back and the retry converges. Everything derived from a
    * memory follows the memory: there is no second visibility rule to keep in
    * step.
@@ -789,7 +789,7 @@ export class MemoryStore {
       if (row.status !== 'uncertain') {
         throw new BadRequestException(
           `only an uncertain memory can be rejected in review (this one is ${row.status}); ` +
-            'source-level deletion goes through the deletion saga (§A.7)',
+            'source-level deletion goes through the deletion saga (spec §11.1)',
         );
       }
       await tx.delete(memory).where(eq(memory.id, memoryId));
@@ -808,7 +808,7 @@ export class MemoryStore {
   }
 
   /**
-   * Supersession (§B.2): the ONLY path to `replaced`. Creates the successor,
+   * Supersession (spec §6): the ONLY path to `replaced`. Creates the successor,
    * closes the predecessor's validity interval, points superseded_by at the
    * successor — never deletes history.
    */
@@ -876,7 +876,7 @@ export class MemoryStore {
       ownerId: old.ownerId,
       orgId: await this.orgFor(old.ownerId),
     });
-    // Payload copy honesty (§A.4): the predecessor's point now says replaced.
+    // Payload copy honesty (spec §4.2): the predecessor's point now says replaced.
     // requireVectors like the toggles — never a silent skip.
     await this.requireVectors().setPayload(old.id, { status: 'replaced' });
     return { predecessor: predecessor as MemoryRow, successor };
@@ -886,7 +886,7 @@ export class MemoryStore {
 
   /**
    * Semantic search over the Qdrant index. The scope and sensitive gates are
-   * native payload pre-filters INSIDE the vector query (§A.4/§A.5) — an
+   * native payload pre-filters INSIDE the vector query (spec §4.2/spec §3.4) — an
    * ungated hit cannot exist, not even transiently. Scores are normalized to
    * [0,1], higher = better (cosine similarity mapped from [-1,1]).
    */
@@ -1019,7 +1019,7 @@ export class MemoryStore {
     return rows[0] ?? null;
   }
 
-  // ── Temporal primitives (§A.5 temporal lift, §B.2) ──────────
+  // ── Temporal primitives (spec §3.4 temporal lift, spec §6) ──────────
 
   /**
    * Facts holding at instant t — in ANY lifecycle status (replaced and
@@ -1086,7 +1086,7 @@ export class MemoryStore {
    * What changed since `since`, for the caller's visible memories: the exact
    * event set of — learned / status_changed /
    * superseded — newest first. Erased memories resolve to no row and produce
-   * no event (their ledger is the Forgotten section, §B.1).
+   * no event (their ledger is the Forgotten section, spec §11.1).
    */
   async changesSince(
     principal: Principal,
@@ -1361,11 +1361,11 @@ export class MemoryStore {
     fact: NewFact,
     actor: string,
   ): Promise<MemoryRow> {
-    // Provenance is NOT NULL, always (§A.6): the aggregate rejects orphans even
+    // Provenance is NOT NULL, always: the aggregate rejects orphans even
     // where the database could not (an empty string satisfies a NOT NULL column).
     if (!ownerId.trim() || !fact.sourceType || !fact.sourceId.trim()) {
       throw new BadRequestException(
-        'a memory requires owner_id, source_type and source_id: no orphans, ever (§A.6)',
+        'a memory requires owner_id, source_type and source_id: no orphans, ever',
       );
     }
     const [row] = await tx

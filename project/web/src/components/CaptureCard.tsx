@@ -14,7 +14,7 @@ export function CaptureCard({
   onCaptured: (noteId: string) => void;
 }) {
   const [content, setContent] = useState('');
-  // Scope prefills from the user's saved default (§A.9); an explicit choice
+  // Scope prefills from the user's saved default; an explicit choice
   // overrides it. The server applies the same default when scope is omitted.
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => fetchSettings(session) });
   const [scope, setScope] = useState<MemoryScope | null>(null);

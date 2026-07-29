@@ -8,7 +8,7 @@ import { chatMessage } from '../persistence/tables';
 /**
  * Ingestion's stage-1 port for source_type 'chat': the pipeline
  * reads a remembered chat message through this, never the chat_message table
- * directly (§A.1 rule 2). Loads ONLY `user` messages — the assistant's own
+ * directly (spec §15 rule 2). Loads ONLY `user` messages — the assistant's own
  * output is never evidence about the world (ruling 4), so an assistant id can
  * never yield a source item even if one were enqueued. Scope is omitted → the
  * embed-store stage defaults the derived memories to private (ruling 6).

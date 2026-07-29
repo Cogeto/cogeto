@@ -1,7 +1,7 @@
 # Cogeto: Glossary (the ubiquitous language)
 
 Names in code, schema, APIs, prompts, and docs must match this glossary exactly:
-same words, same spellings. The Addendum is the source of truth; on conflict it
+same words, same spellings. The specification is the source of truth; on conflict it
 wins and this file gets fixed. If a concept is not here, name it in the pull
 request that introduces it before coining a term in code.
 
@@ -14,7 +14,7 @@ request that introduces it before coining a term in code.
  be used interchangeably in prose; the stored entity is always a memory.
 - **Memory aggregate**: the domain object owning memory invariants. Only
  reconciliation sets `contradicted`; only the user sets `user_approved`; only the
- deletion saga hard-deletes (Addendum §A.1 rule 4).
+ deletion saga hard-deletes (spec §15 rule 4).
 - **Owner**: the user a memory belongs to. Column: `owner_id` (NOT NULL).
 - **Scope**: visibility class of a memory: `private` (owner only) or `shared`
  (others in the same organization). Column: `scope` (enum, NOT NULL). A hard gate
@@ -48,40 +48,40 @@ request that introduces it before coining a term in code.
 
 - **Ingestion pipeline**: the fixed stage names, exactly six stages:
  **ingest → chunk → extract → verify → embed + store → reconcile**
- (Addendum §B.3, scope §4.9). "Embed + store" is one stage: each verified fact
+ (spec §2, scope §4.9). "Embed + store" is one stage: each verified fact
  is embedded and persisted in the same step. Chunks are transient extraction
  inputs, never stored rows.
 - **Verification pass**: the independent check ("does the cited source support
  this claim?") every extracted fact passes before counting as `active`;
- unsupported/partial → `uncertain` (§B.3).
+ unsupported/partial → `uncertain` (spec §2).
 - **Extract-and-discard**: privacy mode keeping derived memories while discarding
- the original file; per-upload flag with a per-user default (§A.9).
+ the original file; per-upload flag with a per-user default.
 - **Prompt family / prompt version**: a named prompt purpose (extraction,
  verification, dedup, contradiction, consolidation) and its numbered, immutable,
- changelogged releases in `project/prompts/` (§B.7).
+ changelogged releases in `project/prompts/` (spec §12.3).
 - **Golden set**: the hand-labeled corpus (per served language) with expected
  memories and retrievals; format in `docs/eval-golden-set.md`.
 - **Eval harness**: the ingest → retrieve → judge pipeline scoring extraction,
  dedup, contradiction detection, and verification agreement against the golden
- set; a CI gate (§B.4).
+ set; a CI gate (spec §14).
 - **Trust score**: the published per-release metrics from the eval harness.
 
 ## Retrieval
 
 - **Hybrid retrieval**: semantic vectors (Qdrant) + keyword full-text (Postgres
- FTS) + entity match (trigram), fused with **reciprocal rank fusion (RRF)** (§A.5).
+ FTS) + entity match (trigram), fused with **reciprocal rank fusion (RRF)** (spec §3.4).
 - **Hard gate**: a filter that excludes rows outright (`scope`, `sensitive`),
  applied as WHERE-clause / Qdrant payload pre-filters inside the query. Never a
  score penalty; app-side post-filtering is forbidden.
 - **Status multiplier**: the per-status score factor applied after the gates
- (§A.5 table); `replaced` ×0 in default retrieval.
+ (spec §3.4 table); `replaced` ×0 in default retrieval.
 - **Reindex**: the command rebuilding Qdrant entirely from Postgres. Must always
- work; Qdrant is a rebuildable index, Postgres is the source of truth (§A.4).
+ work; Qdrant is a rebuildable index, Postgres is the source of truth (spec §4.2).
 
 ## Architecture & runtime
 
 - **Modular monolith**: one codebase; bounded contexts as internal modules; two
- deployable processes (§A.1).
+ deployable processes (spec §15).
 - **Bounded context / module**: one directory under `project/src/`: `memory`,
  `ingestion`, `retrieval`, `agents`, `connectors`, `identity`,
  `model-gateway`. One public interface each; no module touches another's tables.
@@ -94,13 +94,13 @@ request that introduces it before coining a term in code.
  background jobs. Slow-path work never runs in the request path (scope §6).
 - **Outbox**: the Postgres table where domain events and job enqueues are written
  in the same transaction as the state change; the single cross-module mechanism
- (§A.3).
+ (spec §15.4).
 - **Job**: a unit of worker work. Idempotent, keyed by the **idempotency key**
  `(source_type, source_id, job_type)`; retries with backoff.
 - **Dead-letter**: the table holding jobs that exhausted retries; visible in the
  dashboard.
 - **Tenant**: one customer instance. In object keys and data, tenant = **Zitadel
- organization ID**, never a constant (§A.6).
+ organization ID**, never a constant.
 - **Principal**: the authenticated user + organization + roles returned by the
  identity seam.
 
@@ -108,14 +108,14 @@ request that introduces it before coining a term in code.
 
 - **Deletion saga**: the multi-step true-deletion flow: one Postgres transaction
  (memories + file metadata + receipt `pending` + outbox) → worker deletes Qdrant
- points and MinIO bytes → receipt `confirmed` → nightly sweep (§A.7).
+ points and MinIO bytes → receipt `confirmed` → nightly sweep (spec §11.1).
 - **Deletion receipt**: the signed, hash-chained record proving what was deleted;
- permanent, exportable, shown in the dashboard's **Forgotten** section (§B.1).
+ permanent, exportable, shown in the dashboard's **Forgotten** section (spec §11.1).
 - **Consequential action**: anything that sends a message, deletes data, writes
  externally, or bulk-changes memory. Requires approval; executes only in the worker.
 - **Approval state machine**: the server-side states, exactly:
  `draft → pending_approval → approved → executed`, plus `rejected`, `expired`
- (§A.8). Every transition is audit-logged.
+. Every transition is audit-logged.
 - **Audit log**: the append-only record of approval transitions, status changes,
  and deletions.
 
@@ -126,7 +126,7 @@ request that introduces it before coining a term in code.
  threads the sidebar creates, switches, renames, archives and deletes. Memory
  is the continuity, conversations are workspaces, turn context is scoped to
  one conversation; knowledge crosses threads through memory retrieval only.
- Deleting one is a source deletion (`chat_conversation`) through the §A.7 saga.
+ Deleting one is a source deletion (`chat_conversation`) through the spec §11.1 saga.
 - **Dashboard**: the governance surface: see/search/edit/correct/delete memories,
  statuses, source links, receipts, dead-letter jobs.
 - **Connector**: a source integration; **two in v1**: **notes** and **email**
@@ -158,10 +158,10 @@ request that introduces it before coining a term in code.
  question in chat and fills the attention surface, so "still open" means one
  thing everywhere.
 - **Dreaming**: the nightly consolidation job; its surfaced summary is the
- **dreaming digest card** (§B.6, v1.x).
+ **dreaming digest card** (v1.x).
 - **Redaction mode**: per-tenant toggle: local CPU NER pseudonymizes sensitive
- entities before any external model call, re-hydrates after (§B.8).
+ entities before any external model call, re-hydrates after (spec §12.2).
 - **Memory Passport**: the full export (facts, statuses, provenance, history,
- receipts) in the published open format (§B.5, v1.x).
+ receipts) in the published open format (spec §11.4, v1.x).
 - **Ana sandbox**: the pre-populated demo persona seeded by compose
- `--profile demo` (§B.9).
+ `--profile demo`.

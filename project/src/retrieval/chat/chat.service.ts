@@ -89,12 +89,12 @@ interface AskContext {
 }
 
 /**
- * The chat area. Asking a question is strictly fast path (§A.3): persist
+ * The chat area. Asking a question is strictly fast path (spec §15.4): persist
  * → retrieve → generate — deliberately NO enqueue and no ingestion-stage work.
  *
  * Capture is separate and explicit: `rememberMessage` routes a
  * USER message through the normal pipeline (source_type 'chat'). The persisted
- * chat_message rows are those memories' §A.6 provenance targets. The assistant's
+ * chat_message rows are those memories' provenance targets. The assistant's
  * own replies are never captured.
  */
 @Injectable()
@@ -248,7 +248,7 @@ export class ChatService {
   /**
    * "Remember this": route a USER message through the normal
    * pipeline (source_type 'chat', source_id = message id). Transactional via the
-   * outbox (§A.3), idempotency-keyed so a double-click captures at most once. The
+   * outbox (spec §15.4), idempotency-keyed so a double-click captures at most once. The
    * assistant's replies are refused — its output is not evidence about the world.
    */
   async rememberMessage(principal: Principal, messageId: string): Promise<ChatRememberedDto> {
@@ -849,7 +849,7 @@ export class ChatService {
    * Every assistant reply lands through here: insert into the conversation it
    * was asked in, bump the sidebar's recency, and — once the first exchange
    * exists and the thread is still untitled — request the auto-title as a
-   * worker job (§A.3: the model call never runs in the request path; the
+   * worker job (spec §15.4: the model call never runs in the request path; the
    * enqueue is one transactional insert).
    */
   private async storeAssistant(

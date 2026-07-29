@@ -6,7 +6,7 @@ import { createModelGateway } from '../model-gateway/index';
 import { loadConfig, redactionOptions } from './config';
 
 /**
- * dream — the on-demand dreaming cycle (§B.6 plain form). The
+ * dream — the on-demand dreaming cycle ( plain form). The
  * same four passes the worker runs nightly at 03:30, runnable any time
  *
  *   npm run dream                                    (local / published ports)

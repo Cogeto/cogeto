@@ -5,12 +5,12 @@ import type { SourceCascade, SourceDeletion } from '../memory/index';
 import { webPage } from './persistence/tables';
 
 /**
- * The deletion saga's source port for source_type 'web' (§A.7). Deleting a web
+ * The deletion saga's source port for source_type 'web' (spec §11.1). Deleting a web
  * source removes the whole retained page: `deleteSource` removes the web_page
  * row (the retained text goes with it) inside the enumeration transaction, and
  * `enumerateCascade` hands the saga the optional raw-HTML object so it lands in
  * the SAME receipt — the memories themselves are enumerated by provenance, as
- * for every source. Never touches memory tables (§A.1 rule 2).
+ * for every source. Never touches memory tables (spec §15 rule 2).
  */
 @Injectable()
 export class WebSourceDeletion implements SourceDeletion {

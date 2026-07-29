@@ -6,7 +6,7 @@ import { ChatSourceDeletion, ConversationSourceDeletion } from '../retrieval/ind
 import { loadConfig } from './config';
 
 /**
- * sweep — the on-demand integrity sweep (§A.7 step 4). The same check the
+ * sweep — the on-demand integrity sweep (spec §11.1 step 4). The same check the
  * worker runs nightly via cron, runnable any time
  *
  *   npm run sweep                                    (local / published ports)

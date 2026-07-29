@@ -282,7 +282,7 @@ describe('deletion cascade over a real uploaded file (F1 handoff §4)', () => {
     expect(await objects.objectExists(objectKey)).toBe(false);
     expect((await vectors.retrievePayloads(pointIds)).size).toBe(0);
 
-    // The receipt counts the file object AND the memories (§B.1 provability).
+    // The receipt counts the file object AND the memories (spec §11.1 provability).
     const counts = receipt!.counts_json as {
       memory_count: number;
       object_keys: string[];

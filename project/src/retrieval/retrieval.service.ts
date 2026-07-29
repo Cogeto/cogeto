@@ -39,7 +39,7 @@ export interface RetrievedMemory {
   memory: MemoryRow;
   /** Fused score (RRF × status multiplier) — comparable within one result list only. */
   score: number;
-  /** Which of the three §A.5 signals surfaced this memory. */
+  /** Which of the three spec §3.4 signals surfaced this memory. */
   signals: RetrievalSignal[];
 }
 
@@ -72,7 +72,7 @@ export interface RetrievalResult {
 }
 
 /**
- * Hybrid retrieval (§A.5): three gated signals from the memory module's public
+ * Hybrid retrieval (spec §3.4): three gated signals from the memory module's public
  * interface — vector (Qdrant), keyword FTS, trigram entity match — fused with
  * reciprocal rank fusion, then the status multipliers. This module never
  * touches a table or a client; every row it handles
@@ -345,7 +345,7 @@ export class RetrievalService {
     }
 
     return [...rowsById.values()]
-      .filter((row) => row.status !== 'replaced') // replaced ×0 — excluded (§A.5)
+      .filter((row) => row.status !== 'replaced') // replaced ×0 — excluded (spec §3.4)
       .sort(byStatusThenRecency)
       .map((memory) => ({ memory, score: 0, signals: [...(signalsById.get(memory.id) ?? [])] }));
   }

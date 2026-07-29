@@ -111,7 +111,7 @@ export class ChatController {
 
   /** One conversation's messages: offset 0 = the latest window, items oldest
    * first within the page. Deleting a conversation is a SOURCE deletion —
-   * DELETE /api/sources/chat_conversation/:id — never a chat route (§A.7). */
+   * DELETE /api/sources/chat_conversation/:id — never a chat route (spec §11.1). */
   @Get('conversations/:id/messages')
   async messages(
     @Req() request: AuthenticatedRequest,
@@ -156,7 +156,7 @@ export class ChatController {
 
   /**
    * Ask a question — SSE stream (sources → token* → done). Fast path only
-   * retrieval + generation, nothing enqueued (§A.3).
+   * retrieval + generation, nothing enqueued (spec §15.4).
    *
    * Bounded: a per-principal concurrent-stream cap (429 before the
    * stream starts) plus an idle timeout and a hard max-duration abort, so a

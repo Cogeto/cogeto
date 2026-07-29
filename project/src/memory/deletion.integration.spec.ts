@@ -405,7 +405,7 @@ describe('deletion saga (integration: real Postgres + Qdrant + MinIO)', () => {
 
   it('cross_source_chain: same-source chains delete whole; cross-source chains null the dangling pointer and record it', async () => {
     // Same-source chain: edit-supersession keeps provenance, so enumeration
-    // catches predecessor AND successor (§B.1 provability argument).
+    // catches predecessor AND successor (spec §11.1 provability argument).
     const noteSame = await notes.createNote(userA, 'March pricing is 100.');
     const orig = await noteFact(noteSame.id, 'March pricing is 100');
     await store.editContent(userA, orig.id, 'March pricing is 120 (corrected)');

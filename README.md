@@ -86,8 +86,8 @@ runtime, so inference can stay entirely on your own hardware. Every configuratio
 published as its own entry in the [trust scores](eval/trust-scores/), so "works with
 your model" is measured, not claimed.
 
-Deeper reading: the [architecture overview](docs/architecture.md), the binding
-[architecture decisions](docs/Cogeto-v1-Addendum-Verifiable-Memory.md), and the
+Deeper reading: the [technical architecture](docs/cogeto-technical-architecture.md),
+the [normative specification](docs/cogeto-specification.md), and the
 [feature documentation](docs/features/).
 
 ## Links

@@ -1,7 +1,7 @@
 import { ModelGatewayError } from './errors';
 
 /**
- * The redaction seam (Addendum B.8; language boundary). The ONLY
+ * The redaction seam (spec §12.2; language boundary). The ONLY
  * caller of the Python sidecar — it is not exported from the module index, so no
  * other module can reach it. Stateless: /pseudonymize returns the mapping, which
  * the gateway holds in memory for the one call.

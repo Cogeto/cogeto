@@ -43,7 +43,7 @@ which is precisely what an approval inbox UI needs.
   saw) must be persisted, or the audit trail has a hole at its most important link.
 
 **Application:** Cogeto's state machine (`draft → pending_approval → approved →
-executed`, + `rejected`, `expired`, Addendum §A.8) is the interrupt pattern with the
+executed`, + `rejected`, `expired`, the specification) is the interrupt pattern with the
 graph machinery removed: the pause is a row in `pending_approval`; the "resume
 invocation" is the authenticated confirm endpoint flipping it to `approved`; the
 worker is the only executor. Design rule from the re-execution cost: **the confirm
@@ -57,7 +57,7 @@ max attempts, which errors are retryable); a failed step retries with the same
 persisted input state; exhausted retries park the run in an inspectable errored
 state rather than vanishing.
 
-**Application:** This is Cogeto's queue contract (§A.3) applied to agent execution:
+**Application:** This is Cogeto's queue contract (spec §15.4) applied to agent execution:
 approved actions are jobs; retryable errors (network, rate limits) back off;
 non-retryable errors (target rejected the message) park the action in a dead-letter
 state visible in the dashboard, still audit-logged. `expired` handles the human
@@ -71,9 +71,9 @@ design converges on the same discipline: external effects must be idempotent
 (idempotency keys on outbound calls), because a crash between "sent the email" and
 "recorded that we sent it" *will* happen.
 
-**Application:** Cogeto's idempotency key `(source_type, source_id, job_type)` (§A.3)
+**Application:** Cogeto's idempotency key `(source_type, source_id, job_type)` (spec §15.4)
 covers ingestion; agent execution adds per-action keys (action id as the idempotency
-token on the outbound send). The deletion saga's receipt-confirmation step (§A.7) is
+token on the outbound send). The deletion saga's receipt-confirmation step (spec §11.1) is
 the same pattern: confirm only after downstream acknowledgment, sweep for orphans.
 
 ## 5. Observability: stream progress as typed events
@@ -111,7 +111,7 @@ the component that *acts*: the framework's interrupt decision comes from outside
 runtime; the platform's guards block inside the agent while execution resumes only
 after external approval.
 
-**Application:** Cogeto hardens this into privilege separation (§A.8): the app
+**Application:** Cogeto hardens this into privilege separation: the app
 process can create drafts and flip approval state (authenticated + audit-logged);
 **only the worker executes**, and it executes only rows in `approved`. The app
 process needs no credentials for outbound effects (SMTP, external APIs), a
@@ -126,7 +126,7 @@ state-machine design, worth preserving through every refactor.
 | Interrupt = queryable, connection-free pause | `pending_approval` rows; approval inbox = a table scan |
 | Resume routes the decision to the paused point | authenticated confirm endpoint → `approved`; worker picks up |
 | Re-execution ⇒ pre-pause side effects forbidden | confirm endpoint flips state only; effects live in the worker |
-| Per-step retry policy + parked errored state | queue retries/backoff + dead-letter visible in dashboard (§A.3) |
+| Per-step retry policy + parked errored state | queue retries/backoff + dead-letter visible in dashboard (spec §15.4) |
 | At-least-once + idempotency keys | `(source_type, source_id, job_type)`; action id keys outbound sends |
 | Typed progress events | audit rows on every transition; outbox as the event log |
 | Refuse general graph machinery | linear state machine + queue; no subgraphs/reducers/replay |

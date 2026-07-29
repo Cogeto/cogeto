@@ -9,7 +9,7 @@ import { inspectEndState, summarize } from './demo/assertions';
  * demo:seed — DEV/DEMO-ONLY (excluded from production images). Provisions the
  * demo Principal, feeds the Ana sandbox corpus through the REAL public HTTP API,
  * runs one dreaming cycle, and asserts the end state, failing loudly if the
- * fictional world did not materialize as designed (§B.9).
+ * fictional world did not materialize as designed.
  *
  * Idempotent: a re-run on an already-seeded instance verifies the state and
  * exits rather than duplicating the corpus. `npm run demo:reset` re-seeds fresh.

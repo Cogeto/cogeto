@@ -11,7 +11,7 @@ import type { MemoryScope } from '@cogeto/shared';
  * the frozen upload contract, F1 handoff). The connectors file source writes
  * one row per stored upload through `record` (inside the same transaction as
  * the outbox enqueue) and reads it back through `get` — it never touches the
- * table directly (§A.1 rule 2). The deletion saga still deletes `file_metadata`
+ * table directly (spec §15 rule 2). The deletion saga still deletes `file_metadata`
  * internally; this port adds no new deletion path.
  *
  * The row shape is frozen (F1 handoff, migration 0001): object_key, owner_id,

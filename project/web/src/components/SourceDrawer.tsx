@@ -53,7 +53,7 @@ function formatBytes(bytes: number | null): string | null {
 
 /**
  * The source drawer behind every memory: the original note verbatim (or the
- * object key for file sources), plus source-level TRUE deletion (§A.7, §B.1).
+ * object key for file sources), plus source-level TRUE deletion (spec §11.1, spec §11.1).
  * The confirm dialog states exactly what the saga will do; the server-side
  * saga is the authority — owner-only, one transaction, signed receipt.
  */
@@ -186,8 +186,8 @@ export function SourceDrawer({
               </p>
               {fileQuery.data.discarded ? (
                 <p className="rounded bg-amber-50 dark:bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300">
-                  Original discarded after extraction. Only the derived memories remain (§A.9).
-                  Provenance is intact; there is nothing to download.
+                  Original discarded after extraction. Only the derived memories remain. Provenance
+                  is intact; there is nothing to download.
                 </p>
               ) : (
                 <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500">

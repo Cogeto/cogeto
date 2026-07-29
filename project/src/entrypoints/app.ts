@@ -11,7 +11,7 @@ import { loadConfig } from './config';
 import { createLogger, PinoNestLogger } from './logger';
 import { createAppRootModule } from './app-root.module';
 
-/** app — the fast-path process: API, dashboard, connectors, approvals (§A.1). */
+/** app — the fast-path process: API, dashboard, connectors, approvals (spec §15). */
 async function main(): Promise<void> {
   const config = loadConfig();
   const logger = createLogger(config.logLevel);

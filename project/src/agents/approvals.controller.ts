@@ -23,7 +23,7 @@ const confirmSchema = z.object({
 });
 
 /**
- * /api/approvals — the authenticated approval surface (§A.8). This is the ONLY
+ * /api/approvals — the authenticated approval surface. This is the ONLY
  * approval path: the confirm route flips server-side state (and, on approve,
  * enqueues the worker execution job) and does nothing else. A front-end dialog
  * is never sufficient; execution lives in the worker. The service owns all

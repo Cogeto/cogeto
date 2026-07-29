@@ -1,6 +1,6 @@
 # Cogeto: Evaluation Golden Set Specification
 
-*Governs the eval harness (Addendum §B.4). The harness is built alongside the extractor (§A.11), not after it. Its published output is the trust score. This spec defines the corpus format, labeling rules, metrics, and CI gates; the harness implementation follows it.*
+*Governs the eval harness (spec §14). The harness is built alongside the extractor, not after it. Its published output is the trust score. This spec defines the corpus format, labeling rules, metrics, and CI gates; the harness implementation follows it.*
 
 ## 1. Purpose
 
@@ -90,4 +90,4 @@ On pull requests, and on pushes to `main` only when the pushed range touches qua
 
 ## 7. Publication
 
-Each release publishes: the metric table, the corpus size per language, the harness and threshold versions, and one sentence per notable change ("added 6 Croatian conditional-commitment cases after a design-partner miss"). This page is the trust score (Addendum §B.4). Honest numbers only; a dip that ships with an explanation is on-brand, a hidden dip is not.
+Each release publishes: the metric table, the corpus size per language, the harness and threshold versions, and one sentence per notable change ("added 6 Croatian conditional-commitment cases after a design-partner miss"). This page is the trust score (spec §14). Honest numbers only; a dip that ships with an explanation is on-brand, a hidden dip is not.

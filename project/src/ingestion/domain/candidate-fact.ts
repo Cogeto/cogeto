@@ -5,7 +5,7 @@ import type { ResolvedInterval } from './temporal-resolver';
 
 /**
  * The extractor's output contract (§3) and the verifier's verdict contract
- * (§B.3). Both are Zod-validated at the gateway boundary: output that fails the
+ * (spec §2). Both are Zod-validated at the gateway boundary: output that fails the
  * schema is never stored — it surfaces as a retryable job failure.
  *
  * FACT_KINDS lives in @cogeto/shared since: the memory table stores kind
@@ -108,7 +108,7 @@ export const verificationBatchOutputSchema = z.object({
 });
 
 /**
- * Resolve a fact's validity interval against the note anchor (§A.6). Accepts BOTH contracts so nothing breaks mid-session
+ * Resolve a fact's validity interval against the note anchor. Accepts BOTH contracts so nothing breaks mid-session
  * - new form: `temporal_expressions` are resolved deterministically by code;
  * - old form (v0001): already-resolved ISO strings pass through unchanged.
  * The new form wins when present.

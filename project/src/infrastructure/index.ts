@@ -1,5 +1,5 @@
 /**
- * Public interface of the shared infrastructure (sanctioned by §A.3 and the
+ * Public interface of the shared infrastructure (sanctioned by spec §15.4 and the
  * prompt: outbox, queue contract, audit, database access). Imports no
  * domain module and no seam — enforced by dependency-cruiser.
  */

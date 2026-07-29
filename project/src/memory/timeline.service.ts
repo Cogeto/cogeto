@@ -22,7 +22,7 @@ const SUBJECT_MEMORY_CAP = 200;
  * method is a composition over the MemoryStore's own Principal-gated primitives
  * (`listForPrincipal`, `pointInTime`), so the scope and sensitive hard gates
  * hold in every temporal view, at every point in time, exactly as elsewhere
- * (§A.4 gates; "temporal never weakens a hard gate").
+ * (spec §4.2 gates; "temporal never weakens a hard gate").
  *
  * "Holds at t" is decided ONCE, by `pointInTime`'s shared SQL predicate
  * (ruling 1) — never re-encoded here. This service only shapes the results and

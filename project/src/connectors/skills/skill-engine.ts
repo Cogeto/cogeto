@@ -347,7 +347,7 @@ export class SkillEngine {
   }
 
   /**
-   * Verification already ran per fact inside the pipeline (§B.3); this step
+   * Verification already ran per fact inside the pipeline (spec §2); this step
    * reads the outcome so the log — and the brief — can say it: how many facts
    * verified, and which stand contradicted or uncertain after reconciliation.
    */
@@ -479,7 +479,7 @@ export class SkillEngine {
 }
 
 /** The worker acts as the run's owner (the research-conclusion precedent) —
- * with the REAL org captured at propose time, so §A.6 object keys hold. */
+ * with the REAL org captured at propose time, so object keys hold. */
 function ownerPrincipal(run: SkillRunRow): Principal {
   return { userId: run.ownerId, name: '', email: null, orgId: run.orgId, orgName: '', roles: [] };
 }

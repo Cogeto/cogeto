@@ -1,9 +1,21 @@
 # Documentation
 
-Start with whichever row matches what you are doing. The architecture authority is
-[`Cogeto-v1-Addendum-Verifiable-Memory.md`](Cogeto-v1-Addendum-Verifiable-Memory.md);
-it wins over every other document on an architecture question.
-[`Cogeto-V2-Plan.md`](Cogeto-V2-Plan.md) is binding for what gets built now.
+Start with whichever row matches what you are doing.
+
+**Authority.** [`cogeto-specification.md`](cogeto-specification.md) is the normative
+rulebook and wins on any question of what the system must do.
+[`cogeto-v2-plan.md`](cogeto-v2-plan.md) is binding for what gets built now.
+
+## The core documents
+
+| Doc | What it answers |
+| --- | --- |
+| [`cogeto-scope.md`](cogeto-scope.md) | What Cogeto is, who it is for, what is in and out of scope, and how it is licensed. Read this first. |
+| [`cogeto-specification.md`](cogeto-specification.md) | **The normative rules.** MUST is a rule whose violation is a defect; SHOULD is a tradeoff that needs a recorded reason. Carries the numeric parameters in force. |
+| [`cogeto-technical-architecture.md`](cogeto-technical-architecture.md) | How it is built: deployment, module structure, the ingestion pipeline, retrieval, access gates, the model gateway, trust machinery. |
+| [`cogeto-verified-memory.md`](cogeto-verified-memory.md) | What is stored, what is guaranteed about it, and how each guarantee is enforced. Written to be checked rather than believed. |
+| [`cogeto-v2-plan.md`](cogeto-v2-plan.md) | The plan of record for the 2.0 cycle, version by version, with priority and difficulty. |
+| [`cogeto-v2-architecture.pdf`](cogeto-v2-architecture.pdf) | The 2.0 architecture diagram. |
 
 ## Run it
 
@@ -15,21 +27,14 @@ it wins over every other document on an architecture question.
 | [`operations/`](operations/) | Adding users, image pins, inbound email setup, the operator script, CI/CD. |
 | [`release-process.md`](release-process.md) | How releases are cut and what each publishes. |
 
-## Understand it
+## How each feature behaves
 
-| Doc | What it answers |
-| --- | --- |
-| [`architecture.md`](architecture.md) | Stack, processes, module map, pipeline, seams, storage split. |
-| [`features/`](features/) | How each feature behaves and why it behaves that way. |
-| [`glossary.md`](glossary.md) | The ubiquitous language. Names in code must match it. |
-| [`Cogeto-v1-scope.md`](Cogeto-v1-scope.md) | Scope, users, positioning, business model. |
-| `Cogeto-v1-Specification.docx` | The full product specification (binary; owner-maintained). |
-
-### Features
+The specification says what must be true. These say how the shipped system does it,
+and why it was built that way.
 
 | Doc | Covers |
 | --- | --- |
-| [`memory.md`](features/memory.md) | The lifecycle, the gates, reconciliation, dreaming, open loops, time travel. **Read this first.** |
+| [`memory.md`](features/memory.md) | The lifecycle, the gates, reconciliation, the nightly pass, open loops, time travel. **Read this first.** |
 | [`conversation.md`](features/conversation.md) | Chat routing, per-claim provenance, instance context, language, conversations. |
 | [`sources.md`](features/sources.md) | Notes, files, email, web, chat capture, and the ports a source implements. |
 | [`web-research.md`](features/web-research.md) | Discovery, the fetcher, minimisation, the run record, focused extraction. |
@@ -46,6 +51,7 @@ it wins over every other document on an architecture question.
 | Doc | What it answers |
 | --- | --- |
 | [`engineering-workflow.md`](engineering-workflow.md) | The delivery loop: issues, branches, Conventional-Commit PRs, the five required checks, squash-merge. The outsider's version is [`CONTRIBUTING.md`](../CONTRIBUTING.md). |
+| [`glossary.md`](glossary.md) | The ubiquitous language. Names in code must match it. |
 | [`eval-golden-set.md`](eval-golden-set.md) | Corpus format, labeling rules, metrics, CI gates. |
 | [`eval/history.md`](eval/history.md) | The measured quality record. |
 | [`research/`](research/) | Anonymized engineering patterns from studied production systems. **Required reading** before implementing memory, ingestion, retrieval, agents, or pipeline code. |

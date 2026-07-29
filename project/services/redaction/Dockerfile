@@ -1,4 +1,4 @@
-# Cogeto redaction sidecar — Python/Presidio, CPU-only (Addendum B.8; decision
+# Cogeto redaction sidecar — Python/Presidio, CPU-only (spec §12.2; decision
 # 0002 language boundary: Python ONLY where a local model runs, isolated behind
 # the gateway seam). No dependency on the TypeScript workspace.
 #

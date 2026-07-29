@@ -18,7 +18,7 @@ import { MemoryStore } from '../memory/index';
 import { verificationResult } from './persistence/tables';
 
 /**
- * GET /api/memories/:id/verification — the §B.3 verdict behind a memory's
+ * GET /api/memories/:id/verification — the spec §2 verdict behind a memory's
  * status, for the dashboard's verification panel. Lives in ingestion (its
  * table); the read is gated by resolving the memory through MemoryStore
  * first, so verdicts leak exactly as much as memories do: not at all.

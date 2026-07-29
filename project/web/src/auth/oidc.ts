@@ -3,7 +3,7 @@ import { codeChallengeS256, randomToken } from './pkce';
 
 /**
  * OIDC authorization-code + PKCE flow against Zitadel through Caddy
- * (same origin, no CORS). The approval decision is always server-side (§A.8);
+ * (same origin, no CORS). The approval decision is always server-side;
  * this session only authenticates the dashboard shell.
  */
 

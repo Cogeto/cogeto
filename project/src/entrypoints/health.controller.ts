@@ -85,7 +85,7 @@ export class HealthController {
   }
 
   /**
-   * The bucket must REPORT default encryption enabled (§A.9, audit 3.9) —
+   * The bucket must REPORT default encryption enabled (audit 3.9) —
    * minio-init asserts it once at compose up; this keeps asserting it for the
    * instance's lifetime. A bucket storing plaintext bytes degrades the stack.
    */
@@ -169,7 +169,7 @@ export class HealthController {
   }
 
   /**
-   * The sweep's verdict (§A.7 step 4): any open integrity alert or a broken
+   * The sweep's verdict (spec §11.1 step 4): any open integrity alert or a broken
    * chain degrades the instance — provable forgetting is the product.
    * DB-only reads; the sweep itself runs nightly (cron) or on demand.
    */

@@ -48,7 +48,7 @@ export class NotesController {
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
     }
-    // An omitted scope falls back to the user's saved default (§A.9) —
+    // An omitted scope falls back to the user's saved default —
     // the same rule uploads follow, so the Settings toggle now governs BOTH.
     const scope = parsed.data.scope ?? (await this.settings.get(request.principal)).defaultScope;
     const row = await this.notes.createNote(request.principal, parsed.data.content, scope);

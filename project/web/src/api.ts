@@ -242,7 +242,7 @@ export const resolveContradiction = (
   body: ResolveContradictionRequest,
 ): Promise<{ resolved: boolean }> => apiPost(`/api/relations/${relationId}/resolve`, body, session);
 
-// Source-level true deletion (§A.7, §B.1): impact preview for the confirm
+// Source-level true deletion (spec §11.1, spec §11.1): impact preview for the confirm
 // dialog, then the saga. The receipt id identifies the pending receipt the
 // worker confirms once Qdrant and MinIO acknowledged.
 export const fetchDeletionImpact = (
@@ -266,7 +266,7 @@ export async function deleteSource(
   return (await response.json()) as DeletionRequestedDto;
 }
 
-// The Forgotten ledger (§B.1) + the sweep's System surface (§A.7 step 4).
+// The Forgotten ledger (spec §11.1) + the sweep's System surface (spec §11.1 step 4).
 export const fetchReceipts = (session: Session): Promise<ReceiptListItem[]> =>
   apiGet('/api/receipts', session);
 export const fetchReceipt = (session: Session, id: string): Promise<ReceiptDetailDto> =>
@@ -283,7 +283,7 @@ export const fetchDeadLetterJobs = (session: Session): Promise<DeadLetterJobDto[
 export const fetchWorkerActivity = (session: Session): Promise<WorkerActivityDto> =>
   apiGet('/api/jobs/activity', session);
 
-// Per-user capture/upload defaults (§A.9, Settings).
+// Per-user capture/upload defaults (Settings).
 export const fetchSettings = (session: Session): Promise<UserSettingsDto> =>
   apiGet('/api/settings', session);
 export const updateSettings = (
@@ -332,7 +332,7 @@ export async function removeEmailAllowlistEntry(session: Session, id: string): P
   if (!response.ok) throw await toError(path, response);
 }
 
-// The read-only audit trail (§A.8/§B.1).
+// The read-only audit trail (/spec §11.1).
 export function fetchAudit(session: Session, params: AuditQuery = {}): Promise<AuditPage> {
   const search = new URLSearchParams();
   if (params.actor?.trim()) search.set('actor', params.actor.trim());
@@ -346,7 +346,7 @@ export function fetchAudit(session: Session, params: AuditQuery = {}): Promise<A
   return apiGet(`/api/audit${qs ? `?${qs}` : ''}`, session);
 }
 
-// The approval state machine (§A.8). Create → confirm (approve|reject) is
+// The approval state machine. Create → confirm (approve|reject) is
 // the ONLY path; execution happens server-side in the worker.
 export const fetchPendingApprovals = (session: Session): Promise<ApprovalDto[]> =>
   apiGet('/api/approvals', session);
@@ -479,7 +479,7 @@ export const fetchTimelineDiff = (
     session,
   );
 
-// Memory Passport (§B.5): a complete, documented, versioned export of the
+// Memory Passport (spec §11.4): a complete, documented, versioned export of the
 // user's own data. Trigger → poll → download via a short-lived signed URL.
 export const triggerPassportExport = (
   session: Session,

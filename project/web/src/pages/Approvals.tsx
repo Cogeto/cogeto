@@ -220,7 +220,7 @@ function HistoryRow({ session, approval }: { session: Session; approval: Approva
   );
 }
 
-/** Pending Approvals (§A.8): the sole approval surface + read-only history. */
+/** Pending Approvals: the sole approval surface + read-only history. */
 export function Approvals({ session }: { session: Session }) {
   const [tab, setTab] = useState<'pending' | 'history'>('pending');
   const pending = useQuery({

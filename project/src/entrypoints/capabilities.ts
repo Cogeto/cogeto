@@ -108,7 +108,7 @@ export class CapabilitiesService {
     ]);
   }
 
-  /** Redaction (§B.8): REDACTION_ENABLED is the authority — the same flag the
+  /** Redaction (spec §12.2): REDACTION_ENABLED is the authority — the same flag the
    * gateway obeys. Enabled → the sidecar's own /health decides; fail-closed
    * semantics mean an unreachable sidecar makes model calls FAIL, never leak. */
   private async redaction(checkedAt: string): Promise<CapabilitySummary> {

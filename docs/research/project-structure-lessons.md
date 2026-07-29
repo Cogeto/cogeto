@@ -15,7 +15,7 @@ entities it needs, scaled past 25 feature areas without becoming a mesh; its
 counterexample was a lifecycle/startup function that initialized every subsystem
 inline and became the coupling hotspot of the codebase.
 
-**Application:** Cogeto's bounded contexts (Addendum §A.1) are this pattern with
+**Application:** Cogeto's bounded contexts (spec §15) are this pattern with
 teeth. The lesson to carry: watch the entrypoints, `src/entrypoints` is where
 "initialize everything inline" erosion will try to happen. Keep composition roots
 declarative (a list of modules wired up), and let each module own its startup.
@@ -28,7 +28,7 @@ test suites that all implementations of an interface must pass. Where enforcemen
 was social convention only, cross-module imports accumulated (the studied platform's
 densest feature file imports from 15+ sibling modules).
 
-**Application:** Cogeto's CI must enforce §A.1 from the first pipeline: an
+**Application:** Cogeto's CI must enforce spec §15 from the first pipeline: an
 import-linter/architecture test asserting (a) modules import only each other's public
 interfaces, (b) the two seams import no domain module, (c) nothing imports
 entrypoints. Add a conformance suite for the vector-store interface (any adapter must
@@ -60,7 +60,7 @@ mounted volumes rather than hoping.
 **Application:** Cogeto adopts all of it: one typed config module per process,
 `COGETO_`-prefixed env vars with `__` nesting, validation at boot (a misconfigured
 instance must fail to start, not fail on request), `.env.example` in `infra/`, and
-compose entrypoints that pin data paths to volumes (§A.2's zero-click bootstrap
+compose entrypoints that pin data paths to volumes ('s zero-click bootstrap
 depends on this).
 
 ## 5. The compose file is the product's front door
@@ -70,7 +70,7 @@ correlated directly with contributor traction: bind-mounted persistent volumes,
 separate containers per process (not per module), non-root users, and first-run
 seeding in the entrypoint. Builds that needed undocumented steps stalled newcomers.
 
-**Application:** Already binding as §A.2 ("one command to usable login, or the build
+**Application:** Already binding as ("one command to usable login, or the build
 is broken"). The studied detail worth copying: treat the *first-run experience* as
 code, bootstrap provisioning, bucket init, migration init container are all
 first-class, reviewed artifacts in `project/infra/`, not README instructions.
@@ -83,7 +83,7 @@ hygiene: exactly one TODO comment in ~170k lines, consistent naming conventions
 (predictable file-name suffixes per kind), and lint/type-check configured in the
 build. That discipline is why the codebase stayed navigable at scale.
 
-**Application:** Cogeto already has the skeleton: specs + Addendum in `docs/`,
+**Application:** Cogeto already has the skeleton: the specification in `docs/`,
 feature docs in `docs/features/`, research in `docs/research/`. The rule to
 adopt: **behavior changes that contradict a doc update the doc in the same change**;
 naming conventions are set once (first
@@ -101,10 +101,10 @@ no tests at all, complexity and coverage were inversely correlated exactly where
 that is most dangerous.
 
 **Application:** Cogeto's tests mirror `src/` per module, plus cross-module suites
-for the binding invariants: the deletion-cascade test (§A.7 step 5, a
+for the binding invariants: the deletion-cascade test (spec §11.1 step 5, a
 definition-of-done gate), the scope-leak test (no query path returns unscoped rows),
 approval-gate tests (execution only from `approved`), and the golden-set eval gate
-(§B.4). Write the conformance suite for the vector-store and queue seams when the
+(spec §14). Write the conformance suite for the vector-store and queue seams when the
 interfaces are defined, before the second implementation, not after.
 
 ## 8. Version everything a user or agent depends on
@@ -114,22 +114,22 @@ interfaces are defined, before the second implementation, not after.
 prompts. The systems that versioned prompts could attribute quality regressions;
 those that didn't, couldn't.
 
-**Application:** Cogeto: migrations numbered from 0001 (§A.6); prompts versioned,
-immutable once released, changelogged, CI-evaluated (§B.7). One discipline, two
+**Application:** Cogeto: migrations numbered from 0001; prompts versioned,
+immutable once released, changelogged, CI-evaluated (spec §12.3). One discipline, two
 artifact types.
 
 ## Application to Cogeto: summary
 
 | Lesson | Cogeto realization |
 |---|---|
-| Domain-first organization | bounded contexts under `project/src/` (§A.1) |
-| Mechanical boundary enforcement | import-lint + architecture tests in CI, rule set §A.1 |
+| Domain-first organization | bounded contexts under `project/src/` (spec §15) |
+| Mechanical boundary enforcement | import-lint + architecture tests in CI, rule set spec §15 |
 | Interfaces over mixins/god-objects | aggregate + seam interfaces + conformance tests |
 | Typed, layered, boot-validated config | `COGETO_*` env schema, fail-fast startup, `.env.example` |
-| Compose as front door | §A.2 contract; bootstrap as reviewed code |
-| Docs version with code | spec/Addendum/decisions/research in-repo; same-change updates |
+| Compose as front door | contract; bootstrap as reviewed code |
+| Docs version with code | spec/the specification/decisions/research in-repo; same-change updates |
 | Tests mirror modules + invariant suites | cascade, scope-leak, approval-gate, eval-gate tests |
-| Version schemas, prompts, releases | migrations 0001+, prompt families (§B.7), decision log |
+| Version schemas, prompts, releases | migrations 0001+, prompt families (spec §12.3), decision log |
 
 One-line takeaway: structure survives only where a build fails when it is violated:
 put the module rules, the scope filter, the cascade, and the golden set behind CI

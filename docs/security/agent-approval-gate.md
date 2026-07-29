@@ -82,4 +82,4 @@ nothing** on its own.
 - Confirm service + worker executor: `project/src/agents/approval.service.ts`,
  `project/src/agents/approval.executor.ts`
 - Confirm endpoint: `POST /api/approvals/:id`
-- Contract: Addendum §A.8, plus [`../features/approvals.md`](../features/approvals.md)
+- Contract: the specification, plus [`../features/approvals.md`](../features/approvals.md)

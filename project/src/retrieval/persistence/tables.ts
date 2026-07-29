@@ -3,7 +3,7 @@ import { boolean, index, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-
 /**
  * Tables owned by the retrieval module's chat area (migrations 0005 + 0031).
  * Module-private (dependency-cruiser persistence rule). Chat messages persist
- * conversations AND are the §A.6 provenance targets for future chat-derived
+ * conversations AND are the provenance targets for future chat-derived
  * memories (source_type = 'chat' points here).
  */
 

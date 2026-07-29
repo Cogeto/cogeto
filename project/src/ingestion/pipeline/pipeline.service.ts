@@ -26,12 +26,12 @@ export const WEB_MAX_FACTS = 30;
 
 /**
  * The job type connectors enqueue (via the outbox, in the capture transaction).
- * Idempotency key: (source_type, source_id, 'ingestion.pipeline') — §A.3.
+ * Idempotency key: (source_type, source_id, 'ingestion.pipeline') — spec §15.4.
  */
 export const INGESTION_PIPELINE_JOB_TYPE = 'ingestion.pipeline';
 
 /**
- * Deletes a discard-mode source's transient staging object (§A.9, F1 handoff
+ * Deletes a discard-mode source's transient staging object (F1 handoff
  * §3). Enqueued by the pipeline in the SAME transaction as the derived
  * memories, so it fires only once they commit — the original is discarded only
  * after its extraction is durable. Idempotent (an absent object is success);
@@ -170,7 +170,7 @@ export class IngestionPipeline {
     }
     summary.extracted = facts.length;
 
-    // Stage 4 — verify: the independent §B.3 pass decides each fact's verdict.
+    // Stage 4 — verify: the independent spec §2 pass decides each fact's verdict.
     const verified = await this.verifyStage.run(chunks, facts);
     for (const { verdict } of verified) summary.verdicts[verdict] += 1;
     log(
@@ -229,7 +229,7 @@ export class IngestionPipeline {
       'reconciliation complete',
     );
 
-    // Extract-and-discard (§A.9, F1 handoff §3): schedule the staging object's
+    // Extract-and-discard (F1 handoff §3): schedule the staging object's
     // deletion in THIS transaction — it fires only when the derived memories
     // commit, so the original is discarded only after extraction is durable.
     if (source.stagingKey) {

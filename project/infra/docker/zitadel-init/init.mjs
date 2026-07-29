@@ -1,5 +1,5 @@
 /**
- * zitadel-init — one-shot bootstrap job (Addendum §A.2: zero clicks).
+ * zitadel-init — one-shot bootstrap job (the specification §A.2: zero clicks).
  *
  * Zitadel's FirstInstance config creates the org, the human admin, and a
  * machine user with a PAT. This job uses that PAT to make the instance usable

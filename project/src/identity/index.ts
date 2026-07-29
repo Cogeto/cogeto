@@ -1,4 +1,4 @@
-/** Public interface of the identity seam (§A.1 rule 1). */
+/** Public interface of the identity seam (spec §15 rule 1). */
 export { IdentityModule } from './identity.module';
 export { IdentityService } from './identity.service';
 export { UserDirectory } from './user-directory';

@@ -6,7 +6,7 @@ import type { Db } from '../infrastructure/index';
 import { userSettings } from './persistence/tables';
 
 /**
- * Per-user capture/upload defaults (§A.9; Settings). One row per user,
+ * Per-user capture/upload defaults (Settings). One row per user,
  * created on first write — a read with no row returns the column defaults. Every
  * update is audited (org-scoped), so the trust surface shows preference changes.
  */

@@ -127,7 +127,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       // chat → skill resolver — app-only (planning needs retrieval); the
       // engine's execution reaches the worker as the skill.advance job.
       SkillsModule,
-      // The Memory Passport (§B.5): export trigger/status/download.
+      // The Memory Passport (spec §11.4): export trigger/status/download.
       // Assembly is a worker job; the app only creates requests and serves reads.
       PassportModule.register({
         instanceKeyDir: config.instanceKeyDir,

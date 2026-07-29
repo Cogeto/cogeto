@@ -1,4 +1,4 @@
-# Redaction sidecar (`--profile redaction`, Addendum B.8)
+# Redaction sidecar (`--profile redaction`, spec §12.2)
 
 A stateless, CPU-only Python service that detects and **pseudonymizes** sensitive
 entities so PII never leaves the instance in an external model call, *"PII never

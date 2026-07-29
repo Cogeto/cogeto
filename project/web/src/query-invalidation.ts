@@ -48,7 +48,7 @@ export const invalidateAfterJobRetry = (qc: QueryClient): Promise<void> =>
   invalidate(qc, [['dead-letter'], ['worker-activity'], ['health']]);
 
 /**
- * A source was truly deleted — the widest cascade (§A.7/§B.1): the memories, the
+ * A source was truly deleted — the widest cascade (spec §11.1/spec §11.1): the memories, the
  * Forgotten ledger + chain, the sweep surface, contradictions,
  * and any chat turn that cited the erased facts.
  */

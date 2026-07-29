@@ -1,10 +1,10 @@
 # prompts — versioned, published prompt artifacts
 
 Every system prompt that decides what Cogeto remembers (extraction, verification,
-dedup, contradiction, consolidation) lives here, governed by Addendum §B.7:
+dedup, contradiction, consolidation) lives here, governed by spec §12.3:
 
 - **Versioned like migrations** — numbered, immutable once released, changelog required.
-- **CI-evaluated** against the golden set (§B.4); the active version's eval score is
+- **CI-evaluated** against the golden set (spec §14); the active version's eval score is
   recorded. Prompt changes that regress the golden set fail the build.
 - **Public** — the exact prompt that decides what we remember, with measured accuracy.
 

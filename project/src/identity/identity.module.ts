@@ -10,7 +10,7 @@ import { PRINCIPAL, principalProvider } from './principal.provider';
 import { UserDirectory } from './user-directory';
 
 /**
- * identity — leaf seam wrapping Zitadel (scope §4.5, §A.10). Zitadel answers
+ * identity — leaf seam wrapping Zitadel (scope §4.5, spec §12.1). Zitadel answers
  * "who is this user and what org/roles do they have"; memory scoping stays
  * Cogeto logic. No other module calls Zitadel. Options come from the
  * composition root — the seam reads no environment itself.

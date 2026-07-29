@@ -65,7 +65,7 @@ export interface EmailReplyDraftPayload {
    * the user to fill in the recipient before sending. */
   recipientResolved: boolean;
   /** Whether the recipient is TRUSTED. False when it was recovered from the
-   * forwarded message body (attacker-controllable content,): the address
+   * forwarded message body (attacker-controllable content): the address
    * is still shown as a suggestion, but the UI must have the user verify it
    * before sending. Optional for backward-compat; absent → treated as verified. */
   recipientVerified?: boolean;

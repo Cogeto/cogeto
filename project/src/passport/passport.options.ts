@@ -11,6 +11,6 @@ export interface PassportOptions {
   /** TTL of the presigned download URL (seconds) — mirrors file downloads. */
   downloadUrlTtlSeconds: number;
   /** How long a ready export's object is retained before the retention pass
-   * deletes it (the "short-lived downloadable" promise, §B.5). */
+   * deletes it (the "short-lived downloadable" promise, spec §11.4). */
   exportRetentionHours: number;
 }

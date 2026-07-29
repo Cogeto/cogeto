@@ -12,19 +12,12 @@
  *   - project/prompts/**  released prompt artifacts are immutable once shipped
  *   - project/eval/**     golden-set corpus data, authored to look like real input
  *   - docs/eval/history.md  an append-only measurement record
- *   - docs/audits/**      dated audits are records of what was written then
  *   - LICENSE and third-party text
  */
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
-const EXEMPT = [
-  /^project\/prompts\//,
-  /^project\/eval\//,
-  /^docs\/eval\/history\.md$/,
-  /^docs\/audits\//,
-  /^LICENSE/,
-];
+const EXEMPT = [/^project\/prompts\//, /^project\/eval\//, /^docs\/eval\/history\.md$/, /^LICENSE/];
 
 const files = execFileSync('git', ['ls-files', '*.md'], { encoding: 'utf8' })
   .split('\n')
