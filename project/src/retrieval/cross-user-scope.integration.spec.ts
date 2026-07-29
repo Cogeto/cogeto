@@ -337,6 +337,31 @@ describe('cross-user scope isolation (integration, real Postgres + Qdrant)', () 
     expect((await store.openLoopsForPrincipal(A)).map((m) => m.id)).not.toContain(unknown.id);
   });
 
+  it('open_loops_survive_edit: editing your own commitment keeps it an open loop', async () => {
+    const own = await store.createFromFact(A, {
+      content: 'You will send Marko the Q3 figures.',
+      scope: 'private',
+      sourceType: 'user_note',
+      sourceId: randomUUID(),
+      entities: ['Marko'],
+      kind: 'commitment',
+      authoredByUser: true,
+      embeddingModel: EMBED,
+    } as NewFact);
+    expect((await store.openLoopsForPrincipal(A)).map((m) => m.id)).toContain(own.id);
+
+    // Correcting the wording must not change WHOSE promise it is. Authorship is
+    // provenance: it rides to the successor like source_type does.
+    const { successor } = await store.editContent(
+      { kind: 'user', userId: A.userId },
+      own.id,
+      'You will send Marko the Q3 figures by Friday.',
+    );
+    const loops = (await store.openLoopsForPrincipal(A)).map((m) => m.id);
+    expect(loops).toContain(successor.id);
+    expect(loops).not.toContain(own.id); // the predecessor is `replaced`
+  });
+
   it('review_own_only: a peer’s shared uncertain fact is readable but NOT in B’s Review queue', async () => {
     const sharedUncertain = await store.createFromFact(A, {
       content: 'A shared but unverified claim about Heron',

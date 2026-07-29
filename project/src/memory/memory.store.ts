@@ -754,6 +754,10 @@ export class MemoryStore {
       kind: old.kind ?? undefined,
       sensitive: old.sensitive,
       validUntil: old.validUntil ?? undefined,
+      // Authorship is provenance and survives supersession, exactly like
+      // source_type and source_id. Dropping it here would silently take an
+      // edited commitment out of the owner's open loops.
+      authoredByUser: old.authoredByUser ?? undefined,
       initialStatus: 'user_approved',
     });
     await writeAudit(tx, {

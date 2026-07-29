@@ -240,6 +240,9 @@ export class MemoryReconciliation {
         sensitive: survivorRow.sensitive,
         validFrom: survivorRow.validFrom ?? undefined,
         validUntil: survivorRow.validUntil ?? undefined,
+        // The survivor's authorship carries to its enriched successor: an
+        // enrichment adds a detail, it does not change whose words these were.
+        authoredByUser: survivorRow.authoredByUser ?? undefined,
         initialStatus: survivorRow.status,
       });
       finalSurvivor = successor;

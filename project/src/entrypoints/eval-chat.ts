@@ -561,6 +561,10 @@ async function main(): Promise<void> {
             sourceId,
             ownerId: principal.userId,
             content: testCase.notes[i]!,
+            // Mirror the note SourceReader: a note is the user's own voice, so
+            // its obligations pass the first-person rule and reach open loops.
+            // The seed builds its own SourceItem, so it must say so explicitly.
+            authoredByUser: true,
             createdAt: anchor,
           },
         });
@@ -579,6 +583,9 @@ async function main(): Promise<void> {
           kind: seed.kind,
           validFrom: seed.valid_from ? new Date(seed.valid_from) : undefined,
           validUntil: seed.valid_until ? new Date(seed.valid_until) : undefined,
+          // Seeds stand in for the user's own notes, which is what the note
+          // SourceReader stamps, so open-loop cases see first-person facts.
+          authoredByUser: true,
           embeddingModel,
         };
         const row =
@@ -702,6 +709,8 @@ async function main(): Promise<void> {
                   sourceId: pageId,
                   ownerId: principal.userId,
                   content: page.title ? `${page.title}\n\n${page.retainedText}` : page.retainedText,
+                  // Mirror the web SourceReader: a fetched page is not the user's voice.
+                  authoredByUser: false,
                   createdAt: anchor,
                 },
               });
@@ -803,6 +812,8 @@ async function main(): Promise<void> {
                   sourceId: page.id,
                   ownerId: principal.userId,
                   content: page.title ? `${page.title}\n\n${page.text}` : page.text,
+                  // Mirror the web SourceReader: a fetched page is not the user's voice.
+                  authoredByUser: false,
                   createdAt: anchor,
                 },
               });
