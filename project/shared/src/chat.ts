@@ -1,16 +1,16 @@
 import type { MemoryScope, MemoryStatus } from './memory';
 import type { ChatSkillRunRef } from './skills';
 
-/** Chat DTOs (S3-A): POST /api/chat (SSE) and the persisted conversation. */
+/** Chat DTOs: POST /api/chat (SSE) and the persisted conversation. */
 
 export interface ChatAskRequest {
   content: string;
-  /** The conversation this message is sent to (P6.9) — it always lands there. */
+  /** The conversation this message is sent to — it always lands there. */
   conversationId: string;
 }
 
 /**
- * A conversation (P6.9; decision 0056): the workspace container in the chat
+ * A conversation: the workspace container in the chat
  * sidebar. Memory is the continuity, conversations are workspaces — what
  * Cogeto learned in one conversation is available in every other through
  * memory retrieval; only raw turn context is scoped to the thread.
@@ -55,10 +55,10 @@ export interface ChatFactDto {
   memoryId: string;
   claim: string | null;
   status: MemoryStatus;
-  /** Scope of the cited fact (O2-B): a `shared` fact owned by another org
+  /** Scope of the cited fact: a `shared` fact owned by another org
    * member is attributed to them in the chip. */
   scope: MemoryScope;
-  /** The owning user's id and display name (O2-B) — null name when unresolved. */
+  /** The owning user's id and display name — null name when unresolved. */
   ownerId: string;
   ownerName: string | null;
   sensitive: boolean;
@@ -71,7 +71,7 @@ export interface ChatFactDto {
   /** Which §A.5 retrieval signals surfaced this fact. */
   signals: string[];
   /**
-   * Past belief (decision 0012 ruling 6): replaced/outdated, or interval
+   * Past belief: replaced/outdated, or interval
    * closed before now. The answer MUST frame such facts as past, and the UI
    * renders a muted "past" chip.
    */
@@ -81,7 +81,7 @@ export interface ChatFactDto {
 }
 
 /**
- * The research offer riding on a knowledge-class answer (decision 0046): a
+ * The research offer riding on a knowledge-class answer: a
  * one-tap suggestion that leads into the existing minimise-and-approve gate.
  * The offer is the bridge; the gate stays the gate — tapping it only PROPOSES
  * a run (nothing leaves until approval on the Research page). Ephemeral: it
@@ -93,7 +93,7 @@ export interface ChatResearchOffer {
 }
 
 /**
- * A research turn's proposal handle (decision 0047): lets the chat surface
+ * A research turn's proposal handle: lets the chat surface
  * open the SAME show-edit-approve gate inline. Carrying only the run id keeps
  * the disclosure in one place — the SPA loads the run through the owner-gated
  * research endpoints, exactly as the Research page does. Ephemeral, like the
@@ -118,7 +118,7 @@ export type ChatStreamEvent =
       /** Present on a research turn that proposed a run (0047): the inline
        * gate's handle. Nothing has been sent when this arrives. */
       researchProposal?: ChatResearchProposalRef | null;
-      /** Present on a skill turn that proposed a run (decision 0059): the run
+      /** Present on a skill turn that proposed a run: the run
        * view's handle. Nothing has been sent when this arrives — the plan
        * gate lives on the run view. */
       skillRun?: ChatSkillRunRef | null;
@@ -128,11 +128,11 @@ export type ChatStreamEvent =
       message: string;
       /** Machine-readable cause when the client should surface a specific
        * message: `model_budget_exceeded` (daily cap), `timeout` (idle/max
-       * duration abort — FIX-2 QS-2/QS-14). Absent for a generic failure. */
+       * duration abort). Absent for a generic failure. */
       code?: 'model_budget_exceeded' | 'timeout';
     };
 
-/** POST /api/chat/messages/:id/remember (decision 0021): the enqueued capture. */
+/** POST /api/chat/messages/:id/remember: the enqueued capture. */
 export interface ChatRememberedDto {
   /** The chat_message id — the derived memories' `source_id`. */
   messageId: string;
@@ -151,7 +151,7 @@ export interface ChatContextTurn {
 /** GET /api/chat/messages/:id/context — the message plus surrounding turns. */
 export interface ChatContextDto {
   turns: ChatContextTurn[];
-  /** The conversation the remembered message lives in (P6.9) — the source
+  /** The conversation the remembered message lives in — the source
    * drawer frames the context with it and deep-links into the thread. */
   conversationId: string;
   /** The conversation's display title; null while untitled. */

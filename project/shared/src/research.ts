@@ -1,7 +1,7 @@
 import type { MemoryScope } from './memory';
 
 /**
- * Web research DTOs (Priority 5 Part A; decisions 0042/0043): explicit
+ * Web research DTOs: explicit
  * discovery (POST /api/research/search), selected-page capture
  * (POST /api/research/capture), and the web source drawer
  * (GET /api/research/:id/source).
@@ -13,7 +13,7 @@ export interface ResearchSearchRequest {
 
 /** One ranked discovery result. `score` is SearXNG's aggregate relevance
  * (higher = more relevant, null if absent); it drives auto-selection of the best
- * sources so the user never has to pick (decision 0050). */
+ * sources so the user never has to pick. */
 export interface DiscoveredPageDto {
   url: string;
   title: string;
@@ -22,7 +22,7 @@ export interface DiscoveredPageDto {
 }
 
 /**
- * Auto-select the best sources by relevance score (decision 0050): most-relevant
+ * Auto-select the best sources by relevance score: most-relevant
  * first, nulls last but still preferred over dropping a result, capped at `k`.
  * Pure + deterministic so it is unit-tested and identical on every surface.
  */
@@ -58,16 +58,16 @@ export interface ResearchCaptureResponse {
 /** Same queue-ledger derivation as NoteProcessingState. */
 export type WebProcessingState = 'processing' | 'done' | 'failed';
 
-/* ── Research runs: the show-edit-approve gate (Part B, decisions 0044/0045) ── */
+/* ── Research runs: the show-edit-approve gate (Part B) ── */
 
-/** 'concluded' (decision 0057): the worker synthesised and stored the answer
+/** 'concluded': the worker synthesised and stored the answer
  * after the last captured page settled — the terminal success state. */
 export type ResearchRunStatus = 'proposed' | 'approved' | 'cancelled' | 'concluded';
 
 export interface ProposeResearchRequest {
   /** What the user asked for, verbatim (search box input or chat message). */
   intent: string;
-  /** The invoking chat conversation (issue #259) — the concluded answer is
+  /** The invoking chat conversation — the concluded answer is
    * appended there as a persistent assistant message. Absent from the
    * Research page. */
   conversationId?: string;
@@ -91,7 +91,7 @@ export interface ResearchRunDto {
   createdAt: string;
   approvedAt: string | null;
   cancelledAt: string | null;
-  /** Server-side conclusion (decision 0057): when the answer was stored. */
+  /** Server-side conclusion: when the answer was stored. */
   concludedAt: string | null;
   /** When the owner saw the stored answer — the chat resume surface shows a
    * run until this is set, never after. */
@@ -104,7 +104,7 @@ export interface ApproveResearchRequest {
 }
 
 /**
- * One captured page's pipeline progress under a run (decision 0047 — the
+ * One captured page's pipeline progress under a run (— the
  * in-chat research flow's honest wait): the queue-ledger state plus how many
  * facts the page has yielded so far.
  */

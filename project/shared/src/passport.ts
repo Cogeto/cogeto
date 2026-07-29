@@ -10,8 +10,8 @@
 /**
  * The published format version. Bump on any breaking schema change.
  *
- * 2.0 (decision 0060) removed `tasks.json` and the manifest's required `tasks`
- * count when the task subsystem went — a breaking change under decision 0029
+ * 2.0 removed `tasks.json` and the manifest's required `tasks`
+ * count when the task subsystem went — a breaking change under
  * ruling 2, so the version bumped and `docs/passport-schema/` publishes the new
  * schema alongside the 1.0 one. Archives stamped `1.0` stay readable and
  * verifiable forever against the 1.0 schema; new exports are always 2.0.

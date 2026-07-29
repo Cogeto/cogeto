@@ -1,12 +1,12 @@
 import type { ApprovalStatus } from './approvals';
 import type { MemoryScope } from './memory';
 
-/** Inbound email DTOs (Session O4, decision 0028). */
+/** Inbound email DTOs. */
 
 /** An allowlist entry kind: a full address, or a whole domain. */
 export type EmailAllowlistKind = 'address' | 'domain';
 
-/** A sender-allowlist entry (the primary acceptance gate, decision 0028 ruling 2). */
+/** A sender-allowlist entry (the primary acceptance gate). */
 export interface EmailAllowlistEntryDto {
   id: string;
   kind: EmailAllowlistKind;
@@ -23,7 +23,7 @@ export interface AddEmailAllowlistEntryRequest {
   note?: string | null;
 }
 
-/** A metadata-only record of refused mail (never a body) — decision 0028 ruling 7. */
+/** A metadata-only record of refused mail (never a body) —. */
 export interface EmailRefusalDto {
   id: string;
   fromAddr: string | null;
@@ -37,11 +37,11 @@ export interface EmailRefusalDto {
  * allowlist, and recent refusals for one-click allowlisting.
  */
 export interface EmailCaptureConfigDto {
-  /** The instance's unique inbound address (decision 0028 ruling 1), or null
+  /** The instance's unique inbound address, or null
    * when the instance has not been configured with one yet. */
   inboundAddress: string | null;
   /** The caller's registered address — always trusted: mail they send or
-   * forward to the inbound address is captured for them (decision 0031 rule 1).
+   * forward to the inbound address is captured for them (rule 1).
    * Null when the identity token carries no email. */
   selfAddress: string | null;
   allowlist: EmailAllowlistEntryDto[];
@@ -49,7 +49,7 @@ export interface EmailCaptureConfigDto {
 }
 
 /**
- * Reply drafts (Session O4 — email source). Drafting a reply is a CONSEQUENTIAL
+ * Reply drafts. Drafting a reply is a CONSEQUENTIAL
  * action in the approval machine, but the effect is NOT sending: on approval the
  * draft is finalised and presented for the user to send from their own client.
  * Cogeto never sends mail.
@@ -65,7 +65,7 @@ export interface EmailReplyDraftPayload {
    * the user to fill in the recipient before sending. */
   recipientResolved: boolean;
   /** Whether the recipient is TRUSTED. False when it was recovered from the
-   * forwarded message body (attacker-controllable content, SEC-3): the address
+   * forwarded message body (attacker-controllable content,): the address
    * is still shown as a suggestion, but the UI must have the user verify it
    * before sending. Optional for backward-compat; absent → treated as verified. */
   recipientVerified?: boolean;
@@ -83,7 +83,7 @@ export interface EmailReplyDraftPayload {
 
 /**
  * The finalised draft presented to the user (GET /api/approvals/:id/email-draft).
- * The user copies it, downloads the .eml, or opens the mailto: — and sends from
+ * The user copies it, downloads the.eml, or opens the mailto: — and sends from
  * their own client. `sent` is always false: Cogeto has no send capability.
  */
 export interface EmailReplyDraftView {
@@ -94,13 +94,13 @@ export interface EmailReplyDraftView {
    * to set it before sending (see the forwarded-addressing rule). */
   recipientResolved: boolean;
   /** False when the recipient was recovered from the forwarded body — a
-   * suggestion the user must verify before sending (SEC-3). Absent → verified. */
+   * suggestion the user must verify before sending. Absent → verified. */
   recipientVerified?: boolean;
   subject: string;
   body: string;
   /** A ready-to-open mailto: link, prefilled, that opens the user's own client. */
   mailto: string;
-  /** A ready-to-download .eml (RFC822) the user can send from any client. */
+  /** A ready-to-download.eml (RFC822) the user can send from any client. */
   eml: string;
   /** Always false — Cogeto never sends mail; this only finalises a draft. */
   sent: false;
@@ -121,7 +121,7 @@ export interface EmailAttachmentDto {
 }
 
 /**
- * The email reading view (Session O4 — email reply triggers): the full retained
+ * The email reading view: the full retained
  * message rendered faithfully in the source drawer so the user can see what they
  * are replying to. For a forwarded message, `originalCorrespondent` names the
  * recovered real counterpart.

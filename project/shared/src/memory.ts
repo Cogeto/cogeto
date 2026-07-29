@@ -1,5 +1,5 @@
 /**
- * Memory vocabulary (docs/glossary.md; Addendum §A.6; decision 0003 ruling 3).
+ * Memory vocabulary (docs/glossary.md; Addendum §A.6).
  *
  * Six lifecycle statuses plus an orthogonal `sensitive` boolean flag.
  * Statuses are score multipliers in retrieval; `scope` and `sensitive` are hard gates.
@@ -20,12 +20,12 @@ export type MemoryScope = (typeof MEMORY_SCOPES)[number];
 /**
  * The fact kinds the extractor labels (docs/eval-golden-set.md §4 rule 2).
  * Stored on the memory row since migration 0011 — reconciliation's candidate
- * rules match on kind (decision 0010 rulings 2, 6). NULL on pre-F2 rows.
+ * rules match on kind (6). NULL on pre-F2 rows.
  */
 export const FACT_KINDS = ['commitment', 'decision', 'preference', 'fact', 'open_loop'] as const;
 export type FactKind = (typeof FACT_KINDS)[number];
 
-/** How the owner resolved a contradiction in Review (decision 0010 ruling 3). */
+/** How the owner resolved a contradiction in Review. */
 export const RELATION_RESOLUTIONS = [
   'confirmed_a',
   'confirmed_b',
@@ -45,7 +45,7 @@ export const STATUS_MULTIPLIERS: Record<MemoryStatus, number> = {
 };
 
 /**
- * Temporal-mode multipliers (decision 0012 ruling 5): the §A.5 temporal lift.
+ * Temporal-mode multipliers: the §A.5 temporal lift.
  * Past facts are the point of the query, so replaced/outdated rank nearly on
  * par; statuses stay multipliers, gates stay gates.
  */

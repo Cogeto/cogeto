@@ -1,6 +1,6 @@
 /**
- * The one citation marker grammar (decision 0007 ruling 2; owner test F6;
- * extended by decision 0046 with the unsourced marker).
+ * The one citation marker grammar (owner test F6;
+ * extended by with the unsourced marker).
  *
  * Canonical, stored, renderer-trusted forms: `{{cite:<memory-uuid>}}` and
  * `{{unsourced}}`, and nothing else. The answer model emits short `[F1]`
@@ -18,7 +18,7 @@ const UUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-
 /** Canonical citation token. Global; callers build fresh RegExp to avoid lastIndex bugs. */
 export const CITATION_RE = new RegExp(`\\{\\{cite:(${UUID})\\}\\}`, 'g');
 
-/** Canonical unsourced-claim token (decision 0046): model knowledge, marked. */
+/** Canonical unsourced-claim token: model knowledge, marked. */
 export const UNSOURCED_TOKEN = '{{unsourced}}';
 
 /**
@@ -116,7 +116,7 @@ export function mapMarkersToCitations(
 
 /**
  * Map the model's short `[U]` unsourced markers to the canonical
- * `{{unsourced}}` token (decision 0046). Always applied: a model admitting a
+ * `{{unsourced}}` token. Always applied: a model admitting a
  * claim is its own knowledge is marked, never stripped into an unmarked claim.
  * Case-insensitive and whitespace-tolerant, same posture as the `[F#]` map.
  */

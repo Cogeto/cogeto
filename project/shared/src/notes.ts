@@ -1,6 +1,6 @@
 import type { FactKind, MemoryScope, MemoryStatus } from './memory';
 
-/** Notes capture DTOs (S2-A): POST /api/notes and the processing-status poll. */
+/** Notes capture DTOs: POST /api/notes and the processing-status poll. */
 
 export interface NoteCaptureRequest {
   content: string;
@@ -28,13 +28,13 @@ export interface NoteStatusDto {
   state: NoteProcessingState;
 }
 
-/** One row of the governed Memories list (S3-B dashboard). */
+/** One row of the governed Memories list (dashboard). */
 export interface MemoryListItem {
   id: string;
   content: string | null;
   status: MemoryStatus;
   scope: MemoryScope;
-  /** The owning user's Zitadel id (O2-B) — the UI gates owner-only actions on
+  /** The owning user's Zitadel id — the UI gates owner-only actions on
    * `ownerId === me.userId`; the server enforces it regardless. */
   ownerId: string;
   /** The owner's display name, resolved from the identity directory; null when
@@ -49,7 +49,7 @@ export interface MemoryListItem {
   supersededBy: string | null;
   validFrom: string | null;
   validUntil: string | null;
-  /** Raw temporal phrases code could not resolve (decision 0007 ruling 1). */
+  /** Raw temporal phrases code could not resolve. */
   temporalUnresolved: string[];
   createdAt: string;
 }
@@ -65,14 +65,13 @@ export interface VerificationDto {
   verdict: 'supported' | 'partial' | 'unsupported';
   reason: string;
   promptVersion: string;
-  /** The extractor's cited source passage; null for pre-S3-B rows. */
+  /** The extractor's cited source passage; null for pre- rows. */
   sourceSpan: string | null;
   createdAt: string;
 }
 
 /**
- * One open contradiction in the Review queue (GET /api/relations; decision
- * 0010). `a` is the fact reconciliation admitted more recently, `b` the one
+ * One open contradiction in the Review queue (GET /api/relations). `a` is the fact reconciliation admitted more recently, `b` the one
  * that was already on record.
  */
 export interface ContradictionDto {
@@ -93,7 +92,7 @@ export type ResolveContradictionRequest =
   | { action: 'dismiss' };
 
 /**
- * GET /api/dreaming/latest — the plain digest (§B.6 v1 form; decision 0011):
+ * GET /api/dreaming/latest — the plain digest (§B.6 v1 form)
  * the most recent finished dreaming run's actions as at most six
  * human-phrased, deep-linked lines, scoped to the caller's own memories.
  * `lines: []` means render nothing — silent nights produce no panel.
@@ -103,7 +102,7 @@ export interface DreamDigestLine {
   /** SPA route the line deep-links to; always resolvable for the caller. */
   href: string;
   /**
-   * Which panel section the line belongs to. Since V2.0 (decision 0060) the
+   * Which panel section the line belongs to. Since V2.0 the
    * digest has exactly one section — the nightly consolidation; the tasks
    * section went with the task subsystem. Optional, absent reads as
    * `consolidation`.

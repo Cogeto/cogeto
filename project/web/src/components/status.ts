@@ -47,11 +47,6 @@ export const STATUS_META: Record<MemoryStatus, StatusMeta> = {
   replaced: { label: 'replaced', icon: '↻', className: 'bg-slate-100 text-slate-600' },
 };
 
-/** Kept for any direct className consumer; prefer the <StatusChip> component. */
-export const STATUS_CHIP: Record<MemoryStatus, string> = Object.fromEntries(
-  Object.entries(STATUS_META).map(([k, v]) => [k, v.className]),
-) as Record<MemoryStatus, string>;
-
 export const WARN_STATUSES: MemoryStatus[] = ['uncertain', 'contradicted'];
 
 /** Muted chip for past-belief facts in chat. */
@@ -78,20 +73,6 @@ export const TONE_CLASS: Record<Tone, string> = {
 export function isPastFact(status: MemoryStatus, validUntil: string | null): boolean {
   if (status === 'replaced' || status === 'outdated') return true;
   return validUntil !== null && new Date(validUntil).getTime() <= Date.now();
-}
-
-/**
- * Relative due rendering for due-dated rows (F3 handoff §4): "in 3 days", "due
- * today", "overdue by 2 days". `overdue` drives the red treatment.
- */
-export function dueLabel(iso: string): { text: string; overdue: boolean } {
-  const days = Math.round((new Date(iso).getTime() - Date.now()) / 86_400_000);
-  if (days < 0) {
-    const n = -days;
-    return { text: `overdue by ${n === 1 ? '1 day' : `${n} days`}`, overdue: true };
-  }
-  if (days === 0) return { text: 'due today', overdue: false };
-  return { text: days === 1 ? 'due tomorrow' : `in ${days} days`, overdue: false };
 }
 
 /** Relative timestamp for list rows; exact date on hover via title attr. */

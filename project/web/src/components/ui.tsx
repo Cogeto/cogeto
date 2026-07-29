@@ -77,17 +77,6 @@ export function PrivateTag() {
   return <span className="text-xs text-slate-400">private</span>;
 }
 
-export function DormantBadge() {
-  return (
-    <span
-      className={`${BADGE} bg-slate-100 text-slate-600`}
-      title="No activity for a while: gone quiet"
-    >
-      <span aria-hidden="true">☾</span>gone quiet
-    </span>
-  );
-}
-
 /** Entity tag. A button when interactive, a plain span otherwise. */
 export function EntityChip({
   name,

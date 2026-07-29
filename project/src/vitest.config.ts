@@ -10,7 +10,7 @@ export default defineConfig({
       // The prompt loader's compiled-layout default (dist/) does not resolve
       // when vitest runs from source — point it at project/prompts explicitly.
       COGETO_PROMPTS_DIR: path.resolve(__dirname, '..', 'prompts'),
-      // Same for the demo corpus loader (decision 0022) → project/demo.
+      // Same for the demo corpus loader → project/demo.
       COGETO_DEMO_DIR: path.resolve(__dirname, '..', 'demo'),
     },
     // Integration suites each start a real postgres container (Testcontainers).

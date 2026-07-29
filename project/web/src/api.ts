@@ -29,7 +29,6 @@ import type {
   ChainVerificationDto,
   DeletionPreviewDto,
   DeletionRequestedDto,
-  DreamDigestDto,
   FileDownloadDto,
   FileSourceDto,
   FileStatusDto,
@@ -66,15 +65,15 @@ import type {
 } from '@cogeto/shared';
 import type { Session } from './auth/oidc';
 
-/** Fired on any 401 so the shell can drop the dead session and re-fetch config (QS-36). */
+/** Fired on any 401 so the shell can drop the dead session and re-fetch config. */
 export const UNAUTHORIZED_EVENT = 'cogeto:unauthorized';
 
 /** Typed API errors: the server's message (e.g. an illegal transition) is the UI copy. */
 async function toError(path: string, response: Response): Promise<Error> {
   // A 401 means the bearer token expired or was revoked (10s Principal-cache
-  // bound, decision 0026). Signal the shell exactly once, from the single place
+  // bound). Signal the shell exactly once, from the single place
   // every request funnels its failures through, so it can re-derive auth from a
-  // fresh /api/config (QS-36). 403 (e.g. a missing admin role) is NOT this.
+  // fresh /api/config. 403 (e.g. a missing admin role) is NOT this.
   if (response.status === 401 && typeof window !== 'undefined') {
     window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
   }
@@ -160,14 +159,14 @@ export const fetchFileSource = (session: Session, objectKey: string): Promise<Fi
 export const fetchFileDownload = (session: Session, objectKey: string): Promise<FileDownloadDto> =>
   apiGet(`/api/files/${fileKey(objectKey)}/download`, session);
 // The dashboard is the owner's governance surface: explicit sensitive opt-in
-// (decision 0003 ruling 3) — the store still returns only the owner's own rows.
+// — the store still returns only the owner's own rows.
 export interface MemoryListParams {
   q?: string;
   scope?: MemoryScope;
   status?: MemoryStatus;
   sensitiveOnly?: boolean;
   entity?: string;
-  /** Owner-only (O2-B): the Review queue reviews your own facts, not peers'. */
+  /** Owner-only: the Review queue reviews your own facts, not peers'. */
   mine?: boolean;
   limit?: number;
   offset?: number;
@@ -219,12 +218,7 @@ export const editMemory = (
 export const rejectMemory = (session: Session, id: string): Promise<{ rejected: boolean }> =>
   apiPost(`/api/memories/${id}/reject`, {}, session);
 
-// The plain dreaming digest (§B.6 v1 form, F2-B): the latest finished run's
-// actions as at most six linked lines; empty lines = render nothing.
-export const fetchDreamDigest = (session: Session): Promise<DreamDigestDto> =>
-  apiGet('/api/dreaming/latest', session);
-
-// The attention surface (Post-v1 Priority 2): the computed "what needs me now"
+// The attention surface: the computed "what needs me now"
 // feed + honest unread state; viewing clears it; digest lines are dismissible.
 export const fetchAttention = (session: Session): Promise<AttentionFeedDto> =>
   apiGet('/api/attention', session);
@@ -233,12 +227,12 @@ export const markAttentionSeen = (session: Session): Promise<AttentionSeenDto> =
 export const dismissAttentionItem = (session: Session, key: string): Promise<AttentionDismissDto> =>
   apiPost('/api/attention/dismiss', { key }, session);
 
-// The dashboard statistics (Post-v1 Priority 2): cheap, gated aggregates + two
+// The dashboard statistics: cheap, gated aggregates + two
 // bounded daily series behind the redesigned home screen's visualizations.
 export const fetchDashboardStats = (session: Session): Promise<DashboardStatsDto> =>
   apiGet('/api/dashboard/stats', session);
 
-// The contradicted queue (F2-A, decision 0010): open contradictions where both
+// The contradicted queue: open contradictions where both
 // facts belong to the caller, and the three owner resolutions.
 export const fetchContradictions = (session: Session): Promise<ContradictionDto[]> =>
   apiGet('/api/relations', session);
@@ -289,7 +283,7 @@ export const fetchDeadLetterJobs = (session: Session): Promise<DeadLetterJobDto[
 export const fetchWorkerActivity = (session: Session): Promise<WorkerActivityDto> =>
   apiGet('/api/jobs/activity', session);
 
-// Per-user capture/upload defaults (§A.9, O1-C Settings).
+// Per-user capture/upload defaults (§A.9, Settings).
 export const fetchSettings = (session: Session): Promise<UserSettingsDto> =>
   apiGet('/api/settings', session);
 export const updateSettings = (
@@ -297,12 +291,12 @@ export const updateSettings = (
   patch: UpdateUserSettingsRequest,
 ): Promise<UserSettingsDto> => apiPut('/api/settings', patch, session);
 
-// Model configuration (decision 0040): read-only display of the active
+// Model configuration: read-only display of the active
 // provider configuration. Keys are operator-set and never pass through here.
 export const fetchModelConfig = (session: Session): Promise<ModelConfigDto> =>
   apiGet('/api/settings/model-config', session);
 
-// Instance context + language (P6.6, decisions 0051-0053).
+// Instance context + language (-0053).
 export const fetchUserContext = (session: Session): Promise<UserContextDto> =>
   apiGet('/api/settings/context', session);
 export const updateUserContext = (
@@ -321,7 +315,7 @@ export const dismissContextSuggestion = (
 ): Promise<{ dismissed: true }> =>
   apiPost('/api/settings/context/suggestions/dismiss', request, session);
 
-// Email capture (Session O4): the inbound address, the sender allowlist, and
+// Email capture: the inbound address, the sender allowlist, and
 // recent refusals for one-click allowlisting.
 export const fetchEmailConfig = (session: Session): Promise<EmailCaptureConfigDto> =>
   apiGet('/api/email/config', session);
@@ -338,7 +332,7 @@ export async function removeEmailAllowlistEntry(session: Session, id: string): P
   if (!response.ok) throw await toError(path, response);
 }
 
-// The read-only audit trail (§A.8/§B.1, O1-C).
+// The read-only audit trail (§A.8/§B.1).
 export function fetchAudit(session: Session, params: AuditQuery = {}): Promise<AuditPage> {
   const search = new URLSearchParams();
   if (params.actor?.trim()) search.set('actor', params.actor.trim());
@@ -352,7 +346,7 @@ export function fetchAudit(session: Session, params: AuditQuery = {}): Promise<A
   return apiGet(`/api/audit${qs ? `?${qs}` : ''}`, session);
 }
 
-// The approval state machine (§A.8, O1-B). Create → confirm (approve|reject) is
+// The approval state machine (§A.8). Create → confirm (approve|reject) is
 // the ONLY path; execution happens server-side in the worker.
 export const fetchPendingApprovals = (session: Session): Promise<ApprovalDto[]> =>
   apiGet('/api/approvals', session);
@@ -369,16 +363,16 @@ export const confirmApproval = (
   decision: ApprovalDecision,
 ): Promise<ApprovalDto> => apiPost(`/api/approvals/${id}`, { decision }, session);
 
-// The email reading view behind an email memory's source drawer (Session O4).
+// The email reading view behind an email memory's source drawer.
 export const fetchEmailSource = (session: Session, emailId: string): Promise<EmailSourceDto> =>
   apiGet(`/api/email/${encodeURIComponent(emailId)}/source`, session);
 
-// The retained web page behind a web memory's source drawer (Priority 5 Part A).
+// The retained web page behind a web memory's source drawer.
 export const fetchWebSource = (session: Session, id: string): Promise<WebSourceDto> =>
   apiGet(`/api/research/${encodeURIComponent(id)}/source`, session);
 
 // Research runs (Part B): propose → show-edit-approve gate → capture → synthesis.
-// `conversationId` (issue #259): the invoking chat thread — the concluded
+// `conversationId`: the invoking chat thread — the concluded
 // answer is appended there automatically.
 export const proposeResearch = (
   session: Session,
@@ -394,7 +388,7 @@ export const fetchResearchRuns = (session: Session): Promise<ResearchRunDto[]> =
   apiGet('/api/research/runs', session);
 export const fetchResearchRun = (session: Session, id: string): Promise<ResearchRunDto> =>
   apiGet(`/api/research/runs/${encodeURIComponent(id)}`, session);
-// The in-chat flow's honest wait (decision 0047): per-page pipeline progress.
+// The in-chat flow's honest wait: per-page pipeline progress.
 export const fetchResearchProgress = (
   session: Session,
   id: string,
@@ -416,12 +410,12 @@ export const captureResearchPages = (
   apiPost(`/api/research/runs/${encodeURIComponent(id)}/capture`, { urls }, session);
 export const synthesiseResearch = (session: Session, id: string): Promise<ResearchAnswerDto> =>
   apiPost(`/api/research/runs/${encodeURIComponent(id)}/synthesise`, {}, session);
-// The stored answer was seen (decision 0057): the chat resume surface stops
+// The stored answer was seen: the chat resume surface stops
 // showing this run.
 export const markResearchSeen = (session: Session, id: string): Promise<{ ok: true }> =>
   apiPost(`/api/research/runs/${encodeURIComponent(id)}/seen`, {}, session);
 
-// Named skills (Priority 7, decision 0059): propose → the plan gate → the
+// Named skills: propose → the plan gate → the
 // live run view → the brief.
 export const proposeSkillRun = (
   session: Session,
@@ -440,7 +434,7 @@ export const approveSkillPlan = (
   apiPost(`/api/skills/runs/${encodeURIComponent(id)}/plan`, { queries }, session);
 export const cancelSkillRun = (session: Session, id: string): Promise<SkillRunDetailDto> =>
   apiPost(`/api/skills/runs/${encodeURIComponent(id)}/cancel`, {}, session);
-// Reply drafts (Session O4 — email source). Drafting is a consequential action;
+// Reply drafts. Drafting is a consequential action;
 // Cogeto never sends — the finalised draft is presented for the user to send.
 export const draftEmailReply = (
   session: Session,
@@ -460,7 +454,7 @@ export const fetchEmailDraft = (
 export const retryDeadLetterJob = (session: Session, id: string): Promise<{ retried: boolean }> =>
   apiPost(`/api/jobs/dead-letter/${id}/retry`, {}, session);
 
-// Time-travel (decision 0012): the visual surface over the temporal primitives.
+// Time-travel: the visual surface over the temporal primitives.
 // Thin reads — a subject's spans, the subject at an instant, and the diff
 // between two instants. Every read is Principal-gated server-side.
 export const fetchTimeline = (session: Session, subject: string): Promise<TimelineDto> =>
@@ -493,12 +487,10 @@ export const triggerPassportExport = (
 ): Promise<PassportExportDto> => apiPost('/api/passport/exports', { includeOriginals }, session);
 export const fetchPassportExports = (session: Session): Promise<PassportExportDto[]> =>
   apiGet('/api/passport/exports', session);
-export const fetchPassportExport = (session: Session, id: string): Promise<PassportExportDto> =>
-  apiGet(`/api/passport/exports/${id}`, session);
 export const fetchPassportDownload = (session: Session, id: string): Promise<PassportDownloadDto> =>
   apiGet(`/api/passport/exports/${id}/download`, session);
 
-// Conversations (P6.9, decision 0056): the sidebar's containers. Memory is the
+// Conversations: the sidebar's containers. Memory is the
 // continuity, conversations are workspaces — deleting one is a SOURCE deletion
 // (deleteSource with type 'chat_conversation'), never a chat route.
 export const fetchConversations = (session: Session): Promise<ConversationDto[]> =>
@@ -522,7 +514,7 @@ export const fetchChatMessages = (
 ): Promise<ChatMessagePage> =>
   apiGet(`/api/chat/conversations/${conversationId}/messages`, session);
 
-// Chat-derived memory capture (O2-C, decision 0021): "remember this" on a user
+// Chat-derived memory capture: "remember this" on a user
 // message routes it through the pipeline (source_type 'chat').
 export const rememberChatMessage = (session: Session, id: string): Promise<ChatRememberedDto> =>
   apiPost(`/api/chat/messages/${id}/remember`, {}, session);
@@ -550,11 +542,11 @@ export async function askChat(
       'content-type': 'application/json',
     },
     body: JSON.stringify({ content, conversationId }),
-    // Switching conversations mid-stream detaches cleanly (P6.9): the message
+    // Switching conversations mid-stream detaches cleanly: the message
     // still lands server-side in the conversation it was sent to.
     signal,
   });
-  // A 429 (rate limit / too many concurrent streams, FIX-2) arrives BEFORE the
+  // A 429 (rate limit / too many concurrent streams) arrives BEFORE the
   // stream starts — surface the server's message as the UI copy.
   if (!response.ok || !response.body) throw await toError('/api/chat', response);
 

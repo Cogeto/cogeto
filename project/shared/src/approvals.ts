@@ -1,4 +1,4 @@
-/** Approval state-machine DTOs (Addendum §A.8; O1-B). */
+/** Approval state-machine DTOs (Addendum §A.8). */
 
 export const APPROVAL_STATUSES = [
   'draft',
@@ -43,7 +43,7 @@ export interface ConfirmApprovalRequest {
   decision: ApprovalDecision;
 }
 
-/** The one wired consequential action (O1-B §3): bulk memory status change. */
+/** The one wired consequential action (§3): bulk memory status change. */
 export const BULK_OUTDATE_ACTION = 'memory.bulk_outdate';
 export interface BulkOutdatePayload {
   memoryIds: string[];

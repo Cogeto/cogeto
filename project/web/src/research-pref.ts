@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
 /**
- * Auto-research preference (decision 0050). When on, a knowledge answer that
+ * Auto-research preference. When on, a knowledge answer that
  * would offer web research just does it — no tap, no gate, no picking. Off by
  * default; the "Research this on the web" tap is the consent otherwise. Stored
  * per device in localStorage (like the theme), so no migration; toggled from

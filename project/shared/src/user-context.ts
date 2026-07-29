@@ -1,8 +1,8 @@
 /**
- * Per-user instance context (P6.6, decision 0051) and language preference
- * (decision 0052). All fields are optional except the language pair, which
+ * Per-user instance context and language preference
+ *. All fields are optional except the language pair, which
  * always has a value (defaults: en, mirroring on). `timezone` is null when the
- * user has not overridden the instance timezone (QS-32); the effective zone is
+ * user has not overridden the instance timezone; the effective zone is
  * surfaced separately so the UI can show what actually applies.
  */
 
@@ -24,7 +24,7 @@ export interface UserContextDto {
   preferredLanguage: PreferredLanguage;
   /** Strict mode: replies always in preferredLanguage, never mirrored. */
   languageStrict: boolean;
-  /** Provenance of an accepted suggestion (decision 0053); null = user-typed. */
+  /** Provenance of an accepted suggestion; null = user-typed. */
   companySourceMemoryId: string | null;
   roleTitleSourceMemoryId: string | null;
 }
@@ -43,7 +43,7 @@ export interface UpdateUserContextRequest {
   languageStrict?: boolean;
 }
 
-/** The fields the derivation loop may propose (decision 0053). */
+/** The fields the derivation loop may propose. */
 export type SuggestibleContextField = 'company' | 'roleTitle';
 
 export interface ContextSuggestionDto {

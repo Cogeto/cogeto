@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getAutoResearch, setAutoResearch } from './research-pref';
 
-/** Auto-research preference (decision 0050): off by default, persists per device. */
+/** Auto-research preference: off by default, persists per device. */
 describe('auto-research preference', () => {
   afterEach(() => vi.unstubAllGlobals());
 

@@ -95,8 +95,6 @@ export const verificationOutputSchema = z.object({
   reason: z.string().min(1),
 });
 
-export type VerificationOutput = z.infer<typeof verificationOutputSchema>;
-
 /** Batched verification (verification/v0005): one entry per
  * numbered claim. `claim` is 1-based, matching the input blocks. */
 export const verificationBatchOutputSchema = z.object({
@@ -108,8 +106,6 @@ export const verificationBatchOutputSchema = z.object({
     }),
   ),
 });
-
-export type VerificationBatchOutput = z.infer<typeof verificationBatchOutputSchema>;
 
 /**
  * Resolve a fact's validity interval against the note anchor (§A.6). Accepts BOTH contracts so nothing breaks mid-session

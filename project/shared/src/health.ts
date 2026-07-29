@@ -7,13 +7,13 @@ export interface HealthCheck {
   detail?: string;
 }
 
-/** Queue visibility for the System view (S3-B): depth + dead-letter count. */
+/** Queue visibility for the System view: depth + dead-letter count. */
 export interface QueueHealthCheck extends HealthCheck {
   depth: number;
   deadLettered: number;
   /**
    * Graphile jobs that exhausted their retries and will NOT run again
-   * (attempts ≥ max_attempts, last_error set) — QS-34. Unlike dead_letter (our
+   * (attempts ≥ max_attempts, last_error set) —. Unlike dead_letter (our
    * own parked-work table), these still sit in the queue as permanent failures;
    * any > 0 degrades the instance so an operator is alerted.
    */
@@ -21,7 +21,7 @@ export interface QueueHealthCheck extends HealthCheck {
 }
 
 /**
- * Optional-capability visibility (P6.7, decision 0055). Every optional
+ * Optional-capability visibility. Every optional
  * capability of the instance reports one of three states; "unreachable" is the
  * LOUD state (enabled but not actually working) and degrades /api/health.
  */
@@ -42,7 +42,7 @@ export interface CapabilitySummary {
   error?: string;
 }
 
-/** Scheduled jobs join the same surface (decision 0055): last run + overdue. */
+/** Scheduled jobs join the same surface: last run + overdue. */
 export type ScheduledJobId = 'dreaming' | 'sweep';
 
 export type ScheduledJobState = 'ok' | 'overdue' | 'failing';
@@ -62,7 +62,7 @@ export interface ScheduledJobSummary {
 
 export interface HealthReport {
   status: 'ok' | 'degraded';
-  /** Optional-capability registry states (P6.7) — additive; loud states degrade. */
+  /** Optional-capability registry states — additive; loud states degrade. */
   capabilities: CapabilitySummary[];
   /** Scheduled-job states (dreaming, sweep) — additive; overdue/failing degrade. */
   jobs: ScheduledJobSummary[];
@@ -70,16 +70,16 @@ export interface HealthReport {
     postgres: HealthCheck;
     qdrant: HealthCheck;
     minio: HealthCheck;
-    /** Bucket default encryption reported by MinIO (§A.9, decision 0008). */
+    /** Bucket default encryption reported by MinIO (§A.9). */
     minioEncryption: HealthCheck;
     /** Nightly sweep result: open integrity alerts + chain status (§A.7 step 4). */
     integrity: HealthCheck;
     migrations: HealthCheck;
     queue: QueueHealthCheck;
-    /** Model-gateway reachability probe — cheap, cached (QS-35). */
+    /** Model-gateway reachability probe — cheap, cached. */
     gateway: HealthCheck;
     /**
-     * Inbound mail (Session O4): the per-tenant Haraka SMTP listener is
+     * Inbound mail: the per-tenant Haraka SMTP listener is
      * accepting connections. `ok` with a "not configured" detail when the
      * instance runs without the mail service (COGETO_MAIL_SMTP_ADDRESS unset).
      */

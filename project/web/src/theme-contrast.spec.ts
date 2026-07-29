@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 /**
- * Dark-theme contrast, verified programmatically (P6.8). Pure WCAG 2.1 math over
+ * Dark-theme contrast, verified programmatically. Pure WCAG 2.1 math over
  * the actual dark token values from index.css: no dependency, no browser. We
  * assert AA (>= 4.5:1) for every load-bearing TEXT token against its real dark
  * background, and >= 3:1 (WCAG 1.4.11 non-text) for chart hues on the surface.
@@ -44,7 +44,7 @@ function tint(fg: string, alpha: number, bg: string): string {
   return `#${to2(mix(fr, br))}${to2(mix(fg_, bg_))}${to2(mix(fb, bb))}`;
 }
 
-// The dark palette — mirrors :root.dark in index.css.
+// The dark palette — mirrors:root.dark in index.css.
 const CANVAS = '#0f1222'; // --color-slate-50 (app background)
 const SURFACE = '#171a2e'; // --color-surface (cards/headers/drawers)
 

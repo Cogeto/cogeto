@@ -18,12 +18,6 @@ import type { ResolvedModelProviders } from '../model-gateway/index';
 export const TRUST_SCORES_SCHEMA_VERSION = '1.0';
 
 /** Default model tiers (mirrors.env.example / the gateway defaults). */
-export const DEFAULT_MODELS = {
-  pipeline: 'mistral-small-latest',
-  answer: 'mistral-medium-latest',
-  embedding: 'mistral-embed',
-} as const;
-
 const fraction = z.number().min(0).max(1);
 const count = z.int().min(0);
 
@@ -91,7 +85,6 @@ export const trustScoresDocumentSchema = z.object({
   notes: z.array(z.string().min(1)).optional(),
 });
 export type TrustScoresDocument = z.infer<typeof trustScoresDocumentSchema>;
-export type TrustConfiguration = z.infer<typeof configurationSchema>;
 
 /**
  * A PARTIAL configuration snapshot — what one harness run knows. `npm run
