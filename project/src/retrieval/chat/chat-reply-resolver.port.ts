@@ -1,7 +1,7 @@
 import type { Principal } from '@cogeto/shared';
 
 /**
- * The chat → email-reply seam (Session O4 — email reply triggers). Chat detects
+ * The chat → email-reply seam. Chat detects
  * a "draft a reply to Ana" request (query-understanding), but the email data and
  * the drafting live in connectors (app-only). This port lets ChatService resolve
  * the target email and create the draft without importing connectors — the

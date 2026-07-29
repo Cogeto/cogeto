@@ -59,7 +59,7 @@ describe('email allowlist management (integration: real Postgres)', () => {
     expect((await service.listForOwner(owner.userId)).length).toBe(2);
 
     // The routing now matches an allowlisted address and a domain member to
-    // the owner (decision 0031 rule 2); a stranger matches nobody.
+    // the owner (rule 2); a stranger matches nobody.
     expect(await service.ownersMatching('ana@adriatic-foods.hr')).toContain(owner.userId);
     expect(await service.ownersMatching('anyone@trusted.example')).toContain(owner.userId);
     expect(await service.ownersMatching('stranger@example.net')).toEqual([]);
@@ -84,7 +84,7 @@ describe('email allowlist management (integration: real Postgres)', () => {
     await expect(service.addEntry(owner, { kind: 'domain', value: 'localhost' })).rejects.toThrow();
   });
 
-  it('refusal_scoping_and_retention (SEC-8/SEC-6): owner filter is applied before the limit, and old rows are pruned', async () => {
+  it('refusal_scoping_and_retention (/): owner filter is applied before the limit, and old rows are pruned', async () => {
     // 25 NEWER refusals for a different owner, then one for our owner.
     for (let i = 0; i < 25; i++) {
       await service.recordRefusal(tdb.db, {
@@ -101,13 +101,13 @@ describe('email allowlist management (integration: real Postgres)', () => {
       reason: 'not allowlisted',
     });
 
-    // SEC-8: our owner's refusal is not crowded out of the window by the 25
+    // our owner's refusal is not crowded out of the window by the 25
     // newer other-owner rows (the owner/null filter is in the WHERE, before LIMIT).
     const recent = await service.recentRefusalsForOwner(owner.userId);
     expect(recent.map((r) => r.fromAddr)).toContain('mine@ext.test');
     expect(recent.map((r) => r.fromAddr)).not.toContain('x0@ext.test'); // other owner filtered out
 
-    // SEC-6: age our row past the window; the retention pass prunes it.
+    // age our row past the window; the retention pass prunes it.
     await tdb.pool.query(
       `UPDATE email_refusal SET refused_at = now() - interval '40 days' WHERE from_addr = 'mine@ext.test'`,
     );

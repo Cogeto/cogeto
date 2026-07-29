@@ -1,10 +1,11 @@
 # Contributing to Cogeto
 
 Thanks for considering it. Cogeto is a small, deliberate codebase with binding
-architecture rules — this page is the outsider's distillation of how work
+architecture rules: this page is the outsider's distillation of how work
 lands. The full internal versions: [`docs/engineering-workflow.md`](docs/engineering-workflow.md)
 (the delivery loop) and [`AGENTS.md`](AGENTS.md) (the non-negotiable
-engineering rules — worth reading before any memory/retrieval/pipeline change).
+engineering rules, which are worth reading before any memory, retrieval, or
+pipeline change).
 
 ## The delivery loop
 
@@ -16,7 +17,7 @@ engineering rules — worth reading before any memory/retrieval/pipeline change)
    every boundary, names from [`docs/glossary.md`](docs/glossary.md), never
    memory content or tokens in logs.
 4. **Open a pull request** with a [Conventional Commit](https://www.conventionalcommits.org/)
-   title — `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `ci:` —
+   title using one of `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `ci:`
    because we **squash-merge**: your PR title becomes the single commit on
    `main` and a line in the release notes. Link issues with `Closes #N`.
 5. **Five required checks must be green** before merge:
@@ -24,10 +25,10 @@ engineering rules — worth reading before any memory/retrieval/pipeline change)
    | Check        | What it enforces                                          |
    | ------------ | --------------------------------------------------------- |
    | `lint`       | ESLint + Prettier (+ shellcheck on the operator script)   |
-   | `boundaries` | the module map — no module touches another's tables       |
+   | `boundaries` | the module map: no module touches another's tables       |
    | `test`       | Vitest unit + Testcontainers integration suites           |
    | `build`      | backend compile + frontend build                          |
-   | `eval-gate`  | the golden-set gate — quality regressions fail the build  |
+   | `eval-gate`  | the golden-set gate: quality regressions fail the build  |
 
 6. A maintainer squash-merges. Releases are cut separately by the maintainer
    tagging (see [`docs/release-process.md`](docs/release-process.md)); CI never
@@ -68,27 +69,27 @@ the live gate runs on `main` after merge.
 **Golden-set contribution rules** (binding; full spec in
 [`docs/eval-golden-set.md`](docs/eval-golden-set.md)):
 
-- **Fictional data only.** No real people, companies, addresses, or events —
+- **Fictional data only.** No real people, companies, addresses, or events:
   ever. Cases read like real work notes but are invented.
 - Follow the corpus format and labeling rules in the spec (expected facts,
   verification verdicts, temporal anchors); English and Croatian cases are
   both welcome.
-- A case that a model "should" pass but doesn't is a *good* contribution —
+- A case that a model "should" pass but doesn't is a *good* contribution:
   gates only ratchet when quality actually improves.
 
 ## Prompts and decisions
 
 - Every prompt that decides what Cogeto remembers is a **versioned artifact**
-  in `project/prompts/` — numbered, immutable once released, changelogged.
+  in `project/prompts/`, numbered, immutable once released, changelogged.
   Never edit a released prompt in place; add a new version.
-- Notable decisions (structure, dependencies, schema commitments, renames) get
-  a numbered record in [`docs/decisions/`](docs/decisions/) — short, honest,
-  stating what was decided and why. Read the neighboring records for the tone.
+- The decision trail is the issue and the pull request. State plainly what you
+  decided and why in the PR body, and update the affected documentation in the
+  same change.
 - New dependencies need maintainer sign-off before the PR.
 
 ## The CLA, honestly
 
-Contributions require accepting the [Contributor License Agreement](CLA.md) —
+Contributions require accepting the [Contributor License Agreement](CLA.md):
 and for individuals that is **one comment, once, ever**: on your first pull
 request a bot posts instructions, and you sign by replying with exactly
 
@@ -97,11 +98,11 @@ request a bot posts instructions, and you sign by replying with exactly
 No forms, no email, no signature to scan. Your acceptance (username + date) is
 recorded permanently in the repository, and you're never asked again.
 (Companies contributing through employees use the Entity CLA in
-[`CLA.md`](CLA.md) — that one does go through email, deliberately.)
+[`CLA.md`](CLA.md): that one does go through email, deliberately.)
 
 The plain reason a CLA exists at all: Cogeto's core is **AGPLv3**, and the
 company behind it (MVT Solutions Group d.o.o.) also offers **commercial
-licenses** to organizations that cannot accept AGPL terms — that
+licenses** to organizations that cannot accept AGPL terms, that
 dual-licensing is what funds the open core. Legally, we can only offer your
 contribution under both licenses if you grant us that permission; that is all
 the CLA does. You keep your copyright and can use your own contribution
@@ -116,5 +117,5 @@ contact listed there.
 
 ## Security issues
 
-Never open a public issue for a vulnerability — see [`SECURITY.md`](SECURITY.md)
+Never open a public issue for a vulnerability. See [`SECURITY.md`](SECURITY.md)
 for private reporting.

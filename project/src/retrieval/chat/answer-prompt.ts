@@ -10,11 +10,11 @@ import type { OpenLoop, RetrievalMode } from '../retrieval.service';
  */
 export const ANSWER_PROMPT = { family: 'answer', version: 'v0007' } as const;
 
-/** The zero-open-loops path (F3-B): a true "all clear", not a data gap. */
+/** The zero-open-loops path: a true "all clear", not a data gap. */
 export const NOTHING_OPEN = 'Nothing is still open — nothing on record is waiting on you.';
 
 /**
- * Localized forms of the two deterministic chat replies (decision 0052): a
+ * Localized forms of the two deterministic chat replies: a
  * deterministic string cannot mirror the question's language, so it follows
  * the anchor — the user's preferred language.
  */
@@ -33,16 +33,16 @@ export function nothingOnRecord(lang: 'en' | 'hr'): string {
 export interface AnswerTemporalContext {
   temporal?: TemporalIntent;
   changes?: MemoryChange[];
-  /** What is still standing, when mode is open_loops (decision 0060). */
+  /** What is still standing, when mode is open_loops. */
   openLoops?: OpenLoop[];
   /**
-   * Knowledge-class question (decision 0046): emits the `GENERAL KNOWLEDGE:
+   * Knowledge-class question: emits the `GENERAL KNOWLEDGE
    * allowed` line, permitting marked `[U]` statements from model knowledge.
    * Memory-first stands: provided facts still ground and win.
    */
   knowledge?: boolean;
   /**
-   * The rendered now-block (P6.6, decision 0051): NOW + USER CONTEXT +
+   * The rendered now-block: NOW + USER CONTEXT +
    * LANGUAGE lines, built by infrastructure's buildContextBlock. Prepended
    * before MODE; absent means the block simply does not appear.
    */
@@ -74,7 +74,7 @@ export function buildAnswerInput(
         : '';
     const label = fact.sourceType === 'user_note' ? 'note' : fact.sourceType.replace('_', ' ');
     const subject = fact.subjectEntity ? ` | about: ${fact.subjectEntity}` : '';
-    // The past-framing marker (decision 0012 ruling 6): the model may never
+    // The past-framing marker: the model may never
     // present a PAST BELIEF fact as current.
     const past = fact.pastBelief
       ? ` | PAST BELIEF${
@@ -141,7 +141,7 @@ export function buildAnswerInput(
 }
 
 /**
- * The smalltalk-mode input (decision 0046): no facts block, the recent turns
+ * The smalltalk-mode input: no facts block, the recent turns
  * for tone, the turn itself. The same answer artifact serves it — MODE gates
  * the behavior.
  */
@@ -166,7 +166,7 @@ export function buildSmallTalkInput(
 }
 
 /**
- * Canonicalize a raw model answer for storage and rendering (decision 0007
+ * Canonicalize a raw model answer for storage and rendering (
  * ruling 2; extended by 0046): map the model's short `[F1]` markers to
  * `{{cite:<uuid>}}` and its `[U]` markers to `{{unsourced}}`, then strip EVERY
  * other bracketed/braced token. The stored text is guaranteed to contain only

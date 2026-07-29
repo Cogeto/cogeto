@@ -27,7 +27,7 @@ const configSchema = z
     httpPort: z.coerce.number().int().positive().prefault(3000),
     databaseUrl: z.string().min(1),
     qdrantUrl: z.url(),
-    /** Qdrant API key (QS-4) — required for auth on a reachable deployment; the
+    /** Qdrant API key — required for auth on a reachable deployment; the
      * default compose stack keeps Qdrant on the internal network with no key. */
     qdrantApiKey: z.string().min(1).optional(),
     s3Url: z.url(),
@@ -37,12 +37,12 @@ const configSchema = z
      * hostname is not reachable from the browser (see the O1 owner checklist).
      */
     s3PublicUrl: z.url().optional(),
-    /** Object-storage credentials + bucket (decision 0008). Defaults match the
+    /** Object-storage credentials + bucket. Defaults match the
      * compose dev stack; provisioning injects real values per instance. */
     s3AccessKey: z.string().min(1).default('cogeto'),
     s3SecretKey: z.string().min(1).default('cogeto-dev-password'),
     s3Bucket: z.string().min(1).default('cogeto'),
-    /** Instance signing keypair directory (§B.1, decision 0008). The local
+    /** Instance signing keypair directory (§B.1). The local
      * default is gitignored; compose mounts the instance-keys volume. */
     instanceKeyDir: z.string().min(1).default('.instance-keys'),
     /** File-upload cap (O1) — default 25 MB; PDFs/DOCX only. */
@@ -54,7 +54,7 @@ const configSchema = z
     /** Presigned download-URL lifetime in seconds (§A.9 — short-lived). */
     downloadUrlTtlSeconds: z.coerce.number().int().positive().prefault(300),
     /**
-     * Inbound email (Session O4, decision 0028). The instance's unique inbound
+     * Inbound email. The instance's unique inbound
      * address (ruling 1), the size caps (ruling 6), the optional capture-owner
      * email (ruling 3), and the shared secret the Haraka queue hook presents to
      * the internal intake endpoint (ruling 7). All set at provision time; the
@@ -73,31 +73,31 @@ const configSchema = z
       .prefault(25 * 1024 * 1024),
     adminUserEmail: z.string().min(1).optional(),
     mailIntakeToken: z.string().default(''),
-    /** Require SPF-authenticated senders for the self-route (SEC-1); default on. */
+    /** Require SPF-authenticated senders for the self-route (); default on. */
     mailRequireAuthenticatedSender: z
       .union([z.literal('0'), z.literal('1'), z.boolean()])
       .default('1')
       .transform((v) => v === true || v === '1'),
-    /** Per-sender accepted-message cap within the intake window (SEC-2); 0 = off. */
+    /** Per-sender accepted-message cap within the intake window (); 0 = off. */
     mailIntakeMaxPerSender: z.coerce.number().int().nonnegative().prefault(60),
     mailIntakeRateWindowSeconds: z.coerce.number().int().positive().prefault(3600),
-    /** host:port of the Haraka SMTP listener for the health probe (Session O4);
+    /** host:port of the Haraka SMTP listener for the health probe;
      * unset → the mail check reports "not configured" and stays green. */
     mailSmtpAddress: z.string().min(1).optional(),
     /**
-     * Web research (Priority 5 Part A; decisions 0042/0043). Discovery is the
+     * Web research. Discovery is the
      * self-hosted SearXNG container (compose profile `research`, internal
      * network only); unset → the discovery client reports "search unavailable"
-     * instead of failing requests. The fetch knobs bound the narrow fetcher:
+     * instead of failing requests. The fetch knobs bound the narrow fetcher
      * hard per-page timeout, response-size cap, and the ranked-result cap the
      * discovery client enforces. `researchRetainHtml` switches on optional
-     * raw-HTML retention (decision 0043 — default off: clean text + URL only).
+     * raw-HTML retention (— default off: clean text + URL only).
      */
     searxngUrl: z.url().optional(),
     /**
-     * Capability visibility (P6.7, decision 0055). The process cannot see which
+     * Capability visibility. The process cannot see which
      * compose profiles are active, so the active profile list is passed in via
-     * COGETO_COMPOSE_PROFILES (compose mirrors COMPOSE_PROFILES from .env — the
+     * COGETO_COMPOSE_PROFILES (compose mirrors COMPOSE_PROFILES from.env — the
      * operator script's `features` command maintains it). CLI `--profile` flags
      * are invisible to the container; dev runs that use them can set the
      * explicit per-capability flags below instead.
@@ -116,9 +116,9 @@ const configSchema = z
     /** Explicit consoles enablement for `--profile consoles` dev runs. */
     consolesEnabled: envBool,
     /**
-     * Overdue threshold for the nightly jobs (dreaming 03:30, sweep 03:00 UTC):
+     * Overdue threshold for the nightly jobs (dreaming 03:30, sweep 03:00 UTC)
      * a job with no successful run within this window reports `overdue` in the
-     * capability registry (decision 0055). 26 h clears one nightly slot plus
+     * capability registry. 26 h clears one nightly slot plus
      * slack; raise it only for deliberately less frequent schedules.
      */
     jobsOverdueHours: z.coerce.number().positive().prefault(26),
@@ -132,11 +132,11 @@ const configSchema = z
       .prefault(5 * 1024 * 1024),
     researchRetainHtml: envBool,
     /**
-     * Postgres connection-pool ceiling per process (QS-38). Sized against worker
+     * Postgres connection-pool ceiling per process. Sized against worker
      * concurrency (2): the ingestion pipeline deliberately holds its idempotency
-     * transaction OPEN across model calls (decision 0004/0005 — a retry must
+     * transaction OPEN across model calls (— a retry must
      * leave no partial rows), so each in-flight job pins a connection for its
-     * whole run; the single-flight lock (QS-39) and the graphile runner pin more.
+     * whole run; the single-flight lock and the graphile runner pin more.
      * The default 10 gives ample headroom over concurrency for both the Nest pool
      * and the worker's graphile pool. Raise it only alongside worker concurrency.
      */
@@ -153,7 +153,7 @@ const configSchema = z
     webConfigFile: z.string().min(1),
     logLevel: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
     /**
-     * Instance display timezone (QS-32) — relative dates ("today"/"tomorrow")
+     * Instance display timezone — relative dates ("today"/"tomorrow")
      * resolve against local midnight in THIS zone, not UTC, fixing the
      * near-midnight off-by-one for the EU audience. IANA name; default matches
      * the primary market. All chain/interval math stays UTC; only the day
@@ -161,13 +161,13 @@ const configSchema = z
      */
     timezone: z.string().min(1).default('Europe/Zagreb'),
     /**
-     * Zitadel project role that unlocks the operator System view (QS-10): the
+     * Zitadel project role that unlocks the operator System view: the
      * queue activity/dead-letter reads and retry, which expose cross-user
      * source ids. A member without it gets 403 on /api/jobs/*.
      */
     adminRole: z.string().min(1).default('admin'),
     /**
-     * Ana sandbox (decision 0022). `demoMode` turns this instance into the public
+     * Ana sandbox. `demoMode` turns this instance into the public
      * sandbox: the app serves the pre-minted demo session on GET /api/config and
      * the worker schedules the periodic reset. Never set on a customer instance.
      */
@@ -176,7 +176,7 @@ const configSchema = z
      * (`assertDemoAllowed`). Set by `COGETO_PRODUCTION=1` or `COGETO_ENV=production`. */
     production: envBool,
     /** Shared file the demo-seed job writes the demo Principal's PAT to and the
-     * app reads to populate `WebConfig.demoSession` (decision 0022 ruling 1). */
+     * app reads to populate `WebConfig.demoSession`. */
     demoSessionFile: z.string().min(1).default('/demo-config/session.json'),
     /** Cron for the scheduled demo reset (demo profile only) — default every 6h. */
     demoResetCron: z.string().min(1).default('0 */6 * * *'),
@@ -186,7 +186,7 @@ const configSchema = z
      * with (written by zitadel FirstInstance; mounted like zitadel-init). */
     zitadelPatFile: z.string().min(1).default('/machinekey/pat.txt'),
     /**
-     * Redaction mode (Addendum B.8; decision 0002 language boundary). `REDACTION_*`
+     * Redaction mode (Addendum B.8; language boundary). `REDACTION_*`
      * (not COGETO_-prefixed) — set by the `redaction` compose profile. When on, the
      * gateway pseudonymizes every outbound model call and fails closed if the
      * sidecar is unreachable. `REDACTION_URL` is required when enabled.
@@ -194,11 +194,11 @@ const configSchema = z
     redactionEnabled: envBool,
     redactionUrl: z.url().optional(),
     /**
-     * Fail-closed assertion (QS-21): when set, the process REFUSES to boot
+     * Fail-closed assertion: when set, the process REFUSES to boot
      * unless redaction is actually enabled. The `redaction` compose profile sets
      * this on the app + worker, so bringing the profile up while forgetting
      * `REDACTION_ENABLED=1` fails loudly at boot instead of silently sending
-     * plaintext to the model — "profile up, redaction off" can no longer pass.
+     * plaintext to the model"profile up, redaction off" can no longer pass.
      */
     redactionRequired: envBool,
   })
@@ -209,14 +209,14 @@ const configSchema = z
   .refine((c) => !c.redactionRequired || c.redactionEnabled, {
     path: ['redactionEnabled'],
     error:
-      'REDACTION_REQUIRED is set but REDACTION_ENABLED is not — refusing to boot without redaction (QS-21)',
+      'REDACTION_REQUIRED is set but REDACTION_ENABLED is not, refusing to boot without redaction',
   });
 
 export type CogetoConfig = z.infer<typeof configSchema> & {
-  /** Abuse/DoS limits (FIX-2), resolved from env + demoMode at load. */
+  /** Abuse/DoS limits, resolved from env + demoMode at load. */
   limits: LimitsConfig;
   /**
-   * Per-tier model provider configuration (decision 0040): provider + model
+   * Per-tier model provider configuration: provider + model
    * for pipeline/answer/embeddings, the stable configuration id, and the
    * provider keys (never logged or serialized to any DTO). Invalid
    * combinations threw inside loadConfig — boot-time, never first-request.
@@ -225,7 +225,7 @@ export type CogetoConfig = z.infer<typeof configSchema> & {
 };
 
 /**
- * The demo-profile boot guard (decision 0022 ruling 4). Every demo entrypoint
+ * The demo-profile boot guard. Every demo entrypoint
  * (seed, reset) calls this first: a production instance that somehow received
  * the demo profile fails loudly rather than seeding fictional data into real
  * infrastructure, and running a demo tool without `COGETO_DEMO_MODE` is refused.
@@ -235,13 +235,13 @@ export function assertDemoAllowed(config: Pick<CogetoConfig, 'demoMode' | 'produ
   if (config.production) {
     throw new Error(
       'refusing to run a demo tool on a production instance ' +
-        '(COGETO_PRODUCTION / COGETO_ENV=production is set) — decision 0022 ruling 4',
+        '(COGETO_PRODUCTION / COGETO_ENV=production is set)',
     );
   }
   if (!config.demoMode) {
     throw new Error(
-      'refusing to run a demo tool without COGETO_DEMO_MODE=1 — the demo profile ' +
-        'is never enabled on a customer instance (decision 0022 ruling 4)',
+      'refusing to run a demo tool without COGETO_DEMO_MODE=1: the demo profile ' +
+        'is never enabled on a customer instance',
     );
   }
 }
@@ -308,11 +308,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
       .join('\n');
     throw new Error(`invalid COGETO_* configuration:\n${details}`);
   }
-  // QS-8: refuse known dev secret values on a non-localhost deployment. Checks
+  // refuse known dev secret values on a non-localhost deployment. Checks
   // whatever secret env vars are present (the app sees a subset; the dedicated
   // preflight container sees them all) — absent vars are skipped.
   assertProductionSecrets(env);
-  // Model provider configuration (decision 0040): the same resolver every
+  // Model provider configuration: the same resolver every
   // process uses; an invalid combination refuses boot with the exact variable
   // to fix, never failing at first request.
   const modelProviders = resolveModelProviders(env, { redacted: parsed.data.redactionEnabled });
@@ -322,7 +322,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
 export const COGETO_CONFIG = Symbol('COGETO_CONFIG');
 
 /**
- * Inbound-email wiring for the connectors module (Session O4, decision 0028),
+ * Inbound-email wiring for the connectors module,
  * assembled from the validated config so both composition roots pass one shape.
  */
 export function mailOptions(config: CogetoConfig): {
@@ -348,8 +348,7 @@ export function mailOptions(config: CogetoConfig): {
 }
 
 /**
- * Web-research wiring for the connectors module (Priority 5 Part A, decisions
- * 0042/0043), assembled from the validated config so both composition roots
+ * Web-research wiring for the connectors module , assembled from the validated config so both composition roots
  * pass one shape.
  */
 export function researchOptions(config: CogetoConfig): {
@@ -368,7 +367,7 @@ export function researchOptions(config: CogetoConfig): {
     fetchTimeoutMs: config.researchFetchTimeoutSeconds * 1000,
     fetchMaxBytes: config.researchFetchMaxBytes,
     retainHtml: config.researchRetainHtml,
-    // The Ana sandbox never searches the live web (decision 0059): on a demo
+    // The Ana sandbox never searches the live web: on a demo
     // instance, discovery and the fetcher serve the bundled fixture pages, so
     // research and the research-brief skill demo end to end deterministically.
     ...(config.demoMode ? { fixtures: loadDemoWebFixtures() } : {}),

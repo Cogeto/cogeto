@@ -1,4 +1,4 @@
-/** Deletion receipt DTOs (§B.1, Session F1). */
+/** Deletion receipt DTOs (§B.1,). */
 
 /** POST-side response of DELETE /api/sources/:type/:id — the saga's handle. */
 export interface DeletionRequestedDto {
@@ -11,7 +11,7 @@ export interface DeletionPreviewDto {
   sourceId: string;
   memoryCount: number;
   objectCount: number;
-  /** Chat messages a conversation deletion removes (P6.9); absent otherwise. */
+  /** Chat messages a conversation deletion removes; absent otherwise. */
   messageCount?: number;
   /** Enumerated memories the user explicitly approved — deleted knowingly. */
   userApprovedCount?: number;
@@ -41,9 +41,9 @@ export interface ReceiptListItem {
   memoryCount: number;
   objectCount: number;
   /** Assistant chat answers redacted because they cited the erased memories
-   * (QS-7, decision 0025); 0 on pre-0025 receipts. */
+   *; 0 on pre-0025 receipts. */
   chatMessagesRedacted: number;
-  /** Chat messages removed with a conversation source (P6.9); 0 otherwise. */
+  /** Chat messages removed with a conversation source; 0 otherwise. */
   chatMessagesRemoved: number;
   /** Enumeration time — when the deletion was requested. */
   requestedAt: string;
@@ -51,7 +51,7 @@ export interface ReceiptListItem {
 }
 
 /**
- * The chain tip carried on every exported receipt (QS-23) — a cheap EXTERNAL
+ * The chain tip carried on every exported receipt — a cheap EXTERNAL
  * ANCHOR. Recording the tip hash + confirmed count at export time lets anyone
  * later prove no confirmed receipt was quietly dropped from the ledger: the tip
  * they hold must still appear in (and the count must not exceed) a fresh
@@ -72,7 +72,7 @@ export interface ReceiptDetailDto extends ReceiptListItem {
   prevHash: string | null;
   signature: string | null;
   signedAt: string | null;
-  /** The ledger's chain tip at export time — the external anchor (QS-23). */
+  /** The ledger's chain tip at export time — the external anchor. */
   chainTip: ChainTipAnchor;
 }
 

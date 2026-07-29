@@ -47,8 +47,8 @@ function ApprovalPill({ status }: { status: ApprovalStatus }) {
 }
 
 /**
- * Reply-draft presentation (Session O4): the finalised draft, with copy /
- * download .eml / open-in-mail-client affordances. Cogeto NEVER sends — every
+ * Reply-draft presentation: the finalised draft, with copy /
+ * download.eml / open-in-mail-client affordances. Cogeto NEVER sends — every
  * path here hands the draft to the user's own client.
  */
 function EmailDraftPanel({ session, approvalId }: { session: Session; approvalId: string }) {
@@ -128,7 +128,7 @@ function PendingCard({ session, approval }: { session: Session; approval: Approv
     mutationFn: (decision: 'approve' | 'reject') => confirmApproval(session, approval.id, decision),
     onSuccess: async () => {
       setError(null);
-      await invalidateAfterApproval(queryClient); // QS-36
+      await invalidateAfterApproval(queryClient); //
     },
     onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
   });
@@ -220,7 +220,7 @@ function HistoryRow({ session, approval }: { session: Session; approval: Approva
   );
 }
 
-/** Pending Approvals (§A.8, O1-B): the sole approval surface + read-only history. */
+/** Pending Approvals (§A.8): the sole approval surface + read-only history. */
 export function Approvals({ session }: { session: Session }) {
   const [tab, setTab] = useState<'pending' | 'history'>('pending');
   const pending = useQuery({

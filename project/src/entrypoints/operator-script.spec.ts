@@ -5,8 +5,8 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
- * Session O6 — the operator script and the pull-only deploy channel
- * (decision 0030). Three groups:
+ * — the operator script and the pull-only deploy channel
+ *. Three groups
  *
  *   1. The script's CLI contract: --help, argument validation, and the --check
  *      dry run (validates prerequisites, prints intended actions and the
@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest';
  *      comparison), unit-tested by sourcing the script.
  *   3. Static hardening assertions over the deploy channel files, mirroring
  *      deployment-hardening.spec.ts: the customer stack never builds, keeps
- *      infra digest-pinned (QS-25), requires secrets, and carries no demo.
+ *      infra digest-pinned, requires secrets, and carries no demo.
  */
 const SRC = process.cwd();
 const REPO = path.resolve(SRC, '../..');
@@ -67,7 +67,7 @@ describe('operator script — CLI contract', () => {
     expect(out).toContain('X.Y.Z');
   });
 
-  it('install refuses retired (pre-release-flagged) releases — decision 0033', () => {
+  it('install refuses retired (pre-release-flagged) releases', () => {
     // v0.8.0 is published but flagged pre-release on GitHub; the script must
     // refuse it and point at the supported line. (Live API call — CI has
     // network; the check-mode fallback only tolerates an UNREACHABLE API.)
@@ -110,7 +110,7 @@ describe('operator script — CLI contract', () => {
     }
   });
 
-  it('upgrade self-heals the PATH install (issue #60: a re-downloaded script run via `upgrade` must still yield a working `sudo cogeto`)', () => {
+  it('upgrade self-heals the PATH install (a re-downloaded script run via `upgrade` must still yield a working `sudo cogeto`)', () => {
     // A fake installed instance pinned to the target version: upgrade takes
     // the "already on" early exit — no network, no confirmation — but the
     // self-install intent must already have been announced.
@@ -148,7 +148,7 @@ describe('operator script — install --check dry run', () => {
     expect(out).toContain('CHECK MODE');
   });
 
-  it('resolves the latest release and surfaces the version confirmation (decision 0033)', () => {
+  it('resolves the latest release and surfaces the version confirmation', () => {
     expect(out).toMatch(/would ask: install Cogeto v\d+\.\d+\.\d+ \(latest published release\)\?/);
   });
 
@@ -163,7 +163,7 @@ describe('operator script — install --check dry run', () => {
     // The fetched deploy assets are pinned to the release tag.
     expect(out).toContain('project/infra/deploy/docker-compose.deploy.yml');
     // The research profile's SearXNG settings ship with the deploy assets
-    // (decision 0055) so `features enable research` works later.
+    // so `features enable research` works later.
     expect(out).toContain('project/infra/docker/searxng/settings.yml');
   });
 
@@ -182,7 +182,7 @@ describe('operator script — install --check dry run', () => {
 
   it('ends with the instance-specific WHAT YOU MUST DO NOW checklist', () => {
     expect(out).toContain('WHAT YOU MUST DO NOW');
-    // Real values, not placeholders (decision 0028 addressing scheme).
+    // Real values, not placeholders (addressing scheme).
     expect(out).toContain('acme.cogeto.eu.  IN A');
     expect(out).toContain('in.acme.cogeto.eu.  IN MX 10  mail.acme.cogeto.eu.');
     expect(out).toContain('capture@in.acme.cogeto.eu');
@@ -204,7 +204,7 @@ describe('operator script — install --check dry run', () => {
     expect(out).toContain('/ui/console');
     expect(out).toContain('Set initial password');
     expect(out).toContain('no outbound SMTP');
-    // Sender-routed email test instructions (decision 0031).
+    // Sender-routed email test instructions.
     expect(out).toContain('FROM THEIR OWN ADDRESS');
     // The status command as it actually works after self-install.
     expect(out).toContain('sudo cogeto status');
@@ -232,7 +232,7 @@ describe('operator script — pure helpers', () => {
     expect(helper('semver_valid latest || echo no').out).toBe('no');
   });
 
-  it('carries no version constants — GitHub release flags are the policy (decision 0033)', () => {
+  it('carries no version constants — GitHub release flags are the policy', () => {
     const script = readFileSync(SCRIPT, 'utf8');
     expect(script).not.toContain('DEFAULT_VERSION');
     expect(script).not.toContain('MIN_VERSION');
@@ -240,7 +240,7 @@ describe('operator script — pure helpers', () => {
     expect(script).toContain('require_supported_version');
   });
 
-  it('derives the per-tenant addressing scheme (decision 0028 ruling 1)', () => {
+  it('derives the per-tenant addressing scheme', () => {
     expect(helper('derive_inbound_address acme.cogeto.eu').out).toBe('capture@in.acme.cogeto.eu');
     expect(helper('derive_inbound_subdomain acme.cogeto.eu').out).toBe('in.acme.cogeto.eu');
     expect(helper('derive_mx_host acme.cogeto.eu').out).toBe('mail.acme.cogeto.eu');
@@ -277,7 +277,7 @@ describe('operator script — pure helpers', () => {
   });
 });
 
-describe('operator script — features (P6.7, decision 0055)', () => {
+describe('operator script — features', () => {
   const withEnv = (env: string): string => {
     const root = mkdtempSync(path.join(tmpdir(), 'cogeto-operator-features-'));
     writeFileSync(path.join(root, '.env'), env, { mode: 0o600 });
@@ -428,7 +428,7 @@ describe('operator script — features (P6.7, decision 0055)', () => {
   });
 });
 
-describe('deploy channel — hardening assertions (decision 0030)', () => {
+describe('deploy channel — hardening assertions', () => {
   const deploy = read('project/infra/deploy/docker-compose.deploy.yml');
   const deployCaddy = read('project/infra/deploy/Caddyfile');
   const devCaddy = read('project/infra/docker/caddy/Caddyfile');
@@ -445,7 +445,7 @@ describe('deploy channel — hardening assertions (decision 0030)', () => {
     expect(deploy).toMatch(/image: cogeto\/cogeto-mail:\$\{COGETO_VERSION/);
   });
 
-  it('infra images stay pinned by digest (QS-25), same digests as the dev stack', () => {
+  it('infra images stay pinned by digest, same digests as the dev stack', () => {
     const digests = (compose: string): string[] =>
       compose
         .split('\n')
@@ -483,8 +483,8 @@ describe('deploy channel — hardening assertions (decision 0030)', () => {
   it('a customer instance is production: demo hard-refused, no dev profiles', () => {
     expect(deploy).toContain("COGETO_PRODUCTION: '1'");
     expect(deploy).not.toContain('COGETO_DEMO_MODE');
-    // The ONE optional profile in the deploy channel is `research` (decision
-    // 0055 — SearXNG is a digest-pinned upstream image, still pull-only). The
+    // The ONE optional profile in the deploy channel is `research`
+    // — SearXNG is a digest-pinned upstream image, still pull-only). The
     // dev-only profiles (demo, dev-seed, consoles) and the unpublished
     // redaction sidecar stay absent.
     const profiles = [...deploy.matchAll(/profiles:\s*\[([^\]]*)\]/g)].map((m) => m[1]!.trim());
@@ -495,7 +495,7 @@ describe('deploy channel — hardening assertions (decision 0030)', () => {
     expect(deploy).not.toMatch(/^\s*redaction:/m);
   });
 
-  it('Qdrant API-key auth is always on in the deploy stack (QS-4)', () => {
+  it('Qdrant API-key auth is always on in the deploy stack', () => {
     expect(deploy).toMatch(/QDRANT__SERVICE__API_KEY: \$\{COGETO_QDRANT_API_KEY/);
   });
 
@@ -511,7 +511,7 @@ describe('deploy channel — hardening assertions (decision 0030)', () => {
     expect(deployCaddy).toContain('s3.{$COGETO_EXTERNAL_DOMAIN}');
   });
 
-  it('the production edge keeps the dev CSP verbatim (QS-19 — no drift)', () => {
+  it('the production edge keeps the dev CSP verbatim ( — no drift)', () => {
     const csp = (file: string): string | undefined =>
       file.split('\n').find((l) => l.trim().startsWith('Content-Security-Policy'));
     expect(csp(deployCaddy)).toBeDefined();

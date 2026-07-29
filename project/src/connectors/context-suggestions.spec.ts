@@ -14,7 +14,7 @@ import type { MemoryRow, MemoryStore } from '../memory/index';
 import { ContextSuggestionsService } from './context-suggestions.service';
 
 /**
- * Derived context suggestions (P6.6 Issue C, decision 0053): conservative by
+ * Derived context suggestions (Issue C): conservative by
  * construction — conflicting or unconfirmed evidence proposes nothing; an
  * accepted suggestion records its memory provenance; user-set and dismissed
  * values are never overridden or re-proposed.

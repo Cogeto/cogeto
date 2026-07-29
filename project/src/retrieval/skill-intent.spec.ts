@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { detectResearchIntent, detectSkillBriefIntent } from './query-rewrite';
 
 /**
- * The skill-brief triggers (Priority 7, decision 0059): anchored imperatives,
+ * The skill-brief triggers: anchored imperatives,
  * checked BEFORE the research patterns so the more specific intent wins.
  */
 describe('detectSkillBriefIntent', () => {

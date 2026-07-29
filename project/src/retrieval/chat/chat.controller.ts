@@ -38,7 +38,7 @@ const askSchema = z.object({
     .string()
     .max(4_000, 'message is too long (max 4000 characters)')
     .refine((value) => value.trim().length > 0, 'message must not be blank'),
-  /** The conversation the message is sent to (P6.9) — it always lands there. */
+  /** The conversation the message is sent to — it always lands there. */
   conversationId: z.uuid(),
 });
 
@@ -61,7 +61,7 @@ const pageSchema = z.object({
 @Controller('chat')
 @UseGuards(BearerAuthGuard)
 export class ChatController {
-  /** Active SSE streams per principal — the concurrency cap's counter (QS-14). */
+  /** Active SSE streams per principal — the concurrency cap's counter. */
   private readonly activeStreams = new Map<string, number>();
 
   constructor(
@@ -69,7 +69,7 @@ export class ChatController {
     @Inject(SSE_LIMITS) private readonly sse: SseLimits,
   ) {}
 
-  /** The sidebar's conversation list (P6.9): newest activity first. */
+  /** The sidebar's conversation list: newest activity first. */
   @Get('conversations')
   async conversations(@Req() request: AuthenticatedRequest): Promise<ConversationDto[]> {
     return this.chat.listConversations(request.principal);
@@ -125,7 +125,7 @@ export class ChatController {
     return this.chat.listMessages(request.principal, id, parsed.data);
   }
 
-  /** "Remember this" (decision 0021): capture a USER message via the pipeline. */
+  /** "Remember this": capture a USER message via the pipeline. */
   @Post('messages/:id/remember')
   @UseGuards(RateLimitGuard)
   @RateLimit('remember')
@@ -155,10 +155,10 @@ export class ChatController {
   }
 
   /**
-   * Ask a question — SSE stream (sources → token* → done). Fast path only:
+   * Ask a question — SSE stream (sources → token* → done). Fast path only
    * retrieval + generation, nothing enqueued (§A.3).
    *
-   * Bounded (FIX-2 QS-14): a per-principal concurrent-stream cap (429 before the
+   * Bounded: a per-principal concurrent-stream cap (429 before the
    * stream starts) plus an idle timeout and a hard max-duration abort, so a
    * caller cannot pin unbounded Node handlers + upstream model streams. The
    * per-principal request rate and the daily model budget bound it further.
@@ -176,11 +176,11 @@ export class ChatController {
       throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
     }
 
-    // The conversation gate (P6.9): resolve BEFORE any header is sent, so a
+    // The conversation gate: resolve BEFORE any header is sent, so a
     // foreign or absent conversation is a normal 404, not a truncated stream.
     await this.chat.assertConversation(request.principal, parsed.data.conversationId);
 
-    // Concurrency cap (QS-14): reject BEFORE any header is sent, so the client
+    // Concurrency cap: reject BEFORE any header is sent, so the client
     // sees a normal 429 rather than a truncated stream.
     const userId = request.principal.userId;
     const active = this.activeStreams.get(userId) ?? 0;
@@ -206,7 +206,7 @@ export class ChatController {
       response.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
     };
 
-    // Idle + max-duration abort (QS-14). The idle timer resets on every token;
+    // Idle + max-duration abort. The idle timer resets on every token;
     // the duration timer is a hard ceiling. An abort races the generator so it
     // fires even while the upstream model call is still awaiting.
     const controller = new AbortController();
@@ -255,11 +255,11 @@ export class ChatController {
       }
     } catch (error) {
       // Never a stack trace or memory content down the wire (pino rule applies
-      // to streams too). A spent daily budget gets a specific code (QS-2).
+      // to streams too). A spent daily budget gets a specific code.
       if (error instanceof ModelBudgetExceededError) {
         write({ type: 'error', message: error.message, code: 'model_budget_exceeded' });
       } else {
-        write({ type: 'error', message: 'answer generation failed — try again' });
+        write({ type: 'error', message: 'answer generation failed, try again' });
       }
     } finally {
       if (idleTimer) clearTimeout(idleTimer);

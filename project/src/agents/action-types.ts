@@ -22,7 +22,7 @@ export interface ActionResult {
   summary: string;
   detail: Record<string, unknown>;
   /**
-   * Optional side effect to run AFTER the executor's transaction commits (QS-27)
+   * Optional side effect to run AFTER the executor's transaction commits
    * — for idempotent, externally-reconciled work that must not hold row locks
    * (e.g. batched Qdrant payload sync). Bubbled through the idempotent-task
    * wrapper and run best-effort; the nightly consistency sweep is the backstop.
@@ -50,7 +50,7 @@ export interface ActionDefinition<P = unknown> {
    * True when `summarize`/`preview` render user content (e.g. a reply-draft
    * body). Such an approval's summary + preview are shown ONLY to its requester;
    * other org members see a content-free placeholder, and only the requester may
-   * confirm/reject it (SEC-5). The full artifact is already owner-gated at its
+   * confirm/reject it. The full artifact is already owner-gated at its
    * own endpoint. Defaults to false (an operational action shown org-wide).
    */
   contentBearing?: boolean;

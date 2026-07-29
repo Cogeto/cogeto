@@ -27,7 +27,7 @@ const querySchema = z.object({
 });
 
 /**
- * /api/audit — the read-only audit trail (§A.8/§B.1; O1-C closes the
+ * /api/audit — the read-only audit trail (§A.8/§B.1; closes the
  * write-only-audit gap, audit finding 2.4). Reverse-chronological, filterable,
  * paginated. Org-scoped (§A.4): a caller sees only their org's entries plus
  * system/global (null-org) ones — never another org's. Read-only forever: this
@@ -51,7 +51,7 @@ export class AuditController {
       // The org gate — never another org's entries; null-org = system/global.
       or(eq(auditLog.orgId, request.principal.orgId), isNull(auditLog.orgId))!,
     ];
-    // QS-20: escape LIKE metacharacters so a user-supplied `%`/`_` is matched
+    // escape LIKE metacharacters so a user-supplied `%`/`_` is matched
     // literally (not as a wildcard) — no match-everything, no slow leading-wildcard
     // patterns. The bound ESCAPE clause makes `\` the escape character.
     if (q.actor)
@@ -75,7 +75,7 @@ export class AuditController {
     ]);
 
     const items: AuditEntryDto[] = rows.map((row) => {
-      // Detail gate (QS-1/QS-13, decision 0025): the ENTRY is org-visible
+      // Detail gate: the ENTRY is org-visible
       // (who did what to which id — the org-wide trail), but detail_json is
       // returned only to the stamped owner. Ownerless rows are system entries
       // whose detail is structural metadata by the writer contract. Detail is
@@ -97,7 +97,7 @@ export class AuditController {
   }
 }
 
-/** Escape LIKE/ILIKE metacharacters so user input matches literally (QS-20). */
+/** Escape LIKE/ILIKE metacharacters so user input matches literally. */
 export function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
 }

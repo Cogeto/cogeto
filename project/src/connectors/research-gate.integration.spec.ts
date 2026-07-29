@@ -12,7 +12,7 @@ import { WebFetchService } from './web-fetch';
 import type { ResearchOptions } from './research-options';
 
 /**
- * The show-edit-approve gate (decision 0045), enforced at the service+schema
+ * The show-edit-approve gate, enforced at the service+schema
  * level: discovery runs ONLY from explicit approval; a cancel sends nothing;
  * the user's edited text is what leaves and what is recorded, immutably.
  */

@@ -17,12 +17,12 @@ import { intervalHoldsAt, isPastBelief } from './domain/interval';
 const SUBJECT_MEMORY_CAP = 200;
 
 /**
- * The time-travel read composition (decision 0012) — the visual surface's thin
+ * The time-travel read composition — the visual surface's thin
  * server half. It invents NO retrieval semantics and touches NO table: every
  * method is a composition over the MemoryStore's own Principal-gated primitives
  * (`listForPrincipal`, `pointInTime`), so the scope and sensitive hard gates
  * hold in every temporal view, at every point in time, exactly as elsewhere
- * (§A.4 gates; decision 0012 ruling 3 "temporal never weakens a hard gate").
+ * (§A.4 gates; "temporal never weakens a hard gate").
  *
  * "Holds at t" is decided ONCE, by `pointInTime`'s shared SQL predicate
  * (ruling 1) — never re-encoded here. This service only shapes the results and
@@ -82,7 +82,7 @@ export class TimelineService {
 
   /**
    * The diff between two instants — two `pointInTime` snapshots run through the
-   * pure `computeTimelineDiff` (decision 0012 ruling 4 vocabulary). Because both
+   * pure `computeTimelineDiff` (vocabulary). Because both
    * snapshots go through the same gated primitive, the diff can never surface a
    * fact the point-in-time view or chat would hide.
    */

@@ -37,11 +37,11 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
   @Module({
     imports: [
       DatabaseModule.register({ databaseUrl: config.databaseUrl, poolMax: config.pgPoolMax }),
-      // Limits (FIX-2): the worker needs the parse caps (QS-6) for the pipeline
+      // Limits: the worker needs the parse caps for the pipeline
       // + file source reader. Its model calls are unattributed, so the model
       // budget is off here (ModelGatewayModule without `budget`).
       LimitsModule.register(config.limits, config.timezone),
-      // Per-user context + language (P6.6): the worker's system-initiated
+      // Per-user context + language: the worker's system-initiated
       // copy (digest lines, conclusion phrasing) speaks preferred_language.
       UserContextModule,
       // The worker serves no HTTP, but domain modules carry controllers whose
@@ -49,7 +49,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       IdentityModule.register({
         internalBaseUrl: config.oidc.internalUrl,
         externalDomain: config.oidc.externalDomain,
-        cacheTtlSeconds: 10, // QS-11 (the worker serves no HTTP; parity only)
+        cacheTtlSeconds: 10, // (the worker serves no HTTP; parity only)
       }),
       ModelGatewayModule.register({
         providers: config.modelProviders,
@@ -68,31 +68,31 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         },
         instanceKeyDir: config.instanceKeyDir,
         // The chat source deletion joins notes' so a chat-derived memory's source
-        // deletion erases the originating turn under the saga (decision 0021 r7).
+        // deletion erases the originating turn under the saga (r7).
         sourceDeletions: {
           adapters: [
             NotesSourceDeletion,
             ChatSourceDeletion,
-            // A whole conversation is a deletable source (P6.9, decision 0056).
+            // A whole conversation is a deletable source.
             ConversationSourceDeletion,
             EmailSourceDeletion,
-            // Web pages are deletable sources (Priority 5 Part A, 0043).
+            // Web pages are deletable sources (0043).
             WebSourceDeletion,
           ],
         },
         derivedCascades: {
           imports: [ChatSourceModule, ReplyDraftCascadeModule],
-          // Assistant answers citing erased memories are redacted (QS-7,
-          // decision 0025); reply drafts grounded on the source are too (SEC-4).
+          // Assistant answers citing erased memories are redacted (
+          //); reply drafts grounded on the source are too.
           adapters: [ChatAnswerCascade, ReplyDraftCascade],
         },
-        // Delete-vs-ingestion serialization (QS-5, decision 0024): the saga
+        // Delete-vs-ingestion serialization: the saga
         // cancels a source's pending pipeline run inside its enumeration tx.
         ingestionGuard: PipelineIngestionGuard,
       }),
       // ChatSourceReader gives ingestion a stage-1 reader for source_type 'chat';
-      // EmailSourceReader adds source_type 'email' (Session O4);
-      // WebSourceReader adds 'web' (Priority 5 Part A, decision 0043).
+      // EmailSourceReader adds source_type 'email';
+      // WebSourceReader adds 'web'.
       IngestionModule.register({
         readers: [
           NotesSourceReader,
@@ -122,8 +122,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
     ],
     providers: [
       { provide: COGETO_CONFIG, useValue: config },
-      // The worker's synthesis for server-side research conclusion (decision
-      // 0057): composed HERE (not in ConnectorsModule) because retrieval is
+      // The worker's synthesis for server-side research conclusion : composed HERE (not in ConnectorsModule) because retrieval is
       // deliberately absent in this process — the @Optional seam makes the
       // stored answer web-only ([W#]), while the app's ResearchChatModule
       // instance keeps memory citations for interactive synthesis.

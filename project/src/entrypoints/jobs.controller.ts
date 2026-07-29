@@ -20,7 +20,7 @@ import type { AuthenticatedRequest } from '../identity/index';
  * /api/jobs — the dashboard's System view over the queue's own ledgers (§A.3).
  * Lives in the entrypoint: queue plumbing is infrastructure, not domain.
  *
- * ADMIN-ONLY (QS-10): activity/dead-letter expose cross-user source ids and
+ * ADMIN-ONLY: activity/dead-letter expose cross-user source ids and
  * object keys, and retry replays ANY parked job — operator concerns, not
  * per-user data. The global BearerAuthGuard authenticates; AdminGuard then
  * requires the configured admin role. (Owner-scoping was rejected: most queue
@@ -29,7 +29,7 @@ import type { AuthenticatedRequest } from '../identity/index';
  *
  * Retry re-enqueues the parked payload and removes the dead-letter row in one
  * transaction. Double effects are impossible regardless of how often a job is
- * retried: the idempotentTask guard (S1-B) claims the (source_type, source_id,
+ * retried: the idempotentTask guard claims the (source_type, source_id,
  * job_type) key before the handler's effect — a re-run of completed work skips.
  */
 @Controller('jobs')
@@ -38,7 +38,7 @@ export class JobsController {
   constructor(@Inject(DRIZZLE) private readonly db: Db) {}
 
   /**
-   * A live snapshot of the queue for the System "Worker activity" panel:
+   * A live snapshot of the queue for the System "Worker activity" panel
    * what's running now, what's waiting, and what recently completed — read from
    * graphile-worker's own tables + the job_execution ledger. No per-job
    * percentage exists (a job is one atomic transaction); queue depth is the

@@ -47,16 +47,16 @@ export function createAppRootModule(config: CogetoConfig): unknown {
   @Module({
     imports: [
       DatabaseModule.register({ databaseUrl: config.databaseUrl, poolMax: config.pgPoolMax }),
-      // Abuse/DoS limits (FIX-2) — global, so the rate-limit guard, ingest
+      // Abuse/DoS limits — global, so the rate-limit guard, ingest
       // quota, SSE caps and model budget are injectable across controllers.
       LimitsModule.register(config.limits, config.timezone),
-      // Per-user context + language (P6.6) — global, same rationale.
+      // Per-user context + language — global, same rationale.
       UserContextModule,
       IdentityModule.register({
         internalBaseUrl: config.oidc.internalUrl,
         externalDomain: config.oidc.externalDomain,
-        // QS-11: small TTL bounds the token-revocation window (see the seam
-        // README + decision 0026). QS-17: validate JWT iss/aud locally.
+        // small TTL bounds the token-revocation window (see the seam
+        // README +).: validate JWT iss/aud locally.
         cacheTtlSeconds: 10,
         issuer: config.oidc.issuer,
         expectedAudience: readOidcClientId(config.webConfigFile),
@@ -66,7 +66,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         providers: config.modelProviders,
         redaction: redactionOptions(config),
         // Enforce the per-user daily model budget on the app's user-attributed
-        // calls (QS-2); the worker registers this without budget.
+        // calls; the worker registers this without budget.
         budget: true,
       }),
       MemoryModule.register({
@@ -81,26 +81,26 @@ export function createAppRootModule(config: CogetoConfig): unknown {
           bucket: config.s3Bucket,
         },
         instanceKeyDir: config.instanceKeyDir,
-        // Chat joins notes as a deletable source (decision 0021 r7) — the
+        // Chat joins notes as a deletable source (r7) — the
         // source-delete endpoint runs the saga for a chat-derived memory too.
         sourceDeletions: {
           adapters: [
             NotesSourceDeletion,
             ChatSourceDeletion,
-            // A whole conversation is a deletable source (P6.9, decision 0056).
+            // A whole conversation is a deletable source.
             ConversationSourceDeletion,
             EmailSourceDeletion,
-            // Web pages are deletable sources (Priority 5 Part A, 0043).
+            // Web pages are deletable sources (0043).
             WebSourceDeletion,
           ],
         },
         derivedCascades: {
           imports: [ChatSourceModule, ReplyDraftCascadeModule],
-          // Assistant answers citing erased memories are redacted (QS-7,
-          // decision 0025); reply drafts grounded on the source are too (SEC-4).
+          // Assistant answers citing erased memories are redacted (
+          //); reply drafts grounded on the source are too.
           adapters: [ChatAnswerCascade, ReplyDraftCascade],
         },
-        // Delete-vs-ingestion serialization (QS-5, decision 0024): the saga
+        // Delete-vs-ingestion serialization: the saga
         // cancels a source's pending pipeline run inside its enumeration tx.
         ingestionGuard: PipelineIngestionGuard,
       }),
@@ -120,14 +120,14 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       // RetrievalService + ApprovalService); the worker never drafts. Global, so
       // ChatService resolves CHAT_REPLY_RESOLVER.
       EmailReplyModule,
-      // The research gate + chat → research resolver + synthesis (Priority 5
+      // The research gate + chat → research resolver + synthesis (
       // Part B) — app-only for the same reason; the worker never researches.
       ResearchChatModule,
-      // Named skills (Priority 7, decision 0059): the planner + run surface +
+      // Named skills: the planner + run surface +
       // chat → skill resolver — app-only (planning needs retrieval); the
       // engine's execution reaches the worker as the skill.advance job.
       SkillsModule,
-      // The Memory Passport (§B.5, decision 0029): export trigger/status/download.
+      // The Memory Passport (§B.5): export trigger/status/download.
       // Assembly is a worker job; the app only creates requests and serves reads.
       PassportModule.register({
         instanceKeyDir: config.instanceKeyDir,
@@ -149,17 +149,17 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       { provide: COGETO_CONFIG, useValue: config },
       // The attention/stats aggregator composes memory, retrieval's open-loops
       // read, agents and the dreaming digest through their public interfaces
-      // (Post-v1 Priority 2).
+      //.
       AttentionService,
-      // The capability registry (P6.7, decision 0055): /api/health's
+      // The capability registry: /api/health's
       // capability/job summaries and the boot banner read one snapshot.
       CapabilitiesService,
-      // Default-deny auth (QS-18): the bearer guard runs on EVERY route; only
-      // routes marked @Public() (health/config/instance) opt out. A new
+      // Default-deny auth: the bearer guard runs on EVERY route; only
+      // routes marked @Public (health/config/instance) opt out. A new
       // controller that forgets @UseGuards is closed, not silently open.
       { provide: APP_GUARD, useExisting: BearerAuthGuard },
       // Map a spent daily model budget to HTTP 429 for non-stream endpoints
-      // (QS-2); the chat SSE path surfaces it as a distinct error event instead.
+      //; the chat SSE path surfaces it as a distinct error event instead.
       { provide: APP_FILTER, useClass: ModelBudgetExceptionFilter },
     ],
   })
@@ -169,7 +169,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
 }
 
 /**
- * The SPA client id (QS-17 aud validation) from the zitadel-init-written web
+ * The SPA client id (aud validation) from the zitadel-init-written web
  * config file. Best-effort at boot: absent/malformed → undefined, and the aud
  * check is skipped (opaque tokens skip it anyway).
  */

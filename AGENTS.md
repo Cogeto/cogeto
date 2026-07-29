@@ -1,122 +1,162 @@
-# AGENTS.md — binding engineering rules
+# AGENTS.md: binding engineering rules
 
-Non-negotiables for any agent working in this repository. Verify your work against
-this checklist before finishing. Day-to-day workflow, doc map, and build order:
-[`CLAUDE.md`](CLAUDE.md). Authority on all architecture questions:
-`docs/Cogeto-v1-Addendum-Verifiable-Memory.md` (cited below as §A.x/§B.x) — it wins
-over every other document.
+Non-negotiables for anyone working in this repository. Verify your work against this
+checklist before finishing. Day-to-day workflow and the doc map are in
+[`CLAUDE.md`](CLAUDE.md).
+
+**Authority.** [`docs/Cogeto-V2-Plan.md`](docs/Cogeto-V2-Plan.md) is binding for what
+gets built in the current cycle.
+[`docs/Cogeto-v1-Addendum-Verifiable-Memory.md`](docs/Cogeto-v1-Addendum-Verifiable-Memory.md)
+(cited below as §A.x / §B.x) is the authority on how it is built, and wins over every
+other document on an architecture question.
 
 ## Data model (§A.6, §B.2)
 
 - [ ] Every memory row carries `owner_id` (NOT NULL), `scope` enum
       (`private`|`shared`, NOT NULL), provenance `source_type` + `source_id`
-      (NOT NULL — user-typed facts point at their message/note row; no orphans,
-      ever), `status` enum of exactly **six lifecycle states** (`active`,
-      `outdated`, `contradicted`, `uncertain`, `replaced`, `user_approved`;
-      default `active`) **plus an orthogonal `sensitive` boolean flag**
-      (NOT NULL DEFAULT false — decision 0003), and a validity interval
-      (`valid_from`, `valid_until`).
+      (NOT NULL: user-typed facts point at their message or note row; no orphans,
+      ever), and a validity interval (`valid_from`, `valid_until`).
+- [ ] `status` is an enum of exactly these **six** lifecycle values: `active`,
+      `outdated`, `contradicted`, `uncertain`, `replaced`, `user_approved`
+      (default `active`). `sensitive` is an **orthogonal** boolean beside it
+      (NOT NULL DEFAULT false), never a seventh status: a sensitive fact can also
+      become outdated.
 - [ ] Status transitions are owned by the `Memory` aggregate: only reconciliation
-      sets `contradicted`; only the user sets `user-approved`; only the deletion
-      saga hard-deletes (§A.1 rule 4). Supersession closes intervals — it never
-      destroys history (§B.2).
+      sets `contradicted`; only the user sets `user_approved`; only the deletion
+      saga hard-deletes, with the single audited exception of review rejection.
+      Supersession closes intervals; it never destroys history (§B.2). Editing a
+      memory's content **is** supersession, never mutation.
 - [ ] Object keys: `tenant/user/scope/file-{uuid}`, first segment = Zitadel
       organization ID, never a constant (§A.6).
+- [ ] A **defunct** `source_type` value is a *known* value, never an unexpected one.
+      No switch may throw on it and no sweep arm may flag it as unrecognised.
 
-## Access & retrieval (§A.4, §A.5)
+## Access and retrieval (§A.4, §A.5)
 
 - [ ] **No query path returns memories without scope filtering.** Unscoped queries
       must be unrepresentable in the retrieval module's API.
-- [ ] `scope` and the `sensitive` flag are **hard gates** — WHERE-clause / Qdrant
-      payload pre-filters inside the vector query. App-side post-filtering of
-      vector results is forbidden. A demoted leak is still a leak. Sensitive
-      memories are excluded from default retrieval, returned only to their owner,
-      and only on explicit per-query opt-in (decision 0003).
-- [ ] Statuses are **score multipliers on top of the gates** (§A.5 table);
-      `replaced` is excluded from default retrieval; temporal queries lift the
-      `outdated`/`replaced` exclusion.
+- [ ] `scope` and `sensitive` are **hard gates**: WHERE-clause and Qdrant payload
+      pre-filters inside the vector query. App-side post-filtering of vector results
+      is forbidden. A demoted leak is still a leak. Sensitive memories are excluded
+      from default retrieval, returned only to their owner, and only on explicit
+      per-query opt-in.
+- [ ] Statuses are **score multipliers on top of the gates** (§A.5); `replaced` is
+      excluded from default retrieval; temporal queries lift the `outdated` and
+      `replaced` exclusion but **never** weaken a hard gate.
+- [ ] The interval predicate exists **once** (`memory/domain/interval.ts`), as a SQL
+      fragment and a pure TypeScript twin tested against each other. No query, view,
+      or answer-side check may hand-roll it.
 - [ ] **Postgres is the source of truth; Qdrant is a rebuildable index.** Nothing
-      exists only in Qdrant; the `reindex` command (rebuild Qdrant from Postgres)
-      must always work (§A.4).
+      exists only in Qdrant; `reindex` must always work (§A.4).
 
 ## Seams (§A.10, scope §4.5/§5.1)
 
-- [ ] All LLM and embedding calls go through the `model-gateway` interface. No
-      direct provider SDK/API usage anywhere else.
-- [ ] All identity/role lookups go through the `identity` interface. No direct
-      Zitadel calls elsewhere. Zitadel asserts who/roles; memory scoping is
+- [ ] All LLM and embedding calls go through the `model-gateway` interface. No direct
+      provider SDK or endpoint usage anywhere else. Call sites request a **tier**,
+      never a model string.
+- [ ] All identity and role lookups go through the `identity` interface. No direct
+      Zitadel calls elsewhere. Zitadel asserts who and which roles; memory scoping is
       Cogeto's own logic.
+- [ ] Only `entrypoints` reads the environment.
 
 ## Modules (§A.1)
 
-- [ ] One public interface per module; internals private. **No module reads or
-      writes another module's tables.** Cross-module communication is domain
-      events via the Postgres outbox — one mechanism, not two.
+- [ ] One public interface per module; internals private. **No module reads or writes
+      another module's tables.** Cross-module communication is domain events via the
+      Postgres outbox: one mechanism, not two.
 - [ ] Nothing imports entrypoints; seams import no domain module.
+- [ ] Where a dependency must run against the graph direction, it is a **port**
+      defined by the owning module and implemented by the caller, bound at the
+      composition root.
 
-## Async & jobs (§A.3, scope §6)
+## Async and jobs (§A.3, scope §6)
 
 - [ ] **Slow-path work never runs in the request path**: extraction, dedup,
-      contradiction checks, consolidation, deletion sagas, action execution,
-      skill runs and passport exports are worker jobs. The fast path is
-      retrieval + answering only.
-- [ ] Enqueue is **transactional via the outbox** — nothing can be ingested and
+      contradiction checks, consolidation, deletion sagas, action execution, skill
+      runs and passport exports are worker jobs. The fast path is retrieval and
+      answering only. The one sanctioned enqueue on the chat fast path is the
+      conversation auto-title job.
+- [ ] Enqueue is **transactional via the outbox**: nothing can be ingested and
       silently unprocessed.
-- [ ] Jobs are **idempotent** with key `(source_type, source_id, job_type)`;
-      retries with backoff; dead-letter table visible in the dashboard.
+- [ ] Jobs are **idempotent** with key `(source_type, source_id, job_type)`; retries
+      with backoff; dead-letter table visible in the dashboard. Recurring passes
+      (sweep, dreaming) are the sanctioned exception to the wrapper and must be
+      idempotent by construction instead.
 
 ## Deletion (§A.7, §B.1)
 
-- [ ] Deletion is the **saga**: one Postgres transaction (memory rows + file
-      metadata + receipt row `pending` + outbox enqueue) → worker deletes Qdrant
-      points and MinIO bytes with retries → receipt `confirmed` only after both
-      acknowledge → nightly sweep verifies no orphans.
+- [ ] Deletion is the **saga**: one Postgres transaction (memory rows + file metadata
+      + receipt row `pending` + outbox enqueue) → worker deletes Qdrant points and
+      MinIO bytes with retries → receipt `confirmed` only after both acknowledge →
+      nightly sweep verifies no orphans.
+- [ ] **A receipt can never read `confirmed` while an enumerated identifier could
+      still exist.**
 - [ ] The cascade has an automated test (bytes + metadata + memories + vectors +
-      receipt) — a definition-of-done gate. Receipts are hash-chained and signed.
+      receipt): a definition-of-done gate. Receipts are hash-chained and signed, and
+      **linkage defines chain order, never timestamps**.
+- [ ] The sweep **detects; it never repairs.** An identifier that reappeared after a
+      signed promise means a human must find out how, and an automated fix would
+      destroy the evidence.
+- [ ] Never change the receipt canonicalization or chain verification. A byte of
+      difference invalidates every historical receipt on every instance.
 
 ## Approval (§A.8)
 
-- [ ] Consequential actions (send message, delete data, external write, bulk
-      memory change) execute **only from server-side `approved` state**
-      (`draft → pending_approval → approved → executed`, plus `rejected`,
-      `expired`), created via an authenticated confirm endpoint. A front-end
-      confirm dialog alone is non-compliant. Every transition is audit-logged.
+- [ ] Consequential actions (send message, delete data, external write, bulk memory
+      change) execute **only from server-side `approved` state**
+      (`draft → pending_approval → approved → executed`, plus `rejected`, `expired`),
+      created via an authenticated confirm endpoint. A front-end confirm dialog alone
+      is non-compliant. Every transition is audit-logged.
 - [ ] Only the worker executes; the confirm endpoint flips state and does nothing
       else; execution is idempotent per action id.
 
-## Content (scope §4.9)
+## Content and privacy
 
 - [ ] **Facts, not raw documents, go into the vector store.** Chunks are transient
-      extraction inputs, never stored rows. Originals live in MinIO; extracted
-      facts in Postgres/Qdrant.
-- [ ] Every extracted fact passes the independent verification pass before
-      counting as `active`; unsupported/partial → `uncertain` (§B.3).
+      extraction inputs, never stored rows. Originals live in MinIO; extracted facts
+      in Postgres and Qdrant.
+- [ ] Every extracted fact passes the independent verification pass before counting
+      as `active`; unsupported or partial becomes `uncertain` (§B.3).
+- [ ] **No content in `audit_log.detail_json`, ever.** Ids, kinds, transition names,
+      counts, booleans. Never memory, note, or chat content, and never model free
+      text. Explanations live on the owner-gated domain row they serve.
+- [ ] Never log memory content or tokens.
+- [ ] Extraction **fabricates nothing**. A parse or model failure produces zero
+      memories, never an invented one.
 
-## Prompts & evaluation (§B.4, §B.7)
+## Prompts and evaluation (§B.4, §B.7)
 
-- [ ] Every prompt that decides what Cogeto remembers is a **versioned artifact**
-      in `project/prompts/` — numbered, immutable once released, changelogged.
-- [ ] Prompt or model changes are evaluated against the golden set; regressions
-      fail the build. The eval harness is built alongside the extractor, not after.
+- [ ] Every prompt that decides what Cogeto remembers is a **versioned artifact** in
+      `project/prompts/`: numbered, immutable once released, changelogged.
+- [ ] Prompt or model changes are evaluated against the golden set; regressions fail
+      the build. The eval harness is built alongside the extractor, not after.
+- [ ] **Gates ratchet up, never down.** Lowering one must be justified in the pull
+      request that does it, with the measurement that justifies it.
+- [ ] Structured extraction runs at `temperature: 0`. What Cogeto remembers must not
+      depend on a sampling dice roll.
+- [ ] Nothing hides a dip. Published metrics include the unflattering ones.
 
 ## Confidentiality
 
 - [ ] The studied reference projects informed `docs/research/` as patterns only.
-      **Nothing in this repo may name or identify them** — no project names,
-      package/import names, company/product names, authors, or URLs. Refer to them
-      only by role (e.g. "a production memory layer"). This applies to code,
-      comments, commit messages, and docs, permanently.
+      **Nothing in this repo may name or identify them**: no project names, package
+      or import names, company or product names, authors, or URLs. Refer to them only
+      by role (e.g. "a production memory layer"). This applies to code, comments,
+      commit messages, and docs, permanently.
 
 ## Working rules
 
 - [ ] **Never run git commands unless the owner explicitly asks.**
-- [ ] **Commits and pull requests are always authored as the owner** — Ivan
-      Golubic `<ivan@themrcto.com>`. Never a bot identity, never a
-      `Co-authored-by` trailer. Issue/branch/PR operations go through `gh` as the
-      owner. Delivery loop: `docs/engineering-workflow.md`.
-- [ ] Application tests live under `project/src/`, next to the code they exercise (Vitest).
+- [ ] **Commits and pull requests are always authored as the owner**, Ivan Golubic
+      `<ivan@themrcto.com>`. Never a bot identity, never a `Co-authored-by` trailer,
+      never an AI-authorship or "generated with" line in any git artifact. Issue,
+      branch, and pull-request operations go through `gh` as the owner. Delivery
+      loop: [`docs/engineering-workflow.md`](docs/engineering-workflow.md).
+- [ ] Application tests live under `project/src/`, next to the code they exercise
+      (Vitest).
 - [ ] New dependencies, frameworks, and Addendum deviations need owner sign-off
-      (full list: CLAUDE.md).
-- [ ] Read the matching `docs/research/` file before implementing memory,
-      ingestion, retrieval, agents, or pipeline code.
-- [ ] Notable decisions get a numbered record in `docs/decisions/`.
+      (full list in `CLAUDE.md`).
+- [ ] Read the matching [`docs/research/`](docs/research/) file before implementing
+      memory, ingestion, retrieval, agents, or pipeline code.
+- [ ] **The decision trail is the issue and the pull request.** State what changed and
+      why in the PR body, and update the affected documentation in the same change.

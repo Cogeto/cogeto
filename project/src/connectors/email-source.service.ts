@@ -17,8 +17,7 @@ import { resolveReplyTarget } from './email-reply-target';
 const CANDIDATE_LIMIT = 5;
 
 /**
- * The email reading view + candidate resolution (Session O4 — email reply
- * triggers). Renders the full retained message faithfully for the source drawer,
+ * The email reading view + candidate resolution. Renders the full retained message faithfully for the source drawer,
  * and resolves which recent email a chat "draft a reply" request refers to.
  * Owner-scoped; reads only connectors' own tables + the memory object store
  * (for the externalised HTML body).

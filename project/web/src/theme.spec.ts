@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { applyTheme, chooseTheme, getActiveTheme, toggleTheme } from './theme';
 
 /**
- * Theme behaviour (P6.8). Three guarantees: dark is the default for a fresh
+ * Theme behaviour. Three guarantees: dark is the default for a fresh
  * user, the precedence order is honoured, the choice persists and applies, and
  * the theme is set before first paint (no flash). The precedence logic is a pure
  * function; the apply/persist path is exercised against a minimal fake DOM so no

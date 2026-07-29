@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveExpression } from './temporal-resolver';
 
 /**
- * conversational_dates_resolve (P6.6, decision 0051): "next Thursday" in chat
+ * conversational_dates_resolve: "next Thursday" in chat
  * resolves against the USER's timezone via the deterministic resolver — never
  * model arithmetic. The same instant is a different calendar day in different
  * zones, so the resolved date must follow the caller's zone.

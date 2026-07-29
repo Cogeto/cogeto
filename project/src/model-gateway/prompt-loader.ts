@@ -6,7 +6,7 @@ import type { DbOrTx } from '../infrastructure/index';
 import { promptRegistry } from './persistence/tables';
 
 /**
- * Loads versioned prompt artifacts from project/prompts/ (§B.7):
+ * Loads versioned prompt artifacts from project/prompts/ (§B.7)
  * one directory per family, numbered immutable files (v0001.md, v0002.md, …).
  */
 const DEFAULT_PROMPTS_DIR = path.resolve(__dirname, '..', '..', '..', 'prompts');

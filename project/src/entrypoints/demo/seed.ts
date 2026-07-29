@@ -27,7 +27,7 @@ export interface SeedWorldDeps {
 
 /**
  * Feeds the corpus through the public API, ages it to weeks of accrual, runs one
- * dreaming cycle, and asserts the end state (decision 0022, §B.9). The single
+ * dreaming cycle, and asserts the end state (§B.9). The single
  * shared routine behind the init job, the scheduled reset, and the tests — so
  * every path exercises the real pipeline identically.
  */
@@ -35,8 +35,8 @@ export async function seedDemoWorld(deps: SeedWorldDeps): Promise<DemoEndState> 
   const log = deps.log ?? noop;
   const corpus = deps.corpus ?? (await loadCorpus());
 
-  // Ana's context (P6.6): the demo persona prefers Croatian, so the sandbox
-  // digest demonstrates the language anchor (decision 0052). Set through the
+  // Ana's context: the demo persona prefers Croatian, so the sandbox
+  // digest demonstrates the language anchor. Set through the
   // real settings endpoint like every other demo write; a failure only logs.
   try {
     await deps.api.updateContext({ displayName: 'Ana', preferredLanguage: 'hr' });
@@ -83,7 +83,7 @@ export async function captureCorpus(
 ): Promise<AgeEntry[]> {
   const entries: AgeEntry[] = [];
 
-  // Titled conversations (P6.9): chat items sharing a `conversation` title
+  // Titled conversations: chat items sharing a `conversation` title
   // share the thread, so the sidebar demos with named workspaces while the
   // captured knowledge stays reachable from every other conversation.
   const conversationIds = new Map<string, string>();

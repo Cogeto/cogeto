@@ -12,13 +12,13 @@ import type { Db, DbOrTx } from './db';
 import { contextSuggestionDismissal, userContext } from './persistence/tables';
 
 /**
- * Per-user instance context (P6.6, decisions 0051/0052/0053): who the user is,
+ * Per-user instance context: who the user is,
  * which timezone their "today" lives in, and which language Cogeto speaks.
  * Lives in infrastructure because the context feeds prompts and copy in
  * retrieval, connectors and ingestion alike — no domain module owns it.
  *
  * The values here are settings, not memories: they shape phrasing and
- * interpretation but are never citable facts (decision 0051). Audit entries
+ * interpretation but are never citable facts. Audit entries
  * record WHICH fields changed (structural), never the profile text itself.
  */
 
@@ -139,7 +139,7 @@ export class UserContextService {
   }
 
   /**
-   * Accept a derived suggestion (decision 0053): sets the field with its
+   * Accept a derived suggestion: sets the field with its
    * provenance memory recorded, audited with the memory id (a structural id).
    */
   async applySuggestion(

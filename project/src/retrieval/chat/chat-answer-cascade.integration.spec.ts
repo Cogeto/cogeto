@@ -17,7 +17,7 @@ const userA: Principal = {
   roles: [],
 };
 
-describe('QS-7 chat-answer cascade (integration: real Postgres, real saga)', () => {
+describe(' chat-answer cascade (integration: real Postgres, real saga)', () => {
   let tdb: TestDatabase;
   let store: MemoryStore;
   let notes: NotesService;
@@ -38,7 +38,7 @@ describe('QS-7 chat-answer cascade (integration: real Postgres, real saga)', () 
     await tdb.stop();
   });
 
-  // Messages need a container since P6.9 — one per owner is enough here.
+  // Messages need a container since — one per owner is enough here.
   const conversationIds = new Map<string, string>();
   const insertMessage = async (ownerId: string, role: 'user' | 'assistant', content: string) => {
     let conversationId = conversationIds.get(ownerId);
@@ -76,7 +76,7 @@ describe('QS-7 chat-answer cascade (integration: real Postgres, real saga)', () 
       sourceId: `note-other-${Date.now()}`,
     });
 
-    // The four shapes the cascade must distinguish:
+    // The four shapes the cascade must distinguish
     const citing = await insertMessage(
       userA.userId,
       'assistant',

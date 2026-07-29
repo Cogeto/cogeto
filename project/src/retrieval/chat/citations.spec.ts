@@ -103,11 +103,11 @@ describe('citation_never_leaks (F6)', () => {
 });
 
 /**
- * Per-claim provenance (decision 0046): a blended answer carries three origins
+ * Per-claim provenance: a blended answer carries three origins
  * — memory cites, web-memory cites, and the unsourced marker — and the strict
  * grammar guarantee extends to all of them.
  */
-describe('per-claim provenance (decision 0046)', () => {
+describe('per-claim provenance', () => {
   it('claim_origins_rendered: a blended answer keeps memory cites, web cites, and unsourced markers; malformed tokens still stripped', () => {
     const blended =
       'Ana leads the migration [F1]. The regulation was updated in May [F2]. ' +

@@ -37,7 +37,7 @@ const BADGE_LABEL: Partial<Record<NavSection, string>> = {
 };
 
 /**
- * Custom Cogeto nav glyphs (P6.9). One cohesive family on a recurring node/orbit
+ * Custom Cogeto nav glyphs. One cohesive family on a recurring node/orbit
  * motif — the "verification node" — so the set reads as bespoke, not a borrowed
  * icon pack. 20px viewBox, 1.6 stroke, currentColor.
  */
@@ -141,7 +141,7 @@ function initials(name: string): string {
   return two || '·';
 }
 
-/** Left navigation (P6.9): custom glyphs, and the identity + sign-out pinned to
+/** Left navigation: custom glyphs, and the identity + sign-out pinned to
  * the bottom instead of floating in the page header. */
 export function Nav({
   active,
@@ -155,9 +155,9 @@ export function Nav({
   active: NavSection;
   reviewCount?: number;
   approvalsCount?: number;
-  /** Unread attention items — a calm dot on the Dashboard item (Post-v1 P2). */
+  /** Unread attention items — a calm dot on the Dashboard item (P2). */
   dashboardUnread?: number;
-  /** System is an operator surface (admin role, QS-10) — hidden for plain
+  /** System is an operator surface (admin role) — hidden for plain
    * users (o6-dry-run); the server-side AdminGuard stays the enforcement. */
   showSystem?: boolean;
   userName?: string;

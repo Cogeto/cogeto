@@ -6,7 +6,7 @@ import type { MemoryRow } from './persistence/tables';
 import { MemoryStore } from './memory.store';
 
 /**
- * Worker handler for MEMORY_EMBED_JOB_TYPE (S3-B): embeds one memory row —
+ * Worker handler for MEMORY_EMBED_JOB_TYPE: embeds one memory row —
  * the supersession successor created by an edit. Runs under the idempotency
  * key ('memory', <memory id>, 'memory.embed') inside the job's transaction;
  * same two-store order as pipeline stage 5: row update first, point last.

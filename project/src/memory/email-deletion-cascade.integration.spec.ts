@@ -73,7 +73,7 @@ class ScriptedGateway extends ModelGateway {
     return EMBED_MODEL;
   }
   async extractStructured<T>(schema: ZodType<T>, request: StructuredExtractionRequest): Promise<T> {
-    // Batched verification (decision 0057; verification/v0005): multi-fact
+    // Batched verification (verification/v0005): multi-fact
     // sources verify in one enveloped call — every claim supported, scripted.
     if (request.input.startsWith('CLAIMS UNDER REVIEW')) {
       const batch = {
@@ -360,7 +360,7 @@ describe('email deletion cascade (integration: real Postgres + Qdrant + MinIO)',
     expect(report.chainOk).toBe(true);
   });
 
-  it('reply_draft_redacted_on_email_deletion (SEC-4): a reply draft derived from the email is redacted and counted', async () => {
+  it('reply_draft_redacted_on_email_deletion (): a reply draft derived from the email is redacted and counted', async () => {
     const result = await intake.intake(rawEmailWithAttachment(makePdf('brief')), {
       mailFrom: 'ana@adriatic-foods.hr',
       rcptTo: INBOUND,

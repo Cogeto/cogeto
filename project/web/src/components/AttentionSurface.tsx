@@ -6,7 +6,7 @@ import type { Session } from '../auth/oidc';
 import { KIND_ICON, groupItems, surfaceState } from './attention-model';
 
 /**
- * The attention-first hero (Post-v1 Priority 2): the first thing on the
+ * The attention-first hero: the first thing on the
  * dashboard, answering "what needs me right now". A dark instrument panel
  * (navy gradient, one sparing teal rim-glow) over the computed attention feed —
  * grouped, human-phrased, every line deep-linking to its object.
@@ -24,7 +24,7 @@ export function AttentionSurface({ session }: { session: Session }) {
   });
 
   // Viewing clears the indicator: mark seen once, then zero the nav badge in the
-  // cache WITHOUT wiping this view's per-item "new" marks (decision 0039).
+  // cache WITHOUT wiping this view's per-item "new" marks.
   const marked = useRef(false);
   useEffect(() => {
     if (marked.current || !data) return;

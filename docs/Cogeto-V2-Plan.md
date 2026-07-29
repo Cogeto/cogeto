@@ -1,6 +1,6 @@
-# Cogeto 2.0 — Complete Plan
+# Cogeto 2.0: Complete Plan
 
-**Status: FOR CONFIRMATION.** Every confirmed item from the 2.0 discussion is in this document, assigned to a version, with priority and difficulty. Section 10 is a traceability checklist: if something you asked for is not there, it was missed and must be added. Nothing in this plan is optional-by-omission.
+**Status: BINDING.** This is the plan of record for the 2.0 cycle and supersedes every earlier roadmap. Every confirmed item from the 2.0 discussion is here, assigned to a version, with priority and difficulty. Section 10 is a traceability checklist: if something you asked for is not there, it was missed and must be added. Nothing in this plan is optional-by-omission.
 
 Difficulty: **S** = days · **M** = one to two weeks · **L** = multi-week · **XL** = a month or more.
 Priority: **P0** = blocks the version · **P1** = core of the version · **P2** = valuable, can slip one version.
@@ -29,27 +29,27 @@ The original professional-memory product remains the base and is not abandoned; 
 
 ---
 
-## 3. V2.0 — Clean core and truthful metrics
+## 3. V2.0: Clean core and truthful metrics
 
 *Goal: remove what is not working, make the published numbers honest, stop the manual review burden, and prepare the ground so later versions do not land in god files.*
 
 | # | Item | Priority | Difficulty |
 |---|---|---|---|
-| 3.1 | **Full task removal, backtraced** — **DELIVERED** 2026-07-28 (decision 0060, migration 0035) | P0 | M |
-| 3.2 | **Reminders dropped** — **DELIVERED** 2026-07-28 (decision 0060 ruling 6) | P0 | S |
+| 3.1 | **Full task removal, backtraced**: **DELIVERED** 2026-07-28 (migration 0035) | P0 | M |
+| 3.2 | **Reminders dropped**: **DELIVERED** 2026-07-28 | P0 | S |
 | 3.3 | **Automatic review resolution + suppressed-fact log** | P0 | M |
 | 3.4 | **Trust-score honesty and eval gates (first wave)** | P0 | M |
 | 3.5 | **i18n foundation (en/hr/de, user-level)** | P1 | M |
 | 3.6 | **Targeted modularization** | P1 | L |
-| 3.7 | **Correctness and hygiene debts from the audit** | P1 | S–M |
+| 3.7 | **Correctness and hygiene debts from the audit** | P1 | S to M |
 
-**3.1 Full task removal.** **DELIVERED 2026-07-28** — decision 0060, migration 0035; open loops are memory-backed, the receipt field stays permanently optional, the passport is at version 2.0. Delete the tasks module (21 files, 3,886 lines), both tables, both enums, 8 endpoints, both prompt families, 5 worker jobs, the reminders CLI, the Tasks page and every tendril (nav badge, dashboard stats, attention kinds, drawer "make this a task", skills accept-as-task, conversation delete preview, API client, query keys), 12 task-pair + 6 derivation-trap + 7 chat eval cases, and the task sections inside the answer and query-rewrite prompts. Five risk points handled deliberately: (a) `tasks_removed` stays as an optional field in the signed receipt `counts_json` forever, so historical receipts still verify; (b) memories carrying `source_type='task_conclusion'` provenance are deleted through the saga before the table goes, since the enum value cannot be dropped and the integrity sweep would flag orphans; (c) the passport manifest's required `tasks` key is a breaking schema version bump under the existing versioning decision; (d) attention, dashboard DTOs, retrieval's static task imports and the chat intent routing order are edited together; (e) demo assertions and the two migrations that enqueue task jobs are cleaned. **Preserved, re-fed from memory:** `commitment`/`open_loop` kinds, the dormant-flag table, the open-loops question path (reads memory rows directly), due-dates from `memory.valid_until`, and the attention surface. No deployed instance exists, so the cut is total: no compatibility shims.
+**3.1 Full task removal.** **DELIVERED 2026-07-28** (migration 0035): open loops are memory-backed, the receipt field stays permanently optional, the passport is at version 2.0. Delete the tasks module (21 files, 3,886 lines), both tables, both enums, 8 endpoints, both prompt families, 5 worker jobs, the reminders CLI, the Tasks page and every tendril (nav badge, dashboard stats, attention kinds, drawer "make this a task", skills accept-as-task, conversation delete preview, API client, query keys), 12 task-pair + 6 derivation-trap + 7 chat eval cases, and the task sections inside the answer and query-rewrite prompts. Five risk points handled deliberately: (a) `tasks_removed` stays as an optional field in the signed receipt `counts_json` forever, so historical receipts still verify; (b) memories carrying `source_type='task_conclusion'` provenance are deleted through the saga before the table goes, since the enum value cannot be dropped and the integrity sweep would flag orphans; (c) the passport manifest's required `tasks` key is a breaking schema version bump under the existing versioning rule; (d) attention, dashboard DTOs, retrieval's static task imports and the chat intent routing order are edited together; (e) demo assertions and the two migrations that enqueue task jobs are cleaned. **Preserved, re-fed from memory:** `commitment`/`open_loop` kinds, the dormant-flag table, the open-loops question path (reads memory rows directly), due-dates from `memory.valid_until`, and the attention surface. No deployed instance exists, so the cut is total: no compatibility shims.
 
-**3.2 Reminders dropped.** **DELIVERED 2026-07-28** — decision 0060 ruling 6. Not rebuilt in 2.0. Due-dates remain visible through attention and Sources. A notification layer may return later as its own feature if partners ask.
+**3.2 Reminders dropped.** **DELIVERED 2026-07-28**. Not rebuilt in 2.0. Due-dates remain visible through attention and Sources. A notification layer may return later as its own feature if partners ask.
 
 **3.3 Automatic review resolution.** The Review station as a manual queue disappears. Unsupported and partial verification outcomes are stored as `uncertain`, demoted by the existing status multipliers, and excluded from confident answers, with no human action required. Hedged-in-source, unsupported, and unjudgeable become **distinguishable sub-reasons** rather than one undifferentiated bucket (the audit flagged this), because the report needs to explain them. Every automatic demotion or suppression writes a **suppressed-fact log** entry (fact, source, span, reason, timestamp) that is queryable, shown on the source detail, and summarized in the findings report. Contradictions are excluded from this path: they are surfaced per principle 2.
 
-**3.4 Trust-score honesty and eval gates, first wave.** Publish contradiction **precision** (measured 0.857, currently hidden) and the **supersedes** result (currently 0/1 failing) on the trust page; gate both. Introduce **per-language floors** so Croatian cannot hide inside an aggregate (dedup hr 0.833 is under the 0.90 gate today, masked). Raise extraction and verification floors toward the specification's own thresholds or record an explicit decision justifying each floor. Write the missing decision record for the v1.1.0 precision drop of 3.8 points, which breached the project's own ">2 points requires a decision record" rule. Add **query-rewrite eval cases** (load-bearing, only indirectly covered today). Run **evals on pull requests via cached model responses**, so regressions surface before merge instead of after.
+**3.4 Trust-score honesty and eval gates, first wave.** Publish contradiction **precision** (measured 0.857, currently hidden) and the **supersedes** result (currently 0/1 failing) on the trust page; gate both. Introduce **per-language floors** so Croatian cannot hide inside an aggregate (dedup hr 0.833 is under the 0.90 gate today, masked). Raise extraction and verification floors toward the specification's own thresholds or justify each floor explicitly. Document the v1.1.0 precision drop of 3.8 points, which breached the project's own "more than 2 points must be justified" rule. Add **query-rewrite eval cases** (load-bearing, only indirectly covered today). Run **evals on pull requests via cached model responses**, so regressions surface before merge instead of after.
 
 **3.5 i18n foundation.** User-level language for **English, Croatian, German**, English as the default and fallback. Frontend: a mainstream library (react-i18next or equivalent), all UI strings extracted to key files, a **key-sync check in CI** so a missing or orphaned key fails the build. Translation files for hr and de are created with keys in place; authored translations are not part of this work. Backend: the ~10 files with inline en/hr strings move behind the same key discipline, and system-generated content continues to follow the existing per-user preferred-language rule. Date and number formatting follows the locale (fixing the hardcoded `en-GB` site the audit found). **Stated honestly and prominently:** UI language support is not extraction-quality support. German memory quality is unproven until a German golden corpus exists with its own gates; until then German is a UI language only, and the trust page says so.
 
@@ -59,7 +59,7 @@ The original professional-memory product remains the base and is not abandoned; 
 
 ---
 
-## 4. V2.1 — Read everything, anchored
+## 4. V2.1: Read everything, anchored
 
 *Goal: no document arrives that Cogeto cannot read, and every fact knows what it is about.*
 
@@ -77,7 +77,7 @@ The original professional-memory product remains the base and is not abandoned; 
 
 ---
 
-## 5. V2.2 — Sources: capture, proof, and volume
+## 5. V2.2 Sources: capture, proof, and volume
 
 *Goal: chat is the only door; Sources is the audit surface; a trial starts full instead of empty.*
 
@@ -99,7 +99,7 @@ The old flat all-memories list is demoted to a **filtered search view** across f
 
 ---
 
-## 6. V2.3 — Findings: contradictions that hold, and the artifact
+## 6. V2.3 Findings: contradictions that hold, and the artifact
 
 *Goal: the thing a QA lead forwards. This version is the wedge.*
 
@@ -127,7 +127,7 @@ The old flat all-memories list is demoted to a **filtered search view** across f
 
 ---
 
-## 7. V2.4 — Operate: configuration, cost, and observability
+## 7. V2.4 Operate: configuration, cost, and observability
 
 | # | Item | Priority | Difficulty |
 |---|---|---|---|
@@ -135,7 +135,7 @@ The old flat all-memories list is demoted to a **filtered search view** across f
 | 7.2 | **Token accounting and the counterfactual** | P1 | M |
 | 7.3 | **Cost reduction programme** | P1 | M |
 | 7.4 | **Observability** | P1 | L |
-| 7.5 | **Airgap hardening** | P2 | S–M |
+| 7.5 | **Airgap hardening** | P2 | S to M |
 
 **7.1 Provider configuration in the database.** Move model and provider configuration out of `.env` into the database with **encrypted keys**; the master key stays in `.env`; existing `.env` values seed the database on first run. An **admin UI page** manages providers. The **chat model becomes user-switchable** in the UI. Extraction and verification models stay **admin-only**, each shown with **its eval trust scores**, and untested combinations flagged as **"not evaluated."** `.env` keeps only bootstrap: database credentials, master key, instance configuration. This is also the natural break point for the legacy environment-variable expansion kept for v1 parity.
 
@@ -149,7 +149,7 @@ The old flat all-memories list is demoted to a **filtered search view** across f
 
 ---
 
-## 8. V2.5 — Connect and organize
+## 8. V2.5: Connect and organize
 
 | # | Item | Priority | Difficulty |
 |---|---|---|---|
@@ -165,7 +165,7 @@ The old flat all-memories list is demoted to a **filtered search view** across f
 
 ---
 
-## 9. V2.6 and later — platform, gated by evidence
+## 9. V2.6 and later: platform, gated by evidence
 
 | # | Item | Priority | Difficulty |
 |---|---|---|---|
@@ -188,8 +188,8 @@ The old flat all-memories list is demoted to a **filtered search view** across f
 
 | Confirmed item | Version | Section |
 |---|---|---|
-| Remove tasks fully, backtraced, no leftovers | V2.0 — **delivered** | 3.1 |
-| Reminders removed | V2.0 — **delivered** | 3.2 |
+| Remove tasks fully, backtraced, no leftovers | V2.0: **delivered** | 3.1 |
+| Reminders removed | V2.0: **delivered** | 3.2 |
 | Cogeto resolves reviews itself (unsupported/partial automatic) | V2.0 | 3.3 |
 | Suppressed-fact log (feeds the report) | V2.0 | 3.3 |
 | Contradictions surfaced, not queued in Review | V2.0 principle, V2.3 depth | 2, 6.1 |
@@ -217,7 +217,7 @@ The old flat all-memories list is demoted to a **filtered search view** across f
 | Flat memory list demoted to filtered search | V2.2 | 5.2 |
 | Bulk import (folder/ZIP/S3, manifest, hash dedup, caps, progress, summary) | V2.2 | 5.3 |
 | Contradiction coverage: aliases, typos, cross-language entities | V2.3 | 6.1 |
-| Contradiction coverage: 0.80–0.93 band and escalation hole | V2.3 | 6.1 |
+| Contradiction coverage: 0.80 to 0.93 band and escalation hole | V2.3 | 6.1 |
 | Contradiction coverage: numeric and unit conflicts | V2.3 | 6.1 |
 | Persist compatible verdicts (checked-pair ledger, stops nightly flip-flop) | V2.3 | 6.1 |
 | Supersession interval arithmetic fix | V2.3 | 6.1 |
@@ -225,7 +225,7 @@ The old flat all-memories list is demoted to a **filtered search view** across f
 | Timing misses (simultaneous uploads, per-fact budget, uncertain exclusion) | V2.3 | 6.1 |
 | Report generator (signed, PDF + JSON, contradictions, superseded, suppressed) | V2.3 | 6.2 |
 | Ambiguity detection and fan-out answers | V2.3 | 6.3 |
-| Vertical golden set (30–50 real document cases) | V2.3 | 6.4 |
+| Vertical golden set (30 to 50 real document cases) | V2.3 | 6.4 |
 | Numeric and cross-language contradiction pairs | V2.3 | 6.4 |
 | Authority-ranking cases | V2.3 | 6.4 |
 | Provider config in database, encrypted keys, master key in .env, seeded | V2.4 | 7.1 |

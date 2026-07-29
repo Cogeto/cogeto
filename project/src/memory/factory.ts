@@ -15,7 +15,7 @@ import type { SourceDeletion } from './deletion-saga';
 export interface QdrantOptions {
   url: string;
   embeddingModel: string;
-  /** Qdrant API key (QS-4); forwarded to the client. */
+  /** Qdrant API key; forwarded to the client. */
   apiKey?: string;
   /** Test overrides. */
   dimensions?: number;
@@ -26,7 +26,7 @@ export interface CreateMemoryStoreOptions {
   db: Db;
   qdrant?: QdrantOptions;
   /**
-   * Explicit opt-in for a vector-less store (QS-26): ONLY for test/fixture
+   * Explicit opt-in for a vector-less store: ONLY for test/fixture
    * paths that never touch a vector-dependent operation — every search,
    * status transition, supersession, scope/sensitive toggle and rejection
    * THROWS on such a store. Production wiring must always pass `qdrant`.
@@ -48,14 +48,14 @@ export function createMemoryReconciliation(options: CreateMemoryStoreOptions): {
   return { store, reconciliation: new MemoryReconciliation(options.db, store, vectors) };
 }
 
-/** Boot assertion (QS-26): a vector-less store must be explicitly marked. */
+/** Boot assertion: a vector-less store must be explicitly marked. */
 function buildVectors(options: CreateMemoryStoreOptions): MemoryVectorStore | undefined {
   if (options.qdrant) return new MemoryVectorStore(options.qdrant);
   if (!options.sqlOnly) {
     throw new Error(
-      'createMemoryStore: no qdrant options — a vector-less MemoryStore silently has no ' +
+      'createMemoryStore: no qdrant options: a vector-less MemoryStore silently has no ' +
         'index; pass `sqlOnly: true` ONLY for test/fixture paths that never exercise ' +
-        'search, transitions or supersession (QS-26)',
+        'search, transitions or supersession',
     );
   }
   return undefined;
@@ -66,7 +66,7 @@ export interface CreateIntegritySweepOptions {
   qdrant: QdrantOptions;
   s3: ObjectStoreOptions;
   instanceKeyDir: string;
-  /** Source-row probes for the orphan-memory arm (decision 0024) — pass the
+  /** Source-row probes for the orphan-memory arm — pass the
    * same adapters the composition roots bind to the saga. */
   sourceDeletions?: SourceDeletion[];
 }

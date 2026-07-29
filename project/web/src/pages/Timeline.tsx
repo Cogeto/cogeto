@@ -7,7 +7,7 @@ import { Card, EmptyState } from '../components/ui';
 
 type Mode = 'timeline' | 'at' | 'compare';
 
-/** URL surface — chat citations and the memory drawer deep-link here:
+/** URL surface — chat citations and the memory drawer deep-link here
  * /timeline?subject=Atlas[&mode=at&at=ISO][&mode=compare&from=ISO&to=ISO]. */
 function paramsFromUrl() {
   const q = new URLSearchParams(window.location.search);

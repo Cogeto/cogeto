@@ -5,7 +5,7 @@ import { listForeignEmbeddingModels, vectorIndexDimensionMismatch } from '../mem
 import type { CogetoConfig } from './config';
 
 /**
- * Model-configuration boot surface (decision 0040 ruling 3): every boot states
+ * Model-configuration boot surface: every boot states
  * the ACTIVE configuration id and per-tier bindings loudly — changing the
  * configuration mid-life is supported, the id changes, and the boot log states
  * it. Never logs keys.
@@ -15,7 +15,7 @@ export function logModelConfiguration(logger: Logger, config: CogetoConfig): voi
   if (!p.configured) {
     logger.warn(
       { configuration: 'unconfigured' },
-      'model gateway not configured — model features disabled until a provider key is set',
+      'model gateway not configured, model features disabled until a provider key is set',
     );
     return;
   }
@@ -28,16 +28,16 @@ export function logModelConfiguration(logger: Logger, config: CogetoConfig): voi
       answer: tier('answer'),
       embeddings: tier('embedding'),
     },
-    `model configuration ${p.id} — pipeline ${tier('pipeline')}, answer ${tier('answer')}, embeddings ${tier('embedding')}`,
+    `model configuration ${p.id}, pipeline ${tier('pipeline')}, answer ${tier('answer')}, embeddings ${tier('embedding')}`,
   );
 }
 
 /**
- * Embedding-space guard (decision 0040 ruling 3, frozen: REFUSE, not degrade):
+ * Embedding-space guard (frozen: REFUSE, not degrade)
  * if stored vectors were produced by a different embeddings model than the
  * active one, serving would silently mix embedding spaces — the app and worker
  * refuse to start until `npm run reindex` (which is exempt: it exists to
- * re-embed exactly those rows) has run. Extended by decision 0041 ruling 5:
+ * re-embed exactly those rows) has run. Extended by
  * the DIMENSION of the live collection must also agree with the active model —
  * a model-name check alone cannot see a collection left at another size.
  */
@@ -50,8 +50,8 @@ export async function assertEmbeddingSpaceConsistent(config: CogetoConfig): Prom
     if (foreign.length > 0) {
       throw new Error(
         `embedding model changed: stored vectors were produced by ${foreign.join(', ')} but the ` +
-          `active embeddings model is ${active} — refusing to serve mixed embedding spaces ` +
-          `(decision 0040 ruling 3). Run \`docker compose exec worker npm run reindex\` ` +
+          `active embeddings model is ${active}: refusing to serve mixed embedding spaces. ` +
+          `Run \`docker compose exec worker npm run reindex\` ` +
           `(or restore the previous embeddings configuration), then start again.`,
       );
     }
@@ -66,8 +66,8 @@ export async function assertEmbeddingSpaceConsistent(config: CogetoConfig): Prom
   if (mismatch) {
     throw new Error(
       `vector index dimension mismatch: the collection holds ${mismatch.actual}-dimension ` +
-        `vectors but the active embeddings model ${active} produces ${mismatch.expected} — ` +
-        `refusing to serve vector search against a stale index (decision 0041 ruling 5). ` +
+        `vectors but the active embeddings model ${active} produces ${mismatch.expected}. ` +
+        `refusing to serve vector search against a stale index. ` +
         `Run \`docker compose exec worker npm run reindex\` (it recreates the collection at ` +
         `the correct dimension and re-embeds from Postgres), then start again.`,
     );

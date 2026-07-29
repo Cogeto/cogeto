@@ -1,13 +1,13 @@
 import type { MemoryListItem } from './notes';
 
 /**
- * Time-travel DTOs (decision 0012, §B.2): the presentation surface over the
+ * Time-travel DTOs (§B.2): the presentation surface over the
  * memory module's temporal primitives (pointInTime, changesSince, the
  * supersession chain). No new retrieval semantics or schema live here — these
  * types only *shape* what those primitives already return so the timeline UI
  * and a temporal chat answer tell the same story.
  *
- * The one interval predicate (decision 0012 ruling 1) is never re-encoded here:
+ * The one interval predicate is never re-encoded here
  * "holds at t" is decided server-side by pointInTime. What this module owns is
  * the past-framing contract (ruling 6) — the same replaced/outdated/closed
  * shape the chat citation chip already renders — and the pure set arithmetic of
@@ -27,7 +27,7 @@ export interface TimelineSpan {
   /** `valid_until`, or null = still holding. */
   effectiveUntil: string | null;
   /**
-   * Past belief (decision 0012 ruling 6): replaced/outdated, or the interval
+   * Past belief: replaced/outdated, or the interval
    * closed before now. Rendered muted, exactly like the chat "past" chip.
    */
   pastBelief: boolean;
@@ -54,7 +54,7 @@ export type LaterFate = 'still_current' | 'replaced' | 'outdated' | 'expired';
 
 export interface PointInTimeFact {
   memory: MemoryListItem;
-  /** What later happened to this belief (decision 0012 ruling 3 pointer + status). */
+  /** What later happened to this belief (pointer + status). */
   laterFate: LaterFate;
   /** Successor memory id when the later fate is `replaced`. */
   supersededBy: string | null;
@@ -95,7 +95,7 @@ export interface TimelineDiffDto {
 }
 
 /**
- * The past-framing contract as a client/server twin (decision 0012 ruling 6),
+ * The past-framing contract as a client/server twin,
  * enriched with what specifically became of a fact — used to label a
  * point-in-time view. Pure and time-injectable so the label is deterministic in
  * tests; it evaluates the closed-interval / status arms only, never the
@@ -114,7 +114,7 @@ export function laterFateOf(
 /**
  * The diff between two point-in-time snapshots of one subject — pure set
  * arithmetic over the gated facts each `pointInTime` call already returned, so
- * it is testable without a model or a database (decision 0012 ruling 4 shape).
+ * it is testable without a model or a database (shape).
  *
  * `factsAtFrom` / `factsAtTo` are the facts that HELD at each instant (the
  * interval predicate already applied server-side). Supersession is followed

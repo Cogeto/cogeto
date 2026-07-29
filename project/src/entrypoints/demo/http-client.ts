@@ -1,8 +1,8 @@
 import type { Principal } from '@cogeto/shared';
 
 /**
- * The demo seed's ONE data-writing path: the real public HTTP API (decision
- * 0022; asserted by `demo_pipeline_real`). Every note, chat capture, and file
+ * The demo seed's ONE data-writing path: the real public HTTP API
+ * ; asserted by `demo_pipeline_real`). Every note, chat capture, and file
  * upload the sandbox contains goes through these endpoints exactly as a browser
  * would — so seeding the sandbox is a continuous integration test of the system.
  * This module performs NO database access and imports no domain module.
@@ -11,7 +11,7 @@ import type { Principal } from '@cogeto/shared';
 export interface DemoApi {
   captureNote(text: string, scope?: 'private' | 'shared'): Promise<{ id: string }>;
   waitNote(id: string, timeoutMs?: number): Promise<void>;
-  /** P6.9: a titled conversation for the sandbox sidebar (create + rename). */
+  /**: a titled conversation for the sandbox sidebar (create + rename). */
   createConversation(title: string): Promise<{ id: string }>;
   rememberChat(text: string, conversationId: string): Promise<{ messageId: string }>;
   waitChat(messageId: string, timeoutMs?: number): Promise<void>;
@@ -21,7 +21,7 @@ export interface DemoApi {
     scope?: 'private' | 'shared',
   ): Promise<{ objectKey: string }>;
   waitFile(objectKey: string, timeoutMs?: number): Promise<void>;
-  /** P6.6: the demo persona's context (Ana speaks Croatian). Real endpoint. */
+  /**: the demo persona's context (Ana speaks Croatian). Real endpoint. */
   updateContext(patch: Record<string, unknown>): Promise<void>;
   me(): Promise<Principal>;
 }
@@ -103,7 +103,7 @@ export function createDemoApi(baseUrl: string, accessToken: string): DemoApi {
     async rememberChat(text, conversationId) {
       // POST /api/chat is an SSE stream; drain it so the turn is persisted. The
       // `done` event's messageId is the ASSISTANT reply — but only the USER
-      // message can be remembered (decision 0021). Look it up by content and
+      // message can be remembered. Look it up by content and
       // remember that one (the explicit "remember this" capture).
       const res = await call('/api/chat', {
         method: 'POST',

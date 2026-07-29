@@ -26,7 +26,7 @@ export function App() {
   const [session, setSession] = useState<Session | null>(loadSession);
   const queryClient = useQueryClient();
 
-  // QS-36: on a 401 (token expired/revoked) drop the dead session and re-fetch
+  // on a 401 (token expired/revoked) drop the dead session and re-fetch
   // /api/config, so the shell re-decides between Login and the demo session from
   // fresh state instead of looping failed authed requests.
   useEffect(() => {
@@ -39,9 +39,9 @@ export function App() {
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
   }, [queryClient]);
 
-  // Ana sandbox (decision 0022/0027): /api/config advertises demo mode + a
+  // Ana sandbox: /api/config advertises demo mode + a
   // password-gated login on a demo instance. The token is NOT served here — the
-  // sandbox is no longer auto-open (decision 0027).
+  // sandbox is no longer auto-open.
   const { data: webConfig, isPending: configPending } = useQuery({
     queryKey: ['web-config'],
     queryFn: getWebConfig,
@@ -55,7 +55,7 @@ export function App() {
   }
 
   // Wait for /api/config before deciding, so a demo visitor never flashes the
-  // wrong screen. On a demo instance, show the password gate (decision 0027);
+  // wrong screen. On a demo instance, show the password gate;
   // otherwise the normal OIDC login.
   if (!session) {
     if (configPending) {

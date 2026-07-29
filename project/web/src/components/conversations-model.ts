@@ -1,7 +1,7 @@
 import type { ConversationDto, DeletionPreviewDto } from '@cogeto/shared';
 
 /**
- * Pure presentation logic for the conversations sidebar (P6.9, decision 0056),
+ * Pure presentation logic for the conversations sidebar,
  * React-free so the lifecycle rules are unit-testable: display naming, the
  * active/archived split and ordering, deep-link parsing, and the
  * consequence-stating delete confirmation built from the REAL preview numbers.

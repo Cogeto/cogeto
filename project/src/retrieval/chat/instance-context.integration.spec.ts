@@ -9,7 +9,7 @@ import type { RetrievalService } from '../retrieval.service';
 import { ChatService } from './chat.service';
 
 /**
- * The now-block in the chat pipeline (P6.6, decisions 0051/0052): every
+ * The now-block in the chat pipeline: every
  * answer-tier and rewriter call carries the user's date/time/context; unset
  * fields are absent; context is never citable; deterministic replies follow
  * the language anchor. Real Postgres, scripted gateway.
@@ -117,7 +117,7 @@ describe('instance context in chat (integration: real Postgres, scripted gateway
       'Europe/Zagreb', // the instance timezone — the user's override must win
       userContext,
     );
-    // All scripted turns share one conversation (P6.9), like the SPA's thread.
+    // All scripted turns share one conversation, like the SPA's thread.
     conversationId = (await chat.createConversation(owner)).id;
   }, 120_000);
 

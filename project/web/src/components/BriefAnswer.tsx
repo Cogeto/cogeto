@@ -5,7 +5,7 @@ import { ChatMarkdown } from './ChatMarkdown';
 import { UnsourcedChip } from './UnsourcedChip';
 
 /**
- * Render a skill brief (issue #268): the markdown-lite subset the
+ * Render a skill brief: the markdown-lite subset the
  * skill_brief prompt writes (### headings, dividers, bold, lists) through the
  * house ChatMarkdown renderer, with the [W#]/[M#] markers as traceable chips —
  * web markers link the page (title + fetch time on hover), memory markers link

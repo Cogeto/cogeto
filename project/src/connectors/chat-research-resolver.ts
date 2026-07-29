@@ -4,7 +4,7 @@ import type { ChatResearchProposal, ChatResearchResolverPort } from '../retrieva
 import { ResearchService } from './research.service';
 
 /**
- * The chat → research seam's connectors side (Priority 5 Part B): chat's
+ * The chat → research seam's connectors side: chat's
  * research intent opens the gate through this — propose only, never approve.
  * Bound to CHAT_RESEARCH_RESOLVER by the app root (ResearchChatModule); the
  * worker never binds it.

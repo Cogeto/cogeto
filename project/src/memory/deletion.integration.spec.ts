@@ -453,7 +453,7 @@ describe('deletion saga (integration: real Postgres + Qdrant + MinIO)', () => {
     expect(verifyChain(await confirmedReceipts(), publicKey).ok).toBe(true);
   });
 
-  // ── F1-B: the nightly sweep + receipt permanence ────────────────────────────
+  // ──: the nightly sweep + receipt permanence ────────────────────────────
 
   it('sweep_clean: with clean stores, the sweep verifies every confirmed receipt and raises nothing', async () => {
     const sweep = new IntegritySweep(tdb.db, vectors, objects, keyDir);

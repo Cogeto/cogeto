@@ -39,21 +39,21 @@ import { SkillEngine } from './skills/skill-engine';
 export interface ConnectorsModuleOptions {
   /** File-upload knobs from validated config (default 25 MB, §A.9 short TTL). */
   fileUpload: FileUploadOptions;
-  /** Inbound-email knobs from validated config (Session O4, decision 0028). */
+  /** Inbound-email knobs from validated config. */
   mail: MailOptions;
-  /** Web-research knobs from validated config (Priority 5 Part A, 0042/0043). */
+  /** Web-research knobs from validated config (0042/0043). */
   research: ResearchOptions;
 }
 
 /**
- * connectors — notes, files, then email (§A.11; decision 0003 ruling 4). S2-A
+ * connectors — notes, files, then email (§A.11).
  * shipped notes; O1 added the file source; O4 adds email — a per-tenant,
  * receive-only Haraka SMTP server feeding the SAME pipeline (source_type
  * 'email'). Registered once per process and marked global so the source readers
  * / deletions it exports resolve into ingestion and memory without those modules
  * re-importing it.
  *
- * File + email bytes are the memory module's (decision 0003 ruling 2): the
+ * File + email bytes are the memory module's: the
  * connectors sources reach them only through the memory module's public ports
  * (MemoryObjectStore, MemoryFileStore).
  */
@@ -93,7 +93,7 @@ export class ConnectorsModule {
         WebFetchService,
         WebSourceReader,
         WebSourceDeletion,
-        // Named skills (Priority 7, decision 0059): the run record + the
+        // Named skills: the run record + the
         // engine live in BOTH roots (the app approves plans, the worker
         // advances); the planner + controller are app-only (SkillsModule).
         SkillRunService,

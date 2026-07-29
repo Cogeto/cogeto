@@ -30,7 +30,7 @@ const userA: Principal = {
   roles: [],
 };
 
-describe('sweep arms QS-28 + QS-16 (integration: real Postgres + Qdrant + MinIO)', () => {
+describe('sweep arms + (integration: real Postgres + Qdrant + MinIO)', () => {
   let tdb: TestDatabase;
   let qdrant: TestQdrant;
   let minio: TestMinio;
@@ -82,7 +82,7 @@ describe('sweep arms QS-28 + QS-16 (integration: real Postgres + Qdrant + MinIO)
   };
   const clearAlerts = () => tdb.pool.query(`DELETE FROM integrity_alert`);
 
-  it('orphan_object_arm: an object with no file_metadata row is flagged past the grace window; accounted and fresh objects are not (QS-28)', async () => {
+  it('orphan_object_arm: an object with no file_metadata row is flagged past the grace window; accounted and fresh objects are not', async () => {
     // Injection fixture: the exact residue a failed compensating delete leaves.
     const orphanKey = 'org-1/sweep-arms-user/private/file-orphan';
     await objects.putObject(orphanKey, Buffer.from('orphan bytes'));
@@ -127,7 +127,7 @@ describe('sweep arms QS-28 + QS-16 (integration: real Postgres + Qdrant + MinIO)
     await objects.deleteObject(staleStagingKey);
   });
 
-  it('email_objects_not_orphans: retained email raw/HTML objects are adapter-owned, never flagged; an abandoned email object still is (issue #62)', async () => {
+  it('email_objects_not_orphans: retained email raw/HTML objects are adapter-owned, never flagged; an abandoned email object still is', async () => {
     // A retained email exactly as the intake stores it: raw original +
     // externalised HTML, both recorded on email_message — NO file_metadata.
     const emailId = randomUUID();
@@ -158,16 +158,16 @@ describe('sweep arms QS-28 + QS-16 (integration: real Postgres + Qdrant + MinIO)
     );
     await sweep.run();
     const details = await alertsOf('orphaned_object');
-    expect(details.some((d) => d.startsWith(`${rawKey} `))).toBe(false);
-    expect(details.some((d) => d.startsWith(`${htmlKey} `))).toBe(false);
-    expect(details.some((d) => d.startsWith(`${abandonedKey} `))).toBe(true);
+    expect(details.some((d) => d.startsWith(`${rawKey}: `))).toBe(false);
+    expect(details.some((d) => d.startsWith(`${htmlKey}: `))).toBe(false);
+    expect(details.some((d) => d.startsWith(`${abandonedKey}: `))).toBe(true);
 
     // Without the adapter (the pre-fix sweep), the same retained email WOULD be
     // flagged — proving the adapter is what makes retention legitimate.
     await clearAlerts();
     await sweepWith(0).run();
     const blind = await alertsOf('orphaned_object');
-    expect(blind.some((d) => d.startsWith(`${rawKey} `))).toBe(true);
+    expect(blind.some((d) => d.startsWith(`${rawKey}: `))).toBe(true);
 
     await clearAlerts();
     await tdb.pool.query(`DELETE FROM email_message WHERE id = $1`, [emailId]);
@@ -176,7 +176,7 @@ describe('sweep arms QS-28 + QS-16 (integration: real Postgres + Qdrant + MinIO)
     await objects.deleteObject(abandonedKey);
   });
 
-  it('payload_mismatch_arm: a stale Qdrant payload is flagged AND self-healed by targeted re-upsert; a missing point is flagged for reindex (QS-16)', async () => {
+  it('payload_mismatch_arm: a stale Qdrant payload is flagged AND self-healed by targeted re-upsert; a missing point is flagged for reindex', async () => {
     const row = await store.createFromFact(userA, {
       content: 'The renewal fee is agreed.',
       scope: 'private',
@@ -186,7 +186,7 @@ describe('sweep arms QS-28 + QS-16 (integration: real Postgres + Qdrant + MinIO)
     });
     await store.upsertVectors([row], [fakeEmbedding(row.content ?? row.id, DIMS)]);
 
-    // The QS-16 shape: the payload write landed, the row commit's state moved
+    // The shape: the payload write landed, the row commit's state moved
     // on — Qdrant now claims 'shared' while Postgres says 'private'.
     await vectors.setPayload(row.id, { scope: 'shared', status: 'outdated' });
 

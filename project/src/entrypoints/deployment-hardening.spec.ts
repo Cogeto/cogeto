@@ -6,21 +6,21 @@ import { describe, expect, it } from 'vitest';
 import { assertAppKeyMount, PRIVATE_KEY_FILE, PUBLIC_KEY_FILE } from '../infrastructure/index';
 
 /**
- * FIX-2 deployment hardening — static assertions over the compose stack and
- * Dockerfiles (QS-4, QS-8, QS-9, QS-24, QS-25) plus the app key-mount guard.
+ * deployment hardening — static assertions over the compose stack and
+ * Dockerfiles plus the app key-mount guard.
  * Pure file reads; no container needed.
  */
 const SRC = process.cwd();
 const REPO = path.resolve(SRC, '../..');
 const read = (rel: string): string => readFileSync(path.join(REPO, rel), 'utf8');
 
-describe('deployment hardening (FIX-2)', () => {
+describe('deployment hardening', () => {
   const compose = read('docker-compose.yml');
   const dockerfile = read('project/infra/docker/Dockerfile');
   const caddyMain = read('project/infra/docker/caddy/Caddyfile');
   const redactionDockerfile = read('project/services/redaction/Dockerfile');
 
-  it('QS-25: every image is pinned by digest (no floating tags)', () => {
+  it('every image is pinned by digest (no floating tags)', () => {
     // `image:` lines must reference a digest, never a bare tag.
     const imageLines = compose
       .split('\n')
@@ -40,7 +40,7 @@ describe('deployment hardening (FIX-2)', () => {
     expect(redactionDockerfile).toMatch(/FROM python@sha256:[0-9a-f]{64}/);
   });
 
-  it('QS-4: the main Caddyfile no longer serves the console vhosts; they live in the consoles profile', () => {
+  it('the main Caddyfile no longer serves the console vhosts; they live in the consoles profile', () => {
     expect(caddyMain).not.toContain('reverse_proxy minio:9001');
     expect(caddyMain).not.toContain('reverse_proxy qdrant:6333');
     // The consoles service is bound to localhost only.
@@ -51,7 +51,7 @@ describe('deployment hardening (FIX-2)', () => {
     expect(compose).toContain('QDRANT__SERVICE__API_KEY');
   });
 
-  it('QS-8: a preflight init container guards known dev secrets and app/worker/zitadel depend on it', () => {
+  it('a preflight init container guards known dev secrets and app/worker/zitadel depend on it', () => {
     expect(compose).toContain('preflight.js');
     // Each long-running service waits for the preflight to complete.
     const preflightWaits = compose.match(
@@ -60,7 +60,7 @@ describe('deployment hardening (FIX-2)', () => {
     expect((preflightWaits ?? []).length).toBeGreaterThanOrEqual(3);
   });
 
-  it('QS-9: app mounts the public-key-only volume; the worker keeps the full pair', () => {
+  it('app mounts the public-key-only volume; the worker keeps the full pair', () => {
     expect(compose).toContain('instance-pubkey:/instance-keys:ro'); // app
     expect(compose).toContain('instance-keys:/instance-keys:ro'); // worker
     expect(compose).toContain("COGETO_ASSERT_NO_PRIVATE_KEY: '1'");
@@ -72,7 +72,7 @@ describe('deployment hardening (FIX-2)', () => {
     // The research profile exists and carries the searxng service.
     expect(compose).toMatch(/searxng:\s*\n\s*profiles:\s*\['research'\]/);
     // Internal-network only: the searxng service block declares NO ports
-    // mapping (decision 0042) — discovery is reachable solely by the app over
+    // mapping — discovery is reachable solely by the app over
     // the compose network. Extract the service block (up to the next top-level
     // two-space-indented service key) and assert.
     const block = compose.match(/\n {2}searxng:\n(?: {4}.*\n| *\n)+/)?.[0];
@@ -82,13 +82,13 @@ describe('deployment hardening (FIX-2)', () => {
     expect(caddyMain).not.toContain('searxng');
   });
 
-  it('QS-24: the Zitadel masterkey is not on the command line', () => {
+  it('the Zitadel masterkey is not on the command line', () => {
     expect(compose).toContain('--masterkeyFromEnv');
     expect(compose).not.toContain('--masterkey "');
   });
 });
 
-describe('app key-mount guard (QS-9)', () => {
+describe('app key-mount guard', () => {
   it('throws when the private key is reachable, and when the public key is missing', async () => {
     const both = mkdtempSync(path.join(tmpdir(), 'cogeto-keys-both-'));
     writeFileSync(path.join(both, PRIVATE_KEY_FILE), 'PRIVATE');
@@ -104,7 +104,7 @@ describe('app key-mount guard (QS-9)', () => {
   });
 });
 
-describe('zitadel-init hardening (decision 0034)', () => {
+describe('zitadel-init hardening', () => {
   const init = readFileSync(
     path.resolve(process.cwd(), '../..', 'project/infra/docker/zitadel-init/init.mjs'),
     'utf8',

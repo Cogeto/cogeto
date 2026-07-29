@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { verifyWithPublicKey } from '../../infrastructure/index';
 
 /**
- * The deletion receipt hash chain (§B.1, decision 0008) — pure functions only.
+ * The deletion receipt hash chain (§B.1) — pure functions only.
  *
  * Each confirmed receipt's canonical payload is SHA-256 hashed with the
  * previous confirmed receipt's hash inside it (prev_hash), forming a
@@ -11,7 +11,7 @@ import { verifyWithPublicKey } from '../../infrastructure/index';
  * constant, never timestamps — clock skew cannot fork or reorder the chain
  * (confirmation itself is serialized by an advisory lock, see deletion-saga).
  *
- * Canonicalization contract (a bug here is a broken chain later):
+ * Canonicalization contract (a bug here is a broken chain later)
  * - Object keys sorted lexicographically (code point order) at every depth.
  * - Arrays keep their order.
  * - Timestamps are ISO-8601 UTC strings with milliseconds (Date#toISOString).

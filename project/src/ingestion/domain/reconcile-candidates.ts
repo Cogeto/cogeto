@@ -9,8 +9,8 @@ import {
 } from '../reconcile-config';
 
 /**
- * The deterministic candidate rules (decision 0010 ruling 6), pure so the
- * pipeline driver, the F2-B dreaming driver, and the eval harness apply
+ * The deterministic candidate rules, pure so the
+ * pipeline driver, the dreaming driver, and the eval harness apply
  * EXACTLY the same gate before any model call. Similarities are the
  * normalized [0,1] scores; `null` similarity means the pair reached us
  * through the entity path only.

@@ -1,10 +1,10 @@
 import type { DailySeries } from '@cogeto/shared';
 
 /**
- * Small, dependency-free chart geometry (Post-v1 Priority 2). Hand-rolled SVG
+ * Small, dependency-free chart geometry. Hand-rolled SVG
  * math instead of a charting library — the frontend takes on no new dependency
  * (a standing rule), and these charts are tiny (sparklines, compact bars, a
- * status donut). Pure functions, unit-tested in charts.spec.ts; the .tsx layer
+ * status donut). Pure functions, unit-tested in charts.spec.ts; the.tsx layer
  * only maps their output to SVG elements. Every chart pairs with a text
  * equivalent (see `seriesSummary`) so meaning never rides on color or shape.
  */

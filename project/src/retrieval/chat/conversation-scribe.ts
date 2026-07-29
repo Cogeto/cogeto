@@ -5,7 +5,7 @@ import type { Db } from '../../infrastructure/index';
 import { chatMessage, conversation } from '../persistence/tables';
 
 /**
- * The conversation-append seam (issue #259; decision 0058). Retrieval owns
+ * The conversation-append seam. Retrieval owns
  * the chat tables, so it owns BOTH the port and the implementation; the
  * research side (connectors) injects the token @Optional and never touches a
  * chat table (§A.1 rule 2). Used to land a concluded research answer in the

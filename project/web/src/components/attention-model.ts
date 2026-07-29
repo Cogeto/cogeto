@@ -1,8 +1,8 @@
 import type { AttentionGroup, AttentionItem, AttentionKind } from '@cogeto/shared';
 
 /**
- * Pure presentation model for the attention surface (Post-v1 Priority 2). Kept
- * free of React/DOM so it is unit-tested directly (attention-model.spec.ts):
+ * Pure presentation model for the attention surface. Kept
+ * free of React/DOM so it is unit-tested directly (attention-model.spec.ts)
  * grouping, per-group unread counts, and the icon/label vocabulary that makes
  * every item carry a NON-COLOR signal (a glyph + text), never color alone.
  */

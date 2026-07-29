@@ -8,9 +8,9 @@ import { MemoryStore } from '../memory/index';
 import { buildDreamDigest } from './dream-digest';
 
 /**
- * The plain digest (§B.6 v1 form; decision 0011). A thin wrapper over
- * {@link buildDreamDigest} — the same builder the attention feed (Post-v1
- * Priority 2) reuses, so there is exactly one digest, gated once. Owner scoping
+ * The plain digest (§B.6 v1 form). A thin wrapper over
+ * {@link buildDreamDigest} — the same builder the attention feed (
+ *) reuses, so there is exactly one digest, gated once. Owner scoping
  * falls out of the gates inside the builder.
  */
 @Controller('dreaming')
@@ -19,7 +19,7 @@ export class DreamingController {
   constructor(
     @Inject(DRIZZLE) private readonly db: Db,
     private readonly memoryStore: MemoryStore,
-    /** Preferred language for digest copy (P6.6, decision 0052); optional. */
+    /** Preferred language for digest copy; optional. */
     @Optional() private readonly userContext?: UserContextService,
   ) {}
 

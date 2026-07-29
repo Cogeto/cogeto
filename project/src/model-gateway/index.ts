@@ -4,14 +4,14 @@ export type { ModelGatewayModuleOptions } from './model-gateway.module';
 export { ModelGateway } from './model-gateway.service';
 export { MistralModelGateway, UnconfiguredModelGateway } from './mistral.gateway';
 export type { MistralGatewayOptions } from './mistral.gateway';
-// Provider adapters (decision 0040) — exported for tests; production always
+// Provider adapters — exported for tests; production always
 // composes them through createModelGateway + the configuration resolver.
 export { OpenAiCompatibleModelGateway } from './openai.gateway';
 export type { OpenAiCompatibleGatewayOptions } from './openai.gateway';
 export { AnthropicModelGateway } from './anthropic.gateway';
 export type { AnthropicGatewayOptions } from './anthropic.gateway';
 export { TierRoutedModelGateway } from './routed.gateway';
-// Per-instance provider configuration (decision 0040 ruling 3): ONE resolver
+// Per-instance provider configuration: ONE resolver
 // for app, worker, bare entrypoints and the eval harness.
 export {
   resolveModelProviders,
@@ -28,7 +28,7 @@ export type {
   ModelProviderId,
   OllamaRuntimeConfig,
 } from './provider-config';
-// Local-runtime boot probe (decision 0041 ruling 2): fail loudly at startup,
+// Local-runtime boot probe: fail loudly at startup,
 // never at first request. Called by the app, worker, and reindex entrypoints.
 export { assertLocalRuntimeReady, modelAvailable, probeLocalRuntime } from './local-runtime';
 export type { LocalRuntimeProbe } from './local-runtime';
@@ -53,7 +53,7 @@ export type { CreateModelGatewayOptions, RedactionConfig } from './factory';
 // thing that reaches the sidecar over HTTP) is deliberately NOT exported, so no
 // module outside the gateway can call the sidecar (architectural constraint).
 export { RedactingModelGateway } from './redacting.gateway';
-// The budget decorator (FIX-2 QS-2) — exported for tests; wired via the factory.
+// The budget decorator — exported for tests; wired via the factory.
 export { BudgetedModelGateway } from './budgeted.gateway';
 export type { RedactionPort, RedactionResult } from './redaction-client';
 export { reidentifyText, reidentifyDeep } from './redaction-utils';

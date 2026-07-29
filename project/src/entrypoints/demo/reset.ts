@@ -15,10 +15,10 @@ import type { Logger } from './seed';
 import type { Corpus } from './corpus';
 import type { DemoEndState } from './assertions';
 
-/** Thrown when a reset can't start because another already holds the lock (QS-33). */
+/** Thrown when a reset can't start because another already holds the lock. */
 export class DemoResetInProgressError extends Error {
   constructor() {
-    super('a demo reset is already in progress — skipping this one');
+    super('a demo reset is already in progress, skipping this one');
     this.name = 'DemoResetInProgressError';
   }
 }
@@ -41,7 +41,7 @@ export interface ResetDeps {
 }
 
 /**
- * Tears down all demo data and re-seeds through the pipeline (decision 0022
+ * Tears down all demo data and re-seeds through the pipeline (
  * ruling 2). The demo Principal and its token are preserved — only the world is
  * wiped — so an open browser tab keeps working across a reset. The instance is
  * single-tenant and disposable, so wiping every domain table IS wiping demo data.
@@ -49,7 +49,7 @@ export interface ResetDeps {
 export async function resetDemoWorld(deps: ResetDeps): Promise<DemoEndState> {
   const log = deps.log ?? (() => undefined);
 
-  // QS-33: hold the reset advisory lock for the whole wipe-and-reseed. Another
+  // hold the reset advisory lock for the whole wipe-and-reseed. Another
   // reset already running → skip cleanly rather than truncate mid-seed.
   const lock = await acquireDemoResetLock(deps.pool);
   if (!lock) throw new DemoResetInProgressError();

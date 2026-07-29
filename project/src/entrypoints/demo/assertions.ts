@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 
 /**
- * The seed's end-state assertions (decision 0022; §B.9). After the corpus has
+ * The seed's end-state assertions (§B.9). After the corpus has
  * been fed through the real pipeline and one dreaming cycle has run, the
  * fictional world must have materialized as designed — a silently wrong sandbox
  * is worse than none, so the seed FAILS LOUDLY when a hard assertion does not
@@ -27,7 +27,7 @@ export interface DemoEndState {
 
 const MIN_ACTIVE = 8;
 /** The world must contain standing obligations — the open-loops answer's input
- * (decision 0060: read from memory, no derived table behind them). */
+ * (: read from memory, no derived table behind them). */
 const MIN_OPEN_LOOPS = 3;
 
 /** Kinds and statuses that make a memory an OPEN LOOP — the same definition
@@ -142,7 +142,7 @@ export async function inspectEndState(pool: Pool, ownerId: string): Promise<Demo
 export function assertEndState(state: DemoEndState): void {
   if (state.hardFailures.length > 0) {
     throw new Error(
-      'demo seed end-state assertions FAILED (decision 0022 — a silently wrong ' +
+      'demo seed end-state assertions FAILED (a silently wrong ' +
         `sandbox is worse than none):\n${state.hardFailures.map((f) => `  ✗ ${f}`).join('\n')}`,
     );
   }

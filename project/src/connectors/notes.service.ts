@@ -32,7 +32,7 @@ export class NotesService {
     content: string,
     scope: MemoryScope = 'private',
   ): Promise<NoteRow> {
-    // Per-user daily capture cap (FIX-2 QS-6): bounds the pipeline model work a
+    // Per-user daily capture cap: bounds the pipeline model work a
     // single user (or the shared demo principal) can drive in a day. Reserved
     // BEFORE the write so a burst cannot slip past the check.
     if (this.counters.get(principal.userId, 'capture') >= this.quota.captureMax) {
@@ -41,7 +41,7 @@ export class NotesService {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
           error: 'Too Many Requests',
           code: 'daily_capture_limit',
-          message: `daily capture limit reached (${this.quota.captureMax}) — try again tomorrow`,
+          message: `daily capture limit reached (${this.quota.captureMax}), try again tomorrow`,
         },
         HttpStatus.TOO_MANY_REQUESTS,
       );
@@ -80,7 +80,7 @@ export class NotesService {
   }
 
   /**
-   * Processing state from the queue's own ledgers (no extra bookkeeping):
+   * Processing state from the queue's own ledgers (no extra bookkeeping)
    * the job_execution idempotency row means the pipeline job committed; a
    * dead_letter row means it exhausted its retries; otherwise it is queued
    * or running.

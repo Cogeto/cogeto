@@ -32,14 +32,13 @@ import { UnsourcedChip } from '../components/UnsourcedChip';
 import { getAutoResearch, setAutoResearch } from '../research-pref';
 
 /**
- * Chat, reimagined as "Ask → Briefing" (P6.9, decision 0049): the question is a
+ * Chat, reimagined as "Ask → Briefing": the question is a
  * heading; Cogeto answers as flush editorial prose along a teal evidence rail,
  * every claim carrying a provenance chip, and each answer closes with a "stands
  * on" manifest of exactly what it drew from — memory, web, or honestly-marked
  * model knowledge. Provenance is the surface's identity, not a chatbot skin.
  *
- * Citation grammar is `{{cite:<uuid>}}` plus `{{unsourced}}` (decisions
- * 0007/0046). Stored messages carry canonical tokens; live streaming text is
+ * Citation grammar is `{{cite:<uuid>}}` plus `{{unsourced}}` . Stored messages carry canonical tokens; live streaming text is
  * canonicalized here from the model's `[F#]`/`[U]` markers via the SSE sources
  * map, and every non-conforming token is stripped — no raw marker reaches screen.
  */
@@ -115,9 +114,9 @@ function MessageBody({
 }
 
 /**
- * The research offer (decision 0046): a one-tap bridge from a knowledge answer
+ * The research offer: a one-tap bridge from a knowledge answer
  * into the EXISTING minimise-and-approve gate. Tapping proposes a run (nothing
- * is sent) and opens the gate right here in the conversation (decision 0047).
+ * is sent) and opens the gate right here in the conversation.
  */
 function ResearchOfferChip({
   session,
@@ -127,7 +126,7 @@ function ResearchOfferChip({
 }: {
   session: Session;
   offer: ChatResearchOffer;
-  /** The invoking thread (issue #259) — the concluded answer lands there. */
+  /** The invoking thread — the concluded answer lands there. */
   conversationId: string | null;
   onProposed: (run: ResearchRunDto) => void;
 }) {
@@ -154,7 +153,7 @@ function ResearchOfferChip({
           type="button"
           onClick={() => {
             // "Don't ask again": from now on, research runs automatically — and
-            // this one runs now too (decision 0050). Disable in Settings.
+            // this one runs now too. Disable in Settings.
             setAutoResearch(true);
             propose.mutate();
           }}
@@ -169,7 +168,7 @@ function ResearchOfferChip({
 }
 
 /**
- * "Remember this" on a user message (O2-C, decision 0021): routes the message
+ * "Remember this" on a user message: routes the message
  * through the pipeline and polls capture progress. Only user messages get this.
  */
 function RememberAction({ session, messageId }: { session: Session; messageId: string }) {
@@ -225,7 +224,7 @@ function RememberAction({ session, messageId }: { session: Session; messageId: s
   );
 }
 
-/** The question as a confident heading (P6.9). */
+/** The question as a confident heading. */
 function AskHeading({ time, children }: { time?: string; children: ReactNode }) {
   return (
     <div>
@@ -239,7 +238,7 @@ function AskHeading({ time, children }: { time?: string; children: ReactNode }) 
   );
 }
 
-/** The answer along the teal evidence rail (P6.9). */
+/** The answer along the teal evidence rail. */
 function AnswerBlock({ children }: { children: ReactNode }) {
   return (
     <div className="mt-4 grid grid-cols-[3px_1fr] gap-5">
@@ -342,7 +341,7 @@ function buildTurns(history: ChatMessage[]): Turn[] {
 export function Chat({ session }: { session: Session }) {
   const queryClient = useQueryClient();
 
-  // The conversation containers (P6.9): the deep link (?c=) wins, else the
+  // The conversation containers: the deep link (?c=) wins, else the
   // most recent conversation; a brand-new instance starts with none and the
   // first send creates one.
   const [link] = useState(() => parseChatLink(window.location.search));
@@ -372,19 +371,19 @@ export function Chat({ session }: { session: Session }) {
   );
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
-  /** Specific failure copy (FIX-2): rate limit / daily budget / timeout. */
+  /** Specific failure copy: rate limit / daily budget / timeout. */
   const [failMessage, setFailMessage] = useState<string | null>(null);
   const [liveQuestion, setLiveQuestion] = useState<string | null>(null);
   const [liveText, setLiveText] = useState('');
   const [liveFacts, setLiveFacts] = useState<ChatFactDto[]>([]);
   /** The latest answer's research offer (0046) — ephemeral, cleared on the next ask. */
   const [offer, setOffer] = useState<ChatResearchOffer | null>(null);
-  // A skill run proposed from chat (Priority 7, decision 0059): the run view
+  // A skill run proposed from chat: the run view
   // owns the gate and the live progress — chat just hands over the handle.
   const [skillRunId, setSkillRunId] = useState<string | null>(null);
   /** The inline research flow (0047): the SAME gate, embedded in the conversation. */
   const [inlineRun, setInlineRun] = useState<ResearchRunDto | null>(null);
-  /** Resume research that ran on without us (decision 0057): an approved run
+  /** Resume research that ran on without us: an approved run
    * still extracting, or a concluded one whose stored answer was never seen,
    * re-mounts the inline view — the response survives leaving the chat. */
   const resumedRef = useRef(false);
@@ -433,7 +432,7 @@ export function Chat({ session }: { session: Session }) {
     if (activeId && !focusMessageId) window.history.replaceState(null, '', chatLink(activeId));
   }, [activeId, focusMessageId]);
 
-  /** Switching threads (P6.9): detach any live stream, clear live state, load
+  /** Switching threads: detach any live stream, clear live state, load
    * the target thread in place. The detached turn still lands server-side in
    * the conversation it was sent to. */
   const switchConversation = (id: string) => {
@@ -507,7 +506,7 @@ export function Chat({ session }: { session: Session }) {
               .catch(() => setInlineRun(null));
           } else {
             // A knowledge answer may offer research. With auto-research on
-            // (decision 0050) the tap is implicit: propose + run it immediately;
+            // the tap is implicit: propose + run it immediately;
             // otherwise show the one-tap offer. (Concluding turns never re-offer.)
             const nextOffer = opts.suppressOffer ? null : (event.researchOffer ?? null);
             if (nextOffer && getAutoResearch()) {
@@ -521,7 +520,7 @@ export function Chat({ session }: { session: Session }) {
           }
         } else if (event.type === 'error') {
           setFailed(true);
-          // Specific copy for the daily budget / stream-timeout aborts (FIX-2).
+          // Specific copy for the daily budget / stream-timeout aborts.
           if (event.code === 'model_budget_exceeded' || event.code === 'timeout') {
             setFailMessage(event.message);
           }
@@ -552,7 +551,7 @@ export function Chat({ session }: { session: Session }) {
   const loading = activeId !== null && isPending;
   const empty = !loading && turns.length === 0 && !liveQuestion;
 
-  // The conversations sidebar (P6.9, decision 0056) rides the Shell's left
+  // The conversations sidebar rides the Shell's left
   // rail — OUTSIDE the header/content column, so the breadcrumb and the
   // thread center in the same remaining width and stay aligned.
   const conversationRail = (

@@ -21,7 +21,7 @@ import { WebSourceReader } from './web.source-reader';
 import type { ResearchOptions } from './research-options';
 
 /**
- * Server-side research conclusion + focused extraction (decision 0057):
+ * Server-side research conclusion + focused extraction
  *
  *   research_concludes_server_side — when the last captured page's pipeline
  *     job settles, the conclusion job synthesises and STORES the answer on the
@@ -169,8 +169,8 @@ describe('research conclusion (integration: real Postgres + Qdrant, scripted gat
       gateway,
       store,
     );
-    // The WORKER composition (decision 0057): no retrieval — web-only answers.
-    // The append seam (issue #259) is the real retrieval-owned scribe.
+    // The WORKER composition: no retrieval — web-only answers.
+    // The append seam is the real retrieval-owned scribe.
     synthesis = new ResearchSynthesisService(
       research,
       undefined,
@@ -218,7 +218,7 @@ describe('research conclusion (integration: real Postgres + Qdrant, scripted gat
   let runId: string;
 
   it('research_concludes_server_side: the worker stores the answer once the last page settles — nobody watching — and lands it in the conversation', async () => {
-    // The invoking conversation (issue #259): the concluded answer must land
+    // The invoking conversation: the concluded answer must land
     // here as a persistent assistant message, automatically.
     const conversationId = (
       await tdb.pool.query<{ id: string }>(
@@ -249,7 +249,7 @@ describe('research conclusion (integration: real Postgres + Qdrant, scripted gat
     expect(concluded!.answer).toContain('[W1]');
     expect(concluded!.answer).not.toContain('[W9]'); // invented marker stripped
     expect(gateway.completeCalls).toBe(1);
-    // Delivered into the thread (issue #259): a persistent assistant message
+    // Delivered into the thread: a persistent assistant message
     // with numbered web references + a Sources block — and that counts as
     // seen, so the run never haunts the resume surface.
     expect(concluded!.answerSeenAt).not.toBeNull();

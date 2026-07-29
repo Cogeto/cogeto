@@ -10,7 +10,7 @@ import type { ModelUsageMeter } from '../infrastructure/index';
 import type { ZodType } from 'zod';
 
 /**
- * Per-user daily model budget (FIX-2 QS-2) as a gateway decorator — the same
+ * Per-user daily model budget as a gateway decorator — the same
  * shape as the redaction decorator, so it wraps ALL model traffic uniformly.
  * Before each call it checks the attributed user (from the per-request usage
  * scope) is under their daily call/token caps; after each call it records the
@@ -18,7 +18,7 @@ import type { ZodType } from 'zod';
  * user in scope and pass through unmetered.
  *
  * Tokens: `complete` charges the provider-REPORTED usage when the adapter
- * normalized one (decision 0040 ruling 4); everywhere else (streams,
+ * normalized one; everywhere else (streams,
  * structured extraction, embeddings — no usage channel in the seam's return
  * shapes) the documented ~4 chars/token ESTIMATE applies. A budget is a safety
  * ceiling, not billing, so the estimate remains sufficient where it is used.
@@ -75,7 +75,7 @@ export class BudgetedModelGateway extends ModelGateway {
   }
 
   override async reachable(): Promise<GatewayReachability> {
-    return this.inner.reachable(); // QS-35: probing is the wrapped gateway's job.
+    return this.inner.reachable(); //: probing is the wrapped gateway's job.
   }
 
   /** Enforce the cap before a call; returns the user to charge (or undefined). */

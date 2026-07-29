@@ -5,7 +5,7 @@ import { buildDigestLines } from './dream-digest';
 import type { DreamActionRow } from './persistence/tables';
 
 /**
- * initiated_content_in_preferred (P6.6, decision 0052): everything Cogeto
+ * initiated_content_in_preferred: everything Cogeto
  * INITIATES speaks the user's preferred language. The digest lines are
  * deterministic string tables, so an hr user's digest comes back in Croatian
  * with the line ORDER unchanged (the attention feed's dismissal keys index
@@ -44,14 +44,14 @@ describe('initiated_content_in_preferred', () => {
     const en = await buildDigestLines(store, owner, actions, 'en');
     const hr = await buildDigestLines(store, owner, actions, 'hr');
     expect(en.map((l) => l.text)).toEqual([
-      'Found a conflict about Adriatic Foods — your call',
+      'Found a conflict about Adriatic Foods: your call',
       'A commitment about Marko has gone quiet',
     ]);
     expect(hr.map((l) => l.text)).toEqual([
-      'Pronađen je sukob oko Adriatic Foods — tvoja odluka',
+      'Pronađen je sukob oko Adriatic Foods: tvoja odluka',
       'Obveza oko Marko je utihnula',
     ]);
-    // Same order, same hrefs — only the language differs.
+    // Same order, same hrefs: only the language differs.
     expect(hr.map((l) => l.href)).toEqual(en.map((l) => l.href));
   });
 

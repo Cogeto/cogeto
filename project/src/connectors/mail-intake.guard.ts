@@ -7,7 +7,7 @@ import type { MailOptions } from './mail-options';
 
 /**
  * Authenticates the internal email-intake endpoint to the mail service ONLY
- * (decision 0028 ruling 7): a shared-secret bearer the Haraka queue hook
+ * a shared-secret bearer the Haraka queue hook
  * presents. FAIL-CLOSED — an empty configured token denies every request, so a
  * misconfigured instance cannot accidentally expose an unauthenticated intake.
  * The endpoint is never public (it opts out of the global bearer guard via

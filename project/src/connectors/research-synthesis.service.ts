@@ -21,7 +21,7 @@ import { ResearchService } from './research.service';
 import type { ResearchRunRow, WebPageRow } from './persistence/tables';
 
 /**
- * Sourced synthesis (Priority 5 Part B, decision 0045): the answer step of a
+ * Sourced synthesis: the answer step of a
  * research run, on the ANSWER tier — the only research stage that uses it.
  * Per-claim provenance is the contract: [W#] markers cite fetched pages (URL +
  * fetch time), [M#] markers cite remembered facts, and model knowledge is
@@ -47,19 +47,19 @@ export class ResearchSynthesisService {
 
   constructor(
     private readonly research: ResearchService,
-    /** Absent in the WORKER composition (decision 0057): server-side
+    /** Absent in the WORKER composition: server-side
      * conclusion synthesises web-only ([W#] citations); the interactive app
      * path always has it, so memory claims still cite memories there. */
     @Optional()
     private readonly retrieval: RetrievalService | undefined,
     private readonly gateway: ModelGateway,
-    /** Per-user context + language (P6.6). Absent in bare test harnesses. */
+    /** Per-user context + language. Absent in bare test harnesses. */
     @Optional()
     private readonly userContext?: UserContextService,
     @Optional()
     @Inject(INSTANCE_TIMEZONE)
     private readonly instanceTimeZone: string = DEFAULT_INSTANCE_TIMEZONE,
-    /** The conversation-append seam (issue #259; retrieval owns it): where a
+    /** The conversation-append seam (retrieval owns it): where a
      * chat-invoked run's concluded answer lands as a persistent message. */
     @Optional()
     @Inject(CONVERSATION_APPEND)
@@ -70,7 +70,7 @@ export class ResearchSynthesisService {
     const run = await this.research.getRun(principal, runId);
     if (!run) throw new NotFoundException();
     const pages = (await this.research.pagesForRun(principal, runId)).slice(0, MAX_PAGES);
-    // A concluded run replays its STORED answer (decision 0057) — the worker
+    // A concluded run replays its STORED answer — the worker
     // may have finished while nobody was watching; asking again re-resolves
     // the web citations without another model call.
     if (run.status === 'concluded' && run.answer) {
@@ -87,14 +87,14 @@ export class ResearchSynthesisService {
     const result = await this.synthesiseCore(principal, runId, run.intent, pages);
     // Interactive path: the user is watching the answer render — seen now.
     // The guarded write races the worker's conclusion; only the winner
-    // delivers into the conversation (issue #259).
+    // delivers into the conversation.
     const won = await this.research.recordConclusion(runId, result.answer, { seen: true });
     if (won) await this.deliverToConversation(run, result);
     return result;
   }
 
   /**
-   * The worker's conclusion (decision 0057): runs when the last captured page
+   * The worker's conclusion: runs when the last captured page
    * settles, whether or not anyone is watching. Idempotent by construction —
    * only an 'approved' run concludes, and 'concluded' is terminal. Retrieval
    * is absent in the worker, so the stored answer cites pages ([W#]) only.
@@ -113,7 +113,7 @@ export class ResearchSynthesisService {
     const pages = (await this.research.pagesForRun(owner, runId)).slice(0, MAX_PAGES);
     if (pages.length === 0) return { concluded: false };
     const result = await this.synthesiseCore(owner, runId, run.intent, pages);
-    // Delivered into its conversation counts as seen (issue #259): the answer
+    // Delivered into its conversation counts as seen: the answer
     // is a persistent message in the thread, not a pending surface.
     const won = await this.research.recordConclusion(runId, result.answer, {
       seen: run.conversationId !== null,
@@ -175,7 +175,7 @@ export class ResearchSynthesisService {
       (m, i) => `[M${i + 1}] ${m.memory.content ?? '(withheld)'} (status: ${m.memory.status})`,
     );
 
-    // The now-block (P6.6): the clock for fetch-date freshness plus the
+    // The now-block: the clock for fetch-date freshness plus the
     // reply-language rule. Any context-read failure degrades to no block.
     const contextRecord = await Promise.resolve(this.userContext?.get(principal.userId))
       .then((record) => record ?? EMPTY_USER_CONTEXT)
@@ -204,10 +204,10 @@ export class ResearchSynthesisService {
 }
 
 /**
- * The thread form of a concluded answer (issue #259): memory markers become
+ * The thread form of a concluded answer: memory markers become
  * canonical {{cite:<uuid>}} chips the chat renderer resolves; web markers
  * become numbered references with a Sources block naming title, URL and fetch
- * date. The literals follow the user's language anchor (decision 0052).
+ * date. The literals follow the user's language anchor.
  */
 export function buildThreadMessage(
   answer: string,

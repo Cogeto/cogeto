@@ -17,7 +17,7 @@ import { MemoryReconciliation } from './reconciliation';
 import type { ContradictionResolveAction } from './reconciliation';
 import { toListItem } from './list-item';
 
-/** Zod at the boundary: the three resolutions (decision 0010 ruling 3). */
+/** Zod at the boundary: the three resolutions. */
 const contentSchema = z
   .string()
   .max(4_000, 'memory content is too long (max 4000 characters)')
@@ -31,7 +31,7 @@ const resolveSchema = z.discriminatedUnion('action', [
 ]);
 
 /**
- * The contradicted queue (Review's second tab, F2-A): open contradictions
+ * The contradicted queue (Review's second tab): open contradictions
  * where both facts belong to the caller, and the owner's resolution actions.
  * All state changes and audits happen inside MemoryReconciliation.
  */

@@ -31,7 +31,7 @@ export function makePdf(text: string): Buffer {
   return Buffer.from(pdf, 'latin1');
 }
 
-/** A store-only (method 0) ZIP — enough of a .docx for mammoth to read. */
+/** A store-only (method 0) ZIP — enough of a.docx for mammoth to read. */
 export function makeDocx(paras: string[]): Buffer {
   const body = paras
     .map((p) => `<w:p><w:r><w:t xml:space="preserve">${p}</w:t></w:r></w:p>`)

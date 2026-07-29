@@ -3,7 +3,7 @@ import { PROVIDER_PRESETS } from '../../model-gateway/index';
 import { dimensionsFor } from './vector-store';
 
 /**
- * embedding_dimensions_cover_presets (issue #177): a configurable embeddings
+ * embedding_dimensions_cover_presets: a configurable embeddings
  * model without an explicit dimensions entry silently fell back to 1024 and
  * failed at upsert. Every embeddings model reachable through a provider
  * preset must map to its real vector size — never the fallback.
@@ -22,7 +22,7 @@ describe('embedding_dimensions_cover_presets', () => {
   });
 
   it('every provider preset embeddings model has an EXPLICIT entry (no silent 1024 fallback)', () => {
-    // The fallback returns 1024 for anything unknown, so "explicit" means:
+    // The fallback returns 1024 for anything unknown, so "explicit" means
     // perturbing the name changes nothing ONLY for genuinely-1024 models —
     // instead, assert each preset model differs from an unknown-name probe
     // unless its real size actually is the default.

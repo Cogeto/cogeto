@@ -16,10 +16,10 @@ const atSchema = subjectSchema.extend({ at: isoInstant });
 const diffSchema = subjectSchema.extend({ from: isoInstant, to: isoInstant });
 
 /**
- * The time-travel read surface (decision 0012) — thin routes over the
+ * The time-travel read surface — thin routes over the
  * {@link TimelineService} composition. Every read is Principal-gated inside the
  * MemoryStore primitives the service calls; this controller only parses the
- * query and attributes cited shared facts to their owner (O2-B), name-only
+ * query and attributes cited shared facts to their owner, name-only
  * (visibility was already decided by the gates).
  */
 @Controller('timeline')

@@ -13,7 +13,7 @@ import { RetrievalService } from './retrieval.service';
 import { chatMessage } from './persistence/tables';
 
 /**
- * chat_grounding / chat_fast_path: the S3-A named tests. Real Postgres + real
+ * chat_grounding / chat_fast_path: the named tests. Real Postgres + real
  * Qdrant; the gateway mocked at the seam for determinism.
  */
 
@@ -91,7 +91,7 @@ describe('chat (integration, real Postgres + real Qdrant, gateway mocked)', () =
     return row;
   };
 
-  // One conversation per principal (P6.9): asks land in it like the SPA's.
+  // One conversation per principal: asks land in it like the SPA's.
   const conversations = new Map<string, string>();
   const conversationFor = async (principal: Principal) => {
     let id = conversations.get(principal.userId);
@@ -158,7 +158,7 @@ describe('chat (integration, real Postgres + real Qdrant, gateway mocked)', () =
     for (const fact of facts) expect(request.input).toContain(`[${fact.marker}]`);
 
     // The persisted assistant message carries the one canonical citation form
-    // (decision 0007 ruling 2): {{cite:<uuid>}} — never the raw [F1] marker.
+    // {{cite:<uuid>}} — never the raw [F1] marker.
     const done = events.find((e) => e.type === 'done');
     expect(done?.type).toBe('done');
     const content = done!.type === 'done' ? done!.content : '';
@@ -192,7 +192,7 @@ describe('chat (integration, real Postgres + real Qdrant, gateway mocked)', () =
       return { outbox: outbox.rows[0].n as number, jobs: jobs.rows[0].n as number };
     };
     // The ONE sanctioned enqueue is the auto-title request, fired exactly once
-    // after a conversation's first exchange (P6.9) — never ingestion work. A
+    // after a conversation's first exchange — never ingestion work. A
     // fresh conversation's first ask carries it; every later ask enqueues
     // nothing at all.
     const conversationId = (await chat.createConversation(userA)).id;

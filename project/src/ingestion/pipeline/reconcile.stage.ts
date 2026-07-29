@@ -21,15 +21,15 @@ import {
 import type { PipelineLog } from './pipeline-log';
 
 /**
- * Stage 6 (reconcile) — real from F2-A (decision 0010). ONE engine, two
+ * Stage 6 (reconcile) — real. ONE engine, two
  * drivers: the pipeline calls `reconcile` incrementally with the facts it
  * just admitted (inside the job's idempotency transaction, where those rows
- * are not yet committed); the F2-B dreaming cycle calls it in batch.
+ * are not yet committed); the dreaming cycle calls it in batch.
  *
  * Shape per incoming fact: deterministic candidate generation first (gated
  * primitives, versioned thresholds, zero model calls), then at most
  * MAX_CHECKS_PER_FACT model confirmations per family, then actions through
- * the Memory aggregate only. Anything short of an exact verdict does nothing:
+ * the Memory aggregate only. Anything short of an exact verdict does nothing
  * a wrong merge destroys a distinct fact, a wrong contradiction wastes the
  * user's attention, and both are worse than doing nothing.
  */
@@ -62,7 +62,7 @@ export interface ReconcileSummary {
   superseded: number;
   /**
    * Every state-changing action taken, in order — the dreaming driver
-   * persists these as dream_action rows (F2-B). The pipeline driver ignores
+   * persists these as dream_action rows. The pipeline driver ignores
    * them (its ledger is the job log). Skipped results are not recorded.
    */
   actions: ReconcileActionRecord[];

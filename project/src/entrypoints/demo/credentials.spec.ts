@@ -10,7 +10,7 @@ import {
   readDemoLogin,
 } from './credentials';
 
-describe('demo credentials (decision 0027)', () => {
+describe('demo credentials', () => {
   const sessionFileIn = (): string =>
     path.join(mkdtempSync(path.join(tmpdir(), 'cogeto-creds-')), 'session.json');
 

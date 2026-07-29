@@ -1,8 +1,8 @@
 import type { QueryClient } from '@tanstack/react-query';
 
 /**
- * Targeted query invalidation after mutations (QS-36). The dashboard used a
- * bare `queryClient.invalidateQueries()` after every mutation, which refetches
+ * Targeted query invalidation after mutations. The dashboard used a
+ * bare `queryClient.invalidateQueries` after every mutation, which refetches
  * EVERY active query (health polls, worker activity, unrelated lists) on any
  * change. These groups invalidate only the queries a given mutation can move.
  * React Query matches by key PREFIX, so `['memories']` also refreshes
@@ -10,7 +10,7 @@ import type { QueryClient } from '@tanstack/react-query';
  * citation-chip lookup.
  */
 
-/** Coherent staleness for a cited memory's chip (QS-36) — one named constant. */
+/** Coherent staleness for a cited memory's chip — one named constant. */
 export const CITATION_STALE_MS = 60_000;
 
 async function invalidate(qc: QueryClient, keys: readonly unknown[][]): Promise<void> {

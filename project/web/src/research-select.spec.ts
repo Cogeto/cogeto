@@ -10,7 +10,7 @@ const page = (url: string, score: number | null): DiscoveredPageDto => ({
 });
 
 /**
- * Auto-selection of the best sources by relevance (decision 0050) — the pure
+ * Auto-selection of the best sources by relevance — the pure
  * function that lets research run without asking the user to pick.
  */
 describe('selectTopByScore', () => {

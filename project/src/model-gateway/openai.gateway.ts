@@ -21,30 +21,30 @@ import { DEFAULT_OPENAI_BASE_URL } from './provider-config';
 
 export interface OpenAiCompatibleGatewayOptions {
   apiKey: string;
-  /** Any OpenAI-compatible endpoint (decision 0040 ruling 1) — the doorway the
-   * local runtime walks through (decision 0041). Default: the OpenAI API. */
+  /** Any OpenAI-compatible endpoint — the doorway the
+   * local runtime walks through. Default: the OpenAI API. */
   baseUrl?: string;
   /** Models per tier — no defaults: configuration must name them (ruling 3). */
   pipelineModel?: string;
   answerModel?: string;
   embedModel?: string;
-  /** Sampling temperature for free-text completions (decision 0035); structured
+  /** Sampling temperature for free-text completions; structured
    * extraction is ALWAYS temperature 0. */
   temperature?: number;
-  /** Provider name used in error messages and retry logs — 'ollama' for the
-   * local flavor (decision 0041 ruling 1); defaults to 'openai'. */
+  /** Provider name used in error messages and retry logs'ollama' for the
+   * local flavor; defaults to 'openai'. */
   providerLabel?: string;
   /**
-   * Per-tier request timeouts (decision 0041 ruling 2) — local inference on
+   * Per-tier request timeouts — local inference on
    * consumer hardware needs seconds-to-minutes, independently per tier. Absent
    * (every hosted configuration): no explicit timeout, byte-identical to
-   * Priority 3 behavior. A timed-out call is FATAL, not retryable — retrying a
+   * behavior. A timed-out call is FATAL, not retryable — retrying a
    * saturated local runtime only piles on.
    */
   tierTimeoutsMs?: { pipeline?: number; answer?: number; embedding?: number };
   /**
-   * Marks this instance as a LOCAL Ollama runtime (decision 0041): `rootUrl`
-   * is the runtime root; `reachable()` probes `<root>/api/tags`, and an HTTP
+   * Marks this instance as a LOCAL Ollama runtime: `rootUrl`
+   * is the runtime root; `reachable` probes `<root>/api/tags`, and an HTTP
    * 404 model-not-found becomes a fatal, actionable error naming the missing
    * model and the `ollama pull` command.
    */
@@ -63,7 +63,7 @@ interface EmbeddingsResponse {
 }
 
 /**
- * OpenAI-compatible adapter (decision 0040): base URL + key + model names over
+ * OpenAI-compatible adapter: base URL + key + model names over
  * plain HTTPS — no SDK dependency, and deliberately compatible with any server
  * speaking the OpenAI chat/embeddings API shape. The only place in the system
  * that talks to such an endpoint (§A.10; `no_provider_leakage`).
@@ -100,7 +100,7 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
   }
 
   /**
-   * One retried call with the local-inference realities applied (decision 0041
+   * One retried call with the local-inference realities applied (
    * ruling 2): the tier's timeout (fresh abort signal per attempt; a timeout is
    * fatal with the variable to raise), and — on a local runtime — HTTP 404
    * model-not-found rethrown fatal with the exact `ollama pull` fix.
@@ -119,7 +119,7 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
         } catch (error) {
           if (isTimeoutError(error)) {
             throw new ModelGatewayError(
-              `${this.label} ${tier} call timed out after ${timeoutMs} ms — raise ` +
+              `${this.label} ${tier} call timed out after ${timeoutMs} ms, raise ` +
                 `COGETO_OLLAMA_TIMEOUT_${suffix}_MS or use a smaller/faster model`,
               false,
               error,
@@ -137,7 +137,7 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
       ) {
         throw new ModelGatewayError(
           `model "${model}" is not available on the Ollama runtime at ` +
-            `${this.localRuntime.rootUrl} — run \`ollama pull ${model}\` on the Ollama host`,
+            `${this.localRuntime.rootUrl}, run \`ollama pull ${model}\` on the Ollama host`,
           false,
           error,
         );
@@ -211,7 +211,7 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
           this.headers,
           {
             model,
-            // ALWAYS deterministic sampling (decision 0035): structured
+            // ALWAYS deterministic sampling: structured
             // extraction decides what Cogeto remembers — never a dice roll.
             temperature: 0,
             response_format: { type: 'json_object' },
@@ -272,7 +272,7 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
     if (this.reachabilityCache && now - this.reachabilityCache.at < REACHABILITY_TTL_MS) {
       return this.reachabilityCache.value;
     }
-    // A local runtime is probed on its native tags endpoint (decision 0041
+    // A local runtime is probed on its native tags endpoint (
     // ruling 2) — the health surface reports the runtime's reachability.
     const target = this.localRuntime
       ? { url: `${this.localRuntime.rootUrl}/api/tags`, what: 'ollama runtime' }

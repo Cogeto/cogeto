@@ -1,10 +1,10 @@
 import type { LimitsConfig } from '../infrastructure/index';
 
 /**
- * Resolve the effective abuse/DoS limits (FIX-2: QS-2, QS-6, QS-14) once at
+ * Resolve the effective abuse/DoS limits (:) once at
  * boot from the environment, with sane defaults, TIGHTENED automatically when
  * the instance is the anonymous Ana sandbox (`demoMode`), where a single
- * published token is shared by every visitor (decision 0022).
+ * published token is shared by every visitor.
  *
  * Every limit is env-configurable; the demo profile has its own override
  * namespace (`COGETO_DEMO_*`) so the public sandbox can be capped without
@@ -25,7 +25,7 @@ function num(value: string | undefined, fallback: number): number {
 
 /**
  * Env vars are read by static dot-access below (not a dynamic lookup) so the
- * env_consistency test tracks every one and it stays documented in .env.example.
+ * env_consistency test tracks every one and it stays documented in.env.example.
  */
 export function buildLimits(env: NodeJS.ProcessEnv, demoMode: boolean): LimitsConfig {
   // Pick base vs demo from already-read values: in demo mode the demo override
@@ -40,7 +40,7 @@ export function buildLimits(env: NodeJS.ProcessEnv, demoMode: boolean): LimitsCo
   return {
     rateLimit: {
       windowSeconds: num(env.COGETO_RATELIMIT_WINDOW_SECONDS, 60),
-      // Chat is the model-cost vector the audit calls out (QS-2): tightest.
+      // Chat is the model-cost vector the audit calls out: tightest.
       chat: pick(env.COGETO_RATELIMIT_CHAT, env.COGETO_DEMO_RATELIMIT_CHAT, 30, 12),
       // Capture must clear the demo seed's 31-note burst (paced by processing).
       capture: pick(env.COGETO_RATELIMIT_CAPTURE, env.COGETO_DEMO_RATELIMIT_CAPTURE, 60, 60),
@@ -62,7 +62,7 @@ export function buildLimits(env: NodeJS.ProcessEnv, demoMode: boolean): LimitsCo
       uploadMax: pick(env.COGETO_DAILY_UPLOAD_MAX, env.COGETO_DEMO_DAILY_UPLOAD_MAX, 300, 100),
     },
     researchQuota: {
-      // Web research (Priority 5 Part A, decision 0043): searches and fetched
+      // Web research: searches and fetched
       // pages are the two cost/abuse vectors — each capped per user per day,
       // plus a per-request page cap so one research stays bounded.
       searchesMax: pick(
@@ -78,7 +78,7 @@ export function buildLimits(env: NodeJS.ProcessEnv, demoMode: boolean): LimitsCo
         20,
       ),
       pagesPerRunMax: num(env.COGETO_RESEARCH_PAGES_PER_RUN, 5),
-      // Named skills (decision 0059): the plan gate caps how many approved
+      // Named skills: the plan gate caps how many approved
       // queries one run may hold; the engine reads at most this many pages per
       // query. The daily research budgets above apply unchanged inside every
       // skill search and capture.

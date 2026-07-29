@@ -13,7 +13,7 @@ import { PASSPORT_VERSION } from '@cogeto/shared';
  *
  * These schemas describe the CURRENT version only: they accept
  * `passport_version: '2.0'` and nothing else, which is exactly the validator
- * contract decision 0029 ruling 2 asks for — new exports are one version, and
+ * contract asks for — new exports are one version, and
  * a 1.0 archive is read against the 1.0 schema still published in the docs.
  *
  * Nothing here reaches for a table or a gate — assembly consumes already-gated

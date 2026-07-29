@@ -7,7 +7,7 @@ import { describeError } from '../infrastructure/index';
  * pino-backed Nest logger. Redaction rule (Technical Architecture §7): never
  * memory content or tokens in logs — nothing here logs payloads, and the
  * redact list guards the accident paths at both the top level and one nesting
- * down (QS-22). Two classes are covered: SECRETS (auth headers, bearer/API/
+ * down. Two classes are covered: SECRETS (auth headers, bearer/API/
  * refresh tokens, passwords) and CONTENT (memory claims, model input/output,
  * user questions/answers) — a stray `{ err }` or `{ req }` cannot smuggle either
  * into a log line. The `err` serializer maps any logged Error to its class +
@@ -43,7 +43,7 @@ const REDACT_PATHS = [
   '*.prompt',
   '*.question',
   // Email content — a stray `{ email }` / `{ payload }` / reply-draft log must
-  // not smuggle a subject, body, or sender address into a line (SEC-7).
+  // not smuggle a subject, body, or sender address into a line.
   'subject',
   '*.subject',
   '*.textBody',
@@ -59,7 +59,7 @@ export function createLogger(level: string): Logger {
     redact: { paths: REDACT_PATHS, censor: '[redacted]' },
     // Never serialize a raw Error (stack + `received "<value>"` can carry model
     // output / secrets). Log only the class name + a length-bounded, scrubbed
-    // message (QS-22).
+    // message.
     serializers: {
       err: (err: unknown) => describeError(err),
       error: (err: unknown) => describeError(err),

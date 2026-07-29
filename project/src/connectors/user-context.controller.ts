@@ -63,9 +63,9 @@ const suggestionActionSchema = z.object({
 });
 
 /**
- * /api/settings/context — the user's instance context (P6.6): profile fields
+ * /api/settings/context — the user's instance context: profile fields
  * for the prompt now-block, the per-user timezone override, and the language
- * pair. Suggestions (decision 0053) are proposals only: accept applies with
+ * pair. Suggestions are proposals only: accept applies with
  * provenance, dismiss is remembered — nothing is ever applied silently.
  */
 @Controller('settings/context')

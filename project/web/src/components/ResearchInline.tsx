@@ -13,15 +13,15 @@ import {
 import type { Session } from '../auth/oidc';
 import { btnSecondary } from './ui';
 
-/** How many of the most-relevant sources to read automatically (decision 0050). */
+/** How many of the most-relevant sources to read automatically. */
 const TOP_K = 3;
 
 /**
- * The research flow, inline in chat (decisions 0047 + 0050 + 0058). This card
+ * The research flow, inline in chat (+ 0050 + 0058). This card
  * is PROGRESS ONLY: the tap was the approval, the top sources are read
  * automatically, and when the run concludes the answer arrives in the
  * conversation as a persistent assistant message (appended server-side,
- * issue #259) — so the card refreshes the thread and closes itself. It never
+ *) — so the card refreshes the thread and closes itself. It never
  * sends a chat turn on the user's behalf and shows no buttons beyond Cancel
  * while searching. Resumed in-flight runs behave identically: watch, then
  * hand over to the thread.
@@ -107,7 +107,7 @@ export function ResearchInline({
   const extracting = pages.some((p) => p.state === 'processing');
   const totalFacts = pages.reduce((sum, p) => sum + p.factCount, 0);
 
-  // The handover (issue #259): when the run concludes, the answer is already
+  // The handover: when the run concludes, the answer is already
   // a persistent message in this conversation — refresh the thread and close.
   const runQuery = useQuery({
     queryKey: ['research-run', run.id],

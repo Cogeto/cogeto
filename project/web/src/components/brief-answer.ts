@@ -1,7 +1,7 @@
 import type { AnswerSegment, ResearchCitationDto } from '@cogeto/shared';
 
 /**
- * The brief's segment form (issue #268): the skill brief is written in the
+ * The brief's segment form: the skill brief is written in the
  * markdown-lite subset with [W#]/[M#] provenance markers and literal
  * `(unsourced)` tags (skill_brief/v0001). To render it through the house
  * ChatMarkdown renderer, markers become atomic chip segments (encoded as

@@ -5,7 +5,7 @@ import { assertDemoAllowed } from '../config';
 import { loadCorpus } from './corpus';
 
 /**
- * Fast, container-free demo guards (decision 0022):
+ * Fast, container-free demo guards
  *  - demo_disabled_in_production: the production flag refuses the demo seed/reset.
  *  - demo_pipeline_real: the seed path writes ONLY through the public HTTP API —
  *    no direct memory-table inserts anywhere in the seed/capture code.

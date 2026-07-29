@@ -10,7 +10,7 @@ import { DeletionSaga } from './deletion-saga';
  * the worker confirms once Qdrant and MinIO acknowledged. The saga owns all
  * authorization (owner-only) and validation; these routes stay thin.
  *
- * :id is a plain string, not a UUID — file sources are keyed by object key
+ * id is a plain string, not a UUID — file sources are keyed by object key
  * (path segments URL-encoded by the caller).
  */
 @Controller('sources')

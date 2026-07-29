@@ -3,13 +3,12 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
- * no_second_scheduler (O2-A; F2 handoff §4): every recurring job reuses the ONE
- * graphile cron — crontab lines, never a second scheduler. A static guard:
+ * no_second_scheduler (F2 handoff §4): every recurring job reuses the ONE
+ * graphile cron — crontab lines, never a second scheduler. A static guard
  * exactly one file configures the graphile runner's `crontab`, that file is the
  * worker entrypoint, and no module pulls in a competing scheduler library.
  *
- * Moved here from the tasks module when that module was removed (decision
- * 0060): the invariant was never about reminders, it was about there being one
+ * Moved here from the tasks module when that module was removed : the invariant was never about reminders, it was about there being one
  * scheduler, and it outlives the job that first motivated it.
  */
 const SRC_ROOT = path.resolve(__dirname, '..');

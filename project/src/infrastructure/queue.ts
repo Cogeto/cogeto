@@ -41,7 +41,7 @@ export async function tryJobRunLock(tx: Tx, key: JobIdempotencyKey): Promise<boo
 }
 
 /**
- * Single-flight guard for RECURRING jobs (FIX-3 QS-33/QS-39). The nightly
+ * Single-flight guard for RECURRING jobs. The nightly
  * sweep/dream/reminders/backfill and the demo reset are NOT idempotentTask
  * (they recur, not once-per-key), so a slow run can overlap the next cron fire
  * (or a DST double-fire). This wraps a job body in a transaction-scoped
@@ -68,7 +68,7 @@ export async function runSingleFlight<T>(
 /**
  * Marks the idempotency key consumed WITHOUT running the job — how the deletion
  * saga cancels a source's queued-but-not-started ingestion inside its own
- * transaction (QS-5): the next delivery of the job finds the key and skips.
+ * transaction: the next delivery of the job finds the key and skips.
  * Returns false when the key was already consumed (the job already ran).
  * Callers must hold (or have probed) the run lock first — see acquireJobRunLock.
  */
@@ -90,17 +90,17 @@ export type IdempotentJobPayload = z.infer<typeof idempotentPayloadSchema>;
 
 /**
  * An after-commit continuation a handler may return: work that must run AFTER
- * the idempotency transaction commits, never inside it (QS-27). It executes
+ * the idempotency transaction commits, never inside it. It executes
  * best-effort — a failure is logged, not retried, and never dead-letters the
  * job (the committed effect already happened). Use only for idempotent,
  * externally-reconciled side effects (e.g. Qdrant payload sync, whose nightly
- * consistency sweep is the backstop — decision 0025). Returning nothing keeps
+ * consistency sweep is the backstop). Returning nothing keeps
  * the classic contract unchanged.
  */
 export type AfterCommit = () => Promise<void>;
 
 /**
- * Wraps a job handler with the §A.3 contract:
+ * Wraps a job handler with the §A.3 contract
  *
  * - **Idempotency**: the handler's effect and an INSERT into job_execution under
  *   the unique key (source_type, source_id, job_type) share one transaction —
@@ -109,7 +109,7 @@ export type AfterCommit = () => Promise<void>;
  *   exponential backoff; the rolled-back transaction leaves no partial effect.
  * - **Dead-letter**: when the final attempt fails, the job is recorded in
  *   dead_letter (dashboard-visible) instead of retrying forever.
- * - **After-commit** (QS-27): a handler may return an {@link AfterCommit} thunk,
+ * - **After-commit**: a handler may return an {@link AfterCommit} thunk,
  *   run once the transaction has committed and its row locks released — for work
  *   that must not be held inside the lock window (per-row Qdrant HTTP calls).
  */
@@ -124,7 +124,7 @@ export function idempotentTask(
       let afterCommit: AfterCommit | undefined;
       await db.transaction(async (tx) => {
         // Run lock BEFORE the claim insert — the invariant other transactions
-        // rely on (QS-5): any in-flight run of this key holds the advisory
+        // rely on: any in-flight run of this key holds the advisory
         // lock, so `tryJobRunLock` success proves no uncommitted claim row
         // exists and a cancellation insert can never block on one.
         await acquireJobRunLock(tx, {
@@ -151,7 +151,7 @@ export function idempotentTask(
       });
       // Runs only after a successful commit (a duplicate-skip leaves it unset).
       // Best-effort by contract: log and move on — the effect is already durable
-      // and the after-commit work is externally reconciled (QS-27).
+      // and the after-commit work is externally reconciled.
       if (afterCommit) {
         try {
           await afterCommit();
@@ -168,11 +168,11 @@ export function idempotentTask(
       if (attempts >= maxAttempts) {
         // Final attempt: park in dead_letter (own transaction — the failed one
         // rolled back) and complete the job. The error is SCRUBBED of model
-        // output before it lands in the column (QS-22). The write itself is
-        // retried (QS-34) — a lost dead_letter row would make health show green
+        // output before it lands in the column. The write itself is
+        // retried — a lost dead_letter row would make health show green
         // over lost work; if every retry fails we re-throw so graphile keeps the
         // job as permanently-failed, which the health graphile-permfail check
-        // detects (also QS-34).
+        // detects (also).
         for (let writeAttempt = 1; ; writeAttempt++) {
           try {
             await db.insert(deadLetter).values({
@@ -186,7 +186,7 @@ export function idempotentTask(
           } catch (writeError) {
             if (writeAttempt >= DEAD_LETTER_WRITE_ATTEMPTS) {
               helpers.logger.error(
-                `job ${jobType}: dead_letter write failed ${writeAttempt}x — re-throwing so it ` +
+                `job ${jobType}: dead_letter write failed ${writeAttempt}x, re-throwing so it ` +
                   `parks as graphile permanent-failure (health will flag it): ` +
                   describeErrorLine(writeError),
               );

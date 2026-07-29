@@ -7,7 +7,7 @@ import { loadConfig } from './config';
 
 /**
  * sweep — the on-demand integrity sweep (§A.7 step 4). The same check the
- * worker runs nightly via cron, runnable any time:
+ * worker runs nightly via cron, runnable any time
  *
  *   npm run sweep                                    (local / published ports)
  *   docker compose exec worker node project/src/dist/entrypoints/sweep.js
@@ -34,7 +34,7 @@ async function main(): Promise<void> {
         bucket: config.s3Bucket,
       },
       instanceKeyDir: config.instanceKeyDir,
-      // The orphan-memory arm's source-row probes (decision 0024) — the same
+      // The orphan-memory arm's source-row probes — the same
       // adapters the composition roots bind to the deletion saga.
       sourceDeletions: [
         new NotesSourceDeletion(),

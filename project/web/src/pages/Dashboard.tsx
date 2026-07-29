@@ -5,7 +5,7 @@ import { StatsPanel } from '../components/StatsPanel';
 import { StatusPanel } from '../components/StatusPanel';
 
 /**
- * The home screen (Post-v1 Priority 2): attention first — "what needs me right
+ * The home screen: attention first"what needs me right
  * now" — then the real statistics, then system status. The dreaming digest is
  * integrated into the attention surface (its "Last night" group), not a
  * separate panel; the digest endpoint/DTO contract is unchanged.
@@ -21,7 +21,7 @@ export function Dashboard({ session }: { session: Session }) {
   );
 }
 
-/** The skills entry point (Priority 7): a quiet pointer, not a widget — the
+/** The skills entry point: a quiet pointer, not a widget — the
  * run view on the Skills page is the surface. */
 function SkillsEntry() {
   return (

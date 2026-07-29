@@ -5,7 +5,7 @@ import { COGETO_CONFIG } from './config';
 import type { CogetoConfig } from './config';
 
 /**
- * GET /api/settings/model-config (decision 0040) — the READ-ONLY "Model
+ * GET /api/settings/model-config — the READ-ONLY "Model
  * configuration" Settings section: the active configuration id, provider and
  * model per tier, redaction posture, and one plain sentence on what leaves the
  * instance. Display only — keys are operator-set in the instance environment
@@ -30,7 +30,7 @@ const PROVIDER_LABEL: Record<string, string> = {
   ollama: 'the local Ollama runtime',
 };
 
-/** Pure DTO assembly — `settings_display_accurate` asserts it mirrors the
+/** Pure DTO assembly`settings_display_accurate` asserts it mirrors the
  * running configuration truthfully and carries no key material. */
 export function buildModelConfigDto(
   config: Pick<CogetoConfig, 'modelProviders' | 'redactionEnabled'>,
@@ -62,7 +62,7 @@ export function buildModelConfigDto(
     providers.length === 1
       ? providers[0]!
       : `${providers.slice(0, -1).join(', ')} and ${providers[providers.length - 1]!}`;
-  // All-local (decision 0041): the honest sentence is that no hosted provider
+  // All-local: the honest sentence is that no hosted provider
   // receives anything — model calls stay on the operator's own network.
   const allLocal = [p.tiers.pipeline, p.tiers.answer, p.tiers.embedding].every(
     (tier) => tier.provider === 'ollama',

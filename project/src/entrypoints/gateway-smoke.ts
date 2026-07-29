@@ -3,7 +3,7 @@ import { createModelGateway, loadPrompt, resolveModelProviders } from '../model-
 import { redactionFromEnv } from './config';
 
 /**
- * gateway:smoke — proves the model-gateway round trip (S1-B §5).
+ * gateway:smoke — proves the model-gateway round trip (§5).
  * With COGETO_MISTRAL_API_KEY (or MISTRAL_API_KEY) set: runs a trivial structured
  * extraction through the versioned smoke prompt and prints the validated result.
  * Without a key: prints a clear skip message and exits 0.
@@ -20,7 +20,7 @@ async function main(): Promise<void> {
   const providers = resolveModelProviders(process.env, { redacted: redaction !== undefined });
   if (!providers.configured) {
     console.log(
-      'gateway:smoke SKIPPED — set COGETO_MISTRAL_API_KEY (or a COGETO_PROVIDER_* ' +
+      'gateway:smoke SKIPPED, set COGETO_MISTRAL_API_KEY (or a COGETO_PROVIDER_* ' +
         'configuration) to run a live structured extraction against the configured provider.',
     );
     return;

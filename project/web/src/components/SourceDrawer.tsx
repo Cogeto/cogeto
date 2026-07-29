@@ -25,7 +25,7 @@ import {
 } from './ui';
 
 /**
- * Neutralize remote content in retained email HTML before rendering (Session O4).
+ * Neutralize remote content in retained email HTML before rendering.
  * The intake sanitizer already strips scripts/handlers/js: URLs; here we also
  * stop remote resources (tracking pixels) from auto-loading — the choice most
  * mail clients make and the hardest to misuse. Formatting is preserved.
@@ -130,7 +130,7 @@ export function SourceDrawer({
   const remove = useMutation({
     mutationFn: () => deleteSource(session, sourceType, sourceId),
     onSuccess: async ({ receiptId }) => {
-      await invalidateAfterSourceDeletion(queryClient); // QS-36: the deletion cascade only.
+      await invalidateAfterSourceDeletion(queryClient); //: the deletion cascade only.
       onDeleted(receiptId);
     },
     onError: (error: unknown) =>

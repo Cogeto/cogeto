@@ -14,16 +14,16 @@ import { EmailIntakeService } from './email-intake.service';
 import { MailIntakeGuard } from './mail-intake.guard';
 
 /**
- * The internal email-intake endpoint (Session O4, decision 0028 ruling 7):
+ * The internal email-intake endpoint
  * the Haraka queue hook POSTs the full raw RFC822 here (Content-Type
  * message/rfc822; envelope in X-Cogeto-Mail-From / X-Cogeto-Rcpt-To) with the
  * shared-secret bearer. It is NOT public — it opts out of the global bearer
  * guard (@Public) and applies MailIntakeGuard instead — and is reachable only on
  * the internal network (the mail service). The HTTP status IS the SMTP verdict
- * Haraka relays to the sending server:
+ * Haraka relays to the sending server
  *   200 → 250 queued · 403 → 550 refused · 413 → 552 too large.
  *
- * The raw body is parsed by an express.raw() handler scoped to this path in the
+ * The raw body is parsed by an express.raw handler scoped to this path in the
  * app bootstrap (message-sized limit), so `req.body` is a Buffer here.
  */
 @Public()

@@ -10,14 +10,14 @@ import type { RedactionPort } from './redaction-client';
 import { reidentifyDeep, reidentifyStream, reidentifyText } from './redaction-utils';
 
 /**
- * Redaction mode (Addendum B.8; decisions 0002, 0023): a gateway decorator that
+ * Redaction mode (Addendum B.8; 0023): a gateway decorator that
  * pseudonymizes the payload text BEFORE every outbound model call and
  * re-identifies the response BEFORE it reaches any caller. The wrapped gateway
  * (Mistral) only ever sees pseudonyms.
  *
  * - The `system` prompt is a versioned, PII-free artifact (§B.7) and is passed
  *   through untouched; only the `input` (the user/document/fact text) is redacted.
- * - Embeddings are redacted too (decision 0023): the embed call goes to Mistral,
+ * - Embeddings are redacted too: the embed call goes to Mistral,
  *   so leaving real entities in it would defeat redaction. There is nothing to
  *   re-identify (a vector), at a documented retrieval-quality cost.
  * - Fail-closed: `pseudonymize` runs first; if the sidecar is unreachable it
@@ -67,6 +67,6 @@ export class RedactingModelGateway extends ModelGateway {
   }
 
   override async reachable(): Promise<GatewayReachability> {
-    return this.inner.reachable(); // QS-35: probing is the wrapped gateway's job.
+    return this.inner.reachable(); //: probing is the wrapped gateway's job.
   }
 }

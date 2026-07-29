@@ -1,11 +1,11 @@
 import type { MemoryStatus } from './memory';
 
 /**
- * Post-v1 Priority 2 — the in-app "what needs my attention" surface and the
+ * — the in-app "what needs my attention" surface and the
  * dashboard statistics. Both are COMPUTED per Principal over signals the
  * instance already produces (open loops read from memory, review queues,
  * approvals, the dreaming digest); only the minimal read-state (last_seen_at
- * + dismissed keys) is materialized. See docs/notes/dashboard-notifications.md and decision 0039.
+ * + dismissed keys) is materialized. See docs/notes/dashboard-notifications.md and.
  *
  * Every item and every number is Principal-scoped through the existing gated
  * reads — nothing crosses a user or an org boundary, and notification text
@@ -96,7 +96,7 @@ export interface DailySeries {
 export interface DashboardStatsDto {
   memoryByStatus: MemoryStatusCounts;
   memoryTotal: number;
-  /** How many commitments and open items still stand (decision 0060). */
+  /** How many commitments and open items still stand. */
   openLoops: number;
   /** Distinct sources ingested per UTC day, grouped into notes / email / files. */
   sources: DailySeries;

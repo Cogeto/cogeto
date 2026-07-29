@@ -7,7 +7,7 @@ import { Card, ErrorState, SectionTitle, SkeletonRows } from './ui';
 import { donutArcs, seriesSummary, seriesTotal, sparklinePoints } from './charts';
 
 /**
- * The dashboard statistics (Post-v1 Priority 2): real, gated numbers a
+ * The dashboard statistics: real, gated numbers a
  * professional wants at a glance — memory by status, sources over
  * time, dreaming activity, and the oldest unresolved review item — each
  * deep-linking to the filtered view behind it. Hand-rolled SVG charts (no

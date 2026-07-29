@@ -27,8 +27,8 @@ const captureSchema = z.object({
 });
 
 /**
- * Direct web-capture endpoints (Priority 5 Part A, gated per Part B) —
- * explicitly invoked, owner-scoped. NOTE (decision 0045): there is NO raw
+ * Direct web-capture endpoints (gated per Part B) —
+ * explicitly invoked, owner-scoped. NOTE: there is NO raw
  * search endpoint any more — a query reaches discovery only through the
  * show-edit-approve gate (`ResearchRunController.approve`). Direct URL capture
  * remains: fetching a URL the user explicitly pasted sends no query anywhere.

@@ -8,7 +8,7 @@ import { chatMessage, conversation } from '../persistence/tables';
 import { ConversationTitler, sanitizeTitle } from './conversation-titler';
 
 /**
- * autotitle_conservative (P6.9; decision 0056): the title is generated once
+ * autotitle_conservative: the title is generated once
  * from the opening messages, plainly; a manual rename ALWAYS wins and is never
  * overwritten — even when the title job lands after the rename.
  */

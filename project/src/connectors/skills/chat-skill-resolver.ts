@@ -6,7 +6,7 @@ import { SkillPlanner } from './skill-planner';
 import { SkillRunService } from './skill-run.service';
 
 /**
- * The chat → skill seam's connectors side (Priority 7): chat's brief intent
+ * The chat → skill seam's connectors side: chat's brief intent
  * starts planning through this — propose only, never approve. Bound to
  * CHAT_SKILL_RESOLVER by the app root (SkillsModule); the worker never binds it.
  */

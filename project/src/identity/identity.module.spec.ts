@@ -6,11 +6,11 @@ import { AdminGuard } from './admin.guard';
 import { BearerAuthGuard } from './bearer-auth.guard';
 
 /**
- * App-boot regression (QS-10). AdminGuard is applied via @UseGuards on the app
+ * App-boot regression. AdminGuard is applied via @UseGuards on the app
  * root's JobsController and injects IDENTITY_OPTIONS; if the seam provides but
  * does not EXPORT that token, Nest cannot resolve the guard in the consumer
  * module and the whole app fails to boot ("Nest can't resolve dependencies of
- * the AdminGuard"). This is invisible to unit tests that `new AdminGuard()`
+ * the AdminGuard"). This is invisible to unit tests that `new AdminGuard`
  * directly and to the vitest suite (which never boots the full app), so pin the
  * export here.
  */

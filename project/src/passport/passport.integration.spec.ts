@@ -213,8 +213,7 @@ describe('memory passport export (integration)', () => {
     expect(byId.get(mySensitive.id)).toMatchObject({ sensitive: true, owned_by_me: true });
     expect(byId.get(myShared.id)).toMatchObject({ owned_by_me: true });
     // Legitimately-visible shared data from a teammate: included, marked not mine.
-    // (Cross-org isolation is the single-tenant DEPLOYMENT boundary, decision
-    // 0019: another org is another instance with another database — not a query
+    // (Cross-org isolation is the single-tenant DEPLOYMENT boundary: another org is another instance with another database — not a query
     // gate, so it is total by construction and not exercised here.)
     expect(byId.get(theirShared.id)).toMatchObject({ owned_by_me: false });
   });

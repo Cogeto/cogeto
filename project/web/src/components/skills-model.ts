@@ -1,7 +1,7 @@
 import type { SkillRunDetailDto, SkillRunDto, SkillRunStepDto } from '@cogeto/shared';
 
 /**
- * Pure display rules for the skill run view (Priority 7, decision 0059) —
+ * Pure display rules for the skill run view —
  * kept out of the component so the phrasing is unit-tested.
  */
 

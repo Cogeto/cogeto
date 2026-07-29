@@ -16,7 +16,7 @@ import { InMemoryModelBudget } from './model-budget';
 import { RateLimitGuard } from './rate-limit';
 
 /**
- * Provides the resolved abuse/DoS limits (FIX-2) as a GLOBAL module so the
+ * Provides the resolved abuse/DoS limits as a GLOBAL module so the
  * rate-limit guard, ingest quota, SSE caps and model budget are injectable
  * everywhere they are enforced (connectors, retrieval, the gateway) without any
  * module importing an entrypoint. Registered once by each composition root with
@@ -41,7 +41,7 @@ export class LimitsModule {
         { provide: RESEARCH_QUOTA, useValue: limits.researchQuota },
         { provide: SSE_LIMITS, useValue: limits.sse },
         { provide: PARSE_CAPS, useValue: limits.parse },
-        // The instance timezone for relative-date resolution (QS-32).
+        // The instance timezone for relative-date resolution.
         { provide: INSTANCE_TIMEZONE, useValue: timeZone ?? DEFAULT_INSTANCE_TIMEZONE },
         RateLimitGuard,
         {

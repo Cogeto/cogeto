@@ -1,6 +1,5 @@
 /**
- * Thread-aware extraction pre-processing for email bodies (Session O4 — email
- * source). Deterministic, model-free: before an email body is chunked and
+ * Thread-aware extraction pre-processing for email bodies. Deterministic, model-free: before an email body is chunked and
  * extracted, isolate the NEW content of THIS message so quoted history and
  * signatures never produce memories.
  *
@@ -47,7 +46,7 @@ export function isolateEmailContent(text: string | null | undefined): string {
 }
 
 /**
- * Where the isolated content came from (migration 0030; decision 0054) — the
+ * Where the isolated content came from (migration 0030) — the
  * structural half of the email authorship rule. The extracted text is the
  * message author's OWN words only when it is neither the inner content of a
  * forwarded original (someone else wrote it) nor the quoted-history fallback
@@ -136,8 +135,7 @@ export function stripQuotedReply(text: string): string {
 }
 
 /**
- * The header set recovered from a forwarded-message block in a body (Session O4 —
- * email reply triggers). All best-effort; a field absent from the forward is null.
+ * The header set recovered from a forwarded-message block in a body. All best-effort; a field absent from the forward is null.
  */
 export interface ForwardedHeaders {
   from: string | null;
@@ -180,7 +178,7 @@ const HEADER_LINE_RE = /^\s*([A-Za-z][A-Za-z-]*|Od|Za|Predmet|Datum|Šalje|Posla
 
 /**
  * Recover the ORIGINAL correspondent's headers from a forwarded message embedded
- * in a body (Session O4 — the forwarded-addressing rule). When a user forwards
+ * in a body. When a user forwards
  * Ana's email to Cogeto, the envelope/header From becomes the user and Ana sits
  * inside the body as a forwarded block; a reply must go to Ana, not the
  * forwarder. This parses that block's `From:/To:/Cc:/Subject:/Date:/Message-ID:`

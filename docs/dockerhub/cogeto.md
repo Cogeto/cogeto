@@ -9,8 +9,8 @@ different commands). A customer instance is pull-only and never builds locally.
 
 ## Supported tags
 
-- `X.Y.Z` — an immutable release (for example `1.0.3`). Pin to this in production.
-- `latest` — the most recent release.
+- `X.Y.Z`: an immutable release (for example `1.0.3`). Pin to this in production.
+- `latest`: the most recent release.
 
 The full stack a customer instance runs is three images at the same version:
 `cogeto/cogeto`, `cogeto/cogeto-edge` (the Caddy edge with the built web app), and

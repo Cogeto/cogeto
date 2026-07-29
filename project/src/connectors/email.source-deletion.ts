@@ -5,9 +5,8 @@ import type { SourceCascade, SourceDeletion } from '../memory/index';
 import { emailAttachment, emailMessage } from './persistence/tables';
 
 /**
- * The deletion saga's source port for source_type 'email' (Session O4 — email
- * source; §A.7). Deleting an email source must remove the WHOLE retained
- * message, not just its body memories:
+ * The deletion saga's source port for source_type 'email'. Deleting an email source must remove the WHOLE retained
+ * message, not just its body memories
  *
  * - `deleteSource` removes the `email_message` row inside the enumeration
  *   transaction (email_attachment rows go with it via ON DELETE CASCADE).
@@ -68,7 +67,7 @@ export class EmailSourceDeletion implements SourceDeletion {
   }
 
   /**
-   * The integrity sweep's legitimacy probe (issue #62): retained emails store
+   * The integrity sweep's legitimacy probe: retained emails store
    * their raw original (and sometimes an externalised HTML body) as objects
    * recorded on email_message — NOT in file_metadata — so the orphan arm asks
    * here before flagging. Only keys belonging to a LIVE email row are owned;

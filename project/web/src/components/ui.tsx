@@ -5,7 +5,7 @@ import { STATUS_META, TONE_CLASS } from './status';
 import type { Tone } from './status';
 
 /**
- * The canonical UI kit (O3-C). One home for chips, badges, buttons, cards,
+ * The canonical UI kit. One home for chips, badges, buttons, cards,
  * states, and the drawer — so the whole app reads as one system and status
  * color (load-bearing information) is defined once, AA-verified, never drifts.
  * Every chip carries a text label (and often an icon): nothing is color-only.
@@ -75,17 +75,6 @@ export function SharedBadge({ owner }: { owner?: string | null }) {
 /** Private scope reads as a quiet tag, not a loud chip (it's the default). */
 export function PrivateTag() {
   return <span className="text-xs text-slate-400">private</span>;
-}
-
-export function DormantBadge() {
-  return (
-    <span
-      className={`${BADGE} bg-slate-100 text-slate-600`}
-      title="No activity for a while: gone quiet"
-    >
-      <span aria-hidden="true">☾</span>gone quiet
-    </span>
-  );
 }
 
 /** Entity tag. A button when interactive, a plain span otherwise. */

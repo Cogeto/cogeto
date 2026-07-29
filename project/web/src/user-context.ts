@@ -4,7 +4,7 @@ import { fetchUserContext } from './api';
 import type { Session } from './auth/oidc';
 
 /**
- * The per-user instance context, session-available (P6.6, decision 0052).
+ * The per-user instance context, session-available.
  * `usePreferredLanguage` is deliberately the future key for UI
  * internationalisation: the UI remains English for now, but any surface can
  * already read the user's language from here, so translation can hang off it

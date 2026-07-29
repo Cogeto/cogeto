@@ -5,7 +5,7 @@ import type { ChatInline } from './chat-markdown';
 
 /**
  * Render a chat message's sanitized segments with markdown-lite formatting
- * (issue #211). React-rendered, never innerHTML. Chips are rendered by the
+ *. React-rendered, never innerHTML. Chips are rendered by the
  * caller (`renderChip`) so citation ordinals and drawer wiring stay where
  * they live today. Color is inherited everywhere so both bubble palettes
  * (white-on-navy user, slate-on-white assistant) work unchanged.

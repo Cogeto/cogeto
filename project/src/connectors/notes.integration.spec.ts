@@ -78,7 +78,7 @@ describe('notes capture (integration, real Postgres)', () => {
     expect(await service.getProcessingState(created.id)).toBe('processing');
   });
 
-  it('daily_capture_cap: captures beyond the per-user daily cap are refused with 429 (QS-6)', async () => {
+  it('daily_capture_cap: captures beyond the per-user daily cap are refused with 429', async () => {
     const capped = new NotesService(tdb.db, new DailyCounters(), {
       captureMax: 2,
       uploadMax: 1_000_000,

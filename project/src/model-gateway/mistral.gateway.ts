@@ -20,7 +20,7 @@ export interface MistralGatewayOptions {
   answerModel?: string;
   embedModel?: string;
   /**
-   * Sampling temperature for free-text completions (decision 0035). The eval
+   * Sampling temperature for free-text completions. The eval
    * harness pins 0 so runs are comparable; production chat leaves it unset
    * (provider default). Structured extraction is ALWAYS temperature 0
    * regardless — what Cogeto remembers must not depend on a dice roll.
@@ -35,10 +35,10 @@ const EMBED_BATCH_SIZE = 128;
 
 /**
  * The only place in the system that touches the Mistral client (§A.10) —
- * enforced by a dependency-cruiser rule. Maps model tiers (decision 0007
+ * enforced by a dependency-cruiser rule. Maps model tiers (
  * ruling 3) to concrete Mistral models; callers never name a model string.
  * Retry/error classification and the structured repair loop are the shared
- * provider contract (decision 0040 rulings 1–2).
+ * provider contract (–2).
  */
 export class MistralModelGateway extends ModelGateway {
   private readonly client: Mistral;
@@ -100,7 +100,7 @@ export class MistralModelGateway extends ModelGateway {
       const response = await callWithRetry('mistral', () =>
         this.client.chat.complete({
           model,
-          // ALWAYS deterministic sampling (decision 0035): structured
+          // ALWAYS deterministic sampling: structured
           // extraction decides what Cogeto remembers — never a dice roll.
           temperature: 0,
           responseFormat: { type: 'json_object' },
@@ -145,7 +145,7 @@ export class MistralModelGateway extends ModelGateway {
   }
 
   /**
-   * Cached reachability probe (QS-35): one cheap `models.list` at most every
+   * Cached reachability probe: one cheap `models.list` at most every
    * {@link REACHABILITY_TTL_MS}, so repeated health polls never hammer the
    * provider. A failure surfaces as ok:false with the class-only message.
    */
@@ -187,11 +187,11 @@ export class UnconfiguredModelGateway extends ModelGateway {
   embeddingModelId(): string {
     throw new ModelGatewayNotConfiguredError();
   }
-  // Not an error state for health (QS-35): an instance may deliberately run
+  // Not an error state for health: an instance may deliberately run
   // without a model key; report "not configured" but stay ok so it doesn't
   // degrade the whole instance.
   override async reachable(): Promise<GatewayReachability> {
-    return { ok: true, detail: 'model gateway not configured — model features disabled' };
+    return { ok: true, detail: 'model gateway not configured, model features disabled' };
   }
 }
 

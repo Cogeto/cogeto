@@ -6,7 +6,7 @@ import {
   resolveModelProviders,
 } from './provider-config';
 
-/** Provider configuration resolution (decision 0040 ruling 3). */
+/** Provider configuration resolution. */
 
 const env = (vars: Record<string, string>): NodeJS.ProcessEnv => vars as NodeJS.ProcessEnv;
 const resolve = (vars: Record<string, string>, redacted = false) =>
@@ -51,7 +51,7 @@ describe('config_validation_matrix — every invalid combination fails boot with
         COGETO_MISTRAL_API_KEY: 'k',
       }),
     ).toThrowError(
-      /no model configured for the answer tier on provider "anthropic" — set COGETO_MODEL_ANSWER/,
+      /no model configured for the answer tier on provider "anthropic": set COGETO_MODEL_ANSWER/,
     );
   });
 
@@ -165,7 +165,7 @@ describe('config_id_stable — same config yields same id; any tier change yield
     expect(id).toBe(
       'pipe-openai-gpt-4o-mini--ans-openai-gpt-4-1--emb-openai-text-embedding-3-small',
     );
-    // Ids stay inside the published trust-score pattern (decision 0032).
+    // Ids stay inside the published trust-score pattern.
     expect(id).toMatch(/^[a-z0-9][a-z0-9-]*$/);
   });
 
@@ -181,7 +181,7 @@ describe('config_id_stable — same config yields same id; any tier change yield
   });
 });
 
-describe('ollama_config — the local provider flavor (decision 0041 ruling 1)', () => {
+describe('ollama_config — the local provider flavor', () => {
   const OLLAMA = {
     COGETO_PROVIDER_PRESET: 'ollama-local',
     COGETO_OLLAMA_BASE_URL: 'http://10.0.0.1:11434',
@@ -234,7 +234,7 @@ describe('ollama_config — the local provider flavor (decision 0041 ruling 1)',
   });
 });
 
-describe('local_timeouts_config — per-tier local timeouts (decision 0041 ruling 2)', () => {
+describe('local_timeouts_config — per-tier local timeouts', () => {
   const OLLAMA = {
     COGETO_PROVIDER_PRESET: 'ollama-local',
     COGETO_OLLAMA_BASE_URL: 'http://10.0.0.1:11434',

@@ -21,7 +21,7 @@ export interface ReindexOptions {
   db: Db;
   gateway: ModelGateway;
   qdrantUrl: string;
-  /** Qdrant API key (QS-4); forwarded to the client. */
+  /** Qdrant API key; forwarded to the client. */
   qdrantApiKey?: string;
   /** Defaults to the gateway's configured embedding model. */
   embeddingModel?: string;
@@ -59,7 +59,7 @@ export async function reindexMemories(options: ReindexOptions): Promise<ReindexR
   });
   const store = new MemoryStore(options.db, vectors);
   // Reindex is the rebuild path (§A.4): an embeddings-model switch with a new
-  // vector size drops and recreates the collection here (issue #179).
+  // vector size drops and recreates the collection here.
   await vectors.ensureCollection({ recreateOnDimensionMismatch: true });
 
   const report: ReindexReport = {
@@ -74,7 +74,7 @@ export async function reindexMemories(options: ReindexOptions): Promise<ReindexR
   };
   const embeddableIds = new Set<string>();
 
-  // Progress denominator (decision 0041 ruling 5): a full local reindex takes
+  // Progress denominator: a full local reindex takes
   // real wall-clock, so every batch reports done/total, not just batch sizes.
   const [{ total }] = (await options.db
     .select({ total: sql<number>`count(*)::int` })
@@ -129,7 +129,7 @@ export async function reindexMemories(options: ReindexOptions): Promise<ReindexR
     report.reused += reusable.length;
     report.reembedded += toEmbed.length;
     log(
-      `progress ${report.reused + report.reembedded}/${total}: batch of ${rows.length} — ` +
+      `progress ${report.reused + report.reembedded}/${total}: batch of ${rows.length}, ` +
         `${reusable.length} reused, ${toEmbed.length} re-embedded (model ${model})`,
     );
   }

@@ -64,10 +64,10 @@ class ScriptedGateway extends ModelGateway {
 
   async extractStructured<T>(schema: ZodType<T>, request: StructuredExtractionRequest): Promise<T> {
     const isVerify = request.input.startsWith('CLAIM UNDER REVIEW');
-    // The batched form (decision 0057; verification/v0005): split the numbered
+    // The batched form (verification/v0005): split the numbered
     // claim blocks and answer each through the same scripted verdict rule.
     const isVerifyBatch = request.input.startsWith('CLAIMS UNDER REVIEW');
-    // Stage 6 (F2-A) may probe pairs of stored facts; these tests exercise
+    // Stage 6 may probe pairs of stored facts; these tests exercise
     // stages 1–5, so the judge conservatively rules every pair unrelated.
     const isReconcile = request.input.startsWith('FACT A:');
     const raw = isReconcile
@@ -273,7 +273,7 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
     expect(summary.verdicts).toEqual({ supported: 1, partial: 1, unsupported: 1 });
     expect(summary.admitted).toEqual({ active: 1, uncertain: 2 });
     expect(summary.embedded).toBe(3);
-    // Batched verification (decision 0057): three facts → ONE gateway call,
+    // Batched verification: three facts → ONE gateway call,
     // each claim still judged independently against its own passage (§B.3).
     expect(gateway.verifyCalls).toBe(1);
 
@@ -297,7 +297,7 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
     );
     for (const row of results.rows) {
       expect(row.reason.length).toBeGreaterThan(0);
-      // Pin to the ACTIVE batch version (decision 0057) so a prompt bump
+      // Pin to the ACTIVE batch version so a prompt bump
       // doesn't silently stale this — multi-fact sources verify batched.
       expect(row.pv).toBe(
         `${VERIFICATION_BATCH_PROMPT.family}/${VERIFICATION_BATCH_PROMPT.version}`,
@@ -354,7 +354,7 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
     ).toBe(1);
   });
 
-  it('parse_caps: chunk count and fact count are bounded (QS-6)', async () => {
+  it('parse_caps: chunk count and fact count are bounded', async () => {
     // A long source (many chunks) whose extractor returns several facts/chunk.
     const facts3 = () => ({
       facts: [
@@ -380,7 +380,7 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
     expect((await memoriesFor(sourceId)).rows).toHaveLength(1);
   });
 
-  it('web_fact_cap: a web source is capped at WEB_MAX_FACTS salient facts (decision 0057)', async () => {
+  it('web_fact_cap: a web source is capped at WEB_MAX_FACTS salient facts', async () => {
     const webReader = new (class implements SourceReader {
       readonly sourceType = 'web' as const;
       readonly sources = new Map<string, SourceItem>();

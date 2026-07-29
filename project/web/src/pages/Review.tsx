@@ -58,7 +58,7 @@ function ReviewItem({ session, memory }: { session: Session; memory: MemoryListI
 
   const settle = async () => {
     setError(null);
-    await invalidateAfterGovernance(queryClient); // QS-36
+    await invalidateAfterGovernance(queryClient); //
   };
   const onError = (e: unknown) => setError(e instanceof Error ? e.message : String(e));
   const approve = useMutation({
@@ -216,7 +216,7 @@ function ContradictionItem({
     onSuccess: async () => {
       setError(null);
       setCorrecting(false);
-      // Chat chips, lists, badges — the contradiction-affected queries (QS-36).
+      // Chat chips, lists, badges — the contradiction-affected queries.
       await invalidateAfterContradiction(queryClient);
     },
     onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
@@ -356,9 +356,9 @@ type ReviewTab = 'uncertain' | 'contradicted';
 
 /**
  * Review: two queues awaiting a human verdict. Uncertain — facts the verifier
- * could not fully support (approve / reject, S3-B). Contradicted — pairs
- * reconciliation flagged (confirm one / correct both / dismiss, F2-A,
- * decision 0010 ruling 3).
+ * could not fully support (approve / reject). Contradicted — pairs
+ * reconciliation flagged (confirm one / correct both / dismiss,
+ *).
  */
 export function Review({ session }: { session: Session }) {
   // ?tab=contradicted — dreaming digest conflict lines land on the right queue.
@@ -370,7 +370,7 @@ export function Review({ session }: { session: Session }) {
 
   const uncertain = useQuery({
     queryKey: ['review-queue'],
-    // Own facts only (O2-B): you review your own uncertain extractions — a
+    // Own facts only: you review your own uncertain extractions — a
     // peer's shared uncertain fact is theirs to approve, never yours.
     queryFn: () => fetchMemories(session, { status: 'uncertain', mine: true, limit: 50 }),
   });

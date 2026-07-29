@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
 /**
- * Theme state (P6.8). Dark is the product default; a light/dark choice persists
+ * Theme state. Dark is the product default; a light/dark choice persists
  * per browser in localStorage. The pre-paint bootstrap in index.html applies the
  * theme to <html> before React mounts (no flash); this module mirrors that same
  * precedence for the initial resolve and owns the in-app toggle afterwards.

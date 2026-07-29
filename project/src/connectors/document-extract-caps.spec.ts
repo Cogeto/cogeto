@@ -3,14 +3,14 @@ import { extractDocumentText, PermanentExtractionError } from './document-extrac
 import { makeDocx } from '../testing/index';
 
 /**
- * FIX-2 QS-6: the parse caps guard the worker against decompression bombs and
+ * the parse caps guard the worker against decompression bombs and
  * pathological extractor output. The document type here is irrelevant to the
  * cap logic — an unsupported type never reaches the parse, so we exercise the
  * caps through the DOCX/PDF paths with tiny inputs plus a synthetic parser via
  * the length/timeout branches. (A real bomb corpus is out of scope for a unit
  * test; the caps themselves are what we assert.)
  */
-describe('document parse caps (QS-6)', () => {
+describe('document parse caps', () => {
   it('rejects an unsupported type as a permanent error (zero downstream work)', async () => {
     await expect(
       extractDocumentText(Buffer.from('not a document'), 'text/plain'),

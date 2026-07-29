@@ -17,7 +17,7 @@ import { ModelGatewayError } from './errors';
 import { reidentifyDeep, reidentifyStream, reidentifyText } from './redaction-utils';
 
 /**
- * Redaction mode gateway wiring (Addendum B.8; decisions 0002, 0023).
+ * Redaction mode gateway wiring (Addendum B.8; 0023).
  * redaction_in_path / redaction_fail_closed / redaction_off_noop are here; the
  * detection + pseudonymize/reidentify correctness (redaction_roundtrip,
  * redaction_consistent) live in the Python sidecar's tests.
@@ -116,7 +116,7 @@ describe('redaction_in_path', () => {
     expect(out.people).toEqual(['Ana Kovač', 'Marko']);
   });
 
-  it('redacts embedding inputs too (decision 0023)', async () => {
+  it('redacts embedding inputs too', async () => {
     const upstream = new RecordingUpstream();
     const gateway = new RedactingModelGateway(upstream, new FakeRedactor());
 

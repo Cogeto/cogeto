@@ -16,7 +16,7 @@ export const PASSPORT_RETENTION_JOB_TYPE = 'passport_retention';
 export const PASSPORT_RETENTION_CRONTAB = `30 * * * * ${PASSPORT_RETENTION_JOB_TYPE}`;
 
 /**
- * The passport export ledger (§B.5, decision 0029) — module-private CRUD over
+ * The passport export ledger (§B.5) — module-private CRUD over
  * the request/status rows. Owner-scoping is enforced on every read: an export
  * row is only ever returned to the user who created it.
  */

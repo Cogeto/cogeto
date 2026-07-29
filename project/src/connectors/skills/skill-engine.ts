@@ -39,7 +39,7 @@ const MAX_BRIEF_FACTS = 14;
 const MAX_BRIEF_LOOPS = 6;
 
 /**
- * The skill engine (decision 0059): everything after the plan gate. The app
+ * The skill engine: everything after the plan gate. The app
  * calls {@link approvePlan} (the ONE-interaction gate) and {@link cancel};
  * the worker's re-runnable `skill.advance` job calls {@link advance}, which
  * claims the next step, executes it, checkpoints, and continues — resumable
@@ -67,7 +67,7 @@ export class SkillEngine {
   ) {}
 
   /**
-   * The plan gate, one interaction (decision 0059 ruling 3): every kept query
+   * The plan gate, one interaction: every kept query
    * (possibly edited) flips its research run to approved with the text as
    * sent_query; every omitted query is cancelled and never leaves. The run
    * moves to `running` and the advance job is enqueued transactionally with
@@ -210,7 +210,7 @@ export class SkillEngine {
    * Discovery + capture for every approved query, through ResearchService
    * verbatim (budgets, robots, SSRF guard, focused extraction). Budget
    * exhaustion is graceful: the remaining queries are noted as skipped and the
-   * run continues with what was gathered (decision 0059 ruling 5).
+   * run continues with what was gathered.
    */
   private async executeGatedSearch(owner: Principal, run: SkillRunRow): Promise<void> {
     await this.runs.claimStep(run.id, 'gated_search');
@@ -242,7 +242,7 @@ export class SkillEngine {
       } catch (error) {
         if (isDailyBudget(error)) {
           budgetStopped = true;
-          notes.push('daily research budget reached — continuing with what was gathered');
+          notes.push('daily research budget reached, continuing with what was gathered');
           await this.checkpointSearch(run.id, searched, pageIds, notes);
           continue;
         }
@@ -265,7 +265,7 @@ export class SkillEngine {
           if (result.status === 'captured') pageIds.push(result.id);
           else if (result.reason === 'limit_reached') {
             budgetStopped = true;
-            notes.push('daily page budget reached — continuing with what was gathered');
+            notes.push('daily page budget reached, continuing with what was gathered');
           }
         }
       } else {
@@ -338,7 +338,7 @@ export class SkillEngine {
       status: pages.length === 0 ? 'skipped' : 'completed',
       outputsSummary:
         pages.length === 0
-          ? 'No pages to read — the brief draws on memory alone'
+          ? 'No pages to read: the brief draws on memory alone'
           : `${pages.length} ${pages.length === 1 ? 'page' : 'pages'} read, ${facts} ${facts === 1 ? 'fact' : 'facts'} extracted` +
             (failed > 0 ? ` (${failed} failed permanently)` : ''),
       links: { pageIds: pages.map((p) => p.id), counts: { pages: pages.length, facts, failed } },
@@ -422,7 +422,7 @@ export class SkillEngine {
       return `- ${marker}${row.content ?? '(withheld)'} (status: ${row.status})`;
     });
 
-    // The brief is Cogeto-initiated (decision 0052): the LANGUAGE line is
+    // The brief is Cogeto-initiated: the LANGUAGE line is
     // forced to the strict/anchor form so it always speaks preferred_language.
     const contextRecord = await Promise.resolve(this.userContext?.get(run.ownerId))
       .then((record) => record ?? EMPTY_USER_CONTEXT)
@@ -458,7 +458,7 @@ export class SkillEngine {
     });
     await this.runs.finishStep(run.id, 'write_brief', {
       status: 'completed',
-      outputsSummary: `Brief written — ${memoryCites} memory ${memoryCites === 1 ? 'citation' : 'citations'}, ${webCites} web`,
+      outputsSummary: `Brief written, ${memoryCites} memory ${memoryCites === 1 ? 'citation' : 'citations'}, ${webCites} web`,
       links: { counts: { memoryCitations: memoryCites, webCitations: webCites } },
     });
   }

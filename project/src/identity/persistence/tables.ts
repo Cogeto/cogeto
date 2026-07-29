@@ -4,7 +4,7 @@ import { index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
  * The user directory (migration 0019), identity-owned and module-private. One
  * row per authenticated user, recorded on first login and refreshed on each
  * fresh token resolve. Its only job is to name the OWNER of a shared memory a
- * peer can see (O2-B) — resolved through the identity seam, never by reading
+ * peer can see — resolved through the identity seam, never by reading
  * this table from another module.
  */
 export const appUser = pgTable(

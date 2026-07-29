@@ -1,7 +1,7 @@
 import type { SkillStepKind } from '@cogeto/shared';
 
 /**
- * The skill registry (decision 0059 ruling 1): skills are code artifacts,
+ * The skill registry: skills are code artifacts,
  * versioned like prompts — named, numbered, immutable once released. A skill's
  * declared plan is the ordered set of typed steps its runs are created from;
  * the run's step log is always readable against this declaration.
@@ -15,7 +15,7 @@ export interface SkillStepDef {
   key: string;
   kind: SkillStepKind;
   /** Human-phrased step titles — the run view's language (en UI; the brief
-   * itself speaks preferred_language per decision 0052). */
+   * itself speaks preferred_language). */
   title: string;
 }
 
@@ -30,7 +30,7 @@ export interface SkillDefinition {
 /** skills/research_brief/v0002 — research a company or person before a meeting. */
 export const RESEARCH_BRIEF_SKILL: SkillDefinition = {
   id: 'research_brief',
-  // v0002 (decision 0060): the `propose_actions` step went with the task
+  // v0002: the `propose_actions` step went with the task
   // subsystem — a skill proposed adoption of an observed obligation as a task,
   // and there is nothing to adopt into. Skills are versioned like prompts, so
   // the plan change bumps the version; runs recorded under v0001 keep their

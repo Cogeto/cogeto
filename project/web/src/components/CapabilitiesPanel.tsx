@@ -6,12 +6,12 @@ import { timeAgo } from './status';
 import { Card, ErrorState, Pill, SectionTitle, SkeletonRows } from './ui';
 
 /**
- * The Capabilities panel (P6.7, decision 0055): every optional capability and
+ * The Capabilities panel: every optional capability and
  * nightly job of this instance with its TRUE state, from the same registry
  * /api/health serves. Loud states carry a plain consequence line; disabled
  * capabilities say how an operator enables them (the product never toggles
  * them: enabling means starting containers, and the web app holds no docker
- * privilege). Dark-first per P6.8; states are label + icon, never colour only.
+ * privilege). Dark-first; states are label + icon, never colour only.
  */
 
 function CapabilityRow({ summary }: { summary: CapabilitySummary }) {

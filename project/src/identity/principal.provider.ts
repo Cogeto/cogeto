@@ -5,7 +5,7 @@ import type { Principal } from '@cogeto/shared';
 import type { AuthenticatedRequest } from './bearer-auth.guard';
 
 /**
- * Request-scoped Principal (S1-B §4): modules inject PRINCIPAL instead of
+ * Request-scoped Principal (§4): modules inject PRINCIPAL instead of
  * reaching into the request. Populated by the BearerAuthGuard; null on
  * unguarded routes.
  */

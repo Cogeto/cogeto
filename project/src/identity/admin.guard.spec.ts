@@ -5,7 +5,7 @@ import { AdminGuard } from './admin.guard';
 import type { Principal } from '@cogeto/shared';
 
 /**
- * QS-10 — the jobs (System view) endpoints are admin-only. AdminGuard runs after
+ * — the jobs (System view) endpoints are admin-only. AdminGuard runs after
  * the global bearer guard has attached the Principal and requires the configured
  * admin role; a member without it is refused.
  */
@@ -16,7 +16,7 @@ const contextFor = (roles: string[]): ExecutionContext =>
     }),
   }) as unknown as ExecutionContext;
 
-describe('AdminGuard (QS-10)', () => {
+describe('AdminGuard', () => {
   it('allows a principal carrying the configured admin role', () => {
     const guard = new AdminGuard({ adminRole: 'admin' } as never);
     expect(guard.canActivate(contextFor(['member', 'admin']))).toBe(true);

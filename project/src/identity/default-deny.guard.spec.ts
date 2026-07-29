@@ -7,11 +7,11 @@ import { IdentityService } from './identity.service';
 import { Public } from './public.decorator';
 
 /**
- * QS-18 — default-deny auth. The bearer guard is registered GLOBALLY (APP_GUARD),
+ * — default-deny auth. The bearer guard is registered GLOBALLY (APP_GUARD),
  * so a brand-new controller that forgets `@UseGuards` is CLOSED, not silently
- * open; only `@Public()` opts out. This spins up a real Nest app (no new deps —
+ * open; only `@Public` opts out. This spins up a real Nest app (no new deps —
  * @nestjs/core + platform-express only) with one undecorated controller and one
- * @Public() controller, and asserts the undecorated route is denied by default.
+ * @Public controller, and asserts the undecorated route is denied by default.
  */
 
 // A newly-added controller that forgets any guard decorator — must be denied.
@@ -59,7 +59,7 @@ const identityStub = {
 })
 class TestModule {}
 
-describe('QS-18 — global bearer guard is default-deny', () => {
+describe(' — global bearer guard is default-deny', () => {
   let app: INestApplication;
   let baseUrl: string;
 

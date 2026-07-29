@@ -5,7 +5,7 @@ import type { ResolvedModelProviders } from '../model-gateway/index';
 import { redactionFromEnv } from './config';
 
 /**
- * Eval-harness provider resolution (decision 0040 ruling 5): the SAME resolver
+ * Eval-harness provider resolution: the SAME resolver
  * the instance boots with, over process.env plus a repo-root `.env` fallback
  * for the key/config variables (the historical convenience for local runs).
  * Whatever configuration this returns is EXACTLY what `--emit-json` records.
@@ -22,7 +22,7 @@ export async function resolveEvalProviders(repoRoot: string): Promise<{
       if (match && !env[match[1]!]) env[match[1]!] = match[2]!.trim();
     }
   } catch {
-    // No repo .env — process env alone decides.
+    // No repo.env — process env alone decides.
   }
   const redaction = redactionFromEnv();
   const providers = resolveModelProviders(env, { redacted: redaction !== undefined });
@@ -35,7 +35,7 @@ export function requireConfiguredProviders(
 ): void {
   if (!providers.configured) {
     console.error(
-      `${harness} needs a configured model provider — set COGETO_MISTRAL_API_KEY or a ` +
+      `${harness} needs a configured model provider, set COGETO_MISTRAL_API_KEY or a ` +
         `COGETO_PROVIDER_* configuration (env or repo-root .env); the harness is live-only`,
     );
     process.exit(2);

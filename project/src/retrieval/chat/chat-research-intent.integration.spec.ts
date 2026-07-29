@@ -9,7 +9,7 @@ import type { ChatResearchProposal, ChatResearchResolverPort } from './chat-rese
 import { ChatService } from './chat.service';
 
 /**
- * The chat research intent (decision 0045): invocation opens the GATE — it
+ * The chat research intent: invocation opens the GATE — it
  * proposes, discloses, and points at the Research page; it never searches.
  * `not_ambient`: an ordinary question never touches the research seam.
  */
@@ -95,7 +95,7 @@ describe('chat research intent (integration: real Postgres, stubbed seams)', () 
       undefined,
       resolver,
     );
-    // All scripted turns share one conversation (P6.9), like the SPA's thread.
+    // All scripted turns share one conversation, like the SPA's thread.
     conversationId = (await chat.createConversation(owner)).id;
   }, 120_000);
 
@@ -108,7 +108,7 @@ describe('chat research intent (integration: real Postgres, stubbed seams)', () 
       chat.ask(owner, 'research GDPR consent for Adriatic Foods', conversationId),
     );
     expect(resolver.proposals).toEqual(['GDPR consent for Adriatic Foods']);
-    // The invoking conversation rides the proposal (issue #259) — the
+    // The invoking conversation rides the proposal — the
     // concluded answer lands there as a persistent message.
     expect(resolver.conversationIds).toEqual([conversationId]);
     // The gate reply: deterministic, discloses the minimised query + reason,
@@ -119,7 +119,7 @@ describe('chat research intent (integration: real Postgres, stubbed seams)', () 
       'GDPR consent requirements CRM migration',
     );
     expect(done && done.type === 'done' ? done.content : '').toContain('Research page');
-    // The inline gate handle (decision 0047): the done event carries the run
+    // The inline gate handle: the done event carries the run
     // id so the chat surface can open the SAME gate in place.
     expect(done && done.type === 'done' ? done.researchProposal : null).toEqual({
       runId: '00000000-0000-4000-8000-000000000001',

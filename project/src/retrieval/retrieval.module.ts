@@ -6,9 +6,9 @@ import { RetrievalService } from './retrieval.service';
 
 /**
  * retrieval — hybrid, fused, filtered search (Addendum §A.5) plus the chat
- * area (S3-A). Composes the memory module's Principal-gated search primitives
- * (decision 0003 ruling 2), including the open-loops read behind the day-one
- * question (decision 0060); owns chat_message; everything here is fast path.
+ * area. Composes the memory module's Principal-gated search primitives
+ *, including the open-loops read behind the day-one
+ * question; owns chat_message; everything here is fast path.
  */
 @Module({
   imports: [MemoryModule],

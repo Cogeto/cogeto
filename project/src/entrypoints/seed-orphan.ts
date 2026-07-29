@@ -6,7 +6,7 @@ import { loadConfig } from './config';
 /**
  * seed:orphan — DEV-ONLY (excluded from production images, see the Dockerfile
  * runtime stage). Plants a stray Qdrant point matching an identifier a
- * confirmed receipt promised gone, so the sweep's alert path is demonstrable:
+ * confirmed receipt promised gone, so the sweep's alert path is demonstrable
  *
  *   docker compose --profile dev-seed run --rm seed-orphan
  *   ...then run the sweep and watch integrity_alert + System go red.
@@ -26,7 +26,7 @@ async function main(): Promise<void> {
       },
     });
     if (!planted) {
-      console.error('no confirmed receipt with enumerated points found — delete a source first');
+      console.error('no confirmed receipt with enumerated points found, delete a source first');
       process.exit(1);
     }
     console.log('planted an orphan Qdrant point for the sweep drill:');

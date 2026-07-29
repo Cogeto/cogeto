@@ -6,9 +6,9 @@ import { applyMigrations, ensureInstanceKeys, PUBLIC_KEY_FILE } from '../infrast
 /**
  * migrate — one-shot init container (§A.2: migrations never run on app boot).
  * Applies pending reviewable SQL migrations (0001 contractual core, 0002
- * infrastructure — decision 0003 ruling 1) and the Graphile Worker schema,
- * and generates the instance signing keypair on first boot (§B.1, decision
- * 0008 — this job is the only writer of the instance-keys volume).
+ * infrastructure) and the Graphile Worker schema,
+ * and generates the instance signing keypair on first boot (§B.1): this job is
+ * the only writer of the instance-keys volume.
  */
 async function main(): Promise<void> {
   const databaseUrl = process.env.COGETO_DATABASE_URL;
@@ -25,7 +25,7 @@ async function main(): Promise<void> {
     await ensureInstanceKeys(instanceKeyDir);
     console.log(`instance signing keypair ready in ${instanceKeyDir}`);
 
-    // QS-9: publish ONLY the public half into the app-facing volume, so the
+    // publish ONLY the public half into the app-facing volume, so the
     // internet-facing app never mounts the receipt-signing private key.
     const pubkeyDir = process.env.COGETO_INSTANCE_PUBKEY_DIR;
     if (pubkeyDir && pubkeyDir !== instanceKeyDir) {
@@ -34,7 +34,7 @@ async function main(): Promise<void> {
         path.join(instanceKeyDir, PUBLIC_KEY_FILE),
         path.join(pubkeyDir, PUBLIC_KEY_FILE),
       );
-      console.log(`instance public key published to ${pubkeyDir} (app mounts this — QS-9)`);
+      console.log(`instance public key published to ${pubkeyDir} (app mounts this)`);
     }
   } finally {
     await pool.end();

@@ -1,4 +1,4 @@
-/** Model provider configuration display (decision 0040; Settings surface). */
+/** Model provider configuration display (Settings surface). */
 
 export type ModelProviderIdDto = 'mistral' | 'openai' | 'anthropic' | 'ollama';
 

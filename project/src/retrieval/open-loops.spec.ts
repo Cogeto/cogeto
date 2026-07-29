@@ -7,9 +7,9 @@ import { RetrievalService } from './retrieval.service';
 import type { OpenLoop } from './retrieval.service';
 
 /**
- * open_loops_memory_backed (V2.0 item 3.1, decision 0060): the day-one
+ * open_loops_memory_backed: the day-one
  * question's second half is answered from memory rows, with no derived table
- * behind it. Two things are pinned here, both pure:
+ * behind it. Two things are pinned here, both pure
  *
  *  1. the retrieval mode reads `openLoopsForPrincipal` and returns the facts
  *     themselves as the citable memories, entity narrowing included;
@@ -66,7 +66,7 @@ const gateway = {
   },
 } as unknown as ModelGateway;
 
-describe('open_loops_memory_backed (decision 0060)', () => {
+describe('open_loops_memory_backed', () => {
   it('the open-loops mode reads memory and returns the facts as the citable rows', async () => {
     const seen: { entity?: string }[] = [];
     const store = {

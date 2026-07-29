@@ -12,7 +12,7 @@ import type { CapabilityJobSources } from './capabilities';
 import type { CogetoConfig } from './config';
 
 /**
- * The capability registry (P6.7, decision 0055) — unit surface:
+ * The capability registry — unit surface
  *
  *   registry_states — each capability reports the correct state across
  *     enabled / disabled / unreachable configurations.

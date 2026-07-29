@@ -50,7 +50,7 @@ export class IngestionModule {
   }
 
   /**
-   * The app-process slice (S3-B, F2-B): only the read endpoints — the
+   * The app-process slice: only the read endpoints — the
    * verification verdict panel and the dreaming digest. No pipeline, no
    * stages, no readers. Ingestion keeps sole ownership of its tables.
    */

@@ -1,12 +1,12 @@
 /**
- * Pure re-identification (decision 0023). Reversal is deterministic string
+ * Pure re-identification. Reversal is deterministic string
  * substitution, so the gateway does it locally from the mapping the sidecar
  * returned — no second network hop, and it composes with streaming. Mirrors the
  * sidecar's `reidentify` (project/services/redaction/app/redactor.py).
  */
 
 /** Replace each pseudonym with its original. Slots are bracketed (`[person1]`),
- * so an exact string swap is unambiguous — `[person1]` is never a substring of
+ * so an exact string swap is unambiguous`[person1]` is never a substring of
  * `[person10]`, and it can only ever match a slot the sidecar minted, never a
  * user's own text. `split/join` avoids any regex `$`/backslash interpretation.
  * Longest first as defence against any unforeseen overlap. */

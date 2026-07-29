@@ -11,7 +11,7 @@ import type { Session } from '../auth/oidc';
 import { Nav } from './Nav';
 import type { NavSection } from './Nav';
 
-/** One uniform, fluid content width for every page (P6.9): fills the screen up to
+/** One uniform, fluid content width for every page: fills the screen up to
  * a roomy cap, then centers. Identical on every page — no per-page width. The
  * full-width app bar shares this column so its title lines up with the content. */
 const COL = 'mx-auto w-full max-w-[80rem]';
@@ -33,7 +33,7 @@ export function Shell({
   /** Pin the page to the viewport: children scroll internally (chat). */
   fullHeight?: boolean;
   /** A second full-height rail between the nav and the header/content column
-   * (P6.9: the conversations sidebar). Living OUTSIDE the column keeps the
+   * (: the conversations sidebar). Living OUTSIDE the column keeps the
    * header breadcrumb and the content centered in the SAME remaining width,
    * so they stay aligned — a rail inside the column would shift the content
    * off the header's center line. */
@@ -45,10 +45,10 @@ export function Shell({
     retry: 1,
   });
   // The review badge counts BOTH queues: uncertain memories awaiting a
-  // verdict plus open contradictions awaiting a resolution (F2-A).
+  // verdict plus open contradictions awaiting a resolution.
   const { data: uncertain } = useQuery({
     queryKey: ['uncertain-count'],
-    // Own uncertain only (O2-B) — the badge mirrors the Review queue's scope.
+    // Own uncertain only — the badge mirrors the Review queue's scope.
     queryFn: () => fetchMemories(session, { status: 'uncertain', mine: true, limit: 1 }),
     refetchInterval: 30_000,
   });
@@ -63,7 +63,7 @@ export function Shell({
     queryFn: () => fetchPendingApprovals(session),
     refetchInterval: 30_000,
   });
-  // The dashboard attention indicator (Post-v1 P2): unread since last viewed.
+  // The dashboard attention indicator (P2): unread since last viewed.
   // Shares the ['attention'] cache with the dashboard surface, so opening the
   // dashboard (which marks seen) clears this dot.
   const { data: attention } = useQuery({
@@ -77,7 +77,7 @@ export function Shell({
     // (fixed inset-0), so the document contributes zero scrollable height and
     // only the chat's inner pane can scroll. `h-screen overflow-hidden` alone
     // still let the whole page (sidebar and all) scroll into empty space in some
-    // environments; a fixed shell cannot (P6.9 fix). Normal pages stay in flow.
+    // environments; a fixed shell cannot (fix). Normal pages stay in flow.
     <div
       className={`bg-slate-50 ${fullHeight ? 'fixed inset-0 flex overflow-hidden' : 'flex min-h-screen'}`}
     >
@@ -96,13 +96,13 @@ export function Shell({
           {/* The header tops its content: full-height pages (chat) use the same
               narrow, centered column as their content, so the breadcrumb sits
               directly above the conversation instead of hanging off to the left
-              (P6.9). Other pages fill the wide column, where it already aligns. */}
+. Other pages fill the wide column, where it already aligns. */}
           <div
             className={`flex items-center gap-2 py-3.5 ${
               fullHeight ? 'mx-auto w-full max-w-3xl px-4' : `${COL} px-6`
             }`}
           >
-            {/* A calm mono breadcrumb (P6.9): Cogeto · <Page>, left-aligned with
+            {/* A calm mono breadcrumb: Cogeto · <Page>, left-aligned with
                 the content column. */}
             <h1 className="font-mono text-[0.72rem] uppercase tracking-[0.14em]">
               <span className="text-slate-400">Cogeto</span>

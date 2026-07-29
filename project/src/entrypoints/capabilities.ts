@@ -12,7 +12,7 @@ import { COGETO_CONFIG } from './config';
 import type { CogetoConfig } from './config';
 
 /**
- * The capability registry (P6.7, decision 0055): one authoritative, observable
+ * The capability registry: one authoritative, observable
  * answer to "which optional capabilities does this instance run, and are they
  * actually working?" — compose profiles alone are invisible state. Lives in
  * the composition root like the health controller (a deployment concern, not
@@ -127,11 +127,11 @@ export class CapabilitiesService {
         };
   }
 
-  /** Research (decision 0042): enabled via the research profile (mirrored in
+  /** Research: enabled via the research profile (mirrored in
    * COGETO_COMPOSE_PROFILES) or the explicit flag; SearXNG's /healthz decides. */
   private async research(checkedAt: string): Promise<CapabilitySummary> {
     const base = { id: 'research' as const, checkedAt };
-    // The Ana sandbox (decision 0059): research runs on bundled fixture pages,
+    // The Ana sandbox: research runs on bundled fixture pages,
     // never the live web — honest in the panel, no SearXNG probe.
     if (this.config.demoMode) {
       return {
@@ -164,7 +164,7 @@ export class CapabilitiesService {
         };
   }
 
-  /** Demo (decision 0022): pure configuration. Demo mode on a production
+  /** Demo: pure configuration. Demo mode on a production
    * instance is the loud misconfiguration — the guard refuses the seed/reset. */
   private demo(checkedAt: string): CapabilitySummary {
     const base = { id: 'demo' as const, checkedAt, probed: false };
@@ -175,13 +175,13 @@ export class CapabilitiesService {
         state: 'unreachable',
         error:
           'COGETO_DEMO_MODE is set on a production instance: the guard refuses the demo ' +
-          'seed/reset (decision 0022 ruling 4) — unset one of the two flags',
+          'seed/reset: unset one of the two flags',
       };
     }
     return { ...base, state: 'on', detail: 'sandbox mode; a shared demo session is served' };
   }
 
-  /** Consoles (QS-4): profile-bound, localhost-only — the app has nothing to
+  /** Consoles: profile-bound, localhost-only — the app has nothing to
    * probe (the console edge binds to the HOST loopback), so enabled/disabled
    * is the whole truth and is reported as such. */
   private consoles(checkedAt: string): CapabilitySummary {
@@ -197,7 +197,7 @@ export class CapabilitiesService {
     };
   }
 
-  /** Local models (decision 0041): enabled when any tier resolves to the local
+  /** Local models: enabled when any tier resolves to the local
    * runtime; the boot probe's logic (reachability + models pulled) is reused. */
   private async localModels(checkedAt: string): Promise<CapabilitySummary> {
     const base = { id: 'local-models' as const, checkedAt };
@@ -340,7 +340,7 @@ function dreamResultLine(counts: Record<string, number>): string {
 }
 
 /**
- * The boot banner (P6.7 Issue C): one clearly-delimited block stating every
+ * The boot banner (Issue C): one clearly-delimited block stating every
  * capability's state at boot and the two jobs' last runs. Exact truth, every
  * boot — built from the same registry snapshot the panel and /api/health use.
  */

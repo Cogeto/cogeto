@@ -10,7 +10,7 @@ import { summarize } from './demo/assertions';
 
 /**
  * demo:reset — DEV/DEMO-ONLY. Tears down all demo data and re-seeds through the
- * pipeline (decision 0022 ruling 2). The demo Principal + token are preserved,
+ * pipeline. The demo Principal + token are preserved,
  * so an open browser tab keeps working. The scheduled reset (worker cron, demo
  * profile only) runs the same `resetDemoWorld` routine.
  */
@@ -55,7 +55,7 @@ async function main(): Promise<void> {
       log: (m) => console.log(m),
     });
     console.log(`demo sandbox reset: ${summarize(state)}`);
-    // A reset is a fresh world → rotate the login password (decision 0027).
+    // A reset is a fresh world → rotate the login password.
     const creds = await ensureDemoCredentials(config.demoSessionFile, { rotate: true });
     console.log(credentialsBanner(creds));
   } finally {

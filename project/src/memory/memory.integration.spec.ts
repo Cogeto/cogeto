@@ -30,7 +30,7 @@ describe('memory store (integration, real Postgres + Qdrant)', () => {
   let store: MemoryStore;
 
   beforeAll(async () => {
-    // Real Qdrant since QS-26: transitions and supersession REQUIRE the vector
+    // Real Qdrant since: transitions and supersession REQUIRE the vector
     // store (their payload sync throws on a vector-less store, by design).
     [tdb, qdrant] = await Promise.all([startTestDatabase(), startTestQdrant()]);
     const vectors = new MemoryVectorStore({
@@ -46,7 +46,7 @@ describe('memory store (integration, real Postgres + Qdrant)', () => {
     await Promise.all([tdb.stop(), qdrant.stop()]);
   });
 
-  it('vectorless_transition_throws (QS-26): a store without Qdrant refuses transitions and supersession instead of silently skipping the payload sync', async () => {
+  it('vectorless_transition_throws: a store without Qdrant refuses transitions and supersession instead of silently skipping the payload sync', async () => {
     const sqlOnlyStore = new MemoryStore(tdb.db);
     const row = await sqlOnlyStore.createFromFact(userA, fact()); // plain insert: allowed
     await expect(
@@ -149,7 +149,7 @@ describe('memory store (integration, real Postgres + Qdrant)', () => {
     ).rejects.toThrow(/not found/);
 
     // Legal path: reconciliation contradicts, the user re-affirms their own row
-    // by setting it back to active (S3-B: user_approved is reserved for the
+    // by setting it back to active (: user_approved is reserved for the
     // uncertain→approved review verdict).
     await store.transition({ kind: 'reconciliation' }, row.id, 'contradicted', 'conflicting note');
     const reaffirmed = await store.transition(

@@ -14,7 +14,7 @@ export interface TierRoutes {
 }
 
 /**
- * Per-tier provider routing (decision 0040 ruling 1): configurations are
+ * Per-tier provider routing: configurations are
  * per-task-family, so each tier may resolve to a different provider adapter.
  * This router carries NO provider knowledge — it only dispatches by the tier
  * the caller already names (with the same defaults the seam documents) and

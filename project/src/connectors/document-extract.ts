@@ -35,7 +35,7 @@ export function sniffContentType(buffer: Buffer): string | null {
 }
 
 /**
- * Parse caps (FIX-2 QS-6): a wall-clock timeout around the parse and a cap on
+ * Parse caps: a wall-clock timeout around the parse and a cap on
  * the resulting (decompressed) text length. The 25 MB upload cap bounds only
  * COMPRESSED input, so a zip-bomb DOCX/PDF can still decompress to GBs of text;
  * these bound the parse time and reject over-long output as a PERMANENT error
@@ -75,7 +75,7 @@ export async function extractDocumentText(
   if (text.length > caps.maxTextChars) {
     throw new PermanentExtractionError(
       `extracted text (${text.length} chars) exceeds the ${caps.maxTextChars}-char cap ` +
-        `(possible decompression bomb) — QS-6`,
+        `(possible decompression bomb)`,
     );
   }
   return text;
@@ -90,8 +90,7 @@ async function withParseTimeout(
   let timer: NodeJS.Timeout | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(
-      () =>
-        reject(new PermanentExtractionError(`document parse exceeded ${timeoutSeconds}s — QS-6`)),
+      () => reject(new PermanentExtractionError(`document parse exceeded ${timeoutSeconds}s`)),
       timeoutSeconds * 1000,
     );
   });

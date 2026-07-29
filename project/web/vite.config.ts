@@ -20,7 +20,7 @@ export default defineConfig({
   resolve: {
     // Bundle @cogeto/shared from its TypeScript source: the package compiles
     // to CommonJS for the Node server, whose re-exports rollup cannot
-    // statically resolve for value imports (S3-B: the SPA now imports enums).
+    // statically resolve for value imports (: the SPA now imports enums).
     alias: {
       '@cogeto/shared': path.resolve(__dirname, '..', 'shared', 'src', 'index.ts'),
     },

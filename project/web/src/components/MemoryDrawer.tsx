@@ -55,7 +55,7 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
 }
 
 /**
- * The governance drawer (S3-B): full content, allowed actions, verification
+ * The governance drawer: full content, allowed actions, verification
  * verdict, provenance, and the supersession history — every trust claim next
  * to its artifact. Server-side guards are the authority; buttons here only
  * hide what is never legal for the current status.
@@ -84,7 +84,7 @@ export function MemoryDrawer({
     queryFn: () => fetchMemory(session, memoryId),
   });
   const memory = memoryQuery.data;
-  // Ownership drives which actions are offered (O2-B). The server enforces
+  // Ownership drives which actions are offered. The server enforces
   // owner-only regardless; the UI hides what a non-owner may never do and
   // explains why. `me` is cached by the Shell — this is a free read.
   const { data: me } = useQuery({ queryKey: ['me'], queryFn: () => fetchMe(session) });
@@ -107,7 +107,7 @@ export function MemoryDrawer({
     enabled: memory?.sourceType === 'user_note',
   });
   // Contradicted memories show the OTHER side of the conflict right here —
-  // the warning chip's promise is both facts, both sources (F2-A).
+  // the warning chip's promise is both facts, both sources.
   const contradictionsQuery = useQuery({
     queryKey: ['contradictions'],
     queryFn: () => fetchContradictions(session),
@@ -129,7 +129,7 @@ export function MemoryDrawer({
 
   const refresh = async () => {
     setActionError(null);
-    // Chat chips, lists, badges — the governance-affected queries only (QS-36).
+    // Chat chips, lists, badges — the governance-affected queries only.
     await invalidateAfterGovernance(queryClient);
   };
   const onError = (error: unknown) =>
@@ -484,7 +484,7 @@ export function MemoryDrawer({
           onClose={() => setShowSource(false)}
           onDeleted={() => {
             // The source, this memory and its siblings are gone; a signed
-            // receipt is being confirmed by the worker (Forgotten UI: F1-B).
+            // receipt is being confirmed by the worker (Forgotten UI:).
             setShowSource(false);
             onClose();
           }}

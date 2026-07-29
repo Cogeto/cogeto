@@ -1,7 +1,7 @@
 import type { MemoryStatus } from '@cogeto/shared';
 
 /**
- * The pure policy half of reconciliation (decision 0010 rulings 3–5, 7):
+ * The pure policy half of reconciliation (–5, 7)
  * survivor selection for merges, the confirm-resolution loser rule, and the
  * supersession direction guard. Pure functions so the calibration-sensitive
  * rules are unit-tested without containers — the acting half

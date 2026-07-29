@@ -31,7 +31,7 @@ export interface FusedHit {
 export function fuseAndRank(
   lists: RankedList[],
   statusOf: (memoryId: string) => MemoryStatus | undefined,
-  /** Temporal mode passes TEMPORAL_STATUS_MULTIPLIERS (decision 0012 ruling 5). */
+  /** Temporal mode passes TEMPORAL_STATUS_MULTIPLIERS. */
   multipliers: Record<MemoryStatus, number> = STATUS_MULTIPLIERS,
 ): FusedHit[] {
   const fused = new Map<string, { score: number; signals: RetrievalSignal[] }>();

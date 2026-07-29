@@ -655,7 +655,7 @@ services:
   # allowlist (the real acceptance gate) lives in the app, not here.
   #
   # MX/TLS/DNS to point real mail at this container is an O6 provisioning
-  # concern; see docs/notes/email-inbound.md. Locally, exercise it with
+  # concern; see docs/operations/email-inbound.md. Locally, exercise it with
   # scripts/dev/send-test-email.mjs (no real DNS needed).
   mail:
     build:

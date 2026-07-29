@@ -16,33 +16,30 @@ async function main(): Promise<void> {
   const config = loadConfig();
   const logger = createLogger(config.logLevel);
 
-  // QS-9: the internet-facing app must mount only the public signing key. When
+  // the internet-facing app must mount only the public signing key. When
   // the compose flag is set, assert the private key is not reachable — a
   // misconfigured mount fails the boot rather than exposing the signing key.
   if (process.env.COGETO_ASSERT_NO_PRIVATE_KEY === '1') {
     await assertAppKeyMount(config.instanceKeyDir);
-    logger.info(
-      { dir: config.instanceKeyDir },
-      'signing-key mount verified: public key only (QS-9)',
-    );
+    logger.info({ dir: config.instanceKeyDir }, 'signing-key mount verified: public key only');
   }
 
-  // Embedding-space guard (decision 0040 ruling 3): a changed embeddings
+  // Embedding-space guard: a changed embeddings
   // model refuses boot until reindex has re-embedded the stored vectors.
   await assertEmbeddingSpaceConsistent(config);
-  // Local-runtime probe (decision 0041 ruling 2): an unreachable Ollama
+  // Local-runtime probe: an unreachable Ollama
   // runtime or a never-pulled model refuses boot, never fails at first request.
   await assertLocalRuntimeReady(config.modelProviders);
 
   const app = await NestFactory.create(createAppRootModule(config) as never, {
     logger: new PinoNestLogger(logger),
   });
-  // Open a per-request usage scope (FIX-2 QS-2) as the outermost middleware, so
+  // Open a per-request usage scope as the outermost middleware, so
   // the bearer guard can attribute the request to a principal and the gateway
   // budget decorator can meter/cap that principal's model calls. Non-API and
   // unauthenticated requests simply carry an empty scope.
   app.use((_req: Request, _res: Response, next: NextFunction) => runWithUsageContext(() => next()));
-  // The email-intake endpoint (Session O4, decision 0028 ruling 7) receives the
+  // The email-intake endpoint receives the
   // raw RFC822 as the request body — the message-sized limit is far above the
   // default JSON parser's, and the raw parser hands the controller a Buffer. The
   // JSON/urlencoded parsers skip it by content-type (message/rfc822).
@@ -51,7 +48,7 @@ async function main(): Promise<void> {
   app.enableShutdownHooks();
 
   await app.listen(config.httpPort);
-  // Effective serving mode (QS-3): make the demo/production posture explicit in
+  // Effective serving mode: make the demo/production posture explicit in
   // the boot log so an operator can see at a glance whether this instance
   // publishes the anonymous sandbox token.
   const mode = config.production
@@ -59,10 +56,10 @@ async function main(): Promise<void> {
     : config.demoMode
       ? 'DEMO SANDBOX (publishes a shared session token to anyone)'
       : 'standard (customer instance; no demo session served)';
-  logger.info({ port: config.httpPort, mode }, `cogeto app listening — mode: ${mode}`);
+  logger.info({ port: config.httpPort, mode }, `cogeto app listening, mode: ${mode}`);
   logRedactionState(logger, config);
-  logModelConfiguration(logger, config); // decision 0040: state the active configuration id.
-  // P6.7 boot banner (decision 0055): one delimited line of exact capability
+  logModelConfiguration(logger, config); // State the active configuration id.
+  // boot banner: one delimited line of exact capability
   // truth, every boot — the same registry snapshot the panel and /api/health
   // serve. Best-effort: a failed probe set must not take the app down, but the
   // failure itself is stated, never swallowed into silence.
@@ -79,7 +76,7 @@ async function main(): Promise<void> {
 
 // Top-level handlers log the error CLASS + a scrubbed, length-bounded message
 // only — never the raw error, whose stack or `received "<value>"` fragment can
-// carry secrets or model output (QS-22).
+// carry secrets or model output.
 process.on('unhandledRejection', (reason: unknown) => {
   console.error(`unhandledRejection: ${describeErrorLine(reason)}`);
 });

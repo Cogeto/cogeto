@@ -1,5 +1,5 @@
 /**
- * Abuse/DoS limit TYPES + DI tokens (FIX-2: QS-2, QS-6, QS-14).
+ * Abuse/DoS limit TYPES + DI tokens (:).
  *
  * These live in infrastructure (a leaf both the composition roots and the
  * domain controllers import) so the rate-limit guard, the ingest quota, and the
@@ -39,7 +39,7 @@ export interface ResearchQuota {
   pagesMax: number;
   /** Max pages fetched by a single capture request (the per-research cap). */
   pagesPerRunMax: number;
-  /** Max queries in one skill run's approved plan (decision 0059 ruling 5). */
+  /** Max queries in one skill run's approved plan. */
   skillQueriesMax: number;
   /** Max pages the skill engine captures per approved query (≤ pagesPerRunMax). */
   skillPagesPerQuery: number;
@@ -62,7 +62,7 @@ export interface ParseCaps {
   maxChunks: number;
   /** Wall-clock timeout around a single document parse, seconds. */
   timeoutSeconds: number;
-  /** Cap the extractor's facts array per source (`.max()` at the schema). */
+  /** Cap the extractor's facts array per source (`.max` at the schema). */
   maxFacts: number;
 }
 
@@ -84,14 +84,14 @@ export const MODEL_USAGE_METER = Symbol('MODEL_USAGE_METER');
 export const PARSE_CAPS = Symbol('PARSE_CAPS');
 
 /**
- * Instance timezone (QS-32) — the IANA zone relative-date resolution ("today",
+ * Instance timezone — the IANA zone relative-date resolution ("today",
  * "last Monday") uses to fix a note's calendar date from its UTC created_at.
  * Provided by LimitsModule from `config.timezone`; injected @Optional so bare
  * builds fall back to {@link DEFAULT_INSTANCE_TIMEZONE}.
  */
 export const INSTANCE_TIMEZONE = Symbol('INSTANCE_TIMEZONE');
 
-/** Default instance timezone (QS-32); mirrors temporal-resolver's DEFAULT_TIMEZONE. */
+/** Default instance timezone; mirrors temporal-resolver's DEFAULT_TIMEZONE. */
 export const DEFAULT_INSTANCE_TIMEZONE = 'Europe/Zagreb';
 
 /**

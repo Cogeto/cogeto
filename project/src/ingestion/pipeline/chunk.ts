@@ -1,6 +1,6 @@
 /**
  * Stage 2 (chunk). Chunks exist to fit accurate extraction into the model's
- * attention span — they are transient values, never rows (glossary; research:
+ * attention span — they are transient values, never rows (glossary; research
  * retrieval-and-pipeline §3). Sources under the threshold pass through as one
  * chunk; longer inputs get simple length-based chunks with overlap so facts
  * spanning a boundary appear whole in at least one chunk.

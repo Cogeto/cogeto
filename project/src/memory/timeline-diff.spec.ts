@@ -3,7 +3,7 @@ import type { MemoryListItem } from '@cogeto/shared';
 import { computeTimelineDiff, laterFateOf } from '@cogeto/shared';
 
 /**
- * The between-two-points diff and the later-fate label are pure (decision 0012
+ * The between-two-points diff and the later-fate label are pure (
  * ruling 4 / ruling 6): no model, no database. They operate on the gated facts
  * each `pointInTime` snapshot already returned; here we exercise the set
  * arithmetic and the past-framing twin directly.
@@ -67,7 +67,7 @@ describe('computeTimelineDiff (diff_between_points)', () => {
   });
 });
 
-describe('laterFateOf (past-framing twin, decision 0012 ruling 6)', () => {
+describe('laterFateOf (past-framing twin)', () => {
   const now = Date.parse('2026-07-01T00:00:00.000Z');
 
   it('a still-active, still-open fact is current', () => {

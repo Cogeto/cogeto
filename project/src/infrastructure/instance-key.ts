@@ -4,7 +4,7 @@ import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 
 /**
- * The instance signing keypair (§B.1, decision 0008): one ed25519 key per
+ * The instance signing keypair (§B.1): one ed25519 key per
  * instance, generated at first boot by the migrate init job into a dedicated
  * volume — never into the repo or the image. Deletion receipts are signed with
  * the private key; the public key is served at GET /api/instance/public-key so
@@ -70,7 +70,7 @@ export async function loadInstancePublicKey(dir: string): Promise<string> {
 }
 
 /**
- * QS-9 boot assertion for the internet-facing app: the receipt-signing PRIVATE
+ * boot assertion for the internet-facing app: the receipt-signing PRIVATE
  * key must not be reachable at the key dir (the app mounts a public-key-only
  * volume). Throws if the private key file is present — a misconfigured mount
  * that would let an app-side RCE forge "provably deleted" receipts. Also
@@ -79,14 +79,14 @@ export async function loadInstancePublicKey(dir: string): Promise<string> {
 export async function assertAppKeyMount(dir: string): Promise<void> {
   if (await exists(path.join(dir, PRIVATE_KEY_FILE))) {
     throw new Error(
-      `the private signing key is readable at ${dir} — the app must mount only the ` +
-        `public half (QS-9). Check the instance-pubkey volume mount.`,
+      `the private signing key is readable at ${dir}: the app must mount only the ` +
+        `public half. Check the instance-pubkey volume mount.`,
     );
   }
   if (!(await exists(path.join(dir, PUBLIC_KEY_FILE)))) {
     throw new Error(
-      `the instance public key is missing at ${dir} — the migrate job publishes it ` +
-        `(COGETO_INSTANCE_PUBKEY_DIR, QS-9)`,
+      `the instance public key is missing at ${dir}: the migrate job publishes it ` +
+        `(COGETO_INSTANCE_PUBKEY_DIR)`,
     );
   }
 }
@@ -118,8 +118,8 @@ async function readKey(file: string): Promise<string> {
     return await readFile(file, 'utf8');
   } catch (error) {
     throw new Error(
-      `instance signing key not found at ${file} — the migrate init job generates it ` +
-        `on first boot (COGETO_INSTANCE_KEY_DIR, decision 0008): ${String(error)}`,
+      `instance signing key not found at ${file}: the migrate init job generates it ` +
+        `on first boot (COGETO_INSTANCE_KEY_DIR): ${String(error)}`,
       { cause: error },
     );
   }

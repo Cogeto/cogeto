@@ -1,4 +1,4 @@
-/** Audit-log reader DTOs (§A.8/§B.1; O1-C — closes the write-only-audit gap). */
+/** Audit-log reader DTOs (§A.8/§B.1; — closes the write-only-audit gap). */
 
 export interface AuditEntryDto {
   id: string;
@@ -8,7 +8,7 @@ export interface AuditEntryDto {
   entityId: string;
   detail: Record<string, unknown> | null;
   /** True when detail exists but belongs to another user's artifact — entries
-   * are org-visible, detail is owner-only (QS-1/QS-13, decision 0025). */
+   * are org-visible, detail is owner-only. */
   detailWithheld?: boolean;
   createdAt: string;
 }

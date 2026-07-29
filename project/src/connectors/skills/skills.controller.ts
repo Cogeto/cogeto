@@ -38,7 +38,7 @@ const proposeSchema = z.object({
     .max(200, 'subject is too long (max 200 characters)')
     .refine((value) => value.trim().length > 0, 'subject must not be blank'),
   /** The invoking chat conversation; recorded nowhere yet — the run view is
-   * the surface (decision 0059). Accepted for forward compatibility. */
+   * the surface. Accepted for forward compatibility. */
   conversationId: z.uuid().optional(),
 });
 
@@ -103,7 +103,7 @@ function toPlanDto(row: ResearchRunRow): SkillPlanQueryDto {
 }
 
 /**
- * The skill surface (Priority 7; decision 0059) — propose → the plan gate →
+ * The skill surface — propose → the plan gate →
  * the live run view → the brief. Composed only into the app root
  * (SkillsModule): planning needs retrieval; execution stays the worker's.
  */

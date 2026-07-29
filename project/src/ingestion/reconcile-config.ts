@@ -1,7 +1,7 @@
 import type { FactKind, MemoryStatus } from '@cogeto/shared';
 
 /**
- * Reconciliation thresholds in ONE versioned place (decision 0010 ruling 6).
+ * Reconciliation thresholds in ONE versioned place.
  * Tuning happens here, backed by the reconciliation pair-case eval — never
  * inline at call sites. Bump the version with any value change so eval
  * history stays interpretable.
@@ -40,7 +40,7 @@ export const DEDUP_CANDIDATE_STATUSES: MemoryStatus[] = ['active', 'user_approve
 /**
  * Existing-memory statuses eligible as contradiction candidates. Deliberately
  * excludes `uncertain`: unverified noise never earns a warning chip — once
- * approved, the F2-B batch driver revisits it.
+ * approved, the batch driver revisits it.
  */
 export const CONTRADICTION_CANDIDATE_STATUSES: MemoryStatus[] = ['active', 'user_approved'];
 
@@ -49,7 +49,7 @@ export const CONTRADICTION_CANDIDATE_STATUSES: MemoryStatus[] = ['active', 'user
 export const CONTRADICTION_KINDS: FactKind[] = ['fact', 'decision', 'preference', 'commitment'];
 
 /**
- * Dreaming (decision 0011): commitments with no activity for this long are
+ * Dreaming: commitments with no activity for this long are
  * flagged dormant — recorded for the digest and the open-loops read, never a
  * status transition.
  */

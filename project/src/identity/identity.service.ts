@@ -34,12 +34,12 @@ export class IdentityService {
     const cached = this.cache.get(accessToken);
     if (cached && cached.expiresAt > Date.now()) return cached.principal;
 
-    // QS-17: when the token is a JWT, validate iss/aud LOCALLY against this
+    // when the token is a JWT, validate iss/aud LOCALLY against this
     // instance's configuration before spending a userinfo round-trip. userinfo
     // does not enforce audience, so on a (hypothetical) shared Zitadel a token
     // minted for a different client could otherwise resolve. Opaque tokens
     // (e.g. the demo PAT) cannot be decoded and fall through to userinfo, which
-    // — against the instance's OWN Zitadel (decision 0019) — is the boundary.
+    // — against the instance's OWN Zitadel — is the boundary.
     this.assertTokenAudienceAndIssuer(accessToken);
 
     const { status, body } = await fetchUserinfo(
@@ -84,7 +84,7 @@ export class IdentityService {
   }
 
   /**
-   * QS-17: if `token` is a JWT (three dot-separated segments), decode its
+   * if `token` is a JWT (three dot-separated segments), decode its
    * payload — WITHOUT verifying the signature; userinfo below proves the token
    * — and reject a mismatched `iss` or an `aud` that does not include the
    * configured client id. A non-JWT (opaque) token, or missing config, is

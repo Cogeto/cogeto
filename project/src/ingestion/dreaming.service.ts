@@ -13,14 +13,14 @@ import type { PipelineLog } from './pipeline/pipeline-log';
 import { DORMANT_SILENCE_DAYS, DREAM_FIRST_RUN_LOOKBACK_HOURS } from './reconcile-config';
 
 /**
- * The dreaming cycle (§B.6 plain form; decision 0011): the nightly
+ * The dreaming cycle (§B.6 plain form): the nightly
  * consolidation job. Incremental — the scope window runs from the last
  * FINISHED run to now, covering the day's newly admitted facts and the
- * memories they touched, never the whole store. Four passes:
+ * memories they touched, never the whole store. Four passes
  *
  *   1–3. batch dedup / contradiction / supersession — the SAME
  *        ReconciliationService stage 6 uses (0010 ruling 1), per owner, in a
- *        per-owner transaction. Catches what the per-source view missed:
+ *        per-owner transaction. Catches what the per-source view missed
  *        approved-since-admission facts, edited memories, deeper candidates.
  *   4a.  staleness — deterministic and model-free: every active memory whose
  *        valid_until has lapsed transitions to `outdated` as the
@@ -224,7 +224,7 @@ export class DreamingService {
 
 /** The latest finished run — the digest endpoint's anchor. */
 /**
- * The dreaming job's face for the capability registry (P6.7, decision 0055):
+ * The dreaming job's face for the capability registry
  * last successful run + whether the newest run is sitting unfinished (a crashed
  * run leaves finished_at NULL — the only error signal this table carries).
  */

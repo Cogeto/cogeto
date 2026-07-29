@@ -15,7 +15,7 @@ import { TRUST_SCORES_SCHEMA_VERSION } from './trust-scores';
  * (Session 4 turns them on).
  *
  * Needs only an API key: MISTRAL_API_KEY / COGETO_MISTRAL_API_KEY in the env,
- * or in the repo-root .env.
+ * or in the repo-root.env.
  */
 
 // dist layout: project/src/dist/entrypoints → repo root is four levels up.
@@ -25,7 +25,7 @@ const CONFIG_FILE = path.join(REPO_ROOT, 'project', 'eval', 'eval-config.json');
 const GATES_FILE = path.join(REPO_ROOT, 'project', 'eval', 'gates.json');
 const HISTORY_FILE = path.join(REPO_ROOT, 'docs', 'eval', 'history.md');
 
-/** The §B.4 CI gates (decision 0011): aggregate metrics, ratchet-up-only. */
+/** The §B.4 CI gates: aggregate metrics, ratchet-up-only. */
 const gatesSchema = z.object({
   version: z.number(),
   gates: z.object({
@@ -53,7 +53,7 @@ function reconcileRow(m: ReconcileEvalMetrics): string {
     `${m.falseMerges ? `, ${m.falseMerges} FALSE MERGE${m.falseMerges > 1 ? 'S' : ''}` : ''}) ` +
     `| ${m.contradictionPairs} | ${pct(m.contradictionPrecision)} (${m.correctContradictions}/${m.flaggedContradictions}) ` +
     `| ${pct(m.contradictionRecall)} (${m.correctContradictions}/${m.expectedContradictions}) ` +
-    `| ${m.supersedesPairs ? `${m.supersedesCorrect}/${m.supersedesPairs}` : '—'} ` +
+    `| ${m.supersedesPairs ? `${m.supersedesCorrect}/${m.supersedesPairs}` : ''} ` +
     `| ${m.candidateMisses} |`
   );
 }
@@ -65,7 +65,7 @@ async function main(): Promise<void> {
   const gateway = createModelGateway({
     providers,
     redaction,
-    // Deterministic sampling for comparable runs (decision 0035).
+    // Deterministic sampling for comparable runs.
     temperature: 0,
   });
   console.log(
@@ -73,7 +73,7 @@ async function main(): Promise<void> {
       `answer ${providers.tiers.answer.provider}/${providers.tiers.answer.model} · ` +
       `embeddings ${providers.tiers.embedding.provider}/${providers.tiers.embedding.model})`,
   );
-  if (redaction) console.log(`redaction: ON (sidecar ${redaction.url}) — measuring the delta`);
+  if (redaction) console.log(`redaction: ON (sidecar ${redaction.url}), measuring the delta`);
 
   console.log(`golden set: ${GOLDEN_DIR}`);
   console.log(
@@ -100,7 +100,7 @@ async function main(): Promise<void> {
   console.log(table);
   console.log('====================================================\n');
 
-  // Reconciliation pair cases (F2-A, decision 0010 ruling 9) — the same run,
+  // Reconciliation pair cases — the same run,
   // so the trust score always reports extraction and reconciliation together.
   console.log('reconciliation pairs:');
   const reconcile = await runReconcileEval({
@@ -126,13 +126,13 @@ async function main(): Promise<void> {
   const stamp = new Date().toISOString().slice(0, 10);
   await appendFile(
     HISTORY_FILE,
-    `\n## ${stamp} — ${result.promptVersions} (thresholds v${result.config.version}, ${result.caseCount} cases)\n\n${table}\n` +
-      `\n## ${stamp} — reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v${reconcile.configVersion}, ${reconcile.pairCount} pairs)\n\n${reconcileTable}\n`,
+    `\n## ${stamp}, ${result.promptVersions} (thresholds v${result.config.version}, ${result.caseCount} cases)\n\n${table}\n` +
+      `\n## ${stamp}, reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v${reconcile.configVersion}, ${reconcile.pairCount} pairs)\n\n${reconcileTable}\n`,
     'utf8',
   );
   console.log(`appended to ${path.relative(REPO_ROOT, HISTORY_FILE)}`);
 
-  // ── Trust-score emission (O7, decision 0032): --emit-json <path> ─────────
+  // ── Trust-score emission (O7): --emit-json <path> ─────────
   // Writes/merges the machine-readable partial the release publisher combines
   // into eval/trust-scores/vX.Y.Z.json. Emitted BEFORE the gate check so the
   // numbers are honest even on a breach (the release only publishes after
@@ -145,7 +145,7 @@ async function main(): Promise<void> {
   }
   if (emitPath) {
     // The ACTIVE configuration, from the same resolver the gateway was built
-    // with (decision 0040 ruling 5) — id and models are exact by construction.
+    // with — id and models are exact by construction.
     const { id, models } = configurationForEmission(providers);
     const reconcileByLabel = new Map(reconcile.perLanguage.map((m) => [m.label, m]));
     emitPartial(emitPath, {
@@ -189,7 +189,7 @@ async function main(): Promise<void> {
     console.log(`trust-score partial emitted → ${emitPath}`);
   }
 
-  // ── The §B.4 gates (decision 0011): aggregate metrics vs gates.json ───────
+  // ── The §B.4 gates: aggregate metrics vs gates.json ───────
   // Always printed; enforced (exit 1) when COGETO_EVAL_GATE=1 — the CI mode
   // and `npm run eval:gate`. Ratchet up only; lowering needs a decision record.
   const { version: gatesVersion, gates } = gatesSchema.parse(

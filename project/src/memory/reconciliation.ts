@@ -26,11 +26,11 @@ import {
 import type { PolicyParty } from './domain/reconcile-policy';
 
 /**
- * The Memory aggregate's reconciliation actions (decision 0010): the acting
+ * The Memory aggregate's reconciliation actions: the acting
  * half behind the pure policy in domain/reconcile-policy.ts. The ingestion
  * reconciliation service decides WHICH pairs to check and what the model
  * ruled; every state change lands here, so the invariants stay aggregate-owned
- * (§A.1 rule 4):
+ * (§A.1 rule 4)
  *
  * - merges and reconciliation supersessions close intervals and point
  *   `superseded_by` — history is never destroyed (§B.2);
@@ -175,7 +175,7 @@ export class MemoryReconciliation {
     private readonly store: MemoryStore,
     /** Optional so pure-Postgres tests need no Qdrant; DI always provides it. */
     @Optional() private readonly vectors?: MemoryVectorStore,
-    /** Org resolution for audit stamping (QS-13, decision 0025); DI provides it. */
+    /** Org resolution for audit stamping; DI provides it. */
     @Optional() private readonly directory?: UserDirectory,
   ) {}
 
@@ -198,7 +198,7 @@ export class MemoryReconciliation {
     incomingId: string,
     existingId: string,
     mergedContent: string | null,
-    // Advisory only — never persisted (QS-1, decision 0025).
+    // Advisory only — never persisted.
     _reason: string,
   ): Promise<PairActionResult> {
     const [first, second] = await this.lockPair(tx, incomingId, existingId);
@@ -246,7 +246,7 @@ export class MemoryReconciliation {
       enriched = true;
     }
 
-    // The model's merge rationale is NOT persisted (QS-1, decision 0025):
+    // The model's merge rationale is NOT persisted
     // audit detail is structural metadata only, and a merge needs no durable
     // explanation beyond the supersession pointer itself.
     await this.closeAndPoint(tx, loserRow, finalSurvivor, 'memory.merged', {
@@ -283,8 +283,8 @@ export class MemoryReconciliation {
         aPriorStatus: incoming.status,
         bPriorStatus: existing.status,
         // The model's explanation lives HERE — the owner-gated relation row the
-        // Review queue reads — never in the org-readable audit trail (QS-1,
-        // decision 0025). Erased with the relation (FK CASCADE with the pair).
+        // Review queue reads — never in the org-readable audit trail (
+        //). Erased with the relation (FK CASCADE with the pair).
         reason,
       })
       .onConflictDoNothing()
@@ -320,7 +320,7 @@ export class MemoryReconciliation {
     tx: Tx,
     winnerId: string,
     loserId: string,
-    // Advisory only — never persisted (QS-1, decision 0025).
+    // Advisory only — never persisted.
     _reason: string,
   ): Promise<PairActionResult> {
     const [first, second] = await this.lockPair(tx, winnerId, loserId);
@@ -367,7 +367,7 @@ export class MemoryReconciliation {
   }
 
   /**
-   * Owner resolution of a contradiction (0010 ruling 3). One transaction:
+   * Owner resolution of a contradiction (0010 ruling 3). One transaction
    * status outcomes per the ruling, the relation resolved, every touched
    * entity audited. Resolving an already-resolved relation is a no-op (the
    * queue refetches), not an error.
@@ -397,7 +397,7 @@ export class MemoryReconciliation {
       const user: MemoryActor = { kind: 'user', userId: principal.userId };
 
       // The three resolution outcomes (0010 ruling 3), each extracted to a
-      // behavior-preserving helper (QS-41): confirm one party (loser outdated or
+      // behavior-preserving helper: confirm one party (loser outdated or
       // superseded), correct both by edit-as-supersession, or dismiss (restore
       // both to their prior status). Every helper runs inside `tx`.
       let resolution: RelationResolution;
@@ -444,7 +444,7 @@ export class MemoryReconciliation {
     return [rows[0]!, rows[1]!];
   }
 
-  // ── Resolution-outcome helpers (QS-41, extracted from resolveContradiction;
+  // ── Resolution-outcome helpers (extracted from resolveContradiction;
   // each is behavior-preserving and runs inside the caller's `tx`) ─────────────
 
   /** Confirm: winner → user_approved; the loser is outdated or superseded. */
@@ -459,7 +459,7 @@ export class MemoryReconciliation {
     const loser = winnerSide === 'a' ? rowB : rowA;
     if (winner.status !== 'contradicted' || loser.status !== 'contradicted') {
       throw new BadRequestException(
-        'a memory in this contradiction changed since detection — review it in Memories, then dismiss or correct instead',
+        'a memory in this contradiction changed since detection, review it in Memories, then dismiss or correct instead',
       );
     }
     const confirmed = await this.store.transitionInTx(

@@ -1,9 +1,9 @@
 /**
- * Error sanitization for logs and the dead_letter ledger (FIX-3 QS-22).
+ * Error sanitization for logs and the dead_letter ledger.
  *
  * A `ModelGatewayError` can embed Zod validation fragments — and Zod's enum /
  * literal messages quote the RECEIVED value, which is raw model output (e.g.
- * "Invalid enum value ... received 'maybe'"). That value must never reach a log
+ * "Invalid enum value... received 'maybe'"). That value must never reach a log
  * line or the `dead_letter.error` column in plaintext. `describeError` reduces
  * any error to its class + a scrubbed, length-capped message; `scrubMessage`
  * strips the "received <value>" fragments and caps length.

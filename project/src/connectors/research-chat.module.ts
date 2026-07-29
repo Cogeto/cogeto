@@ -5,7 +5,7 @@ import { ResearchRunController } from './research-run.controller';
 import { ResearchSynthesisService } from './research-synthesis.service';
 
 /**
- * The research flow's app-only composition (Priority 5 Part B) — the mirror of
+ * The research flow's app-only composition — the mirror of
  * EmailReplyModule: needs RetrievalService (synthesis) and binds the chat →
  * research seam, so it is composed ONLY into the app root, never the worker
  * (whose research intent stays inert). Global so ChatService resolves

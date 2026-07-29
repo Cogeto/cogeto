@@ -1,6 +1,6 @@
 import type { MemoryScope } from './memory';
 
-/** Per-user capture/upload defaults (§A.9; O1-C Settings surface). */
+/** Per-user capture/upload defaults (§A.9; Settings surface). */
 export interface UserSettingsDto {
   /** Extract-and-discard: keep no original after extraction (per-upload override). */
   discardByDefault: boolean;

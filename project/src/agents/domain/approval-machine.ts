@@ -2,7 +2,7 @@ import type { ApprovalStatus } from '@cogeto/shared';
 
 /**
  * The approval aggregate's single transition function (Addendum §A.8, §A.1
- * rule 4). Legal edges — everything else is refused with a typed reason:
+ * rule 4). Legal edges — everything else is refused with a typed reason
  *
  *   draft            → pending_approval        (submit for a decision)
  *   pending_approval → approved | rejected | expired
@@ -34,7 +34,7 @@ export function checkApprovalTransition(
     allowed: false,
     reason:
       EDGES[from].length === 0
-        ? `${from} is terminal — no further transitions`
+        ? `${from} is terminal: no further transitions`
         : `illegal approval transition ${from} → ${to} (from ${from}, only ${EDGES[from].join(', ')})`,
   };
 }

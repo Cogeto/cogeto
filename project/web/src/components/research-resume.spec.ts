@@ -3,9 +3,9 @@ import type { ResearchRunDto } from '@cogeto/shared';
 import { pickResumeRun, RESUME_WINDOW_HOURS } from './research-resume';
 
 /**
- * research_resume (decisions 0057/0058): the chat page resumes ONLY an
+ * research_resume: the chat page resumes ONLY an
  * approved run still in flight, to show progress. Concluded runs never resume
- * (their answer is a persistent message in the conversation, issue #259);
+ * (their answer is a persistent message in the conversation);
  * seen, cancelled, proposed, and stale runs never resume either.
  */
 
@@ -37,7 +37,7 @@ describe('research_resume', () => {
     expect(pickResumeRun(runs, NOW)?.id).toBe('newer');
   });
 
-  it('concluded runs never resume: their answer lives in the conversation (issue #259)', () => {
+  it('concluded runs never resume: their answer lives in the conversation', () => {
     const runs = [
       run({ id: 'done', status: 'concluded', answer: 'a', concludedAt: hoursAgo(1) }),
       run({

@@ -35,7 +35,7 @@ export function UploadCard({
   session: Session;
   onUploaded: (objectKey: string, filename: string) => void;
 }) {
-  // Prefill scope + discard from the user's saved defaults (§A.9, O1-C).
+  // Prefill scope + discard from the user's saved defaults (§A.9).
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => fetchSettings(session) });
   const [scope, setScope] = useState<MemoryScope | null>(null);
   const [sensitive, setSensitive] = useState(false);

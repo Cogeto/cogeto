@@ -10,7 +10,7 @@ import { boolean, index, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-
 export const chatRoleEnum = pgEnum('chat_role', ['user', 'assistant']);
 
 /**
- * A conversation (P6.9; decision 0056): the workspace container the sidebar
+ * A conversation: the workspace container the sidebar
  * lists, switches, renames, archives and deletes. Memory is the continuity,
  * conversations are workspaces — context assembly reads turns from ONE
  * conversation only; knowledge crosses threads through memory retrieval alone.

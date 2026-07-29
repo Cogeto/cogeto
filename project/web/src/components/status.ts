@@ -1,7 +1,7 @@
 import type { MemoryStatus } from '@cogeto/shared';
 
 /**
- * The status vocabulary for the whole SPA (O3-C). Status is load-bearing
+ * The status vocabulary for the whole SPA. Status is load-bearing
  * information, so each of the six lifecycle states gets an AA-contrast color
  * (verified: 5.3–6.9:1) AND a distinct label + icon — never color alone, and
  * colorblind-distinguishable (active vs approved, outdated vs replaced differ by
@@ -16,10 +16,10 @@ export interface StatusMeta {
   className: string;
 }
 
-// Dark variants (P6.8) tint each hue over the dark surface and lift the ink to a
+// Dark variants tint each hue over the dark surface and lift the ink to a
 // light shade of the same hue, so every chip keeps AA contrast and its colorblind
 // distinctness (label + icon still carry the meaning). The neutral (slate) chips
-// need no dark: variant — the slate ramp remaps under :root.dark automatically.
+// need no dark: variant — the slate ramp remaps under:root.dark automatically.
 export const STATUS_META: Record<MemoryStatus, StatusMeta> = {
   active: {
     label: 'active',
@@ -47,14 +47,9 @@ export const STATUS_META: Record<MemoryStatus, StatusMeta> = {
   replaced: { label: 'replaced', icon: '↻', className: 'bg-slate-100 text-slate-600' },
 };
 
-/** Kept for any direct className consumer; prefer the <StatusChip> component. */
-export const STATUS_CHIP: Record<MemoryStatus, string> = Object.fromEntries(
-  Object.entries(STATUS_META).map(([k, v]) => [k, v.className]),
-) as Record<MemoryStatus, string>;
-
 export const WARN_STATUSES: MemoryStatus[] = ['uncertain', 'contradicted'];
 
-/** Muted chip for past-belief facts in chat (F3-A, decision 0012 ruling 6). */
+/** Muted chip for past-belief facts in chat. */
 export const PAST_CHIP = 'bg-slate-100 text-slate-600 border border-slate-300';
 
 export const statusLabel = (status: MemoryStatus): string => STATUS_META[status].label;
@@ -78,20 +73,6 @@ export const TONE_CLASS: Record<Tone, string> = {
 export function isPastFact(status: MemoryStatus, validUntil: string | null): boolean {
   if (status === 'replaced' || status === 'outdated') return true;
   return validUntil !== null && new Date(validUntil).getTime() <= Date.now();
-}
-
-/**
- * Relative due rendering for due-dated rows (F3 handoff §4): "in 3 days", "due
- * today", "overdue by 2 days". `overdue` drives the red treatment.
- */
-export function dueLabel(iso: string): { text: string; overdue: boolean } {
-  const days = Math.round((new Date(iso).getTime() - Date.now()) / 86_400_000);
-  if (days < 0) {
-    const n = -days;
-    return { text: `overdue by ${n === 1 ? '1 day' : `${n} days`}`, overdue: true };
-  }
-  if (days === 0) return { text: 'due today', overdue: false };
-  return { text: days === 1 ? 'due tomorrow' : `in ${days} days`, overdue: false };
 }
 
 /** Relative timestamp for list rows; exact date on hover via title attr. */

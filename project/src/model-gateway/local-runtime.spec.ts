@@ -3,7 +3,7 @@ import { assertLocalRuntimeReady, modelAvailable } from './local-runtime';
 import { resolveModelProviders } from './provider-config';
 
 /**
- * boot_probe (decision 0041 ruling 2): an unreachable local runtime or a
+ * boot_probe: an unreachable local runtime or a
  * never-pulled model refuses startup with the exact fix — never a first-request
  * failure. Mocked fetch; no network.
  */
@@ -55,7 +55,7 @@ describe('boot_probe', () => {
       vi.fn(async () => tags('bge-m3:latest')),
     );
     await expect(assertLocalRuntimeReady(providers(OLLAMA_ENV))).rejects.toThrow(
-      /model "gemma3:12b" is not available on the Ollama runtime at http:\/\/10\.0\.0\.1:11434 — run `ollama pull gemma3:12b`/,
+      /model "gemma3:12b" is not available on the Ollama runtime at http:\/\/10\.0\.0\.1:11434, run `ollama pull gemma3:12b`/,
     );
   });
 
@@ -81,7 +81,7 @@ describe('boot_probe', () => {
     expect(modelAvailable('bge-m3', ['bge-m3:latest'])).toBe(true);
     expect(modelAvailable('gemma3:12b', ['gemma3:12b'])).toBe(true);
     expect(modelAvailable('gemma3:12b', ['gemma3:27b'])).toBe(false);
-    // A tagged requirement must match exactly — :latest is not :12b.
+    // A tagged requirement must match exactly — :latest is not:12b.
     expect(modelAvailable('gemma3:12b', ['gemma3:latest'])).toBe(false);
     expect(modelAvailable('bge-m3', [])).toBe(false);
   });

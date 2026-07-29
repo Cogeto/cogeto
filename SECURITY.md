@@ -1,8 +1,8 @@
 # Security Policy
 
-Cogeto's product promise is verifiable trust — deletion receipts, integrity
-sweeps, published audits. That only means something if security reports are
-taken seriously. They are.
+Cogeto's product promise is verifiable trust: deletion receipts, integrity
+sweeps, and protections documented in the open. That only means something if
+security reports are taken seriously. They are.
 
 ## Reporting a vulnerability
 
@@ -24,8 +24,8 @@ Croatian are both fine.
   confirmed vulnerabilities **within 90 days** (faster for anything actively
   dangerous). Coordinated disclosure: we ask you to hold public details until
   a fix is released; we'll credit you in the release notes unless you prefer
-  otherwise. There is currently no bug bounty — we're honest about that — but
-  reports are genuinely valued and acted on.
+  otherwise. There is currently no bug bounty, and we would rather say so plainly
+  than imply one. Reports are genuinely valued and acted on.
 
 ## Scope
 
@@ -34,7 +34,7 @@ Croatian are both fine.
 - This repository: the application (app, worker, SPA), the compose stacks, the
   operator script, and the published release images
   (`cogeto/cogeto`, `cogeto/cogeto-edge`, `cogeto/cogeto-mail`).
-- **The public demo sandbox is explicitly in scope** — it holds only fictional
+- **The public demo sandbox is explicitly in scope**: it holds only fictional
   data and exists to be poked at. Please keep it usable for others (no
   volumetric/DoS testing).
 
@@ -48,10 +48,11 @@ Croatian are both fine.
 - The marketing website (report it via the same address, but it is a separate,
   static codebase).
 
-## Our own audits are public — deliberately
+## How the protections work is public
 
-The repository's security and implementation-gap audits, including every
-finding and its resolution, are published in [`docs/audits/`](docs/audits/).
-Cogeto asks users to trust it with their working memory; the least it can do
-is show its own homework. Reading those audits is also the fastest way to see
-which classes of issues have already been considered and hardened.
+Cogeto asks users to trust it with their working memory, so the mechanisms are
+documented rather than asserted. [`docs/security/`](docs/security/README.md)
+describes each protection, the guarantee it makes, its residual limits stated
+plainly, and the co-located tests that enforce it on every build. That is the
+fastest way to see which classes of issue have already been considered and
+hardened, and to check the claims yourself against the code.

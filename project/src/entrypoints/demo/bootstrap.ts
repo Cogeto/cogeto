@@ -8,7 +8,7 @@ import { ensureDemoCredentials } from './credentials';
 import { provisionDemoPrincipal } from './zitadel-admin';
 
 /**
- * Shared demo bootstrap (decision 0022): wait for the app, obtain the demo
+ * Shared demo bootstrap: wait for the app, obtain the demo
  * Principal's session (reusing the persisted token when it still resolves, else
  * provisioning a fresh one), publish it to the shared demo-config file the app
  * serves on /api/config, and return a ready DemoApi + the owner id.
@@ -19,7 +19,7 @@ export interface DemoSession {
   principal: Principal;
   ownerId: string;
   accessToken: string;
-  /** The operator's login credentials for the sandbox (decision 0027). */
+  /** The operator's login credentials for the sandbox. */
   loginUsername: string;
   loginPassword: string;
 }
@@ -54,7 +54,7 @@ async function readPersistedToken(file: string): Promise<string | null> {
 
 async function writeSessionFile(file: string, accessToken: string, ownerId: string): Promise<void> {
   await mkdir(dirname(file), { recursive: true }).catch(() => undefined);
-  // World-readable ON PURPOSE (decision 0022): the demo-seed job runs as root but
+  // World-readable ON PURPOSE: the demo-seed job runs as root but
   // the app process runs as uid `node` and must read this to publish the session
   // on /api/config — where the token is already public anyway. `chmod` covers the
   // case where the file already exists (umask would otherwise keep it 0600).
@@ -74,7 +74,7 @@ export async function establishDemoSession(config: CogetoConfig): Promise<DemoSe
     try {
       const principal = await api.me();
       // Re-assert file permissions so the app (a different uid) can read it even
-      // when reusing a token an earlier run wrote (decision 0022).
+      // when reusing a token an earlier run wrote.
       await writeSessionFile(config.demoSessionFile, persisted, principal.userId);
       return withCredentials(config, api, principal, persisted);
     } catch {
@@ -94,7 +94,7 @@ export async function establishDemoSession(config: CogetoConfig): Promise<DemoSe
 }
 
 /**
- * Attaches the operator login credentials (decision 0027) to a resolved session.
+ * Attaches the operator login credentials to a resolved session.
  * `rotate: false` — an existing password is reused, so a mere restart does not
  * change the operator's known password; the reset paths rotate it explicitly.
  */

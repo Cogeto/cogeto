@@ -125,7 +125,7 @@ function DeadLetterTable({ session }: { session: Session }) {
     mutationFn: (id: string) => retryDeadLetterJob(session, id),
     onSuccess: async () => {
       setError(null);
-      await invalidateAfterJobRetry(queryClient); // QS-36
+      await invalidateAfterJobRetry(queryClient); //
     },
     onError: (e) => setError(e instanceof Error ? e.message : String(e)),
   });
@@ -199,9 +199,9 @@ function DeadLetterTable({ session }: { session: Session }) {
 }
 
 /**
- * System (S3-B + F1-B): health, deletion integrity, dead-letter retry.
+ * System (+): health, deletion integrity, dead-letter retry.
  * An operator surface: the admin-gated panels (worker activity, dead-letter —
- * QS-10) would 403 for a plain user, so the page explains itself instead of
+ *) would 403 for a plain user, so the page explains itself instead of
  * erroring when the caller lacks the admin role (o6-dry-run). The nav hides
  * the entry too; this covers a direct URL.
  */

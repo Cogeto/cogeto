@@ -9,8 +9,8 @@ import { latestFinishedRun } from './dreaming.service';
 
 /**
  * The dreaming digest, assembled from the latest finished run (§B.6 v1 form;
- * decision 0011). Extracted from DreamingController so BOTH the digest endpoint
- * and the attention feed (Post-v1 Priority 2) build the same lines from one
+ *). Extracted from DreamingController so BOTH the digest endpoint
+ * and the attention feed build the same lines from one
  * place — never a second, drifting digest.
  *
  * Owner scoping falls out of the gates: memory details resolve ONLY through the
@@ -70,7 +70,7 @@ export async function buildDigestLines(
   // Priority: conflicts first (they want attention), then merges and updates
   // (the work done), then quiet commitments, then the aggregate. The line
   // ORDER is locale-independent — the attention feed's dismissal keys index
-  // into it, so translation may never reorder or drop a line (decision 0052).
+  // into it, so translation may never reorder or drop a line.
   const lines: DreamDigestLine[] = [];
   const byPass = (pass: DreamActionRow['pass']) =>
     actions.filter((a) => a.pass === pass && visible.has(a.memoryId));
@@ -79,8 +79,8 @@ export async function buildDigestLines(
     const name = label(visible.get(action.memoryId)!);
     lines.push({
       text: hr
-        ? `Pronađen je sukob oko ${name} — tvoja odluka`
-        : `Found a conflict about ${name} — your call`,
+        ? `Pronađen je sukob oko ${name}: tvoja odluka`
+        : `Found a conflict about ${name}: your call`,
       href: '/review?tab=contradicted',
     });
   }
@@ -95,8 +95,8 @@ export async function buildDigestLines(
     const name = label(visible.get(action.memoryId)!);
     lines.push({
       text: hr
-        ? `Ažurirano ${name} — novija činjenica zamijenila je stariju`
-        : `Updated ${name} — a newer fact replaced an older one`,
+        ? `Ažurirano ${name}, novija činjenica zamijenila je stariju`
+        : `Updated ${name}: a newer fact replaced an older one`,
       href: `/memories?open=${action.memoryId}`,
     });
   }
@@ -112,11 +112,11 @@ export async function buildDigestLines(
     lines.push({
       text: hr
         ? outdated.length === 1
-          ? `Označen 1 zapis kao zastario — datum mu je prošao`
-          : `Označeno ${outdated.length} zapisa kao zastarjelo — datumi su im prošli`
+          ? `Označen 1 zapis kao zastario, datum mu je prošao`
+          : `Označeno ${outdated.length} zapisa kao zastarjelo, datumi su im prošli`
         : outdated.length === 1
-          ? `Marked 1 memory outdated — its date passed`
-          : `Marked ${outdated.length} memories outdated — their dates passed`,
+          ? `Marked 1 memory outdated: its date passed`
+          : `Marked ${outdated.length} memories outdated: their dates passed`,
       href: '/memories?status=outdated',
     });
   }

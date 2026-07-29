@@ -6,8 +6,8 @@ import { fileMetadata } from './persistence/tables';
 import type { MemoryScope } from '@cogeto/shared';
 
 /**
- * The memory module's public port over the `file_metadata` table (decision
- * 0003 ruling 2: memory owns ALL storage for memory data — file rows included;
+ * The memory module's public port over the `file_metadata` table
+ * : memory owns ALL storage for memory data — file rows included;
  * the frozen upload contract, F1 handoff). The connectors file source writes
  * one row per stored upload through `record` (inside the same transaction as
  * the outbox enqueue) and reads it back through `get` — it never touches the
@@ -48,7 +48,7 @@ export class MemoryFileStore {
   }
 
   /**
-   * Admission checkpoint for stored-mode file sources (decision 0024): a
+   * Admission checkpoint for stored-mode file sources: a
    * KEY SHARE existence check inside the pipeline's transaction, so it
    * serializes against the saga's FOR UPDATE + DELETE of the metadata row —
    * the file twin of NotesSourceReader.existsForAdmission. Discard-mode

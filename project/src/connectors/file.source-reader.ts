@@ -16,7 +16,7 @@ function toStagingKey(sourceKey: string): string {
 /**
  * Ingestion's stage-1 port for source_type 'file' (F1 handoff): the pipeline
  * reads a file source through this exactly like a note, and the SAME downstream
- * stages run — never a fork. Two storage modes:
+ * stages run — never a fork. Two storage modes
  *
  * - **Stored**: a `file_metadata` row + a durable object at the source key.
  * - **Discard** (§A.9, handoff §3): no `file_metadata`, no durable object; the
@@ -35,7 +35,7 @@ export class FileSourceReader implements SourceReader {
   constructor(
     private readonly files: MemoryFileStore,
     private readonly objects: MemoryObjectStore,
-    /** Parse caps (QS-6); optional so a bare/test construction still works. */
+    /** Parse caps; optional so a bare/test construction still works. */
     @Optional() @Inject(PARSE_CAPS) private readonly parseCaps: ParseCaps = DEFAULT_PARSE_CAPS,
   ) {}
 
@@ -46,7 +46,7 @@ export class FileSourceReader implements SourceReader {
   }
 
   /**
-   * Admission checkpoint (decision 0024), stored mode only: KEY SHARE on the
+   * Admission checkpoint, stored mode only: KEY SHARE on the
    * file_metadata row through the memory module's port. The pipeline never
    * calls this for discard-mode sources (stagingKey set) — they have no
    * durable row by design and are covered by the saga's key cancellation.

@@ -1,81 +1,65 @@
-# docs — authoritative product documentation
+# Documentation
 
-The spec is the source of truth; when code and spec disagree, the spec wins (or is
-updated deliberately). Precedence: **the Addendum wins over the scope doc and the
-Specification wherever they conflict** (it is newer and resolves their open points) —
-**except for the remaining v1 plan (O4–O7 sessions, connector set, and v1 scope lock),
-where `Cogeto-v1-Roadmap-Revision.md` supersedes the Addendum** (notably §A.11's
-connector order and the Gmail/CASA path).
+Start with whichever row matches what you are doing. The architecture authority is
+[`Cogeto-v1-Addendum-Verifiable-Memory.md`](Cogeto-v1-Addendum-Verifiable-Memory.md);
+it wins over every other document on an architecture question.
+[`Cogeto-V2-Plan.md`](Cogeto-V2-Plan.md) is binding for what gets built now.
 
-## Start here
+## Run it
 
 | Doc | What it answers |
 | --- | --- |
 | [`running-locally.md`](running-locally.md) | Run the stack on your machine: one command, where things are, common issues. |
 | [`deployment.md`](deployment.md) | The production model: pull-only signed images, the operator script, cosign verification. |
-| [`operator-runbook.md`](operator-runbook.md) | **Operator-facing**: the full lifecycle of a customer instance — provision, install, verify, onboard, backups + rehearsed restore, upgrades, troubleshooting. |
-| [`release-process.md`](release-process.md) | How releases are cut and what each one publishes (images, signatures, SBOM). |
+| [`operator-runbook.md`](operator-runbook.md) | The full lifecycle of a customer instance: provision, install, verify, onboard, back up, restore, upgrade, troubleshoot. |
+| [`operations/`](operations/) | Adding users, image pins, inbound email setup, the operator script, CI/CD. |
+| [`release-process.md`](release-process.md) | How releases are cut and what each publishes. |
 
-## Product and architecture
+## Understand it
 
-- [`Cogeto-v1-Roadmap-Revision.md`](Cogeto-v1-Roadmap-Revision.md) — **BINDING** for the remaining v1 plan: O4–O7
-  sessions, email via a per-tenant receive-only forwarding server, calendar
-  dropped from v1, operations script-driven, v1 scope locked. Wins over earlier plans.
-- [`Cogeto-Roadmap-Revision-Email-Calendar.md`](Cogeto-Roadmap-Revision-Email-Calendar.md) — **superseded**; the earlier email/calendar
-  working note, now folded into the Roadmap Revision above (kept for provenance only —
-  plan against the Revision, which wins).
-- [`Cogeto-v1-Addendum-Verifiable-Memory.md`](Cogeto-v1-Addendum-Verifiable-Memory.md) — **binding** architecture decisions
-  (Part A) + the Verifiable Memory feature set with sequencing tags (Part B).
-- [`Cogeto-v1-scope.md`](Cogeto-v1-scope.md) — the locked v1 scope and strategy.
-- `Cogeto-v1-Specification.docx` — the full v1 product specification (binary; maintainer-managed).
-- [`Cogeto-Technical-Architecture.md`](Cogeto-Technical-Architecture.md) — full engineering plan: stack rationale,
-  containers, mechanisms, phased implementation (the `.docx` is the presentation copy).
-- [`glossary.md`](glossary.md) — the ubiquitous language; names in code must match it.
+| Doc | What it answers |
+| --- | --- |
+| [`architecture.md`](architecture.md) | Stack, processes, module map, pipeline, seams, storage split. |
+| [`features/`](features/) | How each feature behaves and why it behaves that way. |
+| [`glossary.md`](glossary.md) | The ubiquitous language. Names in code must match it. |
+| [`Cogeto-v1-scope.md`](Cogeto-v1-scope.md) | Scope, users, positioning, business model. |
+| `Cogeto-v1-Specification.docx` | The full product specification (binary; owner-maintained). |
 
-## Engineering
+### Features
 
-- [`engineering-workflow.md`](engineering-workflow.md) — the delivery loop: issues, branches,
-  Conventional-Commit PRs, the five required checks, squash-merge, tag-driven
-  releases. (The outsider's version is the repo-root [`CONTRIBUTING.md`](../CONTRIBUTING.md).)
-- [`decisions/`](decisions/) — short numbered decision records; 0001 (repo structure) and
-  0002 (technology stack) are binding, and every notable decision since is here.
-- [`eval-golden-set.md`](eval-golden-set.md) — corpus format, metrics, and CI gates for the eval
-  harness; [`eval/history.md`](eval/history.md) records every measured run.
-- [`research/`](research/) — anonymized engineering patterns distilled from studied production
-  systems; required reading before implementing memory/agents/retrieval/pipeline code.
-- [`design/`](design/) — the SPA's design system: palette, status vocabulary, component kit,
-  accessibility rules.
+| Doc | Covers |
+| --- | --- |
+| [`memory.md`](features/memory.md) | The lifecycle, the gates, reconciliation, dreaming, open loops, time travel. **Read this first.** |
+| [`conversation.md`](features/conversation.md) | Chat routing, per-claim provenance, instance context, language, conversations. |
+| [`sources.md`](features/sources.md) | Notes, files, email, web, chat capture, and the ports a source implements. |
+| [`web-research.md`](features/web-research.md) | Discovery, the fetcher, minimisation, the run record, focused extraction. |
+| [`named-skills.md`](features/named-skills.md) | The skill runtime, the plan gate, the brief. |
+| [`models.md`](features/models.md) | Tiers, provider adapters, local inference, determinism, redaction. |
+| [`approvals.md`](features/approvals.md) | The gate consequential actions pass through. |
+| [`memory-passport.md`](features/memory-passport.md) | The open, verifiable export format. |
+| [`attention.md`](features/attention.md) | The dashboard feed and its honesty rules. |
+| [`capabilities.md`](features/capabilities.md) | Optional services: observable, controllable, announced. |
+| [`demo-sandbox.md`](features/demo-sandbox.md) | The Ana sandbox and its deployment invariants. |
 
-## Schemas and formats
+## Build it
 
-- [`passport-schema/`](passport-schema/) — the **Memory Passport** open export format: JSON
-  Schemas, a sample archive, and the independent-verification steps.
-- [`trust-scores-schema/`](trust-scores-schema/) — the **published per-release quality
-  record** the trust-score page renders (schema + example; data in
-  `eval/trust-scores/`, one immutable JSON per release).
+| Doc | What it answers |
+| --- | --- |
+| [`engineering-workflow.md`](engineering-workflow.md) | The delivery loop: issues, branches, Conventional-Commit PRs, the five required checks, squash-merge. The outsider's version is [`CONTRIBUTING.md`](../CONTRIBUTING.md). |
+| [`eval-golden-set.md`](eval-golden-set.md) | Corpus format, labeling rules, metrics, CI gates. |
+| [`eval/history.md`](eval/history.md) | The measured quality record. |
+| [`research/`](research/) | Anonymized engineering patterns from studied production systems. **Required reading** before implementing memory, ingestion, retrieval, agents, or pipeline code. |
+| [`design/`](design/) | The SPA's design system: palette, status vocabulary, component kit, accessibility. |
 
-## Operations
+## Contracts and transparency
 
-- [`operations/adding-users.md`](operations/adding-users.md) — creating users on an instance (and the no-outbound-SMTP trap).
-- [`operations/image-pins.md`](operations/image-pins.md) — how base/infra images are digest-pinned and updated.
-- [`notes/`](notes/) — developer-facing notes per feature area (email inbound/source,
-  the Memory Passport, the time-travel UI, the operator script, CI/CD setup).
+| Doc | What it answers |
+| --- | --- |
+| [`passport-schema/`](passport-schema/) | The Memory Passport export format: JSON Schemas, a sample archive, verification steps. Versioned by directory; old versions stay published. |
+| [`trust-scores-schema/`](trust-scores-schema/) | The published per-release quality record (schema plus example; data in `eval/trust-scores/`). |
+| [`security/`](security/README.md) | **Single entry point** for how the protections work, how to verify them, and the tests that enforce them. Reporting policy is the repo-root [`SECURITY.md`](../SECURITY.md). |
+| [`dockerhub/`](dockerhub/) | The published image overviews. |
 
-## Security and safety
-
-- [`security/`](security/README.md) — **single entry point** for how the
-  protections work (e.g. inbound-email anti-spoofing), how to verify them, and an
-  index of the public audits, security-relevant decisions, and the tests that
-  enforce them. Reporting policy is the repo-root [`SECURITY.md`](../SECURITY.md).
-
-## Transparency
-
-- [`audits/`](audits/) — the implementation-gap audit and the quality/security audit,
-  **published with every finding and its resolution** — deliberately.
-- [`eval/history.md`](eval/history.md) — the measured quality record over time.
-
-## History
-
-- [`sessions/`](sessions/) — per-session engineering logs (what was built, decided, and verified).
-- [`handoff/`](handoff/) — frozen inter-session contracts (deletion saga,
-  dreaming, and the retired task engine, kept as history).
+**The decision trail is the issue and the pull request.** What changed and why lives
+in the pull request that changed it, and the documentation above is kept current in
+the same change.

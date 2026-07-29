@@ -4,7 +4,7 @@ import type { ResearchOptions } from './research-options';
 
 /**
  * searx_client_contract — the discovery client against a mocked SearXNG
- * (decision 0042): parses ranked results, enforces the hard result cap, and
+ * parses ranked results, enforces the hard result cap, and
  * classifies every failure mode as the typed, user-surfaceable `unavailable`
  * outcome instead of throwing.
  */

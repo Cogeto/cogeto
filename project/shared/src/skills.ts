@@ -1,7 +1,7 @@
 import type { ResearchCitationDto } from './research';
 
 /**
- * Named skills (Post-v1 Priority 7; decision 0059): a skill is a named,
+ * Named skills: a skill is a named,
  * versioned, code-defined multi-step workflow. One skill_run records one
  * invocation; its step log is the inspectability claim — every step's status,
  * summaries, and links to everything it produced, one click away.
@@ -29,7 +29,7 @@ export const SKILL_STEP_STATUSES = [
 
 export type SkillStepStatus = (typeof SKILL_STEP_STATUSES)[number];
 
-/** The declared step kinds a skill plan is composed of (decision 0059 ruling 1). */
+/** The declared step kinds a skill plan is composed of. */
 export const SKILL_STEP_KINDS = [
   'gather_from_memory',
   'propose_searches',
@@ -75,7 +75,7 @@ export interface SkillStepLinks {
 }
 
 /** One query of the skill's plan as shown at the gate — an ordinary research
- * run (decision 0059 ruling 3): approve/edit/remove each before anything leaves. */
+ * run: approve/edit/remove each before anything leaves. */
 export interface SkillPlanQueryDto {
   researchRunId: string;
   status: 'proposed' | 'approved' | 'cancelled' | 'concluded';
@@ -115,7 +115,7 @@ export interface ProposeSkillRunRequest {
   conversationId?: string;
 }
 
-/** Ambiguous subjects ask before planning (decision 0059): nothing is created. */
+/** Ambiguous subjects ask before planning: nothing is created. */
 export type ProposeSkillRunResponse =
   { status: 'created'; run: SkillRunDetailDto } | { status: 'ambiguous'; candidates: string[] };
 
@@ -125,7 +125,7 @@ export interface ApproveSkillPlanRequest {
   queries: { researchRunId: string; query: string }[];
 }
 
-/** A skill run proposed from chat (decision 0059): the done event's handle —
+/** A skill run proposed from chat: the done event's handle —
  * the run view owns the gate and the live progress. Ephemeral, like the
  * research proposal ref. */
 export interface ChatSkillRunRef {

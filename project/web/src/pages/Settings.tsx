@@ -32,7 +32,7 @@ import { useTheme } from '../theme';
 import type { Theme } from '../theme';
 import { useAutoResearch } from '../research-pref';
 
-/** Settings (§A.9, O1-C): only real, wired toggles — every control does something today. */
+/** Settings (§A.9): only real, wired toggles — every control does something today. */
 export function Settings({ session }: { session: Session }) {
   const queryClient = useQueryClient();
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => fetchSettings(session) });
@@ -175,10 +175,10 @@ function timeZoneOptions(): string[] {
 }
 
 /**
- * Profile and context (P6.6, decisions 0051/0052): who the user is, their
+ * Profile and context: who the user is, their
  * timezone, and which language Cogeto speaks. Everything here is settings, not
  * memory: it shapes how answers are phrased and interpreted, and is never a
- * citable fact. Suggestions (decision 0053) propose company/role values found
+ * citable fact. Suggestions propose company/role values found
  * in the user's own memories; nothing applies without an explicit accept.
  */
 function ProfileContextSection({ session }: { session: Session }) {
@@ -436,7 +436,7 @@ const THEMES: { key: Theme; label: string }[] = [
 ];
 
 /**
- * Appearance (P6.8): the per-device light/dark choice. Dark is the product
+ * Appearance: the per-device light/dark choice. Dark is the product
  * default; picking here writes localStorage and applies instantly on every
  * surface, and the pre-paint bootstrap in index.html honours it on the next load
  * with no flash. A segmented control, not a checkbox: two named, explicit states.
@@ -477,7 +477,7 @@ function AppearanceSection() {
 }
 
 /**
- * Research (decision 0050): when on, a chat answer that would offer web research
+ * Research: when on, a chat answer that would offer web research
  * just runs it — no tap, no gate, no picking. Off by default; stored per device.
  */
 function ResearchSection() {
@@ -511,7 +511,7 @@ function ResearchSection() {
 }
 
 /**
- * Model configuration (decision 0040): READ-ONLY display of the active
+ * Model configuration: READ-ONLY display of the active
  * provider configuration — the id the trust page joins on, the provider and
  * model per tier, redaction posture, and what leaves the instance. No key
  * input, no editing: keys are operator-set in the instance environment.
@@ -585,7 +585,7 @@ const PASSPORT_STATUS_LABEL: Record<PassportExportDto['status'], string> = {
 };
 
 /**
- * Memory Passport (§B.5, decision 0029): a complete, documented, versioned
+ * Memory Passport (§B.5): a complete, documented, versioned
  * export of the user's own data — the anti-lock-in promise made real. Assembly
  * runs in the worker; this polls the request and hands back a short-lived signed
  * download. The artifact is an open format documented in docs/passport-schema/.
@@ -702,7 +702,7 @@ function PassportSection({ session }: { session: Session }) {
   );
 }
 
-/** Plain words for a refusal reason (decision 0031; legacy reasons included). */
+/** Plain words for a refusal reason (legacy reasons included). */
 const REFUSAL_REASON_LABEL: Record<string, string> = {
   sender_not_recognized: 'sender is not a registered user and not on any allowlist',
   sender_not_allowlisted: 'sender was not on the allowlist',
@@ -712,11 +712,11 @@ const REFUSAL_REASON_LABEL: Record<string, string> = {
   attachments_too_large: 'attachments exceeded the size cap',
 };
 
-/** Only sender-identity refusals are fixable by allowlisting (decision 0031). */
+/** Only sender-identity refusals are fixable by allowlisting. */
 const CLAIMABLE_REASONS = new Set(['sender_not_recognized', 'sender_not_allowlisted', 'no_owner']);
 
 /**
- * Email capture (Session O4, decision 0028; sender routing per decision 0031):
+ * Email capture (, sender routing per)
  * the instance's inbound address, the caller's always-trusted own address, the
  * personal allowlist that routes external senders to them, and recent refusals
  * with one-click claiming where allowlisting can actually help.

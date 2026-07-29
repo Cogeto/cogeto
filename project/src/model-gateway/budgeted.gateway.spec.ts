@@ -35,7 +35,7 @@ class RecordingGateway extends ModelGateway {
   }
 }
 
-/** A scriptable meter (FIX-2 QS-2). */
+/** A scriptable meter. */
 class FakeMeter implements ModelUsageMeter {
   userId: string | undefined = 'user-a';
   budget = true;
@@ -51,7 +51,7 @@ class FakeMeter implements ModelUsageMeter {
   }
 }
 
-describe('BudgetedModelGateway (QS-2)', () => {
+describe('BudgetedModelGateway', () => {
   it('records usage for an attributed user and forwards the result', async () => {
     const inner = new RecordingGateway();
     const meter = new FakeMeter();

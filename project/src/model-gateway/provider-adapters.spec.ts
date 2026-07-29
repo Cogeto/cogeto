@@ -18,7 +18,7 @@ import { isRetryableStatus, stripJsonFence } from './provider';
 import type { ModelUsageMeter } from '../infrastructure/index';
 
 /**
- * Provider adapter contracts (decision 0040 rulings 1–4): mocked upstreams —
+ * Provider adapter contracts (–4): mocked upstreams —
  * no network is ever touched. `fetch` is stubbed per test and restored.
  */
 
@@ -407,7 +407,7 @@ const CONFIGS: Record<string, Record<string, string>> = {
     COGETO_ANTHROPIC_API_KEY: 'k',
     COGETO_MISTRAL_API_KEY: 'k',
   },
-  // budgets_and_redaction_apply (decision 0041): tokens are counted even at
+  // budgets_and_redaction_apply: tokens are counted even at
   // zero cost and redaction wraps local calls — the accounting stays uniform.
   ollama: {
     COGETO_PROVIDER_PRESET: 'ollama-local',

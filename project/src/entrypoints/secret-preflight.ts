@@ -1,5 +1,5 @@
 /**
- * Known-dev-secret refusal (FIX-2 QS-8). The compose stack ships working DEV
+ * Known-dev-secret refusal. The compose stack ships working DEV
  * defaults so a fresh clone runs with zero configuration — but those exact
  * values must never guard a reachable deployment. This preflight refuses to
  * boot when any known dev secret is still in place AND the instance is not a
@@ -25,7 +25,7 @@ interface KnownDevSecret {
 }
 
 /**
- * The committed dev values from docker-compose.yml (QS-8 evidence). Kept in one
+ * The committed dev values from docker-compose.yml (evidence). Kept in one
  * place so a rotation of any default only needs updating here.
  */
 export const KNOWN_DEV_SECRETS: readonly KnownDevSecret[] = [
@@ -41,7 +41,7 @@ export const KNOWN_DEV_SECRETS: readonly KnownDevSecret[] = [
   { env: 'ZITADEL_MASTERKEY', devValue: 'MasterkeyNeedsToHave32Characters', match: 'equals' },
   { env: 'ZITADEL_DB_PASSWORD', devValue: 'zitadel-dev-password', match: 'equals' },
   { env: 'ZITADEL_ADMIN_PASSWORD', devValue: 'DevPassword1!', match: 'equals' },
-  // The inbound-mail intake shared secret (SEC-10/PA-19). The supported deploy
+  // The inbound-mail intake shared secret (/PA-19). The supported deploy
   // path already requires it (deploy compose uses `:?`; the operator script
   // generates one), but a hand-rolled non-localhost run of the DEV compose would
   // otherwise ship this known token — so it fails closed here like the rest.
@@ -81,8 +81,8 @@ export function assertProductionSecrets(env: NodeJS.ProcessEnv = process.env): v
   if (offenders.length === 0) return;
   throw new Error(
     `refusing to boot: known DEV secret value(s) in use on a non-localhost deployment ` +
-      `(COGETO_EXTERNAL_DOMAIN is not localhost) — override before exposing this instance: ` +
+      `(COGETO_EXTERNAL_DOMAIN is not localhost), override before exposing this instance: ` +
       offenders.join(', ') +
-      ` (QS-8; see .env.example and Technical Architecture §10)`,
+      ` (see .env.example and Technical Architecture §10)`,
   );
 }

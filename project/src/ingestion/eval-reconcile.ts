@@ -10,11 +10,11 @@ import { isContradictionCandidate, isDedupCandidate } from './domain/reconcile-c
 import { RECONCILE_CONFIG_VERSION } from './reconcile-config';
 
 /**
- * Reconciliation pair-case eval (decision 0010 ruling 9; docs/eval-golden-set.md
+ * Reconciliation pair-case eval (docs/eval-golden-set.md
  * §5–§6): runs the REAL decision path — the versioned candidate rules plus the
  * live model confirmation through ReconcileJudge — over labeled pairs under
  * project/eval/golden/{lang}/{case-dir}/pair.json, and scores ACTIONS, not
- * verdict strings:
+ * verdict strings
  *
  * - dedup accuracy, weighted: must-not-merge trap pairs count double (a false
  *   merge destroys a distinct fact — spec §5);
@@ -154,7 +154,7 @@ function cosine(a: number[], b: number[]): number {
 }
 
 /**
- * The pair's trip through the decision path, mirroring stage 6 exactly:
+ * The pair's trip through the decision path, mirroring stage 6 exactly
  * candidate rules first (normalized similarity, same thresholds), dedup
  * confirmation, the distinct-escalation into the contradiction check, the
  * supersession direction guard.

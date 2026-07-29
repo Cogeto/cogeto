@@ -5,8 +5,8 @@ import {
   isLocalhostDeployment,
 } from './secret-preflight';
 
-/** FIX-2 QS-8: refuse known dev secrets on a non-localhost deployment. */
-describe('secret preflight (QS-8)', () => {
+/**: refuse known dev secrets on a non-localhost deployment. */
+describe('secret preflight', () => {
   const devSecrets = {
     POSTGRES_PASSWORD: 'cogeto-dev-password',
     COGETO_DATABASE_URL: 'postgres://postgres:cogeto-dev-password@postgres:5432/cogeto',
@@ -36,7 +36,7 @@ describe('secret preflight (QS-8)', () => {
     expect(offenders).toContain('COGETO_DATABASE_URL'); // matched by substring
     expect(offenders).toContain('ZITADEL_MASTERKEY');
     expect(offenders).toContain('ZITADEL_ADMIN_PASSWORD');
-    expect(offenders).toContain('COGETO_MAIL_INTAKE_TOKEN'); // SEC-10/PA-19
+    expect(offenders).toContain('COGETO_MAIL_INTAKE_TOKEN'); ///PA-19
     expect(() => assertProductionSecrets(env)).toThrow(/known DEV secret/);
   });
 

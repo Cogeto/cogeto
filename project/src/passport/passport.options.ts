@@ -6,7 +6,7 @@ export const PASSPORT_EXPORT_RETENTION_HOURS = 24;
 
 export interface PassportOptions {
   /** Where the instance signing keypair lives — the worker signs the manifest
-   * with the private half (decision 0008); the app never needs it. */
+   * with the private half; the app never needs it. */
   instanceKeyDir: string;
   /** TTL of the presigned download URL (seconds) — mirrors file downloads. */
   downloadUrlTtlSeconds: number;

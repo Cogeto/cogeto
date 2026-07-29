@@ -5,8 +5,8 @@ import type { SourceCascade, SourceDeletion } from '../../memory/index';
 import { chatMessage, conversation } from '../persistence/tables';
 
 /**
- * The deletion saga's source port for source_type 'chat_conversation' (P6.9;
- * decision 0056, extending decision 0021 ruling 7): deleting a conversation is
+ * The deletion saga's source port for source_type 'chat_conversation' (
+ *, extending): deleting a conversation is
  * a SOURCE deletion through the §A.7 saga — never a chat route. The cascade
  * enumerates the conversation's messages as `chat` sub-sources, so every
  * memory derived from them (and its vector) joins the SAME enumeration

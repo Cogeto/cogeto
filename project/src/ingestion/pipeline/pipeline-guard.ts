@@ -11,8 +11,8 @@ import { INGESTION_PIPELINE_JOB_TYPE } from './pipeline.service';
 
 /**
  * The memory module's IngestionGuard port, implemented where the pipeline job
- * type is owned (QS-5, decision 0024). Runs inside the deletion saga's
- * enumeration transaction:
+ * type is owned. Runs inside the deletion saga's
+ * enumeration transaction
  *
  * 1. Probe the pipeline's run lock. `idempotentTask` (and `pipeline.run`
  *    itself) acquire that advisory lock BEFORE the idempotency-row insert, so

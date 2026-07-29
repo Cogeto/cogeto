@@ -7,7 +7,7 @@ import type { StructuredExtractionRequest } from '../model-gateway/index';
 import { minimiseQuery, RESEARCH_MINIMISE_PROMPT } from './research-minimise';
 
 /**
- * Query minimisation (decision 0044). The LIVE rewriting behaviour is graded
+ * Query minimisation. The LIVE rewriting behaviour is graded
  * by the research chat-eval cases (research_minimise_drop /
  * research_keeps_subject_hr); here the CONTRACT is pinned: the plumbing
  * (minimise_reports), the pipeline-tier routing, the fail-open-to-the-gate
@@ -44,7 +44,7 @@ class ScriptedMinimiser extends ModelGateway {
   }
 }
 
-describe('query minimisation (decision 0044)', () => {
+describe('query minimisation', () => {
   it('minimise_reports: returns the original, the minimised query, and the one-line reason', async () => {
     const gateway = new ScriptedMinimiser(() => ({
       minimised_query: 'GDPR consent requirements CRM migration',

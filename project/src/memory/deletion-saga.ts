@@ -24,13 +24,13 @@ import { liftContradictionsBeforeDeletion } from './reconciliation';
 
 /**
  * The deletion saga (§A.7, §B.1) — the ONLY path that hard-deletes memories
- * (§A.1 rule 4). Three steps across three stores:
+ * (§A.1 rule 4). Three steps across three stores
  *
  *   1. requestSourceDeletion — ONE Postgres transaction: enumerate + delete the
  *      derived memory rows, delete file metadata, delete the source row, write
  *      the receipt (pending), enqueue the external job via the outbox, audit.
  *      If anything fails, the transaction aborts and nothing anywhere changed.
- *   2. DeletionExecutor.execute (worker, idempotent under the receipt id):
+ *   2. DeletionExecutor.execute (worker, idempotent under the receipt id)
  *      delete the enumerated Qdrant points and MinIO objects — absent
  *      identifiers are success, retries re-run both legs safely.
  *   3. Same worker transaction: confirm the receipt with chain hash + instance
@@ -45,7 +45,7 @@ import { liftContradictionsBeforeDeletion } from './reconciliation';
  * query, and same-source supersession chains are enumerated in full by
  * construction, with no graph walk needed.
  *
- * Cross-source chains (design decision, recorded in decision 0008): when a
+ * Cross-source chains (design decision, recorded in): when a
  * chain crosses sources — a successor was derived from a DIFFERENT source,
  * e.g. a reconciliation merge — deleting source S removes only S's members.
  * Surviving members whose `superseded_by` pointed at a deleted row get that
@@ -76,7 +76,7 @@ export interface SourceDeletion {
   deleteSource(tx: Tx, sourceId: string): Promise<void>;
   /**
    * Extra artifacts that must be enumerated and removed WITH this source, when a
-   * source owns more than its own row + body memories (Session O4 — email). An
+   * source owns more than its own row + body memories. An
    * email source, for example, additionally owns the raw + sanitised-HTML
    * objects it stored, and its supported attachments are their own `file`
    * sources (each with file_metadata, an object, and derived memories). The saga
@@ -87,7 +87,7 @@ export interface SourceDeletion {
   enumerateCascade?(tx: Tx, sourceId: string): Promise<SourceCascade>;
   /**
    * Which of these bucket object keys are legitimately owned by this
-   * connector's RETAINED sources (issue #62)? The integrity sweep's
+   * connector's RETAINED sources? The integrity sweep's
    * orphaned-object arm validates objects against file_metadata; connectors
    * that store objects recorded elsewhere (email: raw originals + externalised
    * HTML on email_message) answer here so retained bytes are never mis-flagged
@@ -99,7 +99,7 @@ export interface SourceDeletion {
 }
 
 /**
- * The extra members a source cascades into deletion (Session O4). `objectKeys`
+ * The extra members a source cascades into deletion. `objectKeys`
  * are connector-owned MinIO objects deleted directly (the worker leg, absent =
  * success); `fileSubSourceKeys` are `file` source ids whose own memories,
  * file_metadata, and object are erased too. Both feed the ONE receipt.
@@ -109,7 +109,7 @@ export interface SourceCascade {
   fileSubSourceKeys: string[];
   /**
    * `chat` source ids (chat_message rows) whose derived memories fold into
-   * the SAME enumeration transaction and the SAME receipt (P6.9 — a
+   * the SAME enumeration transaction and the SAME receipt (— a
    * conversation source owns its messages the way an email owns its
    * attachments). The adapter's deleteSource removes the message rows; the
    * saga enumerates + deletes their memories here. Optional and additive —
@@ -122,7 +122,7 @@ export const SOURCE_DELETIONS = Symbol('SOURCE_DELETIONS');
 
 /**
  * Port for cascading DERIVED artifacts (chat answers, reply drafts, future
- * derivations) when their memories are erased (decision 0013 ruling 6) — the third of the family
+ * derivations) when their memories are erased — the third of the family
  * after SourceReader and SourceDeletion: memory defines it, the deriving
  * module implements it, composition roots bind it. Implementations delete
  * their own rows inside the enumeration transaction and return the count for
@@ -133,13 +133,13 @@ export interface DerivedCascade {
   readonly artifact: string;
   cascadeForMemories(tx: Tx, memoryIds: string[]): Promise<number>;
   /**
-   * Optional read-only twin of `cascadeForMemories` (P6.9): how many artifacts
+   * Optional read-only twin of `cascadeForMemories`: how many artifacts
    * WOULD go — the confirm dialog's honest number. Never mutates.
    */
   countForMemories?(tx: Tx, memoryIds: string[]): Promise<number>;
   /**
    * Optional: cascade artifacts keyed by the SOURCE being deleted, not its
-   * memories (SEC-4). A reply-draft approval derived from an email lives in
+   * memories. A reply-draft approval derived from an email lives in
    * another module and references the email SOURCE id (not a memory id), so it
    * cannot be reached via `cascadeForMemories`. Runs in the same enumeration
    * transaction and returns the count folded into the receipt.
@@ -150,7 +150,7 @@ export interface DerivedCascade {
 export const DERIVED_CASCADES = Symbol('DERIVED_CASCADES');
 
 /**
- * Cancellation outcome of a source's pending ingestion (QS-5, decision 0024):
+ * Cancellation outcome of a source's pending ingestion
  * - `cancelled`      — no run was in flight; the idempotency key is now
  *                      consumed, so any queued or future pipeline job for this
  *                      source no-ops at its claim.
@@ -182,7 +182,7 @@ export interface IngestionGuard {
 
 export const INGESTION_GUARD = Symbol('INGESTION_GUARD');
 
-/** Directory holding the instance signing keypair (decision 0008). */
+/** Directory holding the instance signing keypair. */
 export const INSTANCE_KEY_DIR = Symbol('INSTANCE_KEY_DIR');
 
 /** counts_json contract — written by the saga, parsed back by the executor. */
@@ -192,10 +192,9 @@ const countsSchema = z.object({
   memory_ids: z.array(z.string()),
   memory_count: z.int(),
   /**
-   * Derived tasks removed with the memories (F3-B).
+   * Derived tasks removed with the memories.
    *
-   * PERMANENTLY OPTIONAL, and never written again (V2.0 item 3.1, decision
-   * 0060). The task subsystem is gone, so no new receipt carries this field —
+   * PERMANENTLY OPTIONAL, and never written again . The task subsystem is gone, so no new receipt carries this field —
    * but every receipt that already does must keep parsing AND keep hashing to
    * the same value. The chain hashes the STORED counts_json verbatim
    * (canonicalize is unchanged and must stay unchanged), so a historical
@@ -206,17 +205,17 @@ const countsSchema = z.object({
    */
   tasks_removed: z.int().optional(),
   /** Assistant chat answers whose stored citations referenced erased memories,
-   * redacted to a deletion marker (FIX-1 QS-7, decision 0025; additive —
-   * optional so earlier receipts parse unchanged; a count, not an identifier:
+   * redacted to a deletion marker (additive —
+   * optional so earlier receipts parse unchanged; a count, not an identifier
    * the sweep ignores it). */
   chat_messages_redacted: z.int().optional(),
   /** Reply-draft approvals derived from the deleted email source, whose drafted
    * body (grounded on the erased email + the user's memories) is redacted to a
-   * deletion marker (SEC-4; additive — optional so earlier receipts parse
+   * deletion marker (; additive — optional so earlier receipts parse
    * unchanged; a count, not an identifier: the sweep ignores it). */
   reply_drafts_redacted: z.int().optional(),
-  /** Chat messages removed with a conversation source (P6.9; additive —
-   * optional so earlier receipts parse unchanged; a count, not an identifier:
+  /** Chat messages removed with a conversation source (additive —
+   * optional so earlier receipts parse unchanged; a count, not an identifier
    * the message rows go via the adapter's deleteSource, the sweep verifies
    * memories/points/objects as ever). */
   chat_messages_removed: z.int().optional(),
@@ -239,7 +238,7 @@ export interface DeletionPreview {
   sourceId: string;
   memoryCount: number;
   objectCount: number;
-  /** Chat messages a conversation deletion removes (P6.9); absent otherwise. */
+  /** Chat messages a conversation deletion removes; absent otherwise. */
   messageCount?: number;
   /** Enumerated memories the user had explicitly approved — deleted knowingly. */
   userApprovedCount?: number;
@@ -263,7 +262,7 @@ export class DeletionSaga {
     @Optional() private readonly vectors?: MemoryVectorStore,
     /** Derived-artifact cascades (0013 ruling 6). */
     @Optional() @Inject(DERIVED_CASCADES) private readonly derivedCascades: DerivedCascade[] = [],
-    /** Pending-ingestion cancellation (QS-5, decision 0024) — always bound by
+    /** Pending-ingestion cancellation — always bound by
      * the composition roots; optional only for legacy test harnesses. */
     @Optional() @Inject(INGESTION_GUARD) private readonly ingestionGuard?: IngestionGuard,
   ) {
@@ -306,7 +305,7 @@ export class DeletionSaga {
             .where(eq(fileMetadata.objectKey, fileKey));
           objectCount += exists.length;
         }
-        // Conversation members (P6.9): messages + their memories, plus the
+        // Conversation members: messages + their memories, plus the
         // knowing-deletion count the confirm surfaces (user_approved memories).
         if (cascade.chatSubSourceIds) {
           messageCount = cascade.chatSubSourceIds.length;
@@ -351,7 +350,7 @@ export class DeletionSaga {
     if (!sourceId.trim()) throw new BadRequestException('source id must not be blank');
 
     return this.db.transaction(async (tx) => {
-      // Lock order (QS-5, decision 0024): source row FIRST, then the ingestion
+      // Lock order: source row FIRST, then the ingestion
       // guard, then the memory rows — the same source-before-memories order the
       // pipeline uses, so the two transactions can never deadlock on it.
       const { fileRow, adapter, sourceOwner } = await this.resolveSource(tx, sourceType, sourceId, {
@@ -361,7 +360,7 @@ export class DeletionSaga {
         throw new NotFoundException(`source ${sourceType}/${sourceId} not found`);
       }
 
-      // Cancel pending ingestion BEFORE enumerating (QS-5): a queued pipeline
+      // Cancel pending ingestion BEFORE enumerating: a queued pipeline
       // job finds its idempotency key consumed and no-ops; an in-flight run is
       // reported and left to its own admission checkpoint, which serializes
       // against the source-row lock held above. Discard-mode file sources have
@@ -378,7 +377,7 @@ export class DeletionSaga {
         sourceOwner,
       });
 
-      // Cascade members (Session O4 — email): fold the source's extra objects and
+      // Cascade members: fold the source's extra objects and
       // its attachment `file` sub-sources into THIS enumeration transaction, so
       // they share the one receipt and the all-or-nothing guarantee. The
       // sub-sources' memories join `rows`; their objects join `cascadeObjectKeys`.
@@ -392,9 +391,9 @@ export class DeletionSaga {
           if (removedKey) cascadeObjectKeys.push(removedKey);
         }
       }
-      // Conversation members (P6.9): every message's chat-derived memories join
+      // Conversation members: every message's chat-derived memories join
       // the SAME enumeration and receipt. Pending per-message captures are
-      // cancelled first (QS-5); the message rows themselves go with the
+      // cancelled first; the message rows themselves go with the
       // adapter's deleteSource below.
       const chatMessagesRemoved = cascade?.chatSubSourceIds?.length ?? null;
       if (cascade?.chatSubSourceIds && cascade.chatSubSourceIds.length > 0) {
@@ -418,7 +417,7 @@ export class DeletionSaga {
 
       const memoryIds = rows.map((r) => r.id);
 
-      // Contradiction lift (decision 0010 ruling 8): surviving partners of
+      // Contradiction lift: surviving partners of
       // unresolved relations touching a doomed row are restored to their
       // recorded prior status — an accusation whose evidence is being erased
       // does not stick. The relation rows go with the memories (FK CASCADE).
@@ -436,11 +435,11 @@ export class DeletionSaga {
       let replyDraftsRedacted = 0;
       for (const cascade of this.derivedCascades) {
         const removed = await cascade.cascadeForMemories(tx, memoryIds);
-        // QS-7 (decision 0025): assistant answers that cited erased memories
+        // assistant answers that cited erased memories
         // are redacted to a deletion marker by the chat cascade; the receipt
         // counts them so the erasure claim is complete, not just row-deep.
         if (cascade.artifact === 'chat_messages') chatMessagesRedacted += removed;
-        // SEC-4: reply-draft approvals derived from THIS source (by source id,
+        // reply-draft approvals derived from THIS source (by source id,
         // not memory id) — their drafted body is redacted so a "provably
         // deleted" receipt no longer over-claims while the draft survives.
         if (cascade.cascadeForSource) {
@@ -478,8 +477,7 @@ export class DeletionSaga {
         requested_by: principal.userId,
         memory_ids: memoryIds,
         memory_count: memoryIds.length,
-        // `tasks_removed` is deliberately ABSENT from new receipts (decision
-        // 0060) and stays optional in the schema forever, so the historical
+        // `tasks_removed` is deliberately ABSENT from new receipts  and stays optional in the schema forever, so the historical
         // ones that carry it still parse and still verify.
         chat_messages_redacted: chatMessagesRedacted,
         reply_drafts_redacted: replyDraftsRedacted,
@@ -521,7 +519,7 @@ export class DeletionSaga {
           chatMessagesRedacted,
           replyDraftsRedacted,
           chatMessagesRemoved,
-          // The QS-5 cancellation trace: how pending ingestion was resolved.
+          // The cancellation trace: how pending ingestion was resolved.
           ingestionCancellation: ingestion,
         },
         orgId: principal.orgId,
@@ -534,7 +532,7 @@ export class DeletionSaga {
   /**
    * Enumerates the derived memories and resolves + checks the source owner —
    * the preview path (read-only). The deletion path composes the same two
-   * halves directly so the ingestion guard can run between them (QS-5).
+   * halves directly so the ingestion guard can run between them.
    * NotFound when neither a source row nor derived memories exist, and for
    * any owner mismatch (existence must not leak).
    */
@@ -591,7 +589,7 @@ export class DeletionSaga {
 
   /**
    * Cascades one attachment `file` sub-source inside the enumeration transaction
-   * (Session O4): cancel its pending ingestion, lock + enumerate its memories
+   * cancel its pending ingestion, lock + enumerate its memories
    * (pushed onto the primary `rows` so they share the receipt), and delete its
    * file_metadata. Returns the object key to remove, or null when the attachment
    * was already gone (idempotent). Foreign-owned members are refused as NotFound
@@ -692,7 +690,7 @@ export class DeletionExecutor {
 
     const counts = countsSchema.parse(receipt.countsJson);
 
-    // Step two — external deletion. Absent identifiers are success (§A.7):
+    // Step two — external deletion. Absent identifiers are success (§A.7)
     // Qdrant point deletion by id ignores missing points; S3 DELETE returns
     // 204 for missing keys. That is what makes retries safe.
     await this.vectors.deletePoints(counts.point_ids);
@@ -760,7 +758,7 @@ export class DeletionExecutor {
     if (tips.length === 0) return GENESIS_HASH;
     if (tips.length > 1) {
       throw new Error(
-        `deletion receipt chain has ${tips.length} tips — refusing to extend a corrupted chain`,
+        `deletion receipt chain has ${tips.length} tips, refusing to extend a corrupted chain`,
       );
     }
     return tips[0]!.hash;

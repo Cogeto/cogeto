@@ -77,13 +77,13 @@ describe('identity seam — resolvePrincipal', () => {
   });
 });
 
-// ── QS-17: local iss/aud pre-validation before trusting userinfo ───────────────
+// ──: local iss/aud pre-validation before trusting userinfo ───────────────
 const b64url = (obj: unknown): string => Buffer.from(JSON.stringify(obj)).toString('base64url');
 /** A JWT-SHAPED token (3 segments; signature not verified — userinfo proves it). */
 const jwt = (claims: Record<string, unknown>): string =>
   `${b64url({ alg: 'RS256' })}.${b64url(claims)}.sig`;
 
-describe('identity seam — iss/aud pre-validation (QS-17)', () => {
+describe('identity seam — iss/aud pre-validation', () => {
   const AUD_OPTIONS = {
     internalBaseUrl: 'http://zitadel:8080',
     externalDomain: 'localhost',

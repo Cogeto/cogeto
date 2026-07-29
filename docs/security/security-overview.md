@@ -20,16 +20,16 @@ boundary is the primary isolation mechanism, and three internal seams carry the
 rest:
 
 - **The instance boundary.** One customer, one instance, its own Postgres, Qdrant,
-  MinIO, and identity provider. Two customers never share a database, so one
-  customer's data is not reachable from another's queries by construction. See
-  [isolation-and-access](isolation-and-access.md).
+ MinIO, and identity provider. Two customers never share a database, so one
+ customer's data is not reachable from another's queries by construction. See
+ [isolation-and-access](isolation-and-access.md).
 - **The model-gateway seam.** The only place in the system that talks to an
-  external model provider. Everything the model sees passes through here, which is
-  where optional PII redaction lives. See
-  [data-sovereignty-and-redaction](data-sovereignty-and-redaction.md).
+ external model provider. Everything the model sees passes through here, which is
+ where optional PII redaction lives. See
+ [data-sovereignty-and-redaction](data-sovereignty-and-redaction.md).
 - **The inbound-mail boundary.** The receive-only SMTP server is the one component
-  exposed to the open internet. Sender authentication happens here. See
-  [inbound-email-anti-spoofing](inbound-email-anti-spoofing.md).
+ exposed to the open internet. Sender authentication happens here. See
+ [inbound-email-anti-spoofing](inbound-email-anti-spoofing.md).
 
 ## The protections, mapped
 
@@ -48,24 +48,23 @@ rest:
 **In scope for the design:**
 
 - An internet sender forging a trusted address to inject false memory (handled by
-  SPF sender authentication).
+ SPF sender authentication).
 - An operator or infrastructure fault that silently drops or resurrects data after
-  a deletion promise (handled by signed receipts + the integrity sweep + an
-  external chain-tip anchor on every exported receipt).
+ a deletion promise (handled by signed receipts + the integrity sweep + an
+ external chain-tip anchor on every exported receipt).
 - An external model provider that should never see raw personal data (handled by
-  the single model seam and optional redaction).
+ the single model seam and optional redaction).
 - A second user on the same instance reading or mutating another user's private
-  memory (handled by the scope gate; writes are owner-only).
+ memory (handled by the scope gate; writes are owner-only).
 
 **Explicitly out of scope for v1 (stated honestly, not hidden):**
 
 - Volumetric denial-of-service and spam floods against inbound mail.
 - Attacks that require a compromised host or stolen credentials as a precondition.
 - Same-domain email impersonation, which SPF alone cannot stop (see the
-  anti-spoofing doc's residual limits).
+ anti-spoofing doc's residual limits).
 - Multi-tenant row-level isolation: v1 relies on the deployment boundary instead,
-  a deliberate owner decision (decision
-  [0019](../decisions/0019-cross-org-isolation-deployment-boundary.md)).
+ a deliberate owner decision.
 
 The authoritative scope for **vulnerability reports** is the repository-root
 [`SECURITY.md`](../../SECURITY.md).
@@ -73,8 +72,8 @@ The authoritative scope for **vulnerability reports** is the repository-root
 ## The disciplines behind the claims
 
 - **Published audits.** Every finding and its resolution is in
-  [`../audits/`](../audits/) rather than asserted here.
+ [`../audits/`](../audits/) rather than asserted here.
 - **Enforced invariants.** Scope-leak, deletion-cascade, approval-gate, and the
-  golden-set eval gate are required CI checks; nothing merges without them green.
+ golden-set eval gate are required CI checks; nothing merges without them green.
 - **Honest residual limits.** Each mechanism doc states what it does *not* cover.
-  A guarantee with unstated edges is worse than a modest one described precisely.
+ A guarantee with unstated edges is worse than a modest one described precisely.

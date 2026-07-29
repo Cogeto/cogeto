@@ -18,7 +18,7 @@ const RECENT_REFUSALS_LIMIT = 20;
 
 /**
  * Refused mail records hold third-party sender addresses (PII) and, on an
- * internet-facing SMTP port, grow unbounded from unknown senders (SEC-6/GAP-6).
+ * internet-facing SMTP port, grow unbounded from unknown senders (/GAP-6).
  * A nightly pass prunes rows older than this window — long enough to remain
  * useful for one-click allowlisting, short enough to bound the retained PII.
  */
@@ -29,7 +29,7 @@ export const EMAIL_REFUSAL_RETENTION_CRONTAB = `50 3 * * * ${EMAIL_REFUSAL_RETEN
 
 /**
  * The per-user sender allowlist — personal routing for external senders
- * (decision 0031 rule 2: "senders whose mail I want in MY memory") — plus the
+ * (rule 2: "senders whose mail I want in MY memory") — plus the
  * metadata-only refusal log. Owned by connectors. The intake consults
  * `ownersMatching` before storing anything; the Settings surface manages
  * entries (audited) and reads recent refusals. Empty allowlists → closed by
@@ -41,7 +41,7 @@ export class EmailAllowlistService {
 
   /**
    * Every user whose allowlist matches the sender — each of them receives a
-   * copy of the message (decision 0031 rule 2). Empty for an unmatched or
+   * copy of the message (rule 2). Empty for an unmatched or
    * unparsable sender (closed by default).
    */
   async ownersMatching(matchedSender: string | null): Promise<string[]> {
@@ -77,7 +77,7 @@ export class EmailAllowlistService {
   }
 
   /**
-   * Add an address or whole-domain entry, normalized (decision 0028 ruling 2a),
+   * Add an address or whole-domain entry, normalized (ruling 2a),
    * idempotently (adding an existing entry returns it). Audited.
    */
   async addEntry(
@@ -120,7 +120,7 @@ export class EmailAllowlistService {
         )[0]!;
 
       if (inserted) {
-        // Structural metadata only (QS-1): kind + a boolean, never the value or
+        // Structural metadata only: kind + a boolean, never the value or
         // note (which can carry PII) — the audit trail is org-readable.
         await writeAudit(tx, {
           actor: `user:${principal.userId}`,
@@ -158,7 +158,7 @@ export class EmailAllowlistService {
   }
 
   /**
-   * Record a refused message — metadata only, never a body (decision 0028 ruling
+   * Record a refused message — metadata only, never a body (ruling
    * 7). `ownerId` may be null when the refusal happened before owner resolution.
    * Best-effort: pass the surrounding tx when one is open, else the pool.
    */
@@ -181,7 +181,7 @@ export class EmailAllowlistService {
 
   /**
    * Recent refusals for the owner (plus system refusals with no owner yet). The
-   * owner/null predicate is in the WHERE, BEFORE the LIMIT (SEC-8/GAP-12), so
+   * owner/null predicate is in the WHERE, BEFORE the LIMIT (/GAP-12), so
    * another user's refusals can no longer crowd this user's claimable rows out
    * of the window.
    */
@@ -201,7 +201,7 @@ export class EmailAllowlistService {
   }
 
   /**
-   * Prune refused-mail records older than `days` (SEC-6/GAP-6) — bounds the
+   * Prune refused-mail records older than `days` (/GAP-6) — bounds the
    * retained third-party sender PII and the table's growth on a public inbound
    * port. Idempotent; returns the number removed.
    */

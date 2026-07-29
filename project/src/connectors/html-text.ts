@@ -1,11 +1,11 @@
 /**
- * HTML → readable main content (Priority 5 Part A; decision 0042). A
+ * HTML → readable main content. A
  * deterministic, dependency-free boilerplate stripper in the same spirit as the
  * email preprocessing (`isolateEmailContent`): parse-and-strip, NEVER render —
  * no DOM, no script execution, no resource loading, so an untrusted page can
  * only ever contribute text.
  *
- * Heuristics (readability-style, not a full readability port):
+ * Heuristics (readability-style, not a full readability port)
  * 1. Drop non-content subtrees wholesale: script/style/template/svg/iframe/
  *    object/embed/noscript, and chrome regions (nav/header/footer/aside/form/
  *    button/select/dialog).
@@ -53,8 +53,8 @@ const NAMED_ENTITIES: Record<string, string> = {
   quot: '"',
   apos: "'",
   nbsp: ' ',
-  ndash: '–',
-  mdash: '—',
+  ndash: '',
+  mdash: '',
   hellip: '…',
   rsquo: '’',
   lsquo: '‘',

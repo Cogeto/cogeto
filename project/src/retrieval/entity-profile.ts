@@ -3,7 +3,7 @@ import { STATUS_MULTIPLIERS } from '@cogeto/shared';
 import { QUERY_ENTITY_STOPWORDS } from './retrieval-config';
 
 /**
- * Entity-profile retrieval helpers (S3.5-B, F1/F4/F5). Detection is fully
+ * Entity-profile retrieval helpers (F1/F4/F5). Detection is fully
  * deterministic: a who-is / tell-me-about question with exactly one focus
  * entity. In that mode retrieval gathers ALL of the entity's memories
  * (exhaustive, not top-k) so the answer can be a complete profile.

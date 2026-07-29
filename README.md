@@ -4,35 +4,36 @@
 
 # Cogeto
 
-Cogeto is a **private, EU-hosted AI command center for professionals**: it turns
-your scattered work context (notes, email, documents) into long-term memory you
-can inspect, correct, and provably delete. Every trust claim is backed by an
-**inspectable artifact**: a signed receipt, a verification verdict, a validity
-interval, a source link. Never just a promise. It is self-hostable,
-single-tenant by design, and model-sovereign: EU-hosted Mistral by default,
-with an optional local redaction tier so PII never leaves your machine.
+Cogeto is a **private, EU-hosted AI command center for professionals**. It turns your
+scattered work context (notes, email, documents, the web) into long-term memory you can
+inspect, correct, and provably delete. Every trust claim is backed by an **inspectable
+artifact**: a signed receipt, a verification verdict, a validity interval, a source
+link. Never just a promise.
+
+It is self-hostable, single-tenant by design, and model-sovereign, with an optional
+local redaction tier so PII never leaves your machine.
 
 > **Cogeto, ergo sum: your mind, extended.**
 
-## The four signature mechanisms
+## What makes it different
 
-- **Deletion receipts.** Deleting a source runs a saga across Postgres, Qdrant,
-  and MinIO and issues a **hash-chained, ed25519-signed receipt**; a nightly
-  integrity sweep re-verifies that everything a receipt promises gone *stays*
-  gone. Forgetting is provable, not promised.
-- **Self-verified extraction.** Every extracted fact passes an independent
-  verification pass before it counts, and carries a lifecycle status (`active`,
-  `uncertain`, `contradicted`, `outdated`, `replaced`, `user_approved`);
-  contradictions surface side-by-side for *you* to resolve. Nothing is silently
-  believed.
-- **Time-travel memory.** Facts carry validity intervals, supersession never
-  destroys history, and the timeline shows what you believed at any point and
-  what changed it. "Which CRM were we using in March?" is answered as the past,
-  never stated as the present.
-- **The Memory Passport.** One click exports everything (all facts with full
-  history, statuses, provenance, and your deletion receipts) as a signed
-  archive in a [published open format](docs/passport-schema/). Independently
-  verifiable outside Cogeto. Leave whenever you want.
+- **Deletion receipts.** Deleting a source runs a saga across Postgres, Qdrant, and
+  MinIO, then issues a **hash-chained, ed25519-signed receipt**. A nightly sweep
+  re-verifies that what a receipt promised gone *stays* gone. Forgetting is provable.
+- **Self-verified extraction.** Every extracted fact passes an independent verification
+  pass before it counts, and carries a lifecycle status. Contradictions surface
+  side by side for *you* to resolve. Nothing is silently believed.
+- **Time-travel memory.** Facts carry validity intervals, supersession never destroys
+  history, and the timeline shows what you believed at any point and what changed it.
+  "Which CRM were we using in March?" is answered as the past, never as the present.
+- **Per-claim provenance.** Answers cite their sources sentence by sentence. Memory
+  claims carry inspectable chips, web claims carry URL and fetch time, and anything
+  from the model's own knowledge is plainly marked **unsourced**. That marking is the
+  feature. Cogeto is not a private ChatGPT; it is the assistant that tells you what
+  it can back up.
+- **The Memory Passport.** One click exports everything, with full history, statuses,
+  provenance, and your receipts, as a signed archive in a
+  [published open format](docs/passport-schema/) that verifies outside Cogeto.
 
 ## Quickstart
 
@@ -44,138 +45,71 @@ cd cogeto
 docker compose up
 ```
 
-Wait for the stack to become healthy, then open **https://localhost** (the dev
-edge uses a self-signed certificate, so accept the warning) and sign in with
-the dev bootstrap admin, `admin@cogeto.localhost` / `DevPassword1!`. Zero
-configuration required; every default can be overridden via `.env` (see
-[`.env.example`](.env.example)). Model features (chat, extraction) need a
-[Mistral API key](https://console.mistral.ai) in `COGETO_MISTRAL_API_KEY`.
-Without one the stack still runs, and model calls fail with a typed error
-instead of pretending. Details, layout, and common issues:
-[`docs/running-locally.md`](docs/running-locally.md).
+Wait for the stack to become healthy, then open **https://localhost** (the dev edge
+uses a self-signed certificate, so accept the warning) and sign in with the dev
+bootstrap admin, `admin@cogeto.localhost` / `DevPassword1!`. Zero configuration
+required; every default can be overridden via `.env` (see
+[`.env.example`](.env.example)). Model features need an API key in the environment.
+Without one the stack still runs, and model calls fail with a typed error instead of
+pretending.
 
-### The Ana sandbox (a pre-populated demo world)
+Details, layout, and common issues: [`docs/running-locally.md`](docs/running-locally.md).
+
+### The Ana sandbox
 
 ```sh
 COGETO_DEMO_MODE=1 docker compose --profile demo up --build
 ```
 
-This seeds a fictional consultant ("Ana Kovač") with weeks of accrued memory
-through the real public API: contradictions to resolve, lapsed facts, standing
-commitments, a signed deletion receipt. The sandbox is gated behind a generated
-password (printed by the seed job: `docker compose logs demo-seed`). Never run
-the demo profile on an instance holding real data.
+A fictional consultant with weeks of accrued memory, seeded through the real public
+API: contradictions to resolve, lapsed facts, standing commitments, a signed deletion
+receipt. Gated behind a generated password printed by the seed job
+(`docker compose logs demo-seed`). Never run the demo profile on an instance holding
+real data.
 
 ## Architecture at a glance
 
-Two processes from one codebase, an **app** (API + SPA, the fast path:
-retrieval and answering only) and a **worker** (every slow job: extraction,
-verification, reconciliation, the deletion saga, nightly dreaming and integrity
-sweeps), connected by a transactional outbox and an idempotent job queue, so
-nothing is ingested and silently unprocessed.
+Two processes from one codebase: an **app** (API and SPA, the fast path of retrieval
+and answering) and a **worker** (every slow job: extraction, verification,
+reconciliation, the deletion saga, nightly consolidation and integrity sweeps),
+connected by a transactional outbox and an idempotent job queue, so nothing is ingested
+and silently unprocessed.
 
-**Postgres is the source of truth; Qdrant is a rebuildable index** (a `reindex`
-command reconstructs it at any time); original files live in MinIO under
-SSE-encrypted, tenant-scoped keys; Zitadel provides identity; Caddy terminates
-TLS. Facts, not raw documents, are what's stored and searched. One instance =
-one tenant: isolation is a deployment boundary, not a row filter.
+**Postgres is the source of truth; Qdrant is a rebuildable index.** Originals live in
+MinIO under SSE-encrypted, tenant-scoped keys; Zitadel provides identity; Caddy
+terminates TLS. Facts, not raw documents, are what gets stored and searched. One
+instance is one tenant: isolation is a deployment boundary, not a row filter.
 
-Deeper reading: the [technical architecture](docs/Cogeto-Technical-Architecture.md),
-the binding [architecture decisions](docs/Cogeto-v1-Addendum-Verifiable-Memory.md),
-and the [decision records](docs/decisions/).
+All model and embedding calls go through a single **gateway seam**, with adapters for
+EU-hosted Mistral, any OpenAI-compatible endpoint, Anthropic, and a local Ollama
+runtime, so inference can stay entirely on your own hardware. Every configuration is
+published as its own entry in the [trust scores](eval/trust-scores/), so "works with
+your model" is measured, not claimed.
 
-## Sovereignty and the model story
-
-All model and embedding calls go through a single **model-gateway seam**; no
-provider SDK or endpoint appears anywhere else, and an architecture test keeps
-it that way. Cogeto is **model-agnostic, literally**: the gateway ships
-adapters for **Mistral (EU-hosted, the default)**, any **OpenAI-compatible
-endpoint** (base URL plus key), **Anthropic**, and a **local Ollama runtime**,
-so inference can stay entirely on your own hardware. You bring your own key
-and pick a provider and model per tier in the instance environment: a
-cheap model for high-volume ingestion, a stronger one for answers you read,
-and an embeddings model. The `ollama-local` preset puts all three tiers on
-your Ollama host (multilingual `bge-m3` embeddings included, no API key
-needed), and mixed postures such as hosted answers over local embeddings are
-one environment variable away; see
-[`docs/notes/local-models.md`](docs/notes/local-models.md) for setup and the
-measured per-tier, per-language parity against the hosted default. One caveat,
-stated plainly: Anthropic has no embeddings API, so an Anthropic configuration
-pairs its answer or pipeline models with Mistral, OpenAI-compatible, or local
-embeddings; the instance validates this at boot. Every configuration is
-published as its own entry in the [trust scores](eval/trust-scores/), so
-"works with your model" is measured, not claimed. The optional **redaction tier** (`--profile redaction`) runs a
-local, CPU-only NER sidecar that pseudonymizes sensitive entities *before any
-external model call*, whichever provider is active, and re-identifies the
-response. It **fails closed** if unreachable: plaintext is never sent. Your
-data lives in your instance's Postgres/MinIO/Qdrant; nothing about the
-architecture phones home.
-
-**Web research** (`--profile research`) follows the same honesty rule. A
-self-hosted SearXNG container queries public engines from *your* instance (no
-API key, no vendor, no query logging), and a narrow, robots-respecting fetcher
-pulls only the pages you pick. Because a search query genuinely leaves the box,
-Cogeto minimises it locally, shows you the exact text, and sends **nothing
-until you approve it**; the sent query is then recorded in the provenance of
-every memory the research produces, next to each page's URL and fetch time.
-Research is explicitly invoked: an ordinary question never triggers a search.
-See [`docs/notes/web-research-privacy.md`](docs/notes/web-research-privacy.md).
-
-Optional capabilities are never invisible state: the System view, the
-`/api/health` endpoint, and a boot banner all report each one's true state
-(on, off, or enabled but unreachable, stated loudly), and the operator script
-toggles them with `cogeto features enable <id>` instead of remembered compose
-profiles. See [`docs/notes/capabilities.md`](docs/notes/capabilities.md).
-
-**Natural conversation** ties it together: everything a good assistant does,
-and you always know which parts it can prove. You talk to Cogeto without any
-query syntax; it answers from your memories first, blends in the model's own
-knowledge when the question asks about the wider world, and offers web
-research when that would help (the offer only opens the approval gate; nothing
-is searched silently). Every claim visibly carries its origin, sentence by
-sentence: memory claims cite their inspectable sources, web claims carry URL
-and fetch time, and anything from the model's own knowledge is plainly marked
-**unsourced**. That marking is the feature. Cogeto is not a private ChatGPT;
-it is the assistant that tells you what it can back up.
-See [`docs/notes/natural-conversation.md`](docs/notes/natural-conversation.md).
-
-**Named skills** are the payoff of all of the above: agents whose every step
-is inspectable, every fact sourced, and every consequential action waits for
-you. The first skill does a whole job end to end: say "research Adriatic Foods
-before Thursday" and Cogeto gathers what you already know, proposes minimised
-searches that you approve, edit, or remove in one interaction (nothing leaves
-until you do), reads the approved pages through the normal pipeline, and hands
-back a brief where what you knew cites your memories, what is new cites its
-URL and fetch time, and contradictions between the two are stated, never
-silently resolved. The run creates nothing of its own: everything it surfaces
-is a memory or a page you can open. The finished run stays open forever, with
-every search sent, page fetched, and memory created one click away. Because the approval machine and
-the audit log existed before there was anything to govern, this category is
-native here; competitors cannot enter it without rebuilding their foundations.
-See [`docs/notes/named-skills.md`](docs/notes/named-skills.md).
+Deeper reading: the [architecture overview](docs/architecture.md), the binding
+[architecture decisions](docs/Cogeto-v1-Addendum-Verifiable-Memory.md), and the
+[feature documentation](docs/features/).
 
 ## Links
 
 - **Website:** [cogeto.eu](https://cogeto.eu), including the whitepaper
-- **Documentation:** [`docs/`](docs/README.md) with specs, decisions, schemas, runbooks, audits
-- **Security and safety:** [`docs/security/`](docs/security/README.md) — how the protections work, the public audits, and how to verify them (single entry point)
+- **Documentation:** [`docs/`](docs/README.md)
+- **Security and safety:** [`docs/security/`](docs/security/README.md), how the
+  protections work and how to verify them
 - **Run it locally:** [`docs/running-locally.md`](docs/running-locally.md)
 - **Deploy it:** [`docs/deployment.md`](docs/deployment.md)
 
 ## License and trademark
 
-The core is **AGPLv3** ([`LICENSE`](LICENSE)); commercial licenses (an AGPL
-exemption) are available ([`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md)).
-The **Cogeto name and logo are trademarks** and are *not* covered by the code
-license; see [`TRADEMARK.md`](TRADEMARK.md) and
-[`assets/brand/README.md`](assets/brand/README.md). Maintainership and IP:
-[`MAINTAINERS.md`](MAINTAINERS.md).
+The core is **AGPLv3** ([`LICENSE`](LICENSE)); commercial licenses (an AGPL exemption)
+are available ([`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md)). The **Cogeto name and
+logo are trademarks** and are *not* covered by the code license; see
+[`TRADEMARK.md`](TRADEMARK.md) and [`assets/brand/README.md`](assets/brand/README.md).
+Maintainership and IP: [`MAINTAINERS.md`](MAINTAINERS.md).
 
 ## Contributing
 
-Contributions are welcome. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) (the
-delivery loop, running the tests and the eval harness, golden-set rules) and
-note that contributions require accepting the [CLA](CLA.md) with a single PR
-comment; the reasoning is stated there honestly. Security reports:
-[`SECURITY.md`](SECURITY.md); how the protections work and how to verify them:
-[`docs/security/`](docs/security/README.md).
+Contributions are welcome. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) for the delivery
+loop, running the tests and the eval harness, and the golden-set rules. Contributions
+require accepting the [CLA](CLA.md) with a single PR comment; the reasoning is stated
+there honestly. Security reports: [`SECURITY.md`](SECURITY.md).

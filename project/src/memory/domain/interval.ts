@@ -3,7 +3,7 @@ import type { SQL } from 'drizzle-orm';
 import { memory } from '../persistence/tables';
 
 /**
- * THE interval predicate (decision 0012 ruling 1) — the one place the
+ * THE interval predicate — the one place the
  * [effective_from, valid_until) convention is encoded. Half-open: a fact
  * holds AT valid_from and does NOT hold at valid_until; NULL valid_from falls
  * back to created_at ("since ingestion"); NULL valid_until means "still
@@ -31,7 +31,7 @@ export function intervalHoldsAtSql(t: Date): SQL {
 }
 
 /**
- * Past belief (decision 0012 ruling 6): the fact is no longer presented as
+ * Past belief: the fact is no longer presented as
  * current — replaced/outdated, or its interval closed before now.
  */
 export function isPastBelief(

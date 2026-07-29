@@ -11,7 +11,7 @@ import type { ChatResearchProposal, ChatResearchResolverPort } from './chat-rese
 import { ChatService } from './chat.service';
 
 /**
- * The conversational router end to end (decision 0046): small talk answers
+ * The conversational router end to end: small talk answers
  * naturally without retrieval; a knowledge question never silently searches —
  * it answers marked-unsourced with the research OFFER; the reply and research
  * intents carry resolved anaphora across capability boundaries; classification
@@ -125,7 +125,7 @@ describe('chat conversational routing (integration: real Postgres, scripted seam
       },
     } as unknown as RetrievalService;
     chat = new ChatService(tdb.db, retrieval, gateway, new UserDirectory(tdb.db), reply, research);
-    // All scripted turns share one conversation (P6.9), like the SPA's thread.
+    // All scripted turns share one conversation, like the SPA's thread.
     conversationId = (await chat.createConversation(owner)).id;
   }, 120_000);
 

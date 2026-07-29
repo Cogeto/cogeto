@@ -6,12 +6,12 @@ import { INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
 import { researchRun, webPage } from './persistence/tables';
 import { SKILL_ADVANCE_JOB_TYPE } from './skills/skill-run.service';
 
-/** The server-side conclusion job (decision 0057): synthesise + store the
+/** The server-side conclusion job: synthesise + store the
  * run's answer once the last captured page's extraction settles. */
 export const RESEARCH_CONCLUDE_JOB_TYPE = 'research.conclude';
 
 /**
- * Watches a research run's pages settle (decision 0057). Called by the worker
+ * Watches a research run's pages settle. Called by the worker
  * inside the SAME idempotency transaction that just processed a web page's
  * pipeline job — the page's own job_execution claim row is already visible
  * there, so "every page settled" includes the page that triggered the check.
@@ -45,7 +45,7 @@ export class ResearchConclusionService {
     const run = runRows[0];
     if (!run || run.status !== 'approved') return false;
 
-    // A skill run's query (decision 0059): the skill advances when ALL pages
+    // A skill run's query: the skill advances when ALL pages
     // of ALL its research runs settle — its runs stay 'approved' (no per-run
     // answers) and the brief is the conclusion.
     if (run.skillRunId) return this.afterSkillPageProcessed(tx, run.skillRunId);
@@ -69,11 +69,11 @@ export class ResearchConclusionService {
         payload: { source_type: 'research_run', source_id: runId },
       },
     );
-    this.log.log(`research run ${runId}: all pages settled — conclusion enqueued`);
+    this.log.log(`research run ${runId}: all pages settled, conclusion enqueued`);
     return true;
   }
 
-  /** The skill branch of the settle-watcher (decision 0059 ruling 5). A
+  /** The skill branch of the settle-watcher. A
    * duplicate enqueue from two pages settling concurrently is harmless: the
    * advance job is re-runnable and its steps compare-and-set. */
   private async afterSkillPageProcessed(tx: Tx, skillRunId: string): Promise<boolean> {
@@ -111,7 +111,7 @@ export class ResearchConclusionService {
         payload: { source_type: 'skill_run', source_id: skillRunId },
       },
     );
-    this.log.log(`skill run ${skillRunId}: all pages settled — advance enqueued`);
+    this.log.log(`skill run ${skillRunId}: all pages settled, advance enqueued`);
     return true;
   }
 

@@ -11,7 +11,7 @@ import { MemoryVectorStore } from './persistence/vector-store';
 import type { MemoryPointPayload } from './persistence/vector-store';
 
 /**
- * The S3-B named governance tests: edit_supersession, review_transitions,
+ * The named governance tests: edit_supersession, review_transitions,
  * sensitive_toggle_two_store, actions_audited, illegal_action_guarded.
  * Real Postgres + real Qdrant; embeddings faked at the seam.
  */

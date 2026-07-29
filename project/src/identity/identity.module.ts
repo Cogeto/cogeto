@@ -34,7 +34,7 @@ export class IdentityModule {
       ],
       // IDENTITY_OPTIONS is exported (not just provided) so that AdminGuard —
       // applied via @UseGuards on a controller in ANOTHER module (the app root's
-      // JobsController, QS-10) — can have its @Inject(IDENTITY_OPTIONS) resolved
+      // JobsController) — can have its @Inject(IDENTITY_OPTIONS) resolved
       // from that module's injector. Without this the app fails to boot: "Nest
       // can't resolve dependencies of the AdminGuard". (BearerAuthGuard escapes
       // this only because its dep, IdentityService, is already exported.)
