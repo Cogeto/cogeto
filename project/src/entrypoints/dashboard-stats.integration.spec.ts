@@ -89,7 +89,11 @@ describe('dashboard stats (integration, real Postgres)', () => {
   /** One standing open loop: a commitment memory in a status that still stands. */
   const seedOpenLoop = async (owner: string, status: MemoryStatus = 'active'): Promise<void> => {
     const mem = await seedMemory(owner, { status });
-    await tdb.pool.query(`UPDATE memory SET kind = 'commitment' WHERE id = $1`, [mem.id]);
+    // authored_by_user: the count is of the user's OWN standing obligations.
+    await tdb.pool.query(
+      `UPDATE memory SET kind = 'commitment', authored_by_user = true WHERE id = $1`,
+      [mem.id],
+    );
   };
 
   const seedDreamAction = async (

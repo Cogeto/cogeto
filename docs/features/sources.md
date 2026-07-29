@@ -26,8 +26,12 @@ A connector never reaches into ingestion or memory; it implements ports those mo
 define, bound at the composition root. This is what keeps the module graph acyclic and
 connector tables private.
 
-- **`SourceReader`** loads a source's content for the pipeline, and answers
-  `existsForAdmission` for the admission checkpoint.
+- **`SourceReader`** loads a source's content for the pipeline, answers
+  `existsForAdmission` for the admission checkpoint, and stamps **authorship**:
+  whether the content is the user's own words. Notes and captured chat are; a
+  document or a fetched page is not; mail is resolved from whether the message
+  came from the user's own address. That stamp is what keeps a contract clause
+  out of the user's open loops (see [`memory.md`](memory.md)).
 - **`SourceDeletion`** deletes the source row inside the saga's enumeration
   transaction, and declares any object keys it owns.
 - **`DerivedCascade`** handles derived content the saga must also erase.

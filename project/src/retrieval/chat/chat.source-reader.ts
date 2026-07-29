@@ -34,6 +34,9 @@ export class ChatSourceReader implements SourceReader {
       // "Remember this" extracts the message itself — the one capture path
       // (the create_task normalization went with).
       content: row.content,
+      // Only USER messages are ever loaded here (the WHERE above, and the
+      // capture endpoint), so captured chat is always the user's own words.
+      authoredByUser: true,
       createdAt: row.createdAt,
     };
   }

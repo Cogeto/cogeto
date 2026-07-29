@@ -35,6 +35,9 @@ export class WebSourceReader implements SourceReader {
       content,
       scope: row.scope,
       sensitive: row.sensitive,
+      // A fetched page is someone else's writing. Its obligations are facts
+      // about that page, never commitments the user made.
+      authoredByUser: false,
       createdAt: row.fetchedAt,
     };
   }

@@ -114,10 +114,13 @@ describe('attention feed (integration, real Postgres)', () => {
       content: opts.title ?? 'a commitment',
       scope: opts.scope,
     });
-    await tdb.pool.query(`UPDATE memory SET kind = 'commitment', valid_until = $2 WHERE id = $1`, [
-      mem.id,
-      opts.due ?? null,
-    ]);
+    // authored_by_user: an open loop is the user's own promise, so the fixture
+    // models a note they wrote. A document's obligation is excluded by the
+    // first-person rule and would never reach this feed.
+    await tdb.pool.query(
+      `UPDATE memory SET kind = 'commitment', valid_until = $2, authored_by_user = true WHERE id = $1`,
+      [mem.id, opts.due ?? null],
+    );
     if (opts.dormant) {
       await tdb.pool.query(`INSERT INTO dormant_flag (memory_id, reason) VALUES ($1, 'quiet')`, [
         mem.id,

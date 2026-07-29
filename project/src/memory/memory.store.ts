@@ -234,6 +234,15 @@ export class MemoryStore {
    * promise, and commit to, and what is still open?" — and it needs no schema
    * of its own: the extractor already labels the kind and the temporal pass
    * already fills `valid_until`.
+   *
+   * FIRST-PERSON RULE. An obligation is only the caller's when the caller wrote
+   * the words it came from (`authored_by_user`). A loan agreement says "the
+   * Lender shall advance the principal sum"; that is a true fact ABOUT the
+   * document and it is stored as one, but it is not something the user promised,
+   * so it must never appear as their open loop. Extraction is unchanged: the
+   * document's obligations are still remembered and still retrievable. Only this
+   * read is narrowed, and it is narrowed HERE so the attention feed and the
+   * "what is still open" answer cannot drift apart.
    */
   async openLoopsForPrincipal(
     principal: Principal,
@@ -247,6 +256,7 @@ export class MemoryStore {
           this.visibleTo(principal, opts),
           inArray(memory.kind, OPEN_LOOP_KINDS as unknown as FactKind[]),
           inArray(memory.status, OPEN_LOOP_STATUSES as unknown as MemoryStatus[]),
+          eq(memory.authoredByUser, true),
         ),
       )
       .orderBy(sql`${memory.validUntil} ASC NULLS LAST`, desc(memory.updatedAt), memory.id)

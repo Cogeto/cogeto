@@ -70,6 +70,10 @@ The normative rules of the system. MUST marks a rule whose violation is a defect
 
 **3.7** No lifecycle transition may delete a fact as a side effect. Deletion happens only through the deletion path.
 
+**3.8** An obligation is the user's own only when the user wrote the words it was extracted from. Every source MUST record authorship structurally at read time: notes and captured chat are the user's own, uploaded documents and fetched pages are not, and mail is resolved from whether the message came from the user's own address. Authorship MUST NOT be a model judgement.
+
+**3.9** Surfaces that present the user's standing obligations, the attention feed and the still-open answer alike, MUST read first-person facts only, through one shared read so they cannot diverge. An obligation stated in a third-party document remains a fact about that document: it is extracted, stored and retrievable as normal, and it MUST NOT be presented as something the user committed to. Unknown authorship is not the user's.
+
 ---
 
 ## 4. Scope and sensitivity
