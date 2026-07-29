@@ -1,6 +1,6 @@
 {
   "case_id": "followup_cross_capability",
-  "description": "The cross-capability follow-up script, live (decision 0046): 'Who is Ana?' → 'What is still open with her?' → 'Draft a reply to her last email' → 'Research her company'. Each turn routes correctly with the pronoun resolved across capability boundaries; the final turn only opens the research gate, and the approved flow completes with a cited answer.",
+  "description": "The cross-capability follow-up script, live: 'Who is Ana?' → 'What is still open with her?' → 'Draft a reply to her last email' → 'Research her company'. Each turn routes correctly with the pronoun resolved across capability boundaries; the final turn only opens the research gate, and the approved flow completes with a cited answer.",
   "anchor": "2026-07-23T09:00:00.000Z",
   "notes": [
     "Call with Ana Kovač at Adriatic Foods about the Atlas CRM Migration — she is our main contact there and leads the project on their side.",

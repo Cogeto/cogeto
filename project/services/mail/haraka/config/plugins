@@ -1,4 +1,4 @@
-# Cogeto inbound Haraka — receive-only, minimal plugin set (decision 0028).
+# Cogeto inbound Haraka — receive-only, minimal plugin set.
 # Order matters: connection limits first, then sender authentication, then
 # recipient validation, then the delivery-to-app queue hook. NO outbound/relay
 # plugins are loaded — this server never sends (ruling 4).

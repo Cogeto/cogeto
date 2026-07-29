@@ -1,4 +1,4 @@
--- Migration 0011 — reconciliation (Session F2-A; decision 0010).
+-- Migration 0011 — reconciliation.
 --
 -- memory.kind: the extractor has always produced a fact kind; reconciliation's
 -- candidate rules need it on the row (kind match for dedup, kind gate for

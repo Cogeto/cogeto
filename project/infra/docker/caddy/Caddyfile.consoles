@@ -1,4 +1,4 @@
-# Cogeto infrastructure consoles (QS-4; profile `consoles`). Served by the
+# Cogeto infrastructure consoles (profile `consoles`). Served by the
 # `caddy-consoles` service, which compose binds to 127.0.0.1 ONLY — these vhosts
 # are never reachable from another host. They carry admin credentials / an
 # unauthenticated Qdrant dashboard, so they must stay localhost-only.

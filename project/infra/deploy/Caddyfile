@@ -1,4 +1,4 @@
-# Cogeto customer-instance edge (decision 0030) — the production counterpart of
+# Cogeto customer-instance edge — the production counterpart of
 # project/infra/docker/caddy/Caddyfile (dev: localhost with Caddy's internal
 # CA). Mounted over the baked-in dev Caddyfile by docker-compose.deploy.yml.
 #
@@ -27,7 +27,7 @@
 		reverse_proxy zitadel:8080
 	}
 
-	# The internal mail-intake endpoint (decision 0028 ruling 7) is reachable
+	# The internal mail-intake endpoint is reachable
 	# ONLY from the mail container on the internal Docker network — NEVER from the
 	# public edge (SEC-2/GAP-5). Refuse it here so an internet caller cannot reach
 	# it (and cannot make the app buffer a 25 MB body before the token check).
@@ -41,7 +41,7 @@
 	}
 
 	# The SPA: static files with history-API fallback. Same strict CSP as the
-	# dev edge (QS-19): script-src 'self' only, applied to SPA responses only.
+	# dev edge: script-src 'self' only, applied to SPA responses only.
 	handle {
 		root * /srv
 		header {
@@ -56,7 +56,7 @@
 }
 
 # MinIO S3 API — the browser-reachable origin for presigned download URLs
-# (§A.9; COGETO_S3_PUBLIC_URL). Caddy preserves the incoming Host header, which
+# (COGETO_S3_PUBLIC_URL). Caddy preserves the incoming Host header, which
 # MinIO's SigV4 presign check needs. Access is authorized by the presigned URL
 # signature itself; the MinIO console is NOT exposed on a customer instance.
 s3.{$COGETO_EXTERNAL_DOMAIN} {

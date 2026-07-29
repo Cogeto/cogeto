@@ -107,6 +107,6 @@
   ],
   "notes": [
     "Illustrative example file — the numbers are not a real release's measurements.",
-    "The redacted configuration trades a few points of extraction quality for local PII pseudonymization (decision 0023); the delta is published, not hidden."
+    "The redacted configuration trades a few points of extraction quality for local PII pseudonymization; the delta is published, not hidden."
   ]
 }

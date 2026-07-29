@@ -1,6 +1,6 @@
 'use strict';
 
-// Delivery-to-app queue hook (decision 0028 ruling 7): at queue time, POST the
+// Delivery-to-app queue hook: at queue time, POST the
 // full raw RFC822 to Cogeto's internal, authenticated intake endpoint over HTTP
 // (never a shared filesystem) and translate the app's HTTP verdict into the SMTP
 // response so the sending server sees the acceptance decision during the

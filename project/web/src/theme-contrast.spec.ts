@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
  * over the surface, with the accent's light -300 shade as ink; we composite that
  * exactly. Accent reference sRGB are the Tailwind palette values (index.css does
  * not remap the accent ramps). Measured ratios are recorded in
- * docs/notes/surface-polish.md.
+ * docs/design/README.md.
  */
 
 type Rgb = [number, number, number];

@@ -5,24 +5,24 @@
 -- right timezone, who the user is, and which language Cogeto should speak.
 -- This migration adds the durable half:
 --
---   user_context — one row per user: the optional profile fields that feed the
---                  prompt now-block (display name, company, role title, one
---                  line about the work), a per-user IANA timezone override
---                  (NULL = the instance timezone from QS-32 applies), and the
---                  language pair (preferred_language + strict mode). The two
---                  *_source_memory_id columns record provenance when a value
---                  was accepted from a derived suggestion (decision 0053);
---                  NULL means the user typed it themself.
+-- user_context — one row per user: the optional profile fields that feed the
+-- prompt now-block (display name, company, role title, one
+-- line about the work), a per-user IANA timezone override
+-- (NULL = the instance timezone from applies), and the
+-- language pair (preferred_language + strict mode). The two
+-- *_source_memory_id columns record provenance when a value
+-- was accepted from a derived suggestion;
+-- NULL means the user typed it themself.
 --
---   context_suggestion_dismissal — a dismissed suggestion (field + exact
---                  value) is remembered and never re-proposed. Values here are
---                  short user-profile strings the user has explicitly seen and
---                  rejected, keyed by the Zitadel user id like every per-user
---                  row.
+-- context_suggestion_dismissal — a dismissed suggestion (field + exact
+-- value) is remembered and never re-proposed. Values here are
+-- short user-profile strings the user has explicitly seen and
+-- rejected, keyed by the Zitadel user id like every per-user
+-- row.
 --
 -- Both live in infrastructure, not a domain module: the context feeds prompts
 -- in retrieval, connectors, ingestion and tasks alike, so no single bounded
--- context owns it (§A.1 rule 2) — exactly like audit_log and attention_state.
+-- context owns it (spec §15 rule 2) — exactly like audit_log and attention_state.
 
 CREATE TABLE user_context (
   user_id                     text PRIMARY KEY,

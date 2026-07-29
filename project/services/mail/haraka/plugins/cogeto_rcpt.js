@@ -1,6 +1,6 @@
 'use strict';
 
-// Recipient validation (decision 0028 ruling 6): accept mail ONLY for the
+// Recipient validation: accept mail ONLY for the
 // instance's single configured inbound address; refuse every other recipient at
 // RCPT with SMTP 550 so the sending server gets a clear rejection during the
 // transaction. The address is per-tenant and set at provision time via

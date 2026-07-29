@@ -1,19 +1,19 @@
 -- Migration 0020 — audit-log content hygiene + provenance (Session FIX-1,
--- findings QS-1/QS-13; decision 0025).
+-- findings/).
 --
 -- 1. audit_log.owner_id: which user's artifact the entry concerns. The reader
---    keeps its org gate for the ENTRY, but detail_json is returned only to the
---    owner (or for ownerless system entries) — detail visibility beyond
---    metadata requires ownership.
+-- keeps its org gate for the ENTRY, but detail_json is returned only to the
+-- owner (or for ownerless system entries) — detail visibility beyond
+-- metadata requires ownership.
 -- 2. memory_relation.reason: the model's contradiction explanation moves to
---    the owner-gated relation row (it names slot values from private
---    memories); it must never again live in the org-readable audit trail.
+-- the owner-gated relation row (it names slot values from private
+-- memories); it must never again live in the org-readable audit trail.
 -- 3. Scrub: existing audit rows that carry a free-text `reason` key (model
---    sentences paraphrasing private memory content — QS-1) have that key
---    removed. This is a DELIBERATE, RECORDED redaction of leaked content
---    (decision 0025): the append-only trigger guards rows against application
---    code, not against a sanctioned migration; the trigger is disabled for
---    exactly this statement and re-enabled, and the scrub itself is audited.
+-- sentences paraphrasing private memory content —) have that key
+-- removed. This is a DELIBERATE, RECORDED redaction of leaked content
+--: the append-only trigger guards rows against application
+-- code, not against a sanctioned migration; the trigger is disabled for
+-- exactly this statement and re-enabled, and the scrub itself is audited.
 --
 -- Written idempotently (IF NOT EXISTS / re-runnable scrub) so the migration
 -- test can replay it against legacy-shaped rows.

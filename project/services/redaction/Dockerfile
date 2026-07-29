@@ -3,7 +3,7 @@
 # the gateway seam). No dependency on the TypeScript workspace.
 #
 # Base image PINNED BY DIGEST and the spaCy NER model pinned to an exact version
-# (QS-25) so the build is reproducible — a plain model fetch otherwise pulls the
+# so the build is reproducible — a plain model fetch otherwise pulls the
 # latest compatible model, a silent supply-chain drift. Update procedure:
 # docs/operations/image-pins.md.
 # python:3.12-slim

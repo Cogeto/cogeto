@@ -1,4 +1,4 @@
--- Migration 0022 — the Memory Passport export ledger (§B.5, decision 0029).
+-- Migration 0022 — the Memory Passport export ledger (spec §11.4).
 -- A user triggers an export from Settings; a worker job assembles the signed,
 -- documented archive and stores it as a short-lived, owner-scoped object. This
 -- table is the request/status record the SPA polls and the download endpoint

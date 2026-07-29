@@ -1,5 +1,5 @@
 /**
- * Module-boundary rules (AGENTS.md "Modules", spec §15, decision 0003 ruling 2),
+ * Module-boundary rules (AGENTS.md "Modules", spec §15),
  * enforced in CI via `npm run boundaries`.
  */
 const DOMAIN_MODULES = 'memory|ingestion|retrieval|agents|connectors';
@@ -11,7 +11,7 @@ module.exports = {
       name: 'no-module-internal-imports',
       comment:
         'A bounded context may import another context only through its public interface ' +
-        '(the index.ts barrel). Internals are private (§A.1 rule 1).',
+        '(the index.ts barrel). Internals are private (spec §15 rule 1).',
       severity: 'error',
       from: { path: '^project/src/([^/]+)/' },
       to: {
@@ -24,14 +24,15 @@ module.exports = {
     },
     {
       name: 'seams-import-no-domain-module',
-      comment: 'identity and model-gateway are leaf seams: they import no domain module (§A.10).',
+      comment:
+        'identity and model-gateway are leaf seams: they import no domain module (spec §12.1).',
       severity: 'error',
       from: { path: `^project/src/(${SEAMS})/` },
       to: { path: `^project/src/(${DOMAIN_MODULES})/` },
     },
     {
       name: 'nothing-imports-entrypoints',
-      comment: 'Entrypoints are composition roots; no module depends on an entrypoint (§A.1).',
+      comment: 'Entrypoints are composition roots; no module depends on an entrypoint (spec §15).',
       severity: 'error',
       from: { path: '^project/src/', pathNot: '^project/src/entrypoints/' },
       to: { path: '^project/src/entrypoints/' },
@@ -39,7 +40,7 @@ module.exports = {
     {
       name: 'no-cross-module-persistence-imports',
       comment:
-        "No module reads another module's tables (§A.1 rule 2). Drizzle table definitions " +
+        "No module reads another module's tables (spec §15 rule 2). Drizzle table definitions " +
         'live under <module>/persistence/ and are module-private — they may not even be ' +
         'imported via a barrel re-export.',
       severity: 'error',
@@ -65,7 +66,7 @@ module.exports = {
     {
       name: 'only-model-gateway-imports-mistral',
       comment:
-        'All model calls go through the gateway seam (§A.10); only it may import the client.',
+        'All model calls go through the gateway seam (spec §12.1); only it may import the client.',
       severity: 'error',
       from: { path: '^project/', pathNot: '^project/src/model-gateway/' },
       to: { path: 'node_modules/@mistralai' },
@@ -85,7 +86,7 @@ module.exports = {
       name: 'only-memory-imports-qdrant',
       comment:
         'The memory module owns ALL storage access including the Qdrant client ' +
-        '(decision 0003 ruling 2); no other module may import it.',
+        '; no other module may import it.',
       severity: 'error',
       from: { path: '^project/', pathNot: '^project/src/memory/' },
       to: { path: 'node_modules/@qdrant' },
@@ -94,7 +95,7 @@ module.exports = {
       name: 'only-composition-roots-import-pg',
       comment:
         'Raw pg (Pool/Client) is confined to the composition roots + the database module ' +
-        '(QS-40): entrypoints/** and infrastructure/{db,database.module,migrations}.ts. A ' +
+        ': entrypoints/** and infrastructure/{db,database.module,migrations}.ts. A ' +
         'domain module opening its own Pool would run raw SQL that the persistence rule ' +
         'cannot see — closing the last "no cross-module table access" gap left to convention.',
       severity: 'error',

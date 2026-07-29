@@ -1,4 +1,4 @@
-# SearXNG for Cogeto web research (Priority 5 Part A; decision 0042).
+# SearXNG for Cogeto web research (Priority 5 Part A).
 #
 # Privacy posture:
 #  - No query persistence: SearXNG stores no query history; metrics are

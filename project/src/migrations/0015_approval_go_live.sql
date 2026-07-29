@@ -1,11 +1,11 @@
--- Migration 0015 — approval state machine goes live (O1-B, decision 0015).
--- The approval table + enum are contractual since migration 0001 (§A.8); this
+-- Migration 0015 — approval state machine goes live.
+-- The approval table + enum are contractual since migration 0001; this
 -- session makes them live. Two additive, nullable/defaulted support columns the
 -- machine needs — no enum change, no semantic change to the six states:
---   org_id     — tenant scoping for the confirm authorization (§A.4): only the
---                requesting org may see/decide an approval. Backfilled NULL on
---                the (empty) pre-O1-B table.
---   created_at — the "requested at" the Pending Approvals surface shows.
+-- org_id — tenant scoping for the confirm authorization (spec §4.2): only the
+-- requesting org may see/decide an approval. Backfilled NULL on
+-- the (empty) pre- table.
+-- created_at — the "requested at" the Pending Approvals surface shows.
 -- Plus a status index for the pending/history queries and the expiry sweep.
 
 ALTER TABLE approval ADD COLUMN org_id text;

@@ -58,7 +58,7 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
-      - name: Module boundaries (dependency-cruiser, §A.1)
+      - name: Module boundaries (dependency-cruiser, spec §15)
         run: npm run boundaries
 
   test:
@@ -95,9 +95,9 @@ jobs:
       - name: Build (shared → server → web)
         run: npm run build
 
-  # ── eval-gate (§B.4, decision 0011) ─────────────────────────────────────────
+  # ── eval-gate (spec §14) ─────────────────────────────────────────
   # Prompt, model, or pipeline changes that regress the golden set fail the
-  # build. Secret-gated behaviour (QS-15) is preserved:
+  # build. Secret-gated behaviour is preserved:
   #
   #   • Pull requests (including from forks): the MOCKED path only — build the
   #     eval harness + prompt wiring WITHOUT the live key. No secret is read, so
@@ -138,7 +138,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: npm run build
 
-      # ── Path filter (decision 0036): the live gates run only when the push
+      # ── Path filter: the live gates run only when the push
       # touches something that can change answer/memory quality — prompts, the
       # model gateway, ingestion, retrieval, or the eval corpus/harness. A
       # dependency bump or docs change skips LOUDLY instead of spending live
@@ -156,7 +156,7 @@ jobs:
             echo "relevant=true" >> "$GITHUB_OUTPUT"
           else
             echo "relevant=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=live eval SKIPPED::No quality-relevant paths in this push (prompts, model-gateway, ingestion, retrieval, memory, eval corpus/harness) — the live golden-set + chat gates did not run (decision 0036)."
+            echo "::warning title=live eval SKIPPED::No quality-relevant paths in this push (prompts, model-gateway, ingestion, retrieval, memory, eval corpus/harness) — the live golden-set + chat gates did not run."
           fi
 
       - name: Check for the eval secret (push to main only)
@@ -179,7 +179,7 @@ jobs:
           COGETO_EVAL_GATE: '1'
         run: npm run eval
 
-      - name: Chat eval gate (rule checks + mean coverage, decision 0036)
+      - name: Chat eval gate (rule checks + mean coverage)
         if: github.event_name == 'push' && steps.paths.outputs.relevant == 'true' && steps.secret.outputs.present == 'true'
         env:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}

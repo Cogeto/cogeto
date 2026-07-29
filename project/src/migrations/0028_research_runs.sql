@@ -1,5 +1,5 @@
 -- Migration 0028 — research runs: the show-edit-approve gate's durable record
--- (Priority 5 Part B; decisions 0044/0045).
+-- (Priority 5 Part B;/0045).
 --
 -- A research run is the auditable trail of ONE research invocation: the user's
 -- intent, the proposed query, the minimised query with its reason, and — only

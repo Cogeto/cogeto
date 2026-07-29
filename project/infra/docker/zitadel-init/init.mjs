@@ -1,5 +1,5 @@
 /**
- * zitadel-init — one-shot bootstrap job (the specification §A.2: zero clicks).
+ * zitadel-init — one-shot bootstrap job (the specification: zero clicks).
  *
  * Zitadel's FirstInstance config creates the org, the human admin, and a
  * machine user with a PAT. This job uses that PAT to make the instance usable
@@ -23,7 +23,7 @@ const WEB_CONFIG_FILE = process.env.COGETO_WEB_CONFIG_FILE ?? '/web-config/confi
 
 const PROJECT_NAME = 'cogeto';
 const APP_NAME = 'cogeto-web';
-// The operator/admin role the jobs endpoints require (QS-10). The FirstInstance
+// The operator/admin role the jobs endpoints require. The FirstInstance
 // human admin is granted it here so the System view works out of the box; a
 // second (non-admin) user logs in fine but without it.
 const ADMIN_ROLE = process.env.COGETO_ADMIN_ROLE || 'admin';
@@ -151,7 +151,7 @@ async function main() {
 
   // 2b. Ensure the operator 'admin' role exists AND is asserted into tokens, so
   // the seam's userinfo call carries roles and the AdminGuard on the jobs
-  // endpoints (QS-10) can see them. Without this a fresh instance has no roles
+  // endpoints can see them. Without this a fresh instance has no roles
   // and the System view returns 403 to everyone.
   const roleRes = await request(
     'POST',
@@ -231,7 +231,7 @@ async function main() {
     }
   }
 
-  // 2d. Harden the instance login surface (decision 0034). Idempotent AND
+  // 2d. Harden the instance login surface. Idempotent AND
   // self-verifying: after any change the policy is re-read and every desired
   // value asserted — a silently-ignored field can never pass as hardened.
   //   allowRegister=false          operator-created users only, no self-signup

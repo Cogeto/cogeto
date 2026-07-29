@@ -1,4 +1,4 @@
--- Migration 0019 — the user directory (Session O2-B). The identity seam is
+-- Migration 0019 — the user directory. The identity seam is
 -- otherwise stateless (Principals derive from token claims), but shared scope
 -- needs to name the OWNER of a memory another org member can see. Zitadel is not
 -- queried per-owner (no management token on the read path); instead we record

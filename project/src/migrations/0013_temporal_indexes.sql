@@ -1,4 +1,4 @@
--- Migration 0013 — temporal retrieval indexes (Session F3-A; decision 0012;
+-- Migration 0013 — temporal retrieval indexes (
 -- research temporal-knowledge-patterns §5: "production use demands indexes on
 -- both interval bounds"). Point-in-time queries filter on the shared interval
 -- predicate; change queries scan audit rows by action within a window.

@@ -4,10 +4,10 @@
 #   1. verify:version — the tag must equal package.json's version (two sources
 #      of truth, one number). A mismatch fails before anything is published.
 #   2. Build the production amd64 images once each — the full pull-only set a
-#      customer instance needs (decision 0030: the instance NEVER builds):
+# customer instance needs (: the instance NEVER builds):
 #        cogeto/cogeto        app/worker/migrate/preflight (target `runtime`)
 #        cogeto/cogeto-edge   Caddy edge with the built SPA (target `caddy`)
-#        cogeto/cogeto-mail   receive-only Haraka inbound SMTP (Session O4)
+# cogeto/cogeto-mail receive-only Haraka inbound SMTP
 #   3. Push each as :X.Y.Z and :latest to Docker Hub.
 #   4. Sign every pushed image with keyless cosign (Sigstore, GitHub OIDC — no
 #      long-lived keys) and generate an SBOM for the main image, attached to
@@ -114,7 +114,7 @@ jobs:
           sbom: false
 
       # The Caddy edge carries the built SPA — a pull-only instance cannot
-      # produce it locally (decision 0030), so the release publishes it.
+      # produce it locally, so the release publishes it.
       - name: Build and push cogeto/cogeto-edge (amd64)
         id: build-edge
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
@@ -132,7 +132,7 @@ jobs:
           provenance: false
           sbom: false
 
-      # The receive-only Haraka inbound SMTP service (Session O4, decision 0028).
+      # The receive-only Haraka inbound SMTP service.
       - name: Build and push cogeto/cogeto-mail (amd64)
         id: build-mail
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
@@ -229,7 +229,7 @@ jobs:
             --notes-file release-notes.md \
             "$SBOM"
 
-  # ── Trust scores (O7, decision 0032) — NEVER blocks the release ──────────
+  # ── Trust scores (O7) — NEVER blocks the release ──────────
   # A separate job so (a) job-level continue-on-error keeps the release run
   # green even when this fails, and (b) it can share the `live-model-eval`
   # concurrency group with CI's eval-gate: both consume ONE Mistral API key,
@@ -361,7 +361,7 @@ jobs:
           gh pr create --base main --head "$BRANCH" \
             --title "chore: publish trust scores for $TAG" \
             --label chore \
-            --body "Automated (decision 0032): the measured trust scores for $TAG (eval/trust-scores/$TAG.json, immutable) and the rebuilt index. Merges automatically once the required checks pass."
+            --body "Automated: the measured trust scores for $TAG (eval/trust-scores/$TAG.json, immutable) and the rebuilt index. Merges automatically once the required checks pass."
           if [ "$HAS_ADMIN_TOKEN" = "true" ]; then
             # `gh pr checks --watch` errors "no checks reported" until the checks
             # register (they lag PR creation by a few seconds), so RETRY it until
