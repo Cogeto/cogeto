@@ -72,6 +72,10 @@ export class FileSourceReader implements SourceReader {
       createdAt: metadata.uploadDate,
       scope: metadata.scope,
       sensitive: metadata.sensitive,
+      // A document is someone else's writing, even when the user uploaded it.
+      // Its obligations are facts about the document, never the user's own
+      // commitments, so they never become open loops.
+      authoredByUser: false,
     };
   }
 
@@ -94,6 +98,8 @@ export class FileSourceReader implements SourceReader {
       createdAt: md['uploaded-at'] ? new Date(md['uploaded-at']!) : new Date(),
       scope: (md['scope'] as MemoryScope | undefined) ?? 'private',
       sensitive: md['sensitive'] === 'true',
+      // Same rule as the durable path: a document is not the user's own voice.
+      authoredByUser: false,
       // Signals the pipeline to delete the staging object once memories commit.
       stagingKey,
     };

@@ -211,6 +211,8 @@ describe('cross-user scope isolation (integration, real Postgres + Qdrant)', () 
       sourceId: randomUUID(),
       entities: ['Puffin'],
       kind: 'commitment',
+      // A note is the user's own voice: the first-person rule admits it.
+      authoredByUser: true,
       embeddingModel: EMBED,
     } as NewFact);
 
@@ -226,6 +228,8 @@ describe('cross-user scope isolation (integration, real Postgres + Qdrant)', () 
       sourceId: randomUUID(),
       entities: ['Gecko'],
       kind: 'commitment',
+      // A note is the user's own voice: the first-person rule admits it.
+      authoredByUser: true,
       embeddingModel: EMBED,
     } as NewFact);
     const bLoops = await store.openLoopsForPrincipal(B);
@@ -244,6 +248,8 @@ describe('cross-user scope isolation (integration, real Postgres + Qdrant)', () 
       entities: ['Osprey'],
       kind: 'commitment',
       sensitive: true,
+      // A note is the user's own voice: the first-person rule admits it.
+      authoredByUser: true,
       embeddingModel: EMBED,
     } as NewFact);
     // Excluded by default, even for the owner.
@@ -267,6 +273,8 @@ describe('cross-user scope isolation (integration, real Postgres + Qdrant)', () 
       sourceId: src,
       entities: ['Kestrel'],
       kind: 'commitment',
+      // A note is the user's own voice: the first-person rule admits it.
+      authoredByUser: true,
       embeddingModel: EMBED,
     } as NewFact);
     expect((await store.openLoopsForPrincipal(A)).map((m) => m.id)).toContain(commitment.id);
@@ -278,6 +286,55 @@ describe('cross-user scope isolation (integration, real Postgres + Qdrant)', () 
       'settled in the integration test',
     );
     expect((await store.openLoopsForPrincipal(A)).map((m) => m.id)).not.toContain(commitment.id);
+  });
+
+  it('open_loops_first_person_only: a document obligation is remembered but is not the user’s open loop', async () => {
+    // A clause out of an uploaded contract. It is a true fact and it is stored
+    // and retrievable as one, but the user never promised it.
+    const clause = await store.createFromFact(A, {
+      content: 'The Lender shall advance to the Borrower the principal sum of EUR 1,000,000.',
+      scope: 'private',
+      sourceType: 'file',
+      sourceId: randomUUID(),
+      entities: ['Lender', 'Borrower'],
+      subjectEntity: 'the Lender',
+      kind: 'commitment',
+      validUntil: new Date('2026-07-31T00:00:00.000Z'),
+      // What the file SourceReader stamps: a document is someone else's writing.
+      authoredByUser: false,
+      embeddingModel: EMBED,
+    } as NewFact);
+
+    // The user's own note, same kind, same owner, same scope.
+    const ownPromise = await store.createFromFact(A, {
+      content: 'You will send Marko the revised Atlas proposal.',
+      scope: 'private',
+      sourceType: 'user_note',
+      sourceId: randomUUID(),
+      entities: ['Marko'],
+      kind: 'commitment',
+      authoredByUser: true,
+      embeddingModel: EMBED,
+    } as NewFact);
+
+    const loops = (await store.openLoopsForPrincipal(A)).map((m) => m.id);
+    expect(loops).not.toContain(clause.id); // never presented as the user's own
+    expect(loops).toContain(ownPromise.id); // their actual commitment still stands
+
+    // Extraction is untouched: the clause is still remembered and still readable.
+    expect(await store.getForPrincipal(A, clause.id)).not.toBeNull();
+
+    // Authorship it could not determine is not authorship it may assume.
+    const unknown = await store.createFromFact(A, {
+      content: 'Someone will confirm the Kestrel budget.',
+      scope: 'private',
+      sourceType: 'email',
+      sourceId: randomUUID(),
+      entities: ['Kestrel'],
+      kind: 'commitment',
+      embeddingModel: EMBED,
+    } as NewFact);
+    expect((await store.openLoopsForPrincipal(A)).map((m) => m.id)).not.toContain(unknown.id);
   });
 
   it('review_own_only: a peer’s shared uncertain fact is readable but NOT in B’s Review queue', async () => {

@@ -206,6 +206,32 @@ memory whose `kind` is `commitment` or `open_loop` and whose status is `active`,
 answer and the attention surface call, so there is one definition of "still open"
 in the product rather than two that can drift.
 
+### The first-person rule
+
+An obligation is yours only when **you wrote the words it came from**. A loan
+agreement says *"the Lender shall advance the principal sum"*. That is a true fact
+about the document, it is extracted and stored and retrievable like any other, and
+it is emphatically **not** something you promised. Presenting it as your open loop
+would be the product lying about what it knows.
+
+So authorship is recorded structurally at read time, never judged by a model:
+
+| Source | Authorship |
+| --- | --- |
+| Note | the user's own |
+| Captured chat | the user's own (only user messages are ever captured) |
+| Uploaded document | not the user's |
+| Fetched web page | not the user's |
+| Email | resolved from whether the message came from the user's own address |
+
+The open-loops read then admits first-person facts only. **Unknown authorship is
+not the user's**: a fact the pipeline could not classify stays out, because a
+wrongly surfaced obligation costs more than a missed one.
+
+This rule lives on the read rather than on extraction, deliberately. Extraction
+stays honest about what a document says; the surface stays honest about whose
+obligation it is.
+
 Statuses that no longer stand (`outdated`, `replaced`, `contradicted`) are excluded
 structurally, so a settled obligation cannot reach the answer. `uncertain` stays in
 and is framed softly: an unconfirmed promise is still a promise.
