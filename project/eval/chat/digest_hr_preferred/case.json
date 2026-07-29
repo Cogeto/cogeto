@@ -1,6 +1,6 @@
 {
   "case_id": "digest_hr_preferred",
-  "description": "The hr-preferred digest (P6.6, decision 0052): Cogeto-initiated content anchors to preferred_language. The harness runs a REAL dreaming cycle over a fact whose validity has lapsed, then builds the digest in Croatian and requires Croatian lines. The scripted turn itself is deterministic small talk.",
+  "description": "The hr-preferred digest (P6.6): Cogeto-initiated content anchors to preferred_language. The harness runs a REAL dreaming cycle over a fact whose validity has lapsed, then builds the digest in Croatian and requires Croatian lines. The scripted turn itself is deterministic small talk.",
   "anchor": "2026-07-10T09:00:00.000Z",
   "facts": [
     {

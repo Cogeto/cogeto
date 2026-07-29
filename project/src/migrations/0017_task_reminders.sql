@@ -1,4 +1,4 @@
--- Migration 0017 — reminder state on the task table (Session O2-A; F3 handoff
+-- Migration 0017 — reminder state on the task table (F3 handoff
 -- §2, pre-approved additive columns). Reminders are NOT a new table: the state
 -- is "is there a pending reminder of this kind for this task", one nullable
 -- timestamp per trigger. The nightly reminders pass (graphile cron, one crontab

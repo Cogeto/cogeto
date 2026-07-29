@@ -1,5 +1,5 @@
--- Migration 0010 — nightly integrity sweep + receipt permanence (Session F1-B,
--- the specification §A.7 step 4, §B.1; decision 0009).
+-- Migration 0010 — nightly integrity sweep + receipt permanence (
+-- the specification spec §11.1 step 4, spec §11.1).
 
 -- ── integrity_alert: one row per discrepancy the sweep finds ──────────────────
 -- kind: memory_row_present | qdrant_point_present | object_present | chain_broken
@@ -18,7 +18,7 @@ CREATE TABLE integrity_alert (
 CREATE UNIQUE INDEX integrity_alert_dedupe_idx
   ON integrity_alert (coalesce(receipt_id::text, ''), kind, detail);
 
--- ── deletion_receipt permanence (§B.1: receipts cannot be deleted) ────────────
+-- ── deletion_receipt permanence (spec §11.1: receipts cannot be deleted) ────────────
 -- Enforced in the database, not by convention (the audit_log pattern): DELETE
 -- never; UPDATE only while pending (the saga's one legal transition writes
 -- hash/signature/timestamps as it flips pending → confirmed). A confirmed

@@ -1,10 +1,10 @@
--- Migration 0021 — inbound email (Session O4, decision 0028). Feature tables
--- arrive with their feature (decision 0003 ruling 1). All four are owned by the
+-- Migration 0021 — inbound email. Feature tables
+-- arrive with their feature. All four are owned by the
 -- connectors module; memories extracted from an email carry provenance
 -- source_type = 'email' (already in the source_type enum, migration 0001),
--- source_id = email_message.id (§A.6).
+-- source_id = email_message.id.
 --
--- Full retention (decision 0028 ruling 5): the row + the raw MinIO object are
+-- Full retention: the row + the raw MinIO object are
 -- the complete retained message. Object keys are recorded on the row so the
 -- deletion saga can enumerate and erase them (saga coverage is Unit B; the
 -- schema is deletion-ready).
@@ -16,7 +16,7 @@ CREATE TABLE email_message (
   -- Capture-time scope; derived memories inherit it (the source reader passes
   -- it to the pipeline). Default private, like notes (migration 0018).
   scope           scope NOT NULL DEFAULT 'private',
-  -- Owner-only display of sensitive email content (decision 0003 flag).
+  -- Owner-only display of sensitive email content ( flag).
   sensitive       boolean NOT NULL DEFAULT false,
   -- Threading headers, retained verbatim for future thread reconstruction.
   message_id      text,
@@ -45,7 +45,7 @@ CREATE INDEX email_message_owner_received_idx ON email_message (owner_id, receiv
 CREATE INDEX email_message_message_id_idx ON email_message (message_id);
 
 -- ── email_attachment: every attachment recorded; supported types linked to a
---    document-pipeline file source (decision 0028 ruling 8) ─────────────────────
+-- document-pipeline file source ─────────────────────
 CREATE TABLE email_attachment (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email_id        uuid NOT NULL REFERENCES email_message (id) ON DELETE CASCADE,
@@ -63,7 +63,7 @@ CREATE TABLE email_attachment (
 
 CREATE INDEX email_attachment_email_idx ON email_attachment (email_id);
 
--- ── email_allowlist: the primary acceptance gate (decision 0028 rulings 2/7) ──
+-- ── email_allowlist: the primary acceptance gate ( rulings 2/7) ──
 -- Empty by default → no external mail accepted (closed by default). A message is
 -- accepted only when its matched sender is an 'address' entry or matches a
 -- 'domain' entry. Values are stored normalized (lower-cased; domains bare).
@@ -82,7 +82,7 @@ CREATE TABLE email_allowlist (
 CREATE UNIQUE INDEX email_allowlist_owner_kind_value_idx
   ON email_allowlist (owner_id, kind, value);
 
--- ── email_refusal: metadata-only log of refused mail (decision 0028 ruling 7) ──
+-- ── email_refusal: metadata-only log of refused mail ──
 -- No body is ever retained for refused mail — sender, time, reason only. Powers
 -- the "recent refusals → allowlist in one click" affordance in Settings.
 CREATE TABLE email_refusal (

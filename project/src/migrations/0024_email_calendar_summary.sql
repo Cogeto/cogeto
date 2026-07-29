@@ -1,4 +1,4 @@
--- 0024 — calendar-invite parsing (Session O4, GAP-4). A meeting invite arrives
+-- 0024 — calendar-invite parsing (GAP-4). A meeting invite arrives
 -- as a text/calendar (VEVENT) part whose event details never reach the human
 -- body, so an invite-only email extracted weakly. Intake now parses the VEVENT
 -- deterministically into a stable text summary, stored here; the email

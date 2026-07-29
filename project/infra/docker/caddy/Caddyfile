@@ -1,4 +1,4 @@
-# Cogeto edge (decision 0002): TLS termination, SPA static files, reverse proxy.
+# Cogeto edge: TLS termination, SPA static files, reverse proxy.
 # Dev instances use Caddy's internal CA (self-signed for localhost); managed
 # instances swap this block for a real domain and ACME.
 
@@ -18,7 +18,7 @@ localhost {
 	}
 
 	# The internal mail-intake endpoint is reachable ONLY from the mail container
-	# on the internal network (SEC-2/GAP-5, decision 0028 ruling 7) — never the edge.
+	# on the internal network (SEC-2/GAP-5) — never the edge.
 	handle /api/email/intake* {
 		respond 404
 	}
@@ -30,15 +30,15 @@ localhost {
 
 	# The SPA: static files with history-API fallback.
 	#
-	# QS-19: strict Content-Security-Policy applied to the SPA responses ONLY
+	#: strict Content-Security-Policy applied to the SPA responses ONLY
 	# (never the proxied Zitadel login UI or the JSON API, which have their own
 	# needs). script-src is 'self' with NO third-party sources and no
 	# 'unsafe-inline' — an injected <script src=evil> or inline handler cannot
 	# execute. style-src keeps 'unsafe-inline' (React sets element styles at
 	# runtime); connect-src is 'self' because the API and Zitadel share this
-	# origin. Tradeoff recorded (QS-19): the SPA holds the bearer token in
+	# origin. Tradeoff recorded: the SPA holds the bearer token in
 	# sessionStorage — accepted for v1, since a strict script-src is the real XSS
-	# mitigation and the single-tenant origin (decision 0019) bounds exposure.
+	# mitigation and the single-tenant origin bounds exposure.
 	handle {
 		root * /srv
 		header {
@@ -52,7 +52,7 @@ localhost {
 	}
 }
 
-# ── Infrastructure consoles moved out (QS-4) ──────────────────────────────────
+# ── Infrastructure consoles moved out ──────────────────────────────────
 # The s3.localhost / minio.localhost / qdrant.localhost vhosts USED to live here,
 # on the public 80/443 listener — any reachable host could hit them by spoofing
 # the Host header (unauthenticated Qdrant, MinIO console). They now live in

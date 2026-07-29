@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // publish-trust-scores.mjs — thin release-pipeline wrapper around the publish
-// logic in project/src/entrypoints/trust-scores.ts (decision 0032). Requires
+// logic in project/src/entrypoints/trust-scores.ts. Requires
 // the server workspace to be BUILT (the release job runs `npm run build`
 // before this). All validation, immutability, and index logic live in the
 // imported module so the test suite exercises them without a dist build.

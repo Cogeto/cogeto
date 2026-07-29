@@ -5,7 +5,7 @@ import type { MemoryStatus } from './memory';
  * dashboard statistics. Both are COMPUTED per Principal over signals the
  * instance already produces (open loops read from memory, review queues,
  * approvals, the dreaming digest); only the minimal read-state (last_seen_at
- * + dismissed keys) is materialized. See docs/notes/dashboard-notifications.md and.
+ * + dismissed keys) is materialized. See docs/features/attention.md.
  *
  * Every item and every number is Principal-scoped through the existing gated
  * reads — nothing crosses a user or an org boundary, and notification text

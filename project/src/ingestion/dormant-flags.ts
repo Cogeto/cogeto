@@ -3,7 +3,7 @@ import type { Db } from '../infrastructure/index';
 import { dormantFlag } from './persistence/tables';
 
 /**
- * The dormant-flag consumption API (docs/handoff/F2-dreaming.md §3): ingestion
+ * The dormant-flag consumption API (docs/features/memory.md): ingestion
  * owns the table; every other module reads and clears flags ONLY through
  * these. Dreaming writes flags and clears them when a memory leaves `active`.
  * Since the reader is retrieval's open-loops query, which turns

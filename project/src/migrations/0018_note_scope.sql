@@ -1,4 +1,4 @@
--- Migration 0018 — scope on the note table (Session O2-B). Notes were
+-- Migration 0018 — scope on the note table. Notes were
 -- private-only in v1 (the embed-store stage hard-defaulted derived memories to
 -- `private`); shared scope now ships to humans, so capture can choose. The note
 -- row carries the chosen scope so the worker's source reader can pass it to the

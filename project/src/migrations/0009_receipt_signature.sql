@@ -1,4 +1,4 @@
--- Migration 0009 — deletion receipt signature (Session F1, §B.1, decision 0008).
+-- Migration 0009 — deletion receipt signature (spec §11.1).
 -- Receipts are hash-chained AND signed with the instance ed25519 key; 0001 gave
 -- the chain columns (prev_hash, hash) but nowhere to store the signature.
 -- The signature is over the SHA-256 chain hash of the canonical receipt payload

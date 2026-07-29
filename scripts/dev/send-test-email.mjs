@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // send-test-email.mjs — submit a fixture message to the local Cogeto inbound
-// mail service over SMTP, WITHOUT real DNS (Session O4, decision 0028). Speaks
+// mail service over SMTP, WITHOUT real DNS. Speaks
 // raw SMTP over a TCP socket (no dependency). The final response to the DATA
 // "." is the acceptance verdict Haraka relays from the app:
 //   250 queued  → accepted (sender allowlisted)

@@ -1,6 +1,6 @@
 {
   "case_id": "blended_origins_en",
-  "description": "Per-claim origin correctness, live (decision 0046): a question spanning the user's world and the wider world blends both origins — the stored fact is cited ({{cite}} present), the general-knowledge half is marked {{unsourced}}, and the knowledge classification carries the research offer.",
+  "description": "Per-claim origin correctness, live: a question spanning the user's world and the wider world blends both origins — the stored fact is cited ({{cite}} present), the general-knowledge half is marked {{unsourced}}, and the knowledge classification carries the research offer.",
   "anchor": "2026-07-23T09:00:00.000Z",
   "notes": [
     "Adriatic Foods uses HubSpot as their CRM; the Atlas project migrates their data into it.",

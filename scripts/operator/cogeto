@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# cogeto — the Cogeto operator script (roadmap D3, decision 0030).
+# cogeto — the Cogeto operator script (roadmap D3).
 #
 # The single tool an operator runs BY HAND on a fresh OVHcloud Ubuntu instance
 # to install, configure, upgrade, and check a customer instance. Operations are
@@ -16,7 +16,7 @@
 # Global flags: --check (dry run: validate prerequisites, print the intended
 # actions and the checklist, mutate NOTHING), --help, --root DIR.
 #
-# Design rules (decision 0030):
+# Design rules:
 #   • The instance PULLS the prebuilt, cosign-signed release images
 #     (cogeto/cogeto, cogeto/cogeto-edge, cogeto/cogeto-mail) and NEVER builds.
 #   • Idempotent where possible — safe to re-run; every destructive or
@@ -27,7 +27,7 @@
 #     instance-specific "WHAT YOU MUST DO NOW" checklist at the end of the run.
 #   • Supported OS: Ubuntu 22.04 LTS and 24.04 LTS, amd64.
 #
-# Developer notes: docs/notes/operator-script.md. Tests (usage, --check, pure
+# Developer notes: docs/operations/operator-script.md. Tests (usage, --check, pure
 # helpers): project/src/entrypoints/operator-script.spec.ts. Keep this file
 # clean under shellcheck (CI lint job) and bash-3.2-compatible (the spec also
 # runs it on macOS): no associative arrays, no ${var,,}, no mapfile.
@@ -36,7 +36,7 @@ set -euo pipefail
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-# Version policy lives on GitHub Releases (decision 0033): the newest release
+# Version policy lives on GitHub Releases: the newest release
 # NOT flagged "pre-release" installs by default, and flagged releases are
 # retired — this script refuses them. No pinned version constants to bump.
 
@@ -173,7 +173,7 @@ Subcommands:
                certificate state and renewal, last migration, queue depth and
                dead-letter count, deletion-sweep state. Green only when
                actually working.
-  features     Optional capabilities (P6.7, decision 0055). With no verb:
+  features Optional capabilities (P6.7). With no verb:
                list every capability (redaction, research, demo, consoles,
                local-models) with its configured state and, when the stack is
                running, its live health from /api/health; with the stack down
@@ -223,14 +223,14 @@ version_cmp() {
 
 version_ge() { [ "$(version_cmp "$1" "$2")" != "-1" ]; }
 
-# The per-tenant inbound address scheme (decision 0028 ruling 1): the fixed
+# The per-tenant inbound address scheme: the fixed
 # local part `capture` on the instance's own `in.` subdomain.
 derive_inbound_address() { printf 'capture@in.%s' "$1"; }
 derive_inbound_subdomain() { printf 'in.%s' "$1"; }
 derive_mx_host() { printf 'mail.%s' "$1"; }
 derive_s3_origin() { printf 'https://s3.%s' "$1"; }
 
-# ── Capability helpers (P6.7, decision 0055) — pure, unit-tested ─────────────
+# ── Capability helpers (P6.7) — pure, unit-tested ─────────────
 
 FEATURE_IDS="redaction research demo consoles local-models"
 
@@ -404,7 +404,7 @@ hub_latest_version() {
 
 github_latest_version() {
   # The newest release NOT flagged pre-release or draft — GitHub's /latest
-  # endpoint applies that filter itself (decision 0033). No jq: extract
+  # endpoint applies that filter itself. No jq: extract
   # tag_name, strip the leading v.
   curl -fsS --max-time 15 "${GH_RELEASES_API}/latest" 2>/dev/null \
     | sed -n 's/.*"tag_name":[[:space:]]*"v\{0,1\}\([0-9][0-9.]*\)".*/\1/p' \
@@ -425,7 +425,7 @@ resolve_latest_version() {
 
 require_supported_version() {
   # An explicitly requested version must be a published, non-retired release.
-  # Retired/testing releases carry the GitHub pre-release flag (decision 0033).
+  # Retired/testing releases carry the GitHub pre-release flag.
   rsv_v="$1"
   rsv_body="$(curl -fsS --max-time 15 "${GH_RELEASES_API}/tags/v${rsv_v}" 2>/dev/null)" || rsv_body=""
   if [ -z "$rsv_body" ]; then
@@ -454,7 +454,7 @@ EOF
 }
 
 # Install cosign from its pinned GitHub release (idempotent; single static
-# binary). Failure is FATAL (decision 0033): images are only ever started
+# binary). Failure is FATAL: images are only ever started
 # after their signatures verify, so a missing verifier stops the run.
 install_cosign() {
   if command -v cosign >/dev/null 2>&1; then
@@ -473,7 +473,7 @@ install_cosign() {
     say "cosign installed: $(cosign version 2>/dev/null | head -n 1 || echo v${COSIGN_VERSION})"
   else
     rm -f /usr/local/bin/cosign.tmp
-    die "could not download cosign from ${url} — image signatures cannot be verified, refusing to continue (decision 0033). Check the network and re-run."
+    die "could not download cosign from ${url} — image signatures cannot be verified, refusing to continue. Check the network and re-run."
   fi
 }
 
@@ -504,7 +504,7 @@ verify_images() {
   elif [ "$CHECK" -eq 1 ]; then
     say "[dry-run] would verify all three image signatures with cosign"
   else
-    die "cosign is not installed — refusing to start unverified images (decision 0033). Re-run: install/upgrade installs cosign automatically."
+    die "cosign is not installed — refusing to start unverified images. Re-run: install/upgrade installs cosign automatically."
   fi
   print_cosign_commands "$version"
 }
@@ -518,7 +518,7 @@ fetch_deploy_assets() {
   fetch_one "v${version}" "project/infra/deploy/docker-compose.deploy.yml" "$COGETO_ROOT/docker-compose.yml"
   fetch_one "v${version}" "project/infra/deploy/Caddyfile" "$COGETO_ROOT/Caddyfile"
   fetch_one "v${version}" "project/infra/docker/zitadel-init/init.mjs" "$COGETO_ROOT/zitadel-init/init.mjs"
-  # The research profile's SearXNG settings (decision 0055) — fetched with the
+  # The research profile's SearXNG settings — fetched with the
   # other assets so `cogeto features enable research` works offline later.
   run mkdir -p "$COGETO_ROOT/searxng"
   fetch_one "v${version}" "project/infra/docker/searxng/settings.yml" "$COGETO_ROOT/searxng/settings.yml"
@@ -621,7 +621,7 @@ wait_healthy() {
   done
 }
 
-# The app's aggregate health endpoint (/api/health, public by design — QS-18)
+# The app's aggregate health endpoint (/api/health, public by design —)
 # covers Postgres, Qdrant, MinIO + encryption, integrity sweep, migrations,
 # queue depth/dead-letter, model gateway, and mail. Fetched from INSIDE the app
 # container so it works before DNS points anywhere.
@@ -661,7 +661,7 @@ add_install_checklist() {
 
   todo_dns "Open https://${domain} — a valid Let's Encrypt certificate is served and the login page loads (Caddy retries ACME automatically once DNS resolves; no restart needed)"
   todo_dns "Create the customer's user: open the Zitadel Console at https://${domain}/ui/console, sign in as admin@${domain} (password = ZITADEL_ADMIN_PASSWORD in ${ENV_FILE}), Users → + New — choose 'Set initial password' and hand it over out-of-band. NEVER 'Send an email invitation': the instance has no outbound SMTP, so invitations silently never arrive."
-  todo_dns "Email capture test (sender-routed, decision 0031): have the CUSTOMER forward any email FROM THEIR OWN ADDRESS (the one their user is registered with) to ${inbound} — it is captured for them with no configuration. External senders they auto-forward from are added to THEIR allowlist (Settings → Email capture); the operator admin account never captures."
+  todo_dns "Email capture test (sender-routed): have the CUSTOMER forward any email FROM THEIR OWN ADDRESS (the one their user is registered with) to ${inbound} — it is captured for them with no configuration. External senders they auto-forward from are added to THEIR allowlist (Settings → Email capture); the operator admin account never captures."
   todo_dns "Export a Memory Passport (dashboard → Passport) and confirm the download"
   todo_dns "Delete a test source and confirm Forgotten shows a signed deletion receipt"
   todo_dns "Run 'sudo cogeto status' on the instance — everything green (the script installed itself to /usr/local/bin/cogeto)"
@@ -848,7 +848,7 @@ cmd_upgrade() {
     confirm_typed "upgrade to ${target}" "this pulls ${IMAGE}[-edge|-mail]:${target}, re-runs the migration job, and restarts app and worker (short downtime)."
   fi
 
-  # Signature verification is mandatory (decision 0033) — make sure the
+  # Signature verification is mandatory — make sure the
   # verifier exists before anything is mutated (older instances installed it
   # optionally at install time).
   install_cosign
@@ -879,7 +879,7 @@ cmd_upgrade() {
 
 # After an upgrade the configured embedding model may differ from the model
 # recorded on existing memories (migration 0004) — then the Qdrant index must
-# be rebuilt from Postgres (§A.4: reindex must always work).
+# be rebuilt from Postgres (spec §4.2: reindex must always work).
 check_embedding_model() {
   configured="$(env_get COGETO_MISTRAL_EMBED_MODEL)"
   [ -n "$configured" ] || configured="mistral-embed"
@@ -894,7 +894,7 @@ check_embedding_model() {
     return 0
   fi
   warn "${stale} memories were embedded with a DIFFERENT model than the configured '${configured}' — the vector index must be rebuilt (re-embeds via the model API; costs API calls)"
-  confirm_typed "REINDEX" "rebuild the Qdrant index from Postgres now (the app keeps running; §A.4)."
+  confirm_typed "REINDEX" "rebuild the Qdrant index from Postgres now (the app keeps running; spec §4.2)."
   run compose exec -T app node project/src/dist/entrypoints/reindex.js
 }
 
@@ -977,7 +977,7 @@ cmd_status() {
   echo "────────────────────────────────────────────────────────────────────────"
 }
 
-# ── features (P6.7, decision 0055) ────────────────────────────────────────────
+# ── features (P6.7) ────────────────────────────────────────────
 
 # Whether SERVICE exists in the instance's compose file under PROFILE. Returns
 # 0 = present, 1 = absent, 2 = cannot tell (no docker; --check on a dev box).
@@ -1106,7 +1106,7 @@ features_enable() {
   case "$fid" in
     research)
       require_feature_service research searxng research \
-        "On a deployed instance, upgrade first: the research profile ships with the deploy channel since decision 0055."
+        "On a deployed instance, upgrade first: the research profile ships with the deploy channel since."
       # SearXNG needs a per-instance server secret; generate once, keep stable.
       if [ -z "$(env_get SEARXNG_SECRET)" ]; then
         env_set SEARXNG_SECRET "$(gen_token)"
@@ -1128,9 +1128,9 @@ features_enable() {
       ;;
     redaction)
       require_feature_service redaction redaction redaction \
-        "The redaction sidecar is not part of the v1 deploy channel (decision 0030): its image is built from source, never published. It is available on a source checkout."
+        "The redaction sidecar is not part of the v1 deploy channel: its image is built from source, never published. It is available on a source checkout."
       env_set REDACTION_ENABLED "1"
-      # QS-21 posture: with redaction on, also refuse to boot without it — the
+      # posture: with redaction on, also refuse to boot without it — the
       # enable cannot silently regress to plaintext later.
       env_set REDACTION_REQUIRED "1"
       env_set COMPOSE_PROFILES "$(profiles_add "$(env_get COMPOSE_PROFILES)" redaction)"
@@ -1141,13 +1141,13 @@ features_enable() {
       todo_now "Memory: the redaction sidecar holds ~0.7-1 GB RSS (spaCy NER model) — confirm the instance has headroom ('free -m')"
       ;;
     demo)
-      # The production guard is respected LOUDLY (decision 0022 ruling 4).
+      # The production guard is respected LOUDLY.
       if [ "$(env_get COGETO_PRODUCTION)" = "1" ] \
         || grep -q "COGETO_PRODUCTION: '1'" "$COGETO_ROOT/docker-compose.yml" 2>/dev/null; then
-        die "REFUSING to enable demo: this is a PRODUCTION instance (COGETO_PRODUCTION=1). The demo publishes a shared session token to anyone — it must never run beside real data (decision 0022 ruling 1)."
+        die "REFUSING to enable demo: this is a PRODUCTION instance (COGETO_PRODUCTION=1). The demo publishes a shared session token to anyone — it must never run beside real data."
       fi
       require_feature_service demo demo-seed demo \
-        "The demo profile is dev-only (decision 0030): its seed image is never published."
+        "The demo profile is dev-only: its seed image is never published."
       env_set COGETO_DEMO_MODE "1"
       env_set COMPOSE_PROFILES "$(profiles_add "$(env_get COMPOSE_PROFILES)" demo)"
       apply_feature_change
@@ -1156,12 +1156,12 @@ features_enable() {
       ;;
     consoles)
       require_feature_service consoles caddy-consoles consoles \
-        "The consoles profile is dev-only (decision 0030): its edge image is never published."
+        "The consoles profile is dev-only: its edge image is never published."
       env_set COGETO_CONSOLES_ENABLED "1"
       env_set COMPOSE_PROFILES "$(profiles_add "$(env_get COMPOSE_PROFILES)" consoles)"
       apply_feature_change
       wait_service_healthy app 120 || true
-      say "consoles are LOCALHOST-ONLY: https://minio.localhost:8443 and https://qdrant.localhost:8443 answer on 127.0.0.1 of this machine only (QS-4)"
+      say "consoles are LOCALHOST-ONLY: https://minio.localhost:8443 and https://qdrant.localhost:8443 answer on 127.0.0.1 of this machine only"
       ;;
     local-models)
       [ -n "$base_url" ] || base_url="$(env_get COGETO_OLLAMA_BASE_URL)"
@@ -1336,9 +1336,9 @@ cmd_configure() {
         env_set COGETO_QDRANT_API_KEY "$(gen_token)"
         restart_needed="${restart_needed} qdrant app worker" ;;
       POSTGRES_PASSWORD|ZITADEL_DB_PASSWORD|MINIO_ROOT_PASSWORD|MINIO_KMS_SECRET_KEY|ZITADEL_MASTERKEY)
-        die "refusing: ${regen} is DATA-BOUND — the running Postgres/MinIO/Zitadel state was initialized with it, and swapping the env alone bricks the stack (losing MINIO_KMS_SECRET_KEY makes stored objects permanently unreadable). Rotating these is a manual, backed-up procedure — see docs/notes/operator-script.md" ;;
+        die "refusing: ${regen} is DATA-BOUND — the running Postgres/MinIO/Zitadel state was initialized with it, and swapping the env alone bricks the stack (losing MINIO_KMS_SECRET_KEY makes stored objects permanently unreadable). Rotating these is a manual, backed-up procedure — see docs/operations/operator-script.md" ;;
       INSTANCE_SIGNING_KEY|instance-signing-key)
-        die "refusing LOUDLY: the receipt-signing keypair is NEVER rotated by this script — every deletion receipt chains to it (§B.1), and a silent rotation would break the hash-chain verification that makes forgetting provable. If a rotation is truly required, it is an owner-level, documented procedure with a chain anchor (decision 0026)" ;;
+        die "refusing LOUDLY: the receipt-signing keypair is NEVER rotated by this script — every deletion receipt chains to it (spec §11.1), and a silent rotation would break the hash-chain verification that makes forgetting provable. If a rotation is truly required, it is an owner-level, documented procedure with a chain anchor";;
       *)
         die "unknown secret '${regen}' — rotatable here: COGETO_MAIL_INTAKE_TOKEN, COGETO_QDRANT_API_KEY" ;;
     esac

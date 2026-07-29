@@ -1,4 +1,4 @@
--- Migration 0001 — the contractual core (the specification §A.6 as amended by decision 0003).
+-- Migration 0001 — the contractual core (the specification as amended by).
 -- Enums and the memory, file_metadata, deletion_receipt, approval, audit_log tables.
 -- Reviewable SQL by design: this schema is contractual (scope, provenance NOT NULL,
 -- six lifecycle statuses + orthogonal sensitive flag, validity intervals).
@@ -12,7 +12,7 @@ CREATE TYPE memory_status AS ENUM (
   'active', 'outdated', 'contradicted', 'uncertain', 'replaced', 'user_approved'
 );
 
--- Provenance is NOT NULL, always: "the user told me directly" is provenance too (§A.6).
+-- Provenance is NOT NULL, always: "the user told me directly" is provenance too.
 CREATE TYPE source_type AS ENUM ('user_note', 'chat', 'email', 'calendar_event', 'file');
 
 CREATE TYPE receipt_status AS ENUM ('pending', 'confirmed');
@@ -33,7 +33,7 @@ CREATE TABLE memory (
   sensitive             boolean NOT NULL DEFAULT false,
   valid_from            timestamptz,
   valid_until           timestamptz,
-  -- Supersession never destroys history: the replaced row points at its successor (§B.2).
+  -- Supersession never destroys history: the replaced row points at its successor (spec §6).
   superseded_by         uuid REFERENCES memory (id),
   content               text,
   content_embedding_ref text,
@@ -57,7 +57,7 @@ CREATE TABLE file_metadata (
   size_bytes  bigint
 );
 
--- ── deletion_receipt: provable forgetting, hash-chained (§A.7, §B.1) ──────────
+-- ── deletion_receipt: provable forgetting, hash-chained (spec §11.1, spec §11.1) ──────────
 
 CREATE TABLE deletion_receipt (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -71,7 +71,7 @@ CREATE TABLE deletion_receipt (
   confirmed_at timestamptz
 );
 
--- ── approval: the server-side action state machine (§A.8) ─────────────────────
+-- ── approval: the server-side action state machine ─────────────────────
 
 CREATE TABLE approval (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),

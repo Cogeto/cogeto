@@ -1,28 +1,28 @@
--- Migration 0031 — multiple conversations (P6.9; decision 0056).
+-- Migration 0031 — multiple conversations (P6.9).
 --
---   conversation      — the chat area's workspace container (owned by
---                       retrieval, like chat_message): per-user threads the
---                       sidebar lists, switches, renames, archives and
---                       deletes. Memory is the continuity, conversations are
---                       workspaces — knowledge crosses threads only through
---                       memory retrieval, never through another thread's raw
---                       turns. title is NULL until the auto-titler names the
---                       thread (or the user does — title_set_by_user then
---                       locks it against any auto overwrite). updated_at is
---                       the last-message time, the sidebar's recency order.
---   conversation_id   — every chat_message now lives in exactly one
---                       conversation (NOT NULL + FK). Existing messages are
---                       preserved: one "Earlier conversation" container per
---                       user adopts the whole pre-0031 history, so no message
---                       is orphaned and every chat-derived memory's §A.6
---                       provenance (source_type 'chat' → chat_message.id)
---                       keeps resolving unchanged.
---   chat_conversation — new source_type enum value: deleting a conversation
---                       is a source deletion through the §A.7 saga (one
---                       receipt covering the thread's messages and every
---                       memory derived from them). No memory row ever carries
---                       it — memories keep citing the message ('chat'); the
---                       value exists for the receipt and the saga adapter.
+-- conversation — the chat area's workspace container (owned by
+-- retrieval, like chat_message): per-user threads the
+-- sidebar lists, switches, renames, archives and
+-- deletes. Memory is the continuity, conversations are
+-- workspaces — knowledge crosses threads only through
+-- memory retrieval, never through another thread's raw
+-- turns. title is NULL until the auto-titler names the
+-- thread (or the user does — title_set_by_user then
+-- locks it against any auto overwrite). updated_at is
+-- the last-message time, the sidebar's recency order.
+-- conversation_id — every chat_message now lives in exactly one
+-- conversation (NOT NULL + FK). Existing messages are
+-- preserved: one "Earlier conversation" container per
+-- user adopts the whole pre-0031 history, so no message
+-- is orphaned and every chat-derived memory's
+-- provenance (source_type 'chat' → chat_message.id)
+-- keeps resolving unchanged.
+-- chat_conversation — new source_type enum value: deleting a conversation
+-- is a source deletion through the spec §11.1 saga (one
+-- receipt covering the thread's messages and every
+-- memory derived from them). No memory row ever carries
+-- it — memories keep citing the message ('chat'); the
+-- value exists for the receipt and the saga adapter.
 
 CREATE TABLE conversation (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),

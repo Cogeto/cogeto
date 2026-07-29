@@ -1,5 +1,5 @@
 #!/bin/sh
-# Cogeto inbound Haraka entrypoint (decision 0028): derive the per-tenant
+# Cogeto inbound Haraka entrypoint: derive the per-tenant
 # accepted domain and the size cap from the provisioning env, then start the
 # receive-only SMTP server. Everything else is baked into the config dir.
 set -eu

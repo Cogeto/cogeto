@@ -1,5 +1,5 @@
--- Migration 0014 — the task table + historical backfill (Session F3-B;
--- decision 0013). Tasks are DERIVED state: one row per deriving memory
+-- Migration 0014 — the task table + historical backfill (
+--). Tasks are DERIVED state: one row per deriving memory
 -- (UNIQUE), following the supersession chain head; the FK CASCADE is the
 -- safety net under the deletion saga's counted port delete.
 
@@ -20,7 +20,7 @@ CREATE TABLE task (
   status                      task_status NOT NULL DEFAULT 'open',
   closed_by_memory_id         uuid REFERENCES memory (id) ON DELETE SET NULL,
   dormant                     boolean NOT NULL DEFAULT false,
-  -- Derived from an uncertain memory; Review resolves it (decision 0013 r2).
+  -- Derived from an uncertain memory; Review resolves it ( r2).
   from_uncertain              boolean NOT NULL DEFAULT false,
   created_at                  timestamptz NOT NULL DEFAULT now(),
   updated_at                  timestamptz NOT NULL DEFAULT now()
@@ -29,8 +29,8 @@ CREATE TABLE task (
 CREATE INDEX task_owner_status_idx ON task (owner_id, status);
 CREATE INDEX task_due_idx ON task (due) WHERE status IN ('open', 'blocked_on_condition');
 
--- NEUTRALIZED in 2.0 (decision 0060). This migration once enqueued the
--- one-shot `tasks_backfill` job here (decision 0013 ruling 2). The job type no
+-- NEUTRALIZED in 2.0. This migration once enqueued the
+-- one-shot `tasks_backfill` job here. The job type no
 -- longer exists: leaving the enqueue would park a permanently failing job on
 -- every fresh database, since migrations replay from 0001. The schema above is
 -- untouched — it still creates exactly what it always created, and migration

@@ -1,6 +1,6 @@
 /**
  * Regenerates the fictional "Adriatic Foods consulting agreement" PDF used as
- * the Ana sandbox deletion-receipt demo object (decision 0022). Fictional — no
+ * the Ana sandbox deletion-receipt demo object. Fictional — no
  * real person or company. Run: `node project/demo/assets/build-agreement.mjs`.
  *
  * Produces a real single-page PDF whose text `pdf-parse` extracts, so the seed

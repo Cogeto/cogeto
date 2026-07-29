@@ -1,6 +1,6 @@
 {
   "case_id": "default_no_time_travel",
-  "description": "F3-A regression: a plain present-tense question NEVER surfaces replaced facts — default retrieval is byte-for-byte unchanged (decision 0012 ruling 2).",
+  "description": "F3-A regression: a plain present-tense question NEVER surfaces replaced facts — default retrieval is byte-for-byte unchanged.",
   "anchor": "2026-07-01T09:00:00.000Z",
   "facts": [
     {

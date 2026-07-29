@@ -1,26 +1,26 @@
--- Migration 0005 — retrieval signals + chat persistence (S3-A; decision 0006).
--- (The S3-A prompt calls this "migration 0002"; 0002–0004 were taken by S1-B/S2.)
+-- Migration 0005 — retrieval signals + chat persistence.
+-- (The prompt calls this "migration 0002"; 0002–0004 were taken by/S2.)
 --
---   entities     — decision 0006 ruling 2: extracted entities as text[] on the
---                  memory row, GIN trigram index for the §A.5 entity signal.
---   content_tsv  — decision 0006 ruling 1: generated tsvector over content,
---                  simple config + unaccent (predictable across languages;
---                  Croatian has no built-in dictionary).
---   chat_message — the chat area's source rows (owned by retrieval): chat
---                  conversations persist, and future chat-derived memories get
---                  their §A.6 provenance target (source_type = 'chat').
+-- entities —: extracted entities as text[] on the
+-- memory row, GIN trigram index for the spec §3.4 entity signal.
+-- content_tsv —: generated tsvector over content,
+-- simple config + unaccent (predictable across languages;
+-- Croatian has no built-in dictionary).
+-- chat_message — the chat area's source rows (owned by retrieval): chat
+-- conversations persist, and future chat-derived memories get
+-- their provenance target (source_type = 'chat').
 
 CREATE EXTENSION IF NOT EXISTS unaccent;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
--- unaccent() is STABLE (dictionaries are mutable in principle), which disquali-
+-- unaccent is STABLE (dictionaries are mutable in principle), which disquali-
 -- fies it from generated columns and expression indexes. This wrapper pins the
 -- shipped dictionary and asserts immutability — the standard FTS pattern.
 CREATE FUNCTION cogeto_unaccent(text) RETURNS text
   LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT
   AS $$ SELECT public.unaccent('public.unaccent'::regdictionary, $1) $$;
 
--- array_to_string() is STABLE for the same formal reason; for text[] it is
+-- array_to_string is STABLE for the same formal reason; for text[] it is
 -- immutable in fact. Pinned so the trigram index can be an expression index.
 CREATE FUNCTION cogeto_entities_text(text[]) RETURNS text
   LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT

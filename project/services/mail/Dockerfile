@@ -1,11 +1,11 @@
-# Cogeto inbound mail server — Haraka, receive-only (Session O4, decision 0028;
+# Cogeto inbound mail server — Haraka, receive-only (
 # roadmap D2). One more container in the single-tenant deployment: it accepts
 # forwarded mail for the instance's inbound address, applies recipient/size/rate
 # hygiene, and hands the full raw message to the app over an internal
 # authenticated HTTP endpoint. It NEVER sends (outbound disabled). No dependency
 # on the TypeScript workspace.
 #
-# Base image PINNED BY DIGEST (QS-25); the tag is kept in the comment. Update
+# Base image PINNED BY DIGEST; the tag is kept in the comment. Update
 # procedure: docs/operations/image-pins.md.
 # node:22-alpine
 FROM node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2

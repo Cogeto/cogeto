@@ -1,4 +1,4 @@
--- Migration 0012 — the dreaming cycle (Session F2-B; decision 0011; §B.6 plain
+-- Migration 0012 — the dreaming cycle ( plain
 -- form). Tables are ingestion-owned (dreaming is the consolidation half of the
 -- pipeline); memory-referencing columns FK with ON DELETE CASCADE so erased
 -- memories take their dream traces with them (the verification_result
@@ -37,7 +37,7 @@ CREATE TABLE dream_action (
 
 CREATE INDEX dream_action_run_idx ON dream_action (run_id);
 
--- Commitments that went quiet (decision 0011): flagged for the digest and for
+-- Commitments that went quiet: flagged for the digest and for
 -- the F3 task engine — NEVER a status transition. One open flag per memory;
 -- dreaming clears flags whose memory left `active`, F3 clears on task closure.
 CREATE TABLE dormant_flag (
