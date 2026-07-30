@@ -1,0 +1,20 @@
+{
+  "case_id": "en-s001",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "The Atlas CRM Migration go-live is confirmed for October 1",
+      "kind": "decision",
+      "entities": ["Atlas CRM Migration"],
+      "subject_entity": "Atlas CRM Migration",
+      "condition": null,
+      "temporal": {
+        "point": "October 1"
+      },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

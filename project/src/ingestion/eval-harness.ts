@@ -37,6 +37,14 @@ const expectedMemorySchema = z.object({
   content_gist: z.string().min(1),
   kind: z.string(),
   entities: z.array(z.string()).default([]),
+  /**
+   * Declared subject assertion (issue #313): when present, the matched fact's
+   * subject_entity must equal it (case-insensitive). Only cases that declare
+   * it are checked — the reconciliation candidate gate keys on exact subject
+   * equality, so a drifting subject silently disables contradiction and
+   * supersession detection while every similarity metric still passes.
+   */
+  subject_entity: z.string().nullable().optional(),
   condition: z.string().nullable().optional(),
   temporal: z.record(z.string(), z.unknown()).optional(),
   must_extract: z.boolean(),
@@ -85,6 +93,8 @@ export interface EvalMetrics {
   verificationAgreement: number;
   /** Injection-trap hits: forbidden payload text that reached a fact. */
   injectionViolations: number;
+  /** Subject-trap misses: a declared subject_entity the matched fact got wrong. */
+  subjectMismatches: number;
 }
 
 export interface EvalRunResult {
@@ -169,6 +179,7 @@ function emptyMetrics(label: string): EvalMetrics {
     verificationAgreed: 0,
     verificationAgreement: 0,
     injectionViolations: 0,
+    subjectMismatches: 0,
   };
 }
 
@@ -273,6 +284,8 @@ export async function runGoldenEval(options: {
     const labelVecs = embeddings.slice(facts.length);
 
     const factMatched = new Array<boolean>(facts.length).fill(false);
+    /** Label index → matched fact index (-1 = unmatched) — subject checks need it. */
+    const labelMatch = new Array<number>(labels.length).fill(-1);
     let matchedMustExtract = 0;
     for (let li = 0; li < labels.length; li++) {
       const label = labels[li]!;
@@ -292,7 +305,32 @@ export async function runGoldenEval(options: {
       }
       if (best >= 0) {
         factMatched[best] = true;
+        labelMatch[li] = best;
         if (label.must_extract) matchedMustExtract += 1;
+      }
+    }
+
+    // Subject traps (issue #313): a label that DECLARES subject_entity asserts
+    // it on the matched fact, with the same normalization the reconciliation
+    // candidate gate applies. An unmatched declaring label also counts — a
+    // subject so wrong the entity overlap failed must not pass silently.
+    let subjectMismatches = 0;
+    for (let li = 0; li < labels.length; li++) {
+      const label = labels[li]!;
+      if (label.subject_entity === undefined) continue;
+      const fact = labelMatch[li]! >= 0 ? facts[labelMatch[li]!]! : null;
+      const got = fact?.subject_entity ?? null;
+      const want = label.subject_entity;
+      const same =
+        got === null || want === null
+          ? got === want && fact !== null
+          : got.trim().toLowerCase() === want.trim().toLowerCase();
+      if (!same) {
+        subjectMismatches += 1;
+        log(
+          `  ${testCase.caseId}: SUBJECT MISMATCH, expected ${JSON.stringify(want)}, ` +
+            `got ${fact ? JSON.stringify(got) : 'no matched fact'}`,
+        );
       }
     }
 
@@ -323,6 +361,8 @@ export async function runGoldenEval(options: {
     metrics.matchedMustExtract += matchedMustExtract;
     metrics.injectionViolations += violations;
     aggregate.injectionViolations += violations;
+    metrics.subjectMismatches += subjectMismatches;
+    aggregate.subjectMismatches += subjectMismatches;
 
     // Verification agreement (rule documented in the header).
     const expectedVerdict = testCase.expected.verification_expected;

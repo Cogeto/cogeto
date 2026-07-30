@@ -1567,3 +1567,48 @@ so the research cases pass unchanged.
 | strict_mode_hr |  |  |  | PASS | PASS |  | FAIL |  |  | PASS | FAIL |
 | whats_still_open |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
 | who_is_ana | PASS | 86% | PASS | PASS | PASS |  |  |  |  |  | PASS |
+
+## 2026-07-30, extraction/v0004 + verification/v0006 (thresholds v1, 86 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 42 | 82.4% (61/74) | 94.6% (53/56) | 95.1% (39/41) |
+| hr | 44 | 76.7% (56/73) | 92.9% (52/56) | 86.0% (37/43) |
+| aggregate | 86 | 79.6% (117/147) | 93.8% (105/112) | 90.5% (76/84) |
+
+## 2026-07-30, reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 20 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 5 | 100.0% (8/8) | 6 | 75.0% (3/4) | 100.0% (3/3) | 0/1 | 0 |
+| hr | 4 | 83.3% (5/6) | 5 | 100.0% (3/3) | 100.0% (3/3) |  | 0 |
+| aggregate | 9 | 92.9% (13/14) | 11 | 85.7% (6/7) | 100.0% (6/6) | 0/1 | 0 |
+
+## 2026-07-30, chat eval (configuration=mistral-default · pipeline=mistral/mistral-small-latest · answer=mistral/mistral-medium-latest · answer-prompt=answer/v0007 · grader=mistral/mistral-medium-latest eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | research | skill | conversation | overall |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| atlas_scope |  | 83% |  | PASS | PASS |  |  |  |  |  | PASS |
+| blended_origins_en | PASS | 100% |  | PASS | PASS |  | PASS |  |  | PASS | PASS |
+| changed_since |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| default_no_time_travel |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| digest_hr_preferred |  |  |  |  |  |  |  |  |  | PASS | PASS |
+| followup_cross_capability |  |  |  | PASS | PASS |  | PASS | PASS |  |  | PASS |
+| knowledge_offer_en |  |  |  | PASS | PASS |  |  |  |  | PASS | PASS |
+| knowledge_offer_hr |  |  |  | PASS | PASS |  | PASS |  |  | PASS | PASS |
+| memory_beats_model | PASS |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| nothing_on_record |  |  |  |  |  | PASS |  |  |  |  | PASS |
+| open_with_entity |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| point_in_time_march |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| previously_decided |  | 100% |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| reply_hr_zadnja |  |  |  |  |  |  | PASS |  |  |  | PASS |
+| reply_to_ana |  |  |  |  |  |  | PASS |  |  |  | PASS |
+| research_keeps_subject_hr |  |  |  | PASS |  |  | PASS | PASS |  |  | PASS |
+| research_minimise_drop |  |  |  | PASS |  |  | PASS | PASS |  |  | PASS |
+| skill_brief_en |  |  |  | PASS |  |  | PASS |  | PASS |  | PASS |
+| skill_brief_hr |  |  |  | PASS |  |  | PASS |  | PASS | PASS | PASS |
+| smalltalk_hvala_hr |  |  |  | PASS | PASS |  |  |  |  | PASS | PASS |
+| smalltalk_thanks |  |  |  | PASS | PASS |  |  |  |  | PASS | PASS |
+| strict_mode_hr |  |  |  | PASS | PASS |  | PASS |  |  | PASS | PASS |
+| whats_still_open |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| who_is_ana | PASS | 86% | PASS | PASS | PASS |  |  |  |  |  | PASS |

@@ -24,6 +24,7 @@ Extraction quality is the product. The golden set is the hand-labeled corpus tha
  "content_gist": "Ana will send the revised proposal to Marko",
  "kind": "commitment",
  "entities": ["Ana", "Marko"],
+ "subject_entity": "Ana",
  "condition": "after Marko confirms the budget",
  "temporal": { "valid_from": "source_date" },
  "must_extract": true
@@ -40,6 +41,8 @@ Extraction quality is the product. The golden set is the hand-labeled corpus tha
 ```
 
 Matching between an extracted fact and an expected label is semantic, not string-equal: the harness uses embedding similarity plus entity overlap with a fixed threshold, and the threshold itself is versioned so scores stay comparable across releases.
+
+`subject_entity` is optional and, when declared, is an exact assertion (case-insensitive), not a semantic one: the reconciliation candidate gate keys on exact subject equality, so a drifted subject silently disables contradiction and supersession detection while every similarity metric still passes. Declare it on cases designed to trap subject drift (the `*-s0NN` cases); a mismatch on any declaring case fails the zero-tolerance `subject_mismatches` gate.
 
 ## 4. Labeling rules
 
@@ -69,6 +72,8 @@ Gates apply to **aggregate** metrics and are enforced when the gate environment 
 | Verification agreement | 0.90 | **0.75** | The residual disagreements are largely the verifier *correctly* demoting bad extractions, so the metric conflates extractor quality with verifier calibration. Honest floor. |
 | Dedup accuracy | 0.90 | 0.90 | False merges weighted double. |
 | Contradiction recall | 0.70 | 0.70 | |
+| Injection violations | 0 | **0** | Zero tolerance (audit 2.0 SEC-4): a violation means a model obeyed text inside the untrusted-data fence. Hardcoded in the harness, not thresholded in `gates.json`. |
+| Subject mismatches | 0 | **0** | Zero tolerance (issue #313), counted only on cases that declare `subject_entity`: a drifted subject silently disables reconciliation. Hardcoded like the injection gate. |
 
 A gate at the floor of the observed noise band still does its job: a genuinely broken prompt lands far below it, while honest run-to-run noise passes.
 

@@ -2,6 +2,13 @@
 
 One line per label change (docs/eval-golden-set.md §4 rule 5).
 
+- 2026-07-30 (issue #313): added four subject-trap cases (`en-s001`, `en-s002`,
+  `hr-s001`, `hr-s002`) whose expected memories DECLARE `subject_entity` (a new
+  optional label field): a reporting frame (meeting/session/relaying person) must
+  never become the subject, and an org-process fact is about the org, not null.
+  Declared subjects are enforced by the new zero-tolerance `subject_mismatches`
+  gate, because the reconciliation candidate gate keys on exact subject equality.
+
 - 2026-07-28 (V2.0 item 3.1 — task removal, decision 0060): removed the 12
   task-judgment pairs (`en-t001`–`en-t006`, `hr-t001`–`hr-t006`) and the
   `task-pair.json` case format with them — closure and condition judgments were

@@ -1,0 +1,20 @@
+{
+  "case_id": "hr-s001",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Go-live za Atlas CRM Migration potvrđen je za 1. listopada",
+      "kind": "decision",
+      "entities": ["Atlas CRM Migration"],
+      "subject_entity": "Atlas CRM Migration",
+      "condition": null,
+      "temporal": {
+        "point": "1. listopada"
+      },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

@@ -221,6 +221,16 @@ async function main(): Promise<void> {
   console.log(
     `  ${injectionsOk ? 'PASS' : 'FAIL'}  ${'injection_violations'.padEnd(24)} ${injections}  (gate = 0)`,
   );
+  // Subject traps (issue #313) are likewise ZERO-TOLERANCE: the reconciliation
+  // candidate gate keys on exact subject equality, so a drifted subject
+  // silently disables contradiction and supersession detection while every
+  // similarity metric still passes. Only cases that DECLARE a subject count.
+  const subjectMisses = result.aggregate.subjectMismatches;
+  const subjectsOk = subjectMisses === 0;
+  if (!subjectsOk) failures.push(`subject_mismatches: ${subjectMisses} (must be 0)`);
+  console.log(
+    `  ${subjectsOk ? 'PASS' : 'FAIL'}  ${'subject_mismatches'.padEnd(24)} ${subjectMisses}  (gate = 0)`,
+  );
   console.log('===========================================================\n');
   if (failures.length > 0) {
     console.error(`GATE BREACH: ${failures.join('; ')}`);

@@ -1,0 +1,17 @@
+{
+  "case_id": "en-s002",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Adriatic Foods invoices go to racuni@adriaticfoods.hr",
+      "kind": "fact",
+      "entities": ["Adriatic Foods"],
+      "subject_entity": "Adriatic Foods",
+      "condition": null,
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}
