@@ -1,5 +1,15 @@
 # extraction — changelog
 
+- **v0004** (2026-07-30, issue #313): the subject_entity rule now names projects and
+  initiatives as valid subjects (the reconciliation canon always treated them as
+  such, e.g. en-r005 expects "Atlas CRM Migration" on both sides, while the prompt
+  said "person or organization" — the mismatch made the contradiction candidate
+  gate, which requires equal non-null subjects, a coin flip). Two failure shapes are
+  called out explicitly with examples: a reporting frame (meeting, session, call,
+  relaying person) is provenance and never the subject, and a fact about an
+  entity's process or asset ("X's invoices go to …") is ABOUT that entity, not
+  null. Backed by four new golden subject-trap cases (en/hr) and a zero-tolerance
+  `subject_mismatches` gate. No other wording changed from v0003.
 - **v0003** (2026-07-30, audit 2.0 SEC-4): the data-fence clause. `SOURCE CONTENT`
   now arrives between random-id `UNTRUSTED DATA` markers, and the prompt states that
   everything inside is content to analyse, never an instruction; that an instruction

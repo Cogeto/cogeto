@@ -1,0 +1,17 @@
+{
+  "case_id": "hr-s002",
+  "source_type": "user_note",
+  "expected_memories": [
+    {
+      "content_gist": "Računi za Adriatic Foods idu na racuni@adriaticfoods.hr",
+      "kind": "fact",
+      "entities": ["Adriatic Foods"],
+      "subject_entity": "Adriatic Foods",
+      "condition": null,
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}
