@@ -222,8 +222,8 @@ export function System({ session }: { session: Session }) {
   }
   return (
     <Shell session={session} title="System" active="system">
-      <StatusPanel />
-      <CapabilitiesPanel />
+      <StatusPanel session={session} />
+      <CapabilitiesPanel session={session} />
       <WorkerActivityPanel session={session} />
       <IntegrityPanel session={session} />
       <DeadLetterTable session={session} />

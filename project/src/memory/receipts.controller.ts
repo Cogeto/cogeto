@@ -17,7 +17,7 @@ import type {
 } from '@cogeto/shared';
 import { DRIZZLE, loadInstancePublicKey } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
-import { BearerAuthGuard } from '../identity/index';
+import { AdminGuard, BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { deletionReceipt, integrityAlert } from './persistence/tables';
 import { verifyChain } from './domain/receipt-chain';
@@ -160,9 +160,15 @@ export class ReceiptsController {
  * /api/integrity — the sweep's face in the System view (spec §11.1 step 4): last run,
  * result, and the open alert list. Alerts are never auto-cleared; they mean a
  * human must look.
+ *
+ * ADMIN-ONLY (audit 2.0 SEC-6). An alert's `detail` is an object key
+ * (`{orgId}/{userId}/{scope}/…`), a memory id or a receipt id, so the list is
+ * cross-user by construction — the same reason `/api/jobs` is admin-gated. The
+ * only caller is the System page, which already refuses to render without the
+ * admin role, so gating it here changes no working surface.
  */
 @Controller('integrity')
-@UseGuards(BearerAuthGuard)
+@UseGuards(BearerAuthGuard, AdminGuard)
 export class IntegrityController {
   constructor(private readonly sweep: IntegritySweep) {}
 

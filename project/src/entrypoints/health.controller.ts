@@ -1,19 +1,28 @@
 import { connect } from 'node:net';
-import { Controller, Get, HttpCode, Inject } from '@nestjs/common';
+import { Controller, Get, HttpCode, Inject, Req, UseGuards } from '@nestjs/common';
 import type { HealthCheck, HealthReport, QueueHealthCheck } from '@cogeto/shared';
 import { Pool } from 'pg';
 import { IntegritySweep, MemoryObjectStore } from '../memory/index';
 import { ModelGateway } from '../model-gateway/index';
 import { Public } from '../identity/index';
 import { CapabilitiesService } from './capabilities';
+import { HealthAccessGuard, redactHealthReport } from './health-access.guard';
+import type { HealthRequest } from './health-access.guard';
 import { COGETO_CONFIG } from './config';
 import type { CogetoConfig } from './config';
 
 /**
- * GET /api/health — aggregate reachability of Postgres, Qdrant, MinIO for the
- * dashboard status panel. GET /api/health/live — container liveness only.
- * Lives in the entrypoint (deployment concern, not domain). Public
- * liveness/readiness must answer without a token.
+ * GET /api/health/live — container liveness only, and the one genuinely public
+ * route here: both compose healthchecks and the demo bootstrap poll it with no
+ * token.
+ *
+ * GET /api/health — the aggregate report. NOT public any more (audit 2.0
+ * SEC-3): `@Public()` used to sit on the CLASS, so the whole operational
+ * picture — queue and dead-letter depths, migration state, the receipt-chain
+ * verdict, internal service URLs, raw upstream error strings — answered any
+ * internet caller through the edge. `HealthAccessGuard` now decides who may
+ * call it and how much detail they get; the class-level `@Public()` only defers
+ * the GLOBAL bearer guard to that one, which authenticates in its place.
  */
 @Public()
 @Controller('health')
@@ -30,6 +39,7 @@ export class HealthController {
     this.pool = new Pool({ connectionString: config.databaseUrl, max: 2 });
   }
 
+  /** Liveness: no token, no internals — just "this process is answering". */
   @Get('live')
   @HttpCode(200)
   live(): { alive: true } {
@@ -37,7 +47,8 @@ export class HealthController {
   }
 
   @Get()
-  async health(): Promise<HealthReport> {
+  @UseGuards(HealthAccessGuard)
+  async health(@Req() request: HealthRequest): Promise<HealthReport> {
     const [
       postgres,
       qdrant,
@@ -76,12 +87,18 @@ export class HealthController {
     // an enabled-but-unreachable capability or an overdue job is a broken
     // instance, not a footnote. The fields are additive; `checks` is unchanged.
     const loud = CapabilitiesService.loudness(registry);
-    return {
+    const report: HealthReport = {
       status: Object.values(checks).every((c) => c.ok) && loud.length === 0 ? 'ok' : 'degraded',
       capabilities: registry.capabilities,
       jobs: registry.jobs,
       checks,
     };
+    // Audience trim (SEC-3). The verdict — every `ok`/`state` and the overall
+    // status — is identical for everyone, so the Dashboard's status panel keeps
+    // working for a plain user; only the operational PROSE (upstream error
+    // strings, probe details naming internal hosts) is held back from callers
+    // without the admin role.
+    return request.healthDetail ? report : redactHealthReport(report);
   }
 
   /**

@@ -46,6 +46,14 @@ localhost {
 			X-Content-Type-Options "nosniff"
 			Referrer-Policy "no-referrer"
 			X-Frame-Options "DENY"
+			# HSTS (audit 2.0 SEC-15) — DELIBERATELY SHORT on the dev edge (5
+			# minutes) and WITHOUT includeSubDomains. HSTS is sticky in the
+			# browser: a year-long policy pinned from a localhost dev run would
+			# poison plain-http work on other localhost ports for that year, and
+			# includeSubDomains would take *.localhost with it. The production
+			# edge (project/infra/deploy/Caddyfile) carries the real one-year
+			# policy. Never add `preload` to either.
+			Strict-Transport-Security "max-age=300"
 		}
 		try_files {path} /index.html
 		file_server

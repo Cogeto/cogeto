@@ -49,6 +49,13 @@
 			X-Content-Type-Options "nosniff"
 			Referrer-Policy "no-referrer"
 			X-Frame-Options "DENY"
+			# HSTS (audit 2.0 SEC-15). One year, and includeSubDomains is safe
+			# here because the ONLY subdomain this instance serves is
+			# s3.<domain>, which Caddy terminates with a real ACME certificate
+			# (see the vhost below). NO `preload`: preload is submitted to a
+			# browser-vendor list and is effectively irreversible, so it stays
+			# an explicit owner decision, never a default.
+			Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		}
 		try_files {path} /index.html
 		file_server

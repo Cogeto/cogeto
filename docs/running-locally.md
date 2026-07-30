@@ -40,7 +40,7 @@ refuses known dev secrets on any non-localhost domain.
 | Thing | Where |
 | --- | --- |
 | The app (SPA + API + login) | `https://localhost` (Caddy → app + Zitadel on one origin) |
-| Aggregate health | `https://localhost/api/health` (public by design) |
+| Aggregate health | `https://localhost/api/health` (needs a signed-in session; the operator role additionally sees each check's detail and error) |
 | Zitadel console (manage users) | `https://localhost/ui/console`: same admin login |
 | Infra consoles (MinIO, Qdrant) + the S3 presign origin | dev-only profile: `docker compose --profile consoles up -d`, then `https://minio.localhost:8443`, `https://qdrant.localhost:8443`, `https://s3.localhost:8443`: after adding the `*.localhost` hosts entries |
 | Inbound test email (no real DNS) | `node scripts/dev/send-test-email.mjs`. See [`operations/email-inbound.md`](operations/email-inbound.md) |

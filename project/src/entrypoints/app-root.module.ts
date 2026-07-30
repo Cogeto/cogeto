@@ -32,6 +32,7 @@ import { AttentionService } from './attention.service';
 import { CapabilitiesService } from './capabilities';
 import { AuditController } from './audit.controller';
 import { HealthController } from './health.controller';
+import { HealthAccessGuard } from './health-access.guard';
 import { InstanceController } from './instance.controller';
 import { JobsController } from './jobs.controller';
 import { WebConfigController } from './web-config.controller';
@@ -154,6 +155,9 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       // The capability registry: /api/health's
       // capability/job summaries and the boot banner read one snapshot.
       CapabilitiesService,
+      // SEC-3: decides who may read the aggregate health report and with how
+      // much detail. Registered here because it needs COGETO_CONFIG.
+      HealthAccessGuard,
       // Default-deny auth: the bearer guard runs on EVERY route; only
       // routes marked @Public (health/config/instance) opt out. A new
       // controller that forgets @UseGuards is closed, not silently open.

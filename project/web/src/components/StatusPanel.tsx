@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { HealthCheck } from '@cogeto/shared';
 import { fetchHealth } from '../api';
+import type { Session } from '../auth/oidc';
 import { Card, ErrorState, Pill, SectionTitle, SkeletonRows } from './ui';
 
 function CheckRow({ name, check }: { name: string; check: HealthCheck }) {
@@ -26,11 +27,13 @@ function CheckRow({ name, check }: { name: string; check: HealthCheck }) {
   );
 }
 
-/** System status panel: GET /api/health (Postgres, Qdrant, MinIO reachability). */
-export function StatusPanel() {
+/** System status panel: GET /api/health (Postgres, Qdrant, MinIO reachability).
+ * Authenticated since SEC-3; an administrator additionally sees each check's
+ * `detail`/`error`, everyone else the same up/down verdicts. */
+export function StatusPanel({ session }: { session: Session }) {
   const { data, isPending, isError } = useQuery({
     queryKey: ['health'],
-    queryFn: fetchHealth,
+    queryFn: () => fetchHealth(session),
     refetchInterval: 10_000,
   });
 
