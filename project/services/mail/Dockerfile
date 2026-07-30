@@ -8,7 +8,7 @@
 # Base image PINNED BY DIGEST; the tag is kept in the comment. Update
 # procedure: docs/operations/image-pins.md.
 # node:22-alpine
-FROM node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
+FROM node@sha256:0473e7dc433a1310f436edee02aa79737ec78a4b345433ab0963d4a256f9ad85
 
 ENV NODE_ENV=production
 
