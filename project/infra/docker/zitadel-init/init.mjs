@@ -29,6 +29,32 @@ const APP_NAME = 'cogeto-web';
 const ADMIN_ROLE = process.env.COGETO_ADMIN_ROLE || 'admin';
 const ADMIN_USERNAME = process.env.ZITADEL_ADMIN_USERNAME || 'admin@cogeto.localhost';
 
+// SEC-16: the bootstrap PAT is a one-shot credential. After provisioning
+// succeeds this job revokes it, blanks pat.txt (so the secret no longer
+// persists in the machinekey volume or its backups) and records the
+// provisioned inputs in bootstrap-state.json; later runs short-circuit
+// against that record instead of needing a live PAT. The ONLY consumer that
+// legitimately needs the PAT after bootstrap is the dev sandbox's demo seed,
+// so demo mode keeps it (a sandbox holds no real data).
+const BOOTSTRAP_USERNAME = process.env.ZITADEL_BOOTSTRAP_MACHINE_USERNAME || 'cogeto-bootstrap';
+const STATE_FILE = process.env.ZITADEL_BOOTSTRAP_STATE_FILE ?? '/machinekey/bootstrap-state.json';
+const KEEP_PAT_FOR_DEMO =
+  process.env.COGETO_DEMO_MODE === '1' ||
+  (process.env.COGETO_COMPOSE_PROFILES ?? '')
+    .split(',')
+    .map((p) => p.trim())
+    .includes('demo');
+
+/** The inputs whose change would require re-provisioning (and thus a PAT). */
+const PROVISIONED_INPUTS = {
+  externalDomain: EXTERNAL_DOMAIN,
+  issuer: ISSUER,
+  redirectUri: REDIRECT_URI,
+  postLogoutUri: POST_LOGOUT_URI,
+  adminUsername: ADMIN_USERNAME,
+  adminRole: ADMIN_ROLE,
+};
+
 const base = new URL(INTERNAL_URL);
 
 function request(method, path, body, token) {
@@ -86,7 +112,92 @@ async function waitFor(description, probe, attempts = 60, delayMs = 2000) {
   throw new Error(`timed out waiting for ${description}`);
 }
 
+/**
+ * SEC-16 short-circuit: once the PAT has been revoked, later `docker compose
+ * up` runs must not (and cannot) re-provision. If nothing material changed,
+ * the recorded state IS the verification; if an input drifted (e.g. the
+ * operator changed the domain), fail loudly with the recovery path instead of
+ * silently serving a stale OIDC config.
+ */
+function shortCircuitFromState() {
+  if (!existsSync(STATE_FILE)) return false;
+  let state;
+  try {
+    state = JSON.parse(readFileSync(STATE_FILE, 'utf8'));
+  } catch {
+    return false; // unreadable state — fall through to normal provisioning
+  }
+  if (!state.revoked) return false; // PAT still live — re-run provisioning
+  const drift = Object.entries(PROVISIONED_INPUTS).filter(
+    ([key, want]) => state.inputs?.[key] !== want,
+  );
+  if (drift.length === 0) {
+    console.log(
+      'zitadel already provisioned and the bootstrap PAT is revoked (SEC-16) — nothing to do',
+    );
+    return true;
+  }
+  throw new Error(
+    `provisioning inputs changed (${drift.map(([k]) => k).join(', ')}) but the bootstrap PAT ` +
+      `was revoked after the previous provisioning. Recovery: in the Zitadel console create a ` +
+      `new personal access token for the '${BOOTSTRAP_USERNAME}' machine user, write it to ` +
+      `${PAT_FILE}, delete ${STATE_FILE}, and re-run \`docker compose up\` ` +
+      `(see the operator runbook, "Changing the domain after install").`,
+  );
+}
+
+/**
+ * Revoke every PAT of the bootstrap machine user, then SELF-VERIFY: the token
+ * must stop authenticating. Returns true only when the API confirms the
+ * revocation took effect.
+ */
+async function revokeBootstrapPat(pat) {
+  const users = await request(
+    'POST',
+    '/management/v1/users/_search',
+    {
+      queries: [
+        { userNameQuery: { userName: BOOTSTRAP_USERNAME, method: 'TEXT_QUERY_METHOD_EQUALS' } },
+      ],
+    },
+    pat,
+  );
+  const userId = users.body.result?.[0]?.id;
+  if (!userId) {
+    console.warn(`bootstrap machine user '${BOOTSTRAP_USERNAME}' not found — cannot revoke`);
+    return false;
+  }
+  const pats = await request('POST', `/management/v1/users/${userId}/pats/_search`, {}, pat);
+  if (pats.status !== 200) {
+    console.warn(`PAT list failed (${pats.status}): ${JSON.stringify(pats.body)}`);
+    return false;
+  }
+  for (const token of pats.body.result ?? []) {
+    const removed = await request(
+      'DELETE',
+      `/management/v1/users/${userId}/pats/${token.id}`,
+      null,
+      pat,
+    );
+    // Removing the token we are authenticating with may already answer 401 for
+    // the LAST delete — the verification below is the arbiter, not this status.
+    if (removed.status !== 200 && removed.status !== 401) {
+      console.warn(`PAT ${token.id} removal answered ${removed.status}`);
+    }
+  }
+  // Self-verify: the PAT must no longer authenticate. Zitadel's projections
+  // can lag a moment, so poll briefly rather than trust a single read.
+  for (let i = 0; i < 15; i++) {
+    const probe = await request('POST', '/management/v1/projects/_search', {}, pat);
+    if (probe.status === 401 || probe.status === 403) return true;
+    await sleep(2000);
+  }
+  console.warn('bootstrap PAT still authenticates after revocation — leaving it in place');
+  return false;
+}
+
 async function main() {
+  if (shortCircuitFromState()) return;
   await waitFor('zitadel /debug/healthz', async () => {
     const { status } = await request('GET', '/debug/healthz');
     return status === 200;
@@ -327,6 +438,40 @@ async function main() {
   // 3. Publish what the SPA needs.
   writeFileSync(WEB_CONFIG_FILE, JSON.stringify({ issuer: ISSUER, clientId }, null, 2));
   console.log(`wrote ${WEB_CONFIG_FILE}`);
+
+  // 4. SEC-16: provisioning succeeded — retire the bootstrap PAT.
+  if (KEEP_PAT_FOR_DEMO) {
+    writeFileSync(
+      STATE_FILE,
+      JSON.stringify({ revoked: false, keptForDemo: true, inputs: PROVISIONED_INPUTS }, null, 2),
+    );
+    console.warn(
+      'demo mode: bootstrap PAT KEPT for the demo seed — acceptable only on a disposable ' +
+        'sandbox with no real data (SEC-16 residual)',
+    );
+    return;
+  }
+  const revoked = await revokeBootstrapPat(pat);
+  if (revoked) {
+    // Blank the secret material so it stops persisting in the machinekey
+    // volume and every backup of it. The state file is now the record.
+    writeFileSync(PAT_FILE, '');
+    writeFileSync(
+      STATE_FILE,
+      JSON.stringify({ revoked: true, inputs: PROVISIONED_INPUTS }, null, 2),
+    );
+    console.log('bootstrap PAT revoked and pat.txt blanked — verified by re-auth refusal');
+  } else {
+    writeFileSync(
+      STATE_FILE,
+      JSON.stringify({ revoked: false, inputs: PROVISIONED_INPUTS }, null, 2),
+    );
+    console.warn(
+      'bootstrap PAT could NOT be revoked; it remains valid until its expiry. ' +
+        'Provisioning itself succeeded, so the stack continues; revoke manually in the ' +
+        'Zitadel console (Users → Cogeto Bootstrap → Personal Access Tokens).',
+    );
+  }
 }
 
 main().catch((error) => {

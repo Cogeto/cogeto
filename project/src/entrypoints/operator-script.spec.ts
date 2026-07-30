@@ -274,6 +274,31 @@ describe('operator script — pure helpers', () => {
     expect(admin.length).toBeGreaterThanOrEqual(12);
     // Two calls never collide.
     expect(helper('gen_password').out).not.toBe(helper('gen_password').out);
+    // SEC-16: the bootstrap PAT expiry is a near-future ISO date, not 2030.
+    const expiry = helper('gen_bootstrap_pat_expiry').out;
+    expect(expiry).toMatch(/^\d{4}-\d{2}-\d{2}T00:00:00Z$/);
+    const days = (Date.parse(expiry) - Date.now()) / 86_400_000;
+    expect(days).toBeGreaterThan(12);
+    expect(days).toBeLessThan(16);
+  });
+
+  it('install generates the wave-3 credentials and upgrade backfills them (SEC-1/2/16)', () => {
+    const script = read('scripts/operator/cogeto');
+    // The install path sets every wave-3 secret...
+    for (const name of [
+      'COGETO_APP_DB_PASSWORD',
+      'COGETO_MIGRATE_DB_PASSWORD',
+      'ZITADEL_DB_ADMIN_PASSWORD',
+      'COGETO_S3_ACCESS_KEY',
+      'COGETO_S3_SECRET_KEY',
+      'ZITADEL_BOOTSTRAP_PAT_EXPIRY',
+    ]) {
+      expect(script).toContain(`env_set ${name} `);
+    }
+    // ...and the upgrade path backfills any the fetched compose now requires.
+    expect(script).toContain('ensure_wave3_secrets');
+    // The db-init asset ships with the other pinned deploy files.
+    expect(script).toContain('project/infra/docker/postgres-init/db-init.sql');
   });
 });
 

@@ -91,6 +91,56 @@ Developer-facing notes on the script live in
  login (`admin@<domain>` + `ZITADEL_ADMIN_PASSWORD` from `.env`) in your
  vault, and record the instance in the trial tracker (section 8).
 
+### The provisioning shape since audit wave 3 (least-privilege data plane)
+
+This is the provisioning shape for every fresh install; nothing here needs
+operator action beyond vaulting `.env`, but you should know what exists:
+
+- **Postgres runs three application-facing identities**, all generated into
+ `.env` by the install: `cogeto_app` (the app/worker runtime, DML only, no
+ DDL, cannot reach the `zitadel` database), `cogeto_migrate` (owns the
+ schema, used only by the migration job) and `zitadel_admin` (Zitadel's own
+ bootstrap admin). The superuser credential (`POSTGRES_PASSWORD`) is
+ break-glass only: no long-running service holds it.
+- **MinIO runs a scoped application credential** (`COGETO_S3_ACCESS_KEY` /
+ `COGETO_S3_SECRET_KEY`): object read/write/delete on the `cogeto` bucket
+ and nothing else, no admin API. The root credential is used only by the
+ bucket-provisioning init job.
+- **The public `s3.<domain>` vhost only answers presigned downloads**
+ (GET/HEAD on the bucket); everything else gets 403.
+- **The Zitadel bootstrap PAT is short-lived and revoked**: minted with a
+ 14-day expiry, used once by the provisioning job, then revoked and blanked
+ the moment provisioning succeeds. See "Changing the domain after install"
+ below for the one flow that later needs a fresh one.
+- **Rotatable without data impact** (`cogeto configure --regenerate NAME`):
+ `COGETO_APP_DB_PASSWORD`, `COGETO_MIGRATE_DB_PASSWORD`,
+ `ZITADEL_DB_ADMIN_PASSWORD`, `COGETO_S3_SECRET_KEY`, plus the previously
+ rotatable `COGETO_MAIL_INTAKE_TOKEN` and `COGETO_QDRANT_API_KEY`. The
+ data-bound secrets (`POSTGRES_PASSWORD`, `MINIO_ROOT_PASSWORD`,
+ `MINIO_KMS_SECRET_KEY`, `ZITADEL_MASTERKEY`, `ZITADEL_DB_PASSWORD`)
+ remain manual, backed-up procedures.
+
+### Changing the domain after install (needs a fresh bootstrap PAT)
+
+`cogeto configure --domain` re-runs the Zitadel provisioning job to update
+the OIDC redirect URIs, and that job's bootstrap PAT was revoked after the
+install (SEC-16). The script prints this in its checklist; the manual steps:
+
+1. Log in to Zitadel as the admin, open **Users → Cogeto Bootstrap →
+ Personal Access Tokens**, and create a new token (a short expiry is fine,
+ it is needed once).
+2. Write it into the machinekey volume and clear the recorded state:
+
+ ```sh
+ cd /srv/cogeto
+ docker compose run --rm -T --entrypoint sh zitadel-init -c \
+ 'printf %s "<the token>" > /machinekey/pat.txt && rm -f /machinekey/bootstrap-state.json'
+ docker compose up -d
+ ```
+
+3. The provisioning job re-runs with the new domain, then revokes and blanks
+ the new token exactly as at install time.
+
 ### 2a. The DNS records (OVH panel)
 
 The script prints the **exact four records with real values**: copy them from
@@ -432,7 +482,11 @@ then delete the rehearsal instance.
  memories were embedded with a different model than configured, if so it
  offers **reindex** (typed `REINDEX` confirmation; it re-embeds via the
  model API, so it costs API calls). Say yes when it asks; there is no
- separate bookkeeping to do.
+ separate bookkeeping to do. An upgrade also **backfills any secrets a
+ newer compose requires** (the wave-3 least-privilege credentials are
+ generated on first upgrade past them, and the database roles converge
+ automatically on the next start): re-vault `.env` after an upgrade that
+ prints new secret names.
 
 4. **Verify after**: `sudo ./cogeto status` is GREEN; log in and confirm the
  nav footer shows the new version; expect a short app/worker restart blip

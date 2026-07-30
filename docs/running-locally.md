@@ -74,9 +74,9 @@ eval harness needs a model key: `MISTRAL_API_KEY=... npm run eval`.
  and the `*.localhost` hosts entries.
 - **Chat/extraction returns a model-gateway error**: no `COGETO_MISTRAL_API_KEY`
  set. That's the designed behavior, not a crash.
-- **A one-shot init container "exited (0)"**: normal: `preflight`, `migrate`,
- `minio-init`, `zitadel-init`, and the volume-permission jobs run once per
- `up` and exit.
+- **A one-shot init container "exited (0)"**: normal: `preflight`, `db-init`,
+ `migrate`, `minio-init`, `zitadel-init`, and the volume-permission jobs run
+ once per `up` and exit.
 - **Wiping and starting over**: `docker compose down -v` deletes all data
  (including the instance signing key and receipts). On a dev box that's fine;
  it is never the answer on a real instance.

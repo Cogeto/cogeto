@@ -78,6 +78,91 @@ who performed the deletion (the owner), while instance-wide chain verification a
 the integrity sweep still cover every receipt: that is operator integrity, not a
 per-user view.
 
+## The data plane runs least-privilege (decision record, audit 2.0 wave 3)
+
+Before wave 3 of the 2.0 audit remediation, the app and worker connected to
+Postgres as the cluster superuser and to MinIO with the root credential
+(SEC-1, SEC-2), and the Zitadel bootstrap PAT stayed valid until 2030
+(SEC-16). Every guarantee below existed only as long as the application chose
+not to violate it. This section is the decision record for the fix.
+
+### The role model: one identity per trust boundary
+
+| Identity | Used by | Holds |
+|---|---|---|
+| `cogeto_app` | app + worker (and the ops CLIs run inside them) | table-level DML on the application schema, row-policy access to the Graphile queue. No DDL, no TRIGGER privilege, no CONNECT on the `zitadel` database, owns nothing |
+| `cogeto_migrate` | the migrate one-shot only | owns the `cogeto` database and every object in it; the only role that runs migrations |
+| `zitadel_admin` | Zitadel's own `start-from-init` | CREATEDB + CREATEROLE, not superuser; owns the `zitadel` database |
+| `zitadel` | Zitadel runtime | unchanged, was already least-privilege |
+| `postgres` (superuser) | the `db-init` one-shot only | break-glass; never handed to a long-running service |
+
+`db-init` (a one-shot psql step, `project/infra/docker/postgres-init/db-init.sql`)
+creates the roles, revokes PUBLIC connect on both databases, sets default
+privileges, and adopts objects a pre-wave-3 stack created as the superuser.
+It is idempotent and re-syncs passwords from `.env` on every `compose up`,
+which is what makes the three DB credentials rotatable by
+`cogeto configure --regenerate`.
+
+### The grant set
+
+The migrate entrypoint re-converges `cogeto_app`'s grants after every
+migration run (`infrastructure/migrations.ts`, `applyAppRoleGrants`), so a new
+table is readable the moment it exists. The deliberate carve-outs:
+
+- **`audit_log`: SELECT + INSERT only.** UPDATE/DELETE are refused by the
+  append-only trigger regardless, but the trigger could be disabled by a table
+  owner; `cogeto_app` is not one, and `ALTER TABLE ... DISABLE TRIGGER` fails
+  with "must be owner". TRUNCATE, which would bypass the row trigger entirely,
+  is not granted.
+- **`deletion_receipt`: no DELETE, no TRUNCATE.** The freeze trigger already
+  refuses mutation of confirmed receipts; the missing grants make the ledger
+  undroppable and untruncatable by the runtime.
+- **`cogeto_migrations`: read-only.** Health and the capability registry read
+  migration state; only the migrate role writes the ledger.
+- **Graphile Worker**: its private tables carry row-level security with no
+  policies (its model assumes the runtime owns the schema). Ownership stays
+  with `cogeto_migrate` so the runtime cannot DDL the queue; row access is
+  granted by an explicit policy instead.
+- The demo reset keeps TRUNCATE on domain tables but now leaves `audit_log`
+  and `deletion_receipt` in place: append-only holds even on the sandbox.
+
+The property is proven by `infrastructure/least-privilege.integration.spec.ts`
+against the real `db-init.sql` and the real migration path: the app role can
+do its job (DML, audit INSERT, transactional enqueue) and cannot disable the
+audit trigger, drop or truncate the receipt ledger, create schema objects,
+write the migration ledger, or connect to the `zitadel` database.
+
+### Scoped object storage and the public S3 surface
+
+The app and worker authenticate to MinIO as a scoped user (`cogeto-app` by
+default) provisioned by `minio-init`, whose policy is exactly the enumerated
+application surface: `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` on
+`cogeto/*`, and `s3:ListBucket`, `s3:GetBucketLocation`,
+`s3:GetEncryptionConfiguration` on the bucket. Presigned download URLs are
+signed with this same scoped credential, so a presigned link can never
+authorize more than a bucket read. `minio-init` self-verifies both directions
+at provision time: the scoped credential must list the bucket, and the MinIO
+admin API must refuse it. The root credential exists only in `minio-init` and
+the `minio` service itself.
+
+On the production edge, the public `s3.<domain>` vhost serves exactly the one
+thing the internet legitimately does there, a GET or HEAD on `/cogeto/*` (a
+presigned download), and answers 403 to everything else, so `/minio/admin/*`
+is no longer proxied to the internet. The dev stack keeps its
+localhost-only consoles profile unchanged.
+
+### Bootstrap PAT lifecycle
+
+`zitadel-init` revokes the bootstrap machine PAT the moment provisioning
+succeeds, verifies the token stopped authenticating, blanks `pat.txt`, and
+records the provisioned inputs in `bootstrap-state.json`; later runs
+short-circuit on that record instead of needing a live credential. On
+customer installs the operator script additionally mints the PAT with a
+14-day expiry as a backstop. Residuals, stated: the demo sandbox keeps its
+PAT (the demo seed needs it, and a sandbox holds no real data), and changing
+material provisioning inputs after install (for example the domain) requires
+the operator to mint a fresh PAT, which the runbook documents.
+
 ## Residual notes
 
 - **Same-org members are trusted with shared scope.** Shared means org-wide by
