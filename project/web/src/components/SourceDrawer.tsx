@@ -69,7 +69,10 @@ export function SourceDrawer({
   sourceId: string;
   onClose: () => void;
   /** Called after the saga accepted the deletion (receipt pending). */
-  onDeleted: (receiptId: string) => void;
+  /** Called after the saga accepted the deletion. `receiptId` is null when
+   * nothing erasable derived from the source, so there is no receipt to open
+   * (SEC-30). */
+  onDeleted: (receiptId: string | null) => void;
 }) {
   const queryClient = useQueryClient();
   const [deleteError, setDeleteError] = useState<string | null>(null);

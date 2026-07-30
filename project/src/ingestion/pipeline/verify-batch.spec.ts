@@ -70,7 +70,7 @@ describe('batched_verification', () => {
     expect(gateway.inputs[0]).toContain('CLAIM 10:');
     expect(gateway.inputs[1]).toContain('CLAIMS UNDER REVIEW: 2 claims');
     expect(verified.every((v) => v.verdict === 'supported')).toBe(true);
-    expect(verified[0]!.promptVersion).toBe('verification/v0005');
+    expect(verified[0]!.promptVersion).toBe('verification/v0007');
   });
 
   it('a claim the reply omits is conservatively unsupported', async () => {
@@ -85,12 +85,12 @@ describe('batched_verification', () => {
     expect(verified[1]!.reason).toContain('no verdict returned');
   });
 
-  it('a single-fact run keeps the single-claim contract (v0004)', async () => {
+  it('a single-fact run keeps the single-claim contract (v0006)', async () => {
     const gateway = new RecordingGateway();
     const stage = new VerifyStage(gateway);
     const verified = await stage.run([{ text: 'Only claim.', index: 0 }], [fact('Only claim.')]);
     expect(gateway.inputs[0]!.startsWith('CLAIM UNDER REVIEW:')).toBe(true);
-    expect(verified[0]!.promptVersion).toBe('verification/v0004');
+    expect(verified[0]!.promptVersion).toBe('verification/v0006');
   });
 
   it('the batch envelope numbers every block per claim', () => {

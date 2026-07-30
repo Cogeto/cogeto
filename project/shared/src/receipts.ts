@@ -2,7 +2,13 @@
 
 /** POST-side response of DELETE /api/sources/:type/:id — the saga's handle. */
 export interface DeletionRequestedDto {
-  receiptId: string;
+  /**
+   * The pending receipt, or NULL when the deletion was a no-op (audit 2.0
+   * SEC-30): the source existed but nothing erasable derived from it, so there
+   * is nothing for a signed receipt to attest. The chain stays free of empty
+   * attestations. Callers must handle null before opening a receipt drawer.
+   */
+  receiptId: string | null;
 }
 
 /** GET /api/sources/:type/:id/impact — the confirm dialog's exact numbers. */

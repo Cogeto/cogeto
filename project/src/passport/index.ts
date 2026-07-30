@@ -4,6 +4,9 @@
  * the worker wires the export + retention jobs; assembly internals stay private.
  */
 export { PassportModule } from './passport.module';
+// The deletion-saga arm (SEC-8): passport exports must not outlive a deletion.
+export { PassportCascadeModule } from './passport-cascade.module';
+export { PassportExportCascade } from './passport.source-expiry';
 export { PassportExportExecutor } from './passport-export.executor';
 export {
   PassportExportStore,

@@ -145,6 +145,21 @@ export interface DerivedCascade {
    * transaction and returns the count folded into the receipt.
    */
   cascadeForSource?(tx: Tx, sourceType: string, sourceId: string): Promise<number>;
+  /**
+   * Optional: artifacts that belong to the OWNER rather than to particular
+   * memories, and that must not outlive this deletion (audit 2.0 SEC-8).
+   *
+   * The Memory Passport is the case this exists for. A ready export is a signed
+   * ZIP of everything the user could see when it was assembled, so after a
+   * deletion it holds erased content that the receipt claims is gone, and the
+   * download endpoint would still mint a presigned URL for it.
+   *
+   * Returns the object keys to erase. They join the receipt's `object_keys` and
+   * are deleted by the WORKER leg like every other object, so the all-or-nothing
+   * guarantee and the retry semantics are the existing ones: this runs inside
+   * the enumeration transaction and performs no external side effect itself.
+   */
+  expireForOwner?(tx: Tx, ownerId: string): Promise<{ count: number; objectKeys: string[] }>;
 }
 
 export const DERIVED_CASCADES = Symbol('DERIVED_CASCADES');
@@ -209,6 +224,14 @@ const countsSchema = z.object({
    * optional so earlier receipts parse unchanged; a count, not an identifier
    * the sweep ignores it). */
   chat_messages_redacted: z.int().optional(),
+  /**
+   * Memory Passport exports expired with this deletion (audit 2.0 SEC-8).
+   * ADDITIVE and OPTIONAL, like every count before it: earlier receipts parse
+   * unchanged and hash to the same value, so the chain verifies across the
+   * change. Their object keys are in `object_keys`, so the sweep already checks
+   * them absent; this field is the human-readable count.
+   */
+  passport_exports_expired: z.int().optional(),
   /** Reply-draft approvals derived from the deleted email source, whose drafted
    * body (grounded on the erased email + the user's memories) is redacted to a
    * deletion marker (; additive — optional so earlier receipts parse
@@ -345,7 +368,7 @@ export class DeletionSaga {
     principal: Principal,
     rawSourceType: string,
     sourceId: string,
-  ): Promise<{ receiptId: string }> {
+  ): Promise<{ receiptId: string | null }> {
     const sourceType = assertSourceType(rawSourceType);
     if (!sourceId.trim()) throw new BadRequestException('source id must not be blank');
 
@@ -433,6 +456,8 @@ export class DeletionSaga {
       // stays as the safety net).
       let chatMessagesRedacted = 0;
       let replyDraftsRedacted = 0;
+      let passportExportsExpired = 0;
+      const ownerExpiredObjectKeys: string[] = [];
       for (const cascade of this.derivedCascades) {
         const removed = await cascade.cascadeForMemories(tx, memoryIds);
         // assistant answers that cited erased memories
@@ -445,6 +470,16 @@ export class DeletionSaga {
         if (cascade.cascadeForSource) {
           const redacted = await cascade.cascadeForSource(tx, sourceType, sourceId);
           if (cascade.artifact === 'reply_drafts') replyDraftsRedacted += redacted;
+        }
+        // SEC-8: owner-scoped artifacts that would outlive the deletion. Their
+        // objects join `objectKeys` below, so the worker leg erases them and
+        // the sweep verifies them absent, exactly like a file or an email body.
+        if (cascade.expireForOwner) {
+          const expired = await cascade.expireForOwner(tx, principal.userId);
+          if (cascade.artifact === 'passport_exports') {
+            passportExportsExpired += expired.count;
+          }
+          ownerExpiredObjectKeys.push(...expired.objectKeys);
         }
       }
 
@@ -470,6 +505,8 @@ export class DeletionSaga {
       // The source's cascaded objects (email raw + HTML + attachment objects),
       // deduped so a key can never be double-listed in the receipt.
       for (const key of cascadeObjectKeys) if (!objectKeys.includes(key)) objectKeys.push(key);
+      // SEC-8: expired passport export artifacts, deduped the same way.
+      for (const key of ownerExpiredObjectKeys) if (!objectKeys.includes(key)) objectKeys.push(key);
       if (adapter) await adapter.deleteSource(tx, sourceId);
 
       const counts: ReceiptCounts = {
@@ -481,12 +518,50 @@ export class DeletionSaga {
         // ones that carry it still parse and still verify.
         chat_messages_redacted: chatMessagesRedacted,
         reply_drafts_redacted: replyDraftsRedacted,
+        ...(passportExportsExpired > 0 ? { passport_exports_expired: passportExportsExpired } : {}),
         ...(chatMessagesRemoved === null ? {} : { chat_messages_removed: chatMessagesRemoved }),
         point_ids: memoryIds,
         object_keys: objectKeys,
         superseded_by_nulled: nulledPointers,
         enumerated_at: new Date().toISOString(),
       };
+      // SEC-30: a receipt attests ERASURE, so it is only written when something
+      // was actually erased. Removing the SOURCE ROW counts: deleting a
+      // just-captured note whose pipeline has not run yet erases the note and
+      // consumes the pipeline's idempotency key so the content can never
+      // resurrect, and a receipt reading "0 memories, 0 objects" is the honest
+      // record of exactly that, not noise.
+      //
+      // Which leaves this guard covering the genuinely vacuous case: no source
+      // row, no memories, no objects, no derived artifacts. In practice
+      // `enumerateAndAuthorize` already 404s there (`sourceOwner === null &&
+      // rows.length === 0`), so this is defence in depth rather than a path the
+      // API reaches today. It is kept because the alternative is trusting that
+      // invariant to hold through every future source type: a signed, chained
+      // attestation that nothing happened is the one thing the ledger must never
+      // contain.
+      const sourceRowRemoved = sourceOwner !== null || fileRow !== null;
+      const erasedSomething =
+        sourceRowRemoved ||
+        memoryIds.length > 0 ||
+        objectKeys.length > 0 ||
+        chatMessagesRedacted > 0 ||
+        replyDraftsRedacted > 0 ||
+        passportExportsExpired > 0 ||
+        (chatMessagesRemoved ?? 0) > 0;
+      if (!erasedSomething) {
+        await writeAudit(tx, {
+          actor: `user:${principal.userId}`,
+          action: 'source.deleted_empty',
+          entityType: 'source',
+          entityId: sourceId,
+          detail: { sourceType, reason: 'nothing erasable derived from this source' },
+          orgId: principal.orgId,
+          ownerId: principal.userId,
+        });
+        return { receiptId: null };
+      }
+
       const [receipt] = await tx
         .insert(deletionReceipt)
         .values({ sourceType, sourceId, countsJson: counts, status: 'pending' })

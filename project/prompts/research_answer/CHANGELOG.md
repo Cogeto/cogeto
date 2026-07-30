@@ -1,5 +1,9 @@
 # research_answer — changelog
 
+- **v0004** (2026-07-30, audit 2.0 SEC-4): the data-fence clause, otherwise identical
+  to v0003. Page title and body are fenced; the `[W#]` marker, url and fetch date stay
+  outside so citation resolution is untouched. A fetched page is the most hostile input
+  in the product.
 ## v0003 — 2026-07-24 (P6.6 instance context)
 
 Instance context (decisions 0051/0052): the input may open with `NOW` (the

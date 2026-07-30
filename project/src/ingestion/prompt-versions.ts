@@ -9,12 +9,12 @@ export interface PromptVersionRef {
   version: string;
 }
 
-export const EXTRACTION_PROMPT: PromptVersionRef = { family: 'extraction', version: 'v0002' };
-export const VERIFICATION_PROMPT: PromptVersionRef = { family: 'verification', version: 'v0004' };
+export const EXTRACTION_PROMPT: PromptVersionRef = { family: 'extraction', version: 'v0003' };
+export const VERIFICATION_PROMPT: PromptVersionRef = { family: 'verification', version: 'v0006' };
 /** The batch form of v0004 — multi-fact sources only. */
 export const VERIFICATION_BATCH_PROMPT: PromptVersionRef = {
   family: 'verification',
-  version: 'v0005',
+  version: 'v0007',
 };
 export const RECONCILE_DEDUP_PROMPT: PromptVersionRef = {
   family: 'reconcile_dedup',

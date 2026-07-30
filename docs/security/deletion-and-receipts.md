@@ -55,6 +55,59 @@ Receipts are also **permanent**: a database trigger forbids `DELETE` outright an
 allows `UPDATE` only while a receipt is still `pending` (the one legal transition,
 as the saga confirms it). No API route mutates a receipt.
 
+## Memory Passport exports expire with the deletion
+
+A passport export (spec §11.4) is a signed ZIP of everything its owner could see
+when it was assembled. Nothing used to re-open it when a source was deleted, so
+for up to the retention window a confirmed receipt said "provably deleted" while
+a downloadable artifact still held the erased content and the download endpoint
+still minted presigned URLs for it. That is the signed receipt over-claiming,
+which is the one failure this mechanism cannot afford (audit 2.0 SEC-8).
+
+**The rule, and why it is the one we chose.** A source deletion expires **all**
+of the owner's ready and in-progress exports, unconditionally. It is not
+content-scoped. Deciding whether a particular ZIP contains a particular erased
+memory would mean opening the archive, which is expensive, needs exactly the
+plaintext we are erasing, and fails open on any bug. Unconditional expiry is a
+one-line rule with an obvious proof, and an export is cheap to regenerate: the
+cost of being too aggressive is a user pressing Export again, and the cost of
+being too narrow is a receipt that lies. In-progress (`pending`) exports are
+expired too, because the worker assembling them may already have read the doomed
+rows.
+
+Mechanically it reuses the machinery that was already there. The expiry runs
+inside the enumeration transaction, marks the rows `expired` and clears their
+object key, and hands the object keys back to the saga, which folds them into the
+receipt's `object_keys`. The **worker leg** erases the bytes and the nightly
+sweep verifies them absent, exactly like a file or an email body. The receipt
+also carries `passport_exports_expired`, a count: **optional and additive**, so
+every earlier receipt parses unchanged and hashes to the same value, and the
+chain verifies across the change. The download endpoint refuses an expired export
+by name, saying why, rather than reporting a generic "not ready".
+
+## The export lifecycle is audited
+
+Producing an export is the highest-impact data movement in the product, a signed
+copy of one user's entire memory, and it used to leave no entry at all in the
+append-only trail (audit 2.0 SEC-9). Three events are now recorded, structural
+metadata only, never content:
+
+| Action | Written when |
+|---|---|
+| `passport.export_requested` | the user triggers an export |
+| `passport.export_ready` | the worker has assembled and stored the artifact |
+| `passport.export_downloaded` | a presigned URL is minted, the moment the bytes become reachable outside the instance |
+| `passport.export_expired` | a source deletion expired the owner's exports |
+
+## An empty enumeration mints no receipt
+
+A receipt attests erasure. When a source exists but nothing erasable derived from
+it, no memories, no objects, no redacted or expired derived artifacts, the source
+row is still removed but no receipt is written and the API returns a null
+`receiptId` (audit 2.0 SEC-30). Minting one anyway put empty attestations in the
+hash chain, which is noise in the one artifact whose entire value is that every
+entry means something. A source that exists nowhere at all still 404s, unchanged.
+
 ## The nightly sweep detects, never repairs
 
 A nightly integrity sweep re-derives every confirmed receipt's identifiers from

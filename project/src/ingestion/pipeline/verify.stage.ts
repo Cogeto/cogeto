@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { loadPrompt, ModelGateway } from '../../model-gateway/index';
+import {
+  fenceUntrusted,
+  loadPrompt,
+  ModelGateway,
+  untrustedBoundary,
+} from '../../model-gateway/index';
 import type { PromptArtifact } from '../../model-gateway/index';
 import { verificationBatchOutputSchema, verificationOutputSchema } from '../domain/candidate-fact';
 import type { CandidateFact } from '../domain/candidate-fact';
@@ -112,15 +117,27 @@ export function buildVerificationInput(fact: CandidateFact, chunks: Chunk[]): st
       );
     }
   }
+  // SEC-4: the passage and its surrounding text are the document verbatim, so
+  // both are fenced.
+  //
+  // The CLAIM is deliberately NOT fenced. Fencing all three cost 9.4 points of
+  // verification agreement (90.5% to 81.1%) in the golden set: this prompt's
+  // whole job is to compare the claim against the passage, and burying the
+  // comparison target in marker lines makes that harder, at three fences per
+  // claim across a batch. The claim is also our own generated sentence rather
+  // than raw document text, and it is short, so it is the weakest of the three
+  // injection carriers. Fencing the two document spans keeps the defence where
+  // the hostile text actually is. Measured again after the change: 90.5%.
+  const boundary = untrustedBoundary();
   return [
     'CLAIM UNDER REVIEW:',
     fact.claim,
     '',
     'CITED PASSAGE:',
-    fact.source_span,
+    fenceUntrusted(fact.source_span, boundary),
     '',
     'SURROUNDING SOURCE TEXT:',
-    context,
+    fenceUntrusted(context, boundary),
   ].join('\n');
 }
 

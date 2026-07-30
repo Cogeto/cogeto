@@ -138,6 +138,14 @@ async function main(): Promise<void> {
         'task_conclusion',
         row.source_id,
       );
+      // SEC-30: the saga returns null when nothing erasable derived from the
+      // source. These rows exist precisely because they DO have derived
+      // memories, so a null here means the state changed under us: report it
+      // and move on rather than confirming a receipt that does not exist.
+      if (receiptId === null) {
+        console.log(`  ${row.source_id} → nothing erasable derived from it, no receipt`);
+        continue;
+      }
       // Run the external leg inline rather than leaving it queued: this script
       // is the whole operation, and a pending receipt would block the sweep.
       const result = await db.transaction((tx) => executor.execute(tx, receiptId));

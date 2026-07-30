@@ -13,7 +13,12 @@ import {
   INSTANCE_TIMEZONE,
   UserContextService,
 } from '../infrastructure/index';
-import { loadPrompt, ModelGateway } from '../model-gateway/index';
+import {
+  fenceUntrusted,
+  loadPrompt,
+  ModelGateway,
+  untrustedBoundary,
+} from '../model-gateway/index';
 import type { PromptArtifact } from '../model-gateway/index';
 import { CONVERSATION_APPEND, RetrievalService } from '../retrieval/index';
 import type { ConversationAppendPort } from '../retrieval/index';
@@ -34,7 +39,7 @@ import type { ResearchRunRow, WebPageRow } from './persistence/tables';
  * survives into the record.
  */
 
-export const RESEARCH_ANSWER_PROMPT = { family: 'research_answer', version: 'v0003' };
+export const RESEARCH_ANSWER_PROMPT = { family: 'research_answer', version: 'v0004' };
 
 /** Caps that bound one synthesis call: pages and per-page excerpt length. */
 const MAX_PAGES = 8;
@@ -163,16 +168,25 @@ export class ResearchSynthesisService {
           .catch(() => [])
       : [];
 
+    // SEC-4: a fetched page is the most hostile input in the product, and its
+    // title and body are both attacker-authored. Marker, url and fetch date
+    // stay outside the fence so citation resolution is unaffected.
+    const boundary = untrustedBoundary();
     const webBlocks = pages.map((page, i) => {
       const fetched = page.fetchedAt.toISOString().slice(0, 10);
       return (
-        `[W${i + 1}] ${page.title ?? '(untitled page)'}\n` +
-        `url: ${page.finalUrl}\nfetched: ${fetched}\n` +
-        `text:\n${page.retainedText.slice(0, PAGE_EXCERPT_CHARS)}`
+        `[W${i + 1}] url: ${page.finalUrl}\nfetched: ${fetched}\n` +
+        `title and text:\n` +
+        fenceUntrusted(
+          `${page.title ?? '(untitled page)'}\n${page.retainedText.slice(0, PAGE_EXCERPT_CHARS)}`,
+          boundary,
+        )
       );
     });
     const factBlocks = memories.map(
-      (m, i) => `[M${i + 1}] ${m.memory.content ?? '(withheld)'} (status: ${m.memory.status})`,
+      (m, i) =>
+        `[M${i + 1}] (status: ${m.memory.status})\n` +
+        fenceUntrusted(m.memory.content ?? '(withheld)', boundary),
     );
 
     // The now-block: the clock for fetch-date freshness plus the

@@ -23,7 +23,12 @@ import {
   SkillsModule,
   WebSourceDeletion,
 } from '../connectors/index';
-import { PassportModule, PASSPORT_EXPORT_RETENTION_HOURS } from '../passport/index';
+import {
+  PassportCascadeModule,
+  PassportExportCascade,
+  PassportModule,
+  PASSPORT_EXPORT_RETENTION_HOURS,
+} from '../passport/index';
 import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG, mailOptions, redactionOptions, researchOptions } from './config';
 import type { CogetoConfig } from './config';
@@ -96,10 +101,12 @@ export function createAppRootModule(config: CogetoConfig): unknown {
           ],
         },
         derivedCascades: {
-          imports: [ChatSourceModule, ReplyDraftCascadeModule],
+          imports: [ChatSourceModule, ReplyDraftCascadeModule, PassportCascadeModule],
           // Assistant answers citing erased memories are redacted (
-          //); reply drafts grounded on the source are too.
-          adapters: [ChatAnswerCascade, ReplyDraftCascade],
+          //); reply drafts grounded on the source are too. A ready passport
+          // export is a signed copy of everything the owner could see, so it is
+          // expired by the same receipt (SEC-8).
+          adapters: [ChatAnswerCascade, ReplyDraftCascade, PassportExportCascade],
         },
         // Delete-vs-ingestion serialization: the saga
         // cancels a source's pending pipeline run inside its enumeration tx.
