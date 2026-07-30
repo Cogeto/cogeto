@@ -291,13 +291,17 @@ export class WebFetchService {
   }
 
   /** Manual redirect loop: every hop is re-validated before it is fetched. */
-  private async followRedirects(start: URL, signal: AbortSignal): Promise<Response> {
+  private async followRedirects(
+    start: URL,
+    signal: AbortSignal,
+    accept = 'text/html, application/pdf',
+  ): Promise<Response> {
     let current = start;
     for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
       const response = await this.fetchImpl(current, {
         redirect: 'manual',
         signal,
-        headers: { 'user-agent': RESEARCH_USER_AGENT, accept: 'text/html, application/pdf' },
+        headers: { 'user-agent': RESEARCH_USER_AGENT, accept },
       });
       if (response.status < 300 || response.status >= 400) return response;
       const location = response.headers.get('location');
@@ -336,22 +340,39 @@ export class WebFetchService {
     return offender ? `${hostname} resolves to a private address` : null;
   }
 
-  /** robots.txt per origin, cached for this service instance's lifetime. */
+  /**
+   * robots.txt per origin, cached for this service instance's lifetime.
+   *
+   * Goes through {@link followRedirects} like the page fetch does, so every
+   * redirect hop is re-validated by {@link refusalFor} (SSRF, audit 2.0 SEC-11).
+   * It used to call `fetchImpl` directly with the default `redirect: 'follow'`,
+   * which meant an origin whose `/robots.txt` answered
+   * `302 → http://169.254.169.254/…` had that request issued from inside the
+   * compose network. The body was never returned to the caller, so it was blind
+   * — but it was still a reachability probe and a state-changing GET.
+   */
   private async robotsFor(origin: string): Promise<string | null> {
     if (this.robotsCache.has(origin)) return this.robotsCache.get(origin)!;
     let body: string | null = null;
     try {
-      const response = await this.fetchImpl(`${origin}/robots.txt`, {
-        signal: AbortSignal.timeout(this.options.fetchTimeoutMs),
-        headers: { 'user-agent': RESEARCH_USER_AGENT },
-      });
+      const response = await this.followRedirects(
+        new URL(`${origin}/robots.txt`),
+        AbortSignal.timeout(this.options.fetchTimeoutMs),
+        'text/plain',
+      );
       if (response.ok) {
         const buffer = await readCapped(response, ROBOTS_MAX_BYTES);
         body = buffer.toString('utf8');
       }
       // 4xx/5xx → no readable robots file; the standard treats it as no rules.
-    } catch {
-      this.log.debug(`robots.txt unreadable for ${origin}, treating as no rules`);
+    } catch (error) {
+      // A refused redirect target lands here too. Treating it as "no rules" is
+      // the standard's fail-open for an unreadable robots.txt, and it is safe:
+      // the refusal happened BEFORE the request, and the page fetch that
+      // follows re-validates its own hops independently.
+      const why =
+        error instanceof RefusedAddressError ? error.message : 'network error or timeout';
+      this.log.debug(`robots.txt unreadable for ${origin} (${why}), treating as no rules`);
     }
     this.robotsCache.set(origin, body);
     return body;
