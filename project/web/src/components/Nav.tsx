@@ -142,7 +142,20 @@ function initials(name: string): string {
 }
 
 /** Left navigation: custom glyphs, and the identity + sign-out pinned to
- * the bottom instead of floating in the page header. */
+ * the bottom instead of floating in the page header.
+ *
+ * The rail is pinned to the VIEWPORT, not the document. As a plain flex child
+ * it stretched to the full page height, so on a long page (Memories, Audit)
+ * the identity block and Sign out sat at the bottom of the document and were
+ * only reachable by scrolling to the very end. `self-start` stops the stretch,
+ * `h-screen` sizes the rail to the viewport, and `sticky top-0` keeps it there
+ * while the page scrolls underneath; the item list's own `overflow-y-auto`
+ * then does its real job when the sections outgrow a short window. Sticky's
+ * containing block is the full-height shell, so the rail stays pinned at every
+ * scroll position and its background never runs out. On full-height pages
+ * (chat) the shell is `fixed inset-0`, where `h-screen` is already the
+ * container height and sticky is inert: same render as before.
+ */
 export function Nav({
   active,
   reviewCount,
@@ -172,7 +185,7 @@ export function Nav({
   return (
     <nav
       aria-label="Primary"
-      className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-brand-navy-deep text-white"
+      className="sticky top-0 flex h-screen w-60 shrink-0 flex-col self-start border-r border-slate-200 bg-brand-navy-deep text-white"
     >
       <div className="border-b border-white/10 p-4">
         <img src="/brand/cogeto-final-logo-dark.svg" alt="Cogeto" className="h-8" />
@@ -256,6 +269,16 @@ export function Nav({
             Sign out
           </button>
         )}
+        {/* The running version. It lived here until the sidebar was rebuilt,
+            which dropped the line and left the build-time define with no
+            consumer, so an operator verifying an upgrade had nothing to read.
+            A hairline keeps it clearly apart from the session controls. */}
+        <div
+          className="mt-2 border-t border-white/5 px-3 pt-2 text-[0.65rem] text-white/30"
+          title="Cogeto version"
+        >
+          v{__APP_VERSION__}
+        </div>
       </div>
     </nav>
   );
