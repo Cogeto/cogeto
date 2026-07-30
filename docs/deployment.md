@@ -61,8 +61,12 @@ verify command. How releases are produced:
 ## Upgrades and rollback
 
 ```sh
-sudo cogeto upgrade # latest published release
-sudo cogeto upgrade 0.9.1 # a specific one
+# Re-download first: the installed copy cannot update itself, and only the
+# new script backfills any credential a newer compose requires.
+curl -fsSL https://raw.githubusercontent.com/Cogeto/cogeto/main/scripts/operator/cogeto -o cogeto
+chmod +x cogeto
+sudo ./cogeto upgrade # latest published release
+sudo ./cogeto upgrade 0.9.1 # a specific one
 ```
 
 The script refuses unpublished tags, re-runs migrations, health-checks, and

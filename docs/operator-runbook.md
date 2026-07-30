@@ -469,7 +469,20 @@ then delete the rehearsal instance.
 2. **Take a fresh backup first** (section 5): the script demands a typed
  `BACKED-UP` acknowledgment before touching anything, because migrations
  are forward-only and the only full rollback is the backup restore.
-3. On the instance:
+3. **Re-download the script before every upgrade.** The copy on the instance
+ is the one that installed it, and it cannot update itself: `install_self`
+ copies the *running* file to `/usr/local/bin/cogeto`. When a release adds a
+ credential the new compose requires, only the new script knows to backfill
+ it, so the old one fetches the new compose and then dies on `docker compose
+ pull` with "required variable is missing". It fails loudly and changes no
+ data, but re-fetching first avoids the detour:
+
+ ```sh
+ curl -fsSL https://raw.githubusercontent.com/Cogeto/cogeto/main/scripts/operator/cogeto -o cogeto
+ chmod +x cogeto
+ ```
+
+4. On the instance:
 
  ```sh
  sudo ./cogeto upgrade # → latest published release (shown + confirmed)
@@ -488,17 +501,20 @@ then delete the rehearsal instance.
  automatically on the next start): re-vault `.env` after an upgrade that
  prints new secret names.
 
-4. **Verify after**: `sudo ./cogeto status` is GREEN; log in and confirm the
- nav footer shows the new version; expect a short app/worker restart blip
- during the upgrade, nothing more. Image signatures were already verified
- during the upgrade (cosign, mandatory).
-5. **Rollback** (the script prints this too): `sudo ./cogeto upgrade
+5. **Verify after**: `sudo ./cogeto status` is GREEN and prints the running
+ `version`, which is the authoritative check. Log in as well and confirm the
+ version at the bottom of the sidebar agrees (v1.3.1 and later; releases
+ v1.1.0 through v1.3.0 do not show it, the line was lost in a sidebar
+ redesign). Expect a short app/worker restart blip during the upgrade,
+ nothing more. Image signatures were already verified during the upgrade
+ (cosign, mandatory).
+6. **Rollback** (the script prints this too): `sudo ./cogeto upgrade
  <previous version>` with the typed `ROLLBACK` confirmation. Know what it
  does and does not do: it rolls the **images** back; **database migrations
  are forward-only** and stay. If the newer schema broke the older app, the
  real rollback is a **backup restore** (section 5c), which is why the
  rehearsal matters.
-6. Record the upgrade (version, date, reindex yes/no) in the tracker.
+7. Record the upgrade (version, date, reindex yes/no) in the tracker.
 
 ### 6a. Upgrading past 2.0: one pre-migration step, only if the instance ever ran tasks
 
