@@ -31,8 +31,21 @@ interface KnownDevSecret {
 export const KNOWN_DEV_SECRETS: readonly KnownDevSecret[] = [
   { env: 'POSTGRES_PASSWORD', devValue: 'cogeto-dev-password', match: 'equals' },
   { env: 'COGETO_DATABASE_URL', devValue: 'cogeto-dev-password', match: 'contains' },
+  // Wave-3 least-privilege credentials (SEC-1/SEC-2): the split DB roles, the
+  // Zitadel bootstrap DB admin, and the scoped S3 credential each carry their
+  // own dev default, refused on a reachable host like every other.
+  { env: 'COGETO_APP_DB_PASSWORD', devValue: 'cogeto-dev-app-db-password', match: 'equals' },
+  { env: 'COGETO_DATABASE_URL', devValue: 'cogeto-dev-app-db-password', match: 'contains' },
+  { env: 'COGETO_DATABASE_URL', devValue: 'cogeto-dev-migrate-db-password', match: 'contains' },
+  {
+    env: 'COGETO_MIGRATE_DB_PASSWORD',
+    devValue: 'cogeto-dev-migrate-db-password',
+    match: 'equals',
+  },
+  { env: 'ZITADEL_DB_ADMIN_PASSWORD', devValue: 'zitadel-dev-admin-password', match: 'equals' },
   { env: 'MINIO_ROOT_PASSWORD', devValue: 'cogeto-dev-password', match: 'equals' },
   { env: 'COGETO_S3_SECRET_KEY', devValue: 'cogeto-dev-password', match: 'equals' },
+  { env: 'COGETO_S3_SECRET_KEY', devValue: 'cogeto-dev-app-password', match: 'equals' },
   {
     env: 'MINIO_KMS_SECRET_KEY',
     devValue: 'cogeto-dev-key:bxaADytwX4au7d/HYGegSGd0uloQlb30uz6Vh5opUvg=',

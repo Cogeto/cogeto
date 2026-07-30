@@ -66,6 +66,22 @@
 # (COGETO_S3_PUBLIC_URL). Caddy preserves the incoming Host header, which
 # MinIO's SigV4 presign check needs. Access is authorized by the presigned URL
 # signature itself; the MinIO console is NOT exposed on a customer instance.
+#
+# SEC-2: the ONLY thing the internet legitimately does here is download a
+# presigned object, which is a GET (or HEAD) on a path inside the cogeto
+# bucket. Everything else — the MinIO admin API (/minio/admin/*), bucket
+# operations, writes — is refused at the edge, so a leaked credential can no
+# longer manage MinIO from the internet; MinIO's full API remains reachable
+# only on the internal Docker network.
 s3.{$COGETO_EXTERNAL_DOMAIN} {
-	reverse_proxy minio:9000
+	@presigned_download {
+		method GET HEAD
+		path /cogeto/*
+	}
+	handle @presigned_download {
+		reverse_proxy minio:9000
+	}
+	handle {
+		respond 403
+	}
 }

@@ -170,7 +170,18 @@ export async function fileObjectKeys(pool: Pool): Promise<string[]> {
  * by the caller (reindex-from-empty removes orphan points; object deletes first).
  */
 export async function truncateDomainTables(pool: Pool): Promise<string[]> {
-  const preserve = new Set(['cogeto_migrations', 'prompt_registry']);
+  // audit_log and deletion_receipt are append-only BY ROLE (SEC-1): the
+  // runtime role deliberately holds no TRUNCATE on them (TRUNCATE would bypass
+  // the BEFORE-row triggers), so a reset leaves the previous demo epoch's
+  // trail and receipts in place. Both are structural metadata, hold no demo
+  // content, and stay consistent with the wiped world (a confirmed receipt's
+  // erasures remain erased).
+  const preserve = new Set([
+    'cogeto_migrations',
+    'prompt_registry',
+    'audit_log',
+    'deletion_receipt',
+  ]);
   const { rows } = await pool.query<{ tablename: string }>(
     `SELECT tablename FROM pg_tables WHERE schemaname = 'public'`,
   );

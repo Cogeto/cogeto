@@ -293,6 +293,25 @@ gen_zitadel_admin_password() {
 gen_minio_kms_key() {  # <key-name>:<base64 of 32 random bytes>
   printf 'cogeto-instance-key:%s' "$(openssl rand -base64 32)"
 }
+gen_bootstrap_pat_expiry() {  # SEC-16: install date + 14 days (bootstrap backstop)
+  # GNU date (Ubuntu target); BSD date fallback for a dev-box dry run.
+  date -u -d '+14 days' '+%Y-%m-%dT00:00:00Z' 2>/dev/null \
+    || date -u -v +14d '+%Y-%m-%dT00:00:00Z'
+}
+
+# Wave-3 credentials (SEC-1/SEC-2/SEC-16) on an instance installed before
+# they existed: the fetched compose REQUIRES them (`:?`), so an upgrade must
+# backfill any that are missing. Generation is idempotent — an existing value
+# is never touched. db-init/minio-init then converge the actual roles and the
+# scoped MinIO user from these values on the next `compose up`.
+ensure_wave3_secrets() {
+  [ -n "$(env_get COGETO_APP_DB_PASSWORD)" ]     || env_set COGETO_APP_DB_PASSWORD "$(gen_password)"
+  [ -n "$(env_get COGETO_MIGRATE_DB_PASSWORD)" ] || env_set COGETO_MIGRATE_DB_PASSWORD "$(gen_password)"
+  [ -n "$(env_get ZITADEL_DB_ADMIN_PASSWORD)" ]  || env_set ZITADEL_DB_ADMIN_PASSWORD "$(gen_password)"
+  [ -n "$(env_get COGETO_S3_ACCESS_KEY)" ]       || env_set COGETO_S3_ACCESS_KEY "cogeto-app"
+  [ -n "$(env_get COGETO_S3_SECRET_KEY)" ]       || env_set COGETO_S3_SECRET_KEY "$(gen_password)"
+  [ -n "$(env_get ZITADEL_BOOTSTRAP_PAT_EXPIRY)" ] || env_set ZITADEL_BOOTSTRAP_PAT_EXPIRY "$(gen_bootstrap_pat_expiry)"
+}
 
 # ── .env helpers ──────────────────────────────────────────────────────────────
 
@@ -518,6 +537,9 @@ fetch_deploy_assets() {
   fetch_one "v${version}" "project/infra/deploy/docker-compose.deploy.yml" "$COGETO_ROOT/docker-compose.yml"
   fetch_one "v${version}" "project/infra/deploy/Caddyfile" "$COGETO_ROOT/Caddyfile"
   fetch_one "v${version}" "project/infra/docker/zitadel-init/init.mjs" "$COGETO_ROOT/zitadel-init/init.mjs"
+  # Least-privilege Postgres roles (SEC-1): the db-init one-shot mounts this.
+  run mkdir -p "$COGETO_ROOT/postgres-init"
+  fetch_one "v${version}" "project/infra/docker/postgres-init/db-init.sql" "$COGETO_ROOT/postgres-init/db-init.sql"
   # The research profile's SearXNG settings — fetched with the
   # other assets so `cogeto features enable research` works offline later.
   run mkdir -p "$COGETO_ROOT/searxng"
@@ -760,6 +782,16 @@ cmd_install() {
   env_set COGETO_ACME_EMAIL "$acme_email"
   env_set COGETO_S3_PUBLIC_URL "$(derive_s3_origin "$domain")"
   env_set POSTGRES_PASSWORD "$(gen_password)"
+  # Least-privilege data plane (audit 2.0 wave 3, SEC-1/SEC-2/SEC-16): the
+  # runtime and migration DB roles, Zitadel's non-superuser DB admin, the
+  # scoped S3 credential, and a short bootstrap-PAT expiry (zitadel-init also
+  # revokes the PAT once provisioning succeeds — the expiry is the backstop).
+  env_set COGETO_APP_DB_PASSWORD "$(gen_password)"
+  env_set COGETO_MIGRATE_DB_PASSWORD "$(gen_password)"
+  env_set ZITADEL_DB_ADMIN_PASSWORD "$(gen_password)"
+  env_set COGETO_S3_ACCESS_KEY "cogeto-app"
+  env_set COGETO_S3_SECRET_KEY "$(gen_password)"
+  env_set ZITADEL_BOOTSTRAP_PAT_EXPIRY "$(gen_bootstrap_pat_expiry)"
   env_set MINIO_ROOT_USER "cogeto"
   env_set MINIO_ROOT_PASSWORD "$(gen_password)"
   env_set MINIO_KMS_SECRET_KEY "$(gen_minio_kms_key)"
@@ -860,6 +892,8 @@ cmd_upgrade() {
   # Deployment files are versioned with the images — fetch the matching set.
   fetch_deploy_assets "$target"
   env_set COGETO_VERSION "$target"
+  # New-in-this-release secrets the fetched compose requires (idempotent).
+  ensure_wave3_secrets
 
   say "pulling v${target} images (never building)"
   run compose pull --quiet
@@ -1319,6 +1353,11 @@ cmd_configure() {
     env_set COGETO_S3_PUBLIC_URL "$(derive_s3_origin "$new_domain")"
     env_set COGETO_MAIL_INBOUND_ADDRESS "$(derive_inbound_address "$new_domain")"
     say "note: the Zitadel admin username stays admin@${old_domain} — Zitadel does not rename existing users on a domain change"
+    # SEC-16: re-provisioning the OIDC redirect URIs needs a live bootstrap
+    # PAT, and zitadel-init revoked it after install. The re-run fails loudly
+    # with the same instructions; surface them up front so the operator is not
+    # surprised mid-change.
+    todo_now "The bootstrap PAT was revoked after install (SEC-16). Before the domain change completes: in the Zitadel console (as $(env_get ZITADEL_ADMIN_USERNAME)) create a new personal access token for the 'cogeto-bootstrap' machine user, write it into the zitadel-machinekey volume as pat.txt, delete bootstrap-state.json next to it, then re-run 'docker compose up -d' (runbook: 'Changing the domain after install')"
     restart_needed="caddy app worker mail zitadel zitadel-init"
     add_install_checklist "$new_domain" "$(derive_inbound_address "$new_domain")" "$(detect_public_ip)"
   fi
@@ -1339,12 +1378,26 @@ cmd_configure() {
         confirm_typed "regenerate ${regen}" "rotate the Qdrant API key (qdrant + app + worker restart together; no data impact)."
         env_set COGETO_QDRANT_API_KEY "$(gen_token)"
         restart_needed="${restart_needed} qdrant app worker" ;;
+      COGETO_APP_DB_PASSWORD|COGETO_MIGRATE_DB_PASSWORD|ZITADEL_DB_ADMIN_PASSWORD)
+        # Rotatable BECAUSE of SEC-1: db-init re-syncs each role's password
+        # from .env on every `compose up` (ALTER ROLE ... PASSWORD), so the
+        # new value converges before any dependent service starts.
+        confirm_typed "regenerate ${regen}" "rotate this Postgres role password (db-init re-syncs it; dependent services restart together; no data impact)."
+        env_set "$regen" "$(gen_password)"
+        restart_needed="${restart_needed} db-init migrate app worker zitadel" ;;
+      COGETO_S3_SECRET_KEY)
+        # Rotatable BECAUSE of SEC-2: minio-init re-syncs the scoped MinIO
+        # user's secret from .env on every `compose up` (`mc admin user add`
+        # updates an existing user in place).
+        confirm_typed "regenerate ${regen}" "rotate the scoped S3 credential (minio-init re-syncs it; app + worker restart together; no data impact)."
+        env_set COGETO_S3_SECRET_KEY "$(gen_password)"
+        restart_needed="${restart_needed} minio-init app worker" ;;
       POSTGRES_PASSWORD|ZITADEL_DB_PASSWORD|MINIO_ROOT_PASSWORD|MINIO_KMS_SECRET_KEY|ZITADEL_MASTERKEY)
         die "refusing: ${regen} is DATA-BOUND — the running Postgres/MinIO/Zitadel state was initialized with it, and swapping the env alone bricks the stack (losing MINIO_KMS_SECRET_KEY makes stored objects permanently unreadable). Rotating these is a manual, backed-up procedure — see docs/operations/operator-script.md" ;;
       INSTANCE_SIGNING_KEY|instance-signing-key)
         die "refusing LOUDLY: the receipt-signing keypair is NEVER rotated by this script — every deletion receipt chains to it (spec §11.1), and a silent rotation would break the hash-chain verification that makes forgetting provable. If a rotation is truly required, it is an owner-level, documented procedure with a chain anchor";;
       *)
-        die "unknown secret '${regen}' — rotatable here: COGETO_MAIL_INTAKE_TOKEN, COGETO_QDRANT_API_KEY" ;;
+        die "unknown secret '${regen}' — rotatable here: COGETO_MAIL_INTAKE_TOKEN, COGETO_QDRANT_API_KEY, COGETO_APP_DB_PASSWORD, COGETO_MIGRATE_DB_PASSWORD, ZITADEL_DB_ADMIN_PASSWORD, COGETO_S3_SECRET_KEY" ;;
     esac
   fi
 

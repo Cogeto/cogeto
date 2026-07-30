@@ -120,6 +120,59 @@ describe('deployment hardening', () => {
     expect(compose).toContain('--masterkeyFromEnv');
     expect(compose).not.toContain('--masterkey "');
   });
+
+  describe('least-privilege data plane (audit 2.0 wave 3)', () => {
+    const deployCaddy = read('project/infra/deploy/Caddyfile');
+
+    it('SEC-1: no service connects to Postgres as the superuser', () => {
+      for (const [name, text] of [
+        ['docker-compose.yml', compose],
+        ['docker-compose.deploy.yml', deployCompose],
+      ] as const) {
+        expect(text, `${name} still hands the superuser to a service`).not.toMatch(
+          /COGETO_DATABASE_URL: postgres:\/\/postgres:/,
+        );
+        expect(text).toMatch(/COGETO_DATABASE_URL: postgres:\/\/cogeto_app:/);
+        expect(text).toMatch(/COGETO_DATABASE_URL: postgres:\/\/cogeto_migrate:/);
+        // The db-init one-shot provisions the roles; migrate and zitadel wait
+        // for it.
+        expect(text).toContain('db-init.sql');
+        expect(text).toMatch(/ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: zitadel_admin/);
+        expect(text).not.toMatch(/ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: postgres/);
+      }
+    });
+
+    it('SEC-2: the app never holds the MinIO root credential', () => {
+      for (const [name, text] of [
+        ['docker-compose.yml', compose],
+        ['docker-compose.deploy.yml', deployCompose],
+      ] as const) {
+        expect(text, `${name} maps a root credential into the app env`).not.toMatch(
+          /COGETO_S3_ACCESS_KEY: \$\{MINIO_ROOT_USER/,
+        );
+        expect(text).not.toMatch(/COGETO_S3_SECRET_KEY: \$\{MINIO_ROOT_PASSWORD/);
+        // minio-init provisions the scoped user and self-verifies both ways:
+        // object access works, admin API refused.
+        expect(text).toContain('mc admin policy create local cogeto-app-rw');
+        expect(text).toContain('admin API refused');
+      }
+    });
+
+    it('SEC-2: the public s3. vhost serves presigned GET/HEAD on the bucket only', () => {
+      const vhost = deployCaddy.match(/s3\.\{\$COGETO_EXTERNAL_DOMAIN\} \{[\s\S]*?\n\}/)?.[0];
+      expect(vhost, 's3 vhost not found in the production Caddyfile').toBeTruthy();
+      expect(vhost).toContain('method GET HEAD');
+      expect(vhost).toContain('path /cogeto/*');
+      expect(vhost).toContain('respond 403');
+      // No unconditional proxy line outside the matcher-gated handle.
+      expect(vhost).not.toMatch(/\n\treverse_proxy minio:9000/);
+    });
+
+    it('SEC-16: the bootstrap PAT expiry is configurable and required on deploy', () => {
+      expect(compose).toContain('${ZITADEL_BOOTSTRAP_PAT_EXPIRY:-');
+      expect(deployCompose).toContain('${ZITADEL_BOOTSTRAP_PAT_EXPIRY:?}');
+    });
+  });
 });
 
 describe('app key-mount guard', () => {
@@ -156,5 +209,15 @@ describe('zitadel-init hardening', () => {
 
   it('self-verifies by re-reading after every change (a silently-ignored field fails the boot)', () => {
     expect(init).toContain('did not stick');
+  });
+
+  it('SEC-16: revokes the bootstrap PAT after provisioning and self-verifies the refusal', () => {
+    expect(init).toContain('revokeBootstrapPat');
+    expect(init).toContain('/pats/_search');
+    // The success criterion is behavioural: the token must stop authenticating.
+    expect(init).toMatch(/probe\.status === 401/);
+    // Later runs short-circuit on the recorded state instead of needing a PAT.
+    expect(init).toContain('shortCircuitFromState');
+    expect(init).toContain('bootstrap-state.json');
   });
 });
