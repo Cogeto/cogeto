@@ -44,6 +44,16 @@ export {
   ModelBudgetExceededError,
 } from './errors';
 export { loadPrompt, recordPromptVersion } from './prompt-loader';
+// The untrusted-data fence (audit 2.0 SEC-4). Prompt composition happens in the
+// domain modules, but the rule about what a model may treat as an instruction
+// belongs with the seam every model call passes through.
+export {
+  fenceUntrusted,
+  untrustedBoundary,
+  beginMarker,
+  endMarker,
+  fenceIsIntact,
+} from './untrusted-fence';
 export type { PromptArtifact } from './prompt-loader';
 // Gateway construction goes through this factory everywhere so the redaction
 // decorator (spec §12.2) wraps ALL model traffic — no path bypasses it.

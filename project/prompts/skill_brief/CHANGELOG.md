@@ -1,5 +1,8 @@
 # skill_brief — changelog
 
+- **v0002** (2026-07-30, audit 2.0 SEC-4): the data-fence clause, otherwise identical
+  to v0001. Memory claims and fetched-page title/body are fenced; markers, url and
+  fetch date stay outside.
 ## v0001 — 2026-07-25 (Priority 7, decision 0059)
 
 Initial version. Synthesises the research-brief skill's brief on the answer

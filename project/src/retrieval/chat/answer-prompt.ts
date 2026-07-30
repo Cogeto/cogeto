@@ -86,6 +86,20 @@ export function buildAnswerInput(
     return `[${fact.marker}] ${fact.claim ?? ''}\n    status: ${fact.status.replace('_', '-')}${subject} | source: ${label}${validity}${past}`;
   });
 
+  // SEC-4 note, deliberate: the facts block is NOT fenced.
+  //
+  // Fencing it was tried and measurably harmful. The answerer's entire job is to
+  // trust and cite these claims, and wrapping them in "untrusted data" markers
+  // told it not to: chat coverage fell from 86% to 14% on who_is_ana and 100% to
+  // 67% on atlas_scope, well through the mean-coverage gate.
+  //
+  // It is also the wrong place for the defence. These are the instance's own
+  // verified, stored memories, not raw third-party text: each one already passed
+  // extraction (fenced, with the forged-framing guard) and the independent
+  // verification pass, and carries provenance back to its source. Injected
+  // content is stopped where it enters, at ingestion. The fence stays on RAW
+  // untrusted spans: document text in extraction, the passage and context in
+  // verification, and fetched page text in research synthesis and skill briefs.
   const lines = [
     ...(extras.context ? [extras.context, ''] : []),
     `MODE: ${mode}${extras.temporal ? ` (${extras.temporal.kind})` : ''}`,

@@ -1,5 +1,10 @@
 # verification — changelog
 
+- **v0006 / v0007** (2026-07-30, audit 2.0 SEC-4): the data-fence clause, added to
+  v0004 (single) and v0005 (batch) respectively with no other change. The claim, the
+  cited passage and the surrounding source text are all fenced now: the passage and
+  context are the document verbatim, and the claim is the extractor's output about
+  that document, so an injected sentence can travel through either.
 - **v0005** (2026-07-25, decision 0057): the BATCH form of v0004 — identical
   rubric, calibration rules, Croatian guidance and examples, verbatim; only
   the envelope changes. Input carries N numbered claim/passage/context blocks

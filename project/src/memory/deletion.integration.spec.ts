@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
@@ -520,5 +521,34 @@ describe('deletion saga (integration: real Postgres + Qdrant + MinIO)', () => {
     // The one legal write survives: the saga's pending → confirmed transition
     // (exercised throughout this suite) — everything after that is frozen.
     expect((await confirmedReceipts()).length).toBe(confirmed.length);
+  });
+
+  it('empty_enumeration_no_receipt: the chain never gains an attestation of nothing (SEC-30)', async () => {
+    const before = await confirmedReceipts();
+
+    // A source that does not exist erases nothing, and 404s before any receipt
+    // row is written. This is the case SEC-30 was about, and it is closed by
+    // refusing the request rather than by signing an empty attestation.
+    await expect(saga.requestSourceDeletion(userA, 'user_note', randomUUID())).rejects.toThrow(
+      /not found/,
+    );
+
+    // A source that EXISTS but has produced nothing yet is a different thing,
+    // and it does get a receipt. Deleting a just-captured note erases the note
+    // row and consumes the pipeline's idempotency key, so the content can never
+    // resurrect; a receipt reading "0 memories, 0 objects" is the honest record
+    // of exactly that. Counting it as nothing would have been the bug.
+    const note = await notes.createNote(userA, 'Nothing durable in here.');
+    const { receiptId } = await saga.requestSourceDeletion(userA, 'user_note', note.id);
+    expect(receiptId).not.toBeNull();
+    expect(await notes.getNoteForOwner(userA, note.id)).toBeNull();
+
+    await runWorker();
+    const after = await confirmedReceipts();
+    // Exactly one new receipt: the real deletion, and nothing from the 404.
+    expect(after.length).toBe(before.length + 1);
+    // And the chain still verifies end to end across the change.
+    const publicKeyPem = await loadInstancePublicKey(keyDir);
+    expect(verifyChain(after, publicKeyPem).ok).toBe(true);
   });
 });

@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Principal } from '@cogeto/shared';
-import { loadInstanceSigner } from '../infrastructure/index';
-import type { InstanceSigner } from '../infrastructure/index';
+import { DRIZZLE, loadInstanceSigner, writeAudit } from '../infrastructure/index';
+import type { Db, InstanceSigner } from '../infrastructure/index';
 import { MemoryFileStore, MemoryObjectStore, MemoryStore, type MemoryRow } from '../memory/index';
 import { UserDirectory } from '../identity/index';
 import { assemblePassport } from './passport-assembler';
@@ -39,6 +39,9 @@ export class PassportExportExecutor {
     private readonly store: PassportExportStore,
     private readonly directory: UserDirectory,
     @Inject(PASSPORT_OPTIONS) private readonly options: PassportOptions,
+    // Appended LAST on purpose: every other constructor argument keeps its
+    // position, so no existing wiring or test double shifts.
+    @Inject(DRIZZLE) private readonly db: Db,
   ) {}
 
   /** Assemble and store the artifact for one export request. Idempotent: a
@@ -99,6 +102,15 @@ export class PassportExportExecutor {
     await this.objects.putObject(objectKey, zip, { contentType: 'application/zip' });
     const expiresAt = new Date(now.getTime() + this.options.exportRetentionHours * 3_600_000);
     await this.store.markReady(exportId, objectKey, sizeBytes, now, expiresAt);
+    // SEC-9: the artifact now exists and is downloadable. Structural only.
+    await writeAudit(this.db, {
+      actor: 'passport_export',
+      action: 'passport.export_ready',
+      entityType: 'passport_export',
+      entityId: exportId,
+      detail: { sizeBytes, expiresAt: expiresAt.toISOString() },
+      ownerId: request.userId,
+    });
     this.logger.log(
       `passport export ${exportId} ready: ${memories.length} memories, ` +
         `${receipts.length} receipts, ${attachments.length} attachments, ${sizeBytes} bytes`,

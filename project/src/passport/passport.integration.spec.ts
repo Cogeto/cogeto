@@ -78,6 +78,8 @@ describe('memory passport export (integration)', () => {
       passportStore,
       new UserDirectory(tdb.db),
       { instanceKeyDir: keyDir, downloadUrlTtlSeconds: 300, exportRetentionHours: 24 },
+      // SEC-9: the executor writes the export_ready audit entry.
+      tdb.db,
     );
   });
   afterAll(async () => {

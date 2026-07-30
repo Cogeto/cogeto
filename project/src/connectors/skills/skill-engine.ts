@@ -22,7 +22,12 @@ import {
 import type { Db, ResearchQuota } from '../../infrastructure/index';
 import { MemoryStore } from '../../memory/index';
 import type { MemoryRow } from '../../memory/index';
-import { loadPrompt, ModelGateway } from '../../model-gateway/index';
+import {
+  fenceUntrusted,
+  loadPrompt,
+  ModelGateway,
+  untrustedBoundary,
+} from '../../model-gateway/index';
 import type { PromptArtifact } from '../../model-gateway/index';
 import { ResearchService } from '../research.service';
 import { skillRun } from '../persistence/tables';
@@ -30,7 +35,7 @@ import type { SkillRunRow, WebPageRow } from '../persistence/tables';
 import { selectPagesForSubject } from './page-select';
 import { SKILL_ADVANCE_JOB_TYPE, SkillRunService } from './skill-run.service';
 
-export const SKILL_BRIEF_PROMPT = { family: 'skill_brief', version: 'v0001' };
+export const SKILL_BRIEF_PROMPT = { family: 'skill_brief', version: 'v0002' };
 
 /** Caps that bound one brief synthesis call (the research-synthesis shape). */
 const MAX_BRIEF_PAGES = 12;
@@ -401,19 +406,28 @@ export class SkillEngine {
       ...factRows,
       ...loopRows.filter((l) => !factRows.some((f) => f.id === l.id)),
     ];
+    const boundary = untrustedBoundary();
     const factBlocks = memoryRows.map(
-      (m, i) => `[M${i + 1}] ${m.content ?? '(withheld)'} (status: ${m.status})`,
+      (m, i) =>
+        `[M${i + 1}] (status: ${m.status})\n` + fenceUntrusted(m.content ?? '(withheld)', boundary),
     );
     const loopBlocks = loopRows.map((l) => {
       const at = memoryRows.findIndex((m) => m.id === l.id);
       return `[M${at + 1}] ${l.content ?? '(withheld)'}`;
     });
+    // SEC-4: same treatment as research synthesis. The brief is Cogeto-initiated
+    // and its sources are fetched pages, so everything they contributed is
+    // fenced; markers, url and fetch date stay outside for citation resolution.
     const webBlocks = pages.map((page, i) => {
       const fetched = page.fetchedAt.toISOString().slice(0, 10);
       return (
-        `[W${i + 1}] ${page.title ?? '(untitled page)'}\n` +
-        `url: ${page.finalUrl}\nfetched: ${fetched}\n` +
-        `text:\n${(page.extractionText ?? page.retainedText).slice(0, PAGE_EXCERPT_CHARS)}`
+        `[W${i + 1}] url: ${page.finalUrl}\nfetched: ${fetched}\n` +
+        `title and text:\n` +
+        fenceUntrusted(
+          `${page.title ?? '(untitled page)'}\n` +
+            `${(page.extractionText ?? page.retainedText).slice(0, PAGE_EXCERPT_CHARS)}`,
+          boundary,
+        )
       );
     });
     const contradictionBlocks = disputedRows.map((row) => {
