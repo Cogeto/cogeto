@@ -5,6 +5,7 @@ import type { IntegritySweep, MemoryObjectStore } from '../memory/index';
 import type { ModelGateway } from '../model-gateway/index';
 import { CapabilitiesService } from './capabilities';
 import { HealthController } from './health.controller';
+import type { HealthRequest } from './health-access.guard';
 import type { CogetoConfig } from './config';
 
 /**
@@ -66,7 +67,9 @@ describe('capability registry (integration, real Postgres)', () => {
       { reachable: async () => ({ ok: true, detail: 'stub' }) } as unknown as ModelGateway,
       buildService(),
     );
-    const report = await controller.health();
+    // SEC-3: the report is audience-trimmed, so ask for the operator view —
+    // this test is about the FULL contract the operator script consumes.
+    const report = await controller.health({ healthDetail: true } as HealthRequest);
 
     // The pre- consumers (operator script, status panel) iterate exactly
     // these keys — additive means they never change.

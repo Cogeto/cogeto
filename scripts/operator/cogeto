@@ -621,7 +621,11 @@ wait_healthy() {
   done
 }
 
-# The app's aggregate health endpoint (/api/health, public by design —)
+# The app's aggregate health endpoint (/api/health). Not public since SEC-3:
+# it authenticates, and a caller without the admin role gets the verdicts with
+# the operational detail trimmed. This call runs INSIDE the app container over
+# loopback, which the health guard treats as the operator path — full detail, no
+# token needed. Do not repoint it at the edge; from there it would need one.
 # covers Postgres, Qdrant, MinIO + encryption, integrity sweep, migrations,
 # queue depth/dead-letter, model gateway, and mail. Fetched from INSIDE the app
 # container so it works before DNS points anywhere.

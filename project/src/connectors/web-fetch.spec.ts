@@ -83,6 +83,54 @@ describe('fetcher_hardening', () => {
     expect(outcome).toMatchObject({ status: 'skipped', reason: 'refused_address' });
   });
 
+  it('refuses a robots.txt redirect into a private address, and never reads it', async () => {
+    // SEC-11: robots.txt used to be fetched with the default
+    // `redirect: 'follow'`, so an origin whose /robots.txt answered
+    // `302 -> internal` had that request issued from inside the network. It
+    // routes through the same revalidating redirect loop as the page now.
+    let internalReached = false;
+    const service = scriptedFetcher({
+      'https://example.org/robots.txt': {
+        status: 302,
+        location: 'http://internal.example.org/latest/meta-data/',
+      },
+      'http://internal.example.org/latest/meta-data/': { body: 'instance-secret' },
+      'https://example.org/page': { body: PAGE },
+    });
+    const inner = service.fetchImpl;
+    service.fetchImpl = async (input, init) => {
+      if (String(input).includes('internal.example.org')) internalReached = true;
+      return inner(input, init);
+    };
+
+    const outcome = await service.fetchPage('https://example.org/page');
+
+    // The internal hop is never requested...
+    expect(internalReached).toBe(false);
+    // ...and an unreadable robots.txt still means "no rules", so the PAGE
+    // itself is fetched normally: the refusal must not become a denial of
+    // service on every site whose robots.txt happens to redirect.
+    expect(outcome.status).toBe('fetched');
+  });
+
+  it('honours a robots.txt reached through an allowed redirect', async () => {
+    // The flip side of SEC-11: a redirect to another PUBLIC address is normal
+    // (www -> apex, http -> https) and must still be followed and obeyed.
+    const service = scriptedFetcher({
+      'https://example.org/robots.txt': {
+        status: 301,
+        location: 'https://cdn.example.org/robots.txt',
+      },
+      'https://cdn.example.org/robots.txt': {
+        body: 'User-agent: *\nDisallow: /private/',
+        contentType: 'text/plain',
+      },
+      'https://example.org/private/report': { body: PAGE },
+    });
+    const outcome = await service.fetchPage('https://example.org/private/report');
+    expect(outcome).toMatchObject({ status: 'skipped', reason: 'blocked_by_robots' });
+  });
+
   it('honours robots.txt for our user agent (disallowed path is never fetched)', async () => {
     let pageFetched = false;
     const service = scriptedFetcher({

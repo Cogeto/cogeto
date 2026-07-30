@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { CapabilitySummary, ScheduledJobSummary } from '@cogeto/shared';
 import { fetchHealth } from '../api';
+import type { Session } from '../auth/oidc';
 import { capabilityView, jobView } from './capabilities-model';
 import { timeAgo } from './status';
 import { Card, ErrorState, Pill, SectionTitle, SkeletonRows } from './ui';
@@ -99,10 +100,10 @@ export function CapabilitiesSection({
   );
 }
 
-export function CapabilitiesPanel() {
+export function CapabilitiesPanel({ session }: { session: Session }) {
   const { data, isPending, isError } = useQuery({
     queryKey: ['health'],
-    queryFn: fetchHealth,
+    queryFn: () => fetchHealth(session),
     refetchInterval: 10_000,
   });
 

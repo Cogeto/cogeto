@@ -16,7 +16,7 @@ export function Dashboard({ session }: { session: Session }) {
       <AttentionSurface session={session} />
       <StatsPanel session={session} />
       <SkillsEntry />
-      <StatusPanel />
+      <StatusPanel session={session} />
     </Shell>
   );
 }

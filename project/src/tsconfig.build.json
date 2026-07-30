@@ -1,4 +1,17 @@
 {
   "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Audit 2.0 SEC-32: no source maps in the shipped artifact. `npm run build`
+    // is the production build — its output is what the runtime image copies —
+    // so the .js.map files went into the image, handing anyone with image
+    // access the original TypeScript layout.
+    //
+    // Scoped to THIS config on purpose: tsconfig.json keeps sourceMap on, so
+    // local `tsc` runs and editor debugging are unchanged. Nothing depends on
+    // maps at runtime: the logger never serializes a stack (entrypoints/logger.ts
+    // maps every Error to class + scrubbed message via describeError), and
+    // dead_letter.error stores that same one-line form.
+    "sourceMap": false
+  },
   "exclude": ["dist", "node_modules", "**/*.spec.ts", "testing", "vitest.config.ts"]
 }

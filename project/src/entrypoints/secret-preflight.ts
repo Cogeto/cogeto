@@ -46,6 +46,12 @@ export const KNOWN_DEV_SECRETS: readonly KnownDevSecret[] = [
   // generates one), but a hand-rolled non-localhost run of the DEV compose would
   // otherwise ship this known token — so it fails closed here like the rest.
   { env: 'COGETO_MAIL_INTAKE_TOKEN', devValue: 'cogeto-dev-mail-token', match: 'equals' },
+  // SearXNG's session/image-proxy secret (audit 2.0 SEC-21). Internal-network
+  // only, so the blast radius is small — but it is a committed default guarding
+  // a running service, and the point of this list is that NO known dev value
+  // survives onto a reachable deployment. `cogeto features enable research`
+  // generates a real one; this makes forgetting it fail closed.
+  { env: 'SEARXNG_SECRET', devValue: 'cogeto-dev-searxng-secret', match: 'equals' },
 ] as const;
 
 /** True when the external domain is a local dev box (dev defaults are allowed). */

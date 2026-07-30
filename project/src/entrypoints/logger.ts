@@ -51,6 +51,34 @@ const REDACT_PATHS = [
   '*.body',
   'fromAddr',
   '*.fromAddr',
+  // One level deeper (audit 2.0 SEC-29). The list above stopped at depth 2, so
+  // a perfectly ordinary shape — `{ job: { fact: { content } } }`,
+  // `{ run: { page: { textBody } } }` — walked straight past it. pino's redact
+  // paths are literal, not recursive, so each depth is spelled out; three is
+  // where our own log shapes actually bottom out (job → entity → field).
+  '*.*.content',
+  '*.*.claim',
+  '*.*.input',
+  '*.*.answer',
+  '*.*.prompt',
+  '*.*.question',
+  '*.*.subject',
+  '*.*.textBody',
+  '*.*.htmlBody',
+  '*.*.body',
+  '*.*.fromAddr',
+  // Secrets, same depth. A credential nested three deep is the one that gets
+  // logged by accident.
+  '*.*.authorization',
+  '*.*.accessToken',
+  '*.*.access_token',
+  '*.*.refreshToken',
+  '*.*.refresh_token',
+  '*.*.token',
+  '*.*.apiKey',
+  '*.*.api_key',
+  '*.*.password',
+  '*.*.secret',
 ];
 
 export function createLogger(level: string): Logger {

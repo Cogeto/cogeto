@@ -118,7 +118,11 @@ const apiPut = <T>(path: string, body: unknown, session: Session): Promise<T> =>
   apiSend('PUT', path, body, session);
 
 export const fetchMe = (session: Session): Promise<MeDto> => apiGet('/api/me', session);
-export const fetchHealth = (): Promise<HealthReport> => apiGet('/api/health');
+/** Authenticated: /api/health stopped being public (audit 2.0 SEC-3). Callers
+ * without the admin role get the same verdicts with the operational detail
+ * trimmed, which is exactly what the status panel renders. */
+export const fetchHealth = (session: Session): Promise<HealthReport> =>
+  apiGet('/api/health', session);
 
 export const captureNote = (
   session: Session,
