@@ -753,7 +753,7 @@ services:
   # down, research search answers a typed "search unavailable" — nothing breaks.
   searxng:
     profiles: ['research']
-    image: searxng/searxng@sha256:b8ca38ba06eea544d7555e88321e212ddc0d5c3c7de055419cfb2e5c6bf30812
+    image: searxng/searxng@sha256:75e3528c976a0ba311d8d870f029466e7b74636057a654bf3e09d1c0e3a11ed3
     environment:
       SEARXNG_BASE_URL: http://searxng:8080/
       SEARXNG_SECRET: ${SEARXNG_SECRET:-cogeto-dev-searxng-secret}
