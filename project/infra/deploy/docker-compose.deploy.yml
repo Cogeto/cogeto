@@ -474,7 +474,7 @@ services:
 
   zitadel:
     # ghcr.io/zitadel/zitadel:v2.65.1 (pinned by digest —)
-    image: ghcr.io/zitadel/zitadel@sha256:013d23b69aa681f03d36a7fd61e4837a7b049a7e22bd7215eb3e98e9dbf5543c
+    image: ghcr.io/zitadel/zitadel@sha256:4b68a2106f60baa2895e5a00a77fcd915d29d0db3f0c011d3eb9f99f557b2b48
     #: masterkey via env, never on the command line.
     command: 'start-from-init --masterkeyFromEnv --tlsMode external'
     environment:
