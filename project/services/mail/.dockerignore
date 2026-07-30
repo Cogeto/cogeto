@@ -1,0 +1,16 @@
+# Build context for the inbound mail service (audit 2.0 SEC-31). This container
+# parses hostile internet input, so the image holds exactly the Haraka config,
+# the entrypoint, and a lockfile-reproducible dependency tree — nothing else.
+#
+# Allowlist, same shape as the repo-root .dockerignore: deny everything, then
+# name the few paths the build actually needs. Note `npm ci` installs from the
+# lockfile, so a local node_modules must never enter the context.
+*
+!Dockerfile
+!package.json
+!package-lock.json
+!docker-entrypoint.sh
+!haraka
+
+node_modules
+**/node_modules

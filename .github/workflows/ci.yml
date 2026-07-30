@@ -5,8 +5,10 @@
 #
 #     lint · boundaries · test · build · eval-gate
 #
-# A sixth job, docker-build, keeps the production Dockerfile green on every PR
-# (amd64, no push) but is not required to merge.
+# Two further jobs are NOT required to merge: `scan` (dependency + image
+# vulnerability scanning, audit 2.0 SEC-19) and `docker-build`, which keeps every
+# production Dockerfile green on each PR (amd64, no push). Promoting `scan` to a
+# required check is a branch-protection change in the repository settings.
 #
 # "install" is per-job: each job checks out, restores the shared npm download
 # cache via setup-node (cache: npm), and runs `npm ci`. Sharing a single
@@ -186,6 +188,102 @@ jobs:
           COGETO_EVAL_GATE: '1'
         run: npm run eval:chat
 
+  # ── scan (not required to merge — see the note below) ───────────────────────
+  # Dependency vulnerability scanning (audit 2.0 SEC-19). CI had none: a
+  # vulnerable dependency could reach main and be released with nothing failing.
+  #
+  # Every gate below was run locally on 2026-07-30 before being wired in, so
+  # this job is green on day one rather than red-walling every open PR:
+  #
+  #   • root prod tree      npm audit --omit=dev --audit-level=high  → 0 findings
+  #   • mail prod tree      npm audit --omit=dev --audit-level=high  → 0 findings
+  #     (its `tar` advisory is MODERATE and the service never reads a tar
+  #     archive, so `high` is the honest threshold, not a lowered one)
+  #   • redaction lock      pip-audit                                → 1 finding, allowlisted below
+  #   • runtime image       trivy CRITICAL,HIGH                      → 6 findings, ALL in the
+  #     npm CLI bundled inside node:22-alpine, none in application dependencies
+  #
+  # `--omit=dev` is deliberate and is NOT a weakened threshold: the dev tree
+  # carries 10 known highs (testcontainers → archiver → minimatch, and ajv →
+  # fast-uri) that are never installed into any shipped image.
+  scan:
+    name: scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      # Production dependencies only — what actually ships.
+      - name: npm audit (application, production tree)
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: npm audit (inbound mail service, production tree)
+        working-directory: project/services/mail
+        run: npm audit --omit=dev --audit-level=high
+
+      # 3.12 to match the sidecar's base image: the lock is compiled for that
+      # runtime, and resolving it on another Python pulls version-conditional
+      # packages that are not hash-pinned (docs/operations/image-pins.md).
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: pip-audit (redaction sidecar lock)
+        working-directory: project/services/redaction
+        # ALLOWLIST — reviewed 2026-07-30, revisit when the lock is next
+        # regenerated:
+        #   GHSA-537c-gmf6-5ccf  cryptography 46.0.7 (fix: 48.0.1)
+        #     Transitive, not a declared dependency of the sidecar. The service
+        #     is stateless, internal-network-only (no published ports), speaks
+        #     plain HTTP behind the model-gateway seam, and terminates no TLS and
+        #     parses no certificates — the paths this library is exercised
+        #     through. Bumping it means regenerating the hash-locked tree, which
+        #     is a change of its own and not part of this security wave.
+        run: |
+          pip install --quiet pip-audit
+          pip-audit -r requirements.lock --no-deps \
+            --ignore-vuln GHSA-537c-gmf6-5ccf
+
+      # The built image, not just the manifests: catches anything the base image
+      # drags in. Fails on CRITICAL/HIGH in application dependencies and OS
+      # packages.
+      - name: Build the runtime image for scanning
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: project/infra/docker/Dockerfile
+          target: runtime
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: cogeto/cogeto:scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trivy image scan (CRITICAL/HIGH)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: cogeto/cogeto:scan
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: false
+          # SCOPED EXCLUSION — reviewed 2026-07-30. This is the npm CLI that
+          # node:22-alpine bundles, not anything we install or execute: the
+          # containers run `node project/src/dist/entrypoints/<entrypoint>.js`
+          # and never invoke npm. On 2026-07-30 it carried CVE-2026-59873 (tar,
+          # CRITICAL), CVE-2026-59874 (tar), CVE-2026-13149 + CVE-2026-14257
+          # (brace-expansion), CVE-2026-33671 (picomatch) and CVE-2026-48815
+          # (sigstore) — all denial-of-service or verification issues in code
+          # that never runs here, and none fixable without an upstream base
+          # image release. Excluded by PATH rather than by CVE id so the
+          # exclusion stays honest as that set changes; everything we actually
+          # install remains fully gated.
+          skip-dirs: 'usr/local/lib/node_modules/npm'
+
   # ── docker-build (not required to merge) ────────────────────────────────────
   # Builds the production amd64 images WITHOUT pushing, so the Dockerfiles stay
   # green on every PR. Docker layers are cached via the GitHub Actions cache.
@@ -225,6 +323,20 @@ jobs:
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: project/services/mail
+          platforms: linux/amd64
+          push: false
+          load: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      # SEC-19: the redaction sidecar was never built in CI, so a broken
+      # Dockerfile or an unresolvable hash-locked wheel only surfaced when an
+      # operator brought the profile up. It is not a released image (the
+      # redaction profile is not part of the deploy channel), but it must stay
+      # buildable.
+      - name: Build amd64 redaction sidecar image (no push)
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: project/services/redaction
           platforms: linux/amd64
           push: false
           load: false

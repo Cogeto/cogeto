@@ -19,25 +19,59 @@ describe('deployment hardening', () => {
   const dockerfile = read('project/infra/docker/Dockerfile');
   const caddyMain = read('project/infra/docker/caddy/Caddyfile');
   const redactionDockerfile = read('project/services/redaction/Dockerfile');
+  // SEC-22: the customer stack and the mail image join the invariant.
+  const deployCompose = read('project/infra/deploy/docker-compose.deploy.yml');
+  const mailDockerfile = read('project/services/mail/Dockerfile');
 
   it('every image is pinned by digest (no floating tags)', () => {
-    // `image:` lines must reference a digest, never a bare tag.
-    const imageLines = compose
-      .split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l.startsWith('image:'));
-    expect(imageLines.length).toBeGreaterThan(0);
-    for (const line of imageLines) {
-      expect(line, `unpinned image: ${line}`).toMatch(/@sha256:[0-9a-f]{64}/);
+    // `image:` lines must reference a digest, never a bare tag — in BOTH compose
+    // files (SEC-22: this used to read the dev contract only, so an unpinned
+    // image in the file customers actually run would have passed CI).
+    for (const [name, text] of [
+      ['docker-compose.yml', compose],
+      ['docker-compose.deploy.yml', deployCompose],
+    ] as const) {
+      const imageLines = text
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.startsWith('image:'));
+      expect(imageLines.length, `${name} declares no images`).toBeGreaterThan(0);
+      for (const line of imageLines) {
+        // The deploy stack's own three images are released by tag from this
+        // repo (cogeto/cogeto:${COGETO_VERSION}); everything upstream is pinned.
+        if (line.includes('${COGETO_VERSION')) continue;
+        expect(line, `unpinned image in ${name}: ${line}`).toMatch(/@sha256:[0-9a-f]{64}/);
+      }
     }
-    // The build stages are pinned too.
+    // The build stages are pinned too — in every Dockerfile we ship.
     expect(dockerfile).not.toMatch(/^FROM node:22-alpine/m);
     expect(dockerfile).toMatch(/FROM node@sha256:[0-9a-f]{64}/);
     expect(dockerfile).toMatch(/FROM caddy@sha256:[0-9a-f]{64}/);
+    // SEC-22: the mail service parses hostile internet input and was not
+    // covered by this invariant at all.
+    expect(mailDockerfile).not.toMatch(/^FROM node:22-alpine/m);
+    expect(mailDockerfile).toMatch(/FROM node@sha256:[0-9a-f]{64}/);
     // The spaCy model is pinned to an exact version (not `spacy download`).
     expect(redactionDockerfile).toMatch(/en_core_web_lg-3\.8\.0-py3-none-any\.whl/);
     expect(redactionDockerfile).not.toMatch(/spacy download/);
     expect(redactionDockerfile).toMatch(/FROM python@sha256:[0-9a-f]{64}/);
+  });
+
+  it('no image comment claims a tag that names no release (SEC-35)', () => {
+    // A digest pinned against `# something:latest` is unauditable: the running
+    // version cannot be recovered, so no advisory can be matched to it.
+    for (const [name, text] of [
+      ['docker-compose.yml', compose],
+      ['docker-compose.deploy.yml', deployCompose],
+      ['Dockerfile', dockerfile],
+      ['services/mail/Dockerfile', mailDockerfile],
+      ['services/redaction/Dockerfile', redactionDockerfile],
+    ] as const) {
+      const floating = text
+        .split('\n')
+        .filter((l) => l.trim().startsWith('#') && /\b[\w./-]+:latest\b/.test(l));
+      expect(floating, `${name} pins a digest against a :latest comment`).toEqual([]);
+    }
   });
 
   it('the main Caddyfile no longer serves the console vhosts; they live in the consoles profile', () => {

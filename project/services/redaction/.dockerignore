@@ -1,0 +1,16 @@
+# Build context for the redaction sidecar (audit 2.0 SEC-31). Without this the
+# `COPY app ./app` below shipped app/__pycache__/ — stale bytecode compiled by
+# whatever Python the developer happened to run — into the image.
+#
+# Allowlist, same shape as the repo-root .dockerignore: deny everything, then
+# name the few paths the build actually needs.
+*
+!Dockerfile
+!requirements.txt
+!requirements.lock
+!app
+
+# Belt and braces inside the allowed app/ tree.
+app/__pycache__
+**/__pycache__
+**/*.py[cod]

@@ -370,8 +370,7 @@ export class WebFetchService {
       // the standard's fail-open for an unreadable robots.txt, and it is safe:
       // the refusal happened BEFORE the request, and the page fetch that
       // follows re-validates its own hops independently.
-      const why =
-        error instanceof RefusedAddressError ? error.message : 'network error or timeout';
+      const why = error instanceof RefusedAddressError ? error.message : 'network error or timeout';
       this.log.debug(`robots.txt unreadable for ${origin} (${why}), treating as no rules`);
     }
     this.robotsCache.set(origin, body);

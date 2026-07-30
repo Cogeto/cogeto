@@ -10,12 +10,24 @@ human-readable tag is kept in a comment next to each digest.
 | File | Pinned artifacts |
 |---|---|
 | `project/infra/docker/Dockerfile` | `node:22-alpine` (deps/build/runtime), `caddy:2-alpine` (edge + consoles) |
-| `docker-compose.yml` | `postgres:17-alpine`, `qdrant/qdrant:v1.18.3`, `minio/minio`, `minio/mc`, `busybox:stable`, `ghcr.io/zitadel/zitadel:v2.65.1`, `node:22-alpine` (zitadel-init) |
-| `project/services/redaction/Dockerfile` | `python:3.12-slim`, `en_core_web_lg-3.7.1` (spaCy model wheel) |
+| `docker-compose.yml` | `postgres:17-alpine`, `qdrant/qdrant:v1.18.3`, `minio/minio:RELEASE.2025-09-07T16-13-09Z`, `minio/mc:RELEASE.2025-08-13T08-35-41Z`, `busybox:stable`, `ghcr.io/zitadel/zitadel:v2.65.1`, `searxng/searxng`, `node:22-alpine` (zitadel-init) |
+| `project/infra/deploy/docker-compose.deploy.yml` | the same upstream images as the dev stack, at the same digests. Cogeto's own three images resolve by release tag (`cogeto/cogeto`, `-edge`, `-mail` at `${COGETO_VERSION}`) |
+| `project/services/mail/Dockerfile` | `node:22-alpine` |
+| `project/services/redaction/Dockerfile` | `python:3.12-slim`, `en_core_web_lg-3.8.0` (spaCy model wheel) |
 
 The static test `project/src/entrypoints/deployment-hardening.spec.ts` fails CI
-if any `image:` line is not a digest, or if the spaCy model reverts to an
-unpinned download.
+if any `image:` line in EITHER compose file is not a digest, if any Dockerfile
+we ship stops pinning its base by digest, if the spaCy model reverts to an
+unpinned download, or if a digest is commented with a `:latest` tag that names
+no release (audit 2.0 SEC-22/SEC-35).
+
+Recording the real tag matters: a digest pinned against `# minio/minio:latest`
+is unauditable, because the running version cannot be recovered and so no
+advisory can be matched to it. Recover it from the digest itself:
+
+```sh
+docker run --rm --entrypoint sh <image>@<digest> -c 'minio --version'
+```
 
 ## Updating an image pin
 
@@ -43,13 +55,17 @@ The model wheel is installed from a pinned GitHub release URL in
 `project/services/redaction/Dockerfile`:
 
 ```
-pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.7.1/en_core_web_lg-3.7.1-py3-none-any.whl
+pip install --no-deps https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
 ```
 
 To move to a new model version, pick a release compatible with the pinned
-`spacy` version in `requirements.txt` (spaCy 3.7.x ↔ model 3.7.x), update the
-URL, and rebuild the `redaction` profile. To trade accuracy for ~half the RSS,
-pin `en_core_web_md-3.7.1` instead and set `SPACY_MODEL=en_core_web_md`.
+`spacy` version in `requirements.txt` (currently `spacy==3.8.13`, so model
+3.8.x), update the URL, and rebuild the `redaction` profile. To trade accuracy
+for ~half the RSS, pin `en_core_web_md-3.8.0` instead and set
+`SPACY_MODEL=en_core_web_md`.
+
+Note: `presidio-analyzer` 2.2.363 pins `spacy != 3.8.14`, which is why the
+requirement is 3.8.13 and not simply the latest 3.8.x.
 
 ## Regenerating the redaction sidecar dependency lock (SEC-12)
 

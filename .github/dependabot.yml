@@ -72,3 +72,50 @@ updates:
     labels:
       - chore
       - dependencies
+
+  # ── Container images (audit 2.0 SEC-5) ──────────────────────────────────────
+  # Every base image and every compose service image is pinned BY DIGEST, which
+  # makes builds reproducible but also means a pin never moves on its own: the
+  # Zitadel pin sat on v2.65.1 (Nov 2024) with no mechanism to notice. Dependabot
+  # updates the digest in place and refreshes the trailing `# image:tag` comment
+  # — pinning is preserved, nothing starts floating.
+  #
+  # One entry per directory containing a Dockerfile or a compose file, because
+  # the docker ecosystem is directory-scoped.
+  - package-ecosystem: docker
+    directory: /project/infra/docker
+    schedule:
+      interval: weekly
+    labels:
+      - chore
+      - dependencies
+  - package-ecosystem: docker
+    directory: /project/services/mail
+    schedule:
+      interval: weekly
+    labels:
+      - chore
+      - dependencies
+  - package-ecosystem: docker
+    directory: /project/services/redaction
+    schedule:
+      interval: weekly
+    labels:
+      - chore
+      - dependencies
+  # The dev compose contract at the repo root.
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - chore
+      - dependencies
+  # The pull-only customer stack.
+  - package-ecosystem: docker-compose
+    directory: /project/infra/deploy
+    schedule:
+      interval: weekly
+    labels:
+      - chore
+      - dependencies

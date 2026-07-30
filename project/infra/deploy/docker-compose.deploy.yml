@@ -222,6 +222,9 @@ services:
       ZITADEL_MASTERKEY: ${ZITADEL_MASTERKEY:?}
       ZITADEL_DB_PASSWORD: ${ZITADEL_DB_PASSWORD:?}
       ZITADEL_ADMIN_PASSWORD: ${ZITADEL_ADMIN_PASSWORD:?}
+      # SEC-21: see the dev compose. Not `:?` — research is optional, so an
+      # unset secret must not break `compose up` with the profile down.
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-}
     restart: 'no'
 
   migrate:
@@ -260,7 +263,11 @@ services:
   # Creates the bucket, turns on default SSE-S3 encryption, and ASSERTS the
   # bucket reports encryption enabled.
   minio-init:
-    # minio/mc:latest (pinned by digest —)
+    # minio/mc:RELEASE.2025-08-13T08-35-41Z
+    # (SEC-35: the comment used to read `latest`, which names no release, so no
+    # advisory could ever be matched to what actually runs. Resolved from the
+    # pinned digest itself with `docker run --rm --entrypoint sh <digest> -c
+    # 'mc --version'`. The digest is unchanged: this is a label, not a bump.)
     image: minio/mc@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
     entrypoint: ['/bin/sh', '-c']
     command:
@@ -349,7 +356,10 @@ services:
     restart: unless-stopped
 
   minio:
-    # minio/minio:latest (pinned by digest —)
+    # minio/minio:RELEASE.2025-09-07T16-13-09Z
+    # (SEC-35: was `latest`, which names no release. Resolved from the pinned
+    # digest with `docker run --rm --entrypoint sh <digest> -c 'minio --version'`.
+    # The digest is unchanged: this is a label, not a bump.)
     image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
     # No console vhost is exposed on a customer instance (the consoles profile
     # is dev-only); the console listener stays internal.
