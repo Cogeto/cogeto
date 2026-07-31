@@ -1,0 +1,24 @@
+{
+  "case_id": "hr-r009",
+  "task": "contradiction",
+  "expected": "supersedes_a_over_b",
+  "a": {
+    "content": "Od 1. rujna narudžbenice za Jadran šalju se na nabava@jadran.hr.",
+    "kind": "fact",
+    "entities": ["Jadran"],
+    "subject_entity": "Jadran",
+    "captured_at": "2026-07-10T09:30:00.000Z",
+    "valid_from": "2026-09-01T00:00:00.000Z",
+    "source": "Napomena: od 1. rujna narudžbenice za Jadran idu na nabava@jadran.hr umjesto na dosadašnju adresu."
+  },
+  "b": {
+    "content": "Narudžbenice za Jadran šalju se na ured@jadran.hr.",
+    "kind": "fact",
+    "entities": ["Jadran"],
+    "subject_entity": "Jadran",
+    "captured_at": "2026-06-15T08:00:00.000Z",
+    "valid_from": "2026-06-15T00:00:00.000Z",
+    "source": "Narudžbenice za Jadran šalju se na ured@jadran.hr."
+  },
+  "notes": "Izričita najava promjene s intervalima na obje strane: isti slot (adresa za narudžbenice), noviji zapis sam označava promjenu ('od 1. rujna', 'umjesto na dosadašnju adresu'). Smjer a nad b."
+}

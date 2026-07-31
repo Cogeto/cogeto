@@ -1,0 +1,11 @@
+{
+  "case_id": "hr-rw07",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [],
+  "question": "Kada je uvodni sastanak za Jadran?",
+  "expect": {
+    "question_class": "personal",
+    "entities_must_include": ["Jadran"]
+  },
+  "notes": "NEGATIVAN: pitanje o vremenu koje nije putovanje kroz vrijeme. Traži datum koji sadašnje pamćenje već zna. Vremenska klasifikacija ovdje tiho bi promijenila koje su memorije uopće prihvatljive."
+}

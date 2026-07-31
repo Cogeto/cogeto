@@ -52,6 +52,21 @@ and every automatic demotion or non-admission is recorded in the content-bearing
 shows **contradictions only**; confirming a fact is a contextual action on the memory
 drawer. There is no approval queue for facts anywhere.
 
+V2.0 item 3.4 made the published numbers complete. The trust artifact (schema
+**1.1**, additive) now carries **contradiction precision**, **supersedes accuracy**
+with its denominator, and **query-rewrite routing accuracy**, per language and
+aggregate; gates have a **per-language layer** so no language hides in an aggregate,
+and a language `project/eval/gates.json` does not name fails the check. Every floor
+is justified in [`docs/eval/gate-model.md`](docs/eval/gate-model.md), the governing
+rule being: publish everything measured, gate at the honest current value, ratchet up
+only, never gate at a target the project is below. Pull requests now run the **golden-set
+suite against committed cached fixtures** (`project/eval/cache/`); change a prompt
+and the cache misses by construction, so run `npm run eval:cache:refresh` and commit
+the fixtures in the same change. A cached run can never publish a trust score. The
+chat suite is deliberately not cached (retrieval returns equally scored facts in a
+different order every run, so the answer prompt is not reproducible) and still runs
+live post-merge.
+
 The 2.0 security audit ([`docs/audits/`](docs/audits/)) is closed out across five
 remediation waves: every finding is fixed or consciously accepted with a written
 rationale, and the audit and its independent verification are both published there.

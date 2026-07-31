@@ -1,0 +1,13 @@
+{
+  "case_id": "en-rw11",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [],
+  "question": "Draft a reply to the last email",
+  "expect": {
+    "question_class": "personal",
+    "email_reply": {
+      "target": null
+    }
+  },
+  "notes": "Draft-a-reply with no named sender: `the last email` must clean to NOTHING so the resolver picks the most recent message. A phantom target here is the exact bug the live gate caught in Croatian once (reply_hr_zadnja)."
+}

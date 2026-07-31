@@ -35,6 +35,8 @@
     "dream": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/dream.js",
     "erase:task-conclusions": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/erase-task-conclusions.js",
     "eval:gate": "npm run build -w @cogeto/shared -w @cogeto/server && COGETO_EVAL_GATE=1 node project/src/dist/entrypoints/eval.js",
+    "eval:cached": "npm run build -w @cogeto/shared -w @cogeto/server && COGETO_EVAL_CACHE=replay COGETO_EVAL_GATE=1 node project/src/dist/entrypoints/eval.js",
+    "eval:cache:refresh": "npm run build -w @cogeto/shared -w @cogeto/server && rm -rf project/eval/cache && COGETO_EVAL_CACHE=record node project/src/dist/entrypoints/eval.js",
     "demo:seed": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/demo-seed.js",
     "demo:reset": "npm run build -w @cogeto/shared -w @cogeto/server && node project/src/dist/entrypoints/demo-reset.js"
   },

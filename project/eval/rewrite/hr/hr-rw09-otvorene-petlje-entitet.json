@@ -1,0 +1,13 @@
+{
+  "case_id": "hr-rw09",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [],
+  "question": "Što je još otvoreno s Lukom?",
+  "expect": {
+    "question_class": "personal",
+    "open_loops": {
+      "entity": "Luka"
+    }
+  },
+  "notes": "Otvorene petlje sužene na osobu. Ime mora doći u namjeru u nominativu: dohvat uspoređuje imena entiteta, a `Lukom` je instrumental."
+}

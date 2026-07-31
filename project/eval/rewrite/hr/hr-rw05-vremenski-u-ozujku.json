@@ -1,0 +1,15 @@
+{
+  "case_id": "hr-rw05",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [],
+  "question": "Što sam znao o Jadranu u ožujku?",
+  "expect": {
+    "question_class": "personal",
+    "temporal": {
+      "kind": "point_in_time",
+      "date": "2026-03-01"
+    },
+    "entities_must_include": ["Jadran"]
+  },
+  "notes": "Točka u vremenu s hrvatskim nazivom mjeseca. Leksikon vremenskih signala prepoznaje `u ožujku`, ali razrješavanje datuma radi engleski chrono, pa je ovo izravna mjera stvarne rupe, a ne teoretskog rizika."
+}

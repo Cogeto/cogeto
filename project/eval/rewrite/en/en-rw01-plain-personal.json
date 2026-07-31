@@ -1,0 +1,11 @@
+{
+  "case_id": "en-rw01",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [],
+  "question": "What did we agree on the Northwind contract?",
+  "expect": {
+    "question_class": "personal",
+    "entities_must_include": ["Northwind"]
+  },
+  "notes": "The negative baseline: an ordinary question about the user's own world. No temporal hint, no open-loops hint, no reply verb, no research imperative. Anything but plain `personal` here is a mis-route."
+}

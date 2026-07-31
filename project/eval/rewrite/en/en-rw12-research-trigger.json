@@ -1,0 +1,12 @@
+{
+  "case_id": "en-rw12",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [],
+  "question": "Research Adriatic Foods",
+  "expect": {
+    "research": {
+      "topic": "Adriatic Foods"
+    }
+  },
+  "notes": "An explicit research imperative. Deterministic and pre-emptive: ChatService returns before the router call, so no question class is asserted."
+}

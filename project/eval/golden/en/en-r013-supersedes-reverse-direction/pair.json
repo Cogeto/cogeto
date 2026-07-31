@@ -1,0 +1,25 @@
+{
+  "case_id": "en-r013",
+  "task": "contradiction",
+  "expected": "supersedes_b_over_a",
+  "a": {
+    "content": "The Q3 board pack is due on 15 September.",
+    "kind": "commitment",
+    "entities": ["Ana"],
+    "subject_entity": "Ana",
+    "captured_at": "2026-07-01T08:40:00.000Z",
+    "valid_until": "2026-09-15T00:00:00.000Z",
+    "source": "Ana owes the board the Q3 pack by 15 September."
+  },
+  "b": {
+    "content": "The Q3 board pack is due on 30 September.",
+    "kind": "commitment",
+    "entities": ["Ana"],
+    "subject_entity": "Ana",
+    "captured_at": "2026-07-08T12:15:00.000Z",
+    "valid_from": "2026-07-08T00:00:00.000Z",
+    "valid_until": "2026-09-30T00:00:00.000Z",
+    "source": "The board pushed the Q3 pack: Ana's new deadline is 30 September, not 15 September."
+  },
+  "notes": "Direction b over a. The pair convention lists the more recently recorded fact first; this case deliberately breaks that ordering so a judge that reads direction positionally rather than temporally scores wrong."
+}

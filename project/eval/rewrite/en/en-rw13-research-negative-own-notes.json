@@ -1,0 +1,10 @@
+{
+  "case_id": "en-rw13",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [],
+  "question": "Search my notes for the Adriatic contract",
+  "expect": {
+    "question_class": "personal"
+  },
+  "notes": "NEGATIVE: `search` without a web/online/internet qualifier is retrieval over the user's own memory, not a search engine. Nothing may leave the instance on this turn."
+}

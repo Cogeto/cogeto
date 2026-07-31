@@ -1,0 +1,10 @@
+{
+  "case_id": "hr-rw13",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [],
+  "question": "Potraži u mojim bilješkama ugovor s Jadranom",
+  "expect": {
+    "question_class": "personal"
+  },
+  "notes": "NEGATIVAN: `potraži` bez odrednice weba ili interneta je pretraga vlastitog pamćenja, ne tražilice. S ovog poteza ništa ne smije napustiti instancu."
+}

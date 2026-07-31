@@ -1,0 +1,21 @@
+{
+  "case_id": "en-rw16",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [
+    {
+      "role": "user",
+      "content": "What is still open with Luka?"
+    },
+    {
+      "role": "assistant",
+      "content": "Two things: the pricing sheet and the site visit date."
+    }
+  ],
+  "question": "Thanks!",
+  "expect": {
+    "small_talk": {
+      "kind": "thanks"
+    }
+  },
+  "notes": "A pure pleasantry as the WHOLE turn: answered from the deterministic lexicon with no retrieval and no model call at all."
+}

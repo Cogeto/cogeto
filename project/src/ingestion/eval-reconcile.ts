@@ -78,6 +78,16 @@ export interface ReconcileEvalMetrics {
   contradictionRecall: number;
   supersedesPairs: number;
   supersedesCorrect: number;
+  /**
+   * Supersession verdicts on pairs that expected NO supersession (V2.0 item
+   * 3.4). Counted in the supersedes denominator: a wrong supersession closes
+   * the validity interval on a fact that still holds, which is the same class
+   * of harm as a false merge, and scoring only the labelled supersedes pairs
+   * left it invisible.
+   */
+  supersedesFalsePositives: number;
+  /** correct / (labelled supersedes pairs + false positives). */
+  supersedesAccuracy: number;
   candidateMisses: number;
 }
 
@@ -216,6 +226,8 @@ function emptyMetrics(label: string): ReconcileEvalMetrics {
     contradictionRecall: 1,
     supersedesPairs: 0,
     supersedesCorrect: 0,
+    supersedesFalsePositives: 0,
+    supersedesAccuracy: 1,
     candidateMisses: 0,
   };
 }
@@ -226,11 +238,23 @@ function finalize(m: ReconcileEvalMetrics): ReconcileEvalMetrics {
     m.flaggedContradictions === 0 ? 1 : m.correctContradictions / m.flaggedContradictions;
   m.contradictionRecall =
     m.expectedContradictions === 0 ? 1 : m.correctContradictions / m.expectedContradictions;
+  const supersedesDenominator = m.supersedesPairs + m.supersedesFalsePositives;
+  m.supersedesAccuracy =
+    supersedesDenominator === 0 ? 1 : m.supersedesCorrect / supersedesDenominator;
   return m;
 }
 
+const SUPERSEDES_EXPECTATIONS = ['supersedes_a_over_b', 'supersedes_b_over_a'] as const;
+
 function score(metrics: ReconcileEvalMetrics, pair: PairCase, outcome: PairOutcome): void {
   if (outcome === 'not_a_candidate') metrics.candidateMisses += 1;
+  // A supersession acted on a pair that expected none. Counted once, on the
+  // pair's own arm below it would be invisible: `compatible` scores only
+  // against contradiction precision, which a supersession verdict never trips.
+  const superseded = outcome === 'superseded_a_over_b' || outcome === 'superseded_b_over_a';
+  if (superseded && !(SUPERSEDES_EXPECTATIONS as readonly string[]).includes(pair.expected)) {
+    metrics.supersedesFalsePositives += 1;
+  }
   if (pair.task === 'dedup') {
     metrics.dedupPairs += 1;
     // False merges count double (spec §5): traps carry weight 2.

@@ -1,0 +1,25 @@
+{
+  "case_id": "hr-r012",
+  "task": "contradiction",
+  "expected": "supersedes_b_over_a",
+  "a": {
+    "content": "Kvartalni izvještaj za upravu predaje se 15. rujna.",
+    "kind": "commitment",
+    "entities": ["Ana"],
+    "subject_entity": "Ana",
+    "captured_at": "2026-07-01T08:40:00.000Z",
+    "valid_until": "2026-09-15T00:00:00.000Z",
+    "source": "Ana upravi duguje kvartalni izvještaj do 15. rujna."
+  },
+  "b": {
+    "content": "Kvartalni izvještaj za upravu predaje se 30. rujna.",
+    "kind": "commitment",
+    "entities": ["Ana"],
+    "subject_entity": "Ana",
+    "captured_at": "2026-07-08T12:15:00.000Z",
+    "valid_from": "2026-07-08T00:00:00.000Z",
+    "valid_until": "2026-09-30T00:00:00.000Z",
+    "source": "Uprava je pomaknula rok: Anin novi rok za kvartalni izvještaj je 30. rujna, a ne 15. rujna."
+  },
+  "notes": "Smjer b nad a. Konvencija para navodi noviji zapis prvi; ovaj slučaj namjerno krši taj poredak, pa prosudba koja smjer čita po položaju umjesto po vremenu ovdje pogriješi."
+}

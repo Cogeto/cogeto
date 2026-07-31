@@ -170,6 +170,27 @@ One line per label change (docs/eval-golden-set.md §4 rule 5).
   (applied through the real UserContextService), the `language` check, and
   the `digest_language` check, all folded into the all-must-pass
   `conversation` verdict. No gate lowered.
+- 2026-07-31 (V2.0 item 3.4 — trust-score honesty): **nine supersedes pair
+  cases**, four scored per language plus one trap each, so the supersedes
+  metric stops being a rate over a single case. English gained `en-r011`
+  (a correction with no dates on either side), `en-r012` (a same-day update
+  ordered by capture TIME, `valid_from` deliberately absent so the case tests
+  ordering and not the tie-break), `en-r013` (direction b over a: the house
+  convention lists the newer record first, and a judge that learned position
+  instead of time scores every other pair correctly and is still wrong) and
+  `en-r014` (TRAP: two commitments that ADD UP, wearing every surface signal
+  of an update). Croatian gained the same five shapes as `hr-r009` to
+  `hr-r013`, authored idiomatically, and had **no supersedes coverage at all**
+  before this, so every Croatian supersedes number published to date was empty
+  rather than good. The existing failing `en-r008` was left exactly as it is:
+  the failure is real, and V2.3 fixes the interval arithmetic behind it.
+  The reconciliation harness gained `supersedes_false_positives`, counted in
+  the supersedes denominator, because a supersession acted on a `compatible`
+  pair was previously scored as nothing at all. **Metric effect stated
+  deliberately** (the rule from the v1.1.0 record): the supersedes denominator
+  goes from 1 to 10 and contradiction precision and recall gain new pairs;
+  the floors in `gates.json` are set from the measurement after these cases
+  landed, not before.
 - 2026-07-24 (P6.5 — task-derivation discipline, decision 0054): six
   derivation-trap cases. `en-w002`/`hr-w002` (a web page dense with obligation
   language: memories yes, tasks ZERO), `en-f001`/`hr-f001` (the first `file`

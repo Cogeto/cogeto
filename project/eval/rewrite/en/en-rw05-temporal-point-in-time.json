@@ -1,0 +1,15 @@
+{
+  "case_id": "en-rw05",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [],
+  "question": "What did I know about Northwind in March?",
+  "expect": {
+    "question_class": "personal",
+    "temporal": {
+      "kind": "point_in_time",
+      "date": "2026-03-01"
+    },
+    "entities_must_include": ["Northwind"]
+  },
+  "notes": "Point-in-time with a relative month. Asked on 1 July, `in March` means the March that has already happened, so the resolver must step backward, never forward."
+}

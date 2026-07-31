@@ -1,0 +1,21 @@
+{
+  "case_id": "hr-rw16",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [
+    {
+      "role": "user",
+      "content": "Što je još otvoreno s Lukom?"
+    },
+    {
+      "role": "assistant",
+      "content": "Dvije stvari: cjenik i datum posjeta lokaciji."
+    }
+  ],
+  "question": "Hvala!",
+  "expect": {
+    "small_talk": {
+      "kind": "thanks"
+    }
+  },
+  "notes": "Čista pristojnost kao CIJELI potez: odgovara se iz determinističkog leksikona, bez dohvata i bez ijednog poziva modelu."
+}

@@ -16,6 +16,9 @@ const REPO = path.resolve(SRC, '../..');
 /** Dev/CI-only toggles set by npm scripts or seed tooling — not operator config. */
 const DEV_ONLY = new Set([
   'COGETO_EVAL_GATE',
+  // Harness-only: off | record | replay for the cached pull-request eval job
+  // (docs/eval-golden-set.md §6). Never read by a running instance.
+  'COGETO_EVAL_CACHE',
   'COGETO_SEED_ORG',
   'COGETO_SEED_OWNER',
   // Test-only: vitest points the demo corpus loader at project/demo.

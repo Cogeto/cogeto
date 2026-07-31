@@ -1,0 +1,22 @@
+{
+  "case_id": "en-rw02",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [
+    {
+      "role": "user",
+      "content": "Who is Ana Kovac?"
+    },
+    {
+      "role": "assistant",
+      "content": "Ana Kovac is the operations lead at Northwind and your main contact there."
+    }
+  ],
+  "question": "What did she decide about the budget?",
+  "expect": {
+    "question_class": "personal",
+    "query_must_include": ["Ana"],
+    "query_must_exclude": ["she "],
+    "entities_must_include": ["Ana"]
+  },
+  "notes": "Pronoun resolution across turns: `she` must become Ana Kovac in the rewritten query, or retrieval searches for a pronoun."
+}

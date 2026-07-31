@@ -1,0 +1,11 @@
+{
+  "case_id": "hr-rw01",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [],
+  "question": "Što smo dogovorili oko ugovora s Jadranom?",
+  "expect": {
+    "question_class": "personal",
+    "entities_must_include": ["Jadran"]
+  },
+  "notes": "Osnovni negativni slučaj: obično pitanje o vlastitom svijetu korisnika. Nema vremenskog signala, nema otvorenih petlji, nema glagola odgovaranja ni istraživačke naredbe."
+}

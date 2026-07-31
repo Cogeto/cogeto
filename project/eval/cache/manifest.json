@@ -1,0 +1,14 @@
+{
+  "scoring_version": 1,
+  "configuration_id": "mistral-default",
+  "models": {
+    "pipeline": "mistral-small-latest",
+    "answer": "mistral-medium-latest",
+    "embedding": "mistral-embed"
+  },
+  "recorded_at": "2026-07-31T18:38:01.041Z",
+  "counts": {
+    "text": 243,
+    "embeddings": 326
+  }
+}
