@@ -38,10 +38,19 @@ backed by an inspectable artifact, with human-approved agents on top.
 
 ## Current state
 
-v1.1.0 is released. The task subsystem and reminders were **removed** in V2.0 items
-3.1 and 3.2: Cogeto has no tasks, no to-dos, and no reminders. What survives is
-**open loops**, `commitment` and `open_loop` memories read straight from the memory
-table, due-dated by `valid_until`, surfaced in chat and on the attention feed.
+v1.4.0 is the current release line. The task subsystem and reminders were **removed**
+in V2.0 items 3.1 and 3.2: Cogeto has no tasks, no to-dos, and no reminders. What
+survives is **open loops**, `commitment` and `open_loop` memories read straight from
+the memory table, due-dated by `valid_until`, surfaced in chat and on the attention
+feed.
+
+The 2.0 security audit ([`docs/audits/`](docs/audits/)) is closed out across five
+remediation waves: every finding is fixed or consciously accepted with a written
+rationale, and the audit and its independent verification are both published there.
+Two operator-visible consequences worth knowing before changing anything nearby:
+inbound email is now behind the `mail` compose profile and is **off by default**, and
+the five deployment assets are checksum-verified by the installer, so editing one
+means regenerating `project/infra/deploy/deploy-assets.sha256` in the same change.
 
 Work proceeds through the V2 plan in order.
 

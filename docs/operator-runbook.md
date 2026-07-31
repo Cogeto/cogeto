@@ -522,7 +522,7 @@ then delete the rehearsal instance.
 
 5. **Verify after**: `sudo ./cogeto status` is GREEN and prints the running
  `version`, which is the authoritative check. Log in as well and confirm the
- version at the bottom of the sidebar agrees (v1.3.1 and later; releases
+ version at the bottom of the sidebar agrees (v1.4.0 and later; releases
  v1.1.0 through v1.3.0 do not show it, the line was lost in a sidebar
  redesign). Expect a short app/worker restart blip during the upgrade,
  nothing more. Image signatures were already verified during the upgrade
