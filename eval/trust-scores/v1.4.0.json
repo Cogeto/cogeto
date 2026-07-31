@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0",
+  "generated_by": {
+    "release": "v1.4.0",
+    "commit": "eca1222b3b28e53abe1244099ec48732a4c2b074",
+    "harness": "extraction/v0004 + verification/v0006 · reconcile_dedup/v0001 + reconcile_contradiction/v0001 · thresholds v1 + chat answer/v0007 · grader eval-coverage/v0001",
+    "generated_at": "2026-07-31T10:34:56.865Z",
+    "backfilled": false
+  },
+  "configurations": [
+    {
+      "id": "mistral-default",
+      "models": {
+        "pipeline": "mistral-small-latest",
+        "answer": "mistral-medium-latest",
+        "embedding": "mistral-embed"
+      },
+      "redaction": false,
+      "corpus": {
+        "golden_cases": 86,
+        "reconcile_pairs": 20,
+        "chat_cases": 24,
+        "per_language": [
+          {
+            "language": "en",
+            "golden_cases": 42
+          },
+          {
+            "language": "hr",
+            "golden_cases": 44
+          }
+        ]
+      },
+      "metrics": {
+        "per_language": [
+          {
+            "language": "en",
+            "golden_cases": 42,
+            "extraction_precision": 0.8194444444444444,
+            "extraction_recall": 0.9464285714285714,
+            "verification_agreement": 1,
+            "dedup_accuracy": 1,
+            "contradiction_recall": 1
+          },
+          {
+            "language": "hr",
+            "golden_cases": 44,
+            "extraction_precision": 0.8055555555555556,
+            "extraction_recall": 0.9285714285714286,
+            "verification_agreement": 0.8604651162790697,
+            "dedup_accuracy": 0.8333333333333334,
+            "contradiction_recall": 1
+          }
+        ],
+        "aggregate": {
+          "extraction_precision": 0.8125,
+          "extraction_recall": 0.9375,
+          "verification_agreement": 0.9285714285714286,
+          "dedup_accuracy": 0.9285714285714286,
+          "contradiction_recall": 1
+        },
+        "chat": {
+          "cases": 24,
+          "passed": 23,
+          "failed": [
+            "atlas_scope"
+          ]
+        }
+      }
+    }
+  ]
+}
