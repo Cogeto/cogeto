@@ -64,13 +64,17 @@ poisoned memory. **None of them is a proof, and we do not claim immunity.**
    request: before it existed the extraction input was a plain newline join, so a
    document containing its own `SOURCE CONTENT:` line was indistinguishable from
    the real label.
-2. **An explicit clause in every prompt that reads untrusted text**
-   (extraction, verification, answer, research synthesis, skill brief): text
-   inside the fence is content to analyse, an instruction found inside it is a
-   fact about the document rather than a command, and the output schema never
-   changes because of anything inside it. This is a request to a model, so it is
+2. **An explicit clause in every prompt that reads fenced untrusted text**
+   (extraction, verification, research synthesis, skill brief): text inside the
+   fence is content to analyse, an instruction found inside it is a fact about
+   the document rather than a command, and the output schema never changes
+   because of anything inside it. This is a request to a model, so it is
    probabilistic. It is gated by injection traps in the golden set, which fail
-   the build if an obeyed injection ever reaches a stored fact.
+   the build if an obeyed injection ever reaches a stored fact. The answer
+   prompt deliberately carries neither the fence nor the clause: fencing stored
+   memory measurably destroyed answer quality, and by that point the content has
+   already passed the layers above. Injection is stopped where it enters, at
+   ingestion, not where it is read back.
 3. **The independent verification pass.** A second prompt family, sharing no
    wording or rubric with the extractor, judges each claim against the passage
    offered as evidence. A fabricated claim with no grounding in the source is
@@ -122,8 +126,10 @@ The authoritative scope for **vulnerability reports** is the repository-root
  document rather than assumed to match it. Findings are tracked as issues,
  fixed through the normal required-checks loop, and the fix lands with the test
  or invariant that keeps it fixed, so the history of what was wrong and what
- closed it is readable in the repository. Audit reports themselves are internal
- and are not published.
+ closed it is readable in the repository. The audit reports and their
+ independent verification are published in [`docs/audits/`](../audits/),
+ including the findings that are still open and the risks that were consciously
+ accepted.
 - **Enforced invariants.** Scope-leak, deletion-cascade, approval-gate, and the
  golden-set eval gate are required CI checks; nothing merges without them green.
 - **Honest residual limits.** Each mechanism doc states what it does *not* cover.

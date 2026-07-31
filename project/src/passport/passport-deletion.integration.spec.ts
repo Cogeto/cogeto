@@ -6,6 +6,7 @@ import { startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
 import { passportExport } from './persistence/tables';
 import { PassportExportCascade } from './passport.source-expiry';
+import { PassportExportStore } from './passport.store';
 
 /**
  * SEC-8 / SEC-9: a passport export is a signed ZIP of everything its owner
@@ -77,6 +78,50 @@ describe('deletion_expires_exports', () => {
       expect(row.objectKey).toBeNull();
     }
     expect(rows.map((r) => r.id).sort()).toEqual([ready, pending].sort());
+  });
+
+  it('an export expired mid-assembly cannot be published afterwards (SEC-8 race)', async () => {
+    // The worker assembles from reads taken BEFORE the deletion committed, so
+    // the bytes it is about to write describe memory the receipt already
+    // promised erased. Its row was `pending`, so it carried no object key and
+    // nothing joined the receipt: neither the worker leg nor the sweep would
+    // ever look for that object. Publishing it anyway would leave a
+    // downloadable archive of erased content that no receipt references.
+    const store = new PassportExportStore(tdb.db);
+    const inFlight = await seed(owner.userId, 'pending', null);
+
+    await tdb.db.transaction((tx) => cascade.expireForOwner(tx, owner.userId));
+
+    const published = await store.markReady(
+      inFlight,
+      'org-1/user-a/passport-raced.zip',
+      1234,
+      new Date(),
+      new Date(Date.now() + 3_600_000),
+    );
+
+    expect(published).toBe(false);
+    const [row] = await tdb.db.select().from(passportExport).where(eq(passportExport.id, inFlight));
+    expect(row!.status).toBe('expired');
+    expect(row!.objectKey).toBeNull();
+  });
+
+  it('a pending export with no deletion in flight still publishes normally', async () => {
+    const store = new PassportExportStore(tdb.db);
+    const normal = await seed('user-unraced', 'pending', null);
+
+    const published = await store.markReady(
+      normal,
+      'org-1/user-unraced/passport.zip',
+      99,
+      new Date(),
+      new Date(Date.now() + 3_600_000),
+    );
+
+    expect(published).toBe(true);
+    const [row] = await tdb.db.select().from(passportExport).where(eq(passportExport.id, normal));
+    expect(row!.status).toBe('ready');
+    expect(row!.objectKey).toBe('org-1/user-unraced/passport.zip');
   });
 
   it('never touches another user exports', async () => {

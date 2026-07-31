@@ -72,17 +72,33 @@ export class PassportExportStore {
       .limit(50);
   }
 
+  /**
+   * Publish a finished export, but ONLY if it is still `pending`.
+   *
+   * Security audit 2.0 SEC-8: a source deletion expires the owner's in-flight
+   * exports inside the enumeration transaction, because the worker assembled
+   * them from reads that may already have seen the doomed rows. A `pending` row
+   * has no object key yet, so nothing joins the receipt's `object_keys` and the
+   * integrity sweep never learns about it. An unconditional update here would
+   * then flip that expired row back to `ready` with a live key, leaving a
+   * downloadable archive of provably erased content that no receipt references.
+   * The status guard closes that window: on a lost race the update matches no
+   * row, the caller deletes the object it just wrote, and the export stays
+   * expired. Returns whether the row was published.
+   */
   async markReady(
     id: string,
     objectKey: string,
     sizeBytes: number,
     readyAt: Date,
     expiresAt: Date,
-  ): Promise<void> {
-    await this.db
+  ): Promise<boolean> {
+    const rows = await this.db
       .update(passportExport)
       .set({ status: 'ready', objectKey, sizeBytes, readyAt, expiresAt })
-      .where(eq(passportExport.id, id));
+      .where(and(eq(passportExport.id, id), eq(passportExport.status, 'pending')))
+      .returning({ id: passportExport.id });
+    return rows.length > 0;
   }
 
   async markFailed(id: string, error: string): Promise<void> {

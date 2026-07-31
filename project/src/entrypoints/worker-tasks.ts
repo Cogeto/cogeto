@@ -275,7 +275,12 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       if (typeof exportId !== 'string' || !exportId) return;
       try {
         const result = await deps.passportExecutor.run(exportId, new Date());
-        deps.log({ source_id: exportId, size_bytes: result.sizeBytes }, 'passport export ready');
+        deps.log(
+          { source_id: exportId, size_bytes: result.sizeBytes, published: result.published },
+          result.published
+            ? 'passport export ready'
+            : 'passport export expired by a source deletion while assembling; object discarded',
+        );
       } catch (error) {
         await deps.passportExecutor.fail(
           exportId,

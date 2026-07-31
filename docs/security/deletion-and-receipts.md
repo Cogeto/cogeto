@@ -99,14 +99,20 @@ metadata only, never content:
 | `passport.export_downloaded` | a presigned URL is minted, the moment the bytes become reachable outside the instance |
 | `passport.export_expired` | a source deletion expired the owner's exports |
 
-## An empty enumeration mints no receipt
+## A receipt is written only when something was erased
 
-A receipt attests erasure. When a source exists but nothing erasable derived from
-it, no memories, no objects, no redacted or expired derived artifacts, the source
-row is still removed but no receipt is written and the API returns a null
-`receiptId` (audit 2.0 SEC-30). Minting one anyway put empty attestations in the
-hash chain, which is noise in the one artifact whose entire value is that every
-entry means something. A source that exists nowhere at all still 404s, unchanged.
+A receipt attests erasure, so it is written when something was actually erased
+and withheld when nothing was (audit 2.0 SEC-30). Empty attestations are noise in
+the one artifact whose entire value is that every entry means something.
+
+**Removing the source row counts as erasure.** Deleting a note captured moments
+ago erases the note itself and consumes its pipeline idempotency key, so a
+receipt reading "0 memories" is the honest record of a real deletion, not an
+empty one. An earlier revision suppressed that receipt and was wrong to.
+
+The genuinely vacuous case, a source that exists nowhere at all, is already
+refused upstream with a 404. The guard is kept as defence in depth: if it ever
+fires, no receipt is written and the API returns a null `receiptId`.
 
 ## The nightly sweep detects, never repairs
 

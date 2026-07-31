@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { ModelGateway } from './model-gateway.service';
 import type {
   CompletionRequest,
@@ -29,6 +30,8 @@ import type { ZodType } from 'zod';
  * ceiling, not billing, so the estimate remains sufficient where it is used.
  */
 export class BudgetedModelGateway extends ModelGateway {
+  private readonly logger = new Logger(BudgetedModelGateway.name);
+
   constructor(
     private readonly inner: ModelGateway,
     private readonly meter: ModelUsageMeter,
@@ -41,7 +44,7 @@ export class BudgetedModelGateway extends ModelGateway {
     const result = await this.inner.complete(request);
     if (userId && result.usage) {
       // Real provider-reported usage, normalized by the adapter (0040 r4).
-      await this.meter.record(userId, result.usage.inputTokens + result.usage.outputTokens);
+      await this.record(userId, result.usage.inputTokens + result.usage.outputTokens);
     } else {
       await this.charge(userId, request.input, result.text);
     }
@@ -93,6 +96,26 @@ export class BudgetedModelGateway extends ModelGateway {
   private async charge(userId: string | undefined, input: string, output: string): Promise<void> {
     if (!userId) return;
     const tokens = Math.ceil((input.length + output.length) / 4);
-    await this.meter.record(userId, tokens);
+    await this.record(userId, tokens);
+  }
+
+  /**
+   * Charge the meter, best-effort. The CAP is enforced before the call in
+   * {@link gate}; this is the after-the-fact accounting, and the call has
+   * already happened and already been paid for by the time we get here.
+   * Letting a transient database error escape would convert a successful call
+   * into a failed one — and for a stream, throw AFTER the whole answer was
+   * yielded, so the user sees a complete answer followed by a failure. The
+   * meter is documented as best-effort; this keeps it that way. A lost charge
+   * under-counts one call against a daily ceiling, which is the cheaper error.
+   */
+  private async record(userId: string, tokens: number): Promise<void> {
+    try {
+      await this.meter.record(userId, tokens);
+    } catch (error) {
+      this.logger.warn(
+        `model usage not recorded (${tokens} tokens): ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
+    }
   }
 }
