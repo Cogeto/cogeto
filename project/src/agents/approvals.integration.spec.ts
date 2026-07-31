@@ -109,7 +109,10 @@ describe('approval state machine (integration: real Postgres + Qdrant)', () => {
       scope: 'private',
       sourceType: 'user_note',
       sourceId: randomUUID(),
+      // The path to user_approved runs through an uncertain admission, which
+      // now always names its reason (V2.0 item 3.3).
       initialStatus: status === 'user_approved' ? 'uncertain' : 'active',
+      uncertaintyReason: status === 'user_approved' ? 'unsupported' : undefined,
     });
     if (status === 'user_approved') {
       await store.transition({ kind: 'user', userId: principal.userId }, row.id, 'user_approved');

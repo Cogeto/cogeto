@@ -2,7 +2,12 @@ import { Module } from '@nestjs/common';
 import { DatabaseModule, LimitsModule, UserContextModule } from '../infrastructure/index';
 import { IdentityModule } from '../identity/index';
 import { MemoryModule } from '../memory/index';
-import { IngestionModule, PipelineIngestionGuard } from '../ingestion/index';
+import {
+  IngestionModule,
+  PipelineIngestionGuard,
+  SuppressedFactCascade,
+  SuppressedFactCascadeModule,
+} from '../ingestion/index';
 import { AgentsModule, ReplyDraftCascade, ReplyDraftCascadeModule } from '../agents/index';
 import {
   ConnectorsModule,
@@ -93,12 +98,25 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
           ],
         },
         derivedCascades: {
-          imports: [ChatSourceModule, ReplyDraftCascadeModule, PassportCascadeModule],
+          imports: [
+            ChatSourceModule,
+            ReplyDraftCascadeModule,
+            PassportCascadeModule,
+            SuppressedFactCascadeModule,
+          ],
           // Assistant answers citing erased memories are redacted (
           //); reply drafts grounded on the source are too. A ready passport
           // export is a signed copy of everything the owner could see, so it is
           // expired by the same receipt (SEC-8).
-          adapters: [ChatAnswerCascade, ReplyDraftCascade, PassportExportCascade],
+          // The suppressed-fact log is content-bearing (V2.0 item 3.3): the
+          // claim as extracted and its exact span. It joins the cascade so the
+          // receipt's erasure claim stays complete.
+          adapters: [
+            ChatAnswerCascade,
+            ReplyDraftCascade,
+            PassportExportCascade,
+            SuppressedFactCascade,
+          ],
         },
         // Delete-vs-ingestion serialization: the saga
         // cancels a source's pending pipeline run inside its enumeration tx.

@@ -22,6 +22,7 @@ import {
   FILE_DISCARD_CLEANUP_JOB_TYPE,
   INGESTION_PIPELINE_JOB_TYPE,
   createIngestionPipeline,
+  createSuppressedFactLog,
 } from '../ingestion/index';
 import type { IngestionPipeline } from '../ingestion/index';
 import { NotesService } from './notes.service';
@@ -190,6 +191,7 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
       gateway,
       store,
       reconciliation,
+      suppressedFacts: createSuppressedFactLog(tdb.db),
     });
 
   const taskListFor = (pipeline: IngestionPipeline): TaskList => ({

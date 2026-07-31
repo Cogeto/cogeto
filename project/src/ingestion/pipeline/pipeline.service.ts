@@ -9,6 +9,9 @@ import {
 import type { ParseCaps, Tx } from '../../infrastructure/index';
 import type { MemoryReconciliation, MemoryStore } from '../../memory/index';
 import type { ModelGateway } from '../../model-gateway/index';
+import { structurallyValid } from '../domain/uncertainty';
+import { SuppressedFactLog } from '../persistence/suppressed-fact-log';
+import type { SuppressedFactEntry } from '../persistence/suppressed-fact-log';
 import { chunkContent } from './chunk';
 import { EmbedStoreStage } from './embed-store.stage';
 import { ExtractStage } from './extract.stage';
@@ -46,6 +49,13 @@ export interface PipelineSummary {
   extracted: number;
   verdicts: { supported: number; partial: number; unsupported: number };
   admitted: { active: number; uncertain: number };
+  /**
+   * Facts withheld before verification because storing them would be actively
+   * wrong (V2.0 item 3.3): a blank claim or a blank span. Each one is in the
+   * suppressed-fact log with its source and span, so a withheld fact is still
+   * recoverable and explainable.
+   */
+  notAdmitted: number;
   embedded: number;
   reconcile: ReconcileSummary;
   /**
@@ -75,6 +85,8 @@ export class IngestionPipeline {
     private readonly verifyStage: VerifyStage,
     private readonly embedStoreStage: EmbedStoreStage,
     private readonly reconciliationService: ReconciliationService,
+    /** The record of every automatic non-admission (V2.0 item 3.3). */
+    private readonly suppressedFacts: SuppressedFactLog,
     /** Parse/extraction caps; optional so bare/test builds still work. */
     @Optional() @Inject(PARSE_CAPS) private readonly parseCaps: ParseCaps = DEFAULT_PARSE_CAPS,
   ) {}
@@ -91,6 +103,7 @@ export class IngestionPipeline {
       extracted: 0,
       verdicts: { supported: 0, partial: 0, unsupported: 0 },
       admitted: { active: 0, uncertain: 0 },
+      notAdmitted: 0,
       embedded: 0,
       reconcile: {
         considered: 0,
@@ -170,6 +183,22 @@ export class IngestionPipeline {
     }
     summary.extracted = facts.length;
 
+    // Admission line, before any model spend (V2.0 item 3.3). The ONE case
+    // where a fact is not stored at all: a blank claim (a memory row with no
+    // content) or a blank span (a fact with no provenance to inspect). Storing
+    // either would be actively wrong rather than merely uncertain, so they are
+    // withheld — and logged with their source and span, so a withheld fact is
+    // still recoverable and explainable. Everything else is admitted.
+    const invalid = facts.filter((fact) => !structurallyValid(fact));
+    if (invalid.length > 0) {
+      facts = facts.filter((fact) => structurallyValid(fact));
+      summary.notAdmitted = invalid.length;
+      log(
+        { stage: 'extract', ...ref, notAdmitted: invalid.length },
+        'structurally invalid facts withheld',
+      );
+    }
+
     // Stage 4 — verify: the independent spec §2 pass decides each fact's verdict.
     const verified = await this.verifyStage.run(chunks, facts);
     for (const { verdict } of verified) summary.verdicts[verdict] += 1;
@@ -189,7 +218,10 @@ export class IngestionPipeline {
     // and erases them under its receipt. Discard-mode file sources have no
     // durable row by design (stagingKey set) — they are protected by the
     // saga's idempotency-key cancellation, which waits out in-flight runs.
-    if (verified.length > 0 && !source.stagingKey) {
+    // Withheld facts count as "something to write": their log entries carry
+    // source content and a span, so they are guarded by the same checkpoint the
+    // memory rows are.
+    if ((verified.length > 0 || invalid.length > 0) && !source.stagingKey) {
       const sourceStillExists = await reader.existsForAdmission(tx, payload.source_id);
       if (!sourceStillExists) {
         summary.skipped = 'source_deleted';
@@ -204,6 +236,30 @@ export class IngestionPipeline {
         log({ stage: 'admission', ...ref, skipped: true }, 'source deleted mid-flight; aborting');
         return summary;
       }
+    }
+
+    // The non-admitted half of the log, written past the checkpoint so it
+    // shares the memory rows' all-or-nothing guarantee. `memoryId` is null:
+    // that null IS the record that the fact was withheld rather than demoted.
+    if (invalid.length > 0) {
+      const entries: SuppressedFactEntry[] = invalid.map((fact) => ({
+        ownerId: source.ownerId,
+        scope: source.scope ?? 'private',
+        sensitive: source.sensitive ?? false,
+        sourceType: source.sourceType,
+        sourceId: source.sourceId,
+        factContent: fact.claim,
+        factKind: fact.kind,
+        sourceSpan: fact.source_span,
+        reason: 'structurally_invalid',
+        // No verification ran: a fact this malformed never reaches the verifier,
+        // and inventing a verdict for it would be inventing evidence.
+        verificationVerdict: null,
+        verificationReason: null,
+        promptVersion: null,
+        memoryId: null,
+      }));
+      await this.suppressedFacts.record(tx, entries);
     }
 
     // Stage 5 — embed + store: batched embedding, Postgres rows (status per
@@ -252,6 +308,8 @@ export interface CreatePipelineOptions {
   gateway: ModelGateway;
   store: MemoryStore;
   reconciliation: MemoryReconciliation;
+  /** The suppressed-fact log every admission decision writes to. */
+  suppressedFacts: SuppressedFactLog;
   /** Parse/extraction caps; the generous defaults apply when omitted. */
   parseCaps?: ParseCaps;
 }
@@ -267,8 +325,9 @@ export function createIngestionPipeline(options: CreatePipelineOptions): Ingesti
     options.readers,
     new ExtractStage(options.gateway),
     new VerifyStage(options.gateway),
-    new EmbedStoreStage(options.gateway, options.store),
+    new EmbedStoreStage(options.gateway, options.store, options.suppressedFacts),
     new ReconciliationService(options.gateway, options.store, options.reconciliation),
+    options.suppressedFacts,
     options.parseCaps ?? DEFAULT_PARSE_CAPS,
   );
 }

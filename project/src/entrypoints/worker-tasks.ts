@@ -137,6 +137,9 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
             ...summary.verdicts,
             admitted_active: summary.admitted.active,
             admitted_uncertain: summary.admitted.uncertain,
+            // Counts, never content: how many facts the admission line withheld
+            // (V2.0 item 3.3). Each one is in the suppressed-fact log.
+            not_admitted: summary.notAdmitted,
             embedded: summary.embedded,
             skipped: summary.skipped ?? null,
           },

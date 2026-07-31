@@ -28,6 +28,7 @@ import {
   FILE_DISCARD_CLEANUP_JOB_TYPE,
   INGESTION_PIPELINE_JOB_TYPE,
   createIngestionPipeline,
+  createSuppressedFactLog,
 } from '../ingestion/index';
 import { MemoryStore } from './memory.store';
 import { MemoryReconciliation } from './reconciliation';
@@ -179,6 +180,7 @@ describe('deletion cascade over a real uploaded file (F1 handoff §4)', () => {
       gateway,
       store,
       reconciliation: new MemoryReconciliation(tdb.db, store, vectors),
+      suppressedFacts: createSuppressedFactLog(tdb.db),
     });
 
   const taskList = (): TaskList => ({

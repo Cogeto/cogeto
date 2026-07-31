@@ -54,6 +54,14 @@ request that introduces it before coining a term in code.
 - **Verification pass**: the independent check ("does the cited source support
  this claim?") every extracted fact passes before counting as `active`;
  unsupported/partial → `uncertain` (spec §2).
+- **Uncertainty reason**: the named sub-reason on an `uncertain` admission
+ (`hedged_in_source`, `partially_supported`, `unsupported`, `unjudgeable`, plus
+ `structurally_invalid` for the one non-admitted case and `legacy_unspecified`
+ for backfilled rows). Frozen vocabulary; the mapping from verification outcome
+ to reason is total.
+- **Suppressed-fact log**: the record of every automatic decision that demoted or
+ withheld an extracted fact. Content-bearing, gated as memories are, and erased
+ with its source under the deletion receipt.
 - **Extract-and-discard**: privacy mode keeping derived memories while discarding
  the original file; per-upload flag with a per-user default.
 - **Prompt family / prompt version**: a named prompt purpose (extraction,

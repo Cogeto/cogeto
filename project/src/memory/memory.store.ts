@@ -9,7 +9,13 @@ import {
 import { and, desc, eq, gte, inArray, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { MEMORY_STATUSES } from '@cogeto/shared';
-import type { FactKind, MemoryScope, MemoryStatus, Principal } from '@cogeto/shared';
+import type {
+  FactKind,
+  MemoryScope,
+  MemoryStatus,
+  Principal,
+  UncertaintyReason,
+} from '@cogeto/shared';
 import { auditLog, DRIZZLE, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { UserDirectory } from '../identity/index';
@@ -59,6 +65,13 @@ export interface NewFact {
    * `user_approved` exists for edit-supersession successors only (0006 ruling 3).
    */
   initialStatus?: 'active' | 'uncertain' | 'user_approved';
+  /**
+   * WHY the fact is admitted `uncertain` (V2.0 item 3.3). Required whenever
+   * `initialStatus` is `uncertain` and rejected otherwise: the admission
+   * taxonomy is total, so an uncertain fact with no named reason would be the
+   * fallthrough the taxonomy exists to prevent.
+   */
+  uncertaintyReason?: UncertaintyReason;
   /** Which embed model produced (or is about to produce) this memory's vector. */
   embeddingModel?: string;
 }
@@ -420,29 +433,6 @@ export class MemoryStore {
       )
       .groupBy(sql`date_trunc('day', ${memory.createdAt} AT TIME ZONE 'UTC')`, memory.sourceType);
     return rows.map((r) => ({ day: r.day, sourceType: r.sourceType, sources: r.sources }));
-  }
-
-  /**
-   * The oldest unresolved uncertain fact awaiting the caller's Review, or null.
-   * Owner-only (`mine`), mirroring the Review queue — you review only your own
-   * uncertain facts. One aggregate query under the gates. Feeds the "oldest
-   * unresolved review item age" stat together with the oldest open
-   * contradiction (owned by reconciliation).
-   */
-  async oldestUncertainAtForPrincipal(principal: Principal): Promise<Date | null> {
-    const rows = await this.db
-      .select({ at: sql<Date | string | null>`min(${memory.createdAt})` })
-      .from(memory)
-      .where(
-        and(
-          this.visibleTo(principal, {}),
-          eq(memory.ownerId, principal.userId),
-          eq(memory.status, 'uncertain'),
-        ),
-      );
-    // A bare aggregate can arrive as a string from the driver — normalize to Date.
-    const at = rows[0]?.at ?? null;
-    return at === null ? null : new Date(at);
   }
 
   /**
@@ -1382,6 +1372,21 @@ export class MemoryStore {
         'a memory requires owner_id, source_type and source_id: no orphans, ever',
       );
     }
+    // The admission taxonomy is total (V2.0 item 3.3): an uncertain fact always
+    // knows why, and nothing else carries a reason. Enforced here, in the
+    // aggregate that owns every write path, rather than by a CHECK constraint
+    // that later status transitions would have to keep re-satisfying.
+    const status = fact.initialStatus ?? 'active';
+    if (status === 'uncertain' && !fact.uncertaintyReason) {
+      throw new BadRequestException(
+        'an uncertain memory requires its uncertainty reason: the admission taxonomy has no default arm',
+      );
+    }
+    if (status !== 'uncertain' && fact.uncertaintyReason) {
+      throw new BadRequestException(
+        `uncertaintyReason is only meaningful on an uncertain admission (got status '${status}')`,
+      );
+    }
     const [row] = await tx
       .insert(memory)
       .values({
@@ -1389,7 +1394,8 @@ export class MemoryStore {
         scope: fact.scope,
         sourceType: fact.sourceType,
         sourceId: fact.sourceId,
-        status: fact.initialStatus ?? 'active',
+        status,
+        uncertaintyReason: fact.uncertaintyReason,
         sensitive: fact.sensitive ?? false,
         entities: fact.entities ?? [],
         subjectEntity: fact.subjectEntity,
@@ -1408,7 +1414,14 @@ export class MemoryStore {
       action: 'memory.created',
       entityType: 'memory',
       entityId: created.id,
-      detail: { sourceType: fact.sourceType, sourceId: fact.sourceId, scope: fact.scope },
+      detail: {
+        sourceType: fact.sourceType,
+        sourceId: fact.sourceId,
+        scope: fact.scope,
+        // An enum value, never content: which arm of the admission taxonomy
+        // this fact landed on, so the automatic decision is accountable.
+        ...(fact.uncertaintyReason ? { uncertaintyReason: fact.uncertaintyReason } : {}),
+      },
       ownerId,
       orgId: await this.orgFor(ownerId),
     });

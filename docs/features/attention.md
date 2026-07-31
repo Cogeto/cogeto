@@ -7,8 +7,8 @@ dependency.
 ## The feed is computed, not materialized
 
 A thin derived view assembled per request from signals the instance already produces:
-open loops and their dormancy, the uncertain and contradicted queues, pending
-approvals, and the latest dreaming digest lines.
+open loops and their dormancy, open contradictions, pending approvals, and the
+latest dreaming digest lines.
 
 **No attention-item rows are stored.** Duplicating state that already exists would
 create a second source of truth to keep honest. Each item is typed, human-phrased,
@@ -33,7 +33,7 @@ memory text), so this durable row never stores content.
   marks seen and the nav badge drops to zero. The current view keeps its per-item "new"
   highlights so you can see what changed; the next visit reflects the persisted mark.
 - **Per-item dismissal exists only where it makes sense.** Digest lines are a discrete
-  overnight change and are dismissible. A live count ("3 items in review") is **not**:
+  overnight change and are dismissible. A live count ("3 conflicts to resolve") is **not**:
   it clears when the work is done, not when hidden. The server rejects a dismissal
   whose key is not a digest key.
 
@@ -44,8 +44,10 @@ interface, never a raw cross-module table read. The composition lives in the
 entrypoints root and reaches memory, agents, and ingestion only through their barrels;
 each returns already-gated results.
 
-- Review counts are **owner-only**: you review your own uncertain facts, never a peer's
-  shared ones.
+- The contradiction count is **owner-only**: reconciliation only ever pairs a fact
+  with the same owner's memories, so every conflict is yours to resolve. Uncertain
+  facts raise no item at all since V2.0 item 3.3: Cogeto resolves those itself, and
+  a feed line must be something the reader can actually discharge.
 - Open loops are owner-scoped.
 - The digest reuses the one gated builder, so an action on a memory the caller cannot
   read simply produces no line. Resolution, not post-filtering. A stranger sees nothing.

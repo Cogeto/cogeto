@@ -16,7 +16,11 @@ import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import { createMemoryReconciliation, MemoryFileStore, MemoryObjectStore } from '../memory/index';
 import type { MemoryStore, MemoryReconciliation } from '../memory/index';
-import { INGESTION_PIPELINE_JOB_TYPE, createIngestionPipeline } from '../ingestion/index';
+import {
+  INGESTION_PIPELINE_JOB_TYPE,
+  createIngestionPipeline,
+  createSuppressedFactLog,
+} from '../ingestion/index';
 import type { IngestionPipeline } from '../ingestion/index';
 import { UserDirectory } from '../identity/index';
 import { EmailAllowlistService } from './email-allowlist.service';
@@ -243,6 +247,7 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
       gateway,
       store,
       reconciliation,
+      suppressedFacts: createSuppressedFactLog(tdb.db),
     });
   const runWorker = (pipeline: IngestionPipeline) =>
     runOnce({

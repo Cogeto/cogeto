@@ -6,7 +6,7 @@ import { fakeEmbedding, startTestDatabase, startTestQdrant } from '../../testing
 import type { TestDatabase, TestQdrant } from '../../testing/index';
 import { createMemoryReconciliation } from '../../memory/index';
 import type { MemoryStore } from '../../memory/index';
-import { createIngestionPipeline } from '../../ingestion/index';
+import { createIngestionPipeline, createSuppressedFactLog } from '../../ingestion/index';
 import type { IngestionPipeline } from '../../ingestion/index';
 import { UserDirectory } from '../../identity/index';
 import { ModelGateway, ModelGatewayError } from '../../model-gateway/index';
@@ -118,6 +118,7 @@ describe('chat capture (integration, real Postgres + Qdrant)', () => {
       gateway,
       store,
       reconciliation,
+      suppressedFacts: createSuppressedFactLog(tdb.db),
     });
 
   // Messages need a container since — one per owner is enough here.

@@ -53,6 +53,7 @@ describe('temporal primitives (integration, real Postgres + Qdrant)', () => {
       validFrom: opts.validFrom,
       validUntil: opts.validUntil,
       initialStatus: opts.initialStatus,
+      uncertaintyReason: opts.uncertaintyReason,
     });
     if (opts.createdAt) {
       await tdb.pool.query(`UPDATE memory SET created_at = $2 WHERE id = $1`, [
@@ -188,6 +189,7 @@ describe('temporal primitives (integration, real Postgres + Qdrant)', () => {
     const learned = await seed(owner, 'A fact learned this window.');
     const approved = await seed(owner, 'An uncertain fact the user approves.', {
       initialStatus: 'uncertain',
+      uncertaintyReason: 'unsupported',
     });
     await store.transition({ kind: 'user', userId: owner }, approved.id, 'user_approved', 'review');
     const dated = await seed(owner, 'A fact the user marks outdated.');

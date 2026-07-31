@@ -90,6 +90,8 @@ describe('attention feed (integration, real Postgres)', () => {
       sourceId: randomUUID(),
       subjectEntity: opts.subjectEntity,
       initialStatus: opts.status === 'uncertain' ? 'uncertain' : undefined,
+      // The taxonomy is total: an uncertain admission always names its reason.
+      uncertaintyReason: opts.status === 'uncertain' ? 'unsupported' : undefined,
     });
     if (opts.ageMinutes) {
       const then = new Date(Date.now() - opts.ageMinutes * 60_000);
@@ -129,14 +131,31 @@ describe('attention feed (integration, real Postgres)', () => {
     return mem.id;
   };
 
-  const seedContradiction = async (owner: string): Promise<void> => {
+  /** `ageMinutes` backdates the detection; `detectedInSeconds` pushes it ahead
+   * of the wall clock, which the unread comparison needs to be strict about. */
+  const seedContradiction = async (
+    owner: string,
+    opts: { ageMinutes?: number; detectedInSeconds?: number } = {},
+  ): Promise<void> => {
     const a = await seedMemory(owner, { content: 'Workshop platform is Teams.' });
     const b = await seedMemory(owner, { content: 'Workshop platform is Zoom.' });
-    await tdb.pool.query(
+    const { rows } = await tdb.pool.query<{ id: string }>(
       `INSERT INTO memory_relation (kind, a_memory_id, b_memory_id, a_prior_status, b_prior_status)
-       VALUES ('contradicts', $1, $2, 'active', 'active')`,
+       VALUES ('contradicts', $1, $2, 'active', 'active') RETURNING id`,
       [a.id, b.id],
     );
+    if (opts.ageMinutes) {
+      await tdb.pool.query(`UPDATE memory_relation SET detected_at = $2 WHERE id = $1`, [
+        rows[0]!.id,
+        new Date(Date.now() - opts.ageMinutes * 60_000),
+      ]);
+    }
+    if (opts.detectedInSeconds) {
+      await tdb.pool.query(
+        `UPDATE memory_relation SET detected_at = now() + ($2 || ' seconds')::interval WHERE id = $1`,
+        [rows[0]!.id, String(opts.detectedInSeconds)],
+      );
+    }
   };
 
   const seedDigestRun = async (owner: string): Promise<{ runId: string; memId: string }> => {
@@ -189,8 +208,10 @@ describe('attention feed (integration, real Postgres)', () => {
     const kinds = feed.items.map((i) => i.kind);
     expect(kinds).toContain('open_loop_overdue');
     expect(kinds).toContain('open_loop_quiet');
-    expect(kinds).toContain('review_uncertain');
     expect(kinds).toContain('review_contradicted');
+    // no_uncertain_queue: uncertain facts are resolved automatically
+    // (V2.0 item 3.3), so the feed never asks the reader to review one.
+    expect(kinds).not.toContain('review_uncertain');
     expect(kinds).toContain('approval_pending');
     expect(kinds).toContain('digest_change');
 
@@ -211,7 +232,7 @@ describe('attention feed (integration, real Postgres)', () => {
     expect(digest.key).toBe(`digest:${runId}:0`);
     expect(digest.dismissible).toBe(true);
     // A live count is never dismissible.
-    expect(feed.items.find((i) => i.kind === 'review_uncertain')!.dismissible).toBe(false);
+    expect(feed.items.find((i) => i.kind === 'review_contradicted')!.dismissible).toBe(false);
     // The most-pressing item (overdue) sorts first.
     expect(feed.items[0]!.kind).toBe('open_loop_overdue');
     pendingByOwner.delete(owner);
@@ -242,24 +263,21 @@ describe('attention feed (integration, real Postgres)', () => {
     const statsBob = await attention.getStats(principalFor(bob, 'org-b'));
     expect(statsBob.memoryTotal).toBe(0);
     expect(statsBob.openLoops).toBe(0);
-    expect(statsBob.review.uncertain).toBe(0);
     expect(statsBob.review.contradicted).toBe(0);
   });
 
-  it("attention_gated: a shared uncertain fact never enters a peer's owner-only review count", async () => {
+  it('attention_gated: a shared uncertain fact raises no review item for anyone', async () => {
     const owner = `share-${randomUUID()}`;
     const peer = `peer-${randomUUID()}`;
     // A shared uncertain fact of the owner's.
     await seedMemory(owner, { content: 'shared unsure', status: 'uncertain', scope: 'shared' });
 
-    // The owner reviews their own uncertain fact...
+    // Not for the owner: Cogeto resolved it, so there is nothing to adjudicate.
     const ownerFeed = await attention.getFeed(principalFor(owner));
-    expect(ownerFeed.items.some((i) => i.kind === 'review_uncertain')).toBe(true);
-    // ...but a peer does NOT — Review is owner-only, even for shared facts.
+    expect(ownerFeed.items.some((i) => i.kind === 'review_contradicted')).toBe(false);
+    // Nor for a peer, who could not action it even when queues existed.
     const peerFeed = await attention.getFeed(principalFor(peer));
-    expect(peerFeed.items.some((i) => i.kind === 'review_uncertain')).toBe(false);
-    const peerStats = await attention.getStats(principalFor(peer));
-    expect(peerStats.review.uncertain).toBe(0);
+    expect(peerFeed.items).toHaveLength(0);
   });
 
   // ── unread_semantics ─────────────────────────────────────────────────────────
@@ -268,8 +286,8 @@ describe('attention feed (integration, real Postgres)', () => {
     const owner = `unread-${randomUUID()}`;
     const p = principalFor(owner);
 
-    // An older uncertain fact (10 min ago) — clearly before we mark seen.
-    await seedMemory(owner, { content: 'old unsure', status: 'uncertain', ageMinutes: 10 });
+    // An older contradiction (10 min ago) — clearly before we mark seen.
+    await seedContradiction(owner, { ageMinutes: 10 });
 
     const first = await attention.getFeed(p);
     expect(first.lastSeenAt).toBeNull();
@@ -281,27 +299,23 @@ describe('attention feed (integration, real Postgres)', () => {
     const afterSeen = await attention.getFeed(p);
     expect(afterSeen.lastSeenAt).not.toBeNull();
     expect(afterSeen.unreadCount).toBe(0);
-    expect(afterSeen.items.find((i) => i.kind === 'review_uncertain')!.unread).toBe(false);
+    expect(afterSeen.items.find((i) => i.kind === 'review_contradicted')!.unread).toBe(false);
 
-    // A brand-new uncertain fact re-raises the indicator. Its created_at is
+    // A brand-new contradiction re-raises the indicator. Its detection time is
     // stamped a second past the seen mark rather than left to the wall clock
     // "unread" is a strict timestamp comparison, and a row written inside the
     // same millisecond as markSeen is genuinely not newer than it.
-    const fresh = await seedMemory(owner, { content: 'new unsure', status: 'uncertain' });
-    await tdb.pool.query(
-      `UPDATE memory SET created_at = now() + interval '1 second' WHERE id = $1`,
-      [fresh.id],
-    );
+    await seedContradiction(owner, { detectedInSeconds: 1 });
     const afterNew = await attention.getFeed(p);
     expect(afterNew.unreadCount).toBeGreaterThanOrEqual(1);
-    expect(afterNew.items.find((i) => i.kind === 'review_uncertain')!.unread).toBe(true);
+    expect(afterNew.items.find((i) => i.kind === 'review_contradicted')!.unread).toBe(true);
   });
 
   it('unread_semantics: digest dismissal persists and is per-item; a live count cannot be dismissed', async () => {
     const owner = `dismiss-${randomUUID()}`;
     const p = principalFor(owner);
     const { runId } = await seedDigestRun(owner);
-    await seedMemory(owner, { content: 'unsure', status: 'uncertain' });
+    await seedContradiction(owner);
 
     const key = `digest:${runId}:0`;
     const before = await attention.getFeed(p);
@@ -311,7 +325,7 @@ describe('attention feed (integration, real Postgres)', () => {
     const after = await attention.getFeed(p);
     expect(after.items.some((i) => i.key === key)).toBe(false);
     // The review count survives — dismissal is per-item and digest-only.
-    expect(after.items.some((i) => i.kind === 'review_uncertain')).toBe(true);
+    expect(after.items.some((i) => i.kind === 'review_contradicted')).toBe(true);
 
     // Re-fetch: the dismissal persisted.
     const again = await attention.getFeed(p);

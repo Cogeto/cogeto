@@ -12,7 +12,11 @@ import { createMemoryStore, MemoryReconciliation } from '../memory/index';
 import type { MemoryObjectStore, MemoryStore } from '../memory/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
-import { createIngestionPipeline, INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
+import {
+  createSuppressedFactLog,
+  createIngestionPipeline,
+  INGESTION_PIPELINE_JOB_TYPE,
+} from '../ingestion/index';
 import { ResearchService } from './research.service';
 import { WebDiscoveryService } from './web-discovery.service';
 import { WebFetchService } from './web-fetch';
@@ -195,6 +199,7 @@ describe('web research (integration: real Postgres + Qdrant, scripted gateway + 
       gateway,
       store,
       reconciliation: new MemoryReconciliation(tdb.db, store),
+      suppressedFacts: createSuppressedFactLog(tdb.db),
     });
   const taskList = (): TaskList => ({
     [INGESTION_PIPELINE_JOB_TYPE]: idempotentTask(

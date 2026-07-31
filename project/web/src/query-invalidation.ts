@@ -24,20 +24,12 @@ export const invalidateAfterGovernance = (qc: QueryClient): Promise<void> =>
     ['memory'],
     ['memory-chain'],
     ['verification'],
-    ['review-queue'],
-    ['uncertain-count'],
     ['contradictions'],
   ]);
 
 /** A contradiction was resolved (confirm/correct/dismiss). */
 export const invalidateAfterContradiction = (qc: QueryClient): Promise<void> =>
-  invalidate(qc, [
-    ['contradictions'],
-    ['review-queue'],
-    ['memories'],
-    ['memory'],
-    ['uncertain-count'],
-  ]);
+  invalidate(qc, [['contradictions'], ['memories'], ['memory']]);
 
 /** An approval was confirmed (approve/reject); its effect may outdate memories. */
 export const invalidateAfterApproval = (qc: QueryClient): Promise<void> =>
@@ -61,8 +53,6 @@ export const invalidateAfterSourceDeletion = (qc: QueryClient): Promise<void> =>
     ['chain-status'],
     ['integrity'],
     ['contradictions'],
-    ['review-queue'],
-    ['uncertain-count'],
     ['chat-messages'],
     ['conversations'],
     ['dream-digest'],

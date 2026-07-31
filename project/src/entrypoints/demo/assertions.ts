@@ -82,6 +82,16 @@ export async function inspectEndState(pool: Pool, ownerId: string): Promise<Demo
     [ownerId],
   );
 
+  const uncertainWithoutReason = await one(
+    `SELECT count(*)::text AS n FROM memory
+       WHERE owner_id = $1 AND status = 'uncertain' AND uncertainty_reason IS NULL`,
+    [ownerId],
+  );
+  const suppressedEntries = await one(
+    `SELECT count(*)::text AS n FROM suppressed_fact_log WHERE owner_id = $1`,
+    [ownerId],
+  );
+
   const active = statusCounts['active'] ?? 0;
   const contradicted = statusCounts['contradicted'] ?? 0;
   const outdated = statusCounts['outdated'] ?? 0;
@@ -103,6 +113,17 @@ export async function inspectEndState(pool: Pool, ownerId: string): Promise<Demo
   );
   need(outdated >= 1, `expected ≥ 1 outdated (lapsed) memory, got ${outdated}`);
   need(uncertain >= 1, `expected ≥ 1 uncertain (hedged) memory, got ${uncertain}`);
+  // V2.0 item 3.3: an uncertain fact is admitted with a NAMED reason, and the
+  // demo has to show that rather than an undifferentiated bucket — there is no
+  // queue left to review it in, so the reason is the whole explanation.
+  need(
+    uncertainWithoutReason === 0,
+    `expected every uncertain memory to name its reason, got ${uncertainWithoutReason} without one`,
+  );
+  need(
+    suppressedEntries >= 1,
+    `expected ≥ 1 suppressed-fact log entry explaining an automatic decision, got ${suppressedEntries}`,
+  );
   need(
     openLoops >= MIN_OPEN_LOOPS,
     `expected ≥ ${MIN_OPEN_LOOPS} standing open loops, got ${openLoops}`,

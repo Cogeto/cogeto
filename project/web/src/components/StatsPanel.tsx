@@ -89,20 +89,16 @@ function KpiRow({ data }: { data: DashboardStatsDto }) {
   const tiles = [
     { label: 'Memories', value: data.memoryTotal, href: '/memories' },
     { label: 'Still open', value: data.openLoops, href: '/' },
-    {
-      label: 'To review',
-      value: data.review.uncertain + data.review.contradicted,
-      href: '/review',
-    },
+    { label: 'Contradictions', value: data.review.contradicted, href: '/review' },
     { label: 'Approvals', value: data.approvalsPending, href: '/approvals' },
     {
-      label: 'Oldest review',
+      label: 'Oldest conflict',
       value: oldestDays === null ? 'None' : `${oldestDays}d`,
       href: '/review',
       title:
         oldestDays === null
-          ? 'No unresolved review items'
-          : `Oldest unresolved review item: ${oldestDays} day${oldestDays === 1 ? '' : 's'} old`,
+          ? 'No unresolved contradictions'
+          : `Oldest unresolved contradiction: ${oldestDays} day${oldestDays === 1 ? '' : 's'} old`,
     },
   ];
   return (

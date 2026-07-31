@@ -9,7 +9,13 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { FACT_KINDS, MEMORY_SCOPES, MEMORY_STATUSES, RELATION_RESOLUTIONS } from '@cogeto/shared';
+import {
+  FACT_KINDS,
+  MEMORY_SCOPES,
+  MEMORY_STATUSES,
+  RELATION_RESOLUTIONS,
+  UNCERTAINTY_REASONS,
+} from '@cogeto/shared';
 
 /**
  * Tables owned by the memory module (migration 0001; as amended by 0003).
@@ -56,6 +62,12 @@ export const sourceTypeEnum = pgEnum('source_type', [
  */
 export const DEFUNCT_SOURCE_TYPES = ['calendar_event', 'task_conclusion'] as const;
 
+/**
+ * Why a memory is `uncertain` rather than `active` (V2.0 item 3.3, migration
+ * 0039). The same Postgres type ingestion maps for its suppressed-fact log.
+ */
+export const uncertaintyReasonEnum = pgEnum('uncertainty_reason', UNCERTAINTY_REASONS);
+
 export const receiptStatusEnum = pgEnum('receipt_status', ['pending', 'confirmed']);
 export const factKindEnum = pgEnum('fact_kind', FACT_KINDS);
 export const memoryRelationKindEnum = pgEnum('memory_relation_kind', ['contradicts']);
@@ -73,6 +85,26 @@ export const memory = pgTable(
     sourceType: sourceTypeEnum('source_type').notNull(),
     sourceId: text('source_id').notNull(),
     status: memoryStatusEnum('status').notNull().default('active'),
+    /**
+     * WHY this fact was admitted `uncertain` (migration 0039, V2.0 item 3.3):
+     * the named sub-reason that replaced the single undifferentiated bucket.
+     * NULL means it was never admitted uncertain.
+     *
+     * Written once, at admission, and never rewritten. It is the admission
+     * record, not a mirror of the current status: a fact the user later confirms
+     * was still admitted for a reason, and the findings report says which. That
+     * also keeps it out of the way of every status transition, including the
+     * contradiction lift that restores a recorded prior status.
+     *
+     * It lives on the memory row rather than only in ingestion's
+     * `verification_result` because Sources and the findings report read facts
+     * through the gated MemoryStore, and ingestion's tables are module-private:
+     * without the column the only way to render a reason is one gated
+     * round-trip per fact (what the old Review queue did). The verification row
+     * stays the EVIDENCE (verdict, the verifier's wording, the span, the prompt
+     * version); this column is the DECISION, exactly as `status` is.
+     */
+    uncertaintyReason: uncertaintyReasonEnum('uncertainty_reason'),
     sensitive: boolean('sensitive').notNull().default(false),
     /**
      * Extracted entities, flat. The generated

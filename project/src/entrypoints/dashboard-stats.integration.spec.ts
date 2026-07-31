@@ -74,6 +74,8 @@ describe('dashboard stats (integration, real Postgres)', () => {
       sourceType: opts.sourceType ?? 'user_note',
       sourceId: randomUUID(),
       initialStatus: opts.status === 'uncertain' ? 'uncertain' : undefined,
+      // The taxonomy is total: an uncertain admission always names its reason.
+      uncertaintyReason: opts.status === 'uncertain' ? 'unsupported' : undefined,
     });
     // Statuses that createFromFact cannot set are forced directly (test seed).
     if (opts.status && opts.status !== 'active' && opts.status !== 'uncertain') {
@@ -138,7 +140,9 @@ describe('dashboard stats (integration, real Postgres)', () => {
     expect(stats.memoryByStatus.contradicted).toBe(0);
     expect(stats.memoryByStatus.user_approved).toBe(0);
     expect(stats.memoryTotal).toBe(6);
-    expect(stats.review.uncertain).toBe(2);
+    // The uncertain COUNT is a corpus statistic and stays. What is gone is the
+    // review-queue count over it (V2.0 item 3.3): those facts are resolved.
+    expect(stats.review).not.toHaveProperty('uncertain');
   });
 
   it('stats_correct: the open-loop count is exact and owner-scoped', async () => {
@@ -214,17 +218,22 @@ describe('dashboard stats (integration, real Postgres)', () => {
     expect(strangerMerges).toBe(0);
   });
 
-  it('stats_correct: review + approvals reflect the owner queues', async () => {
+  it('stats_correct: contradictions + approvals reflect what the owner can act on', async () => {
     const owner = `rev-${randomUUID()}`;
+    // Uncertain facts exist and are deliberately NOT counted as review work:
+    // Cogeto resolved them, so ageing them as unreviewed would be dishonest.
     await seedMemory(owner, { status: 'uncertain', ageDays: 5 });
     await seedMemory(owner, { status: 'uncertain' });
     await seedContradiction(owner);
     pendingByOwner.set(owner, 2);
 
     const stats = await attention.getStats(principalFor(owner));
-    expect(stats.review.uncertain).toBe(2);
     expect(stats.review.contradicted).toBe(1);
+    // oldestAt now ages the contradiction only: the 5-day-old uncertain fact
+    // must not be what this reads.
     expect(stats.review.oldestAt).not.toBeNull();
+    const ageDays = (Date.now() - new Date(stats.review.oldestAt!).getTime()) / 86_400_000;
+    expect(ageDays).toBeLessThan(1);
     expect(stats.approvalsPending).toBe(2);
     pendingByOwner.delete(owner);
   });

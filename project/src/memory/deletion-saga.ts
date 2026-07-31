@@ -143,6 +143,13 @@ export interface DerivedCascade {
    * another module and references the email SOURCE id (not a memory id), so it
    * cannot be reached via `cascadeForMemories`. Runs in the same enumeration
    * transaction and returns the count folded into the receipt.
+   *
+   * Called once per ENUMERATED source, not once per deletion: the primary
+   * source plus every cascaded member (an email's attachment `file` sources, a
+   * conversation's `chat` messages). Suppressed-fact log entries hold source
+   * content and spans and can exist with no memory row at all, so an
+   * attachment's entries would otherwise survive its email. Implementations
+   * that key on one source type simply return 0 for the others.
    */
   cascadeForSource?(tx: Tx, sourceType: string, sourceId: string): Promise<number>;
   /**
@@ -242,6 +249,15 @@ const countsSchema = z.object({
    * the message rows go via the adapter's deleteSource, the sweep verifies
    * memories/points/objects as ever). */
   chat_messages_removed: z.int().optional(),
+  /**
+   * Suppressed-fact log entries erased with this source (V2.0 item 3.3). The
+   * log is content-bearing (the claim as extracted, plus its exact span), so
+   * the erasure claim would be incomplete without it. ADDITIVE and OPTIONAL,
+   * like every count before it: earlier receipts parse unchanged and hash to
+   * the same value, so the chain verifies across the change. A count, not an
+   * identifier — the sweep verifies memories, points and objects as ever.
+   */
+  suppressed_facts_removed: z.int().optional(),
   /** Qdrant point id = memory id (spec §4.2); duplicated for receipt readability. */
   point_ids: z.array(z.string()),
   object_keys: z.array(z.string()),
@@ -457,19 +473,39 @@ export class DeletionSaga {
       let chatMessagesRedacted = 0;
       let replyDraftsRedacted = 0;
       let passportExportsExpired = 0;
+      let suppressedFactsRemoved = 0;
       const ownerExpiredObjectKeys: string[] = [];
+      // Every source this deletion erases, not just the one it was asked for:
+      // the primary source plus its cascaded members. Source-keyed artifacts
+      // that can exist without a memory row — the suppressed-fact log's withheld
+      // entries — are only reachable through the full list.
+      const enumeratedSources: { sourceType: string; sourceId: string }[] = [
+        { sourceType, sourceId },
+        ...(cascade?.fileSubSourceKeys ?? []).map((key) => ({
+          sourceType: 'file',
+          sourceId: key,
+        })),
+        ...(cascade?.chatSubSourceIds ?? []).map((id) => ({ sourceType: 'chat', sourceId: id })),
+      ];
       for (const cascade of this.derivedCascades) {
         const removed = await cascade.cascadeForMemories(tx, memoryIds);
         // assistant answers that cited erased memories
         // are redacted to a deletion marker by the chat cascade; the receipt
         // counts them so the erasure claim is complete, not just row-deep.
         if (cascade.artifact === 'chat_messages') chatMessagesRedacted += removed;
+        // suppressed-fact entries whose memory is erased through a
+        // supersession chain that crossed sources — the by-source leg below is
+        // the complete enumeration, this closes the cross-source gap.
+        if (cascade.artifact === 'suppressed_facts') suppressedFactsRemoved += removed;
         // reply-draft approvals derived from THIS source (by source id,
         // not memory id) — their drafted body is redacted so a "provably
         // deleted" receipt no longer over-claims while the draft survives.
         if (cascade.cascadeForSource) {
-          const redacted = await cascade.cascadeForSource(tx, sourceType, sourceId);
-          if (cascade.artifact === 'reply_drafts') replyDraftsRedacted += redacted;
+          for (const ref of enumeratedSources) {
+            const redacted = await cascade.cascadeForSource(tx, ref.sourceType, ref.sourceId);
+            if (cascade.artifact === 'reply_drafts') replyDraftsRedacted += redacted;
+            if (cascade.artifact === 'suppressed_facts') suppressedFactsRemoved += redacted;
+          }
         }
         // SEC-8: owner-scoped artifacts that would outlive the deletion. Their
         // objects join `objectKeys` below, so the worker leg erases them and
@@ -520,6 +556,7 @@ export class DeletionSaga {
         reply_drafts_redacted: replyDraftsRedacted,
         ...(passportExportsExpired > 0 ? { passport_exports_expired: passportExportsExpired } : {}),
         ...(chatMessagesRemoved === null ? {} : { chat_messages_removed: chatMessagesRemoved }),
+        ...(suppressedFactsRemoved > 0 ? { suppressed_facts_removed: suppressedFactsRemoved } : {}),
         point_ids: memoryIds,
         object_keys: objectKeys,
         superseded_by_nulled: nulledPointers,
@@ -548,6 +585,7 @@ export class DeletionSaga {
         chatMessagesRedacted > 0 ||
         replyDraftsRedacted > 0 ||
         passportExportsExpired > 0 ||
+        suppressedFactsRemoved > 0 ||
         (chatMessagesRemoved ?? 0) > 0;
       if (!erasedSomething) {
         await writeAudit(tx, {
@@ -594,6 +632,7 @@ export class DeletionSaga {
           chatMessagesRedacted,
           replyDraftsRedacted,
           chatMessagesRemoved,
+          suppressedFactsRemoved,
           // The cancellation trace: how pending ingestion was resolved.
           ingestionCancellation: ingestion,
         },

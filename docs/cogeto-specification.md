@@ -42,15 +42,17 @@ The normative rules of the system. MUST marks a rule whose violation is a defect
 
 **2.2** The verifier MUST receive only the candidate's own source span plus approximately 240 characters of surrounding context, and MUST NOT receive the whole document.
 
-**2.3** A fact becomes `active` if and only if the verdict is supported AND the claim was not hedged in its source. Every other outcome MUST be stored as `uncertain`.
+**2.3** A fact becomes `active` if and only if the verdict is supported AND the claim was not hedged in its source. Every other outcome MUST be stored as `uncertain`, with the single exception in 2.3.1.
 
-**2.4** A claim omitted from a batched verification reply MUST be treated as unsupported. Failure MUST NOT default to acceptance.
+**2.3.1** A candidate whose claim or whose source span is blank MUST NOT be stored. It has no content to remember and no provenance to inspect, so storing it would satisfy 2.3 while recording nothing. It MUST be recorded in the suppressed fact log with reason `structurally_invalid` under 2.6, so a withheld fact remains recoverable and explainable. This is the ONLY permitted non-admission: in particular, a source span the chunker cannot locate MUST NOT be treated as fabrication, because chunk boundaries can split a legitimate span.
 
-**2.5** An `uncertain` fact MUST carry a distinguishable reason: hedged in source, partially supported, unsupported, or unjudgeable.
+**2.4** A claim omitted from a batched verification reply MUST be treated as unsupported: its recorded verdict is `unsupported` and it is never admitted `active`. Failure MUST NOT default to acceptance. Its uncertainty reason under 2.5 is `unjudgeable`, since support was not determined rather than judged absent.
 
-**2.6** Every automatic demotion or suppression MUST write a suppressed fact log entry containing fact, source, span, reason and timestamp. The log MUST be queryable, visible on the source detail, and summarized in the findings report.
+**2.5** An `uncertain` fact MUST carry a distinguishable reason: hedged in source, partially supported, unsupported, or unjudgeable. The mapping from verification outcome to reason MUST be total: no outcome may fall through to a default.
 
-**2.7** There MUST NOT be a manual approval queue for facts. No fact may wait on human action in order to be stored, demoted or suppressed.
+**2.6** Every automatic demotion or suppression MUST write a suppressed fact log entry containing fact, source, span, reason and timestamp. The log MUST be queryable, visible on the source detail, and summarized in the findings report. Its entries carry source derived content, so they MUST be enumerated and erased by the deletion saga and counted in its receipt (11.1).
+
+**2.7** There MUST NOT be a manual approval queue for facts. No fact may wait on human action in order to be stored, demoted or suppressed. A user MAY confirm an individual fact, which sets `user_approved` and outranks machine judgment thereafter; this MUST be an action on the fact, never a queue.
 
 ---
 

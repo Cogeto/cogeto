@@ -1,5 +1,5 @@
 /** Public interface of the ingestion bounded context (spec §15 rule 1). */
-export { IngestionModule } from './ingestion.module';
+export { IngestionModule, SuppressedFactCascadeModule } from './ingestion.module';
 export type { IngestionModuleOptions } from './ingestion.module';
 export {
   IngestionPipeline,
@@ -8,6 +8,21 @@ export {
   createIngestionPipeline,
 } from './pipeline/pipeline.service';
 export type { PipelineSummary, CreatePipelineOptions } from './pipeline/pipeline.service';
+// The suppressed-fact log (V2.0 item 3.3): the record of every automatic
+// demotion or non-admission, its gated query surface, and its deletion-cascade
+// adapter (memory owns the DerivedCascade port; ingestion owns the table).
+export { SuppressedFactLog, createSuppressedFactLog } from './persistence/suppressed-fact-log';
+export type {
+  SuppressedFactEntry,
+  SuppressedFactQuery,
+  SuppressedFactPage,
+  SuppressedFactSummary,
+} from './persistence/suppressed-fact-log';
+export { SuppressedFactCascade } from './suppressed-fact-cascade';
+export { SuppressedFactsController } from './suppressed-facts.controller';
+// The admission taxonomy: the pure mapping every outcome passes through.
+export { classifyAdmission, structurallyValid, isUncertaintyReason } from './domain/uncertainty';
+export type { AdmissionSignals, AdmissionDecision } from './domain/uncertainty';
 export { SOURCE_READERS } from './pipeline/source-reader';
 export type { SourceReader, SourceItem } from './pipeline/source-reader';
 // The shared chunker: connectors' capture-time relevance

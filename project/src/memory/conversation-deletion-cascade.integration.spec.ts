@@ -18,7 +18,7 @@ import type { TestDatabase, TestMinio, TestQdrant } from '../testing/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import { ChatSourceReader, ConversationSourceDeletion } from '../retrieval/index';
-import { createIngestionPipeline } from '../ingestion/index';
+import { createIngestionPipeline, createSuppressedFactLog } from '../ingestion/index';
 import { MemoryStore } from './memory.store';
 import { MemoryReconciliation } from './reconciliation';
 import { MemoryVectorStore } from './persistence/vector-store';
@@ -162,6 +162,7 @@ describe('conversation deletion cascade (integration: real Postgres + Qdrant + M
       gateway,
       store,
       reconciliation: new MemoryReconciliation(tdb.db, store, vectors),
+      suppressedFacts: createSuppressedFactLog(tdb.db),
     });
   const taskList = (): TaskList => ({
     [DELETION_JOB_TYPE]: idempotentTask(tdb.db, DELETION_JOB_TYPE, async (tx, payload) => {

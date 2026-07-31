@@ -35,11 +35,18 @@ The write path is a gate. After extraction, a second and independent prompt fami
 | Supported, but hedged in the source | Stored as `uncertain`, reason: hedged in source |
 | Partial | Stored as `uncertain`, reason: partially supported |
 | Unsupported | Stored as `uncertain`, reason: unsupported, and excluded from confident answers |
-| Missing from a batched reply | Treated as unsupported |
+| Missing from a batched reply, or the cited span could not be located in the source | Stored as `uncertain`, reason: unjudgeable |
+| A blank claim, or a claim with no source passage at all | Not stored. Recorded in full in the suppressed fact log |
 
 Failure never defaults to acceptance. A claim the verifier cannot judge is demoted, not admitted.
 
-Cogeto resolves these outcomes itself. There is no approval queue and no list of items waiting for a human. Every demotion writes a **suppressed fact log** entry recording the fact, its source, its span, the reason and the time. That log is queryable, appears on the source detail, and is summarized in the findings report, so what the system rejected is as inspectable as what it kept.
+The reasons are a frozen vocabulary and the mapping is total: every outcome lands on exactly one of them, and there is no default arm for an outcome nobody anticipated.
+
+Cogeto resolves these outcomes itself. There is no approval queue and no list of items waiting for a human, and no ingestion ever pauses for one. A fact is demoted rather than discarded wherever demotion is honest, because a stored fact is inspectable in Sources and citable with soft framing while a discarded one would exist only in a log. The single exception is the last row above, where storing would be storing nothing: a memory with no content, or a fact with no provenance to inspect.
+
+Every demotion **and** every non-admission writes a **suppressed fact log** entry recording the fact as extracted, its source, its exact span, the reason, the verification detail behind the decision and the time. That log is gated exactly as memories are, queryable by source, reason and date range, appears on the source detail, and is summarized in the findings report, so what the system rejected is as inspectable as what it kept. Its entries live for the life of their source and are erased with it under the same signed receipt.
+
+You can still confirm a fact yourself, and your confirmation outranks the machine's judgment from then on. It is an action on the fact, where its evidence is in front of you, not a queue to work through.
 
 This is what prevents the common failure of document assistants, in which a model's misreading is stored once and then repeated back with confidence forever.
 

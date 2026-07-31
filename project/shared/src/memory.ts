@@ -18,6 +18,53 @@ export const MEMORY_SCOPES = ['private', 'shared'] as const;
 export type MemoryScope = (typeof MEMORY_SCOPES)[number];
 
 /**
+ * Why a fact is not plainly `active` — the sub-reasons that replaced the single
+ * undifferentiated `uncertain` bucket (V2.0 item 3.3). Frozen vocabulary: the
+ * V2.3 findings report renders these values, so they are added deliberately and
+ * never repurposed.
+ *
+ * Every value is derivable from a signal the pipeline actually produces. There
+ * is deliberately NO low-confidence-extraction reason: the extractor emits no
+ * confidence field, so the category would have nothing behind it.
+ *
+ * - `hedged_in_source`     the verifier supported the claim; the SOURCE stated
+ *                          it tentatively (extraction's `hedged` flag and its
+ *                          verbatim `hedge_phrase`).
+ * - `partially_supported`  verifier verdict `partial`.
+ * - `unsupported`          verifier verdict `unsupported`.
+ * - `unjudgeable`          the verifier could not determine support: its batched
+ *                          reply omitted a verdict for this claim, or the cited
+ *                          span could not be located in the source, so a
+ *                          negative verdict is not attributable to the evidence.
+ * - `structurally_invalid` NOT admitted: a blank claim or a blank span. Never
+ *                          appears on a memory row, only in the suppressed-fact
+ *                          log.
+ * - `legacy_unspecified`   backfill only (migration 0039): an `uncertain` row
+ *                          predating the taxonomy whose stored verification
+ *                          result does not determine a sub-reason. Never written
+ *                          by new code, never guessed at.
+ */
+export const UNCERTAINTY_REASONS = [
+  'hedged_in_source',
+  'partially_supported',
+  'unsupported',
+  'unjudgeable',
+  'structurally_invalid',
+  'legacy_unspecified',
+] as const;
+export type UncertaintyReason = (typeof UNCERTAINTY_REASONS)[number];
+
+/** Human-readable labels for the sub-reasons — one wording, used everywhere. */
+export const UNCERTAINTY_REASON_LABELS: Record<UncertaintyReason, string> = {
+  hedged_in_source: 'stated tentatively in the source',
+  partially_supported: 'only partly supported by the source',
+  unsupported: 'not supported by the cited passage',
+  unjudgeable: 'could not be judged against the source',
+  structurally_invalid: 'not storable: no claim or no source passage',
+  legacy_unspecified: 'recorded before reasons were distinguished',
+};
+
+/**
  * The fact kinds the extractor labels (docs/eval-golden-set.md §4 rule 2).
  * Stored on the memory row since migration 0011 — reconciliation's candidate
  * rules match on kind (6). NULL on pre-F2 rows.
