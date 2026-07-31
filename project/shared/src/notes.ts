@@ -1,4 +1,4 @@
-import type { FactKind, MemoryScope, MemoryStatus } from './memory';
+import type { FactKind, MemoryScope, MemoryStatus, UncertaintyReason } from './memory';
 
 /** Notes capture DTOs: POST /api/notes and the processing-status poll. */
 
@@ -33,6 +33,13 @@ export interface MemoryListItem {
   id: string;
   content: string | null;
   status: MemoryStatus;
+  /**
+   * Why the fact was admitted `uncertain` (V2.0 item 3.3); null when it never
+   * was. Retained after the status moves on, since it records the admission
+   * rather than mirroring the current state. Display only: the sub-reason may
+   * inform framing, never a gate.
+   */
+  uncertaintyReason: UncertaintyReason | null;
   scope: MemoryScope;
   /** The owning user's Zitadel id — the UI gates owner-only actions on
    * `ownerId === me.userId`; the server enforces it regardless. */
@@ -68,6 +75,41 @@ export interface VerificationDto {
   /** The extractor's cited source passage; null for pre- rows. */
   sourceSpan: string | null;
   createdAt: string;
+}
+
+/**
+ * One entry in the suppressed-fact log (V2.0 item 3.3): an automatic decision
+ * that demoted or withheld an extracted fact. `memoryId` is set when the fact
+ * WAS admitted as uncertain and null when it was not admitted at all.
+ */
+export interface SuppressedFactDto {
+  id: string;
+  sourceType: string;
+  sourceId: string;
+  /** The claim exactly as the extractor produced it. */
+  factContent: string;
+  factKind: FactKind | null;
+  /** The exact source substring the claim was drawn from. */
+  sourceSpan: string;
+  reason: UncertaintyReason;
+  /** The verification detail behind the decision; null when none ran. */
+  verificationVerdict: 'supported' | 'partial' | 'unsupported' | null;
+  verificationReason: string | null;
+  promptVersion: string | null;
+  memoryId: string | null;
+  createdAt: string;
+}
+
+/** GET /api/suppressed-facts — the paged, gated log. */
+export interface SuppressedFactPageDto {
+  items: SuppressedFactDto[];
+  total: number;
+}
+
+/** GET /api/suppressed-facts/summary — counts per reason, zeros included. */
+export interface SuppressedFactSummaryDto {
+  total: number;
+  byReason: Record<UncertaintyReason, number>;
 }
 
 /**

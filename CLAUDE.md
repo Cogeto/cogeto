@@ -44,6 +44,14 @@ survives is **open loops**, `commitment` and `open_loop` memories read straight 
 the memory table, due-dated by `valid_until`, surfaced in chat and on the attention
 feed.
 
+V2.0 item 3.3 removed the last manual queue over facts: **Cogeto resolves its own
+reviews.** Unsupported, partial, hedged and unjudgeable extractions are admitted
+automatically as `uncertain` with a named sub-reason on `memory.uncertainty_reason`,
+and every automatic demotion or non-admission is recorded in the content-bearing
+`suppressed_fact_log` (which is therefore in the deletion cascade). The Review page
+shows **contradictions only**; confirming a fact is a contextual action on the memory
+drawer. There is no approval queue for facts anywhere.
+
 The 2.0 security audit ([`docs/audits/`](docs/audits/)) is closed out across five
 remediation waves: every finding is fixed or consciously accepted with a written
 rationale, and the audit and its independent verification are both published there.

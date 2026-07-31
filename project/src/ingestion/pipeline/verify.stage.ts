@@ -25,6 +25,20 @@ export interface VerifiedFact {
   verdict: VerificationVerdict;
   reason: string;
   promptVersion: string;
+  /**
+   * False when the batched reply carried no verdict for this claim. The stored
+   * verdict stays the conservative `unsupported` (admission is unchanged), but
+   * the DECISION is that support could not be determined, which the admission
+   * taxonomy reports as `unjudgeable` rather than as a negative judgment
+   * (V2.0 item 3.3).
+   */
+  judged: boolean;
+  /**
+   * Whether the cited span was found verbatim in the source text handed to the
+   * verifier. When it was not, the verifier judged against a fallback window, so
+   * a negative verdict is not attributable to the cited evidence.
+   */
+  spanLocatable: boolean;
 }
 
 /**
@@ -56,7 +70,16 @@ export class VerifyStage {
         system: prompt.content,
         input: buildVerificationInput(fact, chunks),
       });
-      return [{ fact, verdict: output.verdict, reason: output.reason, promptVersion }];
+      return [
+        {
+          fact,
+          verdict: output.verdict,
+          reason: output.reason,
+          promptVersion,
+          judged: true,
+          spanLocatable: spanLocatable(fact, chunks),
+        },
+      ];
     }
 
     const prompt = await this.getBatchPrompt();
@@ -71,14 +94,24 @@ export class VerifyStage {
       const byClaim = new Map(output.verdicts.map((v) => [v.claim, v]));
       batch.forEach((fact, i) => {
         const verdict = byClaim.get(i + 1);
+        const locatable = spanLocatable(fact, chunks);
         verified.push(
           verdict
-            ? { fact, verdict: verdict.verdict, reason: verdict.reason, promptVersion }
+            ? {
+                fact,
+                verdict: verdict.verdict,
+                reason: verdict.reason,
+                promptVersion,
+                judged: true,
+                spanLocatable: locatable,
+              }
             : {
                 fact,
                 verdict: 'unsupported',
                 reason: 'no verdict returned for this claim, treated as unsupported',
                 promptVersion,
+                judged: false,
+                spanLocatable: locatable,
               },
         );
       });
@@ -98,6 +131,21 @@ export class VerifyStage {
     );
     return this.batchPrompt;
   }
+}
+
+/**
+ * Was the cited span found verbatim in the source the verifier saw? This is the
+ * same lookup `buildVerificationInput` performs to centre its context window,
+ * surfaced as a signal: when it fails, the verifier was shown a fallback window
+ * instead of the cited evidence, so its verdict is not attributable to that
+ * evidence and the admission taxonomy calls the outcome `unjudgeable`.
+ *
+ * Note what this is NOT: proof of a fabricated span. Chunking can split a
+ * legitimate span across a boundary. That is exactly why an unlocatable span is
+ * never grounds for non-admission, only for an honest "could not judge".
+ */
+export function spanLocatable(fact: CandidateFact, chunks: Chunk[]): boolean {
+  return chunks.some((chunk) => chunk.text.includes(fact.source_span));
 }
 
 /**

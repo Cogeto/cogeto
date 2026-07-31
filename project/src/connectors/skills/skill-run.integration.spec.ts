@@ -15,7 +15,11 @@ import type {
   CompletionResult,
   StructuredExtractionRequest,
 } from '../../model-gateway/index';
-import { createIngestionPipeline, INGESTION_PIPELINE_JOB_TYPE } from '../../ingestion/index';
+import {
+  createSuppressedFactLog,
+  createIngestionPipeline,
+  INGESTION_PIPELINE_JOB_TYPE,
+} from '../../ingestion/index';
 import type { RetrievalService } from '../../retrieval/index';
 import { ResearchService } from '../research.service';
 import { ResearchConclusionService } from '../research-conclude';
@@ -255,6 +259,7 @@ describe('skill runtime (integration: real Postgres + Qdrant, scripted gateway +
       gateway,
       store,
       reconciliation: new MemoryReconciliation(tdb.db, store),
+      suppressedFacts: createSuppressedFactLog(tdb.db),
     });
     const concluder = new ResearchConclusionService();
     const taskList: TaskList = {
@@ -475,6 +480,7 @@ describe('skill runtime (integration: real Postgres + Qdrant, scripted gateway +
       gateway,
       store,
       reconciliation: new MemoryReconciliation(tdb.db, store),
+      suppressedFacts: createSuppressedFactLog(tdb.db),
     });
     const concluder = new ResearchConclusionService();
     const taskList: TaskList = {

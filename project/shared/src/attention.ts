@@ -17,7 +17,6 @@ export type AttentionKind =
   | 'open_loop_overdue'
   | 'open_loop_due_soon'
   | 'open_loop_quiet'
-  | 'review_uncertain'
   | 'review_contradicted'
   | 'approval_pending'
   | 'digest_change';
@@ -103,9 +102,12 @@ export interface DashboardStatsDto {
   /** Dreaming consolidation activity per UTC day (merges, conflicts caught). */
   dreaming: DailySeries;
   review: {
-    uncertain: number;
     contradicted: number;
-    /** Oldest unresolved review item (uncertain fact or open contradiction), or null. */
+    /**
+     * Oldest unresolved contradiction, or null. Uncertain facts no longer
+     * count: they are resolved automatically (V2.0 item 3.3), so an "oldest
+     * unreviewed" age over them would measure nothing a person can act on.
+     */
     oldestAt: string | null;
   };
   approvalsPending: number;

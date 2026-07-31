@@ -11,6 +11,7 @@ export function toListItem(row: MemoryRow): MemoryListItem {
     id: row.id,
     content: row.content,
     status: row.status,
+    uncertaintyReason: row.uncertaintyReason,
     scope: row.scope,
     ownerId: row.ownerId,
     ownerName: null,

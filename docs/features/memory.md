@@ -23,6 +23,96 @@ mutually exclusive by construction.
 Retrieval rule for `sensitive`: excluded from default retrieval, returned **only to
 its owner**, and only on explicit per-query opt-in.
 
+### Why a fact is uncertain: the admission taxonomy
+
+`uncertain` used to be one undifferentiated bucket. Since V2.0 item 3.3 every
+uncertain admission carries a named **sub-reason** on `memory.uncertainty_reason`,
+because the findings report has to explain each fact rather than label it.
+
+| Sub-reason | What produced it |
+|---|---|
+| `hedged_in_source` | the verifier supported the claim; the SOURCE stated it tentatively (the extractor's `hedged` flag and its verbatim `hedge_phrase`) |
+| `partially_supported` | verifier verdict `partial` |
+| `unsupported` | verifier verdict `unsupported` |
+| `unjudgeable` | the verifier could not determine support: its batched reply omitted a verdict for the claim, or the cited span could not be located in the source, so a negative verdict is not attributable to the evidence |
+| `structurally_invalid` | not admitted at all: a blank claim or a blank span. Never on a memory row, only in the suppressed-fact log |
+| `legacy_unspecified` | backfill only (migration 0039): an `uncertain` row predating the taxonomy whose stored verification result does not determine a reason. Never written by new code |
+
+There is deliberately **no low-confidence-extraction reason**: the extractor emits
+no confidence signal, so the category would have nothing behind it.
+
+The mapping is **total**, first match wins, and has no default arm:
+
+1. no verdict returned for the claim → `unjudgeable`
+2. `supported` and hedged → `hedged_in_source`
+3. `supported` and plainly stated → **active**, no reason
+4. `partial`: span not locatable → `unjudgeable`, else `partially_supported`
+5. `unsupported`: span not locatable → `unjudgeable`, else `unsupported`
+
+Two precedence rules make it readable. **Verifier failure outranks hedging**, so
+`hedged_in_source` means exactly "the only thing wrong is that the source was
+tentative". And **span locatability is consulted only on a non-`supported`
+verdict**, so admission is byte-identical to the rule that preceded the taxonomy:
+labelling split the bucket, it did not move the line.
+
+The column is written once, at admission, and never rewritten. It records why the
+fact **was** admitted uncertain, which stays true after the status moves on. The
+`verification_result` row remains the evidence (verdict, the verifier's wording,
+the span, the prompt version); the column is the decision, exactly as `status` is.
+
+### Admission: automatic, and never blocking
+
+**Cogeto resolves its own reviews.** No admission decision requires or awaits a
+person. Ingestion never pauses, never enqueues an approval, and never writes a
+queue row. There is no manual approval queue for facts.
+
+Facts are **admitted as uncertain with their sub-reason rather than discarded**: an
+admitted fact is inspectable in Sources and citable with soft framing, while a
+discarded one would exist only in a log. Non-admission is reserved for the one case
+where storing would be actively wrong, `structurally_invalid`: a blank claim is a
+memory row with no content, and a blank span is a fact with no provenance to
+inspect. Both sides of that line write a
+[suppressed-fact log](#the-suppressed-fact-log) entry, so nothing is lost either
+way.
+
+Note what is deliberately **not** a non-admission case: a span the chunker cannot
+locate. Chunking can split a legitimate span across a boundary, so treating an
+unmatched span as fabrication would silently lose real facts. It lands
+`unjudgeable` instead.
+
+The user can still confirm a fact, and that confirmation still outranks machine
+judgment in reconciliation. It moved from a queue to a **contextual action** on the
+fact's own drawer, where its evidence is in front of you.
+
+### The suppressed-fact log
+
+`suppressed_fact_log` (ingestion-owned) records every automatic decision that
+demoted or withheld a fact: the claim as extracted, its kind, the source and the
+exact span, the sub-reason, the verification detail behind it, the timestamp, and
+the `memory_id` when the fact was admitted as uncertain (NULL when it was not).
+Automatic resolution does not mean invisible resolution.
+
+It is a first-class record, not a debug trail. The V2.2 source detail view lists a
+source's entries and the V2.3 findings report summarises them, so the query surface
+ships with the write path: `GET /api/suppressed-facts` (by source, by reason, by
+date range, paged) and `GET /api/suppressed-facts/summary` (counts per reason,
+zeros included).
+
+Two rules it inherits from memories rather than invents:
+
+- **Gating.** `owner_id`, `scope` and `sensitive` are copied from the source, and
+  every read applies the identical scope + sensitive predicate memory reads apply.
+  An entry is exactly as visible as the fact it explains.
+- **Deletion.** Entries are content-bearing, so they go with their source through
+  the deletion saga (via ingestion's `DerivedCascade`, over every enumerated source
+  including an email's attachments and a conversation's messages) and the receipt
+  counts them under `suppressed_facts_removed`.
+
+**Retention is the life of the source.** Entries are the evidence for a decision
+about that source: outliving it would mean retaining source content after a signed
+receipt said it was erased, and expiring earlier would mean a report that cannot
+explain a fact still in memory. There is no scheduled expiry.
+
 ### Who may move a status
 
 Transitions are owned by the `Memory` aggregate and nothing else.
@@ -38,11 +128,12 @@ new memory (`user_approved`, same provenance, plus an edit audit entry) and mark
 the old one `replaced` with `superseded_by` set. History is never destroyed, and
 there is no second write path.
 
-**Rejecting an uncertain memory in review** is the one narrow extension to
-"only the saga hard-deletes": it removes the row and its Qdrant point through a
-guarded path on the aggregate, audited. A rejected extraction is pipeline noise,
-not user data with a source to forget, so a deletion receipt would attest to the
-wrong thing while the audit row keeps the removal accountable.
+**Rejecting an uncertain memory** is the one narrow extension to "only the saga
+hard-deletes": it removes the row and its Qdrant point through a guarded path on
+the aggregate, audited. A rejected extraction is pipeline noise, not user data with
+a source to forget, so a deletion receipt would attest to the wrong thing while the
+audit row keeps the removal accountable. It is a per-fact action on the drawer, not
+a queue: nothing asks the user to work through a list.
 
 ## The gates
 

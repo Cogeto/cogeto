@@ -370,6 +370,7 @@ describe('cross-user scope isolation (integration, real Postgres + Qdrant)', () 
       sourceId: randomUUID(),
       entities: ['Heron'],
       initialStatus: 'uncertain',
+      uncertaintyReason: 'unsupported',
       embeddingModel: EMBED,
     } as NewFact);
     // Visible to B as a shared memory…

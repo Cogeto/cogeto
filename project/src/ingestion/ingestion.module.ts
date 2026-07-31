@@ -9,6 +9,9 @@ import { ReconciliationService } from './pipeline/reconcile.stage';
 import { SOURCE_READERS } from './pipeline/source-reader';
 import type { SourceReader } from './pipeline/source-reader';
 import { VerifyStage } from './pipeline/verify.stage';
+import { SuppressedFactLog } from './persistence/suppressed-fact-log';
+import { SuppressedFactCascade } from './suppressed-fact-cascade';
+import { SuppressedFactsController } from './suppressed-facts.controller';
 import { VerificationController } from './verification.controller';
 
 export interface IngestionModuleOptions {
@@ -35,6 +38,8 @@ export class IngestionModule {
       providers: [
         ExtractStage,
         VerifyStage,
+        SuppressedFactLog,
+        SuppressedFactCascade,
         EmbedStoreStage,
         ReconciliationService,
         IngestionPipeline,
@@ -45,19 +50,36 @@ export class IngestionModule {
           inject: options.readers,
         },
       ],
-      exports: [IngestionPipeline, DreamingService],
+      // SuppressedFactCascade is exported so the composition root can bind it
+      // into memory's DERIVED_CASCADES: the port is memory's, the table is
+      // ingestion's, and neither module reaches into the other (spec §15).
+      exports: [IngestionPipeline, DreamingService, SuppressedFactLog, SuppressedFactCascade],
     };
   }
 
   /**
    * The app-process slice: only the read endpoints — the
-   * verification verdict panel and the dreaming digest. No pipeline, no
-   * stages, no readers. Ingestion keeps sole ownership of its tables.
+   * verification verdict panel, the dreaming digest, and the suppressed-fact
+   * log's query surface. No pipeline, no stages, no readers. Ingestion keeps
+   * sole ownership of its tables.
    */
   static forQueries(): DynamicModule {
     return {
       module: IngestionModule,
-      controllers: [VerificationController, DreamingController],
+      controllers: [VerificationController, DreamingController, SuppressedFactsController],
+      providers: [SuppressedFactLog],
     };
   }
 }
+
+/**
+ * The suppressed-fact deletion cascade, bound into the memory saga's
+ * `derivedCascades`. Kept in its OWN module, like the reply-draft cascade before
+ * it: it depends on nothing but the log's own table access, so the memory module
+ * can import it without a cycle back through the pipeline.
+ */
+@Module({
+  providers: [SuppressedFactLog, SuppressedFactCascade],
+  exports: [SuppressedFactLog, SuppressedFactCascade],
+})
+export class SuppressedFactCascadeModule {}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { UNCERTAINTY_REASON_LABELS } from '@cogeto/shared';
 import {
   approveMemory,
   changeMemoryScope,
@@ -250,8 +251,9 @@ export function MemoryDrawer({
                         disabled={busy}
                         onClick={() => approve.mutate()}
                         className={btnPrimary}
+                        title="Your confirmation outranks the machine judgment from here on"
                       >
-                        Approve
+                        Confirm this fact
                       </button>
                     )}
                     {memory.status === 'uncertain' && (
@@ -387,6 +389,17 @@ export function MemoryDrawer({
             )}
 
             <Panel title="Verification">
+              {memory.uncertaintyReason && (
+                <p className="mb-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-100">
+                  <span className="font-medium">
+                    {memory.status === 'uncertain'
+                      ? 'Held as uncertain: '
+                      : 'Was admitted as uncertain: '}
+                  </span>
+                  {UNCERTAINTY_REASON_LABELS[memory.uncertaintyReason]}. Cogeto decided this on its
+                  own, and cites the fact softly rather than as settled.
+                </p>
+              )}
               {verificationQuery.data ? (
                 <div className="space-y-1 text-sm">
                   <p className="flex items-center gap-2">

@@ -53,8 +53,7 @@ const PRIORITY: Record<AttentionKind, number> = {
   approval_pending: 2,
   open_loop_due_soon: 3,
   open_loop_quiet: 4,
-  review_uncertain: 5,
-  digest_change: 6,
+  digest_change: 5,
 };
 
 @Injectable()
@@ -122,41 +121,22 @@ export class AttentionService {
     return capGroup(items);
   }
 
-  /** The two review queues as live counts (never dismissible). */
+  /**
+   * Open contradictions as a live count (never dismissible).
+   *
+   * Uncertain facts used to have a line here too: "N facts awaiting your
+   * review". It is gone (V2.0 item 3.3). Cogeto resolves those itself, so the
+   * line asked for attention that no action could discharge and pointed at a
+   * queue that no longer exists. Attention's own honesty rule applies: a feed
+   * item must be something the reader can actually do.
+   */
   private async reviewItems(
     principal: Principal,
     hr: boolean,
   ): Promise<Omit<AttentionItem, 'unread'>[]> {
-    const [uncertainCount, uncertainNewest, contradictions] = await Promise.all([
-      this.memoryStore.countForPrincipal(principal, {
-        status: 'uncertain',
-        mine: true,
-        includeSensitive: true,
-      }),
-      this.memoryStore.listForPrincipal(principal, {
-        status: 'uncertain',
-        mine: true,
-        includeSensitive: true,
-        limit: 1,
-      }),
-      this.reconciliation.listOpenContradictions(principal),
-    ]);
+    const contradictions = await this.reconciliation.listOpenContradictions(principal);
 
     const items: Omit<AttentionItem, 'unread'>[] = [];
-    if (uncertainCount > 0) {
-      const newest = uncertainNewest[0]?.createdAt ?? new Date();
-      items.push({
-        key: 'review:uncertain',
-        kind: 'review_uncertain',
-        title: hr
-          ? `${hrCount(uncertainCount, 'činjenica čeka', 'činjenice čekaju', 'činjenica čeka')} tvoju provjeru`
-          : `${plural(uncertainCount, 'fact')} awaiting your review`,
-        timestamp: newest.toISOString(),
-        href: '/review',
-        count: uncertainCount,
-        dismissible: false,
-      });
-    }
     if (contradictions.length > 0) {
       const newest = contradictions.reduce(
         (max, c) => (c.relation.detectedAt > max ? c.relation.detectedAt : max),
@@ -169,7 +149,7 @@ export class AttentionService {
           ? `${hrCount(contradictions.length, 'sukob', 'sukoba', 'sukoba')} za rješavanje`
           : `${plural(contradictions.length, 'conflict')} to resolve`,
         timestamp: newest.toISOString(),
-        href: '/review?tab=contradicted',
+        href: '/review',
         count: contradictions.length,
         dismissible: false,
       });
@@ -260,31 +240,15 @@ export class AttentionService {
   // ── Stats ───────────────────────────────────────────────────────────────────
 
   async getStats(principal: Principal): Promise<DashboardStatsDto> {
-    const [
-      memoryByStatus,
-      openLoops,
-      sourceRows,
-      dreamRows,
-      oldestUncertain,
-      uncertainReview,
-      contradictions,
-      pending,
-    ] = await Promise.all([
-      this.memoryStore.statusCountsForPrincipal(principal),
-      this.retrieval.openLoops(principal),
-      this.memoryStore.sourceDailyCountsForPrincipal(principal, STATS_WINDOW_DAYS),
-      dreamingActivityForPrincipal(this.db, this.memoryStore, principal, STATS_WINDOW_DAYS),
-      this.memoryStore.oldestUncertainAtForPrincipal(principal),
-      // Owner-only, mirroring the Review queue and the feed (not the broader
-      // own+shared "memory by status" governance view).
-      this.memoryStore.countForPrincipal(principal, {
-        status: 'uncertain',
-        mine: true,
-        includeSensitive: true,
-      }),
-      this.reconciliation.listOpenContradictions(principal),
-      this.approvals.listPending(principal),
-    ]);
+    const [memoryByStatus, openLoops, sourceRows, dreamRows, contradictions, pending] =
+      await Promise.all([
+        this.memoryStore.statusCountsForPrincipal(principal),
+        this.retrieval.openLoops(principal),
+        this.memoryStore.sourceDailyCountsForPrincipal(principal, STATS_WINDOW_DAYS),
+        dreamingActivityForPrincipal(this.db, this.memoryStore, principal, STATS_WINDOW_DAYS),
+        this.reconciliation.listOpenContradictions(principal),
+        this.approvals.listPending(principal),
+      ]);
 
     const memoryTotal = Object.values(memoryByStatus).reduce((a, b) => a + b, 0);
 
@@ -309,7 +273,9 @@ export class AttentionService {
       (min, c) => (min === null || c.relation.detectedAt < min ? c.relation.detectedAt : min),
       null,
     );
-    const oldestAt = earliest(oldestUncertain, oldestContradiction);
+    // Contradictions only: uncertain facts are resolved automatically now
+    // (V2.0 item 3.3), so ageing them as unreviewed work would be dishonest.
+    const oldestAt = oldestContradiction;
 
     return {
       memoryByStatus,
@@ -318,7 +284,6 @@ export class AttentionService {
       sources,
       dreaming,
       review: {
-        uncertain: uncertainReview,
         contradicted: contradictions.length,
         oldestAt: oldestAt?.toISOString() ?? null,
       },
@@ -432,12 +397,6 @@ function capGroup<T>(items: T[]): T[] {
 function byPriorityThenRecency(a: AttentionItem, b: AttentionItem): number {
   const byKind = PRIORITY[a.kind] - PRIORITY[b.kind];
   return byKind !== 0 ? byKind : b.timestamp.localeCompare(a.timestamp);
-}
-
-function earliest(a: Date | null, b: Date | null): Date | null {
-  if (a === null) return b;
-  if (b === null) return a;
-  return a < b ? a : b;
 }
 
 function plural(n: number, noun: string): string {

@@ -20,7 +20,6 @@ const KIND_GROUP: Record<AttentionKind, AttentionGroup> = {
   open_loop_overdue: 'open_loops',
   open_loop_due_soon: 'open_loops',
   open_loop_quiet: 'quiet',
-  review_uncertain: 'review',
   review_contradicted: 'review',
   approval_pending: 'approvals',
   digest_change: 'overnight',
@@ -38,7 +37,7 @@ export const GROUP_ORDER: AttentionGroup[] = [
 export const GROUP_META: Record<AttentionGroup, GroupMeta> = {
   open_loops: { key: 'open_loops', label: 'Due & overdue', icon: '◷' },
   quiet: { key: 'quiet', label: 'Gone quiet', icon: '☾' },
-  review: { key: 'review', label: 'Waiting on your review', icon: '?' },
+  review: { key: 'review', label: 'Facts that disagree', icon: '⚠' },
   approvals: { key: 'approvals', label: 'Awaiting your approval', icon: '✓' },
   overnight: { key: 'overnight', label: 'Last night', icon: '✦' },
 };
@@ -48,7 +47,6 @@ export const KIND_ICON: Record<AttentionKind, string> = {
   open_loop_overdue: '⚠',
   open_loop_due_soon: '◷',
   open_loop_quiet: '☾',
-  review_uncertain: '?',
   review_contradicted: '⚠',
   approval_pending: '✓',
   digest_change: '✦',

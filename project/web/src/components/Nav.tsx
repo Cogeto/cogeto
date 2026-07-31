@@ -23,7 +23,10 @@ const ENABLED: { key: NavSection; label: string; href: string }[] = [
   { key: 'research', label: 'Research', href: '/research' },
   { key: 'skills', label: 'Skills', href: '/skills' },
   { key: 'timeline', label: 'Time travel', href: '/timeline' },
-  { key: 'review', label: 'Review', href: '/review' },
+  // Contradictions only (V2.0 item 3.3): the uncertain queue is gone, so the
+  // surface is named for what is actually on it. The route stays `/review` so
+  // the digest's conflict deep-links and attention hrefs do not dangle.
+  { key: 'review', label: 'Contradictions', href: '/review' },
   { key: 'approvals', label: 'Approvals', href: '/approvals' },
   { key: 'forgotten', label: 'Forgotten', href: '/forgotten' },
   { key: 'audit', label: 'Audit', href: '/audit' },
@@ -32,7 +35,7 @@ const ENABLED: { key: NavSection; label: string; href: string }[] = [
 ];
 
 const BADGE_LABEL: Partial<Record<NavSection, string>> = {
-  review: 'items to review',
+  review: 'open contradictions',
   approvals: 'pending approvals',
 };
 

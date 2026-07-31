@@ -13,6 +13,7 @@ const item = (id: string, over: Partial<MemoryListItem> = {}): MemoryListItem =>
   id,
   content: `fact ${id}`,
   status: 'active',
+  uncertaintyReason: null,
   scope: 'private',
   ownerId: 'owner',
   ownerName: null,

@@ -1,29 +1,12 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ContradictionDto, MemoryListItem, ResolveContradictionRequest } from '@cogeto/shared';
-import {
-  approveMemory,
-  fetchContradictions,
-  fetchMemories,
-  fetchNote,
-  fetchVerification,
-  rejectMemory,
-  resolveContradiction,
-} from '../api';
+import { fetchContradictions, fetchNote, fetchVerification, resolveContradiction } from '../api';
 import type { Session } from '../auth/oidc';
-import { invalidateAfterContradiction, invalidateAfterGovernance } from '../query-invalidation';
+import { invalidateAfterContradiction } from '../query-invalidation';
 import { Shell } from '../components/Shell';
 import { timeAgo } from '../components/status';
-import {
-  btnDanger,
-  btnPrimary,
-  btnSecondary,
-  EmptyState,
-  ErrorState,
-  SkeletonRows,
-  Tabs,
-  VerdictChip,
-} from '../components/ui';
+import { btnPrimary, btnSecondary, EmptyState, ErrorState, SkeletonRows } from '../components/ui';
 
 /** Highlights the cited span inside the source text when it is present. */
 function SourceWithSpan({ source, span }: { source: string; span: string | null }) {
@@ -38,104 +21,6 @@ function SourceWithSpan({ source, span }: { source: string; span: string | null 
       </mark>
       {source.slice(at + span.length)}
     </p>
-  );
-}
-
-function ReviewItem({ session, memory }: { session: Session; memory: MemoryListItem }) {
-  const queryClient = useQueryClient();
-  const [error, setError] = useState<string | null>(null);
-
-  const verification = useQuery({
-    queryKey: ['verification', memory.id],
-    queryFn: () => fetchVerification(session, memory.id),
-    retry: false,
-  });
-  const note = useQuery({
-    queryKey: ['note', memory.sourceId],
-    queryFn: () => fetchNote(session, memory.sourceId),
-    enabled: memory.sourceType === 'user_note',
-  });
-
-  const settle = async () => {
-    setError(null);
-    await invalidateAfterGovernance(queryClient); //
-  };
-  const onError = (e: unknown) => setError(e instanceof Error ? e.message : String(e));
-  const approve = useMutation({
-    mutationFn: () => approveMemory(session, memory.id),
-    onSuccess: settle,
-    onError,
-  });
-  const reject = useMutation({
-    mutationFn: () => rejectMemory(session, memory.id),
-    onSuccess: settle,
-    onError,
-  });
-  const busy = approve.isPending || reject.isPending;
-
-  return (
-    <li className="rounded-lg border border-slate-200 bg-surface p-4 shadow-sm">
-      <div className="grid gap-3 md:grid-cols-2">
-        <div>
-          <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Extracted fact
-          </h3>
-          <p className="rounded-md bg-slate-50 p-2 text-sm text-slate-800">{memory.content}</p>
-          {verification.data && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-              <VerdictChip verdict={verification.data.verdict} />
-              <span>{verification.data.reason}</span>
-            </div>
-          )}
-        </div>
-        <div>
-          <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Source
-          </h3>
-          <div className="rounded-md bg-slate-50 p-2 text-sm text-slate-600">
-            {note.data ? (
-              <SourceWithSpan
-                source={note.data.content}
-                span={verification.data?.sourceSpan ?? null}
-              />
-            ) : (
-              <p className="text-slate-400">
-                {memory.sourceType === 'user_note' ? 'Loading…' : `(${memory.sourceType})`}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-      {error && (
-        <p className="mt-2 rounded-md border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
-          {error}
-        </p>
-      )}
-      <div className="mt-3 flex items-center gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => approve.mutate()}
-          className={btnPrimary}
-        >
-          Approve
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => {
-            if (window.confirm('Reject and remove this memory? This cannot be undone.'))
-              reject.mutate();
-          }}
-          className={btnDanger}
-        >
-          Reject
-        </button>
-        <span className="ml-auto text-xs text-slate-400" title={memory.createdAt}>
-          extracted {timeAgo(memory.createdAt)}
-        </span>
-      </div>
-    </li>
   );
 }
 
@@ -352,100 +237,51 @@ function ContradictionItem({
   );
 }
 
-type ReviewTab = 'uncertain' | 'contradicted';
-
 /**
- * Review: two queues awaiting a human verdict. Uncertain — facts the verifier
- * could not fully support (approve / reject). Contradicted — pairs
- * reconciliation flagged (confirm one / correct both / dismiss,
- *).
+ * Contradictions: the one surface where a human verdict is still wanted.
+ *
+ * There used to be a second queue here, of facts the verifier could not fully
+ * support. It is gone (V2.0 item 3.3): those facts are now admitted as
+ * `uncertain` with a named reason, demoted in retrieval, framed softly in
+ * answers, and explained in the suppressed-fact log, with no human step
+ * anywhere. Confirming one is still possible, from the fact's own drawer, where
+ * the fact and its evidence are in front of you rather than in a work list.
+ *
+ * Contradictions stay, because they are the case where the corpus genuinely
+ * disagrees with itself and only the owner can say which side is right. They are
+ * surfaced, never queued as a chore: the same resolution actions, the same audit
+ * trail, unchanged.
  */
 export function Review({ session }: { session: Session }) {
-  // ?tab=contradicted — dreaming digest conflict lines land on the right queue.
-  const [tab, setTab] = useState<ReviewTab>(() =>
-    new URLSearchParams(window.location.search).get('tab') === 'contradicted'
-      ? 'contradicted'
-      : 'uncertain',
-  );
-
-  const uncertain = useQuery({
-    queryKey: ['review-queue'],
-    // Own facts only: you review your own uncertain extractions — a
-    // peer's shared uncertain fact is theirs to approve, never yours.
-    queryFn: () => fetchMemories(session, { status: 'uncertain', mine: true, limit: 50 }),
-  });
   const contradictions = useQuery({
     queryKey: ['contradictions'],
     queryFn: () => fetchContradictions(session),
   });
 
   return (
-    <Shell session={session} title="Review" active="review">
-      <Tabs
-        active={tab}
-        onChange={setTab}
-        tabs={[
-          {
-            key: 'uncertain',
-            label: `Uncertain${uncertain.data ? ` (${uncertain.data.total})` : ''}`,
-          },
-          {
-            key: 'contradicted',
-            label: `Contradicted${contradictions.data ? ` (${contradictions.data.length})` : ''}`,
-          },
-        ]}
-      />
-
-      {tab === 'uncertain' && (
-        <>
-          {uncertain.isPending && <SkeletonRows rows={3} label="Loading the review queue…" />}
-          {uncertain.isError && (
-            <ErrorState onRetry={() => void uncertain.refetch()}>
-              We couldn’t load the review queue.
-            </ErrorState>
-          )}
-          {uncertain.data && uncertain.data.items.length === 0 && (
-            <EmptyState icon="✓" tone="positive" title="Nothing awaits review">
-              Every remembered fact passed verification or already has your verdict. Cogeto only
-              asks when it isn’t sure.
-            </EmptyState>
-          )}
-          {uncertain.data && uncertain.data.items.length > 0 && (
-            <ul className="space-y-3">
-              {uncertain.data.items.map((memory) => (
-                <ReviewItem key={memory.id} session={session} memory={memory} />
-              ))}
-            </ul>
-          )}
-        </>
+    <Shell session={session} title="Contradictions" active="review">
+      {contradictions.isPending && <SkeletonRows rows={2} label="Loading contradictions…" />}
+      {contradictions.isError && (
+        <ErrorState onRetry={() => void contradictions.refetch()}>
+          We couldn’t load the contradictions.
+        </ErrorState>
       )}
-
-      {tab === 'contradicted' && (
-        <>
-          {contradictions.isPending && <SkeletonRows rows={2} label="Loading contradictions…" />}
-          {contradictions.isError && (
-            <ErrorState onRetry={() => void contradictions.refetch()}>
-              We couldn’t load the contradiction queue.
-            </ErrorState>
-          )}
-          {contradictions.data && contradictions.data.length === 0 && (
-            <EmptyState icon="🤝" tone="positive" title="No open contradictions">
-              Your memories agree with each other. When two facts about the same thing disagree,
-              they’ll appear here side by side to resolve.
-            </EmptyState>
-          )}
-          {contradictions.data && contradictions.data.length > 0 && (
-            <ul className="space-y-3">
-              {contradictions.data.map((contradiction) => (
-                <ContradictionItem
-                  key={contradiction.id}
-                  session={session}
-                  contradiction={contradiction}
-                />
-              ))}
-            </ul>
-          )}
-        </>
+      {contradictions.data && contradictions.data.length === 0 && (
+        <EmptyState icon="🤝" tone="positive" title="No open contradictions">
+          Your memories agree with each other. When two facts about the same thing disagree, they’ll
+          appear here side by side to resolve. Everything else Cogeto settles on its own.
+        </EmptyState>
+      )}
+      {contradictions.data && contradictions.data.length > 0 && (
+        <ul className="space-y-3">
+          {contradictions.data.map((contradiction) => (
+            <ContradictionItem
+              key={contradiction.id}
+              session={session}
+              contradiction={contradiction}
+            />
+          ))}
+        </ul>
       )}
     </Shell>
   );

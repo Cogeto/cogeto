@@ -37,7 +37,7 @@ The original professional-memory product remains the base and is not abandoned; 
 |---|---|---|---|
 | 3.1 | **Full task removal, backtraced**: **DELIVERED** 2026-07-28 (migration 0035) | P0 | M |
 | 3.2 | **Reminders dropped**: **DELIVERED** 2026-07-28 | P0 | S |
-| 3.3 | **Automatic review resolution + suppressed-fact log** | P0 | M |
+| 3.3 | **Automatic review resolution + suppressed-fact log**: **DELIVERED** 2026-07-31 (migration 0039) | P0 | M |
 | 3.4 | **Trust-score honesty and eval gates (first wave)** | P0 | M |
 | 3.5 | **i18n foundation (en/hr/de, user-level)** | P1 | M |
 | 3.6 | **Targeted modularization** | P1 | L |
@@ -47,7 +47,11 @@ The original professional-memory product remains the base and is not abandoned; 
 
 **3.2 Reminders dropped.** **DELIVERED 2026-07-28**. Not rebuilt in 2.0. Due-dates remain visible through attention and Sources. A notification layer may return later as its own feature if partners ask.
 
-**3.3 Automatic review resolution.** The Review station as a manual queue disappears. Unsupported and partial verification outcomes are stored as `uncertain`, demoted by the existing status multipliers, and excluded from confident answers, with no human action required. Hedged-in-source, unsupported, and unjudgeable become **distinguishable sub-reasons** rather than one undifferentiated bucket (the audit flagged this), because the report needs to explain them. Every automatic demotion or suppression writes a **suppressed-fact log** entry (fact, source, span, reason, timestamp) that is queryable, shown on the source detail, and summarized in the findings report. Contradictions are excluded from this path: they are surfaced per principle 2.
+**3.3 Automatic review resolution.** **DELIVERED 2026-07-31** (migration 0039). The Review station as a manual queue is gone: the page keeps its route but shows contradictions only, and its nav label, badge, attention line and dashboard tile went with the queue. Unsupported, partial, hedged and unjudgeable outcomes are admitted as `uncertain`, demoted by the existing status multipliers, framed softly in answers, and never blocking, with no human action anywhere in the path.
+
+The single undifferentiated bucket is split into six frozen sub-reasons on `memory.uncertainty_reason`, mapped **totally** from what the verification stage can actually distinguish today, with no default arm: `hedged_in_source`, `partially_supported`, `unsupported`, `unjudgeable`, `structurally_invalid` (the one non-admission case: a blank claim or a blank span) and `legacy_unspecified` (backfill only). A low-confidence-extraction reason was deliberately **not** added, because the extractor emits no confidence signal to justify one. Admission itself is byte-identical to the rule that preceded the taxonomy, so no eval metric moves: labelling split the bucket, it did not move the line.
+
+Every automatic demotion or non-admission writes a `suppressed_fact_log` entry (fact as extracted, source, exact span, sub-reason, verification detail, timestamp, memory id or NULL when withheld), gated exactly as memories are and queryable by source, reason and date range with counts. It is content-bearing, so it joins the deletion saga over every enumerated source and the receipt counts it under `suppressed_facts_removed`; retention is the life of the source. Confirming a fact survives as a contextual action on the memory drawer, producing `user_approved` with its existing precedence. Contradictions were excluded from this path throughout: they are surfaced per principle 2, and their resolution flow is untouched.
 
 **3.4 Trust-score honesty and eval gates, first wave.** Publish contradiction **precision** (measured 0.857, currently hidden) and the **supersedes** result (currently 0/1 failing) on the trust page; gate both. Introduce **per-language floors** so Croatian cannot hide inside an aggregate (dedup hr 0.833 is under the 0.90 gate today, masked). Raise extraction and verification floors toward the specification's own thresholds or justify each floor explicitly. Document the v1.1.0 precision drop of 3.8 points, which breached the project's own "more than 2 points must be justified" rule. Add **query-rewrite eval cases** (load-bearing, only indirectly covered today). Run **evals on pull requests via cached model responses**, so regressions surface before merge instead of after.
 
@@ -190,8 +194,8 @@ The old flat all-memories list is demoted to a **filtered search view** across f
 |---|---|---|
 | Remove tasks fully, backtraced, no leftovers | V2.0: **delivered** | 3.1 |
 | Reminders removed | V2.0: **delivered** | 3.2 |
-| Cogeto resolves reviews itself (unsupported/partial automatic) | V2.0 | 3.3 |
-| Suppressed-fact log (feeds the report) | V2.0 | 3.3 |
+| Cogeto resolves reviews itself (unsupported/partial automatic) | V2.0: **delivered** | 3.3 |
+| Suppressed-fact log (feeds the report) | V2.0: **delivered** | 3.3 |
 | Contradictions surfaced, not queued in Review | V2.0 principle, V2.3 depth | 2, 6.1 |
 | Enhanced trust score on contradictions, better metrics | V2.0 + V2.3 | 3.4, 6.4 |
 | Contradiction precision gated and published | V2.0 | 3.4 |

@@ -5,6 +5,7 @@ import { chunkContent } from './pipeline/chunk';
 import { ExtractStage } from './pipeline/extract.stage';
 import { VerifyStage } from './pipeline/verify.stage';
 import { EmbedStoreStage } from './pipeline/embed-store.stage';
+import { createSuppressedFactLog } from './persistence/suppressed-fact-log';
 import type { AdmittedMemory } from './pipeline/embed-store.stage';
 import type { SourceItem } from './pipeline/source-reader';
 
@@ -23,7 +24,14 @@ export async function seedMemoryFromSource(opts: {
 }): Promise<AdmittedMemory[]> {
   const extract = new ExtractStage(opts.gateway);
   const verify = new VerifyStage(opts.gateway);
-  const embedStore = new EmbedStoreStage(opts.gateway, opts.memoryStore);
+  // The seed path admits through the SAME stage the worker does, so every
+  // automatic demotion it makes lands in the suppressed-fact log too: an eval
+  // instance is a real instance, not a variant with the record switched off.
+  const embedStore = new EmbedStoreStage(
+    opts.gateway,
+    opts.memoryStore,
+    createSuppressedFactLog(opts.db),
+  );
 
   const chunks = chunkContent(opts.source.content);
   const facts = await extract.run(opts.source, chunks);

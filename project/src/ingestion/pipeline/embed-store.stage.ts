@@ -4,7 +4,11 @@ import type { Tx } from '../../infrastructure/index';
 import { MemoryStore } from '../../memory/index';
 import type { MemoryRow } from '../../memory/index';
 import { ModelGateway } from '../../model-gateway/index';
+import type { UncertaintyReason } from '@cogeto/shared';
 import { resolveFactTemporal } from '../domain/candidate-fact';
+import { classifyAdmission } from '../domain/uncertainty';
+import { SuppressedFactLog } from '../persistence/suppressed-fact-log';
+import type { SuppressedFactEntry } from '../persistence/suppressed-fact-log';
 import { verificationResult } from '../persistence/tables';
 import type { SourceItem } from './source-reader';
 import type { VerifiedFact } from './verify.stage';
@@ -12,6 +16,8 @@ import type { VerifiedFact } from './verify.stage';
 export interface AdmittedMemory {
   memoryId: string;
   status: 'active' | 'uncertain';
+  /** The taxonomy arm this fact landed on; null when it was admitted active. */
+  uncertaintyReason: UncertaintyReason | null;
   /** The committed-in-tx row and its stage-5 embedding — stage 6's input. */
   row: MemoryRow;
   embedding: number[];
@@ -39,6 +45,8 @@ export class EmbedStoreStage {
   constructor(
     private readonly gateway: ModelGateway,
     private readonly memoryStore: MemoryStore,
+    /** Records every automatic demotion, in THIS transaction (V2.0 item 3.3). */
+    private readonly suppressedFacts: SuppressedFactLog,
     // The instance timezone for relative-date resolution; @Optional so
     // bare/test builds fall back to the default without wiring LimitsModule.
     @Optional()
@@ -54,11 +62,22 @@ export class EmbedStoreStage {
 
     const rows: MemoryRow[] = [];
     const admitted: AdmittedMemory[] = [];
-    for (const [i, { fact, verdict, reason, promptVersion }] of verified.entries()) {
-      // Admission rule (F7): active ONLY when the source stated it
-      // plainly (hedged=false) AND the verifier supported it; a hedged fact is
-      // uncertain even when supported, because the SOURCE was tentative.
-      const status = !fact.hedged && verdict === 'supported' ? 'active' : 'uncertain';
+    const suppressed: SuppressedFactEntry[] = [];
+    for (const [
+      i,
+      { fact, verdict, reason, promptVersion, judged, spanLocatable },
+    ] of verified.entries()) {
+      // Admission (V2.0 item 3.3): the taxonomy decides, and it decides alone —
+      // no queue, no approval, no human step. The rule it encodes is the one
+      // that was here before it (active ONLY when the source stated the claim
+      // plainly AND the verifier supported it); what is new is that the
+      // uncertain arm now names WHY.
+      const { status, reason: uncertaintyReason } = classifyAdmission({
+        verdict,
+        judged,
+        hedged: fact.hedged,
+        spanLocatable,
+      });
       // Dates are resolved by code against the note anchor (
       // ruling 1); v0001 still passes through its pre-resolved fields.
       const { validFrom, validUntil, unresolved } = resolveFactTemporal(
@@ -85,6 +104,7 @@ export class EmbedStoreStage {
         validUntil,
         temporalUnresolved: unresolved,
         initialStatus: status,
+        uncertaintyReason: uncertaintyReason ?? undefined,
         embeddingModel,
       });
       await tx.insert(verificationResult).values({
@@ -95,10 +115,37 @@ export class EmbedStoreStage {
         sourceSpan: fact.source_span,
         hedgePhrase: fact.hedged ? fact.hedge_phrase : null,
       });
+      // Every demotion is logged, with the memory id, because the fact WAS
+      // admitted: inspectable in Sources and explained here. Nothing is lost and
+      // nothing waits for a person.
+      if (uncertaintyReason) {
+        suppressed.push({
+          ownerId: source.ownerId,
+          scope: source.scope ?? 'private',
+          sensitive: source.sensitive ?? false,
+          sourceType: source.sourceType,
+          sourceId: source.sourceId,
+          factContent: fact.claim,
+          factKind: fact.kind,
+          sourceSpan: fact.source_span,
+          reason: uncertaintyReason,
+          verificationVerdict: verdict,
+          verificationReason: reason,
+          promptVersion,
+          memoryId: row.id,
+        });
+      }
       rows.push(row);
-      admitted.push({ memoryId: row.id, status, row, embedding: embeddings[i]! });
+      admitted.push({
+        memoryId: row.id,
+        status,
+        uncertaintyReason,
+        row,
+        embedding: embeddings[i]!,
+      });
     }
 
+    await this.suppressedFacts.record(tx, suppressed);
     await this.memoryStore.upsertVectors(rows, embeddings);
     return admitted;
   }

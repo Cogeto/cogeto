@@ -27,7 +27,11 @@ import {
 } from '../connectors/index';
 import { ReplyDraftCascade } from '../agents/index';
 import { UserDirectory } from '../identity/index';
-import { INGESTION_PIPELINE_JOB_TYPE, createIngestionPipeline } from '../ingestion/index';
+import {
+  INGESTION_PIPELINE_JOB_TYPE,
+  createIngestionPipeline,
+  createSuppressedFactLog,
+} from '../ingestion/index';
 import { MemoryStore } from './memory.store';
 import { MemoryReconciliation } from './reconciliation';
 import { MemoryVectorStore } from './persistence/vector-store';
@@ -211,6 +215,7 @@ describe('email deletion cascade (integration: real Postgres + Qdrant + MinIO)',
       gateway,
       store,
       reconciliation: new MemoryReconciliation(tdb.db, store, vectors),
+      suppressedFacts: createSuppressedFactLog(tdb.db),
     });
   const taskList = (): TaskList => ({
     [INGESTION_PIPELINE_JOB_TYPE]: idempotentTask(

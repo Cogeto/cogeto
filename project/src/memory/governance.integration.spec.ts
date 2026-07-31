@@ -152,7 +152,10 @@ describe('memory governance (integration, real Postgres + real Qdrant)', () => {
   it('review_transitions: approve uncertain→user_approved (owner); reject only from uncertain, removing row AND point', async () => {
     const uncertainA = await seedIndexed(
       userA,
-      fact('Vedran probably wants the summary', { initialStatus: 'uncertain' }),
+      fact('Vedran probably wants the summary', {
+        initialStatus: 'uncertain',
+        uncertaintyReason: 'unsupported',
+      }),
     );
 
     // Approve — owner only; audited.
@@ -170,7 +173,10 @@ describe('memory governance (integration, real Postgres + real Qdrant)', () => {
     // A non-owner cannot approve someone else's uncertain memory.
     const uncertainA2 = await seedIndexed(
       userA,
-      fact('Another uncertain fact', { initialStatus: 'uncertain' }),
+      fact('Another uncertain fact', {
+        initialStatus: 'uncertain',
+        uncertaintyReason: 'unsupported',
+      }),
     );
     await expect(
       store.transition({ kind: 'user', userId: userB.userId }, uncertainA2.id, 'user_approved'),
@@ -215,7 +221,10 @@ describe('memory governance (integration, real Postgres + real Qdrant)', () => {
 
     const approveTarget = await seedIndexed(
       userA,
-      fact('Audit approve target', { initialStatus: 'uncertain' }),
+      fact('Audit approve target', {
+        initialStatus: 'uncertain',
+        uncertaintyReason: 'unsupported',
+      }),
     );
     await store.transition(
       { kind: 'user', userId: userA.userId },
@@ -241,7 +250,7 @@ describe('memory governance (integration, real Postgres + real Qdrant)', () => {
 
     const rejectTarget = await seedIndexed(
       userA,
-      fact('Audit reject target', { initialStatus: 'uncertain' }),
+      fact('Audit reject target', { initialStatus: 'uncertain', uncertaintyReason: 'unsupported' }),
     );
     await store.rejectUncertain(userA, rejectTarget.id);
     expect(await auditCount('memory.rejected', rejectTarget.id, actor)).toBe(1);

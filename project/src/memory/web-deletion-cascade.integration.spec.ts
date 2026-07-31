@@ -29,7 +29,11 @@ import {
   WebSourceReader,
 } from '../connectors/index';
 import type { ResearchOptions } from '../connectors/index';
-import { INGESTION_PIPELINE_JOB_TYPE, createIngestionPipeline } from '../ingestion/index';
+import {
+  INGESTION_PIPELINE_JOB_TYPE,
+  createIngestionPipeline,
+  createSuppressedFactLog,
+} from '../ingestion/index';
 import { MemoryStore } from './memory.store';
 import { MemoryReconciliation } from './reconciliation';
 import { MemoryVectorStore } from './persistence/vector-store';
@@ -196,6 +200,7 @@ describe('web deletion cascade (integration: real Postgres + Qdrant + MinIO)', (
       gateway,
       store,
       reconciliation: new MemoryReconciliation(tdb.db, store, vectors),
+      suppressedFacts: createSuppressedFactLog(tdb.db),
     });
   const taskList = (): TaskList => ({
     [INGESTION_PIPELINE_JOB_TYPE]: idempotentTask(

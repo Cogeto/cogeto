@@ -19,6 +19,7 @@ import {
   createIngestionPipeline,
   INGESTION_PIPELINE_JOB_TYPE,
   PipelineIngestionGuard,
+  createSuppressedFactLog,
 } from '../ingestion/index';
 import type { IngestionPipeline } from '../ingestion/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
@@ -184,6 +185,7 @@ describe(' delete-vs-ingestion race (integration: real Postgres + Qdrant, real s
       gateway,
       store,
       reconciliation: new MemoryReconciliation(tdb.db, store, vectors),
+      suppressedFacts: createSuppressedFactLog(tdb.db),
     });
   const taskListFor = (pipeline: IngestionPipeline): TaskList => ({
     [INGESTION_PIPELINE_JOB_TYPE]: idempotentTask(

@@ -11,7 +11,7 @@ import type { TestDatabase, TestQdrant } from '../../testing/index';
 import { applyMigrations } from '../../infrastructure/index';
 import { createMemoryReconciliation } from '../../memory/index';
 import type { MemoryStore } from '../../memory/index';
-import { createIngestionPipeline } from '../../ingestion/index';
+import { createIngestionPipeline, createSuppressedFactLog } from '../../ingestion/index';
 import { UserDirectory } from '../../identity/index';
 import { ModelGateway, ModelGatewayError } from '../../model-gateway/index';
 import type { StructuredExtractionRequest } from '../../model-gateway/index';
@@ -202,6 +202,7 @@ describe('multiple conversations (integration, real Postgres + Qdrant)', () => {
       gateway: capture,
       store,
       reconciliation,
+      suppressedFacts: createSuppressedFactLog(tdb.db),
     });
     const gateway = new ScriptedGateway();
     gateway.streamText = 'Adriatic Foods uses HubSpot [F1].';
@@ -286,6 +287,7 @@ describe('multiple conversations (integration, real Postgres + Qdrant)', () => {
       gateway: capture,
       store,
       reconciliation,
+      suppressedFacts: createSuppressedFactLog(tdb.db),
     });
     const gateway = new ScriptedGateway();
     gateway.streamText = 'Adriatic Foods pays net 30 [F1].';

@@ -11,6 +11,7 @@ import type { MemoryStore } from '../memory/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import type { CandidateFact } from './domain/candidate-fact';
+import { createSuppressedFactLog } from './persistence/suppressed-fact-log';
 import { EmbedStoreStage } from './pipeline/embed-store.stage';
 import { ExtractStage } from './pipeline/extract.stage';
 import {
@@ -162,12 +163,13 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
       [reader],
       new ExtractStage(gateway),
       new VerifyStage(gateway),
-      new EmbedStoreStage(gateway, memoryStore),
+      new EmbedStoreStage(gateway, memoryStore, createSuppressedFactLog(tdb.db)),
       new ReconciliationService(
         gateway,
         memoryStore,
         new MemoryReconciliation(tdb.db, memoryStore),
       ),
+      createSuppressedFactLog(tdb.db),
       parseCaps,
     );
 
@@ -411,8 +413,9 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
       [webReader],
       new ExtractStage(gateway),
       new VerifyStage(gateway),
-      new EmbedStoreStage(gateway, store),
+      new EmbedStoreStage(gateway, store, createSuppressedFactLog(tdb.db)),
       new ReconciliationService(gateway, store, new MemoryReconciliation(tdb.db, store)),
+      createSuppressedFactLog(tdb.db),
     );
     const sourceId = webReader.add('A fetched page dense with obligation-shaped rules.');
     const summary = await tdb.db.transaction((tx) =>

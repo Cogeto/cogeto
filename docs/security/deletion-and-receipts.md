@@ -13,10 +13,21 @@ Memory in Cogeto is *derived* from a source (a note, a document, an email). A
 source's derived memories carry that source's provenance, so deleting the source
 enumerates and erases everything derived from it across:
 
-- **Postgres**: the memory rows and, for file sources, the `file_metadata`
- pointer rows.
+- **Postgres**: the memory rows, for file sources the `file_metadata` pointer
+ rows, and the **suppressed-fact log** entries derived from the source.
 - **Qdrant**: the vector points for those memories.
 - **MinIO**: the stored original object bytes.
+
+The suppressed-fact log (V2.0 item 3.3) is a content-bearing table: it records
+every automatic decision that demoted or withheld an extracted fact, and each
+entry carries the claim as extracted and the exact source span it came from,
+including for facts that were withheld and therefore have no memory row at all.
+It joins the cascade through the same `DerivedCascade` port every other derived
+artifact uses, over **every enumerated source** rather than only the one the
+delete was addressed to, so an email attachment's entries cannot survive its
+email. The receipt counts them under `suppressed_facts_removed`. A content-bearing
+table the saga could not reach would be a regression against the promise this
+whole document is about.
 
 The saga runs in two parts:
 
@@ -150,6 +161,10 @@ surface in `GET /api/health` and the System view.
 - **The chain tip is an anti-tamper anchor, not a proof of completeness.** Proving
  that *everything* promised was erased is the sweep's job; the tip proves the
  ledger itself was not quietly truncated.
+- **Suppressed-fact log retention:** entries live for the life of their source and
+ die with it. They are the evidence for a decision about that source, so
+ outliving it would mean retaining source content after a signed receipt said it
+ was erased.
 - **Key loss:** the MinIO encryption master key and the signing key live in the
  instance's secrets and are backed up with them. Losing the encryption key makes
  stored objects unreadable by design.
@@ -160,4 +175,6 @@ surface in `GET /api/health` and the System view.
 - Sweep arms: `project/src/memory/` (integrity sweep, orphan/absence detectors)
 - Tests: `project/src/memory/deletion.integration.spec.ts`,
  `email-deletion-cascade.integration.spec.ts`,
- `sweep-arms.integration.spec.ts`
+ `sweep-arms.integration.spec.ts`,
+ `project/src/ingestion/auto-review-resolution.integration.spec.ts`
+ (`log_deletion_cascade`)

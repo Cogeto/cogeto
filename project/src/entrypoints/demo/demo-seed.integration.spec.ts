@@ -108,6 +108,9 @@ describe('Ana sandbox seed/reset (integration: real Postgres + Qdrant + MinIO)',
       sourceId: opts.sourceId ?? randomUUID(),
       entities: opts.entities ?? [],
       initialStatus: opts.status ?? 'active',
+      // The taxonomy is total (V2.0 item 3.3): an uncertain admission always
+      // names its reason. The seeded world's one uncertain fact is a hedge.
+      uncertaintyReason: opts.status === 'uncertain' ? 'hedged_in_source' : undefined,
       embeddingModel: EMBED,
     });
     return row.id;
@@ -165,7 +168,24 @@ describe('Ana sandbox seed/reset (integration: real Postgres + Qdrant + MinIO)',
 
     // Lapsed (outdated), hedged (uncertain), superseded (replaced).
     await setStatus(await fact('Contractor staging access expired 30 June 2026.'), 'outdated');
-    await fact('Marko may prefer Teams over Zoom for the workshops.', { status: 'uncertain' });
+    const hedged = await fact('Marko may prefer Teams over Zoom for the workshops.', {
+      status: 'uncertain',
+    });
+    // The suppressed-fact entry the real pipeline writes alongside that
+    // admission (V2.0 item 3.3). This spec builds the world through the store
+    // rather than the pipeline, so the entry is inserted the same way the
+    // contradiction relation above is: directly, mirroring what ingestion
+    // produces, so the seed assertions exercise the shape they will see live.
+    await tdb.pool.query(
+      `INSERT INTO suppressed_fact_log
+         (owner_id, scope, sensitive, source_type, source_id, fact_content, fact_kind,
+          source_span, reason, verification_verdict, verification_reason, prompt_version, memory_id)
+       SELECT owner_id, scope, sensitive, source_type, source_id, content, 'fact',
+              'may prefer Teams over Zoom', 'hedged_in_source', 'supported',
+              'the source states this tentatively', 'verification/v0006', id
+         FROM memory WHERE id = $1`,
+      [hedged],
+    );
     await setStatus(await fact('Invoices go to racuni@adriaticfoods.hr.'), 'replaced');
 
     // The uploaded document: MinIO object + file_metadata + a file-source memory.

@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   index,
   jsonb,
   pgEnum,
@@ -9,6 +10,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { MEMORY_SCOPES, UNCERTAINTY_REASONS } from '@cogeto/shared';
 
 /**
  * Tables owned by the ingestion module (migration 0003). Module-private —
@@ -41,6 +43,84 @@ export const verificationResult = pgTable('verification_result', {
 
 export type VerificationResultRow = typeof verificationResult.$inferSelect;
 export type VerificationVerdict = (typeof verificationVerdictEnum.enumValues)[number];
+
+/**
+ * The uncertainty sub-reason type (migration 0039), shared with the memory
+ * module's `memory.uncertainty_reason` column: ONE Postgres type, declared once
+ * in SQL and mapped per module, the way `scope` already is (connectors declares
+ * its own mapping of the same type).
+ */
+export const uncertaintyReasonEnum = pgEnum('uncertainty_reason', UNCERTAINTY_REASONS);
+
+/** Local mapping of the memory-owned `scope` type — the connectors precedent. */
+const scopeEnum = pgEnum('scope', MEMORY_SCOPES);
+
+/**
+ * The suppressed-fact log (V2.0 item 3.3, migration 0039): every automatic
+ * decision that demoted or withheld an extracted fact, so "Cogeto resolved it
+ * itself" stays inspectable and reportable instead of invisible.
+ *
+ * It is a first-class record, not a debug trail. The V2.2 source detail view
+ * reads it and the V2.3 findings report summarises it, which is why it carries
+ * the fact as extracted, its exact span, the sub-reason, and the verification
+ * detail behind the decision rather than a log line.
+ *
+ * Two rules it inherits from memories rather than invents:
+ *
+ * - **Gating.** `owner_id`, `scope` and `sensitive` are copied from the source,
+ *   and every read applies the identical scope + sensitive gate. An entry is
+ *   exactly as visible as the memory it explains, no more.
+ * - **Deletion.** Entries hold source-derived content and spans, so they go with
+ *   their source through the deletion saga (via ingestion's `DerivedCascade`)
+ *   and the receipt counts them. Retention is the life of the source: they are
+ *   the evidence for a decision about it, and evidence that outlived a signed
+ *   erasure receipt would make the receipt a lie.
+ *
+ * `memory_id` is set when the fact WAS admitted as uncertain and NULL when it
+ * was not admitted at all — the one column that distinguishes the two sides of
+ * the admission line.
+ */
+export const suppressedFactLog = pgTable(
+  'suppressed_fact_log',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: text('owner_id').notNull(),
+    scope: scopeEnum('scope').notNull(),
+    sensitive: boolean('sensitive').notNull().default(false),
+    /** Provenance, as plain text: the memory-owned `source_type` enum is not
+     * ingestion's to depend on, and item 3.6 turns it into a registry. */
+    sourceType: text('source_type').notNull(),
+    sourceId: text('source_id').notNull(),
+    /** The claim exactly as the extractor produced it. */
+    factContent: text('fact_content').notNull(),
+    /** The extractor's fact kind; NULL when it produced none. */
+    factKind: text('fact_kind'),
+    /** The exact source substring the claim was drawn from. */
+    sourceSpan: text('source_span').notNull(),
+    reason: uncertaintyReasonEnum('reason').notNull(),
+    /** The verification detail behind the decision; NULL when no verification
+     * ran (a structurally invalid fact never reaches the verifier). */
+    verificationVerdict: verificationVerdictEnum('verification_verdict'),
+    verificationReason: text('verification_reason'),
+    promptVersion: text('prompt_version'),
+    /**
+     * Set when admitted as uncertain; NULL when the fact was not admitted.
+     * The column FKs with ON DELETE CASCADE rather than SET NULL, because this
+     * NULL carries meaning: nulling it on erasure would rewrite an admitted
+     * fact's history into a withheld one, and would leave a rejected
+     * extraction's content behind after the user removed its row.
+     */
+    memoryId: uuid('memory_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('suppressed_fact_source_idx').on(t.sourceType, t.sourceId),
+    index('suppressed_fact_owner_created_idx').on(t.ownerId, t.createdAt),
+    index('suppressed_fact_reason_idx').on(t.reason),
+  ],
+);
+
+export type SuppressedFactRow = typeof suppressedFactLog.$inferSelect;
 
 /**
  * The dreaming cycle's tables (migration 0012). Ingestion-owned

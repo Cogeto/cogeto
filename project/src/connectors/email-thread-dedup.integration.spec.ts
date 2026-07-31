@@ -15,7 +15,11 @@ import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import { createMemoryReconciliation, MemoryFileStore, MemoryObjectStore } from '../memory/index';
 import type { MemoryReconciliation, MemoryStore } from '../memory/index';
-import { INGESTION_PIPELINE_JOB_TYPE, createIngestionPipeline } from '../ingestion/index';
+import {
+  INGESTION_PIPELINE_JOB_TYPE,
+  createIngestionPipeline,
+  createSuppressedFactLog,
+} from '../ingestion/index';
 import type { IngestionPipeline } from '../ingestion/index';
 import { UserDirectory } from '../identity/index';
 import { EmailAllowlistService } from './email-allowlist.service';
@@ -181,6 +185,7 @@ describe('email thread dedup (integration: reconciliation over a reply chain)', 
       gateway,
       store,
       reconciliation,
+      suppressedFacts: createSuppressedFactLog(tdb.db),
     });
   const runWorker = () =>
     runOnce({

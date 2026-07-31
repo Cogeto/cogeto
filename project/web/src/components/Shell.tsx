@@ -1,12 +1,6 @@
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  fetchAttention,
-  fetchContradictions,
-  fetchMe,
-  fetchMemories,
-  fetchPendingApprovals,
-} from '../api';
+import { fetchAttention, fetchContradictions, fetchMe, fetchPendingApprovals } from '../api';
 import type { Session } from '../auth/oidc';
 import { Nav } from './Nav';
 import type { NavSection } from './Nav';
@@ -44,14 +38,10 @@ export function Shell({
     queryFn: () => fetchMe(session),
     retry: 1,
   });
-  // The review badge counts BOTH queues: uncertain memories awaiting a
-  // verdict plus open contradictions awaiting a resolution.
-  const { data: uncertain } = useQuery({
-    queryKey: ['uncertain-count'],
-    // Own uncertain only — the badge mirrors the Review queue's scope.
-    queryFn: () => fetchMemories(session, { status: 'uncertain', mine: true, limit: 1 }),
-    refetchInterval: 30_000,
-  });
+  // The badge counts open contradictions and nothing else (V2.0 item 3.3).
+  // Uncertain facts used to be counted here too, when they were a queue
+  // awaiting a verdict. They are resolved automatically now, so counting them
+  // would be asking for attention that no action can discharge.
   const { data: contradictions } = useQuery({
     queryKey: ['contradictions'],
     queryFn: () => fetchContradictions(session),
@@ -83,7 +73,7 @@ export function Shell({
     >
       <Nav
         active={active}
-        reviewCount={(uncertain?.total ?? 0) + (contradictions?.length ?? 0)}
+        reviewCount={contradictions?.length ?? 0}
         approvalsCount={pendingApprovals?.length ?? 0}
         dashboardUnread={attention?.unreadCount ?? 0}
         showSystem={me?.isAdmin === true}

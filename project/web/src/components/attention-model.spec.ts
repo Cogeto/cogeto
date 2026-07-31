@@ -14,7 +14,6 @@ const ALL_KINDS: AttentionKind[] = [
   'open_loop_overdue',
   'open_loop_due_soon',
   'open_loop_quiet',
-  'review_uncertain',
   'review_contradicted',
   'approval_pending',
   'digest_change',
@@ -45,7 +44,7 @@ describe('attention-model', () => {
     const items = [
       item('digest_change', { href: '/memories?open=1', unread: true }),
       item('open_loop_overdue', { unread: true }),
-      item('review_uncertain', { href: '/review', count: 3 }),
+      item('review_contradicted', { href: '/review', count: 3 }),
       item('open_loop_due_soon'),
     ];
     const groups = groupItems(items);
