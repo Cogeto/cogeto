@@ -1,0 +1,11 @@
+{
+  "case_id": "en-rw07",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [],
+  "question": "When is the Northwind kickoff?",
+  "expect": {
+    "question_class": "personal",
+    "entities_must_include": ["Northwind"]
+  },
+  "notes": "NEGATIVE: a question that is about time without being a time-travel question. It asks for a date the current memories hold, not for a past state. Classifying it temporal would silently change which memories are eligible."
+}

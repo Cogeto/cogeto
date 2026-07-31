@@ -1,0 +1,12 @@
+{
+  "case_id": "hr-rw14",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [],
+  "question": "Pripremi me za sastanak s Adriatic Foods",
+  "expect": {
+    "skill_brief": {
+      "subject": "Adriatic Foods"
+    }
+  },
+  "notes": "Vještina pripreme sažetka, provjerena PRIJE istraživačkih obrazaca da uža namjera pobijedi. Preuzima prednost, pa nema razreda pitanja."
+}

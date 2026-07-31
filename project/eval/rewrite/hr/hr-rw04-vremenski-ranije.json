@@ -1,0 +1,13 @@
+{
+  "case_id": "hr-rw04",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [],
+  "question": "Što smo ranije odlučili o dobavljaču?",
+  "expect": {
+    "question_class": "personal",
+    "temporal": {
+      "kind": "previous"
+    }
+  },
+  "notes": "Vremenska namjera `previous`: pitanje traži naslijeđeno stanje, pa dohvat mora ukinuti isključivanje zastarjelih i zamijenjenih zapisa. Nema datuma za razrješavanje."
+}

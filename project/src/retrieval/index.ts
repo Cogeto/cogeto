@@ -30,6 +30,15 @@ export { CHAT_SKILL_RESOLVER } from './chat/chat-skill-resolver.port';
 export type { ChatSkillResolverPort, ChatSkillProposal } from './chat/chat-skill-resolver.port';
 export { detectSkillBriefIntent } from './query-rewrite';
 export type { SkillBriefIntent } from './query-rewrite';
+// The query-rewrite eval suite (V2.0 item 3.4): exposed for the eval
+// entrypoint, the same way ingestion exposes its golden-set harness.
+export {
+  runRewriteEval,
+  loadRewriteCases,
+  rewriteCaseSchema,
+  scoreRewriteCase,
+} from './eval-rewrite';
+export type { RewriteCase, RewriteEvalMetrics, RewriteEvalResult } from './eval-rewrite';
 // The chat → email-reply seam: retrieval defines the port,
 // connectors implements it, the app root binds it (like the SourceReader family).
 export { CHAT_REPLY_RESOLVER } from './chat/chat-reply-resolver.port';

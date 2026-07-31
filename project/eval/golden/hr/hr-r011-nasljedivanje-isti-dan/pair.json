@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r011",
+  "task": "contradiction",
+  "expected": "supersedes_a_over_b",
+  "a": {
+    "content": "Uvodni sastanak za Jadran je 9. srpnja u 14:00.",
+    "kind": "fact",
+    "entities": ["Jadran"],
+    "subject_entity": "Jadran",
+    "captured_at": "2026-07-06T15:20:00.000Z",
+    "source": "Jadran je poslijepodne opet pomaknuo uvodni sastanak: sada je 9. srpnja u 14:00."
+  },
+  "b": {
+    "content": "Uvodni sastanak za Jadran je 9. srpnja u 10:00.",
+    "kind": "fact",
+    "entities": ["Jadran"],
+    "subject_entity": "Jadran",
+    "captured_at": "2026-07-06T09:05:00.000Z",
+    "source": "Uvodni sastanak za Jadran potvrđen je za 9. srpnja u 10:00."
+  },
+  "notes": "Promjena istoga dana: oba zapisa nastala su 2026-07-06, razmak je nekoliko sati, nijedan ne nosi interval valjanosti. Poredak zato ovisi o VREMENU zapisa, ne o datumu. Smjer a nad b."
+}

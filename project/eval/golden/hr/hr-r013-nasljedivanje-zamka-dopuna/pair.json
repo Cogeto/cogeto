@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r013",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "Ana će na pregledu za Jadran predstaviti dio o sigurnosti.",
+    "kind": "commitment",
+    "entities": ["Ana", "Jadran"],
+    "subject_entity": "Ana",
+    "captured_at": "2026-07-07T11:00:00.000Z",
+    "source": "Ana na pregledu za Jadran preuzima i dio o sigurnosti."
+  },
+  "b": {
+    "content": "Ana će na pregledu za Jadran predstaviti dio o planu razvoja.",
+    "kind": "commitment",
+    "entities": ["Ana", "Jadran"],
+    "subject_entity": "Ana",
+    "captured_at": "2026-07-02T11:00:00.000Z",
+    "source": "Ana na pregledu za Jadran predstavlja dio o planu razvoja."
+  },
+  "notes": "ZAMKA: ne smije se pročitati kao nasljeđivanje. Ista osoba, isti povod, gotovo isti oblik rečenice i noviji zapis, dakle svi površinski znakovi promjene, ali dvije obveze se ZBRAJAJU. Čitanje a nad b zatvorilo bi interval obveze koju Ana i dalje duguje."
+}

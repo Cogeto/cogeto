@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r012",
+  "task": "contradiction",
+  "expected": "supersedes_a_over_b",
+  "a": {
+    "content": "The Northwind kickoff is at 14:00 on 9 July.",
+    "kind": "fact",
+    "entities": ["Northwind"],
+    "subject_entity": "Northwind",
+    "captured_at": "2026-07-06T15:20:00.000Z",
+    "source": "Northwind moved the kickoff again this afternoon: it is now 14:00 on 9 July."
+  },
+  "b": {
+    "content": "The Northwind kickoff is at 10:00 on 9 July.",
+    "kind": "fact",
+    "entities": ["Northwind"],
+    "subject_entity": "Northwind",
+    "captured_at": "2026-07-06T09:05:00.000Z",
+    "source": "Northwind kickoff is confirmed for 10:00 on 9 July."
+  },
+  "notes": "Same-day update: both records were captured on 2026-07-06, hours apart, and neither carries a validity interval. Ordering therefore rests on the TIME of capture, not the date. Direction a over b."
+}

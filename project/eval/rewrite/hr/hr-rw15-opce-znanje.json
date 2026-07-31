@@ -1,0 +1,10 @@
+{
+  "case_id": "hr-rw15",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [],
+  "question": "Što je Akt EU o umjetnoj inteligenciji?",
+  "expect": {
+    "question_class": "knowledge"
+  },
+  "notes": "Pitanje o širem svijetu. Pamćenje i dalje prvo dohvaća i uzemljuje; razred odlučuje smije li se dodati označeno opće znanje i ide li uz odgovor ponuda istraživanja."
+}

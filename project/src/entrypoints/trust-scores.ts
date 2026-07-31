@@ -15,7 +15,20 @@ import type { ResolvedModelProviders } from '../model-gateway/index';
  * before it is written.
  */
 
-export const TRUST_SCORES_SCHEMA_VERSION = '1.0';
+/**
+ * The version EMITTED. 1.1 is additive over 1.0 (V2.0 item 3.4): contradiction
+ * precision, supersedes accuracy and query-rewrite routing accuracy joined the
+ * published metrics, per language and aggregate.
+ */
+export const TRUST_SCORES_SCHEMA_VERSION = '1.1';
+
+/**
+ * The versions READABLE. Published release files are immutable, so every
+ * historical 1.0 file must keep validating: `rebuildIndex` re-parses the whole
+ * directory on every publish, and a reader that rejected 1.0 would break the
+ * index the moment the emitted version moved.
+ */
+export const TRUST_SCORES_SCHEMA_VERSIONS = ['1.0', '1.1'] as const;
 
 /** Default model tiers (mirrors.env.example / the gateway defaults). */
 const fraction = z.number().min(0).max(1);
@@ -24,11 +37,20 @@ const count = z.int().min(0);
 export const languageMetricsSchema = z.object({
   language: z.string().min(2).max(8),
   golden_cases: count,
+  reconcile_pairs: count.optional(),
+  rewrite_cases: count.optional(),
   extraction_precision: fraction,
   extraction_recall: fraction,
   verification_agreement: fraction,
   dedup_accuracy: fraction.nullable(),
   contradiction_recall: fraction.nullable(),
+  // ── Added in schema 1.1. Optional so the immutable 1.0 files still
+  // validate; every file emitted from V2.0 item 3.4 on carries them.
+  contradiction_precision: fraction.nullable().optional(),
+  supersedes_accuracy: fraction.nullable().optional(),
+  /** The supersedes denominator — a rate over one case means nothing. */
+  supersedes_pairs: count.nullable().optional(),
+  rewrite_accuracy: fraction.nullable().optional(),
 });
 
 export const aggregateMetricsSchema = z.object({
@@ -37,6 +59,11 @@ export const aggregateMetricsSchema = z.object({
   verification_agreement: fraction,
   dedup_accuracy: fraction,
   contradiction_recall: fraction,
+  // Added in schema 1.1, same back-compatibility rule as above.
+  contradiction_precision: fraction.optional(),
+  supersedes_accuracy: fraction.optional(),
+  supersedes_pairs: count.optional(),
+  rewrite_accuracy: fraction.optional(),
 });
 
 export const chatSummarySchema = z.object({
@@ -49,7 +76,16 @@ export const corpusSchema = z.object({
   golden_cases: count,
   reconcile_pairs: count,
   chat_cases: count.optional(),
-  per_language: z.array(z.object({ language: z.string().min(2).max(8), golden_cases: count })),
+  /** Added in schema 1.1 with the query-rewrite suite. */
+  rewrite_cases: count.optional(),
+  per_language: z.array(
+    z.object({
+      language: z.string().min(2).max(8),
+      golden_cases: count,
+      reconcile_pairs: count.optional(),
+      rewrite_cases: count.optional(),
+    }),
+  ),
 });
 
 export const metricsSchema = z.object({
@@ -79,7 +115,7 @@ export const generatedBySchema = z.object({
 });
 
 export const trustScoresDocumentSchema = z.object({
-  schema_version: z.literal(TRUST_SCORES_SCHEMA_VERSION),
+  schema_version: z.enum(TRUST_SCORES_SCHEMA_VERSIONS),
   generated_by: generatedBySchema,
   configurations: z.array(configurationSchema).min(1),
   notes: z.array(z.string().min(1)).optional(),

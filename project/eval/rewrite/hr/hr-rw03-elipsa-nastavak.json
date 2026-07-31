@@ -1,0 +1,20 @@
+{
+  "case_id": "hr-rw03",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [
+    {
+      "role": "user",
+      "content": "Kakav je status pilota za Jadran?"
+    },
+    {
+      "role": "assistant",
+      "content": "Pilot je u drugom tjednu, opseg je smanjen na dvije lokacije."
+    }
+  ],
+  "question": "A proračun?",
+  "expect": {
+    "question_class": "personal",
+    "query_must_include": ["Jadran"]
+  },
+  "notes": "Elipsa: nastavak od dvije riječi bez vlastitog predmeta. Rewriter mora vratiti predmet iz prethodnih poteza."
+}

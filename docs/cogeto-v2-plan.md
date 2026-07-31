@@ -38,7 +38,7 @@ The original professional-memory product remains the base and is not abandoned; 
 | 3.1 | **Full task removal, backtraced**: **DELIVERED** 2026-07-28 (migration 0035) | P0 | M |
 | 3.2 | **Reminders dropped**: **DELIVERED** 2026-07-28 | P0 | S |
 | 3.3 | **Automatic review resolution + suppressed-fact log**: **DELIVERED** 2026-07-31 (migration 0039) | P0 | M |
-| 3.4 | **Trust-score honesty and eval gates (first wave)** | P0 | M |
+| 3.4 | **Trust-score honesty and eval gates (first wave)**: **DELIVERED** 2026-07-31 (trust-score schema 1.1, no migration) | P0 | M |
 | 3.5 | **i18n foundation (en/hr/de, user-level)** | P1 | M |
 | 3.6 | **Targeted modularization** | P1 | L |
 | 3.7 | **Correctness and hygiene debts from the audit** | P1 | S to M |
@@ -53,7 +53,19 @@ The single undifferentiated bucket is split into six frozen sub-reasons on `memo
 
 Every automatic demotion or non-admission writes a `suppressed_fact_log` entry (fact as extracted, source, exact span, sub-reason, verification detail, timestamp, memory id or NULL when withheld), gated exactly as memories are and queryable by source, reason and date range with counts. It is content-bearing, so it joins the deletion saga over every enumerated source and the receipt counts it under `suppressed_facts_removed`; retention is the life of the source. Confirming a fact survives as a contextual action on the memory drawer, producing `user_approved` with its existing precedence. Contradictions were excluded from this path throughout: they are surfaced per principle 2, and their resolution flow is untouched.
 
-**3.4 Trust-score honesty and eval gates, first wave.** Publish contradiction **precision** (measured 0.857, currently hidden) and the **supersedes** result (currently 0/1 failing) on the trust page; gate both. Introduce **per-language floors** so Croatian cannot hide inside an aggregate (dedup hr 0.833 is under the 0.90 gate today, masked). Raise extraction and verification floors toward the specification's own thresholds or justify each floor explicitly. Document the v1.1.0 precision drop of 3.8 points, which breached the project's own "more than 2 points must be justified" rule. Add **query-rewrite eval cases** (load-bearing, only indirectly covered today). Run **evals on pull requests via cached model responses**, so regressions surface before merge instead of after.
+**3.4 Trust-score honesty and eval gates, first wave.** **DELIVERED 2026-07-31** (trust-score schema 1.1, no migration). The product publishes its own measured accuracy, and it was publishing the flattering subset.
+
+**Published, having been measured all along:** contradiction **precision**, **supersedes accuracy** with its denominator, and **query-rewrite routing accuracy**, per language and aggregate, in an additive schema 1.1 that leaves all thirteen immutable 1.0 files valid. Supersedes was **0 of 1** before this, a rate over a single case that means nothing whether it passes or fails, so nine pair cases were authored covering the ordinary shapes (explicit update with both intervals, correction with no dates, same-day update ordered by capture time, reverse direction, and a trap that must not be read as supersession). Croatian had **no supersedes coverage at all**, so every Croatian supersedes number published to date was empty rather than good. The failing `en-r008` was neither deleted nor weakened: it still fails, and V2.3 fixes the interval arithmetic behind it. The reconciliation harness gained `supersedes_false_positives`, counted in the denominator, because a supersession acted on a `compatible` pair previously scored as nothing at all.
+
+**Per-language floors** (spec §14.3): a language the harness measures and `gates.json` does not name now fails the gate check. Croatian dedup at 0.833 had sat under a 0.90 aggregate gate for eight releases with nothing failing, because nothing looked.
+
+**Gates recalibrated, none lowered.** Every aggregate floor rose (precision 0.70 to 0.78, recall 0.80 to 0.91, verification 0.75 to 0.86, dedup 0.90 to 0.92, contradiction recall 0.70 to 0.83) and three metrics are gated for the first time. Floors are set at the honest current value, defined as the lowest of six live runs, never at a specification target the project is below. Two decision records: [`docs/eval/gate-model.md`](eval/gate-model.md) (the governing rule, every floor with its target and the work that closes each gap) and [`docs/eval/v1-1-0-precision-drop.md`](eval/v1-1-0-precision-drop.md) (the 3.7-point drop that breached the project's own two-point rule and went unrecorded; cause reconstructed as the corpus expansion, stated as a reconstruction because the per-case data was not retained).
+
+**Query-rewrite cases**, 32 across both languages, asserting the routing decision itself in the router's own order. They immediately found two real Croatian defects, published rather than fixed here: relative dates by month name do not resolve at all (the resolver is English-only `chrono-node`), and a Croatian possessive survives reply-target cleaning (`Aninu` instead of `Ana`).
+
+**Evals on pull requests** (spec §14.2): the golden-set suite (extraction, verification, reconciliation, query-rewrite) runs against committed cached fixtures, keyed on the scoring version, the tier and resolved model, the system prompt verbatim and the full rendered input, so a prompt change misses by construction. A miss fails the job naming the refresh command rather than skipping, and it fails even when application code swallowed the error, which `rewriteQuery` does by design. `--emit-json` is refused in replay mode, so a cached run can never become a published trust score. **The chat suite is deliberately NOT cached**: its answer prompt embeds retrieved facts in retrieval order and equally scored facts come back in a different order every run, so identical model responses still build a different prompt and the cache can never hit. Normalising that out of the key would hide real regressions, so the fix is a stable ordering tiebreak in retrieval fusion, recorded as a follow-up; the chat suite keeps running live post-merge.
+
+**Two findings worth carrying forward.** The reconciliation arm is **not deterministic at `temperature: 0`**: it only looked deterministic because it was measured once per release, and six back-to-back runs move English supersedes accuracy between 25% and 75%. And spec §14.4 also requires **anchoring** and **ambiguity handling** to be gated; neither is, which is what "first wave" means. Two follow-ups, both specified precisely in [`docs/eval/website-follow-up.md`](eval/website-follow-up.md): the retrieval ordering tiebreak that would let the chat suite join the cached gate, and the website change (the trust page renders a hardcoded metric list, so it accepts the 1.1 files without breaking and shows the new metrics only after that change).
 
 **3.5 i18n foundation.** User-level language for **English, Croatian, German**, English as the default and fallback. Frontend: a mainstream library (react-i18next or equivalent), all UI strings extracted to key files, a **key-sync check in CI** so a missing or orphaned key fails the build. Translation files for hr and de are created with keys in place; authored translations are not part of this work. Backend: the ~10 files with inline en/hr strings move behind the same key discipline, and system-generated content continues to follow the existing per-user preferred-language rule. Date and number formatting follows the locale (fixing the hardcoded `en-GB` site the audit found). **Stated honestly and prominently:** UI language support is not extraction-quality support. German memory quality is unproven until a German golden corpus exists with its own gates; until then German is a UI language only, and the trust page says so.
 
@@ -197,12 +209,12 @@ The old flat all-memories list is demoted to a **filtered search view** across f
 | Cogeto resolves reviews itself (unsupported/partial automatic) | V2.0: **delivered** | 3.3 |
 | Suppressed-fact log (feeds the report) | V2.0: **delivered** | 3.3 |
 | Contradictions surfaced, not queued in Review | V2.0 principle, V2.3 depth | 2, 6.1 |
-| Enhanced trust score on contradictions, better metrics | V2.0 + V2.3 | 3.4, 6.4 |
-| Contradiction precision gated and published | V2.0 | 3.4 |
-| Supersedes gated | V2.0 | 3.4 |
-| Per-language floors (hr cannot hide in aggregate) | V2.0 | 3.4 |
-| Query-rewrite eval cases | V2.0 | 3.4 |
-| Evals on PRs via cached responses | V2.0 | 3.4 |
+| Enhanced trust score on contradictions, better metrics | V2.0: **delivered**, V2.3 deepens | 3.4, 6.4 |
+| Contradiction precision gated and published | V2.0: **delivered** | 3.4 |
+| Supersedes gated | V2.0: **delivered** | 3.4 |
+| Per-language floors (hr cannot hide in aggregate) | V2.0: **delivered** | 3.4 |
+| Query-rewrite eval cases | V2.0: **delivered** | 3.4 |
+| Evals on PRs via cached responses | V2.0: **delivered** for the golden-set suite; chat suite blocked on a retrieval ordering tiebreak (follow-up) | 3.4 |
 | i18n user-level, en/hr/de, English fallback, keys in sync, library | V2.0 | 3.5 |
 | Modularization / cleaner code / less coupling | V2.0 | 3.6 |
 | `source_type` enum to registry | V2.0 | 3.6 |

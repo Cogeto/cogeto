@@ -59,12 +59,21 @@ golden corpus, and regressions **fail the build** (thresholds in
 key:
 
 ```sh
-MISTRAL_API_KEY=... npm run eval        # extraction + verification + reconciliation
+MISTRAL_API_KEY=... npm run eval        # extraction + verification + reconciliation + query rewriting
 MISTRAL_API_KEY=... npm run eval:chat   # scripted conversations, end to end
+npm run eval:cached                     # golden set against committed fixtures, no key
 ```
 
-Pull requests run a mocked build-only eval path (no key needed, forks work);
-the live gate runs on `main` after merge.
+Pull requests run **`eval:cached`**: the golden-set suite against committed
+model responses in `project/eval/cache/`, so no key is needed and forks work.
+That catches prompt, pipeline and scoring regressions; it does **not** catch
+model-side drift, and it never publishes a number. The chat suite is not cached
+(the reason is in `docs/eval-golden-set.md` §6) and runs live on `main` after
+merge, which remains the authority for the published trust scores.
+
+If you change a prompt, the cache misses by construction and the job fails
+naming the fix: run `npm run eval:cache:refresh` with a key and commit the
+updated fixtures with your change.
 
 **Golden-set contribution rules** (binding; full spec in
 [`docs/eval-golden-set.md`](docs/eval-golden-set.md)):

@@ -60,12 +60,19 @@ release**: on failure it reports loudly with the manual-retry commands. The
 **redacted** configuration is maintainer-run and merged in as a second
 `--partial` (see the schema README).
 
+**Live runs only.** The harnesses refuse `--emit-json` when replaying the
+cached fixtures the pull-request gate uses, so a cached run can never become a
+published trust score. Published numbers always describe the models a customer
+would actually run against.
+
 ## Rules worth restating
 
 - **PR titles are the changelog**: Conventional Commits, because squash-merge
  makes the title the commit on `main`.
 - The `eval-gate` runs live on push to `main`; a release should never be cut
- on a red main.
+ on a red main. On pull requests the same check runs both suites against the
+ committed cached fixtures, which catches prompt, pipeline and scoring
+ regressions before the merge but not model-side drift.
 - The installable set is governed by GitHub release flags:
  the operator script installs the newest non-pre-release by default and
  refuses flagged (retired) or unpublished versions. There is no pinned

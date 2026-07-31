@@ -23,9 +23,10 @@ the schema before it is written.
  (e.g. `mistral-default`, `mistral-default-redacted`): the exact pipeline,
  answer, and embedding models, the redaction flag, corpus sizes per language,
  and the metrics, per language and aggregate, for extraction precision and
- recall, verification agreement, dedup accuracy, and contradiction recall,
- plus the chat-suite pass summary (failing case ids are published, not
- hidden).
+ recall, verification agreement, dedup accuracy, contradiction **precision**
+ and recall, **supersedes accuracy** with its denominator, and **query-rewrite
+ routing accuracy**, plus the chat-suite pass summary (failing case ids are
+ published, not hidden).
 - **`notes[]`**: one-line human explanations for notable changes. This is the
  honesty line: a dip ships with an explanation, never silently.
 
@@ -57,6 +58,17 @@ partial file, and pass it as an additional `--partial`
 (see [`docs/features/models.md`](../features/models.md); provider
 keys are never CI secrets).
 
+## Versions
+
+| Version | Change |
+| --- | --- |
+| **1.1** | Additive (V2.0 item 3.4). Added `contradiction_precision`, `supersedes_accuracy`, `supersedes_pairs` and `rewrite_accuracy` per language and aggregate, plus `rewrite_cases` and per-language `reconcile_pairs` on the corpus. Contradiction precision had been **measured** since the reconciliation suite existed and was simply never emitted, which made the published picture the flattering half of what the harness knew. |
+| 1.0 | Initial published format. |
+
+Every published `1.0` file stays valid and stays published: release files are
+immutable, and the reader accepts the whole `1.x` line. New fields are optional
+in the schema for exactly that reason.
+
 ## Rules
 
 - **Release files are immutable.** The publisher refuses to overwrite an
@@ -65,3 +77,10 @@ keys are never CI secrets).
 - Fractions are `0..1` (the website formats percentages).
 - Configuration `id`s are stable across releases: they are the join key for
  trend lines.
+- **Only live runs are published.** The eval harnesses refuse `--emit-json`
+ when replaying the cached fixtures used by the pull-request gate
+ (`docs/eval-golden-set.md` §6), so a cached run can never become a trust
+ score.
+- **A rate is published with its denominator** where the denominator is small.
+ `supersedes_accuracy` ships beside `supersedes_pairs` because a score over one
+ case means nothing, whether it passes or fails.

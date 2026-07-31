@@ -1,0 +1,14 @@
+{
+  "case_id": "en-rw06",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [],
+  "question": "What has changed since June?",
+  "expect": {
+    "question_class": "personal",
+    "temporal": {
+      "kind": "change_since",
+      "date": "2026-06-01"
+    }
+  },
+  "notes": "Change-since with a relative month start. The window opens at the most recent June, which is this year's."
+}

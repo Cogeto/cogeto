@@ -1,0 +1,21 @@
+{
+  "case_id": "hr-rw02",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [
+    {
+      "role": "user",
+      "content": "Tko je Ana Kovač?"
+    },
+    {
+      "role": "assistant",
+      "content": "Ana Kovač vodi operacije u Jadranu i vaš je glavni kontakt ondje."
+    }
+  ],
+  "question": "Što je ona odlučila o proračunu?",
+  "expect": {
+    "question_class": "personal",
+    "query_must_include": ["Ana"],
+    "entities_must_include": ["Ana"]
+  },
+  "notes": "Razrješenje zamjenice kroz poteze. Hrvatske zamjenice ne ulaze u englesku ANAPHORA_RE, pa se ovaj slučaj oslanja isključivo na model, bez leksičke pomoći."
+}

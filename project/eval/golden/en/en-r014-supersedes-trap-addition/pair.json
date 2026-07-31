@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r014",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "Ana will present the security section at the Northwind review.",
+    "kind": "commitment",
+    "entities": ["Ana", "Northwind"],
+    "subject_entity": "Ana",
+    "captured_at": "2026-07-07T11:00:00.000Z",
+    "source": "Ana is also taking the security section at the Northwind review."
+  },
+  "b": {
+    "content": "Ana will present the roadmap section at the Northwind review.",
+    "kind": "commitment",
+    "entities": ["Ana", "Northwind"],
+    "subject_entity": "Ana",
+    "captured_at": "2026-07-02T11:00:00.000Z",
+    "source": "Ana is presenting the roadmap section at the Northwind review."
+  },
+  "notes": "TRAP: must NOT be read as supersession. Same subject, same occasion, near-identical wording and a later record — every surface signal of an update — but the two commitments ADD UP. Reading a over b would close the interval on a commitment Ana still owes."
+}

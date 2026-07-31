@@ -1,0 +1,20 @@
+{
+  "case_id": "en-rw03",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [
+    {
+      "role": "user",
+      "content": "What is the status of the Northwind pilot?"
+    },
+    {
+      "role": "assistant",
+      "content": "The pilot is in its second week; the scope was cut to two sites."
+    }
+  ],
+  "question": "And the budget?",
+  "expect": {
+    "question_class": "personal",
+    "query_must_include": ["Northwind"]
+  },
+  "notes": "Ellipsis: a three-word follow-up carrying no subject of its own. The rewriter must reattach the subject from the previous turns."
+}

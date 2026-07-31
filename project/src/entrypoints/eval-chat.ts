@@ -38,6 +38,7 @@ import { InMemoryDailyCounters } from '../infrastructure/index';
 import { createModelGateway, loadPrompt, ModelGateway } from '../model-gateway/index';
 import type { ResolvedModelProviders } from '../model-gateway/index';
 import { resolveEvalProviders, requireConfiguredProviders } from './eval-env';
+import { EVAL_SCORING_VERSION, evalCacheModeFromEnv, wrapWithEvalCache } from './eval-cache';
 import { configurationForEmission, emitPartial, TRUST_SCORES_SCHEMA_VERSION } from './trust-scores';
 
 /** The inbound address seeded emails are addressed to (chat reply-intent cases). */
@@ -63,6 +64,7 @@ const EVAL_INBOUND = 'capture@in.localhost';
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const MIGRATIONS_DIR = path.join(REPO_ROOT, 'project', 'src', 'migrations');
 const CASES_DIR = path.join(REPO_ROOT, 'project', 'eval', 'chat');
+const CACHE_DIR = path.join(REPO_ROOT, 'project', 'eval', 'cache');
 const GATES_FILE = path.join(REPO_ROOT, 'project', 'eval', 'gates.json');
 const HISTORY_FILE = path.join(REPO_ROOT, 'docs', 'eval', 'history.md');
 
@@ -390,19 +392,38 @@ async function gradeCoverage(
 
 async function main(): Promise<void> {
   const { providers, redaction } = await resolveEvalProviders(REPO_ROOT);
-  requireConfiguredProviders(providers, 'eval:chat');
-  const gateway = createModelGateway({
-    providers,
-    redaction,
-    // Deterministic sampling for comparable runs: stabilizes
-    // both the answers under test and the coverage grader (where the provider
-    // accepts a temperature — 0040 ruling 1).
-    temperature: 0,
-  });
+  const cacheMode = evalCacheModeFromEnv();
+  // A replay needs no provider at all — that is the point on a fork pull
+  // request, where no secret exists.
+  if (cacheMode !== 'replay') requireConfiguredProviders(providers, 'eval:chat');
+  const { gateway, store: cacheStore } = wrapWithEvalCache(
+    createModelGateway({
+      providers,
+      redaction,
+      // Deterministic sampling for comparable runs: stabilizes
+      // both the answers under test and the coverage grader (where the provider
+      // accepts a temperature — 0040 ruling 1).
+      temperature: 0,
+    }),
+    { mode: cacheMode, dir: CACHE_DIR, providers },
+  );
+  if (cacheMode === 'replay') {
+    console.log(
+      'CACHED REPLAY: catches prompt, pipeline and scoring regressions. It does NOT catch ' +
+        'model-side drift, and it is never published as a trust score.',
+    );
+  } else if (cacheMode === 'record') {
+    console.log(`RECORDING eval cache → ${path.relative(REPO_ROOT, CACHE_DIR)}`);
+  }
   // Grader override (0040 ruling 3): a separate gateway ONLY for gradeCoverage.
+  // Cached through the SAME store: the grader's judgment is part of what a
+  // cached run must reproduce.
   const graderProviders = graderProvidersFrom(providers);
   const graderGateway = graderProviders
-    ? createModelGateway({ providers: graderProviders, redaction, temperature: 0 })
+    ? wrapWithEvalCache(
+        createModelGateway({ providers: graderProviders, redaction, temperature: 0 }),
+        { mode: cacheMode, dir: CACHE_DIR, providers: graderProviders, store: cacheStore },
+      ).gateway
     : gateway;
   if (graderProviders) {
     console.log(
@@ -1024,10 +1045,32 @@ async function main(): Promise<void> {
   console.log(table);
   console.log('==================================================\n');
 
-  await mkdir(path.dirname(HISTORY_FILE), { recursive: true });
-  const stamp = new Date().toISOString().slice(0, 10);
-  await appendFile(HISTORY_FILE, `\n## ${stamp}, chat eval (${versions})\n\n${table}\n`, 'utf8');
-  console.log(`appended to ${path.relative(REPO_ROOT, HISTORY_FILE)}`);
+  // The history file records MEASURED runs only; a cached replay measures the
+  // harness, not the models (V2.0 item 3.4).
+  if (cacheMode === 'replay') {
+    console.log('cached replay: docs/eval/history.md not touched (it records live measurements)');
+  } else {
+    await mkdir(path.dirname(HISTORY_FILE), { recursive: true });
+    const stamp = new Date().toISOString().slice(0, 10);
+    await appendFile(HISTORY_FILE, `\n## ${stamp}, chat eval (${versions})\n\n${table}\n`, 'utf8');
+    console.log(`appended to ${path.relative(REPO_ROOT, HISTORY_FILE)}`);
+  }
+
+  if (cacheMode === 'record' && cacheStore) {
+    cacheStore.flush({
+      scoring_version: EVAL_SCORING_VERSION,
+      configuration_id: providers.id,
+      models: {
+        pipeline: providers.tiers.pipeline.model,
+        answer: providers.tiers.answer.model,
+        embedding: providers.tiers.embedding.model,
+      },
+      recorded_at: new Date().toISOString(),
+    });
+    console.log(
+      `eval cache recorded: ${cacheStore.sizes.text} responses + ${cacheStore.sizes.embeddings} embeddings → ${path.relative(REPO_ROOT, CACHE_DIR)}`,
+    );
+  }
 
   // Trust-score emission (O7): --emit-json <path> merges the
   // chat summary into the partial `npm run eval -- --emit-json` started (order
@@ -1040,6 +1083,14 @@ async function main(): Promise<void> {
     process.exit(2);
   }
   if (emitPath) {
+    // A cached replay must never become a published trust score (V2.0 3.4).
+    if (cacheMode === 'replay') {
+      console.error(
+        'refusing --emit-json under COGETO_EVAL_CACHE=replay: trust scores are published ' +
+          'from LIVE runs only. Re-run without the cache to emit.',
+      );
+      process.exit(2);
+    }
     // The ACTIVE configuration, from the same resolver the gateway was built
     // with — id and models are exact by construction.
     const { id, models } = configurationForEmission(providers);
@@ -1070,6 +1121,17 @@ async function main(): Promise<void> {
   // (per-case binary coverage flaked on judge noise). Per-case pass/fail is
   // still computed, printed, and published unchanged — only the CI verdict
   // arithmetic differs. Same switch as the golden-set gates.
+  // A replay miss FAILS the run even when the caller swallowed the error
+  // (`rewriteQuery` catches everything by design, so a missed rewrite would
+  // otherwise degrade the run silently instead of failing it).
+  if (cacheMode === 'replay' && cacheStore && cacheStore.misses > 0) {
+    console.error(
+      `eval cache: ${cacheStore.misses} MISS(ES). The fixtures do not cover this code. ` +
+        `Refresh them with: npm run eval:cache:refresh`,
+    );
+    process.exitCode = 1;
+  }
+
   if (process.env.COGETO_EVAL_GATE === '1') {
     const { chat_gates: chatGates } = z
       .object({ chat_gates: z.object({ mean_coverage: z.number().min(0).max(1) }) })

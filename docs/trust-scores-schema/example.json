@@ -1,9 +1,9 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "generated_by": {
     "release": "v9.9.9",
     "commit": "0123456789abcdef0123456789abcdef01234567",
-    "harness": "extraction/v0002 + verification/v0004 · reconcile_dedup/v0001 + reconcile_contradiction/v0001 · thresholds v1 · chat answer/v0004 + eval-coverage/v0001",
+    "harness": "extraction/v0004 + verification/v0006 · reconcile_dedup/v0001 + reconcile_contradiction/v0001 · query_rewrite/v0006 · thresholds v1 · chat answer/v0007 + eval-coverage/v0001",
     "generated_at": "2026-01-01T12:00:00.000Z",
     "backfilled": false
   },
@@ -21,9 +21,20 @@
         "reconcile_pairs": 20,
         "chat_cases": 12,
         "per_language": [
-          { "language": "en", "golden_cases": 32 },
-          { "language": "hr", "golden_cases": 20 }
-        ]
+          {
+            "language": "en",
+            "golden_cases": 32,
+            "reconcile_pairs": 10,
+            "rewrite_cases": 16
+          },
+          {
+            "language": "hr",
+            "golden_cases": 20,
+            "reconcile_pairs": 10,
+            "rewrite_cases": 16
+          }
+        ],
+        "rewrite_cases": 32
       },
       "metrics": {
         "per_language": [
@@ -34,7 +45,13 @@
             "extraction_recall": 0.909,
             "verification_agreement": 0.935,
             "dedup_accuracy": 1.0,
-            "contradiction_recall": 1.0
+            "contradiction_recall": 1.0,
+            "contradiction_precision": 0.75,
+            "supersedes_accuracy": 0.6,
+            "supersedes_pairs": 5,
+            "rewrite_accuracy": 0.875,
+            "reconcile_pairs": 10,
+            "rewrite_cases": 16
           },
           {
             "language": "hr",
@@ -43,7 +60,13 @@
             "extraction_recall": 0.833,
             "verification_agreement": 0.842,
             "dedup_accuracy": 0.833,
-            "contradiction_recall": 1.0
+            "contradiction_recall": 1.0,
+            "contradiction_precision": 1.0,
+            "supersedes_accuracy": 0.4,
+            "supersedes_pairs": 5,
+            "rewrite_accuracy": 0.75,
+            "reconcile_pairs": 10,
+            "rewrite_cases": 16
           }
         ],
         "aggregate": {
@@ -51,9 +74,17 @@
           "extraction_recall": 0.878,
           "verification_agreement": 0.9,
           "dedup_accuracy": 0.929,
-          "contradiction_recall": 1.0
+          "contradiction_recall": 1.0,
+          "contradiction_precision": 0.857,
+          "supersedes_accuracy": 0.5,
+          "supersedes_pairs": 10,
+          "rewrite_accuracy": 0.812
         },
-        "chat": { "cases": 12, "passed": 12, "failed": [] }
+        "chat": {
+          "cases": 12,
+          "passed": 12,
+          "failed": []
+        }
       }
     },
     {
@@ -69,9 +100,20 @@
         "reconcile_pairs": 20,
         "chat_cases": 12,
         "per_language": [
-          { "language": "en", "golden_cases": 32 },
-          { "language": "hr", "golden_cases": 20 }
-        ]
+          {
+            "language": "en",
+            "golden_cases": 32,
+            "reconcile_pairs": 10,
+            "rewrite_cases": 16
+          },
+          {
+            "language": "hr",
+            "golden_cases": 20,
+            "reconcile_pairs": 10,
+            "rewrite_cases": 16
+          }
+        ],
+        "rewrite_cases": 32
       },
       "metrics": {
         "per_language": [
@@ -82,7 +124,13 @@
             "extraction_recall": 0.87,
             "verification_agreement": 0.9,
             "dedup_accuracy": 0.929,
-            "contradiction_recall": 1.0
+            "contradiction_recall": 1.0,
+            "contradiction_precision": 0.75,
+            "supersedes_accuracy": 0.6,
+            "supersedes_pairs": 5,
+            "rewrite_accuracy": 0.875,
+            "reconcile_pairs": 10,
+            "rewrite_cases": 16
           },
           {
             "language": "hr",
@@ -91,7 +139,13 @@
             "extraction_recall": 0.8,
             "verification_agreement": 0.82,
             "dedup_accuracy": 0.833,
-            "contradiction_recall": 1.0
+            "contradiction_recall": 1.0,
+            "contradiction_precision": 1.0,
+            "supersedes_accuracy": 0.4,
+            "supersedes_pairs": 5,
+            "rewrite_accuracy": 0.75,
+            "reconcile_pairs": 10,
+            "rewrite_cases": 16
           }
         ],
         "aggregate": {
@@ -99,9 +153,19 @@
           "extraction_recall": 0.845,
           "verification_agreement": 0.87,
           "dedup_accuracy": 0.9,
-          "contradiction_recall": 1.0
+          "contradiction_recall": 1.0,
+          "contradiction_precision": 0.857,
+          "supersedes_accuracy": 0.5,
+          "supersedes_pairs": 10,
+          "rewrite_accuracy": 0.812
         },
-        "chat": { "cases": 12, "passed": 11, "failed": ["who_is_ana"] }
+        "chat": {
+          "cases": 12,
+          "passed": 11,
+          "failed": [
+            "who_is_ana"
+          ]
+        }
       }
     }
   ],

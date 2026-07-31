@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r011",
+  "task": "contradiction",
+  "expected": "supersedes_a_over_b",
+  "a": {
+    "content": "Marta's day rate is 780 EUR.",
+    "kind": "fact",
+    "entities": ["Marta"],
+    "subject_entity": "Marta",
+    "captured_at": "2026-07-04T16:20:00.000Z",
+    "source": "Correction on my earlier note: Marta's day rate is 780 EUR, I typed the wrong figure."
+  },
+  "b": {
+    "content": "Marta's day rate is 720 EUR.",
+    "kind": "fact",
+    "entities": ["Marta"],
+    "subject_entity": "Marta",
+    "captured_at": "2026-07-02T10:05:00.000Z",
+    "source": "Marta's day rate is 720 EUR."
+  },
+  "notes": "Correction with NO explicit dates on either record: the only ordering signal is capture time, and the newer record announces itself as a correction of the earlier one. Direction a over b."
+}

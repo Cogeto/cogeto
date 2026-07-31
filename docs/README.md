@@ -52,8 +52,11 @@ and why it was built that way.
 | --- | --- |
 | [`engineering-workflow.md`](engineering-workflow.md) | The delivery loop: issues, branches, Conventional-Commit PRs, the five required checks, squash-merge. The outsider's version is [`CONTRIBUTING.md`](../CONTRIBUTING.md). |
 | [`glossary.md`](glossary.md) | The ubiquitous language. Names in code must match it. |
-| [`eval-golden-set.md`](eval-golden-set.md) | Corpus format, labeling rules, metrics, CI gates. |
+| [`eval-golden-set.md`](eval-golden-set.md) | Corpus format, labeling rules, metrics, CI gates, cached evals on pull requests. |
 | [`eval/history.md`](eval/history.md) | The measured quality record. |
+| [`eval/gate-model.md`](eval/gate-model.md) | Why every gate sits where it sits: the floor, the specification target, the gap, and the work that closes it. |
+| [`eval/v1-1-0-precision-drop.md`](eval/v1-1-0-precision-drop.md) | The one time a metric fell more than two points and no record was written. Written late. |
+| [`eval/website-follow-up.md`](eval/website-follow-up.md) | Follow-ups from the trust-honesty work: the retrieval tiebreak that would let the chat suite join the cached gate, and exactly what the website must add to render the new metrics. |
 | [`research/`](research/) | Anonymized engineering patterns from studied production systems. **Required reading** before implementing memory, ingestion, retrieval, agents, or pipeline code. |
 | [`design/`](design/) | The SPA's design system: palette, status vocabulary, component kit, accessibility. |
 

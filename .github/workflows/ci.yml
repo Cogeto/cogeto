@@ -101,13 +101,18 @@ jobs:
   # Prompt, model, or pipeline changes that regress the golden set fail the
   # build. Secret-gated behaviour is preserved:
   #
-  #   • Pull requests (including from forks): the MOCKED path only — build the
-  #     eval harness + prompt wiring WITHOUT the live key. No secret is read, so
-  #     fork PRs run cleanly and the API key never touches a PR branch. This job
-  #     always concludes, which is required for it to be a required status check.
+  #   • Pull requests (including from forks): the CACHED path — both suites run
+  #     against committed fixtures recorded from a live run
+  #     (project/eval/cache/, V2.0 item 3.4). No secret is read, so fork PRs run
+  #     cleanly and the API key never touches a PR branch. This job always
+  #     concludes, which is required for it to be a required status check.
+  #     A cached run catches prompt, pipeline and scoring regressions. It does
+  #     NOT catch model-side drift, and it is never published as a trust score:
+  #     the harness refuses --emit-json in replay mode.
   #   • Push to main (post-merge): the LIVE golden-set gate runs with the key.
-  #     If the secret is somehow absent it SKIPS LOUDLY (a warning annotation)
-  #     rather than failing silently.
+  #     It remains the authority for the published numbers. If the secret is
+  #     somehow absent it SKIPS LOUDLY (a warning annotation) rather than
+  #     failing silently.
   #
   # Thresholds live in project/eval/gates.json (ratchet UP only; lowering a gate
   # needs a decision record).
@@ -134,9 +139,28 @@ jobs:
       - name: Install
         run: npm ci
 
-      # PR mocked path: compile the eval harness + prompt wiring + shared DTOs
-      # without the live key, so a broken eval/build still fails a PR fast.
-      - name: Mocked path — build only (pull requests)
+      # ── PR cached path (V2.0 item 3.4) ───────────────────────────────────
+      # Both suites, gated, against the committed fixtures. A case with no
+      # recorded response FAILS naming the refresh command: a partial run
+      # reported as green is the false green this exists to prevent.
+      #
+      # The chat suite starts real containers via Testcontainers; the
+      # ubuntu-latest runner ships a working Docker engine.
+      - name: Cached eval gate (pull requests, no secrets)
+        if: github.event_name == 'pull_request'
+        env:
+          COGETO_EVAL_CACHE: replay
+          COGETO_EVAL_GATE: '1'
+        run: |
+          echo "::notice title=cached eval::Extraction, verification, reconciliation and query-rewrite run against committed fixtures (project/eval/cache). This catches prompt, pipeline and scoring regressions. It does NOT catch model-side drift, and it never publishes a trust score: the LIVE post-merge gate remains the authority for the published numbers."
+          echo "::notice title=chat suite NOT cached::The chat suite runs LIVE post-merge only. Its answer prompt embeds the retrieved facts in retrieval order, and equally scored facts come back in a different order on every run, so the same model responses produce a different prompt and the cache can never hit. docs/eval-golden-set.md §6 records the evidence and the fix that unblocks it."
+          npm run build -w @cogeto/shared -w @cogeto/server
+          node project/src/dist/entrypoints/eval.js
+
+      # The frontend build is not covered by the harness above and used to be
+      # this job's only PR work; the `build` check owns it, and it stays here so
+      # a broken web build still fails eval-gate fast.
+      - name: Build (pull requests)
         if: github.event_name == 'pull_request'
         run: npm run build
 

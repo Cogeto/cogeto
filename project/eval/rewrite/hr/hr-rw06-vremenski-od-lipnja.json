@@ -1,0 +1,14 @@
+{
+  "case_id": "hr-rw06",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [],
+  "question": "Što se promijenilo od lipnja?",
+  "expect": {
+    "question_class": "personal",
+    "temporal": {
+      "kind": "change_since",
+      "date": "2026-06-01"
+    }
+  },
+  "notes": "Prozor promjene s hrvatskim nazivom mjeseca. Isti par kao hr-rw05: signal se prepoznaje, datum se mora razriješiti."
+}

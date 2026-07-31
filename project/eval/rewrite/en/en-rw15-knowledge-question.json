@@ -1,0 +1,10 @@
+{
+  "case_id": "en-rw15",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [],
+  "question": "What is the EU AI Act?",
+  "expect": {
+    "question_class": "knowledge"
+  },
+  "notes": "A question about the wider world. Memory still retrieves and grounds first; the class decides whether marked general knowledge is permitted and whether the research offer rides along."
+}

@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r010",
+  "task": "contradiction",
+  "expected": "supersedes_a_over_b",
+  "a": {
+    "content": "Dnevna stopa za Martu iznosi 780 eura.",
+    "kind": "fact",
+    "entities": ["Marta"],
+    "subject_entity": "Marta",
+    "captured_at": "2026-07-04T16:20:00.000Z",
+    "source": "Ispravak prethodne bilješke: dnevna stopa za Martu je 780 eura, krivo sam upisao."
+  },
+  "b": {
+    "content": "Dnevna stopa za Martu iznosi 720 eura.",
+    "kind": "fact",
+    "entities": ["Marta"],
+    "subject_entity": "Marta",
+    "captured_at": "2026-07-02T10:05:00.000Z",
+    "source": "Dnevna stopa za Martu je 720 eura."
+  },
+  "notes": "Ispravak BEZ ijednog izričitog datuma: jedini signal poretka je vrijeme zapisa, a noviji zapis se sam predstavlja kao ispravak starijeg. Smjer a nad b."
+}

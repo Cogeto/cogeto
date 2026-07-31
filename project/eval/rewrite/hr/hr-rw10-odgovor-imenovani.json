@@ -1,0 +1,13 @@
+{
+  "case_id": "hr-rw10",
+  "now": "2026-07-01T09:00:00.000Z",
+  "history": [],
+  "question": "Napiši odgovor na Aninu e-poruku",
+  "expect": {
+    "question_class": "personal",
+    "email_reply": {
+      "target": "Ana"
+    }
+  },
+  "notes": "Nacrt odgovora s imenovanim pošiljateljem. Meta je ono što razrješivač traži u pretincu, pa posvojni pridjev `Aninu` mora doći do imena `Ana`."
+}
