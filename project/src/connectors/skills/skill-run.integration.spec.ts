@@ -3,7 +3,7 @@ import { runOnce } from 'graphile-worker';
 import type { TaskList } from 'graphile-worker';
 import type { ZodType } from 'zod';
 import type { Principal, SkillStepLinks } from '@cogeto/shared';
-import { DailyCounters, idempotentTask } from '../../infrastructure/index';
+import { DailyCounters, InMemoryDailyCounters, idempotentTask } from '../../infrastructure/index';
 import type { ResearchQuota } from '../../infrastructure/index';
 import { fakeEmbedding, settleJobs, startTestDatabase, startTestQdrant } from '../../testing/index';
 import type { TestDatabase, TestQdrant } from '../../testing/index';
@@ -288,7 +288,7 @@ describe('skill runtime (integration: real Postgres + Qdrant, scripted gateway +
     await store.ensureIndexReady();
     gateway = new SkillGateway();
     sentQueries = [];
-    research = buildResearch(new DailyCounters(), quota);
+    research = buildResearch(new InMemoryDailyCounters(), quota);
     runs = new SkillRunService(tdb.db);
     engine = new SkillEngine(tdb.db, runs, research, gateway, store, quota);
     planner = new SkillPlanner(stubRetrieval(), research, runs, gateway);
@@ -445,7 +445,7 @@ describe('skill runtime (integration: real Postgres + Qdrant, scripted gateway +
   it('budget_caps_run: hitting the daily search budget completes the run gracefully with partial results and an honest note', async () => {
     sentQueries = [];
     const tightQuota: ResearchQuota = { ...quota, searchesMax: 1 };
-    const tightResearch = buildResearch(new DailyCounters(), tightQuota);
+    const tightResearch = buildResearch(new InMemoryDailyCounters(), tightQuota);
     const tightEngine = new SkillEngine(tdb.db, runs, tightResearch, gateway, store, tightQuota);
     const tightPlanner = new SkillPlanner(stubRetrieval(), tightResearch, runs, gateway);
 

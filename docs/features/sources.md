@@ -129,7 +129,9 @@ only a metadata-only refusal row with sender, time, and reason.
 
 **Full retention is deliberate.** Every accepted message is stored complete: parsed
 headers, plain-text body, sanitised HTML, attachments, and the raw original in the
-encrypted bucket. Extraction is one *consumer* of the message, not the point of storage;
+encrypted bucket. The display HTML is sanitised by an HTML **parser** against an
+explicit allowlist, and the drawer renders it inside a sandboxed frame that cannot
+execute script or reach the session; the raw original is kept byte-exact regardless. Extraction is one *consumer* of the message, not the point of storage;
 retaining the whole thing lets later features derive more value without asking the user
 to forward again. The corpus respects scope and sensitivity like any source, and carries
 the same deletion and export guarantees.

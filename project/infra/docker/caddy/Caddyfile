@@ -25,6 +25,20 @@ localhost {
 
 	# The Cogeto API (app process).
 	handle /api/* {
+		# Security headers on API responses too (audit 2.0 SEC-28). They used to
+		# sit only inside the SPA `handle` block, so a JSON error body could be
+		# content-sniffed or framed. The policy here is deliberately STRICTER
+		# than the SPA's: an API response is data, never a document, so it needs
+		# no script, style, image or connect source at all.
+		header {
+			Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; sandbox"
+			X-Content-Type-Options "nosniff"
+			Referrer-Policy "no-referrer"
+			X-Frame-Options "DENY"
+			# Same short dev-edge HSTS as the SPA block below, and for the same
+			# reason: a long policy pinned from a localhost run is sticky.
+			Strict-Transport-Security "max-age=300"
+		}
 		reverse_proxy app:3000
 	}
 

@@ -3,7 +3,7 @@ import { runOnce } from 'graphile-worker';
 import type { TaskList } from 'graphile-worker';
 import type { ZodType } from 'zod';
 import type { Principal } from '@cogeto/shared';
-import { DailyCounters, idempotentTask } from '../infrastructure/index';
+import { InMemoryDailyCounters, idempotentTask } from '../infrastructure/index';
 import { fakeEmbedding, settleJobs, startTestDatabase, startTestQdrant } from '../testing/index';
 import type { TestDatabase, TestQdrant } from '../testing/index';
 import { createMemoryStore, MemoryReconciliation } from '../memory/index';
@@ -159,7 +159,7 @@ describe('research flow (integration: real Postgres + Qdrant, scripted gateway +
       discovery,
       fetcher,
       objects,
-      new DailyCounters(),
+      new InMemoryDailyCounters(),
       { searchesMax: 100, pagesMax: 100, pagesPerRunMax: 5 },
       options,
       gateway,

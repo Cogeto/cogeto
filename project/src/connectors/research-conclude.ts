@@ -67,6 +67,9 @@ export class ResearchConclusionService {
       {
         type: RESEARCH_CONCLUDE_JOB_TYPE,
         payload: { source_type: 'research_run', source_id: runId },
+        // SEC-10: the conclusion's synthesis is model work; charge the run's
+        // owner explicitly rather than relying on the enclosing scope.
+        principalId: run.ownerId,
       },
     );
     this.log.log(`research run ${runId}: all pages settled, conclusion enqueued`);
@@ -109,6 +112,8 @@ export class ResearchConclusionService {
       {
         type: SKILL_ADVANCE_JOB_TYPE,
         payload: { source_type: 'skill_run', source_id: skillRunId },
+        // SEC-10: the advance pass drives brief synthesis; charge the owner.
+        principalId: planRuns[0]!.ownerId,
       },
     );
     this.log.log(`skill run ${skillRunId}: all pages settled, advance enqueued`);

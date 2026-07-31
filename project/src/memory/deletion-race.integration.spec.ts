@@ -6,7 +6,7 @@ import { runOnce } from 'graphile-worker';
 import type { TaskList } from 'graphile-worker';
 import type { ZodType } from 'zod';
 import type { Principal } from '@cogeto/shared';
-import { ensureInstanceKeys, idempotentTask, DailyCounters } from '../infrastructure/index';
+import { ensureInstanceKeys, idempotentTask, InMemoryDailyCounters } from '../infrastructure/index';
 import {
   fakeEmbedding,
   startTestDatabase,
@@ -151,7 +151,7 @@ describe(' delete-vs-ingestion race (integration: real Postgres + Qdrant, real s
     });
     await vectors.ensureCollection();
     store = new MemoryStore(tdb.db, vectors);
-    notes = new NotesService(tdb.db, new DailyCounters(), {
+    notes = new NotesService(tdb.db, new InMemoryDailyCounters(), {
       captureMax: 1_000_000,
       uploadMax: 1_000_000,
     });

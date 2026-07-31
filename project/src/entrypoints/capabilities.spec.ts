@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createServer } from 'node:net';
+import type { AddressInfo } from 'node:net';
 import type { IntegrityStatus, IntegritySweep } from '../memory/index';
 import type { DreamRunStatus } from '../ingestion/index';
 import type { ResolvedModelProviders } from '../model-gateway/index';
@@ -55,6 +57,8 @@ function config(overrides: Partial<CogetoConfig> = {}): CogetoConfig {
     composeProfiles: [],
     researchEnabled: false,
     consolesEnabled: false,
+    mailEnabled: false,
+    mailSmtpAddress: 'mail:2525',
     searxngUrl: 'http://searxng:8080',
     demoMode: false,
     production: false,
@@ -128,7 +132,7 @@ describe('registry_states', () => {
   it('everything off on a bare default configuration — and nothing is probed', async () => {
     const calls = stubFetch(() => ({ status: 200 }));
     const snapshot = await service(config()).snapshot(NOW);
-    for (const id of ['redaction', 'research', 'demo', 'consoles', 'local-models']) {
+    for (const id of ['redaction', 'research', 'mail', 'demo', 'consoles', 'local-models']) {
       expect(byId(snapshot, id).state).toBe('off');
     }
     expect(calls).toEqual([]); // disabled capabilities are never probed
@@ -171,6 +175,36 @@ describe('registry_states', () => {
     const research = byId(snapshot, 'research');
     expect(research.state).toBe('unreachable');
     expect(research.error).toContain('COGETO_SEARXNG_URL');
+  });
+
+  it('mail: off by default (SEC-14) — enabled via the profile or the flag, and then probed for real', async () => {
+    // The whole point of the finding: an instance that does not use email
+    // capture must run NO inbound SMTP listener, so `off` is the default and
+    // nothing is probed in that state.
+    stubFetch(() => ({ status: 200 }));
+    expect(byId(await service(config()).snapshot(NOW), 'mail')).toMatchObject({
+      state: 'off',
+      probed: false,
+    });
+
+    // Enabled and the listener answers → on, probed for real (a TCP connect,
+    // not an HTTP probe: Haraka speaks SMTP).
+    const server = createServer();
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as AddressInfo).port;
+    const live = await service(
+      config({ composeProfiles: ['mail'], mailSmtpAddress: `127.0.0.1:${port}` }),
+    ).snapshot(NOW);
+    expect(byId(live, 'mail')).toMatchObject({ state: 'on', probed: true });
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+
+    // Enabled but nothing listening → LOUD, not silently off: forwarded mail
+    // would be dropped on the floor.
+    const dead = await service(
+      config({ mailEnabled: true, mailSmtpAddress: `127.0.0.1:${port}` }),
+    ).snapshot(NOW);
+    expect(byId(dead, 'mail').state).toBe('unreachable');
+    expect(byId(dead, 'mail').error).toMatch(/not being received/);
   });
 
   it('demo: on when allowed; LOUD when the production guard blocks it', async () => {

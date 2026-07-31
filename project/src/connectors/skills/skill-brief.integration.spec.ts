@@ -3,7 +3,11 @@ import { runOnce } from 'graphile-worker';
 import type { TaskList } from 'graphile-worker';
 import type { ZodType } from 'zod';
 import type { Principal, ResearchCitationDto, SkillStepLinks } from '@cogeto/shared';
-import { DailyCounters, EMPTY_USER_CONTEXT, idempotentTask } from '../../infrastructure/index';
+import {
+  InMemoryDailyCounters,
+  EMPTY_USER_CONTEXT,
+  idempotentTask,
+} from '../../infrastructure/index';
 import type { ResearchQuota, UserContextService } from '../../infrastructure/index';
 import { fakeEmbedding, settleJobs, startTestDatabase, startTestQdrant } from '../../testing/index';
 import type { TestDatabase, TestQdrant } from '../../testing/index';
@@ -190,7 +194,7 @@ describe('research-brief skill: the brief (integration)', () => {
       discovery,
       fetcher,
       objects,
-      new DailyCounters(),
+      new InMemoryDailyCounters(),
       quota,
       options,
       gateway,

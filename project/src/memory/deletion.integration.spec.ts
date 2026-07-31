@@ -10,7 +10,7 @@ import {
   ensureInstanceKeys,
   idempotentTask,
   loadInstancePublicKey,
-  DailyCounters,
+  InMemoryDailyCounters,
 } from '../infrastructure/index';
 import {
   fakeEmbedding,
@@ -82,7 +82,7 @@ describe('deletion saga (integration: real Postgres + Qdrant + MinIO)', () => {
     await objects.setBucketEncryption();
 
     store = new MemoryStore(tdb.db, vectors);
-    notes = new NotesService(tdb.db, new DailyCounters(), {
+    notes = new NotesService(tdb.db, new InMemoryDailyCounters(), {
       captureMax: 1_000_000,
       uploadMax: 1_000_000,
     });

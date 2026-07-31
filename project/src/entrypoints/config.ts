@@ -113,6 +113,8 @@ const configSchema = z
       ),
     /** Explicit research enablement for `--profile research` dev runs. */
     researchEnabled: envBool,
+    /** Explicit inbound-mail enablement for `--profile mail` dev runs (SEC-14). */
+    mailEnabled: envBool,
     /** Explicit consoles enablement for `--profile consoles` dev runs. */
     consolesEnabled: envBool,
     /**
@@ -272,6 +274,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
     searxngUrl: env.COGETO_SEARXNG_URL || undefined,
     composeProfiles: env.COGETO_COMPOSE_PROFILES,
     researchEnabled: env.COGETO_RESEARCH_ENABLED,
+    mailEnabled: env.COGETO_MAIL_ENABLED,
     consolesEnabled: env.COGETO_CONSOLES_ENABLED,
     jobsOverdueHours: env.COGETO_JOBS_OVERDUE_HOURS || undefined,
     researchResultCap: env.COGETO_RESEARCH_RESULT_CAP || undefined,

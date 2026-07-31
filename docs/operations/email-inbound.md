@@ -15,7 +15,10 @@ DNS/MX requirements to hand to O6 provisioning.
 ## What ships in this unit (Unit A)
 
 - A `mail` container (Haraka) in `docker compose`: receive-only, listens on
- container port `2525`, host port `25` mapped to it.
+ container port `2525`, host port `25` mapped to it. **Behind the `mail`
+ compose profile since security audit 2.0 (SEC-14): it is OFF by default**, so
+ an instance that does not use email capture runs no internet-facing SMTP
+ listener at all. See "Turning it on" below.
 - An internal authenticated intake endpoint `POST /api/email/intake` (shared
  secret; never public).
 - Full retention: the raw RFC822 + parsed headers + text/HTML bodies + all
@@ -31,12 +34,45 @@ guidance shown next to the address.
 
 ---
 
-## Local test-send (no real DNS)
+## Turning it on
 
-Bring the stack up (the mail service builds and starts with everything else):
+Inbound mail is an opt-in capability, like `research` and `redaction`. Nothing
+about the feature changed; what changed is that a stack without it started runs
+no listener and opens no port.
+
+**Dev / source checkout**: activate the profile.
 
 ```sh
-docker compose up --build
+COMPOSE_PROFILES=mail docker compose up --build
+```
+
+(Or put `COMPOSE_PROFILES=mail` in `.env`. A one-off `--profile mail` run works
+too, but CLI profile flags are invisible to the container, so also set
+`COGETO_MAIL_ENABLED=1` if you want the capability panel to report it honestly.)
+
+**Customer instance**: the operator script.
+
+```sh
+sudo cogeto features enable mail    # starts the listener, opens 25/tcp, prints the MX/PTR steps
+sudo cogeto features disable mail   # stops it and closes the port again
+```
+
+With the capability off, **System → Capabilities** shows `Email capture: off`
+and the `mail` health check reports "inbound mail capability is off" and stays
+green. A mail-less instance is not a degraded one.
+
+An upgrade carries an instance that was **already** receiving email forward as
+enabled: the script detects the existing mail container and sets the profile
+itself, saying so. Nothing changes for that customer.
+
+---
+
+## Local test-send (no real DNS)
+
+Bring the stack up with the mail profile active:
+
+```sh
+COMPOSE_PROFILES=mail docker compose up --build
 ```
 
 Wait until the app is healthy and you can log in at `https://localhost`. Then,
@@ -70,7 +106,8 @@ If host port 25 is taken locally, set `COGETO_MAIL_HOST_PORT=2525` before
 
 ## Owner verification checklist
 
-- [ ] `docker compose up` reaches the login page on a fresh clone.
+- [ ] `docker compose up` reaches the login page on a fresh clone (email
+ capture needs `COMPOSE_PROFILES=mail`).
 - [ ] The dashboard **System** panel shows the **mail** check green (the Haraka
  SMTP listener is reachable).
 - [ ] **Settings → Email capture** shows the inbound address and an empty
@@ -120,9 +157,11 @@ real mail at a tenant's box, O6 must configure, per instance:
  The website already obtains a Let's Encrypt cert for the app; O6 reuses that
  ACME setup to cover `mail.<instance>` / `in.<instance>`.
 
-5. **Firewall.** Open inbound TCP **25** to the instance. Note some cloud
- providers block outbound 25 by default, irrelevant here (receive-only), but
- inbound 25 must be reachable.
+5. **Firewall.** Open inbound TCP **25** to the instance. `cogeto features
+ enable mail` does this in `ufw` for you, but a cloud-provider network
+ firewall is a separate, manual step. Note some cloud providers block
+ outbound 25 by default, irrelevant here (receive-only), but inbound 25 must
+ be reachable.
 
 6. **Per-instance secrets** the provisioning step must generate and set on
  **both** the app and the `mail` service so they agree:

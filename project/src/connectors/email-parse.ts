@@ -1,3 +1,5 @@
+import createDOMPurify from 'dompurify';
+import { JSDOM } from 'jsdom';
 import type { EmailAllowlistKind } from '@cogeto/shared';
 
 /**
@@ -89,27 +91,188 @@ export function matchSender(
 }
 
 /**
- * A conservative, dependency-free HTML sanitizer for the RETAINED/display HTML
- * drops executable and remote-active constructs
- * (<script>/<style>/<iframe>/<object>/<embed>/<link>/<meta>), inline event
- * handlers (on*), and javascript:/vbscript: URLs. The HTML is stored for display
- * and future use, never rendered as active content in v1. This is defense in
- * depth for retention, not a full XSS sanitizer.
+ * Parser-based allowlist sanitizer for RETAINED/display HTML (security audit
+ * 2.0 SEC-7).
+ *
+ * This used to be five regexes over the raw markup, and the audit demonstrated
+ * two working bypasses against them:
+ *
+ *   `<img/src=x/onerror=alert(1)>`  — the handler strip required WHITESPACE
+ *      before `on`, but HTML's before-attribute-name state accepts `/` as a
+ *      separator just as happily.
+ *   `href="javas&#99;ript:alert(1)"` — the scheme neutralizer matched the
+ *      literal text, and the browser decodes the entity afterwards.
+ *
+ * Both are the same class of mistake: a regex reasons about the bytes, and the
+ * browser reasons about the parse tree. So the regex path is REMOVED, not
+ * patched. The markup is now parsed with the same tree construction a browser
+ * uses (jsdom/parse5) and rebuilt from an allowlist by DOMPurify, which decides
+ * on the parsed node — an attribute named `onerror` is dropped because it IS an
+ * `onerror` attribute, however it was written, and an `href` is dropped because
+ * its DECODED scheme is not allowed.
+ *
+ * The allowlist is what an email body legitimately needs: block and inline
+ * formatting, lists, tables, links and images. Everything that executes,
+ * navigates or embeds (`script`, `style`, `iframe`, `object`, `embed`, `link`,
+ * `meta`, `base`, `form`) is absent by construction rather than removed by a
+ * rule, which is the property regexes could not give us.
+ *
+ * This is one of two layers, not the only one: the SPA additionally renders the
+ * result inside a sandboxed iframe with no script execution and no same-origin
+ * access, so a future bypass of this layer has nowhere to run.
  */
+const ALLOWED_TAGS = [
+  'a',
+  'abbr',
+  'b',
+  'blockquote',
+  'br',
+  'caption',
+  'cite',
+  'code',
+  'col',
+  'colgroup',
+  'dd',
+  'div',
+  'dl',
+  'dt',
+  'em',
+  'figcaption',
+  'figure',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'hr',
+  'i',
+  'img',
+  'li',
+  'ol',
+  'p',
+  'pre',
+  'q',
+  's',
+  'small',
+  'span',
+  'strike',
+  'strong',
+  'sub',
+  'sup',
+  'table',
+  'tbody',
+  'td',
+  'tfoot',
+  'th',
+  'thead',
+  'tr',
+  'u',
+  'ul',
+];
+
+const ALLOWED_ATTR = [
+  'align',
+  'alt',
+  'border',
+  'cellpadding',
+  'cellspacing',
+  'cite',
+  'colspan',
+  'dir',
+  'height',
+  'href',
+  'lang',
+  'rowspan',
+  'span',
+  'src',
+  'style',
+  'title',
+  'valign',
+  'width',
+];
+
+/**
+ * DOMPurify needs a DOM. One jsdom window is created lazily and reused for the
+ * process: constructing one per message would dominate intake cost, and the
+ * window is only ever used as a parsing substrate — nothing from a message is
+ * evaluated in it (jsdom runs no scripts unless explicitly configured to, and
+ * this window never is).
+ */
+let purifier: ReturnType<typeof createDOMPurify> | null = null;
+
+function sanitizer(): ReturnType<typeof createDOMPurify> {
+  if (!purifier) {
+    const { window } = new JSDOM('');
+    purifier = createDOMPurify(window as unknown as Window & typeof globalThis);
+    // Belt and braces on the two demonstrated bypass classes: strip every
+    // remaining `on*` attribute whatever the allowlist says, and re-check the
+    // DECODED value of every URL attribute. DOMPurify already does both; this
+    // hook makes the property local and testable rather than inherited.
+    purifier.addHook('uponSanitizeAttribute', (_node, data) => {
+      const name = data.attrName.toLowerCase();
+      if (name.startsWith('on')) {
+        data.keepAttr = false;
+        return;
+      }
+      if ((name === 'href' || name === 'src') && hasUnsafeScheme(data.attrValue)) {
+        data.keepAttr = false;
+        return;
+      }
+      // Inline `style` stays — an email body's whole layout lives there — but
+      // the legacy script-in-CSS carriers do not. `expression()` and
+      // `-moz-binding` are dead in current browsers and a `javascript:` inside
+      // `url()` is refused by them, so this is defence in depth rather than the
+      // only thing standing between a message and execution.
+      if (name === 'style' && UNSAFE_CSS.test(data.attrValue)) {
+        data.keepAttr = false;
+      }
+    });
+  }
+  return purifier;
+}
+
+/** The schemes a mail body may never link to or load from. */
+const UNSAFE_SCHEMES = /^(javascript|vbscript|data|file|blob):/i;
+
+/** Script-bearing CSS constructs; the whole `style` attribute is dropped. */
+const UNSAFE_CSS = /(javascript|vbscript)\s*:|expression\s*\(|-moz-binding|behaviou?r\s*:/i;
+
+/**
+ * True when the value's scheme is unsafe once decoded. DOMPurify hands us the
+ * value AFTER entity decoding, so `javas&#99;ript:` arrives here as
+ * `javascript:` — which is exactly what the old regex could not see. Leading
+ * whitespace and control characters are stripped first, because the URL parser
+ * ignores them too.
+ */
+function hasUnsafeScheme(value: string): boolean {
+  // eslint-disable-next-line no-control-regex
+  return UNSAFE_SCHEMES.test(value.replace(/[\u0000-\u0020]/g, ''));
+}
+
 export function sanitizeHtml(html: string | null | undefined): string | null {
   if (!html) return null;
-  let out = html;
-  // Remove whole dangerous elements (open→close, non-greedy, case-insensitive).
-  out = out.replace(/<\s*(script|style|iframe|object|embed)\b[\s\S]*?<\s*\/\s*\1\s*>/gi, '');
-  // Remove void/dangerous singletons.
-  out = out.replace(/<\s*(link|meta|base)\b[^>]*>/gi, '');
-  // Strip inline event handlers: on…="…" / on…='…' / on…=value.
-  out = out.replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '');
-  out = out.replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '');
-  out = out.replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '');
-  // Neutralize javascript:/vbscript: URLs in href/src.
-  out = out.replace(/(href|src)\s*=\s*("|')?\s*(javascript|vbscript):[^"'\s>]*/gi, '$1=$2#');
-  return out;
+  const clean = sanitizer().sanitize(html, {
+    ALLOWED_TAGS,
+    ALLOWED_ATTR,
+    // Keep the fragment's own markup only: no <html>/<body> wrapper is added,
+    // which keeps the stored value a drop-in replacement for the old output.
+    WHOLE_DOCUMENT: false,
+    RETURN_DOM: false,
+    RETURN_DOM_FRAGMENT: false,
+    // Refuse the legacy IE constructs outright rather than sanitizing them.
+    SAFE_FOR_TEMPLATES: false,
+    ALLOW_DATA_ATTR: false,
+    ALLOW_ARIA_ATTR: false,
+    // Deliberately NO `USE_PROFILES`: a profile is a UNION with ALLOWED_TAGS,
+    // so `{ html: true }` silently put `<style>` and `<form>` back. The
+    // explicit list above is the whole allowlist, which also means `<svg>` and
+    // `<math>` (foreign content, whose parsing rules differ from HTML's and
+    // which are the classic mutation-XSS carrier) can never re-enter.
+    FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'form'],
+    FORBID_ATTR: ['srcdoc', 'formaction', 'xlink:href'],
+  });
+  return clean;
 }
 
 // Extraction-input isolation (quoted-history / signature / forwarded stripping)

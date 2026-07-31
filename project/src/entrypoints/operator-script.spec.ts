@@ -3,6 +3,15 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
+// The manifest generator is the single definition of which deployment assets
+// exist and what their checksums are (SEC-13); the spec asserts against it
+// rather than re-deriving the list.
+// @ts-expect-error -- plain .mjs CI script, no type declarations by design
+import {
+  buildManifest,
+  DEPLOY_ASSETS,
+  MANIFEST_PATH,
+} from '../../../scripts/ci/deploy-assets-manifest.mjs';
 
 /**
  * — the operator script and the pull-only deploy channel
@@ -184,9 +193,17 @@ describe('operator script — install --check dry run', () => {
     expect(out).toContain('WHAT YOU MUST DO NOW');
     // Real values, not placeholders (addressing scheme).
     expect(out).toContain('acme.cogeto.eu.  IN A');
-    expect(out).toContain('in.acme.cogeto.eu.  IN MX 10  mail.acme.cogeto.eu.');
+    expect(out).toContain('s3.acme.cogeto.eu.  IN A');
     expect(out).toContain('capture@in.acme.cogeto.eu');
-    expect(out).toContain('PTR');
+    // SEC-14: a fresh install runs NO inbound SMTP listener, so the MX / PTR /
+    // SPF steps must NOT be on the checklist — they would tell the operator to
+    // point real mail at something that is not there. What is on the checklist
+    // is how to turn it on.
+    expect(out).not.toContain('IN MX 10');
+    expect(out).not.toContain('Edit the reverse');
+    expect(out).toContain('Email capture is OFF on this instance');
+    expect(out).toContain('cogeto features enable mail');
+    expect(out).toContain('allow inbound TCP 80 and 443');
     expect(out).toContain('Automated Backup');
     // Grouped by immediacy, checkbox-style.
     expect(out).toContain('Do now:');
@@ -198,14 +215,10 @@ describe('operator script — install --check dry run', () => {
     // DNS propagation + automatic ACME retry, right next to the records.
     expect(out).toContain('propagation takes minutes');
     expect(out).toContain('AUTOMATICALLY');
-    // The PTR's exact panel path.
-    expect(out).toContain('Edit the reverse');
     // Create-user guidance: console URL, initial password, the no-SMTP trap.
     expect(out).toContain('/ui/console');
     expect(out).toContain('Set initial password');
     expect(out).toContain('no outbound SMTP');
-    // Sender-routed email test instructions.
-    expect(out).toContain('FROM THEIR OWN ADDRESS');
     // The status command as it actually works after self-install.
     expect(out).toContain('sudo cogeto status');
   });
@@ -349,11 +362,11 @@ describe('operator script — features', () => {
     const root = withEnv('COGETO_VERSION=9.9.9\n');
     const unknown = runScript(['features', 'enable', 'frobnicate', '--check', '--root', root]);
     expect(unknown.status).toBe(1);
-    expect(unknown.out).toContain('redaction research demo consoles local-models');
+    expect(unknown.out).toContain('redaction research mail demo consoles local-models');
     const missing = runScript(['features', 'enable', '--check', '--root', root]);
     rmSync(root, { recursive: true, force: true });
     expect(missing.status).toBe(1);
-    expect(missing.out).toContain('redaction research demo consoles local-models');
+    expect(missing.out).toContain('redaction research mail demo consoles local-models');
   });
 
   it('--check enable research prints the intended edits and mutates nothing', () => {
@@ -508,16 +521,64 @@ describe('deploy channel — hardening assertions', () => {
   it('a customer instance is production: demo hard-refused, no dev profiles', () => {
     expect(deploy).toContain("COGETO_PRODUCTION: '1'");
     expect(deploy).not.toContain('COGETO_DEMO_MODE');
-    // The ONE optional profile in the deploy channel is `research`
-    // — SearXNG is a digest-pinned upstream image, still pull-only). The
-    // dev-only profiles (demo, dev-seed, consoles) and the unpublished
-    // redaction sidecar stay absent.
+    // TWO optional profiles in the deploy channel: `research` (SearXNG, a
+    // digest-pinned upstream image, still pull-only) and `mail` (SEC-14:
+    // inbound SMTP is opt-in). The dev-only profiles (demo, dev-seed,
+    // consoles) and the unpublished redaction sidecar stay absent.
     const profiles = [...deploy.matchAll(/profiles:\s*\[([^\]]*)\]/g)].map((m) => m[1]!.trim());
-    expect(profiles).toEqual(["'research'"]);
+    expect(profiles).toEqual(["'research'", "'mail'"]);
     expect(deploy).not.toContain('demo-seed');
     expect(deploy).not.toContain('seed-object');
     expect(deploy).not.toContain('caddy-consoles');
     expect(deploy).not.toMatch(/^\s*redaction:/m);
+  });
+
+  it('SEC-13: cosign is verified against a pinned sha256 before it becomes executable', () => {
+    // The whole image-provenance chain used to terminate in an unverified
+    // binary downloaded as root: curl → chmod 0755 → /usr/local/bin.
+    const script = readFileSync(SCRIPT, 'utf8');
+    expect(script).toMatch(/^COSIGN_SHA256="[0-9a-f]{64}"$/m);
+    const install = script.slice(
+      script.indexOf('install_cosign() {'),
+      script.indexOf('# Put this script on PATH'),
+    );
+    // The order is the property: download, compare, THEN chmod/mv.
+    const download = install.indexOf('curl -fsSL');
+    const compare = install.indexOf('$COSIGN_SHA256');
+    const chmod = install.indexOf('chmod 0755');
+    expect(download).toBeGreaterThan(-1);
+    expect(compare).toBeGreaterThan(download);
+    expect(chmod).toBeGreaterThan(compare);
+    expect(install).toContain('COSIGN CHECKSUM MISMATCH');
+  });
+
+  it('SEC-13: deployment assets are pinned by commit SHA and verified against a manifest', () => {
+    const script = readFileSync(SCRIPT, 'utf8');
+    // No tag ref in the fetch path any more — a tag is mutable, a commit is not.
+    const fetchBlock = script.slice(
+      script.indexOf('fetch_deploy_assets() {'),
+      script.indexOf('# The expected sha256 for one repo path'),
+    );
+    expect(fetchBlock).toContain('resolve_tag_commit');
+    expect(fetchBlock).not.toMatch(/fetch_one "v\$\{version\}"/);
+    // A missing manifest, a missing entry, or a mismatch each abort the run.
+    expect(script).toContain('refusing to install unverified deployment files');
+    expect(script).toContain('DEPLOYMENT FILE CHECKSUM MISMATCH');
+    expect(script).toContain('refusing to install an unverified deployment file');
+  });
+
+  it('SEC-13: the checksum manifest covers exactly the files the installer fetches, and is current', async () => {
+    const manifest = readFileSync(path.join(REPO, MANIFEST_PATH), 'utf8');
+    // Current: regenerating from the working tree produces the same bytes.
+    expect(manifest).toBe(await buildManifest(REPO));
+    // Complete: every path the script fetches has an entry.
+    const script = readFileSync(SCRIPT, 'utf8');
+    const fetched = [...script.matchAll(/fetch_one "\$commit" "([^"]+)"/g)].map((m) => m[1]!);
+    expect(fetched.length).toBeGreaterThan(0);
+    for (const asset of fetched) {
+      expect(manifest, `${asset} has no manifest entry`).toContain(`  ${asset}\n`);
+    }
+    expect(new Set(fetched)).toEqual(new Set(DEPLOY_ASSETS));
   });
 
   it('Qdrant API-key auth is always on in the deploy stack', () => {

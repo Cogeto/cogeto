@@ -3,7 +3,7 @@ import { runOnce } from 'graphile-worker';
 import type { TaskList } from 'graphile-worker';
 import type { ZodType } from 'zod';
 import type { Principal } from '@cogeto/shared';
-import { idempotentTask } from '../infrastructure/index';
+import { idempotentTask, PostgresRateLimitStore } from '../infrastructure/index';
 import {
   fakeEmbedding,
   makePdf,
@@ -605,6 +605,9 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
         intakeMaxPerSenderPerWindow: 2,
         intakeRateWindowSeconds: 3600,
       },
+      // SEC-18: the per-sender intake window is durable now, so exercise the
+      // real store here rather than the in-process fallback.
+      new PostgresRateLimitStore(tdb.db),
     );
 
     // (a) Spoofed From claiming to be the customer, but SPF FAILS → refused,

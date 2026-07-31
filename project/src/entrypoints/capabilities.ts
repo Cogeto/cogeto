@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import { connect } from 'node:net';
 import { sql } from 'drizzle-orm';
 import type { CapabilitySummary, ScheduledJobId, ScheduledJobSummary } from '@cogeto/shared';
 import { DRIZZLE } from '../infrastructure/index';
@@ -102,6 +103,7 @@ export class CapabilitiesService {
     return Promise.all([
       this.redaction(checkedAt),
       this.research(checkedAt),
+      this.mail(checkedAt),
       this.demo(checkedAt),
       this.consoles(checkedAt),
       this.localModels(checkedAt),
@@ -162,6 +164,53 @@ export class CapabilitiesService {
             `SearXNG unreachable at ${this.config.searxngUrl} (${probe.error}): ` +
             `web research is unavailable until the service is reachable`,
         };
+  }
+
+  /**
+   * Inbound email capture (audit 2.0 SEC-14). Enabled via the `mail` compose
+   * profile (mirrored in COGETO_COMPOSE_PROFILES) or the explicit flag. Off is
+   * the DEFAULT and the safe state: with the profile down, no internet-facing
+   * SMTP listener runs at all, which is the whole point of the finding.
+   *
+   * Enabled and reachable is probed for real — a TCP connect to the Haraka
+   * listener, the same signal /api/health uses — so "enabled but the container
+   * is down" is loud rather than silently swallowing forwarded mail.
+   */
+  private async mail(checkedAt: string): Promise<CapabilitySummary> {
+    const base = { id: 'mail' as const, checkedAt };
+    if (!this.mailCapabilityEnabled()) return { ...base, state: 'off', probed: false };
+    const address = this.config.mailSmtpAddress;
+    if (!address) {
+      return {
+        ...base,
+        state: 'unreachable',
+        probed: false,
+        error:
+          'inbound mail is enabled but COGETO_MAIL_SMTP_ADDRESS is not set: ' +
+          'forwarded mail cannot be received',
+      };
+    }
+    const probe = await probeTcp(address);
+    return probe.ok
+      ? {
+          ...base,
+          state: 'on',
+          probed: true,
+          detail: `inbound SMTP reachable at ${address}; capture routes by sender`,
+        }
+      : {
+          ...base,
+          state: 'unreachable',
+          probed: true,
+          error:
+            `inbound SMTP unreachable at ${address} (${probe.error}): ` +
+            `forwarded mail is not being received`,
+        };
+  }
+
+  /** The one authority on whether this instance runs inbound mail (SEC-14). */
+  mailCapabilityEnabled(): boolean {
+    return this.config.composeProfiles.includes('mail') || this.config.mailEnabled;
   }
 
   /** Demo: pure configuration. Demo mode on a production
@@ -321,6 +370,34 @@ export class CapabilitiesService {
       return { ok: false, error: error instanceof Error ? error.message : String(error) };
     }
   }
+}
+
+/**
+ * A TCP liveness probe for a `host:port` address — the only honest check for a
+ * plain SMTP listener (SEC-14). Same shape as probeHttp: never throws.
+ */
+export async function probeTcp(
+  address: string,
+  timeoutMs = 3000,
+): Promise<{ ok: boolean; error?: string }> {
+  const [host, portRaw] = address.split(':');
+  const port = Number(portRaw ?? 25);
+  if (!Number.isFinite(port) || port <= 0) {
+    return { ok: false, error: `malformed address '${address}'` };
+  }
+  return new Promise((resolve) => {
+    const socket = connect({ host: host || '127.0.0.1', port }, () => {
+      socket.destroy();
+      resolve({ ok: true });
+    });
+    socket.setTimeout(timeoutMs);
+    const fail = (error: string): void => {
+      socket.destroy();
+      resolve({ ok: false, error });
+    };
+    socket.on('timeout', () => fail('connect timeout'));
+    socket.on('error', (error) => fail(error instanceof Error ? error.message : String(error)));
+  });
 }
 
 /** Compact one-line result from the dream report counts (counts_json). */

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { ZodType } from 'zod';
 import type { Principal } from '@cogeto/shared';
-import { DailyCounters } from '../infrastructure/index';
+import { InMemoryDailyCounters } from '../infrastructure/index';
 import { startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
 import type { MemoryObjectStore } from '../memory/index';
@@ -95,7 +95,7 @@ describe('research gate (integration: real Postgres, spied discovery)', () => {
       discovery,
       new WebFetchService(options),
       objects,
-      new DailyCounters(),
+      new InMemoryDailyCounters(),
       { searchesMax: 100, pagesMax: 100, pagesPerRunMax: 5 },
       options,
       new MinimiserGateway(),

@@ -25,7 +25,15 @@ export interface QueueHealthCheck extends HealthCheck {
  * capability of the instance reports one of three states; "unreachable" is the
  * LOUD state (enabled but not actually working) and degrades /api/health.
  */
-export type CapabilityId = 'redaction' | 'research' | 'demo' | 'consoles' | 'local-models';
+export type CapabilityId =
+  | 'redaction'
+  | 'research'
+  | 'mail'
+  // Inbound email capture (audit 2.0 SEC-14). Behind the `mail` compose
+  // profile, so an instance that does not use it runs no SMTP listener.
+  | 'demo'
+  | 'consoles'
+  | 'local-models';
 
 export type CapabilityState = 'on' | 'unreachable' | 'off';
 

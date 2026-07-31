@@ -221,9 +221,18 @@ export class HealthController {
    * listener (COGETO_MAIL_SMTP_ADDRESS, e.g. mail:2525). Unset → the instance
    * runs without the mail service; report ok with a "not configured" detail so
    * the check never falsely degrades a mail-less deployment.
+   *
+   * SEC-14: inbound mail is now behind the `mail` compose profile, and the
+   * address stays configured whether or not the profile is up. So the
+   * CAPABILITY decides first — with mail off there is deliberately no listener
+   * to connect to, and probing one would turn an intended posture into a
+   * permanent red check.
    */
   private async checkMail(): Promise<HealthCheck> {
     const started = Date.now();
+    if (!this.capabilities.mailCapabilityEnabled()) {
+      return { ok: true, latencyMs: 0, detail: 'inbound mail capability is off' };
+    }
     const address = this.config.mailSmtpAddress;
     if (!address) {
       return { ok: true, latencyMs: 0, detail: 'inbound mail not configured' };

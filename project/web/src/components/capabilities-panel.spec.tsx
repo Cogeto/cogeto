@@ -38,6 +38,9 @@ const FIXTURE: { capabilities: CapabilitySummary[]; jobs: ScheduledJobSummary[] 
   capabilities: [
     cap({ id: 'redaction', state: 'unreachable', error: 'sidecar unreachable' }),
     cap({ id: 'research', state: 'off', probed: false }),
+    // Inbound email capture (audit 2.0 SEC-14): off by default, and the
+    // disabled state must tell the operator how to turn it on.
+    cap({ id: 'mail', state: 'off', probed: false }),
     cap({ id: 'demo', state: 'off', probed: false }),
     cap({ id: 'consoles', state: 'on', probed: false, detail: 'localhost-only edge' }),
     cap({ id: 'local-models', state: 'on', detail: 'runtime reachable' }),
@@ -53,6 +56,11 @@ const html = renderToStaticMarkup(
 );
 
 describe('panel_renders_states', () => {
+  it('a disabled capability names itself and states the operator command that enables it', () => {
+    expect(html).toContain('Email capture');
+    expect(html).toContain('cogeto features enable mail');
+  });
+
   it('a loud fail-closed capability states the consequence in user terms', () => {
     expect(html).toContain('Redaction');
     expect(html).toContain('enabled, unreachable');

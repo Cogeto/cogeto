@@ -58,6 +58,10 @@ The behaviour behind each protection is documented with the feature it belongs t
 | Token revocation, receipt-chain anchoring | [`isolation-and-access.md`](isolation-and-access.md), [`deletion-and-receipts.md`](deletion-and-receipts.md) |
 | Demo sandbox gating | [`../features/demo-sandbox.md`](../features/demo-sandbox.md) |
 | Inbound email routing and spoofing stance | [`inbound-email-anti-spoofing.md`](inbound-email-anti-spoofing.md), [`../features/sources.md`](../features/sources.md) |
+| Email body sanitizing and sandboxed rendering | [`inbound-email-anti-spoofing.md`](inbound-email-anti-spoofing.md) |
+| Durable abuse limits and worker model metering | [`instance-and-supply-chain-hardening.md`](instance-and-supply-chain-hardening.md) |
+| Installer trust chain (cosign, deploy assets) | [`instance-and-supply-chain-hardening.md`](instance-and-supply-chain-hardening.md) |
+| Inbound SMTP as an opt-in capability | [`../features/capabilities.md`](../features/capabilities.md), [`../operations/email-inbound.md`](../operations/email-inbound.md) |
 | Web research: SSRF guard, query minimisation, budgets | [`data-sovereignty-and-redaction.md`](data-sovereignty-and-redaction.md), [`../features/web-research.md`](../features/web-research.md) |
 
 ## The tests that enforce it

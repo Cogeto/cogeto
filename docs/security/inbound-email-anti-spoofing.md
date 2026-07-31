@@ -108,8 +108,44 @@ SPF, and appears as a source with memories within a minute or two.
 Refused-forgery plus captured-real-message is the complete proof that the gate
 discriminates correctly.
 
+## The message body is treated as hostile markup
+
+An allowlisted sender is not a trusted author: the sender gate decides *whose*
+mail is remembered, never that its content is safe. Two independent layers stand
+between a message body and the owner's session (security audit 2.0, SEC-7).
+
+**A parser-based allowlist sanitizer at intake.** The retained display HTML used
+to be filtered with five regexes, and the audit demonstrated two working
+bypasses of them: `<img/src=x/onerror=alert(1)>` (the handler strip required
+whitespace before `on`, while HTML's before-attribute-name state accepts `/`)
+and `href="javas&#99;ript:..."` (the scheme neutralizer matched the literal
+text, and the browser decodes the entity afterwards). Both are the same mistake:
+a regex reasons about bytes, the browser reasons about the parse tree. The regex
+path is **removed**, not patched. The markup is parsed with the same tree
+construction a browser uses and rebuilt from an explicit allowlist by DOMPurify,
+which decides on the parsed node: an `onerror` attribute is dropped because it
+*is* one, however it was written, and an `href` is dropped because its *decoded*
+scheme is not allowed. Everything that executes, navigates or embeds is absent
+by construction rather than removed by a rule.
+
+**A sandboxed frame at render.** The drawer used to write the stored HTML into
+the page directly. It now renders inside an iframe with no `allow-scripts` and
+no `allow-same-origin`, carrying its own `default-src 'none'` policy. So script
+does not run whatever got through, the frame cannot read the session token or
+the surrounding DOM, forms cannot post, and no remote request of any kind can be
+issued from it. Links still open in a new tab. Remote images stay blocked, as
+they were, so tracking pixels do not fire.
+
+The two layers are deliberately independent: a future bypass of the sanitizer
+lands somewhere it cannot execute, and a browser that ignored the sandbox would
+still be handed markup with nothing executable in it.
+
 ## Where this lives in the code
 
+- Body sanitizer: `project/src/connectors/email-parse.ts` (`sanitizeHtml`),
+ tests in `email-parse.spec.ts` (both demonstrated bypasses plus a hostile corpus)
+- Sandboxed rendering: `project/web/src/components/email-body.ts`, tests in
+ `email-body.spec.ts`
 - Intake gate and routing: `project/src/connectors/email-intake.service.ts`
 - Envelope vs header resolution: `project/src/connectors/email-parse.ts`
 - SPF evaluation + forwarding: `project/services/mail/haraka/` (`config/plugins`,

@@ -1,14 +1,47 @@
 # Cogeto per-tenant stack (the specification: `docker compose up` is the contract).
-# Eight containers (incl. the receive-only inbound mail server) plus
-# one-shot init jobs plus an optional redaction profile.
+# Seven always-on containers plus one-shot init jobs plus the opt-in profiles
+# (`mail`, `research`, `redaction`, `consoles`, `demo`, `dev-seed`). Inbound
+# SMTP moved behind the `mail` profile in audit 2.0 SEC-14, so a default
+# `docker compose up` no longer runs an internet-facing mail listener.
 # Works with zero configuration on a fresh clone; every variable can be
 # overridden via .env (see .env.example).
 
 name: cogeto
 
+# ── Resource ceilings (security audit 2.0, SEC-17) ────────────────────────────
+#
+# No container had a memory, CPU or pid ceiling, so one runaway process could
+# take the instance down with it: the redaction sidecar alone holds ~1 GB RSS,
+# and a Qdrant index rebuild, a document-parsing burst or a 25 MB mail delivery
+# could OOM-kill Postgres.
+#
+# Every service now carries `mem_limit` / `cpus` / `pids_limit`. These are
+# CEILINGS, not reservations: nothing is set aside, so the stack still fits the
+# 8 GB / 2 vCPU minimum the operator script enforces. They are sized from what
+# each service actually uses with generous headroom, because a limit that kills
+# a service under normal load is worse than no limit at all:
+#
+#   worker  3g  — the widest range: 25 MB document parses, embedding batches
+#                 and Node's own heap growth. Deliberately the largest cap.
+#   app     2g  — request handling plus SSE streams; steady state is far below.
+#   postgres/qdrant 2g — room for a real corpus and an index rebuild.
+#   redaction 2g — the documented ~0.7-1 GB spaCy model, doubled.
+#   minio/zitadel 1g, searxng 1g, mail 512m, caddy 256m — measured steady state
+#                 is a small fraction of each.
+#   one-shot init jobs 128m-1g — they do one bounded thing and exit.
+#
+# `cpus` is 1.5 for the heavy services and 1.0 for the rest: on the 2 vCPU
+# minimum that still leaves the scheduler room, and on a larger instance it
+# stops one service from monopolising the box. `pids_limit` bounds fork bombs
+# in anything that shells out.
+
 services:
   # ── Edge ────────────────────────────────────────────────────────────────────
   caddy:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 256m
+    cpus: 1.0
+    pids_limit: 256
     build:
       context: .
       dockerfile: project/infra/docker/Dockerfile
@@ -33,6 +66,10 @@ services:
 
   # ── Application processes (same image, different commands) ─────────────────
   app:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 2g
+    cpus: 1.5
+    pids_limit: 512
     build:
       context: .
       dockerfile: project/infra/docker/Dockerfile
@@ -162,6 +199,10 @@ services:
       # explicit COGETO_RESEARCH_ENABLED / COGETO_CONSOLES_ENABLED flags too.
       COGETO_COMPOSE_PROFILES: ${COMPOSE_PROFILES:-}
       COGETO_RESEARCH_ENABLED: ${COGETO_RESEARCH_ENABLED:-}
+      # SEC-14: inbound mail is opt-in. The `mail` profile is the normal
+      # switch; this flag covers one-off `--profile mail` dev runs, which the
+      # container cannot see.
+      COGETO_MAIL_ENABLED: ${COGETO_MAIL_ENABLED:-}
       COGETO_CONSOLES_ENABLED: ${COGETO_CONSOLES_ENABLED:-}
       # Overdue threshold for the nightly jobs in the capability registry.
       COGETO_JOBS_OVERDUE_HOURS: ${COGETO_JOBS_OVERDUE_HOURS:-}
@@ -205,6 +246,10 @@ services:
     restart: unless-stopped
 
   worker:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 3g
+    cpus: 1.5
+    pids_limit: 512
     build:
       context: .
       dockerfile: project/infra/docker/Dockerfile
@@ -254,6 +299,10 @@ services:
   # every secret (Postgres/MinIO/Zitadel/KMS), so it enforces the rule
   # instance-wide. A no-op on a localhost dev box.
   preflight:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 256
     build:
       context: .
       dockerfile: project/infra/docker/Dockerfile
@@ -279,6 +328,10 @@ services:
     restart: 'no'
 
   migrate:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 256
     build:
       context: .
       dockerfile: project/infra/docker/Dockerfile
@@ -318,6 +371,10 @@ services:
   # the ONLY service besides postgres itself that holds the superuser
   # credential.
   db-init:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 256m
+    cpus: 1.0
+    pids_limit: 128
     # postgres:17-alpine (same digest as the postgres service — used for psql)
     image: postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     environment:
@@ -351,6 +408,10 @@ services:
   # root-owned. Hand both key volumes over before migrate generates the keypair
   # (same pattern as machinekey-init below).
   instance-keys-init:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 128m
+    cpus: 1.0
+    pids_limit: 64
     # busybox:stable
     image: busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
     command: ['chown', '-R', '1000:1000', '/instance-keys', '/instance-pubkey']
@@ -371,6 +432,10 @@ services:
   # check asserts the scoped credential works for object access and is REFUSED
   # by the admin API.
   minio-init:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 256m
+    cpus: 1.0
+    pids_limit: 128
     # minio/mc:RELEASE.2025-08-13T08-35-41Z
     # (SEC-35: the comment used to read `latest`, which names no release, so no
     # advisory could ever be matched to what actually runs. Resolved from the
@@ -415,6 +480,10 @@ services:
   # The zitadel image runs as uid 1000; the fresh named volume it writes its
   # bootstrap PAT into is root-owned. Hand it over before zitadel starts.
   machinekey-init:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 128m
+    cpus: 1.0
+    pids_limit: 64
     # busybox:stable (pinned by digest —)
     image: busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
     command: ['chown', '-R', '1000:1000', '/machinekey']
@@ -423,6 +492,10 @@ services:
     restart: 'no'
 
   zitadel-init:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 256
     # node:22-alpine (pinned by digest —)
     image: node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
     command: ['node', '/init/init.mjs']
@@ -460,6 +533,10 @@ services:
   # ── Infrastructure ──────────────────────────────────────────────────────────
   # All infra images are PINNED BY DIGEST; the tag is kept in a comment.
   postgres:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 2g
+    cpus: 1.5
+    pids_limit: 512
     # postgres:17-alpine
     image: postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     environment:
@@ -476,6 +553,10 @@ services:
     restart: unless-stopped
 
   qdrant:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 2g
+    cpus: 1.5
+    pids_limit: 512
     # qdrant/qdrant:v1.18.3
     image: qdrant/qdrant@sha256:0bd98fa7977f1e75694779359ca4e212822e5a71334e28421182f72f209d5286
     # API key auth. Qdrant enables auth whenever QDRANT__SERVICE__API_KEY
@@ -496,6 +577,10 @@ services:
     restart: unless-stopped
 
   minio:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 1g
+    cpus: 1.5
+    pids_limit: 512
     # minio/minio:RELEASE.2025-09-07T16-13-09Z
     # (SEC-35: was `latest`, which names no release. Resolved from the pinned
     # digest with `docker run --rm --entrypoint sh <digest> -c 'minio --version'`.
@@ -531,6 +616,10 @@ services:
     restart: unless-stopped
 
   zitadel:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 1g
+    cpus: 1.5
+    pids_limit: 512
     # ghcr.io/zitadel/zitadel:v2.65.1 (pinned by digest —)
     image: ghcr.io/zitadel/zitadel@sha256:013d23b69aa681f03d36a7fd61e4837a7b049a7e22bd7215eb3e98e9dbf5543c
     #: masterkey via env (--masterkeyFromEnv reads ZITADEL_MASTERKEY below),
@@ -603,6 +692,10 @@ services:
   # 0017). O1 presigned downloads resolve here too, so downloads need this
   # profile up and COGETO_S3_PUBLIC_URL pointing at the :8443 origin.
   caddy-consoles:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 256m
+    cpus: 1.0
+    pids_limit: 256
     profiles: ['consoles']
     build:
       context: .
@@ -627,6 +720,10 @@ services:
   # Runs from the BUILD stage image — the runtime image excludes dev scripts.
   #   docker compose --profile dev-seed run --rm seed-object --owner <id> --org <id>
   seed-object:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 256
     profiles: ['dev-seed']
     build:
       context: .
@@ -645,6 +742,10 @@ services:
   # drill: run this, then the sweep, and watch System go red.
   #   docker compose --profile dev-seed run --rm seed-orphan
   seed-orphan:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 256
     profiles: ['dev-seed']
     build:
       context: .
@@ -683,6 +784,10 @@ services:
   # dev entrypoints the runtime image strips. Feeds the corpus through the REAL
   # public API (no direct DB inserts) and asserts the end state.
   demo-seed:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 2g
+    cpus: 1.0
+    pids_limit: 256
     profiles: ['demo']
     build:
       context: .
@@ -722,6 +827,10 @@ services:
   # and the sidecar is unreachable, model calls FAIL CLOSED (never plaintext).
   # Memory: ~0.7–1 GB RSS (spaCy en_core_web_lg). See project/services/redaction.
   redaction:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 2g
+    cpus: 1.5
+    pids_limit: 256
     profiles: ['redaction']
     build:
       context: project/services/redaction
@@ -752,6 +861,10 @@ services:
   # The app profile-independently reads COGETO_SEARXNG_URL; with the profile
   # down, research search answers a typed "search unavailable" — nothing breaks.
   searxng:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 256
     profiles: ['research']
     image: searxng/searxng@sha256:b8ca38ba06eea544d7555e88321e212ddc0d5c3c7de055419cfb2e5c6bf30812
     environment:
@@ -785,6 +898,23 @@ services:
   # concern; see docs/operations/email-inbound.md. Locally, exercise it with
   # scripts/dev/send-test-email.mjs (no real DNS needed).
   mail:
+    # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 256
+    # SEC-14: OFF by default. Inbound SMTP used to be published on 0.0.0.0:25 on
+    # every instance, so a deployment that never uses email capture still ran an
+    # internet-facing Haraka listener parsing hostile SMTP, with no supported way
+    # to turn it off. It is now an opt-in capability like `research` and
+    # `redaction`:
+    #
+    #   COMPOSE_PROFILES=mail docker compose up          (dev)
+    #   cogeto features enable mail                      (customer instance)
+    #
+    # With the profile down the app reports the `mail` capability as `off` and
+    # its health check stays green — nothing degrades, email capture is simply
+    # unavailable.
+    profiles: ['mail']
     build:
       context: project/services/mail
     environment:

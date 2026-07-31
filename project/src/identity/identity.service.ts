@@ -40,7 +40,7 @@ export class IdentityService {
     // minted for a different client could otherwise resolve. Opaque tokens
     // (e.g. the demo PAT) cannot be decoded and fall through to userinfo, which
     // — against the instance's OWN Zitadel — is the boundary.
-    this.assertTokenAudienceAndIssuer(accessToken);
+    const claims = this.assertTokenAudienceAndIssuer(accessToken);
 
     const { status, body } = await fetchUserinfo(
       this.options.internalBaseUrl,
@@ -64,9 +64,18 @@ export class IdentityService {
       throw new UnauthorizedException('userinfo response carried no subject');
     }
 
+    // The cache entry may never outlive the TOKEN (audit 2.0 SEC-26). The flat
+    // TTL alone meant a token accepted at T stayed accepted for up to the full
+    // TTL past its own expiry — a small window, but one where the instance
+    // honours a credential the identity provider has already retired. The
+    // entry now expires at whichever comes first: our TTL, or the token's
+    // `exp`. An opaque token carries no exp we can read, so it keeps the TTL,
+    // which is the same bound as before.
+    const ttlExpiry = Date.now() + this.options.cacheTtlSeconds * 1000;
+    const tokenExpiry = expiryFromClaims(claims);
     this.cache.set(accessToken, {
       principal,
-      expiresAt: Date.now() + this.options.cacheTtlSeconds * 1000,
+      expiresAt: tokenExpiry === null ? ttlExpiry : Math.min(ttlExpiry, tokenExpiry),
     });
     this.evictExpired();
     // Provision / refresh the directory on each fresh resolve (throttled by the
@@ -89,10 +98,16 @@ export class IdentityService {
    * — and reject a mismatched `iss` or an `aud` that does not include the
    * configured client id. A non-JWT (opaque) token, or missing config, is
    * left to userinfo.
+   *
+   * Returns the decoded claims (null for an opaque token) so the caller can
+   * bound the cache entry by the token's own `exp` (SEC-26). The claims are
+   * UNVERIFIED at this point, which is fine for this use: a forged `exp` can
+   * only make us cache for a SHORTER time, never longer, because the value is
+   * only ever used as a `Math.min` against our own TTL.
    */
-  private assertTokenAudienceAndIssuer(token: string): void {
+  private assertTokenAudienceAndIssuer(token: string): Record<string, unknown> | null {
     const parts = token.split('.');
-    if (parts.length !== 3) return; // opaque token (e.g. a PAT) — cannot decode
+    if (parts.length !== 3) return null; // opaque token (e.g. a PAT) — cannot decode
     let claims: Record<string, unknown>;
     try {
       claims = JSON.parse(Buffer.from(parts[1]!, 'base64url').toString('utf8')) as Record<
@@ -112,5 +127,17 @@ export class IdentityService {
         throw new UnauthorizedException('token audience is not this instance');
       }
     }
+    return claims;
   }
+}
+
+/**
+ * The token's own expiry as epoch millis, or null when it carries none we can
+ * read. `exp` is seconds since the epoch (RFC 7519); anything else is ignored
+ * rather than guessed at.
+ */
+function expiryFromClaims(claims: Record<string, unknown> | null): number | null {
+  const exp = claims?.['exp'];
+  if (typeof exp !== 'number' || !Number.isFinite(exp)) return null;
+  return exp * 1000;
 }

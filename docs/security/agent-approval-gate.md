@@ -64,6 +64,26 @@ effect runs through the Memory aggregate, which owns the eligibility rules: it
 skips explicitly user-approved memories, terminal `replaced` rows, and already
 `outdated` ones, and audits each transition.
 
+## Who may approve: owner identity, not just the same organisation
+
+The confirm transition used to gate on the organisation alone, with an extra
+owner check only for actions that render user content (a reply draft). That was
+not enough (security audit 2.0, SEC-33). The executor reconstructs the action
+context **from the approval row**, so an effect always runs as the *requester*
+and lands on the requester's own rows: a teammate approving a colleague's bulk
+outdate was one person deciding what happens to another person's memories.
+
+Approving is now **owner-only by default**. An action type may declare itself
+`orgScoped` when its effect genuinely acts on shared state, and then any member
+of the organisation may decide it, but that is an explicit opt-in per action,
+so a new action is owner-only until someone deliberately says otherwise. No
+wired action is org-scoped today.
+
+Visibility is unchanged: an operational approval stays visible across the
+organisation (a content-bearing one still shows a content-free placeholder to
+anyone but its requester), and a refused confirm answers **not found** rather
+than forbidden, so the shape of the refusal leaks nothing either.
+
 ## How this composes with the rest
 
 The approval surface is the **only** write path the state machine adds; it drives

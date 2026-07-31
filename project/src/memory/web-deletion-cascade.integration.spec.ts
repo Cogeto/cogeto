@@ -7,7 +7,7 @@ import type { TaskList } from 'graphile-worker';
 import type { ZodType } from 'zod';
 import type { Principal } from '@cogeto/shared';
 import {
-  DailyCounters,
+  InMemoryDailyCounters,
   ensureInstanceKeys,
   idempotentTask,
   loadInstancePublicKey,
@@ -175,7 +175,7 @@ describe('web deletion cascade (integration: real Postgres + Qdrant + MinIO)', (
       new WebDiscoveryService(researchOptions),
       fetcher,
       objects,
-      new DailyCounters(),
+      new InMemoryDailyCounters(),
       { searchesMax: 10, pagesMax: 10, pagesPerRunMax: 5 },
       researchOptions,
       gateway,

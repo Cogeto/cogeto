@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -121,4 +122,41 @@ export const contextSuggestionDismissal = pgTable(
     dismissedAt: timestamp('dismissed_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.field, t.value] })],
+);
+
+/**
+ * Durable abuse limits (migration 0038; security audit 2.0 SEC-18/SEC-10).
+ * Both tables are content-free counters shared by the app and the worker, so a
+ * restart no longer clears the only ceiling on model spend and the two
+ * processes count one number instead of two halves.
+ *
+ * `usage_counter.task_family` is part of the key so per-user / per-period /
+ * per-task-family reporting can read this table later without a migration;
+ * every enforced limit SUMs across families.
+ */
+export const usageCounter = pgTable(
+  'usage_counter',
+  {
+    userId: text('user_id').notNull(),
+    /** The metered resource: model_calls, model_tokens, capture, upload, … */
+    bucket: text('bucket').notNull(),
+    /** UTC calendar day, 'YYYY-MM-DD'. A new day is a new key, never a reset. */
+    period: text('period').notNull(),
+    /** The work that caused the spend ('ingestion', 'chat', …); '' if unattributed. */
+    taskFamily: text('task_family').notNull().default(''),
+    count: bigint('count', { mode: 'number' }).notNull().default(0),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.bucket, t.period, t.taskFamily] })],
+);
+
+export const rateLimitWindow = pgTable(
+  'rate_limit_window',
+  {
+    principalId: text('principal_id').notNull(),
+    bucket: text('bucket').notNull(),
+    windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
+    count: integer('count').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.principalId, t.bucket] })],
 );

@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { desc, eq, isNotNull, isNull } from 'drizzle-orm';
-import { DRIZZLE, writeAudit } from '../infrastructure/index';
+import { DRIZZLE, runWithUsageContext, setUsageUser, writeAudit } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { MemoryStore } from '../memory/index';
 import type { MemoryRow } from '../memory/index';
@@ -100,11 +100,21 @@ export class DreamingService {
         .map((row) => ({ row, embedding: embeddings.get(row.id)! }));
       if (items.length === 0) continue;
       report.ownersProcessed += 1;
-      const summary = await this.db.transaction(async (tx) => {
-        const result = await this.reconciliationService.reconcile(tx, items, log);
-        await this.recordReconcileActions(tx, runId, result.actions);
-        return result;
-      });
+      // SEC-10: the reconcile pass is model work done ON BEHALF OF this owner,
+      // so it runs inside that owner's usage scope and is charged to them. The
+      // rest of the cycle (staleness, dormant flags, the digest) is
+      // deterministic and instance-wide, so it stays unattributed.
+      const summary = await runWithUsageContext(
+        async () => {
+          setUsageUser(ownerId);
+          return this.db.transaction(async (tx) => {
+            const result = await this.reconciliationService.reconcile(tx, items, log);
+            await this.recordReconcileActions(tx, runId, result.actions);
+            return result;
+          });
+        },
+        { taskFamily: 'dreaming' },
+      );
       report.considered += summary.considered;
       report.merged += summary.merged;
       report.enriched += summary.enriched;

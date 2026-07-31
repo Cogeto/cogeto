@@ -44,12 +44,17 @@ Developer-facing notes on the script live in
 2. **Note the public IPv4** shown on the instance page: the DNS records and
  the PTR all use it.
 3. **Firewall**: the instance must accept inbound TCP **22** (SSH), **80**
- (ACME + redirect), **443** (HTTPS), and **25** (inbound mail).
+ (ACME + redirect) and **443** (HTTPS). Port **25** is needed **only if the
+ instance uses email capture**, which is now an opt-in capability (security
+ audit 2.0, SEC-14): a fresh install runs no SMTP listener at all.
  - If you use the **OVH Network Firewall** on the IP (Public Cloud →
- **Network** → Public IPs → the IP → firewall): allow those four ports.
- - If `ufw` is active on the host, `cogeto install` opens 80/443/25 itself.
- - Nothing else should be open. The stack publishes only 80/443/25;
- Postgres/Qdrant/MinIO/Zitadel are internal-only by construction.
+ **Network** → Public IPs → the IP → firewall): allow 22, 80 and 443, plus
+ 25 only after you enable email capture.
+ - If `ufw` is active on the host, `cogeto install` opens 80/443 itself, and
+ `cogeto features enable mail` opens 25 when you turn email capture on.
+ - Nothing else should be open. The stack publishes only 80/443 (plus 25 with
+ email capture enabled); Postgres/Qdrant/MinIO/Zitadel are internal-only by
+ construction.
 4. **DNS zone prerequisite**: confirm you can edit the DNS zone that owns the
  app domain (Web Cloud → **Domain names** → the domain → **DNS zone**). The
  actual records are added **after** install (the script prints them).
@@ -143,18 +148,26 @@ install (SEC-16). The script prints this in its checklist; the manual steps:
 
 ### 2a. The DNS records (OVH panel)
 
-The script prints the **exact four records with real values**: copy them from
-its output. In the OVH panel: **Web Cloud → Domain names → the domain →
+The script prints the **exact records with real values**: copy them from its
+output. In the OVH panel: **Web Cloud → Domain names → the domain →
 DNS zone → Add an entry**:
 
-| # | Type | Record (subdomain field) | Target |
-| --- | --- | --- | --- |
-| 1 | A | `acme` (the app domain) | the instance IPv4 |
-| 2 | A | `s3.acme` (presigned-download origin) | the instance IPv4 |
-| 3 | A | `mail.acme` (the mail host) | the instance IPv4 |
-| 4 | MX | `in.acme` (the inbound subdomain) | priority `10`, target `mail.acme.cogeto.eu.` |
+| # | Type | Record (subdomain field) | Target | When |
+| --- | --- | --- | --- | --- |
+| 1 | A | `acme` (the app domain) | the instance IPv4 | always |
+| 2 | A | `s3.acme` (presigned-download origin) | the instance IPv4 | always |
+| 3 | A | `mail.acme` (the mail host) | the instance IPv4 | **only with email capture enabled** |
+| 4 | MX | `in.acme` (the inbound subdomain) | priority `10`, target `mail.acme.cogeto.eu.` | **only with email capture enabled** |
 
-Notes the script also prints:
+**Records 3 and 4 apply only when the `mail` capability is on** (security
+audit 2.0, SEC-14). Inbound SMTP is opt-in: on a fresh install no listener
+runs, and the script's checklist omits these records entirely. Turn email
+capture on with `sudo cogeto features enable mail`: it starts the receive-only
+listener, opens 25/tcp in `ufw` and prints records 3 and 4 with the instance's
+real values at that point. `cogeto features disable mail` stops the listener
+and closes the port again.
+
+Notes the script also prints (with email capture enabled):
 
 - **PTR (reverse DNS)**: set the reverse of the instance IPv4 to
  `mail.<domain>`: Public Cloud → **Network** → **Public IPs** → the IPv4 →
@@ -170,6 +183,7 @@ From your own machine (not the instance):
 ```sh
 dig +short A acme.cogeto.eu # → the instance IP
 dig +short A s3.acme.cogeto.eu # → the instance IP
+# Only with email capture enabled:
 dig +short MX in.acme.cogeto.eu # → 10 mail.acme.cogeto.eu.
 dig +short -x <instance IP> # → mail.acme.cogeto.eu.
 ```
@@ -182,6 +196,10 @@ verdict can go GREEN. OVH zone changes usually propagate in minutes; the zone
 TTL is the upper bound.
 
 ### 2c. Inbound-mail hardening (STARTTLS + sender SPF)
+
+**Skip this section entirely unless email capture is enabled**
+(`cogeto features enable mail`). With it off there is no mail container and no
+listening port to harden.
 
 Two hardening steps for the internet-facing mail server. Both are safe to do
 after the instance is up.
@@ -233,7 +251,8 @@ allowlisted for the test.
  dashboard. The nav footer shows the expected version.
 - [ ] **Status green**: `sudo ./cogeto status` → `VERDICT: GREEN` (containers
  healthy, `/api/health` all ok, TLS valid, versions match).
-- [ ] **Email lands** (sender-routed): as the **customer
+- [ ] **Email lands** (sender-routed), *only if you enabled the `mail`
+ capability; skip otherwise*: as the **customer
  user**, forward any short real message **from the address their user is
  registered with** to `capture@in.<domain>`: no configuration needed;
  within a minute or two it appears as a source and produces memories

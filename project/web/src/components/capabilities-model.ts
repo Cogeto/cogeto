@@ -43,6 +43,13 @@ const CAPABILITY_META: Record<string, { name: string; description: string; conse
         'Searches the public web from this instance and reads approved pages into memory. You see the query before it leaves.',
       consequence: 'Research is unavailable until the search service is reachable.',
     },
+    mail: {
+      name: 'Email capture',
+      description:
+        'Receives forwarded mail at this instance’s inbound address and captures it, routed by sender. Off means no SMTP listener runs at all.',
+      consequence:
+        'Email capture is enabled but the inbound mail service is not answering: forwarded mail is not being received.',
+    },
     demo: {
       name: 'Demo sandbox',
       description:

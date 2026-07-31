@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { runOnce } from 'graphile-worker';
 import type { TaskList } from 'graphile-worker';
 import type { Principal } from '@cogeto/shared';
@@ -48,6 +49,7 @@ describe('approval state machine (integration: real Postgres + Qdrant)', () => {
   let store: MemoryStore;
   let service: ApprovalService;
   let executor: ApprovalExecutor;
+  let registry: ActionRegistry;
 
   beforeAll(async () => {
     // Real Qdrant since: the approved bulk-outdate transitions memories,
@@ -63,7 +65,7 @@ describe('approval state machine (integration: real Postgres + Qdrant)', () => {
       },
     });
     await store.ensureIndexReady();
-    const registry = new ActionRegistry(store);
+    registry = new ActionRegistry(store);
     service = new ApprovalService(tdb.db, registry);
     executor = new ApprovalExecutor(registry);
   }, 120_000);
@@ -373,5 +375,54 @@ describe('approval state machine (integration: real Postgres + Qdrant)', () => {
     // The requester can.
     const confirmed = await service.confirm(userA, draft.id, 'approve');
     expect(confirmed.status).toBe('approved');
+  });
+
+  it("SEC-33 owner_identity_to_approve: a teammate cannot decide an approval whose effect targets the requester's data", async () => {
+    // The finding: `confirm` gated on orgId alone, and only content-bearing
+    // actions added an owner check. But the executor reconstructs the action
+    // context FROM THE APPROVAL ROW, so a bulk outdate always runs as the
+    // REQUESTER and lands on the requester's memories — meaning user A2 could
+    // decide what happens to user A's data. Owner-only is now the default.
+    const m1 = await makeMemory(userA, 'active');
+    const approval = await service.create(userA, BULK_OUTDATE_ACTION, { memoryIds: [m1] });
+
+    // The teammate still SEES it (an operational action is org-visible) …
+    const visible = (await service.listPending(userA2)).find((a) => a.id === approval.id);
+    expect(visible).toBeDefined();
+
+    // … but may neither approve nor reject it; the refusal is NotFound, so the
+    // existence of a teammate's approval is not leaked by the shape either.
+    await expect(service.confirm(userA2, approval.id, 'approve')).rejects.toThrow(/not found/i);
+    await expect(service.confirm(userA2, approval.id, 'reject')).rejects.toThrow(/not found/i);
+    expect(await approvalStatus(approval.id)).toBe('pending_approval'); // untouched
+
+    // The owner's own flow is unchanged: they decide, and the effect runs.
+    await service.confirm(userA, approval.id, 'approve');
+    await runWorker();
+    expect(await statusOf(m1)).toBe('outdated');
+    expect(await approvalStatus(approval.id)).toBe('executed');
+  });
+
+  it('SEC-33: an action that declares itself org-scoped stays decidable by any org member', async () => {
+    // The escape hatch must actually work, or "keep genuinely org-scoped
+    // actions as they are" is an empty promise. Registered here rather than
+    // shipped: no wired action is org-scoped today, and the finding was about
+    // the DEFAULT.
+    // The registry is built from a fixed list at construction; a test-only
+    // definition goes straight into its map rather than widening the
+    // production API with a runtime mutator.
+    (registry as unknown as { byType: Map<string, unknown> }).byType.set('test.org_scoped', {
+      actionType: 'test.org_scoped',
+      schema: z.object({ note: z.string() }),
+      initialStatus: 'pending_approval',
+      ttlSeconds: 3600,
+      orgScoped: true,
+      summarize: () => 'Shared operational action',
+      preview: () => ['Acts on shared state'],
+      execute: () => Promise.resolve({ summary: 'done', detail: {} }),
+    });
+    const shared = await service.create(userA, 'test.org_scoped', { note: 'x' });
+    const decided = await service.confirm(userA2, shared.id, 'approve');
+    expect(decided.status).toBe('approved');
   });
 });

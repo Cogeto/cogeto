@@ -11,7 +11,7 @@ import {
   ensureInstanceKeys,
   idempotentTask,
   loadInstancePublicKey,
-  DailyCounters,
+  InMemoryDailyCounters,
 } from '../infrastructure/index';
 import {
   fakeEmbedding,
@@ -161,7 +161,7 @@ describe('deletion cascade over a real uploaded file (F1 handoff §4)', () => {
       fileStore,
       store,
       { uploadMaxBytes: 25 * 1024 * 1024, downloadUrlTtlSeconds: 300 },
-      new DailyCounters(),
+      new InMemoryDailyCounters(),
       { captureMax: 1_000_000, uploadMax: 1_000_000 },
     );
     saga = new DeletionSaga(tdb.db, [], vectors);

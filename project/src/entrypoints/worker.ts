@@ -47,7 +47,7 @@ import {
   ModelGateway,
   recordPromptVersion,
 } from '../model-gateway/index';
-import { buildTaskList } from './worker-tasks';
+import { attributedTask, buildTaskList } from './worker-tasks';
 import {
   credentialsBanner,
   DEMO_RESET_JOB_TYPE,
@@ -159,7 +159,7 @@ async function main(): Promise<void> {
   // routine. One more crontab LINE (demoLine), never a second scheduler.
   let demoLine = '';
   if (config.demoMode) {
-    taskList[DEMO_RESET_JOB_TYPE] = async () => {
+    taskList[DEMO_RESET_JOB_TYPE] = attributedTask(DEMO_RESET_JOB_TYPE, async () => {
       const { api, ownerId } = await establishDemoSession(config);
       try {
         await resetDemoWorld({
@@ -189,7 +189,7 @@ async function main(): Promise<void> {
         }
         throw error;
       }
-    };
+    });
     demoLine = `\n${config.demoResetCron} ${DEMO_RESET_JOB_TYPE}`;
     logger.info({ cron: config.demoResetCron }, 'demo mode: scheduled reset enabled');
   }
