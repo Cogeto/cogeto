@@ -74,7 +74,13 @@ services:
       context: .
       dockerfile: project/infra/docker/Dockerfile
       target: runtime
-    command: ['node', 'project/src/dist/entrypoints/app.js']
+    # --max-old-space-size tells V8 about the cgroup ceiling above. Without it
+    # Node sizes its heap from the HOST's memory and grows past mem_limit, and
+    # the kernel SIGKILLs the container instead of V8 collecting harder. Set
+    # below the limit, not at it: off-heap allocation (Buffers, the raw bytes of
+    # an upload or a mail body) counts against the container but never against
+    # the heap budget, so the gap is the off-heap working room.
+    command: ['node', '--max-old-space-size=1536', 'project/src/dist/entrypoints/app.js']
     environment: &cogeto-env
       COGETO_HTTP_PORT: 3000
       # SEC-1: the runtime connects as the least-privilege cogeto_app role
@@ -254,7 +260,11 @@ services:
       context: .
       dockerfile: project/infra/docker/Dockerfile
       target: runtime
-    command: ['node', 'project/src/dist/entrypoints/worker.js']
+    # Heap ceiling below mem_limit: 3g — see the note on `app`. The worker gets
+    # the larger share because it is the process that parses 25 MB documents and
+    # builds embedding batches, which is also the off-heap pressure the gap
+    # between 2304m and 3g is there to absorb.
+    command: ['node', '--max-old-space-size=2304', 'project/src/dist/entrypoints/worker.js']
     environment:
       <<: *cogeto-env
       #: run the worker's graphile crons in UTC so the 03:00/03:30/03:40

@@ -84,7 +84,7 @@ export class PostgresRateLimitStore extends RateLimitStore {
     const windowStart = row?.windowStart ? new Date(row.windowStart).getTime() : now;
     // Awaited so the sweep is deterministic, but throttled to at most one pass
     // a minute and never able to fail the request (see below).
-    await this.evict(now, windowMs);
+    await this.evict(now, bucket, windowMs);
     return { count: row?.count ?? 1, resetAt: windowStart + windowMs };
   }
 
@@ -95,13 +95,27 @@ export class PostgresRateLimitStore extends RateLimitStore {
    * a cheap, throttled sweep of entries that can no longer matter. Fire and
    * forget: an eviction failure is logged by the caller's hook, never raised
    * into a request.
+   *
+   * The sweep is scoped to the CALLING BUCKET. One store serves buckets with
+   * very different windows (the HTTP guard's 60 s and inbound mail's 3600 s),
+   * and the cutoff can only be computed from the window of the bucket we were
+   * called for. An unscoped delete therefore measured every other bucket's rows
+   * against the wrong window: a single web request evicted live one-hour mail
+   * windows two minutes old, which reset each sender's count and silently
+   * reduced the per-sender cap to a fraction of its configured value. Scoping
+   * the delete keeps every row measured against its own bucket's window; rows
+   * of an idle bucket are swept by that bucket's next hit.
    */
-  private async evict(now: number, windowMs: number): Promise<void> {
+  private async evict(now: number, bucket: string, windowMs: number): Promise<void> {
     if (now - this.lastEvictionAt < EVICT_INTERVAL_MS) return;
     this.lastEvictionAt = now;
     try {
       const cutoff = new Date(now - windowMs * EVICT_AFTER_WINDOWS);
-      await this.db.delete(rateLimitWindow).where(sql`${rateLimitWindow.windowStart} < ${cutoff}`);
+      await this.db
+        .delete(rateLimitWindow)
+        .where(
+          sql`${rateLimitWindow.bucket} = ${bucket} AND ${rateLimitWindow.windowStart} < ${cutoff}`,
+        );
     } catch (error) {
       this.onEvictionError(error);
     }

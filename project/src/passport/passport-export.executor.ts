@@ -46,7 +46,10 @@ export class PassportExportExecutor {
 
   /** Assemble and store the artifact for one export request. Idempotent: a
    * retry overwrites the same object key and re-marks the row ready. */
-  async run(exportId: string, now: Date): Promise<{ objectKey: string; sizeBytes: number }> {
+  async run(
+    exportId: string,
+    now: Date,
+  ): Promise<{ objectKey: string; sizeBytes: number; published: boolean }> {
     const request = await this.store.getById(exportId);
     if (!request) throw new Error(`passport export ${exportId} not found`);
     const principal = ownerPrincipal(request.userId, request.orgId);
@@ -101,7 +104,20 @@ export class PassportExportExecutor {
     const objectKey = this.objectKeyFor(principal, exportId);
     await this.objects.putObject(objectKey, zip, { contentType: 'application/zip' });
     const expiresAt = new Date(now.getTime() + this.options.exportRetentionHours * 3_600_000);
-    await this.store.markReady(exportId, objectKey, sizeBytes, now, expiresAt);
+    const published = await this.store.markReady(exportId, objectKey, sizeBytes, now, expiresAt);
+    if (!published) {
+      // SEC-8: a source deletion expired this export while we were assembling
+      // it, so the bytes we just wrote describe memory the receipt already
+      // promised erased. The row stays expired; erase the object ourselves,
+      // because it was written after the saga enumerated and so is in no
+      // receipt for the worker leg or the sweep to catch.
+      await this.objects.deleteObject(objectKey);
+      this.logger.log(
+        `passport export ${exportId} was expired by a source deletion while assembling: ` +
+          `object discarded, export not published`,
+      );
+      return { objectKey, sizeBytes, published: false };
+    }
     // SEC-9: the artifact now exists and is downloadable. Structural only.
     await writeAudit(this.db, {
       actor: 'passport_export',
@@ -115,7 +131,7 @@ export class PassportExportExecutor {
       `passport export ${exportId} ready: ${memories.length} memories, ` +
         `${receipts.length} receipts, ${attachments.length} attachments, ${sizeBytes} bytes`,
     );
-    return { objectKey, sizeBytes };
+    return { objectKey, sizeBytes, published: true };
   }
 
   async fail(exportId: string, error: string): Promise<void> {

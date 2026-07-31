@@ -233,6 +233,33 @@ describe('durable abuse limits (integration, real Postgres)', () => {
       expect(await countWindows()).toBe(1);
     });
 
+    it('eviction is scoped to its own bucket: a short window never expires a long one', async () => {
+      // One store serves buckets with very different windows: the HTTP guard's
+      // 60 s and inbound mail's 3600 s. An unscoped sweep measured every row
+      // against the CALLING bucket's window, so a single web request deleted
+      // live one-hour mail windows and reset each sender's count, quietly
+      // shrinking the per-sender cap to a fraction of its configured value.
+      const store = new PostgresRateLimitStore(tdb.db);
+      const start = Date.parse('2026-07-30T10:00:00Z');
+      const hour = 3_600_000;
+
+      // A sender ten minutes into its one-hour window, well short of the cap.
+      expect((await store.hit('sender@example.com', 'email_intake', hour, start)).count).toBe(1);
+      expect(
+        (await store.hit('sender@example.com', 'email_intake', hour, start + 60_000)).count,
+      ).toBe(2);
+
+      // Ordinary web traffic, ten minutes later: past the eviction throttle, so
+      // this hit sweeps. Its horizon is two 60 s windows, which the mail row is
+      // older than in wall-clock terms but NOT in terms of its own window.
+      await store.hit('user-a', 'chat', 60_000, start + 10 * 60_000);
+
+      // The mail window must have survived, still counting.
+      expect(
+        (await store.hit('sender@example.com', 'email_intake', hour, start + 11 * 60_000)).count,
+      ).toBe(3);
+    });
+
     const countWindows = async (): Promise<number> => {
       const { rows } = await tdb.pool.query<{ n: string }>(
         'SELECT count(*)::text AS n FROM rate_limit_window',

@@ -172,6 +172,20 @@ the operator to mint a fresh PAT, which the runbook documents.
  Under single-tenant this is the same one org; stamping `org_id` on every writer
  is the right step before any future where more than one org shares
  infrastructure when more than one org shares infrastructure.
+- **Database traffic inside the compose network is plaintext, and that is
+ accepted (audit 2.0 SEC-34).** Postgres runs with TLS off and the application,
+ migration and Zitadel connections all reach it unencrypted. The accepted
+ reasoning: Postgres publishes no port on either compose file, so the only
+ listener is on the private bridge network; every party on that network (app,
+ worker, migrate, Zitadel) already holds credentials to the database, so
+ encrypting between them protects against an attacker who is already inside the
+ network namespace, which is a position from which reading process memory or the
+ `.env` file is easier than capturing traffic. The cost is a per-instance
+ certificate to issue, mount, rotate and expire, on a single-tenant appliance the
+ operator does not otherwise administer. This holds only while Postgres stays
+ unpublished and single-host: **exposing the port, moving the database to another
+ host, or putting a second tenant on the network each invalidate it**, and TLS
+ becomes required at that point.
 
 ## Where this lives in the code
 
