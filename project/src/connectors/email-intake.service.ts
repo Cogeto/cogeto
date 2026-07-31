@@ -1,10 +1,15 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { simpleParser } from 'mailparser';
 import type { AddressObject, ParsedMail } from 'mailparser';
 import { ALLOWED_UPLOAD_CONTENT_TYPES } from '@cogeto/shared';
 import type { MemoryScope } from '@cogeto/shared';
-import { DRIZZLE, withTransactionalEnqueue } from '../infrastructure/index';
+import {
+  DRIZZLE,
+  InMemoryRateLimitStore,
+  RateLimitStore,
+  withTransactionalEnqueue,
+} from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
 import { MemoryFileStore, MemoryObjectStore } from '../memory/index';
@@ -75,32 +80,27 @@ interface PreparedObject {
 export class EmailIntakeService {
   private readonly logger = new Logger(EmailIntakeService.name);
   /**
-   * In-process per-sender fixed-window intake counter. A single-tenant
-   * instance runs one app process, so an in-memory window is sufficient and
-   * needs no Redis; it bounds the ingestion/model spend one internet sender can
-   * drive before the allowlist/routing checks even run.
+   * Per-sender fixed-window intake counter. It bounds the ingestion/model
+   * spend one internet sender can drive before the allowlist/routing checks
+   * even run.
+   *
+   * Security audit 2.0 SEC-18: this was an in-process map like the other abuse
+   * limits, so a restart cleared it. It now shares the DURABLE
+   * {@link RateLimitStore} with the request rate limiter, which is the same
+   * fixed-window shape, so the cap survives a restart and one number is
+   * enforced across processes. The in-process store is the fallback for bare
+   * constructions that run without a database.
    */
-  private readonly intakeWindows = new Map<string, { count: number; resetAt: number }>();
+  private readonly intakeLimiter: RateLimitStore;
 
   /** True if this sender is still under the per-window intake cap (). */
-  private withinIntakeRate(sender: string | null): boolean {
+  private async withinIntakeRate(sender: string | null): Promise<boolean> {
     const max = this.options.intakeMaxPerSenderPerWindow;
     if (!max || max <= 0) return true; // cap disabled
     const key = sender ?? '<null-sender>';
-    const now = Date.now();
     const windowMs = this.options.intakeRateWindowSeconds * 1000;
-    const entry = this.intakeWindows.get(key);
-    if (!entry || now >= entry.resetAt) {
-      this.intakeWindows.set(key, { count: 1, resetAt: now + windowMs });
-      // Opportunistic cleanup so the map cannot grow unbounded across senders.
-      if (this.intakeWindows.size > 10_000) {
-        for (const [k, v] of this.intakeWindows) if (now >= v.resetAt) this.intakeWindows.delete(k);
-      }
-      return true;
-    }
-    if (entry.count >= max) return false;
-    entry.count += 1;
-    return true;
+    const { count } = await this.intakeLimiter.hit(key, 'email_intake', windowMs, Date.now());
+    return count <= max;
   }
 
   constructor(
@@ -111,7 +111,10 @@ export class EmailIntakeService {
     private readonly directory: UserDirectory,
     private readonly settings: UserSettingsService,
     @Inject(MAIL_OPTIONS) private readonly options: MailOptions,
-  ) {}
+    @Optional() intakeLimiter?: RateLimitStore,
+  ) {
+    this.intakeLimiter = intakeLimiter ?? new InMemoryRateLimitStore();
+  }
 
   async intake(raw: Buffer, envelope: MailEnvelope): Promise<IntakeResult> {
     // (0) Size cap — cheap, before parsing (Haraka also caps; app is authoritative).
@@ -133,7 +136,7 @@ export class EmailIntakeService {
 
     // (0b) Per-sender intake rate cap — bound the ingestion/model spend
     //      one internet sender can drive. Checked before parsing.
-    if (!this.withinIntakeRate(envelopeSender)) {
+    if (!(await this.withinIntakeRate(envelopeSender))) {
       await this.refuse(envelope, envelopeSender, 'rate_limited');
       return { accepted: false, status: 'rate_limited', reason: 'sender intake rate exceeded' };
     }
@@ -356,6 +359,10 @@ export class EmailIntakeService {
                 type: INGESTION_PIPELINE_JOB_TYPE,
                 payload: { source_type: 'file', source_id: plan.fileKey },
                 maxAttempts: FILE_PIPELINE_MAX_ATTEMPTS,
+                // SEC-10: intake runs under the shared-secret guard, not a
+                // Principal, so there is no usage scope to inherit — name the
+                // routed owner explicitly or the pipeline spend is unattributed.
+                principalId: owner.userId,
               },
             );
           }
@@ -371,6 +378,8 @@ export class EmailIntakeService {
           {
             type: INGESTION_PIPELINE_JOB_TYPE,
             payload: { source_type: 'email', source_id: emailId },
+            // SEC-10: see above — no usage scope on the intake path.
+            principalId: owner.userId,
           },
         );
       });

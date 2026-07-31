@@ -34,7 +34,7 @@ import {
   WebFetchService,
 } from '../connectors/index';
 import type { ResearchOptions } from '../connectors/index';
-import { DailyCounters } from '../infrastructure/index';
+import { InMemoryDailyCounters } from '../infrastructure/index';
 import { createModelGateway, loadPrompt, ModelGateway } from '../model-gateway/index';
 import type { ResolvedModelProviders } from '../model-gateway/index';
 import { resolveEvalProviders, requireConfiguredProviders } from './eval-env';
@@ -487,7 +487,7 @@ async function main(): Promise<void> {
         discovery,
         fetcher,
         objects,
-        new DailyCounters(),
+        new InMemoryDailyCounters(),
         {
           searchesMax: 100,
           pagesMax: 100,

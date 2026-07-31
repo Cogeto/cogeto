@@ -4,7 +4,7 @@ import type { TaskList } from 'graphile-worker';
 import type { ZodType } from 'zod';
 import type { Principal } from '@cogeto/shared';
 import { PDF_CONTENT_TYPE, DOCX_CONTENT_TYPE } from '@cogeto/shared';
-import { idempotentTask, DailyCounters } from '../infrastructure/index';
+import { idempotentTask, InMemoryDailyCounters } from '../infrastructure/index';
 import {
   fakeEmbedding,
   makeDocx,
@@ -168,11 +168,11 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
       fileStore,
       store,
       uploadOpts,
-      new DailyCounters(),
+      new InMemoryDailyCounters(),
       { captureMax: 1_000_000, uploadMax: 1_000_000 },
     );
     userSettings = new UserSettingsService(tdb.db);
-    notes = new NotesService(tdb.db, new DailyCounters(), {
+    notes = new NotesService(tdb.db, new InMemoryDailyCounters(), {
       captureMax: 1_000_000,
       uploadMax: 1_000_000,
     });
@@ -281,7 +281,7 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
       brokenFiles,
       store,
       uploadOpts,
-      new DailyCounters(),
+      new InMemoryDailyCounters(),
       { captureMax: 1_000_000, uploadMax: 1_000_000 },
     );
 

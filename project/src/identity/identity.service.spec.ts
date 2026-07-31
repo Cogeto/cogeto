@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import * as path from 'node:path';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { UnauthorizedException } from '@nestjs/common';
 import { IdentityService } from './identity.service';
 import type { UserDirectory } from './user-directory';
@@ -121,6 +121,81 @@ describe('identity seam — iss/aud pre-validation', () => {
     // No dots → not a JWT → the iss/aud decode is skipped by design.
     expect((await service.resolvePrincipal('opaque-pat-token')).userId).toBe('user-123');
     expect(mockFetch).toHaveBeenCalledOnce();
+  });
+});
+
+// ── SEC-26: a cached principal may never outlive its token ────────────────────
+describe('identity seam — principal cache honours the token exp', () => {
+  const OPTS = {
+    internalBaseUrl: 'http://zitadel:8080',
+    externalDomain: 'localhost',
+    issuer: 'https://localhost',
+    expectedAudience: 'cogeto-spa',
+    // A long TTL, so the token's own exp is unambiguously what bounds the entry.
+    cacheTtlSeconds: 600,
+  };
+  const claims = (exp: number): Record<string, unknown> => ({
+    iss: 'https://localhost',
+    aud: 'cogeto-spa',
+    exp,
+  });
+
+  beforeEach(() => {
+    mockFetch.mockReset();
+    mockFetch.mockResolvedValue({ status: 200, body: VALID_BODY });
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('re-validates once the token has expired, even though the TTL has not', async () => {
+    vi.setSystemTime(new Date('2026-07-30T12:00:00Z'));
+    const service = new IdentityService(OPTS, directory);
+    // The token expires in 30 s; the cache TTL is 600 s. Before the fix the
+    // entry lived for the full TTL, so the instance kept honouring a token the
+    // identity provider had already retired.
+    const token = jwt(claims(Math.floor(Date.parse('2026-07-30T12:00:30Z') / 1000)));
+
+    await service.resolvePrincipal(token);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+
+    vi.setSystemTime(new Date('2026-07-30T12:00:20Z')); // still valid → cached
+    await service.resolvePrincipal(token);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+
+    vi.setSystemTime(new Date('2026-07-30T12:00:31Z')); // past exp, inside TTL
+    // Zitadel now refuses the token, and we ask it rather than trusting a
+    // cache entry that outlived the credential.
+    mockFetch.mockResolvedValue({ status: 401, body: {} });
+    await expect(service.resolvePrincipal(token)).rejects.toThrow(/invalid or expired/i);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('a token that outlives the TTL is still bounded by the TTL (the shorter wins)', async () => {
+    vi.setSystemTime(new Date('2026-07-30T12:00:00Z'));
+    const service = new IdentityService({ ...OPTS, cacheTtlSeconds: 10 }, directory);
+    const token = jwt(claims(Math.floor(Date.parse('2026-07-30T13:00:00Z') / 1000)));
+
+    await service.resolvePrincipal(token);
+    vi.setSystemTime(new Date('2026-07-30T12:00:05Z'));
+    await service.resolvePrincipal(token);
+    expect(mockFetch).toHaveBeenCalledTimes(1); // inside the TTL
+    vi.setSystemTime(new Date('2026-07-30T12:00:11Z'));
+    await service.resolvePrincipal(token);
+    expect(mockFetch).toHaveBeenCalledTimes(2); // TTL elapsed, re-validated
+  });
+
+  it('an opaque token keeps the flat TTL — there is no exp to read', async () => {
+    vi.setSystemTime(new Date('2026-07-30T12:00:00Z'));
+    const service = new IdentityService({ ...OPTS, cacheTtlSeconds: 10 }, directory);
+    await service.resolvePrincipal('opaque-pat');
+    vi.setSystemTime(new Date('2026-07-30T12:00:05Z'));
+    await service.resolvePrincipal('opaque-pat');
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    vi.setSystemTime(new Date('2026-07-30T12:00:11Z'));
+    await service.resolvePrincipal('opaque-pat');
+    expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 });
 

@@ -144,7 +144,11 @@ export class SkillEngine {
           type: 'skill_run.plan_approved',
           payload: { source_type: 'skill_run', source_id: runId, owner_id: principal.userId },
         },
-        { type: SKILL_ADVANCE_JOB_TYPE, payload: { source_type: 'skill_run', source_id: runId } },
+        {
+          type: SKILL_ADVANCE_JOB_TYPE,
+          payload: { source_type: 'skill_run', source_id: runId },
+          principalId: principal.userId, // SEC-10
+        },
       );
       return row;
     });

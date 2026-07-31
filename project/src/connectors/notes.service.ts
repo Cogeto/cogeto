@@ -35,7 +35,7 @@ export class NotesService {
     // Per-user daily capture cap: bounds the pipeline model work a
     // single user (or the shared demo principal) can drive in a day. Reserved
     // BEFORE the write so a burst cannot slip past the check.
-    if (this.counters.get(principal.userId, 'capture') >= this.quota.captureMax) {
+    if ((await this.counters.get(principal.userId, 'capture')) >= this.quota.captureMax) {
       throw new HttpException(
         {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
@@ -65,7 +65,7 @@ export class NotesService {
       );
       return inserted;
     });
-    this.counters.add(principal.userId, 'capture', 1);
+    await this.counters.add(principal.userId, 'capture', 1);
     return created;
   }
 

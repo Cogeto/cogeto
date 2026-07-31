@@ -10,7 +10,7 @@ export { applyMigrations } from './migrations';
 export type { MigrationRunResult } from './migrations';
 export { writeAudit } from './audit';
 export type { AuditEntry } from './audit';
-export { withTransactionalEnqueue } from './outbox';
+export { withTransactionalEnqueue, JOB_PRINCIPAL_KEY } from './outbox';
 export type { DomainEvent, JobSpec } from './outbox';
 export {
   idempotentTask,
@@ -40,6 +40,8 @@ export {
   attentionDismissal,
   userContext,
   contextSuggestionDismissal,
+  usageCounter,
+  rateLimitWindow,
 } from './persistence/tables';
 // Per-user instance context + language preference (-0053).
 export {
@@ -81,9 +83,22 @@ export type {
   ParseCaps,
 } from './limits';
 export { LimitsModule } from './limits.module';
-export { DailyCounters } from './daily-counters';
+export {
+  DailyCounters,
+  InMemoryDailyCounters,
+  PostgresDailyCounters,
+  utcDay,
+} from './daily-counters';
 export { RateLimitGuard, RateLimit } from './rate-limit';
 export type { RateLimitBucket } from './rate-limit';
-export { InMemoryModelBudget } from './model-budget';
+export { RateLimitStore, InMemoryRateLimitStore, PostgresRateLimitStore } from './rate-limit-store';
+export type { RateLimitHit } from './rate-limit-store';
+export { DailyModelBudget, MODEL_CALLS_BUCKET, MODEL_TOKENS_BUCKET } from './model-budget';
 export type { ModelUsageMeter } from './model-budget';
-export { runWithUsageContext, setUsageUser, currentUsageUserId } from './usage-context';
+export {
+  runWithUsageContext,
+  setUsageUser,
+  setUsageTaskFamily,
+  currentUsageUserId,
+  currentUsageTaskFamily,
+} from './usage-context';

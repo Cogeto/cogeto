@@ -91,6 +91,9 @@ describe('capability registry (integration, real Postgres)', () => {
     expect(report.capabilities.map((c) => c.id)).toEqual([
       'redaction',
       'research',
+      // Inbound email capture joined the registry in audit 2.0 SEC-14: it is a
+      // profile-gated capability now, not an always-on fixture.
+      'mail',
       'demo',
       'consoles',
       'local-models',

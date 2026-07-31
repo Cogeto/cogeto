@@ -15,6 +15,7 @@ enablement is determined, how health is checked, and its failure semantics.
 | --- | --- | --- | --- |
 | `redaction` | the same flag the gateway obeys | sidecar health endpoint | **fail-closed**: unreachable means model calls fail, never plaintext |
 | `research` | the `research` profile, or an explicit flag | SearXNG health endpoint | **degrade with message**: the feature answers "search unavailable" |
+| `mail` | the `mail` profile, or an explicit flag | TCP connect to the inbound SMTP listener | **loud when enabled and dead**: forwarded mail is not being received. Off is the default, and a mail-less instance is not degraded |
 | `demo` | the demo-mode flag | passive: the production-guard state | demo plus production makes the guard refuse the seed, loudly |
 | `consoles` | the `consoles` profile, or an explicit flag | none | the console edge binds to host loopback; the app has nothing it can probe, and says so |
 | `local-models` | any tier resolved to the local provider | runtime reachability plus required models pulled | **external dependency**: boot refuses, and a runtime that dies later goes loud here |
@@ -53,6 +54,21 @@ app reads the same value.
 Where a capability already has an explicit flag, **that flag remains the authority**,
 because it is what the behaviour actually follows. Command-line `--profile` flags are
 invisible to the container; dev one-offs set the explicit flags instead.
+
+## Inbound mail is a capability, not a fixture
+
+Until security audit 2.0 (SEC-14) the mail service had no profile at all: every
+instance published an internet-facing SMTP listener on port 25 and parsed hostile
+SMTP, whether or not the customer used email capture, with no supported way to turn it
+off. It is now an ordinary member of this table: off by default, enabled with
+`cogeto features enable mail` (which also opens the firewall port and prints the MX and
+PTR steps), disabled with the matching command (which closes the port again).
+
+Two consequences worth stating, because they are what makes "off" honest rather than
+cosmetic: with the capability off the health check reports "inbound mail capability is
+off" and stays **green** rather than failing against a listener that is deliberately
+absent, and the installer's checklist omits the mail DNS records entirely instead of
+telling an operator to point real mail at nothing.
 
 ## Control stays in the operator script
 

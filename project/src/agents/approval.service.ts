@@ -90,13 +90,21 @@ export class ApprovalService {
     const to = decision === 'approve' ? 'approved' : 'rejected';
     const row = await this.db.transaction(async (tx) => {
       const current = await this.lockForOrg(tx, principal, id);
-      // A content-bearing approval (e.g. a reply draft) is personal to its
-      // requester — only they may approve/reject it. A teammate is told
-      // it does not exist rather than leaking its existence.
-      if (
-        this.registry.get(current.actionType).contentBearing &&
-        current.requestedBy !== principal.userId
-      ) {
+      // Audit 2.0 SEC-33: same-org is NOT enough to decide an approval whose
+      // effect targets another user's data. The executor reconstructs the
+      // action context from the approval row, so the effect always runs AS THE
+      // REQUESTER (`ctx.userId`) and lands on the requester's rows — a
+      // teammate approving it is one person deciding what happens to another
+      // person's memories. Owner identity is required unless the action type
+      // declares itself genuinely org-scoped (shared state, anyone may decide).
+      //
+      // A content-bearing approval (e.g. a reply draft) was already owner-only
+      // and stays so; the difference is that owner-only is now the DEFAULT and
+      // org-wide is the opt-in. Refused as NotFound, not Forbidden, so the
+      // existence of a teammate's approval is not leaked either way.
+      const definition = this.registry.get(current.actionType);
+      const ownerOnly = definition.contentBearing === true || definition.orgScoped !== true;
+      if (ownerOnly && current.requestedBy !== principal.userId) {
         throw new NotFoundException(`approval ${id} not found`);
       }
       const check = checkApprovalTransition(current.status, to);

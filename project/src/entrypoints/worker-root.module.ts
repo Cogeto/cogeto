@@ -42,9 +42,10 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
   @Module({
     imports: [
       DatabaseModule.register({ databaseUrl: config.databaseUrl, poolMax: config.pgPoolMax }),
-      // Limits: the worker needs the parse caps for the pipeline
-      // + file source reader. Its model calls are unattributed, so the model
-      // budget is off here (ModelGatewayModule without `budget`).
+      // Limits: the parse caps for the pipeline + file source reader, and
+      // (audit 2.0 SEC-18) the DURABLE counters the model budget reads. The
+      // counters live in Postgres, so the app and this process enforce one
+      // shared daily total rather than a per-process half that a restart wipes.
       LimitsModule.register(config.limits, config.timezone),
       // Per-user context + language: the worker's system-initiated
       // copy (digest lines, conclusion phrasing) speaks preferred_language.
@@ -59,6 +60,12 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       ModelGatewayModule.register({
         providers: config.modelProviders,
         redaction: redactionOptions(config),
+        // SEC-10: worker model traffic was entirely unmetered — this root
+        // omitted the budget wrapper, so extraction, verification, embedding,
+        // dreaming, skill advance and research conclusion ran with no daily
+        // ceiling at all. The wrapper is on, and the task wrapper opens a usage
+        // scope from the enqueuing principal so the spend has an owner.
+        budget: true,
       }),
       MemoryModule.register({
         qdrantUrl: config.qdrantUrl,

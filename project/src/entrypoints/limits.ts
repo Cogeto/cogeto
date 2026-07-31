@@ -48,12 +48,26 @@ export function buildLimits(env: NodeJS.ProcessEnv, demoMode: boolean): LimitsCo
       upload: pick(env.COGETO_RATELIMIT_UPLOAD, env.COGETO_DEMO_RATELIMIT_UPLOAD, 20, 10),
     },
     modelBudget: {
-      dailyCalls: pick(env.COGETO_MODEL_DAILY_CALLS, env.COGETO_DEMO_MODEL_DAILY_CALLS, 2000, 400),
+      // Security audit 2.0 SEC-10: the budget now covers WORKER traffic too
+      // (extraction, verification, embedding, dreaming, skill advance,
+      // research conclusion), which used to run with no ceiling at all. The
+      // defaults are raised to match what the budget now counts, sized off the
+      // ingest quota rather than off interactive use: 1000 captures + 300
+      // uploads a day, each driving a handful of pipeline calls, is roughly
+      // 10k calls for a user who maxes out every other limit — so 10k is a
+      // real ceiling that a legitimate day never reaches. The per-minute rate
+      // limits, not this number, are what bound interactive abuse.
+      dailyCalls: pick(
+        env.COGETO_MODEL_DAILY_CALLS,
+        env.COGETO_DEMO_MODEL_DAILY_CALLS,
+        10_000,
+        2000,
+      ),
       dailyTokens: pick(
         env.COGETO_MODEL_DAILY_TOKENS,
         env.COGETO_DEMO_MODEL_DAILY_TOKENS,
+        20_000_000,
         4_000_000,
-        800_000,
       ),
     },
     ingestQuota: {

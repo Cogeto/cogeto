@@ -46,6 +46,16 @@ IMAGE_MAIL="cogeto/cogeto-mail"
 # cosign is installed by `install` (o6-dry-run: an optional verifier gets
 # skipped in practice). Pinned release; single static binary, not in apt.
 COSIGN_VERSION="2.4.1"
+# SEC-13: the sha256 of cosign-linux-amd64 for the pinned release, taken from
+# the release's own cosign_checksums.txt and HARD-PINNED HERE.
+#
+# Pinned rather than fetched, deliberately. The whole image-provenance chain
+# terminates in this binary, so verifying it against a file downloaded from the
+# same place at the same moment proves nothing: whoever could swap the binary
+# could swap the checksum file beside it. This constant travels with the script
+# the operator obtained over TLS, so replacing it means editing the script in
+# the repository, which is a reviewed change. Bump both lines together.
+COSIGN_SHA256="8b24b946dd5809c6bd93de08033bcf6bc0ed7d336b7785787c080f574b89249b"
 GITHUB_REPO="Cogeto/cogeto"
 RAW_BASE="https://raw.githubusercontent.com/${GITHUB_REPO}"
 GH_RELEASES_API="https://api.github.com/repos/${GITHUB_REPO}/releases"
@@ -174,8 +184,8 @@ Subcommands:
                dead-letter count, deletion-sweep state. Green only when
                actually working.
   features Optional capabilities (P6.7). With no verb:
-               list every capability (redaction, research, demo, consoles,
-               local-models) with its configured state and, when the stack is
+               list every capability (redaction, research, mail, demo,
+               consoles, local-models) with its configured state and, when the stack is
                running, its live health from /api/health; with the stack down
                the configured state is shown and health is stated as unknown.
                'enable <id>' / 'disable <id>' edit the instance configuration
@@ -185,7 +195,12 @@ Subcommands:
                redaction requires a typed confirmation (model calls would
                send plaintext). Enabling demo is REFUSED on a production
                instance. 'enable local-models' needs --base-url (the Ollama
-               runtime URL) and states the reindex consequence.
+               runtime URL) and states the reindex consequence. 'enable mail'
+               starts the receive-only inbound SMTP listener, opens 25/tcp in
+               ufw and prints the MX/PTR steps; 'disable mail' stops it and
+               closes the port again (audit 2.0 SEC-14: inbound SMTP is opt-in,
+               so an instance that does not use email capture runs no
+               internet-facing listener).
   backup-info  Exactly what to enable in the OVHcloud panel (roadmap D4 —
                the script itself performs no backups).
 
@@ -232,7 +247,7 @@ derive_s3_origin() { printf 'https://s3.%s' "$1"; }
 
 # ── Capability helpers (P6.7) — pure, unit-tested ─────────────
 
-FEATURE_IDS="redaction research demo consoles local-models"
+FEATURE_IDS="redaction research mail demo consoles local-models"
 
 feature_known() {
   case " ${FEATURE_IDS} " in *" $1 "*) return 0 ;; *) return 1 ;; esac
@@ -244,6 +259,7 @@ feature_profile() {
   case "$1" in
     redaction) echo "redaction" ;;
     research)  echo "research" ;;
+    mail)      echo "mail" ;;
     demo)      echo "demo" ;;
     consoles)  echo "consoles" ;;
     *)         echo "" ;;
@@ -311,6 +327,27 @@ ensure_wave3_secrets() {
   [ -n "$(env_get COGETO_S3_ACCESS_KEY)" ]       || env_set COGETO_S3_ACCESS_KEY "cogeto-app"
   [ -n "$(env_get COGETO_S3_SECRET_KEY)" ]       || env_set COGETO_S3_SECRET_KEY "$(gen_password)"
   [ -n "$(env_get ZITADEL_BOOTSTRAP_PAT_EXPIRY)" ] || env_set ZITADEL_BOOTSTRAP_PAT_EXPIRY "$(gen_bootstrap_pat_expiry)"
+}
+
+# SEC-14 upgrade continuity. Inbound mail moved behind the `mail` compose
+# profile, which is OFF by default. An instance that was ALREADY receiving
+# email must not silently lose it on upgrade, so: if the mail container exists
+# on this host (running or stopped) and the profile is not yet configured, the
+# capability is carried forward and said out loud. A fresh install, which has
+# no mail container, gets the new secure default.
+carry_forward_mail_capability() {
+  mail_capability_enabled && return 0
+  if [ "$CHECK" -eq 1 ]; then
+    say "[dry-run] would carry an existing inbound-mail deployment forward onto the new 'mail' profile"
+    return 0
+  fi
+  if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q '^cogeto-mail-'; then
+    env_set COMPOSE_PROFILES "$(profiles_add "$(env_get COMPOSE_PROFILES)" mail)"
+    env_set COGETO_MAIL_ENABLED "1"
+    say "this instance was already receiving email: inbound mail is now an opt-in capability (audit 2.0 SEC-14) and has been carried forward as ENABLED — nothing changes for the customer. Turn it off any time with 'cogeto features disable mail'."
+  else
+    say "inbound mail is now an opt-in capability (audit 2.0 SEC-14) and this instance was not running it — it stays OFF, and no SMTP listener is started. Enable it with 'cogeto features enable mail'."
+  fi
 }
 
 # ── .env helpers ──────────────────────────────────────────────────────────────
@@ -472,9 +509,28 @@ EOF
   done
 }
 
+# sha256 of a file, portable across the Ubuntu target (sha256sum) and the
+# macOS box the operator-script spec runs on (shasum).
+sha256_of() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | cut -d' ' -f1
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | cut -d' ' -f1
+  else
+    die "neither sha256sum nor shasum is available — cannot verify downloads, refusing to continue"
+  fi
+}
+
 # Install cosign from its pinned GitHub release (idempotent; single static
 # binary). Failure is FATAL: images are only ever started
 # after their signatures verify, so a missing verifier stops the run.
+#
+# SEC-13: the binary is VERIFIED against the pinned sha256 BEFORE it is made
+# executable or moved onto PATH. Previously it was curl → chmod 0755 → root's
+# PATH with no check at all, which meant the entire image-provenance chain
+# terminated in an unverified binary downloaded as root: substituting cosign
+# (a compromised release asset, a CDN compromise, corporate TLS interception)
+# yielded root RCE *and* silently green signature verification afterwards.
 install_cosign() {
   if command -v cosign >/dev/null 2>&1; then
     say "cosign already installed — skipping"
@@ -484,16 +540,23 @@ install_cosign() {
   say "installing cosign v${COSIGN_VERSION} (image-signature verification)"
   if [ "$CHECK" -eq 1 ]; then
     say "[dry-run] would install cosign: ${url} → /usr/local/bin/cosign"
+    say "[dry-run] would verify its sha256 against the checksum pinned in this script (COSIGN_SHA256) before making it executable"
     return 0
   fi
-  if curl -fsSL --max-time 120 "$url" -o /usr/local/bin/cosign.tmp; then
-    chmod 0755 /usr/local/bin/cosign.tmp
-    mv /usr/local/bin/cosign.tmp /usr/local/bin/cosign
-    say "cosign installed: $(cosign version 2>/dev/null | head -n 1 || echo v${COSIGN_VERSION})"
-  else
+  if ! curl -fsSL --max-time 120 "$url" -o /usr/local/bin/cosign.tmp; then
     rm -f /usr/local/bin/cosign.tmp
     die "could not download cosign from ${url} — image signatures cannot be verified, refusing to continue. Check the network and re-run."
   fi
+  # Not executable yet, and not on PATH yet: verify first.
+  actual="$(sha256_of /usr/local/bin/cosign.tmp)"
+  if [ "$actual" != "$COSIGN_SHA256" ]; then
+    rm -f /usr/local/bin/cosign.tmp
+    die "COSIGN CHECKSUM MISMATCH — refusing to install. Expected ${COSIGN_SHA256}, got ${actual}. The download from ${url} is not the release this script was written against. Do NOT work around this: it is exactly the substitution the check exists to catch. Verify the network path and re-run; if the mismatch persists, stop and contact the vendor."
+  fi
+  say "cosign download verified against the pinned sha256"
+  chmod 0755 /usr/local/bin/cosign.tmp
+  mv /usr/local/bin/cosign.tmp /usr/local/bin/cosign
+  say "cosign installed: $(cosign version 2>/dev/null | head -n 1 || echo v${COSIGN_VERSION})"
 }
 
 # Put this script on PATH so the printed 'sudo cogeto status' just works
@@ -530,32 +593,99 @@ verify_images() {
 
 # ── Deployment assets ─────────────────────────────────────────────────────────
 
+# SEC-13: resolve a release tag to the IMMUTABLE COMMIT SHA it points at.
+#
+# Git tags are mutable unless the repository protects them, so fetching the
+# compose file that defines the entire stack "at v1.2.3" could quietly return
+# different bytes tomorrow under the same version. A commit SHA cannot be
+# repointed by anyone. Tag protection is an owner console action and a good
+# idea; this does not depend on it.
+resolve_tag_commit() {
+  rtc_version="$1"
+  curl -fsS --max-time 20 "https://api.github.com/repos/${GITHUB_REPO}/commits/v${rtc_version}" 2>/dev/null \
+    | sed -n 's/.*"sha"[[:space:]]*:[[:space:]]*"\([0-9a-f]\{40\}\)".*/\1/p' \
+    | head -n 1
+}
+
+# The manifest listing the sha256 of every deployment asset, versioned in the
+# repository next to them and fetched AT THE SAME COMMIT as the assets it
+# covers — so the anchor for the whole set is one immutable commit id.
+DEPLOY_MANIFEST_PATH="project/infra/deploy/deploy-assets.sha256"
+DEPLOY_MANIFEST_FILE=""   # set per run by fetch_deploy_assets
+
 fetch_deploy_assets() {
   version="$1"
-  say "fetching deployment files pinned to v${version} from github.com/${GITHUB_REPO}"
+  # Pin to the commit the tag currently points at, and say which one, so the
+  # operator can see exactly what was installed.
+  commit="$(resolve_tag_commit "$version")"
+  if [ -z "$commit" ]; then
+    if [ "$CHECK" -eq 1 ]; then
+      warn "could not resolve v${version} to a commit (offline check run?) — a real run refuses"
+      commit="v${version}"
+    else
+      die "could not resolve v${version} to a commit SHA via the GitHub API — refusing to fetch the deployment files from a mutable tag ref. Check the network and re-run."
+    fi
+  else
+    say "v${version} resolves to commit ${commit} — fetching deployment files pinned to that commit"
+  fi
+
+  # The checksum manifest first: everything below is verified against it.
+  DEPLOY_MANIFEST_FILE=""
+  if [ "$CHECK" -eq 0 ]; then
+    DEPLOY_MANIFEST_FILE="$(mktemp)"
+    curl -fsSL --max-time 60 "${RAW_BASE}/${commit}/${DEPLOY_MANIFEST_PATH}" -o "$DEPLOY_MANIFEST_FILE" \
+      || die "could not fetch the deployment checksum manifest (${DEPLOY_MANIFEST_PATH}) at commit ${commit} — refusing to install unverified deployment files"
+    say "deployment checksum manifest fetched ($(wc -l < "$DEPLOY_MANIFEST_FILE" | tr -d ' ') entries)"
+  else
+    say "[dry-run] would fetch ${DEPLOY_MANIFEST_PATH} and verify every deployment file against it"
+  fi
+
   run mkdir -p "$COGETO_ROOT/zitadel-init"
-  fetch_one "v${version}" "project/infra/deploy/docker-compose.deploy.yml" "$COGETO_ROOT/docker-compose.yml"
-  fetch_one "v${version}" "project/infra/deploy/Caddyfile" "$COGETO_ROOT/Caddyfile"
-  fetch_one "v${version}" "project/infra/docker/zitadel-init/init.mjs" "$COGETO_ROOT/zitadel-init/init.mjs"
+  fetch_one "$commit" "project/infra/deploy/docker-compose.deploy.yml" "$COGETO_ROOT/docker-compose.yml"
+  fetch_one "$commit" "project/infra/deploy/Caddyfile" "$COGETO_ROOT/Caddyfile"
+  fetch_one "$commit" "project/infra/docker/zitadel-init/init.mjs" "$COGETO_ROOT/zitadel-init/init.mjs"
   # Least-privilege Postgres roles (SEC-1): the db-init one-shot mounts this.
   run mkdir -p "$COGETO_ROOT/postgres-init"
-  fetch_one "v${version}" "project/infra/docker/postgres-init/db-init.sql" "$COGETO_ROOT/postgres-init/db-init.sql"
+  fetch_one "$commit" "project/infra/docker/postgres-init/db-init.sql" "$COGETO_ROOT/postgres-init/db-init.sql"
   # The research profile's SearXNG settings — fetched with the
   # other assets so `cogeto features enable research` works offline later.
   run mkdir -p "$COGETO_ROOT/searxng"
-  fetch_one "v${version}" "project/infra/docker/searxng/settings.yml" "$COGETO_ROOT/searxng/settings.yml"
+  fetch_one "$commit" "project/infra/docker/searxng/settings.yml" "$COGETO_ROOT/searxng/settings.yml"
+
+  [ -n "$DEPLOY_MANIFEST_FILE" ] && rm -f "$DEPLOY_MANIFEST_FILE"
+  DEPLOY_MANIFEST_FILE=""
+  return 0
+}
+
+# The expected sha256 for one repo path, read from the fetched manifest.
+manifest_sha() {
+  [ -n "$DEPLOY_MANIFEST_FILE" ] || return 0
+  awk -v p="$1" '$2 == p { print $1 }' "$DEPLOY_MANIFEST_FILE" | head -n 1
 }
 
 fetch_one() {
   ref="$1"; path="$2"; dest="$3"
   url="${RAW_BASE}/${ref}/${path}"
   if [ "$CHECK" -eq 1 ]; then
-    say "[dry-run] would fetch ${url} → ${dest}"
+    say "[dry-run] would fetch ${url} → ${dest} and verify its sha256 against the manifest"
     return 0
   fi
-  curl -fsSL --max-time 60 "$url" -o "${dest}.tmp" || die "failed to fetch ${url} — is v${ref#v} a published release?"
+  curl -fsSL --max-time 60 "$url" -o "${dest}.tmp" || die "failed to fetch ${url} — is that commit reachable?"
+  # SEC-13: verify BEFORE the file is moved into place. A missing manifest
+  # entry is a failure, not a skip: silently accepting an uncovered file would
+  # make the manifest decorative.
+  expected="$(manifest_sha "$path")"
+  if [ -z "$expected" ]; then
+    rm -f "${dest}.tmp"
+    die "no checksum for ${path} in ${DEPLOY_MANIFEST_PATH} — refusing to install an unverified deployment file. This release's manifest is incomplete; do not work around it."
+  fi
+  actual="$(sha256_of "${dest}.tmp")"
+  if [ "$actual" != "$expected" ]; then
+    rm -f "${dest}.tmp"
+    die "DEPLOYMENT FILE CHECKSUM MISMATCH for ${path} — expected ${expected}, got ${actual}. Refusing to install. The fetched file is not the one this release published."
+  fi
   mv "${dest}.tmp" "$dest"
-  say "fetched ${path} → ${dest}"
+  say "fetched + verified ${path} → ${dest}"
 }
 
 # ── Docker installation (idempotent) ─────────────────────────────────────────
@@ -595,14 +725,39 @@ ensure_service_user() {
   fi
 }
 
+# The edge ports only. SEC-14: 25/tcp is NOT opened here any more — inbound
+# SMTP is an opt-in capability, and opening the port on every install left an
+# internet-facing mail listener on instances that never use email capture.
+# `cogeto features enable mail` opens it (and `disable mail` closes it).
 open_firewall() {
   if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
-    say "ufw is active — allowing 80/tcp (ACME+redirect), 443 (HTTPS), 25/tcp (inbound mail)"
+    say "ufw is active — allowing 80/tcp (ACME+redirect) and 443 (HTTPS)"
     run ufw allow 80/tcp
     run ufw allow 443
-    run ufw allow 25/tcp
+    if mail_capability_enabled; then
+      say "inbound mail is enabled for this instance — also allowing 25/tcp"
+      run ufw allow 25/tcp
+    else
+      say "inbound mail is OFF (SEC-14) — 25/tcp stays closed; 'cogeto features enable mail' opens it"
+    fi
   else
-    say "ufw inactive or absent — no host firewall change needed (OVHcloud network firewall, if enabled, must allow 80, 443, 25)"
+    say "ufw inactive or absent — no host firewall change needed (OVHcloud network firewall, if enabled, must allow 80 and 443, plus 25 only if you enable inbound mail)"
+  fi
+}
+
+# Whether THIS instance runs inbound mail (SEC-14). One reading of the
+# configured state, used by the firewall, the health wait, the status report
+# and the install checklist so they can never disagree.
+mail_capability_enabled() {
+  [ "$(feature_configured mail)" = "enabled" ]
+}
+
+# Close the inbound SMTP port again. Tolerant: ufw absent/inactive, or the rule
+# never added, is not an error.
+close_mail_firewall() {
+  if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
+    say "closing 25/tcp in ufw"
+    run ufw delete allow 25/tcp || true
   fi
 }
 
@@ -621,17 +776,20 @@ service_health() {  # service_health NAME → healthy|starting|unhealthy|exited:
 }
 
 wait_healthy() {
+  # SEC-14: mail is part of the health bar only when the capability is on.
+  if mail_capability_enabled; then wh_services="app, worker, caddy, mail"; else wh_services="app, worker, caddy"; fi
   if [ "$CHECK" -eq 1 ]; then
-    say "[dry-run] would wait for app, worker, caddy, mail to report healthy (up to 5 minutes)"
+    say "[dry-run] would wait for ${wh_services} to report healthy (up to 5 minutes)"
     return 0
   fi
   say "waiting for the stack to become healthy (Zitadel's first init takes a minute)..."
   deadline=$(( $(date +%s) + 300 ))
   while :; do
     app="$(service_health app)"; workr="$(service_health worker)"
-    caddy="$(service_health caddy)"; mail="$(service_health mail)"
+    caddy="$(service_health caddy)"
+    if mail_capability_enabled; then mail="$(service_health mail)"; else mail="healthy"; fi
     if [ "$app" = "healthy" ] && [ "$workr" = "healthy" ] && [ "$caddy" = "healthy" ] && [ "$mail" = "healthy" ]; then
-      say "stack healthy: app, worker, caddy, mail all report healthy"
+      say "stack healthy: ${wh_services} all report healthy"
       return 0
     fi
     if [ "$(date +%s)" -ge "$deadline" ]; then
@@ -677,17 +835,30 @@ add_install_checklist() {
 
   todo_now "OVHcloud DNS (Web Cloud → Domain names → zone → Add an entry) → app A record:      ${domain}.  IN A  ${ip}"
   todo_now "OVHcloud DNS → presign-origin A record: s3.${domain}.  IN A  ${ip}"
-  todo_now "OVHcloud DNS → mail host A record:      ${mx_host}.  IN A  ${ip}"
-  todo_now "OVHcloud DNS → inbound MX record:       ${mx_sub}.  IN MX 10  ${mx_host}."
+  # SEC-14: the mail host, MX, PTR and SPF steps exist ONLY to point real mail
+  # at an SMTP listener. With inbound mail off, no listener runs and every one
+  # of them would be a checklist item for something that is not there.
+  if mail_capability_enabled; then
+    todo_now "OVHcloud DNS → mail host A record:      ${mx_host}.  IN A  ${ip}"
+    todo_now "OVHcloud DNS → inbound MX record:       ${mx_sub}.  IN MX 10  ${mx_host}."
+    todo_now "OVHcloud panel (Public Cloud → Network → Public IPs → ${ip} → Edit the reverse) → set the PTR to ${mx_host} — do this AFTER the ${mx_host} A record resolves; senders soft-reject hosts without matching forward/reverse DNS"
+    todo_now "SPF note: receiving needs no SPF, but if the apex domain publishes a strict SPF, confirm it does not cover ${mx_sub} (Cogeto never sends — no outbound SPF/DKIM/DMARC needed)"
+  else
+    todo_now "Email capture is OFF on this instance (audit 2.0 SEC-14: no inbound SMTP listener runs, and 25/tcp is closed). If the customer wants it, run 'sudo cogeto features enable mail' — it opens the port and prints the MX/PTR steps then."
+  fi
   todo_now "NOTE on the records above: propagation takes minutes up to the zone TTL (check: dig +short A ${domain}); Caddy keeps retrying and obtains the TLS certificate AUTOMATICALLY once the A record resolves — no restart, no action. Until then the browser shows a certificate warning; that is expected."
-  todo_now "OVHcloud panel (Public Cloud → Network → Public IPs → ${ip} → Edit the reverse) → set the PTR to ${mx_host} — do this AFTER the ${mx_host} A record resolves; senders soft-reject hosts without matching forward/reverse DNS"
-  todo_now "SPF note: receiving needs no SPF, but if the apex domain publishes a strict SPF, confirm it does not cover ${mx_sub} (Cogeto never sends — no outbound SPF/DKIM/DMARC needed)"
   todo_now "OVHcloud panel → enable Automated Backup for this instance (roadmap D4; run 'cogeto backup-info' for the exact settings)"
-  todo_now "If the OVHcloud Network Firewall is enabled for this IP: allow inbound TCP 80, 443, and 25"
+  if mail_capability_enabled; then
+    todo_now "If the OVHcloud Network Firewall is enabled for this IP: allow inbound TCP 80, 443, and 25"
+  else
+    todo_now "If the OVHcloud Network Firewall is enabled for this IP: allow inbound TCP 80 and 443 (25 is not needed — email capture is off)"
+  fi
 
   todo_dns "Open https://${domain} — a valid Let's Encrypt certificate is served and the login page loads (Caddy retries ACME automatically once DNS resolves; no restart needed)"
   todo_dns "Create the customer's user: open the Zitadel Console at https://${domain}/ui/console, sign in as admin@${domain} (password = ZITADEL_ADMIN_PASSWORD in ${ENV_FILE}), Users → + New — choose 'Set initial password' and hand it over out-of-band. NEVER 'Send an email invitation': the instance has no outbound SMTP, so invitations silently never arrive."
-  todo_dns "Email capture test (sender-routed): have the CUSTOMER forward any email FROM THEIR OWN ADDRESS (the one their user is registered with) to ${inbound} — it is captured for them with no configuration. External senders they auto-forward from are added to THEIR allowlist (Settings → Email capture); the operator admin account never captures."
+  if mail_capability_enabled; then
+    todo_dns "Email capture test (sender-routed): have the CUSTOMER forward any email FROM THEIR OWN ADDRESS (the one their user is registered with) to ${inbound} — it is captured for them with no configuration. External senders they auto-forward from are added to THEIR allowlist (Settings → Email capture); the operator admin account never captures."
+  fi
   todo_dns "Export a Memory Passport (dashboard → Passport) and confirm the download"
   todo_dns "Delete a test source and confirm Forgotten shows a signed deletion receipt"
   todo_dns "Run 'sudo cogeto status' on the instance — everything green (the script installed itself to /usr/local/bin/cogeto)"
@@ -894,6 +1065,8 @@ cmd_upgrade() {
   env_set COGETO_VERSION "$target"
   # New-in-this-release secrets the fetched compose requires (idempotent).
   ensure_wave3_secrets
+  # SEC-14: keep an instance that was already receiving email receiving it.
+  carry_forward_mail_capability
 
   say "pulling v${target} images (never building)"
   run compose pull --quiet
@@ -965,7 +1138,9 @@ cmd_status() {
 
   echo
   echo " containers:"
-  for svc in caddy app worker mail postgres qdrant minio zitadel; do
+  status_services="caddy app worker postgres qdrant minio zitadel"
+  mail_capability_enabled && status_services="caddy app worker mail postgres qdrant minio zitadel"
+  for svc in $status_services; do
     h="$(service_health "$svc")"
     printf '   %-10s %s\n' "$svc" "$h"
     [ "$h" = "healthy" ] || [ "$h" = "running" ] || green=0
@@ -1049,6 +1224,9 @@ feature_configured() {  # feature_configured ID → enabled|disabled
       [ "$(env_get REDACTION_ENABLED)" = "1" ] && { echo enabled; return; } ;;
     research)
       { profiles_has "$profiles" research || [ "$(env_get COGETO_RESEARCH_ENABLED)" = "1" ]; } \
+        && { echo enabled; return; } ;;
+    mail)
+      { profiles_has "$profiles" mail || [ "$(env_get COGETO_MAIL_ENABLED)" = "1" ]; } \
         && { echo enabled; return; } ;;
     demo)
       [ "$(env_get COGETO_DEMO_MODE)" = "1" ] && { echo enabled; return; } ;;
@@ -1164,6 +1342,29 @@ features_enable() {
       wait_service_healthy app 120 || true
       say "research is enabled: discovery runs on THIS instance (SearXNG, internal network only, no vendor, no API key; roughly 100-200 MB RAM). Nothing external to configure."
       ;;
+    mail)
+      require_feature_service mail mail mail \
+        "On a deployed instance, upgrade first: inbound mail moved behind the 'mail' profile in the audit 2.0 SEC-14 release."
+      env_set COMPOSE_PROFILES "$(profiles_add "$(env_get COMPOSE_PROFILES)" mail)"
+      env_set COGETO_MAIL_ENABLED "1"
+      apply_feature_change
+      # The listener is only reachable once the host firewall lets 25 in.
+      if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
+        say "ufw is active — allowing 25/tcp (inbound mail)"
+        run ufw allow 25/tcp
+      fi
+      wait_service_healthy mail 120 || true
+      wait_service_healthy app 120 || true
+      fe_domain="$(env_get COGETO_EXTERNAL_DOMAIN)"
+      fe_inbound="$(env_get COGETO_MAIL_INBOUND_ADDRESS)"
+      fe_ip="$(detect_public_ip)"
+      say "inbound email capture is enabled: a RECEIVE-ONLY SMTP listener now answers on port 25. It never sends. The allowlist (the real acceptance gate) lives in the app, per user."
+      todo_now "OVHcloud DNS → mail host A record:      $(derive_mx_host "$fe_domain").  IN A  ${fe_ip}"
+      todo_now "OVHcloud DNS → inbound MX record:       $(derive_inbound_subdomain "$fe_domain").  IN MX 10  $(derive_mx_host "$fe_domain")."
+      todo_now "OVHcloud panel → set the PTR for ${fe_ip} to $(derive_mx_host "$fe_domain") once that A record resolves — senders soft-reject hosts without matching forward/reverse DNS"
+      todo_now "If the OVHcloud Network Firewall is enabled for this IP: allow inbound TCP 25"
+      todo_now "Email capture test: forward an email from a registered user's own address to ${fe_inbound} and confirm it appears in their memory"
+      ;;
     redaction)
       require_feature_service redaction redaction redaction \
         "The redaction sidecar is not part of the v1 deploy channel: its image is built from source, never published. It is available on a source checkout."
@@ -1224,6 +1425,15 @@ features_disable() {
       apply_feature_change
       stop_profile_service research searxng
       say "research is disabled: the SearXNG container is stopped; research requests answer 'search unavailable'"
+      ;;
+    mail)
+      env_set COMPOSE_PROFILES "$(profiles_remove "$(env_get COMPOSE_PROFILES)" mail)"
+      env_set COGETO_MAIL_ENABLED ""
+      apply_feature_change
+      stop_profile_service mail mail
+      close_mail_firewall
+      say "inbound email capture is disabled: the SMTP listener is stopped and 25/tcp is closed. Mail sent to the inbound address will bounce at the sender; already-captured email is untouched."
+      todo_now "Remove the inbound MX record for $(derive_inbound_subdomain "$(env_get COGETO_EXTERNAL_DOMAIN)") so senders fail fast instead of timing out"
       ;;
     redaction)
       # Destructive-adjacent (the whole point of the capability is that model
@@ -1400,6 +1610,13 @@ cmd_configure() {
         die "unknown secret '${regen}' — rotatable here: COGETO_MAIL_INTAKE_TOKEN, COGETO_QDRANT_API_KEY, COGETO_APP_DB_PASSWORD, COGETO_MIGRATE_DB_PASSWORD, ZITADEL_DB_ADMIN_PASSWORD, COGETO_S3_SECRET_KEY" ;;
     esac
   fi
+
+  # SEC-14: `mail` is behind a profile now — naming a profile-disabled service
+  # on `compose up` is an error, so drop it when the capability is off.
+  if ! mail_capability_enabled; then
+    restart_needed="$(printf '%s' "$restart_needed" | tr ' ' '\n' | grep -v '^mail$' | tr '\n' ' ')"
+  fi
+  restart_needed="$(printf '%s' "$restart_needed" | tr -s ' ' | sed 's/^ *//; s/ *$//')"
 
   if [ -n "$restart_needed" ]; then
     say "applying the new configuration (recreates: ${restart_needed})"

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { DailyCounters } from '../infrastructure/index';
+import { InMemoryDailyCounters } from '../infrastructure/index';
 import type { Principal } from '@cogeto/shared';
 import { startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
@@ -21,7 +21,7 @@ describe('notes capture (integration, real Postgres)', () => {
 
   beforeAll(async () => {
     tdb = await startTestDatabase();
-    service = new NotesService(tdb.db, new DailyCounters(), {
+    service = new NotesService(tdb.db, new InMemoryDailyCounters(), {
       captureMax: 1_000_000,
       uploadMax: 1_000_000,
     });
@@ -79,7 +79,7 @@ describe('notes capture (integration, real Postgres)', () => {
   });
 
   it('daily_capture_cap: captures beyond the per-user daily cap are refused with 429', async () => {
-    const capped = new NotesService(tdb.db, new DailyCounters(), {
+    const capped = new NotesService(tdb.db, new InMemoryDailyCounters(), {
       captureMax: 2,
       uploadMax: 1_000_000,
     });

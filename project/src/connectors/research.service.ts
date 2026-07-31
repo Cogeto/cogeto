@@ -364,7 +364,7 @@ export class ResearchService {
 
   /** One discovery query, budget-gated. Reserved BEFORE the search runs. */
   async search(principal: Principal, query: string): Promise<DiscoveryOutcome> {
-    if (this.counters.get(principal.userId, 'research_search') >= this.quota.searchesMax) {
+    if ((await this.counters.get(principal.userId, 'research_search')) >= this.quota.searchesMax) {
       throw new HttpException(
         {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
@@ -375,7 +375,7 @@ export class ResearchService {
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
-    this.counters.add(principal.userId, 'research_search', 1);
+    await this.counters.add(principal.userId, 'research_search', 1);
     return this.discovery.search(query);
   }
 
@@ -411,7 +411,7 @@ export class ResearchService {
     }
     const results: CaptureResult[] = [];
     for (const url of urls) {
-      if (this.counters.get(principal.userId, 'research_page') >= this.quota.pagesMax) {
+      if ((await this.counters.get(principal.userId, 'research_page')) >= this.quota.pagesMax) {
         results.push({
           url,
           status: 'skipped',
@@ -422,7 +422,7 @@ export class ResearchService {
       }
       // Reserved BEFORE the fetch (the notes-quota rule): a failed fetch still
       // consumed outbound work, so it still counts.
-      this.counters.add(principal.userId, 'research_page', 1);
+      await this.counters.add(principal.userId, 'research_page', 1);
       const outcome = await this.fetcher.fetchPage(url);
       if (outcome.status === 'skipped') {
         results.push({ url, status: 'skipped', reason: outcome.reason, detail: outcome.detail });
@@ -431,9 +431,12 @@ export class ResearchService {
       const { page } = outcome;
       const id = randomUUID();
 
-      // Optional raw-HTML retention: sanitised (scripts and
-      // handlers stripped — the email-intake rule) and object-first, so the tx
-      // below can reference the key knowing the bytes exist.
+      // Optional raw-HTML retention: sanitised (the email-intake rule, now a
+      // parser-based allowlist rather than regexes — audit 2.0 SEC-7) and
+      // object-first, so the tx below can reference the key knowing the bytes
+      // exist. The allowlist keeps the body's markup and drops the document
+      // wrapper along with everything executable; this artifact is a display
+      // copy, and `retained_text` is the complete, unaltered record.
       let rawObjectKey: string | null = null;
       if (this.options.retainHtml && page.rawHtml) {
         const sanitised = sanitizeHtml(page.rawHtml);

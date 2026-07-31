@@ -132,7 +132,7 @@ export class FilesService {
     }
     // Per-user daily upload cap: bounds the parse + pipeline work a
     // single user (or the shared demo principal) can drive in a day.
-    if (this.counters.get(principal.userId, 'upload') >= this.quota.uploadMax) {
+    if ((await this.counters.get(principal.userId, 'upload')) >= this.quota.uploadMax) {
       throw new HttpException(
         {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
@@ -144,7 +144,7 @@ export class FilesService {
       );
     }
     const contentType = this.resolveContentType(file);
-    this.counters.add(principal.userId, 'upload', 1);
+    await this.counters.add(principal.userId, 'upload', 1);
 
     // Object key contract (handoff §1): {orgId}/{userId}/{scope}/file-{uuid},
     // first segment the Zitadel org id — minted before anything is written, the

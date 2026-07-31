@@ -1,5 +1,13 @@
-import type { TaskList } from 'graphile-worker';
-import { idempotentTask, runSingleFlight, writeAudit } from '../infrastructure/index';
+import type { Task, TaskList } from 'graphile-worker';
+import {
+  idempotentTask,
+  JOB_PRINCIPAL_KEY,
+  runSingleFlight,
+  runWithUsageContext,
+  setUsageTaskFamily,
+  setUsageUser,
+  writeAudit,
+} from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import {
   DREAM_JOB_TYPE,
@@ -61,6 +69,33 @@ export interface WorkerTaskDeps {
  * is one audit row, written in the idempotency transaction, so a duplicate
  * delivery provably changes nothing.
  */
+/**
+ * Opens the worker's usage scope around a task (security audit 2.0 SEC-10).
+ *
+ * Worker model traffic used to be entirely unmetered: this process registered
+ * the gateway without the budget decorator, and the decorator no-ops with no
+ * user in scope. So a user could enqueue work up to the ingest quota and each
+ * item drove uncapped worker-side model spend.
+ *
+ * The enqueuing principal now travels in the job payload under
+ * `principal_id` (stamped additively by withTransactionalEnqueue), and this
+ * wrapper turns it back into a usage scope, so extraction, verification,
+ * embedding, skill advance and research conclusion are charged to the user who
+ * caused them. It is deliberately tolerant: a payload without the key — every
+ * job enqueued before this change, and the recurring instance-wide jobs that
+ * no user caused — simply runs unattributed, exactly as it did before.
+ */
+export function attributedTask(jobType: string, task: Task): Task {
+  return (rawPayload, helpers) =>
+    runWithUsageContext(() => {
+      const principalId = (rawPayload as Record<string, unknown> | null)?.[JOB_PRINCIPAL_KEY];
+      if (typeof principalId === 'string' && principalId) setUsageUser(principalId);
+      // Task family is recorded for reporting only; it never affects a cap.
+      setUsageTaskFamily(jobType);
+      return task(rawPayload, helpers);
+    });
+}
+
 export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
   // Single-flight wrapper for the RECURRING nightly jobs: a slow run
   // must not overlap the next cron fire (or a DST double-fire). The named
@@ -75,7 +110,7 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
         deps.log({ job: name }, `${name} skipped, another run holds the single-flight lock`);
       }
     };
-  return {
+  const tasks: TaskList = {
     echo: idempotentTask(db, 'echo', async (tx, payload) => {
       await writeAudit(tx, {
         actor: 'worker:echo',
@@ -294,4 +329,13 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       );
     }),
   };
+
+  // Every task runs inside a usage scope (SEC-10) — no registration site can
+  // forget it, and a task added later is metered by construction.
+  return Object.fromEntries(
+    Object.entries(tasks).map(([jobType, task]) => [
+      jobType,
+      attributedTask(jobType, task as Task),
+    ]),
+  );
 }

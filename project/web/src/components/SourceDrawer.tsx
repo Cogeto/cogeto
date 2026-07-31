@@ -24,18 +24,7 @@ import {
   SkeletonRows,
 } from './ui';
 
-/**
- * Neutralize remote content in retained email HTML before rendering.
- * The intake sanitizer already strips scripts/handlers/js: URLs; here we also
- * stop remote resources (tracking pixels) from auto-loading — the choice most
- * mail clients make and the hardest to misuse. Formatting is preserved.
- */
-function neutralizeRemoteHtml(html: string): string {
-  return html
-    .replace(/\s(src|background)\s*=\s*("|')?\s*https?:[^"'\s>]*/gi, ' data-remote-src="blocked"')
-    .replace(/\ssrcset\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-    .replace(/url\(\s*['"]?https?:[^)]*\)/gi, 'none');
-}
+import { EMAIL_FRAME_SANDBOX, emailFrameDocument } from './email-body';
 import type { Tone } from './status';
 
 const FILE_STATE_LABEL: Record<string, string> = {
@@ -307,20 +296,22 @@ export function SourceDrawer({
                 </p>
               </div>
 
-              {/* Body: text preferred (safe); sanitised HTML with remote content
-                  blocked as the fallback for HTML-only mail. */}
+              {/* Body: text preferred (safe); for HTML-only mail, the
+                  parser-sanitised HTML is rendered inside a SANDBOXED IFRAME
+                  (audit 2.0 SEC-7) — no script execution, no same-origin
+                  access, no remote loads — so a sanitizer bypass has nowhere to
+                  run. See ./email-body.ts. */}
               {emailQuery.data.textBody ? (
                 <p className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md border border-slate-200 p-3 text-sm text-slate-700">
                   {emailQuery.data.textBody}
                 </p>
               ) : emailQuery.data.htmlBody ? (
-                <div
-                  className="max-h-72 overflow-auto rounded-md border border-slate-200 p-3 text-sm text-slate-700"
-                  // Sanitised at intake (scripts/handlers/js: stripped) + remote
-                  // content neutralised here so nothing external auto-loads.
-                  dangerouslySetInnerHTML={{
-                    __html: neutralizeRemoteHtml(emailQuery.data.htmlBody),
-                  }}
+                <iframe
+                  title="Email body"
+                  className="h-72 w-full rounded-md border border-slate-200 bg-white"
+                  sandbox={EMAIL_FRAME_SANDBOX}
+                  referrerPolicy="no-referrer"
+                  srcDoc={emailFrameDocument(emailQuery.data.htmlBody)}
                 />
               ) : (
                 <p className="text-xs text-slate-400">(no body)</p>

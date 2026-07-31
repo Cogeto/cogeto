@@ -4,7 +4,7 @@ import { runOnce } from 'graphile-worker';
 import type { TaskList } from 'graphile-worker';
 import type { ZodType } from 'zod';
 import type { Principal } from '@cogeto/shared';
-import { DailyCounters, idempotentTask } from '../infrastructure/index';
+import { InMemoryDailyCounters, idempotentTask } from '../infrastructure/index';
 import type { ResearchQuota } from '../infrastructure/index';
 import { fakeEmbedding, settleJobs, startTestDatabase, startTestQdrant } from '../testing/index';
 import type { TestDatabase, TestQdrant } from '../testing/index';
@@ -178,7 +178,7 @@ describe('web research (integration: real Postgres + Qdrant, scripted gateway + 
       new WebDiscoveryService(options()),
       scriptedFetcher(options()),
       objectsUnused,
-      new DailyCounters(),
+      new InMemoryDailyCounters(),
       quota,
       options(),
       gateway,
@@ -311,7 +311,7 @@ describe('web research (integration: real Postgres + Qdrant, scripted gateway + 
   });
 
   it('research_budget_enforced: daily caps stop searches and pages with a clear limit-reached message', async () => {
-    const counters = new DailyCounters();
+    const counters = new InMemoryDailyCounters();
     const tiny: ResearchQuota = { searchesMax: 1, pagesMax: 1, pagesPerRunMax: 2 };
     const discovery = new WebDiscoveryService(options());
     discovery.fetchImpl = async () =>

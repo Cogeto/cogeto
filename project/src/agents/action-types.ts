@@ -54,6 +54,19 @@ export interface ActionDefinition<P = unknown> {
    * own endpoint. Defaults to false (an operational action shown org-wide).
    */
   contentBearing?: boolean;
+  /**
+   * True when the effect is genuinely ORGANIZATION-scoped: it acts on shared
+   * state, so any member of the org may approve it.
+   *
+   * Defaults to FALSE, which is the safe default and the point of audit 2.0
+   * SEC-33. The confirm transition used to gate on `orgId` alone, so a teammate
+   * could approve an approval whose effect runs as `ctx.userId` — the
+   * REQUESTER — and therefore lands on the requester's own rows. That is one
+   * person deciding what happens to another person's data. Owner identity is
+   * now required unless an action type explicitly opts out here, so a new
+   * action is owner-only until someone deliberately says otherwise.
+   */
+  orgScoped?: boolean;
   /** Authorize the request (e.g. ownership) at CREATE; throw to refuse. */
   authorizeCreate?(principal: Principal, payload: P): Promise<void>;
   execute(tx: Tx, ctx: ActionContext, payload: P): Promise<ActionResult>;

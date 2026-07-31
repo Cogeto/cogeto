@@ -14,6 +14,24 @@ const SRC = process.cwd();
 const REPO = path.resolve(SRC, '../..');
 const read = (rel: string): string => readFileSync(path.join(REPO, rel), 'utf8');
 
+/** One compose service's block: its key line through to the next service key. */
+const serviceBlock = (compose: string, name: string): string => {
+  const start = compose.indexOf(`\n  ${name}:\n`);
+  if (start < 0) return '';
+  const rest = compose.slice(start + 1);
+  const next = rest.slice(1).search(/\n {2}[a-z0-9-]+:\n/);
+  return next < 0 ? rest : rest.slice(0, next + 1);
+};
+
+/** Every service key declared under `services:` (not under `volumes:`). */
+const serviceNames = (compose: string): string[] => {
+  const body = compose.slice(compose.indexOf('\nservices:\n'));
+  const end = body.indexOf('\nvolumes:\n');
+  return [...(end < 0 ? body : body.slice(0, end)).matchAll(/\n {2}([a-z0-9-]+):\n/g)].map(
+    (m) => m[1]!,
+  );
+};
+
 describe('deployment hardening', () => {
   const compose = read('docker-compose.yml');
   const dockerfile = read('project/infra/docker/Dockerfile');
@@ -104,12 +122,12 @@ describe('deployment hardening', () => {
 
   it('searx_internal_only: the SearXNG service is profile-gated and never publicly exposed', () => {
     // The research profile exists and carries the searxng service.
-    expect(compose).toMatch(/searxng:\s*\n\s*profiles:\s*\['research'\]/);
+    expect(serviceBlock(compose, 'searxng')).toMatch(/profiles:\s*\['research'\]/);
     // Internal-network only: the searxng service block declares NO ports
     // mapping — discovery is reachable solely by the app over
     // the compose network. Extract the service block (up to the next top-level
     // two-space-indented service key) and assert.
-    const block = compose.match(/\n {2}searxng:\n(?: {4}.*\n| *\n)+/)?.[0];
+    const block = serviceBlock(compose, 'searxng');
     expect(block, 'searxng service block not found').toBeTruthy();
     expect(block).not.toContain('ports:');
     // And the edge never proxies it: the only public vhost stays app-only.
@@ -171,6 +189,90 @@ describe('deployment hardening', () => {
     it('SEC-16: the bootstrap PAT expiry is configurable and required on deploy', () => {
       expect(compose).toContain('${ZITADEL_BOOTSTRAP_PAT_EXPIRY:-');
       expect(deployCompose).toContain('${ZITADEL_BOOTSTRAP_PAT_EXPIRY:?}');
+    });
+  });
+
+  describe('edge and container hardening (audit 2.0 wave 4)', () => {
+    const deployCaddy = read('project/infra/deploy/Caddyfile');
+    const operator = read('scripts/operator/cogeto');
+
+    it('SEC-14: inbound SMTP is behind the `mail` profile in BOTH compose files', () => {
+      // The finding: the mail service had no `profiles:` key and published
+      // 0.0.0.0:25, so every instance ran an internet-facing Haraka listener
+      // whether or not it used email capture, with no supported way off.
+      for (const [name, text] of [
+        ['docker-compose.yml', compose],
+        ['docker-compose.deploy.yml', deployCompose],
+      ] as const) {
+        const mail = serviceBlock(text, 'mail');
+        expect(mail, `${name} declares no mail service`).not.toBe('');
+        expect(mail, `${name}: mail is not profile-gated`).toMatch(/profiles:\s*\['mail'\]/);
+        // It still publishes 25 when the profile IS up — the port is the point
+        // of the capability, the DEFAULT is what changed.
+        expect(mail).toContain(':2525');
+      }
+    });
+
+    it('SEC-14: the operator script gates the ufw rule for 25 on the capability', () => {
+      // Install no longer opens 25 unconditionally …
+      const openFirewall = operator.slice(
+        operator.indexOf('open_firewall() {'),
+        operator.indexOf('mail_capability_enabled() {'),
+      );
+      expect(openFirewall).toContain('mail_capability_enabled');
+      expect(openFirewall).toMatch(/if mail_capability_enabled; then[\s\S]*?ufw allow 25\/tcp/);
+      // … `features enable mail` opens it, `disable mail` closes it again.
+      expect(operator).toContain('close_mail_firewall');
+      expect(operator).toContain('ufw delete allow 25/tcp');
+      // And it is a first-class capability of the features subcommand.
+      expect(operator).toContain(
+        'FEATURE_IDS="redaction research mail demo consoles local-models"',
+      );
+    });
+
+    it('SEC-17: every service in both compose files carries mem/cpu/pid ceilings', () => {
+      for (const [name, text] of [
+        ['docker-compose.yml', compose],
+        ['docker-compose.deploy.yml', deployCompose],
+      ] as const) {
+        const names = serviceNames(text);
+        expect(names.length, `${name} declares no services`).toBeGreaterThan(5);
+        for (const service of names) {
+          const block = serviceBlock(text, service);
+          expect(block, `${name}: ${service} has no mem_limit`).toMatch(/\n {4}mem_limit: /);
+          expect(block, `${name}: ${service} has no cpus`).toMatch(/\n {4}cpus: /);
+          expect(block, `${name}: ${service} has no pids_limit`).toMatch(/\n {4}pids_limit: /);
+        }
+      }
+    });
+
+    it('SEC-17: the ceilings are generous where the service actually needs room', () => {
+      // A limit that kills a service under normal load is worse than no limit.
+      // These are the three the audit named: the redaction sidecar is
+      // documented near 1 GB, and Postgres/Qdrant/the worker hold real corpora.
+      for (const text of [compose, deployCompose]) {
+        expect(serviceBlock(text, 'worker')).toMatch(/mem_limit: 3g/);
+        expect(serviceBlock(text, 'postgres')).toMatch(/mem_limit: 2g/);
+        expect(serviceBlock(text, 'qdrant')).toMatch(/mem_limit: 2g/);
+      }
+      expect(serviceBlock(compose, 'redaction')).toMatch(/mem_limit: 2g/);
+    });
+
+    it('SEC-28: security headers are applied to /api/* as well as the SPA', () => {
+      for (const [name, text] of [
+        ['dev Caddyfile', caddyMain],
+        ['deploy Caddyfile', deployCaddy],
+      ] as const) {
+        const api = text.slice(text.indexOf('handle /api/*'), text.indexOf('# The SPA'));
+        expect(api, `${name}: /api/* block not found`).not.toBe('');
+        expect(api, `${name}: no nosniff on API responses`).toContain(
+          'X-Content-Type-Options "nosniff"',
+        );
+        expect(api).toContain('X-Frame-Options "DENY"');
+        expect(api).toContain('Referrer-Policy "no-referrer"');
+        expect(api).toContain('Content-Security-Policy');
+        expect(api).toContain('Strict-Transport-Security');
+      }
     });
   });
 });

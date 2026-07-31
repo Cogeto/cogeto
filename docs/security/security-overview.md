@@ -42,7 +42,11 @@ rest:
 | Users see only what they should | Single-tenant boundary + `own OR shared` scope gate + OIDC auth | [isolation-and-access](isolation-and-access.md) |
 | Forged email cannot inject memory | Envelope-based routing gated on SPF | [inbound-email-anti-spoofing](inbound-email-anti-spoofing.md) |
 | Hostile documents cannot steer the models | Untrusted-data fence + explicit prompt clause + independent verification + model output never sets scope or ownership | this document, below |
-| Images and instances are hardened | Cosign-signed images + SBOM, per-tenant secrets, logging hygiene | [instance-and-supply-chain-hardening](instance-and-supply-chain-hardening.md) |
+| Hostile email markup cannot execute | Parser-based allowlist sanitizer at intake + sandboxed frame at render | [inbound-email-anti-spoofing](inbound-email-anti-spoofing.md) |
+| Abuse limits cannot be reset by a restart | Postgres-backed daily counters, rate windows and model budget, shared by app and worker | [instance-and-supply-chain-hardening](instance-and-supply-chain-hardening.md) |
+| The verifier and the stack definition are themselves verified | Pinned cosign checksum + deploy assets fetched by commit SHA against a checksum manifest | [instance-and-supply-chain-hardening](instance-and-supply-chain-hardening.md) |
+| One user cannot decide another's approvals | Approvals are owner-only by default; org-wide is an explicit opt-in per action type | [agent-approval-gate](agent-approval-gate.md) |
+| Images and instances are hardened | Cosign-signed images + SBOM, per-tenant secrets, logging hygiene, per-container resource ceilings | [instance-and-supply-chain-hardening](instance-and-supply-chain-hardening.md) |
 
 ## Prompt injection: mitigated, not solved
 
