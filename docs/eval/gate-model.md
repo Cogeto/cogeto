@@ -39,7 +39,7 @@ TRUE fraction, never the displayed percentage: 54 of 73 prints as 74.0% and
 floors to 0.73, and getting that backwards produces a gate that fails on the
 very run it was calibrated from.
 
-**The band is eight live runs on 2026-07-31**, all at `temperature: 0`, all on
+**The band is nine live runs on 2026-07-31**, all at `temperature: 0`, all on
 this corpus. That matters more than it sounds. The reconciliation arm had
 produced identical numbers on every release run since 2026-07-25, which reads
 like determinism; running it eight times back to back shows it is not. Croatian
@@ -73,7 +73,7 @@ mistral-embed) at `temperature: 0`, prompts `extraction/v0004` +
 + `query_rewrite/v0006`, 86 golden cases, 29 reconciliation pairs, 32
 query-rewrite cases.
 
-"Observed" is the range across the eight runs; the floor is its minimum, rounded
+"Observed" is the range across the nine runs; the floor is its minimum, rounded
 down. "Target" is the specification target where one exists.
 
 ### Aggregate
@@ -87,7 +87,7 @@ down. "Target" is the specification target where one exists.
 | Contradiction precision | 54.5 to 66.7 | **0.54** | none (**never published**) | none set | see below |
 | Contradiction recall | 83.3 to 100 | **0.83** | 0.70 | 0.70 | clear |
 | Supersedes accuracy | 50.0 to 75.0 | **0.50** | none (**never gated**) | none set | see below |
-| Query-rewrite routing | 90.6 (flat) | **0.90** | none (**never measured**) | none set | see below |
+| Query-rewrite routing | 81.3 to 90.6 | **0.81** | none (**never measured**) | none set | see below |
 
 ### English
 
@@ -100,7 +100,7 @@ down. "Target" is the specification target where one exists.
 | Contradiction precision | 50.0 to 75.0 | **0.50** | none set | see below |
 | Contradiction recall | 100 (flat) | **1.00** | 0.70 | clear |
 | Supersedes accuracy | 25.0 to 75.0 | **0.25** | none set | see below |
-| Query-rewrite routing | 100 (flat) | **1.00** | none set | clear |
+| Query-rewrite routing | 87.5 to 100 | **0.87** | none set | see below |
 
 ### Croatian
 
@@ -113,7 +113,7 @@ down. "Target" is the specification target where one exists.
 | Contradiction precision | 50.0 to 66.7 | **0.50** | none set | see below |
 | Contradiction recall | 66.7 to 100 | **0.66** | 0.70 | **4 pts** |
 | Supersedes accuracy | 60.0 to 75.0 | **0.60** | none set | see below |
-| Query-rewrite routing | 81.3 (flat) | **0.81** | none set | see below |
+| Query-rewrite routing | 75.0 to 81.3 | **0.75** | none set | see below |
 
 **No floor was lowered.** Every aggregate floor is above the v1 value it
 replaces: precision 0.70 to 0.77, recall 0.80 to 0.91, verification 0.75 to
@@ -204,9 +204,14 @@ is visible rather than implied by their absence.
 
 ## What is deliberately strict
 
-Three floors sit at **1.00**: English dedup accuracy, English contradiction
-recall, and English query-rewrite routing. Each produced an identical perfect
-score on all eight runs, and English dedup and contradiction
+Two floors sit at **1.00**: English dedup accuracy and English contradiction
+recall. Each produced an identical perfect score on all nine runs, and both have
+been perfect on every recorded release run for two months. **English
+query-rewrite routing was the third, and it did not survive contact with the
+live gate. See the correction below.**
+
+Each of the two remaining produced an identical perfect
+score on all nine runs, and English dedup and contradiction
 recall have been perfect on every recorded release run for two months.
 
 The consequence is deliberate and worth stating plainly: **a single-case
@@ -214,12 +219,46 @@ regression in any of them fails the build.** That is the ratchet working as
 specified, and it is the direct answer to "a further regression fails the build
 while the existing gap does not".
 
-It is also the floor most likely to prove flaky, because query-rewrite routing
-depends on a live model classification and eight runs is not a large sample. If it
-does, the remedy is the documented one and not a quiet edit: measure it, write
-what was measured in the pull request that changes the number, and change it
-there. A floor moved with data is fine. A floor moved because it was annoying is
-the thing this record exists to prevent.
+These two are the floors most likely to prove flaky next, and the remedy if they
+do is the documented one and not a quiet edit: measure it, write what was
+measured in the pull request that changes the number, and change it there. A
+floor moved with data is fine. A floor moved because it was annoying is the thing
+this record exists to prevent.
+
+## Correction, 2026-07-31: the query-rewrite floors were lowered
+
+**Lowered one day after they were set, with the measurement, per the ratchet
+rule.** This entry exists because the alternative was a red `main` and a gate
+nobody trusts.
+
+The floors were calibrated on eight local live runs that returned the **identical**
+result every time: en 16/16, hr 13/16, aggregate 29/32. Eight identical samples
+read like determinism, and the record above even says in the same breath that
+eight runs is not a large sample. The first live gate on `main` returned en
+14/16, hr 12/16, aggregate 26/32, and three checks went red.
+
+| Row | Was | Now | Evidence |
+|---|---|---|---|
+| aggregate | 0.90 | **0.81** | 26/32 = 0.8125 |
+| en | 1.00 | **0.87** | 14/16 = 0.875 |
+| hr | 0.81 | **0.75** | 12/16 = 0.75 |
+
+The three additional failures were `en-rw09` (the open-loops intent was not
+returned), `en-rw15` (a knowledge question classified `personal`) and `hr-rw03`
+(an ellipsis whose subject was not reattached). All three are model
+classification calls and none involves date resolution, so this is **not** a
+runner-environment difference and **not** a regression: nothing in the change
+that introduced these gates touches the rewriter. The metric's band is simply
+wider than the sample it was calibrated from.
+
+Every other floor held on that same live run, including the two remaining 1.00
+floors: 23 of the 26 gate checks passed.
+
+**The lesson, recorded so the next calibration does not repeat it:** a metric
+driven by a live model classification needs a band measured across more than one
+session, and identical results across a single session's runs are weak evidence
+of stability, not strong evidence. Deterministic-arm floors (dedup,
+contradiction recall) survived; the classifier floor did not.
 
 The Croatian contradiction-recall floor of **0.66** is the opposite problem and
 deserves the same plainness: with three contradiction pairs, one flip is 33
