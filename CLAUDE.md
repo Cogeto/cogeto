@@ -1,8 +1,10 @@
 # CLAUDE.md: how to work in this repo
 
-Cogeto: a private, EU-hosted AI command center that turns scattered work context
-(email, notes, documents, the web) into **verifiable memory**, every trust claim
-backed by an inspectable artifact, with human-approved agents on top.
+Cogeto turns document sets into **verified, provable institutional memory**: it
+reads documents including scans, verifies every fact against its own source sentence
+before storing it, reports contradictions between documents, and produces a signed
+findings report a third party can verify. Every trust claim is backed by an
+inspectable artifact. EU hosted, self hosted, or fully offline.
 
 **The binding engineering rules live in [`AGENTS.md`](AGENTS.md). Read them first.**
 

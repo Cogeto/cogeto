@@ -201,7 +201,7 @@ jobs:
           BODY="$(gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
             -f tag_name="$TAG" --jq '.body')"
           {
-            echo "Cogeto ${VERSION} — EU-hosted AI command center with verifiable memory."
+            echo "Cogeto ${VERSION}: verified institutional memory for your documents."
             echo
             echo "$BODY"
             echo

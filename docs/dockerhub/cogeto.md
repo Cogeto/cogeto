@@ -1,7 +1,9 @@
 # Cogeto
 
-Private, EU-hosted AI memory you can inspect, correct, and provably delete. Every
-trust claim is backed by an inspectable artifact. AGPLv3.
+Verified institutional memory for your documents: Cogeto reads document sets,
+verifies every fact against its source before storing it, reports contradictions
+between documents, and produces a signed findings report. Every trust claim is
+backed by an inspectable artifact. EU hosted, self hosted, or fully offline. AGPLv3.
 
 This is the main application image: it runs the Cogeto app, the background worker,
 and the one-shot migrate and preflight jobs (the same image, started with

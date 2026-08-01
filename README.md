@@ -4,33 +4,44 @@
 
 # Cogeto
 
-Cogeto is a **private, EU-hosted AI command center for professionals**. It turns your
-scattered work context (notes, email, documents, the web) into long-term memory you can
-inspect, correct, and provably delete. Every trust claim is backed by an **inspectable
-artifact**: a signed receipt, a verification verdict, a validity interval, a source
-link. Never just a promise.
+Cogeto turns your documents into **verified, provable institutional memory**: it
+reads document sets including scans, verifies every fact against its own source
+sentence before storing it, reports where your documents contradict each other, and
+produces a signed findings report a third party can verify. Runs EU hosted, self
+hosted, or fully offline. Open source under **AGPLv3**.
 
-It is self-hostable, single-tenant by design, and model-sovereign, with an optional
-local redaction tier so PII never leaves your machine.
+Every trust claim is backed by an **inspectable artifact**: a signed receipt, a
+verification verdict, a validity interval, a source link. Never just a promise. It is
+single-tenant by design and model-sovereign, with an optional local redaction tier so
+PII never leaves your machine.
 
-> **Cogeto, ergo sum: your mind, extended.**
+> **Models are rented. Knowledge is owned.**
 
 ## What makes it different
 
-- **Deletion receipts.** Deleting a source runs a saga across Postgres, Qdrant, and
-  MinIO, then issues a **hash-chained, ed25519-signed receipt**. A nightly sweep
-  re-verifies that what a receipt promised gone *stays* gone. Forgetting is provable.
-- **Self-verified extraction.** Every extracted fact passes an independent verification
-  pass before it counts, and carries a lifecycle status. Contradictions surface
-  side by side for *you* to resolve. Nothing is silently believed.
-- **Time-travel memory.** Facts carry validity intervals, supersession never destroys
-  history, and the timeline shows what you believed at any point and what changed it.
-  "Which CRM were we using in March?" is answered as the past, never as the present.
+- **Contradiction findings.** Every new fact is reconciled against everything already
+  known, across the whole corpus: the specification against the mail against the
+  minutes against the scan. Where documents disagree, Cogeto reports the conflict with
+  both claims and their sources. Contradictions are surfaced, never queued.
+- **Verification before storage.** Every extracted fact passes an independent
+  verification pass against its own source span before it counts, and carries a
+  lifecycle status. What fails is handled automatically and logged, never silently
+  dropped. Nothing is silently believed.
+- **The signed findings report.** A forwardable artifact an auditor or quality lead
+  can hand on: every contradiction with both verbatim source spans, superseded facts
+  with their chains, and a summary of what verification rejected. Signed, so a third
+  party can check it.
 - **Per-claim provenance.** Answers cite their sources sentence by sentence. Memory
   claims carry inspectable chips, web claims carry URL and fetch time, and anything
   from the model's own knowledge is plainly marked **unsourced**. That marking is the
-  feature. Cogeto is not a private ChatGPT; it is the assistant that tells you what
-  it can back up.
+  feature: chat is how the corpus is used, and every answer says exactly what it can
+  back up.
+- **Time-travel memory.** Facts carry validity intervals, supersession never destroys
+  history, and the timeline shows what you believed at any point and what changed it.
+  "Which CRM were we using in March?" is answered as the past, never as the present.
+- **Deletion receipts.** Deleting a source runs a saga across Postgres, Qdrant, and
+  MinIO, then issues a **hash-chained, ed25519-signed receipt**. A nightly sweep
+  re-verifies that what a receipt promised gone *stays* gone. Forgetting is provable.
 - **The Memory Passport.** One click exports everything, with full history, statuses,
   provenance, and your receipts, as a signed archive in a
   [published open format](docs/passport-schema/) that verifies outside Cogeto.

@@ -24,7 +24,7 @@ export function Login() {
           alt="Cogeto"
           className="mx-auto mb-2 h-12"
         />
-        <p className="mb-6 text-sm text-slate-500">Your mind, extended.</p>
+        <p className="mb-6 text-sm text-slate-500">Models are rented. Knowledge is owned.</p>
         <button
           type="button"
           onClick={() => void onLogin()}
