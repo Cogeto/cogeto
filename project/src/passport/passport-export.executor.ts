@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { sourceTypeDescriptor } from '@cogeto/shared';
 import type { Principal } from '@cogeto/shared';
 import { DRIZZLE, loadInstanceSigner, writeAudit } from '../infrastructure/index';
 import type { Db, InstanceSigner } from '../infrastructure/index';
@@ -61,12 +62,17 @@ export class PassportExportExecutor {
     ]);
 
     // Resolve file provenance + (optionally) original bytes for the user's OWN
-    // file uploads only — a teammate's shared file fact stays reference-only, so
-    // no other user's original bytes ever enter the archive.
+    // object-backed sources only (registry metadata: the source id IS the
+    // stored object's key) — a teammate's shared file fact stays
+    // reference-only, so no other user's original bytes ever enter the archive.
     const ownFileKeys = [
       ...new Set(
         memoryRows
-          .filter((m) => m.sourceType === 'file' && m.ownerId === principal.userId)
+          .filter(
+            (m) =>
+              (sourceTypeDescriptor(m.sourceType)?.objectBacked ?? false) &&
+              m.ownerId === principal.userId,
+          )
           .map((m) => m.sourceId),
       ),
     ];

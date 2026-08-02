@@ -32,6 +32,11 @@ describes the shape it is built in.
       organization ID, never a constant.
 - [ ] A **defunct** `source_type` value is a *known* value, never an unexpected one.
       No switch may throw on it and no sweep arm may flag it as unrecognised.
+- [ ] **Source types are registered, never enumerated in a database type**
+      (spec §15.3). A new type is one declaration in the shared source-type
+      registry plus its reader and deletion ports, no migration; behaviour that
+      differs per type is registry metadata, never a switch on a literal. The
+      full design: `docs/module-boundary-contract.md` §6.
 
 ## Access and retrieval (spec §4, §7)
 

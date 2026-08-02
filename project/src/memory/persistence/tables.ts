@@ -16,6 +16,7 @@ import {
   RELATION_RESOLUTIONS,
   UNCERTAINTY_REASONS,
 } from '@cogeto/shared';
+import type { SourceTypeKey } from '@cogeto/shared';
 
 /**
  * Tables owned by the memory module (migration 0001; as amended by 0003).
@@ -25,42 +26,16 @@ import {
 
 export const scopeEnum = pgEnum('scope', MEMORY_SCOPES);
 export const memoryStatusEnum = pgEnum('memory_status', MEMORY_STATUSES);
-export const sourceTypeEnum = pgEnum('source_type', [
-  'user_note',
-  'chat',
-  'email',
-  'calendar_event',
-  'file',
-  // DEFUNCT. Engine-derived task conclusions
-  // whose source row was the tasks-owned task_conclusion record. The task
-  // subsystem is gone and migration 0035 dropped that table after erasing
-  // every memory that pointed at it through the deletion saga — but a
-  // Postgres enum value cannot be dropped, so the value stays here as
-  // permanent, documented residue. Nothing writes it, nothing reads it, and no
-  // code path may treat encountering it as an error: it is a known value with
-  // no live producer. Listed in DEFUNCT_SOURCE_TYPES below.
-  'task_conclusion',
-  // Fetched web pages: the source row is the connectors-owned
-  // web_page record, migration 0027.
-  'web',
-  // A whole chat conversation: the source row is the
-  // retrieval-owned conversation record, migration 0031. No memory ever
-  // carries this value — chat memories cite their message ('chat'); it exists
-  // for conversation deletion receipts and the saga adapter.
-  'chat_conversation',
-]);
+
 /**
- * Source types the product no longer produces. Postgres cannot
- * drop an enum value, so they remain valid members of `source_type` forever.
- * `calendar_event` joined them when calendar left v1 (roadmap revision);
- * `task_conclusion` joined them when the task subsystem was removed.
- *
- * The contract for every reader: a defunct value is KNOWN, not unexpected. No
- * switch may throw on it, no sweep arm may flag it as unrecognised. It should
- * simply have no rows — and after migration 0035 it provably has none, since
- * that migration refuses to run while any survive.
+ * Source types are REGISTERED, not enumerated in a database type (spec §15.3;
+ * migration 0040 converted the columns to text). The vocabulary, the defunct
+ * list, and every per-type property live in the source-type registry
+ * (`@cogeto/shared/src/source-types.ts`); the deletion saga validates at the
+ * API boundary and the integrity sweep flags any stored value the registry
+ * does not know. Adding a source type therefore needs no migration here and
+ * no edit in this module.
  */
-export const DEFUNCT_SOURCE_TYPES = ['calendar_event', 'task_conclusion'] as const;
 
 /**
  * Why a memory is `uncertain` rather than `active` (V2.0 item 3.3, migration
@@ -82,7 +57,7 @@ export const memory = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     ownerId: text('owner_id').notNull(),
     scope: scopeEnum('scope').notNull(),
-    sourceType: sourceTypeEnum('source_type').notNull(),
+    sourceType: text('source_type').$type<SourceType>().notNull(),
     sourceId: text('source_id').notNull(),
     status: memoryStatusEnum('status').notNull().default('active'),
     /**
@@ -156,7 +131,7 @@ export const fileMetadata = pgTable('file_metadata', {
 
 export const deletionReceipt = pgTable('deletion_receipt', {
   id: uuid('id').primaryKey().defaultRandom(),
-  sourceType: sourceTypeEnum('source_type').notNull(),
+  sourceType: text('source_type').$type<SourceType>().notNull(),
   sourceId: text('source_id').notNull(),
   countsJson: jsonb('counts_json'),
   status: receiptStatusEnum('status').notNull().default('pending'),
@@ -215,4 +190,5 @@ export const memoryRelation = pgTable(
 
 export type MemoryRow = typeof memory.$inferSelect;
 export type MemoryRelationRow = typeof memoryRelation.$inferSelect;
-export type SourceType = (typeof sourceTypeEnum.enumValues)[number];
+/** The registry's closed union — the compile-time half of the old enum's guarantee. */
+export type SourceType = SourceTypeKey;

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
 import { EMAIL_REPLY_DRAFT_ACTION } from '@cogeto/shared';
+import type { SourceTypeKey } from '@cogeto/shared';
 import type { Tx } from '../infrastructure/index';
 import type { DerivedCascade } from '../memory/index';
 import { approval } from './persistence/tables';
@@ -32,8 +33,10 @@ export class ReplyDraftCascade implements DerivedCascade {
   }
 
   async cascadeForSource(tx: Tx, sourceType: string, sourceId: string): Promise<number> {
-    // Only email sources have reply drafts (the payload's emailSourceId).
-    if (sourceType !== 'email') return 0;
+    // Only email sources have reply drafts (the payload's emailSourceId). This
+    // is the artifact's own key, not per-type dispatch: the `satisfies` pins
+    // the literal to a registered source type so it cannot silently drift.
+    if (sourceType !== ('email' satisfies SourceTypeKey)) return 0;
     const redacted = await tx
       .update(approval)
       .set({

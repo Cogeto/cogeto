@@ -404,6 +404,31 @@ describe('deletion saga (integration: real Postgres + Qdrant + MinIO)', () => {
     });
   });
 
+  it('registry_boundary: an unregistered source type is rejected at the API exactly as the enum rejected it; a defunct type stays a KNOWN value that fails only on its missing adapter', async () => {
+    // The database no longer enumerates the vocabulary (migration 0040), so
+    // THIS boundary is what keeps an unknown value out of the saga and out of
+    // deletion_receipt.
+    await expect(saga.requestSourceDeletion(userA, 'not_a_registered_type', 'x')).rejects.toThrow(
+      /unknown source type/,
+    );
+    await expect(saga.previewSourceDeletion(userA, 'not_a_registered_type', 'x')).rejects.toThrow(
+      /unknown source type/,
+    );
+    // Defunct is registered, not unknown: it passes validation and fails only
+    // because nothing binds an adapter for it — the exact pre-registry
+    // behaviour, and what the 1.x upgrade CLI relies on when it DOES bind one.
+    await expect(saga.requestSourceDeletion(userA, 'calendar_event', 'x')).rejects.toThrow(
+      /no deletion adapter registered/,
+    );
+    // Neither refusal left a receipt behind: the ledger never gains an entry
+    // for a source the saga refused to touch.
+    const { rows } = await tdb.pool.query<{ n: number }>(
+      `SELECT count(*)::int AS n FROM deletion_receipt
+       WHERE source_type IN ('not_a_registered_type', 'calendar_event')`,
+    );
+    expect(rows[0]!.n).toBe(0);
+  });
+
   it('cross_source_chain: same-source chains delete whole; cross-source chains null the dangling pointer and record it', async () => {
     // Same-source chain: edit-supersession keeps provenance, so enumeration
     // catches predecessor AND successor (spec §11.1 provability argument).

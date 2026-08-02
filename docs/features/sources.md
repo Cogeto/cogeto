@@ -2,7 +2,14 @@
 
 Everything Cogeto knows points at something. Provenance (`source_type` + `source_id`)
 is NOT NULL on every memory row, on every write path, so there are no orphans. A
-source type is added by implementing three ports, never by forking the pipeline.
+source type is added by registering a declaration and implementing three ports, never
+by forking the pipeline: source types are **registered, not enumerated in a database
+type** (spec §15.3). The registry (`project/shared/src/source-types.ts`) declares
+every type once with the metadata consumers read instead of switching on literals
+(defunct flag, authorship contract, object backing, extraction, fact budget, prompt
+label, dashboard family); the columns are plain text since migration 0040 and the
+registry boundary validates writes. Full design:
+[`module-boundary-contract.md` §6](../module-boundary-contract.md).
 
 | `source_type` | Durable source row |
 | --- | --- |
@@ -13,12 +20,14 @@ source type is added by implementing three ports, never by forking the pipeline.
 | `chat` | `chat_message` |
 | `chat_conversation` | the conversation, for deletion enumeration only |
 
-`task_conclusion` and `calendar_event` are **defunct**. Postgres cannot remove a value
-from an enum, so they remain in `source_type` forever. The binding rule for every
-reader: *a defunct source type is a known value, never an unexpected one. No switch
-may throw on it and no sweep arm may flag it as unrecognised. It should simply have no
-rows.* The integrity sweep has an arm proving exactly that, expected to return nothing
-forever.
+`task_conclusion` and `calendar_event` are **defunct**. Deletion receipts citing them
+must keep verifying forever, so they stay registered permanently with `defunct: true`.
+The binding rule for every reader: *a defunct source type is a known value, never an
+unexpected one. No switch may throw on it and no sweep arm may flag it as
+unrecognised. It should simply have no rows.* The integrity sweep has an arm proving
+exactly that, expected to return nothing forever; since the column became text, the
+same arm also flags any value the registry does not know at all, a state only a
+manual database write can create.
 
 ## The three ports
 

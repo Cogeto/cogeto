@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import type { ChatFactDto, MemoryStatus } from '@cogeto/shared';
+import { isRegisteredSourceType } from '@cogeto/shared';
+import type { ChatFactDto, MemoryStatus, SourceTypeKey } from '@cogeto/shared';
 import { fetchMe, fetchMemory, fetchWebSource } from '../api';
 import type { Session } from '../auth/oidc';
 import { i18next } from '../i18n';
@@ -19,25 +20,25 @@ import { isPastFact, statusLabel, WARN_STATUSES } from './status';
  */
 /**
  * Friendly, short source kind for the provenance chip. The source TYPE is an
- * API value; only its display name is translated, through an explicit map. An
- * unrecognised type renders verbatim, as before.
+ * API value; only its display name is translated, through an explicit
+ * value → key map, typed over the source-type registry's union so adding a
+ * source type without deciding its chip label is a compile error. `null` and
+ * an unrecognised runtime value render verbatim, as before.
  */
+const CITATION_KIND_KEY: Record<SourceTypeKey, string | null> = {
+  user_note: 'chat:citation.kind.note',
+  chat: 'chat:citation.kind.chat',
+  email: 'chat:citation.kind.email',
+  web: 'chat:citation.kind.web',
+  file: null,
+  chat_conversation: null,
+  calendar_event: null,
+  task_conclusion: null,
+};
+
 function sourceKind(sourceType: string): string {
-  switch (sourceType) {
-    case 'user_note':
-    case 'note':
-      return i18next.t('chat:citation.kind.note');
-    case 'email':
-      return i18next.t('chat:citation.kind.email');
-    case 'web':
-      return i18next.t('chat:citation.kind.web');
-    case 'file_upload':
-      return i18next.t('chat:citation.kind.document');
-    case 'chat':
-      return i18next.t('chat:citation.kind.chat');
-    default:
-      return sourceType.replace(/_/g, ' ');
-  }
+  const key = isRegisteredSourceType(sourceType) ? CITATION_KIND_KEY[sourceType] : null;
+  return key ? i18next.t(key) : sourceType.replace(/_/g, ' ');
 }
 
 export function CitationChip({

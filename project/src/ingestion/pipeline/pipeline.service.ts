@@ -1,4 +1,5 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
+import { SOURCE_TYPES, sourceTypeDescriptor } from '@cogeto/shared';
 import {
   acquireJobRunLock,
   DEFAULT_PARSE_CAPS,
@@ -23,9 +24,11 @@ import { SOURCE_READERS } from './source-reader';
 import type { SourceReader } from './source-reader';
 import { VerifyStage } from './verify.stage';
 
-/** The web-source fact budget: a fetched page is reference
- * material — it contributes salient facts, never the worst-case hundred. */
-export const WEB_MAX_FACTS = 30;
+/** The web-source fact budget: a fetched page is reference material — it
+ * contributes salient facts, never the worst-case hundred. The value lives on
+ * the source-type registry (`SOURCE_TYPES.web.factBudget`); this alias keeps
+ * the number named where the pipeline documents it and the suite asserts it. */
+export const WEB_MAX_FACTS: number = SOURCE_TYPES.web.factBudget;
 
 /**
  * The job type connectors enqueue (via the outbox, in the capture transaction).
@@ -169,14 +172,13 @@ export class IngestionPipeline {
     // The facts array is capped so a pathological source cannot fan out
     // into thousands of verify/reconcile/embed calls and memory rows.
     let facts = await this.extractStage.run(source, chunks);
-    // Web pages get a tighter fact budget: reference material
-    // contributes its salient facts, not a hundred rows of page noise — and
-    // the cap bounds the verify/reconcile/embed fan-out that made big pages
-    // slow. First-person sources keep the full cap.
+    // Reference-material types carry a tighter fact budget in the source-type
+    // registry (web: salient facts, not a hundred rows of page noise — the cap
+    // also bounds the verify/reconcile/embed fan-out that made big pages
+    // slow). First-person sources have no budget and keep the full cap.
+    const factBudget = sourceTypeDescriptor(payload.source_type)?.factBudget ?? null;
     const maxFacts =
-      payload.source_type === 'web'
-        ? Math.min(this.parseCaps.maxFacts, WEB_MAX_FACTS)
-        : this.parseCaps.maxFacts;
+      factBudget === null ? this.parseCaps.maxFacts : Math.min(this.parseCaps.maxFacts, factBudget);
     if (facts.length > maxFacts) {
       log({ stage: 'extract', ...ref, cappedFacts: maxFacts }, 'fact count capped');
       facts = facts.slice(0, maxFacts);

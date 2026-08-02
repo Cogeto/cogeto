@@ -1,4 +1,5 @@
 import type { Task, TaskList } from 'graphile-worker';
+import type { SourceTypeKey } from '@cogeto/shared';
 import {
   idempotentTask,
   JOB_PRINCIPAL_KEY,
@@ -149,7 +150,10 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
         // web page and every page of the run has settled, enqueue the
         // conclusion — in THIS transaction, so the enqueue commits with the
         // page's own job_execution claim and can never be lost between them.
-        if (payload.source_type === 'web') {
+        // Web's own follow-on, not per-type dispatch: research runs conclude
+        // when their last page settles. `satisfies` pins the literal to a
+        // registered source type so it cannot silently drift.
+        if (payload.source_type === ('web' satisfies SourceTypeKey)) {
           await deps.researchConcluder.afterPageProcessed(tx, payload.source_id);
         }
       },

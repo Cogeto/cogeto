@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, Optional } from '@nestjs/common';
-import { and, asc, desc, eq, gt, inArray, isNotNull, notInArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNotNull, notInArray, or, sql } from 'drizzle-orm';
+import { DEFUNCT_SOURCE_TYPES, isRegisteredSourceType, SOURCE_TYPE_KEYS } from '@cogeto/shared';
 import {
   DRIZZLE,
   loadInstancePublicKey,
@@ -8,13 +9,7 @@ import {
   writeAudit,
 } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
-import {
-  DEFUNCT_SOURCE_TYPES,
-  deletionReceipt,
-  fileMetadata,
-  integrityAlert,
-  memory,
-} from './persistence/tables';
+import { deletionReceipt, fileMetadata, integrityAlert, memory } from './persistence/tables';
 import type { SourceType } from './persistence/tables';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
@@ -296,6 +291,14 @@ export class IntegritySweep {
    * table is gone, so their provenance cannot resolve. Expected to return
    * nothing forever; if it ever does not, the erase-before-drop ordering was
    * bypassed and the rows need the deletion saga.
+   *
+   * Since migration 0040 the column is text and the vocabulary lives in the
+   * source-type registry (spec §15.3), so this arm also covers what the
+   * database enum used to make impossible: a row whose `source_type` the
+   * registry does not know at all (only reachable by a manual write). Both
+   * are provenance that cannot resolve; the defunct case stays distinguished
+   * in the alert copy because a defunct value is a KNOWN value, never an
+   * unrecognised one.
    */
   private async findDefunctProvenance(): Promise<
     { receiptId: string | null; kind: AlertKind; detail: string }[]
@@ -303,12 +306,19 @@ export class IntegritySweep {
     const rows = await this.db
       .select({ id: memory.id, sourceType: memory.sourceType })
       .from(memory)
-      .where(inArray(memory.sourceType, [...DEFUNCT_SOURCE_TYPES]))
+      .where(
+        or(
+          inArray(memory.sourceType, [...DEFUNCT_SOURCE_TYPES]),
+          notInArray(memory.sourceType, SOURCE_TYPE_KEYS),
+        ),
+      )
       .limit(200);
     return rows.map((row) => ({
       receiptId: null,
       kind: 'orphaned_memory' as AlertKind,
-      detail: `${row.id} (defunct source_type '${row.sourceType}')`,
+      detail: isRegisteredSourceType(row.sourceType)
+        ? `${row.id} (defunct source_type '${row.sourceType}')`
+        : `${row.id} (unregistered source_type '${row.sourceType}')`,
     }));
   }
 

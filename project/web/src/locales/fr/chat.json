@@ -2,7 +2,9 @@
   "loadingConversation": "Chargement de la discussion…",
   "answerFailed": "Cette réponse n’est pas arrivée. Posez de nouveau la question.",
   "skillRunHandoff": "Ouvrez l’exécution de la synthèse : approuvez le plan de recherche et suivez chaque étape →",
-  "role": { "you": "Vous" },
+  "role": {
+    "you": "Vous"
+  },
   "answer": {
     "standsOn": "S’appuie sur",
     "attribution": "Cogeto · depuis votre mémoire",
@@ -19,7 +21,10 @@
     "changedSince": "Qu’est-ce qui a changé depuis le mois dernier ?",
     "whoInvolved": "Qui participe à mon travail en cours ?"
   },
-  "thinking": { "default": "Réflexion…", "fromMemories": "Réponse à partir de vos souvenirs…" },
+  "thinking": {
+    "default": "Réflexion…",
+    "fromMemories": "Réponse à partir de vos souvenirs…"
+  },
   "composer": {
     "label": "Poser une question",
     "placeholder": "Interrogez votre mémoire…",
@@ -56,7 +61,6 @@
       "note": "note",
       "email": "e-mail",
       "web": "web",
-      "document": "document",
       "chat": "discussion"
     },
     "unsourced": {

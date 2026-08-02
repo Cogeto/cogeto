@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
+import { sourceTypePromptLabel } from '@cogeto/shared';
 import type { ContextSuggestionDto, Principal, SuggestibleContextField } from '@cogeto/shared';
 import { normalizeValue, UserContextService } from '../infrastructure/index';
 import { loadPrompt, ModelGateway } from '../model-gateway/index';
@@ -113,8 +114,7 @@ export class ContextSuggestionsService {
           value: candidate.value,
           sourceMemoryId: source.id,
           sourceDate: source.createdAt.toISOString(),
-          sourceLabel:
-            source.sourceType === 'user_note' ? 'note' : source.sourceType.replace('_', ' '),
+          sourceLabel: sourceTypePromptLabel(source.sourceType),
         };
       });
   }

@@ -9,12 +9,15 @@
       "body": "Demandez : « Que pensais-je de X en mars ? » ou « Qu’est-ce qui a changé concernant Y depuis le mois dernier ? » Vous obtenez ici une réponse visuelle. Vous pouvez aussi ouvrir un souvenir et choisir « Chronologie »."
     }
   },
-  "tab": { "timeline": "Chronologie", "at": "À une date", "compare": "Comparer deux dates" },
+  "tab": {
+    "timeline": "Chronologie",
+    "at": "À une date",
+    "compare": "Comparer deux dates"
+  },
   "sourcePhrase": {
     "note": "une note",
     "chat": "un message de discussion",
     "email": "un e-mail",
-    "document": "un document",
     "other": "une source de type {{kind}}"
   },
   "fate": {

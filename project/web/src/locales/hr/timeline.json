@@ -18,7 +18,6 @@
     "note": "bilješka",
     "chat": "poruka u razgovoru",
     "email": "e-pošta",
-    "document": "dokument",
     "other": "izvor vrste {{kind}}"
   },
   "fate": {

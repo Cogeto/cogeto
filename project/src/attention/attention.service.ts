@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
+import { sourceTypeDescriptor } from '@cogeto/shared';
 import type {
   AttentionFeedDto,
   AttentionItem,
@@ -252,10 +253,16 @@ export class AttentionService {
     const memoryTotal = Object.values(memoryByStatus).reduce((a, b) => a + b, 0);
 
     // Sources: fold source types into the three families the buyer recognises.
+    // The family is source-type registry metadata; a null family (web fetches,
+    // container and defunct types) is excluded from the chart.
     const sources = buildSeries(
       STATS_WINDOW_DAYS,
       ['notes', 'email', 'files'],
-      sourceRows.map((r) => ({ day: r.day, key: SOURCE_FAMILY[r.sourceType], value: r.sources })),
+      sourceRows.map((r) => ({
+        day: r.day,
+        key: sourceTypeDescriptor(r.sourceType)?.dashboardFamily ?? undefined,
+        value: r.sources,
+      })),
     );
     // Dreaming: merges (dedup + supersession) vs conflicts caught.
     const dreaming = buildSeries(
@@ -290,16 +297,6 @@ export class AttentionService {
     };
   }
 }
-
-/** Source-type → chart family. calendar/task_conclusion are engine/derived (the
- * latter defunct since), not user-ingested sources, so they are
- * excluded from the "sources" chart. */
-const SOURCE_FAMILY: Record<string, string> = {
-  user_note: 'notes',
-  chat: 'notes',
-  email: 'email',
-  file: 'files',
-};
 
 /**
  * One open loop → at most one attention line. Due date is the

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { and, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
+import { isRegisteredSourceType, SOURCE_TYPES } from '@cogeto/shared';
 import type { Principal } from '@cogeto/shared';
 import {
   DRIZZLE,
@@ -15,7 +16,7 @@ import {
   writeAudit,
 } from '../infrastructure/index';
 import type { Db, DbOrTx, InstanceSigner, Tx } from '../infrastructure/index';
-import { deletionReceipt, fileMetadata, memory, sourceTypeEnum } from './persistence/tables';
+import { deletionReceipt, fileMetadata, memory } from './persistence/tables';
 import type { SourceType } from './persistence/tables';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
@@ -283,11 +284,18 @@ export interface DeletionPreview {
   userApprovedCount?: number;
 }
 
+/**
+ * The registry boundary (spec §15.3): the validation the database enum used to
+ * perform. An unregistered value is rejected at the API exactly as the enum
+ * rejected it; a registered-but-defunct value passes, as it always did — a
+ * defunct value is a known value (AGENTS.md), and the 1.x upgrade CLI deletes
+ * through this very path.
+ */
 function assertSourceType(value: string): SourceType {
-  if (!(sourceTypeEnum.enumValues as readonly string[]).includes(value)) {
+  if (!isRegisteredSourceType(value)) {
     throw new BadRequestException(`unknown source type '${value}'`);
   }
-  return value as SourceType;
+  return value;
 }
 
 @Injectable()
@@ -407,7 +415,9 @@ export class DeletionSaga {
       // enumeration below then sees whatever that run committed.
       const ingestion = this.ingestionGuard
         ? await this.ingestionGuard.cancelPending(tx, sourceType, sourceId, {
-            waitForRun: sourceType === 'file' && !fileRow,
+            // Discard-mode object-backed sources have no durable row to
+            // serialize on, so the guard waits an in-flight run out.
+            waitForRun: SOURCE_TYPES[sourceType].objectBacked && !fileRow,
           })
         : null;
 
@@ -534,7 +544,7 @@ export class DeletionSaga {
       }
 
       const objectKeys: string[] = [];
-      if (sourceType === 'file' && fileRow) {
+      if (SOURCE_TYPES[sourceType].objectBacked && fileRow) {
         await tx.delete(fileMetadata).where(eq(fileMetadata.objectKey, sourceId));
         objectKeys.push(sourceId);
       }
@@ -685,7 +695,10 @@ export class DeletionSaga {
     let adapter: SourceDeletion | undefined;
     let sourceOwner: string | null;
 
-    if (sourceType === 'file') {
+    // Object-backed sources (registry metadata) are the ones whose source row
+    // IS this module's file_metadata — resolved here, no adapter. Everything
+    // else resolves through its owning module's SourceDeletion adapter.
+    if (SOURCE_TYPES[sourceType].objectBacked) {
       const fileQuery = tx.select().from(fileMetadata).where(eq(fileMetadata.objectKey, sourceId));
       fileRow = (opts.lock ? await fileQuery.for('update') : await fileQuery)[0];
       sourceOwner = fileRow?.ownerId ?? null;
