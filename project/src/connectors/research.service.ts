@@ -23,7 +23,7 @@ import type { Db, ResearchQuota } from '../infrastructure/index';
 import { chunkContent, INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
 import { MemoryObjectStore, MemoryStore } from '../memory/index';
 import { ModelGateway } from '../model-gateway/index';
-import { sanitizeHtml } from './email-parse';
+import { sanitizeHtml } from '../email/index';
 import { minimiseQuery } from './research-minimise';
 import { researchRun, webPage } from './persistence/tables';
 import type { ResearchRunRow, WebPageRow } from './persistence/tables';

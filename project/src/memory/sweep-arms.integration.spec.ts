@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Principal } from '@cogeto/shared';
 import { ensureInstanceKeys } from '../infrastructure/index';
-import { EmailSourceDeletion } from '../connectors/index';
+import { EmailSourceDeletion } from '../email/index';
 import {
   fakeEmbedding,
   startTestDatabase,

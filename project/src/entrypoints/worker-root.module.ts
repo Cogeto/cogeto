@@ -18,13 +18,12 @@ import {
 import { AgentsModule, ReplyDraftCascade, ReplyDraftCascadeModule } from '../agents/index';
 import {
   ConnectorsModule,
-  EmailSourceDeletion,
-  EmailSourceReader,
   RESEARCH_SYNTHESIS_OPTIONS,
   ResearchSynthesisService,
   WebSourceDeletion,
   WebSourceReader,
 } from '../connectors/index';
+import { EmailModule, EmailSourceDeletion, EmailSourceReader } from '../email/index';
 import { FilesModule, FileSourceReader } from '../files/index';
 import { NotesModule, NotesSourceDeletion, NotesSourceReader } from '../notes/index';
 import type { ResearchSynthesisOptions } from '../connectors/index';
@@ -65,6 +64,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
     },
   });
+  const emailModule = EmailModule.register({ mail: mailOptions(config) });
   @Module({
     imports: [
       DatabaseModule.register({ databaseUrl: config.databaseUrl, poolMax: config.pgPoolMax }),
@@ -114,7 +114,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
           // Each adapter's family module is named here; the remaining
           // connector adapters still resolve from the global ConnectorsModule
           // (B14, closing family by family in part 4).
-          imports: [ChatSourceModule, NotesModule],
+          imports: [ChatSourceModule, NotesModule, emailModule],
           adapters: [
             NotesSourceDeletion,
             ChatSourceDeletion,
@@ -156,7 +156,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       IngestionModule.register({
         // Each reader's family module is named here; the remaining connector
         // readers still resolve from the global ConnectorsModule (B14).
-        imports: [ChatSourceModule, NotesModule, filesModule],
+        imports: [ChatSourceModule, NotesModule, filesModule, emailModule],
         readers: [
           NotesSourceReader,
           FileSourceReader,
@@ -169,8 +169,8 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       NotesModule,
       AgentsModule,
       filesModule,
+      emailModule,
       ConnectorsModule.register({
-        mail: mailOptions(config),
         research: researchOptions(config),
       }),
       // The Memory Passport export + retention jobs run here (spec §15.4 slow path);

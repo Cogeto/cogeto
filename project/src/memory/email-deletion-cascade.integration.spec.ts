@@ -22,7 +22,7 @@ import {
   EmailIntakeService,
   EmailSourceDeletion,
   EmailSourceReader,
-} from '../connectors/index';
+} from '../email/index';
 import { FileSourceReader } from '../files/index';
 import { UserSettingsService } from '../settings/index';
 import { ReplyDraftCascade } from '../agents/index';

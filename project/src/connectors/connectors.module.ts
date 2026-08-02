@@ -2,17 +2,6 @@ import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import { UserContextModule } from '../infrastructure/index';
 import { SettingsModule } from '../settings/index';
-import { EmailIntakeService } from './email-intake.service';
-import { EmailAllowlistService } from './email-allowlist.service';
-import { EmailSourceReader } from './email.source-reader';
-import { EmailSourceDeletion } from './email.source-deletion';
-import { EmailSourceService } from './email-source.service';
-import { EmailSourceController } from './email-source.controller';
-import { EmailIntakeController } from './email-intake.controller';
-import { EmailSettingsController } from './email-settings.controller';
-import { MailIntakeGuard } from './mail-intake.guard';
-import { MAIL_OPTIONS } from './mail-options';
-import type { MailOptions } from './mail-options';
 import { ResearchController } from './research.controller';
 import { ResearchService } from './research.service';
 import { ResearchConclusionService } from './research-conclude';
@@ -32,8 +21,6 @@ import {
 } from '../infrastructure/index';
 
 export interface ConnectorsModuleOptions {
-  /** Inbound-email knobs from validated config. */
-  mail: MailOptions;
   /** Web-research knobs from validated config (0042/0043). */
   research: ResearchOptions;
 }
@@ -68,19 +55,8 @@ export class ConnectorsModule {
       // SettingsModule: the notes/files/email surfaces apply the user's
       // default capture scope through its UserSettingsService.
       imports: [UserContextModule, SettingsModule],
-      controllers: [
-        EmailIntakeController,
-        EmailSettingsController,
-        EmailSourceController,
-        ResearchController,
-      ],
+      controllers: [ResearchController],
       providers: [
-        EmailIntakeService,
-        EmailAllowlistService,
-        EmailSourceReader,
-        EmailSourceDeletion,
-        EmailSourceService,
-        MailIntakeGuard,
         ResearchService,
         ResearchConclusionService,
         WebDiscoveryService,
@@ -108,15 +84,9 @@ export class ConnectorsModule {
             { token: INSTANCE_TIMEZONE, optional: true },
           ],
         },
-        { provide: MAIL_OPTIONS, useValue: options.mail },
         { provide: RESEARCH_OPTIONS, useValue: options.research },
       ],
       exports: [
-        EmailIntakeService,
-        EmailAllowlistService,
-        EmailSourceReader,
-        EmailSourceDeletion,
-        EmailSourceService,
         ResearchService,
         ResearchConclusionService,
         WebSourceReader,

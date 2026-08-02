@@ -32,8 +32,8 @@ import { APPROVAL_EXECUTE_JOB_TYPE, APPROVAL_EXPIRY_JOB_TYPE } from '../agents/i
 import type { ApprovalExecutor, ApprovalService } from '../agents/index';
 import { PASSPORT_EXPORT_JOB_TYPE, PASSPORT_RETENTION_JOB_TYPE } from '../passport/index';
 import type { PassportExportExecutor } from '../passport/index';
-import { EMAIL_REFUSAL_RETENTION_JOB_TYPE } from '../connectors/index';
-import type { EmailAllowlistService } from '../connectors/index';
+import { EMAIL_REFUSAL_RETENTION_JOB_TYPE } from '../email/index';
+import type { EmailAllowlistService } from '../email/index';
 import { RESEARCH_CONCLUDE_JOB_TYPE, SKILL_ADVANCE_JOB_TYPE } from '../connectors/index';
 import type {
   ResearchConclusionService,

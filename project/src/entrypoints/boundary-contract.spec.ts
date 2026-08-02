@@ -66,10 +66,10 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   note: 'notes',
   // Split out of connectors (V2.0 item 3.6 part 4).
   user_settings: 'settings',
-  email_message: 'connectors',
-  email_attachment: 'connectors',
-  email_allowlist: 'connectors',
-  email_refusal: 'connectors',
+  email_message: 'email',
+  email_attachment: 'email',
+  email_allowlist: 'email',
+  email_refusal: 'email',
   web_page: 'connectors',
   research_run: 'connectors',
   skill_run: 'connectors',
@@ -113,7 +113,7 @@ const JOB_TYPE_OWNERS: Readonly<Record<string, string>> = {
   approval_expiry: 'agents',
   'research.conclude': 'connectors',
   'skill.advance': 'connectors',
-  email_refusal_retention: 'connectors',
+  email_refusal_retention: 'email',
   'conversation.title': 'retrieval',
   passport_export: 'passport',
   passport_retention: 'passport',
@@ -165,7 +165,7 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
 
   // Split out of connectors (V2.0 item 3.6 part 4).
   FILE_UPLOAD_OPTIONS: 'files',
-  MAIL_OPTIONS: 'connectors',
+  MAIL_OPTIONS: 'email',
   RESEARCH_OPTIONS: 'connectors',
   // Named-options bags (V2.0 item 3.6 part 4), as above.
   RESEARCH_SYNTHESIS_OPTIONS: 'connectors',

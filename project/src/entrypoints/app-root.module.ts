@@ -22,12 +22,11 @@ import {
 import { AgentsModule, ReplyDraftCascade, ReplyDraftCascadeModule } from '../agents/index';
 import {
   ConnectorsModule,
-  EmailReplyModule,
-  EmailSourceDeletion,
   ResearchChatModule,
   SkillsModule,
   WebSourceDeletion,
 } from '../connectors/index';
+import { EmailModule, EmailReplyModule, EmailSourceDeletion } from '../email/index';
 import { FilesModule } from '../files/index';
 import { NotesModule, NotesSourceDeletion } from '../notes/index';
 import {
@@ -49,6 +48,10 @@ import type { CogetoConfig } from './config';
  * (research: project-structure-lessons §1).
  */
 export function createAppRootModule(config: CogetoConfig): unknown {
+  // ONE dynamic instance per family module, threaded everywhere it is needed
+  // (the root's import list AND the registration options of the modules that
+  // bind its port adapters) — the part-4 replacement for globality.
+  const emailModule = EmailModule.register({ mail: mailOptions(config) });
   @Module({
     imports: [
       DatabaseModule.register({ databaseUrl: config.databaseUrl, poolMax: config.pgPoolMax }),
@@ -108,7 +111,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
           // Each adapter's family module is named here; the remaining
           // connector adapters still resolve from the global ConnectorsModule
           // (B14, closing family by family in part 4).
-          imports: [ChatSourceModule, NotesModule],
+          imports: [ChatSourceModule, NotesModule, emailModule],
           adapters: [
             NotesSourceDeletion,
             ChatSourceDeletion,
@@ -155,8 +158,8 @@ export function createAppRootModule(config: CogetoConfig): unknown {
           downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
         },
       }),
+      emailModule,
       ConnectorsModule.register({
-        mail: mailOptions(config),
         research: researchOptions(config),
       }),
       // Reply drafting + the chat → reply resolver (O4) — app-only (needs

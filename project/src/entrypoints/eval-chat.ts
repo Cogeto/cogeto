@@ -20,12 +20,10 @@ import {
 import { UserDirectory } from '../identity/index';
 import { ANSWER_PROMPT, ChatService, RetrievalService } from '../retrieval/index';
 import { ActionRegistry, ApprovalService } from '../agents/index';
+import { ChatReplyResolver, EmailReplyDraftService, EmailSourceService } from '../email/index';
 import {
-  ChatReplyResolver,
   ChatResearchResolver,
   ChatSkillResolver,
-  EmailReplyDraftService,
-  EmailSourceService,
   ResearchService,
   ResearchSynthesisService,
   SkillEngine,
