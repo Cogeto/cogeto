@@ -1,5 +1,6 @@
-import type { ChatFactDto } from '@cogeto/shared';
+import type { ChatFactDto, PreferredLanguage } from '@cogeto/shared';
 import { mapMarkersToCitations, mapUnsourcedMarkers, sanitizeAnswer } from '@cogeto/shared';
+import { serverT } from '../../infrastructure/index';
 import type { MemoryChange } from '../../memory/index';
 import type { ConversationTurn, TemporalIntent } from '../query-rewrite';
 import type { OpenLoop, RetrievalMode } from '../retrieval.service';
@@ -10,24 +11,20 @@ import type { OpenLoop, RetrievalMode } from '../retrieval.service';
  */
 export const ANSWER_PROMPT = { family: 'answer', version: 'v0007' } as const;
 
-/** The zero-open-loops path: a true "all clear", not a data gap. */
-export const NOTHING_OPEN = 'Nothing is still open — nothing on record is waiting on you.';
-
 /**
- * Localized forms of the two deterministic chat replies: a
- * deterministic string cannot mirror the question's language, so it follows
- * the anchor — the user's preferred language.
+ * The two deterministic chat replies. A deterministic string cannot mirror the
+ * question's language, so it follows the anchor: the user's preferred language.
+ * The words live in the server catalogue (V2.0 item 3.5); these constants stay
+ * exported because the integration specs assert on them.
  */
-export function nothingOpen(lang: 'en' | 'hr'): string {
-  return lang === 'hr'
-    ? 'Ništa više nije otvoreno — ništa zabilježeno ne čeka na tebe.'
-    : NOTHING_OPEN;
+export const NOTHING_OPEN = nothingOpen('en');
+
+export function nothingOpen(lang: PreferredLanguage): string {
+  return serverT(lang, 'chat', 'nothingOpen');
 }
 
-export function nothingOnRecord(lang: 'en' | 'hr'): string {
-  return lang === 'hr'
-    ? 'O tome još nemam ništa. Ako to zabilježiš kao bilješku na stranici Memories, zapamtit ću i moći odgovoriti sljedeći put.'
-    : NOTHING_ON_RECORD;
+export function nothingOnRecord(lang: PreferredLanguage): string {
+  return serverT(lang, 'chat', 'nothingOnRecord');
 }
 
 export interface AnswerTemporalContext {
@@ -50,9 +47,7 @@ export interface AnswerTemporalContext {
 }
 
 /** The zero-retrieval path: no facts, no generation from thin air. */
-export const NOTHING_ON_RECORD =
-  'I don’t have anything on that yet. If you capture it as a note on the Memories ' +
-  'page, I’ll remember it and can answer next time.';
+export const NOTHING_ON_RECORD = nothingOnRecord('en');
 
 /**
  * Structured fact blocks (claim, subject, status, source label, validity) + the

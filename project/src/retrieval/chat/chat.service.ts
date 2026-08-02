@@ -16,7 +16,9 @@ import type {
   ConversationDto,
   NoteProcessingState,
   Principal,
+  PreferredLanguage,
 } from '@cogeto/shared';
+import { LOCALE_TAGS } from '@cogeto/shared';
 import {
   buildContextBlock,
   deadLetter,
@@ -28,6 +30,8 @@ import {
   jobExecution,
   UserContextService,
   withTransactionalEnqueue,
+  serverT,
+  serverTranslator,
 } from '../../infrastructure/index';
 import type { Db, UserContextRecord } from '../../infrastructure/index';
 import { INGESTION_PIPELINE_JOB_TYPE } from '../../ingestion/index';
@@ -479,7 +483,12 @@ export class ChatService {
     // creates an email reply draft (or asks / declines) — fast path, no
     // ingestion work, no sending. Then we return.
     if (this.replyResolver && rewrite.emailReply) {
-      yield* this.handleReplyIntent(principal, conversationId, rewrite.emailReply.target);
+      yield* this.handleReplyIntent(
+        principal,
+        conversationId,
+        rewrite.emailReply.target,
+        ctx.record.preferredLanguage,
+      );
       return;
     }
 
@@ -609,21 +618,10 @@ export class ChatService {
     intent: SmallTalkIntent,
   ): AsyncGenerator<ChatStreamEvent> {
     yield { type: 'sources', facts: [] };
-    const hr = intent.lang === 'hr';
-    const replies: Record<SmallTalkIntent['kind'], string> = hr
-      ? {
-          thanks: 'Nema na čemu, drago mi je da je pomoglo.',
-          greeting: 'Bok! Kako mogu pomoći?',
-          farewell: 'Pozdrav, tu sam kad zatrebaš.',
-          ack: 'Super. Mogu li još s čime pomoći?',
-        }
-      : {
-          thanks: 'You’re welcome, glad it helped.',
-          greeting: 'Hi! What can I help you with?',
-          farewell: 'Take care, I’ll be here when you need me.',
-          ack: 'Great. Anything else I can help with?',
-        };
-    const answer = replies[intent.kind];
+    // Small talk mirrors the matched language of the turn (unchanged); the
+    // words come from the server catalogue (V2.0 item 3.5). The KIND is the
+    // detector's value and is never translated, only its reply is.
+    const answer = serverT(intent.lang, 'chat', `smallTalk.${intent.kind}`);
     yield { type: 'token', text: answer };
     const row = await this.storeAssistant(principal, conversationId, answer);
     yield { type: 'done', messageId: row.id, content: answer, citationViolations: 0 };
@@ -690,24 +688,15 @@ export class ChatService {
     try {
       const proposal = await this.researchResolver!.propose(principal, topic, conversationId);
       proposalRef = { runId: proposal.runId };
-      answer =
-        lang === 'hr'
-          ? `Pripremio sam upit za istraživanje, ništa još nije poslano. ` +
-            `Predloženi upit: "${proposal.minimisedQuery}" (${proposal.minimiseReason}) ` +
-            `Uredi ili odobri upit ovdje u razgovoru (ili kasnije na stranici Research). ` +
-            `tek tada išta napušta ovu instancu.`
-          : `I've prepared a research query, nothing has been sent yet. ` +
-            `Proposed query: "${proposal.minimisedQuery}" (${proposal.minimiseReason}) ` +
-            `Edit or approve it right here in the conversation (or later from the Research page). ` +
-            `only what you approve leaves this instance.`;
+      answer = serverT(lang, 'chat', 'research.prepared', {
+        query: proposal.minimisedQuery,
+        reason: proposal.minimiseReason,
+      });
     } catch (error) {
       this.logger.warn(
         `research_intent_failed: ${error instanceof Error ? error.message : 'error'}`,
       );
-      answer =
-        lang === 'hr'
-          ? `Trenutno ne mogu pripremiti istraživanje. Pokušaj ponovno sa stranice Research.`
-          : `I couldn't set up that research just now. Try again from the Research page.`;
+      answer = serverT(lang, 'chat', 'research.failed');
     }
     yield { type: 'token', text: answer };
     const row = await this.storeAssistant(principal, conversationId, answer);
@@ -739,29 +728,17 @@ export class ChatService {
       const proposal = await this.skillResolver!.propose(principal, subject);
       if (proposal.status === 'ambiguous') {
         const list = proposal.candidates.map((c, i) => `${i + 1}. ${c}`).join('\n');
-        answer =
-          lang === 'hr'
-            ? `Na koga točno misliš? Poznajem više njih:\n\n${list}\n\nReci puno ime i pripremit ću brief.`
-            : `Which one do you mean? I know more than one:\n\n${list}\n\nTell me the full name and I'll prepare the brief.`;
+        answer = serverT(lang, 'chat', 'skillBrief.ambiguous', { candidates: list });
       } else {
         runRef = { runId: proposal.runId };
-        answer =
-          lang === 'hr'
-            ? `Pripremam brief o "${subject}". Provjerio sam što već znaš i predložio ` +
-              `${proposal.queryCount} ${proposal.queryCount === 1 ? 'pretragu' : 'pretrage'}: ` +
-              `ništa još nije poslano. Otvori tijek na stranici Skills, odobri ili uredi ` +
-              `plan pretraga, i prati svaki korak kako nastaje.`
-            : `I'm preparing a brief on "${subject}". I've checked what you already know and ` +
-              `proposed ${proposal.queryCount} ${proposal.queryCount === 1 ? 'search' : 'searches'}: ` +
-              `nothing has been sent yet. Open the run on the Skills page to approve or edit ` +
-              `the search plan, and watch each step as it happens.`;
+        answer = serverT(lang, 'chat', 'skillBrief.preparing', {
+          subject,
+          count: proposal.queryCount,
+        });
       }
     } catch (error) {
       this.logger.warn(`skill_intent_failed: ${error instanceof Error ? error.message : 'error'}`);
-      answer =
-        lang === 'hr'
-          ? `Trenutno ne mogu pripremiti brief. Pokušaj ponovno sa stranice Skills.`
-          : `I couldn't start that brief just now. Try again from the Skills page.`;
+      answer = serverT(lang, 'chat', 'skillBrief.failed');
     }
     yield { type: 'token', text: answer };
     const row = await this.storeAssistant(principal, conversationId, answer);
@@ -778,32 +755,36 @@ export class ChatService {
     principal: Principal,
     conversationId: string,
     target: string | null,
+    lang: PreferredLanguage,
   ): AsyncGenerator<ChatStreamEvent> {
     yield { type: 'sources', facts: [] };
+    const t = serverTranslator(lang, 'chat');
     let answer: string;
     try {
       const candidates = await this.replyResolver!.findCandidates(principal, target);
       if (candidates.length === 0) {
-        answer = target
-          ? `I couldn't find a recent email from "${target}". Open the email in Cogeto and use "Draft reply" on it, and I'll write a suggested response.`
-          : `I couldn't find a recent email to reply to. Open the email you mean and use "Draft reply" on it.`;
+        answer = target ? t('reply.noneForTarget', { target }) : t('reply.noneAtAll');
       } else if (target && candidates.length > 1) {
         const list = candidates
-          .map(
-            (c, i) =>
-              `${i + 1}. ${c.from}, "${c.subject ?? '(no subject)'}" (${new Date(c.receivedAt).toLocaleDateString()})`,
+          .map((c, i) =>
+            t('reply.candidateLine', {
+              index: i + 1,
+              from: c.from,
+              subject: c.subject ?? t('reply.noSubject'),
+              date: formatCandidateDate(c.receivedAt, lang),
+            }),
           )
           .join('\n');
-        answer = `I found more than one email that might match "${target}". Which one should I reply to?\n\n${list}\n\nTell me the sender or subject and I'll draft it.`;
+        answer = t('reply.ambiguous', { target, candidates: list });
       } else {
         const draft = await this.replyResolver!.createDraft(principal, candidates[0]!.emailId);
         answer = draft.recipientResolved
-          ? `I've drafted a reply to ${draft.to}. Open the Approvals page to review it, then send it from your own mail client, Cogeto never sends mail for you.`
-          : `I've drafted a reply, but this message looks forwarded and I couldn't work out the original recipient. Open the Approvals page, set the recipient, then send it yourself, Cogeto never sends mail.`;
+          ? t('reply.drafted', { recipient: draft.to })
+          : t('reply.draftedUnknownRecipient');
       }
     } catch (error) {
       this.logger.warn(`reply_intent_failed: ${error instanceof Error ? error.message : 'error'}`);
-      answer = `I couldn't draft that reply just now. You can open the email and use "Draft reply" on it.`;
+      answer = t('reply.failed');
     }
 
     yield { type: 'token', text: answer };
@@ -955,4 +936,13 @@ function toFactDto(hit: RetrievedMemory, index: number): ChatFactDto {
     pastBelief: isPastBelief(hit.memory),
     supersededBy: hit.memory.supersededBy,
   };
+}
+
+/**
+ * The date beside a candidate email, in the READER'S locale (V2.0 item 3.5,
+ * Issue C). It used to follow whatever locale the server process happened to
+ * have, which is nobody's choice.
+ */
+function formatCandidateDate(iso: string | Date, lang: PreferredLanguage): string {
+  return new Intl.DateTimeFormat(LOCALE_TAGS[lang]).format(new Date(iso));
 }

@@ -1,0 +1,116 @@
+{
+  "capturesFailed_one": "{{count}} capture failed processing. See System for the dead-letter queue.",
+  "capturesFailed_many": "{{count}} captures failed processing. See System for the dead-letter queue.",
+  "capturesFailed_other": "{{count}} captures failed processing. See System for the dead-letter queue.",
+  "capture": {
+    "placeholder": "Remember this...",
+    "scope": "Scope",
+    "scopeTitle": "Shared facts are visible to everyone in your organization; private stays yours.",
+    "submit": "Remember",
+    "hint": "Facts appear below once verified.",
+    "failed": "Capture failed. Try again.",
+    "pending": "Remembering… extraction and verification are running."
+  },
+  "uncertaintyReason": {
+    "hedged_in_source": "stated tentatively in the source",
+    "partially_supported": "only partly supported by the source",
+    "unsupported": "not supported by the cited passage",
+    "unjudgeable": "could not be judged against the source",
+    "structurally_invalid": "not storable: no claim or no source passage",
+    "legacy_unspecified": "recorded before reasons were distinguished"
+  },
+  "list": {
+    "heading": "Memories",
+    "onRecord_one": "{{count}} on record",
+    "onRecord_many": "{{count}} on record",
+    "onRecord_other": "{{count}} on record",
+    "select": "Select",
+    "loading": "Loading memories…",
+    "error": "We couldn't load your memories just now.",
+    "selectRow": "Select: {{excerpt}}",
+    "selectRowFallback": "memory",
+    "otherMember": "member",
+    "anotherMember": "another member",
+    "bulk": {
+      "selected_one": "{{count}} selected",
+      "selected_many": "{{count}} selected",
+      "selected_other": "{{count}} selected",
+      "explainer": "Bulk changes are consequential. They create a pending approval, not an instant edit.",
+      "request": "Request “Mark outdated” approval",
+      "requesting": "Requesting…",
+      "requestFailed": "Request failed",
+      "requested": "Requested: “{{summary}}”. Decide it under <link>Approvals</link>. It runs only after you approve it there."
+    },
+    "filter": {
+      "searchPlaceholder": "Search memories…",
+      "entityPlaceholder": "entity…",
+      "anyStatus": "any status",
+      "anyScope": "any scope",
+      "sensitiveOnly": "sensitive only"
+    },
+    "empty": {
+      "none": {
+        "title": "Nothing remembered yet",
+        "body": "A memory is a single verifiable fact Cogeto extracted from something you captured. Capture a note above and watch it move through extraction and verification."
+      },
+      "filtered": {
+        "title": "No memories match these filters",
+        "body": "Try clearing the search or status filter."
+      }
+    },
+    "pager": {
+      "newer": "Newer",
+      "older": "Older",
+      "position": "page {{page}} of {{pages}}"
+    }
+  },
+  "drawer": {
+    "title": "Memory",
+    "loading": "Loading memory…",
+    "loadError": "This memory couldn't be loaded. It may have been rejected.",
+    "ownedBy": "owned by {{owner}}",
+    "timeTravelEntity": "Time-travel {{entity}}",
+    "validity": "Valid {{from}} → {{until}}",
+    "validityOpen": "open",
+    "unresolvedDate": "⚠ Date could not be resolved: {{phrases}}",
+    "sharedByOwner": "This memory is shared with your organization by <owner>{{owner}}</owner>. You can read it, but only its owner can approve, edit, change its scope, or delete it.",
+    "panel": {
+      "actions": "Actions",
+      "contradiction": "Contradiction",
+      "verification": "Verification",
+      "provenance": "Provenance",
+      "history": "History"
+    },
+    "confirm": "Confirm this fact",
+    "confirmTitle": "Your confirmation outranks the machine judgment from here on",
+    "reject": "Reject",
+    "rejectConfirm": "Reject and remove this memory? This cannot be undone.",
+    "markOutdated": "Mark outdated",
+    "edit": "Edit",
+    "scope": "Scope",
+    "scopeTitle": "Shared facts are visible to everyone in your organization.",
+    "sensitive": "Sensitive",
+    "editExplainer": "Saving a correction never rewrites history: it records a new, approved version and keeps this one as its predecessor.",
+    "saveCorrection": "Save as correction",
+    "conflictsWith": "This memory conflicts with:",
+    "resolveInReview": "Resolve in Review",
+    "conflictLoading": "Loading the conflicting fact…",
+    "conflictHidden": "The conflicting fact is not visible to you (it may have been resolved).",
+    "uncertainty": {
+      "held": "<lead>Held as uncertain: </lead>{{reason}}. Cogeto decided this on its own, and cites the fact softly rather than as settled.",
+      "wasAdmitted": "<lead>Was admitted as uncertain: </lead>{{reason}}. Cogeto decided this on its own, and cites the fact softly rather than as settled."
+    },
+    "noVerification": "No verification pass. This version was authored by you.",
+    "citedSpan": "cited: “{{span}}”",
+    "source": "Source: <kind>{{kind}}</kind>",
+    "captured": "captured {{when}}",
+    "openSource": "Open source · delete…",
+    "sourceOwnerOnly": "The source is private to its owner. Deletion is owner-only.",
+    "openTimeline": "Open timeline for {{entity}}",
+    "chainEntry": "{{kind}} · {{when}}",
+    "original": "original",
+    "correction": "correction",
+    "viewing": "viewing",
+    "noCorrections": "No corrections. This is the original."
+  }
+}

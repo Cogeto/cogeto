@@ -1,0 +1,105 @@
+{
+  "loadingConversation": "Loading conversation…",
+  "answerFailed": "That answer didn't come through. Try asking again.",
+  "skillRunHandoff": "Open the brief run: approve the search plan and watch each step →",
+  "role": {
+    "you": "You"
+  },
+  "answer": {
+    "standsOn": "Stands on",
+    "attribution": "Cogeto · from your memory",
+    "askedByAt": "You · {{time}}"
+  },
+  "empty": {
+    "title": "Ask your memory.",
+    "body": "Every answer shows, sentence by sentence, what Cogeto can prove, and honestly marks what it can't. The web is searched only when you ask and approve.",
+    "workspaceNote": "This is one conversation: a workspace for one thread of work. Anything captured here becomes memory and answers in every other conversation too."
+  },
+  "suggestedPrompts": {
+    "promisedThisWeek": "What did I promise this week?",
+    "openCommitments": "Summarise my open commitments",
+    "changedSince": "What changed since last month?",
+    "whoInvolved": "Who is involved in my active work?"
+  },
+  "thinking": {
+    "default": "Thinking…",
+    "fromMemories": "Answering from your memories…"
+  },
+  "composer": {
+    "label": "Ask a question",
+    "placeholder": "Ask your memory…",
+    "send": "Send",
+    "hint": "Enter to send · Shift+Enter for a new line · every claim shows what it can prove"
+  },
+  "remember": {
+    "action": "Remember this",
+    "title": "Remember this message. It becomes memory through the normal pipeline",
+    "pending": "Remembering…",
+    "working": "Remembering… extracting & verifying",
+    "done": "Remembered ✓",
+    "failed": "Capture failed"
+  },
+  "researchOffer": {
+    "action": "Research this on the web →",
+    "preparing": "Preparing…",
+    "error": "Couldn't prepare that research. Try the Research page.",
+    "always": "Always do this automatically",
+    "alwaysTitle": "Cogeto will check the web automatically from now on. You can turn this off in Settings."
+  },
+  "citation": {
+    "unresolved": "source",
+    "teammate": "a teammate",
+    "fromWeb": "from the web",
+    "webDetail": "{{title}} · fetched {{when}}",
+    "sharedBy": "shared by {{owner}}",
+    "pastSuffix": "· past",
+    "screenReader": "citation from {{kind}}",
+    "screenReaderStatus": ", {{status}}",
+    "screenReaderPast": ", past belief",
+    "screenReaderShared": ", shared by {{owner}}",
+    "kind": {
+      "note": "note",
+      "email": "email",
+      "web": "web",
+      "document": "doc",
+      "chat": "chat"
+    },
+    "unsourced": {
+      "label": "unsourced",
+      "title": "Model knowledge, not from your sources. Cogeto marks these so you always know which claims it can prove.",
+      "ariaLabel": "model knowledge, not from your sources"
+    }
+  },
+  "conversation": {
+    "untitled": "New conversation",
+    "listLabel": "Conversations",
+    "pickerLabel": "Conversation",
+    "new": "New conversation",
+    "newShort": "New",
+    "titleField": "Conversation title",
+    "rename": "Rename",
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "archived_one": "Archived ({{count}})",
+    "archived_few": "Archived ({{count}})",
+    "archived_other": "Archived ({{count}})",
+    "archivedSuffix": " (archived)",
+    "emptyRail": "A conversation is a workspace for one thread of thinking: a client, a contract, quick questions. Start one and ask.",
+    "railFooter": "What Cogeto learns here is remembered everywhere: conversations organise talk, memory keeps knowledge.",
+    "delete": {
+      "action": "Delete",
+      "question": "Delete \"{{label}}\"?",
+      "messages_one": "{{count}} message",
+      "messages_few": "{{count}} messages",
+      "messages_other": "{{count}} messages",
+      "memories_one": "{{count}} memory",
+      "memories_few": "{{count}} memories",
+      "memories_other": "{{count}} memories",
+      "consequence": "This deletes the conversation, its {{messages}}, and the {{memories}} derived from them, with a signed receipt.",
+      "approvedNote_one": "Note: {{count}} of those memories was approved by you.",
+      "approvedNote_few": "Note: {{count}} of those memories were approved by you.",
+      "approvedNote_other": "Note: {{count}} of those memories were approved by you.",
+      "alternative": "Archiving keeps everything instead. This cannot be undone."
+    }
+  }
+}

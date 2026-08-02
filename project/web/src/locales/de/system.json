@@ -1,0 +1,94 @@
+{
+  "operatorOnly": {
+    "title": "The System view is the operator's surface",
+    "body": "Job activity and the dead-letter queue require the administrator role. Your account doesn't have it, and everyday use never needs it. If you co-operate this instance, ask the operator to grant you the role in Zitadel (Projects → cogeto → Authorizations)."
+  },
+  "health": {
+    "heading": "System status",
+    "loading": "Checking services…",
+    "unreachable": "The API is unreachable right now.",
+    "latency": "{{ms}} ms",
+    "up": "up",
+    "down": "down",
+    "check": {
+      "minioEncryption": "MinIO encryption",
+      "integrity": "Deletion integrity",
+      "migrations": "Migrations",
+      "queue": "Job queue"
+    }
+  },
+  "job": {
+    "ingestionPipeline": "Extracting & verifying",
+    "deletionExecute": "Deleting",
+    "memoryEmbed": "Embedding",
+    "deletionSweep": "Integrity sweep",
+    "dreamingCycle": "Dreaming",
+    "echo": "Echo"
+  },
+  "worker": {
+    "heading": "Worker activity",
+    "processing": "processing",
+    "idle": "idle",
+    "error": "We couldn't load worker activity.",
+    "allProcessed": "Idle, all jobs processed",
+    "upNext": "Up next",
+    "recentlyCompleted": "Recently completed",
+    "running": "running",
+    "runningFor": "running {{elapsed}}",
+    "queued": "queued",
+    "retrying": "retrying",
+    "retryingAt": "retrying {{when}}",
+    "scheduled": "scheduled {{when}}",
+    "attemptSuffix": " · attempt {{count}}",
+    "elapsedSeconds": "{{seconds}}s",
+    "elapsedMinutes": "{{minutes}}m {{seconds}}s",
+    "sourceWithId": "{{kind}} · {{id}}…",
+    "completedAllTime_one": "{{value}} jobs completed all-time",
+    "completedAllTime_other": "{{value}} jobs completed all-time",
+    "moreWaiting_one": "+{{count}} more waiting…",
+    "moreWaiting_other": "+{{count}} more waiting…",
+    "stat": {
+      "running": "running",
+      "queued": "queued",
+      "waiting": "waiting",
+      "failed": "failed"
+    }
+  },
+  "integrity": {
+    "heading": "Deletion integrity",
+    "loading": "Loading sweep status…",
+    "error": "We couldn't load the sweep status.",
+    "alerts_one": "{{count}} integrity alert",
+    "alerts_other": "{{count}} integrity alerts",
+    "chainVerified_one": "chain verified ({{count}})",
+    "chainVerified_other": "chain verified ({{count}})",
+    "chainBroken": "chain BROKEN",
+    "chainRow": "(chain)",
+    "lastSweep": "last sweep {{when}}, {{receipts}} receipt(s), {{identifiers}} identifier(s) checked",
+    "neverRun": "sweep has not run yet (nightly at 03:00, or run it on demand)",
+    "column": {
+      "kind": "Kind",
+      "identifier": "Identifier",
+      "receipt": "Receipt",
+      "detected": "Detected"
+    }
+  },
+  "deadLetter": {
+    "heading": "Dead-letter queue",
+    "loading": "Loading dead-letter queue…",
+    "error": "We couldn't load the dead-letter queue.",
+    "noSource": "n/a",
+    "retry": "Retry",
+    "empty": {
+      "title": "No parked jobs",
+      "body": "Every enqueued job completed. Jobs that permanently fail land here to retry."
+    },
+    "column": {
+      "job": "Job",
+      "key": "Key",
+      "error": "Error",
+      "attempts": "Attempts",
+      "failed": "Failed"
+    }
+  }
+}

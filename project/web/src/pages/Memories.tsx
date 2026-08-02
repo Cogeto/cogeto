@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { Session } from '../auth/oidc';
 import { CaptureCard, PendingNote } from '../components/CaptureCard';
 import { UploadCard, PendingUpload } from '../components/UploadCard';
@@ -13,6 +14,7 @@ function openedFromUrl(): string | null {
 }
 
 export function Memories({ session }: { session: Session }) {
+  const { t } = useTranslation('memories');
   const [pending, setPending] = useState<string[]>([]);
   const [uploads, setUploads] = useState<{ objectKey: string; filename: string }[]>([]);
   const [failedCount, setFailedCount] = useState(0);
@@ -49,7 +51,7 @@ export function Memories({ session }: { session: Session }) {
   };
 
   return (
-    <Shell session={session} title="Memories" active="memories">
+    <Shell session={session} title={t('navigation:section.memories')} active="memories">
       <div className="grid gap-3 md:grid-cols-2">
         <CaptureCard session={session} onCaptured={(id) => setPending((ids) => [...ids, id])} />
         <UploadCard
@@ -73,8 +75,7 @@ export function Memories({ session }: { session: Session }) {
       ))}
       {failedCount > 0 && (
         <p className="text-sm text-red-600 dark:text-red-300">
-          {failedCount} capture{failedCount > 1 ? 's' : ''} failed processing. See System for the
-          dead-letter queue.
+          {t('capturesFailed', { count: failedCount })}
         </p>
       )}
       <GovernedMemories session={session} onOpen={openDrawer} />

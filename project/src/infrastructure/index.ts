@@ -60,6 +60,10 @@ export {
   LANGUAGE_NAMES,
 } from './context-block';
 export type { ContextBlockOptions } from './context-block';
+// The server-side copy catalogue (V2.0 item 3.5): the words Cogeto writes on
+// its own, keyed and per-locale. Not prompt assembly, not log lines.
+export { serverT, serverTranslator, SERVER_NAMESPACES } from './i18n';
+export type { ServerNamespace, ServerTOptions } from './i18n';
 // Abuse/DoS limits (:). Types + tokens live here so the
 // guards enforce them inside domain modules without importing an entrypoint.
 export {

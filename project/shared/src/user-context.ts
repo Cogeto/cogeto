@@ -6,9 +6,49 @@
  * surfaced separately so the UI can show what actually applies.
  */
 
-/** The locale codes Cogeto speaks today. Deliberately the future i18n key. */
-export const SUPPORTED_LANGUAGES = ['en', 'hr'] as const;
+/**
+ * The locale codes Cogeto speaks. This is the i18n key: it selects the
+ * interface locale in the SPA (V2.0 item 3.5) and the language of everything
+ * Cogeto writes on its own (digests, deterministic replies, conclusions).
+ *
+ * `en` is the default and the fallback for every missing interface key. Order
+ * matters only for the settings list.
+ *
+ * INTERFACE LANGUAGE IS NOT EXTRACTION QUALITY. Memory quality is measured per
+ * language, and only `en` and `hr` have golden corpora and gates today (spec
+ * §14). `de` and `fr` are interface languages until corpora exist for them; the
+ * trust page and docs/eval/gate-model.md say so in the same words.
+ */
+export const SUPPORTED_LANGUAGES = ['en', 'hr', 'de', 'fr'] as const;
 export type PreferredLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+
+/**
+ * The subset with a golden corpus and published per-language gates. Everything
+ * else renders the interface in its own language and falls back to English
+ * where a translation is missing, but makes no measured quality claim.
+ */
+export const MEASURED_LANGUAGES = ['en', 'hr'] as const;
+export type MeasuredLanguage = (typeof MEASURED_LANGUAGES)[number];
+
+/** BCP-47 tag per locale, for Intl date, time and number formatting. */
+export const LOCALE_TAGS: Record<PreferredLanguage, string> = {
+  en: 'en-GB',
+  hr: 'hr-HR',
+  de: 'de-DE',
+  fr: 'fr-FR',
+};
+
+/** Endonyms: a language is always listed in its own language. */
+export const LANGUAGE_ENDONYMS: Record<PreferredLanguage, string> = {
+  en: 'English',
+  hr: 'Hrvatski',
+  de: 'Deutsch',
+  fr: 'Français',
+};
+
+export function isSupportedLanguage(value: unknown): value is PreferredLanguage {
+  return (SUPPORTED_LANGUAGES as readonly unknown[]).includes(value);
+}
 
 export interface UserContextDto {
   /** How Cogeto addresses the user. Null = unset (absent from prompts). */

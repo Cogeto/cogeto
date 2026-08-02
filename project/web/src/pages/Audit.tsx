@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { AuditEntryDto } from '@cogeto/shared';
 import { fetchAudit } from '../api';
 import type { Session } from '../auth/oidc';
@@ -28,13 +29,14 @@ function entityLink(entry: AuditEntryDto): string | null {
 }
 
 function AuditRow({ entry }: { entry: AuditEntryDto }) {
+  const { t } = useTranslation('audit');
   const link = entityLink(entry);
   const detailKeys = entry.detail ? Object.entries(entry.detail) : [];
   return (
     <li className="border-b border-slate-100 py-2.5">
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="font-medium text-slate-700">{entry.action}</span>
-        <span className="text-xs text-slate-400">by {entry.actor}</span>
+        <span className="text-xs text-slate-400">{t('row.byActor', { actor: entry.actor })}</span>
         <span className="ml-auto text-xs text-slate-400" title={entry.createdAt}>
           {timeAgo(entry.createdAt)}
         </span>
@@ -64,9 +66,7 @@ function AuditRow({ entry }: { entry: AuditEntryDto }) {
         </p>
       )}
       {entry.detailWithheld && (
-        <p className="mt-1 text-xs italic text-slate-400">
-          Details visible to the entry’s owner only.
-        </p>
+        <p className="mt-1 text-xs italic text-slate-400">{t('row.detailsWithheld')}</p>
       )}
     </li>
   );
@@ -74,6 +74,7 @@ function AuditRow({ entry }: { entry: AuditEntryDto }) {
 
 /** The read-only audit trail (/spec §11.1): who did what, filterable + paged. */
 export function Audit({ session }: { session: Session }) {
+  const { t } = useTranslation('audit');
   const [actor, setActor] = useState('');
   const [action, setAction] = useState('');
   const [entityType, setEntityType] = useState('');
@@ -98,12 +99,14 @@ export function Audit({ session }: { session: Session }) {
   const reset = () => setPage(0);
 
   return (
-    <Shell session={session} title="Audit" active="audit">
+    <Shell session={session} title={t('navigation:section.audit')} active="audit">
       <Card>
         <div className="mb-3 flex items-center gap-2">
-          <SectionTitle>Audit trail</SectionTitle>
-          {data && <span className="text-xs text-slate-400">{data.total} entries</span>}
-          <span className="ml-auto text-xs text-slate-400">read-only · append-only</span>
+          <SectionTitle>{t('heading')}</SectionTitle>
+          {data && (
+            <span className="text-xs text-slate-400">{t('entryCount', { count: data.total })}</span>
+          )}
+          <span className="ml-auto text-xs text-slate-400">{t('appendOnly')}</span>
         </div>
 
         <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
@@ -113,7 +116,7 @@ export function Audit({ session }: { session: Session }) {
               setActor(e.target.value);
               reset();
             }}
-            placeholder="actor…"
+            placeholder={t('filter.actor')}
             className="w-32 rounded-md border border-slate-300 px-2 py-1.5"
           />
           <input
@@ -122,7 +125,7 @@ export function Audit({ session }: { session: Session }) {
               setAction(e.target.value);
               reset();
             }}
-            placeholder="action…"
+            placeholder={t('filter.action')}
             className="w-40 rounded-md border border-slate-300 px-2 py-1.5"
           />
           <input
@@ -131,11 +134,11 @@ export function Audit({ session }: { session: Session }) {
               setEntityType(e.target.value);
               reset();
             }}
-            placeholder="entity type…"
+            placeholder={t('filter.entityType')}
             className="w-36 rounded-md border border-slate-300 px-2 py-1.5"
           />
           <label className="flex items-center gap-1 text-slate-500">
-            from
+            {t('filter.from')}
             <input
               type="date"
               value={from}
@@ -147,7 +150,7 @@ export function Audit({ session }: { session: Session }) {
             />
           </label>
           <label className="flex items-center gap-1 text-slate-500">
-            to
+            {t('filter.to')}
             <input
               type="date"
               value={to}
@@ -160,12 +163,11 @@ export function Audit({ session }: { session: Session }) {
           </label>
         </div>
 
-        {isPending && <SkeletonRows rows={5} label="Loading audit trail…" />}
-        {isError && <ErrorState>We couldn’t load the audit trail.</ErrorState>}
+        {isPending && <SkeletonRows rows={5} label={t('loading')} />}
+        {isError && <ErrorState>{t('error')}</ErrorState>}
         {data && data.items.length === 0 && (
-          <EmptyState icon="🗒" title="No entries match these filters">
-            The audit trail records every consequential action: approvals, deletions, scope and
-            settings changes. Clear the filters to see the full history.
+          <EmptyState icon="🗒" title={t('empty.title')}>
+            {t('empty.body')}
           </EmptyState>
         )}
         {data && data.items.length > 0 && (
@@ -184,18 +186,16 @@ export function Audit({ session }: { session: Session }) {
               onClick={() => setPage((p) => p - 1)}
               className="rounded-md border border-slate-300 px-2 py-1 disabled:opacity-40"
             >
-              Newer
+              {t('memories:list.pager.newer')}
             </button>
-            <span>
-              page {page + 1} of {pages}
-            </span>
+            <span>{t('memories:list.pager.position', { page: page + 1, pages })}</span>
             <button
               type="button"
               disabled={page + 1 >= pages}
               onClick={() => setPage((p) => p + 1)}
               className="rounded-md border border-slate-300 px-2 py-1 disabled:opacity-40"
             >
-              Older
+              {t('memories:list.pager.older')}
             </button>
           </div>
         )}

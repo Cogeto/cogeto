@@ -1,0 +1,18 @@
+{
+  "heading": "Export my data · Memory Passport",
+  "explainer": "Download <b>everything</b> Cogeto knows for you: every fact with its status, provenance and full history, and your deletion receipts (still independently verifiable), in an open, documented, versioned format. Your memory is portable; leave whenever you want.",
+  "export": "Export my data",
+  "preparing": "Preparing…",
+  "startFailed": "Couldn't start the export. Try again.",
+  "formatNote": "The format is open and documented at <path>docs/passport-schema/</path>. Anyone can read and verify a Passport with only the schema and the instance public key above.",
+  "includeOriginals": {
+    "label": "Include original files",
+    "help": "Attach the original bytes of files you uploaded (a full archive). Off by default. Provenance and metadata are always included either way."
+  },
+  "status": {
+    "pending": "Assembling your export…",
+    "ready": "Ready to download",
+    "failed": "Export failed",
+    "expired": "Expired (re-export to get a fresh copy)"
+  }
+}

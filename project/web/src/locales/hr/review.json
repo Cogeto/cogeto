@@ -1,0 +1,37 @@
+{
+  "loading": "Loading contradictions…",
+  "error": "We couldn't load the contradictions.",
+  "empty": {
+    "title": "No open contradictions",
+    "body": "Your memories agree with each other. When two facts about the same thing disagree, they'll appear here side by side to resolve. Everything else Cogeto settles on its own."
+  },
+  "factKind": {
+    "commitment": "commitment",
+    "decision": "decision",
+    "preference": "preference",
+    "fact": "fact",
+    "open_loop": "open loop"
+  },
+  "side": {
+    "captured": "captured {{when}}",
+    "capturedWithKind": "{{kind}} · captured {{when}}",
+    "loadingSource": "Loading source…"
+  },
+  "item": {
+    "heading": "These two facts disagree",
+    "newerFact": "Newer fact",
+    "earlierFact": "Earlier fact",
+    "versus": "vs",
+    "whyFlagged": "Why it was flagged:",
+    "correctedNewer": "Corrected newer fact",
+    "correctedEarlier": "Corrected earlier fact",
+    "correctionExplainer": "Corrections never rewrite history: each saves a new, approved version and keeps the old one as its predecessor.",
+    "saveBoth": "Save both corrections",
+    "newerIsRight": "The newer fact is right",
+    "earlierIsRight": "The earlier fact is right",
+    "correctBoth": "Correct both",
+    "notAConflict": "Not a conflict",
+    "notAConflictTitle": "They don't actually conflict. Restore both as they were",
+    "detected": "detected {{when}}"
+  }
+}

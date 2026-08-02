@@ -17,6 +17,7 @@ inspectable artifact. EU hosted, self hosted, or fully offline.
 | [`docs/cogeto-technical-architecture.md`](docs/cogeto-technical-architecture.md) | How it is built: deployment, module structure, the pipeline, access gates, the model gateway, trust machinery. |
 | [`docs/cogeto-verified-memory.md`](docs/cogeto-verified-memory.md) | What is stored, what is guaranteed, and how each guarantee is enforced. |
 | [`docs/features/`](docs/features/) | How a feature actually behaves and why. Start here before changing one. |
+| [`docs/features/i18n.md`](docs/features/i18n.md) | **Before touching any user-visible string.** Where the locale files are, how a language is resolved, the CI key-sync guard, and the translator workflow. |
 | [`docs/security/`](docs/security/) | **Single entry point for security and safety**: how the protections work, how to verify them, and the co-located tests. |
 | [`docs/engineering-workflow.md`](docs/engineering-workflow.md) | **Before opening any issue, branch, or PR.** The delivery loop, Conventional Commits, required checks, tag-driven releases. |
 | [`docs/glossary.md`](docs/glossary.md) | The ubiquitous language. Names in code must match it. |
@@ -76,6 +77,22 @@ Two operator-visible consequences worth knowing before changing anything nearby:
 inbound email is now behind the `mail` compose profile and is **off by default**, and
 the five deployment assets are checksum-verified by the installer, so editing one
 means regenerating `project/infra/deploy/deploy-assets.sha256` in the same change.
+
+V2.0 item 3.5 made the product translatable. Every user-visible string in the
+SPA is a key in `project/web/src/locales/<locale>/<namespace>.json` (21
+namespaces, one per surface), the copy Cogeto writes on its own lives in
+`project/src/infrastructure/locales/`, and **English is the source of truth and
+the fallback for every missing key**. `hr`, `de` and `fr` exist as complete
+scaffolds carrying the English text: authoring the translations is a separate
+task. `npm run i18n:check` runs inside `lint` and fails the build on a missing,
+orphaned or unused key, a missing plural category, a dropped `{{placeholder}}`,
+an em dash in English copy, or a reintroduced hardcoded literal. Add a language
+with `npm run i18n:add -- <locale>`. Two rules worth knowing before editing
+anything user-facing: **never write a literal into a component** (use `t()`), and
+**enum values are never translated**, only their display names, through an
+explicit value to key map. Interface language is not extraction quality: only
+English and Croatian have corpora and gates, and nothing in the product may imply
+otherwise.
 
 Work proceeds through the V2 plan in order.
 

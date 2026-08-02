@@ -1,0 +1,49 @@
+{
+  "status": {
+    "draft": "draft",
+    "pending_approval": "pending",
+    "approved": "approved",
+    "executed": "executed",
+    "rejected": "rejected",
+    "expired": "expired"
+  },
+  "tab": {
+    "pending": "Pending",
+    "history": "History",
+    "awaitingNoun": "awaiting approval"
+  },
+  "pending": {
+    "loading": "Loading approvals…",
+    "error": "We couldn't load pending approvals.",
+    "requestedBy": "{{action}} · requested by {{who}}",
+    "unknownRequester": "unknown",
+    "expires": "Expires {{when}}",
+    "approve": "Approve",
+    "reject": "Reject",
+    "rejectConfirm": "Reject this action? It will not run.",
+    "serverSideNote": "Approving runs the action server-side in the worker. This is the only path; there is no client-side shortcut.",
+    "empty": {
+      "title": "Nothing awaiting approval",
+      "body": "Consequential actions (like a bulk memory change from Memories) land here for you to approve or reject. Cogeto never runs them on its own."
+    }
+  },
+  "history": {
+    "loading": "Loading history…",
+    "error": "We couldn't load the approval history.",
+    "decidedBy": " · decided by {{who}}",
+    "empty": {
+      "title": "No decided approvals yet",
+      "body": "Once you approve or reject an action, it's recorded here."
+    }
+  },
+  "draft": {
+    "view": "View / send draft",
+    "hide": "Hide draft",
+    "to": "To:",
+    "subject": "Subject: {{subject}}",
+    "copyBody": "Copy body",
+    "downloadEml": "Download .eml",
+    "openInClient": "Open in mail client",
+    "neverSends": "Cogeto does <b>not</b> send mail. Send this reply yourself from your own client."
+  }
+}

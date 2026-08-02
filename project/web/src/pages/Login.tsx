@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { startLogin } from '../auth/oidc';
 
 export function Login() {
+  const { t } = useTranslation('auth');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -21,17 +23,17 @@ export function Login() {
       <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-surface p-8 text-center shadow-sm">
         <img
           src="/brand/cogeto-final-logo-horizontal.svg"
-          alt="Cogeto"
+          alt={t('common:productName')}
           className="mx-auto mb-2 h-12"
         />
-        <p className="mb-6 text-sm text-slate-500">Models are rented. Knowledge is owned.</p>
+        <p className="mb-6 text-sm text-slate-500">{t('tagline')}</p>
         <button
           type="button"
           onClick={() => void onLogin()}
           disabled={busy}
           className="w-full rounded-lg bg-brand-navy px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-navy/90 disabled:opacity-50"
         >
-          {busy ? 'Redirecting…' : 'Sign in'}
+          {busy ? t('login.redirecting') : t('login.signIn')}
         </button>
         {error && (
           <p className="mt-4 text-sm text-red-700 dark:text-red-300" role="alert">

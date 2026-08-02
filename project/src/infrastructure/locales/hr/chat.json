@@ -1,0 +1,31 @@
+{
+  "nothingOpen": "Ništa više nije otvoreno, ništa zabilježeno ne čeka na tebe.",
+  "nothingOnRecord": "O tome još nemam ništa. Ako to zabilježiš kao bilješku na stranici Memories, zapamtit ću i moći odgovoriti sljedeći put.",
+  "smallTalk": {
+    "thanks": "Nema na čemu, drago mi je da je pomoglo.",
+    "greeting": "Bok! Kako mogu pomoći?",
+    "farewell": "Pozdrav, tu sam kad zatrebaš.",
+    "ack": "Super. Mogu li još s čime pomoći?"
+  },
+  "research": {
+    "prepared": "Pripremio sam upit za istraživanje, ništa još nije poslano. Predloženi upit: \"{{query}}\" ({{reason}}) Uredi ili odobri upit ovdje u razgovoru (ili kasnije na stranici Research). tek tada išta napušta ovu instancu.",
+    "failed": "Trenutno ne mogu pripremiti istraživanje. Pokušaj ponovno sa stranice Research."
+  },
+  "skillBrief": {
+    "ambiguous": "Na koga točno misliš? Poznajem više njih:\n\n{{candidates}}\n\nReci puno ime i pripremit ću brief.",
+    "preparing_one": "Pripremam brief o \"{{subject}}\". Provjerio sam što već znaš i predložio {{count}} pretragu: ništa još nije poslano. Otvori tijek na stranici Skills, odobri ili uredi plan pretraga, i prati svaki korak kako nastaje.",
+    "preparing_few": "Pripremam brief o \"{{subject}}\". Provjerio sam što već znaš i predložio {{count}} pretrage: ništa još nije poslano. Otvori tijek na stranici Skills, odobri ili uredi plan pretraga, i prati svaki korak kako nastaje.",
+    "preparing_other": "Pripremam brief o \"{{subject}}\". Provjerio sam što već znaš i predložio {{count}} pretrage: ništa još nije poslano. Otvori tijek na stranici Skills, odobri ili uredi plan pretraga, i prati svaki korak kako nastaje.",
+    "failed": "Trenutno ne mogu pripremiti brief. Pokušaj ponovno sa stranice Skills."
+  },
+  "reply": {
+    "noneForTarget": "I couldn't find a recent email from \"{{target}}\". Open the email in Cogeto and use \"Draft reply\" on it, and I'll write a suggested response.",
+    "noneAtAll": "I couldn't find a recent email to reply to. Open the email you mean and use \"Draft reply\" on it.",
+    "ambiguous": "I found more than one email that might match \"{{target}}\". Which one should I reply to?\n\n{{candidates}}\n\nTell me the sender or subject and I'll draft it.",
+    "candidateLine": "{{index}}. {{from}}, \"{{subject}}\" ({{date}})",
+    "noSubject": "(no subject)",
+    "drafted": "I've drafted a reply to {{recipient}}. Open the Approvals page to review it, then send it from your own mail client, Cogeto never sends mail for you.",
+    "draftedUnknownRecipient": "I've drafted a reply, but this message looks forwarded and I couldn't work out the original recipient. Open the Approvals page, set the recipient, then send it yourself, Cogeto never sends mail.",
+    "failed": "I couldn't draft that reply just now. You can open the email and use \"Draft reply\" on it."
+  }
+}

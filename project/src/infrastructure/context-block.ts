@@ -16,9 +16,17 @@ import type { UserContextRecord } from './user-context';
  *    (the rewriter) omit it.
  */
 
+/**
+ * The MODEL-FACING name of each language, used in the LANGUAGE rule line. This
+ * is prompt assembly, not product copy: it is always English because the prompt
+ * is, and it stays out of the locale catalogue for the same reason the rest of
+ * this file does.
+ */
 export const LANGUAGE_NAMES: Record<PreferredLanguage, string> = {
   en: 'English',
   hr: 'Croatian',
+  de: 'German',
+  fr: 'French',
 };
 
 export interface ContextBlockOptions {

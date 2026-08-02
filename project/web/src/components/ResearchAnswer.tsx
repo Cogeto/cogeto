@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ResearchAnswerDto } from '@cogeto/shared';
+import { formatDateTime } from '../i18n/format';
 
 /**
  * Render a research answer's [W#]/[M#] markers as traceable citation links
@@ -7,6 +9,7 @@ import type { ResearchAnswerDto } from '@cogeto/shared';
  * flow.
  */
 export function ResearchAnswer({ answer }: { answer: ResearchAnswerDto }) {
+  const { t } = useTranslation('research');
   const byMarker = useMemo(
     () => new Map(answer.citations.map((c) => [c.marker, c])),
     [answer.citations],
@@ -24,7 +27,10 @@ export function ResearchAnswer({ answer }: { answer: ResearchAnswerDto }) {
               href={citation.url}
               target="_blank"
               rel="noopener noreferrer"
-              title={`${citation.title ?? citation.url} · fetched ${new Date(citation.fetchedAt).toLocaleString()}`}
+              title={t('citation.webTitle', {
+                title: citation.title ?? citation.url,
+                when: formatDateTime(citation.fetchedAt),
+              })}
               className="mx-0.5 rounded bg-brand-teal/10 px-1 text-xs font-medium text-brand-teal-ink dark:text-brand-teal hover:underline"
             >
               {part}

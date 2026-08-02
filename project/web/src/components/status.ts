@@ -1,4 +1,5 @@
 import type { MemoryStatus } from '@cogeto/shared';
+import { i18next } from '../i18n';
 
 /**
  * The status vocabulary for the whole SPA. Status is load-bearing
@@ -6,10 +7,13 @@ import type { MemoryStatus } from '@cogeto/shared';
  * (verified: 5.3–6.9:1) AND a distinct label + icon — never color alone, and
  * colorblind-distinguishable (active vs approved, outdated vs replaced differ by
  * icon+label, not just hue). Rendered through one canonical <StatusChip>.
+ *
+ * The six values are the ENUM (spec §3): they travel to and from the API and
+ * are never translated. Only their DISPLAY NAMES are, through
+ * `common:memoryStatus.<value>` (V2.0 item 3.5). The map from value to key is
+ * explicit and lives here; no call site builds a label from a value by hand.
  */
 export interface StatusMeta {
-  /** Human label (approved, not user-approved). */
-  label: string;
   /** A short glyph, redundant with the label — decorative (aria-hidden). */
   icon: string;
   /** `bg + text` utility classes, AA-verified. */
@@ -22,29 +26,25 @@ export interface StatusMeta {
 // need no dark: variant — the slate ramp remaps under:root.dark automatically.
 export const STATUS_META: Record<MemoryStatus, StatusMeta> = {
   active: {
-    label: 'active',
     icon: '●',
     className:
       'bg-brand-teal-surface text-brand-teal-ink dark:bg-brand-teal/15 dark:text-brand-teal',
   },
   user_approved: {
-    label: 'approved',
     icon: '✓',
     className:
       'bg-brand-teal-surface text-brand-teal-ink dark:bg-brand-teal/15 dark:text-brand-teal',
   },
   uncertain: {
-    label: 'uncertain',
     icon: '?',
     className: 'bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300',
   },
   contradicted: {
-    label: 'contradicted',
     icon: '⚠',
     className: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
   },
-  outdated: { label: 'outdated', icon: '○', className: 'bg-slate-100 text-slate-600' },
-  replaced: { label: 'replaced', icon: '↻', className: 'bg-slate-100 text-slate-600' },
+  outdated: { icon: '○', className: 'bg-slate-100 text-slate-600' },
+  replaced: { icon: '↻', className: 'bg-slate-100 text-slate-600' },
 };
 
 export const WARN_STATUSES: MemoryStatus[] = ['uncertain', 'contradicted'];
@@ -52,7 +52,9 @@ export const WARN_STATUSES: MemoryStatus[] = ['uncertain', 'contradicted'];
 /** Muted chip for past-belief facts in chat. */
 export const PAST_CHIP = 'bg-slate-100 text-slate-600 border border-slate-300';
 
-export const statusLabel = (status: MemoryStatus): string => STATUS_META[status].label;
+/** The translated display name of a lifecycle status. Never the stored value. */
+export const statusLabel = (status: MemoryStatus): string =>
+  i18next.t(`common:memoryStatus.${status}`);
 
 /**
  * Tone vocabulary for the adjacent, non-memory-status chips (health up/down,
@@ -75,15 +77,9 @@ export function isPastFact(status: MemoryStatus, validUntil: string | null): boo
   return validUntil !== null && new Date(validUntil).getTime() <= Date.now();
 }
 
-/** Relative timestamp for list rows; exact date on hover via title attr. */
-export function timeAgo(iso: string): string {
-  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (seconds < 60) return 'just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} d ago`;
-  return new Date(iso).toLocaleDateString();
-}
+/**
+ * Relative timestamp for list rows; exact date on hover via title attr.
+ * Re-exported from the shared formatting helper so every call site goes through
+ * one locale-aware implementation (V2.0 item 3.5, Issue C).
+ */
+export { formatRelativeTime as timeAgo } from '../i18n/format';

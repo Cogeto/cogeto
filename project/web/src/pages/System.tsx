@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   fetchChainStatus,
   fetchDeadLetterJobs,
@@ -26,6 +27,7 @@ import {
 
 /** The sweep's face (spec §11.1 step 4): last run, chain status, open alert list. */
 function IntegrityPanel({ session }: { session: Session }) {
+  const { t } = useTranslation('system');
   const integrity = useQuery({
     queryKey: ['integrity'],
     queryFn: () => fetchIntegrity(session),
@@ -41,38 +43,42 @@ function IntegrityPanel({ session }: { session: Session }) {
   return (
     <Card>
       <div className="mb-3">
-        <SectionTitle>Deletion integrity</SectionTitle>
+        <SectionTitle>{t('integrity.heading')}</SectionTitle>
       </div>
-      {integrity.isPending && <SkeletonRows rows={2} label="Loading sweep status…" />}
-      {integrity.isError && <ErrorState>We couldn’t load the sweep status.</ErrorState>}
+      {integrity.isPending && <SkeletonRows rows={2} label={t('integrity.loading')} />}
+      {integrity.isError && <ErrorState>{t('integrity.error')}</ErrorState>}
       {data && (
         <>
           <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
             {data.openAlerts === 0 ? (
               <Pill tone="positive" icon="✓">
-                0 integrity alerts
+                {t('integrity.alerts', { count: 0 })}
               </Pill>
             ) : (
               <Pill tone="danger" icon="⚠">
-                {data.openAlerts} integrity alert{data.openAlerts === 1 ? '' : 's'}
+                {t('integrity.alerts', { count: data.openAlerts })}
               </Pill>
             )}
             {chain.data &&
               (chain.data.ok ? (
                 <Pill tone="positive" icon="✓">
-                  chain verified ({chain.data.verified})
+                  {t('integrity.chainVerified', { count: chain.data.verified })}
                 </Pill>
               ) : (
                 <span title={chain.data.error}>
                   <Pill tone="danger" icon="✗">
-                    chain BROKEN
+                    {t('integrity.chainBroken')}
                   </Pill>
                 </span>
               ))}
             <span className="text-xs text-slate-400">
               {data.lastSweepAt
-                ? `last sweep ${timeAgo(data.lastSweepAt)}, ${data.lastReport?.receiptsChecked ?? 0} receipt(s), ${data.lastReport?.identifiersChecked ?? 0} identifier(s) checked`
-                : 'sweep has not run yet (nightly at 03:00, or run it on demand)'}
+                ? t('integrity.lastSweep', {
+                    when: timeAgo(data.lastSweepAt),
+                    receipts: data.lastReport?.receiptsChecked ?? 0,
+                    identifiers: data.lastReport?.identifiersChecked ?? 0,
+                  })
+                : t('integrity.neverRun')}
             </span>
           </div>
           {data.alerts.length > 0 && (
@@ -80,10 +86,10 @@ function IntegrityPanel({ session }: { session: Session }) {
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
-                    <th className="py-2 pr-3">Kind</th>
-                    <th className="py-2 pr-3">Identifier</th>
-                    <th className="py-2 pr-3">Receipt</th>
-                    <th className="py-2 pr-3">Detected</th>
+                    <th className="py-2 pr-3">{t('integrity.column.kind')}</th>
+                    <th className="py-2 pr-3">{t('integrity.column.identifier')}</th>
+                    <th className="py-2 pr-3">{t('integrity.column.receipt')}</th>
+                    <th className="py-2 pr-3">{t('integrity.column.detected')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -96,7 +102,9 @@ function IntegrityPanel({ session }: { session: Session }) {
                         {alert.detail}
                       </td>
                       <td className="py-2 pr-3 text-xs text-slate-500">
-                        {alert.receiptId ? `${alert.receiptId.slice(0, 8)}…` : '(chain)'}
+                        {alert.receiptId
+                          ? `${alert.receiptId.slice(0, 8)}…`
+                          : t('integrity.chainRow')}
                       </td>
                       <td className="py-2 pr-3 text-xs text-slate-400" title={alert.detectedAt}>
                         {timeAgo(alert.detectedAt)}
@@ -114,6 +122,7 @@ function IntegrityPanel({ session }: { session: Session }) {
 }
 
 function DeadLetterTable({ session }: { session: Session }) {
+  const { t } = useTranslation('system');
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const { data, isPending, isError } = useQuery({
@@ -133,18 +142,18 @@ function DeadLetterTable({ session }: { session: Session }) {
   return (
     <Card>
       <div className="mb-3">
-        <SectionTitle>Dead-letter queue</SectionTitle>
+        <SectionTitle>{t('deadLetter.heading')}</SectionTitle>
       </div>
-      {isPending && <SkeletonRows rows={2} label="Loading dead-letter queue…" />}
-      {isError && <ErrorState>We couldn’t load the dead-letter queue.</ErrorState>}
+      {isPending && <SkeletonRows rows={2} label={t('deadLetter.loading')} />}
+      {isError && <ErrorState>{t('deadLetter.error')}</ErrorState>}
       {error && (
         <div className="mb-2">
           <ErrorState>{error}</ErrorState>
         </div>
       )}
       {data && data.length === 0 && (
-        <EmptyState icon="✓" tone="positive" title="No parked jobs">
-          Every enqueued job completed. Jobs that permanently fail land here to retry.
+        <EmptyState icon="✓" tone="positive" title={t('deadLetter.empty.title')}>
+          {t('deadLetter.empty.body')}
         </EmptyState>
       )}
       {data && data.length > 0 && (
@@ -152,11 +161,11 @@ function DeadLetterTable({ session }: { session: Session }) {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
-                <th className="py-2 pr-3">Job</th>
-                <th className="py-2 pr-3">Key</th>
-                <th className="py-2 pr-3">Error</th>
-                <th className="py-2 pr-3">Attempts</th>
-                <th className="py-2 pr-3">Failed</th>
+                <th className="py-2 pr-3">{t('deadLetter.column.job')}</th>
+                <th className="py-2 pr-3">{t('deadLetter.column.key')}</th>
+                <th className="py-2 pr-3">{t('deadLetter.column.error')}</th>
+                <th className="py-2 pr-3">{t('deadLetter.column.attempts')}</th>
+                <th className="py-2 pr-3">{t('deadLetter.column.failed')}</th>
                 <th className="py-2" />
               </tr>
             </thead>
@@ -165,7 +174,7 @@ function DeadLetterTable({ session }: { session: Session }) {
                 <tr key={job.id} className="border-b border-slate-100 align-top">
                   <td className="py-2 pr-3 font-medium text-slate-700">{job.jobType}</td>
                   <td className="py-2 pr-3 text-xs text-slate-500">
-                    {job.sourceType ?? 'n/a'}
+                    {job.sourceType ?? t('deadLetter.noSource')}
                     {job.sourceId ? ` / ${job.sourceId.slice(0, 8)}…` : ''}
                   </td>
                   <td
@@ -185,7 +194,7 @@ function DeadLetterTable({ session }: { session: Session }) {
                       onClick={() => retry.mutate(job.id)}
                       className={btnSecondary}
                     >
-                      Retry
+                      {t('deadLetter.retry')}
                     </button>
                   </td>
                 </tr>
@@ -206,22 +215,22 @@ function DeadLetterTable({ session }: { session: Session }) {
  * the entry too; this covers a direct URL.
  */
 export function System({ session }: { session: Session }) {
+  const { t } = useTranslation('system');
+  const title = t('navigation:section.system');
   const me = useQuery({ queryKey: ['me'], queryFn: () => fetchMe(session), retry: 1 });
   if (me.data && !me.data.isAdmin) {
     return (
-      <Shell session={session} title="System" active="system">
+      <Shell session={session} title={title} active="system">
         <Card>
-          <EmptyState tone="neutral" title="The System view is the operator's surface">
-            Job activity and the dead-letter queue require the administrator role. Your account
-            doesn't have it, and everyday use never needs it. If you co-operate this instance, ask
-            the operator to grant you the role in Zitadel (Projects → cogeto → Authorizations).
+          <EmptyState tone="neutral" title={t('operatorOnly.title')}>
+            {t('operatorOnly.body')}
           </EmptyState>
         </Card>
       </Shell>
     );
   }
   return (
-    <Shell session={session} title="System" active="system">
+    <Shell session={session} title={title} active="system">
       <StatusPanel session={session} />
       <CapabilitiesPanel session={session} />
       <WorkerActivityPanel session={session} />

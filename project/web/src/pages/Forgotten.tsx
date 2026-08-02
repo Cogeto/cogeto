@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { ReceiptDetailDto, ReceiptListItem } from '@cogeto/shared';
 import { fetchChainStatus, fetchInstancePublicKey, fetchReceipt, fetchReceipts } from '../api';
 import type { Session } from '../auth/oidc';
+import { i18next } from '../i18n';
 import { Shell } from '../components/Shell';
 import { timeAgo } from '../components/status';
 import {
@@ -24,21 +26,22 @@ import {
  */
 
 function ReceiptStatus({ receipt }: { receipt: ReceiptListItem }) {
+  const { t } = useTranslation('forgotten');
   if (receipt.alerting)
     return (
       <Pill tone="danger" icon="⚠">
-        alerting
+        {t('receiptStatus.alerting')}
       </Pill>
     );
   if (receipt.status === 'pending')
     return (
       <Pill tone="warning" className="animate-pulse">
-        pending…
+        {t('receiptStatus.pending')}
       </Pill>
     );
   return (
     <Pill tone="positive" icon="✓">
-      confirmed
+      {t('receiptStatus.confirmed')}
     </Pill>
   );
 }
@@ -46,10 +49,10 @@ function ReceiptStatus({ receipt }: { receipt: ReceiptListItem }) {
 function sourceLabel(receipt: ReceiptListItem): string {
   const type =
     receipt.sourceType === 'chat_conversation'
-      ? 'conversation'
+      ? i18next.t('forgotten:sourceKind.conversation')
       : receipt.sourceType.replace('_', ' ');
   const id = receipt.sourceId.length > 24 ? `${receipt.sourceId.slice(0, 24)}…` : receipt.sourceId;
-  return `${type} · ${id}`;
+  return i18next.t('forgotten:sourceLabel', { kind: type, id });
 }
 
 /** The exportable artifact: receipt + everything needed to verify it alone. */
@@ -71,6 +74,9 @@ async function exportReceiptJson(detail: ReceiptDetailDto): Promise<void> {
       algorithm: publicKey.algorithm,
       publicKeyPem: publicKey.publicKeyPem,
       publicKeyEndpoint: '/api/instance/public-key',
+      // The verification recipe is a TECHNICAL SPECIFICATION inside an exported
+      // artifact a third party parses, not interface copy. It stays English in
+      // every locale so a receipt verifies identically wherever it was exported.
       how:
         'hash = SHA-256 hex over the canonical JSON (keys sorted at every depth) of ' +
         '{id, source_type, source_id, counts_json, signed_at, confirmed_at, prev_hash}; ' +
@@ -93,6 +99,7 @@ async function exportReceiptJson(detail: ReceiptDetailDto): Promise<void> {
  * single-page deletion certificate anyone can save as PDF from the browser.
  */
 function PrintableReceipt({ detail }: { detail: ReceiptDetailDto }) {
+  const { t } = useTranslation('forgotten');
   const row = (label: string, value: string | null) => (
     <div style={{ marginBottom: '10px' }}>
       <div
@@ -113,7 +120,7 @@ function PrintableReceipt({ detail }: { detail: ReceiptDetailDto }) {
           wordBreak: 'break-all',
         }}
       >
-        {value ?? 'None'}
+        {value ?? t('receipt.none')}
       </div>
     </div>
   );
@@ -125,16 +132,16 @@ function PrintableReceipt({ detail }: { detail: ReceiptDetailDto }) {
       <div
         style={{ borderBottom: '3px solid #21c29a', paddingBottom: '12px', marginBottom: '20px' }}
       >
-        <div style={{ fontSize: '22px', fontWeight: 700, color: '#1c2150' }}>Cogeto</div>
-        <div style={{ fontSize: '15px', color: '#334155' }}>
-          Deletion receipt: provable forgetting
+        <div style={{ fontSize: '22px', fontWeight: 700, color: '#1c2150' }}>
+          {t('common:productName')}
         </div>
+        <div style={{ fontSize: '15px', color: '#334155' }}>{t('receipt.printSubtitle')}</div>
       </div>
-      {row('Receipt id', detail.id)}
-      {row('Source', `${detail.sourceType} / ${detail.sourceId}`)}
-      {row('Status', detail.status)}
-      {row('Requested / signed', detail.signedAt)}
-      {row('Confirmed', detail.confirmedAt)}
+      {row(t('receipt.field.id'), detail.id)}
+      {row(t('receipt.field.source'), `${detail.sourceType} / ${detail.sourceId}`)}
+      {row(t('receipt.field.status'), detail.status)}
+      {row(t('receipt.field.requestedSigned'), detail.signedAt)}
+      {row(t('receipt.field.confirmed'), detail.confirmedAt)}
       <div style={{ marginBottom: '10px' }}>
         <div
           style={{
@@ -144,7 +151,7 @@ function PrintableReceipt({ detail }: { detail: ReceiptDetailDto }) {
             color: '#64748b',
           }}
         >
-          What was removed
+          {t('receipt.field.whatRemoved')}
         </div>
         <pre
           style={{ fontSize: '11px', background: '#f8fafc', padding: '8px', borderRadius: '6px' }}
@@ -152,9 +159,9 @@ function PrintableReceipt({ detail }: { detail: ReceiptDetailDto }) {
           {JSON.stringify(detail.countsJson, null, 2)}
         </pre>
       </div>
-      {row('Previous hash', detail.prevHash)}
-      {row('Hash (SHA-256)', detail.hash)}
-      {row('Signature (ed25519, base64)', detail.signature)}
+      {row(t('receipt.field.prevHash'), detail.prevHash)}
+      {row(t('receipt.field.hash'), detail.hash)}
+      {row(t('receipt.field.signature'), detail.signature)}
       <div
         style={{
           marginTop: '18px',
@@ -164,9 +171,7 @@ function PrintableReceipt({ detail }: { detail: ReceiptDetailDto }) {
           paddingTop: '10px',
         }}
       >
-        Hash-chained to the previous receipt and signed by this Cogeto instance. Verify
-        independently with the instance public key at /api/instance/public-key. This record is
-        permanent.
+        {t('receipt.printFooter')}
       </div>
     </div>
   );
@@ -181,6 +186,7 @@ function ReceiptDrawer({
   receiptId: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation('forgotten');
   const { data, isPending, isError } = useQuery({
     queryKey: ['receipt', receiptId],
     queryFn: () => fetchReceipt(session, receiptId),
@@ -189,14 +195,16 @@ function ReceiptDrawer({
   const field = (label: string, value: string | null) => (
     <div>
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="break-all font-mono text-xs text-slate-700">{value ?? 'Pending'}</p>
+      <p className="break-all font-mono text-xs text-slate-700">
+        {value ?? t('receipt.fieldPending')}
+      </p>
     </div>
   );
 
   return (
-    <Drawer title="Deletion receipt" onClose={onClose}>
-      {isPending && <SkeletonRows rows={4} label="Loading receipt…" />}
-      {isError && <ErrorState>We couldn’t load this receipt right now.</ErrorState>}
+    <Drawer title={t('receipt.drawerTitle')} onClose={onClose}>
+      {isPending && <SkeletonRows rows={4} label={t('receipt.loading')} />}
+      {isError && <ErrorState>{t('receipt.error')}</ErrorState>}
       {data && (
         <>
           <div className="flex items-center justify-between">
@@ -207,48 +215,46 @@ function ReceiptDrawer({
                 disabled={data.status !== 'confirmed'}
                 title={
                   data.status === 'confirmed'
-                    ? 'Print or save the receipt as a PDF certificate'
-                    : 'Available once the receipt is confirmed'
+                    ? t('receipt.printTitle')
+                    : t('receipt.availableWhenConfirmed')
                 }
                 onClick={() => window.print()}
                 className="inline-flex items-center gap-1.5 rounded-md border border-brand-teal px-3 py-1.5 text-xs font-semibold text-brand-teal-ink dark:text-brand-teal transition-colors hover:bg-brand-teal-surface dark:hover:bg-brand-teal/15 disabled:opacity-40"
               >
-                Save as PDF
+                {t('receipt.savePdf')}
               </button>
               <button
                 type="button"
                 disabled={data.status !== 'confirmed'}
                 title={
                   data.status === 'confirmed'
-                    ? 'Download the receipt with its verification key'
-                    : 'Available once the receipt is confirmed'
+                    ? t('receipt.exportTitle')
+                    : t('receipt.availableWhenConfirmed')
                 }
                 onClick={() => void exportReceiptJson(data)}
                 className={btnPrimary}
               >
-                Export JSON
+                {t('receipt.exportJson')}
               </button>
             </div>
           </div>
-          {field('Receipt id', data.id)}
-          {field('Source', `${data.sourceType} / ${data.sourceId}`)}
+          {field(t('receipt.field.id'), data.id)}
+          {field(t('receipt.field.source'), `${data.sourceType} / ${data.sourceId}`)}
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Canonical payload (counts_json)
+              {t('receipt.field.canonicalPayload')}
             </p>
             <pre className="max-h-64 overflow-auto rounded-md bg-slate-50 p-2 text-xs text-slate-700">
               {JSON.stringify(data.countsJson, null, 2)}
             </pre>
           </div>
-          {field('Signed at', data.signedAt)}
-          {field('Confirmed at', data.confirmedAt)}
-          {field('Previous hash', data.prevHash)}
-          {field('Hash (SHA-256)', data.hash)}
-          {field('Signature (ed25519, base64)', data.signature)}
+          {field(t('receipt.field.signedAt'), data.signedAt)}
+          {field(t('receipt.field.confirmedAt'), data.confirmedAt)}
+          {field(t('receipt.field.prevHash'), data.prevHash)}
+          {field(t('receipt.field.hash'), data.hash)}
+          {field(t('receipt.field.signature'), data.signature)}
           <p className="rounded-md bg-slate-50 p-2 text-xs text-slate-500">
-            The exported JSON contains this receipt plus the instance public key, a self-contained
-            artifact anyone can verify without access to Cogeto. “Save as PDF” prints a clean,
-            single-page certificate.
+            {t('receipt.exportExplainer')}
           </p>
           <PrintableReceipt detail={data} />
         </>
@@ -258,6 +264,7 @@ function ReceiptDrawer({
 }
 
 export function Forgotten({ session }: { session: Session }) {
+  const { t } = useTranslation('forgotten');
   const [openId, setOpenId] = useState<string | null>(null);
 
   const receiptsQuery = useQuery({
@@ -275,37 +282,28 @@ export function Forgotten({ session }: { session: Session }) {
   const receipts = receiptsQuery.data;
 
   return (
-    <Shell session={session} title="Forgotten" active="forgotten">
+    <Shell session={session} title={t('navigation:section.forgotten')} active="forgotten">
       <Card>
         <div className="mb-1 flex flex-wrap items-center gap-3">
-          <SectionTitle>Deletion receipts</SectionTitle>
+          <SectionTitle>{t('heading')}</SectionTitle>
           {chainQuery.data &&
             (chainQuery.data.ok ? (
               <Pill tone="positive" icon="✓">
-                chain verified · {chainQuery.data.verified} receipt
-                {chainQuery.data.verified === 1 ? '' : 's'}
+                {t('chainVerified', { count: chainQuery.data.verified })}
               </Pill>
             ) : (
               <Pill tone="danger" icon="✗" className="cursor-help">
-                <span title={chainQuery.data.error}>chain verification FAILED</span>
+                <span title={chainQuery.data.error}>{t('chainFailed')}</span>
               </Pill>
             ))}
         </div>
-        <p className="mb-3 text-xs text-slate-500">
-          Receipts are permanent and cannot be deleted. That permanence is the point: each one is
-          hash-chained to the last and signed by this instance, so the record of what was forgotten
-          can itself never be quietly rewritten.
-        </p>
+        <p className="mb-3 text-xs text-slate-500">{t('permanenceNote')}</p>
 
-        {receiptsQuery.isPending && <SkeletonRows rows={4} label="Loading receipts…" />}
-        {receiptsQuery.isError && (
-          <ErrorState>We couldn’t load the deletion receipts right now.</ErrorState>
-        )}
+        {receiptsQuery.isPending && <SkeletonRows rows={4} label={t('loading')} />}
+        {receiptsQuery.isError && <ErrorState>{t('error')}</ErrorState>}
         {receipts && receipts.length === 0 && (
-          <EmptyState icon="🧾" title="No deletions yet">
-            A deletion receipt is the signed, tamper-evident proof Cogeto issues when it permanently
-            removes a source and everything derived from it. Delete a note from its source drawer
-            and the receipt appears here, permanently.
+          <EmptyState icon="🧾" title={t('empty.title')}>
+            {t('empty.body')}
           </EmptyState>
         )}
         {receipts && receipts.length > 0 && (
@@ -313,11 +311,11 @@ export function Forgotten({ session }: { session: Session }) {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
-                  <th className="py-2 pr-3">Source</th>
-                  <th className="py-2 pr-3">Removed</th>
-                  <th className="py-2 pr-3">Requested</th>
-                  <th className="py-2 pr-3">Confirmed</th>
-                  <th className="py-2 pr-3">Status</th>
+                  <th className="py-2 pr-3">{t('column.source')}</th>
+                  <th className="py-2 pr-3">{t('column.removed')}</th>
+                  <th className="py-2 pr-3">{t('column.requested')}</th>
+                  <th className="py-2 pr-3">{t('column.confirmed')}</th>
+                  <th className="py-2 pr-3">{t('column.status')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -337,17 +335,19 @@ export function Forgotten({ session }: { session: Session }) {
                       </button>
                     </td>
                     <td className="py-2 pr-3 text-xs text-slate-500">
-                      {receipt.memoryCount} memor{receipt.memoryCount === 1 ? 'y' : 'ies'} ·{' '}
-                      {receipt.memoryCount} vector{receipt.memoryCount === 1 ? '' : 's'} ·{' '}
-                      {receipt.objectCount} file{receipt.objectCount === 1 ? '' : 's'}
-                      {receipt.chatMessagesRemoved > 0 &&
-                        ` · ${receipt.chatMessagesRemoved} message${
-                          receipt.chatMessagesRemoved === 1 ? '' : 's'
-                        }`}
-                      {receipt.chatMessagesRedacted > 0 &&
-                        ` · ${receipt.chatMessagesRedacted} chat answer${
-                          receipt.chatMessagesRedacted === 1 ? '' : 's'
-                        } redacted`}
+                      {[
+                        t('removed.memories', { count: receipt.memoryCount }),
+                        t('removed.vectors', { count: receipt.memoryCount }),
+                        t('removed.files', { count: receipt.objectCount }),
+                        receipt.chatMessagesRemoved > 0
+                          ? t('removed.messages', { count: receipt.chatMessagesRemoved })
+                          : null,
+                        receipt.chatMessagesRedacted > 0
+                          ? t('removed.redacted', { count: receipt.chatMessagesRedacted })
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
                     </td>
                     <td className="py-2 pr-3 text-xs text-slate-400" title={receipt.requestedAt}>
                       {timeAgo(receipt.requestedAt)}
@@ -356,7 +356,7 @@ export function Forgotten({ session }: { session: Session }) {
                       className="py-2 pr-3 text-xs text-slate-400"
                       title={receipt.confirmedAt ?? undefined}
                     >
-                      {receipt.confirmedAt ? timeAgo(receipt.confirmedAt) : 'Not yet'}
+                      {receipt.confirmedAt ? timeAgo(receipt.confirmedAt) : t('notYet')}
                     </td>
                     <td className="py-2 pr-3">
                       <ReceiptStatus receipt={receipt} />

@@ -1,4 +1,5 @@
 import type { ConversationDto, DeletionPreviewDto } from '@cogeto/shared';
+import { i18next } from '../i18n';
 
 /**
  * Pure presentation logic for the conversations sidebar,
@@ -9,7 +10,7 @@ import type { ConversationDto, DeletionPreviewDto } from '@cogeto/shared';
 
 /** The sidebar's display name: the title, or the placeholder until titled. */
 export function conversationLabel(conversation: Pick<ConversationDto, 'title'>): string {
-  return conversation.title ?? 'New conversation';
+  return conversation.title ?? i18next.t('chat:conversation.untitled');
 }
 
 /** Preview line under the label: the last message's first characters. */
@@ -69,21 +70,20 @@ export function deleteConversationConfirm(
   label: string,
   preview: Pick<DeletionPreviewDto, 'memoryCount' | 'messageCount' | 'userApprovedCount'>,
 ): string {
-  const messages = preview.messageCount ?? 0;
-  const memories = preview.memoryCount;
+  const t = i18next.getFixedT(null, 'chat');
   const lines = [
-    `Delete "${label}"?`,
+    t('conversation.delete.question', { label }),
     '',
-    `This deletes the conversation, its ${messages} message${messages === 1 ? '' : 's'}, ` +
-      `and the ${memories} memor${memories === 1 ? 'y' : 'ies'} derived from them, with a signed receipt.`,
+    // One sentence, one key: the counted nouns are named variables so a
+    // translator controls agreement and order.
+    t('conversation.delete.consequence', {
+      messages: t('conversation.delete.messages', { count: preview.messageCount ?? 0 }),
+      memories: t('conversation.delete.memories', { count: preview.memoryCount }),
+    }),
   ];
-  const knowing: string[] = [];
   if ((preview.userApprovedCount ?? 0) > 0) {
-    knowing.push(
-      `${preview.userApprovedCount} of those memories ${preview.userApprovedCount === 1 ? 'was' : 'were'} approved by you`,
-    );
+    lines.push(t('conversation.delete.approvedNote', { count: preview.userApprovedCount ?? 0 }));
   }
-  if (knowing.length > 0) lines.push(`Note: ${knowing.join('; ')}.`);
-  lines.push('', 'Archiving keeps everything instead. This cannot be undone.');
+  lines.push('', t('conversation.delete.alternative'));
   return lines.join('\n');
 }

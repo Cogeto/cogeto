@@ -1,4 +1,5 @@
 import type { WebConfig } from '@cogeto/shared';
+import { i18next } from '../i18n';
 import { codeChallengeS256, randomToken } from './pkce';
 
 /**
@@ -75,9 +76,13 @@ export async function completeLogin(callbackUrl: string): Promise<Session> {
   sessionStorage.removeItem(STATE_KEY);
 
   if (params.get('error'))
-    throw new Error(`login failed: ${params.get('error_description') ?? params.get('error')}`);
-  if (!code || !verifier) throw new Error('login callback is missing the code or verifier');
-  if (!state || state !== expectedState) throw new Error('login callback state mismatch');
+    throw new Error(
+      i18next.t('errors:auth.loginFailed', {
+        detail: params.get('error_description') ?? params.get('error'),
+      }),
+    );
+  if (!code || !verifier) throw new Error(i18next.t('errors:auth.callbackIncomplete'));
+  if (!state || state !== expectedState) throw new Error(i18next.t('errors:auth.stateMismatch'));
 
   const config = await getWebConfig();
   const discovery = await discover(config.issuer);
@@ -121,9 +126,9 @@ export async function demoLogin(username: string, password: string): Promise<Ses
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ username, password }),
   });
-  if (!res.ok) throw new Error('Invalid demo username or password.');
+  if (!res.ok) throw new Error(i18next.t('errors:auth.demoCredentials'));
   const { accessToken } = (await res.json()) as { accessToken?: string };
-  if (!accessToken) throw new Error('Demo login did not return a session.');
+  if (!accessToken) throw new Error(i18next.t('errors:auth.demoNoSession'));
   return installDemoSession(accessToken);
 }
 

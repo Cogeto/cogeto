@@ -1,0 +1,9 @@
+{
+  "auth": {
+    "loginFailed": "login failed: {{detail}}",
+    "callbackIncomplete": "login callback is missing the code or verifier",
+    "stateMismatch": "login callback state mismatch",
+    "demoCredentials": "Invalid demo username or password.",
+    "demoNoSession": "Demo login did not return a session."
+  }
+}

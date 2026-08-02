@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Trans, useTranslation } from 'react-i18next';
 import type {
   ContextSuggestionDto,
   EmailAllowlistKind,
   MemoryScope,
   PreferredLanguage,
 } from '@cogeto/shared';
-import type { PassportExportDto } from '@cogeto/shared';
+import { LANGUAGE_ENDONYMS, MEASURED_LANGUAGES, SUPPORTED_LANGUAGES } from '@cogeto/shared';
 import {
   acceptContextSuggestion,
   addEmailAllowlistEntry,
@@ -25,6 +26,7 @@ import {
   updateUserContext,
 } from '../api';
 import type { Session } from '../auth/oidc';
+import { formatLongDayMonth } from '../i18n/format';
 import { Shell } from '../components/Shell';
 import { btnPrimary, btnSecondary, SectionTitle, Skeleton } from '../components/ui';
 import { timeAgo } from '../components/status';
@@ -34,6 +36,7 @@ import { useAutoResearch } from '../research-pref';
 
 /** Settings: only real, wired toggles — every control does something today. */
 export function Settings({ session }: { session: Session }) {
+  const { t } = useTranslation('settings');
   const queryClient = useQueryClient();
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => fetchSettings(session) });
   const publicKey = useQuery({ queryKey: ['instance-key'], queryFn: fetchInstancePublicKey });
@@ -60,13 +63,11 @@ export function Settings({ session }: { session: Session }) {
   });
 
   return (
-    <Shell session={session} title="Settings" active="settings">
+    <Shell session={session} title={t('navigation:section.settings')} active="settings">
       <section className="space-y-5 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
         <div>
-          <SectionTitle>Capture &amp; upload defaults</SectionTitle>
-          <p className="mt-1 text-xs text-slate-400">
-            Applied to new notes and uploads. You can still override either per upload.
-          </p>
+          <SectionTitle>{t('capture.heading')}</SectionTitle>
+          <p className="mt-1 text-xs text-slate-400">{t('capture.explainer')}</p>
         </div>
 
         {settings.isPending && <Skeleton className="h-24 w-full" />}
@@ -80,28 +81,22 @@ export function Settings({ session }: { session: Session }) {
                 className="mt-1"
               />
               <span className="text-sm text-slate-700">
-                <span className="font-medium">Extract and discard by default</span>
-                <span className="block text-xs text-slate-400">
-                  Delete the original file after its facts are extracted. Keep only the verified
-                  memories. Nothing durable is stored; the derived memories retain full provenance.
-                </span>
+                <span className="font-medium">{t('capture.discard.label')}</span>
+                <span className="block text-xs text-slate-400">{t('capture.discard.help')}</span>
               </span>
             </label>
 
             <label className="flex items-center gap-3 text-sm text-slate-700">
-              <span className="font-medium">Default scope</span>
+              <span className="font-medium">{t('capture.defaultScope')}</span>
               <select
                 value={scope}
                 onChange={(e) => setScope(e.target.value as MemoryScope)}
                 className="rounded-md border border-slate-300 px-2 py-1 text-sm"
               >
-                <option value="private">private</option>
-                <option value="shared">shared</option>
+                <option value="private">{t('common:memoryScope.private')}</option>
+                <option value="shared">{t('common:memoryScope.shared')}</option>
               </select>
-              <span className="text-xs text-slate-400">
-                Shared memories become visible to your organization (full org sharing lands in a
-                later session).
-              </span>
+              <span className="text-xs text-slate-400">{t('capture.scopeHelp')}</span>
             </label>
 
             <div className="flex items-center gap-3">
@@ -111,15 +106,15 @@ export function Settings({ session }: { session: Session }) {
                 onClick={() => save.mutate()}
                 className={btnPrimary}
               >
-                {save.isPending ? 'Saving…' : 'Save'}
+                {save.isPending ? t('common:state.saving') : t('common:action.save')}
               </button>
               {saved && (
-                <span className="text-xs text-brand-teal-ink dark:text-brand-teal">Saved.</span>
+                <span className="text-xs text-brand-teal-ink dark:text-brand-teal">
+                  {t('common:state.saved')}
+                </span>
               )}
               {save.isError && (
-                <span className="text-xs text-red-700 dark:text-red-300">
-                  Couldn’t save. Try again.
-                </span>
+                <span className="text-xs text-red-700 dark:text-red-300">{t('saveFailed')}</span>
               )}
             </div>
           </>
@@ -139,12 +134,8 @@ export function Settings({ session }: { session: Session }) {
       <PassportSection session={session} />
 
       <section className="mt-4 space-y-2 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
-        <SectionTitle>Instance signing key</SectionTitle>
-        <p className="text-xs text-slate-500">
-          Every deletion receipt is signed with this instance's private key (spec §11.1). Anyone can
-          verify a receipt or the Forgotten ledger against the public key below, proof that a
-          deletion really happened, independent of Cogeto.
-        </p>
+        <SectionTitle>{t('signingKey.heading')}</SectionTitle>
+        <p className="text-xs text-slate-500">{t('signingKey.explainer')}</p>
         {publicKey.data ? (
           <pre className="overflow-x-auto rounded-md bg-slate-50 p-3 text-xs text-slate-600">
             {publicKey.data.publicKeyPem}
@@ -153,17 +144,14 @@ export function Settings({ session }: { session: Session }) {
           <Skeleton className="h-16 w-full" />
         )}
         {publicKey.data && (
-          <p className="text-xs text-slate-400">Algorithm: {publicKey.data.algorithm}</p>
+          <p className="text-xs text-slate-400">
+            {t('signingKey.algorithm', { algorithm: publicKey.data.algorithm })}
+          </p>
         )}
       </section>
     </Shell>
   );
 }
-
-const LANGUAGES: { key: PreferredLanguage; label: string }[] = [
-  { key: 'en', label: 'English' },
-  { key: 'hr', label: 'Hrvatski' },
-];
 
 /** The browser's IANA zone list; falls back to a minimal set if unsupported. */
 function timeZoneOptions(): string[] {
@@ -182,6 +170,7 @@ function timeZoneOptions(): string[] {
  * in the user's own memories; nothing applies without an explicit accept.
  */
 function ProfileContextSection({ session }: { session: Session }) {
+  const { t } = useTranslation('settings');
   const queryClient = useQueryClient();
   const context = useQuery({
     queryKey: ['user-context'],
@@ -260,12 +249,8 @@ function ProfileContextSection({ session }: { session: Session }) {
   return (
     <section className="mt-4 space-y-4 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
       <div>
-        <SectionTitle>Profile &amp; context</SectionTitle>
-        <p className="mt-1 text-xs text-slate-400">
-          Tells Cogeto who you are, which timezone your days run in, and which language it should
-          speak. These are settings, not memories: they shape phrasing and interpretation, and are
-          never cited as facts.
-        </p>
+        <SectionTitle>{t('profile.heading')}</SectionTitle>
+        <p className="mt-1 text-xs text-slate-400">{t('profile.explainer')}</p>
       </div>
 
       {context.isPending && <Skeleton className="h-40 w-full" />}
@@ -276,18 +261,20 @@ function ProfileContextSection({ session }: { session: Session }) {
               {suggestions.data!.suggestions.map((s) => (
                 <div key={`${s.field}:${s.value}`} className="flex flex-wrap items-center gap-2">
                   <span className="text-sm text-slate-700">
-                    {s.field === 'company'
-                      ? `It looks like you work at ${s.value}`
-                      : `It looks like your role is ${s.value}`}{' '}
-                    <span className="text-xs text-slate-400">
-                      (from your {s.sourceLabel} of{' '}
-                      {new Date(s.sourceDate).toLocaleDateString('en-GB', {
-                        day: 'numeric',
-                        month: 'long',
-                      })}
-                      )
-                    </span>
-                    . Use as context?
+                    <Trans
+                      i18nKey={
+                        s.field === 'company'
+                          ? 'profile.suggestion.company'
+                          : 'profile.suggestion.role'
+                      }
+                      ns="settings"
+                      values={{
+                        value: s.value,
+                        source: s.sourceLabel,
+                        date: formatLongDayMonth(s.sourceDate),
+                      }}
+                      components={{ src: <span className="text-xs text-slate-400" /> }}
+                    />
                   </span>
                   <button
                     type="button"
@@ -295,7 +282,7 @@ function ProfileContextSection({ session }: { session: Session }) {
                     disabled={accept.isPending}
                     onClick={() => accept.mutate(s)}
                   >
-                    Use it
+                    {t('profile.suggestion.accept')}
                   </button>
                   <button
                     type="button"
@@ -303,7 +290,7 @@ function ProfileContextSection({ session }: { session: Session }) {
                     disabled={dismiss.isPending}
                     onClick={() => dismiss.mutate(s)}
                   >
-                    Dismiss
+                    {t('common:action.dismiss')}
                   </button>
                 </div>
               ))}
@@ -312,18 +299,18 @@ function ProfileContextSection({ session }: { session: Session }) {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block text-sm text-slate-700">
-              <span className="font-medium">Your name</span>
+              <span className="font-medium">{t('profile.name')}</span>
               <input
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="How Cogeto addresses you"
+                placeholder={t('profile.namePlaceholder')}
                 className={`mt-1 ${inputClass}`}
                 maxLength={120}
               />
             </label>
             <label className="block text-sm text-slate-700">
-              <span className="font-medium">Company</span>
+              <span className="font-medium">{t('profile.company')}</span>
               <input
                 type="text"
                 value={company}
@@ -333,7 +320,7 @@ function ProfileContextSection({ session }: { session: Session }) {
               />
             </label>
             <label className="block text-sm text-slate-700">
-              <span className="font-medium">Role</span>
+              <span className="font-medium">{t('profile.role')}</span>
               <input
                 type="text"
                 value={roleTitle}
@@ -343,13 +330,15 @@ function ProfileContextSection({ session }: { session: Session }) {
               />
             </label>
             <label className="block text-sm text-slate-700">
-              <span className="font-medium">Timezone</span>
+              <span className="font-medium">{t('profile.timezone')}</span>
               <select
                 value={timezone}
                 onChange={(e) => setTimezone(e.target.value)}
                 className={`mt-1 ${inputClass}`}
               >
-                <option value="">Instance default ({context.data.effectiveTimezone})</option>
+                <option value="">
+                  {t('profile.instanceDefaultZone', { zone: context.data.effectiveTimezone })}
+                </option>
                 {timeZoneOptions().map((zone) => (
                   <option key={zone} value={zone}>
                     {zone}
@@ -358,12 +347,12 @@ function ProfileContextSection({ session }: { session: Session }) {
               </select>
             </label>
             <label className="block text-sm text-slate-700 sm:col-span-2">
-              <span className="font-medium">About your work</span>
+              <span className="font-medium">{t('profile.aboutWork')}</span>
               <input
                 type="text"
                 value={aboutWork}
                 onChange={(e) => setAboutWork(e.target.value)}
-                placeholder="One line, e.g. fractional CTO work for industrial SMEs"
+                placeholder={t('profile.aboutWorkPlaceholder')}
                 className={`mt-1 ${inputClass}`}
                 maxLength={240}
               />
@@ -372,22 +361,21 @@ function ProfileContextSection({ session }: { session: Session }) {
 
           <div className="space-y-2">
             <label className="flex items-center gap-3 text-sm text-slate-700">
-              <span className="font-medium">Language</span>
+              <span className="font-medium">{t('profile.language')}</span>
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value as PreferredLanguage)}
                 className="rounded-md border border-slate-300 px-2 py-1 text-sm"
               >
-                {LANGUAGES.map((l) => (
-                  <option key={l.key} value={l.key}>
-                    {l.label}
+                {/* A language is always listed in its own language, so someone
+                    who cannot read the current interface can still find theirs. */}
+                {SUPPORTED_LANGUAGES.map((code) => (
+                  <option key={code} value={code}>
+                    {LANGUAGE_ENDONYMS[code]}
                   </option>
                 ))}
               </select>
-              <span className="text-xs text-slate-400">
-                The digest and everything Cogeto starts on its own speaks this language. Replies
-                mirror the language you write in.
-              </span>
+              <span className="text-xs text-slate-400">{t('profile.languageHelp')}</span>
             </label>
             <label className="flex items-start gap-3">
               <input
@@ -397,13 +385,24 @@ function ProfileContextSection({ session }: { session: Session }) {
                 className="mt-1"
               />
               <span className="text-sm text-slate-700">
-                <span className="font-medium">Always answer in my language</span>
-                <span className="block text-xs text-slate-400">
-                  Replies come back in your preferred language no matter which language you asked
-                  in.
-                </span>
+                <span className="font-medium">{t('profile.strict.label')}</span>
+                <span className="block text-xs text-slate-400">{t('profile.strict.help')}</span>
               </span>
             </label>
+            {/* Interface language is NOT extraction quality (V2.0 item 3.5,
+                Issue C point 4). Only the measured languages have a golden
+                corpus and published per-language gates; the rest are interface
+                languages, and the product says so where the choice is made. */}
+            <p className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500">
+              {t('profile.qualityNote', {
+                measured: MEASURED_LANGUAGES.map((code) => LANGUAGE_ENDONYMS[code]).join(', '),
+                unmeasured: SUPPORTED_LANGUAGES.filter(
+                  (code) => !(MEASURED_LANGUAGES as readonly string[]).includes(code),
+                )
+                  .map((code) => LANGUAGE_ENDONYMS[code])
+                  .join(', '),
+              })}
+            </p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -413,15 +412,15 @@ function ProfileContextSection({ session }: { session: Session }) {
               onClick={() => save.mutate()}
               className={btnPrimary}
             >
-              {save.isPending ? 'Saving…' : 'Save'}
+              {save.isPending ? t('common:state.saving') : t('common:action.save')}
             </button>
             {saved && (
-              <span className="text-xs text-brand-teal-ink dark:text-brand-teal">Saved.</span>
+              <span className="text-xs text-brand-teal-ink dark:text-brand-teal">
+                {t('common:state.saved')}
+              </span>
             )}
             {save.isError && (
-              <span className="text-xs text-red-700 dark:text-red-300">
-                Couldn't save. Try again.
-              </span>
+              <span className="text-xs text-red-700 dark:text-red-300">{t('saveFailed')}</span>
             )}
           </div>
         </>
@@ -430,10 +429,8 @@ function ProfileContextSection({ session }: { session: Session }) {
   );
 }
 
-const THEMES: { key: Theme; label: string }[] = [
-  { key: 'dark', label: 'Dark' },
-  { key: 'light', label: 'Light' },
-];
+/** Theme VALUES are persisted; only their display names are translated. */
+const THEMES: Theme[] = ['dark', 'light'];
 
 /**
  * Appearance: the per-device light/dark choice. Dark is the product
@@ -442,33 +439,32 @@ const THEMES: { key: Theme; label: string }[] = [
  * with no flash. A segmented control, not a checkbox: two named, explicit states.
  */
 function AppearanceSection() {
+  const { t } = useTranslation('settings');
   const { theme, setTheme } = useTheme();
   return (
     <section className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
       <div>
-        <SectionTitle>Appearance</SectionTitle>
-        <p className="mt-1 text-xs text-slate-400">
-          Dark is the default. Your choice is remembered on this device and applies everywhere.
-        </p>
+        <SectionTitle>{t('appearance.heading')}</SectionTitle>
+        <p className="mt-1 text-xs text-slate-400">{t('appearance.explainer')}</p>
       </div>
       <div
         role="group"
-        aria-label="Theme"
+        aria-label={t('appearance.themeLabel')}
         className="flex w-fit gap-1 rounded-lg bg-slate-200/70 p-1"
       >
-        {THEMES.map((t) => (
+        {THEMES.map((value) => (
           <button
-            key={t.key}
+            key={value}
             type="button"
-            aria-pressed={theme === t.key}
-            onClick={() => setTheme(t.key)}
+            aria-pressed={theme === value}
+            onClick={() => setTheme(value)}
             className={`rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
-              theme === t.key
+              theme === value
                 ? 'bg-surface text-slate-800 shadow-sm'
                 : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            {t.label}
+            {t(`appearance.theme.${value}`)}
           </button>
         ))}
       </div>
@@ -481,15 +477,13 @@ function AppearanceSection() {
  * just runs it — no tap, no gate, no picking. Off by default; stored per device.
  */
 function ResearchSection() {
+  const { t } = useTranslation('settings');
   const { autoResearch, setAutoResearch } = useAutoResearch();
   return (
     <section className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
       <div>
-        <SectionTitle>Web research</SectionTitle>
-        <p className="mt-1 text-xs text-slate-400">
-          When Cogeto can’t answer from your memory, it can check the web. The sent query and the
-          sources it read are always shown and recorded in provenance.
-        </p>
+        <SectionTitle>{t('research.heading')}</SectionTitle>
+        <p className="mt-1 text-xs text-slate-400">{t('research.explainer')}</p>
       </div>
       <label className="flex items-start gap-3">
         <input
@@ -499,11 +493,8 @@ function ResearchSection() {
           className="mt-1"
         />
         <span className="text-sm text-slate-700">
-          <span className="font-medium">Research automatically</span>
-          <span className="block text-xs text-slate-400">
-            Skip the prompt: when an answer needs the web, Cogeto searches and reads the most
-            relevant sources on its own. Off by default, so nothing leaves without your tap.
-          </span>
+          <span className="font-medium">{t('research.auto.label')}</span>
+          <span className="block text-xs text-slate-400">{t('research.auto.help')}</span>
         </span>
       </label>
     </section>
@@ -517,6 +508,7 @@ function ResearchSection() {
  * input, no editing: keys are operator-set in the instance environment.
  */
 function ModelConfigSection({ session }: { session: Session }) {
+  const { t } = useTranslation('settings');
   const config = useQuery({
     queryKey: ['model-config'],
     queryFn: () => fetchModelConfig(session),
@@ -525,64 +517,57 @@ function ModelConfigSection({ session }: { session: Session }) {
   return (
     <section className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
       <div>
-        <SectionTitle>Model configuration</SectionTitle>
-        <p className="mt-1 text-xs text-slate-400">
-          Read-only. The active providers and models are set by the operator in the instance
-          environment. API keys are never entered or shown here.
-        </p>
+        <SectionTitle>{t('models.heading')}</SectionTitle>
+        <p className="mt-1 text-xs text-slate-400">{t('models.explainer')}</p>
       </div>
       {config.isPending && <Skeleton className="h-24 w-full" />}
       {config.data && (
         <>
           <div className="flex items-center gap-2 text-sm text-slate-700">
-            <span className="font-medium">Configuration</span>
+            <span className="font-medium">{t('models.configuration')}</span>
             <code className="rounded bg-slate-50 px-2 py-0.5 text-xs text-slate-600">
               {config.data.configurationId}
             </code>
             {!config.data.configured && (
               <span className="text-xs text-amber-700 dark:text-amber-300">
-                no provider key set, model features are disabled
+                {t('models.notConfigured')}
               </span>
             )}
           </div>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+            {/* Tier keys are the gateway's vocabulary; their labels are copy. */}
             {(
               [
-                ['Pipeline', config.data.tiers.pipeline],
-                ['Answer', config.data.tiers.answer],
-                ['Embeddings', config.data.tiers.embeddings],
+                ['pipeline', config.data.tiers.pipeline],
+                ['answer', config.data.tiers.answer],
+                ['embeddings', config.data.tiers.embeddings],
               ] as const
-            ).map(([label, tier]) => (
-              <div key={label} className="contents">
-                <dt className="text-slate-500">{label}</dt>
+            ).map(([key, tier]) => (
+              <div key={key} className="contents">
+                <dt className="text-slate-500">{t(`models.tier.${key}`)}</dt>
                 <dd className="text-slate-700">
                   {tier.provider}/{tier.model}
                 </dd>
               </div>
             ))}
             <div className="contents">
-              <dt className="text-slate-500">Redaction</dt>
-              <dd className="text-slate-700">{config.data.redactionEnabled ? 'on' : 'off'}</dd>
+              <dt className="text-slate-500">{t('models.redaction')}</dt>
+              <dd className="text-slate-700">
+                {config.data.redactionEnabled
+                  ? t('capabilities:state.on')
+                  : t('capabilities:state.off')}
+              </dd>
             </div>
           </dl>
           <p className="text-xs text-slate-500">{config.data.externalCalls}</p>
         </>
       )}
       {config.isError && (
-        <p className="text-xs text-red-700 dark:text-red-300">
-          Couldn’t load the model configuration.
-        </p>
+        <p className="text-xs text-red-700 dark:text-red-300">{t('models.error')}</p>
       )}
     </section>
   );
 }
-
-const PASSPORT_STATUS_LABEL: Record<PassportExportDto['status'], string> = {
-  pending: 'Assembling your export…',
-  ready: 'Ready to download',
-  failed: 'Export failed',
-  expired: 'Expired (re-export to get a fresh copy)',
-};
 
 /**
  * Memory Passport (spec §11.4): a complete, documented, versioned
@@ -591,6 +576,7 @@ const PASSPORT_STATUS_LABEL: Record<PassportExportDto['status'], string> = {
  * download. The artifact is an open format documented in docs/passport-schema/.
  */
 function PassportSection({ session }: { session: Session }) {
+  const { t } = useTranslation('passport');
   const queryClient = useQueryClient();
   const [includeOriginals, setIncludeOriginals] = useState(false);
   const exportsQuery = useQuery({
@@ -616,12 +602,13 @@ function PassportSection({ session }: { session: Session }) {
 
   return (
     <section className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
-      <SectionTitle>Export my data · Memory Passport</SectionTitle>
+      <SectionTitle>{t('heading')}</SectionTitle>
       <p className="text-xs text-slate-500">
-        Download <span className="font-medium">everything</span> Cogeto knows for you: every fact
-        with its status, provenance and full history, and your deletion receipts (still
-        independently verifiable), in an open, documented, versioned format. Your memory is
-        portable; leave whenever you want.
+        <Trans
+          i18nKey="explainer"
+          ns="passport"
+          components={{ b: <span className="font-medium" /> }}
+        />
       </p>
 
       <label className="flex items-start gap-3 text-sm text-slate-700">
@@ -632,11 +619,8 @@ function PassportSection({ session }: { session: Session }) {
           className="mt-1"
         />
         <span>
-          <span className="font-medium">Include original files</span>
-          <span className="block text-xs text-slate-400">
-            Attach the original bytes of files you uploaded (a full archive). Off by default.
-            Provenance and metadata are always included either way.
-          </span>
+          <span className="font-medium">{t('includeOriginals.label')}</span>
+          <span className="block text-xs text-slate-400">{t('includeOriginals.help')}</span>
         </span>
       </label>
 
@@ -647,12 +631,10 @@ function PassportSection({ session }: { session: Session }) {
           onClick={() => trigger.mutate()}
           className={btnPrimary}
         >
-          {trigger.isPending || pending ? 'Preparing…' : 'Export my data'}
+          {trigger.isPending || pending ? t('preparing') : t('export')}
         </button>
         {trigger.isError && (
-          <span className="text-xs text-red-700 dark:text-red-300">
-            Couldn’t start the export. Try again.
-          </span>
+          <span className="text-xs text-red-700 dark:text-red-300">{t('startFailed')}</span>
         )}
       </div>
 
@@ -673,7 +655,7 @@ function PassportSection({ session }: { session: Session }) {
                       : 'text-slate-400'
                 }`}
               >
-                {PASSPORT_STATUS_LABEL[row.status]}
+                {t(`status.${row.status}`)}
                 {row.status === 'failed' && row.error ? `: ${row.error}` : ''}
               </span>
               <span className="text-xs text-slate-400" title={row.createdAt}>
@@ -686,7 +668,7 @@ function PassportSection({ session }: { session: Session }) {
                   disabled={download.isPending}
                   className={`${btnSecondary} ml-auto`}
                 >
-                  Download
+                  {t('common:action.download')}
                 </button>
               )}
             </li>
@@ -694,23 +676,29 @@ function PassportSection({ session }: { session: Session }) {
         </ul>
       )}
       <p className="text-xs text-slate-400">
-        The format is open and documented at{' '}
-        <span className="font-mono">docs/passport-schema/</span>. Anyone can read and verify a
-        Passport with only the schema and the instance public key above.
+        <Trans
+          i18nKey="formatNote"
+          ns="passport"
+          components={{ path: <span className="font-mono" /> }}
+        />
       </p>
     </section>
   );
 }
 
-/** Plain words for a refusal reason (legacy reasons included). */
-const REFUSAL_REASON_LABEL: Record<string, string> = {
-  sender_not_recognized: 'sender is not a registered user and not on any allowlist',
-  sender_not_allowlisted: 'sender was not on the allowlist',
-  no_owner: 'no capture owner was configured (older refusal)',
-  wrong_recipient: 'addressed to a different recipient',
-  message_too_large: 'message exceeded the size cap',
-  attachments_too_large: 'attachments exceeded the size cap',
-};
+/**
+ * Refusal REASONS are server values (legacy ones included); only their plain
+ * wording is translated, through `email:refusalReason.<value>`. An unknown
+ * reason still renders its raw value, as before.
+ */
+const REFUSAL_REASONS = [
+  'sender_not_recognized',
+  'sender_not_allowlisted',
+  'no_owner',
+  'wrong_recipient',
+  'message_too_large',
+  'attachments_too_large',
+];
 
 /** Only sender-identity refusals are fixable by allowlisting. */
 const CLAIMABLE_REASONS = new Set(['sender_not_recognized', 'sender_not_allowlisted', 'no_owner']);
@@ -722,6 +710,7 @@ const CLAIMABLE_REASONS = new Set(['sender_not_recognized', 'sender_not_allowlis
  * with one-click claiming where allowlisting can actually help.
  */
 function EmailCaptureSection({ session }: { session: Session }) {
+  const { t } = useTranslation('email');
   const queryClient = useQueryClient();
   const config = useQuery({ queryKey: ['email-config'], queryFn: () => fetchEmailConfig(session) });
 
@@ -759,12 +748,9 @@ function EmailCaptureSection({ session }: { session: Session }) {
   return (
     <section className="mt-4 space-y-4 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
       <div>
-        <SectionTitle>Email capture</SectionTitle>
+        <SectionTitle>{t('heading')}</SectionTitle>
         <p className="mt-1 text-xs text-slate-400">
-          Forward, BCC, or set a provider rule to send mail to the inbound address. Mail{' '}
-          <strong>you</strong> send there (from your own address) is always captured for you; mail
-          from other senders reaches you only when they are on <strong>your</strong> allowlist
-          below. Captured email follows your default scope above.
+          <Trans i18nKey="explainer" ns="email" components={{ b: <strong /> }} />
         </p>
       </div>
 
@@ -773,7 +759,7 @@ function EmailCaptureSection({ session }: { session: Session }) {
       {config.data && (
         <>
           <div className="rounded-md bg-slate-50 p-3">
-            <div className="text-xs font-medium text-slate-500">Your inbound address</div>
+            <div className="text-xs font-medium text-slate-500">{t('inboundAddress')}</div>
             {config.data.inboundAddress ? (
               <div className="mt-1 flex items-center gap-2">
                 <code className="min-w-0 flex-1 truncate text-sm text-slate-700">
@@ -791,67 +777,71 @@ function EmailCaptureSection({ session }: { session: Session }) {
                   }}
                   className="shrink-0 rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
                 >
-                  {copied ? 'Copied' : 'Copy'}
+                  {copied ? t('common:action.copied') : t('common:action.copy')}
                 </button>
               </div>
             ) : (
-              <p className="mt-1 text-xs text-slate-400">
-                Not configured yet. The operator sets this when provisioning the instance.
-              </p>
+              <p className="mt-1 text-xs text-slate-400">{t('notConfigured')}</p>
             )}
           </div>
 
           {config.data.inboundAddress && (
             <div className="space-y-2 text-xs text-slate-500">
-              <div className="font-medium text-slate-700">How to use it</div>
+              <div className="font-medium text-slate-700">{t('howTo.heading')}</div>
               <ul className="list-disc space-y-1 pl-5">
                 <li>
-                  <span className="font-medium text-slate-600">Forward</span> an individual message
-                  to this address to capture it.
+                  <Trans
+                    i18nKey="howTo.forward"
+                    ns="email"
+                    components={{ b: <span className="font-medium text-slate-600" /> }}
+                  />
                 </li>
                 <li>
-                  <span className="font-medium text-slate-600">BCC</span> this address when you
-                  send, to capture your own commitments as you make them.
+                  <Trans
+                    i18nKey="howTo.bcc"
+                    ns="email"
+                    components={{ b: <span className="font-medium text-slate-600" /> }}
+                  />
                 </li>
                 <li>
-                  <span className="font-medium text-slate-600">Auto-forward rule</span>: in your
-                  mail provider, forward mail from selected senders here automatically.{' '}
-                  <span className="text-slate-400">
-                    Provider-side auto-forward (or BCC) preserves the original sender better than a
-                    manual forward, so drafted replies address the right person.
-                  </span>
+                  <Trans
+                    i18nKey="howTo.autoForward"
+                    ns="email"
+                    components={{
+                      b: <span className="font-medium text-slate-600" />,
+                      note: <span className="text-slate-400" />,
+                    }}
+                  />
                 </li>
               </ul>
               <p className="rounded-md bg-slate-50 p-2 text-slate-500">
-                Cogeto only ever receives <strong>what you forward</strong>, never your whole
-                mailbox, and never your password or account access.
+                <Trans
+                  i18nKey="howTo.onlyWhatYouForward"
+                  ns="email"
+                  components={{ b: <strong /> }}
+                />
               </p>
             </div>
           )}
 
           {config.data.selfAddress && (
             <div className="rounded-md bg-slate-50 p-3">
-              <div className="text-xs font-medium text-slate-500">Always trusted</div>
+              <div className="text-xs font-medium text-slate-500">{t('alwaysTrusted')}</div>
               <p className="mt-1 text-sm text-slate-700">
                 <span className="font-mono">{config.data.selfAddress}</span>
-                <span className="ml-2 text-xs text-slate-400">
-                  your registered address: anything you forward or BCC is captured for you
-                </span>
+                <span className="ml-2 text-xs text-slate-400">{t('selfAddressNote')}</span>
               </p>
             </div>
           )}
 
           <div>
-            <div className="text-sm font-medium text-slate-700">Allowed senders</div>
+            <div className="text-sm font-medium text-slate-700">{t('allowlist.heading')}</div>
             <p className="text-xs text-slate-400">
-              External senders whose mail becomes <strong>your</strong> memory, typically the people
-              you auto-forward from your provider. Other users keep their own lists.
+              <Trans i18nKey="allowlist.explainer" ns="email" components={{ b: <strong /> }} />
             </p>
             {allowlist.length === 0 ? (
               <p className="mt-1 rounded-md border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-300">
-                No external senders allowed yet. Apart from your own address above, Cogeto is{' '}
-                <strong>closed by default</strong> and accepts no mail for you until you add an
-                address or domain here.
+                <Trans i18nKey="allowlist.empty" ns="email" components={{ b: <strong /> }} />
               </p>
             ) : (
               <ul className="mt-2 divide-y divide-slate-100 rounded-md border border-slate-200">
@@ -872,7 +862,7 @@ function EmailCaptureSection({ session }: { session: Session }) {
                       disabled={remove.isPending}
                       className="shrink-0 text-xs text-red-700 dark:text-red-300 hover:underline"
                     >
-                      Remove
+                      {t('common:action.remove')}
                     </button>
                   </li>
                 ))}
@@ -882,33 +872,39 @@ function EmailCaptureSection({ session }: { session: Session }) {
 
           <div className="flex flex-wrap items-end gap-2">
             <label className="text-xs text-slate-500">
-              <span className="block">Kind</span>
+              <span className="block">{t('allowlist.kind')}</span>
               <select
                 value={kind}
                 onChange={(e) => setKind(e.target.value as EmailAllowlistKind)}
                 className="mt-1 rounded-md border border-slate-300 px-2 py-1 text-sm"
               >
-                <option value="address">address</option>
-                <option value="domain">domain</option>
+                <option value="address">{t('allowlist.kindValue.address')}</option>
+                <option value="domain">{t('allowlist.kindValue.domain')}</option>
               </select>
             </label>
             <label className="min-w-[16rem] flex-1 text-xs text-slate-500">
-              <span className="block">{kind === 'address' ? 'Email address' : 'Domain'}</span>
+              <span className="block">
+                {kind === 'address' ? t('allowlist.addressField') : t('allowlist.domainField')}
+              </span>
               <input
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && submit()}
-                placeholder={kind === 'address' ? 'ana@adriatic-foods.hr' : 'adriatic-foods.hr'}
+                placeholder={
+                  kind === 'address'
+                    ? t('allowlist.addressPlaceholder')
+                    : t('allowlist.domainPlaceholder')
+                }
                 className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
               />
             </label>
             <label className="min-w-[10rem] flex-1 text-xs text-slate-500">
-              <span className="block">Note (optional)</span>
+              <span className="block">{t('allowlist.note')}</span>
               <input
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && submit()}
-                placeholder="e.g. supplier"
+                placeholder={t('allowlist.notePlaceholder')}
                 className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
               />
             </label>
@@ -918,22 +914,19 @@ function EmailCaptureSection({ session }: { session: Session }) {
               disabled={add.isPending || !value.trim()}
               className={btnPrimary}
             >
-              Add
+              {t('common:action.add')}
             </button>
           </div>
           {add.isError && (
             <p className="text-xs text-red-700 dark:text-red-300">
-              {add.error instanceof Error ? add.error.message : 'Couldn’t add. Check the value.'}
+              {add.error instanceof Error ? add.error.message : t('allowlist.addFailed')}
             </p>
           )}
 
           {refusals.length > 0 && (
             <div>
-              <div className="text-sm font-medium text-slate-700">Recently refused</div>
-              <p className="text-xs text-slate-400">
-                Mail Cogeto turned away, and why. When the sender just isn’t known yet, claim them
-                for your own capture in one click.
-              </p>
+              <div className="text-sm font-medium text-slate-700">{t('refusals.heading')}</div>
+              <p className="text-xs text-slate-400">{t('refusals.explainer')}</p>
               <ul className="mt-2 space-y-1">
                 {refusals
                   .filter((r) => r.fromAddr && !listed.has(r.fromAddr))
@@ -945,7 +938,9 @@ function EmailCaptureSection({ session }: { session: Session }) {
                       <span className="min-w-0 truncate text-sm text-slate-600">
                         <span className="font-mono">{r.fromAddr}</span>
                         <span className="ml-2 text-xs text-slate-400">
-                          {REFUSAL_REASON_LABEL[r.reason] ?? r.reason}
+                          {REFUSAL_REASONS.includes(r.reason)
+                            ? t(`refusalReason.${r.reason}`)
+                            : r.reason}
                         </span>
                       </span>
                       {CLAIMABLE_REASONS.has(r.reason) && (
@@ -957,7 +952,7 @@ function EmailCaptureSection({ session }: { session: Session }) {
                           disabled={add.isPending}
                           className="shrink-0 text-xs text-brand-teal-ink dark:text-brand-teal hover:underline"
                         >
-                          Allow this sender
+                          {t('refusals.allowSender')}
                         </button>
                       )}
                     </li>

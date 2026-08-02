@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { SkillRunDetailDto, SkillRunDto, SkillRunStepDto } from '@cogeto/shared';
 import {
   approveSkillPlan,
@@ -37,16 +38,6 @@ const STATUS_TONE: Record<SkillRunDto['status'], Tone> = {
   cancelled: 'neutral',
 };
 
-const STATUS_LABEL: Record<SkillRunDto['status'], string> = {
-  planning: 'planning',
-  awaiting_approval: 'awaiting approval',
-  running: 'running',
-  awaiting_input: 'awaiting input',
-  completed: 'completed',
-  failed: 'failed',
-  cancelled: 'cancelled',
-};
-
 const runLink = (id: string) => `/skills?run=${encodeURIComponent(id)}`;
 
 /**
@@ -56,9 +47,10 @@ const runLink = (id: string) => `/skills?run=${encodeURIComponent(id)}`;
  * every brief claim clickable to its source, and proposed actions that wait.
  */
 export function Skills({ session }: { session: Session }) {
+  const { t } = useTranslation('skills');
   const openRunId = new URLSearchParams(window.location.search).get('run');
   return (
-    <Shell session={session} title="Skills" active="skills">
+    <Shell session={session} title={t('navigation:section.skills')} active="skills">
       {openRunId ? (
         <SkillRunView session={session} runId={openRunId} />
       ) : (
@@ -68,7 +60,14 @@ export function Skills({ session }: { session: Session }) {
   );
 }
 
+/** Run STATUS is an API value; only its display name is translated. */
+function StatusPill({ status }: { status: SkillRunDto['status'] }) {
+  const { t } = useTranslation('skills');
+  return <Pill tone={STATUS_TONE[status]}>{t(`status.${status}`)}</Pill>;
+}
+
 function SkillsHome({ session }: { session: Session }) {
+  const { t } = useTranslation('skills');
   const [subject, setSubject] = useState('');
   const [candidates, setCandidates] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -100,18 +99,14 @@ function SkillsHome({ session }: { session: Session }) {
   return (
     <div className="space-y-6">
       <Card>
-        <SectionTitle>Research a company or person before a meeting</SectionTitle>
-        <p className="mt-1 text-sm text-slate-600">
-          Cogeto checks what you already know, proposes minimised searches for your approval, reads
-          the approved pages, and writes a brief where every claim links to its source. Nothing
-          leaves this instance until you approve the search plan.
-        </p>
+        <SectionTitle>{t('home.heading')}</SectionTitle>
+        <p className="mt-1 text-sm text-slate-600">{t('home.explainer')}</p>
         <form onSubmit={start} className="mt-3 flex gap-2">
           <input
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            placeholder="A company or person, e.g. Adriatic Foods"
-            aria-label="Subject to research"
+            placeholder={t('home.subjectPlaceholder')}
+            aria-label={t('home.subjectLabel')}
             className="min-w-0 flex-1 rounded-md border border-slate-300 bg-surface px-3 py-2 text-sm"
             maxLength={200}
           />
@@ -120,12 +115,12 @@ function SkillsHome({ session }: { session: Session }) {
             className={btnPrimary}
             disabled={propose.isPending || !subject.trim()}
           >
-            {propose.isPending ? 'Planning…' : 'Prepare a brief'}
+            {propose.isPending ? t('home.planning') : t('home.prepare')}
           </button>
         </form>
         {candidates && (
           <div className="mt-3 rounded-md border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
-            <p className="font-medium">Which one do you mean?</p>
+            <p className="font-medium">{t('home.ambiguous')}</p>
             <ul className="mt-1 space-y-1">
               {candidates.map((candidate) => (
                 <li key={candidate}>
@@ -149,18 +144,13 @@ function SkillsHome({ session }: { session: Session }) {
       </Card>
 
       <Card>
-        <SectionTitle>Runs</SectionTitle>
+        <SectionTitle>{t('home.runs')}</SectionTitle>
         {runsQuery.isPending ? (
           <SkeletonRows rows={3} />
         ) : runsQuery.isError ? (
-          <ErrorState onRetry={() => void runsQuery.refetch()}>
-            Could not load skill runs.
-          </ErrorState>
+          <ErrorState onRetry={() => void runsQuery.refetch()}>{t('home.runsError')}</ErrorState>
         ) : runsQuery.data.length === 0 ? (
-          <EmptyState title="No runs yet">
-            Try &quot;Prepare a brief&quot; above, or ask in chat: &quot;research Adriatic Foods
-            before Thursday&quot;.
-          </EmptyState>
+          <EmptyState title={t('home.empty.title')}>{t('home.empty.body')}</EmptyState>
         ) : (
           <ul className="mt-2 divide-y divide-slate-100">
             {runsQuery.data.map((run) => (
@@ -177,7 +167,7 @@ function SkillsHome({ session }: { session: Session }) {
                       {run.skillName} · {timeAgo(run.createdAt)}
                     </span>
                   </span>
-                  <Pill tone={STATUS_TONE[run.status]}>{STATUS_LABEL[run.status]}</Pill>
+                  <StatusPill status={run.status} />
                 </a>
               </li>
             ))}
@@ -190,6 +180,7 @@ function SkillsHome({ session }: { session: Session }) {
 
 /** The live run view — the step log is the inspectability showcase. */
 function SkillRunView({ session, runId }: { session: Session; runId: string }) {
+  const { t } = useTranslation('skills');
   const queryClient = useQueryClient();
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [removed, setRemoved] = useState<Set<string>>(new Set());
@@ -225,9 +216,7 @@ function SkillRunView({ session, runId }: { session: Session; runId: string }) {
     );
   }
   if (runQuery.isError) {
-    return (
-      <ErrorState onRetry={() => void runQuery.refetch()}>Could not load this run.</ErrorState>
-    );
+    return <ErrorState onRetry={() => void runQuery.refetch()}>{t('run.loadError')}</ErrorState>;
   }
   const run = runQuery.data;
   const openPlan = run.plan.filter((q) => q.status === 'proposed');
@@ -250,15 +239,15 @@ function SkillRunView({ session, runId }: { session: Session; runId: string }) {
       <Card>
         <div className="flex flex-wrap items-center gap-3">
           <a href="/skills" className="text-sm text-slate-500 hover:underline">
-            ← Skills
+            {t('run.backToSkills')}
           </a>
           <h2 className="min-w-0 flex-1 truncate text-base font-semibold text-slate-900">
             {run.subject}
           </h2>
-          <Pill tone={STATUS_TONE[run.status]}>{STATUS_LABEL[run.status]}</Pill>
+          <StatusPill status={run.status} />
           {(run.status === 'awaiting_approval' || runIsLive(run.status)) && (
             <button type="button" className={btnDanger} onClick={() => cancel.mutate()}>
-              Cancel run
+              {t('run.cancel')}
             </button>
           )}
         </div>
@@ -269,7 +258,7 @@ function SkillRunView({ session, runId }: { session: Session; runId: string }) {
       </Card>
 
       <Card>
-        <SectionTitle>Steps</SectionTitle>
+        <SectionTitle>{t('run.steps')}</SectionTitle>
         <ol className="mt-3 space-y-0">
           {run.steps.map((step, i) => (
             <StepRow key={step.id} step={step} last={i === run.steps.length - 1} />
@@ -279,12 +268,8 @@ function SkillRunView({ session, runId }: { session: Session; runId: string }) {
 
       {gateOpen(run) && openPlan.length > 0 && (
         <Card>
-          <SectionTitle>The search plan: approve before anything leaves</SectionTitle>
-          <p className="mt-1 text-sm text-slate-600">
-            These queries were proposed from your context, minimised. Edit any, remove any; nothing
-            is sent until you approve. Each approved query is recorded in the provenance of every
-            fact it produces.
-          </p>
+          <SectionTitle>{t('plan.heading')}</SectionTitle>
+          <p className="mt-1 text-sm text-slate-600">{t('plan.explainer')}</p>
           <ul className="mt-3 space-y-3">
             {openPlan.map((query) => {
               const isRemoved = removed.has(query.researchRunId);
@@ -300,7 +285,7 @@ function SkillRunView({ session, runId }: { session: Session; runId: string }) {
                         setEdits((prev) => ({ ...prev, [query.researchRunId]: e.target.value }))
                       }
                       disabled={isRemoved}
-                      aria-label="Search query"
+                      aria-label={t('plan.queryLabel')}
                       className="min-w-0 flex-1 rounded-md border border-slate-300 bg-surface px-3 py-1.5 text-sm"
                       maxLength={500}
                     />
@@ -316,7 +301,7 @@ function SkillRunView({ session, runId }: { session: Session; runId: string }) {
                         })
                       }
                     >
-                      {isRemoved ? 'Keep' : 'Remove'}
+                      {isRemoved ? t('plan.keep') : t('plan.remove')}
                     </button>
                   </div>
                   <p className="mt-1.5 text-xs text-slate-500">{query.minimiseReason}</p>
@@ -332,33 +317,31 @@ function SkillRunView({ session, runId }: { session: Session; runId: string }) {
               onClick={submitPlan}
             >
               {approve.isPending
-                ? 'Approving…'
-                : `Approve ${keptCount} ${keptCount === 1 ? 'search' : 'searches'}`}
+                ? t('plan.approving')
+                : t('plan.approveCount', { count: keptCount })}
             </button>
-            <span className="text-xs text-slate-500">
-              Removed queries are cancelled and never leave.
-            </span>
+            <span className="text-xs text-slate-500">{t('plan.removedNote')}</span>
           </div>
         </Card>
       )}
 
       {run.plan.length > 0 && !gateOpen(run) && (
         <Card>
-          <SectionTitle>What was searched</SectionTitle>
+          <SectionTitle>{t('plan.whatWasSearched')}</SectionTitle>
           <ul className="mt-2 space-y-1.5">
             {run.plan.map((query) => (
               <li key={query.researchRunId} className="flex items-baseline gap-2 text-sm">
                 {query.status === 'cancelled' ? (
                   <>
                     <span className={`rounded-full px-2 py-0.5 text-xs ${TONE_CLASS.neutral}`}>
-                      removed
+                      {t('plan.queryRemoved')}
                     </span>
                     <span className="text-slate-400 line-through">{query.minimisedQuery}</span>
                   </>
                 ) : (
                   <>
                     <span className={`rounded-full px-2 py-0.5 text-xs ${TONE_CLASS.positive}`}>
-                      sent
+                      {t('plan.querySent')}
                     </span>
                     <span className="font-mono text-slate-700">{query.sentQuery}</span>
                   </>
@@ -372,7 +355,7 @@ function SkillRunView({ session, runId }: { session: Session; runId: string }) {
       {run.brief && (
         <Card>
           <div className="flex items-center gap-3">
-            <SectionTitle>The brief</SectionTitle>
+            <SectionTitle>{t('brief.heading')}</SectionTitle>
             <span className="flex-1" />
             <button
               type="button"
@@ -381,7 +364,7 @@ function SkillRunView({ session, runId }: { session: Session; runId: string }) {
                 void navigator.clipboard.writeText(briefExportText(run));
               }}
             >
-              Copy with sources
+              {t('brief.copyWithSources')}
             </button>
           </div>
           <div className="mt-3">
@@ -395,6 +378,7 @@ function SkillRunView({ session, runId }: { session: Session; runId: string }) {
 
 /** One step of the log: state, phrasing, and its artifacts one click away. */
 function StepRow({ step, last }: { step: SkillRunStepDto; last: boolean }) {
+  const { t } = useTranslation('skills');
   const state = STEP_STATE[step.status];
   return (
     <li className="relative flex gap-3 pb-4">
@@ -414,7 +398,7 @@ function StepRow({ step, last }: { step: SkillRunStepDto; last: boolean }) {
       <div className="min-w-0 flex-1">
         <p className={`text-sm font-medium ${state.title}`}>
           {step.title}
-          <span className="sr-only"> ({step.status})</span>
+          <span className="sr-only"> ({t(`stepStatus.${step.status}`)})</span>
         </p>
         {step.outputsSummary && (
           <p className="mt-0.5 text-sm text-slate-600">{step.outputsSummary}</p>
@@ -447,6 +431,7 @@ const STEP_STATE: Record<SkillRunStepDto['status'], { icon: string; dot: string;
 
 /** The links a step recorded — every produced artifact one click away. */
 function StepArtifacts({ step }: { step: SkillRunStepDto }) {
+  const { t } = useTranslation('skills');
   const memoryIds = [...(step.links.memoryIds ?? []), ...(step.links.loopMemoryIds ?? [])];
   if (memoryIds.length === 0 && !step.links.notes?.length) return null;
   return (
@@ -460,7 +445,9 @@ function StepArtifacts({ step }: { step: SkillRunStepDto }) {
           ◈ {id.slice(0, 8)}
         </a>
       ))}
-      {memoryIds.length > 8 && <span>+{memoryIds.length - 8} more</span>}
+      {memoryIds.length > 8 && (
+        <span>{t('run.moreArtifacts', { count: memoryIds.length - 8 })}</span>
+      )}
       {step.links.notes?.map((note, i) => (
         <span key={i}>{note}</span>
       ))}

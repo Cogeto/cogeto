@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { UNAUTHORIZED_EVENT } from './api';
 import { clearSession, getWebConfig, loadSession } from './auth/oidc';
 import type { Session } from './auth/oidc';
 import { DemoBanner } from './components/DemoBanner';
 import { DemoIntro } from './components/DemoIntro';
+import { useInterfaceLanguage } from './i18n/use-language';
 import { Callback } from './pages/Callback';
 import { Chat } from './pages/Chat';
 import { Research } from './pages/Research';
@@ -25,6 +27,16 @@ import { Timeline } from './pages/Timeline';
 export function App() {
   const [session, setSession] = useState<Session | null>(loadSession);
   const queryClient = useQueryClient();
+  const { t } = useTranslation('common');
+  // The interface language: the user's own preference, else the browser's, else
+  // English (V2.0 item 3.5). Applies without a reload.
+  useInterfaceLanguage(session);
+
+  // The document title follows the interface language too, so a translated
+  // instance does not keep an English browser tab.
+  useEffect(() => {
+    document.title = t('document.title');
+  }, [t]);
 
   // on a 401 (token expired/revoked) drop the dead session and re-fetch
   // /api/config, so the shell re-decides between Login and the demo session from
@@ -68,7 +80,7 @@ export function App() {
               className="h-5 w-5"
               aria-hidden="true"
             />
-            Loading Cogeto…
+            {t('state.loadingApp')}
           </span>
         </main>
       );

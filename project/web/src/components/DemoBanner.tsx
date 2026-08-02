@@ -4,14 +4,21 @@
  * unobtrusive link to cogeto.eu. No signup prompts anywhere. Fixed to the bottom
  * so it never shifts page layout; pointer-events pass through except the link.
  */
+import { Trans, useTranslation } from 'react-i18next';
+
 export function DemoBanner() {
+  const { t } = useTranslation('auth');
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center">
       <div className="pointer-events-auto mb-3 flex items-center gap-2 rounded-full border border-slate-200 bg-surface/95 px-4 py-1.5 text-xs text-slate-500 shadow-sm backdrop-blur">
         <span className="inline-block h-2 w-2 rounded-full bg-brand-teal" aria-hidden />
         <span>
-          Live sandbox · <span className="font-medium text-slate-600">Ana Kovač</span> · fictional
-          data, resets periodically
+          <Trans
+            i18nKey="demoBanner.text"
+            ns="auth"
+            values={{ persona: 'Ana Kovač' }}
+            components={{ persona: <span className="font-medium text-slate-600" /> }}
+          />
         </span>
         <span className="text-slate-300">·</span>
         <a
@@ -20,7 +27,7 @@ export function DemoBanner() {
           rel="noreferrer"
           className="font-semibold text-brand-teal-ink dark:text-brand-teal hover:underline"
         >
-          Learn more
+          {t('demoBanner.learnMore')}
         </a>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import type { CapabilitySummary, ScheduledJobSummary } from '@cogeto/shared';
+import { i18next } from '../i18n';
 import type { Tone } from './status';
 
 /**
@@ -28,69 +29,44 @@ export interface CapabilityView {
   checkedAt: string;
 }
 
-const CAPABILITY_META: Record<string, { name: string; description: string; consequence: string }> =
-  {
-    redaction: {
-      name: 'Redaction',
-      description:
-        'Pseudonymizes names and other sensitive entities on this machine before any text reaches the model provider.',
-      consequence:
-        'Redaction is enabled but the service is unreachable: model calls will fail rather than send unredacted content.',
-    },
-    research: {
-      name: 'Web research',
-      description:
-        'Searches the public web from this instance and reads approved pages into memory. You see the query before it leaves.',
-      consequence: 'Research is unavailable until the search service is reachable.',
-    },
-    mail: {
-      name: 'Email capture',
-      description:
-        'Receives forwarded mail at this instance’s inbound address and captures it, routed by sender. Off means no SMTP listener runs at all.',
-      consequence:
-        'Email capture is enabled but the inbound mail service is not answering: forwarded mail is not being received.',
-    },
-    demo: {
-      name: 'Demo sandbox',
-      description:
-        'Seeds the fictional demo workspace and serves a shared demo session. Never for an instance holding real data.',
-      consequence:
-        'Demo mode is set on a production instance: the guard refuses to seed. An operator must unset one of the two flags.',
-    },
-    consoles: {
-      name: 'Infra consoles',
-      description:
-        'Operator-only MinIO and Qdrant consoles, served on this machine at localhost port 8443.',
-      consequence: 'The consoles are enabled but not answering.',
-    },
-    'local-models': {
-      name: 'Local models',
-      description:
-        'Runs model work on a local Ollama runtime instead of a hosted provider, so content stays on your hardware.',
-      consequence:
-        'The local model runtime is unreachable: model features on local tiers fail until it is back.',
-    },
-  };
+/**
+ * Registry IDs are the server's vocabulary and are never translated; only the
+ * name, description and consequence copy are, under
+ * `capabilities:capability.<id>.*`. An id with no entry here keeps rendering
+ * the raw id and the generic consequence, exactly as before.
+ */
+const KNOWN_CAPABILITIES = [
+  'redaction',
+  'research',
+  'mail',
+  'demo',
+  'consoles',
+  'local-models',
+] as const;
 
-const JOB_META: Record<string, { name: string; description: string }> = {
-  dreaming: {
-    name: 'Nightly dreaming',
-    description:
-      'Consolidates the day’s memories: duplicates merge, contradictions surface, stale facts age out.',
-  },
-  sweep: {
-    name: 'Receipt sweep',
-    description:
-      'Verifies every deletion receipt against the stores each night, so forgetting stays provable.',
-  },
-};
+const KNOWN_JOBS = ['dreaming', 'sweep'] as const;
+
+function capabilityMeta(id: string): { name: string; description: string; consequence: string } {
+  if (!(KNOWN_CAPABILITIES as readonly string[]).includes(id)) {
+    return { name: id, description: '', consequence: i18next.t('capabilities:genericConsequence') };
+  }
+  return {
+    name: i18next.t(`capabilities:capability.${id}.name`),
+    description: i18next.t(`capabilities:capability.${id}.description`),
+    consequence: i18next.t(`capabilities:capability.${id}.consequence`),
+  };
+}
+
+function jobMeta(id: string): { name: string; description: string } {
+  if (!(KNOWN_JOBS as readonly string[]).includes(id)) return { name: id, description: '' };
+  return {
+    name: i18next.t(`capabilities:job.${id}.name`),
+    description: i18next.t(`capabilities:job.${id}.description`),
+  };
+}
 
 export function capabilityView(summary: CapabilitySummary): CapabilityView {
-  const meta = CAPABILITY_META[summary.id] ?? {
-    name: summary.id,
-    description: '',
-    consequence: 'This capability is enabled but not working.',
-  };
+  const meta = capabilityMeta(summary.id);
   const base = {
     id: summary.id,
     name: meta.name,
@@ -101,7 +77,7 @@ export function capabilityView(summary: CapabilitySummary): CapabilityView {
   if (summary.state === 'unreachable') {
     return {
       ...base,
-      stateLabel: 'enabled, unreachable',
+      stateLabel: i18next.t('capabilities:state.unreachable'),
       icon: '⚠',
       tone: 'danger',
       consequence: meta.consequence,
@@ -112,16 +88,16 @@ export function capabilityView(summary: CapabilitySummary): CapabilityView {
   if (summary.state === 'off') {
     return {
       ...base,
-      stateLabel: 'off',
+      stateLabel: i18next.t('capabilities:state.off'),
       icon: '○',
       tone: 'neutral',
       consequence: null,
-      enableHint: `run: cogeto features enable ${summary.id}`,
+      enableHint: i18next.t('capabilities:enableHint', { id: summary.id }),
     };
   }
   return {
     ...base,
-    stateLabel: 'on',
+    stateLabel: i18next.t('capabilities:state.on'),
     icon: '●',
     tone: 'positive',
     consequence: null,
@@ -143,7 +119,7 @@ export interface JobView {
 }
 
 export function jobView(summary: ScheduledJobSummary): JobView {
-  const meta = JOB_META[summary.id] ?? { name: summary.id, description: '' };
+  const meta = jobMeta(summary.id);
   const base = {
     id: summary.id,
     name: meta.name,
@@ -154,22 +130,31 @@ export function jobView(summary: ScheduledJobSummary): JobView {
   if (summary.state === 'overdue') {
     return {
       ...base,
-      stateLabel: 'overdue',
+      stateLabel: i18next.t('capabilities:jobState.overdue'),
       icon: '⚠',
       tone: 'danger',
-      consequence: `No successful run within ${summary.overdueAfterHours} hours. ${
-        summary.lastRunAt ? 'The nightly job is not completing.' : 'The job has never completed.'
-      }`,
+      consequence: i18next.t(
+        summary.lastRunAt
+          ? 'capabilities:overdueConsequence.notCompleting'
+          : 'capabilities:overdueConsequence.neverCompleted',
+        { hours: summary.overdueAfterHours },
+      ),
     };
   }
   if (summary.state === 'failing') {
     return {
       ...base,
-      stateLabel: 'failing',
+      stateLabel: i18next.t('capabilities:jobState.failing'),
       icon: '✗',
       tone: 'danger',
-      consequence: summary.error ?? 'The last run did not complete.',
+      consequence: summary.error ?? i18next.t('capabilities:failingConsequence'),
     };
   }
-  return { ...base, stateLabel: 'ok', icon: '●', tone: 'positive', consequence: null };
+  return {
+    ...base,
+    stateLabel: i18next.t('capabilities:jobState.ok'),
+    icon: '●',
+    tone: 'positive',
+    consequence: null,
+  };
 }

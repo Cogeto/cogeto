@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type {
   LaterFate,
   MemoryListItem,
@@ -9,6 +10,8 @@ import type {
 } from '@cogeto/shared';
 import { fetchTimeline, fetchTimelineAt, fetchTimelineDiff } from '../api';
 import type { Session } from '../auth/oidc';
+import { i18next } from '../i18n';
+import { formatDate } from '../i18n/format';
 import { PAST_CHIP } from './status';
 import { EmptyState, ErrorState, SectionTitle, SkeletonRows, StatusChip, Tabs } from './ui';
 
@@ -17,30 +20,34 @@ type Mode = 'timeline' | 'at' | 'compare';
 /** A whole-day ISO instant (UTC midnight) for the date inputs. */
 const toInstant = (day: string): string => new Date(`${day}T00:00:00.000Z`).toISOString();
 const toDay = (iso: string): string => iso.slice(0, 10);
-const humanDate = (iso: string): string =>
-  new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+const humanDate = (iso: string): string => formatDate(iso);
 
-/** Source kind → a natural phrase for the "what changed it" reading. */
+/**
+ * Source kind → a natural phrase for the "what changed it" reading. The source
+ * TYPE is an API value; only its phrasing is translated, and an unrecognised
+ * type falls back to the generic form, as before.
+ */
 function sourceLabel(sourceType: string): string {
   switch (sourceType) {
     case 'user_note':
-      return 'a note';
+      return i18next.t('timeline:sourcePhrase.note');
     case 'chat':
-      return 'a chat message';
+      return i18next.t('timeline:sourcePhrase.chat');
     case 'email':
-      return 'an email';
+      return i18next.t('timeline:sourcePhrase.email');
     case 'file_upload':
-      return 'a document';
+      return i18next.t('timeline:sourcePhrase.document');
     default:
-      return `a ${sourceType.replace('_', ' ')}`;
+      return i18next.t('timeline:sourcePhrase.other', { kind: sourceType.replace('_', ' ') });
   }
 }
 
-const FATE_LABEL: Record<LaterFate, string> = {
-  still_current: 'still current',
-  replaced: 'later replaced',
-  outdated: 'later marked outdated',
-  expired: 'later expired',
+/** LATER FATE is an API value; the map from value to key is explicit. */
+const FATE_KEY: Record<LaterFate, string> = {
+  still_current: 'fate.stillCurrent',
+  replaced: 'fate.replaced',
+  outdated: 'fate.outdated',
+  expired: 'fate.expired',
 };
 
 /**
@@ -68,6 +75,7 @@ export function TimelineView({
   /** Open the governance drawer (with the source) for a memory. */
   onOpenMemory: (memoryId: string) => void;
 }) {
+  const { t } = useTranslation('timeline');
   const [mode, setMode] = useState<Mode>(initialMode);
   const today = new Date().toISOString().slice(0, 10);
   const [at, setAt] = useState(initialAt ? toDay(initialAt) : today);
@@ -80,9 +88,9 @@ export function TimelineView({
         active={mode}
         onChange={setMode}
         tabs={[
-          { key: 'timeline', label: 'Timeline' },
-          { key: 'at', label: 'At a date' },
-          { key: 'compare', label: 'Compare two dates' },
+          { key: 'timeline', label: t('tab.timeline') },
+          { key: 'at', label: t('tab.at') },
+          { key: 'compare', label: t('tab.compare') },
         ]}
       />
       {mode === 'timeline' && (
@@ -122,17 +130,17 @@ function TimelinePanel({
   subject: string;
   onOpenMemory: (id: string) => void;
 }) {
+  const { t } = useTranslation('timeline');
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['timeline', subject],
     queryFn: () => fetchTimeline(session, subject),
   });
-  if (isPending) return <SkeletonRows rows={4} label="Loading the timeline…" />;
-  if (isError)
-    return <ErrorState onRetry={() => void refetch()}>Couldn’t load this timeline.</ErrorState>;
+  if (isPending) return <SkeletonRows rows={4} label={t('spans.loading')} />;
+  if (isError) return <ErrorState onRetry={() => void refetch()}>{t('spans.error')}</ErrorState>;
   if (data.spans.length === 0)
     return (
-      <EmptyState icon="🕰" title={`Nothing on record about ${subject}.`}>
-        When you capture facts that mention {subject}, their history appears here.
+      <EmptyState icon="🕰" title={t('spans.empty.title', { subject })}>
+        {t('spans.empty.body', { subject })}
       </EmptyState>
     );
 
@@ -152,9 +160,13 @@ function SpanRow({
   span: TimelineSpan;
   onOpenMemory: (id: string) => void;
 }) {
+  const { t } = useTranslation('timeline');
   const period = span.effectiveUntil
-    ? `${humanDate(span.effectiveFrom)} → ${humanDate(span.effectiveUntil)}`
-    : `since ${humanDate(span.effectiveFrom)}`;
+    ? t('spans.period', {
+        from: humanDate(span.effectiveFrom),
+        until: humanDate(span.effectiveUntil),
+      })
+    : t('spans.periodOpen', { from: humanDate(span.effectiveFrom) });
   return (
     <li className="relative">
       {/* Rail marker: teal for a currently-held fact, muted for a past one. */}
@@ -175,7 +187,7 @@ function SpanRow({
           type="button"
           onClick={() => onOpenMemory(span.memory.id)}
           className="block w-full text-left text-sm text-slate-800 hover:underline"
-          title="Open this fact: its verification, provenance and source"
+          title={t('spans.openFact')}
         >
           {span.memory.content}
         </button>
@@ -183,11 +195,13 @@ function SpanRow({
           <StatusChip status={span.memory.status} />
           {span.current && (
             <span className="rounded-full bg-brand-teal-surface dark:bg-brand-teal/15 px-2 py-0.5 font-semibold text-brand-teal-ink dark:text-brand-teal">
-              current
+              {t('spans.current')}
             </span>
           )}
           {span.pastBelief && (
-            <span className={`rounded-full px-2 py-0.5 font-semibold ${PAST_CHIP}`}>past</span>
+            <span className={`rounded-full px-2 py-0.5 font-semibold ${PAST_CHIP}`}>
+              {t('spans.past')}
+            </span>
           )}
           <span className="text-slate-400">{period}</span>
           {span.supersededBy && (
@@ -196,7 +210,7 @@ function SpanRow({
               onClick={() => onOpenMemory(span.supersededBy!)}
               className="text-brand-teal-ink dark:text-brand-teal hover:underline"
             >
-              → what replaced it
+              {t('spans.whatReplacedIt')}
             </button>
           )}
         </div>
@@ -219,6 +233,7 @@ function PointInTimePanel({
   onDay: (day: string) => void;
   onOpenMemory: (id: string) => void;
 }) {
+  const { t } = useTranslation('timeline');
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['timeline-at', subject, day],
     queryFn: () => fetchTimelineAt(session, subject, toInstant(day)),
@@ -227,7 +242,7 @@ function PointInTimePanel({
   return (
     <div className="space-y-3">
       <label className="flex items-center gap-2 text-sm text-slate-600">
-        Move to a date
+        {t('at.moveToDate')}
         <input
           type="date"
           value={day}
@@ -237,15 +252,12 @@ function PointInTimePanel({
         />
       </label>
       <p className="text-xs text-slate-400">
-        What Cogeto understood about {subject} on {humanDate(toInstant(day))}, including facts since
-        replaced, each labelled with what happened to it later.
+        {t('at.explainer', { subject, date: humanDate(toInstant(day)) })}
       </p>
-      {isPending && <SkeletonRows rows={3} label="Reconstructing that moment…" />}
-      {isError && (
-        <ErrorState onRetry={() => void refetch()}>Couldn’t reconstruct that moment.</ErrorState>
-      )}
+      {isPending && <SkeletonRows rows={3} label={t('at.loading')} />}
+      {isError && <ErrorState onRetry={() => void refetch()}>{t('at.error')}</ErrorState>}
       {data && data.facts.length === 0 && (
-        <EmptyState icon="◦" title={`Nothing was on record about ${subject} then.`} />
+        <EmptyState icon="◦" title={t('at.empty', { subject })} />
       )}
       {data && data.facts.length > 0 && (
         <ul className="space-y-2">
@@ -265,6 +277,7 @@ function PitFactRow({
   fact: PointInTimeFact;
   onOpenMemory: (id: string) => void;
 }) {
+  const { t } = useTranslation('timeline');
   const past = fact.laterFate !== 'still_current';
   return (
     <li
@@ -286,7 +299,7 @@ function PitFactRow({
         <span
           className={`rounded-full px-2 py-0.5 font-semibold ${past ? PAST_CHIP : 'bg-brand-teal-surface dark:bg-brand-teal/15 text-brand-teal-ink dark:text-brand-teal'}`}
         >
-          {FATE_LABEL[fact.laterFate]}
+          {t(FATE_KEY[fact.laterFate])}
         </span>
         {fact.supersededBy && (
           <button
@@ -294,7 +307,7 @@ function PitFactRow({
             onClick={() => onOpenMemory(fact.supersededBy!)}
             className="text-brand-teal-ink dark:text-brand-teal hover:underline"
           >
-            → what replaced it
+            {t('spans.whatReplacedIt')}
           </button>
         )}
       </div>
@@ -320,6 +333,7 @@ function ComparePanel({
   onTo: (day: string) => void;
   onOpenMemory: (id: string) => void;
 }) {
+  const { t } = useTranslation('timeline');
   const ready = Boolean(from && to && from <= to);
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['timeline-diff', subject, from, to],
@@ -331,7 +345,7 @@ function ComparePanel({
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-3 text-sm text-slate-600">
         <label className="flex flex-col gap-1">
-          From
+          {t('compare.from')}
           <input
             type="date"
             value={from}
@@ -341,7 +355,7 @@ function ComparePanel({
           />
         </label>
         <label className="flex flex-col gap-1">
-          To
+          {t('compare.to')}
           <input
             type="date"
             value={to}
@@ -351,29 +365,29 @@ function ComparePanel({
           />
         </label>
       </div>
-      {!ready && (
-        <p className="text-xs text-slate-400">Pick two dates to see what changed between them.</p>
-      )}
-      {ready && isPending && <SkeletonRows rows={3} label="Comparing…" />}
+      {!ready && <p className="text-xs text-slate-400">{t('compare.pickTwo')}</p>}
+      {ready && isPending && <SkeletonRows rows={3} label={t('compare.loading')} />}
       {ready && isError && (
-        <ErrorState onRetry={() => void refetch()}>Couldn’t compare those dates.</ErrorState>
+        <ErrorState onRetry={() => void refetch()}>{t('compare.error')}</ErrorState>
       )}
       {data && nothing && (
         <EmptyState
           icon="＝"
           tone="positive"
-          title={`Nothing changed about ${subject} between ${humanDate(toInstant(from))} and ${humanDate(toInstant(to))}.`}
+          title={t('compare.nothingChanged', {
+            subject,
+            from: humanDate(toInstant(from)),
+            to: humanDate(toInstant(to)),
+          })}
         >
-          {data.unchanged.length > 0
-            ? 'Everything on record then still held.'
-            : 'There was nothing on record in that window.'}
+          {data.unchanged.length > 0 ? t('compare.everythingHeld') : t('compare.nothingOnRecord')}
         </EmptyState>
       )}
       {data && !nothing && (
         <div className="space-y-4">
           {data.changed.length > 0 && (
             <section className="space-y-2">
-              <SectionTitle as="h3">What changed</SectionTitle>
+              <SectionTitle as="h3">{t('compare.whatChanged')}</SectionTitle>
               {data.changed.map((change) => (
                 <ChangeRow
                   key={change.before.id}
@@ -388,7 +402,7 @@ function ComparePanel({
           )}
           {data.added.length > 0 && (
             <DiffList
-              title="What you learned"
+              title={t('compare.whatYouLearned')}
               items={data.added}
               tone="add"
               onOpenMemory={onOpenMemory}
@@ -396,7 +410,7 @@ function ComparePanel({
           )}
           {data.removed.length > 0 && (
             <DiffList
-              title="What became outdated"
+              title={t('compare.whatBecameOutdated')}
               items={data.removed}
               tone="remove"
               onOpenMemory={onOpenMemory}
@@ -421,13 +435,22 @@ function ChangeRow({
   toDay: string;
   onOpenMemory: (id: string) => void;
 }) {
-  // "Explain this change" hands off to chat with the question ready (never auto-sent).
-  const question = `What changed about ${subject}, and what caused it, between ${humanDate(toInstant(fromDay))} and ${humanDate(toInstant(toDay))}?`;
+  const { t } = useTranslation('timeline');
+  // "Explain this change" hands off to chat with the question ready (never
+  // auto-sent). It is prefilled in the INTERFACE language, so a German user
+  // hands a German question to the composer.
+  const question = t('change.chatQuestion', {
+    subject,
+    from: humanDate(toInstant(fromDay)),
+    to: humanDate(toInstant(toDay)),
+  });
   // Past-belief framing, same story the chat answer tells.
   return (
     <div className="rounded-lg border border-slate-200 bg-surface p-3 text-sm">
       <p className="text-slate-700">
-        <span className="text-slate-400">In {humanDate(toInstant(fromDay))}, </span>
+        <span className="text-slate-400">
+          {t('change.inDate', { date: humanDate(toInstant(fromDay)) })}{' '}
+        </span>
         <button
           type="button"
           onClick={() => onOpenMemory(change.before.id)}
@@ -438,8 +461,10 @@ function ChangeRow({
       </p>
       <p className="mt-1 text-slate-700">
         <span className="text-slate-400">
-          By {humanDate(toInstant(toDay))}, {sourceLabel(change.after.sourceType)} changed it
-          to{' '}
+          {t('change.byDate', {
+            date: humanDate(toInstant(toDay)),
+            source: sourceLabel(change.after.sourceType),
+          })}{' '}
         </span>
         <button
           type="button"
@@ -453,7 +478,7 @@ function ChangeRow({
         href={`/chat?q=${encodeURIComponent(question)}`}
         className="mt-2 inline-block text-xs text-brand-teal-ink dark:text-brand-teal hover:underline"
       >
-        Explain this change in chat →
+        {t('change.explainInChat')}
       </a>
     </div>
   );

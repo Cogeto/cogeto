@@ -1,0 +1,98 @@
+{
+  "kind": {
+    "note": "note",
+    "file": "file",
+    "source": "source"
+  },
+  "kindLabel": {
+    "user_note": "note",
+    "file": "file",
+    "chat": "conversation",
+    "email": "email",
+    "web": "web"
+  },
+  "scopeLine": "scope: {{scope}}",
+  "fileState": {
+    "processing": "Extracting…",
+    "done": "Extracted",
+    "error": "Extraction failed"
+  },
+  "upload": {
+    "dropzone": "Drop a PDF or DOCX here, or click to choose",
+    "uploading": "Uploading…",
+    "hint": "Its facts are extracted, verified and added to your memories.",
+    "scope": "Scope",
+    "sensitive": "Sensitive",
+    "discard": "Discard original after extraction",
+    "discardTitle": "Delete the original after extraction. Keep only the derived memories.",
+    "discardWarning": "The uploaded file will be deleted once its facts are extracted. Only the verified memories are kept. This cannot be undone.",
+    "state": {
+      "processing": "Extracting and verifying…",
+      "done": "Done",
+      "error": "Extraction failed. The file could not be read."
+    }
+  },
+  "drawer": {
+    "title": "Source · {{kind}}"
+  },
+  "note": {
+    "loading": "Loading note…",
+    "error": "We couldn't load this note right now.",
+    "captured": "Captured {{when}}"
+  },
+  "file": {
+    "loading": "Loading file…",
+    "error": "We couldn't load this file source.",
+    "discardedName": "Discarded document",
+    "uploadedName": "Uploaded document",
+    "discardedNote": "Original discarded after extraction. Only the derived memories remain. Provenance is intact; there is nothing to download.",
+    "uploaded": "· uploaded {{when}}",
+    "preparing": "Preparing…",
+    "downloadOriginal": "Download original"
+  },
+  "conversation": {
+    "loading": "Loading conversation…",
+    "error": "We couldn't load the conversation.",
+    "lead": "From your conversation: <title>{{title}}</title>. The highlighted message is the source; nearby turns are shown for context.",
+    "openInThread": "Open in the conversation",
+    "rememberedSuffix": " · remembered"
+  },
+  "email": {
+    "loading": "Loading email…",
+    "error": "We couldn't load this email.",
+    "from": "From:",
+    "to": "To:",
+    "originallyFrom": "Originally from: <sender>{{sender}}</sender>. A reply will go to them, not the forwarder.",
+    "forwardUnknownSender": "This arrived as a forward; the original sender couldn't be recovered, so a reply will leave the recipient for you to fill in.",
+    "bodyFrameTitle": "Email body",
+    "noBody": "(no body)",
+    "attachments": "Attachments",
+    "attachmentFallback": "attachment",
+    "retained": "retained",
+    "draftCreated": "Draft created. Review it on the <link>Approvals</link> page, then send it from your own mail client. Cogeto never sends mail.",
+    "draftExplainer": "Cogeto will write a suggested reply you can edit and send yourself. It never sends mail. You approve and send from your own client.",
+    "draftReply": "Draft reply",
+    "drafting": "Drafting…"
+  },
+  "web": {
+    "loading": "Loading page…",
+    "error": "We couldn't load this web source.",
+    "fetched": "Fetched {{when}}. Facts from this page are “as of” that moment."
+  },
+  "delete": {
+    "dangerZone": "Danger zone",
+    "derivedMemories_one": "{{count}} derived memory",
+    "derivedMemories_many": "{{count}} derived memories",
+    "derivedMemories_other": "{{count}} derived memories",
+    "storedFiles_one": "{{count}} stored file",
+    "storedFiles_many": "{{count}} stored files",
+    "storedFiles_other": "{{count}} stored files",
+    "confirm": "This will PERMANENTLY remove this {{subject}}, {{memories}}. A signed deletion receipt will be issued as proof. This cannot be undone.\n\nDelete?",
+    "confirmWithFiles": "This will PERMANENTLY remove this {{subject}}, {{memories}} and {{files}}. A signed deletion receipt will be issued as proof. This cannot be undone.\n\nDelete?",
+    "impact": "Deleting this source removes it, {{memories}}, permanently, with a signed receipt as proof.",
+    "impactWithFiles": "Deleting this source removes it, {{memories}} and {{files}}, permanently, with a signed receipt as proof.",
+    "computingImpact": "Computing what deletion would remove…",
+    "deleteSource": "Delete source…",
+    "deleting": "Deleting…"
+  }
+}

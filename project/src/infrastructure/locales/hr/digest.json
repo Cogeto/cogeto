@@ -1,0 +1,12 @@
+{
+  "conflict": "Pronađen je sukob oko {{subject}}: tvoja odluka",
+  "merged": "Spojene su dvije bilješke o {{subject}}",
+  "updated": "Ažurirano {{subject}}, novija činjenica zamijenila je stariju",
+  "quiet": "Obveza oko {{subject}} je utihnula",
+  "outdated_one": "Označen {{count}} zapis kao zastario, datum mu je prošao",
+  "outdated_few": "Označeno {{count}} zapisa kao zastarjelo, datumi su im prošli",
+  "outdated_other": "Označeno {{count}} zapisa kao zastarjelo, datumi su im prošli",
+  "overflow_one": "…i još {{count}} promjena",
+  "overflow_few": "…i još {{count}} promjena",
+  "overflow_other": "…i još {{count}} promjena"
+}

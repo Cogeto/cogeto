@@ -1,4 +1,5 @@
 import type { AttentionGroup, AttentionItem, AttentionKind } from '@cogeto/shared';
+import { i18next } from '../i18n';
 
 /**
  * Pure presentation model for the attention surface. Kept
@@ -9,8 +10,6 @@ import type { AttentionGroup, AttentionItem, AttentionKind } from '@cogeto/share
 
 export interface GroupMeta {
   key: AttentionGroup;
-  /** Human section heading. */
-  label: string;
   /** A glyph — the non-color group signal (aria-hidden; the label carries meaning). */
   icon: string;
 }
@@ -35,12 +34,21 @@ export const GROUP_ORDER: AttentionGroup[] = [
 ];
 
 export const GROUP_META: Record<AttentionGroup, GroupMeta> = {
-  open_loops: { key: 'open_loops', label: 'Due & overdue', icon: '◷' },
-  quiet: { key: 'quiet', label: 'Gone quiet', icon: '☾' },
-  review: { key: 'review', label: 'Facts that disagree', icon: '⚠' },
-  approvals: { key: 'approvals', label: 'Awaiting your approval', icon: '✓' },
-  overnight: { key: 'overnight', label: 'Last night', icon: '✦' },
+  open_loops: { key: 'open_loops', icon: '◷' },
+  quiet: { key: 'quiet', icon: '☾' },
+  review: { key: 'review', icon: '⚠' },
+  approvals: { key: 'approvals', icon: '✓' },
+  overnight: { key: 'overnight', icon: '✦' },
 };
+
+/**
+ * The translated section heading for a group. The GROUP VALUE is the server's
+ * vocabulary and is never translated; only its display name is
+ * (`dashboard:attention.group.<value>`).
+ */
+export function groupLabel(group: AttentionGroup): string {
+  return i18next.t(`dashboard:attention.group.${group}`);
+}
 
 /** Per-kind glyph — every item shows this, so meaning never rides on color. */
 export const KIND_ICON: Record<AttentionKind, string> = {

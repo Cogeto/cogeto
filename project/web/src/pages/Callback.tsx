@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { completeLogin } from '../auth/oidc';
 import type { Session } from '../auth/oidc';
 
 export function Callback({ onSession }: { onSession: (session: Session) => void }) {
+  const { t } = useTranslation('auth');
   const [error, setError] = useState<string | null>(null);
   const exchanged = useRef(false);
 
@@ -23,11 +25,11 @@ export function Callback({ onSession }: { onSession: (session: Session) => void 
         <div className="text-center">
           <p className="mb-3 text-sm text-red-600 dark:text-red-300">{error}</p>
           <a href="/" className="text-sm font-medium text-brand-navy underline">
-            Back to sign-in
+            {t('callback.backToSignIn')}
           </a>
         </div>
       ) : (
-        <p className="text-sm text-slate-500">Completing sign-in…</p>
+        <p className="text-sm text-slate-500">{t('callback.completing')}</p>
       )}
     </main>
   );
