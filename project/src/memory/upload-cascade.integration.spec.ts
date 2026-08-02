@@ -165,7 +165,7 @@ describe('deletion cascade over a real uploaded file (F1 handoff §4)', () => {
       new InMemoryDailyCounters(),
       { captureMax: 1_000_000, uploadMax: 1_000_000 },
     );
-    saga = new DeletionSaga(tdb.db, [], vectors);
+    saga = new DeletionSaga(tdb.db, { vectors });
     executor = new DeletionExecutor(vectors, objects, keyDir);
   }, 120_000);
 

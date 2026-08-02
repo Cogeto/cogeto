@@ -198,9 +198,11 @@ describe('email deletion cascade (integration: real Postgres + Qdrant + MinIO)',
         intakeToken: 't',
       },
     );
-    saga = new DeletionSaga(tdb.db, [new EmailSourceDeletion()], vectors, [
-      new ReplyDraftCascade(),
-    ]);
+    saga = new DeletionSaga(tdb.db, {
+      adapters: [new EmailSourceDeletion()],
+      vectors,
+      derivedCascades: [new ReplyDraftCascade()],
+    });
     executor = new DeletionExecutor(vectors, objects, keyDir);
   }, 180_000);
 

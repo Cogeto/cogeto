@@ -148,7 +148,7 @@ describe('conversation deletion cascade (integration: real Postgres + Qdrant + M
     });
     await objects.ensureBucket();
     store = new MemoryStore(tdb.db, vectors);
-    saga = new DeletionSaga(tdb.db, [new ConversationSourceDeletion()], vectors);
+    saga = new DeletionSaga(tdb.db, { adapters: [new ConversationSourceDeletion()], vectors });
     executor = new DeletionExecutor(vectors, objects, keyDir);
   }, 180_000);
 

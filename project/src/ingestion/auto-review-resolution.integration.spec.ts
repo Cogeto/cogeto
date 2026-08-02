@@ -536,9 +536,10 @@ describe('automatic review resolution (integration, real Postgres + Qdrant)', ()
     // The saga with the cascade bound exactly as the composition roots bind it:
     // memory owns the port, ingestion owns the table, neither reaches into the
     // other.
-    const saga = new DeletionSaga(tdb.db, [new FakeSourceDeletion(reader)], undefined, [
-      new SuppressedFactCascade(createSuppressedFactLog(tdb.db)),
-    ]);
+    const saga = new DeletionSaga(tdb.db, {
+      adapters: [new FakeSourceDeletion(reader)],
+      derivedCascades: [new SuppressedFactCascade(createSuppressedFactLog(tdb.db))],
+    });
 
     const { receiptId } = await saga.requestSourceDeletion(owner, 'user_note', sourceId);
     expect(receiptId).not.toBeNull();

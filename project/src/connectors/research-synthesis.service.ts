@@ -15,7 +15,6 @@ import {
   buildContextBlock,
   DEFAULT_INSTANCE_TIMEZONE,
   EMPTY_USER_CONTEXT,
-  INSTANCE_TIMEZONE,
   serverTranslator,
   UserContextService,
 } from '../infrastructure/index';
@@ -26,7 +25,7 @@ import {
   untrustedBoundary,
 } from '../model-gateway/index';
 import type { PromptArtifact } from '../model-gateway/index';
-import { CONVERSATION_APPEND, RetrievalService } from '../retrieval/index';
+import { RetrievalService } from '../retrieval/index';
 import type { ConversationAppendPort } from '../retrieval/index';
 import { ResearchService } from './research.service';
 import type { ResearchRunRow, WebPageRow } from './persistence/tables';
@@ -52,30 +51,46 @@ const MAX_PAGES = 8;
 const PAGE_EXCERPT_CHARS = 6000;
 const MAX_MEMORY_FACTS = 6;
 
+/**
+ * ResearchSynthesisService's optional collaborators, by NAME (V2.0 item 3.6
+ * part 4). The old constructor was the hazard at its worst: an `@Optional()`
+ * parameter sat BETWEEN two required ones, so a manual construction that
+ * dropped it shifted every later argument one place left, silently.
+ */
+export interface ResearchSynthesisOptions {
+  /** Absent in the WORKER composition: server-side conclusion synthesises
+   * web-only ([W#] citations); the interactive app path always has it, so
+   * memory claims still cite memories there. */
+  retrieval?: RetrievalService;
+  /** Per-user context + language. Absent in bare test harnesses. */
+  userContext?: UserContextService;
+  instanceTimeZone?: string;
+  /** The conversation-append seam (retrieval owns it): where a
+   * chat-invoked run's concluded answer lands as a persistent message. */
+  conversationAppend?: ConversationAppendPort;
+}
+
+export const RESEARCH_SYNTHESIS_OPTIONS = Symbol('RESEARCH_SYNTHESIS_OPTIONS');
+
 @Injectable()
 export class ResearchSynthesisService {
   private prompt?: PromptArtifact;
+  private readonly retrieval?: RetrievalService;
+  private readonly userContext?: UserContextService;
+  private readonly instanceTimeZone: string;
+  private readonly conversationAppend?: ConversationAppendPort;
 
   constructor(
     private readonly research: ResearchService,
-    /** Absent in the WORKER composition: server-side
-     * conclusion synthesises web-only ([W#] citations); the interactive app
-     * path always has it, so memory claims still cite memories there. */
-    @Optional()
-    private readonly retrieval: RetrievalService | undefined,
     private readonly gateway: ModelGateway,
-    /** Per-user context + language. Absent in bare test harnesses. */
-    @Optional()
-    private readonly userContext?: UserContextService,
-    @Optional()
-    @Inject(INSTANCE_TIMEZONE)
-    private readonly instanceTimeZone: string = DEFAULT_INSTANCE_TIMEZONE,
-    /** The conversation-append seam (retrieval owns it): where a
-     * chat-invoked run's concluded answer lands as a persistent message. */
-    @Optional()
-    @Inject(CONVERSATION_APPEND)
-    private readonly conversationAppend?: ConversationAppendPort,
-  ) {}
+    /** Every optional collaborator, by NAME — see ResearchSynthesisOptions. */
+    @Optional() @Inject(RESEARCH_SYNTHESIS_OPTIONS) options?: ResearchSynthesisOptions,
+  ) {
+    this.retrieval = options?.retrieval;
+    this.userContext = options?.userContext;
+    this.instanceTimeZone = options?.instanceTimeZone ?? DEFAULT_INSTANCE_TIMEZONE;
+    this.conversationAppend = options?.conversationAppend;
+  }
 
   async synthesise(principal: Principal, runId: string): Promise<ResearchAnswerDto> {
     const run = await this.research.getRun(principal, runId);

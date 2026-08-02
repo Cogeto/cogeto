@@ -1,5 +1,12 @@
 import { Module } from '@nestjs/common';
-import { DatabaseModule, LimitsModule, UserContextModule } from '../infrastructure/index';
+import {
+  DatabaseModule,
+  DEFAULT_INSTANCE_TIMEZONE,
+  INSTANCE_TIMEZONE,
+  LimitsModule,
+  UserContextModule,
+  UserContextService,
+} from '../infrastructure/index';
 import { IdentityModule } from '../identity/index';
 import { MemoryModule } from '../memory/index';
 import {
@@ -16,10 +23,12 @@ import {
   FileSourceReader,
   NotesSourceDeletion,
   NotesSourceReader,
+  RESEARCH_SYNTHESIS_OPTIONS,
   ResearchSynthesisService,
   WebSourceDeletion,
   WebSourceReader,
 } from '../connectors/index';
+import type { ResearchSynthesisOptions } from '../connectors/index';
 import {
   PassportCascadeModule,
   PassportExportCascade,
@@ -31,8 +40,10 @@ import {
   ChatSourceDeletion,
   ChatSourceModule,
   ChatSourceReader,
+  CONVERSATION_APPEND,
   ConversationSourceDeletion,
 } from '../retrieval/index';
+import type { ConversationAppendPort } from '../retrieval/index';
 import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG, mailOptions, redactionOptions, researchOptions } from './config';
 import type { CogetoConfig } from './config';
@@ -166,10 +177,39 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
     providers: [
       { provide: COGETO_CONFIG, useValue: config },
       // The worker's synthesis for server-side research conclusion : composed HERE (not in ConnectorsModule) because retrieval is
-      // deliberately absent in this process — the @Optional seam makes the
+      // deliberately absent in this process — the named-options seam makes the
       // stored answer web-only ([W#]), while the app's ResearchChatModule
       // instance keeps memory citations for interactive synthesis.
       ResearchSynthesisService,
+      // The synthesis collaborators, by TOKEN into a named bag (V2.0 item 3.6
+      // part 4). `retrieval` is DELIBERATELY absent in this root — stated
+      // here rather than implied by resolution order — and the factory
+      // asserts what the worker DOES require, so a wiring regression fails
+      // boot instead of silently degrading conclusion phrasing.
+      {
+        provide: RESEARCH_SYNTHESIS_OPTIONS,
+        useFactory: (
+          userContext: UserContextService,
+          conversationAppend: ConversationAppendPort,
+          timeZone?: string,
+        ): ResearchSynthesisOptions => {
+          if (!userContext || !conversationAppend) {
+            throw new Error(
+              'worker root: synthesis wiring incomplete (userContext/conversationAppend)',
+            );
+          }
+          return {
+            userContext,
+            conversationAppend,
+            instanceTimeZone: timeZone ?? DEFAULT_INSTANCE_TIMEZONE,
+          };
+        },
+        inject: [
+          UserContextService,
+          CONVERSATION_APPEND,
+          { token: INSTANCE_TIMEZONE, optional: true },
+        ],
+      },
     ],
   })
   class WorkerRootModule {}

@@ -210,7 +210,7 @@ describe('research-brief skill: the brief (integration)', () => {
     const userContext = {
       get: async () => ({ ...EMPTY_USER_CONTEXT, preferredLanguage: 'hr' as const }),
     } as unknown as UserContextService;
-    engine = new SkillEngine(tdb.db, runs, research, gateway, store, quota, userContext);
+    engine = new SkillEngine(tdb.db, runs, research, gateway, store, quota, { userContext });
 
     // Seed the profile: agreed terms (active) + a headcount note the web will
     // contradict — reconciliation's verdict simulated as the stored status.

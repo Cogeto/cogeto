@@ -107,16 +107,10 @@ describe('instance context in chat (integration: real Postgres, scripted gateway
     const retrieval = {
       retrieve: async () => ({ memories: nextMemories, mode: 'default' }),
     } as unknown as RetrievalService;
-    chat = new ChatService(
-      tdb.db,
-      retrieval,
-      gateway,
-      new UserDirectory(tdb.db),
-      undefined,
-      undefined,
-      'Europe/Zagreb', // the instance timezone — the user's override must win
+    chat = new ChatService(tdb.db, retrieval, gateway, new UserDirectory(tdb.db), {
+      timeZone: 'Europe/Zagreb', // the instance timezone — the user's override must win
       userContext,
-    );
+    });
     // All scripted turns share one conversation, like the SPA's thread.
     conversationId = (await chat.createConversation(owner)).id;
   }, 120_000);

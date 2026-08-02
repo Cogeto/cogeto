@@ -462,7 +462,7 @@ async function main(): Promise<void> {
         qdrant: { url: qdrantUrl, embeddingModel, collection },
       });
       await memoryStore.ensureIndexReady();
-      const retrieval = new RetrievalService(memoryStore, gateway, db);
+      const retrieval = new RetrievalService(memoryStore, gateway, { db });
       // The chat → email-reply resolver: draft-a-reply cases seed
       // emails and exercise the real drafting path (the confirmation text is
       // deterministic; the model only writes the draft body, which is not graded).
@@ -543,17 +543,12 @@ async function main(): Promise<void> {
           },
         );
       }
-      const chat = new ChatService(
-        db,
-        retrieval,
-        gateway,
-        new UserDirectory(db),
+      const chat = new ChatService(db, retrieval, gateway, new UserDirectory(db), {
         replyResolver,
         researchResolver,
-        undefined,
-        userContextService,
+        userContext: userContextService,
         skillResolver,
-      );
+      });
       const anchor = new Date(testCase.anchor);
 
       // Seed emails ( reply-intent cases) directly — no public seed API.
@@ -738,7 +733,7 @@ async function main(): Promise<void> {
               });
               webMemories += (await memoryStore.listBySourceSystem('web', pageId)).length;
             }
-            const synthesis = new ResearchSynthesisService(research, retrieval, gateway);
+            const synthesis = new ResearchSynthesisService(research, gateway, { retrieval });
             const answer = await synthesis.synthesise(principal, run.id);
             const cited = answer.citations.some((c) => c.kind === 'web');
             const included = testCase.research.answer_must_include.every((sub) =>
@@ -804,7 +799,7 @@ async function main(): Promise<void> {
                 skillQueriesMax: 6,
                 skillPagesPerQuery: 1,
               },
-              userContextService,
+              { userContext: userContextService },
             );
             // The plan gate, one interaction: keep the first two LIVE-planned
             // queries verbatim, remove the rest (removal is part of the claim).

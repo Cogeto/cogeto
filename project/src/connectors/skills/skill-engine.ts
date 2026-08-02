@@ -13,7 +13,6 @@ import {
   DEFAULT_INSTANCE_TIMEZONE,
   DRIZZLE,
   EMPTY_USER_CONTEXT,
-  INSTANCE_TIMEZONE,
   RESEARCH_QUOTA,
   UserContextService,
   withTransactionalEnqueue,
@@ -54,9 +53,22 @@ const MAX_BRIEF_LOOPS = 6;
  * through ResearchService (the 0045 gate, budgets, SSRF guard); a skill
  * reads, searches and writes a brief, and creates nothing else.
  */
+
+/** SkillEngine's optional collaborators, by NAME (V2.0 item 3.6 part 4). */
+export interface SkillEngineOptions {
+  /** Per-user context + language. Absent in bare test harnesses. */
+  userContext?: UserContextService;
+  instanceTimeZone?: string;
+}
+
+export const SKILL_ENGINE_OPTIONS = Symbol('SKILL_ENGINE_OPTIONS');
+
 @Injectable()
 export class SkillEngine {
   private prompt?: PromptArtifact;
+
+  private readonly userContext?: UserContextService;
+  private readonly instanceTimeZone: string;
 
   constructor(
     @Inject(DRIZZLE) private readonly db: Db,
@@ -65,11 +77,12 @@ export class SkillEngine {
     private readonly gateway: ModelGateway,
     private readonly memories: MemoryStore,
     @Inject(RESEARCH_QUOTA) private readonly quota: ResearchQuota,
-    @Optional() private readonly userContext?: UserContextService,
-    @Optional()
-    @Inject(INSTANCE_TIMEZONE)
-    private readonly instanceTimeZone: string = DEFAULT_INSTANCE_TIMEZONE,
-  ) {}
+    /** Every optional collaborator, by NAME (V2.0 item 3.6 part 4). */
+    @Optional() @Inject(SKILL_ENGINE_OPTIONS) options?: SkillEngineOptions,
+  ) {
+    this.userContext = options?.userContext;
+    this.instanceTimeZone = options?.instanceTimeZone ?? DEFAULT_INSTANCE_TIMEZONE;
+  }
 
   /**
    * The plan gate, one interaction: every kept query

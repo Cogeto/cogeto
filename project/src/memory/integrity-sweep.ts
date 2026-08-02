@@ -13,7 +13,7 @@ import { deletionReceipt, fileMetadata, integrityAlert, memory } from './persist
 import type { SourceType } from './persistence/tables';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
-import { INSTANCE_KEY_DIR, parseReceiptCounts, SOURCE_DELETIONS } from './deletion-saga';
+import { INSTANCE_KEY_DIR, parseReceiptCounts } from './deletion-saga';
 import type { SourceDeletion } from './deletion-saga';
 import { verifyChain } from './domain/receipt-chain';
 import type { ConfirmedReceipt } from './domain/receipt-chain';
@@ -82,8 +82,16 @@ export interface SweepReport {
   chainError?: string;
 }
 
-/** Tuning for the sweep's newer arms; tests override, production defaults. */
+/**
+ * The sweep's collaborators and tuning, by NAME (V2.0 item 3.6 part 4): the
+ * source adapters joined the bag so no construction site passes them by
+ * position. Built by MemoryModule from the SOURCE_DELETIONS port; tests name
+ * their fields; production defaults apply when absent.
+ */
 export interface SweepOptions {
+  /** Source-row existence probes for the orphan arm — the same adapters the
+   * saga binds; file sources are covered receipt-side. */
+  sourceAdapters?: SourceDeletion[];
   /**
    * Objects younger than this are never orphans: stored-mode uploads
    * PUT the bytes BEFORE the metadata transaction commits, and staging
@@ -117,17 +125,18 @@ export interface IntegrityStatus {
 export class IntegritySweep {
   private readonly sourceAdapters: Map<SourceType, SourceDeletion>;
 
+  private readonly options?: SweepOptions;
+
   constructor(
     @Inject(DRIZZLE) private readonly db: Db,
     private readonly vectors: MemoryVectorStore,
     private readonly objects: MemoryObjectStore,
     @Inject(INSTANCE_KEY_DIR) private readonly instanceKeyDir: string,
-    /** Source-row existence probes for the orphan arm — the
-     * same adapters the saga binds; file sources are covered receipt-side. */
-    @Optional() @Inject(SOURCE_DELETIONS) sourceAdapters: SourceDeletion[] = [],
-    @Optional() @Inject(SWEEP_OPTIONS) private readonly options?: SweepOptions,
+    /** Every optional collaborator, by NAME — see SweepOptions. */
+    @Optional() @Inject(SWEEP_OPTIONS) options?: SweepOptions,
   ) {
-    this.sourceAdapters = new Map(sourceAdapters.map((a) => [a.sourceType, a]));
+    this.options = options;
+    this.sourceAdapters = new Map((options?.sourceAdapters ?? []).map((a) => [a.sourceType, a]));
   }
 
   async run(log?: (message: string) => void): Promise<SweepReport> {

@@ -159,7 +159,7 @@ describe('multiple conversations (integration, real Postgres + Qdrant)', () => {
   });
 
   const scriptedChat = (gateway: ScriptedGateway) => {
-    const retrieval = new RetrievalService(store, gateway, tdb.db);
+    const retrieval = new RetrievalService(store, gateway, { db: tdb.db });
     return new ChatService(tdb.db, retrieval, gateway, new UserDirectory(tdb.db));
   };
   const drain = async (events: AsyncGenerator<ChatStreamEvent>) => {

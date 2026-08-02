@@ -35,7 +35,13 @@ import { WebFetchService } from './web-fetch';
 import { WebSourceReader } from './web.source-reader';
 import { WebSourceDeletion } from './web.source-deletion';
 import { SkillRunService } from './skills/skill-run.service';
-import { SkillEngine } from './skills/skill-engine';
+import { SKILL_ENGINE_OPTIONS, SkillEngine } from './skills/skill-engine';
+import type { SkillEngineOptions } from './skills/skill-engine';
+import {
+  DEFAULT_INSTANCE_TIMEZONE,
+  INSTANCE_TIMEZONE,
+  UserContextService,
+} from '../infrastructure/index';
 
 export interface ConnectorsModuleOptions {
   /** File-upload knobs from validated config (default 25 MB, short TTL). */
@@ -109,6 +115,22 @@ export class ConnectorsModule {
         // advances); the planner + controller are app-only (SkillsModule).
         SkillRunService,
         SkillEngine,
+        // The engine's optional collaborators, by TOKEN into a named bag
+        // (V2.0 item 3.6 part 4): identity, never position.
+        {
+          provide: SKILL_ENGINE_OPTIONS,
+          useFactory: (
+            userContext?: UserContextService,
+            timeZone?: string,
+          ): SkillEngineOptions => ({
+            userContext,
+            instanceTimeZone: timeZone ?? DEFAULT_INSTANCE_TIMEZONE,
+          }),
+          inject: [
+            { token: UserContextService, optional: true },
+            { token: INSTANCE_TIMEZONE, optional: true },
+          ],
+        },
         { provide: FILE_UPLOAD_OPTIONS, useValue: options.fileUpload },
         { provide: MAIL_OPTIONS, useValue: options.mail },
         { provide: RESEARCH_OPTIONS, useValue: options.research },

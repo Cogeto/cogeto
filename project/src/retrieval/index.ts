@@ -3,7 +3,8 @@
  * One read API: retrieve(principal, query, opts) on RetrievalService.
  */
 export { RetrievalModule } from './retrieval.module';
-export { RetrievalService } from './retrieval.service';
+export { RETRIEVAL_SERVICE_OPTIONS, RetrievalService } from './retrieval.service';
+export type { RetrievalServiceOptions } from './retrieval.service';
 export type {
   RetrieveOptions,
   RetrievedMemory,
@@ -51,7 +52,8 @@ export type { RetrievalSignal } from './fusion';
 // The chat area's service + prompt ref (worker registers the prompt on boot, spec §12.3).
 // ChatService is exposed for composition roots (the eval harness); the HTTP
 // surface stays the ChatController.
-export { ChatService } from './chat/chat.service';
+export { CHAT_SERVICE_OPTIONS, ChatService } from './chat/chat.service';
+export type { ChatServiceOptions } from './chat/chat.service';
 export { ANSWER_PROMPT } from './chat/answer-prompt';
 // The chat source ports for source_type 'chat': the composition
 // roots bind these into ingestion's readers and the memory deletion saga.

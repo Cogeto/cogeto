@@ -175,14 +175,9 @@ describe('research conclusion (integration: real Postgres + Qdrant, scripted gat
     );
     // The WORKER composition: no retrieval — web-only answers.
     // The append seam is the real retrieval-owned scribe.
-    synthesis = new ResearchSynthesisService(
-      research,
-      undefined,
-      gateway,
-      undefined,
-      undefined,
-      new ConversationScribe(tdb.db),
-    );
+    synthesis = new ResearchSynthesisService(research, gateway, {
+      conversationAppend: new ConversationScribe(tdb.db),
+    });
     concluder = new ResearchConclusionService();
   }, 180_000);
 

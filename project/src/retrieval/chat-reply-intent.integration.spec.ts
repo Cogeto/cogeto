@@ -92,7 +92,7 @@ describe('chat reply intent (integration: real Postgres + Qdrant, fake resolver)
       new RetrievalService(store, gateway),
       gateway,
       new UserDirectory(tdb.db),
-      resolver,
+      { replyResolver: resolver },
     );
   }, 120_000);
   afterAll(async () => {

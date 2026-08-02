@@ -146,6 +146,9 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
   INGESTION_GUARD: 'memory',
   INSTANCE_KEY_DIR: 'memory',
   SWEEP_OPTIONS: 'memory',
+  // Named-options bag (V2.0 item 3.6 part 4): the saga's collaborators
+  // resolved by identity instead of constructor position.
+  DELETION_SAGA_OPTIONS: 'memory',
 
   SOURCE_READERS: 'ingestion',
 
@@ -153,10 +156,17 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
   CHAT_RESEARCH_RESOLVER: 'retrieval',
   CHAT_SKILL_RESOLVER: 'retrieval',
   CONVERSATION_APPEND: 'retrieval',
+  // Named-options bags (V2.0 item 3.6 part 4): optional collaborators
+  // resolved by identity instead of constructor position.
+  CHAT_SERVICE_OPTIONS: 'retrieval',
+  RETRIEVAL_SERVICE_OPTIONS: 'retrieval',
 
   FILE_UPLOAD_OPTIONS: 'connectors',
   MAIL_OPTIONS: 'connectors',
   RESEARCH_OPTIONS: 'connectors',
+  // Named-options bags (V2.0 item 3.6 part 4), as above.
+  RESEARCH_SYNTHESIS_OPTIONS: 'connectors',
+  SKILL_ENGINE_OPTIONS: 'connectors',
 
   // What /api/settings/model-config displays: the seam's own resolved
   // configuration, so the seam serves it (V2.0 item 3.6 part 2).

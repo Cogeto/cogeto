@@ -56,7 +56,7 @@ describe('attention feed (integration, real Postgres)', () => {
     tdb = await startTestDatabase();
     store = new MemoryStore(tdb.db);
     reconciliation = new MemoryReconciliation(tdb.db, store);
-    retrieval = new RetrievalService(store, throwingGateway, tdb.db);
+    retrieval = new RetrievalService(store, throwingGateway, { db: tdb.db });
     attention = new AttentionService(
       tdb.db,
       store,

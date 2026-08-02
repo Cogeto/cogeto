@@ -87,14 +87,9 @@ describe('chat research intent (integration: real Postgres, stubbed seams)', () 
         return { memories: [], mode: 'default' };
       },
     } as unknown as RetrievalService;
-    chat = new ChatService(
-      tdb.db,
-      retrieval,
-      new InertGateway(),
-      new UserDirectory(tdb.db),
-      undefined,
-      resolver,
-    );
+    chat = new ChatService(tdb.db, retrieval, new InertGateway(), new UserDirectory(tdb.db), {
+      researchResolver: resolver,
+    });
     // All scripted turns share one conversation, like the SPA's thread.
     conversationId = (await chat.createConversation(owner)).id;
   }, 120_000);

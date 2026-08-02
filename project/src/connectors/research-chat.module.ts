@@ -1,9 +1,22 @@
 import { Global, Module } from '@nestjs/common';
-import { UserContextModule } from '../infrastructure/index';
-import { CHAT_RESEARCH_RESOLVER, ChatSourceModule, RetrievalModule } from '../retrieval/index';
+import {
+  DEFAULT_INSTANCE_TIMEZONE,
+  INSTANCE_TIMEZONE,
+  UserContextModule,
+  UserContextService,
+} from '../infrastructure/index';
+import {
+  CHAT_RESEARCH_RESOLVER,
+  ChatSourceModule,
+  CONVERSATION_APPEND,
+  RetrievalModule,
+  RetrievalService,
+} from '../retrieval/index';
+import type { ConversationAppendPort } from '../retrieval/index';
 import { ChatResearchResolver } from './chat-research-resolver';
 import { ResearchRunController } from './research-run.controller';
-import { ResearchSynthesisService } from './research-synthesis.service';
+import { RESEARCH_SYNTHESIS_OPTIONS, ResearchSynthesisService } from './research-synthesis.service';
+import type { ResearchSynthesisOptions } from './research-synthesis.service';
 
 /**
  * The research flow's app-only composition — the mirror of
@@ -29,6 +42,37 @@ import { ResearchSynthesisService } from './research-synthesis.service';
   providers: [
     ChatResearchResolver,
     ResearchSynthesisService,
+    // The synthesis collaborators, by TOKEN into a named bag (V2.0 item 3.6
+    // part 4). The APP composition always has retrieval; the factory asserts
+    // it so a wiring regression fails boot instead of silently degrading the
+    // app's synthesis to web-only citations.
+    {
+      provide: RESEARCH_SYNTHESIS_OPTIONS,
+      useFactory: (
+        retrieval: RetrievalService,
+        userContext: UserContextService,
+        conversationAppend: ConversationAppendPort,
+        timeZone?: string,
+      ): ResearchSynthesisOptions => {
+        if (!retrieval || !userContext || !conversationAppend) {
+          throw new Error(
+            'ResearchChatModule: synthesis wiring incomplete (retrieval/userContext/conversationAppend)',
+          );
+        }
+        return {
+          retrieval,
+          userContext,
+          conversationAppend,
+          instanceTimeZone: timeZone ?? DEFAULT_INSTANCE_TIMEZONE,
+        };
+      },
+      inject: [
+        RetrievalService,
+        UserContextService,
+        CONVERSATION_APPEND,
+        { token: INSTANCE_TIMEZONE, optional: true },
+      ],
+    },
     { provide: CHAT_RESEARCH_RESOLVER, useExisting: ChatResearchResolver },
   ],
   exports: [CHAT_RESEARCH_RESOLVER, ResearchSynthesisService],

@@ -265,7 +265,7 @@ describe('research flow (integration: real Postgres + Qdrant, scripted gateway +
         mode: 'default',
       }),
     } as unknown as RetrievalService;
-    const synthesis = new ResearchSynthesisService(research, retrieval, gateway);
+    const synthesis = new ResearchSynthesisService(research, gateway, { retrieval });
 
     const result = await synthesis.synthesise(owner, runId);
     expect(gateway.completeCalls).toBe(1); // the answer tier, exactly once
@@ -294,11 +294,9 @@ describe('research flow (integration: real Postgres + Qdrant, scripted gateway +
   it('synthesis refuses an unapproved or pageless run', async () => {
     const fresh = await research.propose(owner, 'something else');
     const retrieval = { retrieve: async () => ({ memories: [], mode: 'default' }) };
-    const synthesis = new ResearchSynthesisService(
-      research,
-      retrieval as unknown as RetrievalService,
-      gateway,
-    );
+    const synthesis = new ResearchSynthesisService(research, gateway, {
+      retrieval: retrieval as unknown as RetrievalService,
+    });
     await expect(synthesis.synthesise(owner, fresh.id)).rejects.toMatchObject({ status: 422 });
   });
 });

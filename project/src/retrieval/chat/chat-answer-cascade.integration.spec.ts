@@ -30,9 +30,10 @@ describe(' chat-answer cascade (integration: real Postgres, real saga)', () => {
       captureMax: 1_000_000,
       uploadMax: 1_000_000,
     });
-    saga = new DeletionSaga(tdb.db, [new NotesSourceDeletion()], undefined, [
-      new ChatAnswerCascade(),
-    ]);
+    saga = new DeletionSaga(tdb.db, {
+      adapters: [new NotesSourceDeletion()],
+      derivedCascades: [new ChatAnswerCascade()],
+    });
   });
   afterAll(async () => {
     await tdb.stop();

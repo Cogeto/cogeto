@@ -45,7 +45,12 @@ export { ResearchConclusionService, RESEARCH_CONCLUDE_JOB_TYPE } from './researc
 export { minimiseQuery, RESEARCH_MINIMISE_PROMPT } from './research-minimise';
 export type { MinimisedQuery } from './research-minimise';
 export { ChatResearchResolver } from './chat-research-resolver';
-export { ResearchSynthesisService, RESEARCH_ANSWER_PROMPT } from './research-synthesis.service';
+export {
+  RESEARCH_SYNTHESIS_OPTIONS,
+  ResearchSynthesisService,
+  RESEARCH_ANSWER_PROMPT,
+} from './research-synthesis.service';
+export type { ResearchSynthesisOptions } from './research-synthesis.service';
 export { UserContextController } from './user-context.controller';
 export {
   ContextSuggestionsService,

@@ -25,7 +25,6 @@ import {
   DRIZZLE,
   EMPTY_USER_CONTEXT,
   hasProfileContext,
-  INSTANCE_TIMEZONE,
   jobRunState,
   UserContextService,
   withTransactionalEnqueue,
@@ -49,11 +48,8 @@ import {
   rewriteQuery,
 } from '../query-rewrite';
 import { queryEntityCandidates } from '../query-entities';
-import { CHAT_REPLY_RESOLVER } from './chat-reply-resolver.port';
 import type { ChatReplyResolverPort } from './chat-reply-resolver.port';
-import { CHAT_RESEARCH_RESOLVER } from './chat-research-resolver.port';
 import type { ChatResearchResolverPort } from './chat-research-resolver.port';
-import { CHAT_SKILL_RESOLVER } from './chat-skill-resolver.port';
 import type { ChatSkillResolverPort } from './chat-skill-resolver.port';
 import { chatMessage, conversation } from '../persistence/tables';
 import type { ConversationRow } from '../persistence/tables';
@@ -92,6 +88,34 @@ interface AskContext {
 }
 
 /**
+ * ChatService's optional collaborators, resolved BY NAME (V2.0 item 3.6
+ * part 4, issue 1). These used to be five trailing `@Optional()` constructor
+ * parameters whose order was load-bearing in nine manual construction sites:
+ * inserting or reordering one silently injected the wrong service or
+ * `undefined`, with no crash and no failing test. A named field cannot shift.
+ *
+ * The Nest side is a factory provider (`CHAT_SERVICE_OPTIONS`) that resolves
+ * each field by its injection token; manual callers (eval, integration
+ * harnesses) name exactly the fields they wire. Absent fields keep their
+ * documented degraded behaviour: the matching intent is simply inactive, and
+ * context falls back to the instance defaults.
+ */
+export interface ChatServiceOptions {
+  /** The chat → email-reply seam; absent → the reply intent is inactive. */
+  replyResolver?: ChatReplyResolverPort;
+  /** The chat → research seam; absent → the research intent is inactive. */
+  researchResolver?: ChatResearchResolverPort;
+  /** The chat → skill seam; absent → the brief intent is inactive. */
+  skillResolver?: ChatSkillResolverPort;
+  /** Instance timezone for the router's precomputed rewrite. */
+  timeZone?: string;
+  /** Per-user context + language; absent → instance defaults, English. */
+  userContext?: UserContextService;
+}
+
+export const CHAT_SERVICE_OPTIONS = Symbol('CHAT_SERVICE_OPTIONS');
+
+/**
  * The chat area. Asking a question is strictly fast path (spec §15.4): persist
  * → retrieve → generate — deliberately NO enqueue and no ingestion-stage work.
  *
@@ -105,35 +129,49 @@ export class ChatService {
   private prompt?: PromptArtifact;
   private readonly logger = new Logger(ChatService.name);
 
+  private readonly replyResolver?: ChatReplyResolverPort;
+  private readonly researchResolver?: ChatResearchResolverPort;
+  private readonly skillResolver?: ChatSkillResolverPort;
+  private readonly timeZone: string;
+  private readonly userContext?: UserContextService;
+
   constructor(
     @Inject(DRIZZLE) private readonly db: Db,
     private readonly retrieval: RetrievalService,
     private readonly gateway: ModelGateway,
     private readonly directory: UserDirectory,
-    /** The chat → email-reply seam. Absent in the worker and bare
-     * test harnesses — then the reply intent is simply inactive. */
-    @Optional() @Inject(CHAT_REPLY_RESOLVER) private readonly replyResolver?: ChatReplyResolverPort,
-    /** The chat → research seam. Absent in the worker —
-     * then the research intent is simply inactive. */
-    @Optional()
-    @Inject(CHAT_RESEARCH_RESOLVER)
-    private readonly researchResolver?: ChatResearchResolverPort,
-    // Instance timezone for the router's precomputed rewrite (parity
-    // with retrieval's own rewriter call).
-    @Optional()
-    @Inject(INSTANCE_TIMEZONE)
-    private readonly timeZone: string = DEFAULT_INSTANCE_TIMEZONE,
-    /** Per-user context + language. Absent in bare test harnesses —
-     * then the defaults apply (instance timezone, English, no profile). */
-    @Optional()
-    private readonly userContext?: UserContextService,
-    /** The chat → skill seam. Appended LAST so
-     * positional harness constructions keep working; absent in the worker —
-     * then the brief intent is simply inactive. */
-    @Optional()
-    @Inject(CHAT_SKILL_RESOLVER)
-    private readonly skillResolver?: ChatSkillResolverPort,
-  ) {}
+    /** Every optional collaborator, by NAME — see ChatServiceOptions. */
+    @Optional() @Inject(CHAT_SERVICE_OPTIONS) options?: ChatServiceOptions,
+  ) {
+    this.replyResolver = options?.replyResolver;
+    this.researchResolver = options?.researchResolver;
+    this.skillResolver = options?.skillResolver;
+    this.timeZone = options?.timeZone ?? DEFAULT_INSTANCE_TIMEZONE;
+    this.userContext = options?.userContext;
+  }
+
+  /**
+   * The app composition root's boot assertion (V2.0 item 3.6 part 4): the
+   * served chat surface must have EVERY seam wired. An absent resolver
+   * degrades silently by design in bare harnesses, which is exactly why the
+   * root that serves real traffic verifies presence at boot instead of
+   * trusting composition by inspection.
+   */
+  assertFullyWired(): void {
+    const missing = [
+      this.replyResolver ? null : 'replyResolver',
+      this.researchResolver ? null : 'researchResolver',
+      this.skillResolver ? null : 'skillResolver',
+      this.userContext ? null : 'userContext',
+    ].filter((name): name is string => name !== null);
+    if (missing.length > 0) {
+      throw new Error(
+        `ChatService is not fully wired: missing ${missing.join(', ')}. The app root serves ` +
+          'chat with every intent active; a missing seam here means a composition regression ' +
+          'that would otherwise disable the intent silently.',
+      );
+    }
+  }
 
   /**
    * The sidebar's conversation list: the caller's own conversations,

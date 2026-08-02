@@ -185,7 +185,7 @@ describe('web deletion cascade (integration: real Postgres + Qdrant + MinIO)', (
       gateway,
     );
 
-    saga = new DeletionSaga(tdb.db, [new WebSourceDeletion()], vectors);
+    saga = new DeletionSaga(tdb.db, { adapters: [new WebSourceDeletion()], vectors });
     executor = new DeletionExecutor(vectors, objects, keyDir);
   }, 180_000);
 

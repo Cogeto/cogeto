@@ -13,6 +13,7 @@ import {
 import { MemoryModule } from '../memory/index';
 import {
   ChatAnswerCascade,
+  ChatService,
   ChatSourceDeletion,
   ChatSourceModule,
   ConversationSourceDeletion,
@@ -199,6 +200,20 @@ export function createAppRootModule(config: CogetoConfig): unknown {
     ],
     providers: [
       { provide: COGETO_CONFIG, useValue: config },
+      // Boot assertion (V2.0 item 3.6 part 4): the served chat surface must
+      // have EVERY seam wired — reply drafting, research, skills, user
+      // context. An absent seam degrades chat silently by design in bare
+      // harnesses, so the root that serves real traffic verifies presence at
+      // startup; Nest instantiates providers eagerly, so a miswire fails the
+      // boot, not the first unlucky user turn.
+      {
+        provide: 'CHAT_WIRING_BOOT_ASSERTION',
+        useFactory: (chat: ChatService) => {
+          chat.assertFullyWired();
+          return true;
+        },
+        inject: [ChatService],
+      },
       // Default-deny auth: the bearer guard runs on EVERY route; only
       // routes marked @Public (health/config/instance) opt out. A new
       // controller that forgets @UseGuards is closed, not silently open.

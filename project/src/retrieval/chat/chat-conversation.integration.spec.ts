@@ -124,7 +124,10 @@ describe('chat conversational routing (integration: real Postgres, scripted seam
         return { memories: nextMemories, mode: 'default' };
       },
     } as unknown as RetrievalService;
-    chat = new ChatService(tdb.db, retrieval, gateway, new UserDirectory(tdb.db), reply, research);
+    chat = new ChatService(tdb.db, retrieval, gateway, new UserDirectory(tdb.db), {
+      replyResolver: reply,
+      researchResolver: research,
+    });
     // All scripted turns share one conversation, like the SPA's thread.
     conversationId = (await chat.createConversation(owner)).id;
   }, 120_000);
