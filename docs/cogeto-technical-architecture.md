@@ -60,7 +60,7 @@ Accepted consequences: no separate cache or message broker, and no server render
 | `retrieval` | Search, fusion, ranking, ambiguity analysis |
 | `chat` | Conversation orchestration, intent handlers, capture, streaming |
 | `sources` | Readers per source type, anchoring, the extraction gate, bulk import |
-| `connectors` | External systems: mail, files, web research, named skills |
+| `notes`, `files`, `email`, `research`, `skills`, `settings` | The connector families, one module each since V2.0 item 3.6 part 4: typed notes, document upload, inbound mail and reply drafting, gated web research, named skills, per-user capture defaults |
 | `agents` | The approval state machine and executor for actions requiring human sign off |
 | `attention` | The "what needs my attention" feed and the dashboard statistics, plus their read state |
 | `operations` | The instance's own operational surface: health, the capability registry, queue administration, the audit browse |

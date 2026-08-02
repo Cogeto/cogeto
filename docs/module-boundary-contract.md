@@ -2,8 +2,9 @@
 
 **Status: BINDING.** This is the decision record for V2.0 item 3.6 and the
 specification the boundary tooling enforces. Written in part 1 (enforcement),
-updated in part 2 (the entrypoints dissolution) and part 3 (the source-type
-registry). It makes spec §15.1, §15.2 and §15.3 concrete:
+updated in part 2 (the entrypoints dissolution), part 3 (the source-type
+registry) and part 4 (the split of the two accumulated surfaces and the end of
+domain-module globality). It makes spec §15.1, §15.2 and §15.3 concrete:
 
 > **§15.1** A boundary is imports plus table ownership plus job type contracts
 > plus dependency injection tokens. Import checking alone is not boundary
@@ -23,12 +24,13 @@ bypassed the module graph entirely, and one whole bounded context was absent
 from the rule set. A green check over an unenforced boundary is worse than no
 check: it is a claim.
 
-Parts **1** (enforcement) and **2** (the entrypoints dissolution) have landed,
-and part **3** has delivered its first slice, the **source-type registry**
-(§15.3, exception B16; see [section 6](#6-the-source-type-registry)). Part 1
-fixed the enforcement and enumerated what it revealed; part 2 closed every
-entrypoints entry on that list. What remains is in
-[Recorded exceptions](#recorded-exceptions), each with the part that closes it.
+All four parts have landed. Part 1 fixed the enforcement and enumerated what
+it revealed; part 2 closed every entrypoints entry on that list; part 3
+delivered the source-type registry (§15.3, B16); part 4 split the two
+accumulated surfaces (the connectors families and chat) and closed every
+remaining recorded exception: **no domain module is global**, and the
+[Recorded exceptions](#recorded-exceptions) section now records history plus
+the one deliberate line (B19, the CLIs).
 
 ---
 
@@ -62,15 +64,23 @@ may name the table in a query, in Drizzle or in SQL.
 |---|---|
 | `memory` | `memory`, `memory_relation`, `file_metadata`, `deletion_receipt`, `integrity_alert` |
 | `ingestion` | `verification_result`, `suppressed_fact_log`, `dream_run`, `dream_action`, `dormant_flag` |
-| `retrieval` | `chat_message`, `conversation` |
+| `chat` | `chat_message`, `conversation` (moved from `retrieval` in part 4: chat is a capture connector by structure) |
 | `attention` | `attention_state`, `attention_dismissal` |
 | `agents` | `approval` |
-| `connectors` | `note`, `user_settings`, `email_message`, `email_attachment`, `email_allowlist`, `email_refusal`, `web_page`, `research_run`, `skill_run`, `skill_run_step` |
+| `notes` | `note` |
+| `settings` | `user_settings` |
+| `email` | `email_message`, `email_attachment`, `email_allowlist`, `email_refusal` |
+| `research` | `web_page`, `research_run` |
+| `skills` | `skill_run`, `skill_run_step` |
 | `identity` | `app_user` |
 | `model-gateway` | `prompt_registry` |
 | `passport` | `passport_export` |
 | `infrastructure` | `audit_log`, `outbox_event`, `job_execution`, `dead_letter`, `user_context`, `context_suggestion_dismissal`, `usage_counter`, `rate_limit_window` |
-| `operations` | none. It reports on other modules' data and owns no table of its own. |
+| `retrieval`, `operations` | none. Retrieval is pure search since part 4; operations reports on other modules' data. |
+
+The six family rows and `chat` replaced the single `connectors` row in part 4:
+the 7.9k-line context held six unrelated families, and each now owns its
+tables, its jobs and its public interface.
 
 Two schemas have no Drizzle declaration and belong to `infrastructure` as the
 module that creates and runs them: **`cogeto_migrations`** (the migration
@@ -151,10 +161,10 @@ imports every constant rather than spelling any of them.
 | `deletion_sweep` | `memory` | `SWEEP_JOB_TYPE` | recurring |
 | `approval.execute` | `agents` | `APPROVAL_EXECUTE_JOB_TYPE` | per-source |
 | `approval_expiry` | `agents` | `APPROVAL_EXPIRY_JOB_TYPE` | recurring |
-| `research.conclude` | `connectors` | `RESEARCH_CONCLUDE_JOB_TYPE` | per-source |
-| `skill.advance` | `connectors` | `SKILL_ADVANCE_JOB_TYPE` | per-source |
-| `email_refusal_retention` | `connectors` | `EMAIL_REFUSAL_RETENTION_JOB_TYPE` | recurring |
-| `conversation.title` | `retrieval` | `CONVERSATION_TITLE_JOB_TYPE` | per-source |
+| `research.conclude` | `research` | `RESEARCH_CONCLUDE_JOB_TYPE` | per-source |
+| `skill.advance` | `skills` | `SKILL_ADVANCE_JOB_TYPE` | per-source |
+| `email_refusal_retention` | `email` | `EMAIL_REFUSAL_RETENTION_JOB_TYPE` | recurring |
+| `conversation.title` | `chat` | `CONVERSATION_TITLE_JOB_TYPE` | per-source |
 | `passport_export` | `passport` | `PASSPORT_EXPORT_JOB_TYPE` | per-source |
 | `passport_retention` | `passport` | `PASSPORT_RETENTION_JOB_TYPE` | recurring |
 | `demo_reset` | `entrypoints` (dev only) | `DEMO_RESET_JOB_TYPE` | recurring, profile-gated |
@@ -176,6 +186,13 @@ The rules:
 
 `echo` is the outbox round-trip demo defined in the worker root itself and owns
 no module; it is deliberately outside this table.
+
+One constant crosses a family boundary by VALUE rather than by import (part
+4): research's settle-watcher enqueues `skill.advance` when a settled run
+belongs to a skill, and the composition root passes skills' exported constant
+through `ResearchModule.register({ skillAdvance })`. The declaration stays
+single, the enqueue still goes through the owner's constant, and no
+research → skills module cycle exists.
 
 ---
 
@@ -208,34 +225,34 @@ The last clause is not new: `MemoryModule.register` already accepts
 `sourceDeletions.imports` and `derivedCascades.imports`, and
 `IngestionModule.register` accepts `imports`, precisely so a source-reader or
 cascade adapter can be bound without either module knowing the other. That is
-the pattern; globality was the shortcut around it.
+the pattern; globality was the shortcut around it, and part 4 removed the
+shortcut everywhere.
 
-### The twenty modules
+### The module registry, after part 4
 
-| Module | Global? | Verdict |
+Every module is explicit. The only global modules are the four the policy
+allows:
+
+| Module | Global? | Why |
 |---|---|---|
-| `DatabaseModule` | yes | **Keep.** One `Pool` and one Drizzle handle per process. Dynamic, config-carrying, and needed by every module that touches storage. |
-| `LimitsModule` | yes | **Keep.** Dynamic and config-carrying; `RateLimitGuard` is applied with `@UseGuards` on controllers inside domain modules, which resolves it from *their* injector. |
-| `IdentityModule` | yes | **Keep.** A seam. `BearerAuthGuard` is the app-wide `APP_GUARD` and `AdminGuard` is applied by controllers in other modules. |
-| `ModelGatewayModule` | yes | **Keep.** A seam, dynamic and provider-config-carrying; un-globaling means every consumer re-invoking `.register()` with the same configuration, which builds a second gateway. |
-| `UserContextModule` | ~~yes~~ **no** | **Fixed here.** A static module exporting one service. Now imported by `connectors`, `ingestion`, `retrieval`, `ResearchChatModule` and the app root. |
-| `ChatSourceModule` | ~~yes~~ **no** | **Fixed here.** A static module of chat's source ports. Now passed explicitly through `IngestionModule.register({ imports })`, `MemoryModule.register({ sourceDeletions.imports })`, and `ResearchChatModule`. |
-| `MemoryModule` | yes | **Exception, part 3.** A domain module, so it fails the policy, but it is dynamic and carries the Qdrant/MinIO/signing-key configuration, and five modules inject `MemoryStore`. Reassigned from part 2: un-globaling it means threading one dynamic-module reference through every consumer's registration options, which is the same mechanical change part 3 makes for `ConnectorsModule`, and doing them together is one composition rewrite instead of two. |
-| `ConnectorsModule` | yes | **Exception, part 3.** A domain module. Un-globaling it means threading one dynamic-module reference through `IngestionModule`, `MemoryModule` and three sub-modules, which is the composition part 3 rewrites when `connectors/` splits into its families. |
-| `EmailReplyModule` | yes | **Exception, part 4.** Global for exactly one reason: `ChatService` lives in `RetrievalModule` and must resolve `CHAT_REPLY_RESOLVER`, which this module binds. |
-| `ResearchChatModule` | yes | **Exception, part 4.** Same, for `CHAT_RESEARCH_RESOLVER`. |
-| `SkillsModule` | yes | **Exception, part 4.** Same, for `CHAT_SKILL_RESOLVER`. |
-| `AttentionModule`, `OperationsModule` | no | New in part 2, explicit from birth. |
-| `RetrievalModule`, `IngestionModule`, `AgentsModule`, `PassportModule`, `SuppressedFactCascadeModule`, `ReplyDraftCascadeModule`, `PassportCascadeModule` | no | Already explicit. |
+| `DatabaseModule` | yes | One `Pool` and one Drizzle handle per process. |
+| `LimitsModule` | yes | Dynamic, config-carrying; `RateLimitGuard` is applied inside domain modules. |
+| `IdentityModule` | yes | A seam; `BearerAuthGuard` is the app-wide `APP_GUARD`. |
+| `ModelGatewayModule` | yes | A seam; one gateway per process. |
+| everything else | **no** | Composed as ONE dynamic instance per root, threaded through `imports`/registration options wherever its providers are injected. |
 
-The three part-4 exceptions share one cause and one fix. Each is global only so
-that a token it binds reaches `ChatService`, and `ChatService` cannot import
-them because they already import `RetrievalModule`. Un-globaling them today
-would make three optional constructor arguments silently resolve to `undefined`
-and chat would quietly lose research, skills and reply drafting with every test
-still green. The fix is item 3.6's own chat split: when chat leaves
-`RetrievalModule` for its own module with explicit intent handlers, the
-composition root binds the handlers and the globality has no reason left.
+The composition pattern that replaced globality (B13/B14/B15): a root creates
+each module instance once (`const memoryModule = MemoryModule.register({…})`)
+and passes it to every consumer's registration options. Where that would form
+a module cycle (memory needs a family's deletion adapter, the family needs
+memory's stores), the family exposes a slim **source-ports module** in the
+`ChatSourceModule` shape (reader + deletion adapter, DRIZZLE-only
+dependencies) and memory imports that instead. Chat's three resolver seams
+(`EmailReplyModule`, `ResearchChatModule`, `SkillsChatModule`) are dynamic
+instances passed into `ChatModule.register`, whose options factory resolves
+the port tokens by identity; the app root then asserts at boot that every
+seam took (`ChatService.assertFullyWired`), so a wiring regression fails the
+boot rather than silently disabling an intent.
 
 ### Token ownership
 
@@ -246,10 +263,14 @@ defined by the module that *consumes* the implementation) are marked.
 |---|---|
 | `infrastructure` | `DRIZZLE`, `PG_POOL`, `RATE_LIMIT_OPTIONS`, `INGEST_QUOTA`, `RESEARCH_QUOTA`, `SSE_LIMITS`, `MODEL_USAGE_METER`, `PARSE_CAPS`, `INSTANCE_TIMEZONE` |
 | `identity` | `PRINCIPAL`, `IDENTITY_OPTIONS`, `WEB_CONFIG_OPTIONS` |
-| `memory` | `SOURCE_DELETIONS` (port), `DERIVED_CASCADES` (port), `INGESTION_GUARD` (port), `INSTANCE_KEY_DIR`, `SWEEP_OPTIONS` |
+| `memory` | `SOURCE_DELETIONS` (port), `DERIVED_CASCADES` (port), `INGESTION_GUARD` (port), `INSTANCE_KEY_DIR`, `SWEEP_OPTIONS`, `DELETION_SAGA_OPTIONS` |
 | `ingestion` | `SOURCE_READERS` (port) |
-| `retrieval` | `CHAT_REPLY_RESOLVER` (port), `CHAT_RESEARCH_RESOLVER` (port), `CHAT_SKILL_RESOLVER` (port), `CONVERSATION_APPEND` (port) |
-| `connectors` | `FILE_UPLOAD_OPTIONS`, `MAIL_OPTIONS`, `RESEARCH_OPTIONS` |
+| `retrieval` | `RETRIEVAL_SERVICE_OPTIONS` |
+| `chat` | `CHAT_REPLY_RESOLVER` (port), `CHAT_RESEARCH_RESOLVER` (port), `CHAT_SKILL_RESOLVER` (port), `CONVERSATION_APPEND` (port), `CHAT_SERVICE_OPTIONS` |
+| `files` | `FILE_UPLOAD_OPTIONS` |
+| `email` | `MAIL_OPTIONS` |
+| `research` | `RESEARCH_OPTIONS`, `RESEARCH_SYNTHESIS_OPTIONS`, `RESEARCH_CONCLUDE_WIRING` |
+| `skills` | `SKILL_ENGINE_OPTIONS` |
 | `model-gateway` | `MODEL_CONFIG_VIEW` |
 | `passport` | `PASSPORT_OPTIONS` |
 | `operations` | `OPERATIONS_OPTIONS`, `CAPABILITY_JOB_SOURCES` |
@@ -444,15 +465,23 @@ deployment", which was previously "all of it".
 |---|---|---|
 | B16 | `source_type` was a hard Postgres enum owned by `memory`, so every new reader cost a memory-owned migration and a switch edit in six files | The source-type registry ([section 6](#6-the-source-type-registry)): migration 0040 converts both columns to text, the vocabulary and its metadata are declared once in `@cogeto/shared`, every per-type switch reads the registry, and the SPA's per-surface maps are compile-forced complete |
 
-### Still open, with the part that closes them
+### Closed in part 4 (the split of the accumulated surfaces)
 
-| # | Violation | Why not now | Closed by |
-|---|---|---|---|
-| B13 | `MemoryModule` is a global domain module | Five modules inject `MemoryStore`; un-globaling means threading one dynamic-module reference through every consumer's registration options. Reassigned from part 2: it is the same mechanical change part 3 makes for `ConnectorsModule`, and doing both at once is one composition rewrite instead of two | **Part 3** |
-| B14 | `ConnectorsModule` is a global domain module | Its providers reach `ingestion` and `memory` through globality instead of the registration options that exist for it | **Part 3** (connectors split) |
-| B15 | `EmailReplyModule`, `ResearchChatModule`, `SkillsModule` are global only to bind chat's resolver ports | Un-globaling now silently nulls three optional constructor arguments and disables research, skills and reply drafting with the suite still green | **Part 4** (chat split) |
-| B20 | `connectors/files.service.ts` schedules the discard-cleanup backstop with a raw `graphile_worker.add_job` | The outbox helper has no delayed-enqueue option, so the fix is an infrastructure API, not a move | **Part 3** |
-| B21 | `testing/pg.ts` truncates the `graphile_worker` tables between suites | The Testcontainers harness is not a bounded context; listed rather than exempted so it stays visible | **Part 3** |
+| # | Violation | Fix |
+|---|---|---|
+| B13 | `MemoryModule` was a global domain module | ONE dynamic instance per composition root, threaded through every consumer's registration options; the memory ↔ family cycles are broken by slim source-ports modules (DRIZZLE-only reader + deletion adapters, the `ChatSourceModule` shape) |
+| B14 | `ConnectorsModule` was a global domain module holding six unrelated families | The context is dissolved: `notes`, `files`, `email`, `research`, `skills` and `settings` are separate modules, each owning its tables, jobs and public interface, all explicit |
+| B15 | `EmailReplyModule`, `ResearchChatModule`, `SkillsModule` were global only to bind chat's resolver ports | Chat left retrieval for its own `chat/` context; the three resolver modules are dynamic instances passed through `ChatModule.register`, and the app root asserts full wiring at boot |
+| B20 | `files/files.service.ts` scheduled the discard-cleanup backstop with a raw `graphile_worker.add_job` | `enqueueDelayedJob()` on infrastructure's public interface; the queue schema is named only by its owner |
+| B21 | `testing/pg.ts` named the queue's `_private_jobs` table for its settle probe | `settleQueueBookkeeping()` on infrastructure's public interface; the harness calls it |
+
+Part 4 also removed the hazard that made B15 dangerous to close earlier:
+five trailing `@Optional()` constructor parameters on `ChatService` (and the
+same pattern on the saga, the sweep, retrieval, synthesis and the skill
+engine) whose POSITION was load-bearing across nine manual construction
+sites. Optional collaborators now arrive in one named options object per
+service, resolved by token identity, with a boot assertion in the app root,
+so "silently null with every test green" is no longer a reachable state.
 
 ### B19: the CLIs, which is what `entrypoints/` is for
 
@@ -483,6 +512,11 @@ as a CLI, until the 2.0 release notes can declare that upgrade path closed.
 | Table-ownership allowlist | n/a | 4 files | **empty** |
 | Production controllers in a composition root | 7 | 7 | **0** |
 | Production services in a composition root | 2 | 2 | **0** |
+
+After parts 3 and 4 the exception count is **zero**: the raw-SQL allowlist
+holds only the B19 CLI line, the global-module allowlist holds only the four
+policy-approved infrastructure/seam modules, and every table, job type and
+token has exactly one owner in the maps above.
 
 ---
 
