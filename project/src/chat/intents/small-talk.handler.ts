@@ -1,0 +1,67 @@
+import type { ChatStreamEvent, Principal } from '@cogeto/shared';
+import { serverT } from '../../infrastructure/index';
+import type { ModelGateway } from '../../model-gateway/index';
+import type { ConversationTurn, SmallTalkIntent } from '../../retrieval/index';
+import { buildSmallTalkInput, toStoredAnswer } from '../answer-prompt';
+import type { ChatTurnSink } from './intent-plumbing';
+
+/**
+ * The two small-talk arms (V2.0 item 3.6 part 4, extracted verbatim from
+ * chat.service.ts):
+ *
+ * - `handleLexicon`: deterministic small talk — a pure pleasantry gets a
+ *   natural reply in the matched language. No retrieval, no model call, no
+ *   citation theatre; the words come from the server catalogue.
+ * - `handleModel`: model-classified small talk / meta beyond the lexicon
+ *   ("what can you do?") — a brief answer-tier reply with the recent turns
+ *   for tone; no retrieval, and the sanitizer still guarantees no marker can
+ *   leak.
+ */
+export class SmallTalkHandler {
+  constructor(
+    private readonly gateway: ModelGateway,
+    private readonly sink: ChatTurnSink,
+  ) {}
+
+  async *handleLexicon(
+    principal: Principal,
+    conversationId: string,
+    intent: SmallTalkIntent,
+  ): AsyncGenerator<ChatStreamEvent> {
+    yield { type: 'sources', facts: [] };
+    // Small talk mirrors the matched language of the turn (unchanged); the
+    // words come from the server catalogue (V2.0 item 3.5). The KIND is the
+    // detector's value and is never translated, only its reply is.
+    const answer = serverT(intent.lang, 'chat', `smallTalk.${intent.kind}`);
+    yield { type: 'token', text: answer };
+    const row = await this.sink.storeAssistant(principal, conversationId, answer);
+    yield { type: 'done', messageId: row.id, content: answer, citationViolations: 0 };
+  }
+
+  async *handleModel(
+    principal: Principal,
+    conversationId: string,
+    content: string,
+    history: ConversationTurn[],
+    contextBlock?: string,
+  ): AsyncGenerator<ChatStreamEvent> {
+    yield { type: 'sources', facts: [] };
+    const prompt = await this.sink.getPrompt();
+    let buffer = '';
+    const stream = this.gateway.completeStream({
+      system: prompt.content,
+      input: buildSmallTalkInput(history, content, contextBlock),
+      tier: 'answer',
+    });
+    for await (const text of stream) {
+      buffer += text;
+      yield { type: 'token', text };
+    }
+    const { text: stored, violations } = toStoredAnswer(buffer, []);
+    if (violations > 0) {
+      this.sink.logWarn(`citation_violation stripped=${violations}`);
+    }
+    const row = await this.sink.storeAssistant(principal, conversationId, stored);
+    yield { type: 'done', messageId: row.id, content: stored, citationViolations: violations };
+  }
+}

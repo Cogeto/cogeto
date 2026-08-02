@@ -22,9 +22,9 @@ import {
   EmailIntakeService,
   EmailSourceDeletion,
   EmailSourceReader,
-  FileSourceReader,
-  UserSettingsService,
-} from '../connectors/index';
+} from '../email/index';
+import { FileSourceReader } from '../files/index';
+import { UserSettingsService } from '../settings/index';
 import { ReplyDraftCascade } from '../agents/index';
 import { UserDirectory } from '../identity/index';
 import {
@@ -198,9 +198,11 @@ describe('email deletion cascade (integration: real Postgres + Qdrant + MinIO)',
         intakeToken: 't',
       },
     );
-    saga = new DeletionSaga(tdb.db, [new EmailSourceDeletion()], vectors, [
-      new ReplyDraftCascade(),
-    ]);
+    saga = new DeletionSaga(tdb.db, {
+      adapters: [new EmailSourceDeletion()],
+      vectors,
+      derivedCascades: [new ReplyDraftCascade()],
+    });
     executor = new DeletionExecutor(vectors, objects, keyDir);
   }, 180_000);
 

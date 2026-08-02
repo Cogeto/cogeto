@@ -25,22 +25,12 @@ import {
 } from '../memory/index';
 import { APPROVAL_EXPIRY_CRONTAB, ApprovalExecutor, ApprovalService } from '../agents/index';
 import { PassportExportExecutor, PASSPORT_RETENTION_CRONTAB } from '../passport/index';
-import {
-  CONTEXT_SUGGEST_PROMPT,
-  EmailAllowlistService,
-  EMAIL_REFUSAL_RETENTION_CRONTAB,
-  ResearchConclusionService,
-  ResearchSynthesisService,
-  SKILL_BRIEF_PROMPT,
-  SKILL_PLAN_PROMPT,
-  SkillEngine,
-} from '../connectors/index';
-import {
-  ANSWER_PROMPT,
-  CONVERSATION_TITLE_PROMPT,
-  ConversationTitler,
-  QUERY_REWRITE_PROMPT,
-} from '../retrieval/index';
+import { CONTEXT_SUGGEST_PROMPT } from '../settings/index';
+import { EmailAllowlistService, EMAIL_REFUSAL_RETENTION_CRONTAB } from '../email/index';
+import { ResearchConclusionService, ResearchSynthesisService } from '../research/index';
+import { SKILL_BRIEF_PROMPT, SKILL_PLAN_PROMPT, SkillEngine } from '../skills/index';
+import { QUERY_REWRITE_PROMPT } from '../retrieval/index';
+import { ANSWER_PROMPT, CONVERSATION_TITLE_PROMPT, ConversationTitler } from '../chat/index';
 import {
   assertLocalRuntimeReady,
   loadPrompt,

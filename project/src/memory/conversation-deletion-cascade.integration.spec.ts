@@ -17,7 +17,7 @@ import {
 import type { TestDatabase, TestMinio, TestQdrant } from '../testing/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
-import { ChatSourceReader, ConversationSourceDeletion } from '../retrieval/index';
+import { ChatSourceReader, ConversationSourceDeletion } from '../chat/index';
 import { createIngestionPipeline, createSuppressedFactLog } from '../ingestion/index';
 import { MemoryStore } from './memory.store';
 import { MemoryReconciliation } from './reconciliation';
@@ -148,7 +148,7 @@ describe('conversation deletion cascade (integration: real Postgres + Qdrant + M
     });
     await objects.ensureBucket();
     store = new MemoryStore(tdb.db, vectors);
-    saga = new DeletionSaga(tdb.db, [new ConversationSourceDeletion()], vectors);
+    saga = new DeletionSaga(tdb.db, { adapters: [new ConversationSourceDeletion()], vectors });
     executor = new DeletionExecutor(vectors, objects, keyDir);
   }, 180_000);
 

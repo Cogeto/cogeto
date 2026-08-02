@@ -11,6 +11,7 @@ import { MemoryStore } from './memory.store';
 import { TimelineService } from './timeline.service';
 import { MemoryReconciliation } from './reconciliation';
 import {
+  DELETION_SAGA_OPTIONS,
   DeletionExecutor,
   DeletionSaga,
   DERIVED_CASCADES,
@@ -18,7 +19,14 @@ import {
   INSTANCE_KEY_DIR,
   SOURCE_DELETIONS,
 } from './deletion-saga';
-import type { DerivedCascade, IngestionGuard, SourceDeletion } from './deletion-saga';
+import type {
+  DeletionSagaOptions,
+  DerivedCascade,
+  IngestionGuard,
+  SourceDeletion,
+} from './deletion-saga';
+import { SWEEP_OPTIONS } from './integrity-sweep';
+import type { SweepOptions } from './integrity-sweep';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
 import { MemoryFileStore } from './file-store';
@@ -60,11 +68,10 @@ export interface MemoryModuleOptions {
  * import them; dependency-cruiser rule). Registered once by each composition
  * root with its storage options.
  *
- * RECORDED EXCEPTION B13 (docs/module-boundary-contract.md): a global DOMAIN
- * module, which the boundary policy does not allow. It is dynamic and carries
- * the Qdrant/MinIO/signing-key configuration, and five modules inject
- * MemoryStore, so un-globaling it is a composition rewrite rather than a
- * declaration change: V2.0 item 3.6 part 2.
+ * NOT global since B13 closed (V2.0 item 3.6 part 4): each composition root
+ * creates ONE instance and threads it through the registration options of
+ * every module that injects a memory provider. Globality was the last unnamed
+ * dependency in the graph.
  */
 @Module({})
 export class MemoryModule {
@@ -77,7 +84,6 @@ export class MemoryModule {
     }
     return {
       module: MemoryModule,
-      global: true,
       imports: [
         ...(options.sourceDeletions?.imports ?? []),
         ...(options.derivedCascades?.imports ?? []),
@@ -119,6 +125,25 @@ export class MemoryModule {
           inject: options.derivedCascades?.adapters ?? [],
         },
         { provide: INGESTION_GUARD, useClass: options.ingestionGuard },
+        // The saga's and the sweep's collaborators, resolved BY TOKEN into one
+        // named options bag each (V2.0 item 3.6 part 4): identity, never
+        // position. The port tokens above remain the binding surface; these
+        // factories are where they meet the consuming service.
+        {
+          provide: DELETION_SAGA_OPTIONS,
+          useFactory: (
+            adapters: SourceDeletion[],
+            vectors: MemoryVectorStore,
+            derivedCascades: DerivedCascade[],
+            ingestionGuard: IngestionGuard,
+          ): DeletionSagaOptions => ({ adapters, vectors, derivedCascades, ingestionGuard }),
+          inject: [SOURCE_DELETIONS, MemoryVectorStore, DERIVED_CASCADES, INGESTION_GUARD],
+        },
+        {
+          provide: SWEEP_OPTIONS,
+          useFactory: (sourceAdapters: SourceDeletion[]): SweepOptions => ({ sourceAdapters }),
+          inject: [SOURCE_DELETIONS],
+        },
         MemoryStore,
         TimelineService,
         MemoryReconciliation,

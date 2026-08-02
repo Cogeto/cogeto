@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import type { DynamicModule, ModuleMetadata } from '@nestjs/common';
 import { ApprovalsController } from './approvals.controller';
 import { ApprovalService } from './approval.service';
 import { ApprovalExecutor } from './approval.executor';
@@ -15,12 +16,20 @@ import { ReplyDraftCascade } from './reply-draft-cascade';
  * roots: the app serves the controller, the worker resolves the executor +
  * service for its job/cron handlers.
  */
-@Module({
-  controllers: [ApprovalsController],
-  providers: [ActionRegistry, ApprovalService, ApprovalExecutor],
-  exports: [ApprovalService, ApprovalExecutor],
-})
-export class AgentsModule {}
+@Module({})
+export class AgentsModule {
+  static register(options: { imports?: ModuleMetadata['imports'] } = {}): DynamicModule {
+    return {
+      module: AgentsModule,
+      // The memory module instance (B13 closed): actions reach the aggregate
+      // through MemoryStore, resolved from an explicit import, never globality.
+      imports: [...(options.imports ?? [])],
+      controllers: [ApprovalsController],
+      providers: [ActionRegistry, ApprovalService, ApprovalExecutor],
+      exports: [ApprovalService, ApprovalExecutor],
+    };
+  }
+}
 
 /**
  * The reply-draft deletion cascade, bound into the memory saga's

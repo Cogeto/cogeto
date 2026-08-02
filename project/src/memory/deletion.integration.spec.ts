@@ -20,7 +20,7 @@ import {
   startTestQdrant,
 } from '../testing/index';
 import type { TestDatabase, TestMinio, TestQdrant } from '../testing/index';
-import { NotesService, NotesSourceDeletion } from '../connectors/index';
+import { NotesService, NotesSourceDeletion } from '../notes/index';
 import { MemoryStore } from './memory.store';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
@@ -86,7 +86,7 @@ describe('deletion saga (integration: real Postgres + Qdrant + MinIO)', () => {
       captureMax: 1_000_000,
       uploadMax: 1_000_000,
     });
-    saga = new DeletionSaga(tdb.db, [new NotesSourceDeletion()]);
+    saga = new DeletionSaga(tdb.db, { adapters: [new NotesSourceDeletion()] });
     executor = new DeletionExecutor(vectors, objects, keyDir);
   });
   afterAll(async () => {
@@ -241,7 +241,7 @@ describe('deletion saga (integration: real Postgres + Qdrant + MinIO)', () => {
         throw new Error('boom — injected failure inside the enumeration transaction');
       },
     };
-    const failingSaga = new DeletionSaga(tdb.db, [failingAdapter]);
+    const failingSaga = new DeletionSaga(tdb.db, { adapters: [failingAdapter] });
 
     const before = await tdb.pool.query<{ jobs: string; receipts: string; events: string }>(
       `SELECT (SELECT count(*) FROM graphile_worker.jobs)::text AS jobs,

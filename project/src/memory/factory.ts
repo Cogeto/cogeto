@@ -78,6 +78,6 @@ export function createIntegritySweep(options: CreateIntegritySweepOptions): Inte
     new MemoryVectorStore(options.qdrant),
     new MemoryObjectStore(options.s3),
     options.instanceKeyDir,
-    options.sourceDeletions ?? [],
+    { sourceAdapters: options.sourceDeletions ?? [] },
   );
 }

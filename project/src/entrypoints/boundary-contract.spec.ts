@@ -51,8 +51,9 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   dream_action: 'ingestion',
   dormant_flag: 'ingestion',
 
-  chat_message: 'retrieval',
-  conversation: 'retrieval',
+  // The chat context owns its tables since part 4 (chat left retrieval).
+  chat_message: 'chat',
+  conversation: 'chat',
 
   // The attention surface's own read-state (V2.0 item 3.6 part 2). It used to
   // sit in `infrastructure` because "the surface spans every context"; that was
@@ -62,16 +63,18 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
 
   approval: 'agents',
 
-  note: 'connectors',
-  user_settings: 'connectors',
-  email_message: 'connectors',
-  email_attachment: 'connectors',
-  email_allowlist: 'connectors',
-  email_refusal: 'connectors',
-  web_page: 'connectors',
-  research_run: 'connectors',
-  skill_run: 'connectors',
-  skill_run_step: 'connectors',
+  // Split out of connectors (V2.0 item 3.6 part 4).
+  note: 'notes',
+  // Split out of connectors (V2.0 item 3.6 part 4).
+  user_settings: 'settings',
+  email_message: 'email',
+  email_attachment: 'email',
+  email_allowlist: 'email',
+  email_refusal: 'email',
+  web_page: 'research',
+  research_run: 'research',
+  skill_run: 'skills',
+  skill_run_step: 'skills',
 
   app_user: 'identity',
   prompt_registry: 'model-gateway',
@@ -109,10 +112,10 @@ const JOB_TYPE_OWNERS: Readonly<Record<string, string>> = {
   deletion_sweep: 'memory',
   'approval.execute': 'agents',
   approval_expiry: 'agents',
-  'research.conclude': 'connectors',
-  'skill.advance': 'connectors',
-  email_refusal_retention: 'connectors',
-  'conversation.title': 'retrieval',
+  'research.conclude': 'research',
+  'skill.advance': 'skills',
+  email_refusal_retention: 'email',
+  'conversation.title': 'chat',
   passport_export: 'passport',
   passport_retention: 'passport',
   // Dev-only, profile-gated, defined and registered in the demo entrypoint.
@@ -146,17 +149,29 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
   INGESTION_GUARD: 'memory',
   INSTANCE_KEY_DIR: 'memory',
   SWEEP_OPTIONS: 'memory',
+  // Named-options bag (V2.0 item 3.6 part 4): the saga's collaborators
+  // resolved by identity instead of constructor position.
+  DELETION_SAGA_OPTIONS: 'memory',
 
   SOURCE_READERS: 'ingestion',
 
-  CHAT_REPLY_RESOLVER: 'retrieval',
-  CHAT_RESEARCH_RESOLVER: 'retrieval',
-  CHAT_SKILL_RESOLVER: 'retrieval',
-  CONVERSATION_APPEND: 'retrieval',
+  CHAT_REPLY_RESOLVER: 'chat',
+  CHAT_RESEARCH_RESOLVER: 'chat',
+  CHAT_SKILL_RESOLVER: 'chat',
+  CONVERSATION_APPEND: 'chat',
+  // Named-options bags (V2.0 item 3.6 part 4): optional collaborators
+  // resolved by identity instead of constructor position.
+  CHAT_SERVICE_OPTIONS: 'chat',
+  RETRIEVAL_SERVICE_OPTIONS: 'retrieval',
 
-  FILE_UPLOAD_OPTIONS: 'connectors',
-  MAIL_OPTIONS: 'connectors',
-  RESEARCH_OPTIONS: 'connectors',
+  // Split out of connectors (V2.0 item 3.6 part 4).
+  FILE_UPLOAD_OPTIONS: 'files',
+  MAIL_OPTIONS: 'email',
+  RESEARCH_OPTIONS: 'research',
+  // Named-options bags (V2.0 item 3.6 part 4), as above.
+  RESEARCH_SYNTHESIS_OPTIONS: 'research',
+  RESEARCH_CONCLUDE_WIRING: 'research',
+  SKILL_ENGINE_OPTIONS: 'skills',
 
   // What /api/settings/model-config displays: the seam's own resolved
   // configuration, so the seam serves it (V2.0 item 3.6 part 2).
@@ -192,11 +207,14 @@ const ALLOWED_GLOBAL_MODULES: Readonly<Record<string, string>> = {
 
   // RECORDED EXCEPTIONS (docs/module-boundary-contract.md). Each is a domain
   // module and therefore fails the policy; each names the part that removes it.
-  MemoryModule: 'EXCEPTION B13, part 3: dynamic storage config, five injectors',
-  ConnectorsModule: 'EXCEPTION B14, part 3: source ports reach ingestion/memory by globality',
-  EmailReplyModule: 'EXCEPTION B15, part 4: binds CHAT_REPLY_RESOLVER for ChatService',
-  ResearchChatModule: 'EXCEPTION B15, part 4: binds CHAT_RESEARCH_RESOLVER for ChatService',
-  SkillsModule: 'EXCEPTION B15, part 4: binds CHAT_SKILL_RESOLVER for ChatService',
+  // B13 CLOSED (part 4): the memory module is ONE dynamic instance per root,
+  // threaded through every consumer's registration options (with slim
+  // source-ports modules breaking the memory ↔ family cycles).
+  // B14 CLOSED (part 4): ConnectorsModule is dissolved; every family module
+  // is explicit and the port adapters are threaded through registration options.
+  // B15 CLOSED (part 4): chat is its own module; the app root threads the
+  // three resolver-binding module instances through ChatModule.register and
+  // asserts full wiring at boot. No resolver module is global.
 };
 
 /**
@@ -229,12 +247,6 @@ const RAW_SQL_EXCEPTIONS: Readonly<Record<string, string>> = {
   // documents it as the required step for an instance upgrading from the 1.x
   // line. It goes when the 2.0 release notes can declare that path closed.
   'entrypoints/erase-task-conclusions.ts': 'CLI: erases task_conclusion provenance before 0035',
-  // B20, part 3: connectors schedules the discard-cleanup backstop with a raw
-  // graphile_worker.add_job because the outbox helper has no delayed enqueue.
-  'connectors/files.service.ts': 'graphile_worker',
-  // B21: the Testcontainers harness resets the queue between suites. `testing/`
-  // is the harness, not a bounded context; it is listed rather than exempted.
-  'testing/pg.ts': 'graphile_worker',
 };
 
 // ---------------------------------------------------------------------------
@@ -306,7 +318,8 @@ describe('boundary_contract', () => {
     const config = readFileSync(path.join(REPO, '.dependency-cruiser.cjs'), 'utf8');
     const listed = new Set<string>();
     for (const name of ['DOMAIN_MODULES', 'SEAMS', 'SHARED', 'NON_CONTEXT']) {
-      const match = config.match(new RegExp(`const ${name} = '([^']+)'`));
+      // Prettier may wrap the ever-growing module list onto its own line.
+      const match = config.match(new RegExp(`const ${name} =\\s*'([^']+)'`));
       expect(match, `${name} is missing from .dependency-cruiser.cjs`).toBeTruthy();
       for (const part of match![1]!.split('|')) listed.add(part);
     }

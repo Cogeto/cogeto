@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ChatFactDto, Principal } from '@cogeto/shared';
 import type { MemoryRow, MemoryStore } from '../memory/index';
 import type { ModelGateway } from '../model-gateway/index';
-import { buildAnswerInput } from './chat/answer-prompt';
+import { buildAnswerInput } from '../chat/index';
 import { RetrievalService } from './retrieval.service';
 import type { OpenLoop } from './retrieval.service';
 

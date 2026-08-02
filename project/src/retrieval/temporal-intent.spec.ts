@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ChatFactDto } from '@cogeto/shared';
 import { isPastBelief } from '../memory/index';
 import { resolveTemporalIntent, shouldRewrite, TEMPORAL_HINT_RE } from './query-rewrite';
-import { buildAnswerInput } from './chat/answer-prompt';
+import { buildAnswerInput } from '../chat/index';
 
 const NOW = new Date('2026-07-05T12:00:00Z');
 

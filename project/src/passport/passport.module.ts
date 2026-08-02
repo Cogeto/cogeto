@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import type { DynamicModule } from '@nestjs/common';
+import type { DynamicModule, ModuleMetadata } from '@nestjs/common';
 import { PassportController } from './passport.controller';
 import { PassportService } from './passport.service';
 import { PassportExportStore } from './passport.store';
@@ -17,9 +17,14 @@ import type { PassportOptions } from './passport.options';
  */
 @Module({})
 export class PassportModule {
-  static register(options: PassportOptions): DynamicModule {
+  static register(
+    options: PassportOptions & { imports?: ModuleMetadata['imports'] },
+  ): DynamicModule {
     return {
       module: PassportModule,
+      // The memory module instance (B13 closed): the gated reads and stores
+      // resolve from an explicit import, never globality.
+      imports: [...(options.imports ?? [])],
       controllers: [PassportController],
       providers: [
         { provide: PASSPORT_OPTIONS, useValue: options },

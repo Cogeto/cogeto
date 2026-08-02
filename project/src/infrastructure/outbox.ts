@@ -39,6 +39,28 @@ export const JOB_PRINCIPAL_KEY = 'principal_id';
  * with no attributable principal) simply lacks the key, and the worker treats
  * that as "unattributed", which is what every job did until now.
  */
+/**
+ * A DELAYED job enqueue on infrastructure's public interface (V2.0 item 3.6
+ * part 4, closing B20): the queue schema stays named in exactly one module.
+ * No outbox event: the caller uses this for a BACKSTOP that duplicates a
+ * success-path enqueue (an absent target is success), so a domain event here
+ * would double-announce. `delayMinutes` is how far in the future it fires.
+ */
+export async function enqueueDelayedJob(
+  tx: DbOrTx,
+  job: JobSpec,
+  delayMinutes: number,
+): Promise<void> {
+  await tx.execute(sql`
+    SELECT graphile_worker.add_job(
+      ${job.type},
+      payload := ${JSON.stringify(job.payload)}::json,
+      run_at := now() + (${delayMinutes} || ' minutes')::interval,
+      max_attempts := ${job.maxAttempts ?? 10}
+    )
+  `);
+}
+
 export async function withTransactionalEnqueue(
   tx: DbOrTx,
   event: DomainEvent,

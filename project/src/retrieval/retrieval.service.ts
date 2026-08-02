@@ -1,7 +1,7 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import type { MemoryStatus, Principal } from '@cogeto/shared';
 import { TEMPORAL_STATUS_MULTIPLIERS } from '@cogeto/shared';
-import { DEFAULT_INSTANCE_TIMEZONE, DRIZZLE, INSTANCE_TIMEZONE } from '../infrastructure/index';
+import { DEFAULT_INSTANCE_TIMEZONE } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { listOpenDormantFlags } from '../ingestion/index';
 import { MemoryStore } from '../memory/index';
@@ -83,23 +83,38 @@ export interface RetrievalResult {
  * that entity's memories (F1/F4); a project/topic question with a dominant
  * entity widens once via entity search before answering (F5).
  */
+/**
+ * RetrievalService's optional collaborators, by NAME (V2.0 item 3.6 part 4):
+ * a named field cannot shift the way a trailing positional optional can.
+ */
+export interface RetrievalServiceOptions {
+  /**
+   * Read-only handle for ingestion's dormant-flag consumption API (F2
+   * handoff §3) — the one open-loops signal that is not on the memory row.
+   * Absent in bare test constructions; without it open loops simply carry no
+   * "gone quiet" marker.
+   */
+  db?: Db;
+  /** Instance timezone for relative-date resolution in query rewriting. */
+  timeZone?: string;
+}
+
+export const RETRIEVAL_SERVICE_OPTIONS = Symbol('RETRIEVAL_SERVICE_OPTIONS');
+
 @Injectable()
 export class RetrievalService {
+  private readonly db?: Db;
+  private readonly timeZone: string;
+
   constructor(
     private readonly memoryStore: MemoryStore,
     private readonly gateway: ModelGateway,
-    /**
-     * Read-only handle for ingestion's dormant-flag consumption API (F2
-     * handoff §3) — the one open-loops signal that is not on the memory row.
-     * Optional so bare test constructions need no database; without it open
-     * loops simply carry no "gone quiet" marker.
-     */
-    @Optional() @Inject(DRIZZLE) private readonly db?: Db,
-    // Instance timezone for relative-date resolution in query rewriting.
-    @Optional()
-    @Inject(INSTANCE_TIMEZONE)
-    private readonly timeZone: string = DEFAULT_INSTANCE_TIMEZONE,
-  ) {}
+    /** Every optional collaborator, by NAME — see RetrievalServiceOptions. */
+    @Optional() @Inject(RETRIEVAL_SERVICE_OPTIONS) options?: RetrievalServiceOptions,
+  ) {
+    this.db = options?.db;
+    this.timeZone = options?.timeZone ?? DEFAULT_INSTANCE_TIMEZONE;
+  }
 
   async retrieve(
     principal: Principal,

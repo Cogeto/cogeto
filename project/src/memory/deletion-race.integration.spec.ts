@@ -14,7 +14,7 @@ import {
   startTestQdrant,
 } from '../testing/index';
 import type { TestDatabase, TestMinio, TestQdrant } from '../testing/index';
-import { NotesService, NotesSourceDeletion, NotesSourceReader } from '../connectors/index';
+import { NotesService, NotesSourceDeletion, NotesSourceReader } from '../notes/index';
 import {
   createIngestionPipeline,
   INGESTION_PIPELINE_JOB_TYPE,
@@ -156,13 +156,10 @@ describe(' delete-vs-ingestion race (integration: real Postgres + Qdrant, real s
       captureMax: 1_000_000,
       uploadMax: 1_000_000,
     });
-    saga = new DeletionSaga(
-      tdb.db,
-      [new NotesSourceDeletion()],
-      undefined,
-      [],
-      new PipelineIngestionGuard(),
-    );
+    saga = new DeletionSaga(tdb.db, {
+      adapters: [new NotesSourceDeletion()],
+      ingestionGuard: new PipelineIngestionGuard(),
+    });
     // Real MinIO: the sweep's orphan-object arm lists the bucket, so
     // a placeholder endpoint would fail the sweep assertions below.
     const objects = new MemoryObjectStore({
@@ -173,7 +170,9 @@ describe(' delete-vs-ingestion race (integration: real Postgres + Qdrant, real s
     });
     await objects.ensureBucket();
     executor = new DeletionExecutor(vectors, objects, keyDir);
-    sweep = new IntegritySweep(tdb.db, vectors, objects, keyDir, [new NotesSourceDeletion()]);
+    sweep = new IntegritySweep(tdb.db, vectors, objects, keyDir, {
+      sourceAdapters: [new NotesSourceDeletion()],
+    });
   });
   afterAll(async () => {
     await Promise.all([tdb.stop(), qdrant.stop(), minio.stop()]);

@@ -3,6 +3,7 @@ import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { Pool } from 'pg';
 import { applyMigrations, createDb } from '../infrastructure/index';
+import { settleQueueBookkeeping } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 
 /**
@@ -47,15 +48,7 @@ export async function startTestDatabase(): Promise<TestDatabase> {
  * this before reading job rows or rescheduling retries.
  */
 export async function settleJobs(pool: Pool, timeoutMs = 5000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    const { rows } = await pool.query(
-      'SELECT count(*)::int AS locked FROM graphile_worker._private_jobs WHERE locked_by IS NOT NULL',
-    );
-    if (rows[0].locked === 0) return;
-    if (Date.now() > deadline) {
-      throw new Error('graphile job bookkeeping did not settle: rows still locked');
-    }
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
+  // Through the queue owner's interface (B21 closed): the harness no longer
+  // names the graphile schema itself.
+  await settleQueueBookkeeping(pool, timeoutMs);
 }

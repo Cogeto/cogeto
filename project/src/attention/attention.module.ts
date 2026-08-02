@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
+import type { DynamicModule, ModuleMetadata } from '@nestjs/common';
 import { UserContextModule } from '../infrastructure/index';
-import { RetrievalModule } from '../retrieval/index';
-import { AgentsModule } from '../agents/index';
 import { AttentionController, DashboardController } from './attention.controller';
 import { AttentionService } from './attention.service';
 
@@ -10,20 +9,24 @@ import { AttentionService } from './attention.service';
  *
  * App-only: both routes are fast-path reads and the worker serves no HTTP.
  *
- * The imports are the real ones: `RetrievalService` (the single open-loops
- * read), `ApprovalService` (pending decisions) and `UserContextService` (the
- * reader's preferred language). `MemoryStore` and `MemoryReconciliation` come
- * from the global `MemoryModule` (recorded exception B13) — listing it here
- * would be a no-op import that makes the graph look more explicit than it is.
- * Ingestion's dreaming reads are free functions over the injected handle, not
- * providers, so they need no module edge at all.
+ * Dynamic since B13 closed: `imports` receives the memory, retrieval and
+ * agents module instances from the composition root — `MemoryStore`,
+ * `MemoryReconciliation`, `RetrievalService` and `ApprovalService` all resolve
+ * from explicit imports, never globality. Ingestion's dreaming reads are free
+ * functions over the injected handle, not providers, so they need no module
+ * edge at all.
  *
  * Nothing imports attention, so the graph stays acyclic.
  */
-@Module({
-  imports: [RetrievalModule, AgentsModule, UserContextModule],
-  controllers: [AttentionController, DashboardController],
-  providers: [AttentionService],
-  exports: [AttentionService],
-})
-export class AttentionModule {}
+@Module({})
+export class AttentionModule {
+  static register(options: { imports?: ModuleMetadata['imports'] } = {}): DynamicModule {
+    return {
+      module: AttentionModule,
+      imports: [UserContextModule, ...(options.imports ?? [])],
+      controllers: [AttentionController, DashboardController],
+      providers: [AttentionService],
+      exports: [AttentionService],
+    };
+  }
+}

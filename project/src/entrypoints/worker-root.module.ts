@@ -1,5 +1,12 @@
 import { Module } from '@nestjs/common';
-import { DatabaseModule, LimitsModule, UserContextModule } from '../infrastructure/index';
+import {
+  DatabaseModule,
+  DEFAULT_INSTANCE_TIMEZONE,
+  INSTANCE_TIMEZONE,
+  LimitsModule,
+  UserContextModule,
+  UserContextService,
+} from '../infrastructure/index';
 import { IdentityModule } from '../identity/index';
 import { MemoryModule } from '../memory/index';
 import {
@@ -9,17 +16,30 @@ import {
   SuppressedFactCascadeModule,
 } from '../ingestion/index';
 import { AgentsModule, ReplyDraftCascade, ReplyDraftCascadeModule } from '../agents/index';
+import { SKILL_ADVANCE_JOB_TYPE, SkillsModule } from '../skills/index';
 import {
-  ConnectorsModule,
-  EmailSourceDeletion,
-  EmailSourceReader,
-  FileSourceReader,
-  NotesSourceDeletion,
-  NotesSourceReader,
+  RESEARCH_SYNTHESIS_OPTIONS,
+  ResearchModule,
+  ResearchSourcePortsModule,
   ResearchSynthesisService,
   WebSourceDeletion,
   WebSourceReader,
-} from '../connectors/index';
+} from '../research/index';
+import {
+  EmailModule,
+  EmailSourceDeletion,
+  EmailSourcePortsModule,
+  EmailSourceReader,
+} from '../email/index';
+import { FilesModule, FileSourceReader } from '../files/index';
+import {
+  NotesModule,
+  NotesSourceDeletion,
+  NotesSourcePortsModule,
+  NotesSourceReader,
+} from '../notes/index';
+import { SettingsModule } from '../settings/index';
+import type { ResearchSynthesisOptions } from '../research/index';
 import {
   PassportCascadeModule,
   PassportExportCascade,
@@ -31,8 +51,10 @@ import {
   ChatSourceDeletion,
   ChatSourceModule,
   ChatSourceReader,
+  CONVERSATION_APPEND,
   ConversationSourceDeletion,
-} from '../retrieval/index';
+} from '../chat/index';
+import type { ConversationAppendPort } from '../chat/index';
 import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG, mailOptions, redactionOptions, researchOptions } from './config';
 import type { CogetoConfig } from './config';
@@ -44,6 +66,87 @@ import type { CogetoConfig } from './config';
  * implementations — the only place allowed to know both sides.
  */
 export function createWorkerRootModule(config: CogetoConfig): unknown {
+  // ONE dynamic instance per family module, threaded everywhere it is needed
+  // (the root's import list AND the registration options of the modules that
+  // bind its port adapters). Registering twice would duplicate controllers
+  // and providers; this hoisted-instance pattern is the part-4 replacement
+  // for globality.
+  const memoryModule = MemoryModule.register({
+    qdrantUrl: config.qdrantUrl,
+    qdrantApiKey: config.qdrantApiKey,
+    embeddingModel: config.modelProviders.tiers.embedding.model,
+    s3: {
+      url: config.s3Url,
+      publicUrl: config.s3PublicUrl,
+      accessKey: config.s3AccessKey,
+      secretKey: config.s3SecretKey,
+      bucket: config.s3Bucket,
+    },
+    instanceKeyDir: config.instanceKeyDir,
+    // The chat source deletion joins notes' so a chat-derived memory's source
+    // deletion erases the originating turn under the saga (r7).
+    sourceDeletions: {
+      // The slim source-ports modules (the ChatSourceModule shape): db-only
+      // providers, so memory never imports a family that imports memory back.
+      imports: [
+        ChatSourceModule,
+        NotesSourcePortsModule,
+        EmailSourcePortsModule,
+        ResearchSourcePortsModule,
+      ],
+      adapters: [
+        NotesSourceDeletion,
+        ChatSourceDeletion,
+        // A whole conversation is a deletable source.
+        ConversationSourceDeletion,
+        EmailSourceDeletion,
+        // Web pages are deletable sources (0043).
+        WebSourceDeletion,
+      ],
+    },
+    derivedCascades: {
+      imports: [
+        ChatSourceModule,
+        ReplyDraftCascadeModule,
+        PassportCascadeModule,
+        SuppressedFactCascadeModule,
+      ],
+      // Assistant answers citing erased memories are redacted; reply drafts
+      // grounded on the source are too. A ready passport export is a signed
+      // copy of everything the owner could see, so it is expired by the same
+      // receipt (SEC-8). The suppressed-fact log is content-bearing (V2.0
+      // item 3.3) and joins so the receipt's erasure claim stays complete.
+      adapters: [
+        ChatAnswerCascade,
+        ReplyDraftCascade,
+        PassportExportCascade,
+        SuppressedFactCascade,
+      ],
+    },
+    // Delete-vs-ingestion serialization: the saga cancels a source's pending
+    // pipeline run inside its enumeration tx.
+    ingestionGuard: PipelineIngestionGuard,
+  });
+  const settingsModule = SettingsModule.register({ imports: [memoryModule] });
+  const notesModule = NotesModule.register({ imports: [settingsModule] });
+  const filesModule = FilesModule.register({
+    fileUpload: {
+      uploadMaxBytes: config.uploadMaxBytes,
+      downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
+    },
+    imports: [memoryModule, settingsModule],
+  });
+  const emailModule = EmailModule.register({
+    mail: mailOptions(config),
+    imports: [memoryModule, settingsModule],
+  });
+  const researchModule = ResearchModule.register({
+    research: researchOptions(config),
+    skillAdvance: { skillAdvanceJobType: SKILL_ADVANCE_JOB_TYPE },
+    imports: [memoryModule],
+  });
+  const skillsModule = SkillsModule.register({ imports: [memoryModule, researchModule] });
+  const agentsModule = AgentsModule.register({ imports: [memoryModule] });
   @Module({
     imports: [
       DatabaseModule.register({ databaseUrl: config.databaseUrl, poolMax: config.pgPoolMax }),
@@ -75,68 +178,21 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         // scope from the enqueuing principal so the spend has an owner.
         budget: true,
       }),
-      MemoryModule.register({
-        qdrantUrl: config.qdrantUrl,
-        qdrantApiKey: config.qdrantApiKey,
-        embeddingModel: config.modelProviders.tiers.embedding.model,
-        s3: {
-          url: config.s3Url,
-          publicUrl: config.s3PublicUrl,
-          accessKey: config.s3AccessKey,
-          secretKey: config.s3SecretKey,
-          bucket: config.s3Bucket,
-        },
-        instanceKeyDir: config.instanceKeyDir,
-        // The chat source deletion joins notes' so a chat-derived memory's source
-        // deletion erases the originating turn under the saga (r7).
-        sourceDeletions: {
-          // ChatSourceModule provides the two chat adapters below; explicit
-          // since it stopped being global (boundary contract §4). The connector
-          // adapters still resolve from the global ConnectorsModule (B14).
-          imports: [ChatSourceModule],
-          adapters: [
-            NotesSourceDeletion,
-            ChatSourceDeletion,
-            // A whole conversation is a deletable source.
-            ConversationSourceDeletion,
-            EmailSourceDeletion,
-            // Web pages are deletable sources (0043).
-            WebSourceDeletion,
-          ],
-        },
-        derivedCascades: {
-          imports: [
-            ChatSourceModule,
-            ReplyDraftCascadeModule,
-            PassportCascadeModule,
-            SuppressedFactCascadeModule,
-          ],
-          // Assistant answers citing erased memories are redacted (
-          //); reply drafts grounded on the source are too. A ready passport
-          // export is a signed copy of everything the owner could see, so it is
-          // expired by the same receipt (SEC-8).
-          // The suppressed-fact log is content-bearing (V2.0 item 3.3): the
-          // claim as extracted and its exact span. It joins the cascade so the
-          // receipt's erasure claim stays complete.
-          adapters: [
-            ChatAnswerCascade,
-            ReplyDraftCascade,
-            PassportExportCascade,
-            SuppressedFactCascade,
-          ],
-        },
-        // Delete-vs-ingestion serialization: the saga
-        // cancels a source's pending pipeline run inside its enumeration tx.
-        ingestionGuard: PipelineIngestionGuard,
-      }),
+      memoryModule,
       // ChatSourceReader gives ingestion a stage-1 reader for source_type 'chat';
       // EmailSourceReader adds source_type 'email';
       // WebSourceReader adds 'web'.
       IngestionModule.register({
-        // ChatSourceModule provides ChatSourceReader; explicit since it stopped
-        // being global (boundary contract §4). The four connector readers still
-        // resolve from the global ConnectorsModule (B14).
-        imports: [ChatSourceModule],
+        // Each reader's ports module is named here; FileSourceReader needs
+        // memory's stores, so the files family instance carries it (B13).
+        imports: [
+          memoryModule,
+          ChatSourceModule,
+          NotesSourcePortsModule,
+          filesModule,
+          EmailSourcePortsModule,
+          ResearchSourcePortsModule,
+        ],
         readers: [
           NotesSourceReader,
           FileSourceReader,
@@ -146,30 +202,58 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         ],
       }),
       ChatSourceModule,
-      AgentsModule,
-      ConnectorsModule.register({
-        fileUpload: {
-          uploadMaxBytes: config.uploadMaxBytes,
-          downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
-        },
-        mail: mailOptions(config),
-        research: researchOptions(config),
-      }),
+      notesModule,
+      settingsModule,
+      agentsModule,
+      filesModule,
+      emailModule,
+      researchModule,
+      skillsModule,
       // The Memory Passport export + retention jobs run here (spec §15.4 slow path);
       // the worker holds the private signing key to sign each manifest.
       PassportModule.register({
         instanceKeyDir: config.instanceKeyDir,
         downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
         exportRetentionHours: PASSPORT_EXPORT_RETENTION_HOURS,
+        imports: [memoryModule],
       }),
     ],
     providers: [
       { provide: COGETO_CONFIG, useValue: config },
       // The worker's synthesis for server-side research conclusion : composed HERE (not in ConnectorsModule) because retrieval is
-      // deliberately absent in this process — the @Optional seam makes the
+      // deliberately absent in this process — the named-options seam makes the
       // stored answer web-only ([W#]), while the app's ResearchChatModule
       // instance keeps memory citations for interactive synthesis.
       ResearchSynthesisService,
+      // The synthesis collaborators, by TOKEN into a named bag (V2.0 item 3.6
+      // part 4). `retrieval` is DELIBERATELY absent in this root — stated
+      // here rather than implied by resolution order — and the factory
+      // asserts what the worker DOES require, so a wiring regression fails
+      // boot instead of silently degrading conclusion phrasing.
+      {
+        provide: RESEARCH_SYNTHESIS_OPTIONS,
+        useFactory: (
+          userContext: UserContextService,
+          conversationAppend: ConversationAppendPort,
+          timeZone?: string,
+        ): ResearchSynthesisOptions => {
+          if (!userContext || !conversationAppend) {
+            throw new Error(
+              'worker root: synthesis wiring incomplete (userContext/conversationAppend)',
+            );
+          }
+          return {
+            userContext,
+            conversationAppend,
+            instanceTimeZone: timeZone ?? DEFAULT_INSTANCE_TIMEZONE,
+          };
+        },
+        inject: [
+          UserContextService,
+          CONVERSATION_APPEND,
+          { token: INSTANCE_TIMEZONE, optional: true },
+        ],
+      },
     ],
   })
   class WorkerRootModule {}

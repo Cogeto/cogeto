@@ -23,7 +23,7 @@ import {
 import type { TestDatabase, TestMinio, TestQdrant } from '../testing/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
-import { FilesService, FileSourceReader } from '../connectors/index';
+import { FilesService, FileSourceReader } from '../files/index';
 import {
   FILE_DISCARD_CLEANUP_JOB_TYPE,
   INGESTION_PIPELINE_JOB_TYPE,
@@ -165,7 +165,7 @@ describe('deletion cascade over a real uploaded file (F1 handoff §4)', () => {
       new InMemoryDailyCounters(),
       { captureMax: 1_000_000, uploadMax: 1_000_000 },
     );
-    saga = new DeletionSaga(tdb.db, [], vectors);
+    saga = new DeletionSaga(tdb.db, { vectors });
     executor = new DeletionExecutor(vectors, objects, keyDir);
   }, 120_000);
 

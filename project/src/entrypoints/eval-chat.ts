@@ -18,23 +18,19 @@ import {
   seedMemoryFromSource,
 } from '../ingestion/index';
 import { UserDirectory } from '../identity/index';
-import { ANSWER_PROMPT, ChatService, RetrievalService } from '../retrieval/index';
+import { RetrievalService } from '../retrieval/index';
+import { ANSWER_PROMPT, ChatService } from '../chat/index';
 import { ActionRegistry, ApprovalService } from '../agents/index';
+import { ChatReplyResolver, EmailReplyDraftService, EmailSourceService } from '../email/index';
 import {
-  ChatReplyResolver,
   ChatResearchResolver,
-  ChatSkillResolver,
-  EmailReplyDraftService,
-  EmailSourceService,
   ResearchService,
   ResearchSynthesisService,
-  SkillEngine,
-  SkillPlanner,
-  SkillRunService,
   WebDiscoveryService,
   WebFetchService,
-} from '../connectors/index';
-import type { ResearchOptions } from '../connectors/index';
+} from '../research/index';
+import { ChatSkillResolver, SkillEngine, SkillPlanner, SkillRunService } from '../skills/index';
+import type { ResearchOptions } from '../research/index';
 import { InMemoryDailyCounters } from '../infrastructure/index';
 import { createModelGateway, loadPrompt, ModelGateway } from '../model-gateway/index';
 import type { ResolvedModelProviders } from '../model-gateway/index';
@@ -462,7 +458,7 @@ async function main(): Promise<void> {
         qdrant: { url: qdrantUrl, embeddingModel, collection },
       });
       await memoryStore.ensureIndexReady();
-      const retrieval = new RetrievalService(memoryStore, gateway, db);
+      const retrieval = new RetrievalService(memoryStore, gateway, { db });
       // The chat → email-reply resolver: draft-a-reply cases seed
       // emails and exercise the real drafting path (the confirmation text is
       // deterministic; the model only writes the draft body, which is not graded).
@@ -543,17 +539,12 @@ async function main(): Promise<void> {
           },
         );
       }
-      const chat = new ChatService(
-        db,
-        retrieval,
-        gateway,
-        new UserDirectory(db),
+      const chat = new ChatService(db, retrieval, gateway, new UserDirectory(db), {
         replyResolver,
         researchResolver,
-        undefined,
-        userContextService,
+        userContext: userContextService,
         skillResolver,
-      );
+      });
       const anchor = new Date(testCase.anchor);
 
       // Seed emails ( reply-intent cases) directly — no public seed API.
@@ -738,7 +729,7 @@ async function main(): Promise<void> {
               });
               webMemories += (await memoryStore.listBySourceSystem('web', pageId)).length;
             }
-            const synthesis = new ResearchSynthesisService(research, retrieval, gateway);
+            const synthesis = new ResearchSynthesisService(research, gateway, { retrieval });
             const answer = await synthesis.synthesise(principal, run.id);
             const cited = answer.citations.some((c) => c.kind === 'web');
             const included = testCase.research.answer_must_include.every((sub) =>
@@ -804,7 +795,7 @@ async function main(): Promise<void> {
                 skillQueriesMax: 6,
                 skillPagesPerQuery: 1,
               },
-              userContextService,
+              { userContext: userContextService },
             );
             // The plan gate, one interaction: keep the first two LIVE-planned
             // queries verbatim, remove the rest (removal is part of the claim).

@@ -17,7 +17,8 @@
  * boundary-contract spec fails the build if this list and the directory
  * listing disagree, so the omission cannot repeat.
  */
-const DOMAIN_MODULES = 'memory|ingestion|retrieval|agents|connectors|passport|attention|operations';
+const DOMAIN_MODULES =
+  'chat|memory|ingestion|retrieval|agents|email|files|notes|research|settings|skills|passport|attention|operations';
 const SEAMS = 'identity|model-gateway';
 const SHARED = 'infrastructure';
 const NON_CONTEXT = 'entrypoints|testing|migrations';
@@ -174,12 +175,13 @@ module.exports = {
         '`instance-probes.ts` joined the list in V2.0 item 3.6 part 2: the health report keeps ' +
         'its own two-connection pool so a saturated application pool cannot make it hang, and ' +
         'owning a Pool is precisely why that code belongs in infrastructure rather than in the ' +
-        'module that serves the route.',
+        'module that serves the route. `queue.ts` names the Pool TYPE only (part 4, B21): the ' +
+        'settle probe takes the harness pool as a parameter and never constructs one.',
       severity: 'error',
       from: {
         path: '^project/src/',
         pathNot:
-          '^project/src/entrypoints/|^project/src/infrastructure/(db|database\\.module|migrations|instance-probes)\\.ts$|^project/src/testing/|\\.spec\\.ts$',
+          '^project/src/entrypoints/|^project/src/infrastructure/(db|database\\.module|migrations|instance-probes|queue)\\.ts$|^project/src/testing/|\\.spec\\.ts$',
       },
       to: { path: 'node_modules/pg/' },
     },

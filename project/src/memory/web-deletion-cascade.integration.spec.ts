@@ -27,8 +27,8 @@ import {
   WebFetchService,
   WebSourceDeletion,
   WebSourceReader,
-} from '../connectors/index';
-import type { ResearchOptions } from '../connectors/index';
+} from '../research/index';
+import type { ResearchOptions } from '../research/index';
 import {
   INGESTION_PIPELINE_JOB_TYPE,
   createIngestionPipeline,
@@ -185,7 +185,7 @@ describe('web deletion cascade (integration: real Postgres + Qdrant + MinIO)', (
       gateway,
     );
 
-    saga = new DeletionSaga(tdb.db, [new WebSourceDeletion()], vectors);
+    saga = new DeletionSaga(tdb.db, { adapters: [new WebSourceDeletion()], vectors });
     executor = new DeletionExecutor(vectors, objects, keyDir);
   }, 180_000);
 

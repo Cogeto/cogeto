@@ -1,9 +1,17 @@
 # src/: application source root
 
 One directory per DDD bounded context (spec §15): `memory`, `ingestion`, `retrieval`,
-`agents`, `connectors`, `passport`, `attention`, `operations`, `identity`,
-`model-gateway`, plus the shared `infrastructure` leaf, `entrypoints` (app,
-worker), `migrations` and `testing`.
+`chat`, `agents`, `notes`, `files`, `email`, `research`, `skills`, `settings`,
+`passport`, `attention`, `operations`, `identity`, `model-gateway`, plus the
+shared `infrastructure` leaf, `entrypoints` (app, worker), `migrations` and
+`testing`.
+
+The old `connectors` context (7.9k lines, six unrelated families) was split in
+V2.0 item 3.6 part 4 into `notes`, `files`, `email`, `research`, `skills` and
+`settings`, and chat-the-connector left `retrieval` for its own `chat` context.
+Each family owns its tables, its job types and its public interface; nothing
+is global except the four policy-approved infrastructure/seam modules
+(`docs/module-boundary-contract.md` §4).
 
 `attention` (the "what needs my attention" feed and the dashboard statistics) and
 `operations` (health, the capability registry, queue administration, the audit

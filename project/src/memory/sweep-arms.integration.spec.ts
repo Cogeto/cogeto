@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Principal } from '@cogeto/shared';
 import { ensureInstanceKeys } from '../infrastructure/index';
-import { EmailSourceDeletion } from '../connectors/index';
+import { EmailSourceDeletion } from '../email/index';
 import {
   fakeEmbedding,
   startTestDatabase,
@@ -70,7 +70,7 @@ describe('sweep arms + (integration: real Postgres + Qdrant + MinIO)', () => {
   });
 
   const sweepWith = (graceMinutes: number) =>
-    new IntegritySweep(tdb.db, vectors, objects, keyDir, [], {
+    new IntegritySweep(tdb.db, vectors, objects, keyDir, {
       objectGraceMinutes: graceMinutes,
     });
   const alertsOf = async (kind: string): Promise<string[]> => {
@@ -146,16 +146,10 @@ describe('sweep arms + (integration: real Postgres + Qdrant + MinIO)', () => {
     const abandonedKey = `org-1/sweep-arms-user/private/email-${randomUUID()}`;
     await objects.putObject(abandonedKey, Buffer.from('crashed intake residue'));
 
-    const sweep = new IntegritySweep(
-      tdb.db,
-      vectors,
-      objects,
-      keyDir,
-      [new EmailSourceDeletion()],
-      {
-        objectGraceMinutes: 0,
-      },
-    );
+    const sweep = new IntegritySweep(tdb.db, vectors, objects, keyDir, {
+      sourceAdapters: [new EmailSourceDeletion()],
+      objectGraceMinutes: 0,
+    });
     await sweep.run();
     const details = await alertsOf('orphaned_object');
     expect(details.some((d) => d.startsWith(`${rawKey}: `))).toBe(false);

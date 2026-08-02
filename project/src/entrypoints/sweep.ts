@@ -1,8 +1,10 @@
 import { Pool } from 'pg';
 import { createDb } from '../infrastructure/index';
 import { createIntegritySweep } from '../memory/index';
-import { EmailSourceDeletion, NotesSourceDeletion, WebSourceDeletion } from '../connectors/index';
-import { ChatSourceDeletion, ConversationSourceDeletion } from '../retrieval/index';
+import { WebSourceDeletion } from '../research/index';
+import { EmailSourceDeletion } from '../email/index';
+import { NotesSourceDeletion } from '../notes/index';
+import { ChatSourceDeletion, ConversationSourceDeletion } from '../chat/index';
 import { loadConfig } from './config';
 
 /**

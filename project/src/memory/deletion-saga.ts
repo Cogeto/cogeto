@@ -298,22 +298,42 @@ function assertSourceType(value: string): SourceType {
   return value;
 }
 
+/**
+ * The saga's collaborators, by NAME (V2.0 item 3.6 part 4): four trailing
+ * positional optionals on the service that hard-deletes data were the worst
+ * place for an argument-order hazard. The Nest side builds this bag from the
+ * existing port tokens in MemoryModule; manual harnesses name their fields.
+ */
+export interface DeletionSagaOptions {
+  /** Source-row deletion adapters (the SOURCE_DELETIONS port). */
+  adapters?: SourceDeletion[];
+  /** Payload sync for lifted contradiction partners (0010 ruling 8). */
+  vectors?: MemoryVectorStore;
+  /** Derived-artifact cascades (0013 ruling 6). */
+  derivedCascades?: DerivedCascade[];
+  /** Pending-ingestion cancellation — always bound by
+   * the composition roots; optional only for legacy test harnesses. */
+  ingestionGuard?: IngestionGuard;
+}
+
+export const DELETION_SAGA_OPTIONS = Symbol('DELETION_SAGA_OPTIONS');
+
 @Injectable()
 export class DeletionSaga {
   private readonly adapters: Map<SourceType, SourceDeletion>;
+  private readonly vectors?: MemoryVectorStore;
+  private readonly derivedCascades: DerivedCascade[];
+  private readonly ingestionGuard?: IngestionGuard;
 
   constructor(
     @Inject(DRIZZLE) private readonly db: Db,
-    @Optional() @Inject(SOURCE_DELETIONS) adapters: SourceDeletion[] = [],
-    /** Payload sync for lifted contradiction partners (0010 ruling 8). */
-    @Optional() private readonly vectors?: MemoryVectorStore,
-    /** Derived-artifact cascades (0013 ruling 6). */
-    @Optional() @Inject(DERIVED_CASCADES) private readonly derivedCascades: DerivedCascade[] = [],
-    /** Pending-ingestion cancellation — always bound by
-     * the composition roots; optional only for legacy test harnesses. */
-    @Optional() @Inject(INGESTION_GUARD) private readonly ingestionGuard?: IngestionGuard,
+    /** Every collaborator, by NAME — see DeletionSagaOptions. */
+    @Optional() @Inject(DELETION_SAGA_OPTIONS) options?: DeletionSagaOptions,
   ) {
-    this.adapters = new Map(adapters.map((a) => [a.sourceType, a]));
+    this.adapters = new Map((options?.adapters ?? []).map((a) => [a.sourceType, a]));
+    this.vectors = options?.vectors;
+    this.derivedCascades = options?.derivedCascades ?? [];
+    this.ingestionGuard = options?.ingestionGuard;
   }
 
   /** What a deletion WOULD remove — the confirm dialog's numbers. Read-only. */
