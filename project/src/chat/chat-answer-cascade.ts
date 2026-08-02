@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { and, eq, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
-import type { Tx } from '../../infrastructure/index';
-import type { DerivedCascade } from '../../memory/index';
-import { chatMessage } from '../persistence/tables';
+import type { Tx } from '../infrastructure/index';
+import type { DerivedCascade } from '../memory/index';
+import { chatMessage } from './persistence/tables';
 
 /**
  * The redaction marker an affected answer becomes. Deliberately a full

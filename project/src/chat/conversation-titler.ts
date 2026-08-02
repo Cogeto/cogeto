@@ -1,11 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
-import { DRIZZLE } from '../../infrastructure/index';
-import type { Db, Tx } from '../../infrastructure/index';
-import { loadPrompt, ModelGateway } from '../../model-gateway/index';
-import type { PromptArtifact } from '../../model-gateway/index';
-import { chatMessage, conversation } from '../persistence/tables';
+import { DRIZZLE } from '../infrastructure/index';
+import type { Db, Tx } from '../infrastructure/index';
+import { loadPrompt, ModelGateway } from '../model-gateway/index';
+import type { PromptArtifact } from '../model-gateway/index';
+import { chatMessage, conversation } from './persistence/tables';
 
 /** The auto-title worker job. Idempotency key
  * ('chat_conversation', <conversation id>, this) — one attempt chain per

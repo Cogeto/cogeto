@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import type { Tx } from '../../infrastructure/index';
-import type { SourceDeletion } from '../../memory/index';
-import { chatMessage } from '../persistence/tables';
+import type { Tx } from '../infrastructure/index';
+import type { SourceDeletion } from '../memory/index';
+import { chatMessage } from './persistence/tables';
 
 /**
  * The deletion saga's source port for source_type 'chat' (spec §11.1;

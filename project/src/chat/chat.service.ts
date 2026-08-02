@@ -30,29 +30,29 @@ import {
   withTransactionalEnqueue,
   serverT,
   serverTranslator,
-} from '../../infrastructure/index';
-import type { Db, UserContextRecord } from '../../infrastructure/index';
-import { INGESTION_PIPELINE_JOB_TYPE } from '../../ingestion/index';
-import { isPastBelief } from '../../memory/index';
-import { loadPrompt, ModelGateway } from '../../model-gateway/index';
-import type { PromptArtifact } from '../../model-gateway/index';
-import { UserDirectory } from '../../identity/index';
-import { RetrievalService } from '../retrieval.service';
-import type { RetrievedMemory } from '../retrieval.service';
-import type { ConversationTurn, SmallTalkIntent } from '../query-rewrite';
+} from '../infrastructure/index';
+import type { Db, UserContextRecord } from '../infrastructure/index';
+import { INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
+import { isPastBelief } from '../memory/index';
+import { loadPrompt, ModelGateway } from '../model-gateway/index';
+import type { PromptArtifact } from '../model-gateway/index';
+import { UserDirectory } from '../identity/index';
+import { RetrievalService } from '../retrieval/index';
+import type { RetrievedMemory } from '../retrieval/index';
+import type { ConversationTurn, SmallTalkIntent } from '../retrieval/index';
 import {
   ANAPHORA_RE,
   detectResearchIntent,
   detectSkillBriefIntent,
   detectSmallTalk,
   rewriteQuery,
-} from '../query-rewrite';
-import { queryEntityCandidates } from '../query-entities';
+} from '../retrieval/index';
+import { queryEntityCandidates } from '../retrieval/index';
 import type { ChatReplyResolverPort } from './chat-reply-resolver.port';
 import type { ChatResearchResolverPort } from './chat-research-resolver.port';
 import type { ChatSkillResolverPort } from './chat-skill-resolver.port';
-import { chatMessage, conversation } from '../persistence/tables';
-import type { ConversationRow } from '../persistence/tables';
+import { chatMessage, conversation } from './persistence/tables';
+import type { ConversationRow } from './persistence/tables';
 import { CONVERSATION_TITLE_JOB_TYPE } from './conversation-titler';
 import {
   ANSWER_PROMPT,

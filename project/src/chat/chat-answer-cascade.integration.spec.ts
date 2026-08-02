@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { InMemoryDailyCounters } from '../../infrastructure/index';
+import { InMemoryDailyCounters } from '../infrastructure/index';
 import type { Principal } from '@cogeto/shared';
-import { startTestDatabase } from '../../testing/index';
-import type { TestDatabase } from '../../testing/index';
-import { NotesService, NotesSourceDeletion } from '../../notes/index';
-import { DeletionSaga, MemoryStore, parseReceiptCounts } from '../../memory/index';
-import { chatMessage, conversation } from '../persistence/tables';
+import { startTestDatabase } from '../testing/index';
+import type { TestDatabase } from '../testing/index';
+import { NotesService, NotesSourceDeletion } from '../notes/index';
+import { DeletionSaga, MemoryStore, parseReceiptCounts } from '../memory/index';
+import { chatMessage, conversation } from './persistence/tables';
 import { CHAT_ANSWER_REDACTED, ChatAnswerCascade } from './chat-answer-cascade';
 
 const userA: Principal = {

@@ -25,11 +25,11 @@ import type {
   ConversationDto,
   NoteStatusDto,
 } from '@cogeto/shared';
-import { RateLimit, RateLimitGuard, SSE_LIMITS } from '../../infrastructure/index';
-import type { SseLimits } from '../../infrastructure/index';
-import { BearerAuthGuard } from '../../identity/index';
-import type { AuthenticatedRequest } from '../../identity/index';
-import { ModelBudgetExceededError } from '../../model-gateway/index';
+import { RateLimit, RateLimitGuard, SSE_LIMITS } from '../infrastructure/index';
+import type { SseLimits } from '../infrastructure/index';
+import { BearerAuthGuard } from '../identity/index';
+import type { AuthenticatedRequest } from '../identity/index';
+import { ModelBudgetExceededError } from '../model-gateway/index';
 import { ChatService } from './chat.service';
 
 /** Zod at the boundary — same bounds as note capture. */

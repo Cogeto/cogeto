@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Principal } from '@cogeto/shared';
-import type { ChatResearchProposal, ChatResearchResolverPort } from '../retrieval/index';
+import type { ChatResearchProposal, ChatResearchResolverPort } from '../chat/index';
 import { ResearchService } from './research.service';
 
 /**

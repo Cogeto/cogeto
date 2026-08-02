@@ -4,7 +4,7 @@ import { createIntegritySweep } from '../memory/index';
 import { WebSourceDeletion } from '../research/index';
 import { EmailSourceDeletion } from '../email/index';
 import { NotesSourceDeletion } from '../notes/index';
-import { ChatSourceDeletion, ConversationSourceDeletion } from '../retrieval/index';
+import { ChatSourceDeletion, ConversationSourceDeletion } from '../chat/index';
 import { loadConfig } from './config';
 
 /**

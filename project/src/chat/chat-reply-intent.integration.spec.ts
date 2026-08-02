@@ -6,13 +6,13 @@ import { createMemoryStore } from '../memory/index';
 import type { MemoryStore } from '../memory/index';
 import { ModelGateway } from '../model-gateway/index';
 import { UserDirectory } from '../identity/index';
-import { ChatService } from './chat/chat.service';
-import { RetrievalService } from './retrieval.service';
+import { ChatService } from './chat.service';
+import { RetrievalService } from '../retrieval/index';
 import type {
   ChatReplyCandidate,
   ChatReplyDraftResult,
   ChatReplyResolverPort,
-} from './chat/chat-reply-resolver.port';
+} from './chat-reply-resolver.port';
 
 const DIMS = 8;
 const user: Principal = {

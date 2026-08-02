@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { ChatStreamEvent, Principal } from '@cogeto/shared';
-import { startTestDatabase } from '../../testing/index';
-import type { TestDatabase } from '../../testing/index';
-import { UserDirectory } from '../../identity/index';
-import { ModelGateway } from '../../model-gateway/index';
-import { formatNow, UserContextService } from '../../infrastructure/index';
-import type { RetrievalService } from '../retrieval.service';
+import { startTestDatabase } from '../testing/index';
+import type { TestDatabase } from '../testing/index';
+import { UserDirectory } from '../identity/index';
+import { ModelGateway } from '../model-gateway/index';
+import { formatNow, UserContextService } from '../infrastructure/index';
+import type { RetrievalService } from '../retrieval/index';
 import { ChatService } from './chat.service';
 
 /**

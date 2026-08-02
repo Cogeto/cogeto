@@ -51,8 +51,9 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   dream_action: 'ingestion',
   dormant_flag: 'ingestion',
 
-  chat_message: 'retrieval',
-  conversation: 'retrieval',
+  // The chat context owns its tables since part 4 (chat left retrieval).
+  chat_message: 'chat',
+  conversation: 'chat',
 
   // The attention surface's own read-state (V2.0 item 3.6 part 2). It used to
   // sit in `infrastructure` because "the surface spans every context"; that was
@@ -114,7 +115,7 @@ const JOB_TYPE_OWNERS: Readonly<Record<string, string>> = {
   'research.conclude': 'research',
   'skill.advance': 'skills',
   email_refusal_retention: 'email',
-  'conversation.title': 'retrieval',
+  'conversation.title': 'chat',
   passport_export: 'passport',
   passport_retention: 'passport',
   // Dev-only, profile-gated, defined and registered in the demo entrypoint.
@@ -154,13 +155,13 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
 
   SOURCE_READERS: 'ingestion',
 
-  CHAT_REPLY_RESOLVER: 'retrieval',
-  CHAT_RESEARCH_RESOLVER: 'retrieval',
-  CHAT_SKILL_RESOLVER: 'retrieval',
-  CONVERSATION_APPEND: 'retrieval',
+  CHAT_REPLY_RESOLVER: 'chat',
+  CHAT_RESEARCH_RESOLVER: 'chat',
+  CHAT_SKILL_RESOLVER: 'chat',
+  CONVERSATION_APPEND: 'chat',
   // Named-options bags (V2.0 item 3.6 part 4): optional collaborators
   // resolved by identity instead of constructor position.
-  CHAT_SERVICE_OPTIONS: 'retrieval',
+  CHAT_SERVICE_OPTIONS: 'chat',
   RETRIEVAL_SERVICE_OPTIONS: 'retrieval',
 
   // Split out of connectors (V2.0 item 3.6 part 4).
@@ -209,9 +210,9 @@ const ALLOWED_GLOBAL_MODULES: Readonly<Record<string, string>> = {
   MemoryModule: 'EXCEPTION B13, part 4: dynamic storage config, five injectors',
   // B14 CLOSED (part 4): ConnectorsModule is dissolved; every family module
   // is explicit and the port adapters are threaded through registration options.
-  EmailReplyModule: 'EXCEPTION B15, part 4: binds CHAT_REPLY_RESOLVER for ChatService',
-  ResearchChatModule: 'EXCEPTION B15, part 4: binds CHAT_RESEARCH_RESOLVER for ChatService',
-  SkillsChatModule: 'EXCEPTION B15, part 4: binds CHAT_SKILL_RESOLVER for ChatService',
+  // B15 CLOSED (part 4): chat is its own module; the app root threads the
+  // three resolver-binding module instances through ChatModule.register and
+  // asserts full wiring at boot. No resolver module is global.
 };
 
 /**

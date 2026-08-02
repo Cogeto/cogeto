@@ -17,7 +17,7 @@ import {
 import type { TestDatabase, TestMinio, TestQdrant } from '../testing/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
-import { ChatSourceReader, ConversationSourceDeletion } from '../retrieval/index';
+import { ChatSourceReader, ConversationSourceDeletion } from '../chat/index';
 import { createIngestionPipeline, createSuppressedFactLog } from '../ingestion/index';
 import { MemoryStore } from './memory.store';
 import { MemoryReconciliation } from './reconciliation';

@@ -7,9 +7,9 @@ import type { MemoryStore, NewFact } from '../memory/index';
 import { ModelGateway } from '../model-gateway/index';
 import type { CompletionRequest } from '../model-gateway/index';
 import { UserDirectory } from '../identity/index';
-import { ChatService } from './chat/chat.service';
-import { NOTHING_ON_RECORD } from './chat/answer-prompt';
-import { RetrievalService } from './retrieval.service';
+import { ChatService } from './chat.service';
+import { NOTHING_ON_RECORD } from './answer-prompt';
+import { RetrievalService } from '../retrieval/index';
 import { chatMessage } from './persistence/tables';
 
 /**

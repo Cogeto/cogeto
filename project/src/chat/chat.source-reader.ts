@@ -1,9 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
-import { DRIZZLE } from '../../infrastructure/index';
-import type { Db, Tx } from '../../infrastructure/index';
-import type { SourceItem, SourceReader } from '../../ingestion/index';
-import { chatMessage } from '../persistence/tables';
+import { DRIZZLE } from '../infrastructure/index';
+import type { Db, Tx } from '../infrastructure/index';
+import type { SourceItem, SourceReader } from '../ingestion/index';
+import { chatMessage } from './persistence/tables';
 
 /**
  * Ingestion's stage-1 port for source_type 'chat': the pipeline

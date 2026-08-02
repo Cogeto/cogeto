@@ -1,8 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
-import { DRIZZLE } from '../../infrastructure/index';
-import type { Db } from '../../infrastructure/index';
-import { chatMessage, conversation } from '../persistence/tables';
+import { DRIZZLE } from '../infrastructure/index';
+import type { Db } from '../infrastructure/index';
+import { chatMessage, conversation } from './persistence/tables';
 
 /**
  * The conversation-append seam. Retrieval owns

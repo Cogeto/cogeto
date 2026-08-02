@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule, ModuleMetadata } from '@nestjs/common';
-import { CHAT_SKILL_RESOLVER, RetrievalModule } from '../retrieval/index';
+import { RetrievalModule } from '../retrieval/index';
+import { CHAT_SKILL_RESOLVER } from '../chat/index';
 import { ChatSkillResolver } from './chat-skill-resolver';
 import { SkillPlanner } from './skill-planner';
 import { SkillsController } from './skills.controller';
@@ -13,17 +14,15 @@ import { SkillsController } from './skills.controller';
  * family's SkillEngine). `imports` receives the research and skills family
  * instances the planner and surface inject.
  *
- * RECORDED EXCEPTION B15 (docs/module-boundary-contract.md): still global, so
- * ChatService (in RetrievalModule, which this module imports) resolves
- * CHAT_SKILL_RESOLVER. Un-globaling it today would silently drop skills from
- * chat; the chat split later in part 4 removes the reason.
+ * NOT global since B15 closed (V2.0 item 3.6 part 4): the app root passes
+ * this instance into ChatModule.register, whose options factory resolves
+ * CHAT_SKILL_RESOLVER by token, and the boot assertion proves the seam took.
  */
 @Module({})
 export class SkillsChatModule {
   static register(options: { imports?: ModuleMetadata['imports'] } = {}): DynamicModule {
     return {
       module: SkillsChatModule,
-      global: true,
       imports: [RetrievalModule, ...(options.imports ?? [])],
       controllers: [SkillsController],
       providers: [

@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { startTestDatabase } from '../../testing/index';
-import type { TestDatabase } from '../../testing/index';
-import { ModelGateway } from '../../model-gateway/index';
-import { chatMessage, conversation } from '../persistence/tables';
+import { startTestDatabase } from '../testing/index';
+import type { TestDatabase } from '../testing/index';
+import { ModelGateway } from '../model-gateway/index';
+import { chatMessage, conversation } from './persistence/tables';
 import { ConversationTitler, sanitizeTitle } from './conversation-titler';
 
 /**

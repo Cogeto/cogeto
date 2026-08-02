@@ -5,10 +5,10 @@ import {
   sanitizeAnswer,
   sourceTypePromptLabel,
 } from '@cogeto/shared';
-import { serverT } from '../../infrastructure/index';
-import type { MemoryChange } from '../../memory/index';
-import type { ConversationTurn, TemporalIntent } from '../query-rewrite';
-import type { OpenLoop, RetrievalMode } from '../retrieval.service';
+import { serverT } from '../infrastructure/index';
+import type { MemoryChange } from '../memory/index';
+import type { ConversationTurn, TemporalIntent } from '../retrieval/index';
+import type { OpenLoop, RetrievalMode } from '../retrieval/index';
 
 /**
  * The answer prompt family (spec §12.3): versioned artifact in project/prompts/answer,

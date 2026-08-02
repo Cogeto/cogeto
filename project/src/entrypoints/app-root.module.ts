@@ -11,14 +11,15 @@ import {
   SuppressedFactCascadeModule,
 } from '../ingestion/index';
 import { MemoryModule } from '../memory/index';
+import { RetrievalModule } from '../retrieval/index';
 import {
   ChatAnswerCascade,
+  ChatModule,
   ChatService,
   ChatSourceDeletion,
   ChatSourceModule,
   ConversationSourceDeletion,
-  RetrievalModule,
-} from '../retrieval/index';
+} from '../chat/index';
 import { AgentsModule, ReplyDraftCascade, ReplyDraftCascadeModule } from '../agents/index';
 import { ResearchChatModule, ResearchModule, WebSourceDeletion } from '../research/index';
 import { SKILL_ADVANCE_JOB_TYPE, SkillsChatModule, SkillsModule } from '../skills/index';
@@ -53,6 +54,18 @@ export function createAppRootModule(config: CogetoConfig): unknown {
     skillAdvance: { skillAdvanceJobType: SKILL_ADVANCE_JOB_TYPE },
   });
   const skillsModule = SkillsModule.register({ imports: [researchModule] });
+  // The three resolver-binding modules, un-globaled (B15 closed): each is a
+  // dynamic instance receiving the family modules it composes, and ChatModule
+  // receives all three so its options factory resolves the port tokens by
+  // identity. The boot assertion below proves the wiring took.
+  const emailReplyModule = EmailReplyModule.register({ imports: [emailModule] });
+  const researchChatModule = ResearchChatModule.register({ imports: [researchModule] });
+  const skillsChatModule = SkillsChatModule.register({
+    imports: [researchModule, skillsModule],
+  });
+  const chatModule = ChatModule.register({
+    imports: [emailReplyModule, researchChatModule, skillsChatModule],
+  });
   @Module({
     imports: [
       DatabaseModule.register({ databaseUrl: config.databaseUrl, poolMax: config.pgPoolMax }),
@@ -149,6 +162,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         ingestionGuard: PipelineIngestionGuard,
       }),
       RetrievalModule,
+      chatModule,
       NotesModule,
       ChatSourceModule, // the chat source-deletion adapter for the delete endpoint
       IngestionModule.forQueries(), // verification + dreaming read endpoints
@@ -162,14 +176,13 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       emailModule,
       researchModule,
       skillsModule,
-      SkillsChatModule.register({ imports: [researchModule, skillsModule] }),
+      skillsChatModule,
       // Reply drafting + the chat → reply resolver (O4) — app-only (needs
-      // RetrievalService + ApprovalService); the worker never drafts. Global, so
-      // ChatService resolves CHAT_REPLY_RESOLVER.
-      EmailReplyModule,
+      // RetrievalService + ApprovalService); the worker never drafts.
+      emailReplyModule,
       // The research gate + chat → research resolver + synthesis (
       // Part B) — app-only for the same reason; the worker never researches.
-      ResearchChatModule,
+      researchChatModule,
       // The Memory Passport (spec §11.4): export trigger/status/download.
       // Assembly is a worker job; the app only creates requests and serves reads.
       PassportModule.register({

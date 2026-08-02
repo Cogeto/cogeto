@@ -15,7 +15,7 @@ import {
   createIngestionPipeline,
   INGESTION_PIPELINE_JOB_TYPE,
 } from '../ingestion/index';
-import { ConversationScribe } from '../retrieval/index';
+import { ConversationScribe } from '../chat/index';
 import { ResearchService } from './research.service';
 import { ResearchSynthesisService } from './research-synthesis.service';
 import { ResearchConclusionService, RESEARCH_CONCLUDE_JOB_TYPE } from './research-conclude';

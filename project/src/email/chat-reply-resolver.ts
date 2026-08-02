@@ -4,7 +4,7 @@ import type {
   ChatReplyCandidate,
   ChatReplyDraftResult,
   ChatReplyResolverPort,
-} from '../retrieval/index';
+} from '../chat/index';
 import { EmailSourceService } from './email-source.service';
 import { EmailReplyDraftService } from './email-reply-draft.service';
 

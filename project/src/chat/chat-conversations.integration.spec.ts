@@ -6,17 +6,17 @@ import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { ChatStreamEvent, Principal } from '@cogeto/shared';
-import { fakeEmbedding, startTestDatabase, startTestQdrant } from '../../testing/index';
-import type { TestDatabase, TestQdrant } from '../../testing/index';
-import { applyMigrations } from '../../infrastructure/index';
-import { createMemoryReconciliation } from '../../memory/index';
-import type { MemoryStore } from '../../memory/index';
-import { createIngestionPipeline, createSuppressedFactLog } from '../../ingestion/index';
-import { UserDirectory } from '../../identity/index';
-import { ModelGateway, ModelGatewayError } from '../../model-gateway/index';
-import type { StructuredExtractionRequest } from '../../model-gateway/index';
+import { fakeEmbedding, startTestDatabase, startTestQdrant } from '../testing/index';
+import type { TestDatabase, TestQdrant } from '../testing/index';
+import { applyMigrations } from '../infrastructure/index';
+import { createMemoryReconciliation } from '../memory/index';
+import type { MemoryStore } from '../memory/index';
+import { createIngestionPipeline, createSuppressedFactLog } from '../ingestion/index';
+import { UserDirectory } from '../identity/index';
+import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
+import type { StructuredExtractionRequest } from '../model-gateway/index';
 import type { ZodType } from 'zod';
-import { RetrievalService } from '../retrieval.service';
+import { RetrievalService } from '../retrieval/index';
 import { ChatService } from './chat.service';
 import { ChatSourceReader } from './chat.source-reader';
 
@@ -347,7 +347,7 @@ describe('migration_preserves (raw container: pre-0031 history → the legacy co
     const pool = new Pool({ connectionString: container.getConnectionUri() });
     try {
       // Apply everything BEFORE 0031 from a filtered copy of the real dir.
-      const allDir = path.resolve(__dirname, '..', '..', 'migrations');
+      const allDir = path.resolve(__dirname, '..', 'migrations');
       const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cogeto-mig-'));
       for (const file of (await fs.readdir(allDir)).filter((f) => f.endsWith('.sql')).sort()) {
         const id = Number.parseInt(file.split('_')[0] ?? '', 10);

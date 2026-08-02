@@ -26,7 +26,7 @@ import {
 } from '../model-gateway/index';
 import type { PromptArtifact } from '../model-gateway/index';
 import { RetrievalService } from '../retrieval/index';
-import type { ConversationAppendPort } from '../retrieval/index';
+import type { ConversationAppendPort } from '../chat/index';
 import { ResearchService } from './research.service';
 import type { ResearchRunRow, WebPageRow } from './persistence/tables';
 

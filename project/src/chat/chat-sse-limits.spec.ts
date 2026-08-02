@@ -4,7 +4,7 @@ import type { Principal } from '@cogeto/shared';
 import type { ChatStreamEvent } from '@cogeto/shared';
 import { ChatController } from './chat.controller';
 import type { ChatService } from './chat.service';
-import type { SseLimits } from '../../infrastructure/index';
+import type { SseLimits } from '../infrastructure/index';
 
 /**: concurrent-stream cap + idle/max-duration abort on chat SSE. */
 

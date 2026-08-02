@@ -18,7 +18,8 @@ import {
   seedMemoryFromSource,
 } from '../ingestion/index';
 import { UserDirectory } from '../identity/index';
-import { ANSWER_PROMPT, ChatService, RetrievalService } from '../retrieval/index';
+import { RetrievalService } from '../retrieval/index';
+import { ANSWER_PROMPT, ChatService } from '../chat/index';
 import { ActionRegistry, ApprovalService } from '../agents/index';
 import { ChatReplyResolver, EmailReplyDraftService, EmailSourceService } from '../email/index';
 import {

@@ -96,7 +96,7 @@ export default tseslint.config(
       // Prompt assembly is model-facing, not product copy. These build the text
       // sent to a model, they are versioned with the prompt families they serve,
       // and the golden-set gate is what polices changes to them.
-      'project/src/retrieval/chat/answer-prompt.ts',
+      'project/src/chat/answer-prompt.ts',
       'project/src/infrastructure/context-block.ts',
     ],
     plugins: { copy: copyPlugin },

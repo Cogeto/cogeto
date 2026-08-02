@@ -41,8 +41,8 @@ import {
   ChatSourceReader,
   CONVERSATION_APPEND,
   ConversationSourceDeletion,
-} from '../retrieval/index';
-import type { ConversationAppendPort } from '../retrieval/index';
+} from '../chat/index';
+import type { ConversationAppendPort } from '../chat/index';
 import { ModelGatewayModule } from '../model-gateway/index';
 import { COGETO_CONFIG, mailOptions, redactionOptions, researchOptions } from './config';
 import type { CogetoConfig } from './config';

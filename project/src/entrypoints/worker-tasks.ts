@@ -38,8 +38,8 @@ import { SKILL_ADVANCE_JOB_TYPE } from '../skills/index';
 import { RESEARCH_CONCLUDE_JOB_TYPE } from '../research/index';
 import type { ResearchConclusionService, ResearchSynthesisService } from '../research/index';
 import type { SkillEngine } from '../skills/index';
-import { CONVERSATION_TITLE_JOB_TYPE } from '../retrieval/index';
-import type { ConversationTitler } from '../retrieval/index';
+import { CONVERSATION_TITLE_JOB_TYPE } from '../chat/index';
+import type { ConversationTitler } from '../chat/index';
 import type { ModelGateway } from '../model-gateway/index';
 
 export interface WorkerTaskDeps {

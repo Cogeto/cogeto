@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectEntityProfile } from './entity-profile';
+import { detectEntityProfile } from '../retrieval/index';
 import {
   detectEmailReplyIntent,
   detectResearchIntent,
@@ -8,7 +8,7 @@ import {
   OPEN_LOOPS_HINT_RE,
   resolveQuestionClass,
   TEMPORAL_HINT_RE,
-} from './query-rewrite';
+} from '../retrieval/index';
 
 /**
  * routing_matrix: every intent the conversational router
