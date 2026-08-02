@@ -24,11 +24,11 @@ import {
   ConnectorsModule,
   EmailReplyModule,
   EmailSourceDeletion,
-  NotesSourceDeletion,
   ResearchChatModule,
   SkillsModule,
   WebSourceDeletion,
 } from '../connectors/index';
+import { NotesModule, NotesSourceDeletion } from '../notes/index';
 import {
   PassportCascadeModule,
   PassportExportCascade,
@@ -104,10 +104,10 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         // Chat joins notes as a deletable source (r7) — the
         // source-delete endpoint runs the saga for a chat-derived memory too.
         sourceDeletions: {
-          // ChatSourceModule provides the two chat adapters below; explicit
-          // since it stopped being global (boundary contract §4). The connector
-          // adapters still resolve from the global ConnectorsModule (B14).
-          imports: [ChatSourceModule],
+          // Each adapter's family module is named here; the remaining
+          // connector adapters still resolve from the global ConnectorsModule
+          // (B14, closing family by family in part 4).
+          imports: [ChatSourceModule, NotesModule],
           adapters: [
             NotesSourceDeletion,
             ChatSourceDeletion,
@@ -144,6 +144,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         ingestionGuard: PipelineIngestionGuard,
       }),
       RetrievalModule,
+      NotesModule,
       ChatSourceModule, // the chat source-deletion adapter for the delete endpoint
       IngestionModule.forQueries(), // verification + dreaming read endpoints
       AgentsModule,

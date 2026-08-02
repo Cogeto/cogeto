@@ -3,7 +3,7 @@ import { InMemoryDailyCounters } from '../../infrastructure/index';
 import type { Principal } from '@cogeto/shared';
 import { startTestDatabase } from '../../testing/index';
 import type { TestDatabase } from '../../testing/index';
-import { NotesService, NotesSourceDeletion } from '../../connectors/index';
+import { NotesService, NotesSourceDeletion } from '../../notes/index';
 import { DeletionSaga, MemoryStore, parseReceiptCounts } from '../../memory/index';
 import { chatMessage, conversation } from '../persistence/tables';
 import { CHAT_ANSWER_REDACTED, ChatAnswerCascade } from './chat-answer-cascade';

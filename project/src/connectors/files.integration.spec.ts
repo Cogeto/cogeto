@@ -25,8 +25,7 @@ import {
   createSuppressedFactLog,
 } from '../ingestion/index';
 import type { IngestionPipeline } from '../ingestion/index';
-import { NotesService } from './notes.service';
-import { NotesSourceReader } from './notes.source-reader';
+import { NotesService, NotesSourceReader } from '../notes/index';
 import { FilesService } from './files.service';
 import { FileSourceReader } from './file.source-reader';
 import { UserSettingsService } from '../settings/index';

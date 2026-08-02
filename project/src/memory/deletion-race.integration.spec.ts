@@ -14,7 +14,7 @@ import {
   startTestQdrant,
 } from '../testing/index';
 import type { TestDatabase, TestMinio, TestQdrant } from '../testing/index';
-import { NotesService, NotesSourceDeletion, NotesSourceReader } from '../connectors/index';
+import { NotesService, NotesSourceDeletion, NotesSourceReader } from '../notes/index';
 import {
   createIngestionPipeline,
   INGESTION_PIPELINE_JOB_TYPE,

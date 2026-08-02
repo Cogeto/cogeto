@@ -20,7 +20,7 @@ import {
   startTestQdrant,
 } from '../testing/index';
 import type { TestDatabase, TestMinio, TestQdrant } from '../testing/index';
-import { NotesService, NotesSourceDeletion } from '../connectors/index';
+import { NotesService, NotesSourceDeletion } from '../notes/index';
 import { MemoryStore } from './memory.store';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';

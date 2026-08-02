@@ -62,7 +62,8 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
 
   approval: 'agents',
 
-  note: 'connectors',
+  // Split out of connectors (V2.0 item 3.6 part 4).
+  note: 'notes',
   // Split out of connectors (V2.0 item 3.6 part 4).
   user_settings: 'settings',
   email_message: 'connectors',

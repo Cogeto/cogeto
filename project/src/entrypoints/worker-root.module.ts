@@ -21,13 +21,12 @@ import {
   EmailSourceDeletion,
   EmailSourceReader,
   FileSourceReader,
-  NotesSourceDeletion,
-  NotesSourceReader,
   RESEARCH_SYNTHESIS_OPTIONS,
   ResearchSynthesisService,
   WebSourceDeletion,
   WebSourceReader,
 } from '../connectors/index';
+import { NotesModule, NotesSourceDeletion, NotesSourceReader } from '../notes/index';
 import type { ResearchSynthesisOptions } from '../connectors/index';
 import {
   PassportCascadeModule,
@@ -101,10 +100,10 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         // The chat source deletion joins notes' so a chat-derived memory's source
         // deletion erases the originating turn under the saga (r7).
         sourceDeletions: {
-          // ChatSourceModule provides the two chat adapters below; explicit
-          // since it stopped being global (boundary contract §4). The connector
-          // adapters still resolve from the global ConnectorsModule (B14).
-          imports: [ChatSourceModule],
+          // Each adapter's family module is named here; the remaining
+          // connector adapters still resolve from the global ConnectorsModule
+          // (B14, closing family by family in part 4).
+          imports: [ChatSourceModule, NotesModule],
           adapters: [
             NotesSourceDeletion,
             ChatSourceDeletion,
@@ -144,10 +143,9 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       // EmailSourceReader adds source_type 'email';
       // WebSourceReader adds 'web'.
       IngestionModule.register({
-        // ChatSourceModule provides ChatSourceReader; explicit since it stopped
-        // being global (boundary contract §4). The four connector readers still
-        // resolve from the global ConnectorsModule (B14).
-        imports: [ChatSourceModule],
+        // Each reader's family module is named here; the remaining connector
+        // readers still resolve from the global ConnectorsModule (B14).
+        imports: [ChatSourceModule, NotesModule],
         readers: [
           NotesSourceReader,
           FileSourceReader,
@@ -157,6 +155,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         ],
       }),
       ChatSourceModule,
+      NotesModule,
       AgentsModule,
       ConnectorsModule.register({
         fileUpload: {
