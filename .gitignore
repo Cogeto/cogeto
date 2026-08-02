@@ -35,3 +35,4 @@ target/
 # Local Claude settings
 # ─────────────────────────────────────────────
 .claude/settings.local.json
+*.tsbuildinfo
