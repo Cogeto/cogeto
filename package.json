@@ -23,6 +23,7 @@
     "lint:docs": "node scripts/ci/check-doc-dashes.mjs",
     "i18n:check": "node scripts/ci/check-i18n.mjs",
     "i18n:add": "node scripts/dev/add-locale.mjs",
+    "i18n:sync": "node scripts/dev/sync-locales.mjs",
     "format": "prettier --write .",
     "boundaries": "depcruise project/src project/shared project/web --config .dependency-cruiser.cjs",
     "test": "npm run test --workspaces --if-present",
