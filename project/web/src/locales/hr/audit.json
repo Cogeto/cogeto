@@ -1,0 +1,24 @@
+{
+  "heading": "Audit trail",
+  "loading": "Loading audit trail…",
+  "error": "We couldn't load the audit trail.",
+  "appendOnly": "read-only · append-only",
+  "entryCount_one": "{{count}} entries",
+  "entryCount_few": "{{count}} entries",
+  "entryCount_other": "{{count}} entries",
+  "row": {
+    "byActor": "by {{actor}}",
+    "detailsWithheld": "Details visible to the entry's owner only."
+  },
+  "filter": {
+    "actor": "actor…",
+    "action": "action…",
+    "entityType": "entity type…",
+    "from": "from",
+    "to": "to"
+  },
+  "empty": {
+    "title": "No entries match these filters",
+    "body": "The audit trail records every consequential action: approvals, deletions, scope and settings changes. Clear the filters to see the full history."
+  }
+}

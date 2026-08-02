@@ -1,6 +1,7 @@
 import { eq, gte } from 'drizzle-orm';
 import type { DreamDigestDto, DreamDigestLine, PreferredLanguage, Principal } from '@cogeto/shared';
 import type { Db } from '../infrastructure/index';
+import { serverTranslator } from '../infrastructure/index';
 import { MemoryStore } from '../memory/index';
 import type { MemoryRow } from '../memory/index';
 import { dreamAction, dreamRun } from './persistence/tables';
@@ -65,7 +66,10 @@ export async function buildDigestLines(
   const ids = [...new Set(actions.map((a) => a.memoryId))];
   const rows = await memoryStore.getManyForPrincipal(principal, ids, { includeSensitive: true });
   const visible = new Map(rows.map((row) => [row.id, row]));
-  const hr = locale === 'hr';
+  // The digest speaks the user's preferred language (V2.0 item 3.5): one key
+  // per line, with the subject as a named variable and CLDR plurals, so
+  // Croatian gets its one/few/other agreement without string surgery here.
+  const t = serverTranslator(locale, 'digest');
 
   // Priority: conflicts first (they want attention), then merges and updates
   // (the work done), then quiet commitments, then the aggregate. The line
@@ -77,46 +81,30 @@ export async function buildDigestLines(
 
   for (const action of byPass('contradiction')) {
     const name = label(visible.get(action.memoryId)!);
-    lines.push({
-      text: hr
-        ? `Pronađen je sukob oko ${name}: tvoja odluka`
-        : `Found a conflict about ${name}: your call`,
-      href: '/review?tab=contradicted',
-    });
+    lines.push({ text: t('conflict', { subject: name }), href: '/review?tab=contradicted' });
   }
   for (const action of byPass('dedup')) {
     const name = label(visible.get(action.memoryId)!);
     lines.push({
-      text: hr ? `Spojene su dvije bilješke o ${name}` : `Merged two notes about ${name}`,
+      text: t('merged', { subject: name }),
       href: `/memories?open=${action.memoryId}`,
     });
   }
   for (const action of byPass('supersession')) {
     const name = label(visible.get(action.memoryId)!);
     lines.push({
-      text: hr
-        ? `Ažurirano ${name}, novija činjenica zamijenila je stariju`
-        : `Updated ${name}: a newer fact replaced an older one`,
+      text: t('updated', { subject: name }),
       href: `/memories?open=${action.memoryId}`,
     });
   }
   for (const action of byPass('dormant')) {
     const name = label(visible.get(action.memoryId)!);
-    lines.push({
-      text: hr ? `Obveza oko ${name} je utihnula` : `A commitment about ${name} has gone quiet`,
-      href: `/memories?open=${action.memoryId}`,
-    });
+    lines.push({ text: t('quiet', { subject: name }), href: `/memories?open=${action.memoryId}` });
   }
   const outdated = byPass('staleness');
   if (outdated.length > 0) {
     lines.push({
-      text: hr
-        ? outdated.length === 1
-          ? `Označen 1 zapis kao zastario, datum mu je prošao`
-          : `Označeno ${outdated.length} zapisa kao zastarjelo, datumi su im prošli`
-        : outdated.length === 1
-          ? `Marked 1 memory outdated: its date passed`
-          : `Marked ${outdated.length} memories outdated: their dates passed`,
+      text: t('outdated', { count: outdated.length }),
       href: '/memories?status=outdated',
     });
   }
@@ -124,10 +112,7 @@ export async function buildDigestLines(
   if (lines.length > MAX_LINES) {
     const shown = lines.slice(0, MAX_LINES - 1);
     const rest = lines.length - (MAX_LINES - 1);
-    shown.push({
-      text: hr ? `…i još ${rest} promjena` : `…and ${rest} more changes`,
-      href: '/memories',
-    });
+    shown.push({ text: t('overflow', { count: rest }), href: '/memories' });
     return shown;
   }
   return lines;

@@ -64,6 +64,21 @@ hardcoded in the harness rather than configured here, because they are not
 thresholds. There is no acceptable rate at which a model may obey text inside
 the untrusted-data fence.
 
+### Interface language is not a measured language
+
+Since V2.0 item 3.5 the interface renders in **English, Croatian, German and
+French**. Only **English and Croatian** are measured: they are the languages with
+a golden corpus and per-language floors here.
+
+**German and French are interface languages.** Cogeto renders its screens and
+writes its own copy in them, and it publishes **no** quality claim for facts
+extracted from German or French documents. There is no corpus, therefore no
+measurement, therefore no gate, and a gate at a value nobody measured would be
+worse than none. When a corpus exists for a language, it gets floors here on the
+same terms as every other: published at the honest current value, ratcheted up
+only. Until then the product says so where a user picks a language, and
+[`docs/features/i18n.md`](../features/i18n.md) says so in the same words.
+
 ## The floors
 
 Specification targets are from `docs/eval-golden-set.md` §6 and spec §14.

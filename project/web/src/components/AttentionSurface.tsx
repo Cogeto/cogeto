@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { AttentionFeedDto, AttentionItem } from '@cogeto/shared';
 import { dismissAttentionItem, fetchAttention, markAttentionSeen } from '../api';
 import type { Session } from '../auth/oidc';
-import { KIND_ICON, groupItems, surfaceState } from './attention-model';
+import { KIND_ICON, groupItems, groupLabel, surfaceState } from './attention-model';
 
 /**
  * The attention-first hero: the first thing on the
@@ -17,6 +18,7 @@ import { KIND_ICON, groupItems, surfaceState } from './attention-model';
  * dismissed one by one; a live count ("3 items in review") never can.
  */
 export function AttentionSurface({ session }: { session: Session }) {
+  const { t } = useTranslation('dashboard');
   const qc = useQueryClient();
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['attention'],
@@ -58,12 +60,12 @@ export function AttentionSurface({ session }: { session: Session }) {
     >
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 id="attention-heading" className="text-base font-semibold text-white">
-          What needs you right now
+          {t('attention.heading')}
         </h2>
         {state === 'ready' && unread > 0 && (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-teal/15 px-2.5 py-1 text-xs font-semibold text-brand-teal ring-1 ring-brand-teal/40">
             <span aria-hidden="true">●</span>
-            {unread} new
+            {t('attention.unreadCount', { count: unread })}
           </span>
         )}
       </div>
@@ -72,21 +74,21 @@ export function AttentionSurface({ session }: { session: Session }) {
       <p role="status" aria-live="polite" className="sr-only">
         {state === 'ready'
           ? unread > 0
-            ? `${unread} ${unread === 1 ? 'item needs' : 'items need'} your attention`
-            : 'Nothing needs your attention right now'
+            ? t('attention.liveRegion.needsAttention', { count: unread })
+            : t('attention.liveRegion.nothing')
           : ''}
       </p>
 
       {state === 'loading' && <FeedSkeleton />}
       {state === 'error' && (
         <div className="rounded-md bg-white/5 px-4 py-3 text-sm text-white/80" role="alert">
-          <span>We couldn&apos;t load your attention feed just now.</span>{' '}
+          <span>{t('attention.error')}</span>{' '}
           <button
             type="button"
             onClick={() => void refetch()}
             className="font-semibold text-brand-teal underline underline-offset-2"
           >
-            Try again
+            {t('common:action.tryAgain')}
           </button>
         </div>
       )}
@@ -99,11 +101,8 @@ export function AttentionSurface({ session }: { session: Session }) {
             ✓
           </span>
           <div>
-            <p className="text-sm font-semibold text-white">Nothing needs you right now</p>
-            <p className="text-sm text-white/60">
-              Due work, quiet commitments, review items, approvals and last night&apos;s changes
-              will surface here.
-            </p>
+            <p className="text-sm font-semibold text-white">{t('attention.empty.title')}</p>
+            <p className="text-sm text-white/60">{t('attention.empty.body')}</p>
           </div>
         </div>
       )}
@@ -115,11 +114,11 @@ export function AttentionSurface({ session }: { session: Session }) {
                 <span aria-hidden="true" className="text-brand-teal">
                   {g.group.icon}
                 </span>
-                {g.group.label}
+                {groupLabel(g.group.key)}
                 {g.unread > 0 && (
                   <span
                     className="h-1.5 w-1.5 rounded-full bg-brand-teal"
-                    aria-label={`${g.unread} new`}
+                    aria-label={t('attention.unreadCount', { count: g.unread })}
                   />
                 )}
               </h3>
@@ -141,6 +140,7 @@ export function AttentionSurface({ session }: { session: Session }) {
 }
 
 function AttentionRow({ item, onDismiss }: { item: AttentionItem; onDismiss?: () => void }) {
+  const { t } = useTranslation('dashboard');
   return (
     <li className="group flex items-center gap-3 rounded-md bg-white/[0.03] px-3 py-2 ring-1 ring-white/5 transition-colors hover:bg-white/[0.07]">
       <span
@@ -155,7 +155,7 @@ function AttentionRow({ item, onDismiss }: { item: AttentionItem; onDismiss?: ()
         <span className="underline decoration-white/20 underline-offset-2 group-hover:decoration-brand-teal">
           {item.title}
         </span>
-        {item.unread && <span className="sr-only"> (new)</span>}
+        {item.unread && <span className="sr-only"> {t('attention.newSuffix')}</span>}
       </a>
       {typeof item.count === 'number' && (
         <span className="rounded-full bg-white/10 px-1.5 text-xs font-semibold text-white/80">
@@ -167,7 +167,7 @@ function AttentionRow({ item, onDismiss }: { item: AttentionItem; onDismiss?: ()
           type="button"
           onClick={onDismiss}
           className="rounded p-1 text-white/30 transition-colors hover:bg-white/10 hover:text-white/70"
-          aria-label={`Dismiss: ${item.title}`}
+          aria-label={t('attention.dismissItem', { title: item.title })}
         >
           <span aria-hidden="true">✕</span>
         </button>
@@ -177,13 +177,9 @@ function AttentionRow({ item, onDismiss }: { item: AttentionItem; onDismiss?: ()
 }
 
 function FeedSkeleton() {
+  const { t } = useTranslation('dashboard');
   return (
-    <div
-      className="space-y-2"
-      role="status"
-      aria-busy="true"
-      aria-label="Loading your attention feed…"
-    >
+    <div className="space-y-2" role="status" aria-busy="true" aria-label={t('attention.loading')}>
       {[0, 1, 2, 3].map((i) => (
         <div
           key={i}
@@ -191,7 +187,7 @@ function FeedSkeleton() {
           aria-hidden="true"
         />
       ))}
-      <span className="sr-only">Loading your attention feed…</span>
+      <span className="sr-only">{t('attention.loading')}</span>
     </div>
   );
 }

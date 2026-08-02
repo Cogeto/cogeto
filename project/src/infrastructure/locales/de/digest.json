@@ -1,0 +1,10 @@
+{
+  "conflict": "Found a conflict about {{subject}}: your call",
+  "merged": "Merged two notes about {{subject}}",
+  "updated": "Updated {{subject}}: a newer fact replaced an older one",
+  "quiet": "A commitment about {{subject}} has gone quiet",
+  "outdated_one": "Marked {{count}} memory outdated: its date passed",
+  "outdated_other": "Marked {{count}} memories outdated: their dates passed",
+  "overflow_one": "…and {{count}} more change",
+  "overflow_other": "…and {{count}} more changes"
+}

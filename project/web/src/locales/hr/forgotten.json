@@ -1,0 +1,77 @@
+{
+  "heading": "Deletion receipts",
+  "loading": "Loading receipts…",
+  "error": "We couldn't load the deletion receipts right now.",
+  "notYet": "Not yet",
+  "permanenceNote": "Receipts are permanent and cannot be deleted. That permanence is the point: each one is hash-chained to the last and signed by this instance, so the record of what was forgotten can itself never be quietly rewritten.",
+  "chainVerified_one": "chain verified · {{count}} receipt",
+  "chainVerified_few": "chain verified · {{count}} receipts",
+  "chainVerified_other": "chain verified · {{count}} receipts",
+  "chainFailed": "chain verification FAILED",
+  "sourceKind": {
+    "conversation": "conversation"
+  },
+  "sourceLabel": "{{kind}} · {{id}}",
+  "receiptStatus": {
+    "alerting": "alerting",
+    "pending": "pending…",
+    "confirmed": "confirmed"
+  },
+  "empty": {
+    "title": "No deletions yet",
+    "body": "A deletion receipt is the signed, tamper-evident proof Cogeto issues when it permanently removes a source and everything derived from it. Delete a note from its source drawer and the receipt appears here, permanently."
+  },
+  "column": {
+    "source": "Source",
+    "removed": "Removed",
+    "requested": "Requested",
+    "confirmed": "Confirmed",
+    "status": "Status"
+  },
+  "removed": {
+    "memories_one": "{{count}} memory",
+    "memories_few": "{{count}} memories",
+    "memories_other": "{{count}} memories",
+    "vectors_one": "{{count}} vector",
+    "vectors_few": "{{count}} vectors",
+    "vectors_other": "{{count}} vectors",
+    "files_one": "{{count}} file",
+    "files_few": "{{count}} files",
+    "files_other": "{{count}} files",
+    "messages_one": "{{count}} message",
+    "messages_few": "{{count}} messages",
+    "messages_other": "{{count}} messages",
+    "redacted_one": "{{count}} chat answer redacted",
+    "redacted_few": "{{count}} chat answers redacted",
+    "redacted_other": "{{count}} chat answers redacted"
+  },
+  "receipt": {
+    "drawerTitle": "Deletion receipt",
+    "loading": "Loading receipt…",
+    "error": "We couldn't load this receipt right now.",
+    "none": "None",
+    "fieldPending": "Pending",
+    "savePdf": "Save as PDF",
+    "printTitle": "Print or save the receipt as a PDF certificate",
+    "exportJson": "Export JSON",
+    "exportTitle": "Download the receipt with its verification key",
+    "availableWhenConfirmed": "Available once the receipt is confirmed",
+    "exportExplainer": "The exported JSON contains this receipt plus the instance public key, a self-contained artifact anyone can verify without access to Cogeto. “Save as PDF” prints a clean, single-page certificate.",
+    "printSubtitle": "Deletion receipt: provable forgetting",
+    "printFooter": "Hash-chained to the previous receipt and signed by this Cogeto instance. Verify independently with the instance public key at /api/instance/public-key. This record is permanent.",
+    "field": {
+      "id": "Receipt id",
+      "source": "Source",
+      "status": "Status",
+      "requestedSigned": "Requested / signed",
+      "confirmed": "Confirmed",
+      "signedAt": "Signed at",
+      "confirmedAt": "Confirmed at",
+      "whatRemoved": "What was removed",
+      "canonicalPayload": "Canonical payload (counts_json)",
+      "prevHash": "Previous hash",
+      "hash": "Hash (SHA-256)",
+      "signature": "Signature (ed25519, base64)"
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Trans, useTranslation } from 'react-i18next';
 import type { DiscoveredPageDto, ResearchCaptureResponse, ResearchRunDto } from '@cogeto/shared';
 import { selectTopByScore } from '@cogeto/shared';
 import {
@@ -35,6 +36,7 @@ export function ResearchInline({
   run: ResearchRunDto;
   onClose: () => void;
 }) {
+  const { t } = useTranslation('research');
   const queryClient = useQueryClient();
   const [run, setRun] = useState(initialRun);
   const [results, setResults] = useState<DiscoveredPageDto[] | null>(null);
@@ -126,9 +128,9 @@ export function ResearchInline({
   if (cancelled) {
     return (
       <Frame>
-        <p className="text-sm text-slate-600">Cancelled. Nothing more was read.</p>
+        <p className="text-sm text-slate-600">{t('inline.cancelled')}</p>
         <button type="button" className={`${btnSecondary} mt-2`} onClick={onClose}>
-          Dismiss
+          {t('common:action.dismiss')}
         </button>
       </Frame>
     );
@@ -145,38 +147,35 @@ export function ResearchInline({
       {/* What left, and what Cogeto is reading — disclosed, not asked. */}
       <p className="text-xs text-slate-500">
         <span className="font-mono text-[0.64rem] uppercase tracking-[0.12em] text-slate-400">
-          Web
+          {t('inline.webLabel')}
         </span>{' '}
-        searched <span className="font-medium text-slate-700">“{disclosedQuery}”</span>
-        {readUrls.length > 0 && (
-          <>
-            {' '}
-            · reading the top {readUrls.length} source{readUrls.length === 1 ? '' : 's'} by
-            relevance
-          </>
-        )}
+        <Trans
+          i18nKey="inline.searched"
+          ns="research"
+          values={{ query: disclosedQuery }}
+          components={{ q: <span className="font-medium text-slate-700" /> }}
+        />
+        {readUrls.length > 0 && <> {t('inline.readingTop', { count: readUrls.length })}</>}
       </p>
 
       {searching && (
         <div className="mt-1 flex items-center justify-between">
-          <PulseLine label="Searching the web…" />
+          <PulseLine label={t('inline.searching')} />
           <button
             type="button"
             onClick={() => cancel.mutate()}
             className="text-xs text-slate-400 underline underline-offset-2 hover:text-slate-600"
           >
-            Cancel
+            {t('common:action.cancel')}
           </button>
         </div>
       )}
 
       {noResults && (
         <div className="mt-1 space-y-2">
-          <p className="text-sm text-slate-500">
-            The engines returned nothing for this query. Try rephrasing your question.
-          </p>
+          <p className="text-sm text-slate-500">{t('inline.noResults')}</p>
           <button type="button" className={btnSecondary} onClick={onClose}>
-            Dismiss
+            {t('common:action.dismiss')}
           </button>
         </div>
       )}
@@ -189,7 +188,7 @@ export function ResearchInline({
                 <span className="text-slate-600">✓ {r.url}</span>
               ) : (
                 <span className="text-amber-700 dark:text-amber-300">
-                  ⨯ {r.url} · skipped ({r.detail})
+                  {t('inline.skipped', { url: r.url, detail: r.detail })}
                 </span>
               )}
             </p>
@@ -211,9 +210,7 @@ export function ResearchInline({
 
       {resumedEmpty ? (
         <div className="mt-1 space-y-2">
-          <p className="text-sm text-slate-500">
-            This research never read any pages, so there is nothing to wait for.
-          </p>
+          <p className="text-sm text-slate-500">{t('inline.nothingRead')}</p>
           <button
             type="button"
             className={btnSecondary}
@@ -222,7 +219,7 @@ export function ResearchInline({
               onClose();
             }}
           >
-            Dismiss
+            {t('common:action.dismiss')}
           </button>
         </div>
       ) : (
@@ -231,8 +228,10 @@ export function ResearchInline({
             <PulseLine
               label={
                 extracting
-                  ? `Extracting and verifying facts…${totalFacts > 0 ? ` ${totalFacts} remembered so far.` : ''}`
-                  : 'Writing the answer into this conversation…'
+                  ? totalFacts > 0
+                    ? t('inline.extractingWithCount', { count: totalFacts })
+                    : t('inline.extracting')
+                  : t('inline.writingAnswer')
               }
             />
           </div>

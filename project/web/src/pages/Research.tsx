@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Trans, useTranslation } from 'react-i18next';
 import type {
   DiscoveredPageDto,
   ResearchAnswerDto,
@@ -16,6 +17,7 @@ import {
   synthesiseResearch,
 } from '../api';
 import type { Session } from '../auth/oidc';
+import { formatDateTime } from '../i18n/format';
 import { Shell } from '../components/Shell';
 import {
   btnDanger,
@@ -45,6 +47,7 @@ const STATUS_TONE: Record<ResearchRunDto['status'], Tone> = {
  * does discovery run → the user picks pages → capture → a cited synthesis.
  */
 export function Research({ session }: { session: Session }) {
+  const { t } = useTranslation('research');
   const queryClient = useQueryClient();
   const [intent, setIntent] = useState('');
   const [run, setRun] = useState<ResearchRunDto | null>(null);
@@ -149,14 +152,10 @@ export function Research({ session }: { session: Session }) {
   const queryEdited = run ? editedQuery.trim() !== run.minimisedQuery : false;
 
   return (
-    <Shell session={session} title="Research" active="research">
+    <Shell session={session} title={t('navigation:section.research')} active="research">
       <Card>
-        <SectionTitle>Ask the web, on your terms</SectionTitle>
-        <p className="mb-2 text-xs text-slate-500">
-          Research is explicitly invoked and honest about what leaves: Cogeto minimises the query,
-          shows you exactly what would be sent, and sends nothing until you approve it. Fetched
-          pages become inspectable, deletable web memories.
-        </p>
+        <SectionTitle>{t('page.heading')}</SectionTitle>
+        <p className="mb-2 text-xs text-slate-500">{t('page.explainer')}</p>
         <div className="flex gap-2">
           <input
             value={intent}
@@ -164,7 +163,7 @@ export function Research({ session }: { session: Session }) {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && intent.trim() && !run) propose.mutate();
             }}
-            placeholder="e.g. GDPR consent requirements when migrating a CRM"
+            placeholder={t('page.intentPlaceholder')}
             className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
             disabled={!!run}
           />
@@ -175,11 +174,11 @@ export function Research({ session }: { session: Session }) {
               disabled={!intent.trim() || propose.isPending}
               onClick={() => propose.mutate()}
             >
-              {propose.isPending ? 'Preparing…' : 'Prepare research'}
+              {propose.isPending ? t('page.preparing') : t('page.prepare')}
             </button>
           ) : (
             <button type="button" className={btnSecondary} onClick={reset}>
-              New research
+              {t('page.newResearch')}
             </button>
           )}
         </div>
@@ -187,15 +186,12 @@ export function Research({ session }: { session: Session }) {
 
       {gateOpen && (
         <Card>
-          <SectionTitle>Approve what leaves</SectionTitle>
+          <SectionTitle>{t('gate.heading')}</SectionTitle>
           <div className="space-y-2">
-            <p className="text-xs text-slate-500">
-              Nothing has been sent. This is the exact query that will reach public search engines
-              if you approve. Edit it freely first.
-            </p>
+            <p className="text-xs text-slate-500">{t('gate.explainer')}</p>
             {run.minimisedQuery !== run.proposedQuery && (
               <p className="text-xs">
-                <span className="text-slate-400">− proposed: </span>
+                <span className="text-slate-400">{t('gate.proposedPrefix')}</span>
                 <span className="text-slate-400 line-through decoration-slate-300">
                   {run.proposedQuery}
                 </span>
@@ -205,11 +201,11 @@ export function Research({ session }: { session: Session }) {
               value={editedQuery}
               onChange={(e) => setEditedQuery(e.target.value)}
               className="w-full rounded-md border border-brand-teal/50 bg-brand-teal/5 px-3 py-2 text-sm font-medium text-slate-800"
-              aria-label="The query that will be sent"
+              aria-label={t('gate.queryLabel')}
             />
             <p className="rounded bg-slate-50 px-2 py-1 text-xs text-slate-600">
               {run.minimiseReason}
-              {queryEdited && ' · You edited the query. Your text is what will be sent.'}
+              {queryEdited && t('gate.editedNote')}
             </p>
             <div className="flex gap-2">
               <button
@@ -218,7 +214,7 @@ export function Research({ session }: { session: Session }) {
                 disabled={!editedQuery.trim() || approve.isPending}
                 onClick={() => approve.mutate()}
               >
-                {approve.isPending ? 'Searching…' : 'Approve & search'}
+                {approve.isPending ? t('gate.searching') : t('gate.approve')}
               </button>
               <button
                 type="button"
@@ -226,7 +222,7 @@ export function Research({ session }: { session: Session }) {
                 disabled={cancel.isPending}
                 onClick={() => cancel.mutate(run.id)}
               >
-                Cancel, send nothing
+                {t('gate.cancel')}
               </button>
             </div>
           </div>
@@ -235,18 +231,19 @@ export function Research({ session }: { session: Session }) {
 
       {searched && (
         <Card>
-          <SectionTitle>Results: pick the pages worth reading</SectionTitle>
+          <SectionTitle>{t('results.heading')}</SectionTitle>
           {results.length === 0 && (
-            <EmptyState title="No results">
-              The engines returned nothing for this query. Start a new research with different
-              wording.
-            </EmptyState>
+            <EmptyState title={t('results.empty.title')}>{t('results.empty.body')}</EmptyState>
           )}
           {results.length > 0 && (
             <>
               <p className="mb-2 text-xs text-slate-500">
-                Sent query: <span className="font-medium text-slate-700">{run.sentQuery}</span>,
-                recorded on this run and on every memory this research produces.
+                <Trans
+                  i18nKey="results.sentQuery"
+                  ns="research"
+                  values={{ query: run.sentQuery }}
+                  components={{ q: <span className="font-medium text-slate-700" /> }}
+                />
               </p>
               <ul className="space-y-2">
                 {results.map((r) => (
@@ -261,7 +258,7 @@ export function Research({ session }: { session: Session }) {
                         else next.delete(r.url);
                         setSelected(next);
                       }}
-                      aria-label={`Select ${r.title || r.url}`}
+                      aria-label={t('results.selectPage', { page: r.title || r.url })}
                     />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-slate-800">
@@ -283,12 +280,10 @@ export function Research({ session }: { session: Session }) {
                   onClick={() => capture.mutate()}
                 >
                   {capture.isPending
-                    ? 'Fetching…'
-                    : `Fetch ${selected.size || ''} selected page${selected.size === 1 ? '' : 's'}`}
+                    ? t('results.fetching')
+                    : t('results.fetchSelected', { count: selected.size })}
                 </button>
-                <span className="text-xs text-slate-400">
-                  Pages are fetched by this instance, robots-respecting, never rendered.
-                </span>
+                <span className="text-xs text-slate-400">{t('results.fetchNote')}</span>
               </div>
             </>
           )}
@@ -297,10 +292,10 @@ export function Research({ session }: { session: Session }) {
               {captured.results.map((r) => (
                 <p key={r.url} className="text-xs">
                   {r.status === 'captured' ? (
-                    <span className="text-slate-600">✓ {r.url} · captured, extracting…</span>
+                    <span className="text-slate-600">{t('results.captured', { url: r.url })}</span>
                   ) : (
                     <span className="text-amber-700 dark:text-amber-300">
-                      ⨯ {r.url} · skipped ({r.detail})
+                      {t('inline.skipped', { url: r.url, detail: r.detail })}
                     </span>
                   )}
                 </p>
@@ -312,7 +307,7 @@ export function Research({ session }: { session: Session }) {
                   disabled={synthesise.isPending}
                   onClick={() => synthesise.mutate()}
                 >
-                  {synthesise.isPending ? 'Synthesising…' : 'Synthesise a cited answer'}
+                  {synthesise.isPending ? t('results.synthesising') : t('results.synthesise')}
                 </button>
               )}
             </div>
@@ -322,23 +317,20 @@ export function Research({ session }: { session: Session }) {
 
       {answer && (
         <Card>
-          <SectionTitle>Answer: every claim traceable</SectionTitle>
+          <SectionTitle>{t('answer.heading')}</SectionTitle>
           <ResearchAnswer answer={answer} />
-          <p className="mt-2 text-xs text-slate-400">
-            Web citations link to the page as fetched; the facts persist as web memories you can
-            inspect and delete from the Memories page.
-          </p>
+          <p className="mt-2 text-xs text-slate-400">{t('answer.note')}</p>
         </Card>
       )}
 
       {error && <ErrorState>{error}</ErrorState>}
 
       <Card>
-        <SectionTitle>Past research</SectionTitle>
-        {runsQuery.isPending && <SkeletonRows rows={3} label="Loading research runs…" />}
-        {runsQuery.isError && <ErrorState>We couldn’t load past research.</ErrorState>}
+        <SectionTitle>{t('past.heading')}</SectionTitle>
+        {runsQuery.isPending && <SkeletonRows rows={3} label={t('past.loading')} />}
+        {runsQuery.isError && <ErrorState>{t('past.error')}</ErrorState>}
         {runsQuery.data && runsQuery.data.length === 0 && (
-          <EmptyState title="No research yet">Everything you approve is recorded here.</EmptyState>
+          <EmptyState title={t('past.empty.title')}>{t('past.empty.body')}</EmptyState>
         )}
         {runsQuery.data && runsQuery.data.length > 0 && (
           <ul className="space-y-2">
@@ -346,22 +338,21 @@ export function Research({ session }: { session: Session }) {
               <li key={r.id} className="rounded-md bg-slate-50 p-2">
                 <p className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="font-medium text-slate-800">{r.intent}</span>
-                  <Pill tone={STATUS_TONE[r.status]}>
-                    {r.status === 'proposed' ? 'awaiting your approval' : r.status}
-                  </Pill>
+                  {/* Run STATUS is an API value; only its display name is translated. */}
+                  <Pill tone={STATUS_TONE[r.status]}>{t(`runStatus.${r.status}`)}</Pill>
                 </p>
                 <p className="text-xs text-slate-500">
                   {r.sentQuery ? (
-                    <>
-                      sent: <span className="font-medium">“{r.sentQuery}”</span>
-                    </>
+                    <Trans
+                      i18nKey="past.sent"
+                      ns="research"
+                      values={{ query: r.sentQuery }}
+                      components={{ q: <span className="font-medium" /> }}
+                    />
                   ) : (
-                    'nothing was sent'
+                    t('past.nothingSent')
                   )}
-                  <span className="text-slate-400">
-                    {' '}
-                    · {new Date(r.createdAt).toLocaleString()}
-                  </span>
+                  <span className="text-slate-400"> · {formatDateTime(r.createdAt)}</span>
                 </p>
                 {r.status === 'proposed' && (
                   <p className="mt-1 flex gap-2">
@@ -373,7 +364,7 @@ export function Research({ session }: { session: Session }) {
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
                     >
-                      Review &amp; approve
+                      {t('past.reviewApprove')}
                     </button>
                     <button
                       type="button"
@@ -381,14 +372,14 @@ export function Research({ session }: { session: Session }) {
                       disabled={cancel.isPending}
                       onClick={() => cancel.mutate(r.id)}
                     >
-                      Cancel
+                      {t('common:action.cancel')}
                     </button>
                   </p>
                 )}
                 {r.status === 'approved' && r.answer && (
                   <details className="mt-1">
                     <summary className="cursor-pointer text-xs text-brand-teal-ink dark:text-brand-teal">
-                      View answer
+                      {t('past.viewAnswer')}
                     </summary>
                     <p className="mt-1 whitespace-pre-wrap rounded border border-slate-200 p-2 text-xs text-slate-700">
                       {r.answer}

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { AttentionItem, AttentionKind } from '@cogeto/shared';
 import {
   GROUP_META,
+  groupLabel,
   GROUP_ORDER,
   KIND_ICON,
   groupItems,
@@ -34,9 +35,8 @@ describe('attention-model', () => {
   it('no_color_only: every kind carries a glyph and a labelled group', () => {
     for (const kind of ALL_KINDS) {
       expect(KIND_ICON[kind]).toBeTruthy();
-      const group = GROUP_META[groupOf(kind)];
-      expect(group.label.length).toBeGreaterThan(0);
-      expect(group.icon).toBeTruthy();
+      expect(groupLabel(groupOf(kind)).length).toBeGreaterThan(0);
+      expect(GROUP_META[groupOf(kind)].icon).toBeTruthy();
     }
   });
 

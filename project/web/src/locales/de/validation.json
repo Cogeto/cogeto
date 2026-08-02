@@ -1,0 +1,7 @@
+{
+  "upload": {
+    "unsupportedType": "Only PDF and DOCX files are accepted.",
+    "tooLarge": "File is too large (max {{megabytes}} MB).",
+    "empty": "That file is empty."
+  }
+}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { AnswerSegment, ChatFactDto, ChatResearchOffer, ResearchRunDto } from '@cogeto/shared';
 import { mapMarkersToCitations, mapUnsourcedMarkers, scanAnswer } from '@cogeto/shared';
 import {
@@ -53,6 +54,7 @@ function MessageBody({
   facts?: ChatFactDto[];
   onOpenMemory: (memoryId: string) => void;
 }) {
+  const { t } = useTranslation('chat');
   // Live text carries `[F#]`/`[U]` markers + a facts map; canonicalize first,
   // then scan. Stored text has no facts map and is already canonical/sanitized.
   const markerMap = new Map((facts ?? []).map((f) => [f.marker, f.memoryId]));
@@ -95,7 +97,7 @@ function MessageBody({
       {(citedIds.length > 0 || hasUnsourced) && (
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-dashed border-slate-200 pt-3">
           <span className="font-mono text-[0.64rem] uppercase tracking-[0.12em] text-slate-400">
-            Stands on
+            {t('answer.standsOn')}
           </span>
           {citedIds.map((id) => (
             <CitationChip
@@ -130,6 +132,7 @@ function ResearchOfferChip({
   conversationId: string | null;
   onProposed: (run: ResearchRunDto) => void;
 }) {
+  const { t } = useTranslation('chat');
   const propose = useMutation({
     mutationFn: () => proposeResearch(session, offer.topic, conversationId ?? undefined),
     onSuccess: (run) => onProposed(run),
@@ -142,12 +145,10 @@ function ResearchOfferChip({
         disabled={propose.isPending}
         className="rounded-full border border-brand-teal/40 bg-brand-teal/10 px-3 py-1 text-xs font-semibold text-brand-teal-ink transition-colors hover:bg-brand-teal/20 disabled:opacity-40 dark:text-brand-teal"
       >
-        {propose.isPending ? 'Preparing…' : 'Research this on the web →'}
+        {propose.isPending ? t('researchOffer.preparing') : t('researchOffer.action')}
       </button>
       {propose.isError ? (
-        <span className="text-xs text-slate-400">
-          Couldn’t prepare that research. Try the Research page.
-        </span>
+        <span className="text-xs text-slate-400">{t('researchOffer.error')}</span>
       ) : (
         <button
           type="button"
@@ -158,9 +159,9 @@ function ResearchOfferChip({
             propose.mutate();
           }}
           className="text-xs text-slate-400 underline underline-offset-2 transition-colors hover:text-slate-600"
-          title="Cogeto will check the web automatically from now on. You can turn this off in Settings."
+          title={t('researchOffer.alwaysTitle')}
         >
-          Always do this automatically
+          {t('researchOffer.always')}
         </button>
       )}
     </div>
@@ -172,6 +173,7 @@ function ResearchOfferChip({
  * through the pipeline and polls capture progress. Only user messages get this.
  */
 function RememberAction({ session, messageId }: { session: Session; messageId: string }) {
+  const { t } = useTranslation('chat');
   const queryClient = useQueryClient();
   const [captured, setCaptured] = useState(false);
   const remember = useMutation({
@@ -198,19 +200,19 @@ function RememberAction({ session, messageId }: { session: Session; messageId: s
         onClick={() => remember.mutate()}
         disabled={remember.isPending}
         className="mt-1.5 font-mono text-[0.68rem] uppercase tracking-[0.08em] text-slate-400 underline decoration-slate-300 underline-offset-2 transition-colors hover:text-brand-teal-ink disabled:opacity-40 dark:hover:text-brand-teal"
-        title="Remember this message. It becomes memory through the normal pipeline"
+        title={t('remember.title')}
       >
-        {remember.isPending ? 'Remembering…' : 'Remember this'}
+        {remember.isPending ? t('remember.pending') : t('remember.action')}
       </button>
     );
   }
   const state = status.data?.state ?? 'processing';
   const label =
     state === 'done'
-      ? 'Remembered ✓'
+      ? t('remember.done')
       : state === 'failed'
-        ? 'Capture failed'
-        : 'Remembering… extracting & verifying';
+        ? t('remember.failed')
+        : t('remember.working');
   return (
     <span
       className={`mt-1.5 block font-mono text-[0.68rem] uppercase tracking-[0.08em] ${
@@ -226,10 +228,11 @@ function RememberAction({ session, messageId }: { session: Session; messageId: s
 
 /** The question as a confident heading. */
 function AskHeading({ time, children }: { time?: string; children: ReactNode }) {
+  const { t } = useTranslation('chat');
   return (
     <div>
       <span className="font-mono text-[0.68rem] uppercase tracking-[0.12em] text-slate-400">
-        You{time ? ` · ${time}` : ''}
+        {time ? t('answer.askedByAt', { time }) : t('role.you')}
       </span>
       <h2 className="mt-1.5 text-2xl font-semibold leading-snug tracking-tight text-balance text-slate-800">
         {children}
@@ -240,6 +243,7 @@ function AskHeading({ time, children }: { time?: string; children: ReactNode }) 
 
 /** The answer along the teal evidence rail. */
 function AnswerBlock({ children }: { children: ReactNode }) {
+  const { t } = useTranslation('chat');
   return (
     <div className="mt-4 grid grid-cols-[3px_1fr] gap-5">
       <div
@@ -252,7 +256,7 @@ function AnswerBlock({ children }: { children: ReactNode }) {
             className="h-1.5 w-1.5 rounded-full bg-brand-teal shadow-[0_0_0_3px_var(--color-brand-teal-surface)] dark:shadow-[0_0_0_3px_rgba(33,194,154,0.15)]"
             aria-hidden="true"
           />
-          Cogeto · from your memory
+          {t('answer.attribution')}
         </span>
         {children}
       </div>
@@ -307,12 +311,12 @@ function CogetoMark() {
   );
 }
 
-const SUGGESTED_PROMPTS = [
-  'What did I promise this week?',
-  'Summarise my open commitments',
-  'What changed since last month?',
-  'Who is involved in my active work?',
-];
+/**
+ * The starter prompts. Structural ids, not English content: the text is looked
+ * up as `chat:suggestedPrompts.<id>` so a translated instance suggests
+ * questions in the user's own language.
+ */
+const SUGGESTED_PROMPT_IDS = ['promisedThisWeek', 'openCommitments', 'changedSince', 'whoInvolved'];
 
 type ChatMessage = { id: string; role: 'user' | 'assistant'; content: string };
 type Turn = { key: string; question?: ChatMessage; answer?: ChatMessage };
@@ -339,6 +343,7 @@ function buildTurns(history: ChatMessage[]): Turn[] {
 }
 
 export function Chat({ session }: { session: Session }) {
+  const { t } = useTranslation('chat');
   const queryClient = useQueryClient();
 
   // The conversation containers: the deep link (?c=) wins, else the
@@ -571,12 +576,18 @@ export function Chat({ session }: { session: Session }) {
   );
 
   return (
-    <Shell session={session} title="Chat" active="chat" fullHeight leftRail={conversationRail}>
+    <Shell
+      session={session}
+      title={t('navigation:section.chat')}
+      active="chat"
+      fullHeight
+      leftRail={conversationRail}
+    >
       <section className="flex min-h-0 flex-1 flex-col">
         {/* Narrow screens: a compact picker in place of the sidebar column. */}
         <div className="flex shrink-0 items-center gap-2 px-4 pb-2 md:hidden">
           <label className="sr-only" htmlFor="conversation-picker">
-            Conversation
+            {t('conversation.pickerLabel')}
           </label>
           <select
             id="conversation-picker"
@@ -587,7 +598,7 @@ export function Chat({ session }: { session: Session }) {
             {(conversations ?? []).map((c) => (
               <option key={c.id} value={c.id}>
                 {conversationLabel(c)}
-                {c.archived ? ' (archived)' : ''}
+                {c.archived ? t('conversation.archivedSuffix') : ''}
               </option>
             ))}
           </select>
@@ -601,12 +612,12 @@ export function Chat({ session }: { session: Session }) {
             }
             className="shrink-0 rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm text-slate-600 hover:border-brand-teal hover:text-brand-teal-ink dark:hover:text-brand-teal"
           >
-            New
+            {t('conversation.newShort')}
           </button>
         </div>
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto max-w-3xl px-4 py-4">
-            {loading && <p className="text-sm text-slate-400">Loading conversation…</p>}
+            {loading && <p className="text-sm text-slate-400">{t('loadingConversation')}</p>}
 
             {empty && (
               <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 text-center">
@@ -615,28 +626,27 @@ export function Chat({ session }: { session: Session }) {
                 </div>
                 <div className="max-w-md">
                   <h2 className="text-2xl font-semibold tracking-tight text-slate-800">
-                    Ask your memory.
+                    {t('empty.title')}
                   </h2>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                    Every answer shows, sentence by sentence, what Cogeto can prove, and honestly
-                    marks what it can’t. The web is searched only when you ask and approve.
-                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-500">{t('empty.body')}</p>
                   <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                    This is one conversation: a workspace for one thread of work. Anything captured
-                    here becomes memory and answers in every other conversation too.
+                    {t('empty.workspaceNote')}
                   </p>
                 </div>
                 <div className="flex flex-wrap justify-center gap-2">
-                  {SUGGESTED_PROMPTS.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => prefill(s)}
-                      className="rounded-full border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:border-brand-teal hover:text-brand-teal-ink dark:hover:text-brand-teal"
-                    >
-                      {s}
-                    </button>
-                  ))}
+                  {SUGGESTED_PROMPT_IDS.map((id) => {
+                    const prompt = t(`suggestedPrompts.${id}`);
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => prefill(prompt)}
+                        className="rounded-full border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:border-brand-teal hover:text-brand-teal-ink dark:hover:text-brand-teal"
+                      >
+                        {prompt}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -679,7 +689,9 @@ export function Chat({ session }: { session: Session }) {
                       ) : (
                         <ThinkingDots
                           label={
-                            liveFacts.length > 0 ? 'Answering from your memories…' : 'Thinking…'
+                            liveFacts.length > 0
+                              ? t('thinking.fromMemories')
+                              : t('thinking.default')
                           }
                         />
                       )}
@@ -704,7 +716,7 @@ export function Chat({ session }: { session: Session }) {
                   href={`/skills?run=${encodeURIComponent(skillRunId)}`}
                   className="inline-flex items-center gap-2 rounded-full border border-brand-teal/40 bg-brand-teal/10 px-3.5 py-1.5 text-sm font-medium text-brand-teal-ink transition-colors hover:bg-brand-teal/20 dark:text-brand-teal"
                 >
-                  Open the brief run: approve the search plan and watch each step →
+                  {t('skillRunHandoff')}
                 </a>
               )}
               {offer && !liveQuestion && !inlineRun && (
@@ -720,7 +732,7 @@ export function Chat({ session }: { session: Session }) {
               )}
               {failed && (
                 <p role="alert" className="text-sm text-red-700 dark:text-red-300">
-                  {failMessage ?? 'That answer didn’t come through. Try asking again.'}
+                  {failMessage ?? t('answerFailed')}
                 </p>
               )}
             </div>
@@ -737,7 +749,7 @@ export function Chat({ session }: { session: Session }) {
               }}
             >
               <label className="sr-only" htmlFor="chat-input">
-                Ask a question
+                {t('composer.label')}
               </label>
               <div className="flex items-end gap-2.5 rounded-2xl border border-slate-300 bg-surface px-4 py-2.5 shadow-sm transition-shadow focus-within:border-brand-teal focus-within:shadow-glow">
                 <span className="self-center text-brand-teal" aria-hidden="true">
@@ -755,13 +767,13 @@ export function Chat({ session }: { session: Session }) {
                       void send();
                     }
                   }}
-                  placeholder="Ask your memory…"
+                  placeholder={t('composer.placeholder')}
                   className="max-h-40 flex-1 resize-none self-center bg-transparent py-1 text-[0.95rem] leading-relaxed text-slate-800 outline-none placeholder:text-slate-400"
                 />
                 <button
                   type="submit"
                   disabled={busy || !draft.trim()}
-                  aria-label="Send"
+                  aria-label={t('composer.send')}
                   className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-teal text-white transition-transform hover:-translate-y-px hover:brightness-105 disabled:opacity-40"
                 >
                   {busy ? (
@@ -775,7 +787,7 @@ export function Chat({ session }: { session: Session }) {
                 </button>
               </div>
               <p className="mt-2 text-center font-mono text-[0.66rem] tracking-[0.04em] text-slate-400">
-                Enter to send · Shift+Enter for a new line · every claim shows what it can prove
+                {t('composer.hint')}
               </p>
             </form>
           </div>

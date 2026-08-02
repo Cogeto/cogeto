@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   deleteSource,
   draftEmailReply,
@@ -12,6 +13,7 @@ import {
   fetchWebSource,
 } from '../api';
 import type { Session } from '../auth/oidc';
+import { formatDateTime, formatFileSize } from '../i18n/format';
 import { invalidateAfterSourceDeletion } from '../query-invalidation';
 import {
   btnDanger,
@@ -27,18 +29,18 @@ import {
 import { EMAIL_FRAME_SANDBOX, emailFrameDocument } from './email-body';
 import type { Tone } from './status';
 
-const FILE_STATE_LABEL: Record<string, string> = {
-  processing: 'Extracting…',
-  done: 'Extracted',
-  error: 'Extraction failed',
+/**
+ * File STATE is an API value; only its display name is translated, through an
+ * explicit value → key map. An unknown state renders verbatim, as before.
+ */
+const FILE_STATE_KEY: Record<string, string> = {
+  processing: 'fileState.processing',
+  done: 'fileState.done',
+  error: 'fileState.error',
 };
 
-function formatBytes(bytes: number | null): string | null {
-  if (bytes === null) return null;
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
+/** Byte sizes go through the shared locale-aware formatter (Issue C). */
+const formatBytes = (bytes: number | null): string | null => formatFileSize(bytes);
 
 /**
  * The source drawer behind every memory: the original note verbatim (or the
@@ -63,6 +65,7 @@ export function SourceDrawer({
    * (SEC-30). */
   onDeleted: (receiptId: string | null) => void;
 }) {
+  const { t } = useTranslation('sources');
   const queryClient = useQueryClient();
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -132,14 +135,15 @@ export function SourceDrawer({
   const confirmAndDelete = () => {
     const impact = impactQuery.data;
     if (!impact) return;
-    const memories = `${impact.memoryCount} derived memor${impact.memoryCount === 1 ? 'y' : 'ies'}`;
-    const files =
-      impact.objectCount > 0
-        ? ` and ${impact.objectCount} stored file${impact.objectCount === 1 ? '' : 's'}`
-        : '';
-    const message =
-      `This will PERMANENTLY remove this ${isNote ? 'note' : 'source'}, ${memories}${files}. ` +
-      'A signed deletion receipt will be issued as proof. This cannot be undone.\n\nDelete?';
+    // The consequence sentence is ONE key with named counts, so a translator
+    // controls word order and plural agreement instead of receiving fragments.
+    const message = t(impact.objectCount > 0 ? 'delete.confirmWithFiles' : 'delete.confirm', {
+      subject: isNote ? t('kind.note') : t('kind.source'),
+      memoryCount: impact.memoryCount,
+      objectCount: impact.objectCount,
+      memories: t('delete.derivedMemories', { count: impact.memoryCount }),
+      files: t('delete.storedFiles', { count: impact.objectCount }),
+    });
     if (window.confirm(message)) remove.mutate();
   };
 
@@ -148,38 +152,37 @@ export function SourceDrawer({
 
   return (
     <Drawer
-      title={`Source · ${isNote ? 'note' : isChat ? 'conversation' : sourceType.replace('_', ' ')}`}
+      title={t('drawer.title', {
+        kind: t(`kindLabel.${sourceType}`, { defaultValue: sourceType.replace('_', ' ') }),
+      })}
       onClose={onClose}
       width="max-w-md"
     >
-      {isNote && noteQuery.isPending && <SkeletonRows rows={3} label="Loading note…" />}
-      {isNote && noteQuery.isError && (
-        <ErrorState>We couldn’t load this note right now.</ErrorState>
-      )}
+      {isNote && noteQuery.isPending && <SkeletonRows rows={3} label={t('note.loading')} />}
+      {isNote && noteQuery.isError && <ErrorState>{t('note.error')}</ErrorState>}
       {isNote && noteQuery.data && (
         <>
           <p className="whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-sm text-slate-800">
             {noteQuery.data.content}
           </p>
           <p className="text-xs text-slate-400">
-            Captured {new Date(noteQuery.data.createdAt).toLocaleString()}
+            {t('note.captured', { when: formatDateTime(noteQuery.data.createdAt) })}
           </p>
         </>
       )}
       {isFile && (
         <>
-          {fileQuery.isPending && <SkeletonRows rows={2} label="Loading file…" />}
-          {fileQuery.isError && <ErrorState>We couldn’t load this file source.</ErrorState>}
+          {fileQuery.isPending && <SkeletonRows rows={2} label={t('file.loading')} />}
+          {fileQuery.isError && <ErrorState>{t('file.error')}</ErrorState>}
           {fileQuery.data && (
             <div className="space-y-2 rounded-md bg-slate-50 p-3">
               <p className="break-words text-sm font-medium text-slate-800">
                 {fileQuery.data.filename ??
-                  (fileQuery.data.discarded ? 'Discarded document' : 'Uploaded document')}
+                  (fileQuery.data.discarded ? t('file.discardedName') : t('file.uploadedName'))}
               </p>
               {fileQuery.data.discarded ? (
                 <p className="rounded bg-amber-50 dark:bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300">
-                  Original discarded after extraction. Only the derived memories remain. Provenance
-                  is intact; there is nothing to download.
+                  {t('file.discardedNote')}
                 </p>
               ) : (
                 <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
@@ -187,15 +190,21 @@ export function SourceDrawer({
                   {formatBytes(fileQuery.data.sizeBytes) && (
                     <span>· {formatBytes(fileQuery.data.sizeBytes)}</span>
                   )}
-                  <span>· uploaded {new Date(fileQuery.data.uploadDate).toLocaleString()}</span>
+                  <span>
+                    {t('file.uploaded', { when: formatDateTime(fileQuery.data.uploadDate) })}
+                  </span>
                 </p>
               )}
               <p className="flex flex-wrap items-center gap-2 text-xs">
                 <Pill tone={fileTone(fileQuery.data.state)}>
-                  {FILE_STATE_LABEL[fileQuery.data.state] ?? fileQuery.data.state}
+                  {FILE_STATE_KEY[fileQuery.data.state]
+                    ? t(FILE_STATE_KEY[fileQuery.data.state]!)
+                    : fileQuery.data.state}
                 </Pill>
                 {fileQuery.data.sensitive && <SensitiveBadge />}
-                <span className="text-slate-400">scope: {fileQuery.data.scope}</span>
+                <span className="text-slate-400">
+                  {t('scopeLine', { scope: t(`common:memoryScope.${fileQuery.data.scope}`) })}
+                </span>
               </p>
               {!fileQuery.data.discarded && (
                 <>
@@ -208,7 +217,7 @@ export function SourceDrawer({
                     }}
                     className={btnSecondary}
                   >
-                    {download.isPending ? 'Preparing…' : 'Download original'}
+                    {download.isPending ? t('file.preparing') : t('file.downloadOriginal')}
                   </button>
                   {downloadError && (
                     <p className="text-xs text-red-600 dark:text-red-300">{downloadError}</p>
@@ -221,22 +230,25 @@ export function SourceDrawer({
       )}
       {isChat && (
         <>
-          {chatQuery.isPending && <SkeletonRows rows={3} label="Loading conversation…" />}
-          {chatQuery.isError && <ErrorState>We couldn’t load the conversation.</ErrorState>}
+          {chatQuery.isPending && <SkeletonRows rows={3} label={t('conversation.loading')} />}
+          {chatQuery.isError && <ErrorState>{t('conversation.error')}</ErrorState>}
           {chatQuery.data && (
             <div className="space-y-2">
               <p className="text-xs text-slate-500">
-                From your conversation:{' '}
-                <span className="font-semibold text-slate-700">
-                  {chatQuery.data.conversationTitle ?? 'New conversation'}
-                </span>
-                . The highlighted message is the source; nearby turns are shown for context.
+                <Trans
+                  i18nKey="conversation.lead"
+                  ns="sources"
+                  values={{
+                    title: chatQuery.data.conversationTitle ?? t('chat:conversation.untitled'),
+                  }}
+                  components={{ title: <span className="font-semibold text-slate-700" /> }}
+                />
               </p>
               <a
                 href={`/chat?c=${chatQuery.data.conversationId}&m=${encodeURIComponent(sourceId)}`}
                 className="inline-block text-xs font-semibold text-brand-teal-ink underline underline-offset-2 hover:opacity-80 dark:text-brand-teal"
               >
-                Open in the conversation
+                {t('conversation.openInThread')}
               </a>
               {chatQuery.data.turns.map((turn) => (
                 <div
@@ -248,8 +260,8 @@ export function SourceDrawer({
                   }`}
                 >
                   <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                    {turn.role === 'user' ? 'You' : 'Cogeto'}
-                    {turn.isTarget && ' · remembered'}
+                    {turn.role === 'user' ? t('chat:role.you') : t('common:productName')}
+                    {turn.isTarget && t('conversation.rememberedSuffix')}
                   </p>
                   <p className="whitespace-pre-wrap">{turn.content}</p>
                 </div>
@@ -260,39 +272,43 @@ export function SourceDrawer({
       )}
       {isEmail && (
         <>
-          {emailQuery.isPending && <SkeletonRows rows={4} label="Loading email…" />}
-          {emailQuery.isError && <ErrorState>We couldn’t load this email.</ErrorState>}
+          {emailQuery.isPending && <SkeletonRows rows={4} label={t('email.loading')} />}
+          {emailQuery.isError && <ErrorState>{t('email.error')}</ErrorState>}
           {emailQuery.data && (
             <div className="space-y-3">
               <div className="space-y-1 rounded-md bg-slate-50 p-3 text-sm">
                 <p className="font-semibold text-slate-800">
-                  {emailQuery.data.subject || '(no subject)'}
+                  {emailQuery.data.subject || t('email:noSubject')}
                 </p>
                 <p className="text-xs text-slate-500">
-                  <span className="font-medium">From:</span> {emailQuery.data.from}
+                  <span className="font-medium">{t('email.from')}</span> {emailQuery.data.from}
                 </p>
                 <p className="text-xs text-slate-500">
-                  <span className="font-medium">To:</span> {emailQuery.data.to}
+                  <span className="font-medium">{t('email.to')}</span> {emailQuery.data.to}
                 </p>
                 <p className="text-xs text-slate-400">
-                  {new Date(emailQuery.data.sentAt ?? emailQuery.data.receivedAt).toLocaleString()}
+                  {formatDateTime(emailQuery.data.sentAt ?? emailQuery.data.receivedAt)}
                 </p>
                 {emailQuery.data.isForward && emailQuery.data.originalCorrespondent && (
                   <p className="mt-1 rounded bg-brand-teal/5 px-2 py-1 text-xs text-brand-teal-ink dark:text-brand-teal">
-                    Originally from:{' '}
-                    <span className="font-medium">{emailQuery.data.originalCorrespondent}</span>. A
-                    reply will go to them, not the forwarder.
+                    <Trans
+                      i18nKey="email.originallyFrom"
+                      ns="sources"
+                      values={{ sender: emailQuery.data.originalCorrespondent }}
+                      components={{ sender: <span className="font-medium" /> }}
+                    />
                   </p>
                 )}
                 {emailQuery.data.isForward && !emailQuery.data.originalCorrespondent && (
                   <p className="mt-1 rounded bg-amber-50 dark:bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300">
-                    This arrived as a forward; the original sender couldn’t be recovered, so a reply
-                    will leave the recipient for you to fill in.
+                    {t('email.forwardUnknownSender')}
                   </p>
                 )}
                 <p className="flex flex-wrap items-center gap-2 pt-1 text-xs">
                   {emailQuery.data.sensitive && <SensitiveBadge />}
-                  <span className="text-slate-400">scope: {emailQuery.data.scope}</span>
+                  <span className="text-slate-400">
+                    {t('scopeLine', { scope: t(`common:memoryScope.${emailQuery.data.scope}`) })}
+                  </span>
                 </p>
               </div>
 
@@ -307,19 +323,21 @@ export function SourceDrawer({
                 </p>
               ) : emailQuery.data.htmlBody ? (
                 <iframe
-                  title="Email body"
+                  title={t('email.bodyFrameTitle')}
                   className="h-72 w-full rounded-md border border-slate-200 bg-white"
                   sandbox={EMAIL_FRAME_SANDBOX}
                   referrerPolicy="no-referrer"
                   srcDoc={emailFrameDocument(emailQuery.data.htmlBody)}
                 />
               ) : (
-                <p className="text-xs text-slate-400">(no body)</p>
+                <p className="text-xs text-slate-400">{t('email.noBody')}</p>
               )}
 
               {emailQuery.data.attachments.length > 0 && (
                 <div>
-                  <p className="mb-1 text-xs font-medium text-slate-500">Attachments</p>
+                  <p className="mb-1 text-xs font-medium text-slate-500">
+                    {t('email.attachments')}
+                  </p>
                   <ul className="space-y-1">
                     {emailQuery.data.attachments.map((a) => (
                       <li
@@ -327,7 +345,7 @@ export function SourceDrawer({
                         className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-2 py-1 text-xs"
                       >
                         <span className="min-w-0 truncate text-slate-700">
-                          {a.filename ?? 'attachment'}
+                          {a.filename ?? t('email.attachmentFallback')}
                           {formatBytes(a.sizeBytes) && (
                             <span className="text-slate-400"> · {formatBytes(a.sizeBytes)}</span>
                           )}
@@ -342,10 +360,10 @@ export function SourceDrawer({
                             }
                             className="shrink-0 text-brand-teal-ink dark:text-brand-teal hover:underline"
                           >
-                            Download
+                            {t('common:action.download')}
                           </button>
                         ) : (
-                          <span className="shrink-0 text-slate-400">retained</span>
+                          <span className="shrink-0 text-slate-400">{t('email.retained')}</span>
                         )}
                       </li>
                     ))}
@@ -357,28 +375,29 @@ export function SourceDrawer({
               <div className="rounded-lg border border-brand-teal/30 bg-brand-teal/5 p-3">
                 {drafted ? (
                   <p className="text-sm text-slate-700">
-                    Draft created. Review it on the{' '}
-                    <a
-                      href="/approvals"
-                      className="font-medium text-brand-teal-ink dark:text-brand-teal hover:underline"
-                    >
-                      Approvals
-                    </a>{' '}
-                    page, then send it from your own mail client. Cogeto never sends mail.
+                    <Trans
+                      i18nKey="email.draftCreated"
+                      ns="sources"
+                      components={{
+                        link: (
+                          <a
+                            href="/approvals"
+                            className="font-medium text-brand-teal-ink dark:text-brand-teal hover:underline"
+                          />
+                        ),
+                      }}
+                    />
                   </p>
                 ) : (
                   <>
-                    <p className="mb-2 text-xs text-slate-500">
-                      Cogeto will write a suggested reply you can edit and send yourself. It never
-                      sends mail. You approve and send from your own client.
-                    </p>
+                    <p className="mb-2 text-xs text-slate-500">{t('email.draftExplainer')}</p>
                     <button
                       type="button"
                       disabled={draftReply.isPending}
                       onClick={() => draftReply.mutate()}
                       className={btnPrimary}
                     >
-                      {draftReply.isPending ? 'Drafting…' : 'Draft reply'}
+                      {draftReply.isPending ? t('email.drafting') : t('email.draftReply')}
                     </button>
                     {draftError && (
                       <p className="mt-2 text-xs text-red-600 dark:text-red-300">{draftError}</p>
@@ -392,8 +411,8 @@ export function SourceDrawer({
       )}
       {isWeb && (
         <>
-          {webQuery.isPending && <SkeletonRows rows={3} label="Loading page…" />}
-          {webQuery.isError && <ErrorState>We couldn’t load this web source.</ErrorState>}
+          {webQuery.isPending && <SkeletonRows rows={3} label={t('web.loading')} />}
+          {webQuery.isError && <ErrorState>{t('web.error')}</ErrorState>}
           {webQuery.data && (
             <div className="space-y-2 rounded-md bg-slate-50 p-3">
               <p className="break-words text-sm font-medium text-slate-800">
@@ -410,12 +429,13 @@ export function SourceDrawer({
                 </a>
               </p>
               <p className="text-xs text-slate-400">
-                Fetched {new Date(webQuery.data.fetchedAt).toLocaleString()}. Facts from this page
-                are “as of” that moment.
+                {t('web.fetched', { when: formatDateTime(webQuery.data.fetchedAt) })}
               </p>
               <p className="flex flex-wrap items-center gap-2 text-xs">
                 {webQuery.data.sensitive && <SensitiveBadge />}
-                <span className="text-slate-400">scope: {webQuery.data.scope}</span>
+                <span className="text-slate-400">
+                  {t('scopeLine', { scope: t(`common:memoryScope.${webQuery.data.scope}`) })}
+                </span>
               </p>
               <p className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md border border-slate-200 p-3 text-sm text-slate-700">
                 {webQuery.data.retainedText}
@@ -432,17 +452,15 @@ export function SourceDrawer({
 
       <section className="rounded-lg border border-red-200 dark:border-red-500/30 p-3">
         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-red-600 dark:text-red-300">
-          Danger zone
+          {t('delete.dangerZone')}
         </h3>
         <p className="mb-2 text-xs text-slate-500">
           {impactQuery.data
-            ? `Deleting this source removes it, ${impactQuery.data.memoryCount} derived ` +
-              `memor${impactQuery.data.memoryCount === 1 ? 'y' : 'ies'}` +
-              (impactQuery.data.objectCount > 0
-                ? ` and ${impactQuery.data.objectCount} stored file${impactQuery.data.objectCount === 1 ? '' : 's'}`
-                : '') +
-              ', permanently, with a signed receipt as proof.'
-            : 'Computing what deletion would remove…'}
+            ? t(impactQuery.data.objectCount > 0 ? 'delete.impactWithFiles' : 'delete.impact', {
+                memories: t('delete.derivedMemories', { count: impactQuery.data.memoryCount }),
+                files: t('delete.storedFiles', { count: impactQuery.data.objectCount }),
+              })
+            : t('delete.computingImpact')}
         </p>
         <button
           type="button"
@@ -450,7 +468,7 @@ export function SourceDrawer({
           onClick={confirmAndDelete}
           className={btnDanger}
         >
-          {remove.isPending ? 'Deleting…' : 'Delete source…'}
+          {remove.isPending ? t('delete.deleting') : t('delete.deleteSource')}
         </button>
       </section>
     </Drawer>

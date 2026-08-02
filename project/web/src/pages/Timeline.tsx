@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Session } from '../auth/oidc';
 import { MemoryDrawer } from '../components/MemoryDrawer';
 import { Shell } from '../components/Shell';
@@ -22,6 +23,7 @@ function paramsFromUrl() {
 }
 
 export function Timeline({ session }: { session: Session }) {
+  const { t } = useTranslation('timeline');
   const initial = paramsFromUrl();
   const [subject, setSubject] = useState(initial.subject);
   const [query, setQuery] = useState(initial.subject);
@@ -38,7 +40,7 @@ export function Timeline({ session }: { session: Session }) {
   };
 
   return (
-    <Shell session={session} title="Time travel" active="timeline">
+    <Shell session={session} title={t('navigation:section.timeline')} active="timeline">
       <Card>
         <form
           className="flex flex-wrap items-end gap-2"
@@ -48,11 +50,11 @@ export function Timeline({ session }: { session: Session }) {
           }}
         >
           <label className="flex flex-1 flex-col gap-1 text-sm text-slate-600">
-            Subject: a person, project, or topic
+            {t('page.subjectLabel')}
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="e.g. Atlas, Ana Kovač, the CRM…"
+              placeholder={t('page.subjectPlaceholder')}
               className="rounded-md border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-brand-teal"
             />
           </label>
@@ -61,13 +63,10 @@ export function Timeline({ session }: { session: Session }) {
             disabled={!query.trim()}
             className="rounded-md bg-brand-teal px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-teal-ink disabled:opacity-40"
           >
-            View history
+            {t('page.viewHistory')}
           </button>
         </form>
-        <p className="mt-2 text-xs text-slate-500">
-          See how your knowledge about a subject changed over time: what you believed then, what
-          changed, and what caused it. Every claim links to its source.
-        </p>
+        <p className="mt-2 text-xs text-slate-500">{t('page.explainer')}</p>
       </Card>
 
       {subject ? (
@@ -85,9 +84,8 @@ export function Timeline({ session }: { session: Session }) {
           />
         </Card>
       ) : (
-        <EmptyState icon="🕰" title="Pick a subject to travel through its history.">
-          Ask “what did I believe about X in March?” or “what changed about Y since last month?”
-          Here you get the visual answer. You can also open a memory and choose “Timeline”.
+        <EmptyState icon="🕰" title={t('page.empty.title')}>
+          {t('page.empty.body')}
         </EmptyState>
       )}
 

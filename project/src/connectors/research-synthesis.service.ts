@@ -5,12 +5,18 @@ import {
   Optional,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import type { Principal, ResearchAnswerDto, ResearchCitationDto } from '@cogeto/shared';
+import type {
+  PreferredLanguage,
+  Principal,
+  ResearchAnswerDto,
+  ResearchCitationDto,
+} from '@cogeto/shared';
 import {
   buildContextBlock,
   DEFAULT_INSTANCE_TIMEZONE,
   EMPTY_USER_CONTEXT,
   INSTANCE_TIMEZONE,
+  serverTranslator,
   UserContextService,
 } from '../infrastructure/index';
 import {
@@ -145,7 +151,7 @@ export class ResearchSynthesisService {
     const content = buildThreadMessage(
       result.answer,
       result.citations,
-      contextRecord.preferredLanguage === 'hr' ? 'hr' : 'en',
+      contextRecord.preferredLanguage,
     );
     await this.conversationAppend
       .append(run.ownerId, run.conversationId, content)
@@ -226,7 +232,7 @@ export class ResearchSynthesisService {
 export function buildThreadMessage(
   answer: string,
   citations: ResearchCitationDto[],
-  language: 'en' | 'hr',
+  language: PreferredLanguage,
 ): string {
   const byMarker = new Map(citations.map((c) => [c.marker, c]));
   const webOrder: Extract<ResearchCitationDto, { kind: 'web' }>[] = [];
@@ -241,13 +247,18 @@ export function buildThreadMessage(
     }
     return `[${at + 1}]`;
   });
-  const sources = webOrder.map((c, i) => {
-    const fetched = c.fetchedAt.slice(0, 10);
-    return `${i + 1}. ${c.title ?? c.url} (${c.url}, ${language === 'hr' ? 'dohvaćeno' : 'fetched'} ${fetched})`;
-  });
+  const t = serverTranslator(language, 'research');
+  const sources = webOrder.map((c, i) =>
+    t('thread.sourceLine', {
+      index: i + 1,
+      title: c.title ?? c.url,
+      url: c.url,
+      date: c.fetchedAt.slice(0, 10),
+    }),
+  );
   return [
     text.trim(),
-    ...(sources.length > 0 ? ['', language === 'hr' ? 'Izvori:' : 'Sources:', ...sources] : []),
+    ...(sources.length > 0 ? ['', t('thread.sourcesHeading'), ...sources] : []),
   ].join('\n');
 }
 

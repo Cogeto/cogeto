@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Trans, useTranslation } from 'react-i18next';
 import type { DashboardStatsDto, MemoryStatus } from '@cogeto/shared';
 import { fetchDashboardStats } from '../api';
 import type { Session } from '../auth/oidc';
@@ -36,6 +37,7 @@ const STATUS_ORDER: MemoryStatus[] = [
 ];
 
 export function StatsPanel({ session }: { session: Session }) {
+  const { t } = useTranslation('dashboard');
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: () => fetchDashboardStats(session),
@@ -45,9 +47,9 @@ export function StatsPanel({ session }: { session: Session }) {
     return (
       <Card>
         <div className="mb-3">
-          <SectionTitle>Your practice at a glance</SectionTitle>
+          <SectionTitle>{t('stats.heading')}</SectionTitle>
         </div>
-        <SkeletonRows rows={4} label="Loading statistics…" />
+        <SkeletonRows rows={4} label={t('stats.loading')} />
       </Card>
     );
   }
@@ -55,11 +57,9 @@ export function StatsPanel({ session }: { session: Session }) {
     return (
       <Card>
         <div className="mb-3">
-          <SectionTitle>Your practice at a glance</SectionTitle>
+          <SectionTitle>{t('stats.heading')}</SectionTitle>
         </div>
-        <ErrorState onRetry={() => void refetch()}>
-          The statistics aren&apos;t available right now.
-        </ErrorState>
+        <ErrorState onRetry={() => void refetch()}>{t('stats.error')}</ErrorState>
       </Card>
     );
   }
@@ -79,6 +79,7 @@ export function StatsPanel({ session }: { session: Session }) {
 // ── KPI tiles ─────────────────────────────────────────────────────────────────
 
 function KpiRow({ data }: { data: DashboardStatsDto }) {
+  const { t } = useTranslation('dashboard');
   const oldestDays =
     data.review.oldestAt === null
       ? null
@@ -87,32 +88,46 @@ function KpiRow({ data }: { data: DashboardStatsDto }) {
           Math.round((Date.now() - new Date(data.review.oldestAt).getTime()) / 86_400_000),
         );
   const tiles = [
-    { label: 'Memories', value: data.memoryTotal, href: '/memories' },
-    { label: 'Still open', value: data.openLoops, href: '/' },
-    { label: 'Contradictions', value: data.review.contradicted, href: '/review' },
-    { label: 'Approvals', value: data.approvalsPending, href: '/approvals' },
+    { key: 'memories', label: t('stats.kpi.memories'), value: data.memoryTotal, href: '/memories' },
+    { key: 'openLoops', label: t('stats.kpi.stillOpen'), value: data.openLoops, href: '/' },
     {
-      label: 'Oldest conflict',
-      value: oldestDays === null ? 'None' : `${oldestDays}d`,
+      key: 'contradictions',
+      label: t('stats.kpi.contradictions'),
+      value: data.review.contradicted,
+      href: '/review',
+    },
+    {
+      key: 'approvals',
+      label: t('stats.kpi.approvals'),
+      value: data.approvalsPending,
+      href: '/approvals',
+    },
+    {
+      key: 'oldestConflict',
+      label: t('stats.kpi.oldestConflict'),
+      value:
+        oldestDays === null
+          ? t('stats.kpi.oldestNone')
+          : t('stats.kpi.oldestDays', { days: oldestDays }),
       href: '/review',
       title:
         oldestDays === null
-          ? 'No unresolved contradictions'
-          : `Oldest unresolved contradiction: ${oldestDays} day${oldestDays === 1 ? '' : 's'} old`,
+          ? t('stats.kpi.oldestTitleNone')
+          : t('stats.kpi.oldestTitle', { count: oldestDays }),
     },
   ];
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-      {tiles.map((t) => (
+      {tiles.map((tile) => (
         <a
-          key={t.label}
-          href={t.href}
-          title={t.title}
+          key={tile.key}
+          href={tile.href}
+          title={tile.title}
           className="rounded-lg border border-slate-200 bg-surface p-3 shadow-sm transition-colors hover:border-brand-teal/50"
         >
-          <div className="text-2xl font-semibold tabular-nums text-slate-800">{t.value}</div>
+          <div className="text-2xl font-semibold tabular-nums text-slate-800">{tile.value}</div>
           <div className="mt-0.5 text-xs font-medium uppercase tracking-wide text-slate-500">
-            {t.label}
+            {tile.label}
           </div>
         </a>
       ))}
@@ -123,29 +138,32 @@ function KpiRow({ data }: { data: DashboardStatsDto }) {
 // ── Memory by status (donut) ──────────────────────────────────────────────────
 
 function MemoryDonut({ data }: { data: DashboardStatsDto }) {
+  const { t } = useTranslation('dashboard');
   const R = 42;
   const C = 2 * Math.PI * R;
   const segments = STATUS_ORDER.map((s) => ({ key: s, value: data.memoryByStatus[s] })).filter(
     (s) => s.value > 0,
   );
   const arcs = donutArcs(segments, C);
+  // One sentence, one key: the per-status counts are a joined LIST interpolated
+  // into it, so word order stays the translator's to choose.
   const summary =
     data.memoryTotal === 0
-      ? 'No memories yet.'
-      : `${data.memoryTotal} memories: ` +
-        segments.map((s) => `${s.value} ${statusLabel(s.key)}`).join(', ') +
-        '.';
+      ? t('stats.donut.summaryEmpty')
+      : t('stats.donut.summary', {
+          count: data.memoryTotal,
+          breakdown: segments
+            .map((s) => t('stats.donut.segment', { count: s.value, status: statusLabel(s.key) }))
+            .join(', '),
+        });
 
   return (
     <Card>
       <div className="mb-3">
-        <SectionTitle as="h3">Memory by status</SectionTitle>
+        <SectionTitle as="h3">{t('stats.donut.heading')}</SectionTitle>
       </div>
       {data.memoryTotal === 0 ? (
-        <p className="text-sm text-slate-500">
-          Nothing captured yet. As you add notes, emails and files, they&apos;ll appear here by
-          status.
-        </p>
+        <p className="text-sm text-slate-500">{t('stats.donut.empty')}</p>
       ) : (
         <div className="flex items-center gap-5">
           <svg viewBox="0 0 100 100" className="h-28 w-28 shrink-0" role="img" aria-label={summary}>
@@ -187,7 +205,7 @@ function MemoryDonut({ data }: { data: DashboardStatsDto }) {
               className="fill-slate-400"
               style={{ fontSize: '7px' }}
             >
-              memories
+              {t('stats.donut.unit')}
             </text>
           </svg>
           <ul className="min-w-0 flex-1 space-y-1">
@@ -217,6 +235,7 @@ function MemoryDonut({ data }: { data: DashboardStatsDto }) {
 // ── Sources over time (sparkline) ─────────────────────────────────────────────
 
 function SourcesSpark({ data }: { data: DashboardStatsDto }) {
+  const { t } = useTranslation('dashboard');
   const totals = data.sources.series.map((d) =>
     data.sources.keys.reduce((sum, k) => sum + (d.counts[k] ?? 0), 0),
   );
@@ -224,19 +243,25 @@ function SourcesSpark({ data }: { data: DashboardStatsDto }) {
   return (
     <Card>
       <div className="mb-1 flex items-center justify-between">
-        <SectionTitle as="h3">Sources · last 30 days</SectionTitle>
+        <SectionTitle as="h3">{t('stats.sources.heading', { days: 30 })}</SectionTitle>
         <a
           href="/memories"
           className="text-xs font-semibold text-brand-teal-ink dark:text-brand-teal hover:underline"
         >
-          {grand} ingested →
+          {t('stats.sources.ingested', { count: grand })}
         </a>
       </div>
       <Spark values={totals} color="var(--chart-active)" label={seriesSummary(data.sources)} />
       <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
         {data.sources.keys.map((k) => (
           <li key={k}>
-            <span className="font-semibold text-slate-700">{seriesTotal(data.sources, k)}</span> {k}
+            <Trans
+              i18nKey="stats.sources.familyTotal"
+              ns="dashboard"
+              count={seriesTotal(data.sources, k)}
+              values={{ count: seriesTotal(data.sources, k), family: k }}
+              components={{ n: <span className="font-semibold text-slate-700" /> }}
+            />
           </li>
         ))}
       </ul>
@@ -247,12 +272,13 @@ function SourcesSpark({ data }: { data: DashboardStatsDto }) {
 // ── Dreaming activity (sparkline) ─────────────────────────────────────────────
 
 function DreamingSpark({ data }: { data: DashboardStatsDto }) {
+  const { t } = useTranslation('dashboard');
   const merges = data.dreaming.series.map((d) => d.counts.merges ?? 0);
   const conflicts = data.dreaming.series.map((d) => d.counts.conflicts ?? 0);
   return (
     <Card>
       <div className="mb-1">
-        <SectionTitle as="h3">Dreaming · last 30 days</SectionTitle>
+        <SectionTitle as="h3">{t('stats.dreaming.heading', { days: 30 })}</SectionTitle>
       </div>
       <p className="sr-only">{seriesSummary(data.dreaming)}</p>
       <div className="grid grid-cols-2 gap-3">
@@ -260,29 +286,37 @@ function DreamingSpark({ data }: { data: DashboardStatsDto }) {
           <Spark
             values={merges}
             color="var(--chart-approved)"
-            label={`Merges: ${seriesTotal(data.dreaming, 'merges')}`}
+            label={t('stats.dreaming.mergesLabel', { count: seriesTotal(data.dreaming, 'merges') })}
           />
           <p className="mt-1 text-xs text-slate-500">
-            <span className="font-semibold text-slate-700">
-              {seriesTotal(data.dreaming, 'merges')}
-            </span>{' '}
-            merges
+            <Trans
+              i18nKey="stats.dreaming.merges"
+              ns="dashboard"
+              count={seriesTotal(data.dreaming, 'merges')}
+              values={{ count: seriesTotal(data.dreaming, 'merges') }}
+              components={{ n: <span className="font-semibold text-slate-700" /> }}
+            />
           </p>
         </div>
         <div>
           <Spark
             values={conflicts}
             color="var(--chart-contradicted)"
-            label={`Conflicts caught: ${seriesTotal(data.dreaming, 'conflicts')}`}
+            label={t('stats.dreaming.conflictsLabel', {
+              count: seriesTotal(data.dreaming, 'conflicts'),
+            })}
           />
           <a
             href="/review?tab=contradicted"
             className="mt-1 block text-xs text-slate-500 hover:text-brand-teal-ink dark:hover:text-brand-teal"
           >
-            <span className="font-semibold text-slate-700">
-              {seriesTotal(data.dreaming, 'conflicts')}
-            </span>{' '}
-            conflicts caught →
+            <Trans
+              i18nKey="stats.dreaming.conflicts"
+              ns="dashboard"
+              count={seriesTotal(data.dreaming, 'conflicts')}
+              values={{ count: seriesTotal(data.dreaming, 'conflicts') }}
+              components={{ n: <span className="font-semibold text-slate-700" /> }}
+            />
           </a>
         </div>
       </div>

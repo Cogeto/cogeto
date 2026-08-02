@@ -1,4 +1,5 @@
 import type { DailySeries } from '@cogeto/shared';
+import { i18next } from '../i18n';
 
 /**
  * Small, dependency-free chart geometry. Hand-rolled SVG
@@ -89,14 +90,26 @@ export function donutArcs(
   return arcs;
 }
 
-/** A one-line text equivalent of a daily series — the chart's accessible label. */
+/**
+ * A one-line text equivalent of a daily series — the chart's accessible label.
+ * The sentence is ONE key with named variables, never assembled from fragments;
+ * `totals` is a list of counted series families joined for the sentence. A
+ * family key (`notes`, `merges`, …) is the server's own vocabulary, open-ended
+ * rather than a closed enum, so it is rendered verbatim in every locale, exactly
+ * as it was before this extraction.
+ */
 export function seriesSummary(series: DailySeries): string {
-  if (series.series.length === 0) return `No activity in the last ${series.days} days.`;
+  if (series.series.length === 0) {
+    return i18next.t('dashboard:charts.noActivity', { days: series.days });
+  }
   const totals = series.keys.map((key) => {
     const sum = series.series.reduce((acc, day) => acc + (day.counts[key] ?? 0), 0);
-    return `${sum} ${key}`;
+    return i18next.t('dashboard:charts.seriesTotal', { count: sum, family: key });
   });
-  return `Last ${series.days} days: ${totals.join(', ')}.`;
+  return i18next.t('dashboard:charts.lastDays', {
+    days: series.days,
+    totals: totals.join(', '),
+  });
 }
 
 /** Sum a single family across a daily series (the headline number for a spark). */

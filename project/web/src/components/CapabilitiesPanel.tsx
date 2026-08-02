@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { CapabilitySummary, ScheduledJobSummary } from '@cogeto/shared';
 import { fetchHealth } from '../api';
 import type { Session } from '../auth/oidc';
@@ -16,6 +17,7 @@ import { Card, ErrorState, Pill, SectionTitle, SkeletonRows } from './ui';
  */
 
 function CapabilityRow({ summary }: { summary: CapabilitySummary }) {
+  const { t } = useTranslation('capabilities');
   const view = capabilityView(summary);
   return (
     <li className="rounded-md border border-slate-200 px-3 py-2">
@@ -23,7 +25,7 @@ function CapabilityRow({ summary }: { summary: CapabilitySummary }) {
         <span className="text-sm font-medium text-slate-700">{view.name}</span>
         <span className="flex items-center gap-2">
           <span className="text-xs text-slate-400" title={view.checkedAt}>
-            checked {timeAgo(view.checkedAt)}
+            {t('checkedAt', { when: timeAgo(view.checkedAt) })}
           </span>
           <Pill tone={view.tone} icon={view.icon}>
             {view.stateLabel}
@@ -38,7 +40,7 @@ function CapabilityRow({ summary }: { summary: CapabilitySummary }) {
       )}
       {view.enableHint && (
         <p className="mt-1 text-xs text-slate-400">
-          To enable, on the instance: <code className="font-mono">{view.enableHint}</code>
+          {t('enablePrefix')} <code className="font-mono">{view.enableHint}</code>
         </p>
       )}
     </li>
@@ -46,6 +48,7 @@ function CapabilityRow({ summary }: { summary: CapabilitySummary }) {
 }
 
 function JobRow({ summary }: { summary: ScheduledJobSummary }) {
+  const { t } = useTranslation('capabilities');
   const view = jobView(summary);
   return (
     <li className="rounded-md border border-slate-200 px-3 py-2">
@@ -53,7 +56,7 @@ function JobRow({ summary }: { summary: ScheduledJobSummary }) {
         <span className="text-sm font-medium text-slate-700">{view.name}</span>
         <span className="flex items-center gap-2">
           <span className="text-xs text-slate-400" title={view.lastRunAt ?? undefined}>
-            {view.lastRunAt ? `last ran ${timeAgo(view.lastRunAt)}` : 'never ran'}
+            {view.lastRunAt ? t('lastRan', { when: timeAgo(view.lastRunAt) }) : t('neverRan')}
           </span>
           <Pill tone={view.tone} icon={view.icon}>
             {view.stateLabel}
@@ -62,7 +65,9 @@ function JobRow({ summary }: { summary: ScheduledJobSummary }) {
       </div>
       <p className="mt-1 text-xs text-slate-500">{view.description}</p>
       {view.lastResult && (
-        <p className="mt-1 text-xs text-slate-400">Last run: {view.lastResult}</p>
+        <p className="mt-1 text-xs text-slate-400">
+          {t('lastResult', { result: view.lastResult })}
+        </p>
       )}
       {view.consequence && (
         <p className="mt-1 text-xs font-medium text-red-700 dark:text-red-300">
@@ -81,17 +86,18 @@ export function CapabilitiesSection({
   capabilities: CapabilitySummary[];
   jobs: ScheduledJobSummary[];
 }) {
+  const { t } = useTranslation('capabilities');
   return (
     <>
-      <ul className="space-y-2" aria-label="Optional capabilities">
+      <ul className="space-y-2" aria-label={t('optionalCapabilities')}>
         {capabilities.map((summary) => (
           <CapabilityRow key={summary.id} summary={summary} />
         ))}
       </ul>
       <div className="mb-2 mt-4">
-        <SectionTitle>Scheduled jobs</SectionTitle>
+        <SectionTitle>{t('scheduledJobs')}</SectionTitle>
       </div>
-      <ul className="space-y-2" aria-label="Scheduled jobs">
+      <ul className="space-y-2" aria-label={t('scheduledJobs')}>
         {jobs.map((summary) => (
           <JobRow key={summary.id} summary={summary} />
         ))}
@@ -101,6 +107,7 @@ export function CapabilitiesSection({
 }
 
 export function CapabilitiesPanel({ session }: { session: Session }) {
+  const { t } = useTranslation('capabilities');
   const { data, isPending, isError } = useQuery({
     queryKey: ['health'],
     queryFn: () => fetchHealth(session),
@@ -110,10 +117,10 @@ export function CapabilitiesPanel({ session }: { session: Session }) {
   return (
     <Card>
       <div className="mb-3">
-        <SectionTitle>Capabilities</SectionTitle>
+        <SectionTitle>{t('heading')}</SectionTitle>
       </div>
-      {isPending && <SkeletonRows rows={5} label="Checking capabilities…" />}
-      {isError && <ErrorState>The API is unreachable right now.</ErrorState>}
+      {isPending && <SkeletonRows rows={5} label={t('loading')} />}
+      {isError && <ErrorState>{t('system:health.unreachable')}</ErrorState>}
       {data && <CapabilitiesSection capabilities={data.capabilities} jobs={data.jobs} />}
     </Card>
   );

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { ContradictionDto, MemoryListItem, ResolveContradictionRequest } from '@cogeto/shared';
 import { fetchContradictions, fetchNote, fetchVerification, resolveContradiction } from '../api';
 import type { Session } from '../auth/oidc';
@@ -38,6 +39,7 @@ function ContradictionSide({
   accent: 'newer' | 'earlier';
   memory: MemoryListItem;
 }) {
+  const { t } = useTranslation('review');
   const verification = useQuery({
     queryKey: ['verification', memory.id],
     queryFn: () => fetchVerification(session, memory.id),
@@ -66,15 +68,19 @@ function ContradictionSide({
         {memory.content}
       </p>
       <p className="mt-1 text-xs text-slate-400" title={memory.createdAt}>
-        {memory.kind ? `${memory.kind.replace('_', ' ')} · ` : ''}captured{' '}
-        {timeAgo(memory.createdAt)}
+        {memory.kind
+          ? t('side.capturedWithKind', {
+              kind: t(`factKind.${memory.kind}`, { defaultValue: memory.kind.replace('_', ' ') }),
+              when: timeAgo(memory.createdAt),
+            })
+          : t('side.captured', { when: timeAgo(memory.createdAt) })}
       </p>
       <div className="mt-2 rounded-md bg-slate-50 p-2 text-xs text-slate-600">
         {note.data ? (
           <SourceWithSpan source={note.data.content} span={verification.data?.sourceSpan ?? null} />
         ) : (
           <p className="text-slate-400">
-            {memory.sourceType === 'user_note' ? 'Loading source…' : `(${memory.sourceType})`}
+            {memory.sourceType === 'user_note' ? t('side.loadingSource') : `(${memory.sourceType})`}
           </p>
         )}
       </div>
@@ -89,6 +95,7 @@ function ContradictionItem({
   session: Session;
   contradiction: ContradictionDto;
 }) {
+  const { t } = useTranslation('review');
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [correcting, setCorrecting] = useState(false);
@@ -112,12 +119,12 @@ function ContradictionItem({
     <li className="rounded-lg border border-red-200 bg-red-50/40 p-4 shadow-sm dark:border-red-500/30 dark:bg-red-500/10">
       <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-red-700 dark:text-red-300">
         <span aria-hidden="true">⚠</span>
-        These two facts disagree
+        {t('item.heading')}
       </p>
       <div className="relative grid gap-3 md:grid-cols-2">
         <ContradictionSide
           session={session}
-          label="Newer fact"
+          label={t('item.newerFact')}
           accent="newer"
           memory={contradiction.a}
         />
@@ -125,18 +132,18 @@ function ContradictionItem({
           className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 rounded-full border border-red-200 dark:border-red-500/30 bg-surface px-2 py-0.5 text-[11px] font-bold uppercase text-red-600 dark:text-red-300 md:block"
           aria-hidden="true"
         >
-          vs
+          {t('item.versus')}
         </span>
         <ContradictionSide
           session={session}
-          label="Earlier fact"
+          label={t('item.earlierFact')}
           accent="earlier"
           memory={contradiction.b}
         />
       </div>
       {contradiction.reason && (
         <p className="mt-2 text-xs text-slate-500">
-          <span className="font-medium text-slate-600">Why it was flagged:</span>{' '}
+          <span className="font-medium text-slate-600">{t('item.whyFlagged')}</span>{' '}
           {contradiction.reason}
         </p>
       )}
@@ -155,7 +162,7 @@ function ContradictionItem({
           }}
         >
           <label className="block text-xs font-semibold text-slate-500">
-            Corrected newer fact
+            {t('item.correctedNewer')}
             <textarea
               value={aText}
               onChange={(e) => setAText(e.target.value)}
@@ -164,7 +171,7 @@ function ContradictionItem({
             />
           </label>
           <label className="block text-xs font-semibold text-slate-500">
-            Corrected earlier fact
+            {t('item.correctedEarlier')}
             <textarea
               value={bText}
               onChange={(e) => setBText(e.target.value)}
@@ -172,20 +179,17 @@ function ContradictionItem({
               className="mt-1 w-full resize-y rounded-md border border-slate-300 p-2 text-sm font-normal"
             />
           </label>
-          <p className="text-xs text-slate-500">
-            Corrections never rewrite history: each saves a new, approved version and keeps the old
-            one as its predecessor.
-          </p>
+          <p className="text-xs text-slate-500">{t('item.correctionExplainer')}</p>
           <div className="flex gap-2">
             <button
               type="submit"
               disabled={busy || !aText.trim() || !bText.trim()}
               className={btnPrimary}
             >
-              Save both corrections
+              {t('item.saveBoth')}
             </button>
             <button type="button" onClick={() => setCorrecting(false)} className={btnSecondary}>
-              Cancel
+              {t('common:action.cancel')}
             </button>
           </div>
         </form>
@@ -197,7 +201,7 @@ function ContradictionItem({
             onClick={() => resolve.mutate({ action: 'confirm_a' })}
             className={btnPrimary}
           >
-            The newer fact is right
+            {t('item.newerIsRight')}
           </button>
           <button
             type="button"
@@ -205,7 +209,7 @@ function ContradictionItem({
             onClick={() => resolve.mutate({ action: 'confirm_b' })}
             className={btnPrimary}
           >
-            The earlier fact is right
+            {t('item.earlierIsRight')}
           </button>
           <button
             type="button"
@@ -217,19 +221,19 @@ function ContradictionItem({
             }}
             className={btnSecondary}
           >
-            Correct both
+            {t('item.correctBoth')}
           </button>
           <button
             type="button"
             disabled={busy}
             onClick={() => resolve.mutate({ action: 'dismiss' })}
             className={btnSecondary}
-            title="They don't actually conflict. Restore both as they were"
+            title={t('item.notAConflictTitle')}
           >
-            Not a conflict
+            {t('item.notAConflict')}
           </button>
           <span className="ml-auto text-xs text-slate-400" title={contradiction.detectedAt}>
-            detected {timeAgo(contradiction.detectedAt)}
+            {t('item.detected', { when: timeAgo(contradiction.detectedAt) })}
           </span>
         </div>
       )}
@@ -253,23 +257,21 @@ function ContradictionItem({
  * trail, unchanged.
  */
 export function Review({ session }: { session: Session }) {
+  const { t } = useTranslation('review');
   const contradictions = useQuery({
     queryKey: ['contradictions'],
     queryFn: () => fetchContradictions(session),
   });
 
   return (
-    <Shell session={session} title="Contradictions" active="review">
-      {contradictions.isPending && <SkeletonRows rows={2} label="Loading contradictions…" />}
+    <Shell session={session} title={t('navigation:section.review')} active="review">
+      {contradictions.isPending && <SkeletonRows rows={2} label={t('loading')} />}
       {contradictions.isError && (
-        <ErrorState onRetry={() => void contradictions.refetch()}>
-          We couldn’t load the contradictions.
-        </ErrorState>
+        <ErrorState onRetry={() => void contradictions.refetch()}>{t('error')}</ErrorState>
       )}
       {contradictions.data && contradictions.data.length === 0 && (
-        <EmptyState icon="🤝" tone="positive" title="No open contradictions">
-          Your memories agree with each other. When two facts about the same thing disagree, they’ll
-          appear here side by side to resolve. Everything else Cogeto settles on its own.
+        <EmptyState icon="🤝" tone="positive" title={t('empty.title')}>
+          {t('empty.body')}
         </EmptyState>
       )}
       {contradictions.data && contradictions.data.length > 0 && (

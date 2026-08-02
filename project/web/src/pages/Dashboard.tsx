@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { Session } from '../auth/oidc';
 import { AttentionSurface } from '../components/AttentionSurface';
 import { Shell } from '../components/Shell';
@@ -11,8 +12,9 @@ import { StatusPanel } from '../components/StatusPanel';
  * separate panel; the digest endpoint/DTO contract is unchanged.
  */
 export function Dashboard({ session }: { session: Session }) {
+  const { t } = useTranslation('navigation');
   return (
-    <Shell session={session} title="Dashboard" active="dashboard">
+    <Shell session={session} title={t('section.dashboard')} active="dashboard">
       <AttentionSurface session={session} />
       <StatsPanel session={session} />
       <SkillsEntry />
@@ -24,6 +26,7 @@ export function Dashboard({ session }: { session: Session }) {
 /** The skills entry point: a quiet pointer, not a widget — the
  * run view on the Skills page is the surface. */
 function SkillsEntry() {
+  const { t } = useTranslation('dashboard');
   return (
     <a
       href="/skills"
@@ -47,12 +50,8 @@ function SkillsEntry() {
         </svg>
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-slate-800">
-          Research a company or person before a meeting
-        </span>
-        <span className="block text-xs text-slate-500">
-          A sourced brief: what you know, what changed, every step inspectable.
-        </span>
+        <span className="block text-sm font-semibold text-slate-800">{t('skillsEntry.title')}</span>
+        <span className="block text-xs text-slate-500">{t('skillsEntry.body')}</span>
       </span>
       <span aria-hidden="true" className="text-slate-400">
         →

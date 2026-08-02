@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { fetchAttention, fetchContradictions, fetchMe, fetchPendingApprovals } from '../api';
 import type { Session } from '../auth/oidc';
 import { Nav } from './Nav';
@@ -33,6 +34,7 @@ export function Shell({
    * off the header's center line. */
   leftRail?: ReactNode;
 }) {
+  const { t } = useTranslation('common');
   const { data: me } = useQuery({
     queryKey: ['me'],
     queryFn: () => fetchMe(session),
@@ -95,7 +97,7 @@ export function Shell({
             {/* A calm mono breadcrumb: Cogeto · <Page>, left-aligned with
                 the content column. */}
             <h1 className="font-mono text-[0.72rem] uppercase tracking-[0.14em]">
-              <span className="text-slate-400">Cogeto</span>
+              <span className="text-slate-400">{t('productName')}</span>
               <span className="mx-1.5 text-slate-300 dark:text-slate-600" aria-hidden="true">
                 ·
               </span>

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { isDemoSession, logout } from '../auth/oidc';
 import { CountBadge } from './ui';
 
@@ -16,27 +17,33 @@ export type NavSection =
   | 'system'
   | 'settings';
 
-const ENABLED: { key: NavSection; label: string; href: string }[] = [
-  { key: 'dashboard', label: 'Dashboard', href: '/' },
-  { key: 'memories', label: 'Memories', href: '/memories' },
-  { key: 'chat', label: 'Chat', href: '/chat' },
-  { key: 'research', label: 'Research', href: '/research' },
-  { key: 'skills', label: 'Skills', href: '/skills' },
-  { key: 'timeline', label: 'Time travel', href: '/timeline' },
+/**
+ * The rail. `key` is the section identifier (a route, never translated); the
+ * label is looked up as `navigation:section.<key>` at render time so a language
+ * change re-labels the rail without a reload.
+ */
+const ENABLED: { key: NavSection; href: string }[] = [
+  { key: 'dashboard', href: '/' },
+  { key: 'memories', href: '/memories' },
+  { key: 'chat', href: '/chat' },
+  { key: 'research', href: '/research' },
+  { key: 'skills', href: '/skills' },
+  { key: 'timeline', href: '/timeline' },
   // Contradictions only (V2.0 item 3.3): the uncertain queue is gone, so the
   // surface is named for what is actually on it. The route stays `/review` so
   // the digest's conflict deep-links and attention hrefs do not dangle.
-  { key: 'review', label: 'Contradictions', href: '/review' },
-  { key: 'approvals', label: 'Approvals', href: '/approvals' },
-  { key: 'forgotten', label: 'Forgotten', href: '/forgotten' },
-  { key: 'audit', label: 'Audit', href: '/audit' },
-  { key: 'system', label: 'System', href: '/system' },
-  { key: 'settings', label: 'Settings', href: '/settings' },
+  { key: 'review', href: '/review' },
+  { key: 'approvals', href: '/approvals' },
+  { key: 'forgotten', href: '/forgotten' },
+  { key: 'audit', href: '/audit' },
+  { key: 'system', href: '/system' },
+  { key: 'settings', href: '/settings' },
 ];
 
-const BADGE_LABEL: Partial<Record<NavSection, string>> = {
-  review: 'open contradictions',
-  approvals: 'pending approvals',
+/** The noun the count badge announces, per section. */
+const BADGE_NOUN_KEY: Partial<Record<NavSection, string>> = {
+  review: 'badge.openContradictions',
+  approvals: 'badge.pendingApprovals',
 };
 
 /**
@@ -179,6 +186,7 @@ export function Nav({
   userName?: string;
   orgName?: string;
 }) {
+  const { t } = useTranslation('navigation');
   const badges: Partial<Record<NavSection, number>> = {
     review: reviewCount ?? 0,
     approvals: approvalsCount ?? 0,
@@ -187,11 +195,15 @@ export function Nav({
   const demo = isDemoSession();
   return (
     <nav
-      aria-label="Primary"
+      aria-label={t('landmark')}
       className="sticky top-0 flex h-screen w-60 shrink-0 flex-col self-start border-r border-slate-200 bg-brand-navy-deep text-white"
     >
       <div className="border-b border-white/10 p-4">
-        <img src="/brand/cogeto-final-logo-dark.svg" alt="Cogeto" className="h-8" />
+        <img
+          src="/brand/cogeto-final-logo-dark.svg"
+          alt={t('common:productName')}
+          className="h-8"
+        />
       </div>
       <ul className="flex-1 space-y-0.5 overflow-y-auto p-3">
         {sections.map((section) => {
@@ -219,14 +231,17 @@ export function Nav({
                 >
                   {ICONS[section.key]}
                 </span>
-                <span className="flex-1 truncate">{section.label}</span>
+                <span className="flex-1 truncate">{t(`section.${section.key}`)}</span>
                 {count > 0 && (
-                  <CountBadge count={count} label={BADGE_LABEL[section.key] ?? 'items'} />
+                  <CountBadge
+                    count={count}
+                    label={t(BADGE_NOUN_KEY[section.key] ?? 'badge.items')}
+                  />
                 )}
                 {section.key === 'dashboard' && dashboardUnread > 0 && !isActive && (
                   <span
                     className="h-2 w-2 rounded-full bg-brand-teal"
-                    aria-label={`${dashboardUnread} new since you last looked`}
+                    aria-label={t('badge.newSinceLastLook', { count: dashboardUnread })}
                   />
                 )}
               </a>
@@ -237,18 +252,18 @@ export function Nav({
       <div className="border-t border-white/10 p-3">
         <div className="flex items-center gap-2.5 px-2 py-1.5">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand-teal to-brand-teal-ink text-xs font-bold text-brand-navy">
-            {initials(userName ?? 'Cogeto')}
+            {initials(userName ?? t('common:productName'))}
           </span>
           <span className="min-w-0 leading-tight">
             <span className="block truncate text-sm font-semibold text-white">
-              {userName ?? 'Cogeto'}
+              {userName ?? t('common:productName')}
             </span>
             {orgName && <span className="block truncate text-xs text-white/40">{orgName}</span>}
           </span>
         </div>
         {demo ? (
           <div className="mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-brand-teal">
-            <span aria-hidden="true">●</span> Live sandbox
+            <span aria-hidden="true">●</span> {t('liveSandbox')}
           </div>
         ) : (
           <button
@@ -269,7 +284,7 @@ export function Nav({
               <path d="M12 6.5V5a1.5 1.5 0 0 0-1.5-1.5h-5A1.5 1.5 0 0 0 4 5v10a1.5 1.5 0 0 0 1.5 1.5h5A1.5 1.5 0 0 0 12 15v-1.5" />
               <path d="M8.5 10h8m0 0-2.4-2.4M16.5 10l-2.4 2.4" />
             </svg>
-            Sign out
+            {t('signOut')}
           </button>
         )}
         {/* The running version. It lived here until the sidebar was rebuilt,
@@ -278,7 +293,7 @@ export function Nav({
             A hairline keeps it clearly apart from the session controls. */}
         <div
           className="mt-2 border-t border-white/5 px-3 pt-2 text-[0.65rem] text-white/30"
-          title="Cogeto version"
+          title={t('versionTitle')}
         >
           v{__APP_VERSION__}
         </div>

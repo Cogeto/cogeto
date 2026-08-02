@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 
 /**
  * Ana sandbox (§4): a first-visit overlay suggesting things to
@@ -10,34 +11,20 @@ import { useState } from 'react';
  */
 const SEEN_KEY = 'cogeto.demo.introSeen';
 
-const TRIES: { n: number; title: string; body: string; href: string }[] = [
-  {
-    n: 1,
-    title: 'Ask what Ana promised Marko',
-    body: 'Open chat and ask “What did Ana promise Marko?” The answer cites the note it came from.',
-    href: '/chat',
-  },
-  {
-    n: 2,
-    title: 'Resolve the contradiction in Review',
-    body: 'Ana’s go-live is recorded as both September 1 and October 1. Resolve it and watch the memory settle.',
-    href: '/review',
-  },
-  {
-    n: 3,
-    title: 'Prep Ana for a meeting with a skill',
-    body: 'On Skills, brief her on Adriatic Foods: approve the search plan, watch every step, and read the sourced brief. The sandbox web is fixture pages, never live.',
-    href: '/skills',
-  },
-  {
-    n: 4,
-    title: 'Delete Ana’s contract and watch the receipt',
-    body: 'In Forgotten, delete the Adriatic Foods consulting agreement and watch the deletion receipt confirm, hash-chained and signed.',
-    href: '/forgotten',
-  },
+/**
+ * The suggestions, in order. `id` is the stable structural key; the title and
+ * body are looked up as `auth:demoIntro.tries.<id>.{title,body}` so translating
+ * the sandbox never means touching this list.
+ */
+const TRIES: { n: number; id: string; href: string }[] = [
+  { n: 1, id: 'ask', href: '/chat' },
+  { n: 2, id: 'resolveContradiction', href: '/review' },
+  { n: 3, id: 'skillBrief', href: '/skills' },
+  { n: 4, id: 'deleteReceipt', href: '/forgotten' },
 ];
 
 export function DemoIntro() {
+  const { t } = useTranslation('auth');
   const [open, setOpen] = useState(() => localStorage.getItem(SEEN_KEY) !== '1');
   if (!open) return null;
 
@@ -57,33 +44,41 @@ export function DemoIntro() {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-1 flex items-start justify-between">
-          <h2 className="text-lg font-semibold text-slate-800">Welcome to the Cogeto sandbox</h2>
+          <h2 className="text-lg font-semibold text-slate-800">{t('demoIntro.title')}</h2>
           <button
             type="button"
             onClick={dismiss}
-            aria-label="Dismiss"
+            aria-label={t('common:action.dismiss')}
             className="-mr-1 -mt-1 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
           >
             ✕
           </button>
         </div>
         <p className="mb-4 text-sm text-slate-500">
-          This is <span className="font-medium text-slate-600">Ana Kovač’s</span> accrued,
-          verifiable memory: fictional data, safe to explore. Things to try:
+          <Trans
+            i18nKey="demoIntro.lead"
+            ns="auth"
+            values={{ persona: 'Ana Kovač’s' }}
+            components={{ persona: <span className="font-medium text-slate-600" /> }}
+          />
         </p>
         <ol className="grid gap-3">
-          {TRIES.map((t) => (
-            <li key={t.n}>
+          {TRIES.map((entry) => (
+            <li key={entry.n}>
               <a
-                href={t.href}
+                href={entry.href}
                 className="flex gap-3 rounded-lg border border-slate-200 p-3 text-left transition hover:border-brand-teal hover:bg-brand-teal/5"
               >
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-teal-surface dark:bg-brand-teal/15 text-xs font-bold text-brand-teal-ink dark:text-brand-teal">
-                  {t.n}
+                  {entry.n}
                 </span>
                 <span>
-                  <span className="block text-sm font-semibold text-slate-800">{t.title}</span>
-                  <span className="block text-xs text-slate-500">{t.body}</span>
+                  <span className="block text-sm font-semibold text-slate-800">
+                    {t(`demoIntro.tries.${entry.id}.title`)}
+                  </span>
+                  <span className="block text-xs text-slate-500">
+                    {t(`demoIntro.tries.${entry.id}.body`)}
+                  </span>
                 </span>
               </a>
             </li>
@@ -94,7 +89,7 @@ export function DemoIntro() {
           onClick={dismiss}
           className="mt-4 w-full rounded-md bg-brand-teal px-3 py-2 text-sm font-semibold text-white hover:opacity-90"
         >
-          Explore the sandbox
+          {t('demoIntro.explore')}
         </button>
       </div>
     </div>

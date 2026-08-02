@@ -1,0 +1,77 @@
+{
+  "productName": "Cogeto",
+  "document": {
+    "title": "Cogeto: verifiable memory"
+  },
+  "action": {
+    "add": "Add",
+    "cancel": "Cancel",
+    "close": "Close",
+    "copy": "Copy",
+    "copied": "Copied",
+    "dismiss": "Dismiss",
+    "download": "Download",
+    "remove": "Remove",
+    "save": "Save",
+    "tryAgain": "Try again"
+  },
+  "state": {
+    "loading": "Loading…",
+    "loadingApp": "Loading Cogeto…",
+    "saving": "Saving…",
+    "saved": "Saved."
+  },
+  "memoryStatus": {
+    "active": "active",
+    "user_approved": "approved",
+    "uncertain": "uncertain",
+    "contradicted": "contradicted",
+    "outdated": "outdated",
+    "replaced": "replaced"
+  },
+  "memoryScope": {
+    "private": "private",
+    "shared": "shared"
+  },
+  "verificationVerdict": {
+    "supported": "supported",
+    "partial": "partial",
+    "unsupported": "unsupported"
+  },
+  "badge": {
+    "sensitive": {
+      "label": "sensitive",
+      "title": "Sensitive: owner-only, off by default in retrieval"
+    },
+    "shared": {
+      "label": "shared",
+      "title": "Visible to your whole organization"
+    },
+    "private": "private"
+  },
+  "countBadge": {
+    "label": "{{count}} {{noun}}"
+  },
+  "entityChip": {
+    "filterBy": "Filter by {{name}}"
+  },
+  "relativeTime": {
+    "justNow": "just now",
+    "minutes_one": "{{count}} min ago",
+    "minutes_few": "{{count}} min ago",
+    "minutes_other": "{{count}} min ago",
+    "hours_one": "{{count}} h ago",
+    "hours_few": "{{count}} h ago",
+    "hours_other": "{{count}} h ago",
+    "days_one": "{{count}} d ago",
+    "days_few": "{{count}} d ago",
+    "days_other": "{{count}} d ago"
+  },
+  "fileSize": {
+    "bytes_one": "{{value}} B",
+    "bytes_few": "{{value}} B",
+    "bytes_other": "{{value}} B",
+    "kilobytes": "{{value}} KB",
+    "megabytes": "{{value}} MB"
+  }
+}

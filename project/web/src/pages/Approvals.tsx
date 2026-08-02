@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Trans, useTranslation } from 'react-i18next';
 import type { ApprovalDto, ApprovalStatus } from '@cogeto/shared';
 import { EMAIL_REPLY_DRAFT_ACTION } from '@cogeto/shared';
 import {
@@ -10,6 +11,7 @@ import {
 } from '../api';
 import type { Session } from '../auth/oidc';
 import { invalidateAfterApproval } from '../query-invalidation';
+import { formatDateTime } from '../i18n/format';
 import { Shell } from '../components/Shell';
 import { timeAgo } from '../components/status';
 import type { Tone } from '../components/status';
@@ -33,17 +35,10 @@ const STATUS_TONE: Record<ApprovalStatus, Tone> = {
   rejected: 'danger',
   expired: 'neutral',
 };
-const STATUS_LABEL: Record<ApprovalStatus, string> = {
-  draft: 'draft',
-  pending_approval: 'pending',
-  approved: 'approved',
-  executed: 'executed',
-  rejected: 'rejected',
-  expired: 'expired',
-};
-
+/** Approval STATUS is an API value; only its display name is translated. */
 function ApprovalPill({ status }: { status: ApprovalStatus }) {
-  return <Pill tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Pill>;
+  const { t } = useTranslation('approvals');
+  return <Pill tone={STATUS_TONE[status]}>{t(`status.${status}`)}</Pill>;
 }
 
 /**
@@ -52,6 +47,7 @@ function ApprovalPill({ status }: { status: ApprovalStatus }) {
  * path here hands the draft to the user's own client.
  */
 function EmailDraftPanel({ session, approvalId }: { session: Session; approvalId: string }) {
+  const { t } = useTranslation('approvals');
   const [open, setOpen] = useState(false);
   const draft = useQuery({
     queryKey: ['email-draft', approvalId],
@@ -77,14 +73,14 @@ function EmailDraftPanel({ session, approvalId }: { session: Session; approvalId
         onClick={() => setOpen((o) => !o)}
         className="text-xs font-medium text-brand-teal-ink dark:text-brand-teal hover:underline"
       >
-        {open ? 'Hide draft' : 'View / send draft'}
+        {open ? t('draft.hide') : t('draft.view')}
       </button>
       {open && draft.data && (
         <div className="mt-2 space-y-2">
           <div className="text-xs text-slate-500">
-            To: <span className="font-mono">{draft.data.to}</span>
+            {t('draft.to')} <span className="font-mono">{draft.data.to}</span>
             <br />
-            Subject: {draft.data.subject}
+            {t('draft.subject', { subject: draft.data.subject })}
           </div>
           <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-slate-50 p-2 text-xs text-slate-700">
             {draft.data.body}
@@ -95,25 +91,24 @@ function EmailDraftPanel({ session, approvalId }: { session: Session; approvalId
               onClick={() => navigator.clipboard?.writeText(draft.data!.body)}
               className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
             >
-              Copy body
+              {t('draft.copyBody')}
             </button>
             <button
               type="button"
               onClick={downloadEml}
               className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
             >
-              Download .eml
+              {t('draft.downloadEml')}
             </button>
             <a
               href={draft.data.mailto}
               className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
             >
-              Open in mail client
+              {t('draft.openInClient')}
             </a>
           </div>
           <p className="text-xs text-amber-700 dark:text-amber-300">
-            Cogeto does <strong>not</strong> send mail. Send this reply yourself from your own
-            client.
+            <Trans i18nKey="draft.neverSends" ns="approvals" components={{ b: <strong /> }} />
           </p>
         </div>
       )}
@@ -122,6 +117,7 @@ function EmailDraftPanel({ session, approvalId }: { session: Session; approvalId
 }
 
 function PendingCard({ session, approval }: { session: Session; approval: ApprovalDto }) {
+  const { t } = useTranslation('approvals');
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const decide = useMutation({
@@ -139,7 +135,10 @@ function PendingCard({ session, approval }: { session: Session; approval: Approv
         <div>
           <p className="text-sm font-semibold text-slate-800">{approval.summary}</p>
           <p className="mt-0.5 text-xs text-slate-400">
-            {approval.actionType} · requested by {approval.requestedBy ?? 'unknown'}
+            {t('pending.requestedBy', {
+              action: approval.actionType,
+              who: approval.requestedBy ?? t('pending.unknownRequester'),
+            })}
             {approval.createdAt ? ` · ${timeAgo(approval.createdAt)}` : ''}
           </p>
         </div>
@@ -160,7 +159,7 @@ function PendingCard({ session, approval }: { session: Session; approval: Approv
 
       {approval.expiresAt && (
         <p className="mt-2 text-xs text-slate-400">
-          Expires {new Date(approval.expiresAt).toLocaleString()}
+          {t('pending.expires', { when: formatDateTime(approval.expiresAt) })}
         </p>
       )}
       {error && <p className="mt-2 text-xs text-red-600 dark:text-red-300">{error}</p>}
@@ -172,28 +171,26 @@ function PendingCard({ session, approval }: { session: Session; approval: Approv
           onClick={() => decide.mutate('approve')}
           className={btnPrimary}
         >
-          Approve
+          {t('pending.approve')}
         </button>
         <button
           type="button"
           disabled={decide.isPending}
           onClick={() => {
-            if (window.confirm('Reject this action? It will not run.')) decide.mutate('reject');
+            if (window.confirm(t('pending.rejectConfirm'))) decide.mutate('reject');
           }}
           className={btnDanger}
         >
-          Reject
+          {t('pending.reject')}
         </button>
       </div>
-      <p className="mt-2 text-xs text-slate-400">
-        Approving runs the action server-side in the worker. This is the only path; there is no
-        client-side shortcut.
-      </p>
+      <p className="mt-2 text-xs text-slate-400">{t('pending.serverSideNote')}</p>
     </li>
   );
 }
 
 function HistoryRow({ session, approval }: { session: Session; approval: ApprovalDto }) {
+  const { t } = useTranslation('approvals');
   const when = approval.executedAt ?? approval.decidedAt;
   return (
     <li className="border-b border-slate-100 py-2 text-sm">
@@ -202,7 +199,7 @@ function HistoryRow({ session, approval }: { session: Session; approval: Approva
           <p className="text-slate-700">{approval.summary}</p>
           <p className="text-xs text-slate-400">
             {approval.actionType}
-            {approval.decidedBy ? ` · decided by ${approval.decidedBy}` : ''}
+            {approval.decidedBy ? t('history.decidedBy', { who: approval.decidedBy }) : ''}
             {when ? ` · ${timeAgo(when)}` : ''}
           </p>
           {approval.result && (
@@ -222,6 +219,7 @@ function HistoryRow({ session, approval }: { session: Session; approval: Approva
 
 /** Pending Approvals: the sole approval surface + read-only history. */
 export function Approvals({ session }: { session: Session }) {
+  const { t } = useTranslation('approvals');
   const [tab, setTab] = useState<'pending' | 'history'>('pending');
   const pending = useQuery({
     queryKey: ['pending-approvals'],
@@ -235,7 +233,7 @@ export function Approvals({ session }: { session: Session }) {
   });
 
   return (
-    <Shell session={session} title="Approvals" active="approvals">
+    <Shell session={session} title={t('navigation:section.approvals')} active="approvals">
       <Tabs
         active={tab}
         onChange={setTab}
@@ -244,29 +242,26 @@ export function Approvals({ session }: { session: Session }) {
             key: 'pending',
             label: (
               <span className="flex items-center gap-1.5">
-                Pending
+                {t('tab.pending')}
                 {(pending.data?.length ?? 0) > 0 && (
-                  <CountBadge count={pending.data!.length} label="awaiting approval" />
+                  <CountBadge count={pending.data!.length} label={t('tab.awaitingNoun')} />
                 )}
               </span>
             ),
           },
-          { key: 'history', label: 'History' },
+          { key: 'history', label: t('tab.history') },
         ]}
       />
 
       {tab === 'pending' && (
         <Card>
-          {pending.isPending && <SkeletonRows rows={2} label="Loading approvals…" />}
+          {pending.isPending && <SkeletonRows rows={2} label={t('pending.loading')} />}
           {pending.isError && (
-            <ErrorState onRetry={() => void pending.refetch()}>
-              We couldn’t load pending approvals.
-            </ErrorState>
+            <ErrorState onRetry={() => void pending.refetch()}>{t('pending.error')}</ErrorState>
           )}
           {pending.data && pending.data.length === 0 && (
-            <EmptyState icon="✓" tone="positive" title="Nothing awaiting approval">
-              Consequential actions (like a bulk memory change from Memories) land here for you to
-              approve or reject. Cogeto never runs them on its own.
+            <EmptyState icon="✓" tone="positive" title={t('pending.empty.title')}>
+              {t('pending.empty.body')}
             </EmptyState>
           )}
           {pending.data && pending.data.length > 0 && (
@@ -281,15 +276,13 @@ export function Approvals({ session }: { session: Session }) {
 
       {tab === 'history' && (
         <Card>
-          {history.isPending && <SkeletonRows rows={2} label="Loading history…" />}
+          {history.isPending && <SkeletonRows rows={2} label={t('history.loading')} />}
           {history.isError && (
-            <ErrorState onRetry={() => void history.refetch()}>
-              We couldn’t load the approval history.
-            </ErrorState>
+            <ErrorState onRetry={() => void history.refetch()}>{t('history.error')}</ErrorState>
           )}
           {history.data && history.data.length === 0 && (
-            <EmptyState icon="🗂" title="No decided approvals yet">
-              Once you approve or reject an action, it’s recorded here.
+            <EmptyState icon="🗂" title={t('history.empty.title')}>
+              {t('history.empty.body')}
             </EmptyState>
           )}
           {history.data && history.data.length > 0 && (

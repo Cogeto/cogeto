@@ -1,0 +1,60 @@
+/**
+ * The translation namespaces (V2.0 item 3.5).
+ *
+ * One namespace per PRODUCT SURFACE, not one file per language: a translator
+ * opens `locales/de/review.json` and sees every string the Contradictions page
+ * can render, small enough to finish in one sitting. Splitting by surface also
+ * keeps a key's meaning readable from its path alone.
+ *
+ * Adding a namespace means adding it here AND creating the file in EVERY
+ * locale — `npm run i18n:check` fails the build otherwise (Issue D).
+ */
+export const NAMESPACES = [
+  /** Words shared by every surface: Save, Cancel, Loading…, relative times. */
+  'common',
+  /** The left rail and its badges. */
+  'navigation',
+  /** Login, the demo password gate, the OIDC callback, the demo banner. */
+  'auth',
+  /** The attention-first dashboard: feed, stats, worker activity, charts. */
+  'dashboard',
+  /** The conversation surface: composer, citations, capture, conversations. */
+  'chat',
+  /** Uploads and the source drawer (note, file, email, web page). */
+  'sources',
+  /** The memory list, its filters, and the memory drawer. */
+  'memories',
+  /** The Contradictions page (V2.0 item 3.3: contradictions only). */
+  'review',
+  /** The Forgotten ledger and deletion receipts. */
+  'forgotten',
+  /** The audit log. */
+  'audit',
+  /** Settings: capture defaults, profile and context, appearance, models. */
+  'settings',
+  /** The operator System page: health, jobs, dead letters. */
+  'system',
+  /** The capabilities registry and panel. */
+  'capabilities',
+  /** Consequential actions awaiting a decision. */
+  'approvals',
+  /** Named skills: runs, plans, steps. */
+  'skills',
+  /** Web research: the query gate, runs, cited answers. */
+  'research',
+  /** Time travel. */
+  'timeline',
+  /** Memory Passport export. */
+  'passport',
+  /** Email capture: inbound address, allowlist, refusals. */
+  'email',
+  /** Failure copy shown to a user. Never developer or log messages. */
+  'errors',
+  /** Field-level validation copy. */
+  'validation',
+] as const;
+
+export type Namespace = (typeof NAMESPACES)[number];
+
+/** The namespace loaded when a call site does not name one. */
+export const DEFAULT_NAMESPACE: Namespace = 'common';

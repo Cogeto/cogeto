@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { UNCERTAINTY_REASON_LABELS } from '@cogeto/shared';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   approveMemory,
   changeMemoryScope,
@@ -17,6 +17,7 @@ import {
 } from '../api';
 import type { Session } from '../auth/oidc';
 import { invalidateAfterGovernance } from '../query-invalidation';
+import { formatShortDate } from '../i18n/format';
 import { SourceDrawer } from './SourceDrawer';
 import { timeAgo } from './status';
 import {
@@ -73,6 +74,7 @@ export function MemoryDrawer({
   /** Re-target the drawer (edit jumps to the successor). */
   onNavigate: (memoryId: string) => void;
 }) {
+  const { t } = useTranslation('memories');
   const queryClient = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -186,11 +188,9 @@ export function MemoryDrawer({
 
   return (
     <>
-      <Drawer title="Memory" onClose={onClose}>
-        {memoryQuery.isPending && <SkeletonRows rows={4} label="Loading memory…" />}
-        {memoryQuery.isError && (
-          <ErrorState>This memory couldn’t be loaded. It may have been rejected.</ErrorState>
-        )}
+      <Drawer title={t('drawer.title')} onClose={onClose}>
+        {memoryQuery.isPending && <SkeletonRows rows={4} label={t('drawer.loading')} />}
+        {memoryQuery.isError && <ErrorState>{t('drawer.loadError')}</ErrorState>}
 
         {memory && (
           <>
@@ -203,14 +203,14 @@ export function MemoryDrawer({
               {memory.scope === 'shared' ? <SharedBadge /> : <PrivateTag />}
               {!isMine && (
                 <span className="text-slate-400">
-                  owned by {memory.ownerName ?? 'another member'}
+                  {t('drawer.ownedBy', { owner: memory.ownerName ?? t('list.anotherMember') })}
                 </span>
               )}
               {memory.entities.map((entity) => (
                 <EntityChip
                   key={entity}
                   name={entity}
-                  title={`Time-travel ${entity}`}
+                  title={t('drawer.timeTravelEntity', { entity })}
                   onClick={() => {
                     window.location.href = timelineHref(entity);
                   }}
@@ -219,13 +219,17 @@ export function MemoryDrawer({
             </div>
             {(memory.validFrom || memory.validUntil) && (
               <p className="text-xs text-slate-400">
-                Valid {memory.validFrom ? new Date(memory.validFrom).toLocaleDateString() : '…'} →{' '}
-                {memory.validUntil ? new Date(memory.validUntil).toLocaleDateString() : 'open'}
+                {t('drawer.validity', {
+                  from: memory.validFrom ? formatShortDate(memory.validFrom) : '…',
+                  until: memory.validUntil
+                    ? formatShortDate(memory.validUntil)
+                    : t('drawer.validityOpen'),
+                })}
               </p>
             )}
             {memory.temporalUnresolved.length > 0 && (
               <p className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300">
-                ⚠ Date could not be resolved: {memory.temporalUnresolved.join(', ')}
+                {t('drawer.unresolvedDate', { phrases: memory.temporalUnresolved.join(', ') })}
               </p>
             )}
 
@@ -235,12 +239,15 @@ export function MemoryDrawer({
               </p>
             )}
 
-            <Panel title="Actions">
+            <Panel title={t('drawer.panel.actions')}>
               {!isMine ? (
                 <p className="text-sm text-slate-500">
-                  This memory is shared with your organization by{' '}
-                  <span className="font-medium">{memory.ownerName ?? 'another member'}</span>. You
-                  can read it, but only its owner can approve, edit, change its scope, or delete it.
+                  <Trans
+                    i18nKey="drawer.sharedByOwner"
+                    ns="memories"
+                    values={{ owner: memory.ownerName ?? t('list.anotherMember') }}
+                    components={{ owner: <span className="font-medium" /> }}
+                  />
                 </p>
               ) : (
                 <>
@@ -251,9 +258,9 @@ export function MemoryDrawer({
                         disabled={busy}
                         onClick={() => approve.mutate()}
                         className={btnPrimary}
-                        title="Your confirmation outranks the machine judgment from here on"
+                        title={t('drawer.confirmTitle')}
                       >
-                        Confirm this fact
+                        {t('drawer.confirm')}
                       </button>
                     )}
                     {memory.status === 'uncertain' && (
@@ -261,14 +268,11 @@ export function MemoryDrawer({
                         type="button"
                         disabled={busy}
                         onClick={() => {
-                          if (
-                            window.confirm('Reject and remove this memory? This cannot be undone.')
-                          )
-                            reject.mutate();
+                          if (window.confirm(t('drawer.rejectConfirm'))) reject.mutate();
                         }}
                         className={btnDanger}
                       >
-                        Reject
+                        {t('drawer.reject')}
                       </button>
                     )}
                     {memory.status !== 'outdated' && memory.status !== 'replaced' && (
@@ -278,7 +282,7 @@ export function MemoryDrawer({
                         onClick={() => outdate.mutate()}
                         className={btnSecondary}
                       >
-                        Mark outdated
+                        {t('drawer.markOutdated')}
                       </button>
                     )}
                     {memory.status !== 'replaced' && (
@@ -291,22 +295,22 @@ export function MemoryDrawer({
                         }}
                         className={btnSecondary}
                       >
-                        Edit
+                        {t('drawer.edit')}
                       </button>
                     )}
                     <label
                       className="ml-auto flex items-center gap-1.5 text-xs text-slate-600"
-                      title="Shared facts are visible to everyone in your organization."
+                      title={t('drawer.scopeTitle')}
                     >
-                      Scope
+                      {t('drawer.scope')}
                       <select
                         value={memory.scope}
                         disabled={busy}
                         onChange={(e) => scope.mutate(e.target.value as 'private' | 'shared')}
                         className="rounded-md border border-slate-300 px-2 py-0.5"
                       >
-                        <option value="private">private</option>
-                        <option value="shared">shared</option>
+                        <option value="private">{t('common:memoryScope.private')}</option>
+                        <option value="shared">{t('common:memoryScope.shared')}</option>
                       </select>
                     </label>
                     <label className="flex items-center gap-1.5 text-xs text-slate-600">
@@ -316,7 +320,7 @@ export function MemoryDrawer({
                         disabled={busy}
                         onChange={(e) => sensitive.mutate(e.target.checked)}
                       />
-                      Sensitive
+                      {t('drawer.sensitive')}
                     </label>
                   </div>
                   {editing && (
@@ -334,10 +338,7 @@ export function MemoryDrawer({
                         className="w-full resize-y rounded-md border border-slate-300 p-2 text-sm"
                       />
                       {showExplainer && (
-                        <p className="text-xs text-slate-500">
-                          Saving a correction never rewrites history: it records a new, approved
-                          version and keeps this one as its predecessor.
-                        </p>
+                        <p className="text-xs text-slate-500">{t('drawer.editExplainer')}</p>
                       )}
                       <div className="flex gap-2">
                         <button
@@ -345,14 +346,14 @@ export function MemoryDrawer({
                           disabled={busy || !editText.trim()}
                           className={btnPrimary}
                         >
-                          Save as correction
+                          {t('drawer.saveCorrection')}
                         </button>
                         <button
                           type="button"
                           onClick={() => setEditing(false)}
                           className={btnSecondary}
                         >
-                          Cancel
+                          {t('common:action.cancel')}
                         </button>
                       </div>
                     </form>
@@ -362,10 +363,10 @@ export function MemoryDrawer({
             </Panel>
 
             {memory.status === 'contradicted' && (
-              <Panel title="Contradiction">
+              <Panel title={t('drawer.panel.contradiction')}>
                 {otherSide ? (
                   <div className="space-y-2 text-sm">
-                    <p className="text-slate-600">This memory conflicts with:</p>
+                    <p className="text-slate-600">{t('drawer.conflictsWith')}</p>
                     <p className="rounded-md bg-red-50 dark:bg-red-500/10 p-2 text-slate-800">
                       {otherSide.content}
                     </p>
@@ -375,29 +376,34 @@ export function MemoryDrawer({
                       </p>
                     )}
                     <a href="/review" className={`${btnPrimary} no-underline`}>
-                      Resolve in Review
+                      {t('drawer.resolveInReview')}
                     </a>
                   </div>
                 ) : (
                   <p className="text-sm text-slate-400">
                     {contradictionsQuery.isPending
-                      ? 'Loading the conflicting fact…'
-                      : 'The conflicting fact is not visible to you (it may have been resolved).'}
+                      ? t('drawer.conflictLoading')
+                      : t('drawer.conflictHidden')}
                   </p>
                 )}
               </Panel>
             )}
 
-            <Panel title="Verification">
+            <Panel title={t('drawer.panel.verification')}>
               {memory.uncertaintyReason && (
                 <p className="mb-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-100">
-                  <span className="font-medium">
-                    {memory.status === 'uncertain'
-                      ? 'Held as uncertain: '
-                      : 'Was admitted as uncertain: '}
-                  </span>
-                  {UNCERTAINTY_REASON_LABELS[memory.uncertaintyReason]}. Cogeto decided this on its
-                  own, and cites the fact softly rather than as settled.
+                  <Trans
+                    i18nKey={
+                      memory.status === 'uncertain'
+                        ? 'drawer.uncertainty.held'
+                        : 'drawer.uncertainty.wasAdmitted'
+                    }
+                    ns="memories"
+                    values={{
+                      reason: t(`uncertaintyReason.${memory.uncertaintyReason}`),
+                    }}
+                    components={{ lead: <span className="font-medium" /> }}
+                  />
                 </p>
               )}
               {verificationQuery.data ? (
@@ -411,22 +417,29 @@ export function MemoryDrawer({
                   <p className="text-slate-600">{verificationQuery.data.reason}</p>
                   {verificationQuery.data.sourceSpan && (
                     <p className="rounded bg-slate-50 p-2 text-xs italic text-slate-500">
-                      cited: “{verificationQuery.data.sourceSpan}”
+                      {t('drawer.citedSpan', { span: verificationQuery.data.sourceSpan })}
                     </p>
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-slate-400">
-                  No verification pass. This version was authored by you.
-                </p>
+                <p className="text-sm text-slate-400">{t('drawer.noVerification')}</p>
               )}
             </Panel>
 
-            <Panel title="Provenance">
+            <Panel title={t('drawer.panel.provenance')}>
               <p className="text-sm text-slate-600">
-                Source: <span className="font-medium">{memory.sourceType.replace('_', ' ')}</span>
+                <Trans
+                  i18nKey="drawer.source"
+                  ns="memories"
+                  values={{
+                    kind: t(`sources:kindLabel.${memory.sourceType}`, {
+                      defaultValue: memory.sourceType.replace('_', ' '),
+                    }),
+                  }}
+                  components={{ kind: <span className="font-medium" /> }}
+                />
                 <span className="ml-2 text-xs text-slate-400" title={memory.createdAt}>
-                  captured {timeAgo(memory.createdAt)}
+                  {t('drawer.captured', { when: timeAgo(memory.createdAt) })}
                 </span>
               </p>
               {noteQuery.data && (
@@ -440,22 +453,20 @@ export function MemoryDrawer({
                   onClick={() => setShowSource(true)}
                   className={`${btnSecondary} mt-2`}
                 >
-                  Open source · delete…
+                  {t('drawer.openSource')}
                 </button>
               ) : (
-                <p className="mt-2 text-xs text-slate-400">
-                  The source is private to its owner. Deletion is owner-only.
-                </p>
+                <p className="mt-2 text-xs text-slate-400">{t('drawer.sourceOwnerOnly')}</p>
               )}
             </Panel>
 
-            <Panel title="History">
+            <Panel title={t('drawer.panel.history')}>
               {memory.entities.length > 0 && (
                 <a
                   href={timelineHref(memory.entities[0]!, memory.validFrom ?? memory.createdAt)}
                   className={`${btnSecondary} mb-2`}
                 >
-                  Open timeline for {memory.entities[0]}
+                  {t('drawer.openTimeline', { entity: memory.entities[0] })}
                 </a>
               )}
               {chainQuery.data && chainQuery.data.length > 1 ? (
@@ -471,11 +482,14 @@ export function MemoryDrawer({
                       <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                         <StatusChip status={entry.status} />
                         <span title={entry.createdAt}>
-                          {i === 0 ? 'original' : 'correction'} · {timeAgo(entry.createdAt)}
+                          {t('drawer.chainEntry', {
+                            kind: i === 0 ? t('drawer.original') : t('drawer.correction'),
+                            when: timeAgo(entry.createdAt),
+                          })}
                         </span>
                         {entry.id === memory.id && (
                           <span className="font-semibold text-brand-teal-ink dark:text-brand-teal">
-                            viewing
+                            {t('drawer.viewing')}
                           </span>
                         )}
                       </p>
@@ -483,7 +497,7 @@ export function MemoryDrawer({
                   ))}
                 </ol>
               ) : (
-                <p className="text-sm text-slate-400">No corrections. This is the original.</p>
+                <p className="text-sm text-slate-400">{t('drawer.noCorrections')}</p>
               )}
             </Panel>
           </>

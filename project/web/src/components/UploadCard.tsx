@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { FileProcessingState, MemoryScope } from '@cogeto/shared';
 import {
   ALLOWED_UPLOAD_CONTENT_TYPES,
@@ -8,18 +9,25 @@ import {
 } from '@cogeto/shared';
 import { fetchFileStatus, fetchSettings, uploadFile } from '../api';
 import type { Session } from '../auth/oidc';
+import { i18next } from '../i18n';
 import { Card } from './ui';
 
-/** Client-side pre-check — the server re-validates type (magic bytes) and size. */
+/**
+ * Client-side pre-check — the server re-validates type (magic bytes) and size.
+ * Returns a TRANSLATED message: these are field-validation strings a user
+ * reads, so they live in the `validation` namespace.
+ */
 function validate(file: File): string | null {
   const name = file.name.toLowerCase();
   const okExt = ALLOWED_UPLOAD_EXTENSIONS.some((ext) => name.endsWith(ext));
   const okType = !file.type || ALLOWED_UPLOAD_CONTENT_TYPES.includes(file.type);
-  if (!okExt && !okType) return 'Only PDF and DOCX files are accepted.';
+  if (!okExt && !okType) return i18next.t('validation:upload.unsupportedType');
   if (file.size > DEFAULT_UPLOAD_MAX_BYTES) {
-    return `File is too large (max ${Math.round(DEFAULT_UPLOAD_MAX_BYTES / (1024 * 1024))} MB).`;
+    return i18next.t('validation:upload.tooLarge', {
+      megabytes: Math.round(DEFAULT_UPLOAD_MAX_BYTES / (1024 * 1024)),
+    });
   }
-  if (file.size === 0) return 'That file is empty.';
+  if (file.size === 0) return i18next.t('validation:upload.empty');
   return null;
 }
 
@@ -35,6 +43,7 @@ export function UploadCard({
   session: Session;
   onUploaded: (objectKey: string, filename: string) => void;
 }) {
+  const { t } = useTranslation('sources');
   // Prefill scope + discard from the user's saved defaults.
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => fetchSettings(session) });
   const [scope, setScope] = useState<MemoryScope | null>(null);
@@ -94,23 +103,21 @@ export function UploadCard({
           }}
         />
         <p className="font-medium text-slate-600">
-          {upload.isPending ? 'Uploading…' : 'Drop a PDF or DOCX here, or click to choose'}
+          {upload.isPending ? t('upload.uploading') : t('upload.dropzone')}
         </p>
-        <p className="mt-1 text-xs text-slate-400">
-          Its facts are extracted, verified and added to your memories.
-        </p>
+        <p className="mt-1 text-xs text-slate-400">{t('upload.hint')}</p>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-slate-600">
         <label className="flex items-center gap-1.5">
-          Scope
+          {t('upload.scope')}
           <select
             value={effScope}
             onChange={(e) => setScope(e.target.value as MemoryScope)}
             className="rounded-md border border-slate-300 px-2 py-1"
           >
-            <option value="private">private</option>
-            <option value="shared">shared</option>
+            <option value="private">{t('common:memoryScope.private')}</option>
+            <option value="shared">{t('common:memoryScope.shared')}</option>
           </select>
         </label>
         <label className="flex items-center gap-1.5">
@@ -119,25 +126,21 @@ export function UploadCard({
             checked={sensitive}
             onChange={(e) => setSensitive(e.target.checked)}
           />
-          Sensitive
+          {t('upload.sensitive')}
         </label>
-        <label
-          className="flex items-center gap-1.5"
-          title="Delete the original after extraction. Keep only the derived memories."
-        >
+        <label className="flex items-center gap-1.5" title={t('upload.discardTitle')}>
           <input
             type="checkbox"
             checked={effDiscard}
             onChange={(e) => setDiscard(e.target.checked)}
           />
-          Discard original after extraction
+          {t('upload.discard')}
         </label>
       </div>
 
       {effDiscard && (
         <p className="mt-2 text-xs text-amber-800 dark:text-amber-300">
-          The uploaded file will be deleted once its facts are extracted. Only the verified memories
-          are kept. This cannot be undone.
+          {t('upload.discardWarning')}
         </p>
       )}
       {error && (
@@ -149,10 +152,14 @@ export function UploadCard({
   );
 }
 
-const STATE_LABEL: Record<FileProcessingState, string> = {
-  processing: 'Extracting and verifying…',
-  done: 'Done',
-  error: 'Extraction failed. The file could not be read.',
+/**
+ * File processing STATE is an API value; only its display name is translated,
+ * through an explicit value → key map.
+ */
+const STATE_KEY: Record<FileProcessingState, string> = {
+  processing: 'upload.state.processing',
+  done: 'upload.state.done',
+  error: 'upload.state.error',
 };
 
 /** Polls one uploaded file's pipeline job until it settles. */
@@ -167,6 +174,7 @@ export function PendingUpload({
   filename: string;
   onSettled: (objectKey: string, failed: boolean) => void;
 }) {
+  const { t } = useTranslation('sources');
   const { data } = useQuery({
     queryKey: ['file-status', objectKey],
     queryFn: () => fetchFileStatus(session, objectKey),
@@ -191,7 +199,7 @@ export function PendingUpload({
         <span className="h-2 w-2 animate-pulse rounded-full bg-brand-teal" aria-hidden="true" />
       )}
       <span className="truncate font-medium text-slate-600">{filename}</span>
-      <span className="ml-auto text-xs">{STATE_LABEL[state]}</span>
+      <span className="ml-auto text-xs">{t(STATE_KEY[state])}</span>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import type { SkillRunDetailDto, SkillRunDto, SkillRunStepDto } from '@cogeto/shared';
+import { i18next } from '../i18n';
 
 /**
  * Pure display rules for the skill run view —
@@ -7,24 +8,29 @@ import type { SkillRunDetailDto, SkillRunDto, SkillRunStepDto } from '@cogeto/sh
 
 /** The one-line, human-phrased state of a run — the list row and view header. */
 export function runStatusLine(run: SkillRunDto, steps: SkillRunStepDto[] = []): string {
+  const t = i18next.getFixedT(null, 'skills');
   switch (run.status) {
     case 'planning':
-      return 'Planning: checking what you already know';
+      return t('statusLine.planning');
     case 'awaiting_approval':
-      return 'Searches awaiting your approval';
+      return t('statusLine.awaitingApproval');
     case 'awaiting_input':
-      return 'Waiting for your input';
+      return t('statusLine.awaitingInput');
     case 'running': {
       const current = steps.find((s) => s.status === 'running' || s.status === 'failed');
-      if (current?.status === 'failed') return `Retrying: ${lower(current.title)}`;
-      return current ? current.outputsSummary || current.title : 'Working';
+      if (current?.status === 'failed') {
+        return t('statusLine.retrying', { step: lower(current.title) });
+      }
+      return current ? current.outputsSummary || current.title : t('statusLine.working');
     }
     case 'completed':
-      return 'Completed';
+      return t('statusLine.completed');
     case 'failed':
-      return run.failureReason ? `Failed: ${run.failureReason}` : 'Failed';
+      return run.failureReason
+        ? t('statusLine.failedWithReason', { reason: run.failureReason })
+        : t('statusLine.failed');
     case 'cancelled':
-      return 'Cancelled';
+      return t('statusLine.cancelled');
   }
 }
 
@@ -48,16 +54,23 @@ export function briefExportText(detail: SkillRunDetailDto): string {
   const web = detail.briefCitations.filter((c) => c.kind === 'web');
   const memories = detail.briefCitations.filter((c) => c.kind === 'memory');
   if (web.length > 0 || memories.length > 0) {
-    lines.push('Sources:');
+    lines.push(i18next.t('skills:export.sources'));
     for (const c of web) {
       if (c.kind === 'web') {
         lines.push(
-          `- ${c.marker} ${c.title ?? c.url} (${c.url}, fetched ${c.fetchedAt.slice(0, 10)})`,
+          i18next.t('skills:export.webSource', {
+            marker: c.marker,
+            title: c.title ?? c.url,
+            url: c.url,
+            date: c.fetchedAt.slice(0, 10),
+          }),
         );
       }
     }
     for (const c of memories) {
-      if (c.kind === 'memory') lines.push(`- ${c.marker} memory ${c.memoryId}`);
+      if (c.kind === 'memory') {
+        lines.push(i18next.t('skills:export.memorySource', { marker: c.marker, id: c.memoryId }));
+      }
     }
   }
   return lines.join('\n');

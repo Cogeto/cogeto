@@ -1,0 +1,28 @@
+{
+  "landmark": "Primary",
+  "section": {
+    "dashboard": "Dashboard",
+    "memories": "Memories",
+    "chat": "Chat",
+    "research": "Research",
+    "skills": "Skills",
+    "timeline": "Time travel",
+    "review": "Contradictions",
+    "approvals": "Approvals",
+    "forgotten": "Forgotten",
+    "audit": "Audit",
+    "system": "System",
+    "settings": "Settings"
+  },
+  "badge": {
+    "items": "items",
+    "openContradictions": "open contradictions",
+    "pendingApprovals": "pending approvals",
+    "newSinceLastLook_one": "{{count}} new since you last looked",
+    "newSinceLastLook_many": "{{count}} new since you last looked",
+    "newSinceLastLook_other": "{{count}} new since you last looked"
+  },
+  "liveSandbox": "Live sandbox",
+  "signOut": "Sign out",
+  "versionTitle": "Cogeto version"
+}

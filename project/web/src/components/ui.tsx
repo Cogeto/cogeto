@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { MemoryStatus } from '@cogeto/shared';
-import { STATUS_META, TONE_CLASS } from './status';
+import { STATUS_META, statusLabel, TONE_CLASS } from './status';
 import type { Tone } from './status';
 
 /**
@@ -21,11 +22,13 @@ export function StatusChip({
   status: MemoryStatus;
   className?: string;
 }) {
+  useTranslation();
   const meta = STATUS_META[status];
+  const label = statusLabel(status);
   return (
-    <span className={`${BADGE} ${meta.className} ${className}`} title={meta.label}>
+    <span className={`${BADGE} ${meta.className} ${className}`} title={label}>
       <span aria-hidden="true">{meta.icon}</span>
-      {meta.label}
+      {label}
     </span>
   );
 }
@@ -51,30 +54,36 @@ export function Pill({
 }
 
 export function SensitiveBadge() {
+  const { t } = useTranslation('common');
   return (
     <span
       className={`${BADGE} bg-violet-100 text-violet-700 dark:bg-violet-400/15 dark:text-violet-300`}
-      title="Sensitive: owner-only, off by default in retrieval"
+      title={t('badge.sensitive.title')}
     >
-      <span aria-hidden="true">🔒</span>sensitive
+      <span aria-hidden="true">🔒</span>
+      {t('badge.sensitive.label')}
     </span>
   );
 }
 
 export function SharedBadge({ owner }: { owner?: string | null }) {
+  const { t } = useTranslation('common');
   return (
     <span
       className={`${BADGE} bg-sky-100 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300`}
-      title="Visible to your whole organization"
+      title={t('badge.shared.title')}
     >
-      <span aria-hidden="true">◇</span>shared{owner ? ` · ${owner}` : ''}
+      <span aria-hidden="true">◇</span>
+      {t('badge.shared.label')}
+      {owner ? ` · ${owner}` : ''}
     </span>
   );
 }
 
 /** Private scope reads as a quiet tag, not a loud chip (it's the default). */
 export function PrivateTag() {
-  return <span className="text-xs text-slate-400">private</span>;
+  const { t } = useTranslation('common');
+  return <span className="text-xs text-slate-400">{t('badge.private')}</span>;
 }
 
 /** Entity tag. A button when interactive, a plain span otherwise. */
@@ -88,6 +97,7 @@ export function EntityChip({
   /** Overrides the default "Filter by {name}" tooltip (e.g. navigation). */
   title?: string;
 }) {
+  const { t } = useTranslation('common');
   const cls = 'rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600';
   return onClick ? (
     <button
@@ -97,7 +107,7 @@ export function EntityChip({
         onClick();
       }}
       className={`${cls} hover:bg-slate-200`}
-      title={title ?? `Filter by ${name}`}
+      title={title ?? t('entityChip.filterBy', { name })}
     >
       {name}
     </button>
@@ -108,24 +118,28 @@ export function EntityChip({
 
 /** Verification verdict (spec §2) → tone. */
 export function VerdictChip({ verdict }: { verdict: string }) {
+  const { t } = useTranslation('common');
   const tone: Tone =
     verdict === 'supported' ? 'positive' : verdict === 'unsupported' ? 'danger' : 'warning';
   const icon = verdict === 'supported' ? '✓' : verdict === 'unsupported' ? '✕' : '≈';
+  // The verdict VALUE is the API's; only its display name is translated, and an
+  // unknown value falls through to itself rather than rendering a raw key.
   return (
     <Pill tone={tone} icon={icon}>
-      {verdict}
+      {t(`verificationVerdict.${verdict}`, { defaultValue: verdict })}
     </Pill>
   );
 }
 
 /** Notification count for nav/tabs — with an accessible label. */
 export function CountBadge({ count, label }: { count: number; label: string }) {
+  const { t } = useTranslation('common');
   return (
     <span
       // amber-400 is a fixed badge color in both themes, so its ink must be
       // theme-independent too: brand-navy (not the remapping slate-900).
       className="rounded-full bg-amber-400 px-1.5 text-xs font-bold text-brand-navy"
-      aria-label={`${count} ${label}`}
+      aria-label={t('countBadge.label', { count, noun: label })}
     >
       {count}
     </span>
@@ -200,6 +214,7 @@ export function EmptyState({
 }
 
 export function ErrorState({ children, onRetry }: { children: ReactNode; onRetry?: () => void }) {
+  const { t } = useTranslation('common');
   return (
     <div
       role="alert"
@@ -208,7 +223,7 @@ export function ErrorState({ children, onRetry }: { children: ReactNode; onRetry
       <span>{children}</span>
       {onRetry && (
         <button type="button" onClick={onRetry} className={`${btnSecondary} ml-auto`}>
-          Try again
+          {t('action.tryAgain')}
         </button>
       )}
     </div>
@@ -220,13 +235,15 @@ export function Skeleton({ className = '' }: { className?: string }) {
 }
 
 /** A few skeleton lines standing in for text/rows that are loading. */
-export function SkeletonRows({ rows = 3, label = 'Loading…' }: { rows?: number; label?: string }) {
+export function SkeletonRows({ rows = 3, label }: { rows?: number; label?: string }) {
+  const { t } = useTranslation('common');
+  const text = label ?? t('state.loading');
   return (
-    <div className="space-y-2" role="status" aria-busy="true" aria-label={label}>
+    <div className="space-y-2" role="status" aria-busy="true" aria-label={text}>
       {Array.from({ length: rows }).map((_, i) => (
         <Skeleton key={i} className={`h-10 ${i === rows - 1 ? 'w-2/3' : 'w-full'}`} />
       ))}
-      <span className="sr-only">{label}</span>
+      <span className="sr-only">{text}</span>
     </div>
   );
 }
@@ -279,6 +296,7 @@ export function Drawer({
   children: ReactNode;
   width?: string;
 }) {
+  const { t } = useTranslation('common');
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -316,7 +334,7 @@ export function Drawer({
             type="button"
             onClick={onClose}
             className="rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
-            aria-label="Close"
+            aria-label={t('action.close')}
           >
             <span aria-hidden="true">✕</span>
           </button>

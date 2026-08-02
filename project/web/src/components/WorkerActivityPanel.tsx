@@ -1,40 +1,54 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { WorkerActivityDto, WorkerJobDto } from '@cogeto/shared';
 import { fetchWorkerActivity } from '../api';
 import type { Session } from '../auth/oidc';
+import { i18next } from '../i18n';
+import { formatNumber } from '../i18n/format';
 import { timeAgo } from './status';
 
-/** Human names for the queue's job types (the worker's own vocabulary). */
-const JOB_LABELS: Record<string, string> = {
-  'ingestion.pipeline': 'Extracting & verifying',
-  'deletion.execute': 'Deleting',
-  'memory.embed': 'Embedding',
-  deletion_sweep: 'Integrity sweep',
-  dreaming_cycle: 'Dreaming',
-  echo: 'Echo',
+/**
+ * The queue's job TYPES are the worker's own vocabulary and travel as values;
+ * only their display names are translated, through `system:job.<type>`. An
+ * unknown type renders verbatim rather than as a raw key, exactly as before.
+ */
+const JOB_TYPE_KEYS: Record<string, string> = {
+  'ingestion.pipeline': 'ingestionPipeline',
+  'deletion.execute': 'deletionExecute',
+  'memory.embed': 'memoryEmbed',
+  deletion_sweep: 'deletionSweep',
+  dreaming_cycle: 'dreamingCycle',
+  echo: 'echo',
 };
-const jobLabel = (type: string): string => JOB_LABELS[type] ?? type;
+const jobLabel = (type: string): string => {
+  const key = JOB_TYPE_KEYS[type];
+  return key ? i18next.t(`system:job.${key}`) : type;
+};
 
 function sourceLabel(sourceType: string | null, sourceId: string | null): string | null {
   if (!sourceType) return null;
   const kind =
     sourceType === 'user_note'
-      ? 'note'
+      ? i18next.t('sources:kind.note')
       : sourceType === 'file'
-        ? 'file'
+        ? i18next.t('sources:kind.file')
         : sourceType.replace(/_/g, ' ');
   // File source ids are object keys; show only the final `file-…` segment.
   const tail = sourceId ? (sourceId.split('/').pop() ?? sourceId).slice(0, 16) : null;
-  return tail ? `${kind} · ${tail}…` : kind;
+  return tail ? i18next.t('system:worker.sourceWithId', { kind, id: tail }) : kind;
 }
 
 function elapsedSince(iso: string, now: number): string {
   const s = Math.max(0, Math.floor((now - new Date(iso).getTime()) / 1000));
-  if (s < 60) return `${s}s`;
-  return `${Math.floor(s / 60)}m ${s % 60}s`;
+  if (s < 60) return i18next.t('system:worker.elapsedSeconds', { seconds: s });
+  return i18next.t('system:worker.elapsedMinutes', {
+    minutes: Math.floor(s / 60),
+    seconds: s % 60,
+  });
 }
 
+/** A count chip. `label` arrives already translated from the call site. */
 function Stat({
   label,
   value,
@@ -59,6 +73,7 @@ function Stat({
 
 /** One running job: friendly label, source, elapsed, and an indeterminate bar. */
 function RunningRow({ job, now }: { job: WorkerJobDto; now: number }) {
+  const { t } = useTranslation('system');
   const source = sourceLabel(job.sourceType, job.sourceId);
   return (
     <li className="rounded-md border border-slate-200 p-2.5">
@@ -67,8 +82,10 @@ function RunningRow({ job, now }: { job: WorkerJobDto; now: number }) {
         <span className="font-medium text-slate-700">{jobLabel(job.jobType)}</span>
         {source && <span className="truncate text-xs text-slate-400">{source}</span>}
         <span className="ml-auto shrink-0 text-xs tabular-nums text-slate-400">
-          {job.since ? `running ${elapsedSince(job.since, now)}` : 'running'}
-          {job.attempts > 1 ? ` · attempt ${job.attempts}` : ''}
+          {job.since
+            ? t('worker.runningFor', { elapsed: elapsedSince(job.since, now) })
+            : t('worker.running')}
+          {job.attempts > 1 ? t('worker.attemptSuffix', { count: job.attempts }) : ''}
         </span>
       </div>
       {/* Indeterminate: jobs are atomic, so this signals "working", not a fill %. */}
@@ -80,6 +97,7 @@ function RunningRow({ job, now }: { job: WorkerJobDto; now: number }) {
 }
 
 function QueuedRow({ job, now }: { job: WorkerJobDto; now: number }) {
+  const { t } = useTranslation('system');
   const source = sourceLabel(job.sourceType, job.sourceId);
   const retrying = job.attempts > 0 && Boolean(job.lastError);
   return (
@@ -90,12 +108,14 @@ function QueuedRow({ job, now }: { job: WorkerJobDto; now: number }) {
       <span className="ml-auto shrink-0 text-xs text-slate-400">
         {retrying ? (
           <span className="text-amber-600" title={job.lastError ?? undefined}>
-            retrying{job.runAt ? ` ${timeAgo(job.runAt)}` : ''}
+            {job.runAt
+              ? t('worker.retryingAt', { when: timeAgo(job.runAt) })
+              : t('worker.retrying')}
           </span>
         ) : job.runAt && new Date(job.runAt).getTime() > now ? (
-          `scheduled ${timeAgo(job.runAt)}`
+          t('worker.scheduled', { when: timeAgo(job.runAt) })
         ) : (
-          'queued'
+          t('worker.queued')
         )}
       </span>
     </li>
@@ -108,6 +128,7 @@ function QueuedRow({ job, now }: { job: WorkerJobDto; now: number }) {
  * visibly), and what recently completed. Polls fast while busy, slowly when idle.
  */
 export function WorkerActivityPanel({ session }: { session: Session }) {
+  const { t } = useTranslation('system');
   const { data, isPending, isError } = useQuery({
     queryKey: ['worker-activity'],
     queryFn: () => fetchWorkerActivity(session),
@@ -133,20 +154,20 @@ export function WorkerActivityPanel({ session }: { session: Session }) {
     <section className="rounded-lg border border-slate-200 bg-surface p-4 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Worker activity
+          {t('worker.heading')}
         </h2>
         <span
           className={`h-2 w-2 rounded-full ${busy ? 'animate-pulse bg-brand-teal' : 'bg-slate-300'}`}
-          title={busy ? 'processing' : 'idle'}
+          title={busy ? t('worker.processing') : t('worker.idle')}
           role="img"
-          aria-label={busy ? 'processing' : 'idle'}
+          aria-label={busy ? t('worker.processing') : t('worker.idle')}
         />
       </div>
 
-      {isPending && <p className="text-sm text-slate-400">Loading…</p>}
+      {isPending && <p className="text-sm text-slate-400">{t('common:state.loading')}</p>}
       {isError && (
         <p className="text-sm text-red-700 dark:text-red-300" role="alert">
-          We couldn’t load worker activity.
+          {t('worker.error')}
         </p>
       )}
 
@@ -155,26 +176,37 @@ export function WorkerActivityPanel({ session }: { session: Session }) {
           <div className="mb-3 flex flex-wrap items-center gap-2">
             {idle ? (
               <span className="rounded-full bg-brand-teal-surface dark:bg-brand-teal/15 px-2 py-0.5 text-xs font-semibold text-brand-teal-ink dark:text-brand-teal">
-                Idle, all jobs processed
+                {t('worker.allProcessed')}
               </span>
             ) : (
               <>
                 {data.summary.running > 0 && (
-                  <Stat label="running" value={data.summary.running} tone="active" />
+                  <Stat
+                    label={t('worker.stat.running')}
+                    value={data.summary.running}
+                    tone="active"
+                  />
                 )}
                 {data.summary.queued > 0 && (
-                  <Stat label="queued" value={data.summary.queued} tone="active" />
+                  <Stat label={t('worker.stat.queued')} value={data.summary.queued} tone="active" />
                 )}
                 {data.summary.waiting > 0 && (
-                  <Stat label="waiting" value={data.summary.waiting} tone="muted" />
+                  <Stat
+                    label={t('worker.stat.waiting')}
+                    value={data.summary.waiting}
+                    tone="muted"
+                  />
                 )}
               </>
             )}
             {data.summary.deadLetter > 0 && (
-              <Stat label="failed" value={data.summary.deadLetter} tone="alert" />
+              <Stat label={t('worker.stat.failed')} value={data.summary.deadLetter} tone="alert" />
             )}
             <span className="ml-auto text-xs text-slate-400">
-              {data.summary.completedTotal.toLocaleString()} jobs completed all-time
+              {t('worker.completedAllTime', {
+                count: data.summary.completedTotal,
+                value: formatNumber(data.summary.completedTotal),
+              })}
             </span>
           </div>
 
@@ -189,7 +221,7 @@ export function WorkerActivityPanel({ session }: { session: Session }) {
           {(data.queued.length > 0 || data.waiting.length > 0) && (
             <div className="mt-3">
               <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Up next
+                {t('worker.upNext')}
               </p>
               <ul className="divide-y divide-slate-100">
                 {[...data.queued, ...data.waiting].slice(0, 6).map((job, i) => (
@@ -198,7 +230,9 @@ export function WorkerActivityPanel({ session }: { session: Session }) {
               </ul>
               {data.queued.length + data.waiting.length > 6 && (
                 <p className="mt-1 text-xs text-slate-400">
-                  +{data.queued.length + data.waiting.length - 6} more waiting…
+                  {t('worker.moreWaiting', {
+                    count: data.queued.length + data.waiting.length - 6,
+                  })}
                 </p>
               )}
             </div>
@@ -207,7 +241,7 @@ export function WorkerActivityPanel({ session }: { session: Session }) {
           {data.recent.length > 0 && (
             <div className="mt-3">
               <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Recently completed
+                {t('worker.recentlyCompleted')}
               </p>
               <ul className="space-y-1">
                 {data.recent.map((c, i) => (

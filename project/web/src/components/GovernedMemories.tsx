@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Trans, useTranslation } from 'react-i18next';
 import type { MemoryListItem, MemoryScope, MemoryStatus } from '@cogeto/shared';
 import { BULK_OUTDATE_ACTION, MEMORY_SCOPES, MEMORY_STATUSES } from '@cogeto/shared';
 import { createApproval, fetchMe, fetchMemories } from '../api';
@@ -38,6 +39,7 @@ function MemoryRow({
   selected: boolean;
   onToggleSelect: () => void;
 }) {
+  const { t } = useTranslation('memories');
   const mine = memory.ownerId === myUserId;
   return (
     <li
@@ -52,7 +54,9 @@ function MemoryRow({
             checked={selected}
             onChange={onToggleSelect}
             className="mt-1 shrink-0"
-            aria-label={`Select: ${memory.content?.slice(0, 60) ?? 'memory'}`}
+            aria-label={t('list.selectRow', {
+              excerpt: memory.content?.slice(0, 60) ?? t('list.selectRowFallback'),
+            })}
           />
         )}
         <div className="min-w-0 flex-1">
@@ -67,7 +71,9 @@ function MemoryRow({
             <StatusChip status={memory.status} />
             {memory.sensitive && <SensitiveBadge />}
             {memory.scope === 'shared' && (
-              <SharedBadge owner={!mine ? (memory.ownerName ?? 'member') : undefined} />
+              <SharedBadge
+                owner={!mine ? (memory.ownerName ?? t('list.otherMember')) : undefined}
+              />
             )}
             {memory.entities.map((entity) => (
               <EntityChip key={entity} name={entity} onClick={() => onEntity(entity)} />
@@ -90,6 +96,7 @@ export function GovernedMemories({
   session: Session;
   onOpen: (memoryId: string) => void;
 }) {
+  const { t } = useTranslation('memories');
   const [q, setQ] = useState('');
   // ?status=outdated — dreaming digest lines deep-link into a filtered view.
   const [status, setStatus] = useState<MemoryStatus | ''>(() => {
@@ -150,38 +157,43 @@ export function GovernedMemories({
   return (
     <Card>
       <div className="mb-3 flex items-center gap-2">
-        <SectionTitle>Memories</SectionTitle>
-        {data && <span className="text-xs text-slate-400">{data.total} on record</span>}
+        <SectionTitle>{t('list.heading')}</SectionTitle>
+        {data && (
+          <span className="text-xs text-slate-400">
+            {t('list.onRecord', { count: data.total })}
+          </span>
+        )}
         <button
           type="button"
           onClick={() => (selecting ? clearSelection() : setSelecting(true))}
           className={`${btnSecondary} ml-auto`}
         >
-          {selecting ? 'Cancel' : 'Select'}
+          {selecting ? t('common:action.cancel') : t('list.select')}
         </button>
       </div>
 
       {requested && (
         <p className="mb-3 rounded-md bg-brand-teal-surface dark:bg-brand-teal/15 px-3 py-2 text-sm text-brand-teal-ink dark:text-brand-teal">
-          Requested: “{requested}”. Decide it under{' '}
-          <a href="/approvals" className="font-semibold underline">
-            Approvals
-          </a>
-          . It runs only after you approve it there.
+          <Trans
+            i18nKey="list.bulk.requested"
+            ns="memories"
+            values={{ summary: requested }}
+            components={{ link: <a href="/approvals" className="font-semibold underline" /> }}
+          />
         </p>
       )}
 
       {selecting && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-brand-teal/40 bg-brand-teal/5 px-3 py-2 text-sm">
-          <span className="font-medium text-slate-700">{selected.size} selected</span>
-          <span className="text-xs text-slate-500">
-            Bulk changes are consequential. They create a pending approval, not an instant edit.
+          <span className="font-medium text-slate-700">
+            {t('list.bulk.selected', { count: selected.size })}
           </span>
+          <span className="text-xs text-slate-500">{t('list.bulk.explainer')}</span>
           {requestBulkOutdate.isError && (
             <span className="text-xs text-red-600 dark:text-red-300">
               {requestBulkOutdate.error instanceof Error
                 ? requestBulkOutdate.error.message
-                : 'Request failed'}
+                : t('list.bulk.requestFailed')}
             </span>
           )}
           <button
@@ -190,7 +202,7 @@ export function GovernedMemories({
             onClick={() => requestBulkOutdate.mutate()}
             className={`${btnPrimary} ml-auto`}
           >
-            {requestBulkOutdate.isPending ? 'Requesting…' : 'Request “Mark outdated” approval'}
+            {requestBulkOutdate.isPending ? t('list.bulk.requesting') : t('list.bulk.request')}
           </button>
         </div>
       )}
@@ -202,7 +214,7 @@ export function GovernedMemories({
             setQ(e.target.value);
             resetPage();
           }}
-          placeholder="Search memories…"
+          placeholder={t('list.filter.searchPlaceholder')}
           className="min-w-48 flex-1 rounded-md border border-slate-300 px-3 py-1.5 focus:border-brand-teal focus:outline-none"
         />
         <select
@@ -213,7 +225,7 @@ export function GovernedMemories({
           }}
           className="rounded-md border border-slate-300 px-2 py-1.5 text-xs text-slate-600"
         >
-          <option value="">any status</option>
+          <option value="">{t('list.filter.anyStatus')}</option>
           {MEMORY_STATUSES.map((s) => (
             <option key={s} value={s}>
               {statusLabel(s)}
@@ -228,10 +240,10 @@ export function GovernedMemories({
           }}
           className="rounded-md border border-slate-300 px-2 py-1.5 text-xs text-slate-600"
         >
-          <option value="">any scope</option>
-          {MEMORY_SCOPES.map((s) => (
-            <option key={s} value={s}>
-              {s}
+          <option value="">{t('list.filter.anyScope')}</option>
+          {MEMORY_SCOPES.map((value) => (
+            <option key={value} value={value}>
+              {t(`common:memoryScope.${value}`)}
             </option>
           ))}
         </select>
@@ -241,7 +253,7 @@ export function GovernedMemories({
             setEntity(e.target.value);
             resetPage();
           }}
-          placeholder="entity…"
+          placeholder={t('list.filter.entityPlaceholder')}
           className="w-28 rounded-md border border-slate-300 px-2 py-1.5 text-xs"
         />
         <label className="flex items-center gap-1 text-xs text-slate-600">
@@ -253,22 +265,21 @@ export function GovernedMemories({
               resetPage();
             }}
           />
-          sensitive only
+          {t('list.filter.sensitiveOnly')}
         </label>
       </div>
 
-      {isPending && <SkeletonRows rows={4} label="Loading memories…" />}
-      {isError && <ErrorState>We couldn’t load your memories just now.</ErrorState>}
+      {isPending && <SkeletonRows rows={4} label={t('list.loading')} />}
+      {isError && <ErrorState>{t('list.error')}</ErrorState>}
       {data &&
         data.items.length === 0 &&
         (data.total === 0 && !q && !status && !scope && !entity && !sensitiveOnly ? (
-          <EmptyState icon="🧠" title="Nothing remembered yet">
-            A memory is a single verifiable fact Cogeto extracted from something you captured.
-            Capture a note above and watch it move through extraction and verification.
+          <EmptyState icon="🧠" title={t('list.empty.none.title')}>
+            {t('list.empty.none.body')}
           </EmptyState>
         ) : (
-          <EmptyState icon="🔍" title="No memories match these filters">
-            Try clearing the search or status filter.
+          <EmptyState icon="🔍" title={t('list.empty.filtered.title')}>
+            {t('list.empty.filtered.body')}
           </EmptyState>
         ))}
       {data && data.items.length > 0 && (
@@ -299,18 +310,16 @@ export function GovernedMemories({
             onClick={() => setPage((p) => p - 1)}
             className="rounded-md border border-slate-300 px-2 py-1 disabled:opacity-40"
           >
-            Newer
+            {t('list.pager.newer')}
           </button>
-          <span>
-            page {page + 1} of {pages}
-          </span>
+          <span>{t('list.pager.position', { page: page + 1, pages })}</span>
           <button
             type="button"
             disabled={page + 1 >= pages}
             onClick={() => setPage((p) => p + 1)}
             className="rounded-md border border-slate-300 px-2 py-1 disabled:opacity-40"
           >
-            Older
+            {t('list.pager.older')}
           </button>
         </div>
       )}

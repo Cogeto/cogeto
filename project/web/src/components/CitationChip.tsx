@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { ChatFactDto, MemoryStatus } from '@cogeto/shared';
 import { fetchMe, fetchMemory, fetchWebSource } from '../api';
 import type { Session } from '../auth/oidc';
+import { i18next } from '../i18n';
+import { formatDateTime, formatDayMonth } from '../i18n/format';
 import { CITATION_STALE_MS } from '../query-invalidation';
 import { isPastFact, statusLabel, WARN_STATUSES } from './status';
 
@@ -14,26 +17,28 @@ import { isPastFact, statusLabel, WARN_STATUSES } from './status';
  * Clicking opens the governance drawer in place when the page provides an
  * onOpen handler (chat); otherwise it deep-links to /memories.
  */
-/** Friendly, short source kind for the provenance chip. */
+/**
+ * Friendly, short source kind for the provenance chip. The source TYPE is an
+ * API value; only its display name is translated, through an explicit map. An
+ * unrecognised type renders verbatim, as before.
+ */
 function sourceKind(sourceType: string): string {
   switch (sourceType) {
     case 'user_note':
     case 'note':
-      return 'note';
+      return i18next.t('chat:citation.kind.note');
     case 'email':
-      return 'email';
+      return i18next.t('chat:citation.kind.email');
     case 'web':
-      return 'web';
+      return i18next.t('chat:citation.kind.web');
     case 'file_upload':
-      return 'doc';
+      return i18next.t('chat:citation.kind.document');
     case 'chat':
-      return 'chat';
+      return i18next.t('chat:citation.kind.chat');
     default:
       return sourceType.replace(/_/g, ' ');
   }
 }
-const shortDate = (iso: string): string =>
-  new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
 export function CitationChip({
   session,
@@ -46,6 +51,7 @@ export function CitationChip({
   fact?: ChatFactDto;
   onOpen?: (memoryId: string) => void;
 }) {
+  const { t } = useTranslation('chat');
   const lookupId = fact ? undefined : memoryId;
   const { data } = useQuery({
     queryKey: ['memory', lookupId],
@@ -96,14 +102,15 @@ export function CitationChip({
   if (!target) {
     return (
       <span className="mx-0.5 inline-flex items-center gap-1 rounded-md border border-slate-200 px-1.5 align-baseline font-mono text-[0.72rem] text-slate-400">
-        <span aria-hidden="true">◈</span>source
+        <span aria-hidden="true">◈</span>
+        {t('citation.unresolved')}
       </span>
     );
   }
   const warn = WARN_STATUSES.includes(target.status);
   const isWeb = target.sourceType === 'web';
   const kind = sourceKind(target.sourceType);
-  const dateLabel = fact?.validFrom ? shortDate(fact.validFrom) : null;
+  const dateLabel = fact?.validFrom ? formatDayMonth(fact.validFrom) : null;
   // Provenance chip: a mono "◈ kind" token, tinted by state. Warning
   // statuses win the styling contest (a disputed fact stays visibly disputed);
   // then past-belief muted, then the teal/sky memory-vs-web split.
@@ -119,14 +126,21 @@ export function CitationChip({
             : 'border-brand-teal/30 bg-brand-teal/10 text-brand-teal-ink dark:text-brand-teal';
   // Attribute a cited SHARED fact owned by someone else.
   const sharedByOther = target.scope === 'shared' && target.ownerId !== me?.userId;
-  const ownerLabel = target.ownerName ?? 'a teammate';
+  const ownerLabel = target.ownerName ?? t('citation.teammate');
   const className = `mx-0.5 inline-flex items-center gap-1 rounded-md border px-1.5 align-baseline font-mono text-[0.72rem] font-medium no-underline transition-shadow hover:shadow-sm ${tone}`;
   const webDetail = webSource
-    ? `${webSource.title ?? webSource.finalUrl} · fetched ${new Date(webSource.fetchedAt).toLocaleString()}`
+    ? t('citation.webDetail', {
+        title: webSource.title ?? webSource.finalUrl,
+        when: formatDateTime(webSource.fetchedAt),
+      })
     : isWeb
-      ? 'from the web'
+      ? t('citation.fromWeb')
       : null;
-  const title = [target.claim, webDetail, sharedByOther ? `shared by ${ownerLabel}` : null]
+  const title = [
+    target.claim,
+    webDetail,
+    sharedByOther ? t('citation.sharedBy', { owner: ownerLabel }) : null,
+  ]
     .filter(Boolean)
     .join(' · ');
   const label = (
@@ -137,14 +151,14 @@ export function CitationChip({
       {kind}
       {dateLabel && <span className="font-normal opacity-70">· {dateLabel}</span>}
       {warn && <span aria-hidden="true">· ⚠</span>}
-      {!warn && target.past && <span className="opacity-80">· past</span>}
+      {!warn && target.past && <span className="opacity-80">{t('citation.pastSuffix')}</span>}
       {sharedByOther && <span className="text-sky-700 dark:text-sky-300">· {ownerLabel}</span>}
       <span className="sr-only">
         {' '}
-        citation from {kind}
-        {warn ? `, ${statusLabel(target.status)}` : ''}
-        {!warn && target.past ? ', past belief' : ''}
-        {sharedByOther ? `, shared by ${ownerLabel}` : ''}
+        {t('citation.screenReader', { kind })}
+        {warn ? t('citation.screenReaderStatus', { status: statusLabel(target.status) }) : ''}
+        {!warn && target.past ? t('citation.screenReaderPast') : ''}
+        {sharedByOther ? t('citation.screenReaderShared', { owner: ownerLabel }) : ''}
       </span>
     </>
   );

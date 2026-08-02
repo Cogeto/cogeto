@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { ConversationDto } from '@cogeto/shared';
 import {
   createConversation,
@@ -55,6 +56,7 @@ function Row({
   onSelect: (id: string) => void;
   onDeleted: (id: string) => void;
 }) {
+  const { t } = useTranslation('chat');
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -107,7 +109,7 @@ function Row({
           }}
         >
           <label className="sr-only" htmlFor={`rename-${conversation.id}`}>
-            Conversation title
+            {t('conversation.titleField')}
           </label>
           <input
             id={`rename-${conversation.id}`}
@@ -125,14 +127,14 @@ function Row({
             disabled={rename.isPending || !draft.trim()}
             className="text-xs font-semibold text-brand-teal-ink disabled:opacity-40 dark:text-brand-teal"
           >
-            Save
+            {t('common:action.save')}
           </button>
           <button
             type="button"
             onClick={() => setEditing(false)}
             className="text-xs text-slate-400 hover:text-slate-600"
           >
-            Cancel
+            {t('common:action.cancel')}
           </button>
         </form>
       ) : (
@@ -169,7 +171,7 @@ function Row({
               }}
               className="font-mono text-[0.62rem] uppercase tracking-[0.08em] text-slate-400 hover:text-brand-teal-ink dark:hover:text-brand-teal"
             >
-              Rename
+              {t('conversation.rename')}
             </button>
             <button
               type="button"
@@ -177,7 +179,7 @@ function Row({
               disabled={archive.isPending}
               className="font-mono text-[0.62rem] uppercase tracking-[0.08em] text-slate-400 hover:text-brand-teal-ink disabled:opacity-40 dark:hover:text-brand-teal"
             >
-              {conversation.archived ? 'Unarchive' : 'Archive'}
+              {conversation.archived ? t('conversation.unarchive') : t('conversation.archive')}
             </button>
             <button
               type="button"
@@ -185,7 +187,7 @@ function Row({
               disabled={remove.isPending}
               className="font-mono text-[0.62rem] uppercase tracking-[0.08em] text-slate-400 hover:text-red-600 disabled:opacity-40 dark:hover:text-red-300"
             >
-              Delete
+              {t('conversation.delete.action')}
             </button>
           </div>
         </div>
@@ -207,6 +209,7 @@ export function ConversationSidebar({
   onCreated: (conversation: ConversationDto) => void;
   onDeleted: (id: string) => void;
 }) {
+  const { t } = useTranslation('chat');
   const { data: conversations } = useQuery({
     queryKey: ['conversations'],
     queryFn: () => fetchConversations(session),
@@ -228,21 +231,21 @@ export function ConversationSidebar({
 
   return (
     <aside
-      aria-label="Conversations"
+      aria-label={t('conversation.listLabel')}
       className="flex w-64 shrink-0 flex-col border-r border-slate-200"
     >
       {/* Top padding mirrors the app bar's height so the rail heading sits on
           the breadcrumb's baseline, not above it. */}
       <div className="flex items-center justify-between px-3 pt-4.5 pb-2">
         <span className="font-mono text-[0.68rem] uppercase tracking-[0.12em] text-slate-400">
-          Conversations
+          {t('conversation.listLabel')}
         </span>
         <button
           type="button"
           onClick={() => create.mutate()}
           disabled={create.isPending}
-          title="New conversation"
-          aria-label="New conversation"
+          title={t('conversation.new')}
+          aria-label={t('conversation.new')}
           className="grid h-6 w-6 place-items-center rounded-full border border-slate-300 text-slate-500 transition-colors hover:border-brand-teal hover:text-brand-teal-ink disabled:opacity-40 dark:hover:text-brand-teal"
         >
           <PlusIcon />
@@ -251,8 +254,7 @@ export function ConversationSidebar({
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
         {active.length === 0 && archived.length === 0 && (
           <p className="px-1.5 py-2 text-xs leading-relaxed text-slate-400">
-            A conversation is a workspace for one thread of thinking: a client, a contract, quick
-            questions. Start one and ask.
+            {t('conversation.emptyRail')}
           </p>
         )}
         <ul className="space-y-1">
@@ -275,7 +277,7 @@ export function ConversationSidebar({
               aria-expanded={showArchived}
               className="px-1.5 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-slate-400 hover:text-slate-600"
             >
-              {showArchived ? '▾' : '▸'} Archived ({archived.length})
+              {showArchived ? '▾' : '▸'} {t('conversation.archived', { count: archived.length })}
             </button>
             {showArchived && (
               <ul className="mt-1 space-y-1 opacity-80">
@@ -295,8 +297,7 @@ export function ConversationSidebar({
         )}
       </div>
       <p className="border-t border-slate-200 px-3 py-2.5 text-[0.68rem] leading-relaxed text-slate-400">
-        What Cogeto learns here is remembered everywhere: conversations organise talk, memory keeps
-        knowledge.
+        {t('conversation.railFooter')}
       </p>
     </aside>
   );

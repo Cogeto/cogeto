@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { MemoryScope } from '@cogeto/shared';
 import { captureNote, fetchNoteStatus, fetchSettings } from '../api';
 import type { Session } from '../auth/oidc';
@@ -13,6 +14,7 @@ export function CaptureCard({
   session: Session;
   onCaptured: (noteId: string) => void;
 }) {
+  const { t } = useTranslation('memories');
   const [content, setContent] = useState('');
   // Scope prefills from the user's saved default; an explicit choice
   // overrides it. The server applies the same default when scope is omitted.
@@ -39,28 +41,28 @@ export function CaptureCard({
         onKeyDown={(e) => {
           if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit();
         }}
-        placeholder="Remember this..."
+        placeholder={t('capture.placeholder')}
         rows={3}
         className="w-full resize-y rounded-md border border-slate-300 p-3 text-sm text-slate-800 placeholder:text-slate-400 transition-colors focus:border-brand-teal"
       />
       <div className="mt-2 flex items-center justify-between gap-3">
         <label className="flex items-center gap-1.5 text-xs text-slate-500">
-          Scope
+          {t('capture.scope')}
           <select
             value={effScope}
             onChange={(e) => setScope(e.target.value as MemoryScope)}
             className="rounded-md border border-slate-300 px-2 py-1"
-            title="Shared facts are visible to everyone in your organization; private stays yours."
+            title={t('capture.scopeTitle')}
           >
-            <option value="private">private</option>
-            <option value="shared">shared</option>
+            <option value="private">{t('common:memoryScope.private')}</option>
+            <option value="shared">{t('common:memoryScope.shared')}</option>
           </select>
         </label>
         <p className="ml-auto text-xs text-slate-400">
           {capture.isError ? (
-            <span className="text-red-700 dark:text-red-300">Capture failed. Try again.</span>
+            <span className="text-red-700 dark:text-red-300">{t('capture.failed')}</span>
           ) : (
-            'Facts appear below once verified.'
+            t('capture.hint')
           )}
         </p>
         <button
@@ -69,7 +71,7 @@ export function CaptureCard({
           disabled={!content.trim() || capture.isPending}
           className={btnPrimary}
         >
-          Remember
+          {t('capture.submit')}
         </button>
       </div>
     </Card>
@@ -86,6 +88,7 @@ export function PendingNote({
   noteId: string;
   onSettled: (noteId: string, failed: boolean) => void;
 }) {
+  const { t } = useTranslation('memories');
   const { data } = useQuery({
     queryKey: ['note-status', noteId],
     queryFn: () => fetchNoteStatus(session, noteId),
@@ -100,7 +103,7 @@ export function PendingNote({
   return (
     <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-surface px-3 py-2 text-sm text-slate-500">
       <span className="h-2 w-2 animate-pulse rounded-full bg-brand-teal" aria-hidden="true" />
-      <span role="status">Remembering… extraction and verification are running.</span>
+      <span role="status">{t('capture.pending')}</span>
     </div>
   );
 }
