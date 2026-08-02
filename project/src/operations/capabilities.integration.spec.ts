@@ -1,12 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
+import { InstanceProbes } from '../infrastructure/index';
 import type { IntegritySweep, MemoryObjectStore } from '../memory/index';
 import type { ModelGateway } from '../model-gateway/index';
 import { CapabilitiesService } from './capabilities';
 import { HealthController } from './health.controller';
 import type { HealthRequest } from './health-access.guard';
-import type { CogetoConfig } from './config';
+import type { OperationsOptions } from './operations.options';
 
 /**
  * The capability registry against real Postgres
@@ -24,9 +25,8 @@ const quietIntegrity = {
   status: async () => ({ lastSweepAt: null, lastReport: null, openAlerts: 0 }),
 } as unknown as IntegritySweep;
 
-function config(databaseUrl: string): CogetoConfig {
+function config(): OperationsOptions {
   return {
-    databaseUrl,
     qdrantUrl: 'http://127.0.0.1:9',
     s3Url: 'http://127.0.0.1:9',
     redactionEnabled: false,
@@ -39,33 +39,36 @@ function config(databaseUrl: string): CogetoConfig {
     production: false,
     jobsOverdueHours: 26,
     modelProviders: { configured: false, ollama: null },
-  } as unknown as CogetoConfig;
+  } as unknown as OperationsOptions;
 }
 
 describe('capability registry (integration, real Postgres)', () => {
   let tdb: TestDatabase;
+  let probes: InstanceProbes;
   let controller: HealthController;
 
   beforeAll(async () => {
     tdb = await startTestDatabase();
+    probes = new InstanceProbes(tdb.container.getConnectionUri());
   }, 120_000);
 
   afterAll(async () => {
-    // The controller opens its own small pool (as it does in the app process).
-    await controller?.['pool'].end();
+    // The probes own their small pool (as they do in the app process).
+    await probes?.onApplicationShutdown();
     await tdb.stop();
   });
 
   const buildService = (): CapabilitiesService =>
-    new CapabilitiesService(config(tdb.container.getConnectionUri()), tdb.db, quietIntegrity);
+    new CapabilitiesService(config(), tdb.db, quietIntegrity, probes);
 
   it('health_additive: the existing checks contract is untouched and the new fields are present', async () => {
     controller = new HealthController(
-      config(tdb.container.getConnectionUri()),
+      config(),
       { encryptionEnabled: async () => true } as unknown as MemoryObjectStore,
       quietIntegrity,
       { reachable: async () => ({ ok: true, detail: 'stub' }) } as unknown as ModelGateway,
       buildService(),
+      probes,
     );
     // SEC-3: the report is audience-trimmed, so ask for the operator view —
     // this test is about the FULL contract the operator script consumes.

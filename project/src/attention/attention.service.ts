@@ -11,12 +11,7 @@ import type {
 } from '@cogeto/shared';
 import { DRIZZLE, UserContextService } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
-// RECORDED EXCEPTION B10 (docs/module-boundary-contract.md): the attention
-// aggregator holds the read-state pair, which `infrastructure` owns. It is
-// allowlisted by name in .dependency-cruiser.cjs and moves behind
-// infrastructure's interface in V2.0 item 3.6 part 2, with the rest of the
-// accidental context in entrypoints/.
-import { attentionDismissal, attentionState } from '../infrastructure/persistence/tables';
+import { attentionDismissal, attentionState } from './persistence/tables';
 import { MemoryReconciliation, MemoryStore } from '../memory/index';
 import { RetrievalService } from '../retrieval/index';
 import type { OpenLoop } from '../retrieval/index';
@@ -24,17 +19,20 @@ import { ApprovalService } from '../agents/index';
 import { buildDreamDigest, dreamingActivityForPrincipal } from '../ingestion/index';
 
 /**
- * The "what needs my attention" surface and the dashboard statistics (
- *). Both are COMPUTED per Principal — a thin derived
- * layer over signals the instance already produces (the open loops read from
- * memory, the review queues, pending approvals, the dreaming digest). The only materialized state is the
- * read-state pair (`attention_state`, `attention_dismissal`).
+ * The "what needs my attention" surface and the dashboard statistics. Both are
+ * COMPUTED per Principal — a thin derived layer over signals the instance
+ * already produces (the open loops read from memory, the contradictions,
+ * pending approvals, the dreaming digest). The only materialized state is this
+ * module's own read-state pair (`attention_state`, `attention_dismissal`).
  *
- * Composition root placement (entrypoints): the surface spans four bounded
- * contexts, so it lives with the other cross-cutting controllers (audit, jobs)
- * and reaches each module ONLY through its public interface — every count and
- * every line comes back already gated, never a raw table read of a domain
- * module (spec §15).
+ * **Why its own bounded context** (V2.0 item 3.6 part 2): the surface composes
+ * memory, retrieval, agents and ingestion, so none of those four owns it, and
+ * it does own state of its own. It used to sit in `entrypoints/` on the
+ * reasoning that a cross-context surface belongs in a composition root, which
+ * is how a composition root grew 420 lines of production logic and a table read
+ * nobody owned. It reaches every other module ONLY through its public interface
+ * — every count and every line comes back already gated, never a raw table read
+ * (spec §15).
  */
 
 /** An open loop within this window is "due soon" (past it, simply overdue). */

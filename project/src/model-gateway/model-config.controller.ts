@@ -1,8 +1,8 @@
 import { Controller, Get, Inject, UseGuards } from '@nestjs/common';
 import type { ModelConfigDto } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
-import { COGETO_CONFIG } from './config';
-import type { CogetoConfig } from './config';
+import { MODEL_CONFIG_VIEW } from './model-config-view';
+import type { ModelConfigView } from './model-config-view';
 
 /**
  * GET /api/settings/model-config — the READ-ONLY "Model
@@ -15,7 +15,7 @@ import type { CogetoConfig } from './config';
 @Controller('settings/model-config')
 @UseGuards(BearerAuthGuard)
 export class ModelConfigController {
-  constructor(@Inject(COGETO_CONFIG) private readonly config: CogetoConfig) {}
+  constructor(@Inject(MODEL_CONFIG_VIEW) private readonly config: ModelConfigView) {}
 
   @Get()
   get(): ModelConfigDto {
@@ -32,9 +32,7 @@ const PROVIDER_LABEL: Record<string, string> = {
 
 /** Pure DTO assembly`settings_display_accurate` asserts it mirrors the
  * running configuration truthfully and carries no key material. */
-export function buildModelConfigDto(
-  config: Pick<CogetoConfig, 'modelProviders' | 'redactionEnabled'>,
-): ModelConfigDto {
+export function buildModelConfigDto(config: ModelConfigView): ModelConfigDto {
   const p = config.modelProviders;
   if (!p.configured) {
     return {

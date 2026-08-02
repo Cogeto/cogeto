@@ -3,6 +3,7 @@ import type { DynamicModule, OnApplicationShutdown } from '@nestjs/common';
 import { Inject, Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
 import { createDb, DRIZZLE, PG_POOL } from './db';
+import { InstanceProbes } from './instance-probes';
 
 @Injectable()
 class PoolLifecycle implements OnApplicationShutdown {
@@ -34,8 +35,11 @@ export class DatabaseModule {
         },
         { provide: DRIZZLE, useFactory: (pool: Pool) => createDb(pool), inject: [PG_POOL] },
         PoolLifecycle,
+        // The health report's database probes, on their own two-connection pool
+        // so a saturated application pool cannot make the report hang.
+        { provide: InstanceProbes, useFactory: () => new InstanceProbes(options.databaseUrl) },
       ],
-      exports: [PG_POOL, DRIZZLE],
+      exports: [PG_POOL, DRIZZLE, InstanceProbes],
     };
   }
 }

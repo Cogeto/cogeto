@@ -16,8 +16,9 @@ export { createDb, DRIZZLE, PG_POOL } from './db';
 export type { Db, DbOrTx, Tx } from './db';
 export { applyMigrations } from './migrations';
 export type { MigrationRunResult } from './migrations';
-export { writeAudit, readAuditEntries } from './audit';
+export { writeAudit, readAuditEntries, readAuditPage, escapeLike } from './audit';
 export type { AuditEntry, AuditRecord } from './audit';
+export { InstanceProbes } from './instance-probes';
 export { withTransactionalEnqueue, JOB_PRINCIPAL_KEY } from './outbox';
 export type { DomainEvent, JobSpec } from './outbox';
 export {
@@ -27,8 +28,21 @@ export {
   consumeIdempotencyKey,
   runSingleFlight,
   jobRunState,
+  listQueuedJobs,
+  recentJobExecutions,
+  listDeadLetters,
+  queueTotals,
+  retryDeadLetter,
 } from './queue';
-export type { IdempotentJobPayload, JobIdempotencyKey, JobRunState, AfterCommit } from './queue';
+export type {
+  IdempotentJobPayload,
+  JobIdempotencyKey,
+  JobRunState,
+  AfterCommit,
+  QueuedJobRow,
+  JobExecutionRow,
+  DeadLetterRow,
+} from './queue';
 export { scrubMessage, describeError, describeErrorLine } from './error-scrub';
 export {
   ensureInstanceKeys,

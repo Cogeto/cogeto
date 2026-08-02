@@ -69,32 +69,12 @@ export const deadLetter = pgTable('dead_letter', {
 });
 
 /**
- * Attention read-state (migration 0026). The attention feed and
- * dashboard stats are computed; these two content-free per-user tables are the
- * only materialized state. They live here — not in a domain module — because
- * the surface spans every context and none owns it (spec §15 rule 2), exactly like
- * audit_log.
- */
-export const attentionState = pgTable('attention_state', {
-  ownerId: text('owner_id').primaryKey(),
-  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
-});
-
-export const attentionDismissal = pgTable(
-  'attention_dismissal',
-  {
-    ownerId: text('owner_id').notNull(),
-    /** Content-free key (run ids + within-run indices); never memory text. */
-    itemKey: text('item_key').notNull(),
-    dismissedAt: timestamp('dismissed_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [primaryKey({ columns: [t.ownerId, t.itemKey] })],
-);
-
-/**
- * Per-user instance context and language preference (migration 0029). Lives here, not in a domain module, because the context
- * feeds prompts in retrieval, connectors and ingestion alike — no
- * single bounded context owns it (spec §15 rule 2), exactly like attention_state.
+ * Per-user instance context and language preference (migration 0029). Lives
+ * here, not in a domain module, because the context feeds prompts in retrieval,
+ * connectors and ingestion alike, and no single bounded context owns it
+ * (spec §15 rule 2). The attention read-state pair used to be justified the
+ * same way and no longer is: it moved to the `attention` context in V2.0 item
+ * 3.6 part 2, because that surface both owns and is the only writer of it.
  */
 export const userContext = pgTable('user_context', {
   userId: text('user_id').primaryKey(),

@@ -4,6 +4,9 @@ import { ModelGateway } from './model-gateway.service';
 import { createModelGateway } from './factory';
 import type { RedactionConfig } from './factory';
 import type { ResolvedModelProviders } from './provider-config';
+import { ModelConfigController } from './model-config.controller';
+import { MODEL_CONFIG_VIEW } from './model-config-view';
+import type { ModelConfigView } from './model-config-view';
 import { MODEL_USAGE_METER } from '../infrastructure/index';
 import type { ModelUsageMeter } from '../infrastructure/index';
 
@@ -19,6 +22,14 @@ export interface ModelGatewayModuleOptions {
    * worker opens no usage scope, so its pipeline traffic stays unmetered.
    */
   budget?: boolean;
+  /**
+   * Serve `GET /api/settings/model-config` from this root (V2.0 item 3.6 part
+   * 2). The read-only Settings section displays the gateway's own resolved
+   * configuration, so the route belongs to the seam that owns it — but only the
+   * app serves HTTP, so the worker leaves this unset and never registers the
+   * controller.
+   */
+  modelConfig?: ModelConfigView;
 }
 
 /**
@@ -35,7 +46,11 @@ export class ModelGatewayModule {
       // Global like DatabaseModule: consumers (ingestion, retrieval) inject
       // ModelGateway without re-registering the seam's options.
       global: true,
+      controllers: options.modelConfig ? [ModelConfigController] : [],
       providers: [
+        ...(options.modelConfig
+          ? [{ provide: MODEL_CONFIG_VIEW, useValue: options.modelConfig }]
+          : []),
         {
           provide: ModelGateway,
           useFactory: (usageMeter?: ModelUsageMeter) =>

@@ -1,23 +1,22 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { connect } from 'node:net';
-import { sql } from 'drizzle-orm';
 import type { CapabilitySummary, ScheduledJobId, ScheduledJobSummary } from '@cogeto/shared';
-import { DRIZZLE } from '../infrastructure/index';
+import { DRIZZLE, InstanceProbes } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { IntegritySweep } from '../memory/index';
 import type { IntegrityStatus } from '../memory/index';
 import { dreamRunStatus } from '../ingestion/index';
 import type { DreamRunStatus } from '../ingestion/index';
 import { probeLocalRuntime } from '../model-gateway/index';
-import { COGETO_CONFIG } from './config';
-import type { CogetoConfig } from './config';
+import { OPERATIONS_OPTIONS } from './operations.options';
+import type { OperationsOptions } from './operations.options';
 
 /**
  * The capability registry: one authoritative, observable
  * answer to "which optional capabilities does this instance run, and are they
- * actually working?" — compose profiles alone are invisible state. Lives in
- * the composition root like the health controller (a deployment concern, not
- * domain); reads other modules ONLY through their public interfaces.
+ * actually working?" — compose profiles alone are invisible state. Lives in the
+ * `operations` context beside the health report it feeds; reads other modules
+ * ONLY through their public interfaces.
  *
  * Three capability states: `on` (enabled and, where probeable, answering),
  * `unreachable` (enabled but NOT working — the LOUD state: prominent in the
@@ -64,22 +63,18 @@ export class CapabilitiesService {
   private warned = new Set<string>();
 
   constructor(
-    @Inject(COGETO_CONFIG) private readonly config: CogetoConfig,
+    @Inject(OPERATIONS_OPTIONS) private readonly config: OperationsOptions,
     @Inject(DRIZZLE) db: Db,
     integrity: IntegritySweep,
+    probes: InstanceProbes,
     @Optional() @Inject(CAPABILITY_JOB_SOURCES) sources?: CapabilityJobSources,
   ) {
     this.sources = sources ?? {
       dreaming: () => dreamRunStatus(db),
       sweep: () => integrity.status(),
-      installedAt: async () => {
-        const result = await db.execute(
-          sql`SELECT min(applied_at) AS installed_at FROM cogeto_migrations`,
-        );
-        const raw = (result.rows[0] as { installed_at?: string | Date | null } | undefined)
-          ?.installed_at;
-        return raw ? new Date(raw) : null;
-      },
+      // The migration ledger is infrastructure's; this used to be a raw
+      // `min(applied_at)` from a composition root (recorded exception B11).
+      installedAt: () => probes.installedAt(),
     };
   }
 

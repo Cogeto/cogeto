@@ -4,14 +4,14 @@ import type { AddressInfo } from 'node:net';
 import type { IntegrityStatus, IntegritySweep } from '../memory/index';
 import type { DreamRunStatus } from '../ingestion/index';
 import type { ResolvedModelProviders } from '../model-gateway/index';
-import type { Db } from '../infrastructure/index';
+import type { Db, InstanceProbes } from '../infrastructure/index';
 import {
   CAPABILITY_CACHE_TTL_MS,
   CapabilitiesService,
   formatCapabilitiesBanner,
 } from './capabilities';
 import type { CapabilityJobSources } from './capabilities';
-import type { CogetoConfig } from './config';
+import type { OperationsOptions } from './operations.options';
 
 /**
  * The capability registry — unit surface
@@ -50,7 +50,7 @@ const ollamaProviders = {
   },
 } as unknown as ResolvedModelProviders;
 
-function config(overrides: Partial<CogetoConfig> = {}): CogetoConfig {
+function config(overrides: Partial<OperationsOptions> = {}): OperationsOptions {
   return {
     redactionEnabled: false,
     redactionUrl: 'http://redaction:8080',
@@ -65,7 +65,7 @@ function config(overrides: Partial<CogetoConfig> = {}): CogetoConfig {
     jobsOverdueHours: 26,
     modelProviders: unconfiguredProviders,
     ...overrides,
-  } as CogetoConfig;
+  } as OperationsOptions;
 }
 
 const quietJobs: CapabilityJobSources = {
@@ -92,11 +92,15 @@ const quietJobs: CapabilityJobSources = {
   installedAt: async () => new Date(NOW.getTime() - 30 * 24 * HOUR),
 };
 
-function service(cfg: CogetoConfig, jobs: CapabilityJobSources = quietJobs): CapabilitiesService {
+function service(
+  cfg: OperationsOptions,
+  jobs: CapabilityJobSources = quietJobs,
+): CapabilitiesService {
   return new CapabilitiesService(
     cfg,
     null as unknown as Db,
     null as unknown as IntegritySweep,
+    null as unknown as InstanceProbes,
     jobs,
   );
 }

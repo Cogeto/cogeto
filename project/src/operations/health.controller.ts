@@ -1,15 +1,15 @@
 import { connect } from 'node:net';
 import { Controller, Get, HttpCode, Inject, Req, UseGuards } from '@nestjs/common';
 import type { HealthCheck, HealthReport, QueueHealthCheck } from '@cogeto/shared';
-import { Pool } from 'pg';
+import { InstanceProbes } from '../infrastructure/index';
 import { IntegritySweep, MemoryObjectStore } from '../memory/index';
 import { ModelGateway } from '../model-gateway/index';
 import { Public } from '../identity/index';
 import { CapabilitiesService } from './capabilities';
 import { HealthAccessGuard, redactHealthReport } from './health-access.guard';
 import type { HealthRequest } from './health-access.guard';
-import { COGETO_CONFIG } from './config';
-import type { CogetoConfig } from './config';
+import { OPERATIONS_OPTIONS } from './operations.options';
+import type { OperationsOptions } from './operations.options';
 
 /**
  * GET /api/health/live — container liveness only, and the one genuinely public
@@ -27,17 +27,16 @@ import type { CogetoConfig } from './config';
 @Public()
 @Controller('health')
 export class HealthController {
-  private readonly pool: Pool;
-
   constructor(
-    @Inject(COGETO_CONFIG) private readonly config: CogetoConfig,
+    @Inject(OPERATIONS_OPTIONS) private readonly config: OperationsOptions,
     private readonly objects: MemoryObjectStore,
     private readonly integrity: IntegritySweep,
     private readonly gateway: ModelGateway,
     private readonly capabilities: CapabilitiesService,
-  ) {
-    this.pool = new Pool({ connectionString: config.databaseUrl, max: 2 });
-  }
+    /** The database-side probes, on infrastructure's own two-connection pool:
+     * a saturated application pool must not make this endpoint hang. */
+    private readonly probes: InstanceProbes,
+  ) {}
 
   /** Liveness: no token, no internals — just "this process is answering". */
   @Get('live')
@@ -126,20 +125,7 @@ export class HealthController {
   private async checkQueue(): Promise<QueueHealthCheck> {
     const started = Date.now();
     try {
-      const [jobs, parked, failed] = await Promise.all([
-        this.pool.query<{ n: string }>('SELECT count(*)::text AS n FROM graphile_worker.jobs'),
-        this.pool.query<{ n: string }>('SELECT count(*)::text AS n FROM dead_letter'),
-        // jobs that exhausted their retries and will not run again. Our
-        // dead_letter write is best-effort under DB pressure (queue.ts retries),
-        // so surfacing graphile's own permanent-failure count is the backstop
-        // alert — a parked job that never made it into dead_letter still shows.
-        this.pool.query<{ n: string }>(
-          'SELECT count(*)::text AS n FROM graphile_worker.jobs WHERE attempts >= max_attempts AND last_error IS NOT NULL',
-        ),
-      ]);
-      const depth = Number(jobs.rows[0]?.n ?? 0);
-      const deadLettered = Number(parked.rows[0]?.n ?? 0);
-      const permanentlyFailed = Number(failed.rows[0]?.n ?? 0);
+      const { depth, deadLettered, permanentlyFailed } = await this.probes.queueDepth();
       const problems: string[] = [];
       if (deadLettered > 0) problems.push(`${deadLettered} dead-lettered job(s)`);
       if (permanentlyFailed > 0) problems.push(`${permanentlyFailed} permanently-failed job(s)`);
@@ -257,7 +243,7 @@ export class HealthController {
   private async checkPostgres(): Promise<HealthCheck> {
     const started = Date.now();
     try {
-      await this.pool.query('SELECT 1');
+      await this.probes.ping();
       return { ok: true, latencyMs: Date.now() - started };
     } catch (error) {
       return { ok: false, latencyMs: Date.now() - started, error: message(error) };
@@ -267,15 +253,12 @@ export class HealthController {
   private async checkMigrations(): Promise<HealthCheck> {
     const started = Date.now();
     try {
-      const { rows } = await this.pool.query<{ name: string }>(
-        'SELECT name FROM cogeto_migrations ORDER BY id',
-      );
-      const latest = rows[rows.length - 1]?.name;
+      const { count, latest } = await this.probes.migrations();
       return {
-        ok: rows.length >= 2,
+        ok: count >= 2,
         latencyMs: Date.now() - started,
-        detail: latest ? `${rows.length} applied, latest ${latest}` : 'none applied',
-        ...(rows.length >= 2 ? {} : { error: 'contractual core (0001/0002) not applied' }),
+        detail: latest ? `${count} applied, latest ${latest}` : 'none applied',
+        ...(count >= 2 ? {} : { error: 'contractual core (0001/0002) not applied' }),
       };
     } catch (error) {
       return { ok: false, latencyMs: Date.now() - started, error: message(error) };

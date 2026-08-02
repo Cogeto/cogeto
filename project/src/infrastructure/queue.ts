@@ -1,5 +1,5 @@
 import type { Task } from 'graphile-worker';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Db, DbOrTx, Tx } from './db';
 import { deadLetter, jobExecution } from './persistence/tables';
@@ -126,6 +126,160 @@ export async function jobRunState(executor: DbOrTx, key: JobIdempotencyKey): Pro
     )
     .limit(1);
   return failed.length > 0 ? 'failed' : 'processing';
+}
+
+/**
+ * The queue's operational surface (boundary contract §2, V2.0 item 3.6 part 2).
+ *
+ * `job_execution`, `dead_letter` and the `graphile_worker` schema are
+ * infrastructure's. The System dashboard's queue view used to run these queries
+ * itself from the composition root (recorded exception B9); the SQL is
+ * unchanged, it just lives with the tables now. Presentation, the admin gate
+ * and the DTO shapes stay with the caller.
+ */
+
+/** One row of the live queue, joined to the payload the public view omits. */
+export interface QueuedJobRow {
+  jobType: string;
+  payload: Record<string, unknown> | null;
+  runAt: Date | null;
+  attempts: number;
+  maxAttempts: number;
+  lockedAt: Date | null;
+  lastError: string | null;
+}
+
+/** One completed run from the idempotency ledger. */
+export interface JobExecutionRow {
+  jobType: string;
+  sourceType: string;
+  sourceId: string;
+  executedAt: Date;
+}
+
+/** One parked job: the payload as delivered, plus why it stopped. */
+export interface DeadLetterRow {
+  id: string;
+  jobType: string;
+  payload: Record<string, unknown> | null;
+  error: string;
+  attempts: number;
+  failedAt: Date;
+}
+
+const toDate = (value: string | Date | null | undefined): Date | null =>
+  value == null ? null : new Date(value);
+
+/** The live queue, soonest first. The public `jobs` view omits payload (it
+ * lives in `_private_jobs`); join on id to recover source_type/source_id. */
+export async function listQueuedJobs(executor: DbOrTx, limit = 200): Promise<QueuedJobRow[]> {
+  const result = await executor.execute(sql`
+      SELECT j.task_identifier, pj.payload, j.run_at, j.attempts, j.max_attempts,
+             j.locked_at, j.last_error
+      FROM graphile_worker.jobs j
+      JOIN graphile_worker._private_jobs pj ON pj.id = j.id
+      ORDER BY j.run_at ASC
+      LIMIT ${limit}
+    `);
+  return (
+    result.rows as Array<{
+      task_identifier: string;
+      payload: Record<string, unknown> | null;
+      run_at: string | Date | null;
+      attempts: number;
+      max_attempts: number;
+      locked_at: string | Date | null;
+      last_error: string | null;
+    }>
+  ).map((r) => ({
+    jobType: r.task_identifier,
+    payload: r.payload,
+    runAt: toDate(r.run_at),
+    attempts: r.attempts,
+    maxAttempts: r.max_attempts,
+    lockedAt: toDate(r.locked_at),
+    lastError: r.last_error,
+  }));
+}
+
+/** The most recently committed runs, newest first. */
+export async function recentJobExecutions(executor: DbOrTx, limit = 8): Promise<JobExecutionRow[]> {
+  const rows = await executor
+    .select()
+    .from(jobExecution)
+    .orderBy(desc(jobExecution.executedAt))
+    .limit(limit);
+  return rows.map((row) => ({
+    jobType: row.jobType,
+    sourceType: row.sourceType,
+    sourceId: row.sourceId,
+    executedAt: row.executedAt,
+  }));
+}
+
+/** Parked jobs, most recent failure first. */
+export async function listDeadLetters(executor: DbOrTx, limit = 100): Promise<DeadLetterRow[]> {
+  const rows = await executor
+    .select()
+    .from(deadLetter)
+    .orderBy(desc(deadLetter.failedAt))
+    .limit(limit);
+  return rows.map((row) => ({
+    id: row.id,
+    jobType: row.jobType,
+    payload: (row.payload ?? null) as Record<string, unknown> | null,
+    error: row.error,
+    attempts: row.attempts,
+    failedAt: row.failedAt,
+  }));
+}
+
+/** Totals for the queue summary: parked jobs, and runs ever committed. */
+export async function queueTotals(
+  executor: DbOrTx,
+): Promise<{ deadLettered: number; completed: number }> {
+  const [{ n: deadLettered }] = (
+    await executor.execute(sql`SELECT count(*)::int AS n FROM dead_letter`)
+  ).rows as [{ n: number }];
+  const [{ n: completed }] = (
+    await executor.execute(sql`SELECT count(*)::int AS n FROM job_execution`)
+  ).rows as [{ n: number }];
+  return { deadLettered, completed };
+}
+
+/**
+ * Re-enqueues a parked job and removes its dead-letter row in ONE transaction,
+ * handing the caller the row it replayed so an audit entry can be written in
+ * the same transaction. Returns null when the id is unknown.
+ *
+ * Double effects are impossible however often a job is retried: `idempotentTask`
+ * claims the (source_type, source_id, job_type) key before the handler's
+ * effect, so a re-run of completed work skips.
+ */
+export async function retryDeadLetter(
+  tx: Tx,
+  id: string,
+  maxAttempts = 10,
+): Promise<DeadLetterRow | null> {
+  const rows = await tx.select().from(deadLetter).where(eq(deadLetter.id, id)).for('update');
+  const row = rows[0];
+  if (!row) return null;
+  await tx.execute(sql`
+        SELECT graphile_worker.add_job(
+          ${row.jobType},
+          payload := ${JSON.stringify(row.payload ?? {})}::json,
+          max_attempts := ${maxAttempts}
+        )
+      `);
+  await tx.delete(deadLetter).where(eq(deadLetter.id, id));
+  return {
+    id: row.id,
+    jobType: row.jobType,
+    payload: (row.payload ?? null) as Record<string, unknown> | null,
+    error: row.error,
+    attempts: row.attempts,
+    failedAt: row.failedAt,
+  };
 }
 
 const idempotentPayloadSchema = z.looseObject({

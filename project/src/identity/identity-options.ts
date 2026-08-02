@@ -30,4 +30,25 @@ export interface IdentityOptions {
   expectedAudience?: string;
   /** Zitadel project role the AdminGuard requires; default 'admin'. */
   adminRole?: string;
+  /**
+   * The login bootstrap surface, `GET /api/config` (V2.0 item 3.6 part 2).
+   * Present → this root serves it; the worker leaves it unset and registers no
+   * controller. The SPA needs the issuer and client id BEFORE it can log in,
+   * which is why the route is `@Public()`.
+   */
+  webConfig?: WebConfigOptions;
+}
+
+export const WEB_CONFIG_OPTIONS = Symbol('WEB_CONFIG_OPTIONS');
+
+/** What the login bootstrap route reads. Paths, never secrets: the files are
+ * written by `zitadel-init` and by the demo seed at container start. */
+export interface WebConfigOptions {
+  /** JSON file `zitadel-init` writes with `{ issuer, clientId }`. */
+  webConfigFile: string;
+  /** JSON file the demo seed writes with the sandbox session token. */
+  demoSessionFile: string;
+  /** A production instance never advertises or serves the sandbox login. */
+  production: boolean;
+  demoMode: boolean;
 }

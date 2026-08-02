@@ -17,7 +17,7 @@
  * boundary-contract spec fails the build if this list and the directory
  * listing disagree, so the omission cannot repeat.
  */
-const DOMAIN_MODULES = 'memory|ingestion|retrieval|agents|connectors|passport';
+const DOMAIN_MODULES = 'memory|ingestion|retrieval|agents|connectors|passport|attention|operations';
 const SEAMS = 'identity|model-gateway';
 const SHARED = 'infrastructure';
 const NON_CONTEXT = 'entrypoints|testing|migrations';
@@ -32,15 +32,13 @@ const EVERY_MODULE = [DOMAIN_MODULES, SEAMS, SHARED, NON_CONTEXT].join('|');
  * exemption granted by category is the one argued for in the contract's §5.
  */
 const TABLE_OWNERSHIP_EXCEPTIONS = [
-  // B8, part 2: the instance-wide audit endpoint's ILIKE filter builder.
-  '^project/src/entrypoints/audit\\.controller\\.ts$',
-  // B9, part 2: the queue-administration surface (job_execution, dead_letter).
-  '^project/src/entrypoints/jobs\\.controller\\.ts$',
-  // B10, part 2: the attention read-state pair.
-  '^project/src/entrypoints/attention\\.service\\.ts$',
-  // B17, part 2: a connectors spec resetting infrastructure's user-context
-  // tables between cases (the service exposes no reset, correctly).
-  '^project/src/connectors/context-suggestions\\.spec\\.ts$',
+  // EMPTY. V2.0 item 3.6 part 2 closed every entry that was here: the audit
+  // browse, the queue administration view and the attention read-state pair all
+  // went to the module that owns the data (B8, B9, B10), and the connectors
+  // spec that reset infrastructure's user-context tables now uses a fresh user
+  // per case instead (B17). A never-matching pattern keeps the mechanism, and
+  // its comment, in place for the next honest exception.
+  '^$',
 ].join('|');
 
 module.exports = {
@@ -170,14 +168,18 @@ module.exports = {
       name: 'only-composition-roots-import-pg',
       comment:
         'Raw pg (Pool/Client) is confined to the composition roots + the database module ' +
-        ': entrypoints/** and infrastructure/{db,database.module,migrations}.ts. A ' +
-        'domain module opening its own Pool would run raw SQL that the persistence rule ' +
-        'cannot see — closing the last "no cross-module table access" gap left to convention.',
+        ': entrypoints/** and infrastructure/{db,database.module,migrations,instance-probes}.ts. ' +
+        'A domain module opening its own Pool would run raw SQL that the persistence rule ' +
+        'cannot see — closing the last "no cross-module table access" gap left to convention. ' +
+        '`instance-probes.ts` joined the list in V2.0 item 3.6 part 2: the health report keeps ' +
+        'its own two-connection pool so a saturated application pool cannot make it hang, and ' +
+        'owning a Pool is precisely why that code belongs in infrastructure rather than in the ' +
+        'module that serves the route.',
       severity: 'error',
       from: {
         path: '^project/src/',
         pathNot:
-          '^project/src/entrypoints/|^project/src/infrastructure/(db|database\\.module|migrations)\\.ts$|^project/src/testing/|\\.spec\\.ts$',
+          '^project/src/entrypoints/|^project/src/infrastructure/(db|database\\.module|migrations|instance-probes)\\.ts$|^project/src/testing/|\\.spec\\.ts$',
       },
       to: { path: 'node_modules/pg/' },
     },

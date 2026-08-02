@@ -7,18 +7,10 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { and, count, desc, eq, gte, isNull, lt, or, sql } from 'drizzle-orm';
-import type { SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import type { AuditEntryDto, AuditPage } from '@cogeto/shared';
-import { DRIZZLE } from '../infrastructure/index';
+import { DRIZZLE, readAuditPage } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
-// RECORDED EXCEPTION B8 (docs/module-boundary-contract.md): this controller
-// reads `audit_log`, which `infrastructure` owns. It is not a laundered barrel
-// import any more — it names the private table path, is allowlisted by name in
-// .dependency-cruiser.cjs, and moves behind infrastructure's interface in
-// V2.0 item 3.6 part 2, when the accidental context in entrypoints/ dissolves.
-import { auditLog } from '../infrastructure/persistence/tables';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 
@@ -39,6 +31,10 @@ const querySchema = z.object({
  * system/global (null-org) ones — never another org's. Read-only forever: this
  * controller exposes GET only, and the table's append-only trigger (migration
  * 0001) enforces immutability below the API.
+ *
+ * The query itself is `readAuditPage` on infrastructure's public interface,
+ * which owns `audit_log`. What stays here is what needs the Principal: the org
+ * argument, and the per-row owner gate on `detail_json`.
  */
 @Controller('audit')
 @UseGuards(BearerAuthGuard)
@@ -53,32 +49,18 @@ export class AuditController {
     }
     const q = parsed.data;
 
-    const clauses: SQL[] = [
-      // The org gate — never another org's entries; null-org = system/global.
-      or(eq(auditLog.orgId, request.principal.orgId), isNull(auditLog.orgId))!,
-    ];
-    // escape LIKE metacharacters so a user-supplied `%`/`_` is matched
-    // literally (not as a wildcard) — no match-everything, no slow leading-wildcard
-    // patterns. The bound ESCAPE clause makes `\` the escape character.
-    if (q.actor)
-      clauses.push(sql`${auditLog.actor} ILIKE ${`%${escapeLike(q.actor)}%`} ESCAPE '\\'`);
-    if (q.action)
-      clauses.push(sql`${auditLog.action} ILIKE ${`%${escapeLike(q.action)}%`} ESCAPE '\\'`);
-    if (q.entityType) clauses.push(eq(auditLog.entityType, q.entityType));
-    if (q.from) clauses.push(gte(auditLog.createdAt, new Date(q.from)));
-    if (q.to) clauses.push(lt(auditLog.createdAt, new Date(q.to)));
-    const where = and(...clauses);
-
-    const [rows, totalRows] = await Promise.all([
-      this.db
-        .select()
-        .from(auditLog)
-        .where(where)
-        .orderBy(desc(auditLog.createdAt))
-        .limit(q.limit)
-        .offset(q.offset),
-      this.db.select({ n: count() }).from(auditLog).where(where),
-    ]);
+    const { rows, total } = await readAuditPage(this.db, {
+      // The org gate is the reader's required argument (spec §4.2): a caller
+      // sees only their org's entries plus system/global (null-org) ones.
+      orgId: request.principal.orgId,
+      ...(q.actor ? { actor: q.actor } : {}),
+      ...(q.action ? { action: q.action } : {}),
+      ...(q.entityType ? { entityType: q.entityType } : {}),
+      ...(q.from ? { from: new Date(q.from) } : {}),
+      ...(q.to ? { to: new Date(q.to) } : {}),
+      limit: q.limit,
+      offset: q.offset,
+    });
 
     const items: AuditEntryDto[] = rows.map((row) => {
       // Detail gate: the ENTRY is org-visible
@@ -94,16 +76,11 @@ export class AuditController {
         action: row.action,
         entityType: row.entityType,
         entityId: row.entityId,
-        detail: isOwner ? ((row.detailJson as Record<string, unknown> | null) ?? null) : null,
+        detail: isOwner ? row.detail : null,
         ...(isOwner ? {} : { detailWithheld: true as const }),
         createdAt: row.createdAt.toISOString(),
       };
     });
-    return { items, total: Number(totalRows[0]?.n ?? 0) };
+    return { items, total };
   }
-}
-
-/** Escape LIKE/ILIKE metacharacters so user input matches literally. */
-export function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
 }
