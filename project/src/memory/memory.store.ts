@@ -16,7 +16,12 @@ import type {
   Principal,
   UncertaintyReason,
 } from '@cogeto/shared';
-import { auditLog, DRIZZLE, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
+import {
+  DRIZZLE,
+  readAuditEntries,
+  withTransactionalEnqueue,
+  writeAudit,
+} from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { UserDirectory } from '../identity/index';
 import { deletionReceipt, memory } from './persistence/tables';
@@ -1110,27 +1115,21 @@ export class MemoryStore {
       events.push({ kind: 'learned', at: row.createdAt, memory: row as MemoryRow, detail: {} });
     }
 
-    const auditRows = await this.db
-      .select()
-      .from(auditLog)
-      .where(
-        and(
-          inArray(auditLog.action, [...CHANGE_STATUS_ACTIONS, ...CHANGE_SUPERSEDE_ACTIONS]),
-          eq(auditLog.entityType, 'memory'),
-          gte(auditLog.createdAt, since),
-          // restrict to the caller's OWN memory events BEFORE the limit.
-          // Without this the query scans all owners' events and, on a busy
-          // instance, another owner's changes push the caller's out of the
-          // window — silently missing from "what changed since". Memory
-          // status/supersede audit rows are always stamped with the memory
-          // owner's id (never null), so ownership = visibility here (v1 notes
-          // are private; the getManyForPrincipal re-check below still enforces
-          // the scope + sensitive gates as defence in depth).
-          eq(auditLog.ownerId, principal.userId),
-        ),
-      )
-      .orderBy(desc(auditLog.createdAt), auditLog.id)
-      .limit(limit * 2);
+    const auditRows = await readAuditEntries(this.db, {
+      actions: [...CHANGE_STATUS_ACTIONS, ...CHANGE_SUPERSEDE_ACTIONS],
+      entityType: 'memory',
+      since,
+      // restrict to the caller's OWN memory events BEFORE the limit.
+      // Without this the query scans all owners' events and, on a busy
+      // instance, another owner's changes push the caller's out of the
+      // window — silently missing from "what changed since". Memory
+      // status/supersede audit rows are always stamped with the memory
+      // owner's id (never null), so ownership = visibility here (v1 notes
+      // are private; the getManyForPrincipal re-check below still enforces
+      // the scope + sensitive gates as defence in depth).
+      ownerId: principal.userId,
+      limit: limit * 2,
+    });
     const visible = new Map(
       (
         await this.getManyForPrincipal(
@@ -1143,7 +1142,7 @@ export class MemoryStore {
     for (const row of auditRows) {
       const target = visible.get(row.entityId);
       if (!target) continue; // other owners' or erased memories: no event
-      const detail = (row.detailJson ?? {}) as Record<string, unknown>;
+      const detail = row.detail ?? {};
       if ((CHANGE_SUPERSEDE_ACTIONS as readonly string[]).includes(row.action)) {
         events.push({
           kind: 'superseded',

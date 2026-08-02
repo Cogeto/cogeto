@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from 'pg';
+import { DREAM_JOB_TYPE } from '../../ingestion/index';
 
 /**
  * Demo-only database operations — job draining, one-shot
@@ -103,7 +104,7 @@ export async function waitForQuiescence(
 
 /** Enqueues one dreaming cycle onto the running worker. */
 export async function enqueueDream(pool: Pool): Promise<void> {
-  await pool.query(`SELECT graphile_worker.add_job('dreaming_cycle', payload := '{}'::json)`);
+  await pool.query(`SELECT graphile_worker.add_job($1, payload := '{}'::json)`, [DREAM_JOB_TYPE]);
 }
 
 export interface AgeEntry {

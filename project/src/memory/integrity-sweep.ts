@@ -1,7 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { and, asc, desc, eq, gt, inArray, isNotNull, notInArray, sql } from 'drizzle-orm';
-import { auditLog, DRIZZLE, loadInstancePublicKey, writeAudit } from '../infrastructure/index';
+import {
+  DRIZZLE,
+  loadInstancePublicKey,
+  readAuditEntries,
+  writeAudit,
+} from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import {
   DEFUNCT_SOURCE_TYPES,
@@ -260,12 +265,10 @@ export class IntegritySweep {
 
   /** DB-only (cheap enough for the health poll): last run + open alert count. */
   async status(): Promise<IntegrityStatus> {
-    const [last] = await this.db
-      .select({ createdAt: auditLog.createdAt, detail: auditLog.detailJson })
-      .from(auditLog)
-      .where(eq(auditLog.action, 'sweep.completed'))
-      .orderBy(desc(auditLog.createdAt))
-      .limit(1);
+    const [last] = await readAuditEntries(this.db, {
+      actions: ['sweep.completed'],
+      limit: 1,
+    });
     return {
       lastSweepAt: last?.createdAt.toISOString() ?? null,
       lastReport: (last?.detail as SweepReport | null) ?? null,

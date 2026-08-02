@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule, ModuleMetadata, Type } from '@nestjs/common';
+import { UserContextModule } from '../infrastructure/index';
 import { DreamingController } from './dreaming.controller';
 import { DreamingService } from './dreaming.service';
 import { EmbedStoreStage } from './pipeline/embed-store.stage';
@@ -66,6 +67,9 @@ export class IngestionModule {
   static forQueries(): DynamicModule {
     return {
       module: IngestionModule,
+      // UserContextModule: the dreaming digest is written in the reader's
+      // preferred language. Explicit since it stopped being global.
+      imports: [UserContextModule],
       controllers: [VerificationController, DreamingController, SuppressedFactsController],
       providers: [SuppressedFactLog],
     };

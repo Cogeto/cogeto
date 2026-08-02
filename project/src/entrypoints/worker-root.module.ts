@@ -54,6 +54,9 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       LimitsModule.register(config.limits, config.timezone),
       // Per-user context + language: the worker's system-initiated
       // copy (digest lines, conclusion phrasing) speaks preferred_language.
+      // No longer global (boundary contract §4): imported here for this root's
+      // own ResearchSynthesisService, and separately by every module that
+      // injects it.
       UserContextModule,
       // The worker serves no HTTP, but domain modules carry controllers whose
       // guards Nest resolves at init — the identity seam must be present here too.
@@ -87,6 +90,10 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         // The chat source deletion joins notes' so a chat-derived memory's source
         // deletion erases the originating turn under the saga (r7).
         sourceDeletions: {
+          // ChatSourceModule provides the two chat adapters below; explicit
+          // since it stopped being global (boundary contract §4). The connector
+          // adapters still resolve from the global ConnectorsModule (B14).
+          imports: [ChatSourceModule],
           adapters: [
             NotesSourceDeletion,
             ChatSourceDeletion,
@@ -126,6 +133,10 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       // EmailSourceReader adds source_type 'email';
       // WebSourceReader adds 'web'.
       IngestionModule.register({
+        // ChatSourceModule provides ChatSourceReader; explicit since it stopped
+        // being global (boundary contract §4). The four connector readers still
+        // resolve from the global ConnectorsModule (B14).
+        imports: [ChatSourceModule],
         readers: [
           NotesSourceReader,
           FileSourceReader,

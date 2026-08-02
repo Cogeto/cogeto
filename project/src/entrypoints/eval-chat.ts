@@ -13,6 +13,7 @@ import type { MemoryRow } from '../memory/index';
 import {
   buildDreamDigest,
   DreamingService,
+  INGESTION_PIPELINE_JOB_TYPE,
   ReconciliationService,
   seedMemoryFromSource,
 } from '../ingestion/index';
@@ -840,7 +841,7 @@ async function main(): Promise<void> {
               });
               await db.execute(sql`
                 INSERT INTO job_execution (source_type, source_id, job_type)
-                VALUES ('web', ${page.id}, 'ingestion.pipeline')
+                VALUES ('web', ${page.id}, ${INGESTION_PIPELINE_JOB_TYPE})
                 ON CONFLICT DO NOTHING
               `);
             }

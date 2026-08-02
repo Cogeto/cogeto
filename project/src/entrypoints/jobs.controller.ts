@@ -11,8 +11,14 @@ import {
 } from '@nestjs/common';
 import { desc, eq, sql } from 'drizzle-orm';
 import type { DeadLetterJobDto, WorkerActivityDto, WorkerJobDto } from '@cogeto/shared';
-import { deadLetter, DRIZZLE, jobExecution, writeAudit } from '../infrastructure/index';
+import { DRIZZLE, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
+// RECORDED EXCEPTION B9 (docs/module-boundary-contract.md): the queue-admin
+// surface reads `job_execution`, `dead_letter` and the graphile_worker schema,
+// all of which `infrastructure` owns, and re-enqueues from a dead letter. It is
+// allowlisted by name in .dependency-cruiser.cjs and moves behind
+// infrastructure's interface in V2.0 item 3.6 part 2.
+import { deadLetter, jobExecution } from '../infrastructure/persistence/tables';
 import { AdminGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 

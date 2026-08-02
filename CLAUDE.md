@@ -15,6 +15,7 @@ inspectable artifact. EU hosted, self hosted, or fully offline.
 | [`docs/cogeto-specification.md`](docs/cogeto-specification.md) | **The normative rules.** MUST is a rule whose violation is a defect. Wins over every other doc. Cited as spec §N. |
 | [`docs/cogeto-v2-plan.md`](docs/cogeto-v2-plan.md) | **Before any 2.0 work. BINDING.** The complete 2.0 plan, version by version, with priority and difficulty. |
 | [`docs/cogeto-technical-architecture.md`](docs/cogeto-technical-architecture.md) | How it is built: deployment, module structure, the pipeline, access gates, the model gateway, trust machinery. |
+| [`docs/module-boundary-contract.md`](docs/module-boundary-contract.md) | **Before adding a table, a job type, a DI token, or a module, and before making one global. BINDING.** Which module owns what, the global-module policy, what enforces each rule, and every recorded exception with the part that closes it. |
 | [`docs/cogeto-verified-memory.md`](docs/cogeto-verified-memory.md) | What is stored, what is guaranteed, and how each guarantee is enforced. |
 | [`docs/features/`](docs/features/) | How a feature actually behaves and why. Start here before changing one. |
 | [`docs/features/i18n.md`](docs/features/i18n.md) | **Before touching any user-visible string.** Where the locale files are, how a language is resolved, the CI key-sync guard, and the translator workflow. |

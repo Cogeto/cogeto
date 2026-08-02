@@ -12,7 +12,12 @@ import type {
   Principal,
 } from '@cogeto/shared';
 import { EMAIL_REPLY_DRAFT_ACTION } from '@cogeto/shared';
-import { auditLog, DRIZZLE, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
+import {
+  DRIZZLE,
+  readAuditEntries,
+  withTransactionalEnqueue,
+  writeAudit,
+} from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { approval } from './persistence/tables';
 import type { ApprovalRow } from './persistence/tables';
@@ -296,11 +301,14 @@ export class ApprovalService {
     const executed = rows.filter((r) => r.status === 'executed').map((r) => r.id);
     const results = new Map<string, string>();
     if (executed.length > 0) {
-      const auditRows = await this.db
-        .select({ id: auditLog.entityId, summary: sql<string>`${auditLog.detailJson}->>'summary'` })
-        .from(auditLog)
-        .where(and(eq(auditLog.action, 'approval.executed'), inArray(auditLog.entityId, executed)));
-      for (const a of auditRows) if (a.summary) results.set(a.id, a.summary);
+      const auditRows = await readAuditEntries(this.db, {
+        actions: ['approval.executed'],
+        entityIds: executed,
+      });
+      for (const a of auditRows) {
+        const summary = a.detail?.['summary'];
+        if (typeof summary === 'string' && summary) results.set(a.entityId, summary);
+      }
     }
     return rows.map((r) => this.toDto(r, viewerId, results.get(r.id) ?? null));
   }

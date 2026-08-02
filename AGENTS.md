@@ -63,13 +63,32 @@ describes the shape it is built in.
 
 ## Modules (spec §15)
 
+The full contract, with the owner of every table, job type and DI token, is
+[`docs/module-boundary-contract.md`](docs/module-boundary-contract.md). Read it
+before adding any of them, or before making a module global.
+
+- [ ] A boundary is **imports plus table ownership plus job-type contracts plus
+      dependency-injection visibility** (spec §15.1). Import checking alone is not
+      boundary enforcement, and a green `boundaries` check over an unenforced
+      dimension is a claim, not a fact.
 - [ ] One public interface per module; internals private. **No module reads or writes
-      another module's tables.** Cross-module communication is domain events via the
-      Postgres outbox: one mechanism, not two.
+      another module's tables**, in Drizzle or in raw SQL. Cross-module communication
+      is domain events via the Postgres outbox: one mechanism, not two.
+- [ ] **A barrel never re-exports a live table** (spec §15.2). A row *type* is a
+      contract and may be exported; a table object is a handle to the data and turns
+      every cross-module read into a legal-looking import.
+- [ ] **A job type is declared once**, as an exported constant, by the module that
+      owns its payload and its handler. Enqueue it from elsewhere through that
+      constant, never a copied string literal.
+- [ ] **A module is global only if it is infrastructure or a seam** registered once
+      per composition root with process-wide configuration. A global domain module
+      resolves into every injector regardless of what any module declares, which is a
+      dependency the graph cannot see. Every current exception is listed in the
+      contract with the part that removes it.
 - [ ] Nothing imports entrypoints; seams import no domain module.
 - [ ] Where a dependency must run against the graph direction, it is a **port**
       defined by the owning module and implemented by the caller, bound at the
-      composition root.
+      composition root through that module's registration options.
 
 ## Async and jobs (spec §15.4)
 

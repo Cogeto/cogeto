@@ -1,12 +1,67 @@
 /**
  * Module-boundary rules (AGENTS.md "Modules", spec §15),
  * enforced in CI via `npm run boundaries`.
+ *
+ * The contract these rules implement is written down in
+ * `docs/module-boundary-contract.md`: a boundary is imports PLUS table
+ * ownership PLUS job-type contracts PLUS dependency-injection visibility
+ * (spec §15.1). This file covers the import dimension and the import-visible
+ * half of table ownership; the other three dimensions, and the completeness of
+ * MODULES below, are checked by `project/src/entrypoints/boundary-contract.spec.ts`.
  */
-const DOMAIN_MODULES = 'memory|ingestion|retrieval|agents|connectors';
+
+/**
+ * Every bounded context under project/src, by role. Adding a directory there
+ * without adding it here would leave it SILENTLY UNCHECKED rather than clean
+ * (which is how `passport` went unchecked until V2.0 item 3.6). The
+ * boundary-contract spec fails the build if this list and the directory
+ * listing disagree, so the omission cannot repeat.
+ */
+const DOMAIN_MODULES = 'memory|ingestion|retrieval|agents|connectors|passport';
 const SEAMS = 'identity|model-gateway';
+const SHARED = 'infrastructure';
+const NON_CONTEXT = 'entrypoints|testing|migrations';
+const EVERY_MODULE = [DOMAIN_MODULES, SEAMS, SHARED, NON_CONTEXT].join('|');
+
+/**
+ * RECORDED EXCEPTIONS to table ownership (docs/module-boundary-contract.md).
+ *
+ * Each entry is one file that names a table another module owns. It is listed
+ * BY PATH, with the part of V2.0 item 3.6 that removes it, so the debt is
+ * enumerable and reviewable instead of laundered through a barrel. The only
+ * exemption granted by category is the one argued for in the contract's §5.
+ */
+const TABLE_OWNERSHIP_EXCEPTIONS = [
+  // B8, part 2: the instance-wide audit endpoint's ILIKE filter builder.
+  '^project/src/entrypoints/audit\\.controller\\.ts$',
+  // B9, part 2: the queue-administration surface (job_execution, dead_letter).
+  '^project/src/entrypoints/jobs\\.controller\\.ts$',
+  // B10, part 2: the attention read-state pair.
+  '^project/src/entrypoints/attention\\.service\\.ts$',
+  // B17, part 2: a connectors spec resetting infrastructure's user-context
+  // tables between cases (the service exposes no reset, correctly).
+  '^project/src/connectors/context-suggestions\\.spec\\.ts$',
+].join('|');
 
 module.exports = {
   forbidden: [
+    {
+      name: 'every-module-is-in-the-module-map',
+      comment:
+        'A directory under project/src that the four lists above do not name is UNCHECKED by ' +
+        'every rule below, not clean: that is how `passport` escaped the seam and ' +
+        'infrastructure rules for its whole life. Any import into an unnamed directory fails ' +
+        'here, and the boundary-contract spec fails on the directory even before anything ' +
+        'imports it.',
+      severity: 'error',
+      from: { path: '^project/src/' },
+      to: {
+        path: `^project/src/(?!(${EVERY_MODULE})/)[^/]+/`,
+        // `project/src/node_modules/` is an npm placement artifact, not a
+        // bounded context (dependency-cruiser >=17 resolves into it).
+        pathNot: '^project/src/node_modules/',
+      },
+    },
     {
       name: 'no-module-internal-imports',
       comment:
@@ -19,7 +74,11 @@ module.exports = {
         // The barrel is the one allowed entry point; nested node_modules are
         // npm placement artifacts (a workspace-local dependency dir is not a
         // bounded context — dependency-cruiser >=17 resolves into them).
-        pathNot: '^project/src/([^/]+/index\\.ts$|node_modules/)',
+        // `persistence/tables.ts` is delegated to no-cross-module-persistence-imports
+        // below, which forbids it with a NAMED, enumerated exception list; if it
+        // were also forbidden here the exceptions would have to be exempted from
+        // the whole internals rule, which would let them import anything.
+        pathNot: '^project/src/([^/]+/(index|persistence/tables)\\.ts$|node_modules/)',
       },
     },
     {
@@ -40,12 +99,28 @@ module.exports = {
     {
       name: 'no-cross-module-persistence-imports',
       comment:
-        "No module reads another module's tables (spec §15 rule 2). Drizzle table definitions " +
-        'live under <module>/persistence/ and are module-private — they may not even be ' +
-        'imported via a barrel re-export.',
+        "No module reads another module's tables (spec §15 rule 2, §15.2). Drizzle table " +
+        'definitions live under <module>/persistence/ and are module-private. The named ' +
+        'exceptions are the ones listed in docs/module-boundary-contract.md, each with the ' +
+        'V2.0 item 3.6 part that removes it.',
       severity: 'error',
-      from: { path: '^project/src/([^/]+)/' },
+      from: { path: '^project/src/([^/]+)/', pathNot: TABLE_OWNERSHIP_EXCEPTIONS },
       to: { path: '^project/src/(?!$1/)[^/]+/persistence/' },
+    },
+    {
+      name: 'no-live-tables-in-a-barrel',
+      comment:
+        'Spec §15.2: barrels MUST NOT re-export live tables. A barrel that exports a table ' +
+        'object turns every cross-module table read into a legal-looking barrel import that ' +
+        'the persistence rule cannot see — which is exactly how infrastructure/index.ts ' +
+        'laundered ten of them. Type-only exports (MemoryRow, SourceType) are fine: a row ' +
+        'shape is a contract, a table object is a handle to the data.',
+      severity: 'error',
+      from: { path: '^project/src/[^/]+/index\\.ts$' },
+      to: {
+        path: '^project/src/[^/]+/persistence/tables\\.ts$',
+        dependencyTypesNot: ['type-only'],
+      },
     },
     {
       name: 'infrastructure-imports-no-module',
@@ -53,7 +128,7 @@ module.exports = {
         'Shared infrastructure (outbox, queue, audit, db) is a leaf like the seams: ' +
         'it imports no domain module and no seam.',
       severity: 'error',
-      from: { path: '^project/src/infrastructure/' },
+      from: { path: `^project/src/${SHARED}/` },
       to: { path: `^project/src/(${DOMAIN_MODULES}|${SEAMS})/` },
     },
     {
@@ -146,3 +221,11 @@ module.exports = {
     exclude: { path: ['\\.d\\.ts$', 'dist/'] },
   },
 };
+
+// The four constants at the top are the module inventory these rules are
+// written against. `project/src/entrypoints/boundary-contract.spec.ts` reads
+// them out of this file's source and fails the build if they and the directory
+// listing under project/src disagree, so a new bounded context cannot be
+// silently unchecked the way `passport` was. (dependency-cruiser validates its
+// configuration against a closed schema, so the inventory cannot also be
+// exported as an extra key.)

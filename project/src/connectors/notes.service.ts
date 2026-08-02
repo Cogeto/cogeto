@@ -1,12 +1,11 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { MemoryScope, NoteProcessingState, Principal } from '@cogeto/shared';
 import {
   DailyCounters,
-  deadLetter,
   DRIZZLE,
   INGEST_QUOTA,
-  jobExecution,
+  jobRunState,
   withTransactionalEnqueue,
 } from '../infrastructure/index';
 import type { Db, IngestQuota } from '../infrastructure/index';
@@ -86,29 +85,10 @@ export class NotesService {
    * or running.
    */
   async getProcessingState(noteId: string): Promise<NoteProcessingState> {
-    const done = await this.db
-      .select({ id: jobExecution.id })
-      .from(jobExecution)
-      .where(
-        and(
-          eq(jobExecution.sourceType, 'user_note'),
-          eq(jobExecution.sourceId, noteId),
-          eq(jobExecution.jobType, INGESTION_PIPELINE_JOB_TYPE),
-        ),
-      )
-      .limit(1);
-    if (done.length > 0) return 'done';
-
-    const failed = await this.db
-      .select({ id: deadLetter.id })
-      .from(deadLetter)
-      .where(
-        and(
-          eq(deadLetter.jobType, INGESTION_PIPELINE_JOB_TYPE),
-          sql`${deadLetter.payload}->>'source_id' = ${noteId}`,
-        ),
-      )
-      .limit(1);
-    return failed.length > 0 ? 'failed' : 'processing';
+    return jobRunState(this.db, {
+      sourceType: 'user_note',
+      sourceId: noteId,
+      jobType: INGESTION_PIPELINE_JOB_TYPE,
+    });
   }
 }
