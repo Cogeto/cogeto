@@ -61,7 +61,9 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       // Abuse/DoS limits — global, so the rate-limit guard, ingest
       // quota, SSE caps and model budget are injectable across controllers.
       LimitsModule.register(config.limits, config.timezone),
-      // Per-user context + language — global, same rationale.
+      // Per-user context + language. No longer global (boundary contract §4):
+      // imported here for this root's own AttentionService, and separately by
+      // every module whose providers inject it.
       UserContextModule,
       IdentityModule.register({
         internalBaseUrl: config.oidc.internalUrl,
@@ -95,6 +97,10 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         // Chat joins notes as a deletable source (r7) — the
         // source-delete endpoint runs the saga for a chat-derived memory too.
         sourceDeletions: {
+          // ChatSourceModule provides the two chat adapters below; explicit
+          // since it stopped being global (boundary contract §4). The connector
+          // adapters still resolve from the global ConnectorsModule (B14).
+          imports: [ChatSourceModule],
           adapters: [
             NotesSourceDeletion,
             ChatSourceDeletion,

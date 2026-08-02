@@ -9,13 +9,12 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { MemoryScope, Principal, WebProcessingState } from '@cogeto/shared';
 import {
   DailyCounters,
-  deadLetter,
   DRIZZLE,
-  jobExecution,
+  jobRunState,
   RESEARCH_QUOTA,
   withTransactionalEnqueue,
   writeAudit,
@@ -504,30 +503,11 @@ export class ResearchService {
 
   /** Processing state from the queue's own ledgers — the notes-source rule. */
   async getProcessingState(id: string): Promise<WebProcessingState> {
-    const done = await this.db
-      .select({ id: jobExecution.id })
-      .from(jobExecution)
-      .where(
-        and(
-          eq(jobExecution.sourceType, 'web'),
-          eq(jobExecution.sourceId, id),
-          eq(jobExecution.jobType, INGESTION_PIPELINE_JOB_TYPE),
-        ),
-      )
-      .limit(1);
-    if (done.length > 0) return 'done';
-
-    const failed = await this.db
-      .select({ id: deadLetter.id })
-      .from(deadLetter)
-      .where(
-        and(
-          eq(deadLetter.jobType, INGESTION_PIPELINE_JOB_TYPE),
-          sql`${deadLetter.payload}->>'source_id' = ${id}`,
-        ),
-      )
-      .limit(1);
-    return failed.length > 0 ? 'failed' : 'processing';
+    return jobRunState(this.db, {
+      sourceType: 'web',
+      sourceId: id,
+      jobType: INGESTION_PIPELINE_JOB_TYPE,
+    });
   }
 
   /**

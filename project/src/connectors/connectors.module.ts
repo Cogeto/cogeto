@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
+import { UserContextModule } from '../infrastructure/index';
 import { NotesController } from './notes.controller';
 import { NotesService } from './notes.service';
 import { NotesSourceReader } from './notes.source-reader';
@@ -62,7 +63,17 @@ export class ConnectorsModule {
   static register(options: ConnectorsModuleOptions): DynamicModule {
     return {
       module: ConnectorsModule,
+      // RECORDED EXCEPTION B14 (docs/module-boundary-contract.md): a global
+      // DOMAIN module, which the boundary policy does not allow. Its source
+      // readers and deletion adapters reach ingestion and memory through
+      // globality instead of the registration options that exist for exactly
+      // that. Un-globaling means threading one dynamic-module reference through
+      // IngestionModule, MemoryModule and three sub-modules, which is the
+      // composition V2.0 item 3.6 part 3 rewrites when connectors/ splits.
       global: true,
+      // UserContextModule: the settings surface, the context-suggestion
+      // service and the skill engine. Explicit since it stopped being global.
+      imports: [UserContextModule],
       controllers: [
         NotesController,
         FilesController,

@@ -7,15 +7,14 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import { and, eq, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import type { FileProcessingState, FileSourceDto, MemoryScope, Principal } from '@cogeto/shared';
 import { ALLOWED_UPLOAD_CONTENT_TYPES } from '@cogeto/shared';
 import {
   DailyCounters,
-  deadLetter,
   DRIZZLE,
   INGEST_QUOTA,
-  jobExecution,
+  jobRunState,
   withTransactionalEnqueue,
 } from '../infrastructure/index';
 import type { Db, IngestQuota } from '../infrastructure/index';
@@ -372,30 +371,14 @@ export class FilesService {
    * it is still queued/extracting/deriving.
    */
   async getProcessingState(objectKey: string): Promise<FileProcessingState> {
-    const done = await this.db
-      .select({ id: jobExecution.id })
-      .from(jobExecution)
-      .where(
-        and(
-          eq(jobExecution.sourceType, 'file'),
-          eq(jobExecution.sourceId, objectKey),
-          eq(jobExecution.jobType, INGESTION_PIPELINE_JOB_TYPE),
-        ),
-      )
-      .limit(1);
-    if (done.length > 0) return 'done';
-
-    const failed = await this.db
-      .select({ id: deadLetter.id })
-      .from(deadLetter)
-      .where(
-        and(
-          eq(deadLetter.jobType, INGESTION_PIPELINE_JOB_TYPE),
-          sql`${deadLetter.payload}->>'source_id' = ${objectKey}`,
-        ),
-      )
-      .limit(1);
-    return failed.length > 0 ? 'error' : 'processing';
+    const state = await jobRunState(this.db, {
+      sourceType: 'file',
+      sourceId: objectKey,
+      jobType: INGESTION_PIPELINE_JOB_TYPE,
+    });
+    // A file's exhausted pipeline job reads as 'error' on this surface (a
+    // corrupt file), not 'failed': FileProcessingState has its own vocabulary.
+    return state === 'failed' ? 'error' : state;
   }
 
   /**

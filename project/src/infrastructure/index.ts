@@ -2,14 +2,22 @@
  * Public interface of the shared infrastructure (sanctioned by spec §15.4 and the
  * prompt: outbox, queue contract, audit, database access). Imports no
  * domain module and no seam — enforced by dependency-cruiser.
+ *
+ * **This barrel exports no live Drizzle table** (spec §15.2, V2.0 item 3.6).
+ * It used to re-export ten of them, which turned every cross-module table read
+ * into a legal-looking barrel import that the persistence rule could not see.
+ * Infrastructure's tables are read through the narrow functions below
+ * (`readAuditEntries`, `jobRunState`, `writeAudit`, the outbox and counter
+ * helpers); the table objects stay in `./persistence/tables`, importable only
+ * from inside this directory. See `docs/module-boundary-contract.md`.
  */
 export { DatabaseModule } from './database.module';
 export { createDb, DRIZZLE, PG_POOL } from './db';
 export type { Db, DbOrTx, Tx } from './db';
 export { applyMigrations } from './migrations';
 export type { MigrationRunResult } from './migrations';
-export { writeAudit } from './audit';
-export type { AuditEntry } from './audit';
+export { writeAudit, readAuditEntries } from './audit';
+export type { AuditEntry, AuditRecord } from './audit';
 export { withTransactionalEnqueue, JOB_PRINCIPAL_KEY } from './outbox';
 export type { DomainEvent, JobSpec } from './outbox';
 export {
@@ -18,8 +26,9 @@ export {
   tryJobRunLock,
   consumeIdempotencyKey,
   runSingleFlight,
+  jobRunState,
 } from './queue';
-export type { IdempotentJobPayload, JobIdempotencyKey, AfterCommit } from './queue';
+export type { IdempotentJobPayload, JobIdempotencyKey, JobRunState, AfterCommit } from './queue';
 export { scrubMessage, describeError, describeErrorLine } from './error-scrub';
 export {
   ensureInstanceKeys,
@@ -31,18 +40,6 @@ export {
   PRIVATE_KEY_FILE,
 } from './instance-key';
 export type { InstanceSigner } from './instance-key';
-export {
-  auditLog,
-  outboxEvent,
-  jobExecution,
-  deadLetter,
-  attentionState,
-  attentionDismissal,
-  userContext,
-  contextSuggestionDismissal,
-  usageCounter,
-  rateLimitWindow,
-} from './persistence/tables';
 // Per-user instance context + language preference (-0053).
 export {
   UserContextService,

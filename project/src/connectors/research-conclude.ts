@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { and, eq, inArray, sql } from 'drizzle-orm';
-import { deadLetter, jobExecution, withTransactionalEnqueue } from '../infrastructure/index';
+import { and, eq, inArray } from 'drizzle-orm';
+import { jobRunState, withTransactionalEnqueue } from '../infrastructure/index';
 import type { Tx } from '../infrastructure/index';
 import { INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
 import { researchRun, webPage } from './persistence/tables';
@@ -122,28 +122,11 @@ export class ResearchConclusionService {
 
   /** Settled = pipeline ran (job_execution) or parked permanently (dead_letter). */
   private async pageSettled(tx: Tx, pageId: string): Promise<boolean> {
-    const done = await tx
-      .select({ id: jobExecution.id })
-      .from(jobExecution)
-      .where(
-        and(
-          eq(jobExecution.sourceType, 'web'),
-          eq(jobExecution.sourceId, pageId),
-          eq(jobExecution.jobType, INGESTION_PIPELINE_JOB_TYPE),
-        ),
-      )
-      .limit(1);
-    if (done.length > 0) return true;
-    const failed = await tx
-      .select({ id: deadLetter.id })
-      .from(deadLetter)
-      .where(
-        and(
-          eq(deadLetter.jobType, INGESTION_PIPELINE_JOB_TYPE),
-          sql`${deadLetter.payload}->>'source_id' = ${pageId}`,
-        ),
-      )
-      .limit(1);
-    return failed.length > 0;
+    const state = await jobRunState(tx, {
+      sourceType: 'web',
+      sourceId: pageId,
+      jobType: INGESTION_PIPELINE_JOB_TYPE,
+    });
+    return state !== 'processing';
   }
 }

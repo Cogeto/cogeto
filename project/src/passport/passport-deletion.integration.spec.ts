@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type { Principal } from '@cogeto/shared';
-import { auditLog } from '../infrastructure/index';
+import { readAuditEntries } from '../infrastructure/index';
 import { startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
 import { passportExport } from './persistence/tables';
@@ -151,14 +151,14 @@ describe('deletion_expires_exports', () => {
     await seed('user-d', 'ready', 'org-1/user-d/x.zip');
     await tdb.db.transaction((tx) => cascade.expireForOwner(tx, 'user-d'));
 
-    const entries = await tdb.db
-      .select()
-      .from(auditLog)
-      .where(and(eq(auditLog.action, 'passport.export_expired'), eq(auditLog.ownerId, 'user-d')));
+    const entries = await readAuditEntries(tdb.db, {
+      actions: ['passport.export_expired'],
+      ownerId: 'user-d',
+    });
     expect(entries).toHaveLength(1);
     expect(entries[0]!.actor).toBe('deletion_saga');
     expect(entries[0]!.entityType).toBe('passport_export');
     // Structural metadata only: a count and a reason, never export content.
-    expect(entries[0]!.detailJson).toMatchObject({ count: 1, reason: 'source deletion' });
+    expect(entries[0]!.detail).toMatchObject({ count: 1, reason: 'source deletion' });
   });
 });

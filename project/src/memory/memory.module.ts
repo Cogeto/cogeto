@@ -57,8 +57,13 @@ export interface MemoryModuleOptions {
  * Owns ALL storage access for memory data: the Postgres tables, the Qdrant
  * client AND the object-storage client (module-private — no other module may
  * import them; dependency-cruiser rule). Registered once by each composition
- * root with its storage options; global like the seams so consumers inject
- * MemoryStore without re-options (pattern).
+ * root with its storage options.
+ *
+ * RECORDED EXCEPTION B13 (docs/module-boundary-contract.md): a global DOMAIN
+ * module, which the boundary policy does not allow. It is dynamic and carries
+ * the Qdrant/MinIO/signing-key configuration, and five modules inject
+ * MemoryStore, so un-globaling it is a composition rewrite rather than a
+ * declaration change: V2.0 item 3.6 part 2.
  */
 @Module({})
 export class MemoryModule {

@@ -9,13 +9,14 @@ import type {
   DashboardStatsDto,
   Principal,
 } from '@cogeto/shared';
-import {
-  attentionDismissal,
-  attentionState,
-  DRIZZLE,
-  UserContextService,
-} from '../infrastructure/index';
+import { DRIZZLE, UserContextService } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
+// RECORDED EXCEPTION B10 (docs/module-boundary-contract.md): the attention
+// aggregator holds the read-state pair, which `infrastructure` owns. It is
+// allowlisted by name in .dependency-cruiser.cjs and moves behind
+// infrastructure's interface in V2.0 item 3.6 part 2, with the rest of the
+// accidental context in entrypoints/.
+import { attentionDismissal, attentionState } from '../infrastructure/persistence/tables';
 import { MemoryReconciliation, MemoryStore } from '../memory/index';
 import { RetrievalService } from '../retrieval/index';
 import type { OpenLoop } from '../retrieval/index';

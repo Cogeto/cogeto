@@ -70,6 +70,8 @@ Accepted consequences: no separate cache or message broker, and no server render
 
 **Boundary contract.** A boundary is imports plus table ownership plus job type contracts plus dependency injection tokens. A module reads and writes only its own tables; cross module data movement happens through published interfaces and typed job contracts. Source types are registered rather than enumerated in a database type, so adding a reader or a connector touches only that module.
 
+The contract is written out, module by module and table by table, in [`module-boundary-contract.md`](module-boundary-contract.md): who owns which table, which job type and which injection token, when a module may be global, what enforces each rule, and every recorded exception with the part of V2.0 item 3.6 that closes it. The table above is the target layout that item reaches; the contract document describes what is enforced today, and the two converge as parts 2 to 4 land.
+
 Production imports form an acyclic layering:
 
 ```

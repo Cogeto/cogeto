@@ -11,10 +11,15 @@ import { ChatReplyResolver } from './chat-reply-resolver';
  * resolver — and imports the modules they need (RetrievalService for context,
  * ApprovalService for the approval path).
  *
- * Marked GLOBAL so the CHAT_REPLY_RESOLVER token it binds is visible to
- * ChatService (in RetrievalModule) without a module-level cycle — the same way
- * MemoryModule/ModelGatewayModule expose their seams. Registered ONLY in the app
- * composition root; the worker never drafts replies.
+ * RECORDED EXCEPTION B15 (docs/module-boundary-contract.md): marked GLOBAL so
+ * the CHAT_REPLY_RESOLVER token it binds is visible to ChatService (in
+ * RetrievalModule) without a module-level cycle — this module already imports
+ * RetrievalModule, so ChatService cannot import back. Un-globaling it today
+ * would silently null an @Optional() argument and drop reply drafting from chat
+ * with every test still green. V2.0 item 3.6 part 4 moves chat out of
+ * RetrievalModule and binds the handlers at the composition root, which removes
+ * the reason. Registered ONLY in the app composition root; the worker never
+ * drafts replies.
  */
 @Global()
 @Module({

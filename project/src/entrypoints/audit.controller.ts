@@ -11,8 +11,14 @@ import { and, count, desc, eq, gte, isNull, lt, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import type { AuditEntryDto, AuditPage } from '@cogeto/shared';
-import { auditLog, DRIZZLE } from '../infrastructure/index';
+import { DRIZZLE } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
+// RECORDED EXCEPTION B8 (docs/module-boundary-contract.md): this controller
+// reads `audit_log`, which `infrastructure` owns. It is not a laundered barrel
+// import any more — it names the private table path, is allowlisted by name in
+// .dependency-cruiser.cjs, and moves behind infrastructure's interface in
+// V2.0 item 3.6 part 2, when the accidental context in entrypoints/ dissolves.
+import { auditLog } from '../infrastructure/persistence/tables';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 

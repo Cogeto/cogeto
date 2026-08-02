@@ -9,8 +9,13 @@ import { SkillsController } from './skills.controller';
  * ResearchChatModule shape: planning needs RetrievalService (the entity
  * profile), so this is composed ONLY into the app root, never the worker
  * (whose skill intent stays inert; execution reaches the worker as the
- * `skill.advance` job through ConnectorsModule's SkillEngine). Global so
- * ChatService resolves CHAT_SKILL_RESOLVER without importing connectors.
+ * `skill.advance` job through ConnectorsModule's SkillEngine).
+ *
+ * RECORDED EXCEPTION B15 (docs/module-boundary-contract.md): still global, so
+ * ChatService (in RetrievalModule, which this module imports) resolves
+ * CHAT_SKILL_RESOLVER. Un-globaling it today would silently null an
+ * @Optional() argument and drop skills from chat with every test still green.
+ * V2.0 item 3.6 part 4 removes the reason.
  */
 @Global()
 @Module({

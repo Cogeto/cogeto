@@ -3,12 +3,14 @@ import { eq } from 'drizzle-orm';
 import type { Principal } from '@cogeto/shared';
 import { startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
-import {
-  auditLog,
-  contextSuggestionDismissal,
-  userContext,
-  UserContextService,
-} from '../infrastructure/index';
+import { readAuditEntries, UserContextService } from '../infrastructure/index';
+// RECORDED EXCEPTION B17 (docs/module-boundary-contract.md): this connectors
+// spec resets infrastructure's two user-context tables between cases. The
+// service exposes no reset (correctly — nothing in production clears a
+// dismissal), so the fixture names the tables. Allowlisted by name in
+// .dependency-cruiser.cjs; it follows UserContextService in V2.0 item 3.6
+// part 2.
+import { contextSuggestionDismissal, userContext } from '../infrastructure/persistence/tables';
 import { ModelGateway } from '../model-gateway/index';
 import type { MemoryRow, MemoryStore } from '../memory/index';
 import { ContextSuggestionsService } from './context-suggestions.service';
@@ -142,13 +144,13 @@ describe('context suggestions (integration: real Postgres, scripted gateway)', (
     expect(row!.company).toBe('MVT Solutions');
     expect(row!.companySourceMemoryId).toBe(MEM_B);
 
-    const audits = await tdb.db
-      .select()
-      .from(auditLog)
-      .where(eq(auditLog.action, 'context.suggestion_accepted'));
-    const mine = audits.filter((a) => a.entityId === owner.userId);
+    const mine = await readAuditEntries(tdb.db, {
+      actions: ['context.suggestion_accepted'],
+      entityIds: [owner.userId],
+    });
     expect(mine.length).toBeGreaterThan(0);
-    expect(mine.at(-1)!.detailJson).toMatchObject({
+    // readAuditEntries orders newest first, so the latest entry is at [0].
+    expect(mine[0]!.detail).toMatchObject({
       field: 'company',
       derivedFromMemoryId: MEM_B,
     });

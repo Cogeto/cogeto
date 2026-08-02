@@ -72,8 +72,8 @@ These five checks must be green before a PR can merge (branch protection on
 | Check | What it enforces |
 | ------------ | ------------------------------------------------------------------- |
 | `lint` | ESLint + Prettier |
-| `boundaries` | dependency-cruiser module map (spec §15): no cross-module table access |
-| `test` | Vitest (unit) + Testcontainers (integration) |
+| `boundaries` | dependency-cruiser module map (spec §15): barrel-only imports, no cross-module `persistence/`, no live table in a barrel |
+| `test` | Vitest (unit) + Testcontainers (integration), including the boundary contract's table, job-type, token and global-module ownership checks (spec §15.1) |
 | `build` | backend compile (`tsc`) + Vite frontend build |
 | `eval-gate` | golden-set gate (spec §14): prompt/model/pipeline regressions fail |
 

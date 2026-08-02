@@ -21,13 +21,12 @@ import type {
 import { LOCALE_TAGS } from '@cogeto/shared';
 import {
   buildContextBlock,
-  deadLetter,
   DEFAULT_INSTANCE_TIMEZONE,
   DRIZZLE,
   EMPTY_USER_CONTEXT,
   hasProfileContext,
   INSTANCE_TIMEZONE,
-  jobExecution,
+  jobRunState,
   UserContextService,
   withTransactionalEnqueue,
   serverT,
@@ -294,30 +293,11 @@ export class ChatService {
       .limit(1);
     if (owned.length === 0) throw new NotFoundException(`message ${messageId} not found`);
 
-    const done = await this.db
-      .select({ id: jobExecution.id })
-      .from(jobExecution)
-      .where(
-        and(
-          eq(jobExecution.sourceType, 'chat'),
-          eq(jobExecution.sourceId, messageId),
-          eq(jobExecution.jobType, INGESTION_PIPELINE_JOB_TYPE),
-        ),
-      )
-      .limit(1);
-    if (done.length > 0) return 'done';
-
-    const failed = await this.db
-      .select({ id: deadLetter.id })
-      .from(deadLetter)
-      .where(
-        and(
-          eq(deadLetter.jobType, INGESTION_PIPELINE_JOB_TYPE),
-          sql`${deadLetter.payload}->>'source_id' = ${messageId}`,
-        ),
-      )
-      .limit(1);
-    return failed.length > 0 ? 'failed' : 'processing';
+    return jobRunState(this.db, {
+      sourceType: 'chat',
+      sourceId: messageId,
+      jobType: INGESTION_PIPELINE_JOB_TYPE,
+    });
   }
 
   /**

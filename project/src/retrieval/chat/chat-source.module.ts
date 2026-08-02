@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ChatSourceReader } from './chat.source-reader';
 import { ChatSourceDeletion } from './chat.source-deletion';
 import { ChatAnswerCascade } from './chat-answer-cascade';
@@ -7,19 +7,21 @@ import { ConversationTitler } from './conversation-titler';
 import { CONVERSATION_APPEND, ConversationScribe } from './conversation-scribe';
 
 /**
- * The chat source ports as a GLOBAL slim module: the pipeline
- * reader and the deletion adapters for source_type 'chat' and
- * 'chat_conversation', plus the conversation auto-titler the worker's
- * `conversation.title` job runs. Global + standalone (only the global DRIZZLE
- * and ModelGateway providers) so BOTH composition roots resolve them — the
- * worker binds the reader into ingestion's SOURCE_READERS and the deletions
- * into the memory saga, the app binds the deletions for the source-delete
- * endpoint — without pulling the full RetrievalModule (ChatService,
- * RetrievalService) into the worker. Mirrors the connectors seam's global
- * source ports. Each composition root is a separate Nest application, so
- * importing it once per root is not a double provision.
+ * The chat source ports as a slim standalone module: the pipeline reader and
+ * the deletion adapters for source_type 'chat' and 'chat_conversation', plus
+ * the conversation auto-titler the worker's `conversation.title` job runs.
+ * Standalone (its providers need only the global DRIZZLE and ModelGateway) so
+ * the worker can bind chat's ports without pulling the full RetrievalModule
+ * (ChatService, RetrievalService) into that process.
+ *
+ * **Not global** (V2.0 item 3.6, `docs/module-boundary-contract.md` §4). It was,
+ * which is why nothing declared where these ports were bound. They are now
+ * passed explicitly: `IngestionModule.register({ imports })` for the reader,
+ * `MemoryModule.register({ sourceDeletions.imports, derivedCascades.imports })`
+ * for the deletion and cascade adapters, and `ResearchChatModule` for the
+ * conversation-append seam. Each composition root is a separate Nest
+ * application, so importing it once per root is not a double provision.
  */
-@Global()
 @Module({
   providers: [
     ChatSourceReader,

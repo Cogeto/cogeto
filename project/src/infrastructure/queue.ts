@@ -1,7 +1,7 @@
 import type { Task } from 'graphile-worker';
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import type { Db, Tx } from './db';
+import type { Db, DbOrTx, Tx } from './db';
 import { deadLetter, jobExecution } from './persistence/tables';
 import { describeErrorLine } from './error-scrub';
 
@@ -79,6 +79,53 @@ export async function consumeIdempotencyKey(tx: Tx, key: JobIdempotencyKey): Pro
     .onConflictDoNothing()
     .returning({ id: jobExecution.id });
   return claimed.length > 0;
+}
+
+/**
+ * How far a job for one source has got, read from the queue's own two ledgers:
+ * a `job_execution` row under the idempotency key means it committed, a
+ * `dead_letter` row for the type carrying this source id means it exhausted its
+ * retries, and anything else is still queued or running.
+ */
+export type JobRunState = 'done' | 'failed' | 'processing';
+
+/**
+ * The narrow read side of the queue ledgers (boundary contract §2).
+ *
+ * `job_execution` and `dead_letter` are infrastructure's tables. Five call
+ * sites in `connectors` and `retrieval` each carried their own byte-identical
+ * copy of this pair of queries against tables they do not own, legalised by the
+ * barrel re-exporting the table objects (spec §15.2). This is the one place
+ * they are read; each caller maps the state to its own surface vocabulary.
+ */
+export async function jobRunState(executor: DbOrTx, key: JobIdempotencyKey): Promise<JobRunState> {
+  const done = await executor
+    .select({ id: jobExecution.id })
+    .from(jobExecution)
+    .where(
+      and(
+        eq(jobExecution.sourceType, key.sourceType),
+        eq(jobExecution.sourceId, key.sourceId),
+        eq(jobExecution.jobType, key.jobType),
+      ),
+    )
+    .limit(1);
+  if (done.length > 0) return 'done';
+
+  // A dead-lettered job is identified by its type plus the source id INSIDE the
+  // stored payload: the row predates any per-source column and carries the job
+  // as it was delivered.
+  const failed = await executor
+    .select({ id: deadLetter.id })
+    .from(deadLetter)
+    .where(
+      and(
+        eq(deadLetter.jobType, key.jobType),
+        sql`${deadLetter.payload}->>'source_id' = ${key.sourceId}`,
+      ),
+    )
+    .limit(1);
+  return failed.length > 0 ? 'failed' : 'processing';
 }
 
 const idempotentPayloadSchema = z.looseObject({
