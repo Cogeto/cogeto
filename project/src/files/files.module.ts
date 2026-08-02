@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
-import type { DynamicModule } from '@nestjs/common';
-import { SettingsModule } from '../settings/index';
+import type { DynamicModule, ModuleMetadata } from '@nestjs/common';
 import { FilesController } from './files.controller';
 import { FilesService } from './files.service';
 import { FileSourceReader } from './file.source-reader';
@@ -17,11 +16,15 @@ import type { FileUploadOptions } from './file-upload-options';
  */
 @Module({})
 export class FilesModule {
-  static register(options: { fileUpload: FileUploadOptions }): DynamicModule {
+  static register(options: {
+    fileUpload: FileUploadOptions;
+    imports?: ModuleMetadata['imports'];
+  }): DynamicModule {
     return {
       module: FilesModule,
-      // SettingsModule: uploads apply the user's default scope + discard flag.
-      imports: [SettingsModule],
+      // The memory and settings instances (B13): stored bytes go through
+      // memory's ports; uploads apply the user's default scope + discard flag.
+      imports: [...(options.imports ?? [])],
       controllers: [FilesController],
       providers: [
         FilesService,

@@ -207,7 +207,9 @@ const ALLOWED_GLOBAL_MODULES: Readonly<Record<string, string>> = {
 
   // RECORDED EXCEPTIONS (docs/module-boundary-contract.md). Each is a domain
   // module and therefore fails the policy; each names the part that removes it.
-  MemoryModule: 'EXCEPTION B13, part 4: dynamic storage config, five injectors',
+  // B13 CLOSED (part 4): the memory module is ONE dynamic instance per root,
+  // threaded through every consumer's registration options (with slim
+  // source-ports modules breaking the memory ↔ family cycles).
   // B14 CLOSED (part 4): ConnectorsModule is dissolved; every family module
   // is explicit and the port adapters are threaded through registration options.
   // B15 CLOSED (part 4): chat is its own module; the app root threads the
@@ -245,12 +247,6 @@ const RAW_SQL_EXCEPTIONS: Readonly<Record<string, string>> = {
   // documents it as the required step for an instance upgrading from the 1.x
   // line. It goes when the 2.0 release notes can declare that path closed.
   'entrypoints/erase-task-conclusions.ts': 'CLI: erases task_conclusion provenance before 0035',
-  // B20, part 3: connectors schedules the discard-cleanup backstop with a raw
-  // graphile_worker.add_job because the outbox helper has no delayed enqueue.
-  'files/files.service.ts': 'graphile_worker',
-  // B21: the Testcontainers harness resets the queue between suites. `testing/`
-  // is the harness, not a bounded context; it is listed rather than exempted.
-  'testing/pg.ts': 'graphile_worker',
 };
 
 // ---------------------------------------------------------------------------

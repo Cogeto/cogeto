@@ -6,8 +6,6 @@ import {
   UserContextModule,
   UserContextService,
 } from '../infrastructure/index';
-import { MemoryModule } from '../memory/index';
-import { RetrievalModule } from '../retrieval/index';
 import { ChatController } from './chat.controller';
 import { CHAT_SERVICE_OPTIONS, ChatService } from './chat.service';
 import type { ChatServiceOptions } from './chat.service';
@@ -36,7 +34,7 @@ export class ChatModule {
   static register(options: { imports?: ModuleMetadata['imports'] } = {}): DynamicModule {
     return {
       module: ChatModule,
-      imports: [MemoryModule, UserContextModule, RetrievalModule, ...(options.imports ?? [])],
+      imports: [UserContextModule, ...(options.imports ?? [])],
       controllers: [ChatController],
       providers: [
         ChatService,

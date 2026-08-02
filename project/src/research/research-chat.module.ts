@@ -6,7 +6,7 @@ import {
   UserContextModule,
   UserContextService,
 } from '../infrastructure/index';
-import { RetrievalModule, RetrievalService } from '../retrieval/index';
+import { RetrievalService } from '../retrieval/index';
 import { CHAT_RESEARCH_RESOLVER, ChatSourceModule, CONVERSATION_APPEND } from '../chat/index';
 import type { ConversationAppendPort } from '../chat/index';
 import { ChatResearchResolver } from './chat-research-resolver';
@@ -34,7 +34,7 @@ export class ResearchChatModule {
       // ChatSourceModule (the conversation-append seam) and UserContextModule
       // are explicit: ResearchSynthesisService resolves CONVERSATION_APPEND
       // and UserContextService from them.
-      imports: [RetrievalModule, ChatSourceModule, UserContextModule, ...(options.imports ?? [])],
+      imports: [ChatSourceModule, UserContextModule, ...(options.imports ?? [])],
       controllers: [ResearchRunController],
       providers: [
         ChatResearchResolver,

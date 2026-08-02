@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
-import type { DynamicModule } from '@nestjs/common';
-import { SettingsModule } from '../settings/index';
+import type { DynamicModule, ModuleMetadata } from '@nestjs/common';
 import { EmailIntakeController } from './email-intake.controller';
 import { EmailIntakeService } from './email-intake.service';
 import { EmailAllowlistService } from './email-allowlist.service';
@@ -23,11 +22,15 @@ import type { MailOptions } from './mail-options';
  */
 @Module({})
 export class EmailModule {
-  static register(options: { mail: MailOptions }): DynamicModule {
+  static register(options: {
+    mail: MailOptions;
+    imports?: ModuleMetadata['imports'];
+  }): DynamicModule {
     return {
       module: EmailModule,
-      // SettingsModule: intake applies each recipient's default capture scope.
-      imports: [SettingsModule],
+      // The memory and settings instances (B13): retained bytes go through
+      // memory's ports; intake applies each recipient's default capture scope.
+      imports: [...(options.imports ?? [])],
       controllers: [EmailIntakeController, EmailSettingsController, EmailSourceController],
       providers: [
         EmailIntakeService,

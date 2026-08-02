@@ -9,3 +9,4 @@ export { NotesService } from './notes.service';
 export { NotesSourceReader } from './notes.source-reader';
 export { NotesSourceDeletion } from './notes.source-deletion';
 export type { NoteRow } from './persistence/tables';
+export { NotesSourcePortsModule } from './notes-source-ports.module';

@@ -30,3 +30,4 @@ export { WebSourceDeletion } from './web.source-deletion';
 export { RESEARCH_OPTIONS } from './research-options';
 export type { ResearchOptions } from './research-options';
 export type { ResearchRunRow, WebPageRow } from './persistence/tables';
+export { ResearchSourcePortsModule } from './research-source-ports.module';

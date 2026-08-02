@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule, ModuleMetadata } from '@nestjs/common';
-import { AgentsModule } from '../agents/index';
-import { RetrievalModule } from '../retrieval/index';
 import { CHAT_REPLY_RESOLVER } from '../chat/index';
 import { EmailReplyDraftService } from './email-reply-draft.service';
 import { EmailReplyController } from './email-reply.controller';
@@ -24,7 +22,7 @@ export class EmailReplyModule {
   static register(options: { imports?: ModuleMetadata['imports'] } = {}): DynamicModule {
     return {
       module: EmailReplyModule,
-      imports: [RetrievalModule, AgentsModule, ...(options.imports ?? [])],
+      imports: [...(options.imports ?? [])],
       controllers: [EmailReplyController],
       providers: [
         EmailReplyDraftService,

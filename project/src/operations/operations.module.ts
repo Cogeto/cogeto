@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import type { DynamicModule } from '@nestjs/common';
+import type { DynamicModule, ModuleMetadata } from '@nestjs/common';
 import { AuditController } from './audit.controller';
 import { CapabilitiesService } from './capabilities';
 import { HealthAccessGuard } from './health-access.guard';
@@ -26,9 +26,14 @@ import type { OperationsOptions } from './operations.options';
  */
 @Module({})
 export class OperationsModule {
-  static register(options: OperationsOptions): DynamicModule {
+  static register(
+    options: OperationsOptions & { imports?: ModuleMetadata['imports'] },
+  ): DynamicModule {
     return {
       module: OperationsModule,
+      // The memory module instance (B13 closed): the health report's
+      // IntegritySweep + object-store probes resolve from an explicit import.
+      imports: [...(options.imports ?? [])],
       controllers: [HealthController, JobsController, AuditController],
       providers: [
         { provide: OPERATIONS_OPTIONS, useValue: options },

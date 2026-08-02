@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { SettingsModule } from '../settings/index';
+import type { DynamicModule, ModuleMetadata } from '@nestjs/common';
 import { NotesController } from './notes.controller';
 import { NotesService } from './notes.service';
 import { NotesSourceReader } from './notes.source-reader';
@@ -12,11 +12,16 @@ import { NotesSourceDeletion } from './notes.source-deletion';
  * composition roots thread the reader and deletion adapters through
  * ingestion's and memory's registration options, per the boundary contract.
  */
-@Module({
-  // SettingsModule: capture applies the user's default scope.
-  imports: [SettingsModule],
-  controllers: [NotesController],
-  providers: [NotesService, NotesSourceReader, NotesSourceDeletion],
-  exports: [NotesService, NotesSourceReader, NotesSourceDeletion],
-})
-export class NotesModule {}
+@Module({})
+export class NotesModule {
+  static register(options: { imports?: ModuleMetadata['imports'] } = {}): DynamicModule {
+    return {
+      module: NotesModule,
+      // The settings instance: capture applies the user's default scope.
+      imports: [...(options.imports ?? [])],
+      controllers: [NotesController],
+      providers: [NotesService, NotesSourceReader, NotesSourceDeletion],
+      exports: [NotesService, NotesSourceReader, NotesSourceDeletion],
+    };
+  }
+}

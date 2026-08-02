@@ -7,12 +7,12 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import { sql } from 'drizzle-orm';
 import type { FileProcessingState, FileSourceDto, MemoryScope, Principal } from '@cogeto/shared';
 import { ALLOWED_UPLOAD_CONTENT_TYPES } from '@cogeto/shared';
 import {
   DailyCounters,
   DRIZZLE,
+  enqueueDelayedJob,
   INGEST_QUOTA,
   jobRunState,
   withTransactionalEnqueue,
@@ -263,14 +263,17 @@ export class FilesService {
         );
         // Backstop: fires in 15 min even if extraction never succeeds; the
         // success path also enqueues an immediate cleanup, so the norm is fast.
-        await tx.execute(sql`
-          SELECT graphile_worker.add_job(
-            ${FILE_DISCARD_CLEANUP_JOB_TYPE},
-            payload := ${JSON.stringify({ source_type: 'file', source_id: stagingKey })}::json,
-            run_at := now() + (${STAGING_BACKSTOP_MINUTES} || ' minutes')::interval,
-            max_attempts := 5
-          )
-        `);
+        // Through infrastructure's delayed-enqueue (B20 closed): the queue
+        // schema is named only by its owner.
+        await enqueueDelayedJob(
+          tx,
+          {
+            type: FILE_DISCARD_CLEANUP_JOB_TYPE,
+            payload: { source_type: 'file', source_id: stagingKey },
+            maxAttempts: 5,
+          },
+          STAGING_BACKSTOP_MINUTES,
+        );
       });
     } catch (error) {
       // Abort-window cleanup: no job enqueued, so the staging object is a true

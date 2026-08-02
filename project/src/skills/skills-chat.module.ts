@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule, ModuleMetadata } from '@nestjs/common';
-import { RetrievalModule } from '../retrieval/index';
 import { CHAT_SKILL_RESOLVER } from '../chat/index';
 import { ChatSkillResolver } from './chat-skill-resolver';
 import { SkillPlanner } from './skill-planner';
@@ -23,7 +22,7 @@ export class SkillsChatModule {
   static register(options: { imports?: ModuleMetadata['imports'] } = {}): DynamicModule {
     return {
       module: SkillsChatModule,
-      imports: [RetrievalModule, ...(options.imports ?? [])],
+      imports: [...(options.imports ?? [])],
       controllers: [SkillsController],
       providers: [
         SkillPlanner,

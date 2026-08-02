@@ -1,5 +1,6 @@
 import type { Task } from 'graphile-worker';
 import { and, desc, eq, sql } from 'drizzle-orm';
+import type { Pool } from 'pg';
 import { z } from 'zod';
 import type { Db, DbOrTx, Tx } from './db';
 import { deadLetter, jobExecution } from './persistence/tables';
@@ -400,4 +401,27 @@ export function idempotentTask(
       throw error;
     }
   };
+}
+
+/**
+ * Waits until graphile-worker has committed all job bookkeeping: no job row
+ * still holds a lock (V2.0 item 3.6 part 4, closing B21 — the queue schema is
+ * named only by its owner; the Testcontainers harness calls THIS instead of
+ * reading `_private_jobs` itself). Since graphile 0.17 a failed attempt's
+ * write (attempts++, lock release, backoff run_at) can land AFTER `runOnce`
+ * resolves; a caller that immediately reschedules races it. Test support: no
+ * production path waits on the queue.
+ */
+export async function settleQueueBookkeeping(pool: Pool, timeoutMs = 5000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const { rows } = await pool.query(
+      'SELECT count(*)::int AS locked FROM graphile_worker._private_jobs WHERE locked_by IS NOT NULL',
+    );
+    if (rows[0].locked === 0) return;
+    if (Date.now() > deadline) {
+      throw new Error('graphile job bookkeeping did not settle: rows still locked');
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
 }

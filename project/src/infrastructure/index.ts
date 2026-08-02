@@ -19,7 +19,7 @@ export type { MigrationRunResult } from './migrations';
 export { writeAudit, readAuditEntries, readAuditPage, escapeLike } from './audit';
 export type { AuditEntry, AuditRecord } from './audit';
 export { InstanceProbes } from './instance-probes';
-export { withTransactionalEnqueue, JOB_PRINCIPAL_KEY } from './outbox';
+export { enqueueDelayedJob, withTransactionalEnqueue, JOB_PRINCIPAL_KEY } from './outbox';
 export type { DomainEvent, JobSpec } from './outbox';
 export {
   idempotentTask,
@@ -32,6 +32,7 @@ export {
   recentJobExecutions,
   listDeadLetters,
   queueTotals,
+  settleQueueBookkeeping,
   retryDeadLetter,
 } from './queue';
 export type {

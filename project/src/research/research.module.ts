@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import type { DynamicModule } from '@nestjs/common';
+import type { DynamicModule, ModuleMetadata } from '@nestjs/common';
 import { RESEARCH_OPTIONS } from './research-options';
 import type { ResearchOptions } from './research-options';
 import { ResearchController } from './research.controller';
@@ -30,9 +30,12 @@ export class ResearchModule {
   static register(options: {
     research: ResearchOptions;
     skillAdvance?: ResearchConcludeWiring;
+    imports?: ModuleMetadata['imports'];
   }): DynamicModule {
     return {
       module: ResearchModule,
+      // The memory instance (B13): retained page objects and gated reads.
+      imports: [...(options.imports ?? [])],
       controllers: [ResearchController],
       providers: [
         ResearchService,

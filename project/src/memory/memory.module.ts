@@ -68,11 +68,10 @@ export interface MemoryModuleOptions {
  * import them; dependency-cruiser rule). Registered once by each composition
  * root with its storage options.
  *
- * RECORDED EXCEPTION B13 (docs/module-boundary-contract.md): a global DOMAIN
- * module, which the boundary policy does not allow. It is dynamic and carries
- * the Qdrant/MinIO/signing-key configuration, and five modules inject
- * MemoryStore, so un-globaling it is a composition rewrite rather than a
- * declaration change: V2.0 item 3.6 part 2.
+ * NOT global since B13 closed (V2.0 item 3.6 part 4): each composition root
+ * creates ONE instance and threads it through the registration options of
+ * every module that injects a memory provider. Globality was the last unnamed
+ * dependency in the graph.
  */
 @Module({})
 export class MemoryModule {
@@ -85,7 +84,6 @@ export class MemoryModule {
     }
     return {
       module: MemoryModule,
-      global: true,
       imports: [
         ...(options.sourceDeletions?.imports ?? []),
         ...(options.derivedCascades?.imports ?? []),

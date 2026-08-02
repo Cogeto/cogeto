@@ -64,12 +64,13 @@ export class IngestionModule {
    * log's query surface. No pipeline, no stages, no readers. Ingestion keeps
    * sole ownership of its tables.
    */
-  static forQueries(): DynamicModule {
+  static forQueries(options: { imports?: ModuleMetadata['imports'] } = {}): DynamicModule {
     return {
       module: IngestionModule,
       // UserContextModule: the dreaming digest is written in the reader's
-      // preferred language. Explicit since it stopped being global.
-      imports: [UserContextModule],
+      // preferred language. Explicit since it stopped being global; the memory
+      // module instance arrives the same way since B13 closed.
+      imports: [UserContextModule, ...(options.imports ?? [])],
       controllers: [VerificationController, DreamingController, SuppressedFactsController],
       providers: [SuppressedFactLog],
     };

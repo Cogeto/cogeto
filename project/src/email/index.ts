@@ -28,3 +28,4 @@ export type { MailOptions } from './mail-options';
 // The generic HTML sanitizer (DOMPurify, SEC-13 posture) other capture
 // families reuse on retained markup.
 export { sanitizeHtml } from './email-parse';
+export { EmailSourcePortsModule } from './email-source-ports.module';
