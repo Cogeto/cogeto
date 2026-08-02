@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import type { WorkerActivityDto, WorkerJobDto } from '@cogeto/shared';
+import { isRegisteredSourceType } from '@cogeto/shared';
+import type { SourceTypeKey, WorkerActivityDto, WorkerJobDto } from '@cogeto/shared';
 import { fetchWorkerActivity } from '../api';
 import type { Session } from '../auth/oidc';
 import { i18next } from '../i18n';
@@ -26,14 +27,28 @@ const jobLabel = (type: string): string => {
   return key ? i18next.t(`system:job.${key}`) : type;
 };
 
+/**
+ * A job's source_type is the queue's key namespace: the registry's memory
+ * source types PLUS the pseudo-types recurring and follow-on jobs key on
+ * (deletion_receipt, approval, research_run, skill_run, …). The memory half is
+ * typed over the registry's union so a new source type must decide its label
+ * here; pseudo-types and `null` entries render verbatim, exactly as before.
+ */
+const WORKER_SOURCE_KIND_KEY: Record<SourceTypeKey, string | null> = {
+  user_note: 'sources:kind.note',
+  file: 'sources:kind.file',
+  chat: null,
+  email: null,
+  web: null,
+  chat_conversation: null,
+  calendar_event: null,
+  task_conclusion: null,
+};
+
 function sourceLabel(sourceType: string | null, sourceId: string | null): string | null {
   if (!sourceType) return null;
-  const kind =
-    sourceType === 'user_note'
-      ? i18next.t('sources:kind.note')
-      : sourceType === 'file'
-        ? i18next.t('sources:kind.file')
-        : sourceType.replace(/_/g, ' ');
+  const kindKey = isRegisteredSourceType(sourceType) ? WORKER_SOURCE_KIND_KEY[sourceType] : null;
+  const kind = kindKey ? i18next.t(kindKey) : sourceType.replace(/_/g, ' ');
   // File source ids are object keys; show only the final `file-…` segment.
   const tail = sourceId ? (sourceId.split('/').pop() ?? sourceId).slice(0, 16) : null;
   return tail ? i18next.t('system:worker.sourceWithId', { kind, id: tail }) : kind;

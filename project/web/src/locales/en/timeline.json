@@ -18,7 +18,6 @@
     "note": "a note",
     "chat": "a chat message",
     "email": "an email",
-    "document": "a document",
     "other": "a {{kind}}"
   },
   "fate": {

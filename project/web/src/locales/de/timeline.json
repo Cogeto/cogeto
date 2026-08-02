@@ -9,12 +9,15 @@
       "body": "Fragen Sie: „Was nahm ich im März über X an?“ oder „Was hat sich bei Y seit letztem Monat geändert?“ Hier erhalten Sie die visuelle Antwort. Sie können auch eine Erinnerung öffnen und „Zeitleiste“ wählen."
     }
   },
-  "tab": { "timeline": "Zeitleiste", "at": "An einem Datum", "compare": "Zwei Daten vergleichen" },
+  "tab": {
+    "timeline": "Zeitleiste",
+    "at": "An einem Datum",
+    "compare": "Zwei Daten vergleichen"
+  },
   "sourcePhrase": {
     "note": "eine Notiz",
     "chat": "eine Chatnachricht",
     "email": "eine E-Mail",
-    "document": "ein Dokument",
     "other": "eine Quelle vom Typ {{kind}}"
   },
   "fate": {

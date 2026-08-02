@@ -2,7 +2,9 @@
   "loadingConversation": "Unterhaltung wird geladen…",
   "answerFailed": "Diese Antwort ist nicht angekommen. Fragen Sie erneut.",
   "skillRunHandoff": "Briefing-Ausführung öffnen: Suchplan genehmigen und jeden Schritt verfolgen →",
-  "role": { "you": "Sie" },
+  "role": {
+    "you": "Sie"
+  },
   "answer": {
     "standsOn": "Basiert auf",
     "attribution": "Cogeto · aus Ihrem Wissensstand",
@@ -59,7 +61,6 @@
       "note": "Notiz",
       "email": "E-Mail",
       "web": "Web",
-      "document": "Dokument",
       "chat": "Unterhaltung"
     },
     "unsourced": {

@@ -2,8 +2,8 @@
 
 **Status: BINDING.** This is the decision record for V2.0 item 3.6 and the
 specification the boundary tooling enforces. Written in part 1 (enforcement),
-updated in part 2 (the entrypoints dissolution). It makes spec §15.1 and §15.2
-concrete:
+updated in part 2 (the entrypoints dissolution) and part 3 (the source-type
+registry). It makes spec §15.1, §15.2 and §15.3 concrete:
 
 > **§15.1** A boundary is imports plus table ownership plus job type contracts
 > plus dependency injection tokens. Import checking alone is not boundary
@@ -11,6 +11,9 @@ concrete:
 >
 > **§15.2** A module MUST NOT write to another module's tables, and barrels MUST
 > NOT re export live tables.
+>
+> **§15.3** Source types MUST be registered rather than enumerated in a
+> database type.
 
 Until this document existed, only the first of the four dimensions was checked,
 and even that was checked incompletely. `npm run boundaries` reported **zero
@@ -20,9 +23,11 @@ bypassed the module graph entirely, and one whole bounded context was absent
 from the rule set. A green check over an unenforced boundary is worse than no
 check: it is a claim.
 
-Parts **1** (enforcement) and **2** (the entrypoints dissolution) have landed.
-Part 1 fixed the enforcement and enumerated what it revealed; part 2 closed
-every entrypoints entry on that list. What remains is in
+Parts **1** (enforcement) and **2** (the entrypoints dissolution) have landed,
+and part **3** has delivered its first slice, the **source-type registry**
+(§15.3, exception B16; see [section 6](#6-the-source-type-registry)). Part 1
+fixed the enforcement and enumerated what it revealed; part 2 closed every
+entrypoints entry on that list. What remains is in
 [Recorded exceptions](#recorded-exceptions), each with the part that closes it.
 
 ---
@@ -272,6 +277,7 @@ another module's injector) but not import-visible, which is the correct pair.
 | The worker registers exactly the declared job types, nothing more | `entrypoints/boundary-contract.spec.ts` | `test` |
 | Token declared once, by its owner, its `Symbol()` description matching its name | `entrypoints/boundary-contract.spec.ts` | `test` |
 | The global-module set matches the policy allowlist | `entrypoints/boundary-contract.spec.ts` | `test` |
+| Source types registered, complete, coherent; unknown and defunct values handled (spec §15.3) | `shared/src/source-types.spec.ts`, the saga's `registry_boundary` case, the sweep's `defunct_provenance_arm` case | `test` |
 
 Both checks are required to merge (`boundaries` and `test` are two of the five
 required checks; see [`engineering-workflow.md`](engineering-workflow.md)).
@@ -297,6 +303,92 @@ hand-written scanner rather than a regex sweep, so a comment mentioning a table
 is not a violation and a URL containing `//` does not truncate a literal. It
 only inspects literals containing an uppercase SQL keyword, which is honest
 about its limit: SQL assembled from lowercase fragments would not be seen.
+
+---
+
+## 6. The source-type registry
+
+**The decision record for part 3's first slice (spec §15.3, exception B16).**
+Until migration 0040, `source_type` was a Postgres enum owned by `memory`:
+every new reader or connector cost a memory-owned migration
+(`ALTER TYPE … ADD VALUE`) plus a hardcoded-switch edit across at least six
+files, a retired value could never be dropped, and the failure mode was the
+worst kind: a missed switch site breaking for exactly one source type,
+silently, weeks later.
+
+### Where source types are declared
+
+One declaration per type, in **`project/shared/src/source-types.ts`**
+(`SOURCE_TYPES`). `@cogeto/shared` is the package whose charter is the DTOs
+and enums both tiers share; `MEMORY_STATUSES`, `FACT_KINDS` and
+`UNCERTAINTY_REASONS` already live there and `memory`'s own tables import
+them, so the vocabulary joining them follows the established direction of
+dependency (shared is a leaf; everything may read it, it reads nothing).
+
+Each descriptor carries the metadata that used to be a conditional:
+
+| Field | Replaces | Read by |
+|---|---|---|
+| `defunct` | `DEFUNCT_SOURCE_TYPES` hand-list in `memory/persistence/tables.ts` | integrity sweep's defunct arm; derived `DEFUNCT_SOURCE_TYPES` export |
+| `userAuthored` (`always`/`never`/`per_item`/`none`) | per-reader `authoredByUser` knowledge, undocumented | the first-person-rule contract; the registry conformance suite pins each reader's declaration |
+| `objectBacked` | `sourceType === 'file'` in the deletion saga (3 sites), the passport export, the sweep | saga source resolution + file leg + discard-mode wait; passport original-bytes resolution |
+| `extraction` | implicit "which types have a SourceReader" | conformance suite; container types (`chat_conversation`) and defunct types are declared, not inferred |
+| `factBudget` | `payload.source_type === 'web'` cap in the pipeline | stage-3 fact cap (web 30, others the deployment cap) |
+| `promptLabel` | `'user_note' ? 'note' : replace('_',' ')` in answer-prompt and context-suggestions | provenance labels inside model prompts |
+| `dashboardFamily` | `SOURCE_FAMILY` map in `attention` | the sources chart |
+
+The closed TypeScript union (`SourceTypeKey`, re-exported by `memory` as
+`SourceType`) is derived from the declaration, so every internal producer
+keeps compile-time safety. The SPA reads the same union: per-surface maps
+(source drawer kind, citation chip label, timeline phrase, worker-activity
+label) are `Record<SourceTypeKey, …>`, so **adding a source type without
+deciding its treatment on a surface is a compile error, never a silent
+fallback**. That is the answer to the partial-conversion failure mode. A
+site that gates ONE type's unique feature (the note editor, web's URL chip,
+email's reply drafts, web's research-conclusion trigger) keeps its own key,
+pinned with `satisfies SourceTypeKey` where it carries behaviour.
+
+### How a new type registers without touching `memory`
+
+One entry in `SOURCE_TYPES`, a `SourceReader` and a `SourceDeletion` adapter
+(plus optional cascade) in the owning connector module, and the
+composition-root bindings through the registration options that already
+exist. No migration anywhere, and no edit inside `memory`, which is what
+B16 was recorded to demand.
+
+### The column, and why text rather than enum-plus-metadata
+
+Migration **0040** converts `memory.source_type` and
+`deletion_receipt.source_type` to `text` and drops the type. Keeping the
+enum as a "safety layer" under a metadata registry was considered and
+rejected: it would preserve the exact costs B16 records (a memory-owned
+`ALTER TYPE` migration per new type, undroppable values) and would leave
+§15.3 unmet: the spec's words are "registered rather than enumerated in a
+database type", and a MUST is not satisfied by adding a second mechanism on
+top of the violation. There is deliberately **no CHECK constraint** either:
+that would re-enumerate the vocabulary in the database with the same
+migration cost per type.
+
+The stored strings are byte-identical, and `deletion_receipt.source_type`
+enters the receipt chain's canonical payload as a string, so **every
+historical receipt hashes and verifies unchanged**. Reversal SQL is in the
+migration header; it holds while every stored value is a registered key,
+which the validation below maintains.
+
+### How the registry preserves every property the enum enforced
+
+| The enum's guarantee | Preserved by |
+|---|---|
+| An unknown value cannot be WRITTEN | The write funnel (`MemoryStore.insertFact`) and the deletion saga's API boundary both reject unregistered values; every internal producer is typed with the closed union |
+| An unknown value cannot be READ (it could not exist) | It can now exist only via a manual SQL write; the integrity sweep's defunct arm extends to flag any unregistered value as `orphaned_memory`, so the state is detected within one sweep cycle instead of being unrepresentable |
+| Defunct values remain valid forever | They stay registered (`defunct: true`); receipts citing them verify, the sweep proves they have no rows, and the 1.x upgrade CLI still binds its `task_conclusion` adapter |
+| A closed vocabulary at compile time | `SourceTypeKey` from the registry declaration |
+| Index and equality semantics | `memory_source_idx` is rebuilt on the same columns; nothing ordered by the enum's declaration order |
+
+Enforced by: `project/shared/src/source-types.spec.ts` (the conformance
+suite: completeness, coherence, per-type behaviour pins, unknown/defunct
+handling), the saga's `registry_boundary` integration case, and the sweep's
+`defunct_provenance_arm` case, all inside the required `test` check.
 
 ---
 
@@ -346,6 +438,12 @@ reads instead (`OperationsOptions`, `WebConfigOptions`, `ModelConfigView`). That
 list is now a written answer to "what does this surface know about the
 deployment", which was previously "all of it".
 
+### Closed in part 3, first slice (the source-type registry)
+
+| # | Violation | Fix |
+|---|---|---|
+| B16 | `source_type` was a hard Postgres enum owned by `memory`, so every new reader cost a memory-owned migration and a switch edit in six files | The source-type registry ([section 6](#6-the-source-type-registry)): migration 0040 converts both columns to text, the vocabulary and its metadata are declared once in `@cogeto/shared`, every per-type switch reads the registry, and the SPA's per-surface maps are compile-forced complete |
+
 ### Still open, with the part that closes them
 
 | # | Violation | Why not now | Closed by |
@@ -353,7 +451,6 @@ deployment", which was previously "all of it".
 | B13 | `MemoryModule` is a global domain module | Five modules inject `MemoryStore`; un-globaling means threading one dynamic-module reference through every consumer's registration options. Reassigned from part 2: it is the same mechanical change part 3 makes for `ConnectorsModule`, and doing both at once is one composition rewrite instead of two | **Part 3** |
 | B14 | `ConnectorsModule` is a global domain module | Its providers reach `ingestion` and `memory` through globality instead of the registration options that exist for it | **Part 3** (connectors split) |
 | B15 | `EmailReplyModule`, `ResearchChatModule`, `SkillsModule` are global only to bind chat's resolver ports | Un-globaling now silently nulls three optional constructor arguments and disables research, skills and reply drafting with the suite still green | **Part 4** (chat split) |
-| B16 | `source_type` is a hard Postgres enum owned by `memory`, so every new reader costs a memory-owned migration and a switch edit in six files | Explicitly its own item in the 3.6 plan | **Part 3** |
 | B20 | `connectors/files.service.ts` schedules the discard-cleanup backstop with a raw `graphile_worker.add_job` | The outbox helper has no delayed-enqueue option, so the fix is an infrastructure API, not a move | **Part 3** |
 | B21 | `testing/pg.ts` truncates the `graphile_worker` tables between suites | The Testcontainers harness is not a bounded context; listed rather than exempted so it stays visible | **Part 3** |
 

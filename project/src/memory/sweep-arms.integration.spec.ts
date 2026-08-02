@@ -176,6 +176,38 @@ describe('sweep arms + (integration: real Postgres + Qdrant + MinIO)', () => {
     await objects.deleteObject(abandonedKey);
   });
 
+  it('defunct_provenance_arm: a defunct source_type row is flagged as KNOWN residue and an unregistered value (possible only by manual write since migration 0040) is flagged as unrecognised; registered live types are not', async () => {
+    // Injection fixtures: the column is text since 0040, so a manual write can
+    // store anything — exactly the state the enum used to reject and the
+    // registry boundary now catches at the sweep.
+    const defunctId = randomUUID();
+    const unregisteredId = randomUUID();
+    const liveId = randomUUID();
+    const insert = (id: string, sourceType: string) =>
+      tdb.pool.query(
+        `INSERT INTO memory (id, owner_id, scope, source_type, source_id, status, content)
+         VALUES ($1, $2, 'private', $3, $4, 'active', 'residue fixture')`,
+        [id, userA.userId, sourceType, `residue-${id}`],
+      );
+    await insert(defunctId, 'task_conclusion');
+    await insert(unregisteredId, 'not_a_registered_type');
+    await insert(liveId, 'user_note');
+
+    await sweepWith(60).run();
+    const details = await alertsOf('orphaned_memory');
+    expect(details.some((d) => d.includes(defunctId) && d.includes('defunct'))).toBe(true);
+    expect(details.some((d) => d.includes(unregisteredId) && d.includes('unregistered'))).toBe(
+      true,
+    );
+    expect(details.some((d) => d.includes(liveId))).toBe(false);
+
+    // Detection only, and no throw anywhere: a defunct value is a known value.
+    await clearAlerts();
+    await tdb.pool.query(`DELETE FROM memory WHERE id = ANY($1::uuid[])`, [
+      [defunctId, unregisteredId, liveId],
+    ]);
+  });
+
   it('payload_mismatch_arm: a stale Qdrant payload is flagged AND self-healed by targeted re-upsert; a missing point is flagged for reindex', async () => {
     const row = await store.createFromFact(userA, {
       content: 'The renewal fee is agreed.',

@@ -12,6 +12,8 @@ import {
   fetchNote,
   fetchWebSource,
 } from '../api';
+import { isRegisteredSourceType } from '@cogeto/shared';
+import type { SourceTypeKey } from '@cogeto/shared';
 import type { Session } from '../auth/oidc';
 import { formatDateTime, formatFileSize } from '../i18n/format';
 import { invalidateAfterSourceDeletion } from '../query-invalidation';
@@ -43,6 +45,23 @@ const FILE_STATE_KEY: Record<string, string> = {
 const formatBytes = (bytes: number | null): string | null => formatFileSize(bytes);
 
 /**
+ * Which drawer body a source type gets, typed over the source-type registry's
+ * union: adding a source type without deciding its drawer treatment is a
+ * compile error, never a silent fallback. `none` (container and defunct
+ * types) and an unrecognised runtime value show the raw source id, as before.
+ */
+const DRAWER_KIND: Record<SourceTypeKey, 'note' | 'file' | 'chat' | 'email' | 'web' | 'none'> = {
+  user_note: 'note',
+  file: 'file',
+  chat: 'chat',
+  email: 'email',
+  web: 'web',
+  chat_conversation: 'none',
+  calendar_event: 'none',
+  task_conclusion: 'none',
+};
+
+/**
  * The source drawer behind every memory: the original note verbatim (or the
  * object key for file sources), plus source-level TRUE deletion (spec §11.1, spec §11.1).
  * The confirm dialog states exactly what the saga will do; the server-side
@@ -69,11 +88,12 @@ export function SourceDrawer({
   const queryClient = useQueryClient();
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
-  const isNote = sourceType === 'user_note';
-  const isFile = sourceType === 'file';
-  const isChat = sourceType === 'chat';
-  const isEmail = sourceType === 'email';
-  const isWeb = sourceType === 'web';
+  const drawerKind = isRegisteredSourceType(sourceType) ? DRAWER_KIND[sourceType] : 'none';
+  const isNote = drawerKind === 'note';
+  const isFile = drawerKind === 'file';
+  const isChat = drawerKind === 'chat';
+  const isEmail = drawerKind === 'email';
+  const isWeb = drawerKind === 'web';
   const [draftError, setDraftError] = useState<string | null>(null);
   const [drafted, setDrafted] = useState(false);
 

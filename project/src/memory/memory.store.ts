@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { and, desc, eq, gte, inArray, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
-import { MEMORY_STATUSES } from '@cogeto/shared';
+import { isRegisteredSourceType, MEMORY_STATUSES } from '@cogeto/shared';
 import type {
   FactKind,
   MemoryScope,
@@ -1375,6 +1375,15 @@ export class MemoryStore {
     // knows why, and nothing else carries a reason. Enforced here, in the
     // aggregate that owns every write path, rather than by a CHECK constraint
     // that later status transitions would have to keep re-satisfying.
+    // The registry boundary (spec §15.3): the column is text since migration
+    // 0040, so the write funnel enforces what the database enum used to — a
+    // provenance value must be registered. Compile-time the union already
+    // guarantees it; this guards the JS callers (eval, seeds) the types
+    // cannot see. Defunct values pass validation (a defunct value is a KNOWN
+    // value) but have no live producer.
+    if (!isRegisteredSourceType(fact.sourceType)) {
+      throw new BadRequestException(`unknown source type '${String(fact.sourceType)}'`);
+    }
     const status = fact.initialStatus ?? 'active';
     if (status === 'uncertain' && !fact.uncertaintyReason) {
       throw new BadRequestException(

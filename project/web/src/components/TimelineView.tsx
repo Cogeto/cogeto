@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { isRegisteredSourceType } from '@cogeto/shared';
 import type {
   LaterFate,
   MemoryListItem,
   PointInTimeFact,
+  SourceTypeKey,
   TimelineChange,
   TimelineSpan,
 } from '@cogeto/shared';
@@ -24,22 +26,27 @@ const humanDate = (iso: string): string => formatDate(iso);
 
 /**
  * Source kind → a natural phrase for the "what changed it" reading. The source
- * TYPE is an API value; only its phrasing is translated, and an unrecognised
- * type falls back to the generic form, as before.
+ * TYPE is an API value; only its phrasing is translated, through an explicit
+ * value → key map typed over the source-type registry's union, so adding a
+ * source type without deciding its timeline phrase is a compile error. `null`
+ * and an unrecognised runtime value fall back to the generic form, as before.
  */
+const SOURCE_PHRASE_KEY: Record<SourceTypeKey, string | null> = {
+  user_note: 'timeline:sourcePhrase.note',
+  chat: 'timeline:sourcePhrase.chat',
+  email: 'timeline:sourcePhrase.email',
+  file: null,
+  web: null,
+  chat_conversation: null,
+  calendar_event: null,
+  task_conclusion: null,
+};
+
 function sourceLabel(sourceType: string): string {
-  switch (sourceType) {
-    case 'user_note':
-      return i18next.t('timeline:sourcePhrase.note');
-    case 'chat':
-      return i18next.t('timeline:sourcePhrase.chat');
-    case 'email':
-      return i18next.t('timeline:sourcePhrase.email');
-    case 'file_upload':
-      return i18next.t('timeline:sourcePhrase.document');
-    default:
-      return i18next.t('timeline:sourcePhrase.other', { kind: sourceType.replace('_', ' ') });
-  }
+  const key = isRegisteredSourceType(sourceType) ? SOURCE_PHRASE_KEY[sourceType] : null;
+  return key
+    ? i18next.t(key)
+    : i18next.t('timeline:sourcePhrase.other', { kind: sourceType.replace('_', ' ') });
 }
 
 /** LATER FATE is an API value; the map from value to key is explicit. */

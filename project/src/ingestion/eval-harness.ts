@@ -1,6 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { z } from 'zod';
+import { isRegisteredSourceType } from '@cogeto/shared';
 import { ModelGateway } from '../model-gateway/index';
 import type { SourceType } from '../memory/index';
 import { chunkContent } from './pipeline/chunk';
@@ -52,7 +53,18 @@ const expectedMemorySchema = z.object({
 
 const expectedFileSchema = z.object({
   case_id: z.string(),
-  source_type: z.string().default('user_note'),
+  // Validated against the source-type registry so a typo'd fixture fails the
+  // load loudly instead of silently scoring as a note.
+  source_type: z
+    .string()
+    .default('user_note')
+    .transform((value, ctx) => {
+      if (!isRegisteredSourceType(value)) {
+        ctx.addIssue({ code: 'custom', message: `unregistered source_type '${value}'` });
+        return z.NEVER;
+      }
+      return value;
+    }),
   /** Per-case anchor: pins relative-date cases to a fixed date forever. */
   source_date: z.string().optional(),
   expected_memories: z.array(expectedMemorySchema).default([]),
@@ -217,25 +229,18 @@ export async function runGoldenEval(options: {
     const caseAnchor = testCase.expected.source_date
       ? new Date(testCase.expected.source_date)
       : referenceTime;
-    // Email cases run through the SAME thread-aware pre-processing the email
-    // SourceReader applies: quoted history, signatures, and
-    // forwarding wrappers are isolated before extraction, so a threaded case
-    // scores on its new content only — exactly as production would see it.
-    const isEmail = testCase.expected.source_type === 'email';
-    // Web cases carry the fetcher's OUTPUT (clean readable text) as source.txt —
-    // production preprocessing happened before the pipeline, so no prep here.
-    // File cases likewise carry the extracted document text.
-    const isWeb = testCase.expected.source_type === 'web';
-    const isFile = testCase.expected.source_type === 'file';
+    // The fixture's declared source type, registry-validated at load. Email
+    // cases run through the SAME thread-aware pre-processing the email
+    // SourceReader applies: quoted history, signatures, and forwarding
+    // wrappers are isolated before extraction, so a threaded case scores on
+    // its new content only — exactly as production would see it. Web cases
+    // carry the fetcher's OUTPUT (clean readable text) as source.txt and file
+    // cases the extracted document text — production preprocessing happened
+    // before the pipeline, so no prep here.
+    const sourceType: SourceType = testCase.expected.source_type;
+    const isEmail = sourceType === 'email';
     const isolated = isEmail ? isolateEmailContentDetailed(testCase.source) : null;
     const content = isolated ? isolated.content : testCase.source;
-    const sourceType: SourceType = isEmail
-      ? 'email'
-      : isWeb
-        ? 'web'
-        : isFile
-          ? 'file'
-          : 'user_note';
     // The email authorship verdict, exactly as the SourceReader computes it
     // live: the fixture declares the intake routing; the forward /
     // quoted-fallback half comes from the isolation itself.

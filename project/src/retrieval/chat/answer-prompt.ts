@@ -1,5 +1,10 @@
 import type { ChatFactDto, PreferredLanguage } from '@cogeto/shared';
-import { mapMarkersToCitations, mapUnsourcedMarkers, sanitizeAnswer } from '@cogeto/shared';
+import {
+  mapMarkersToCitations,
+  mapUnsourcedMarkers,
+  sanitizeAnswer,
+  sourceTypePromptLabel,
+} from '@cogeto/shared';
 import { serverT } from '../../infrastructure/index';
 import type { MemoryChange } from '../../memory/index';
 import type { ConversationTurn, TemporalIntent } from '../query-rewrite';
@@ -67,7 +72,7 @@ export function buildAnswerInput(
       fact.validFrom || fact.validUntil
         ? ` | valid: ${fact.validFrom?.slice(0, 10) ?? '…'} to ${fact.validUntil?.slice(0, 10) ?? '…'}`
         : '';
-    const label = fact.sourceType === 'user_note' ? 'note' : fact.sourceType.replace('_', ' ');
+    const label = sourceTypePromptLabel(fact.sourceType);
     const subject = fact.subjectEntity ? ` | about: ${fact.subjectEntity}` : '';
     // The past-framing marker: the model may never
     // present a PAST BELIEF fact as current.
