@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import { UserContextModule } from '../infrastructure/index';
+import { SettingsModule } from '../settings/index';
 import { NotesController } from './notes.controller';
 import { NotesService } from './notes.service';
 import { NotesSourceReader } from './notes.source-reader';
@@ -8,10 +9,6 @@ import { NotesSourceDeletion } from './notes.source-deletion';
 import { FilesController } from './files.controller';
 import { FilesService } from './files.service';
 import { FileSourceReader } from './file.source-reader';
-import { SettingsController } from './settings.controller';
-import { UserSettingsService } from './user-settings.service';
-import { UserContextController } from './user-context.controller';
-import { ContextSuggestionsService } from './context-suggestions.service';
 import { FILE_UPLOAD_OPTIONS } from './file-upload-options';
 import type { FileUploadOptions } from './file-upload-options';
 import { EmailIntakeService } from './email-intake.service';
@@ -79,12 +76,12 @@ export class ConnectorsModule {
       global: true,
       // UserContextModule: the settings surface, the context-suggestion
       // service and the skill engine. Explicit since it stopped being global.
-      imports: [UserContextModule],
+      // SettingsModule: the notes/files/email surfaces apply the user's
+      // default capture scope through its UserSettingsService.
+      imports: [UserContextModule, SettingsModule],
       controllers: [
         NotesController,
         FilesController,
-        SettingsController,
-        UserContextController,
         EmailIntakeController,
         EmailSettingsController,
         EmailSourceController,
@@ -96,8 +93,6 @@ export class ConnectorsModule {
         NotesSourceDeletion,
         FilesService,
         FileSourceReader,
-        UserSettingsService,
-        ContextSuggestionsService,
         EmailIntakeService,
         EmailAllowlistService,
         EmailSourceReader,
@@ -141,7 +136,6 @@ export class ConnectorsModule {
         NotesSourceDeletion,
         FilesService,
         FileSourceReader,
-        UserSettingsService,
         EmailIntakeService,
         EmailAllowlistService,
         EmailSourceReader,

@@ -22,7 +22,7 @@ import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { DocumentUploadInterceptor } from './document-upload.interceptor';
 import { FilesService } from './files.service';
-import { UserSettingsService } from './user-settings.service';
+import { UserSettingsService } from '../settings/index';
 
 /** Multipart text fields arrive as strings; accept the common truthy forms. */
 const boolField = z

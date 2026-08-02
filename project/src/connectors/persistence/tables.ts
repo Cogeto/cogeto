@@ -13,8 +13,8 @@ import {
 import { MEMORY_SCOPES } from '@cogeto/shared';
 
 /**
- * Tables owned by the connectors module (migration 0003; user_settings in
- * 0016). Module-private. `note` holds the notes connector's source rows
+ * Tables owned by the connectors module (migration 0003).
+ * Module-private. `note` holds the notes connector's source rows
  * memories extracted from a note carry provenance source_type = 'user_note',
  * source_id = note.id.
  */
@@ -43,16 +43,6 @@ export type NoteRow = typeof note.$inferSelect;
  * Per-user capture/upload defaults (migration 0016). One row per user,
  * created on first write — a read with no row returns the column defaults.
  */
-export const userSettings = pgTable('user_settings', {
-  userId: text('user_id').primaryKey(),
-  orgId: text('org_id').notNull(),
-  discardByDefault: boolean('discard_by_default').notNull().default(false),
-  defaultScope: scopeEnum('default_scope').notNull().default('private'),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
-
-export type UserSettingsRow = typeof userSettings.$inferSelect;
-
 /**
  * Inbound email (migration 0021). Owned by
  * connectors. `email_message` + its raw MinIO object are the complete retained

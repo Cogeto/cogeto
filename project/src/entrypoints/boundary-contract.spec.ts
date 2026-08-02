@@ -63,7 +63,8 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   approval: 'agents',
 
   note: 'connectors',
-  user_settings: 'connectors',
+  // Split out of connectors (V2.0 item 3.6 part 4).
+  user_settings: 'settings',
   email_message: 'connectors',
   email_attachment: 'connectors',
   email_allowlist: 'connectors',
@@ -316,7 +317,8 @@ describe('boundary_contract', () => {
     const config = readFileSync(path.join(REPO, '.dependency-cruiser.cjs'), 'utf8');
     const listed = new Set<string>();
     for (const name of ['DOMAIN_MODULES', 'SEAMS', 'SHARED', 'NON_CONTEXT']) {
-      const match = config.match(new RegExp(`const ${name} = '([^']+)'`));
+      // Prettier may wrap the ever-growing module list onto its own line.
+      const match = config.match(new RegExp(`const ${name} =\\s*'([^']+)'`));
       expect(match, `${name} is missing from .dependency-cruiser.cjs`).toBeTruthy();
       for (const part of match![1]!.split('|')) listed.add(part);
     }

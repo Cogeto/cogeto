@@ -17,7 +17,7 @@ import { RateLimit, RateLimitGuard } from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { NotesService } from './notes.service';
-import { UserSettingsService } from './user-settings.service';
+import { UserSettingsService } from '../settings/index';
 
 /** Zod at the boundary: non-blank, bounded content; optional scope. */
 const captureSchema = z.object({

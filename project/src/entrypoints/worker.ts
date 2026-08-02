@@ -25,8 +25,8 @@ import {
 } from '../memory/index';
 import { APPROVAL_EXPIRY_CRONTAB, ApprovalExecutor, ApprovalService } from '../agents/index';
 import { PassportExportExecutor, PASSPORT_RETENTION_CRONTAB } from '../passport/index';
+import { CONTEXT_SUGGEST_PROMPT } from '../settings/index';
 import {
-  CONTEXT_SUGGEST_PROMPT,
   EmailAllowlistService,
   EMAIL_REFUSAL_RETENTION_CRONTAB,
   ResearchConclusionService,

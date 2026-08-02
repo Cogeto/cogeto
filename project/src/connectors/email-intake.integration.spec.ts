@@ -25,7 +25,7 @@ import type { IngestionPipeline } from '../ingestion/index';
 import { UserDirectory } from '../identity/index';
 import { EmailAllowlistService } from './email-allowlist.service';
 import { EmailIntakeService } from './email-intake.service';
-import { UserSettingsService } from './user-settings.service';
+import { UserSettingsService } from '../settings/index';
 import { EmailSourceReader } from './email.source-reader';
 import { FileSourceReader } from './file.source-reader';
 import { NotesSourceReader } from './notes.source-reader';

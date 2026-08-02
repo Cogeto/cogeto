@@ -29,7 +29,7 @@ import { NotesService } from './notes.service';
 import { NotesSourceReader } from './notes.source-reader';
 import { FilesService } from './files.service';
 import { FileSourceReader } from './file.source-reader';
-import { UserSettingsService } from './user-settings.service';
+import { UserSettingsService } from '../settings/index';
 import { FilesController } from './files.controller';
 import type { AuthenticatedRequest } from '../identity/index';
 

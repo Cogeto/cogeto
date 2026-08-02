@@ -6,7 +6,6 @@ export { NotesSourceReader } from './notes.source-reader';
 export { NotesSourceDeletion } from './notes.source-deletion';
 export { FilesService } from './files.service';
 export { FileSourceReader } from './file.source-reader';
-export { UserSettingsService } from './user-settings.service';
 export { FILE_UPLOAD_OPTIONS } from './file-upload-options';
 export type { FileUploadOptions } from './file-upload-options';
 export {
@@ -51,12 +50,6 @@ export {
   RESEARCH_ANSWER_PROMPT,
 } from './research-synthesis.service';
 export type { ResearchSynthesisOptions } from './research-synthesis.service';
-export { UserContextController } from './user-context.controller';
-export {
-  ContextSuggestionsService,
-  CONTEXT_SUGGEST_PROMPT,
-  deriveCandidate,
-} from './context-suggestions.service';
 export { ResearchChatModule } from './research-chat.module';
 export { WebDiscoveryService } from './web-discovery.service';
 export type { DiscoveryOutcome, DiscoveredPage } from './web-discovery.service';

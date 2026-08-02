@@ -23,8 +23,8 @@ import {
   EmailSourceDeletion,
   EmailSourceReader,
   FileSourceReader,
-  UserSettingsService,
 } from '../connectors/index';
+import { UserSettingsService } from '../settings/index';
 import { ReplyDraftCascade } from '../agents/index';
 import { UserDirectory } from '../identity/index';
 import {

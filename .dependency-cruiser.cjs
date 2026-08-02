@@ -17,7 +17,8 @@
  * boundary-contract spec fails the build if this list and the directory
  * listing disagree, so the omission cannot repeat.
  */
-const DOMAIN_MODULES = 'memory|ingestion|retrieval|agents|connectors|passport|attention|operations';
+const DOMAIN_MODULES =
+  'memory|ingestion|retrieval|agents|connectors|settings|passport|attention|operations';
 const SEAMS = 'identity|model-gateway';
 const SHARED = 'infrastructure';
 const NON_CONTEXT = 'entrypoints|testing|migrations';

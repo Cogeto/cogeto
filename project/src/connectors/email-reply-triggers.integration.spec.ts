@@ -18,7 +18,7 @@ import { ActionRegistry, ApprovalService } from '../agents/index';
 import { UserDirectory } from '../identity/index';
 import { EmailAllowlistService } from './email-allowlist.service';
 import { EmailIntakeService } from './email-intake.service';
-import { UserSettingsService } from './user-settings.service';
+import { UserSettingsService } from '../settings/index';
 import { EmailReplyDraftService } from './email-reply-draft.service';
 import { EmailSourceService } from './email-source.service';
 

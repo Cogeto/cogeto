@@ -15,7 +15,7 @@ import { INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
 import { MemoryFileStore, MemoryObjectStore } from '../memory/index';
 import { UserDirectory } from '../identity/index';
 import { EmailAllowlistService } from './email-allowlist.service';
-import { UserSettingsService } from './user-settings.service';
+import { UserSettingsService } from '../settings/index';
 import { sniffContentType } from './document-extract';
 import { summarizeCalendarInvites } from './email-calendar';
 import { matchSender, normalizeAddress, sanitizeHtml } from './email-parse';
