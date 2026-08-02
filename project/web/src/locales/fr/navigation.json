@@ -1,28 +1,28 @@
 {
-  "landmark": "Primary",
+  "landmark": "Navigation principale",
   "section": {
-    "dashboard": "Dashboard",
-    "memories": "Memories",
-    "chat": "Chat",
-    "research": "Research",
-    "skills": "Skills",
-    "timeline": "Time travel",
+    "dashboard": "Tableau de bord",
+    "memories": "Souvenirs",
+    "chat": "Discussion",
+    "research": "Recherche",
+    "skills": "Compétences",
+    "timeline": "Voyage dans le temps",
     "review": "Contradictions",
-    "approvals": "Approvals",
-    "forgotten": "Forgotten",
+    "approvals": "Approbations",
+    "forgotten": "Oublié",
     "audit": "Audit",
-    "system": "System",
-    "settings": "Settings"
+    "system": "Système",
+    "settings": "Paramètres"
   },
   "badge": {
-    "items": "items",
-    "openContradictions": "open contradictions",
-    "pendingApprovals": "pending approvals",
-    "newSinceLastLook_one": "{{count}} new since you last looked",
-    "newSinceLastLook_many": "{{count}} new since you last looked",
-    "newSinceLastLook_other": "{{count}} new since you last looked"
+    "items": "éléments",
+    "openContradictions": "contradictions ouvertes",
+    "pendingApprovals": "approbations en attente",
+    "newSinceLastLook_one": "{{count}} nouveauté depuis votre dernière visite",
+    "newSinceLastLook_many": "{{count}} nouveautés depuis votre dernière visite",
+    "newSinceLastLook_other": "{{count}} nouveautés depuis votre dernière visite"
   },
-  "liveSandbox": "Live sandbox",
-  "signOut": "Sign out",
-  "versionTitle": "Cogeto version"
+  "liveSandbox": "Environnement de démonstration actif",
+  "signOut": "Se déconnecter",
+  "versionTitle": "Version de Cogeto"
 }

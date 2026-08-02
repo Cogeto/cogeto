@@ -19,13 +19,13 @@
     "failed": "Trenutno ne mogu pripremiti brief. Pokušaj ponovno sa stranice Skills."
   },
   "reply": {
-    "noneForTarget": "I couldn't find a recent email from \"{{target}}\". Open the email in Cogeto and use \"Draft reply\" on it, and I'll write a suggested response.",
-    "noneAtAll": "I couldn't find a recent email to reply to. Open the email you mean and use \"Draft reply\" on it.",
-    "ambiguous": "I found more than one email that might match \"{{target}}\". Which one should I reply to?\n\n{{candidates}}\n\nTell me the sender or subject and I'll draft it.",
+    "noneForTarget": "Nisam pronašao nedavnu e-poruku od \"{{target}}\". Otvori e-poruku u sustavu Cogeto i upotrijebi \"Napiši skicu odgovora\", a ja ću napisati prijedlog odgovora.",
+    "noneAtAll": "Nisam pronašao nedavnu e-poruku na koju treba odgovoriti. Otvori željenu e-poruku i upotrijebi \"Napiši skicu odgovora\".",
+    "ambiguous": "Pronašao sam više e-poruka koje bi mogle odgovarati pojmu \"{{target}}\". Na koju trebam odgovoriti?\n\n{{candidates}}\n\nReci mi pošiljatelja ili predmet i napisat ću skicu.",
     "candidateLine": "{{index}}. {{from}}, \"{{subject}}\" ({{date}})",
-    "noSubject": "(no subject)",
-    "drafted": "I've drafted a reply to {{recipient}}. Open the Approvals page to review it, then send it from your own mail client, Cogeto never sends mail for you.",
-    "draftedUnknownRecipient": "I've drafted a reply, but this message looks forwarded and I couldn't work out the original recipient. Open the Approvals page, set the recipient, then send it yourself, Cogeto never sends mail.",
-    "failed": "I couldn't draft that reply just now. You can open the email and use \"Draft reply\" on it."
+    "noSubject": "(bez predmeta)",
+    "drafted": "Napisao sam skicu odgovora za {{recipient}}. Otvori stranicu Odobrenja kako bi je pregledao, a zatim je pošalji iz vlastitog programa za e-poštu. Cogeto nikad ne šalje poštu umjesto tebe.",
+    "draftedUnknownRecipient": "Napisao sam skicu odgovora, ali čini se da je poruka proslijeđena i nisam mogao utvrditi izvornog primatelja. Otvori stranicu Odobrenja, postavi primatelja i zatim samostalno pošalji poruku. Cogeto nikad ne šalje poštu.",
+    "failed": "Trenutačno nisam mogao napisati skicu odgovora. Otvori e-poruku i upotrijebi \"Napiši skicu odgovora\"."
   }
 }

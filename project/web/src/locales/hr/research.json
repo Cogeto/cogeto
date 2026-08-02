@@ -1,80 +1,80 @@
 {
   "runStatus": {
-    "proposed": "awaiting your approval",
-    "approved": "approved",
-    "cancelled": "cancelled",
-    "concluded": "concluded"
+    "proposed": "čeka vaše odobrenje",
+    "approved": "odobreno",
+    "cancelled": "otkazano",
+    "concluded": "zaključeno"
   },
   "citation": {
-    "webTitle": "{{title}} · fetched {{when}}"
+    "webTitle": "{{title}} · dohvaćeno {{when}}"
   },
   "page": {
-    "heading": "Ask the web, on your terms",
-    "explainer": "Research is explicitly invoked and honest about what leaves: Cogeto minimises the query, shows you exactly what would be sent, and sends nothing until you approve it. Fetched pages become inspectable, deletable web memories.",
-    "intentPlaceholder": "e.g. GDPR consent requirements when migrating a CRM",
-    "prepare": "Prepare research",
-    "preparing": "Preparing…",
-    "newResearch": "New research"
+    "heading": "Pitajte web pod svojim uvjetima",
+    "explainer": "Istraživanje se pokreće izričito i jasno prikazuje što se šalje: Cogeto svodi upit na najmanju potrebnu mjeru, pokazuje vam točno što bi se poslalo i ne šalje ništa dok to ne odobrite. Dohvaćene stranice postaju sjećanja s weba koja možete pregledati i izbrisati.",
+    "intentPlaceholder": "npr. zahtjevi GDPR-a za privolu pri migraciji CRM-a",
+    "prepare": "Pripremi istraživanje",
+    "preparing": "Priprema…",
+    "newResearch": "Novo istraživanje"
   },
   "gate": {
-    "heading": "Approve what leaves",
-    "explainer": "Nothing has been sent. This is the exact query that will reach public search engines if you approve. Edit it freely first.",
-    "proposedPrefix": "− proposed: ",
-    "queryLabel": "The query that will be sent",
-    "editedNote": " · You edited the query. Your text is what will be sent.",
-    "approve": "Approve & search",
-    "searching": "Searching…",
-    "cancel": "Cancel, send nothing"
+    "heading": "Odobrite što se šalje",
+    "explainer": "Ništa nije poslano. Ovo je točan upit koji će stići do javnih tražilica ako ga odobrite. Prije toga ga slobodno uredite.",
+    "proposedPrefix": "predloženo: ",
+    "queryLabel": "Upit koji će se poslati",
+    "editedNote": " · Uredili ste upit. Poslat će se vaš tekst.",
+    "approve": "Odobri i pretraži",
+    "searching": "Pretraživanje…",
+    "cancel": "Odustani bez slanja"
   },
   "results": {
-    "heading": "Results: pick the pages worth reading",
-    "sentQuery": "Sent query: <q>{{query}}</q>, recorded on this run and on every memory this research produces.",
-    "selectPage": "Select {{page}}",
-    "fetching": "Fetching…",
-    "fetchSelected_one": "Fetch {{count}} selected page",
-    "fetchSelected_few": "Fetch {{count}} selected pages",
-    "fetchSelected_other": "Fetch {{count}} selected pages",
-    "fetchNote": "Pages are fetched by this instance, robots-respecting, never rendered.",
-    "captured": "✓ {{url}} · captured, extracting…",
-    "synthesise": "Synthesise a cited answer",
-    "synthesising": "Synthesising…",
+    "heading": "Rezultati: odaberite stranice koje vrijedi pročitati",
+    "sentQuery": "Poslani upit: <q>{{query}}</q>, zabilježen u ovom izvođenju i u svakom sjećanju koje ovo istraživanje stvori.",
+    "selectPage": "Odaberi {{page}}",
+    "fetching": "Dohvaćanje…",
+    "fetchSelected_one": "Dohvati {{count}} odabranu stranicu",
+    "fetchSelected_few": "Dohvati {{count}} odabrane stranice",
+    "fetchSelected_other": "Dohvati {{count}} odabranih stranica",
+    "fetchNote": "Stranice dohvaća ova instanca uz poštovanje pravila za robote i nikad ih ne iscrtava.",
+    "captured": "✓ {{url}} · spremljeno, izdvajanje…",
+    "synthesise": "Sastavi odgovor s navodima",
+    "synthesising": "Sastavljanje…",
     "empty": {
-      "title": "No results",
-      "body": "The engines returned nothing for this query. Start a new research with different wording."
+      "title": "Nema rezultata",
+      "body": "Tražilice nisu vratile ništa za ovaj upit. Pokrenite novo istraživanje s drukčijim tekstom."
     }
   },
   "answer": {
-    "heading": "Answer: every claim traceable",
-    "note": "Web citations link to the page as fetched; the facts persist as web memories you can inspect and delete from the Memories page."
+    "heading": "Odgovor: svaka je tvrdnja sljediva",
+    "note": "Web-navodi vode na dohvaćenu stranicu. Činjenice ostaju spremljene kao sjećanja s weba koja možete pregledati i izbrisati na stranici Sjećanja."
   },
   "past": {
-    "heading": "Past research",
-    "loading": "Loading research runs…",
-    "error": "We couldn't load past research.",
-    "sent": "sent: <q>“{{query}}”</q>",
-    "nothingSent": "nothing was sent",
-    "reviewApprove": "Review & approve",
-    "viewAnswer": "View answer",
+    "heading": "Prošla istraživanja",
+    "loading": "Istraživanja se učitavaju…",
+    "error": "Nismo mogli učitati prošla istraživanja.",
+    "sent": "poslano: <q>„{{query}}”</q>",
+    "nothingSent": "ništa nije poslano",
+    "reviewApprove": "Pregledaj i odobri",
+    "viewAnswer": "Prikaži odgovor",
     "empty": {
-      "title": "No research yet",
-      "body": "Everything you approve is recorded here."
+      "title": "Još nema istraživanja",
+      "body": "Sve što odobrite bilježi se ovdje."
     }
   },
   "inline": {
     "webLabel": "Web",
-    "searched": "searched <q>“{{query}}”</q>",
-    "readingTop_one": "· reading the top {{count}} source by relevance",
-    "readingTop_few": "· reading the top {{count}} sources by relevance",
-    "readingTop_other": "· reading the top {{count}} sources by relevance",
-    "searching": "Searching the web…",
-    "cancelled": "Cancelled. Nothing more was read.",
-    "noResults": "The engines returned nothing for this query. Try rephrasing your question.",
-    "skipped": "⨯ {{url}} · skipped ({{detail}})",
-    "nothingRead": "This research never read any pages, so there is nothing to wait for.",
-    "extracting": "Extracting and verifying facts…",
-    "extractingWithCount_one": "Extracting and verifying facts… {{count}} remembered so far.",
-    "extractingWithCount_few": "Extracting and verifying facts… {{count}} remembered so far.",
-    "extractingWithCount_other": "Extracting and verifying facts… {{count}} remembered so far.",
-    "writingAnswer": "Writing the answer into this conversation…"
+    "searched": "pretraženo <q>„{{query}}”</q>",
+    "readingTop_one": "· čitanje {{count}} najrelevantnijeg izvora",
+    "readingTop_few": "· čitanje {{count}} najrelevantnija izvora",
+    "readingTop_other": "· čitanje {{count}} najrelevantnijih izvora",
+    "searching": "Pretraživanje weba…",
+    "cancelled": "Otkazano. Ništa više nije pročitano.",
+    "noResults": "Tražilice nisu vratile ništa za ovaj upit. Pokušajte drukčije oblikovati pitanje.",
+    "skipped": "⨯ {{url}} · preskočeno ({{detail}})",
+    "nothingRead": "Ovo istraživanje nije pročitalo nijednu stranicu, pa nema što čekati.",
+    "extracting": "Izdvajanje i provjera činjenica…",
+    "extractingWithCount_one": "Izdvajanje i provjera činjenica… dosad je zapamćena {{count}} činjenica.",
+    "extractingWithCount_few": "Izdvajanje i provjera činjenica… dosad su zapamćene {{count}} činjenice.",
+    "extractingWithCount_other": "Izdvajanje i provjera činjenica… dosad je zapamćeno {{count}} činjenica.",
+    "writingAnswer": "Upisivanje odgovora u ovaj razgovor…"
   }
 }

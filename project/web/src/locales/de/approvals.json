@@ -1,49 +1,49 @@
 {
   "status": {
-    "draft": "draft",
-    "pending_approval": "pending",
-    "approved": "approved",
-    "executed": "executed",
-    "rejected": "rejected",
-    "expired": "expired"
+    "draft": "Entwurf",
+    "pending_approval": "ausstehend",
+    "approved": "genehmigt",
+    "executed": "ausgeführt",
+    "rejected": "abgelehnt",
+    "expired": "abgelaufen"
   },
   "tab": {
-    "pending": "Pending",
-    "history": "History",
-    "awaitingNoun": "awaiting approval"
+    "pending": "Ausstehend",
+    "history": "Verlauf",
+    "awaitingNoun": "wartet auf Genehmigung"
   },
   "pending": {
-    "loading": "Loading approvals…",
-    "error": "We couldn't load pending approvals.",
-    "requestedBy": "{{action}} · requested by {{who}}",
-    "unknownRequester": "unknown",
-    "expires": "Expires {{when}}",
-    "approve": "Approve",
-    "reject": "Reject",
-    "rejectConfirm": "Reject this action? It will not run.",
-    "serverSideNote": "Approving runs the action server-side in the worker. This is the only path; there is no client-side shortcut.",
+    "loading": "Genehmigungen werden geladen…",
+    "error": "Die ausstehenden Genehmigungen konnten nicht geladen werden.",
+    "requestedBy": "{{action}} · angefordert von {{who}}",
+    "unknownRequester": "unbekannt",
+    "expires": "Läuft {{when}} ab",
+    "approve": "Genehmigen",
+    "reject": "Ablehnen",
+    "rejectConfirm": "Diese Aktion ablehnen? Sie wird nicht ausgeführt.",
+    "serverSideNote": "Durch die Genehmigung wird die Aktion serverseitig im Hintergrundprozess ausgeführt. Dies ist der einzige Weg, es gibt keine Abkürzung auf der Clientseite.",
     "empty": {
-      "title": "Nothing awaiting approval",
-      "body": "Consequential actions (like a bulk memory change from Memories) land here for you to approve or reject. Cogeto never runs them on its own."
+      "title": "Nichts wartet auf Genehmigung",
+      "body": "Aktionen mit wesentlichen Folgen, etwa eine gebündelte Änderung von Erinnerungen unter Erinnerungen, erscheinen hier zur Genehmigung oder Ablehnung. Cogeto führt sie nie selbstständig aus."
     }
   },
   "history": {
-    "loading": "Loading history…",
-    "error": "We couldn't load the approval history.",
-    "decidedBy": " · decided by {{who}}",
+    "loading": "Verlauf wird geladen…",
+    "error": "Der Genehmigungsverlauf konnte nicht geladen werden.",
+    "decidedBy": " · entschieden von {{who}}",
     "empty": {
-      "title": "No decided approvals yet",
-      "body": "Once you approve or reject an action, it's recorded here."
+      "title": "Noch keine entschiedenen Genehmigungen",
+      "body": "Wenn Sie eine Aktion genehmigen oder ablehnen, wird sie hier erfasst."
     }
   },
   "draft": {
-    "view": "View / send draft",
-    "hide": "Hide draft",
-    "to": "To:",
-    "subject": "Subject: {{subject}}",
-    "copyBody": "Copy body",
-    "downloadEml": "Download .eml",
-    "openInClient": "Open in mail client",
-    "neverSends": "Cogeto does <b>not</b> send mail. Send this reply yourself from your own client."
+    "view": "Entwurf ansehen oder senden",
+    "hide": "Entwurf ausblenden",
+    "to": "An:",
+    "subject": "Betreff: {{subject}}",
+    "copyBody": "Text kopieren",
+    "downloadEml": ".eml herunterladen",
+    "openInClient": "Im E-Mail-Programm öffnen",
+    "neverSends": "Cogeto sendet <b>keine</b> E-Mails. Senden Sie diese Antwort selbst aus Ihrem eigenen E-Mail-Programm."
   }
 }

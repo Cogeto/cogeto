@@ -1,88 +1,88 @@
 {
   "attention": {
-    "heading": "What needs you right now",
-    "unreadCount_one": "{{count}} new",
-    "unreadCount_few": "{{count}} new",
-    "unreadCount_other": "{{count}} new",
-    "newSuffix": "(new)",
-    "dismissItem": "Dismiss: {{title}}",
-    "loading": "Loading your attention feed…",
-    "error": "We couldn't load your attention feed just now.",
+    "heading": "Što sada zahtijeva vašu pozornost",
+    "unreadCount_one": "{{count}} novo",
+    "unreadCount_few": "{{count}} nova",
+    "unreadCount_other": "{{count}} novih",
+    "newSuffix": "(novo)",
+    "dismissItem": "Odbaci: {{title}}",
+    "loading": "Sažetak stavki za vašu pozornost se učitava…",
+    "error": "Trenutačno nismo mogli učitati stavke za vašu pozornost.",
     "liveRegion": {
-      "needsAttention_one": "{{count}} item needs your attention",
-      "needsAttention_few": "{{count}} items need your attention",
-      "needsAttention_other": "{{count}} items need your attention",
-      "nothing": "Nothing needs your attention right now"
+      "needsAttention_one": "{{count}} stavka zahtijeva vašu pozornost",
+      "needsAttention_few": "{{count}} stavke zahtijevaju vašu pozornost",
+      "needsAttention_other": "{{count}} stavki zahtijeva vašu pozornost",
+      "nothing": "Trenutačno ništa ne zahtijeva vašu pozornost"
     },
     "empty": {
-      "title": "Nothing needs you right now",
-      "body": "Due work, quiet commitments, review items, approvals and last night's changes will surface here."
+      "title": "Trenutačno ništa ne zahtijeva vašu pozornost",
+      "body": "Ovdje će se prikazati dospjeli zadaci, obveze bez aktivnosti, stavke za pregled, odobrenja i sinoćnje promjene."
     },
     "group": {
-      "open_loops": "Due & overdue",
-      "quiet": "Gone quiet",
-      "review": "Facts that disagree",
-      "approvals": "Awaiting your approval",
-      "overnight": "Last night"
+      "open_loops": "Dospjelo i prekoračeno",
+      "quiet": "Bez aktivnosti",
+      "review": "Neusklađene činjenice",
+      "approvals": "Čeka vaše odobrenje",
+      "overnight": "Sinoć"
     }
   },
   "skillsEntry": {
-    "title": "Research a company or person before a meeting",
-    "body": "A sourced brief: what you know, what changed, every step inspectable."
+    "title": "Istražite tvrtku ili osobu prije sastanka",
+    "body": "Sažetak s izvorima: što znate, što se promijenilo i svaki korak koji možete pregledati."
   },
   "stats": {
-    "heading": "Your practice at a glance",
-    "loading": "Loading statistics…",
-    "error": "The statistics aren't available right now.",
+    "heading": "Vaša aktivnost na prvi pogled",
+    "loading": "Statistika se učitava…",
+    "error": "Statistika trenutačno nije dostupna.",
     "kpi": {
-      "memories": "Memories",
-      "stillOpen": "Still open",
-      "contradictions": "Contradictions",
-      "approvals": "Approvals",
-      "oldestConflict": "Oldest conflict",
-      "oldestNone": "None",
-      "oldestDays": "{{days}}d",
-      "oldestTitleNone": "No unresolved contradictions",
-      "oldestTitle_one": "Oldest unresolved contradiction: {{count}} day old",
-      "oldestTitle_few": "Oldest unresolved contradiction: {{count}} days old",
-      "oldestTitle_other": "Oldest unresolved contradiction: {{count}} days old"
+      "memories": "Sjećanja",
+      "stillOpen": "Još otvoreno",
+      "contradictions": "Proturječnosti",
+      "approvals": "Odobrenja",
+      "oldestConflict": "Najstariji sukob",
+      "oldestNone": "Nema",
+      "oldestDays": "{{days}} d",
+      "oldestTitleNone": "Nema neriješenih proturječnosti",
+      "oldestTitle_one": "Najstarija neriješena proturječnost stara je {{count}} dan",
+      "oldestTitle_few": "Najstarija neriješena proturječnost stara je {{count}} dana",
+      "oldestTitle_other": "Najstarija neriješena proturječnost stara je {{count}} dana"
     },
     "donut": {
-      "heading": "Memory by status",
-      "unit": "memories",
-      "empty": "Nothing captured yet. As you add notes, emails and files, they'll appear here by status.",
-      "summaryEmpty": "No memories yet.",
-      "summary_one": "{{count}} memories: {{breakdown}}.",
-      "summary_few": "{{count}} memories: {{breakdown}}.",
-      "summary_other": "{{count}} memories: {{breakdown}}.",
+      "heading": "Pamćenje prema statusu",
+      "unit": "sjećanja",
+      "empty": "Još ništa nije zabilježeno. Kada dodate bilješke, e-poštu i datoteke, ovdje će se prikazati prema statusu.",
+      "summaryEmpty": "Još nema sjećanja.",
+      "summary_one": "{{count}} sjećanje: {{breakdown}}.",
+      "summary_few": "{{count}} sjećanja: {{breakdown}}.",
+      "summary_other": "{{count}} sjećanja: {{breakdown}}.",
       "segment_one": "{{count}} {{status}}",
       "segment_few": "{{count}} {{status}}",
       "segment_other": "{{count}} {{status}}"
     },
     "sources": {
-      "heading": "Sources · last {{days}} days",
-      "ingested_one": "{{count}} ingested →",
-      "ingested_few": "{{count}} ingested →",
-      "ingested_other": "{{count}} ingested →",
+      "heading": "Izvori · posljednjih {{days}} dana",
+      "ingested_one": "{{count}} uvezen →",
+      "ingested_few": "{{count}} uvezena →",
+      "ingested_other": "{{count}} uvezeno →",
       "familyTotal_one": "<n>{{count}}</n> {{family}}",
       "familyTotal_few": "<n>{{count}}</n> {{family}}",
       "familyTotal_other": "<n>{{count}}</n> {{family}}"
     },
     "dreaming": {
-      "heading": "Dreaming · last {{days}} days",
-      "mergesLabel": "Merges: {{count}}",
-      "conflictsLabel": "Conflicts caught: {{count}}",
-      "merges_one": "<n>{{count}}</n> merges",
-      "merges_few": "<n>{{count}}</n> merges",
-      "merges_other": "<n>{{count}}</n> merges",
-      "conflicts_one": "<n>{{count}}</n> conflicts caught →",
-      "conflicts_few": "<n>{{count}}</n> conflicts caught →",
-      "conflicts_other": "<n>{{count}}</n> conflicts caught →"
+      "heading": "Sanjanje · posljednjih {{days}} dana",
+      "mergesLabel": "Spajanja: {{count}}",
+      "conflictsLabel": "Otkriveni sukobi: {{count}}",
+      "merges_one": "<n>{{count}}</n> spajanje",
+      "merges_few": "<n>{{count}}</n> spajanja",
+      "merges_other": "<n>{{count}}</n> spajanja",
+      "conflicts_one": "<n>{{count}}</n> otkriven sukob →",
+      "conflicts_few": "<n>{{count}}</n> otkrivena sukoba →",
+      "conflicts_other": "<n>{{count}}</n> otkrivenih sukoba →"
     }
   },
   "charts": {
-    "noActivity": "No activity in the last {{days}} days.",
-    "lastDays": "Last {{days}} days: {{totals}}.",
+    "noActivity": "Nema aktivnosti u posljednjih {{days}} dana.",
+    "lastDays": "Posljednjih {{days}} dana: {{totals}}.",
     "seriesTotal_one": "{{count}} {{family}}",
     "seriesTotal_few": "{{count}} {{family}}",
     "seriesTotal_other": "{{count}} {{family}}"

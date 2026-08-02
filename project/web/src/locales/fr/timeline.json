@@ -1,70 +1,66 @@
 {
   "page": {
-    "subjectLabel": "Subject: a person, project, or topic",
-    "subjectPlaceholder": "e.g. Atlas, Ana Kovač, the CRM…",
-    "viewHistory": "View history",
-    "explainer": "See how your knowledge about a subject changed over time: what you believed then, what changed, and what caused it. Every claim links to its source.",
+    "subjectLabel": "Sujet : personne, projet ou thème",
+    "subjectPlaceholder": "par ex. Atlas, Ana Kovač, le CRM…",
+    "viewHistory": "Voir l’historique",
+    "explainer": "Voyez comment vos connaissances sur un sujet ont évolué : ce que vous pensiez alors, ce qui a changé et ce qui a causé ce changement. Chaque affirmation renvoie à sa source.",
     "empty": {
-      "title": "Pick a subject to travel through its history.",
-      "body": "Ask “what did I believe about X in March?” or “what changed about Y since last month?” Here you get the visual answer. You can also open a memory and choose “Timeline”."
+      "title": "Choisissez un sujet pour parcourir son historique.",
+      "body": "Demandez : « Que pensais-je de X en mars ? » ou « Qu’est-ce qui a changé concernant Y depuis le mois dernier ? » Vous obtenez ici une réponse visuelle. Vous pouvez aussi ouvrir un souvenir et choisir « Chronologie »."
     }
   },
-  "tab": {
-    "timeline": "Timeline",
-    "at": "At a date",
-    "compare": "Compare two dates"
-  },
+  "tab": { "timeline": "Chronologie", "at": "À une date", "compare": "Comparer deux dates" },
   "sourcePhrase": {
-    "note": "a note",
-    "chat": "a chat message",
-    "email": "an email",
-    "document": "a document",
-    "other": "a {{kind}}"
+    "note": "une note",
+    "chat": "un message de discussion",
+    "email": "un e-mail",
+    "document": "un document",
+    "other": "une source de type {{kind}}"
   },
   "fate": {
-    "stillCurrent": "still current",
-    "replaced": "later replaced",
-    "outdated": "later marked outdated",
-    "expired": "later expired"
+    "stillCurrent": "toujours actuel",
+    "replaced": "remplacé par la suite",
+    "outdated": "marqué obsolète par la suite",
+    "expired": "expiré par la suite"
   },
   "spans": {
-    "loading": "Loading the timeline…",
-    "error": "Couldn't load this timeline.",
+    "loading": "Chargement de la chronologie…",
+    "error": "Impossible de charger cette chronologie.",
     "period": "{{from}} → {{until}}",
-    "periodOpen": "since {{from}}",
-    "openFact": "Open this fact: its verification, provenance and source",
-    "current": "current",
-    "past": "past",
-    "whatReplacedIt": "→ what replaced it",
+    "periodOpen": "depuis {{from}}",
+    "openFact": "Ouvrir ce fait avec sa vérification, sa provenance et sa source",
+    "current": "actuel",
+    "past": "ancien",
+    "whatReplacedIt": "→ ce qui l’a remplacé",
     "empty": {
-      "title": "Nothing on record about {{subject}}.",
-      "body": "When you capture facts that mention {{subject}}, their history appears here."
+      "title": "Rien n’est enregistré au sujet de {{subject}}.",
+      "body": "Lorsque vous capturez des faits qui mentionnent {{subject}}, leur historique apparaît ici."
     }
   },
   "at": {
-    "moveToDate": "Move to a date",
-    "explainer": "What Cogeto understood about {{subject}} on {{date}}, including facts since replaced, each labelled with what happened to it later.",
-    "loading": "Reconstructing that moment…",
-    "error": "Couldn't reconstruct that moment.",
-    "empty": "Nothing was on record about {{subject}} then."
+    "moveToDate": "Accéder à une date",
+    "explainer": "Ce que Cogeto comprenait au sujet de {{subject}} le {{date}}, y compris les faits remplacés depuis. Chaque fait indique ce qui lui est arrivé par la suite.",
+    "loading": "Reconstitution de ce moment…",
+    "error": "Impossible de reconstituer ce moment.",
+    "empty": "Rien n’était alors enregistré au sujet de {{subject}}."
   },
   "compare": {
-    "from": "From",
-    "to": "To",
-    "pickTwo": "Pick two dates to see what changed between them.",
-    "loading": "Comparing…",
-    "error": "Couldn't compare those dates.",
-    "nothingChanged": "Nothing changed about {{subject}} between {{from}} and {{to}}.",
-    "everythingHeld": "Everything on record then still held.",
-    "nothingOnRecord": "There was nothing on record in that window.",
-    "whatChanged": "What changed",
-    "whatYouLearned": "What you learned",
-    "whatBecameOutdated": "What became outdated"
+    "from": "Du",
+    "to": "Au",
+    "pickTwo": "Choisissez deux dates pour voir ce qui a changé entre elles.",
+    "loading": "Comparaison…",
+    "error": "Impossible de comparer ces dates.",
+    "nothingChanged": "Rien n’a changé au sujet de {{subject}} entre {{from}} et {{to}}.",
+    "everythingHeld": "Tout ce qui était alors enregistré restait valable.",
+    "nothingOnRecord": "Rien n’était enregistré pendant cette période.",
+    "whatChanged": "Ce qui a changé",
+    "whatYouLearned": "Ce que vous avez appris",
+    "whatBecameOutdated": "Ce qui est devenu obsolète"
   },
   "change": {
-    "inDate": "In {{date}},",
-    "byDate": "By {{date}}, {{source}} changed it to",
-    "explainInChat": "Explain this change in chat →",
-    "chatQuestion": "What changed about {{subject}}, and what caused it, between {{from}} and {{to}}?"
+    "inDate": "Le {{date}} :",
+    "byDate": "Au {{date}}, {{source}} l’a remplacé par",
+    "explainInChat": "Expliquer ce changement dans la discussion →",
+    "chatQuestion": "Qu’est-ce qui a changé au sujet de {{subject}} entre {{from}} et {{to}}, et pour quelle raison ?"
   }
 }

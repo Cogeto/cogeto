@@ -1,24 +1,24 @@
 {
-  "heading": "Audit trail",
-  "loading": "Loading audit trail…",
-  "error": "We couldn't load the audit trail.",
-  "appendOnly": "read-only · append-only",
-  "entryCount_one": "{{count}} entries",
-  "entryCount_many": "{{count}} entries",
-  "entryCount_other": "{{count}} entries",
+  "heading": "Journal d’audit",
+  "loading": "Chargement du journal d’audit…",
+  "error": "Impossible de charger le journal d’audit.",
+  "appendOnly": "lecture seule · ajout uniquement",
+  "entryCount_one": "{{count}} entrée",
+  "entryCount_many": "{{count}} entrées",
+  "entryCount_other": "{{count}} entrées",
   "row": {
-    "byActor": "by {{actor}}",
-    "detailsWithheld": "Details visible to the entry's owner only."
+    "byActor": "par {{actor}}",
+    "detailsWithheld": "Les détails sont visibles uniquement par le propriétaire de l’entrée."
   },
   "filter": {
-    "actor": "actor…",
+    "actor": "acteur…",
     "action": "action…",
-    "entityType": "entity type…",
-    "from": "from",
-    "to": "to"
+    "entityType": "type d’entité…",
+    "from": "du",
+    "to": "au"
   },
   "empty": {
-    "title": "No entries match these filters",
-    "body": "The audit trail records every consequential action: approvals, deletions, scope and settings changes. Clear the filters to see the full history."
+    "title": "Aucune entrée ne correspond à ces filtres",
+    "body": "Le journal d’audit enregistre chaque action aux conséquences importantes : approbations, suppressions et modifications de la portée ou des paramètres. Effacez les filtres pour voir l’historique complet."
   }
 }

@@ -1,9 +1,9 @@
 {
   "auth": {
-    "loginFailed": "login failed: {{detail}}",
-    "callbackIncomplete": "login callback is missing the code or verifier",
-    "stateMismatch": "login callback state mismatch",
-    "demoCredentials": "Invalid demo username or password.",
-    "demoNoSession": "Demo login did not return a session."
+    "loginFailed": "prijava nije uspjela: {{detail}}",
+    "callbackIncomplete": "povratnom pozivu za prijavu nedostaje kod ili verifikator",
+    "stateMismatch": "stanje povratnog poziva za prijavu ne odgovara",
+    "demoCredentials": "Korisničko ime ili lozinka za pokazno okruženje nisu valjani.",
+    "demoNoSession": "Prijava u pokazno okruženje nije vratila sesiju."
   }
 }

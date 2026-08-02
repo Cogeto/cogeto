@@ -1,37 +1,37 @@
 {
-  "loading": "Loading contradictions…",
-  "error": "We couldn't load the contradictions.",
+  "loading": "Proturječnosti se učitavaju…",
+  "error": "Nismo mogli učitati proturječnosti.",
   "empty": {
-    "title": "No open contradictions",
-    "body": "Your memories agree with each other. When two facts about the same thing disagree, they'll appear here side by side to resolve. Everything else Cogeto settles on its own."
+    "title": "Nema otvorenih proturječnosti",
+    "body": "Vaša su sjećanja međusobno usklađena. Kada se dvije činjenice o istoj stvari ne slažu, ovdje će se prikazati jedna uz drugu kako biste ih razriješili. Sve ostalo Cogeto rješava samostalno."
   },
   "factKind": {
-    "commitment": "commitment",
-    "decision": "decision",
-    "preference": "preference",
-    "fact": "fact",
-    "open_loop": "open loop"
+    "commitment": "obveza",
+    "decision": "odluka",
+    "preference": "preferencija",
+    "fact": "činjenica",
+    "open_loop": "otvorena stavka"
   },
   "side": {
-    "captured": "captured {{when}}",
-    "capturedWithKind": "{{kind}} · captured {{when}}",
-    "loadingSource": "Loading source…"
+    "captured": "spremljeno {{when}}",
+    "capturedWithKind": "{{kind}} · spremljeno {{when}}",
+    "loadingSource": "Izvor se učitava…"
   },
   "item": {
-    "heading": "These two facts disagree",
-    "newerFact": "Newer fact",
-    "earlierFact": "Earlier fact",
-    "versus": "vs",
-    "whyFlagged": "Why it was flagged:",
-    "correctedNewer": "Corrected newer fact",
-    "correctedEarlier": "Corrected earlier fact",
-    "correctionExplainer": "Corrections never rewrite history: each saves a new, approved version and keeps the old one as its predecessor.",
-    "saveBoth": "Save both corrections",
-    "newerIsRight": "The newer fact is right",
-    "earlierIsRight": "The earlier fact is right",
-    "correctBoth": "Correct both",
-    "notAConflict": "Not a conflict",
-    "notAConflictTitle": "They don't actually conflict. Restore both as they were",
-    "detected": "detected {{when}}"
+    "heading": "Ove dvije činjenice nisu usklađene",
+    "newerFact": "Novija činjenica",
+    "earlierFact": "Ranija činjenica",
+    "versus": "nasuprot",
+    "whyFlagged": "Razlog označavanja:",
+    "correctedNewer": "Ispravljena novija činjenica",
+    "correctedEarlier": "Ispravljena ranija činjenica",
+    "correctionExplainer": "Ispravci nikad ne prepisuju povijest: svaki sprema novu, odobrenu verziju i čuva staru kao njezinu prethodnicu.",
+    "saveBoth": "Spremi oba ispravka",
+    "newerIsRight": "Novija je činjenica točna",
+    "earlierIsRight": "Ranija je činjenica točna",
+    "correctBoth": "Ispravi obje",
+    "notAConflict": "Nije sukob",
+    "notAConflictTitle": "Zapravo nisu u sukobu. Vratite obje u prethodno stanje",
+    "detected": "otkriveno {{when}}"
   }
 }

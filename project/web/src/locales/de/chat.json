@@ -1,101 +1,99 @@
 {
-  "loadingConversation": "Loading conversation…",
-  "answerFailed": "That answer didn't come through. Try asking again.",
-  "skillRunHandoff": "Open the brief run: approve the search plan and watch each step →",
-  "role": {
-    "you": "You"
-  },
+  "loadingConversation": "Unterhaltung wird geladen…",
+  "answerFailed": "Diese Antwort ist nicht angekommen. Fragen Sie erneut.",
+  "skillRunHandoff": "Briefing-Ausführung öffnen: Suchplan genehmigen und jeden Schritt verfolgen →",
+  "role": { "you": "Sie" },
   "answer": {
-    "standsOn": "Stands on",
-    "attribution": "Cogeto · from your memory",
-    "askedByAt": "You · {{time}}"
+    "standsOn": "Basiert auf",
+    "attribution": "Cogeto · aus Ihrem Wissensstand",
+    "askedByAt": "Sie · {{time}}"
   },
   "empty": {
-    "title": "Ask your memory.",
-    "body": "Every answer shows, sentence by sentence, what Cogeto can prove, and honestly marks what it can't. The web is searched only when you ask and approve.",
-    "workspaceNote": "This is one conversation: a workspace for one thread of work. Anything captured here becomes memory and answers in every other conversation too."
+    "title": "Fragen Sie Ihr Wissen.",
+    "body": "Jede Antwort zeigt Satz für Satz, was Cogeto belegen kann, und kennzeichnet ehrlich, was nicht belegt werden kann. Das Web wird nur durchsucht, wenn Sie es anfordern und genehmigen.",
+    "workspaceNote": "Dies ist eine Unterhaltung, ein Arbeitsbereich für einen Arbeitsstrang. Alles, was hier erfasst wird, geht in Ihren Wissensstand ein und steht auch für Antworten in allen anderen Unterhaltungen zur Verfügung."
   },
   "suggestedPrompts": {
-    "promisedThisWeek": "What did I promise this week?",
-    "openCommitments": "Summarise my open commitments",
-    "changedSince": "What changed since last month?",
-    "whoInvolved": "Who is involved in my active work?"
+    "promisedThisWeek": "Was habe ich diese Woche versprochen?",
+    "openCommitments": "Fasse meine offenen Verpflichtungen zusammen",
+    "changedSince": "Was hat sich seit letztem Monat geändert?",
+    "whoInvolved": "Wer ist an meiner aktiven Arbeit beteiligt?"
   },
   "thinking": {
-    "default": "Thinking…",
-    "fromMemories": "Answering from your memories…"
+    "default": "Denkt nach…",
+    "fromMemories": "Antwort wird aus Ihren Erinnerungen erstellt…"
   },
   "composer": {
-    "label": "Ask a question",
-    "placeholder": "Ask your memory…",
-    "send": "Send",
-    "hint": "Enter to send · Shift+Enter for a new line · every claim shows what it can prove"
+    "label": "Frage stellen",
+    "placeholder": "Fragen Sie Ihr Wissen…",
+    "send": "Senden",
+    "hint": "Eingabetaste zum Senden · Umschalt+Eingabetaste für eine neue Zeile · jede Behauptung zeigt ihre Belege"
   },
   "remember": {
-    "action": "Remember this",
-    "title": "Remember this message. It becomes memory through the normal pipeline",
-    "pending": "Remembering…",
-    "working": "Remembering… extracting & verifying",
-    "done": "Remembered ✓",
-    "failed": "Capture failed"
+    "action": "Merken",
+    "title": "Diese Nachricht merken. Sie gelangt über den normalen Prozess in den Wissensstand",
+    "pending": "Wird gemerkt…",
+    "working": "Wird gemerkt… Extraktion und Überprüfung",
+    "done": "Gemerkt ✓",
+    "failed": "Erfassung fehlgeschlagen"
   },
   "researchOffer": {
-    "action": "Research this on the web →",
-    "preparing": "Preparing…",
-    "error": "Couldn't prepare that research. Try the Research page.",
-    "always": "Always do this automatically",
-    "alwaysTitle": "Cogeto will check the web automatically from now on. You can turn this off in Settings."
+    "action": "Im Web recherchieren →",
+    "preparing": "Vorbereitung…",
+    "error": "Die Recherche konnte nicht vorbereitet werden. Versuchen Sie es auf der Seite Recherche.",
+    "always": "Immer automatisch ausführen",
+    "alwaysTitle": "Cogeto prüft das Web ab jetzt automatisch. Sie können dies in den Einstellungen deaktivieren."
   },
   "citation": {
-    "unresolved": "source",
-    "teammate": "a teammate",
-    "fromWeb": "from the web",
-    "webDetail": "{{title}} · fetched {{when}}",
-    "sharedBy": "shared by {{owner}}",
-    "pastSuffix": "· past",
-    "screenReader": "citation from {{kind}}",
+    "unresolved": "Quelle",
+    "teammate": "ein Teammitglied",
+    "fromWeb": "aus dem Web",
+    "webDetail": "{{title}} · abgerufen {{when}}",
+    "sharedBy": "geteilt von {{owner}}",
+    "pastSuffix": "· früher",
+    "screenReader": "Beleg aus {{kind}}",
     "screenReaderStatus": ", {{status}}",
-    "screenReaderPast": ", past belief",
-    "screenReaderShared": ", shared by {{owner}}",
+    "screenReaderPast": ", frühere Annahme",
+    "screenReaderShared": ", geteilt von {{owner}}",
     "kind": {
-      "note": "note",
-      "email": "email",
-      "web": "web",
-      "document": "doc",
-      "chat": "chat"
+      "note": "Notiz",
+      "email": "E-Mail",
+      "web": "Web",
+      "document": "Dokument",
+      "chat": "Unterhaltung"
     },
     "unsourced": {
-      "label": "unsourced",
-      "title": "Model knowledge, not from your sources. Cogeto marks these so you always know which claims it can prove.",
-      "ariaLabel": "model knowledge, not from your sources"
+      "label": "ohne Quelle",
+      "title": "Modellwissen, nicht aus Ihren Quellen. Cogeto kennzeichnet es, damit Sie immer wissen, welche Behauptungen belegt werden können.",
+      "ariaLabel": "Modellwissen, nicht aus Ihren Quellen"
     }
   },
   "conversation": {
-    "untitled": "New conversation",
-    "listLabel": "Conversations",
-    "pickerLabel": "Conversation",
-    "new": "New conversation",
-    "newShort": "New",
-    "titleField": "Conversation title",
-    "rename": "Rename",
-    "archive": "Archive",
-    "unarchive": "Unarchive",
-    "archived_one": "Archived ({{count}})",
-    "archived_other": "Archived ({{count}})",
-    "archivedSuffix": " (archived)",
-    "emptyRail": "A conversation is a workspace for one thread of thinking: a client, a contract, quick questions. Start one and ask.",
-    "railFooter": "What Cogeto learns here is remembered everywhere: conversations organise talk, memory keeps knowledge.",
+    "untitled": "Neue Unterhaltung",
+    "listLabel": "Unterhaltungen",
+    "pickerLabel": "Unterhaltung",
+    "new": "Neue Unterhaltung",
+    "newShort": "Neu",
+    "titleField": "Titel der Unterhaltung",
+    "rename": "Umbenennen",
+    "archive": "Archivieren",
+    "unarchive": "Aus Archiv holen",
+    "archived_one": "Archiviert ({{count}})",
+    "archived_other": "Archiviert ({{count}})",
+    "archivedSuffix": " (archiviert)",
+    "emptyRail": "Eine Unterhaltung ist ein Arbeitsbereich für einen Gedankenstrang: einen Kunden, einen Vertrag oder kurze Fragen. Beginnen Sie eine und fragen Sie.",
+    "railFooter": "Was Cogeto hier lernt, wird überall gemerkt: Unterhaltungen ordnen Gespräche, der Wissensstand bewahrt Wissen.",
     "delete": {
-      "action": "Delete",
-      "question": "Delete \"{{label}}\"?",
-      "messages_one": "{{count}} message",
-      "messages_other": "{{count}} messages",
-      "memories_one": "{{count}} memory",
-      "memories_other": "{{count}} memories",
-      "consequence": "This deletes the conversation, its {{messages}}, and the {{memories}} derived from them, with a signed receipt.",
-      "approvedNote_one": "Note: {{count}} of those memories was approved by you.",
-      "approvedNote_other": "Note: {{count}} of those memories were approved by you.",
-      "alternative": "Archiving keeps everything instead. This cannot be undone."
+      "action": "Löschen",
+      "question": "„{{label}}“ löschen?",
+      "messages_one": "{{count}} Nachricht",
+      "messages_other": "{{count}} Nachrichten",
+      "memories_one": "{{count}} Erinnerung",
+      "memories_other": "{{count}} Erinnerungen",
+      "consequence": "Dadurch werden die Unterhaltung, ihre {{messages}} und die daraus abgeleiteten {{memories}} mit einem signierten Beleg gelöscht.",
+      "approvedNote_one": "Hinweis: {{count}} dieser Erinnerungen wurde von Ihnen genehmigt.",
+      "approvedNote_other": "Hinweis: {{count}} dieser Erinnerungen wurden von Ihnen genehmigt.",
+      "alternative": "Beim Archivieren bleibt stattdessen alles erhalten. Dies kann nicht rückgängig gemacht werden."
     }
   }
 }

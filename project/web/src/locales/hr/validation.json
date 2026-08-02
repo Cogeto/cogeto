@@ -1,7 +1,7 @@
 {
   "upload": {
-    "unsupportedType": "Only PDF and DOCX files are accepted.",
-    "tooLarge": "File is too large (max {{megabytes}} MB).",
-    "empty": "That file is empty."
+    "unsupportedType": "Prihvaćaju se samo PDF i DOCX datoteke.",
+    "tooLarge": "Datoteka je prevelika, najviše {{megabytes}} MB.",
+    "empty": "Ta je datoteka prazna."
   }
 }

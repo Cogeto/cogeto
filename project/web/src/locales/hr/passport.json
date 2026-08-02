@@ -1,18 +1,18 @@
 {
-  "heading": "Export my data · Memory Passport",
-  "explainer": "Download <b>everything</b> Cogeto knows for you: every fact with its status, provenance and full history, and your deletion receipts (still independently verifiable), in an open, documented, versioned format. Your memory is portable; leave whenever you want.",
-  "export": "Export my data",
-  "preparing": "Preparing…",
-  "startFailed": "Couldn't start the export. Try again.",
-  "formatNote": "The format is open and documented at <path>docs/passport-schema/</path>. Anyone can read and verify a Passport with only the schema and the instance public key above.",
+  "heading": "Izvezi moje podatke · Putovnica pamćenja",
+  "explainer": "Preuzmite <b>sve</b> što Cogeto zna za vas: svaku činjenicu s njezinim statusom, podrijetlom i cijelom poviješću te vaše potvrde brisanja koje ostaju neovisno provjerljive. Sve je u otvorenom, dokumentiranom formatu s verzijama. Vaše je pamćenje prenosivo, možete otići kad god želite.",
+  "export": "Izvezi moje podatke",
+  "preparing": "Priprema…",
+  "startFailed": "Izvoz nije bilo moguće pokrenuti. Pokušajte ponovno.",
+  "formatNote": "Format je otvoren i dokumentiran na <path>docs/passport-schema/</path>. Svatko može pročitati i provjeriti Putovnicu samo pomoću sheme i prethodno navedenog javnog ključa instance.",
   "includeOriginals": {
-    "label": "Include original files",
-    "help": "Attach the original bytes of files you uploaded (a full archive). Off by default. Provenance and metadata are always included either way."
+    "label": "Uključi izvorne datoteke",
+    "help": "Priložite izvorne bajtove datoteka koje ste prenijeli, kao cijelu arhivu. Prema zadanim je postavkama isključeno. Podrijetlo i metapodaci uvijek su uključeni."
   },
   "status": {
-    "pending": "Assembling your export…",
-    "ready": "Ready to download",
-    "failed": "Export failed",
-    "expired": "Expired (re-export to get a fresh copy)"
+    "pending": "Vaš se izvoz sastavlja…",
+    "ready": "Spremno za preuzimanje",
+    "failed": "Izvoz nije uspio",
+    "expired": "Isteklo, ponovno izvezite za novu kopiju"
   }
 }

@@ -1,94 +1,89 @@
 {
   "operatorOnly": {
-    "title": "The System view is the operator's surface",
-    "body": "Job activity and the dead-letter queue require the administrator role. Your account doesn't have it, and everyday use never needs it. If you co-operate this instance, ask the operator to grant you the role in Zitadel (Projects → cogeto → Authorizations)."
+    "title": "Die Systemansicht ist die Oberfläche für Betreiber",
+    "body": "Auftragsaktivität und die Warteschlange endgültig fehlgeschlagener Aufträge erfordern die Administratorrolle. Ihr Konto hat diese Rolle nicht und benötigt sie für die tägliche Nutzung auch nicht. Wenn Sie diese Instanz mitbetreiben, bitten Sie den Betreiber, Ihnen die Rolle in Zitadel zuzuweisen (Projects → cogeto → Authorizations)."
   },
   "health": {
-    "heading": "System status",
-    "loading": "Checking services…",
-    "unreachable": "The API is unreachable right now.",
+    "heading": "Systemstatus",
+    "loading": "Dienste werden geprüft…",
+    "unreachable": "Die API ist derzeit nicht erreichbar.",
     "latency": "{{ms}} ms",
-    "up": "up",
-    "down": "down",
+    "up": "verfügbar",
+    "down": "nicht verfügbar",
     "check": {
-      "minioEncryption": "MinIO encryption",
-      "integrity": "Deletion integrity",
-      "migrations": "Migrations",
-      "queue": "Job queue"
+      "minioEncryption": "MinIO-Verschlüsselung",
+      "integrity": "Löschintegrität",
+      "migrations": "Migrationen",
+      "queue": "Auftragswarteschlange"
     }
   },
   "job": {
-    "ingestionPipeline": "Extracting & verifying",
-    "deletionExecute": "Deleting",
-    "memoryEmbed": "Embedding",
-    "deletionSweep": "Integrity sweep",
-    "dreamingCycle": "Dreaming",
+    "ingestionPipeline": "Extraktion und Überprüfung",
+    "deletionExecute": "Löschung",
+    "memoryEmbed": "Einbettung",
+    "deletionSweep": "Integritätsprüfung",
+    "dreamingCycle": "Träumen",
     "echo": "Echo"
   },
   "worker": {
-    "heading": "Worker activity",
-    "processing": "processing",
-    "idle": "idle",
-    "error": "We couldn't load worker activity.",
-    "allProcessed": "Idle, all jobs processed",
-    "upNext": "Up next",
-    "recentlyCompleted": "Recently completed",
-    "running": "running",
-    "runningFor": "running {{elapsed}}",
-    "queued": "queued",
-    "retrying": "retrying",
-    "retryingAt": "retrying {{when}}",
-    "scheduled": "scheduled {{when}}",
-    "attemptSuffix": " · attempt {{count}}",
-    "elapsedSeconds": "{{seconds}}s",
-    "elapsedMinutes": "{{minutes}}m {{seconds}}s",
+    "heading": "Aktivität des Hintergrundprozesses",
+    "processing": "verarbeitet",
+    "idle": "inaktiv",
+    "error": "Die Aktivität des Hintergrundprozesses konnte nicht geladen werden.",
+    "allProcessed": "Inaktiv, alle Aufträge verarbeitet",
+    "upNext": "Als Nächstes",
+    "recentlyCompleted": "Kürzlich abgeschlossen",
+    "running": "läuft",
+    "runningFor": "läuft seit {{elapsed}}",
+    "queued": "eingereiht",
+    "retrying": "erneuter Versuch",
+    "retryingAt": "erneuter Versuch {{when}}",
+    "scheduled": "geplant {{when}}",
+    "attemptSuffix": " · Versuch {{count}}",
+    "elapsedSeconds": "{{seconds}} s",
+    "elapsedMinutes": "{{minutes}} min {{seconds}} s",
     "sourceWithId": "{{kind}} · {{id}}…",
-    "completedAllTime_one": "{{value}} jobs completed all-time",
-    "completedAllTime_other": "{{value}} jobs completed all-time",
-    "moreWaiting_one": "+{{count}} more waiting…",
-    "moreWaiting_other": "+{{count}} more waiting…",
+    "completedAllTime_one": "insgesamt {{value}} Auftrag abgeschlossen",
+    "completedAllTime_other": "insgesamt {{value}} Aufträge abgeschlossen",
+    "moreWaiting_one": "+{{count}} weiterer wartet…",
+    "moreWaiting_other": "+{{count}} weitere warten…",
     "stat": {
-      "running": "running",
-      "queued": "queued",
-      "waiting": "waiting",
-      "failed": "failed"
+      "running": "läuft",
+      "queued": "eingereiht",
+      "waiting": "wartet",
+      "failed": "fehlgeschlagen"
     }
   },
   "integrity": {
-    "heading": "Deletion integrity",
-    "loading": "Loading sweep status…",
-    "error": "We couldn't load the sweep status.",
-    "alerts_one": "{{count}} integrity alert",
-    "alerts_other": "{{count}} integrity alerts",
-    "chainVerified_one": "chain verified ({{count}})",
-    "chainVerified_other": "chain verified ({{count}})",
-    "chainBroken": "chain BROKEN",
-    "chainRow": "(chain)",
-    "lastSweep": "last sweep {{when}}, {{receipts}} receipt(s), {{identifiers}} identifier(s) checked",
-    "neverRun": "sweep has not run yet (nightly at 03:00, or run it on demand)",
-    "column": {
-      "kind": "Kind",
-      "identifier": "Identifier",
-      "receipt": "Receipt",
-      "detected": "Detected"
-    }
+    "heading": "Löschintegrität",
+    "loading": "Prüfstatus wird geladen…",
+    "error": "Der Prüfstatus konnte nicht geladen werden.",
+    "alerts_one": "{{count}} Integritätswarnung",
+    "alerts_other": "{{count}} Integritätswarnungen",
+    "chainVerified_one": "Kette geprüft ({{count}})",
+    "chainVerified_other": "Kette geprüft ({{count}})",
+    "chainBroken": "Kette UNTERBROCHEN",
+    "chainRow": "(Kette)",
+    "lastSweep": "letzte Prüfung {{when}}, geprüft: {{receipts}} Belege und {{identifiers}} Kennungen",
+    "neverRun": "Prüfung wurde noch nicht ausgeführt, nächtlich um 03:00 Uhr oder bei Bedarf starten",
+    "column": { "kind": "Art", "identifier": "Kennung", "receipt": "Beleg", "detected": "Erkannt" }
   },
   "deadLetter": {
-    "heading": "Dead-letter queue",
-    "loading": "Loading dead-letter queue…",
-    "error": "We couldn't load the dead-letter queue.",
-    "noSource": "n/a",
-    "retry": "Retry",
+    "heading": "Warteschlange endgültig fehlgeschlagener Aufträge",
+    "loading": "Warteschlange endgültig fehlgeschlagener Aufträge wird geladen…",
+    "error": "Die Warteschlange endgültig fehlgeschlagener Aufträge konnte nicht geladen werden.",
+    "noSource": "nicht verfügbar",
+    "retry": "Erneut versuchen",
     "empty": {
-      "title": "No parked jobs",
-      "body": "Every enqueued job completed. Jobs that permanently fail land here to retry."
+      "title": "Keine zurückgestellten Aufträge",
+      "body": "Alle eingereihten Aufträge wurden abgeschlossen. Dauerhaft fehlgeschlagene Aufträge erscheinen hier für einen erneuten Versuch."
     },
     "column": {
-      "job": "Job",
-      "key": "Key",
-      "error": "Error",
-      "attempts": "Attempts",
-      "failed": "Failed"
+      "job": "Auftrag",
+      "key": "Schlüssel",
+      "error": "Fehler",
+      "attempts": "Versuche",
+      "failed": "Fehlgeschlagen"
     }
   }
 }

@@ -1,70 +1,70 @@
 {
-  "heading": "Capabilities",
-  "loading": "Checking capabilities…",
-  "optionalCapabilities": "Optional capabilities",
-  "scheduledJobs": "Scheduled jobs",
-  "checkedAt": "checked {{when}}",
-  "lastRan": "last ran {{when}}",
-  "neverRan": "never ran",
-  "lastResult": "Last run: {{result}}",
-  "enablePrefix": "To enable, on the instance:",
-  "enableHint": "run: cogeto features enable {{id}}",
-  "genericConsequence": "This capability is enabled but not working.",
-  "failingConsequence": "The last run did not complete.",
+  "heading": "Mogućnosti",
+  "loading": "Provjera mogućnosti…",
+  "optionalCapabilities": "Neobavezne mogućnosti",
+  "scheduledJobs": "Planirani zadaci",
+  "checkedAt": "provjereno {{when}}",
+  "lastRan": "zadnji put pokrenuto {{when}}",
+  "neverRan": "nikad pokrenuto",
+  "lastResult": "Posljednje pokretanje: {{result}}",
+  "enablePrefix": "Da biste omogućili ovu mogućnost, na instanci:",
+  "enableHint": "pokrenite: cogeto features enable {{id}}",
+  "genericConsequence": "Ova je mogućnost omogućena, ali ne radi.",
+  "failingConsequence": "Posljednje pokretanje nije dovršeno.",
   "overdueConsequence": {
-    "notCompleting": "No successful run within {{hours}} hours. The nightly job is not completing.",
-    "neverCompleted": "No successful run within {{hours}} hours. The job has never completed."
+    "notCompleting": "Nema uspješnog pokretanja u posljednjih {{hours}} sati. Noćni zadatak ne završava.",
+    "neverCompleted": "Nema uspješnog pokretanja u posljednjih {{hours}} sati. Zadatak nikad nije dovršen."
   },
   "state": {
-    "on": "on",
-    "off": "off",
-    "unreachable": "enabled, unreachable"
+    "on": "uključeno",
+    "off": "isključeno",
+    "unreachable": "omogućeno, nedostupno"
   },
   "jobState": {
-    "ok": "ok",
-    "overdue": "overdue",
-    "failing": "failing"
+    "ok": "u redu",
+    "overdue": "kasni",
+    "failing": "neuspješno"
   },
   "capability": {
     "redaction": {
-      "name": "Redaction",
-      "description": "Pseudonymizes names and other sensitive entities on this machine before any text reaches the model provider.",
-      "consequence": "Redaction is enabled but the service is unreachable: model calls will fail rather than send unredacted content."
+      "name": "Redakcija",
+      "description": "Pseudonimizira imena i druge osjetljive entitete na ovom računalu prije nego što tekst stigne pružatelju modela.",
+      "consequence": "Redakcija je omogućena, ali usluga nije dostupna: pozivi modelu neće uspjeti, umjesto da pošalju sadržaj bez redakcije."
     },
     "research": {
-      "name": "Web research",
-      "description": "Searches the public web from this instance and reads approved pages into memory. You see the query before it leaves.",
-      "consequence": "Research is unavailable until the search service is reachable."
+      "name": "Web-istraživanje",
+      "description": "Pretražuje javni web s ove instance i učitava odobrene stranice u pamćenje. Upit vidite prije nego što se pošalje.",
+      "consequence": "Istraživanje nije dostupno dok usluga pretraživanja ne postane dostupna."
     },
     "mail": {
-      "name": "Email capture",
-      "description": "Receives forwarded mail at this instance’s inbound address and captures it, routed by sender. Off means no SMTP listener runs at all.",
-      "consequence": "Email capture is enabled but the inbound mail service is not answering: forwarded mail is not being received."
+      "name": "Zaprimanje e-pošte",
+      "description": "Prima proslijeđenu poštu na ulaznoj adresi ove instance i sprema je prema pošiljatelju. Kada je isključeno, SMTP prijamnik uopće ne radi.",
+      "consequence": "Zaprimanje e-pošte je omogućeno, ali usluga ulazne pošte ne odgovara: proslijeđena pošta se ne prima."
     },
     "demo": {
-      "name": "Demo sandbox",
-      "description": "Seeds the fictional demo workspace and serves a shared demo session. Never for an instance holding real data.",
-      "consequence": "Demo mode is set on a production instance: the guard refuses to seed. An operator must unset one of the two flags."
+      "name": "Pokazno okruženje",
+      "description": "Postavlja izmišljeni pokazni radni prostor i omogućuje zajedničku pokaznu sesiju. Nikad se ne upotrebljava na instanci sa stvarnim podacima.",
+      "consequence": "Pokazni način rada postavljen je na produkcijskoj instanci: zaštita odbija početno postavljanje. Operater mora isključiti jednu od dviju oznaka."
     },
     "consoles": {
-      "name": "Infra consoles",
-      "description": "Operator-only MinIO and Qdrant consoles, served on this machine at localhost port 8443.",
-      "consequence": "The consoles are enabled but not answering."
+      "name": "Infrastrukturne konzole",
+      "description": "Konzole MinIO i Qdrant samo za operatere, dostupne na ovom računalu na priključku 8443 lokalnog računala.",
+      "consequence": "Konzole su omogućene, ali ne odgovaraju."
     },
     "local-models": {
-      "name": "Local models",
-      "description": "Runs model work on a local Ollama runtime instead of a hosted provider, so content stays on your hardware.",
-      "consequence": "The local model runtime is unreachable: model features on local tiers fail until it is back."
+      "name": "Lokalni modeli",
+      "description": "Izvršava rad modela u lokalnom okruženju Ollama umjesto kod vanjskog pružatelja, pa sadržaj ostaje na vašem hardveru.",
+      "consequence": "Lokalno okruženje modela nije dostupno: značajke modela na lokalnim razinama neće raditi dok se dostupnost ne vrati."
     }
   },
   "job": {
     "dreaming": {
-      "name": "Nightly dreaming",
-      "description": "Consolidates the day’s memories: duplicates merge, contradictions surface, stale facts age out."
+      "name": "Noćno sanjanje",
+      "description": "Objedinjuje sjećanja iz dana: duplikati se spajaju, proturječnosti izlaze na vidjelo, a zastarjele činjenice uklanjaju se iz aktivnog skupa."
     },
     "sweep": {
-      "name": "Receipt sweep",
-      "description": "Verifies every deletion receipt against the stores each night, so forgetting stays provable."
+      "name": "Provjera potvrda",
+      "description": "Svake noći provjerava svaku potvrdu brisanja u spremištima kako bi zaboravljanje ostalo dokazivo."
     }
   }
 }

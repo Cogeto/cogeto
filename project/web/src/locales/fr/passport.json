@@ -1,18 +1,18 @@
 {
-  "heading": "Export my data · Memory Passport",
-  "explainer": "Download <b>everything</b> Cogeto knows for you: every fact with its status, provenance and full history, and your deletion receipts (still independently verifiable), in an open, documented, versioned format. Your memory is portable; leave whenever you want.",
-  "export": "Export my data",
-  "preparing": "Preparing…",
-  "startFailed": "Couldn't start the export. Try again.",
-  "formatNote": "The format is open and documented at <path>docs/passport-schema/</path>. Anyone can read and verify a Passport with only the schema and the instance public key above.",
+  "heading": "Exporter mes données · Passeport de mémoire",
+  "explainer": "Téléchargez <b>tout</b> ce que Cogeto sait pour vous : chaque fait avec son statut, sa provenance et tout son historique, ainsi que vos reçus de suppression qui restent vérifiables indépendamment. Le tout utilise un format ouvert, documenté et versionné. Votre mémoire est portable, vous pouvez partir quand vous le souhaitez.",
+  "export": "Exporter mes données",
+  "preparing": "Préparation…",
+  "startFailed": "Impossible de démarrer l’exportation. Réessayez.",
+  "formatNote": "Le format est ouvert et documenté dans <path>docs/passport-schema/</path>. Toute personne peut lire et vérifier un Passeport uniquement avec le schéma et la clé publique de l’instance ci-dessus.",
   "includeOriginals": {
-    "label": "Include original files",
-    "help": "Attach the original bytes of files you uploaded (a full archive). Off by default. Provenance and metadata are always included either way."
+    "label": "Inclure les fichiers d’origine",
+    "help": "Joignez les octets d’origine des fichiers que vous avez importés, sous la forme d’une archive complète. Cette option est désactivée par défaut. La provenance et les métadonnées sont toujours incluses."
   },
   "status": {
-    "pending": "Assembling your export…",
-    "ready": "Ready to download",
-    "failed": "Export failed",
-    "expired": "Expired (re-export to get a fresh copy)"
+    "pending": "Assemblage de votre exportation…",
+    "ready": "Prêt à télécharger",
+    "failed": "Échec de l’exportation",
+    "expired": "Expiré, exportez de nouveau pour obtenir une copie récente"
   }
 }

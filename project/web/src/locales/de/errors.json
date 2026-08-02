@@ -1,9 +1,9 @@
 {
   "auth": {
-    "loginFailed": "login failed: {{detail}}",
-    "callbackIncomplete": "login callback is missing the code or verifier",
-    "stateMismatch": "login callback state mismatch",
-    "demoCredentials": "Invalid demo username or password.",
-    "demoNoSession": "Demo login did not return a session."
+    "loginFailed": "Anmeldung fehlgeschlagen: {{detail}}",
+    "callbackIncomplete": "Dem Anmelderückruf fehlt der Code oder die Prüfinformation",
+    "stateMismatch": "Der Status des Anmelderückrufs stimmt nicht überein",
+    "demoCredentials": "Benutzername oder Passwort für die Demo sind ungültig.",
+    "demoNoSession": "Die Demo-Anmeldung hat keine Sitzung zurückgegeben."
   }
 }

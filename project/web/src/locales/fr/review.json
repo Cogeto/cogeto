@@ -1,37 +1,37 @@
 {
-  "loading": "Loading contradictions…",
-  "error": "We couldn't load the contradictions.",
+  "loading": "Chargement des contradictions…",
+  "error": "Impossible de charger les contradictions.",
   "empty": {
-    "title": "No open contradictions",
-    "body": "Your memories agree with each other. When two facts about the same thing disagree, they'll appear here side by side to resolve. Everything else Cogeto settles on its own."
+    "title": "Aucune contradiction ouverte",
+    "body": "Vos souvenirs sont cohérents entre eux. Lorsque deux faits sur le même sujet se contredisent, ils apparaissent ici côte à côte pour que vous les résolviez. Cogeto règle seul tout le reste."
   },
   "factKind": {
-    "commitment": "commitment",
-    "decision": "decision",
-    "preference": "preference",
-    "fact": "fact",
-    "open_loop": "open loop"
+    "commitment": "engagement",
+    "decision": "décision",
+    "preference": "préférence",
+    "fact": "fait",
+    "open_loop": "point ouvert"
   },
   "side": {
-    "captured": "captured {{when}}",
-    "capturedWithKind": "{{kind}} · captured {{when}}",
-    "loadingSource": "Loading source…"
+    "captured": "capturé {{when}}",
+    "capturedWithKind": "{{kind}} · capturé {{when}}",
+    "loadingSource": "Chargement de la source…"
   },
   "item": {
-    "heading": "These two facts disagree",
-    "newerFact": "Newer fact",
-    "earlierFact": "Earlier fact",
-    "versus": "vs",
-    "whyFlagged": "Why it was flagged:",
-    "correctedNewer": "Corrected newer fact",
-    "correctedEarlier": "Corrected earlier fact",
-    "correctionExplainer": "Corrections never rewrite history: each saves a new, approved version and keeps the old one as its predecessor.",
-    "saveBoth": "Save both corrections",
-    "newerIsRight": "The newer fact is right",
-    "earlierIsRight": "The earlier fact is right",
-    "correctBoth": "Correct both",
-    "notAConflict": "Not a conflict",
-    "notAConflictTitle": "They don't actually conflict. Restore both as they were",
-    "detected": "detected {{when}}"
+    "heading": "Ces deux faits se contredisent",
+    "newerFact": "Fait le plus récent",
+    "earlierFact": "Fait antérieur",
+    "versus": "contre",
+    "whyFlagged": "Motif du signalement :",
+    "correctedNewer": "Fait récent corrigé",
+    "correctedEarlier": "Fait antérieur corrigé",
+    "correctionExplainer": "Les corrections ne réécrivent jamais l’historique : chacune enregistre une nouvelle version approuvée et conserve l’ancienne comme version précédente.",
+    "saveBoth": "Enregistrer les deux corrections",
+    "newerIsRight": "Le fait récent est exact",
+    "earlierIsRight": "Le fait antérieur est exact",
+    "correctBoth": "Corriger les deux",
+    "notAConflict": "Aucun conflit",
+    "notAConflictTitle": "Ces faits ne sont pas réellement en conflit. Restaurez-les dans leur état d’origine",
+    "detected": "détecté {{when}}"
   }
 }

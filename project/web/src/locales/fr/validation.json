@@ -1,7 +1,7 @@
 {
   "upload": {
-    "unsupportedType": "Only PDF and DOCX files are accepted.",
-    "tooLarge": "File is too large (max {{megabytes}} MB).",
-    "empty": "That file is empty."
+    "unsupportedType": "Seuls les fichiers PDF et DOCX sont acceptés.",
+    "tooLarge": "Le fichier est trop volumineux, maximum {{megabytes}} Mo.",
+    "empty": "Ce fichier est vide."
   }
 }

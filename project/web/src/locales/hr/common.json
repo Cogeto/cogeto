@@ -1,71 +1,71 @@
 {
   "productName": "Cogeto",
   "document": {
-    "title": "Cogeto: verifiable memory"
+    "title": "Cogeto: provjerljivo pamćenje"
   },
   "action": {
-    "add": "Add",
-    "cancel": "Cancel",
-    "close": "Close",
-    "copy": "Copy",
-    "copied": "Copied",
-    "dismiss": "Dismiss",
-    "download": "Download",
-    "remove": "Remove",
-    "save": "Save",
-    "tryAgain": "Try again"
+    "add": "Dodaj",
+    "cancel": "Odustani",
+    "close": "Zatvori",
+    "copy": "Kopiraj",
+    "copied": "Kopirano",
+    "dismiss": "Odbaci",
+    "download": "Preuzmi",
+    "remove": "Ukloni",
+    "save": "Spremi",
+    "tryAgain": "Pokušaj ponovno"
   },
   "state": {
-    "loading": "Loading…",
-    "loadingApp": "Loading Cogeto…",
-    "saving": "Saving…",
-    "saved": "Saved."
+    "loading": "Učitavanje…",
+    "loadingApp": "Cogeto se učitava…",
+    "saving": "Spremanje…",
+    "saved": "Spremljeno."
   },
   "memoryStatus": {
-    "active": "active",
-    "user_approved": "approved",
-    "uncertain": "uncertain",
-    "contradicted": "contradicted",
-    "outdated": "outdated",
-    "replaced": "replaced"
+    "active": "aktivno",
+    "user_approved": "odobreno",
+    "uncertain": "nesigurno",
+    "contradicted": "proturječno",
+    "outdated": "zastarjelo",
+    "replaced": "zamijenjeno"
   },
   "memoryScope": {
-    "private": "private",
-    "shared": "shared"
+    "private": "privatno",
+    "shared": "dijeljeno"
   },
   "verificationVerdict": {
-    "supported": "supported",
-    "partial": "partial",
-    "unsupported": "unsupported"
+    "supported": "podržano",
+    "partial": "djelomično",
+    "unsupported": "nepodržano"
   },
   "badge": {
     "sensitive": {
-      "label": "sensitive",
-      "title": "Sensitive: owner-only, off by default in retrieval"
+      "label": "osjetljivo",
+      "title": "Osjetljivo: samo za vlasnika, prema zadanim postavkama isključeno iz dohvaćanja"
     },
     "shared": {
-      "label": "shared",
-      "title": "Visible to your whole organization"
+      "label": "dijeljeno",
+      "title": "Vidljivo cijeloj vašoj organizaciji"
     },
-    "private": "private"
+    "private": "privatno"
   },
   "countBadge": {
     "label": "{{count}} {{noun}}"
   },
   "entityChip": {
-    "filterBy": "Filter by {{name}}"
+    "filterBy": "Filtriraj prema {{name}}"
   },
   "relativeTime": {
-    "justNow": "just now",
-    "minutes_one": "{{count}} min ago",
-    "minutes_few": "{{count}} min ago",
-    "minutes_other": "{{count}} min ago",
-    "hours_one": "{{count}} h ago",
-    "hours_few": "{{count}} h ago",
-    "hours_other": "{{count}} h ago",
-    "days_one": "{{count}} d ago",
-    "days_few": "{{count}} d ago",
-    "days_other": "{{count}} d ago"
+    "justNow": "upravo sada",
+    "minutes_one": "prije {{count}} minutu",
+    "minutes_few": "prije {{count}} minute",
+    "minutes_other": "prije {{count}} minuta",
+    "hours_one": "prije {{count}} sat",
+    "hours_few": "prije {{count}} sata",
+    "hours_other": "prije {{count}} sati",
+    "days_one": "prije {{count}} dan",
+    "days_few": "prije {{count}} dana",
+    "days_other": "prije {{count}} dana"
   },
   "fileSize": {
     "bytes_one": "{{value}} B",

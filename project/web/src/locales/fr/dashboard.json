@@ -1,88 +1,88 @@
 {
   "attention": {
-    "heading": "What needs you right now",
-    "unreadCount_one": "{{count}} new",
-    "unreadCount_many": "{{count}} new",
-    "unreadCount_other": "{{count}} new",
-    "newSuffix": "(new)",
-    "dismissItem": "Dismiss: {{title}}",
-    "loading": "Loading your attention feed…",
-    "error": "We couldn't load your attention feed just now.",
+    "heading": "Ce qui demande votre attention maintenant",
+    "unreadCount_one": "{{count}} nouveauté",
+    "unreadCount_many": "{{count}} nouveautés",
+    "unreadCount_other": "{{count}} nouveautés",
+    "newSuffix": "(nouveau)",
+    "dismissItem": "Ignorer : {{title}}",
+    "loading": "Chargement de vos éléments à examiner…",
+    "error": "Impossible de charger vos éléments à examiner pour le moment.",
     "liveRegion": {
-      "needsAttention_one": "{{count}} item needs your attention",
-      "needsAttention_many": "{{count}} items need your attention",
-      "needsAttention_other": "{{count}} items need your attention",
-      "nothing": "Nothing needs your attention right now"
+      "needsAttention_one": "{{count}} élément demande votre attention",
+      "needsAttention_many": "{{count}} éléments demandent votre attention",
+      "needsAttention_other": "{{count}} éléments demandent votre attention",
+      "nothing": "Rien ne demande votre attention pour le moment"
     },
     "empty": {
-      "title": "Nothing needs you right now",
-      "body": "Due work, quiet commitments, review items, approvals and last night's changes will surface here."
+      "title": "Rien ne demande votre attention pour le moment",
+      "body": "Les tâches dues, les engagements silencieux, les éléments à vérifier, les approbations et les changements de la nuit dernière apparaîtront ici."
     },
     "group": {
-      "open_loops": "Due & overdue",
-      "quiet": "Gone quiet",
-      "review": "Facts that disagree",
-      "approvals": "Awaiting your approval",
-      "overnight": "Last night"
+      "open_loops": "Dus et en retard",
+      "quiet": "Sans nouvelles",
+      "review": "Faits contradictoires",
+      "approvals": "Attend votre approbation",
+      "overnight": "La nuit dernière"
     }
   },
   "skillsEntry": {
-    "title": "Research a company or person before a meeting",
-    "body": "A sourced brief: what you know, what changed, every step inspectable."
+    "title": "Rechercher une entreprise ou une personne avant une réunion",
+    "body": "Une synthèse avec ses sources : ce que vous savez, ce qui a changé et chaque étape vérifiable."
   },
   "stats": {
-    "heading": "Your practice at a glance",
-    "loading": "Loading statistics…",
-    "error": "The statistics aren't available right now.",
+    "heading": "Votre activité en un coup d’œil",
+    "loading": "Chargement des statistiques…",
+    "error": "Les statistiques sont indisponibles pour le moment.",
     "kpi": {
-      "memories": "Memories",
-      "stillOpen": "Still open",
+      "memories": "Souvenirs",
+      "stillOpen": "Toujours ouverts",
       "contradictions": "Contradictions",
-      "approvals": "Approvals",
-      "oldestConflict": "Oldest conflict",
-      "oldestNone": "None",
-      "oldestDays": "{{days}}d",
-      "oldestTitleNone": "No unresolved contradictions",
-      "oldestTitle_one": "Oldest unresolved contradiction: {{count}} day old",
-      "oldestTitle_many": "Oldest unresolved contradiction: {{count}} days old",
-      "oldestTitle_other": "Oldest unresolved contradiction: {{count}} days old"
+      "approvals": "Approbations",
+      "oldestConflict": "Conflit le plus ancien",
+      "oldestNone": "Aucun",
+      "oldestDays": "{{days}} j",
+      "oldestTitleNone": "Aucune contradiction non résolue",
+      "oldestTitle_one": "Contradiction non résolue la plus ancienne : {{count}} jour",
+      "oldestTitle_many": "Contradiction non résolue la plus ancienne : {{count}} jours",
+      "oldestTitle_other": "Contradiction non résolue la plus ancienne : {{count}} jours"
     },
     "donut": {
-      "heading": "Memory by status",
-      "unit": "memories",
-      "empty": "Nothing captured yet. As you add notes, emails and files, they'll appear here by status.",
-      "summaryEmpty": "No memories yet.",
-      "summary_one": "{{count}} memories: {{breakdown}}.",
-      "summary_many": "{{count}} memories: {{breakdown}}.",
-      "summary_other": "{{count}} memories: {{breakdown}}.",
+      "heading": "Mémoire par statut",
+      "unit": "souvenirs",
+      "empty": "Rien n’a encore été capturé. Lorsque vous ajoutez des notes, des e-mails et des fichiers, ils apparaissent ici selon leur statut.",
+      "summaryEmpty": "Aucun souvenir pour le moment.",
+      "summary_one": "{{count}} souvenir : {{breakdown}}.",
+      "summary_many": "{{count}} souvenirs : {{breakdown}}.",
+      "summary_other": "{{count}} souvenirs : {{breakdown}}.",
       "segment_one": "{{count}} {{status}}",
       "segment_many": "{{count}} {{status}}",
       "segment_other": "{{count}} {{status}}"
     },
     "sources": {
-      "heading": "Sources · last {{days}} days",
-      "ingested_one": "{{count}} ingested →",
-      "ingested_many": "{{count}} ingested →",
-      "ingested_other": "{{count}} ingested →",
+      "heading": "Sources · {{days}} derniers jours",
+      "ingested_one": "{{count}} ingérée →",
+      "ingested_many": "{{count}} ingérées →",
+      "ingested_other": "{{count}} ingérées →",
       "familyTotal_one": "<n>{{count}}</n> {{family}}",
       "familyTotal_many": "<n>{{count}}</n> {{family}}",
       "familyTotal_other": "<n>{{count}}</n> {{family}}"
     },
     "dreaming": {
-      "heading": "Dreaming · last {{days}} days",
-      "mergesLabel": "Merges: {{count}}",
-      "conflictsLabel": "Conflicts caught: {{count}}",
-      "merges_one": "<n>{{count}}</n> merges",
-      "merges_many": "<n>{{count}}</n> merges",
-      "merges_other": "<n>{{count}}</n> merges",
-      "conflicts_one": "<n>{{count}}</n> conflicts caught →",
-      "conflicts_many": "<n>{{count}}</n> conflicts caught →",
-      "conflicts_other": "<n>{{count}}</n> conflicts caught →"
+      "heading": "Rêve · {{days}} derniers jours",
+      "mergesLabel": "Fusions : {{count}}",
+      "conflictsLabel": "Conflits détectés : {{count}}",
+      "merges_one": "<n>{{count}}</n> fusion",
+      "merges_many": "<n>{{count}}</n> fusions",
+      "merges_other": "<n>{{count}}</n> fusions",
+      "conflicts_one": "<n>{{count}}</n> conflit détecté →",
+      "conflicts_many": "<n>{{count}}</n> conflits détectés →",
+      "conflicts_other": "<n>{{count}}</n> conflits détectés →"
     }
   },
   "charts": {
-    "noActivity": "No activity in the last {{days}} days.",
-    "lastDays": "Last {{days}} days: {{totals}}.",
+    "noActivity": "Aucune activité au cours des {{days}} derniers jours.",
+    "lastDays": "{{days}} derniers jours : {{totals}}.",
     "seriesTotal_one": "{{count}} {{family}}",
     "seriesTotal_many": "{{count}} {{family}}",
     "seriesTotal_other": "{{count}} {{family}}"

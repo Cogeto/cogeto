@@ -1,23 +1,23 @@
 {
-  "heading": "Audit trail",
-  "loading": "Loading audit trail…",
-  "error": "We couldn't load the audit trail.",
-  "appendOnly": "read-only · append-only",
-  "entryCount_one": "{{count}} entries",
-  "entryCount_other": "{{count}} entries",
+  "heading": "Auditprotokoll",
+  "loading": "Auditprotokoll wird geladen…",
+  "error": "Das Auditprotokoll konnte nicht geladen werden.",
+  "appendOnly": "schreibgeschützt · nur anhängen",
+  "entryCount_one": "{{count}} Eintrag",
+  "entryCount_other": "{{count}} Einträge",
   "row": {
-    "byActor": "by {{actor}}",
-    "detailsWithheld": "Details visible to the entry's owner only."
+    "byActor": "von {{actor}}",
+    "detailsWithheld": "Details sind nur für den Eigentümer des Eintrags sichtbar."
   },
   "filter": {
-    "actor": "actor…",
-    "action": "action…",
-    "entityType": "entity type…",
-    "from": "from",
-    "to": "to"
+    "actor": "Akteur…",
+    "action": "Aktion…",
+    "entityType": "Entitätstyp…",
+    "from": "von",
+    "to": "bis"
   },
   "empty": {
-    "title": "No entries match these filters",
-    "body": "The audit trail records every consequential action: approvals, deletions, scope and settings changes. Clear the filters to see the full history."
+    "title": "Keine Einträge entsprechen diesen Filtern",
+    "body": "Das Auditprotokoll erfasst jede Aktion mit wesentlichen Folgen: Genehmigungen, Löschungen sowie Änderungen an Umfang und Einstellungen. Löschen Sie die Filter, um den vollständigen Verlauf zu sehen."
   }
 }

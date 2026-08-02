@@ -1,70 +1,62 @@
 {
-  "heading": "Capabilities",
-  "loading": "Checking capabilities…",
-  "optionalCapabilities": "Optional capabilities",
-  "scheduledJobs": "Scheduled jobs",
-  "checkedAt": "checked {{when}}",
-  "lastRan": "last ran {{when}}",
-  "neverRan": "never ran",
-  "lastResult": "Last run: {{result}}",
-  "enablePrefix": "To enable, on the instance:",
-  "enableHint": "run: cogeto features enable {{id}}",
-  "genericConsequence": "This capability is enabled but not working.",
-  "failingConsequence": "The last run did not complete.",
+  "heading": "Fonctionnalités",
+  "loading": "Vérification des fonctionnalités…",
+  "optionalCapabilities": "Fonctionnalités facultatives",
+  "scheduledJobs": "Tâches planifiées",
+  "checkedAt": "vérifié {{when}}",
+  "lastRan": "dernière exécution {{when}}",
+  "neverRan": "jamais exécuté",
+  "lastResult": "Dernière exécution : {{result}}",
+  "enablePrefix": "Pour activer sur l’instance :",
+  "enableHint": "exécutez : cogeto features enable {{id}}",
+  "genericConsequence": "Cette fonctionnalité est activée, mais ne fonctionne pas.",
+  "failingConsequence": "La dernière exécution ne s’est pas terminée.",
   "overdueConsequence": {
-    "notCompleting": "No successful run within {{hours}} hours. The nightly job is not completing.",
-    "neverCompleted": "No successful run within {{hours}} hours. The job has never completed."
+    "notCompleting": "Aucune exécution réussie depuis {{hours}} heures. La tâche nocturne ne se termine pas.",
+    "neverCompleted": "Aucune exécution réussie depuis {{hours}} heures. La tâche ne s’est jamais terminée."
   },
-  "state": {
-    "on": "on",
-    "off": "off",
-    "unreachable": "enabled, unreachable"
-  },
-  "jobState": {
-    "ok": "ok",
-    "overdue": "overdue",
-    "failing": "failing"
-  },
+  "state": { "on": "activé", "off": "désactivé", "unreachable": "activé, inaccessible" },
+  "jobState": { "ok": "correct", "overdue": "en retard", "failing": "en échec" },
   "capability": {
     "redaction": {
-      "name": "Redaction",
-      "description": "Pseudonymizes names and other sensitive entities on this machine before any text reaches the model provider.",
-      "consequence": "Redaction is enabled but the service is unreachable: model calls will fail rather than send unredacted content."
+      "name": "Masquage",
+      "description": "Pseudonymise les noms et les autres entités sensibles sur cette machine avant que le texte n’atteigne le fournisseur du modèle.",
+      "consequence": "Le masquage est activé, mais le service est inaccessible : les appels au modèle échoueront au lieu d’envoyer du contenu non masqué."
     },
     "research": {
-      "name": "Web research",
-      "description": "Searches the public web from this instance and reads approved pages into memory. You see the query before it leaves.",
-      "consequence": "Research is unavailable until the search service is reachable."
+      "name": "Recherche web",
+      "description": "Recherche sur le web public depuis cette instance et intègre les pages approuvées à la mémoire. Vous voyez la requête avant son envoi.",
+      "consequence": "La recherche est indisponible tant que le service de recherche reste inaccessible."
     },
     "mail": {
-      "name": "Email capture",
-      "description": "Receives forwarded mail at this instance’s inbound address and captures it, routed by sender. Off means no SMTP listener runs at all.",
-      "consequence": "Email capture is enabled but the inbound mail service is not answering: forwarded mail is not being received."
+      "name": "Capture des e-mails",
+      "description": "Reçoit les e-mails transférés à l’adresse d’entrée de cette instance et les capture selon l’expéditeur. Lorsque la fonctionnalité est désactivée, aucun service d’écoute SMTP ne fonctionne.",
+      "consequence": "La capture des e-mails est activée, mais le service de courrier entrant ne répond pas : les e-mails transférés ne sont pas reçus."
     },
     "demo": {
-      "name": "Demo sandbox",
-      "description": "Seeds the fictional demo workspace and serves a shared demo session. Never for an instance holding real data.",
-      "consequence": "Demo mode is set on a production instance: the guard refuses to seed. An operator must unset one of the two flags."
+      "name": "Environnement de démonstration",
+      "description": "Initialise l’espace de travail fictif et fournit une session de démonstration partagée. À ne jamais utiliser sur une instance contenant de vraies données.",
+      "consequence": "Le mode démonstration est activé sur une instance de production : la protection refuse l’initialisation. Un opérateur doit désactiver l’un des deux indicateurs."
     },
     "consoles": {
-      "name": "Infra consoles",
-      "description": "Operator-only MinIO and Qdrant consoles, served on this machine at localhost port 8443.",
-      "consequence": "The consoles are enabled but not answering."
+      "name": "Consoles d’infrastructure",
+      "description": "Consoles MinIO et Qdrant réservées aux opérateurs, disponibles sur cette machine au port 8443 de localhost.",
+      "consequence": "Les consoles sont activées, mais ne répondent pas."
     },
     "local-models": {
-      "name": "Local models",
-      "description": "Runs model work on a local Ollama runtime instead of a hosted provider, so content stays on your hardware.",
-      "consequence": "The local model runtime is unreachable: model features on local tiers fail until it is back."
+      "name": "Modèles locaux",
+      "description": "Exécute les tâches des modèles dans un environnement Ollama local au lieu d’un fournisseur hébergé, afin que le contenu reste sur votre matériel.",
+      "consequence": "L’environnement local des modèles est inaccessible : les fonctions des modèles sur les niveaux locaux échouent jusqu’à son rétablissement."
     }
   },
   "job": {
     "dreaming": {
-      "name": "Nightly dreaming",
-      "description": "Consolidates the day’s memories: duplicates merge, contradictions surface, stale facts age out."
+      "name": "Rêve nocturne",
+      "description": "Consolide les souvenirs de la journée : les doublons fusionnent, les contradictions apparaissent et les faits périmés sont écartés."
     },
     "sweep": {
-      "name": "Receipt sweep",
-      "description": "Verifies every deletion receipt against the stores each night, so forgetting stays provable."
+      "name": "Vérification des reçus",
+      "description": "Vérifie chaque nuit tous les reçus de suppression dans les espaces de stockage pour que l’oubli reste démontrable."
     }
   }
 }

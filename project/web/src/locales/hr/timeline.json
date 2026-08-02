@@ -1,70 +1,70 @@
 {
   "page": {
-    "subjectLabel": "Subject: a person, project, or topic",
-    "subjectPlaceholder": "e.g. Atlas, Ana Kovač, the CRM…",
-    "viewHistory": "View history",
-    "explainer": "See how your knowledge about a subject changed over time: what you believed then, what changed, and what caused it. Every claim links to its source.",
+    "subjectLabel": "Predmet: osoba, projekt ili tema",
+    "subjectPlaceholder": "npr. Atlas, Ana Kovač, CRM…",
+    "viewHistory": "Prikaži povijest",
+    "explainer": "Pogledajte kako se vaše znanje o predmetu mijenjalo tijekom vremena: što ste tada vjerovali, što se promijenilo i što je to uzrokovalo. Svaka je tvrdnja povezana sa svojim izvorom.",
     "empty": {
-      "title": "Pick a subject to travel through its history.",
-      "body": "Ask “what did I believe about X in March?” or “what changed about Y since last month?” Here you get the visual answer. You can also open a memory and choose “Timeline”."
+      "title": "Odaberite predmet za putovanje kroz njegovu povijest.",
+      "body": "Pitajte „što sam vjerovao/la o X u ožujku?” ili „što se promijenilo u vezi s Y od prošlog mjeseca?” Ovdje dobivate vizualni odgovor. Možete i otvoriti sjećanje te odabrati „Vremenska crta”."
     }
   },
   "tab": {
-    "timeline": "Timeline",
-    "at": "At a date",
-    "compare": "Compare two dates"
+    "timeline": "Vremenska crta",
+    "at": "Na određeni datum",
+    "compare": "Usporedi dva datuma"
   },
   "sourcePhrase": {
-    "note": "a note",
-    "chat": "a chat message",
-    "email": "an email",
-    "document": "a document",
-    "other": "a {{kind}}"
+    "note": "bilješka",
+    "chat": "poruka u razgovoru",
+    "email": "e-pošta",
+    "document": "dokument",
+    "other": "izvor vrste {{kind}}"
   },
   "fate": {
-    "stillCurrent": "still current",
-    "replaced": "later replaced",
-    "outdated": "later marked outdated",
-    "expired": "later expired"
+    "stillCurrent": "još aktualno",
+    "replaced": "kasnije zamijenjeno",
+    "outdated": "kasnije označeno kao zastarjelo",
+    "expired": "kasnije isteklo"
   },
   "spans": {
-    "loading": "Loading the timeline…",
-    "error": "Couldn't load this timeline.",
+    "loading": "Vremenska crta se učitava…",
+    "error": "Nismo mogli učitati ovu vremensku crtu.",
     "period": "{{from}} → {{until}}",
-    "periodOpen": "since {{from}}",
-    "openFact": "Open this fact: its verification, provenance and source",
-    "current": "current",
-    "past": "past",
-    "whatReplacedIt": "→ what replaced it",
+    "periodOpen": "od {{from}}",
+    "openFact": "Otvorite ovu činjenicu: njezinu provjeru, podrijetlo i izvor",
+    "current": "aktualno",
+    "past": "prošlo",
+    "whatReplacedIt": "→ čime je zamijenjeno",
     "empty": {
-      "title": "Nothing on record about {{subject}}.",
-      "body": "When you capture facts that mention {{subject}}, their history appears here."
+      "title": "Nema zabilježenih podataka o {{subject}}.",
+      "body": "Kada spremite činjenice koje spominju {{subject}}, njihova će se povijest prikazati ovdje."
     }
   },
   "at": {
-    "moveToDate": "Move to a date",
-    "explainer": "What Cogeto understood about {{subject}} on {{date}}, including facts since replaced, each labelled with what happened to it later.",
-    "loading": "Reconstructing that moment…",
-    "error": "Couldn't reconstruct that moment.",
-    "empty": "Nothing was on record about {{subject}} then."
+    "moveToDate": "Pomakni se na datum",
+    "explainer": "Što je Cogeto razumio o {{subject}} na datum {{date}}, uključujući činjenice koje su otad zamijenjene, svaku s oznakom onoga što joj se poslije dogodilo.",
+    "loading": "Obnova tog trenutka…",
+    "error": "Nismo mogli obnoviti taj trenutak.",
+    "empty": "Tada nije bilo zabilježenih podataka o {{subject}}."
   },
   "compare": {
-    "from": "From",
-    "to": "To",
-    "pickTwo": "Pick two dates to see what changed between them.",
-    "loading": "Comparing…",
-    "error": "Couldn't compare those dates.",
-    "nothingChanged": "Nothing changed about {{subject}} between {{from}} and {{to}}.",
-    "everythingHeld": "Everything on record then still held.",
-    "nothingOnRecord": "There was nothing on record in that window.",
-    "whatChanged": "What changed",
-    "whatYouLearned": "What you learned",
-    "whatBecameOutdated": "What became outdated"
+    "from": "Od",
+    "to": "Do",
+    "pickTwo": "Odaberite dva datuma kako biste vidjeli što se između njih promijenilo.",
+    "loading": "Usporedba…",
+    "error": "Nismo mogli usporediti te datume.",
+    "nothingChanged": "Ništa se u vezi s {{subject}} nije promijenilo između {{from}} i {{to}}.",
+    "everythingHeld": "Sve tada zabilježeno i dalje je vrijedilo.",
+    "nothingOnRecord": "U tom razdoblju ništa nije bilo zabilježeno.",
+    "whatChanged": "Što se promijenilo",
+    "whatYouLearned": "Što ste saznali",
+    "whatBecameOutdated": "Što je zastarjelo"
   },
   "change": {
-    "inDate": "In {{date}},",
-    "byDate": "By {{date}}, {{source}} changed it to",
-    "explainInChat": "Explain this change in chat →",
-    "chatQuestion": "What changed about {{subject}}, and what caused it, between {{from}} and {{to}}?"
+    "inDate": "Na datum {{date}},",
+    "byDate": "Do datuma {{date}}, {{source}} promijenio je vrijednost u",
+    "explainInChat": "Objasni ovu promjenu u razgovoru →",
+    "chatQuestion": "Što se promijenilo u vezi s {{subject}} i što je to uzrokovalo između {{from}} i {{to}}?"
   }
 }

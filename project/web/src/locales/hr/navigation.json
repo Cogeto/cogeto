@@ -1,28 +1,28 @@
 {
-  "landmark": "Primary",
+  "landmark": "Glavno",
   "section": {
-    "dashboard": "Dashboard",
-    "memories": "Memories",
-    "chat": "Chat",
-    "research": "Research",
-    "skills": "Skills",
-    "timeline": "Time travel",
-    "review": "Contradictions",
-    "approvals": "Approvals",
-    "forgotten": "Forgotten",
-    "audit": "Audit",
-    "system": "System",
-    "settings": "Settings"
+    "dashboard": "Nadzorna ploča",
+    "memories": "Sjećanja",
+    "chat": "Razgovor",
+    "research": "Istraživanje",
+    "skills": "Vještine",
+    "timeline": "Putovanje kroz vrijeme",
+    "review": "Proturječnosti",
+    "approvals": "Odobrenja",
+    "forgotten": "Zaboravljeno",
+    "audit": "Revizija",
+    "system": "Sustav",
+    "settings": "Postavke"
   },
   "badge": {
-    "items": "items",
-    "openContradictions": "open contradictions",
-    "pendingApprovals": "pending approvals",
-    "newSinceLastLook_one": "{{count}} new since you last looked",
-    "newSinceLastLook_few": "{{count}} new since you last looked",
-    "newSinceLastLook_other": "{{count}} new since you last looked"
+    "items": "stavke",
+    "openContradictions": "otvorene proturječnosti",
+    "pendingApprovals": "odobrenja na čekanju",
+    "newSinceLastLook_one": "{{count}} novo od vašeg posljednjeg pregleda",
+    "newSinceLastLook_few": "{{count}} nova od vašeg posljednjeg pregleda",
+    "newSinceLastLook_other": "{{count}} novih od vašeg posljednjeg pregleda"
   },
-  "liveSandbox": "Live sandbox",
-  "signOut": "Sign out",
-  "versionTitle": "Cogeto version"
+  "liveSandbox": "Aktivno pokazno okruženje",
+  "signOut": "Odjava",
+  "versionTitle": "Verzija sustava Cogeto"
 }

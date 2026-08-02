@@ -1,79 +1,79 @@
 {
   "attention": {
-    "heading": "What needs you right now",
-    "unreadCount_one": "{{count}} new",
-    "unreadCount_other": "{{count}} new",
-    "newSuffix": "(new)",
-    "dismissItem": "Dismiss: {{title}}",
-    "loading": "Loading your attention feed…",
-    "error": "We couldn't load your attention feed just now.",
+    "heading": "Was jetzt Ihre Aufmerksamkeit braucht",
+    "unreadCount_one": "{{count}} neu",
+    "unreadCount_other": "{{count}} neu",
+    "newSuffix": "(neu)",
+    "dismissItem": "Verwerfen: {{title}}",
+    "loading": "Ihre Hinweise werden geladen…",
+    "error": "Ihre Hinweise konnten gerade nicht geladen werden.",
     "liveRegion": {
-      "needsAttention_one": "{{count}} item needs your attention",
-      "needsAttention_other": "{{count}} items need your attention",
-      "nothing": "Nothing needs your attention right now"
+      "needsAttention_one": "{{count}} Element braucht Ihre Aufmerksamkeit",
+      "needsAttention_other": "{{count}} Elemente brauchen Ihre Aufmerksamkeit",
+      "nothing": "Derzeit braucht nichts Ihre Aufmerksamkeit"
     },
     "empty": {
-      "title": "Nothing needs you right now",
-      "body": "Due work, quiet commitments, review items, approvals and last night's changes will surface here."
+      "title": "Derzeit braucht nichts Ihre Aufmerksamkeit",
+      "body": "Fällige Aufgaben, still gewordene Verpflichtungen, Prüfpunkte, Genehmigungen und Änderungen der letzten Nacht erscheinen hier."
     },
     "group": {
-      "open_loops": "Due & overdue",
-      "quiet": "Gone quiet",
-      "review": "Facts that disagree",
-      "approvals": "Awaiting your approval",
-      "overnight": "Last night"
+      "open_loops": "Fällig und überfällig",
+      "quiet": "Still geworden",
+      "review": "Widersprüchliche Fakten",
+      "approvals": "Wartet auf Ihre Genehmigung",
+      "overnight": "Letzte Nacht"
     }
   },
   "skillsEntry": {
-    "title": "Research a company or person before a meeting",
-    "body": "A sourced brief: what you know, what changed, every step inspectable."
+    "title": "Vor einem Treffen ein Unternehmen oder eine Person recherchieren",
+    "body": "Ein Briefing mit Quellen: was Sie wissen, was sich geändert hat und jeder Schritt nachvollziehbar."
   },
   "stats": {
-    "heading": "Your practice at a glance",
-    "loading": "Loading statistics…",
-    "error": "The statistics aren't available right now.",
+    "heading": "Ihre Arbeit auf einen Blick",
+    "loading": "Statistiken werden geladen…",
+    "error": "Die Statistiken sind derzeit nicht verfügbar.",
     "kpi": {
-      "memories": "Memories",
-      "stillOpen": "Still open",
-      "contradictions": "Contradictions",
-      "approvals": "Approvals",
-      "oldestConflict": "Oldest conflict",
-      "oldestNone": "None",
-      "oldestDays": "{{days}}d",
-      "oldestTitleNone": "No unresolved contradictions",
-      "oldestTitle_one": "Oldest unresolved contradiction: {{count}} day old",
-      "oldestTitle_other": "Oldest unresolved contradiction: {{count}} days old"
+      "memories": "Erinnerungen",
+      "stillOpen": "Noch offen",
+      "contradictions": "Widersprüche",
+      "approvals": "Genehmigungen",
+      "oldestConflict": "Ältester Konflikt",
+      "oldestNone": "Keiner",
+      "oldestDays": "{{days}} T.",
+      "oldestTitleNone": "Keine ungelösten Widersprüche",
+      "oldestTitle_one": "Ältester ungelöster Widerspruch: {{count}} Tag alt",
+      "oldestTitle_other": "Ältester ungelöster Widerspruch: {{count}} Tage alt"
     },
     "donut": {
-      "heading": "Memory by status",
-      "unit": "memories",
-      "empty": "Nothing captured yet. As you add notes, emails and files, they'll appear here by status.",
-      "summaryEmpty": "No memories yet.",
-      "summary_one": "{{count}} memories: {{breakdown}}.",
-      "summary_other": "{{count}} memories: {{breakdown}}.",
+      "heading": "Erinnerungen nach Status",
+      "unit": "Erinnerungen",
+      "empty": "Noch nichts erfasst. Wenn Sie Notizen, E-Mails und Dateien hinzufügen, erscheinen sie hier nach Status.",
+      "summaryEmpty": "Noch keine Erinnerungen.",
+      "summary_one": "{{count}} Erinnerung: {{breakdown}}.",
+      "summary_other": "{{count}} Erinnerungen: {{breakdown}}.",
       "segment_one": "{{count}} {{status}}",
       "segment_other": "{{count}} {{status}}"
     },
     "sources": {
-      "heading": "Sources · last {{days}} days",
-      "ingested_one": "{{count}} ingested →",
-      "ingested_other": "{{count}} ingested →",
+      "heading": "Quellen · letzte {{days}} Tage",
+      "ingested_one": "{{count}} aufgenommen →",
+      "ingested_other": "{{count}} aufgenommen →",
       "familyTotal_one": "<n>{{count}}</n> {{family}}",
       "familyTotal_other": "<n>{{count}}</n> {{family}}"
     },
     "dreaming": {
-      "heading": "Dreaming · last {{days}} days",
-      "mergesLabel": "Merges: {{count}}",
-      "conflictsLabel": "Conflicts caught: {{count}}",
-      "merges_one": "<n>{{count}}</n> merges",
-      "merges_other": "<n>{{count}}</n> merges",
-      "conflicts_one": "<n>{{count}}</n> conflicts caught →",
-      "conflicts_other": "<n>{{count}}</n> conflicts caught →"
+      "heading": "Träumen · letzte {{days}} Tage",
+      "mergesLabel": "Zusammenführungen: {{count}}",
+      "conflictsLabel": "Erkannte Konflikte: {{count}}",
+      "merges_one": "<n>{{count}}</n> Zusammenführung",
+      "merges_other": "<n>{{count}}</n> Zusammenführungen",
+      "conflicts_one": "<n>{{count}}</n> erkannter Konflikt →",
+      "conflicts_other": "<n>{{count}}</n> erkannte Konflikte →"
     }
   },
   "charts": {
-    "noActivity": "No activity in the last {{days}} days.",
-    "lastDays": "Last {{days}} days: {{totals}}.",
+    "noActivity": "Keine Aktivität in den letzten {{days}} Tagen.",
+    "lastDays": "Letzte {{days}} Tage: {{totals}}.",
     "seriesTotal_one": "{{count}} {{family}}",
     "seriesTotal_other": "{{count}} {{family}}"
   }

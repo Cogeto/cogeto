@@ -1,9 +1,9 @@
 {
   "auth": {
-    "loginFailed": "login failed: {{detail}}",
-    "callbackIncomplete": "login callback is missing the code or verifier",
-    "stateMismatch": "login callback state mismatch",
-    "demoCredentials": "Invalid demo username or password.",
-    "demoNoSession": "Demo login did not return a session."
+    "loginFailed": "échec de la connexion : {{detail}}",
+    "callbackIncomplete": "le rappel de connexion ne contient pas le code ou le vérificateur",
+    "stateMismatch": "l’état du rappel de connexion ne correspond pas",
+    "demoCredentials": "Nom d’utilisateur ou mot de passe de démonstration incorrect.",
+    "demoNoSession": "La connexion à la démonstration n’a renvoyé aucune session."
   }
 }

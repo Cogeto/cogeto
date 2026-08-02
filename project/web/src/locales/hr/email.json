@@ -1,46 +1,46 @@
 {
-  "heading": "Email capture",
-  "explainer": "Forward, BCC, or set a provider rule to send mail to the inbound address. Mail <b>you</b> send there (from your own address) is always captured for you; mail from other senders reaches you only when they are on <b>your</b> allowlist below. Captured email follows your default scope above.",
-  "inboundAddress": "Your inbound address",
-  "notConfigured": "Not configured yet. The operator sets this when provisioning the instance.",
-  "alwaysTrusted": "Always trusted",
-  "selfAddressNote": "your registered address: anything you forward or BCC is captured for you",
-  "noSubject": "(no subject)",
+  "heading": "Zaprimanje e-pošte",
+  "explainer": "Proslijedite poruku, dodajte adresu u BCC ili postavite pravilo pružatelja za slanje pošte na ulaznu adresu. Pošta koju <b>vi</b> pošaljete na tu adresu sa svoje adrese uvijek se sprema za vas. Pošta drugih pošiljatelja stiže vam samo kada se nalaze na <b>vašem</b> popisu dopuštenih pošiljatelja u nastavku. Spremljena e-pošta prati vaš zadani opseg iznad.",
+  "inboundAddress": "Vaša ulazna adresa",
+  "notConfigured": "Još nije konfigurirano. Operater to postavlja pri pripremi instance.",
+  "alwaysTrusted": "Uvijek pouzdano",
+  "selfAddressNote": "vaša registrirana adresa: sve što proslijedite ili pošaljete putem BCC-a sprema se za vas",
+  "noSubject": "(bez predmeta)",
   "howTo": {
-    "heading": "How to use it",
-    "forward": "<b>Forward</b> an individual message to this address to capture it.",
-    "bcc": "<b>BCC</b> this address when you send, to capture your own commitments as you make them.",
-    "autoForward": "<b>Auto-forward rule</b>: in your mail provider, forward mail from selected senders here automatically. <note>Provider-side auto-forward (or BCC) preserves the original sender better than a manual forward, so drafted replies address the right person.</note>",
-    "onlyWhatYouForward": "Cogeto only ever receives <b>what you forward</b>, never your whole mailbox, and never your password or account access."
+    "heading": "Kako se upotrebljava",
+    "forward": "<b>Proslijedite</b> pojedinačnu poruku na ovu adresu kako biste je spremili.",
+    "bcc": "<b>Dodajte u BCC</b> ovu adresu pri slanju kako biste spremili vlastite obveze čim ih preuzmete.",
+    "autoForward": "<b>Pravilo automatskog prosljeđivanja</b>: kod svog pružatelja e-pošte automatski prosljeđujte ovamo poštu od odabranih pošiljatelja. <note>Automatsko prosljeđivanje na strani pružatelja ili BCC bolje čuva izvornog pošiljatelja od ručnog prosljeđivanja, pa su skice odgovora naslovljene na pravu osobu.</note>",
+    "onlyWhatYouForward": "Cogeto prima samo <b>ono što proslijedite</b>, nikad cijeli poštanski sandučić, vašu lozinku ili pristup računu."
   },
   "allowlist": {
-    "heading": "Allowed senders",
-    "explainer": "External senders whose mail becomes <b>your</b> memory, typically the people you auto-forward from your provider. Other users keep their own lists.",
-    "empty": "No external senders allowed yet. Apart from your own address above, Cogeto is <b>closed by default</b> and accepts no mail for you until you add an address or domain here.",
-    "kind": "Kind",
+    "heading": "Dopušteni pošiljatelji",
+    "explainer": "Vanjski pošiljatelji čija pošta postaje dio <b>vašeg</b> pamćenja, obično osobe čiju poštu automatski prosljeđujete kod svog pružatelja. Drugi korisnici imaju vlastite popise.",
+    "empty": "Još nema dopuštenih vanjskih pošiljatelja. Osim vaše adrese iznad, Cogeto je <b>prema zadanim postavkama zatvoren</b> i ne prihvaća poštu za vas dok ovdje ne dodate adresu ili domenu.",
+    "kind": "Vrsta",
     "kindValue": {
-      "address": "address",
-      "domain": "domain"
+      "address": "adresa",
+      "domain": "domena"
     },
-    "addressField": "Email address",
-    "domainField": "Domain",
+    "addressField": "Adresa e-pošte",
+    "domainField": "Domena",
     "addressPlaceholder": "ana@adriatic-foods.hr",
     "domainPlaceholder": "adriatic-foods.hr",
-    "note": "Note (optional)",
-    "notePlaceholder": "e.g. supplier",
-    "addFailed": "Couldn't add. Check the value."
+    "note": "Napomena (neobavezno)",
+    "notePlaceholder": "npr. dobavljač",
+    "addFailed": "Dodavanje nije uspjelo. Provjerite vrijednost."
   },
   "refusals": {
-    "heading": "Recently refused",
-    "explainer": "Mail Cogeto turned away, and why. When the sender just isn't known yet, claim them for your own capture in one click.",
-    "allowSender": "Allow this sender"
+    "heading": "Nedavno odbijeno",
+    "explainer": "Pošta koju je Cogeto odbio i razlog odbijanja. Kada pošiljatelj još nije poznat, jednim ga klikom dodajte u vlastito zaprimanje.",
+    "allowSender": "Dopusti ovog pošiljatelja"
   },
   "refusalReason": {
-    "sender_not_recognized": "sender is not a registered user and not on any allowlist",
-    "sender_not_allowlisted": "sender was not on the allowlist",
-    "no_owner": "no capture owner was configured (older refusal)",
-    "wrong_recipient": "addressed to a different recipient",
-    "message_too_large": "message exceeded the size cap",
-    "attachments_too_large": "attachments exceeded the size cap"
+    "sender_not_recognized": "pošiljatelj nije registrirani korisnik niti je na popisu dopuštenih pošiljatelja",
+    "sender_not_allowlisted": "pošiljatelj nije bio na popisu dopuštenih pošiljatelja",
+    "no_owner": "vlasnik zaprimanja nije konfiguriran (starije odbijanje)",
+    "wrong_recipient": "adresirano drugom primatelju",
+    "message_too_large": "poruka je premašila ograničenje veličine",
+    "attachments_too_large": "privici su premašili ograničenje veličine"
   }
 }

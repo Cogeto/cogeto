@@ -1,105 +1,105 @@
 {
-  "loadingConversation": "Loading conversation…",
-  "answerFailed": "That answer didn't come through. Try asking again.",
-  "skillRunHandoff": "Open the brief run: approve the search plan and watch each step →",
+  "loadingConversation": "Razgovor se učitava…",
+  "answerFailed": "Odgovor nije stigao. Pokušajte ponovno postaviti pitanje.",
+  "skillRunHandoff": "Otvorite izvođenje sažetka: odobrite plan pretraživanja i pratite svaki korak →",
   "role": {
-    "you": "You"
+    "you": "Vi"
   },
   "answer": {
-    "standsOn": "Stands on",
-    "attribution": "Cogeto · from your memory",
-    "askedByAt": "You · {{time}}"
+    "standsOn": "Temelji se na",
+    "attribution": "Cogeto · iz vašeg pamćenja",
+    "askedByAt": "Vi · {{time}}"
   },
   "empty": {
-    "title": "Ask your memory.",
-    "body": "Every answer shows, sentence by sentence, what Cogeto can prove, and honestly marks what it can't. The web is searched only when you ask and approve.",
-    "workspaceNote": "This is one conversation: a workspace for one thread of work. Anything captured here becomes memory and answers in every other conversation too."
+    "title": "Pitajte svoje pamćenje.",
+    "body": "Svaki odgovor, rečenicu po rečenicu, pokazuje što Cogeto može dokazati i iskreno označava ono što ne može. Web se pretražuje samo kada to zatražite i odobrite.",
+    "workspaceNote": "Ovo je jedan razgovor, radni prostor za jednu temu. Sve što se ovdje zabilježi postaje dio pamćenja i dostupno je za odgovore u svim drugim razgovorima."
   },
   "suggestedPrompts": {
-    "promisedThisWeek": "What did I promise this week?",
-    "openCommitments": "Summarise my open commitments",
-    "changedSince": "What changed since last month?",
-    "whoInvolved": "Who is involved in my active work?"
+    "promisedThisWeek": "Što sam obećao/la ovaj tjedan?",
+    "openCommitments": "Sažmi moje otvorene obveze",
+    "changedSince": "Što se promijenilo od prošlog mjeseca?",
+    "whoInvolved": "Tko sudjeluje u mom aktivnom radu?"
   },
   "thinking": {
-    "default": "Thinking…",
-    "fromMemories": "Answering from your memories…"
+    "default": "Razmišljanje…",
+    "fromMemories": "Odgovaranje iz vaših sjećanja…"
   },
   "composer": {
-    "label": "Ask a question",
-    "placeholder": "Ask your memory…",
-    "send": "Send",
-    "hint": "Enter to send · Shift+Enter for a new line · every claim shows what it can prove"
+    "label": "Postavite pitanje",
+    "placeholder": "Pitajte svoje pamćenje…",
+    "send": "Pošalji",
+    "hint": "Enter za slanje · Shift+Enter za novi redak · svaka tvrdnja pokazuje što može dokazati"
   },
   "remember": {
-    "action": "Remember this",
-    "title": "Remember this message. It becomes memory through the normal pipeline",
-    "pending": "Remembering…",
-    "working": "Remembering… extracting & verifying",
-    "done": "Remembered ✓",
-    "failed": "Capture failed"
+    "action": "Zapamti ovo",
+    "title": "Zapamtite ovu poruku. Postat će dio pamćenja kroz uobičajeni postupak",
+    "pending": "Spremanje u pamćenje…",
+    "working": "Spremanje u pamćenje… izdvajanje i provjera",
+    "done": "Zapamćeno ✓",
+    "failed": "Spremanje nije uspjelo"
   },
   "researchOffer": {
-    "action": "Research this on the web →",
-    "preparing": "Preparing…",
-    "error": "Couldn't prepare that research. Try the Research page.",
-    "always": "Always do this automatically",
-    "alwaysTitle": "Cogeto will check the web automatically from now on. You can turn this off in Settings."
+    "action": "Istraži ovo na webu →",
+    "preparing": "Priprema…",
+    "error": "Istraživanje nije bilo moguće pripremiti. Pokušajte na stranici Istraživanje.",
+    "always": "Uvijek to radi automatski",
+    "alwaysTitle": "Cogeto će odsad automatski provjeravati web. To možete isključiti u Postavkama."
   },
   "citation": {
-    "unresolved": "source",
-    "teammate": "a teammate",
-    "fromWeb": "from the web",
-    "webDetail": "{{title}} · fetched {{when}}",
-    "sharedBy": "shared by {{owner}}",
-    "pastSuffix": "· past",
-    "screenReader": "citation from {{kind}}",
+    "unresolved": "izvor",
+    "teammate": "član tima",
+    "fromWeb": "s weba",
+    "webDetail": "{{title}} · dohvaćeno {{when}}",
+    "sharedBy": "podijelio/la {{owner}}",
+    "pastSuffix": "· prošlo",
+    "screenReader": "navod iz izvora vrste {{kind}}",
     "screenReaderStatus": ", {{status}}",
-    "screenReaderPast": ", past belief",
-    "screenReaderShared": ", shared by {{owner}}",
+    "screenReaderPast": ", prošlo uvjerenje",
+    "screenReaderShared": ", podijelio/la {{owner}}",
     "kind": {
-      "note": "note",
-      "email": "email",
+      "note": "bilješka",
+      "email": "e-pošta",
       "web": "web",
-      "document": "doc",
-      "chat": "chat"
+      "document": "dokument",
+      "chat": "razgovor"
     },
     "unsourced": {
-      "label": "unsourced",
-      "title": "Model knowledge, not from your sources. Cogeto marks these so you always know which claims it can prove.",
-      "ariaLabel": "model knowledge, not from your sources"
+      "label": "bez izvora",
+      "title": "Znanje modela, nije iz vaših izvora. Cogeto to označava kako biste uvijek znali koje tvrdnje može dokazati.",
+      "ariaLabel": "znanje modela, nije iz vaših izvora"
     }
   },
   "conversation": {
-    "untitled": "New conversation",
-    "listLabel": "Conversations",
-    "pickerLabel": "Conversation",
-    "new": "New conversation",
-    "newShort": "New",
-    "titleField": "Conversation title",
-    "rename": "Rename",
-    "archive": "Archive",
-    "unarchive": "Unarchive",
-    "archived_one": "Archived ({{count}})",
-    "archived_few": "Archived ({{count}})",
-    "archived_other": "Archived ({{count}})",
-    "archivedSuffix": " (archived)",
-    "emptyRail": "A conversation is a workspace for one thread of thinking: a client, a contract, quick questions. Start one and ask.",
-    "railFooter": "What Cogeto learns here is remembered everywhere: conversations organise talk, memory keeps knowledge.",
+    "untitled": "Novi razgovor",
+    "listLabel": "Razgovori",
+    "pickerLabel": "Razgovor",
+    "new": "Novi razgovor",
+    "newShort": "Novi",
+    "titleField": "Naslov razgovora",
+    "rename": "Preimenuj",
+    "archive": "Arhiviraj",
+    "unarchive": "Vrati iz arhive",
+    "archived_one": "Arhiviran ({{count}})",
+    "archived_few": "Arhivirana ({{count}})",
+    "archived_other": "Arhivirano ({{count}})",
+    "archivedSuffix": " (arhivirano)",
+    "emptyRail": "Razgovor je radni prostor za jednu temu: klijenta, ugovor ili kratka pitanja. Pokrenite ga i pitajte.",
+    "railFooter": "Ono što Cogeto ovdje nauči pamti se posvuda: razgovori organiziraju komunikaciju, a pamćenje čuva znanje.",
     "delete": {
-      "action": "Delete",
-      "question": "Delete \"{{label}}\"?",
-      "messages_one": "{{count}} message",
-      "messages_few": "{{count}} messages",
-      "messages_other": "{{count}} messages",
-      "memories_one": "{{count}} memory",
-      "memories_few": "{{count}} memories",
-      "memories_other": "{{count}} memories",
-      "consequence": "This deletes the conversation, its {{messages}}, and the {{memories}} derived from them, with a signed receipt.",
-      "approvedNote_one": "Note: {{count}} of those memories was approved by you.",
-      "approvedNote_few": "Note: {{count}} of those memories were approved by you.",
-      "approvedNote_other": "Note: {{count}} of those memories were approved by you.",
-      "alternative": "Archiving keeps everything instead. This cannot be undone."
+      "action": "Izbriši",
+      "question": "Izbrisati „{{label}}”?",
+      "messages_one": "{{count}} poruku",
+      "messages_few": "{{count}} poruke",
+      "messages_other": "{{count}} poruka",
+      "memories_one": "{{count}} sjećanje",
+      "memories_few": "{{count}} sjećanja",
+      "memories_other": "{{count}} sjećanja",
+      "consequence": "Time se brišu razgovor i njegove poruke, ukupno {{messages}}, te iz njih izvedena sjećanja, ukupno {{memories}}, uz potpisanu potvrdu.",
+      "approvedNote_one": "Napomena: vi ste odobrili {{count}} od tih sjećanja.",
+      "approvedNote_few": "Napomena: vi ste odobrili {{count}} od tih sjećanja.",
+      "approvedNote_other": "Napomena: vi ste odobrili {{count}} od tih sjećanja.",
+      "alternative": "Arhiviranjem se umjesto toga sve zadržava. Ovo se ne može poništiti."
     }
   }
 }

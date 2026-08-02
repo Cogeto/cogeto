@@ -1,6 +1,6 @@
 {
   "thread": {
-    "sourcesHeading": "Sources:",
-    "sourceLine": "{{index}}. {{title}} ({{url}}, fetched {{date}})"
+    "sourcesHeading": "Sources :",
+    "sourceLine": "{{index}}. {{title}} ({{url}}, récupéré {{date}})"
   }
 }

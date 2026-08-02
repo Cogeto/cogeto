@@ -1,77 +1,77 @@
 {
   "status": {
-    "planning": "planning",
-    "awaiting_approval": "awaiting approval",
-    "running": "running",
-    "awaiting_input": "awaiting input",
-    "completed": "completed",
-    "failed": "failed",
-    "cancelled": "cancelled"
+    "planning": "planiranje",
+    "awaiting_approval": "čeka odobrenje",
+    "running": "izvodi se",
+    "awaiting_input": "čeka unos",
+    "completed": "dovršeno",
+    "failed": "neuspješno",
+    "cancelled": "otkazano"
   },
   "stepStatus": {
-    "pending": "pending",
-    "running": "running",
-    "completed": "completed",
-    "failed": "failed",
-    "skipped": "skipped"
+    "pending": "na čekanju",
+    "running": "izvodi se",
+    "completed": "dovršeno",
+    "failed": "neuspješno",
+    "skipped": "preskočeno"
   },
   "statusLine": {
-    "planning": "Planning: checking what you already know",
-    "awaitingApproval": "Searches awaiting your approval",
-    "awaitingInput": "Waiting for your input",
-    "working": "Working",
-    "retrying": "Retrying: {{step}}",
-    "completed": "Completed",
-    "failed": "Failed",
-    "failedWithReason": "Failed: {{reason}}",
-    "cancelled": "Cancelled"
+    "planning": "Planiranje: provjera onoga što već znate",
+    "awaitingApproval": "Pretraživanja čekaju vaše odobrenje",
+    "awaitingInput": "Čeka se vaš unos",
+    "working": "Rad je u tijeku",
+    "retrying": "Ponovni pokušaj: {{step}}",
+    "completed": "Dovršeno",
+    "failed": "Neuspješno",
+    "failedWithReason": "Neuspješno: {{reason}}",
+    "cancelled": "Otkazano"
   },
   "home": {
-    "heading": "Research a company or person before a meeting",
-    "explainer": "Cogeto checks what you already know, proposes minimised searches for your approval, reads the approved pages, and writes a brief where every claim links to its source. Nothing leaves this instance until you approve the search plan.",
-    "subjectPlaceholder": "A company or person, e.g. Adriatic Foods",
-    "subjectLabel": "Subject to research",
-    "prepare": "Prepare a brief",
-    "planning": "Planning…",
-    "ambiguous": "Which one do you mean?",
-    "runs": "Runs",
-    "runsError": "Could not load skill runs.",
+    "heading": "Istražite tvrtku ili osobu prije sastanka",
+    "explainer": "Cogeto provjerava što već znate, predlaže minimalne upite za vaše odobrenje, čita odobrene stranice i piše sažetak u kojem je svaka tvrdnja povezana sa svojim izvorom. Ništa ne napušta ovu instancu dok ne odobrite plan pretraživanja.",
+    "subjectPlaceholder": "Tvrtka ili osoba, npr. Adriatic Foods",
+    "subjectLabel": "Predmet istraživanja",
+    "prepare": "Pripremi sažetak",
+    "planning": "Planiranje…",
+    "ambiguous": "Na koga ili što mislite?",
+    "runs": "Izvođenja",
+    "runsError": "Nismo mogli učitati izvođenja vještine.",
     "empty": {
-      "title": "No runs yet",
-      "body": "Try \"Prepare a brief\" above, or ask in chat: \"research Adriatic Foods before Thursday\"."
+      "title": "Još nema izvođenja",
+      "body": "Pokušajte s „Pripremi sažetak” iznad ili u razgovoru pitajte: „istraži Adriatic Foods prije četvrtka”."
     }
   },
   "run": {
-    "loadError": "Could not load this run.",
-    "backToSkills": "← Skills",
-    "cancel": "Cancel run",
-    "steps": "Steps",
-    "moreArtifacts_one": "+{{count}} more",
-    "moreArtifacts_few": "+{{count}} more",
-    "moreArtifacts_other": "+{{count}} more"
+    "loadError": "Nismo mogli učitati ovo izvođenje.",
+    "backToSkills": "← Vještine",
+    "cancel": "Otkaži izvođenje",
+    "steps": "Koraci",
+    "moreArtifacts_one": "+ još {{count}}",
+    "moreArtifacts_few": "+ još {{count}}",
+    "moreArtifacts_other": "+ još {{count}}"
   },
   "plan": {
-    "heading": "The search plan: approve before anything leaves",
-    "explainer": "These queries were proposed from your context, minimised. Edit any, remove any; nothing is sent until you approve. Each approved query is recorded in the provenance of every fact it produces.",
-    "queryLabel": "Search query",
-    "keep": "Keep",
-    "remove": "Remove",
-    "approving": "Approving…",
-    "approveCount_one": "Approve {{count}} search",
-    "approveCount_few": "Approve {{count}} searches",
-    "approveCount_other": "Approve {{count}} searches",
-    "removedNote": "Removed queries are cancelled and never leave.",
-    "whatWasSearched": "What was searched",
-    "queryRemoved": "removed",
-    "querySent": "sent"
+    "heading": "Plan pretraživanja: odobrite prije nego što se išta pošalje",
+    "explainer": "Ovi minimalni upiti predloženi su iz vašeg konteksta. Uredite ili uklonite bilo koji. Ništa se ne šalje dok ne odobrite. Svaki odobreni upit bilježi se u podrijetlu svake činjenice koju proizvede.",
+    "queryLabel": "Upit za pretraživanje",
+    "keep": "Zadrži",
+    "remove": "Ukloni",
+    "approving": "Odobravanje…",
+    "approveCount_one": "Odobri {{count}} pretraživanje",
+    "approveCount_few": "Odobri {{count}} pretraživanja",
+    "approveCount_other": "Odobri {{count}} pretraživanja",
+    "removedNote": "Uklonjeni upiti se otkazuju i nikad se ne šalju.",
+    "whatWasSearched": "Što je pretraženo",
+    "queryRemoved": "uklonjeno",
+    "querySent": "poslano"
   },
   "brief": {
-    "heading": "The brief",
-    "copyWithSources": "Copy with sources"
+    "heading": "Sažetak",
+    "copyWithSources": "Kopiraj s izvorima"
   },
   "export": {
-    "sources": "Sources:",
-    "webSource": "- {{marker}} {{title}} ({{url}}, fetched {{date}})",
-    "memorySource": "- {{marker}} memory {{id}}"
+    "sources": "Izvori:",
+    "webSource": "- {{marker}} {{title}} ({{url}}, dohvaćeno {{date}})",
+    "memorySource": "- {{marker}} sjećanje {{id}}"
   }
 }

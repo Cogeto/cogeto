@@ -1,46 +1,43 @@
 {
-  "heading": "Email capture",
-  "explainer": "Forward, BCC, or set a provider rule to send mail to the inbound address. Mail <b>you</b> send there (from your own address) is always captured for you; mail from other senders reaches you only when they are on <b>your</b> allowlist below. Captured email follows your default scope above.",
-  "inboundAddress": "Your inbound address",
-  "notConfigured": "Not configured yet. The operator sets this when provisioning the instance.",
-  "alwaysTrusted": "Always trusted",
-  "selfAddressNote": "your registered address: anything you forward or BCC is captured for you",
-  "noSubject": "(no subject)",
+  "heading": "Capture des e-mails",
+  "explainer": "Transférez les messages, ajoutez l’adresse en Cci ou configurez une règle chez votre fournisseur pour envoyer les e-mails à l’adresse d’entrée. Les e-mails que <b>vous</b> y envoyez depuis votre propre adresse sont toujours capturés pour vous. Ceux des autres expéditeurs ne vous parviennent que s’ils figurent dans <b>votre</b> liste d’autorisation ci-dessous. Les e-mails capturés suivent votre portée par défaut définie ci-dessus.",
+  "inboundAddress": "Votre adresse d’entrée",
+  "notConfigured": "Pas encore configurée. L’opérateur la définit lors de la mise en service de l’instance.",
+  "alwaysTrusted": "Toujours approuvée",
+  "selfAddressNote": "votre adresse enregistrée : tout ce que vous transférez ou envoyez en Cci est capturé pour vous",
+  "noSubject": "(sans objet)",
   "howTo": {
-    "heading": "How to use it",
-    "forward": "<b>Forward</b> an individual message to this address to capture it.",
-    "bcc": "<b>BCC</b> this address when you send, to capture your own commitments as you make them.",
-    "autoForward": "<b>Auto-forward rule</b>: in your mail provider, forward mail from selected senders here automatically. <note>Provider-side auto-forward (or BCC) preserves the original sender better than a manual forward, so drafted replies address the right person.</note>",
-    "onlyWhatYouForward": "Cogeto only ever receives <b>what you forward</b>, never your whole mailbox, and never your password or account access."
+    "heading": "Mode d’emploi",
+    "forward": "<b>Transférez</b> un message individuel à cette adresse pour le capturer.",
+    "bcc": "Ajoutez cette adresse en <b>Cci</b> lors de l’envoi pour capturer vos propres engagements au moment où vous les prenez.",
+    "autoForward": "<b>Règle de transfert automatique</b> : chez votre fournisseur de messagerie, transférez automatiquement ici les e-mails d’expéditeurs sélectionnés. <note>Le transfert automatique côté fournisseur ou la Cci conserve mieux l’expéditeur d’origine qu’un transfert manuel. Les brouillons de réponse sont ainsi adressés à la bonne personne.</note>",
+    "onlyWhatYouForward": "Cogeto reçoit uniquement <b>ce que vous transférez</b>, jamais toute votre boîte aux lettres, votre mot de passe ou l’accès à votre compte."
   },
   "allowlist": {
-    "heading": "Allowed senders",
-    "explainer": "External senders whose mail becomes <b>your</b> memory, typically the people you auto-forward from your provider. Other users keep their own lists.",
-    "empty": "No external senders allowed yet. Apart from your own address above, Cogeto is <b>closed by default</b> and accepts no mail for you until you add an address or domain here.",
-    "kind": "Kind",
-    "kindValue": {
-      "address": "address",
-      "domain": "domain"
-    },
-    "addressField": "Email address",
-    "domainField": "Domain",
+    "heading": "Expéditeurs autorisés",
+    "explainer": "Expéditeurs externes dont les e-mails rejoignent <b>votre</b> mémoire, généralement les personnes dont vous transférez automatiquement les messages depuis votre fournisseur. Les autres utilisateurs conservent leurs propres listes.",
+    "empty": "Aucun expéditeur externe n’est encore autorisé. En dehors de votre propre adresse ci-dessus, Cogeto est <b>fermé par défaut</b> et n’accepte aucun e-mail pour vous tant que vous n’ajoutez pas une adresse ou un domaine ici.",
+    "kind": "Type",
+    "kindValue": { "address": "adresse", "domain": "domaine" },
+    "addressField": "Adresse e-mail",
+    "domainField": "Domaine",
     "addressPlaceholder": "ana@adriatic-foods.hr",
     "domainPlaceholder": "adriatic-foods.hr",
-    "note": "Note (optional)",
-    "notePlaceholder": "e.g. supplier",
-    "addFailed": "Couldn't add. Check the value."
+    "note": "Note (facultative)",
+    "notePlaceholder": "par ex. fournisseur",
+    "addFailed": "Ajout impossible. Vérifiez la valeur."
   },
   "refusals": {
-    "heading": "Recently refused",
-    "explainer": "Mail Cogeto turned away, and why. When the sender just isn't known yet, claim them for your own capture in one click.",
-    "allowSender": "Allow this sender"
+    "heading": "Refusés récemment",
+    "explainer": "E-mails refusés par Cogeto et motif du refus. Lorsque l’expéditeur n’est simplement pas encore connu, ajoutez-le à votre propre capture en un clic.",
+    "allowSender": "Autoriser cet expéditeur"
   },
   "refusalReason": {
-    "sender_not_recognized": "sender is not a registered user and not on any allowlist",
-    "sender_not_allowlisted": "sender was not on the allowlist",
-    "no_owner": "no capture owner was configured (older refusal)",
-    "wrong_recipient": "addressed to a different recipient",
-    "message_too_large": "message exceeded the size cap",
-    "attachments_too_large": "attachments exceeded the size cap"
+    "sender_not_recognized": "l’expéditeur n’est pas un utilisateur enregistré et ne figure sur aucune liste d’autorisation",
+    "sender_not_allowlisted": "l’expéditeur ne figurait pas sur la liste d’autorisation",
+    "no_owner": "aucun propriétaire de capture n’était configuré (ancien refus)",
+    "wrong_recipient": "adressé à un autre destinataire",
+    "message_too_large": "le message dépassait la taille maximale",
+    "attachments_too_large": "les pièces jointes dépassaient la taille maximale"
   }
 }

@@ -1,77 +1,65 @@
 {
   "productName": "Cogeto",
-  "document": {
-    "title": "Cogeto: verifiable memory"
-  },
+  "document": { "title": "Cogeto : mémoire vérifiable" },
   "action": {
-    "add": "Add",
-    "cancel": "Cancel",
-    "close": "Close",
-    "copy": "Copy",
-    "copied": "Copied",
-    "dismiss": "Dismiss",
-    "download": "Download",
-    "remove": "Remove",
-    "save": "Save",
-    "tryAgain": "Try again"
+    "add": "Ajouter",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "copy": "Copier",
+    "copied": "Copié",
+    "dismiss": "Ignorer",
+    "download": "Télécharger",
+    "remove": "Retirer",
+    "save": "Enregistrer",
+    "tryAgain": "Réessayer"
   },
   "state": {
-    "loading": "Loading…",
-    "loadingApp": "Loading Cogeto…",
-    "saving": "Saving…",
-    "saved": "Saved."
+    "loading": "Chargement…",
+    "loadingApp": "Chargement de Cogeto…",
+    "saving": "Enregistrement…",
+    "saved": "Enregistré."
   },
   "memoryStatus": {
-    "active": "active",
-    "user_approved": "approved",
-    "uncertain": "uncertain",
-    "contradicted": "contradicted",
-    "outdated": "outdated",
-    "replaced": "replaced"
+    "active": "actif",
+    "user_approved": "approuvé",
+    "uncertain": "incertain",
+    "contradicted": "contredit",
+    "outdated": "obsolète",
+    "replaced": "remplacé"
   },
-  "memoryScope": {
-    "private": "private",
-    "shared": "shared"
-  },
+  "memoryScope": { "private": "privé", "shared": "partagé" },
   "verificationVerdict": {
-    "supported": "supported",
-    "partial": "partial",
-    "unsupported": "unsupported"
+    "supported": "confirmé",
+    "partial": "partiel",
+    "unsupported": "non confirmé"
   },
   "badge": {
     "sensitive": {
-      "label": "sensitive",
-      "title": "Sensitive: owner-only, off by default in retrieval"
+      "label": "sensible",
+      "title": "Sensible : réservé au propriétaire, exclu par défaut de la récupération"
     },
-    "shared": {
-      "label": "shared",
-      "title": "Visible to your whole organization"
-    },
-    "private": "private"
+    "shared": { "label": "partagé", "title": "Visible par toute votre organisation" },
+    "private": "privé"
   },
-  "countBadge": {
-    "label": "{{count}} {{noun}}"
-  },
-  "entityChip": {
-    "filterBy": "Filter by {{name}}"
-  },
+  "countBadge": { "label": "{{count}} {{noun}}" },
+  "entityChip": { "filterBy": "Filtrer par {{name}}" },
   "relativeTime": {
-    "justNow": "just now",
-    "minutes_one": "{{count}} min ago",
-    "minutes_many": "{{count}} min ago",
-    "minutes_other": "{{count}} min ago",
-    "hours_one": "{{count}} h ago",
-    "hours_many": "{{count}} h ago",
-    "hours_other": "{{count}} h ago",
-    "days_one": "{{count}} d ago",
-    "days_many": "{{count}} d ago",
-    "days_other": "{{count}} d ago"
+    "justNow": "à l’instant",
+    "minutes_one": "il y a {{count}} min",
+    "minutes_many": "il y a {{count}} min",
+    "minutes_other": "il y a {{count}} min",
+    "hours_one": "il y a {{count}} h",
+    "hours_many": "il y a {{count}} h",
+    "hours_other": "il y a {{count}} h",
+    "days_one": "il y a {{count}} jour",
+    "days_many": "il y a {{count}} jours",
+    "days_other": "il y a {{count}} jours"
   },
   "fileSize": {
-    "bytes_one": "{{value}} B",
-    "bytes_many": "{{value}} B",
-    "bytes_other": "{{value}} B",
-    "kilobytes": "{{value}} KB",
-    "megabytes": "{{value}} MB"
+    "bytes_one": "{{value}} o",
+    "bytes_many": "{{value}} o",
+    "bytes_other": "{{value}} o",
+    "kilobytes": "{{value}} Ko",
+    "megabytes": "{{value}} Mo"
   }
 }

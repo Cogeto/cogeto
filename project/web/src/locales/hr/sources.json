@@ -1,98 +1,98 @@
 {
   "kind": {
-    "note": "note",
-    "file": "file",
-    "source": "source"
+    "note": "bilješka",
+    "file": "datoteka",
+    "source": "izvor"
   },
   "kindLabel": {
-    "user_note": "note",
-    "file": "file",
-    "chat": "conversation",
-    "email": "email",
+    "user_note": "bilješka",
+    "file": "datoteka",
+    "chat": "razgovor",
+    "email": "e-pošta",
     "web": "web"
   },
-  "scopeLine": "scope: {{scope}}",
+  "scopeLine": "opseg: {{scope}}",
   "fileState": {
-    "processing": "Extracting…",
-    "done": "Extracted",
-    "error": "Extraction failed"
+    "processing": "Izdvajanje…",
+    "done": "Izdvojeno",
+    "error": "Izdvajanje nije uspjelo"
   },
   "upload": {
-    "dropzone": "Drop a PDF or DOCX here, or click to choose",
-    "uploading": "Uploading…",
-    "hint": "Its facts are extracted, verified and added to your memories.",
-    "scope": "Scope",
-    "sensitive": "Sensitive",
-    "discard": "Discard original after extraction",
-    "discardTitle": "Delete the original after extraction. Keep only the derived memories.",
-    "discardWarning": "The uploaded file will be deleted once its facts are extracted. Only the verified memories are kept. This cannot be undone.",
+    "dropzone": "Ispustite PDF ili DOCX ovdje ili kliknite za odabir",
+    "uploading": "Prijenos…",
+    "hint": "Činjenice se izdvajaju, provjeravaju i dodaju u vaša sjećanja.",
+    "scope": "Opseg",
+    "sensitive": "Osjetljivo",
+    "discard": "Odbaci izvornik nakon izdvajanja",
+    "discardTitle": "Izbrišite izvornik nakon izdvajanja. Zadržite samo izvedena sjećanja.",
+    "discardWarning": "Prenesena datoteka izbrisat će se nakon izdvajanja činjenica. Zadržat će se samo provjerena sjećanja. To se ne može poništiti.",
     "state": {
-      "processing": "Extracting and verifying…",
-      "done": "Done",
-      "error": "Extraction failed. The file could not be read."
+      "processing": "Izdvajanje i provjera…",
+      "done": "Dovršeno",
+      "error": "Izdvajanje nije uspjelo. Datoteku nije bilo moguće pročitati."
     }
   },
   "drawer": {
-    "title": "Source · {{kind}}"
+    "title": "Izvor · {{kind}}"
   },
   "note": {
-    "loading": "Loading note…",
-    "error": "We couldn't load this note right now.",
-    "captured": "Captured {{when}}"
+    "loading": "Bilješka se učitava…",
+    "error": "Trenutačno nismo mogli učitati ovu bilješku.",
+    "captured": "Spremljeno {{when}}"
   },
   "file": {
-    "loading": "Loading file…",
-    "error": "We couldn't load this file source.",
-    "discardedName": "Discarded document",
-    "uploadedName": "Uploaded document",
-    "discardedNote": "Original discarded after extraction. Only the derived memories remain. Provenance is intact; there is nothing to download.",
-    "uploaded": "· uploaded {{when}}",
-    "preparing": "Preparing…",
-    "downloadOriginal": "Download original"
+    "loading": "Datoteka se učitava…",
+    "error": "Nismo mogli učitati ovaj izvor datoteke.",
+    "discardedName": "Odbačeni dokument",
+    "uploadedName": "Preneseni dokument",
+    "discardedNote": "Izvornik je odbačen nakon izdvajanja. Ostala su samo izvedena sjećanja. Podrijetlo je očuvano, nema ničega za preuzimanje.",
+    "uploaded": "· preneseno {{when}}",
+    "preparing": "Priprema…",
+    "downloadOriginal": "Preuzmi izvornik"
   },
   "conversation": {
-    "loading": "Loading conversation…",
-    "error": "We couldn't load the conversation.",
-    "lead": "From your conversation: <title>{{title}}</title>. The highlighted message is the source; nearby turns are shown for context.",
-    "openInThread": "Open in the conversation",
-    "rememberedSuffix": " · remembered"
+    "loading": "Razgovor se učitava…",
+    "error": "Nismo mogli učitati razgovor.",
+    "lead": "Iz vašeg razgovora: <title>{{title}}</title>. Istaknuta poruka je izvor, a obližnje poruke prikazane su radi konteksta.",
+    "openInThread": "Otvori u razgovoru",
+    "rememberedSuffix": " · zapamćeno"
   },
   "email": {
-    "loading": "Loading email…",
-    "error": "We couldn't load this email.",
-    "from": "From:",
-    "to": "To:",
-    "originallyFrom": "Originally from: <sender>{{sender}}</sender>. A reply will go to them, not the forwarder.",
-    "forwardUnknownSender": "This arrived as a forward; the original sender couldn't be recovered, so a reply will leave the recipient for you to fill in.",
-    "bodyFrameTitle": "Email body",
-    "noBody": "(no body)",
-    "attachments": "Attachments",
-    "attachmentFallback": "attachment",
-    "retained": "retained",
-    "draftCreated": "Draft created. Review it on the <link>Approvals</link> page, then send it from your own mail client. Cogeto never sends mail.",
-    "draftExplainer": "Cogeto will write a suggested reply you can edit and send yourself. It never sends mail. You approve and send from your own client.",
-    "draftReply": "Draft reply",
-    "drafting": "Drafting…"
+    "loading": "E-pošta se učitava…",
+    "error": "Nismo mogli učitati ovu e-poštu.",
+    "from": "Šalje:",
+    "to": "Prima:",
+    "originallyFrom": "Izvorno poslao/la: <sender>{{sender}}</sender>. Odgovor će se poslati toj osobi, a ne osobi koja je poruku proslijedila.",
+    "forwardUnknownSender": "Ovo je stiglo kao proslijeđena poruka, ali izvornog pošiljatelja nije bilo moguće utvrditi. Primatelja odgovora morat ćete sami unijeti.",
+    "bodyFrameTitle": "Sadržaj e-pošte",
+    "noBody": "(bez sadržaja)",
+    "attachments": "Privici",
+    "attachmentFallback": "privitak",
+    "retained": "zadržano",
+    "draftCreated": "Skica je izrađena. Pregledajte je na stranici <link>Odobrenja</link>, a zatim je pošaljite iz vlastitog programa za e-poštu. Cogeto nikad ne šalje e-poštu.",
+    "draftExplainer": "Cogeto će napisati prijedlog odgovora koji možete urediti i sami poslati. Nikad ne šalje e-poštu. Odobravate i šaljete iz vlastitog programa.",
+    "draftReply": "Napiši skicu odgovora",
+    "drafting": "Pisanje skice…"
   },
   "web": {
-    "loading": "Loading page…",
-    "error": "We couldn't load this web source.",
-    "fetched": "Fetched {{when}}. Facts from this page are “as of” that moment."
+    "loading": "Stranica se učitava…",
+    "error": "Nismo mogli učitati ovaj web-izvor.",
+    "fetched": "Dohvaćeno {{when}}. Činjenice s ove stranice vrijede za taj trenutak."
   },
   "delete": {
-    "dangerZone": "Danger zone",
-    "derivedMemories_one": "{{count}} derived memory",
-    "derivedMemories_few": "{{count}} derived memories",
-    "derivedMemories_other": "{{count}} derived memories",
-    "storedFiles_one": "{{count}} stored file",
-    "storedFiles_few": "{{count}} stored files",
-    "storedFiles_other": "{{count}} stored files",
-    "confirm": "This will PERMANENTLY remove this {{subject}}, {{memories}}. A signed deletion receipt will be issued as proof. This cannot be undone.\n\nDelete?",
-    "confirmWithFiles": "This will PERMANENTLY remove this {{subject}}, {{memories}} and {{files}}. A signed deletion receipt will be issued as proof. This cannot be undone.\n\nDelete?",
-    "impact": "Deleting this source removes it, {{memories}}, permanently, with a signed receipt as proof.",
-    "impactWithFiles": "Deleting this source removes it, {{memories}} and {{files}}, permanently, with a signed receipt as proof.",
-    "computingImpact": "Computing what deletion would remove…",
-    "deleteSource": "Delete source…",
-    "deleting": "Deleting…"
+    "dangerZone": "Opasna zona",
+    "derivedMemories_one": "{{count}} izvedeno sjećanje",
+    "derivedMemories_few": "{{count}} izvedena sjećanja",
+    "derivedMemories_other": "{{count}} izvedenih sjećanja",
+    "storedFiles_one": "{{count}} spremljena datoteka",
+    "storedFiles_few": "{{count}} spremljene datoteke",
+    "storedFiles_other": "{{count}} spremljenih datoteka",
+    "confirm": "Trajno će se ukloniti: {{subject}}, {{memories}}. Kao dokaz izdat će se potpisana potvrda brisanja. To se ne može poništiti.\n\nIzbrisati?",
+    "confirmWithFiles": "Trajno će se ukloniti: {{subject}}, {{memories}} i {{files}}. Kao dokaz izdat će se potpisana potvrda brisanja. To se ne može poništiti.\n\nIzbrisati?",
+    "impact": "Brisanjem ovog izvora trajno se uklanjaju izvor i {{memories}}, uz potpisanu potvrdu kao dokaz.",
+    "impactWithFiles": "Brisanjem ovog izvora trajno se uklanjaju izvor, {{memories}} i {{files}}, uz potpisanu potvrdu kao dokaz.",
+    "computingImpact": "Izračun što bi brisanje uklonilo…",
+    "deleteSource": "Izbriši izvor…",
+    "deleting": "Brisanje…"
   }
 }

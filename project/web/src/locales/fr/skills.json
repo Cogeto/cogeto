@@ -1,77 +1,74 @@
 {
   "status": {
-    "planning": "planning",
-    "awaiting_approval": "awaiting approval",
-    "running": "running",
-    "awaiting_input": "awaiting input",
-    "completed": "completed",
-    "failed": "failed",
-    "cancelled": "cancelled"
+    "planning": "planification",
+    "awaiting_approval": "attend une approbation",
+    "running": "en cours",
+    "awaiting_input": "attend une saisie",
+    "completed": "terminé",
+    "failed": "en échec",
+    "cancelled": "annulé"
   },
   "stepStatus": {
-    "pending": "pending",
-    "running": "running",
-    "completed": "completed",
-    "failed": "failed",
-    "skipped": "skipped"
+    "pending": "en attente",
+    "running": "en cours",
+    "completed": "terminé",
+    "failed": "en échec",
+    "skipped": "ignoré"
   },
   "statusLine": {
-    "planning": "Planning: checking what you already know",
-    "awaitingApproval": "Searches awaiting your approval",
-    "awaitingInput": "Waiting for your input",
-    "working": "Working",
-    "retrying": "Retrying: {{step}}",
-    "completed": "Completed",
-    "failed": "Failed",
-    "failedWithReason": "Failed: {{reason}}",
-    "cancelled": "Cancelled"
+    "planning": "Planification : vérification de vos connaissances actuelles",
+    "awaitingApproval": "Des recherches attendent votre approbation",
+    "awaitingInput": "En attente de votre saisie",
+    "working": "Travail en cours",
+    "retrying": "Nouvelle tentative : {{step}}",
+    "completed": "Terminé",
+    "failed": "Échec",
+    "failedWithReason": "Échec : {{reason}}",
+    "cancelled": "Annulé"
   },
   "home": {
-    "heading": "Research a company or person before a meeting",
-    "explainer": "Cogeto checks what you already know, proposes minimised searches for your approval, reads the approved pages, and writes a brief where every claim links to its source. Nothing leaves this instance until you approve the search plan.",
-    "subjectPlaceholder": "A company or person, e.g. Adriatic Foods",
-    "subjectLabel": "Subject to research",
-    "prepare": "Prepare a brief",
-    "planning": "Planning…",
-    "ambiguous": "Which one do you mean?",
-    "runs": "Runs",
-    "runsError": "Could not load skill runs.",
+    "heading": "Rechercher une entreprise ou une personne avant une réunion",
+    "explainer": "Cogeto vérifie ce que vous savez déjà, propose des recherches minimales à approuver, lit les pages approuvées et rédige une synthèse dans laquelle chaque affirmation renvoie à sa source. Rien ne quitte cette instance avant votre approbation du plan de recherche.",
+    "subjectPlaceholder": "Une entreprise ou une personne, par ex. Adriatic Foods",
+    "subjectLabel": "Sujet à rechercher",
+    "prepare": "Préparer une synthèse",
+    "planning": "Planification…",
+    "ambiguous": "De quelle personne ou entreprise parlez-vous ?",
+    "runs": "Exécutions",
+    "runsError": "Impossible de charger les exécutions de la compétence.",
     "empty": {
-      "title": "No runs yet",
-      "body": "Try \"Prepare a brief\" above, or ask in chat: \"research Adriatic Foods before Thursday\"."
+      "title": "Aucune exécution",
+      "body": "Essayez « Préparer une synthèse » ci-dessus ou demandez dans la discussion : « recherche Adriatic Foods avant jeudi »."
     }
   },
   "run": {
-    "loadError": "Could not load this run.",
-    "backToSkills": "← Skills",
-    "cancel": "Cancel run",
-    "steps": "Steps",
-    "moreArtifacts_one": "+{{count}} more",
-    "moreArtifacts_many": "+{{count}} more",
-    "moreArtifacts_other": "+{{count}} more"
+    "loadError": "Impossible de charger cette exécution.",
+    "backToSkills": "← Compétences",
+    "cancel": "Annuler l’exécution",
+    "steps": "Étapes",
+    "moreArtifacts_one": "+{{count}} autre",
+    "moreArtifacts_many": "+{{count}} autres",
+    "moreArtifacts_other": "+{{count}} autres"
   },
   "plan": {
-    "heading": "The search plan: approve before anything leaves",
-    "explainer": "These queries were proposed from your context, minimised. Edit any, remove any; nothing is sent until you approve. Each approved query is recorded in the provenance of every fact it produces.",
-    "queryLabel": "Search query",
-    "keep": "Keep",
-    "remove": "Remove",
-    "approving": "Approving…",
-    "approveCount_one": "Approve {{count}} search",
-    "approveCount_many": "Approve {{count}} searches",
-    "approveCount_other": "Approve {{count}} searches",
-    "removedNote": "Removed queries are cancelled and never leave.",
-    "whatWasSearched": "What was searched",
-    "queryRemoved": "removed",
-    "querySent": "sent"
+    "heading": "Plan de recherche : approuvez avant tout envoi",
+    "explainer": "Ces requêtes minimales ont été proposées à partir de votre contexte. Vous pouvez les modifier ou les retirer. Rien n’est envoyé avant votre approbation. Chaque requête approuvée est enregistrée dans la provenance de tous les faits qu’elle produit.",
+    "queryLabel": "Requête de recherche",
+    "keep": "Conserver",
+    "remove": "Retirer",
+    "approving": "Approbation…",
+    "approveCount_one": "Approuver {{count}} recherche",
+    "approveCount_many": "Approuver {{count}} recherches",
+    "approveCount_other": "Approuver {{count}} recherches",
+    "removedNote": "Les requêtes retirées sont annulées et ne sont jamais envoyées.",
+    "whatWasSearched": "Ce qui a été recherché",
+    "queryRemoved": "retirée",
+    "querySent": "envoyée"
   },
-  "brief": {
-    "heading": "The brief",
-    "copyWithSources": "Copy with sources"
-  },
+  "brief": { "heading": "Synthèse", "copyWithSources": "Copier avec les sources" },
   "export": {
-    "sources": "Sources:",
-    "webSource": "- {{marker}} {{title}} ({{url}}, fetched {{date}})",
-    "memorySource": "- {{marker}} memory {{id}}"
+    "sources": "Sources :",
+    "webSource": "- {{marker}} {{title}} ({{url}}, récupéré {{date}})",
+    "memorySource": "- {{marker}} souvenir {{id}}"
   }
 }

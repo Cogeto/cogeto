@@ -1,80 +1,78 @@
 {
   "runStatus": {
-    "proposed": "awaiting your approval",
-    "approved": "approved",
-    "cancelled": "cancelled",
-    "concluded": "concluded"
+    "proposed": "attend votre approbation",
+    "approved": "approuvé",
+    "cancelled": "annulé",
+    "concluded": "terminé"
   },
-  "citation": {
-    "webTitle": "{{title}} · fetched {{when}}"
-  },
+  "citation": { "webTitle": "{{title}} · récupéré {{when}}" },
   "page": {
-    "heading": "Ask the web, on your terms",
-    "explainer": "Research is explicitly invoked and honest about what leaves: Cogeto minimises the query, shows you exactly what would be sent, and sends nothing until you approve it. Fetched pages become inspectable, deletable web memories.",
-    "intentPlaceholder": "e.g. GDPR consent requirements when migrating a CRM",
-    "prepare": "Prepare research",
-    "preparing": "Preparing…",
-    "newResearch": "New research"
+    "heading": "Interrogez le web selon vos conditions",
+    "explainer": "La recherche est lancée explicitement et indique clairement ce qui quitte l’instance : Cogeto réduit la requête au minimum, vous montre exactement ce qui serait envoyé et n’envoie rien avant votre approbation. Les pages récupérées deviennent des souvenirs web que vous pouvez examiner et supprimer.",
+    "intentPlaceholder": "par ex. exigences du RGPD sur le consentement lors de la migration d’un CRM",
+    "prepare": "Préparer la recherche",
+    "preparing": "Préparation…",
+    "newResearch": "Nouvelle recherche"
   },
   "gate": {
-    "heading": "Approve what leaves",
-    "explainer": "Nothing has been sent. This is the exact query that will reach public search engines if you approve. Edit it freely first.",
-    "proposedPrefix": "− proposed: ",
-    "queryLabel": "The query that will be sent",
-    "editedNote": " · You edited the query. Your text is what will be sent.",
-    "approve": "Approve & search",
-    "searching": "Searching…",
-    "cancel": "Cancel, send nothing"
+    "heading": "Approuvez ce qui sera envoyé",
+    "explainer": "Rien n’a été envoyé. Voici la requête exacte qui atteindra les moteurs de recherche publics si vous l’approuvez. Vous pouvez d’abord la modifier librement.",
+    "proposedPrefix": "proposé : ",
+    "queryLabel": "Requête qui sera envoyée",
+    "editedNote": " · Vous avez modifié la requête. Votre texte sera envoyé.",
+    "approve": "Approuver et rechercher",
+    "searching": "Recherche…",
+    "cancel": "Annuler sans rien envoyer"
   },
   "results": {
-    "heading": "Results: pick the pages worth reading",
-    "sentQuery": "Sent query: <q>{{query}}</q>, recorded on this run and on every memory this research produces.",
-    "selectPage": "Select {{page}}",
-    "fetching": "Fetching…",
-    "fetchSelected_one": "Fetch {{count}} selected page",
-    "fetchSelected_many": "Fetch {{count}} selected pages",
-    "fetchSelected_other": "Fetch {{count}} selected pages",
-    "fetchNote": "Pages are fetched by this instance, robots-respecting, never rendered.",
-    "captured": "✓ {{url}} · captured, extracting…",
-    "synthesise": "Synthesise a cited answer",
-    "synthesising": "Synthesising…",
+    "heading": "Résultats : choisissez les pages à lire",
+    "sentQuery": "Requête envoyée : <q>{{query}}</q>, enregistrée dans cette exécution et dans chaque souvenir produit par cette recherche.",
+    "selectPage": "Sélectionner {{page}}",
+    "fetching": "Récupération…",
+    "fetchSelected_one": "Récupérer {{count}} page sélectionnée",
+    "fetchSelected_many": "Récupérer {{count}} pages sélectionnées",
+    "fetchSelected_other": "Récupérer {{count}} pages sélectionnées",
+    "fetchNote": "Les pages sont récupérées par cette instance dans le respect des règles des robots et ne sont jamais affichées.",
+    "captured": "✓ {{url}} · capturé, extraction…",
+    "synthesise": "Rédiger une réponse avec des citations",
+    "synthesising": "Rédaction…",
     "empty": {
-      "title": "No results",
-      "body": "The engines returned nothing for this query. Start a new research with different wording."
+      "title": "Aucun résultat",
+      "body": "Les moteurs n’ont rien renvoyé pour cette requête. Lancez une nouvelle recherche avec une autre formulation."
     }
   },
   "answer": {
-    "heading": "Answer: every claim traceable",
-    "note": "Web citations link to the page as fetched; the facts persist as web memories you can inspect and delete from the Memories page."
+    "heading": "Réponse : chaque affirmation est traçable",
+    "note": "Les citations web renvoient vers la page telle qu’elle a été récupérée. Les faits restent sous forme de souvenirs web que vous pouvez examiner et supprimer depuis la page Souvenirs."
   },
   "past": {
-    "heading": "Past research",
-    "loading": "Loading research runs…",
-    "error": "We couldn't load past research.",
-    "sent": "sent: <q>“{{query}}”</q>",
-    "nothingSent": "nothing was sent",
-    "reviewApprove": "Review & approve",
-    "viewAnswer": "View answer",
+    "heading": "Recherches précédentes",
+    "loading": "Chargement des recherches…",
+    "error": "Impossible de charger les recherches précédentes.",
+    "sent": "envoyé : <q>« {{query}} »</q>",
+    "nothingSent": "rien n’a été envoyé",
+    "reviewApprove": "Vérifier et approuver",
+    "viewAnswer": "Voir la réponse",
     "empty": {
-      "title": "No research yet",
-      "body": "Everything you approve is recorded here."
+      "title": "Aucune recherche",
+      "body": "Tout ce que vous approuvez est enregistré ici."
     }
   },
   "inline": {
     "webLabel": "Web",
-    "searched": "searched <q>“{{query}}”</q>",
-    "readingTop_one": "· reading the top {{count}} source by relevance",
-    "readingTop_many": "· reading the top {{count}} sources by relevance",
-    "readingTop_other": "· reading the top {{count}} sources by relevance",
-    "searching": "Searching the web…",
-    "cancelled": "Cancelled. Nothing more was read.",
-    "noResults": "The engines returned nothing for this query. Try rephrasing your question.",
-    "skipped": "⨯ {{url}} · skipped ({{detail}})",
-    "nothingRead": "This research never read any pages, so there is nothing to wait for.",
-    "extracting": "Extracting and verifying facts…",
-    "extractingWithCount_one": "Extracting and verifying facts… {{count}} remembered so far.",
-    "extractingWithCount_many": "Extracting and verifying facts… {{count}} remembered so far.",
-    "extractingWithCount_other": "Extracting and verifying facts… {{count}} remembered so far.",
-    "writingAnswer": "Writing the answer into this conversation…"
+    "searched": "recherche : <q>« {{query}} »</q>",
+    "readingTop_one": "· lecture de la {{count}} source la plus pertinente",
+    "readingTop_many": "· lecture des {{count}} sources les plus pertinentes",
+    "readingTop_other": "· lecture des {{count}} sources les plus pertinentes",
+    "searching": "Recherche sur le web…",
+    "cancelled": "Annulé. Aucun autre contenu n’a été lu.",
+    "noResults": "Les moteurs n’ont rien renvoyé pour cette requête. Reformulez votre question.",
+    "skipped": "⨯ {{url}} · ignoré ({{detail}})",
+    "nothingRead": "Cette recherche n’a lu aucune page, il n’y a donc rien à attendre.",
+    "extracting": "Extraction et vérification des faits…",
+    "extractingWithCount_one": "Extraction et vérification des faits… {{count}} mémorisé jusqu’ici.",
+    "extractingWithCount_many": "Extraction et vérification des faits… {{count}} mémorisés jusqu’ici.",
+    "extractingWithCount_other": "Extraction et vérification des faits… {{count}} mémorisés jusqu’ici.",
+    "writingAnswer": "Rédaction de la réponse dans cette discussion…"
   }
 }

@@ -1,24 +1,24 @@
 {
-  "heading": "Audit trail",
-  "loading": "Loading audit trail…",
-  "error": "We couldn't load the audit trail.",
-  "appendOnly": "read-only · append-only",
-  "entryCount_one": "{{count}} entries",
-  "entryCount_few": "{{count}} entries",
-  "entryCount_other": "{{count}} entries",
+  "heading": "Trag revizije",
+  "loading": "Trag revizije se učitava…",
+  "error": "Nismo mogli učitati trag revizije.",
+  "appendOnly": "samo za čitanje · samo za dodavanje",
+  "entryCount_one": "{{count}} zapis",
+  "entryCount_few": "{{count}} zapisa",
+  "entryCount_other": "{{count}} zapisa",
   "row": {
-    "byActor": "by {{actor}}",
-    "detailsWithheld": "Details visible to the entry's owner only."
+    "byActor": "izvršio/la {{actor}}",
+    "detailsWithheld": "Pojedinosti su vidljive samo vlasniku zapisa."
   },
   "filter": {
-    "actor": "actor…",
-    "action": "action…",
-    "entityType": "entity type…",
-    "from": "from",
-    "to": "to"
+    "actor": "izvršitelj…",
+    "action": "radnja…",
+    "entityType": "vrsta entiteta…",
+    "from": "od",
+    "to": "do"
   },
   "empty": {
-    "title": "No entries match these filters",
-    "body": "The audit trail records every consequential action: approvals, deletions, scope and settings changes. Clear the filters to see the full history."
+    "title": "Nijedan zapis ne odgovara ovim filtrima",
+    "body": "Trag revizije bilježi svaku radnju s važnim posljedicama: odobrenja, brisanja te promjene opsega i postavki. Očistite filtre kako biste vidjeli cijelu povijest."
   }
 }

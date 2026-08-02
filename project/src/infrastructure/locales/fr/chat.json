@@ -1,31 +1,31 @@
 {
-  "nothingOpen": "Nothing is still open, nothing on record is waiting on you.",
-  "nothingOnRecord": "I don’t have anything on that yet. If you capture it as a note on the Memories page, I’ll remember it and can answer next time.",
+  "nothingOpen": "Rien ne reste ouvert, aucun élément enregistré n’attend votre intervention.",
+  "nothingOnRecord": "Je n’ai encore rien à ce sujet. Capturez-le comme note sur la page Souvenirs, je le mémoriserai et pourrai répondre la prochaine fois.",
   "smallTalk": {
-    "thanks": "You’re welcome, glad it helped.",
-    "greeting": "Hi! What can I help you with?",
-    "farewell": "Take care, I’ll be here when you need me.",
-    "ack": "Great. Anything else I can help with?"
+    "thanks": "Je vous en prie, je suis heureux que cela vous ait aidé.",
+    "greeting": "Bonjour ! Comment puis-je vous aider ?",
+    "farewell": "Prenez soin de vous, je serai là quand vous aurez besoin de moi.",
+    "ack": "Très bien. Puis-je vous aider avec autre chose ?"
   },
   "research": {
-    "prepared": "I've prepared a research query, nothing has been sent yet. Proposed query: \"{{query}}\" ({{reason}}) Edit or approve it right here in the conversation (or later from the Research page). only what you approve leaves this instance.",
-    "failed": "I couldn't set up that research just now. Try again from the Research page."
+    "prepared": "J’ai préparé une requête de recherche, mais rien n’a encore été envoyé. Requête proposée : \"{{query}}\" ({{reason}}) Modifiez-la ou approuvez-la ici dans la discussion, ou plus tard depuis la page Recherche. Seul ce que vous approuvez quitte cette instance.",
+    "failed": "Impossible de préparer cette recherche pour le moment. Réessayez depuis la page Recherche."
   },
   "skillBrief": {
-    "ambiguous": "Which one do you mean? I know more than one:\n\n{{candidates}}\n\nTell me the full name and I'll prepare the brief.",
-    "preparing_one": "I'm preparing a brief on \"{{subject}}\". I've checked what you already know and proposed {{count}} search: nothing has been sent yet. Open the run on the Skills page to approve or edit the search plan, and watch each step as it happens.",
-    "preparing_many": "I'm preparing a brief on \"{{subject}}\". I've checked what you already know and proposed {{count}} searches: nothing has been sent yet. Open the run on the Skills page to approve or edit the search plan, and watch each step as it happens.",
-    "preparing_other": "I'm preparing a brief on \"{{subject}}\". I've checked what you already know and proposed {{count}} searches: nothing has been sent yet. Open the run on the Skills page to approve or edit the search plan, and watch each step as it happens.",
-    "failed": "I couldn't prepare that brief just now. Try again from the Skills page."
+    "ambiguous": "De quelle personne ou entreprise parlez-vous ? J’en connais plusieurs :\n\n{{candidates}}\n\nIndiquez-moi le nom complet et je préparerai la synthèse.",
+    "preparing_one": "Je prépare une synthèse sur \"{{subject}}\". J’ai vérifié ce que vous savez déjà et proposé {{count}} recherche. Rien n’a encore été envoyé. Ouvrez l’exécution sur la page Compétences pour approuver ou modifier le plan de recherche et suivre chaque étape.",
+    "preparing_many": "Je prépare une synthèse sur \"{{subject}}\". J’ai vérifié ce que vous savez déjà et proposé {{count}} recherches. Rien n’a encore été envoyé. Ouvrez l’exécution sur la page Compétences pour approuver ou modifier le plan de recherche et suivre chaque étape.",
+    "preparing_other": "Je prépare une synthèse sur \"{{subject}}\". J’ai vérifié ce que vous savez déjà et proposé {{count}} recherches. Rien n’a encore été envoyé. Ouvrez l’exécution sur la page Compétences pour approuver ou modifier le plan de recherche et suivre chaque étape.",
+    "failed": "Impossible de préparer cette synthèse pour le moment. Réessayez depuis la page Compétences."
   },
   "reply": {
-    "noneForTarget": "I couldn't find a recent email from \"{{target}}\". Open the email in Cogeto and use \"Draft reply\" on it, and I'll write a suggested response.",
-    "noneAtAll": "I couldn't find a recent email to reply to. Open the email you mean and use \"Draft reply\" on it.",
-    "ambiguous": "I found more than one email that might match \"{{target}}\". Which one should I reply to?\n\n{{candidates}}\n\nTell me the sender or subject and I'll draft it.",
+    "noneForTarget": "Je n’ai trouvé aucun e-mail récent de \"{{target}}\". Ouvrez l’e-mail dans Cogeto et utilisez \"Rédiger une réponse\", puis je rédigerai une suggestion.",
+    "noneAtAll": "Je n’ai trouvé aucun e-mail récent auquel répondre. Ouvrez l’e-mail concerné et utilisez \"Rédiger une réponse\".",
+    "ambiguous": "J’ai trouvé plusieurs e-mails qui pourraient correspondre à \"{{target}}\". Auquel dois-je répondre ?\n\n{{candidates}}\n\nIndiquez-moi l’expéditeur ou l’objet et je rédigerai la réponse.",
     "candidateLine": "{{index}}. {{from}}, \"{{subject}}\" ({{date}})",
-    "noSubject": "(no subject)",
-    "drafted": "I've drafted a reply to {{recipient}}. Open the Approvals page to review it, then send it from your own mail client, Cogeto never sends mail for you.",
-    "draftedUnknownRecipient": "I've drafted a reply, but this message looks forwarded and I couldn't work out the original recipient. Open the Approvals page, set the recipient, then send it yourself, Cogeto never sends mail.",
-    "failed": "I couldn't draft that reply just now. You can open the email and use \"Draft reply\" on it."
+    "noSubject": "(sans objet)",
+    "drafted": "J’ai rédigé une réponse à {{recipient}}. Ouvrez la page Approbations pour la vérifier, puis envoyez-la depuis votre propre logiciel de messagerie. Cogeto n’envoie jamais d’e-mails à votre place.",
+    "draftedUnknownRecipient": "J’ai rédigé une réponse, mais ce message semble avoir été transféré et je n’ai pas pu déterminer le destinataire d’origine. Ouvrez la page Approbations, définissez le destinataire, puis envoyez vous-même l’e-mail. Cogeto n’envoie jamais d’e-mails.",
+    "failed": "Impossible de rédiger cette réponse pour le moment. Ouvrez l’e-mail et utilisez \"Rédiger une réponse\"."
   }
 }

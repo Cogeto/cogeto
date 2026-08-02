@@ -1,72 +1,72 @@
 {
-  "saveFailed": "Couldn't save. Try again.",
+  "saveFailed": "Spremanje nije uspjelo. Pokušajte ponovno.",
   "capture": {
-    "heading": "Capture & upload defaults",
-    "explainer": "Applied to new notes and uploads. You can still override either per upload.",
-    "defaultScope": "Default scope",
-    "scopeHelp": "Shared memories become visible to your organization (full org sharing lands in a later session).",
+    "heading": "Zadane postavke spremanja i prijenosa",
+    "explainer": "Primjenjuju se na nove bilješke i prijenose. I dalje ih možete promijeniti za svaki prijenos.",
+    "defaultScope": "Zadani opseg",
+    "scopeHelp": "Dijeljena sjećanja postaju vidljiva vašoj organizaciji. Potpuno dijeljenje s organizacijom stiže u kasnijoj sesiji.",
     "discard": {
-      "label": "Extract and discard by default",
-      "help": "Delete the original file after its facts are extracted. Keep only the verified memories. Nothing durable is stored; the derived memories retain full provenance."
+      "label": "Izdvoji i odbaci prema zadanim postavkama",
+      "help": "Izbrišite izvornu datoteku nakon izdvajanja činjenica. Zadržite samo provjerena sjećanja. Ne sprema se ništa trajno, a izvedena sjećanja zadržavaju potpuno podrijetlo."
     }
   },
   "profile": {
-    "heading": "Profile & context",
-    "explainer": "Tells Cogeto who you are, which timezone your days run in, and which language it should speak. These are settings, not memories: they shape phrasing and interpretation, and are never cited as facts.",
-    "name": "Your name",
-    "namePlaceholder": "How Cogeto addresses you",
-    "company": "Company",
-    "role": "Role",
-    "timezone": "Timezone",
-    "instanceDefaultZone": "Instance default ({{zone}})",
-    "aboutWork": "About your work",
-    "aboutWorkPlaceholder": "One line, e.g. fractional CTO work for industrial SMEs",
-    "language": "Language",
-    "languageHelp": "The interface, the digest and everything Cogeto starts on its own speak this language. Replies mirror the language you write in.",
-    "qualityNote": "Interface language is not extraction quality. Memory quality is measured per language. Measured today: {{measured}}. Interface only, with no measured quality claim for facts extracted in them: {{unmeasured}}.",
+    "heading": "Profil i kontekst",
+    "explainer": "Govori sustavu Cogeto tko ste, u kojoj vremenskoj zoni teku vaši dani i kojim jezikom treba govoriti. To su postavke, a ne sjećanja: oblikuju izražavanje i tumačenje te se nikad ne navode kao činjenice.",
+    "name": "Vaše ime",
+    "namePlaceholder": "Kako vam se Cogeto obraća",
+    "company": "Tvrtka",
+    "role": "Uloga",
+    "timezone": "Vremenska zona",
+    "instanceDefaultZone": "Zadana vrijednost instance ({{zone}})",
+    "aboutWork": "O vašem radu",
+    "aboutWorkPlaceholder": "Jedan redak, npr. vanjski CTO za industrijska mala i srednja poduzeća",
+    "language": "Jezik",
+    "languageHelp": "Sučelje, sažetak i sve što Cogeto samostalno pokrene upotrebljavaju ovaj jezik. Odgovori prate jezik na kojem pišete.",
+    "qualityNote": "Jezik sučelja nije isto što i kvaliteta izdvajanja. Kvaliteta pamćenja mjeri se za svaki jezik. Trenutačno izmjereno: {{measured}}. Samo sučelje, bez izmjerene tvrdnje o kvaliteti činjenica izdvojenih na tim jezicima: {{unmeasured}}.",
     "strict": {
-      "label": "Always answer in my language",
-      "help": "Replies come back in your preferred language no matter which language you asked in."
+      "label": "Uvijek odgovaraj na mom jeziku",
+      "help": "Odgovori stižu na vašem željenom jeziku bez obzira na jezik pitanja."
     },
     "suggestion": {
-      "company": "It looks like you work at {{value}} <src>(from your {{source}} of {{date}})</src>. Use as context?",
-      "role": "It looks like your role is {{value}} <src>(from your {{source}} of {{date}})</src>. Use as context?",
-      "accept": "Use it"
+      "company": "Čini se da radite u tvrtki {{value}} <src>(iz vašeg izvora {{source}} od {{date}})</src>. Upotrijebiti kao kontekst?",
+      "role": "Čini se da je vaša uloga {{value}} <src>(iz vašeg izvora {{source}} od {{date}})</src>. Upotrijebiti kao kontekst?",
+      "accept": "Upotrijebi"
     }
   },
   "appearance": {
-    "heading": "Appearance",
-    "explainer": "Dark is the default. Your choice is remembered on this device and applies everywhere.",
-    "themeLabel": "Theme",
+    "heading": "Izgled",
+    "explainer": "Tamna tema zadana je postavka. Vaš se odabir pamti na ovom uređaju i primjenjuje posvuda.",
+    "themeLabel": "Tema",
     "theme": {
-      "dark": "Dark",
-      "light": "Light"
+      "dark": "Tamna",
+      "light": "Svijetla"
     }
   },
   "research": {
-    "heading": "Web research",
-    "explainer": "When Cogeto can't answer from your memory, it can check the web. The sent query and the sources it read are always shown and recorded in provenance.",
+    "heading": "Web-istraživanje",
+    "explainer": "Kada Cogeto ne može odgovoriti iz vašeg pamćenja, može provjeriti web. Poslani upit i pročitani izvori uvijek se prikazuju i bilježe u podrijetlu.",
     "auto": {
-      "label": "Research automatically",
-      "help": "Skip the prompt: when an answer needs the web, Cogeto searches and reads the most relevant sources on its own. Off by default, so nothing leaves without your tap."
+      "label": "Istražuj automatski",
+      "help": "Preskočite upit za odobrenje: kada odgovor zahtijeva web, Cogeto samostalno pretražuje i čita najrelevantnije izvore. Prema zadanim je postavkama isključeno, pa se ništa ne šalje bez vašeg dodira."
     }
   },
   "models": {
-    "heading": "Model configuration",
-    "explainer": "Read-only. The active providers and models are set by the operator in the instance environment. API keys are never entered or shown here.",
-    "configuration": "Configuration",
-    "notConfigured": "no provider key set, model features are disabled",
-    "redaction": "Redaction",
-    "error": "Couldn't load the model configuration.",
+    "heading": "Konfiguracija modela",
+    "explainer": "Samo za čitanje. Aktivne pružatelje i modele postavlja operater u okruženju instance. API ključevi ovdje se nikad ne unose niti prikazuju.",
+    "configuration": "Konfiguracija",
+    "notConfigured": "nije postavljen ključ pružatelja, značajke modela su onemogućene",
+    "redaction": "Redakcija",
+    "error": "Nismo mogli učitati konfiguraciju modela.",
     "tier": {
-      "pipeline": "Pipeline",
-      "answer": "Answer",
-      "embeddings": "Embeddings"
+      "pipeline": "Obrada",
+      "answer": "Odgovor",
+      "embeddings": "Ugradnje"
     }
   },
   "signingKey": {
-    "heading": "Instance signing key",
-    "explainer": "Every deletion receipt is signed with this instance's private key (spec §11.1). Anyone can verify a receipt or the Forgotten ledger against the public key below, proof that a deletion really happened, independent of Cogeto.",
-    "algorithm": "Algorithm: {{algorithm}}"
+    "heading": "Ključ za potpisivanje instance",
+    "explainer": "Svaka potvrda brisanja potpisuje se privatnim ključem ove instance (spec. §11.1). Svatko može provjeriti potvrdu ili knjigu Zaboravljenog prema javnom ključu u nastavku. To neovisno o sustavu Cogeto dokazuje da se brisanje doista dogodilo.",
+    "algorithm": "Algoritam: {{algorithm}}"
   }
 }

@@ -1,27 +1,27 @@
 {
-  "landmark": "Primary",
+  "landmark": "Hauptnavigation",
   "section": {
-    "dashboard": "Dashboard",
-    "memories": "Memories",
+    "dashboard": "Übersicht",
+    "memories": "Erinnerungen",
     "chat": "Chat",
-    "research": "Research",
-    "skills": "Skills",
-    "timeline": "Time travel",
-    "review": "Contradictions",
-    "approvals": "Approvals",
-    "forgotten": "Forgotten",
+    "research": "Recherche",
+    "skills": "Fähigkeiten",
+    "timeline": "Zeitreise",
+    "review": "Widersprüche",
+    "approvals": "Genehmigungen",
+    "forgotten": "Vergessen",
     "audit": "Audit",
     "system": "System",
-    "settings": "Settings"
+    "settings": "Einstellungen"
   },
   "badge": {
-    "items": "items",
-    "openContradictions": "open contradictions",
-    "pendingApprovals": "pending approvals",
-    "newSinceLastLook_one": "{{count}} new since you last looked",
-    "newSinceLastLook_other": "{{count}} new since you last looked"
+    "items": "Elemente",
+    "openContradictions": "offene Widersprüche",
+    "pendingApprovals": "ausstehende Genehmigungen",
+    "newSinceLastLook_one": "{{count}} neu seit Ihrem letzten Besuch",
+    "newSinceLastLook_other": "{{count}} neu seit Ihrem letzten Besuch"
   },
-  "liveSandbox": "Live sandbox",
-  "signOut": "Sign out",
-  "versionTitle": "Cogeto version"
+  "liveSandbox": "Aktive Demo-Umgebung",
+  "signOut": "Abmelden",
+  "versionTitle": "Cogeto-Version"
 }

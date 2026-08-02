@@ -1,49 +1,49 @@
 {
   "status": {
-    "draft": "draft",
-    "pending_approval": "pending",
-    "approved": "approved",
-    "executed": "executed",
-    "rejected": "rejected",
-    "expired": "expired"
+    "draft": "skica",
+    "pending_approval": "na čekanju",
+    "approved": "odobreno",
+    "executed": "izvršeno",
+    "rejected": "odbijeno",
+    "expired": "isteklo"
   },
   "tab": {
-    "pending": "Pending",
-    "history": "History",
-    "awaitingNoun": "awaiting approval"
+    "pending": "Na čekanju",
+    "history": "Povijest",
+    "awaitingNoun": "čeka odobrenje"
   },
   "pending": {
-    "loading": "Loading approvals…",
-    "error": "We couldn't load pending approvals.",
-    "requestedBy": "{{action}} · requested by {{who}}",
-    "unknownRequester": "unknown",
-    "expires": "Expires {{when}}",
-    "approve": "Approve",
-    "reject": "Reject",
-    "rejectConfirm": "Reject this action? It will not run.",
-    "serverSideNote": "Approving runs the action server-side in the worker. This is the only path; there is no client-side shortcut.",
+    "loading": "Odobrenja se učitavaju…",
+    "error": "Nismo mogli učitati odobrenja na čekanju.",
+    "requestedBy": "{{action}} · zatražio/la {{who}}",
+    "unknownRequester": "nepoznato",
+    "expires": "Istječe {{when}}",
+    "approve": "Odobri",
+    "reject": "Odbij",
+    "rejectConfirm": "Odbiti ovu radnju? Neće se izvršiti.",
+    "serverSideNote": "Odobrenjem se radnja izvršava na poslužitelju u pozadinskom procesu. To je jedini način, nema prečaca na strani klijenta.",
     "empty": {
-      "title": "Nothing awaiting approval",
-      "body": "Consequential actions (like a bulk memory change from Memories) land here for you to approve or reject. Cogeto never runs them on its own."
+      "title": "Ništa ne čeka odobrenje",
+      "body": "Radnje s važnim posljedicama, poput skupne promjene sjećanja u Sjećanjima, prikazuju se ovdje kako biste ih odobrili ili odbili. Cogeto ih nikad ne izvršava samostalno."
     }
   },
   "history": {
-    "loading": "Loading history…",
-    "error": "We couldn't load the approval history.",
-    "decidedBy": " · decided by {{who}}",
+    "loading": "Povijest se učitava…",
+    "error": "Nismo mogli učitati povijest odobrenja.",
+    "decidedBy": " · odluku donio/la {{who}}",
     "empty": {
-      "title": "No decided approvals yet",
-      "body": "Once you approve or reject an action, it's recorded here."
+      "title": "Još nema riješenih odobrenja",
+      "body": "Kada odobrite ili odbijete radnju, zabilježit će se ovdje."
     }
   },
   "draft": {
-    "view": "View / send draft",
-    "hide": "Hide draft",
-    "to": "To:",
-    "subject": "Subject: {{subject}}",
-    "copyBody": "Copy body",
-    "downloadEml": "Download .eml",
-    "openInClient": "Open in mail client",
-    "neverSends": "Cogeto does <b>not</b> send mail. Send this reply yourself from your own client."
+    "view": "Prikaži ili pošalji skicu",
+    "hide": "Sakrij skicu",
+    "to": "Primatelj:",
+    "subject": "Predmet: {{subject}}",
+    "copyBody": "Kopiraj sadržaj",
+    "downloadEml": "Preuzmi .eml",
+    "openInClient": "Otvori u programu za e-poštu",
+    "neverSends": "Cogeto <b>ne šalje</b> e-poštu. Ovaj odgovor pošaljite sami iz vlastitog programa za e-poštu."
   }
 }

@@ -1,96 +1,90 @@
 {
-  "kind": {
-    "note": "note",
-    "file": "file",
-    "source": "source"
-  },
+  "kind": { "note": "Notiz", "file": "Datei", "source": "Quelle" },
   "kindLabel": {
-    "user_note": "note",
-    "file": "file",
-    "chat": "conversation",
-    "email": "email",
-    "web": "web"
+    "user_note": "Notiz",
+    "file": "Datei",
+    "chat": "Unterhaltung",
+    "email": "E-Mail",
+    "web": "Web"
   },
-  "scopeLine": "scope: {{scope}}",
+  "scopeLine": "Umfang: {{scope}}",
   "fileState": {
-    "processing": "Extracting…",
-    "done": "Extracted",
-    "error": "Extraction failed"
+    "processing": "Extraktion…",
+    "done": "Extrahiert",
+    "error": "Extraktion fehlgeschlagen"
   },
   "upload": {
-    "dropzone": "Drop a PDF or DOCX here, or click to choose",
-    "uploading": "Uploading…",
-    "hint": "Its facts are extracted, verified and added to your memories.",
-    "scope": "Scope",
-    "sensitive": "Sensitive",
-    "discard": "Discard original after extraction",
-    "discardTitle": "Delete the original after extraction. Keep only the derived memories.",
-    "discardWarning": "The uploaded file will be deleted once its facts are extracted. Only the verified memories are kept. This cannot be undone.",
+    "dropzone": "PDF oder DOCX hier ablegen oder zur Auswahl klicken",
+    "uploading": "Upload…",
+    "hint": "Die Fakten werden extrahiert, überprüft und Ihren Erinnerungen hinzugefügt.",
+    "scope": "Umfang",
+    "sensitive": "Sensibel",
+    "discard": "Original nach Extraktion verwerfen",
+    "discardTitle": "Original nach der Extraktion löschen. Nur die abgeleiteten Erinnerungen behalten.",
+    "discardWarning": "Die hochgeladene Datei wird gelöscht, sobald ihre Fakten extrahiert wurden. Nur die überprüften Erinnerungen bleiben erhalten. Dies kann nicht rückgängig gemacht werden.",
     "state": {
-      "processing": "Extracting and verifying…",
-      "done": "Done",
-      "error": "Extraction failed. The file could not be read."
+      "processing": "Extraktion und Überprüfung…",
+      "done": "Fertig",
+      "error": "Extraktion fehlgeschlagen. Die Datei konnte nicht gelesen werden."
     }
   },
-  "drawer": {
-    "title": "Source · {{kind}}"
-  },
+  "drawer": { "title": "Quelle · {{kind}}" },
   "note": {
-    "loading": "Loading note…",
-    "error": "We couldn't load this note right now.",
-    "captured": "Captured {{when}}"
+    "loading": "Notiz wird geladen…",
+    "error": "Diese Notiz konnte gerade nicht geladen werden.",
+    "captured": "Erfasst {{when}}"
   },
   "file": {
-    "loading": "Loading file…",
-    "error": "We couldn't load this file source.",
-    "discardedName": "Discarded document",
-    "uploadedName": "Uploaded document",
-    "discardedNote": "Original discarded after extraction. Only the derived memories remain. Provenance is intact; there is nothing to download.",
-    "uploaded": "· uploaded {{when}}",
-    "preparing": "Preparing…",
-    "downloadOriginal": "Download original"
+    "loading": "Datei wird geladen…",
+    "error": "Diese Dateiquelle konnte nicht geladen werden.",
+    "discardedName": "Verworfenes Dokument",
+    "uploadedName": "Hochgeladenes Dokument",
+    "discardedNote": "Das Original wurde nach der Extraktion verworfen. Nur die abgeleiteten Erinnerungen bleiben erhalten. Die Herkunft ist vollständig, es gibt nichts herunterzuladen.",
+    "uploaded": "· hochgeladen {{when}}",
+    "preparing": "Vorbereitung…",
+    "downloadOriginal": "Original herunterladen"
   },
   "conversation": {
-    "loading": "Loading conversation…",
-    "error": "We couldn't load the conversation.",
-    "lead": "From your conversation: <title>{{title}}</title>. The highlighted message is the source; nearby turns are shown for context.",
-    "openInThread": "Open in the conversation",
-    "rememberedSuffix": " · remembered"
+    "loading": "Unterhaltung wird geladen…",
+    "error": "Die Unterhaltung konnte nicht geladen werden.",
+    "lead": "Aus Ihrer Unterhaltung: <title>{{title}}</title>. Die hervorgehobene Nachricht ist die Quelle. Benachbarte Beiträge werden als Kontext angezeigt.",
+    "openInThread": "In der Unterhaltung öffnen",
+    "rememberedSuffix": " · gemerkt"
   },
   "email": {
-    "loading": "Loading email…",
-    "error": "We couldn't load this email.",
-    "from": "From:",
-    "to": "To:",
-    "originallyFrom": "Originally from: <sender>{{sender}}</sender>. A reply will go to them, not the forwarder.",
-    "forwardUnknownSender": "This arrived as a forward; the original sender couldn't be recovered, so a reply will leave the recipient for you to fill in.",
-    "bodyFrameTitle": "Email body",
-    "noBody": "(no body)",
-    "attachments": "Attachments",
-    "attachmentFallback": "attachment",
-    "retained": "retained",
-    "draftCreated": "Draft created. Review it on the <link>Approvals</link> page, then send it from your own mail client. Cogeto never sends mail.",
-    "draftExplainer": "Cogeto will write a suggested reply you can edit and send yourself. It never sends mail. You approve and send from your own client.",
-    "draftReply": "Draft reply",
-    "drafting": "Drafting…"
+    "loading": "E-Mail wird geladen…",
+    "error": "Diese E-Mail konnte nicht geladen werden.",
+    "from": "Von:",
+    "to": "An:",
+    "originallyFrom": "Ursprünglich von: <sender>{{sender}}</sender>. Eine Antwort geht an diese Person, nicht an die weiterleitende Person.",
+    "forwardUnknownSender": "Diese Nachricht wurde weitergeleitet. Der ursprüngliche Absender konnte nicht ermittelt werden, daher müssen Sie den Empfänger einer Antwort selbst eintragen.",
+    "bodyFrameTitle": "E-Mail-Text",
+    "noBody": "(kein Inhalt)",
+    "attachments": "Anhänge",
+    "attachmentFallback": "Anhang",
+    "retained": "beibehalten",
+    "draftCreated": "Entwurf erstellt. Prüfen Sie ihn auf der Seite <link>Genehmigungen</link> und senden Sie ihn anschließend aus Ihrem eigenen E-Mail-Programm. Cogeto sendet nie E-Mails.",
+    "draftExplainer": "Cogeto schreibt eine vorgeschlagene Antwort, die Sie bearbeiten und selbst senden können. Es sendet nie E-Mails. Sie genehmigen und senden aus Ihrem eigenen Programm.",
+    "draftReply": "Antwort entwerfen",
+    "drafting": "Entwurf wird erstellt…"
   },
   "web": {
-    "loading": "Loading page…",
-    "error": "We couldn't load this web source.",
-    "fetched": "Fetched {{when}}. Facts from this page are “as of” that moment."
+    "loading": "Seite wird geladen…",
+    "error": "Diese Webquelle konnte nicht geladen werden.",
+    "fetched": "Abgerufen {{when}}. Die Fakten dieser Seite gelten für diesen Zeitpunkt."
   },
   "delete": {
-    "dangerZone": "Danger zone",
-    "derivedMemories_one": "{{count}} derived memory",
-    "derivedMemories_other": "{{count}} derived memories",
-    "storedFiles_one": "{{count}} stored file",
-    "storedFiles_other": "{{count}} stored files",
-    "confirm": "This will PERMANENTLY remove this {{subject}}, {{memories}}. A signed deletion receipt will be issued as proof. This cannot be undone.\n\nDelete?",
-    "confirmWithFiles": "This will PERMANENTLY remove this {{subject}}, {{memories}} and {{files}}. A signed deletion receipt will be issued as proof. This cannot be undone.\n\nDelete?",
-    "impact": "Deleting this source removes it, {{memories}}, permanently, with a signed receipt as proof.",
-    "impactWithFiles": "Deleting this source removes it, {{memories}} and {{files}}, permanently, with a signed receipt as proof.",
-    "computingImpact": "Computing what deletion would remove…",
-    "deleteSource": "Delete source…",
-    "deleting": "Deleting…"
+    "dangerZone": "Gefahrenbereich",
+    "derivedMemories_one": "{{count}} abgeleitete Erinnerung",
+    "derivedMemories_other": "{{count}} abgeleitete Erinnerungen",
+    "storedFiles_one": "{{count}} gespeicherte Datei",
+    "storedFiles_other": "{{count}} gespeicherte Dateien",
+    "confirm": "Dauerhaft entfernt werden: {{subject}}, {{memories}}. Als Nachweis wird ein signierter Löschbeleg ausgestellt. Dies kann nicht rückgängig gemacht werden.\n\nLöschen?",
+    "confirmWithFiles": "Dauerhaft entfernt werden: {{subject}}, {{memories}} und {{files}}. Als Nachweis wird ein signierter Löschbeleg ausgestellt. Dies kann nicht rückgängig gemacht werden.\n\nLöschen?",
+    "impact": "Beim Löschen dieser Quelle werden sie und {{memories}} dauerhaft entfernt. Ein signierter Beleg dient als Nachweis.",
+    "impactWithFiles": "Beim Löschen dieser Quelle werden sie, {{memories}} und {{files}} dauerhaft entfernt. Ein signierter Beleg dient als Nachweis.",
+    "computingImpact": "Auswirkungen der Löschung werden berechnet…",
+    "deleteSource": "Quelle löschen…",
+    "deleting": "Löschung…"
   }
 }

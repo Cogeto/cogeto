@@ -1,10 +1,10 @@
 {
-  "conflict": "Found a conflict about {{subject}}: your call",
-  "merged": "Merged two notes about {{subject}}",
-  "updated": "Updated {{subject}}: a newer fact replaced an older one",
-  "quiet": "A commitment about {{subject}} has gone quiet",
-  "outdated_one": "Marked {{count}} memory outdated: its date passed",
-  "outdated_other": "Marked {{count}} memories outdated: their dates passed",
-  "overflow_one": "…and {{count}} more change",
-  "overflow_other": "…and {{count}} more changes"
+  "conflict": "Konflikt zu {{subject}} gefunden: Sie entscheiden",
+  "merged": "Zwei Notizen zu {{subject}} zusammengeführt",
+  "updated": "{{subject}} aktualisiert: Ein neuerer Fakt hat einen älteren ersetzt",
+  "quiet": "Eine Verpflichtung zu {{subject}} ist still geworden",
+  "outdated_one": "{{count}} Erinnerung als veraltet markiert: Ihr Datum ist verstrichen",
+  "outdated_other": "{{count}} Erinnerungen als veraltet markiert: Ihre Daten sind verstrichen",
+  "overflow_one": "…und {{count}} weitere Änderung",
+  "overflow_other": "…und {{count}} weitere Änderungen"
 }

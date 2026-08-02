@@ -1,72 +1,69 @@
 {
-  "saveFailed": "Couldn't save. Try again.",
+  "saveFailed": "Enregistrement impossible. Réessayez.",
   "capture": {
-    "heading": "Capture & upload defaults",
-    "explainer": "Applied to new notes and uploads. You can still override either per upload.",
-    "defaultScope": "Default scope",
-    "scopeHelp": "Shared memories become visible to your organization (full org sharing lands in a later session).",
+    "heading": "Paramètres par défaut de capture et d’importation",
+    "explainer": "S’appliquent aux nouvelles notes et importations. Vous pouvez toujours les modifier pour chaque importation.",
+    "defaultScope": "Portée par défaut",
+    "scopeHelp": "Les souvenirs partagés deviennent visibles par votre organisation. Le partage complet avec l’organisation sera ajouté lors d’une session ultérieure.",
     "discard": {
-      "label": "Extract and discard by default",
-      "help": "Delete the original file after its facts are extracted. Keep only the verified memories. Nothing durable is stored; the derived memories retain full provenance."
+      "label": "Extraire et supprimer par défaut",
+      "help": "Supprimez le fichier d’origine après l’extraction de ses faits. Conservez uniquement les souvenirs vérifiés. Aucun original durable n’est stocké, les souvenirs dérivés conservent toute leur provenance."
     }
   },
   "profile": {
-    "heading": "Profile & context",
-    "explainer": "Tells Cogeto who you are, which timezone your days run in, and which language it should speak. These are settings, not memories: they shape phrasing and interpretation, and are never cited as facts.",
-    "name": "Your name",
-    "namePlaceholder": "How Cogeto addresses you",
-    "company": "Company",
-    "role": "Role",
-    "timezone": "Timezone",
-    "instanceDefaultZone": "Instance default ({{zone}})",
-    "aboutWork": "About your work",
-    "aboutWorkPlaceholder": "One line, e.g. fractional CTO work for industrial SMEs",
-    "language": "Language",
-    "languageHelp": "The interface, the digest and everything Cogeto starts on its own speak this language. Replies mirror the language you write in.",
-    "qualityNote": "Interface language is not extraction quality. Memory quality is measured per language. Measured today: {{measured}}. Interface only, with no measured quality claim for facts extracted in them: {{unmeasured}}.",
+    "heading": "Profil et contexte",
+    "explainer": "Indique à Cogeto qui vous êtes, le fuseau horaire de vos journées et la langue à utiliser. Ce sont des paramètres, pas des souvenirs : ils influencent la formulation et l’interprétation, et ne sont jamais cités comme des faits.",
+    "name": "Votre nom",
+    "namePlaceholder": "Comment Cogeto s’adresse à vous",
+    "company": "Entreprise",
+    "role": "Rôle",
+    "timezone": "Fuseau horaire",
+    "instanceDefaultZone": "Valeur par défaut de l’instance ({{zone}})",
+    "aboutWork": "À propos de votre travail",
+    "aboutWorkPlaceholder": "Une ligne, par ex. DSI à temps partagé pour des PME industrielles",
+    "language": "Langue",
+    "languageHelp": "L’interface, le résumé et tout ce que Cogeto lance de lui-même utilisent cette langue. Les réponses suivent la langue dans laquelle vous écrivez.",
+    "qualityNote": "La langue de l’interface ne correspond pas à la qualité de l’extraction. La qualité de la mémoire est mesurée pour chaque langue. Mesurée aujourd’hui : {{measured}}. Interface uniquement, sans mesure de qualité pour les faits qui y sont extraits : {{unmeasured}}.",
     "strict": {
-      "label": "Always answer in my language",
-      "help": "Replies come back in your preferred language no matter which language you asked in."
+      "label": "Toujours répondre dans ma langue",
+      "help": "Les réponses sont fournies dans votre langue préférée, quelle que soit la langue de votre question."
     },
     "suggestion": {
-      "company": "It looks like you work at {{value}} <src>(from your {{source}} of {{date}})</src>. Use as context?",
-      "role": "It looks like your role is {{value}} <src>(from your {{source}} of {{date}})</src>. Use as context?",
-      "accept": "Use it"
+      "company": "Il semble que vous travailliez chez {{value}} <src>(d’après votre source {{source}} du {{date}})</src>. Utiliser comme contexte ?",
+      "role": "Il semble que votre rôle soit {{value}} <src>(d’après votre source {{source}} du {{date}})</src>. Utiliser comme contexte ?",
+      "accept": "Utiliser"
     }
   },
   "appearance": {
-    "heading": "Appearance",
-    "explainer": "Dark is the default. Your choice is remembered on this device and applies everywhere.",
-    "themeLabel": "Theme",
-    "theme": {
-      "dark": "Dark",
-      "light": "Light"
-    }
+    "heading": "Apparence",
+    "explainer": "Le thème sombre est utilisé par défaut. Votre choix est mémorisé sur cet appareil et s’applique partout.",
+    "themeLabel": "Thème",
+    "theme": { "dark": "Sombre", "light": "Clair" }
   },
   "research": {
-    "heading": "Web research",
-    "explainer": "When Cogeto can't answer from your memory, it can check the web. The sent query and the sources it read are always shown and recorded in provenance.",
+    "heading": "Recherche web",
+    "explainer": "Lorsque Cogeto ne peut pas répondre depuis votre mémoire, il peut consulter le web. La requête envoyée et les sources lues sont toujours affichées et enregistrées dans la provenance.",
     "auto": {
-      "label": "Research automatically",
-      "help": "Skip the prompt: when an answer needs the web, Cogeto searches and reads the most relevant sources on its own. Off by default, so nothing leaves without your tap."
+      "label": "Rechercher automatiquement",
+      "help": "Ignorez la demande de confirmation : lorsqu’une réponse nécessite le web, Cogeto recherche et lit seul les sources les plus pertinentes. Cette option est désactivée par défaut, afin que rien ne soit envoyé sans votre confirmation."
     }
   },
   "models": {
-    "heading": "Model configuration",
-    "explainer": "Read-only. The active providers and models are set by the operator in the instance environment. API keys are never entered or shown here.",
+    "heading": "Configuration des modèles",
+    "explainer": "Lecture seule. Les fournisseurs et modèles actifs sont définis par l’opérateur dans l’environnement de l’instance. Les clés API ne sont jamais saisies ni affichées ici.",
     "configuration": "Configuration",
-    "notConfigured": "no provider key set, model features are disabled",
-    "redaction": "Redaction",
-    "error": "Couldn't load the model configuration.",
+    "notConfigured": "aucune clé de fournisseur définie, les fonctions des modèles sont désactivées",
+    "redaction": "Masquage",
+    "error": "Impossible de charger la configuration des modèles.",
     "tier": {
-      "pipeline": "Pipeline",
-      "answer": "Answer",
-      "embeddings": "Embeddings"
+      "pipeline": "Traitement",
+      "answer": "Réponse",
+      "embeddings": "Représentations vectorielles"
     }
   },
   "signingKey": {
-    "heading": "Instance signing key",
-    "explainer": "Every deletion receipt is signed with this instance's private key (spec §11.1). Anyone can verify a receipt or the Forgotten ledger against the public key below, proof that a deletion really happened, independent of Cogeto.",
-    "algorithm": "Algorithm: {{algorithm}}"
+    "heading": "Clé de signature de l’instance",
+    "explainer": "Chaque reçu de suppression est signé avec la clé privée de cette instance (spécification §11.1). Toute personne peut vérifier un reçu ou le registre Oublié avec la clé publique ci-dessous. Cela prouve indépendamment de Cogeto qu’une suppression a bien eu lieu.",
+    "algorithm": "Algorithme : {{algorithm}}"
   }
 }

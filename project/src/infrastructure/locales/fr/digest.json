@@ -1,12 +1,12 @@
 {
-  "conflict": "Found a conflict about {{subject}}: your call",
-  "merged": "Merged two notes about {{subject}}",
-  "updated": "Updated {{subject}}: a newer fact replaced an older one",
-  "quiet": "A commitment about {{subject}} has gone quiet",
-  "outdated_one": "Marked {{count}} memory outdated: its date passed",
-  "outdated_many": "Marked {{count}} memories outdated: their dates passed",
-  "outdated_other": "Marked {{count}} memories outdated: their dates passed",
-  "overflow_one": "…and {{count}} more change",
-  "overflow_many": "…and {{count}} more changes",
-  "overflow_other": "…and {{count}} more changes"
+  "conflict": "Conflit détecté au sujet de {{subject}} : à vous de décider",
+  "merged": "Deux notes au sujet de {{subject}} ont été fusionnées",
+  "updated": "{{subject}} mis à jour : un fait récent a remplacé un fait ancien",
+  "quiet": "Un engagement au sujet de {{subject}} est resté sans nouvelles",
+  "outdated_one": "{{count}} souvenir marqué comme obsolète : sa date est dépassée",
+  "outdated_many": "{{count}} souvenirs marqués comme obsolètes : leurs dates sont dépassées",
+  "outdated_other": "{{count}} souvenirs marqués comme obsolètes : leurs dates sont dépassées",
+  "overflow_one": "…et {{count}} autre changement",
+  "overflow_many": "…et {{count}} autres changements",
+  "overflow_other": "…et {{count}} autres changements"
 }

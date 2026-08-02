@@ -1,30 +1,30 @@
 {
-  "nothingOpen": "Nothing is still open, nothing on record is waiting on you.",
-  "nothingOnRecord": "I don’t have anything on that yet. If you capture it as a note on the Memories page, I’ll remember it and can answer next time.",
+  "nothingOpen": "Es ist nichts mehr offen, nichts Erfasstes wartet auf Sie.",
+  "nothingOnRecord": "Dazu habe ich noch nichts. Erfassen Sie es als Notiz auf der Seite Erinnerungen, dann merke ich es mir und kann beim nächsten Mal antworten.",
   "smallTalk": {
-    "thanks": "You’re welcome, glad it helped.",
-    "greeting": "Hi! What can I help you with?",
-    "farewell": "Take care, I’ll be here when you need me.",
-    "ack": "Great. Anything else I can help with?"
+    "thanks": "Gern geschehen, schön, dass es geholfen hat.",
+    "greeting": "Hallo! Wobei kann ich Ihnen helfen?",
+    "farewell": "Alles Gute, ich bin hier, wenn Sie mich brauchen.",
+    "ack": "Gut. Kann ich Ihnen noch bei etwas helfen?"
   },
   "research": {
-    "prepared": "I've prepared a research query, nothing has been sent yet. Proposed query: \"{{query}}\" ({{reason}}) Edit or approve it right here in the conversation (or later from the Research page). only what you approve leaves this instance.",
-    "failed": "I couldn't set up that research just now. Try again from the Research page."
+    "prepared": "Ich habe eine Rechercheabfrage vorbereitet. Es wurde noch nichts gesendet. Vorgeschlagene Abfrage: \"{{query}}\" ({{reason}}) Bearbeiten oder genehmigen Sie sie direkt hier in der Unterhaltung oder später auf der Seite Recherche. Nur von Ihnen genehmigte Inhalte verlassen diese Instanz.",
+    "failed": "Die Recherche konnte gerade nicht vorbereitet werden. Versuchen Sie es erneut auf der Seite Recherche."
   },
   "skillBrief": {
-    "ambiguous": "Which one do you mean? I know more than one:\n\n{{candidates}}\n\nTell me the full name and I'll prepare the brief.",
-    "preparing_one": "I'm preparing a brief on \"{{subject}}\". I've checked what you already know and proposed {{count}} search: nothing has been sent yet. Open the run on the Skills page to approve or edit the search plan, and watch each step as it happens.",
-    "preparing_other": "I'm preparing a brief on \"{{subject}}\". I've checked what you already know and proposed {{count}} searches: nothing has been sent yet. Open the run on the Skills page to approve or edit the search plan, and watch each step as it happens.",
-    "failed": "I couldn't prepare that brief just now. Try again from the Skills page."
+    "ambiguous": "Welche Person oder welches Unternehmen meinen Sie? Ich kenne mehrere:\n\n{{candidates}}\n\nNennen Sie mir den vollständigen Namen, dann bereite ich das Briefing vor.",
+    "preparing_one": "Ich bereite ein Briefing zu \"{{subject}}\" vor. Ich habe Ihr vorhandenes Wissen geprüft und {{count}} Suche vorgeschlagen. Es wurde noch nichts gesendet. Öffnen Sie die Ausführung auf der Seite Fähigkeiten, um den Suchplan zu genehmigen oder zu bearbeiten und jeden Schritt zu verfolgen.",
+    "preparing_other": "Ich bereite ein Briefing zu \"{{subject}}\" vor. Ich habe Ihr vorhandenes Wissen geprüft und {{count}} Suchen vorgeschlagen. Es wurde noch nichts gesendet. Öffnen Sie die Ausführung auf der Seite Fähigkeiten, um den Suchplan zu genehmigen oder zu bearbeiten und jeden Schritt zu verfolgen.",
+    "failed": "Das Briefing konnte gerade nicht vorbereitet werden. Versuchen Sie es erneut auf der Seite Fähigkeiten."
   },
   "reply": {
-    "noneForTarget": "I couldn't find a recent email from \"{{target}}\". Open the email in Cogeto and use \"Draft reply\" on it, and I'll write a suggested response.",
-    "noneAtAll": "I couldn't find a recent email to reply to. Open the email you mean and use \"Draft reply\" on it.",
-    "ambiguous": "I found more than one email that might match \"{{target}}\". Which one should I reply to?\n\n{{candidates}}\n\nTell me the sender or subject and I'll draft it.",
+    "noneForTarget": "Ich habe keine aktuelle E-Mail von \"{{target}}\" gefunden. Öffnen Sie die E-Mail in Cogeto und wählen Sie \"Antwort entwerfen\", dann schreibe ich einen Antwortvorschlag.",
+    "noneAtAll": "Ich habe keine aktuelle E-Mail gefunden, auf die geantwortet werden kann. Öffnen Sie die gewünschte E-Mail und wählen Sie \"Antwort entwerfen\".",
+    "ambiguous": "Ich habe mehrere E-Mails gefunden, die zu \"{{target}}\" passen könnten. Auf welche soll ich antworten?\n\n{{candidates}}\n\nNennen Sie mir Absender oder Betreff, dann erstelle ich den Entwurf.",
     "candidateLine": "{{index}}. {{from}}, \"{{subject}}\" ({{date}})",
-    "noSubject": "(no subject)",
-    "drafted": "I've drafted a reply to {{recipient}}. Open the Approvals page to review it, then send it from your own mail client, Cogeto never sends mail for you.",
-    "draftedUnknownRecipient": "I've drafted a reply, but this message looks forwarded and I couldn't work out the original recipient. Open the Approvals page, set the recipient, then send it yourself, Cogeto never sends mail.",
-    "failed": "I couldn't draft that reply just now. You can open the email and use \"Draft reply\" on it."
+    "noSubject": "(kein Betreff)",
+    "drafted": "Ich habe eine Antwort an {{recipient}} entworfen. Öffnen Sie zur Prüfung die Seite Genehmigungen und senden Sie sie anschließend aus Ihrem eigenen E-Mail-Programm. Cogeto sendet nie E-Mails für Sie.",
+    "draftedUnknownRecipient": "Ich habe eine Antwort entworfen, aber die Nachricht scheint weitergeleitet worden zu sein und der ursprüngliche Empfänger konnte nicht ermittelt werden. Öffnen Sie die Seite Genehmigungen, tragen Sie den Empfänger ein und senden Sie die E-Mail selbst. Cogeto sendet nie E-Mails.",
+    "failed": "Die Antwort konnte gerade nicht entworfen werden. Öffnen Sie die E-Mail und wählen Sie \"Antwort entwerfen\"."
   }
 }

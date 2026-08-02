@@ -1,18 +1,18 @@
 {
-  "heading": "Export my data · Memory Passport",
-  "explainer": "Download <b>everything</b> Cogeto knows for you: every fact with its status, provenance and full history, and your deletion receipts (still independently verifiable), in an open, documented, versioned format. Your memory is portable; leave whenever you want.",
-  "export": "Export my data",
-  "preparing": "Preparing…",
-  "startFailed": "Couldn't start the export. Try again.",
-  "formatNote": "The format is open and documented at <path>docs/passport-schema/</path>. Anyone can read and verify a Passport with only the schema and the instance public key above.",
+  "heading": "Meine Daten exportieren · Wissenspass",
+  "explainer": "Laden Sie <b>alles</b> herunter, was Cogeto für Sie weiß: jeden Fakt mit Status, Herkunft und vollständigem Verlauf sowie Ihre weiterhin unabhängig überprüfbaren Löschbelege. Alles liegt in einem offenen, dokumentierten und versionierten Format vor. Ihr Wissensstand ist übertragbar, Sie können jederzeit gehen.",
+  "export": "Meine Daten exportieren",
+  "preparing": "Vorbereitung…",
+  "startFailed": "Der Export konnte nicht gestartet werden. Versuchen Sie es erneut.",
+  "formatNote": "Das Format ist offen und unter <path>docs/passport-schema/</path> dokumentiert. Jeder kann einen Wissenspass allein mit dem Schema und dem oben angegebenen öffentlichen Schlüssel der Instanz lesen und prüfen.",
   "includeOriginals": {
-    "label": "Include original files",
-    "help": "Attach the original bytes of files you uploaded (a full archive). Off by default. Provenance and metadata are always included either way."
+    "label": "Originaldateien einschließen",
+    "help": "Fügen Sie die ursprünglichen Bytes Ihrer hochgeladenen Dateien als vollständiges Archiv hinzu. Standardmäßig deaktiviert. Herkunft und Metadaten sind in jedem Fall enthalten."
   },
   "status": {
-    "pending": "Assembling your export…",
-    "ready": "Ready to download",
-    "failed": "Export failed",
-    "expired": "Expired (re-export to get a fresh copy)"
+    "pending": "Ihr Export wird zusammengestellt…",
+    "ready": "Bereit zum Herunterladen",
+    "failed": "Export fehlgeschlagen",
+    "expired": "Abgelaufen, exportieren Sie erneut für eine aktuelle Kopie"
   }
 }
