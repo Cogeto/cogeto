@@ -135,12 +135,13 @@ describes the shape it is built in.
       including their consequence text, chart labels, badge and status labels,
       aria-labels, and document titles. Log lines, developer errors, test
       fixtures and prompt assembly are NOT copy and stay where they are.
-- [ ] **A feature is not finished until its keys exist in EVERY locale.** Adding
-      copy means adding it to `en` (the source of truth) and to every other
-      locale, where the English text is a legitimate value for an untranslated
-      language. `npm run i18n:check` runs inside `lint` and fails the build on a
-      missing, orphaned or unused key; a new namespace must be created in every
-      locale and registered in `project/web/src/i18n/namespaces.ts`.
+- [ ] **A feature is not finished until its keys exist in EVERY locale.** Add
+      the key to `en` (the source of truth), then run **`npm run i18n:sync`**,
+      which backfills every other locale with the English text as a placeholder
+      and the plural forms that language needs. It never overwrites an existing
+      translation and never translates anything. `npm run i18n:check` runs inside
+      `lint` and fails the build on a missing, orphaned or unused key; a new
+      namespace must also be registered in `project/web/src/i18n/namespaces.ts`.
 - [ ] **Keys are structural, never named after their English content.**
       `sources.detail.emptyState.title`, so rewording English never invalidates a
       translation.

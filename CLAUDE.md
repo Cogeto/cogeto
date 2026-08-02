@@ -87,7 +87,9 @@ scaffolds carrying the English text: authoring the translations is a separate
 task. `npm run i18n:check` runs inside `lint` and fails the build on a missing,
 orphaned or unused key, a missing plural category, a dropped `{{placeholder}}`,
 an em dash in English copy, or a reintroduced hardcoded literal. Add a language
-with `npm run i18n:add -- <locale>`. **The rules that bind every change touching
+with `npm run i18n:add -- <locale>`; add a KEY to an existing feature with
+`npm run i18n:sync`, which backfills the other locales from `en` without ever
+overwriting a translation. **The rules that bind every change touching
 user-visible copy are in [`AGENTS.md`](AGENTS.md) under "User-visible copy", and
 a feature is not done until its keys exist in every locale.** Interface language
 is not extraction quality: only English and Croatian have corpora and gates, and
