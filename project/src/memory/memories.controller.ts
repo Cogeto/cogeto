@@ -19,6 +19,7 @@ import type { AuthenticatedRequest } from '../identity/index';
 import { MemoryStore } from './memory.store';
 import type { MemoryFilters } from './memory.store';
 import { toListItem } from './list-item';
+import { parseOrBadRequest } from '../infrastructure/index';
 
 /** Zod at the boundary: the list's query surface and the two action bodies. */
 const listQuerySchema = z.object({
@@ -68,11 +69,8 @@ export class MemoriesController {
 
   @Get()
   async list(@Req() request: AuthenticatedRequest, @Query() query: unknown): Promise<MemoryPage> {
-    const parsed = listQuerySchema.safeParse(query);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
-    const q = parsed.data;
+    const parsed = parseOrBadRequest(listQuerySchema, query);
+    const q = parsed;
     const opts = {
       includeSensitive: q.includeSensitive === 'true',
       scope: q.scope,
@@ -190,14 +188,11 @@ export class MemoriesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
   ): Promise<{ predecessor: MemoryListItem; successor: MemoryListItem }> {
-    const parsed = editSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
+    const parsed = parseOrBadRequest(editSchema, body);
     const { predecessor, successor } = await this.store.editContent(
       request.principal,
       id,
-      parsed.data.content.trim(),
+      parsed.content.trim(),
     );
     return { predecessor: toListItem(predecessor), successor: toListItem(successor) };
   }

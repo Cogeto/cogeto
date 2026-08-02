@@ -117,6 +117,9 @@ export function createAppRootModule(config: CogetoConfig): unknown {
     // Delete-vs-ingestion serialization: the saga cancels a source's pending
     // pipeline run inside its enumeration tx.
     ingestionGuard: PipelineIngestionGuard,
+    // Who may read the INSTANCE-WIDE receipt-chain report (V2.0 item 3.7);
+    // every other caller gets the verdict over their own receipts.
+    adminRole: config.adminRole,
   });
   const retrievalModule = RetrievalModule.register({ imports: [memoryModule] });
   const agentsModule = AgentsModule.register({ imports: [memoryModule] });

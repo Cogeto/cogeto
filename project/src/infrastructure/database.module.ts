@@ -3,6 +3,7 @@ import type { DynamicModule, OnApplicationShutdown } from '@nestjs/common';
 import { Inject, Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
 import { createDb, DRIZZLE, PG_POOL } from './db';
+import { DbModelEgressAudit, MODEL_EGRESS_AUDIT } from './model-egress-audit';
 import { InstanceProbes } from './instance-probes';
 
 @Injectable()
@@ -38,8 +39,18 @@ export class DatabaseModule {
         // The health report's database probes, on their own two-connection pool
         // so a saturated application pool cannot make the report hang.
         { provide: InstanceProbes, useFactory: () => new InstanceProbes(options.databaseUrl) },
+        // The model-egress recorder (V2.0 item 3.7). It needs the Drizzle handle
+        // and nothing else, and the trail's table is infrastructure's, so it
+        // belongs with the handle rather than in the limits module: an egress
+        // record is not a cap. The gateway seam injects the token optionally, so
+        // a root without a database still boots.
+        {
+          provide: MODEL_EGRESS_AUDIT,
+          useFactory: (db: ReturnType<typeof createDb>) => new DbModelEgressAudit(db),
+          inject: [DRIZZLE],
+        },
       ],
-      exports: [PG_POOL, DRIZZLE, InstanceProbes],
+      exports: [PG_POOL, DRIZZLE, InstanceProbes, MODEL_EGRESS_AUDIT],
     };
   }
 }

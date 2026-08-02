@@ -16,6 +16,7 @@ import {
   INGEST_QUOTA,
   jobRunState,
   withTransactionalEnqueue,
+  writeAudit,
 } from '../infrastructure/index';
 import type { Db, IngestQuota } from '../infrastructure/index';
 import { FILE_DISCARD_CLEANUP_JOB_TYPE, INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
@@ -328,6 +329,15 @@ export class FilesService {
    * A short-lived signed download URL, or null when the caller may not
    * have it. Owner always; a non-owner only for a SHARED, NON-sensitive file in
    * their own org — sensitive files never leave their owner.
+   *
+   * AUDITED (V2.0 item 3.7). Minting a presigned URL is the moment a stored
+   * original becomes reachable outside the instance, and it was the one egress
+   * path in the product that wrote no audit row — the passport export's
+   * equivalent has been audited since SEC-9. Structural metadata only: the
+   * object key (an identifier, and the same one `integrity_alert` already
+   * records), the TTL, and whether the caller was the owner or a same-org peer
+   * reading a shared file, which is the fact worth being able to look up later.
+   * A refusal writes nothing: there was no egress.
    */
   async getDownloadUrl(
     principal: Principal,
@@ -347,6 +357,22 @@ export class FilesService {
     const url = this.objects.presignGetUrl(objectKey, this.options.downloadUrlTtlSeconds, {
       filename: rawFilename ? safeDecode(rawFilename) : undefined,
       contentType: stat.contentType ?? undefined,
+    });
+    await writeAudit(this.db, {
+      actor: `user:${principal.userId}`,
+      action: 'file.downloaded',
+      entityType: 'file',
+      entityId: objectKey,
+      detail: {
+        ttlSeconds: this.options.downloadUrlTtlSeconds,
+        byOwner: isOwner,
+        scope: metadata.scope,
+        sensitive: metadata.sensitive,
+      },
+      orgId: principal.orgId,
+      // The FILE's owner, not the caller: the detail gate serves the person
+      // whose artifact left, which is the point of recording it.
+      ownerId: metadata.ownerId,
     });
     return { url, expiresInSeconds: this.options.downloadUrlTtlSeconds };
   }

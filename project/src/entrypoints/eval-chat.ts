@@ -8,7 +8,12 @@ import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { GenericContainer, Wait } from 'testcontainers';
 import type { ChatStreamEvent, Principal } from '@cogeto/shared';
 import { applyMigrations, createDb, UserContextService } from '../infrastructure/index';
-import { createMemoryReconciliation, createMemoryStore, MemoryObjectStore } from '../memory/index';
+import {
+  createMemoryReconciliation,
+  createMemoryStore,
+  createMemorySystemStore,
+  MemoryObjectStore,
+} from '../memory/index';
 import type { MemoryRow } from '../memory/index';
 import {
   buildDreamDigest,
@@ -457,6 +462,11 @@ async function main(): Promise<void> {
         db,
         qdrant: { url: qdrantUrl, embeddingModel, collection },
       });
+      // The worker-side machine reads this harness stands in for (V2.0 item 3.7).
+      const systemMemories = createMemorySystemStore({
+        db,
+        qdrant: { url: qdrantUrl, embeddingModel, collection },
+      });
       await memoryStore.ensureIndexReady();
       const retrieval = new RetrievalService(memoryStore, gateway, { db });
       // The chat → email-reply resolver: draft-a-reply cases seed
@@ -727,7 +737,7 @@ async function main(): Promise<void> {
                   createdAt: anchor,
                 },
               });
-              webMemories += (await memoryStore.listBySourceSystem('web', pageId)).length;
+              webMemories += (await systemMemories.listBySourceSystem('web', pageId)).length;
             }
             const synthesis = new ResearchSynthesisService(research, gateway, { retrieval });
             const answer = await synthesis.synthesise(principal, run.id);
@@ -787,7 +797,6 @@ async function main(): Promise<void> {
               skillRuns,
               research,
               gateway,
-              memoryStore,
               {
                 searchesMax: 100,
                 pagesMax: 100,
@@ -795,7 +804,7 @@ async function main(): Promise<void> {
                 skillQueriesMax: 6,
                 skillPagesPerQuery: 1,
               },
-              { userContext: userContextService },
+              { userContext: userContextService, systemMemories },
             );
             // The plan gate, one interaction: keep the first two LIVE-planned
             // queries verbatim, remove the rest (removal is part of the claim).
@@ -926,13 +935,18 @@ async function main(): Promise<void> {
       if (checks.digest_language) {
         // A REAL dreaming cycle over this case's seeded world, then the digest
         // in the case's preferred language.
-        const { store: dreamStore, reconciliation } = createMemoryReconciliation({
+        const {
+          store: dreamStore,
+          systemStore: dreamSystemStore,
+          reconciliation,
+        } = createMemoryReconciliation({
           db,
           qdrant: { url: qdrantUrl, embeddingModel, collection },
         });
         const dreaming = new DreamingService(
           db,
           dreamStore,
+          dreamSystemStore,
           new ReconciliationService(gateway, dreamStore, reconciliation),
         );
         await dreaming.run();

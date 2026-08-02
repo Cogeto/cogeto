@@ -11,6 +11,7 @@ import type {
   ResearchAnswerDto,
   ResearchCitationDto,
 } from '@cogeto/shared';
+import { RESEARCH_MARKER_CAPTURING } from '@cogeto/shared';
 import {
   buildContextBlock,
   DEFAULT_INSTANCE_TIMEZONE,
@@ -251,7 +252,7 @@ export function buildThreadMessage(
 ): string {
   const byMarker = new Map(citations.map((c) => [c.marker, c]));
   const webOrder: Extract<ResearchCitationDto, { kind: 'web' }>[] = [];
-  const text = answer.replace(/\[([WM])(\d+)\]/g, (whole) => {
+  const text = answer.replace(new RegExp(RESEARCH_MARKER_CAPTURING, 'g'), (whole) => {
     const cite = byMarker.get(whole);
     if (!cite) return '';
     if (cite.kind === 'memory') return `{{cite:${cite.memoryId}}}`;
@@ -290,7 +291,7 @@ function resolveMarkers(
 ): { answer: string; citations: ResearchCitationDto[] } {
   const seen = new Map<string, ResearchCitationDto>();
   const answer = text
-    .replace(/\[([WM])(\d+)\]/g, (whole, kind: string, num: string) => {
+    .replace(new RegExp(RESEARCH_MARKER_CAPTURING, 'g'), (whole, kind: string, num: string) => {
       const index = Number(num) - 1;
       if (kind === 'W') {
         const page = pages[index];

@@ -7,15 +7,6 @@
 export { SkillsModule } from './skills.module';
 export { SkillsChatModule } from './skills-chat.module';
 export { SkillRunService, SKILL_ADVANCE_JOB_TYPE } from './skill-run.service';
-export {
-  SkillEngine,
-  SKILL_ENGINE_OPTIONS,
-  SKILL_BRIEF_PROMPT,
-  resolveBriefMarkers,
-} from './skill-engine';
-export type { SkillEngineOptions } from './skill-engine';
-export { SkillPlanner, SKILL_PLAN_PROMPT, ambiguousCandidates } from './skill-planner';
+export { SkillEngine, SKILL_ENGINE_OPTIONS, SKILL_BRIEF_PROMPT } from './skill-engine';
+export { SkillPlanner, SKILL_PLAN_PROMPT } from './skill-planner';
 export { ChatSkillResolver } from './chat-skill-resolver';
-export { getSkill, listSkills, RESEARCH_BRIEF_SKILL } from './skill-registry';
-export type { SkillDefinition, SkillStepDef } from './skill-registry';
-export { selectPagesForSubject } from './page-select';

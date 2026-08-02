@@ -6,6 +6,11 @@
  * a user's default capture scope; the controllers are HTTP-only surface.
  */
 export { SettingsModule } from './settings.module';
+/**
+ * The slim read port (V2.0 item 3.7): the per-user capture defaults with no
+ * dependency but DRIZZLE, for the source readers that stamp a capture's scope
+ * and cannot import the full module without closing a cycle back through memory.
+ */
+export { SettingsPortsModule } from './settings-ports.module';
 export { UserSettingsService } from './user-settings.service';
-export type { UserSettingsRow } from './persistence/tables';
 export { CONTEXT_SUGGEST_PROMPT } from './context-suggestions.service';

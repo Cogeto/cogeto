@@ -6,7 +6,6 @@
  */
 export { EmailModule } from './email.module';
 export { EmailIntakeService } from './email-intake.service';
-export type { MailEnvelope, IntakeResult } from './email-intake.service';
 export {
   EmailAllowlistService,
   EMAIL_REFUSAL_RETENTION_JOB_TYPE,
@@ -15,16 +14,12 @@ export {
 export { EmailSourceReader } from './email.source-reader';
 export { EmailSourceDeletion } from './email.source-deletion';
 export { EmailSourceService } from './email-source.service';
-export { resolveReplyTarget, replySubject } from './email-reply-target';
-export type { ReplyTarget, ReplyTargetSource } from './email-reply-target';
 // Reply drafting + chat resolver — composed ONLY into the app root
 // (needs RetrievalService + ApprovalService); never the worker.
 export { EmailReplyDraftService } from './email-reply-draft.service';
-export { EmailReplyController } from './email-reply.controller';
 export { ChatReplyResolver } from './chat-reply-resolver';
 export { EmailReplyModule } from './email-reply.module';
 export { MAIL_OPTIONS } from './mail-options';
-export type { MailOptions } from './mail-options';
 // The generic HTML sanitizer (DOMPurify, SEC-13 posture) other capture
 // families reuse on retained markup.
 export { sanitizeHtml } from './email-parse';

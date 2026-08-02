@@ -5,6 +5,7 @@ import {
   INSTANCE_TIMEZONE,
   UserContextService,
 } from '../infrastructure/index';
+import { MemorySystemStore } from '../memory/index';
 import { SkillRunService } from './skill-run.service';
 import { SKILL_ENGINE_OPTIONS, SkillEngine } from './skill-engine';
 import type { SkillEngineOptions } from './skill-engine';
@@ -33,13 +34,22 @@ export class SkillsModule {
           useFactory: (
             userContext?: UserContextService,
             timeZone?: string,
+            systemMemories?: MemorySystemStore,
           ): SkillEngineOptions => ({
             userContext,
             instanceTimeZone: timeZone ?? DEFAULT_INSTANCE_TIMEZONE,
+            systemMemories,
           }),
           inject: [
             { token: UserContextService, optional: true },
             { token: INSTANCE_TIMEZONE, optional: true },
+            // Worker-only by construction (V2.0 item 3.7): the memory module
+            // instance the worker root passes in exports MemorySystemStore, the
+            // app root's does not provide it at all. Optional here because the
+            // engine is registered in BOTH roots (the app approves a plan, the
+            // worker advances it) — and deliberately unresolvable rather than
+            // merely unused in the app, so no request path can obtain it.
+            { token: MemorySystemStore, optional: true },
           ],
         },
       ],

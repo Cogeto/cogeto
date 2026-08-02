@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -16,6 +15,7 @@ import { MEMORY_SCOPES } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { ResearchService } from './research.service';
+import { parseOrBadRequest } from '../infrastructure/index';
 
 /** Zod at the boundary: a bounded URL selection. */
 const captureSchema = z.object({
@@ -44,14 +44,11 @@ export class ResearchController {
     @Req() request: AuthenticatedRequest,
     @Body() body: unknown,
   ): Promise<ResearchCaptureResponse> {
-    const parsed = captureSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
+    const parsed = parseOrBadRequest(captureSchema, body);
     const results = await this.research.capture(
       request.principal,
-      parsed.data.urls,
-      parsed.data.scope ?? 'private',
+      parsed.urls,
+      parsed.scope ?? 'private',
     );
     return { results };
   }

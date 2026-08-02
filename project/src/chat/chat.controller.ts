@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -25,7 +24,7 @@ import type {
   ConversationDto,
   NoteStatusDto,
 } from '@cogeto/shared';
-import { RateLimit, RateLimitGuard, SSE_LIMITS } from '../infrastructure/index';
+import { RateLimit, RateLimitGuard, SSE_LIMITS, parseOrBadRequest } from '../infrastructure/index';
 import type { SseLimits } from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
@@ -88,11 +87,8 @@ export class ChatController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
   ): Promise<ConversationDto> {
-    const parsed = renameSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
-    return this.chat.renameConversation(request.principal, id, parsed.data.title.trim());
+    const parsed = parseOrBadRequest(renameSchema, body);
+    return this.chat.renameConversation(request.principal, id, parsed.title.trim());
   }
 
   /** Archive / unarchive — the safe alternative to deletion. */
@@ -102,11 +98,8 @@ export class ChatController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
   ): Promise<ConversationDto> {
-    const parsed = archiveSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
-    return this.chat.setConversationArchived(request.principal, id, parsed.data.archived);
+    const parsed = parseOrBadRequest(archiveSchema, body);
+    return this.chat.setConversationArchived(request.principal, id, parsed.archived);
   }
 
   /** One conversation's messages: offset 0 = the latest window, items oldest
@@ -118,11 +111,8 @@ export class ChatController {
     @Param('id', ParseUUIDPipe) id: string,
     @Query() query: unknown,
   ): Promise<ChatMessagePage> {
-    const parsed = pageSchema.safeParse(query ?? {});
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
-    return this.chat.listMessages(request.principal, id, parsed.data);
+    const parsed = parseOrBadRequest(pageSchema, query ?? {});
+    return this.chat.listMessages(request.principal, id, parsed);
   }
 
   /** "Remember this": capture a USER message via the pipeline. */
@@ -171,14 +161,11 @@ export class ChatController {
     @Body() body: unknown,
     @Res() response: Response,
   ): Promise<void> {
-    const parsed = askSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
+    const parsed = parseOrBadRequest(askSchema, body);
 
     // The conversation gate: resolve BEFORE any header is sent, so a
     // foreign or absent conversation is a normal 404, not a truncated stream.
-    await this.chat.assertConversation(request.principal, parsed.data.conversationId);
+    await this.chat.assertConversation(request.principal, parsed.conversationId);
 
     // Concurrency cap: reject BEFORE any header is sent, so the client
     // sees a normal 429 rather than a truncated stream.
@@ -222,11 +209,7 @@ export class ChatController {
       maxMs > 0 ? setTimeout(() => controller.abort(new Error('duration')), maxMs) : undefined;
     resetIdle();
 
-    const stream = this.chat.ask(
-      request.principal,
-      parsed.data.content,
-      parsed.data.conversationId,
-    );
+    const stream = this.chat.ask(request.principal, parsed.content, parsed.conversationId);
     const iterator = stream[Symbol.asyncIterator]();
     try {
       for (;;) {

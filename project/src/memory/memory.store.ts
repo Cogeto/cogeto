@@ -32,6 +32,7 @@ import type { MemoryPoint } from './persistence/vector-store';
 import { actorLabel, checkTransition } from './domain/transition';
 import type { MemoryActor } from './domain/transition';
 import { intervalHoldsAtSql } from './domain/interval';
+import { visibleToPrincipal } from './domain/scope-gate';
 
 /**
  * Public interface of the memory module (spec §15 rule 1).
@@ -393,6 +394,34 @@ export class MemoryStore {
   }
 
   /**
+   * How many memories one source has yielded, gated (V2.0 item 3.7).
+   *
+   * The request paths that show a per-source fact count — the research run's
+   * progress list — used to reach the ungated `listBySourceSystem` and take its
+   * length, which was the one system read genuinely being called from a
+   * controller. Same number, through the same gate as every other read: a
+   * source's derived memories all carry the source's owner, so for the owner
+   * asking about their own source this counts exactly the same rows.
+   */
+  async countBySourceForPrincipal(
+    principal: Principal,
+    sourceType: SourceType,
+    sourceId: string,
+  ): Promise<number> {
+    const rows = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(memory)
+      .where(
+        and(
+          this.visibleTo(principal, { includeSensitive: true }),
+          eq(memory.sourceType, sourceType),
+          eq(memory.sourceId, sourceId),
+        ),
+      );
+    return rows[0]?.n ?? 0;
+  }
+
+  /**
    * Gated memory counts by lifecycle status — the dashboard's "memory by
    * status" visual. ONE grouped query under the same
    * `visibleTo` gate as every read: own + visible-shared rows, the caller's own
@@ -570,6 +599,12 @@ export class MemoryStore {
    * bulk change. Runs AFTER the caller's transaction commits, so no row lock is
    * held while these HTTP calls fan out. Idempotent (setPayload no-ops on a
    * not-yet-embedded point); the nightly payload-consistency sweep  reconciles anything a transient Qdrant failure here leaves stale.
+   *
+   * Deliberately NOT part of the worker-only system surface (V2.0 item 3.7):
+   * it reads no memory content and returns none — it writes the status field
+   * of points whose ids the caller changed under the owner gate
+   * ({@link bulkMarkOutdatedForOwner}), which is why the approved bulk action
+   * can call it from either process.
    */
   async syncStatusPayloads(memoryIds: string[], status: MemoryStatus): Promise<void> {
     const vectors = this.requireVectors();
@@ -1208,118 +1243,6 @@ export class MemoryStore {
     await this.requireVectors().upsert(points);
   }
 
-  /**
-   * Stored embeddings by memory id — how the dreaming batch driver rebuilds
-   * ReconcileInputs without re-embedding. Ids the caller
-   * holds already passed a gated read; rows never embedded simply drop out.
-   */
-  async retrieveEmbeddings(memoryIds: string[]): Promise<Map<string, number[]>> {
-    if (memoryIds.length === 0) return new Map();
-    return this.requireVectors().retrieveVectors(memoryIds);
-  }
-
-  // ── System reads for the dreaming driver ───────────────────
-  // Worker-only machine reads, the out-of-module mirror of the sweep's
-  // in-module scans: no Principal because the caller is the nightly job
-  // covering every owner. They feed reconciliation, whose candidate reads and
-  // actions re-apply the per-owner gates; nothing here reaches a user.
-
-  /** The day's scope: rows admitted or touched inside the watermark window. */
-  async listTouchedBetween(from: Date, to: Date, limit = 2000): Promise<MemoryRow[]> {
-    return this.db
-      .select()
-      .from(memory)
-      .where(
-        and(
-          inArray(memory.status, ['active', 'uncertain']),
-          or(
-            and(sql`${memory.createdAt} >= ${from}`, sql`${memory.createdAt} < ${to}`),
-            and(sql`${memory.updatedAt} >= ${from}`, sql`${memory.updatedAt} < ${to}`),
-          ),
-        ),
-      )
-      .orderBy(memory.ownerId, memory.createdAt)
-      .limit(limit);
-  }
-
-  /** Staleness pass input: active rows whose validity interval has lapsed. */
-  async listLapsedActive(asOf: Date, limit = 2000): Promise<MemoryRow[]> {
-    return this.db
-      .select()
-      .from(memory)
-      .where(and(eq(memory.status, 'active'), sql`${memory.validUntil} < ${asOf}`))
-      .orderBy(memory.createdAt)
-      .limit(limit);
-  }
-
-  /** Dormant pass input: active commitments with no activity since the window. */
-  async listQuietCommitments(quietBefore: Date, limit = 2000): Promise<MemoryRow[]> {
-    return this.db
-      .select()
-      .from(memory)
-      .where(
-        and(
-          eq(memory.status, 'active'),
-          eq(memory.kind, 'commitment'),
-          sql`${memory.createdAt} < ${quietBefore}`,
-          sql`${memory.updatedAt} < ${quietBefore}`,
-        ),
-      )
-      .orderBy(memory.createdAt)
-      .limit(limit);
-  }
-
-  /** Batch system read — flag maintenance resolves current statuses through it. */
-  async getManySystem(memoryIds: string[]): Promise<MemoryRow[]> {
-    if (memoryIds.length === 0) return [];
-    return this.db.select().from(memory).where(inArray(memory.id, memoryIds));
-  }
-
-  /** A source's derived memories — the skill runtime's gather input. */
-  async listBySourceSystem(sourceType: SourceType, sourceId: string): Promise<MemoryRow[]> {
-    return this.db
-      .select()
-      .from(memory)
-      .where(and(eq(memory.sourceType, sourceType), eq(memory.sourceId, sourceId)))
-      .orderBy(memory.createdAt, memory.id);
-  }
-
-  /** Kind/status scan — a system-level sweep primitive. */
-  async listByKindsSystem(
-    kinds: FactKind[],
-    statuses: MemoryStatus[],
-    limit = 2000,
-  ): Promise<MemoryRow[]> {
-    if (kinds.length === 0 || statuses.length === 0) return [];
-    return this.db
-      .select()
-      .from(memory)
-      .where(and(inArray(memory.kind, kinds), inArray(memory.status, statuses)))
-      .orderBy(memory.createdAt, memory.id)
-      .limit(limit);
-  }
-
-  /**
-   * Provenance-metadata backfill (migration 0030): stamps the
-   * email-path authorship flag on a source's derived memories. Deliberately
-   * narrow — it touches ONLY `authored_by_user` (structural metadata, not a
-   * status transition, so none of the aggregate's transition rules apply) and
-   * exists for the one-shot historical classification job; live rows get the
-   * flag at admission via NewFact.
-   */
-  async setAuthoredByUserBySourceSystem(
-    sourceType: SourceType,
-    sourceId: string,
-    authoredByUser: boolean,
-  ): Promise<number> {
-    const rows = await this.db
-      .update(memory)
-      .set({ authoredByUser })
-      .where(and(eq(memory.sourceType, sourceType), eq(memory.sourceId, sourceId)))
-      .returning({ id: memory.id });
-    return rows.length;
-  }
-
   private requireVectors(): MemoryVectorStore {
     if (!this.vectors) {
       throw new NotImplementedException(
@@ -1350,12 +1273,14 @@ export class MemoryStore {
   }
 
   /** The scope + sensitive gates. Private: every public read builds on this. */
+  /** The gate itself lives in `domain/scope-gate.ts` (V2.0 item 3.7): one
+   * definition, two tables. This names the columns and nothing else. */
   private visibleTo(principal: Principal, opts: ReadOptions): SQL {
-    const scopeGate = or(eq(memory.ownerId, principal.userId), eq(memory.scope, 'shared'))!;
-    const sensitiveGate = opts.includeSensitive
-      ? or(eq(memory.sensitive, false), eq(memory.ownerId, principal.userId))!
-      : eq(memory.sensitive, false);
-    return and(scopeGate, sensitiveGate)!;
+    return visibleToPrincipal(
+      { ownerId: memory.ownerId, scope: memory.scope, sensitive: memory.sensitive },
+      principal,
+      opts,
+    );
   }
 
   private async insertFact(

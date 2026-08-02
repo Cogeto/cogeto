@@ -28,7 +28,7 @@ async function main(): Promise<void> {
       providers: config.modelProviders,
       redaction: redactionOptions(config),
     });
-    const { store, reconciliation } = createMemoryReconciliation({
+    const { store, systemStore, reconciliation } = createMemoryReconciliation({
       db,
       qdrant: {
         url: config.qdrantUrl,
@@ -39,6 +39,7 @@ async function main(): Promise<void> {
     const dreaming = new DreamingService(
       db,
       store,
+      systemStore,
       new ReconciliationService(gateway, store, reconciliation),
     );
     const report = await dreaming.run((event, message) => console.log(`  ${message}`, event));

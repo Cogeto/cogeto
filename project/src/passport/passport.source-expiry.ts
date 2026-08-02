@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { DerivedCascade } from '../memory/index';
 import { writeAudit } from '../infrastructure/index';
 import type { Tx } from '../infrastructure/index';
+import { UserDirectory } from '../identity/index';
 import { passportExport } from './persistence/tables';
 
 /**
@@ -33,6 +34,11 @@ import { passportExport } from './persistence/tables';
 @Injectable()
 export class PassportExportCascade implements DerivedCascade {
   readonly artifact = 'passport_exports';
+
+  /** Org resolution for audit stamping (V2.0 item 3.7): this runs in the worker
+   * with no Principal in scope, and an entry with no org is readable from every
+   * org. Optional so bare test constructions still work. */
+  constructor(@Optional() private readonly directory?: UserDirectory) {}
 
   /**
    * Passport exports are not derived from particular memories, so there is
@@ -80,6 +86,7 @@ export class PassportExportCascade implements DerivedCascade {
       entityType: 'passport_export',
       entityId: rows[0]!.id,
       detail: { count: rows.length, reason: 'source deletion' },
+      orgId: (await this.directory?.orgOf(ownerId)) ?? undefined,
       ownerId,
     });
 

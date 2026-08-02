@@ -24,6 +24,13 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 interface UsageStore {
   userId?: string;
+  /**
+   * The user's Zitadel organization, for audit stamping (V2.0 item 3.7). An
+   * `audit_log` row with a NULL org is readable from every org, so the entries
+   * the model-egress recorder writes carry one wherever a principal is in scope
+   * — the same places `userId` is set, and by the same mechanism.
+   */
+  orgId?: string;
   taskFamily?: string;
 }
 
@@ -34,10 +41,16 @@ export function runWithUsageContext<T>(fn: () => T, initial: UsageStore = {}): T
   return storage.run({ ...initial }, fn);
 }
 
-/** Fill in the attributed user once the principal is known (the bearer guard). */
-export function setUsageUser(userId: string): void {
+/**
+ * Fill in the attributed user once the principal is known (the bearer guard;
+ * the worker's task wrapper from the job payload). `orgId` is optional because
+ * the worker learns the principal from a payload key and not from a Principal.
+ */
+export function setUsageUser(userId: string, orgId?: string): void {
   const store = storage.getStore();
-  if (store) store.userId = userId;
+  if (!store) return;
+  store.userId = userId;
+  if (orgId) store.orgId = orgId;
 }
 
 /** Label the current scope's work ('ingestion', 'chat', 'dreaming', …). */
@@ -49,6 +62,11 @@ export function setUsageTaskFamily(taskFamily: string): void {
 /** The user to charge for model calls in the current async context, if any. */
 export function currentUsageUserId(): string | undefined {
   return storage.getStore()?.userId;
+}
+
+/** The attributed user's org, for audit stamping. */
+export function currentUsageOrgId(): string | undefined {
+  return storage.getStore()?.orgId;
 }
 
 /** The current scope's task family, if one was set. */

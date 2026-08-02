@@ -434,6 +434,51 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
     expect(await filesService.getDownloadUrl(userB, sharedSecret)).toBeNull();
   });
 
+  it('download_audited: minting a presigned URL is recorded; a refusal is not (V2.0 item 3.7)', async () => {
+    // A presigned URL is the moment a stored original becomes reachable outside
+    // the instance, and it wrote no audit row at all — the passport export's
+    // equivalent has been audited since SEC-9.
+    const { objectKey } = await filesService.upload(
+      userA,
+      {
+        buffer: makePdf('Board pack for the audit trail test.'),
+        originalName: 'board.pdf',
+        mimeType: PDF_CONTENT_TYPE,
+      },
+      { scope: 'shared', sensitive: false, discard: false },
+    );
+    const entries = async () => {
+      const { rows } = await tdb.pool.query<{
+        actor: string;
+        org_id: string | null;
+        owner_id: string | null;
+        detail_json: Record<string, unknown>;
+      }>(
+        `SELECT actor, org_id, owner_id, detail_json FROM audit_log
+          WHERE action = 'file.downloaded' AND entity_id = $1 ORDER BY created_at`,
+        [objectKey],
+      );
+      return rows;
+    };
+
+    expect(await entries()).toHaveLength(0);
+    await filesService.getDownloadUrl(userA, objectKey);
+    await filesService.getDownloadUrl(userB, objectKey); // same-org peer, shared file
+    await filesService.getDownloadUrl(userC, objectKey); // other org: refused
+
+    const rows = await entries();
+    // Two egresses, one refusal. A refusal moved no bytes, so it is not egress.
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.actor)).toEqual([`user:${userA.userId}`, `user:${userB.userId}`]);
+    // Both name the FILE's owner for the detail gate, and both carry an org.
+    expect(rows.map((r) => r.owner_id)).toEqual([userA.userId, userA.userId]);
+    expect(rows.every((r) => r.org_id !== null)).toBe(true);
+    // Whether the reader was the owner is the fact worth looking up later.
+    expect(rows.map((r) => r.detail_json['byOwner'])).toEqual([true, false]);
+    // Structural only: no filename, no bytes, no content anywhere in the detail.
+    expect(JSON.stringify(rows.map((r) => r.detail_json))).not.toMatch(/board|Board pack/);
+  });
+
   it('upload_type_rejected: a non-PDF/DOCX upload is refused at the boundary and stores nothing', async () => {
     const before = await pipelineJobCount();
     await expect(

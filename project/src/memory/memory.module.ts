@@ -3,11 +3,16 @@ import type { DynamicModule, ModuleMetadata, Type } from '@nestjs/common';
 import { MemoriesController } from './memories.controller';
 import { RelationsController } from './relations.controller';
 import { SourcesController } from './sources.controller';
-import { IntegrityController, ReceiptsController } from './receipts.controller';
+import {
+  IntegrityController,
+  RECEIPTS_ADMIN_ROLE,
+  ReceiptsController,
+} from './receipts.controller';
 import { InstanceController } from './instance.controller';
 import { TimelineController } from './timeline.controller';
 import { IntegritySweep } from './integrity-sweep';
 import { MemoryStore } from './memory.store';
+import { MemorySystemStore } from './memory-system.store';
 import { TimelineService } from './timeline.service';
 import { MemoryReconciliation } from './reconciliation';
 import {
@@ -59,6 +64,23 @@ export interface MemoryModuleOptions {
    * (PipelineIngestionGuard); must be dependency-free (instantiated here).
    */
   ingestionGuard: Type<IngestionGuard>;
+  /**
+   * Provide the unscoped machine-read surface, {@link MemorySystemStore}
+   * (V2.0 item 3.7). **Worker root only.** The nightly dreaming cycle and the
+   * skill runtime read across every owner by nature; the app serves requests
+   * and has no such caller, so its injector must not be able to produce one.
+   * Omitted (the default) the class is not a provider at all.
+   */
+  systemReads?: boolean;
+  /**
+   * The project role that unlocks the INSTANCE-WIDE chain report on
+   * `GET /api/receipts/verify` (V2.0 item 3.7); everyone else gets the verdict
+   * over their own receipts. Named here rather than read out of the identity
+   * seam's options, which are deliberately DI-visible and import-invisible.
+   * Absent (worker, harnesses) means nobody is an administrator, and the
+   * trimmed answer is the safe direction.
+   */
+  adminRole?: string;
 }
 
 /**
@@ -114,6 +136,7 @@ export class MemoryModule {
           useFactory: () => new MemoryObjectStore(options.s3),
         },
         { provide: INSTANCE_KEY_DIR, useValue: options.instanceKeyDir },
+        { provide: RECEIPTS_ADMIN_ROLE, useValue: options.adminRole },
         {
           provide: SOURCE_DELETIONS,
           useFactory: (...adapters: SourceDeletion[]) => adapters,
@@ -151,6 +174,11 @@ export class MemoryModule {
         DeletionExecutor,
         IntegritySweep,
         MemoryFileStore,
+        // The unscoped machine-read surface exists ONLY where a root asked for
+        // it (V2.0 item 3.7). In the app process this provider is absent, so an
+        // ungated corpus read is not something a request-path service can
+        // inject: it would fail to resolve at boot rather than run.
+        ...(options.systemReads ? [MemorySystemStore] : []),
       ],
       exports: [
         MemoryStore,
@@ -161,6 +189,7 @@ export class MemoryModule {
         IntegritySweep,
         MemoryObjectStore,
         MemoryFileStore,
+        ...(options.systemReads ? [MemorySystemStore] : []),
       ],
     };
   }

@@ -19,7 +19,7 @@ import {
   writeAudit,
 } from '../infrastructure/index';
 import type { Db, ResearchQuota } from '../infrastructure/index';
-import { MemoryStore } from '../memory/index';
+import { MemorySystemStore } from '../memory/index';
 import type { MemoryRow } from '../memory/index';
 import {
   fenceUntrusted,
@@ -60,6 +60,18 @@ export interface SkillEngineOptions {
   /** Per-user context + language. Absent in bare test harnesses. */
   userContext?: UserContextService;
   instanceTimeZone?: string;
+  /**
+   * The unscoped machine reads the step bodies need (V2.0 item 3.7): a run's
+   * captured pages' derived facts, and the gathered memories re-read by id
+   * after reconciliation may have moved them.
+   *
+   * PRESENT IN THE WORKER ONLY. The engine lives in both roots because the app
+   * approves a plan (`approvePlan`) while the worker advances it, so this
+   * arrives by token rather than as a constructor dependency: the app root does
+   * not register `MemorySystemStore` at all, and the advance path asserts it
+   * through {@link SkillEngine.requireSystemMemories} instead of degrading.
+   */
+  systemMemories?: MemorySystemStore;
 }
 
 export const SKILL_ENGINE_OPTIONS = Symbol('SKILL_ENGINE_OPTIONS');
@@ -70,19 +82,35 @@ export class SkillEngine {
 
   private readonly userContext?: UserContextService;
   private readonly instanceTimeZone: string;
+  private readonly systemMemories?: MemorySystemStore;
 
   constructor(
     @Inject(DRIZZLE) private readonly db: Db,
     private readonly runs: SkillRunService,
     private readonly research: ResearchService,
     private readonly gateway: ModelGateway,
-    private readonly memories: MemoryStore,
     @Inject(RESEARCH_QUOTA) private readonly quota: ResearchQuota,
     /** Every optional collaborator, by NAME (V2.0 item 3.6 part 4). */
     @Optional() @Inject(SKILL_ENGINE_OPTIONS) options?: SkillEngineOptions,
   ) {
     this.userContext = options?.userContext;
     this.instanceTimeZone = options?.instanceTimeZone ?? DEFAULT_INSTANCE_TIMEZONE;
+    this.systemMemories = options?.systemMemories;
+  }
+
+  /**
+   * The worker-only machine reads, or a loud failure (V2.0 item 3.7). Every
+   * caller is a step body reached from {@link advance}, which only the worker's
+   * `skill.advance` job runs. In the app process the store is not provided, so
+   * an app-side advance stops here instead of reading across every owner.
+   */
+  private requireSystemMemories(): MemorySystemStore {
+    if (!this.systemMemories) {
+      throw new Error(
+        'SkillEngine: advancing a run needs MemorySystemStore, which only the worker root provides',
+      );
+    }
+    return this.systemMemories;
   }
 
   /**
@@ -355,7 +383,7 @@ export class SkillEngine {
     }
     let facts = 0;
     for (const page of pages) {
-      facts += (await this.memories.listBySourceSystem('web', page.id)).length;
+      facts += (await this.requireSystemMemories().listBySourceSystem('web', page.id)).length;
     }
     await this.runs.finishStep(run.id, 'read_pages', {
       status: pages.length === 0 ? 'skipped' : 'completed',
@@ -379,12 +407,14 @@ export class SkillEngine {
     const pages = await this.pagesForSkillRun(owner, run.id);
     const webMemories: MemoryRow[] = [];
     for (const page of pages) {
-      webMemories.push(...(await this.memories.listBySourceSystem('web', page.id)));
+      webMemories.push(...(await this.requireSystemMemories().listBySourceSystem('web', page.id)));
     }
     // The gathered profile re-read: reconciliation may have flagged a stored
     // memory against a fresh web fact while the pages settled.
     const gatherLinks = await this.stepLinks(run.id, 'gather_memory');
-    const profileRows = await this.memories.getManySystem(gatherLinks.memoryIds ?? []);
+    const profileRows = await this.requireSystemMemories().getManySystem(
+      gatherLinks.memoryIds ?? [],
+    );
     const disputed = [...webMemories, ...profileRows].filter(
       (row) => row.status === 'contradicted' || row.status === 'uncertain',
     );
@@ -414,9 +444,17 @@ export class SkillEngine {
     const verifyLinks = await this.stepLinks(run.id, 'verify');
     const profileIds = gatherLinks.memoryIds ?? [];
     const loopIds = gatherLinks.loopMemoryIds ?? [];
-    const factRows = (await this.memories.getManySystem(profileIds)).slice(0, MAX_BRIEF_FACTS);
-    const loopRows = (await this.memories.getManySystem(loopIds)).slice(0, MAX_BRIEF_LOOPS);
-    const disputedRows = await this.memories.getManySystem(verifyLinks.memoryIds ?? []);
+    const factRows = (await this.requireSystemMemories().getManySystem(profileIds)).slice(
+      0,
+      MAX_BRIEF_FACTS,
+    );
+    const loopRows = (await this.requireSystemMemories().getManySystem(loopIds)).slice(
+      0,
+      MAX_BRIEF_LOOPS,
+    );
+    const disputedRows = await this.requireSystemMemories().getManySystem(
+      verifyLinks.memoryIds ?? [],
+    );
     const pages = (await this.pagesForSkillRun(owner, run.id)).slice(0, MAX_BRIEF_PAGES);
 
     // [M#] numbers the remembered facts then the open loops; [W#] the pages.

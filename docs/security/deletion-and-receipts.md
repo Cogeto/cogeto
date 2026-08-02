@@ -139,7 +139,11 @@ surface in `GET /api/health` and the System view.
 ## How you verify it
 
 - **Verify the whole chain:** `GET /api/receipts/verify` walks genesis to tip,
- recomputing every hash and checking every signature.
+ recomputing every hash and checking every signature. The walk is instance-wide
+ for every caller, because a subset of a hash chain verifies nothing; the counts
+ it returns are the caller's own unless they hold the admin role, and the
+ first-failure string is admin-only (V2.0 item 3.7). So "the chain your receipts
+ sit in verifies" is answerable by any user, and the instance's totals are not.
 - **Verify one exported receipt independently:** `GET /api/instance/public-key`
  serves the instance's public key **unauthenticated**, so anyone holding an
  exported receipt can check its signature without access to the instance.

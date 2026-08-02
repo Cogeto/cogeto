@@ -22,6 +22,7 @@ import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
 import { hashReceiptPayload, GENESIS_HASH } from './domain/receipt-chain';
 import { liftContradictionsBeforeDeletion } from './reconciliation';
+import { UserDirectory } from '../identity/index';
 
 /**
  * The deletion saga (spec §11.1, spec §11.1) — the ONLY path that hard-deletes memories
@@ -820,6 +821,11 @@ export class DeletionExecutor {
     private readonly vectors: MemoryVectorStore,
     private readonly objects: MemoryObjectStore,
     @Inject(INSTANCE_KEY_DIR) private readonly instanceKeyDir: string,
+    /** Org resolution for audit stamping (V2.0 item 3.7). Appended LAST on
+     * purpose, so no existing wiring or test double shifts position; optional
+     * because bare constructions (CLIs, harnesses) have no directory and their
+     * entries stay NULL-org, which is the safe direction. */
+    @Optional() private readonly directory?: UserDirectory,
   ) {}
 
   async execute(
@@ -877,7 +883,10 @@ export class DeletionExecutor {
         hash,
       },
       // Receipts are visible to the deletion's actor (0020 ruling 5) — the
-      // confirmation entry carries the same owner for the detail gate.
+      // confirmation entry carries the same owner for the detail gate, and
+      // (V2.0 item 3.7) the owner's org, resolved from the directory because
+      // this leg runs in the worker with no Principal in scope.
+      orgId: (await this.directory?.orgOf(counts.requested_by)) ?? undefined,
       ownerId: counts.requested_by,
     });
     return {

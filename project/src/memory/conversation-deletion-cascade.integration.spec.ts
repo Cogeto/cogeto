@@ -18,6 +18,7 @@ import type { TestDatabase, TestMinio, TestQdrant } from '../testing/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import { ChatSourceReader, ConversationSourceDeletion } from '../chat/index';
+import { UserSettingsService } from '../settings/index';
 import { createIngestionPipeline, createSuppressedFactLog } from '../ingestion/index';
 import { MemoryStore } from './memory.store';
 import { MemoryReconciliation } from './reconciliation';
@@ -158,7 +159,7 @@ describe('conversation deletion cascade (integration: real Postgres + Qdrant + M
 
   const pipeline = () =>
     createIngestionPipeline({
-      readers: [new ChatSourceReader(tdb.db)],
+      readers: [new ChatSourceReader(tdb.db, new UserSettingsService(tdb.db))],
       gateway,
       store,
       reconciliation: new MemoryReconciliation(tdb.db, store, vectors),

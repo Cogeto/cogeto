@@ -1,15 +1,4 @@
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  Get,
-  Inject,
-  Optional,
-  Post,
-  Put,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Inject, Optional, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import type { ContextSuggestionsDto, UserContextDto } from '@cogeto/shared';
 import { SUPPORTED_LANGUAGES } from '@cogeto/shared';
@@ -17,6 +6,7 @@ import {
   DEFAULT_INSTANCE_TIMEZONE,
   INSTANCE_TIMEZONE,
   UserContextService,
+  parseOrBadRequest,
 } from '../infrastructure/index';
 import type { UserContextRecord } from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
@@ -90,13 +80,10 @@ export class UserContextController {
     @Req() request: AuthenticatedRequest,
     @Body() body: unknown,
   ): Promise<UserContextDto> {
-    const parsed = updateSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
+    const parsed = parseOrBadRequest(updateSchema, body);
     const record = await this.context.update(
       { userId: request.principal.userId, orgId: request.principal.orgId },
-      parsed.data,
+      parsed,
     );
     return this.toDto(record);
   }
@@ -112,15 +99,12 @@ export class UserContextController {
     @Req() request: AuthenticatedRequest,
     @Body() body: unknown,
   ): Promise<UserContextDto> {
-    const parsed = suggestionActionSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
+    const parsed = parseOrBadRequest(suggestionActionSchema, body);
     const record = await this.context.applySuggestion(
       { userId: request.principal.userId, orgId: request.principal.orgId },
-      parsed.data.field,
-      parsed.data.value,
-      parsed.data.sourceMemoryId,
+      parsed.field,
+      parsed.value,
+      parsed.sourceMemoryId,
     );
     return this.toDto(record);
   }
@@ -130,14 +114,11 @@ export class UserContextController {
     @Req() request: AuthenticatedRequest,
     @Body() body: unknown,
   ): Promise<{ dismissed: true }> {
-    const parsed = suggestionActionSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
+    const parsed = parseOrBadRequest(suggestionActionSchema, body);
     await this.context.dismissSuggestion(
       { userId: request.principal.userId, orgId: request.principal.orgId },
-      parsed.data.field,
-      parsed.data.value,
+      parsed.field,
+      parsed.value,
     );
     return { dismissed: true };
   }

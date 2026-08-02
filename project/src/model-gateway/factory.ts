@@ -6,8 +6,9 @@ import { TierRoutedModelGateway } from './routed.gateway';
 import { RedactingModelGateway } from './redacting.gateway';
 import { RedactionClient } from './redaction-client';
 import { BudgetedModelGateway } from './budgeted.gateway';
+import { AuditedModelGateway } from './audited.gateway';
 import type { ModelProviderId, ResolvedModelProviders } from './provider-config';
-import type { ModelUsageMeter } from '../infrastructure/index';
+import type { ModelEgressAudit, ModelUsageMeter } from '../infrastructure/index';
 
 /**
  * Redaction wiring passed to the gateway factory (spec §12.2). Enabled only on
@@ -36,6 +37,13 @@ export interface CreateModelGatewayOptions {
    * smokes) leaves all calls unmetered.
    */
   usageMeter?: ModelUsageMeter;
+  /**
+   * Append-only record of every call that leaves the instance (V2.0 item 3.7).
+   * When present the gateway is wrapped so each call writes one structural
+   * entry; absent (eval, smokes, bare harnesses) nothing is recorded, which is
+   * why an eval run cannot flood the trail.
+   */
+  egressAudit?: ModelEgressAudit;
 }
 
 /**
@@ -45,9 +53,11 @@ export interface CreateModelGatewayOptions {
  * uniformly and nothing can bypass them — for EVERY provider (
  * `redaction_applies_all_providers`, `budget_applies_all_providers`).
  *
- * Decorator order (outermost first): budget → redaction → provider(s). The
- * budget gate runs before any provider call and counts real model traffic;
- * redaction pseudonymizes inside it.
+ * Decorator order (outermost first): audit → budget → redaction → provider(s).
+ * The budget gate runs before any provider call and counts real model traffic;
+ * redaction pseudonymizes inside it. The audit sits OUTSIDE the budget so a
+ * refused call is never recorded as egress — nothing left the box — and its
+ * latency covers what the caller actually waited for.
  */
 export function createModelGateway(options: CreateModelGatewayOptions): ModelGateway {
   let gateway = buildProviderGateway(options.providers, options.temperature);
@@ -61,7 +71,32 @@ export function createModelGateway(options: CreateModelGatewayOptions): ModelGat
   if (options.usageMeter) {
     gateway = new BudgetedModelGateway(gateway, options.usageMeter);
   }
+  if (options.egressAudit) {
+    gateway = new AuditedModelGateway(
+      gateway,
+      options.egressAudit,
+      routesOf(options.providers),
+      options.redaction?.enabled ?? false,
+    );
+  }
   return gateway;
+}
+
+/**
+ * Tier → provider + resolved model, so an egress entry names where the bytes
+ * went without the decorator knowing anything about adapters. Empty when the
+ * gateway is unconfigured; the entry then records nulls, which is the truth.
+ */
+function routesOf(
+  providers: ResolvedModelProviders | undefined,
+): Record<string, { provider: string; model: string }> {
+  if (!providers?.configured) return {};
+  const { tiers } = providers;
+  return {
+    pipeline: { provider: tiers.pipeline.provider, model: tiers.pipeline.model },
+    answer: { provider: tiers.answer.provider, model: tiers.answer.model },
+    embedding: { provider: tiers.embedding.provider, model: tiers.embedding.model },
+  };
 }
 
 /**

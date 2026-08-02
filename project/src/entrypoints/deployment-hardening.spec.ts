@@ -1,5 +1,5 @@
 import { mkdtempSync, writeFileSync } from 'node:fs';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -90,6 +90,30 @@ describe('deployment hardening', () => {
         .filter((l) => l.trim().startsWith('#') && /\b[\w./-]+:latest\b/.test(l));
       expect(floating, `${name} pins a digest against a :latest comment`).toEqual([]);
     }
+  });
+
+  it('production_image_carries_no_dev_entrypoint: every dev/demo CLI is removed from the runtime stage', () => {
+    // The audit's R7 check, as an invariant (V2.0 item 3.7). The Dockerfile
+    // deletes the compiled dev entrypoints from the runtime stage; nothing
+    // failed the build if a NEW one was added and not deleted, so the check
+    // existed only as long as someone re-ran the audit.
+    //
+    // The rule is derived from the source tree, not from a second list to keep
+    // in sync: any `entrypoints/{seed,demo}-*.ts` must be named in the `rm`.
+    const runtimeStage = dockerfile.slice(dockerfile.indexOf('AS runtime'));
+    const devEntrypoints = readdirSync(path.join(REPO, 'project/src/entrypoints'))
+      .filter((name) => /^(seed|demo)-[a-z-]+\.ts$/.test(name))
+      .map((name) => name.replace(/\.ts$/, ''));
+    expect(devEntrypoints.length).toBeGreaterThan(0);
+    for (const name of devEntrypoints) {
+      expect(
+        runtimeStage,
+        `project/src/dist/entrypoints/${name}.js ships in the production image`,
+      ).toContain(`project/src/dist/entrypoints/${name}.js`);
+    }
+    // Source maps go with them (SEC-32): the production build turns them off,
+    // and this is the assertion that keeps that config from drifting back.
+    expect(read('project/src/tsconfig.build.json')).toMatch(/"sourceMap":\s*false/);
   });
 
   it('the main Caddyfile no longer serves the console vhosts; they live in the consoles profile', () => {

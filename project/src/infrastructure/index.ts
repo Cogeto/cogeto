@@ -15,12 +15,9 @@ export { DatabaseModule } from './database.module';
 export { createDb, DRIZZLE, PG_POOL } from './db';
 export type { Db, DbOrTx, Tx } from './db';
 export { applyMigrations } from './migrations';
-export type { MigrationRunResult } from './migrations';
-export { writeAudit, readAuditEntries, readAuditPage, escapeLike } from './audit';
-export type { AuditEntry, AuditRecord } from './audit';
+export { writeAudit, readAuditEntries, readAuditPage } from './audit';
 export { InstanceProbes } from './instance-probes';
 export { enqueueDelayedJob, withTransactionalEnqueue, JOB_PRINCIPAL_KEY } from './outbox';
-export type { DomainEvent, JobSpec } from './outbox';
 export {
   idempotentTask,
   acquireJobRunLock,
@@ -35,16 +32,8 @@ export {
   settleQueueBookkeeping,
   retryDeadLetter,
 } from './queue';
-export type {
-  IdempotentJobPayload,
-  JobIdempotencyKey,
-  JobRunState,
-  AfterCommit,
-  QueuedJobRow,
-  JobExecutionRow,
-  DeadLetterRow,
-} from './queue';
-export { scrubMessage, describeError, describeErrorLine } from './error-scrub';
+export type { QueuedJobRow } from './queue';
+export { describeError, describeErrorLine } from './error-scrub';
 export {
   ensureInstanceKeys,
   loadInstanceSigner,
@@ -64,18 +53,10 @@ export {
 } from './user-context';
 export type { UserContextRecord } from './user-context';
 export { UserContextModule } from './user-context.module';
-export {
-  buildContextBlock,
-  formatNow,
-  formatUserContext,
-  formatLanguageRule,
-  LANGUAGE_NAMES,
-} from './context-block';
-export type { ContextBlockOptions } from './context-block';
+export { buildContextBlock, formatNow } from './context-block';
 // The server-side copy catalogue (V2.0 item 3.5): the words Cogeto writes on
 // its own, keyed and per-locale. Not prompt assembly, not log lines.
-export { serverT, serverTranslator, SERVER_NAMESPACES } from './i18n';
-export type { ServerNamespace, ServerTOptions } from './i18n';
+export { serverT, serverTranslator } from './i18n';
 // Abuse/DoS limits (:). Types + tokens live here so the
 // guards enforce them inside domain modules without importing an entrypoint.
 export {
@@ -89,32 +70,23 @@ export {
   INSTANCE_TIMEZONE,
   DEFAULT_INSTANCE_TIMEZONE,
 } from './limits';
-export type {
-  LimitsConfig,
-  RateLimitBuckets,
-  ModelBudget,
-  IngestQuota,
-  ResearchQuota,
-  SseLimits,
-  ParseCaps,
-} from './limits';
+export type { LimitsConfig, IngestQuota, ResearchQuota, SseLimits, ParseCaps } from './limits';
 export { LimitsModule } from './limits.module';
-export {
-  DailyCounters,
-  InMemoryDailyCounters,
-  PostgresDailyCounters,
-  utcDay,
-} from './daily-counters';
+export { DailyCounters, InMemoryDailyCounters, PostgresDailyCounters } from './daily-counters';
+// Zod at every boundary (AGENTS.md), adapted to HTTP in one place
+// (V2.0 item 3.7).
+export { parseOrBadRequest } from './request-validation';
 export { RateLimitGuard, RateLimit } from './rate-limit';
-export type { RateLimitBucket } from './rate-limit';
 export { RateLimitStore, InMemoryRateLimitStore, PostgresRateLimitStore } from './rate-limit-store';
-export type { RateLimitHit } from './rate-limit-store';
-export { DailyModelBudget, MODEL_CALLS_BUCKET, MODEL_TOKENS_BUCKET } from './model-budget';
+export { DailyModelBudget } from './model-budget';
 export type { ModelUsageMeter } from './model-budget';
+// Model-egress audit (V2.0 item 3.7): the gateway seam records what left the
+// instance through the trail's own table, which infrastructure owns.
+export { MODEL_EGRESS_AUDIT } from './model-egress-audit';
+export type { ModelEgressAudit, ModelEgressEntry } from './model-egress-audit';
 export {
   runWithUsageContext,
   setUsageUser,
   setUsageTaskFamily,
   currentUsageUserId,
-  currentUsageTaskFamily,
 } from './usage-context';

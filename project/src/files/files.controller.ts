@@ -17,7 +17,7 @@ import type {
   FileUploadedDto,
 } from '@cogeto/shared';
 import { MEMORY_SCOPES } from '@cogeto/shared';
-import { RateLimit, RateLimitGuard } from '../infrastructure/index';
+import { RateLimit, RateLimitGuard, parseOrBadRequest } from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { DocumentUploadInterceptor } from './document-upload.interceptor';
@@ -67,10 +67,7 @@ export class FilesController {
     const file = request.file;
     if (!file) throw new BadRequestException('no file provided (field name must be "file")');
 
-    const parsed = uploadFlagsSchema.safeParse(request.body ?? {});
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
+    const parsed = parseOrBadRequest(uploadFlagsSchema, request.body ?? {});
     // Omitted flags fall back to the user's saved defaults.
     const defaults = await this.settings.get(request.principal);
     const { objectKey } = await this.files.upload(
@@ -81,9 +78,9 @@ export class FilesController {
         mimeType: file.mimetype,
       },
       {
-        scope: parsed.data.scope ?? defaults.defaultScope,
-        sensitive: parsed.data.sensitive ?? false,
-        discard: parsed.data.discard ?? defaults.discardByDefault,
+        scope: parsed.scope ?? defaults.defaultScope,
+        sensitive: parsed.sensitive ?? false,
+        discard: parsed.discard ?? defaults.discardByDefault,
       },
     );
     return { objectKey };

@@ -131,6 +131,9 @@ export class PassportExportExecutor {
       entityType: 'passport_export',
       entityId: exportId,
       detail: { sizeBytes, expiresAt: expiresAt.toISOString() },
+      // The org from the directory (V2.0 item 3.7): the worker holds no
+      // Principal, and an entry with no org is readable from every org.
+      orgId: (await this.directory.orgOf(request.userId)) ?? undefined,
       ownerId: request.userId,
     });
     this.logger.log(

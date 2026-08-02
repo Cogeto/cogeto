@@ -126,6 +126,11 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
     // Delete-vs-ingestion serialization: the saga cancels a source's pending
     // pipeline run inside its enumeration tx.
     ingestionGuard: PipelineIngestionGuard,
+    // The unscoped machine reads (V2.0 item 3.7). ONLY here: this process runs
+    // the nightly dreaming cycle and the skill advance job, which read across
+    // every owner by nature. The app root deliberately omits it, so
+    // MemorySystemStore is not resolvable in the process that serves requests.
+    systemReads: true,
   });
   const settingsModule = SettingsModule.register({ imports: [memoryModule] });
   const notesModule = NotesModule.register({ imports: [settingsModule] });

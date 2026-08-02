@@ -134,6 +134,9 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
   RESEARCH_QUOTA: 'infrastructure',
   SSE_LIMITS: 'infrastructure',
   MODEL_USAGE_METER: 'infrastructure',
+  // The model-egress recorder's port (V2.0 item 3.7): the gateway seam records
+  // what left the instance through the trail's table, which infrastructure owns.
+  MODEL_EGRESS_AUDIT: 'infrastructure',
   PARSE_CAPS: 'infrastructure',
   INSTANCE_TIMEZONE: 'infrastructure',
 
@@ -149,6 +152,10 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
   INGESTION_GUARD: 'memory',
   INSTANCE_KEY_DIR: 'memory',
   SWEEP_OPTIONS: 'memory',
+  // Who may read the instance-wide receipt-chain report (V2.0 item 3.7). The
+  // module names the field it needs; it does not reach into the identity seam's
+  // options bag, which stays DI-visible and import-invisible.
+  RECEIPTS_ADMIN_ROLE: 'memory',
   // Named-options bag (V2.0 item 3.6 part 4): the saga's collaborators
   // resolved by identity instead of constructor position.
   DELETION_SAGA_OPTIONS: 'memory',
@@ -233,8 +240,10 @@ const RAW_SQL_EXCEPTIONS: Readonly<Record<string, string>> = {
   // B19: the CLIs. `entrypoints/` is composition roots and command-line tools,
   // and a tool that builds or asserts on a fixture world reaches the database
   // directly by nature — that is what makes it a tool rather than a request
-  // path. Every one is named here, none ships in the production image, and item
-  // 3.7 evicts the demo and dev-seed ones from the repository's image entirely.
+  // path. Every one is named here, and none ships in the production image: the
+  // runtime stage deletes every `entrypoints/{seed,demo}-*` build output, which
+  // `deployment-hardening.spec.ts` now asserts rather than leaving to an audit
+  // re-read (V2.0 item 3.7).
   'entrypoints/vector-smoke.ts': 'CLI: the Qdrant smoke reads memory rows',
   'entrypoints/eval-chat.ts': 'CLI: the chat eval harness seeds six modules directly',
   'entrypoints/demo/ops.ts': 'CLI: the demo reset truncates every domain table',
@@ -385,7 +394,9 @@ describe('boundary_contract', () => {
           offenders.push(`${rel} → graphile_worker (infrastructure)`);
         }
         for (const table of tables) {
-          const owner = TABLE_OWNERS[table] ?? 'infrastructure';
+          const owner = Object.hasOwn(TABLE_OWNERS, table)
+            ? TABLE_OWNERS[table]!
+            : 'infrastructure';
           if (owner === module) continue;
           const reference = new RegExp(
             `\\b(?:from|join|into|update|table|only)\\s+(?:public\\.)?"?${table}"?\\b`,
@@ -421,7 +432,12 @@ describe('boundary_contract', () => {
     const offenders: string[] = [];
     for (const { rel, module, text } of SOURCES) {
       for (const literal of stringLiterals(text)) {
-        const owner = JOB_TYPE_OWNERS[literal];
+        // `Object.hasOwn` and not a bare lookup: a source string like
+        // 'constructor' or 'toString' would otherwise resolve through
+        // Object.prototype and be reported as a job type owned by nobody.
+        const owner = Object.hasOwn(JOB_TYPE_OWNERS, literal)
+          ? JOB_TYPE_OWNERS[literal]
+          : undefined;
         // A literal that IS a job type but is used as something else (an
         // entity type, a table name) still points at the same contract, so the
         // rule is deliberately the strict one: the string belongs to the owner.
