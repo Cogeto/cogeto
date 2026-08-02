@@ -1,18 +1,16 @@
 /** Public interface of the memory bounded context (spec §15 rule 1). */
 export { MemoryModule } from './memory.module';
-export type { MemoryModuleOptions } from './memory.module';
-export {
-  MemoryStore,
-  MEMORY_EMBED_JOB_TYPE,
-  OPEN_LOOP_KINDS,
-  OPEN_LOOP_STATUSES,
-} from './memory.store';
-export { TimelineService } from './timeline.service';
+export { MemoryStore, MEMORY_EMBED_JOB_TYPE } from './memory.store';
+/**
+ * The unscoped machine-read surface (V2.0 item 3.7). Only resolvable where a
+ * composition root registered the module with `systemReads: true`, which only
+ * the worker root does; the app process has no such provider.
+ */
+export { MemorySystemStore } from './memory-system.store';
 export {
   DeletionSaga,
   DeletionExecutor,
   DELETION_JOB_TYPE,
-  DELETION_JOB_SOURCE_TYPE,
   SOURCE_DELETIONS,
   DERIVED_CASCADES,
   INGESTION_GUARD,
@@ -24,71 +22,40 @@ export type {
   DerivedCascade,
   IngestionGuard,
   IngestionCancellation,
-  DeletionPreview,
-  ReceiptCounts,
 } from './deletion-saga';
 export { parseReceiptCounts } from './deletion-saga';
 export { verifyChain, canonicalize, GENESIS_HASH } from './domain/receipt-chain';
-export type { ChainVerification, ConfirmedReceipt } from './domain/receipt-chain';
+export type { ConfirmedReceipt } from './domain/receipt-chain';
 export { IntegritySweep, SWEEP_JOB_TYPE, SWEEP_CRONTAB, SWEEP_OPTIONS } from './integrity-sweep';
-export type {
-  SweepReport,
-  SweepOptions,
-  IntegrityStatus,
-  IntegrityAlertRecord,
-} from './integrity-sweep';
+export type { IntegrityStatus } from './integrity-sweep';
 export { createIntegritySweep } from './factory';
-export type { CreateIntegritySweepOptions, QdrantOptions } from './factory';
 export { MemoryObjectStore } from './persistence/object-store';
-export type {
-  ObjectStoreOptions,
-  PutObjectOptions,
-  FetchedObject,
-  ObjectStat,
-  PresignOptions,
-} from './persistence/object-store';
 export { MemoryFileStore } from './file-store';
-export type { FileMetadataInsert, FileMetadataRow } from './file-store';
 export { seedObjectFixture, seedOrphanPoint } from './dev-seed';
-export type { SeedObjectOptions, SeededObject, SeedOrphanOptions, SeededOrphan } from './dev-seed';
-export { createMemoryStore, createMemoryReconciliation } from './factory';
-export type { CreateMemoryStoreOptions } from './factory';
-export type {
-  NewFact,
-  ReadOptions,
-  ListOptions,
-  MemoryFilters,
-  MemorySearchHit,
-  ScoredMemory,
-  SearchOptions,
-  FilteredSearchOptions,
-} from './memory.store';
+export { createMemoryStore, createMemorySystemStore, createMemoryReconciliation } from './factory';
+export type { NewFact } from './memory.store';
 export { runMemoryEmbedJob } from './embed-job';
 export { MemoryReconciliation } from './reconciliation';
-export type {
-  PairActionResult,
-  ContradictionResolveAction,
-  OpenContradiction,
-} from './reconciliation';
-export {
-  chooseSurvivor,
-  confirmLoserOutcome,
-  eventTime,
-  supersessionUnambiguous,
-} from './domain/reconcile-policy';
-export type { PolicyParty, MergeDecision } from './domain/reconcile-policy';
+export type { PairActionResult } from './reconciliation';
+export { chooseSurvivor, supersessionUnambiguous } from './domain/reconcile-policy';
+export type { PolicyParty } from './domain/reconcile-policy';
+/**
+ * The interval predicate (AGENTS.md, spec §3): it exists ONCE, as a SQL
+ * fragment and a pure TypeScript twin tested against each other, and no query,
+ * view or answer-side check may hand-roll it. Exported even where no other
+ * module uses it today, because the rule is only enforceable if the one
+ * definition is the reachable one.
+ */
 export { intervalHoldsAt, intervalHoldsAtSql, isPastBelief } from './domain/interval';
-export type {
-  PointInTimeOptions,
-  PointInTimeHit,
-  MemoryChange,
-  MemoryChangeKind,
-} from './memory.store';
-export { checkTransition, actorLabel } from './domain/transition';
-export type { MemoryActor, ActorKind, TransitionCheck } from './domain/transition';
-export type { MemoryRow, MemoryRelationRow, SourceType } from './persistence/tables';
+/**
+ * The scope + sensitive gate as one SQL expression (V2.0 item 3.7). Public
+ * because the suppressed-fact log is gated by the SAME rule over its own table,
+ * and two hand-written copies of a hard gate is two places to get it wrong.
+ */
+export { visibleToPrincipal } from './domain/scope-gate';
+export type { MemoryChange } from './memory.store';
+export type { MemoryRow, SourceType } from './persistence/tables';
 // Reindex: rebuild Qdrant from Postgres (spec §4.2). Qdrant stays module-private —
 // callers pass primitives and a gateway, never a client.
 export { reindexMemories } from './reindex';
-export type { ReindexOptions, ReindexReport } from './reindex';
 export { listForeignEmbeddingModels, vectorIndexDimensionMismatch } from './embedding-space';

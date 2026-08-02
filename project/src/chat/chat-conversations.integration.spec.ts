@@ -18,6 +18,7 @@ import type { StructuredExtractionRequest } from '../model-gateway/index';
 import type { ZodType } from 'zod';
 import { RetrievalService } from '../retrieval/index';
 import { ChatService } from './chat.service';
+import { UserSettingsService } from '../settings/index';
 import { ChatSourceReader } from './chat.source-reader';
 
 /**
@@ -198,7 +199,7 @@ describe('multiple conversations (integration, real Postgres + Qdrant)', () => {
     const principal = principalFor(`conv-cont-${randomUUID()}`);
     const capture = new CaptureGateway();
     const pipeline = createIngestionPipeline({
-      readers: [new ChatSourceReader(tdb.db)],
+      readers: [new ChatSourceReader(tdb.db, new UserSettingsService(tdb.db))],
       gateway: capture,
       store,
       reconciliation,
@@ -283,7 +284,7 @@ describe('multiple conversations (integration, real Postgres + Qdrant)', () => {
     const principal = principalFor(`conv-arch-${randomUUID()}`);
     const capture = new CaptureGateway();
     const pipeline = createIngestionPipeline({
-      readers: [new ChatSourceReader(tdb.db)],
+      readers: [new ChatSourceReader(tdb.db, new UserSettingsService(tdb.db))],
       gateway: capture,
       store,
       reconciliation,

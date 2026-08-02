@@ -2165,3 +2165,92 @@ so the research cases pass unchanged.
 | strict_mode_hr |  |  |  | PASS | PASS |  | PASS |  |  | PASS | PASS |
 | whats_still_open |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
 | who_is_ana | PASS | 86% | PASS | PASS | PASS |  |  |  |  |  | PASS |
+
+## 2026-08-02, chat eval (configuration=mistral-default · pipeline=mistral/mistral-small-latest · answer=mistral/mistral-medium-latest · answer-prompt=answer/v0007 · grader=mistral/mistral-medium-latest eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | research | skill | conversation | overall |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| atlas_scope |  | 67% |  | PASS | PASS |  |  |  |  |  | FAIL |
+| blended_origins_en | PASS | 100% |  | PASS | PASS |  | PASS |  |  | PASS | PASS |
+| changed_since |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| default_no_time_travel |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| digest_hr_preferred |  |  |  |  |  |  |  |  |  | PASS | PASS |
+| followup_cross_capability |  |  |  | PASS | PASS |  | PASS | PASS |  |  | PASS |
+| knowledge_offer_en |  |  |  | PASS | PASS |  |  |  |  | PASS | PASS |
+| knowledge_offer_hr |  |  |  | PASS | PASS |  | PASS |  |  | PASS | PASS |
+| memory_beats_model | PASS |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| nothing_on_record |  |  |  |  |  | PASS |  |  |  |  | PASS |
+| open_with_entity |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| point_in_time_march |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| previously_decided |  | 0% |  | PASS | PASS |  | FAIL |  |  |  | FAIL |
+| reply_hr_zadnja |  |  |  |  |  |  | PASS |  |  |  | PASS |
+| reply_to_ana |  |  |  |  |  |  | PASS |  |  |  | PASS |
+| research_keeps_subject_hr |  |  |  | PASS |  |  | PASS | PASS |  |  | PASS |
+| research_minimise_drop |  |  |  | PASS |  |  | PASS | PASS |  |  | PASS |
+| skill_brief_en |  |  |  | PASS |  |  | PASS |  | PASS |  | PASS |
+| skill_brief_hr |  |  |  | PASS |  |  | PASS |  | PASS | PASS | PASS |
+| smalltalk_hvala_hr |  |  |  | PASS | PASS |  |  |  |  | PASS | PASS |
+| smalltalk_thanks |  |  |  | PASS | PASS |  |  |  |  | PASS | PASS |
+| strict_mode_hr |  |  |  | PASS | PASS |  | FAIL |  |  | PASS | FAIL |
+| whats_still_open |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| who_is_ana | PASS | 86% | PASS | PASS | PASS |  |  |  |  |  | PASS |
+
+## 2026-08-02, chat eval (configuration=mistral-default · pipeline=mistral/mistral-small-latest · answer=mistral/mistral-medium-latest · answer-prompt=answer/v0007 · grader=mistral/mistral-medium-latest eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | research | skill | conversation | overall |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| atlas_scope |  | 83% |  | PASS | PASS |  |  |  |  |  | PASS |
+| blended_origins_en | PASS | 100% |  | PASS | PASS |  | PASS |  |  | PASS | PASS |
+| changed_since |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| default_no_time_travel |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| digest_hr_preferred |  |  |  |  |  |  |  |  |  | PASS | PASS |
+| followup_cross_capability |  |  |  | PASS | PASS |  | PASS | PASS |  |  | PASS |
+| knowledge_offer_en |  |  |  | PASS | PASS |  |  |  |  | PASS | PASS |
+| knowledge_offer_hr |  |  |  | PASS | PASS |  | PASS |  |  | PASS | PASS |
+| memory_beats_model | PASS |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| nothing_on_record |  |  |  |  |  | PASS |  |  |  |  | PASS |
+| open_with_entity |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| point_in_time_march |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| previously_decided |  | 100% |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| reply_hr_zadnja |  |  |  |  |  |  | PASS |  |  |  | PASS |
+| reply_to_ana |  |  |  |  |  |  | PASS |  |  |  | PASS |
+| research_keeps_subject_hr |  |  |  | PASS |  |  | PASS | PASS |  |  | PASS |
+| research_minimise_drop |  |  |  | PASS |  |  | PASS | PASS |  |  | PASS |
+| skill_brief_en |  |  |  | PASS |  |  | PASS |  | PASS |  | PASS |
+| skill_brief_hr |  |  |  | PASS |  |  | PASS |  | PASS | PASS | PASS |
+| smalltalk_hvala_hr |  |  |  | PASS | PASS |  |  |  |  | PASS | PASS |
+| smalltalk_thanks |  |  |  | PASS | PASS |  |  |  |  | PASS | PASS |
+| strict_mode_hr |  |  |  | PASS | PASS |  | PASS |  |  | PASS | PASS |
+| whats_still_open |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| who_is_ana | PASS | 14% | PASS | PASS | PASS |  |  |  |  |  | FAIL |
+
+**Note on the two runs above (V2.0 item 3.7, back to back, identical code).** They
+are recorded because they are the clearest evidence yet that the live chat gate is
+a coin flip at this corpus size, and the rule is that a dip ships with its
+explanation rather than being re-run away.
+
+Same commit, same configuration, minutes apart:
+
+| | run 1 | run 2 |
+|---|---|---|
+| rule checks | FAIL (`previously_decided`, `strict_mode_hr`, both temporal) | all PASS |
+| `who_is_ana` coverage | 86% | 14% |
+| `atlas_scope` coverage | 67% | 83% |
+| `previously_decided` coverage | 0% | 100% |
+| mean coverage (gate 65%) | 63.3% | 74.3% |
+
+Run 1 would have failed the gate on both arms; run 2 clears both comfortably. The
+swing is model-side, not code-side: only four cases are coverage-graded, so one
+case moving takes the mean across the floor on its own, and `previously_decided`
+retrieved one fact in run 1 and both in run 2 for the same query against the same
+seeded corpus. Nothing in item 3.7 touches retrieval, query rewrite or the answer
+prompt, and the harness builds its gateway with neither the budget nor the new
+egress decorator, so it cannot be implicated.
+
+This is the same root cause already recorded for the caching decision in
+[`docs/eval-golden-set.md`](../eval-golden-set.md) §6: retrieval returns equally
+scored facts in a different order every run, so the answer prompt differs run to
+run even when the model does not. The stable ordering tiebreak that fixes it is
+the follow-up in [`website-follow-up.md`](website-follow-up.md); until it lands,
+a red live chat gate on `main` needs a second run before it is believed, and the
+four-case coverage mean is too small a denominator to gate honestly.

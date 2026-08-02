@@ -73,10 +73,35 @@ routes.
 `GET /api/audit` is an org-scoped, read-only trail. Within the single org, members
 share one organization, so the trail legitimately shows all members' actions, but
 it records **ids, statuses, reasons, and counts only, never memory or note
-content**. Deletion receipts are visible to the actor
-who performed the deletion (the owner), while instance-wide chain verification and
-the integrity sweep still cover every receipt: that is operator integrity, not a
-per-user view.
+content**. Deletion receipts are visible to the actor who performed the deletion
+(the owner).
+
+**Chain verification is instance-wide; its numbers are not** (V2.0 item 3.7). The
+ledger is one hash chain, and a per-user subset of a hash chain verifies nothing, so
+`GET /api/receipts/verify` still walks every confirmed receipt and the verdict it
+returns is the real one. What an ordinary authenticated caller gets back is scoped:
+the verdict, plus the confirmed and pending counts of **their own** receipts, and no
+error string. An administrator gets the instance-wide report, error string included,
+because a broken chain is an operator's problem. Before this, any authenticated user
+could read the instance's total deletion counts and a receipt id belonging to someone
+else, the same class of cross-user operational data that made `/api/integrity` and
+`/api/jobs` admin-only. The integrity sweep remains admin-only in full.
+
+**What leaves the instance is recorded** (V2.0 item 3.7). Two egress paths write to
+the trail alongside the passport export, which has been audited since the 2.0 audit's
+SEC-9:
+
+- **`file.downloaded`**: minting a presigned URL for a stored original, with the
+  object key, the URL's lifetime, and whether the reader was the owner or a same-org
+  peer reading a shared file. A refusal writes nothing: no bytes moved.
+- **`model.egress`**: one entry per call through the model gateway, carrying the tier asked
+  for, the provider and resolved model it routed to, whether redaction was in the
+  chain, how much went and came back as counts, latency, and success. Never the
+  prompt, never the completion, never a fragment of either. In a product whose
+  position is that models are rented and knowledge is owned, "which of my content
+  went to a rented model, and when" has to be answerable from the trail.
+
+Retention and export for the trail as a whole are V2.4 item 7.4.
 
 ## The data plane runs least-privilege (decision record, audit 2.0 wave 3)
 

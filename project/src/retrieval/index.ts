@@ -6,11 +6,9 @@
  */
 export { RetrievalModule } from './retrieval.module';
 export { RETRIEVAL_SERVICE_OPTIONS, RetrievalService } from './retrieval.service';
-export type { RetrievalServiceOptions } from './retrieval.service';
 export type {
   OpenLoop,
   RetrievalMode,
-  RetrievalResult,
   RetrievedMemory,
   RetrieveOptions,
 } from './retrieval.service';
@@ -27,21 +25,8 @@ export {
   QUERY_REWRITE_PROMPT,
   TEMPORAL_HINT_RE,
 } from './query-rewrite';
-export type {
-  EmailReplyIntent,
-  ResearchIntent,
-  SkillBriefIntent,
-  SmallTalkIntent,
-  RewriteResult,
-  TemporalIntent,
-} from './query-rewrite';
+export type { SmallTalkIntent, RewriteResult, TemporalIntent } from './query-rewrite';
 export { queryEntityCandidates } from './query-entities';
 export { detectEntityProfile } from './entity-profile';
-export {
-  runRewriteEval,
-  loadRewriteCases,
-  rewriteCaseSchema,
-  scoreRewriteCase,
-} from './eval-rewrite';
-export type { RewriteCase, RewriteEvalMetrics, RewriteEvalResult } from './eval-rewrite';
-export type { RetrievalSignal } from './fusion';
+export { runRewriteEval } from './eval-rewrite';
+export type { RewriteEvalMetrics } from './eval-rewrite';

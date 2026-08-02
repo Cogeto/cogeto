@@ -111,6 +111,8 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
     };
   const tasks: TaskList = {
     echo: idempotentTask(db, 'echo', async (tx, payload) => {
+      // No org, deliberately (V2.0 item 3.7): the outbox round-trip demo
+      // belongs to no user and no org.
       await writeAudit(tx, {
         actor: 'worker:echo',
         action: 'echo',

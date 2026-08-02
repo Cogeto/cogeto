@@ -27,6 +27,7 @@ import { MemoryObjectStore } from './persistence/object-store';
 import { DELETION_JOB_TYPE, DeletionExecutor, DeletionSaga } from './deletion-saga';
 import type { SourceDeletion } from './deletion-saga';
 import { IntegritySweep } from './integrity-sweep';
+import { ReceiptsController } from './receipts.controller';
 import { seedObjectFixture, seedOrphanPoint } from './dev-seed';
 import { verifyChain } from './domain/receipt-chain';
 import type { ConfirmedReceipt } from './domain/receipt-chain';
@@ -382,6 +383,28 @@ describe('deletion saga (integration: real Postgres + Qdrant + MinIO)', () => {
     await tdb.pool.query(
       'ALTER TABLE deletion_receipt ENABLE TRIGGER deletion_receipt_freeze_trigger',
     );
+  });
+
+  it('verify_scoped_to_the_caller: the verdict is instance-wide, the numbers are the caller’s own (V2.0 item 3.7)', async () => {
+    // Every receipt accumulated above was requested by userA. The endpoint used
+    // to hand any authenticated caller the instance-wide confirmed and pending
+    // counts plus a first-error string naming a receipt id.
+    const controller = new ReceiptsController(tdb.db, keyDir, 'admin');
+    const instanceWide = (await confirmedReceipts()).length;
+    expect(instanceWide).toBeGreaterThanOrEqual(3);
+
+    const asAdmin = await controller.verify({ principal: { ...userA, roles: ['admin'] } } as never);
+    expect(asAdmin).toMatchObject({ ok: true, verified: instanceWide, confirmed: instanceWide });
+
+    // userB caused none of them: same verdict, none of the counts.
+    const asPeer = await controller.verify({ principal: userB } as never);
+    expect(asPeer).toEqual({ ok: true, verified: 0, confirmed: 0, pending: 0 });
+    expect(asPeer).not.toHaveProperty('error');
+
+    // The owner still sees their own ledger's size, which is what the pill on
+    // the Forgotten page reports.
+    const asOwner = await controller.verify({ principal: userA } as never);
+    expect(asOwner).toMatchObject({ ok: true, confirmed: instanceWide });
   });
 
   it('authz_owner_only: a non-owner cannot delete (or even see) another user’s source', async () => {

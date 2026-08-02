@@ -11,6 +11,7 @@ import type { ParseCaps, Tx } from '../../infrastructure/index';
 import type { MemoryReconciliation, MemoryStore } from '../../memory/index';
 import type { ModelGateway } from '../../model-gateway/index';
 import { structurallyValid } from '../domain/uncertainty';
+import { UserDirectory } from '../../identity/index';
 import { SuppressedFactLog } from '../persistence/suppressed-fact-log';
 import type { SuppressedFactEntry } from '../persistence/suppressed-fact-log';
 import { chunkContent } from './chunk';
@@ -92,6 +93,10 @@ export class IngestionPipeline {
     private readonly suppressedFacts: SuppressedFactLog,
     /** Parse/extraction caps; optional so bare/test builds still work. */
     @Optional() @Inject(PARSE_CAPS) private readonly parseCaps: ParseCaps = DEFAULT_PARSE_CAPS,
+    /** Org resolution for audit stamping (V2.0 item 3.7). Appended LAST so no
+     * existing wiring shifts; optional because bare harnesses have none, and
+     * their entries then stay NULL-org, which is the safe direction. */
+    @Optional() private readonly directory?: UserDirectory,
   ) {}
 
   async run(
@@ -233,6 +238,10 @@ export class IngestionPipeline {
           entityType: 'source',
           entityId: `${payload.source_type}/${payload.source_id}`,
           detail: { ...ref, verified: verified.length, cause: 'source_deleted_mid_flight' },
+          // The owner's org from the directory (V2.0 item 3.7): the pipeline
+          // runs in the worker with no Principal, and a NULL-org entry is
+          // readable from every org.
+          orgId: (await this.directory?.orgOf(source.ownerId)) ?? undefined,
           ownerId: source.ownerId,
         });
         log({ stage: 'admission', ...ref, skipped: true }, 'source deleted mid-flight; aborting');

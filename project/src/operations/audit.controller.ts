@@ -1,15 +1,7 @@
-import {
-  BadRequestException,
-  Controller,
-  Get,
-  Inject,
-  Query,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Inject, Query, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import type { AuditEntryDto, AuditPage } from '@cogeto/shared';
-import { DRIZZLE, readAuditPage } from '../infrastructure/index';
+import { DRIZZLE, readAuditPage, parseOrBadRequest } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
@@ -43,11 +35,8 @@ export class AuditController {
 
   @Get()
   async list(@Req() request: AuthenticatedRequest, @Query() query: unknown): Promise<AuditPage> {
-    const parsed = querySchema.safeParse(query ?? {});
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
-    const q = parsed.data;
+    const parsed = parseOrBadRequest(querySchema, query ?? {});
+    const q = parsed;
 
     const { rows, total } = await readAuditPage(this.db, {
       // The org gate is the reader's required argument (spec §4.2): a caller

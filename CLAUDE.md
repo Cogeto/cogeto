@@ -42,7 +42,7 @@ inspectable artifact. EU hosted, self hosted, or fully offline.
 
 ## Current state
 
-v1.4.0 is the current release line. The task subsystem and reminders were **removed**
+v1.4.1 is the current release line. The task subsystem and reminders were **removed**
 in V2.0 items 3.1 and 3.2: Cogeto has no tasks, no to-dos, and no reminders. What
 survives is **open loops**, `commitment` and `open_loop` memories read straight from
 the memory table, due-dated by `valid_until`, surfaced in chat and on the attention
@@ -95,6 +95,38 @@ user-visible copy are in [`AGENTS.md`](AGENTS.md) under "User-visible copy", and
 a feature is not done until its keys exist in every locale.** Interface language
 is not extraction quality: only English and Croatian have corpora and gates, and
 nothing in the product may imply otherwise.
+
+V2.0 item 3.6 made the module boundary real and then moved the code behind it, in
+four pull requests. **Read [`docs/module-boundary-contract.md`](docs/module-boundary-contract.md)
+before adding a table, a job type, a DI token or a module.** A boundary here is
+**imports plus table ownership plus job-type contracts plus DI visibility**, and all
+four are machine-checked: `boundaries` covers imports and forbids a barrel from
+re-exporting a live table, and `entrypoints/boundary-contract.spec.ts` (inside `test`)
+verifies the owner of every table, job type and token plus the global-module
+allowlist. What changed underneath: `connectors/` dissolved into six family modules
+(`notes`, `files`, `email`, `research`, `skills`, `settings`); **chat left retrieval**
+for its own context and `chat.service.ts` became an orchestrator with explicit intent
+handlers; `entrypoints/` gave up its seven controllers and two services and now holds
+composition roots, root wiring and CLIs only, with `attention` and `operations` as
+new declared contexts; **`source_type` is a registry, not a Postgres enum** (migration
+0040), so a new source type is a declaration plus its ports, never a migration; and
+**no domain module is global**: each root builds one dynamic instance and threads it
+through every consumer's registration options.
+
+V2.0 item 3.7 closed the correctness and hygiene debts the audit itemized, most of
+which the five security waves had already absorbed. What is new: **file downloads and
+model-gateway egress are audit-logged** (a presigned URL and a call to a rented model
+are both moments something leaves the box), every audit writer with an owner now
+stamps an org, `GET /api/receipts/verify` no longer hands an ordinary caller the
+instance-wide counts, the **unscoped `MemoryStore` reads live in a `MemorySystemStore`
+the app composition root does not provide** (so an ungated corpus read is
+unrepresentable in the process that serves requests), and **chat capture stamps the
+owner's default scope** instead of falling to the pipeline's `private` fallback like
+no other connector. Consolidation was deliberately narrow and mechanical: one
+Zod-to-400 adapter (`parseOrBadRequest`), one research citation-marker grammar in
+`@cogeto/shared`, one scope-and-sensitive gate expression
+(`memory/domain/scope-gate.ts`) serving both gated tables, and 230-odd unused barrel
+exports removed.
 
 Work proceeds through the V2 plan in order.
 

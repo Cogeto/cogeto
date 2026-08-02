@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { RESEARCH_MARKER_TOKEN } from '@cogeto/shared';
 import type { ResearchAnswerDto } from '@cogeto/shared';
 import { formatDateTime } from '../i18n/format';
 
@@ -14,7 +15,7 @@ export function ResearchAnswer({ answer }: { answer: ResearchAnswerDto }) {
     () => new Map(answer.citations.map((c) => [c.marker, c])),
     [answer.citations],
   );
-  const parts = answer.answer.split(/(\[[WM]\d+\])/g);
+  const parts = answer.answer.split(new RegExp(`(${RESEARCH_MARKER_TOKEN})`, 'g'));
   return (
     <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
       {parts.map((part, i) => {

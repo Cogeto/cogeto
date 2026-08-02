@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { SettingsPortsModule } from '../settings/index';
 import { ChatSourceReader } from './chat.source-reader';
 import { ChatSourceDeletion } from './chat.source-deletion';
 import { ChatAnswerCascade } from './chat-answer-cascade';
@@ -23,6 +24,11 @@ import { CONVERSATION_APPEND, ConversationScribe } from './conversation-scribe';
  * application, so importing it once per root is not a double provision.
  */
 @Module({
+  // The slim settings port, for the reader's capture-scope stamp (V2.0 item
+  // 3.7). Deliberately the PORTS module and not SettingsModule: memory imports
+  // this module through its registration options and SettingsModule imports
+  // memory, so the full module here would be a cycle.
+  imports: [SettingsPortsModule],
   providers: [
     ChatSourceReader,
     ChatSourceDeletion,

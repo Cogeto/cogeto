@@ -7,8 +7,8 @@ import { DailyCounters, InMemoryDailyCounters, idempotentTask } from '../infrast
 import type { ResearchQuota } from '../infrastructure/index';
 import { fakeEmbedding, settleJobs, startTestDatabase, startTestQdrant } from '../testing/index';
 import type { TestDatabase, TestQdrant } from '../testing/index';
-import { createMemoryStore, MemoryReconciliation } from '../memory/index';
-import type { MemoryObjectStore, MemoryStore } from '../memory/index';
+import { createMemoryStore, createMemorySystemStore, MemoryReconciliation } from '../memory/index';
+import type { MemoryObjectStore, MemoryStore, MemorySystemStore } from '../memory/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type {
   CompletionRequest,
@@ -167,6 +167,7 @@ describe('skill runtime (integration: real Postgres + Qdrant, scripted gateway +
   let tdb: TestDatabase;
   let qdrant: TestQdrant;
   let store: MemoryStore;
+  let systemMemories: MemorySystemStore;
   let gateway: SkillGateway;
   let research: ResearchService;
   let runs: SkillRunService;
@@ -292,12 +293,17 @@ describe('skill runtime (integration: real Postgres + Qdrant, scripted gateway +
       db: tdb.db,
       qdrant: { url: qdrant.url, embeddingModel: EMBED_MODEL, dimensions: DIMS },
     });
+    // The worker-only machine reads the advance path needs (V2.0 item 3.7).
+    systemMemories = createMemorySystemStore({
+      db: tdb.db,
+      qdrant: { url: qdrant.url, embeddingModel: EMBED_MODEL, dimensions: DIMS },
+    });
     await store.ensureIndexReady();
     gateway = new SkillGateway();
     sentQueries = [];
     research = buildResearch(new InMemoryDailyCounters(), quota);
     runs = new SkillRunService(tdb.db);
-    engine = new SkillEngine(tdb.db, runs, research, gateway, store, quota);
+    engine = new SkillEngine(tdb.db, runs, research, gateway, quota, { systemMemories });
     planner = new SkillPlanner(stubRetrieval(), research, runs, gateway);
 
     // A seeded first-person memory — the profile the gather step finds.
@@ -453,7 +459,9 @@ describe('skill runtime (integration: real Postgres + Qdrant, scripted gateway +
     sentQueries = [];
     const tightQuota: ResearchQuota = { ...quota, searchesMax: 1 };
     const tightResearch = buildResearch(new InMemoryDailyCounters(), tightQuota);
-    const tightEngine = new SkillEngine(tdb.db, runs, tightResearch, gateway, store, tightQuota);
+    const tightEngine = new SkillEngine(tdb.db, runs, tightResearch, gateway, tightQuota, {
+      systemMemories,
+    });
     const tightPlanner = new SkillPlanner(stubRetrieval(), tightResearch, runs, gateway);
 
     const proposal = await tightPlanner.propose(owner, 'research_brief', 'Adriatic Foods');

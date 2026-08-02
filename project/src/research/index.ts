@@ -10,21 +10,12 @@ export {
   RESEARCH_CONCLUDE_JOB_TYPE,
   RESEARCH_CONCLUDE_WIRING,
 } from './research-conclude';
-export type { ResearchConcludeWiring } from './research-conclude';
-export { minimiseQuery, RESEARCH_MINIMISE_PROMPT } from './research-minimise';
-export type { MinimisedQuery } from './research-minimise';
 export { ChatResearchResolver } from './chat-research-resolver';
-export {
-  RESEARCH_SYNTHESIS_OPTIONS,
-  ResearchSynthesisService,
-  RESEARCH_ANSWER_PROMPT,
-} from './research-synthesis.service';
+export { RESEARCH_SYNTHESIS_OPTIONS, ResearchSynthesisService } from './research-synthesis.service';
 export type { ResearchSynthesisOptions } from './research-synthesis.service';
 export { ResearchChatModule } from './research-chat.module';
 export { WebDiscoveryService } from './web-discovery.service';
-export type { DiscoveryOutcome, DiscoveredPage } from './web-discovery.service';
-export { WebFetchService, isPrivateAddress, robotsAllows } from './web-fetch';
-export type { FetchOutcome, FetchedPage } from './web-fetch';
+export { WebFetchService } from './web-fetch';
 export { WebSourceReader } from './web.source-reader';
 export { WebSourceDeletion } from './web.source-deletion';
 export { RESEARCH_OPTIONS } from './research-options';

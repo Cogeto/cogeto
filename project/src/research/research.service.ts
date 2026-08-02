@@ -343,8 +343,12 @@ export class ResearchService {
         url: page.finalUrl,
         title: page.title,
         state: await this.getProcessingState(page.id),
+        // Gated (V2.0 item 3.7): this is a request path, so the count goes
+        // through the owner gate like every other read. The page belongs to the
+        // caller (getRun + pagesForRun above), and a page's derived memories
+        // carry the page's owner, so the number is the one this always showed.
         factCount: this.memories
-          ? (await this.memories.listBySourceSystem('web', page.id)).length
+          ? await this.memories.countBySourceForPrincipal(principal, 'web', page.id)
           : 0,
       })),
     );

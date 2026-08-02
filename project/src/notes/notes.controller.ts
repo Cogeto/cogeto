@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -13,7 +12,7 @@ import {
 import { z } from 'zod';
 import type { NoteCaptured, NoteDto, NoteStatusDto } from '@cogeto/shared';
 import { MEMORY_SCOPES } from '@cogeto/shared';
-import { RateLimit, RateLimitGuard } from '../infrastructure/index';
+import { RateLimit, RateLimitGuard, parseOrBadRequest } from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { NotesService } from './notes.service';
@@ -44,14 +43,11 @@ export class NotesController {
     @Req() request: AuthenticatedRequest,
     @Body() body: unknown,
   ): Promise<NoteCaptured> {
-    const parsed = captureSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
+    const parsed = parseOrBadRequest(captureSchema, body);
     // An omitted scope falls back to the user's saved default —
     // the same rule uploads follow, so the Settings toggle now governs BOTH.
-    const scope = parsed.data.scope ?? (await this.settings.get(request.principal)).defaultScope;
-    const row = await this.notes.createNote(request.principal, parsed.data.content, scope);
+    const scope = parsed.scope ?? (await this.settings.get(request.principal)).defaultScope;
+    const row = await this.notes.createNote(request.principal, parsed.content, scope);
     return { id: row.id, createdAt: row.createdAt.toISOString() };
   }
 

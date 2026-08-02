@@ -8,7 +8,8 @@ import { ModelConfigController } from './model-config.controller';
 import { MODEL_CONFIG_VIEW } from './model-config-view';
 import type { ModelConfigView } from './model-config-view';
 import { MODEL_USAGE_METER } from '../infrastructure/index';
-import type { ModelUsageMeter } from '../infrastructure/index';
+import { MODEL_EGRESS_AUDIT } from '../infrastructure/index';
+import type { ModelEgressAudit, ModelUsageMeter } from '../infrastructure/index';
 
 export interface ModelGatewayModuleOptions {
   /** The resolved per-tier provider configuration. Absent or
@@ -53,15 +54,24 @@ export class ModelGatewayModule {
           : []),
         {
           provide: ModelGateway,
-          useFactory: (usageMeter?: ModelUsageMeter) =>
+          useFactory: (usageMeter?: ModelUsageMeter, egressAudit?: ModelEgressAudit) =>
             createModelGateway({
               providers: options.providers,
               redaction: options.redaction,
               usageMeter: options.budget ? usageMeter : undefined,
+              // Every call that leaves the instance is recorded wherever there
+              // is a database to record it in (V2.0 item 3.7). Not opt-in per
+              // root: a process that talks to a rented model and does not say so
+              // is the gap this closes.
+              egressAudit,
             }),
-          // The meter comes from the global LimitsModule; optional so a root
-          // that registers no LimitsModule (or budget: false) still boots.
-          inject: [{ token: MODEL_USAGE_METER, optional: true }],
+          // Both come from global infrastructure modules; optional so a root
+          // that registers no LimitsModule (or budget: false), or no database,
+          // still boots.
+          inject: [
+            { token: MODEL_USAGE_METER, optional: true },
+            { token: MODEL_EGRESS_AUDIT, optional: true },
+          ],
         },
       ],
       exports: [ModelGateway],

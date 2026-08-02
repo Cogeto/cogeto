@@ -10,9 +10,4 @@ export { FilesModule } from './files.module';
 export { FilesService } from './files.service';
 export { FileSourceReader } from './file.source-reader';
 export { FILE_UPLOAD_OPTIONS } from './file-upload-options';
-export type { FileUploadOptions } from './file-upload-options';
-export {
-  extractDocumentText,
-  sniffContentType,
-  PermanentExtractionError,
-} from './document-extract';
+export { extractDocumentText, sniffContentType } from './document-extract';

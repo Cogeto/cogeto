@@ -6,7 +6,6 @@
  */
 export { ChatModule } from './chat.module';
 export { CHAT_SERVICE_OPTIONS, ChatService } from './chat.service';
-export type { ChatServiceOptions } from './chat.service';
 export { ANSWER_PROMPT, buildAnswerInput } from './answer-prompt';
 export { CHAT_REPLY_RESOLVER } from './chat-reply-resolver.port';
 export type {
@@ -29,4 +28,4 @@ export {
 } from './conversation-titler';
 export { CONVERSATION_APPEND, ConversationScribe } from './conversation-scribe';
 export type { ConversationAppendPort } from './conversation-scribe';
-export { ChatAnswerCascade, CHAT_ANSWER_REDACTED } from './chat-answer-cascade';
+export { ChatAnswerCascade } from './chat-answer-cascade';

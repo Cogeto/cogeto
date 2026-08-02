@@ -3,6 +3,7 @@ import {
   Get,
   Inject,
   NotFoundException,
+  Optional,
   Param,
   ParseUUIDPipe,
   Req,
@@ -26,6 +27,12 @@ import { INSTANCE_KEY_DIR, parseReceiptCounts } from './deletion-saga';
 import { IntegritySweep } from './integrity-sweep';
 
 /**
+ * The project role that unlocks the instance-wide chain report
+ * (V2.0 item 3.7). Bound by each composition root from its own configuration.
+ */
+export const RECEIPTS_ADMIN_ROLE = Symbol('RECEIPTS_ADMIN_ROLE');
+
+/**
  * /api/receipts — the Forgotten ledger (spec §11.1): permanent, read-only records of
  * provable forgetting. There is deliberately NO update or delete route — the
  * database freeze trigger (migration 0010) backs the same rule below the API.
@@ -42,16 +49,43 @@ export class ReceiptsController {
   constructor(
     @Inject(DRIZZLE) private readonly db: Db,
     @Inject(INSTANCE_KEY_DIR) private readonly instanceKeyDir: string,
+    /**
+     * The role name that unlocks the instance-wide report. Declared by THIS
+     * module and passed by the composition root, not read out of the identity
+     * seam's options bag: `IDENTITY_OPTIONS` is deliberately DI-visible and
+     * import-invisible (boundary contract §4), and a module that names the
+     * field it needs is the pattern item 3.6 part 2 established. Optional so a
+     * bare harness boots, and it then sees the trimmed answer, which is the
+     * safe direction.
+     */
+    @Optional() @Inject(RECEIPTS_ADMIN_ROLE) private readonly adminRole?: string,
   ) {}
 
+  /**
+   * Verify the chain. The WALK is always instance-wide — one ledger, one chain,
+   * and a per-user subset of a hash chain verifies nothing — but what comes back
+   * is scoped to what the caller is entitled to (V2.0 item 3.7).
+   *
+   * Before this, any authenticated user got the instance-wide confirmed and
+   * pending counts plus the first failure string, which names a receipt id: the
+   * same class of cross-user operational data that made `/api/integrity` and
+   * `/api/jobs` admin-gated. It is not admin-gated outright because the pill it
+   * feeds is on the user's own Forgotten ledger, and "the chain your receipts
+   * live in verifies" is exactly the guarantee this product sells. So the
+   * VERDICT stays for everyone and the NUMBERS narrow to the caller's own
+   * receipts; the error string is operator detail and goes.
+   *
+   * The pattern is the health report's (audit 2.0 SEC-3): one route, admin
+   * detail, a trimmed answer for everyone else.
+   */
   @Get('verify')
-  async verify(): Promise<ChainVerificationDto> {
+  async verify(@Req() request: AuthenticatedRequest): Promise<ChainVerificationDto> {
     const confirmed = await this.db
       .select()
       .from(deletionReceipt)
       .where(eq(deletionReceipt.status, 'confirmed'));
     const pending = await this.db
-      .select({ id: deletionReceipt.id })
+      .select({ id: deletionReceipt.id, countsJson: deletionReceipt.countsJson })
       .from(deletionReceipt)
       .where(eq(deletionReceipt.status, 'pending'));
 
@@ -68,7 +102,22 @@ export class ReceiptsController {
     }));
     this.publicKeyPem ??= await loadInstancePublicKey(this.instanceKeyDir);
     const result = verifyChain(receipts, this.publicKeyPem);
-    return { ...result, pending: pending.length };
+
+    if (request.principal.roles.includes(this.adminRole ?? 'admin')) {
+      return { ...result, pending: pending.length };
+    }
+    const mine = (row: { countsJson: unknown }): boolean =>
+      parseReceiptCounts(row.countsJson).requested_by === request.principal.userId;
+    const myConfirmed = confirmed.filter(mine).length;
+    return {
+      ok: result.ok,
+      // Instance-wide `ok` over the caller's own count: "the chain these N
+      // receipts of yours sit in verifies". A broken chain verifies none of
+      // them, which is the honest reading of a hash chain.
+      verified: result.ok ? myConfirmed : 0,
+      confirmed: myConfirmed,
+      pending: pending.filter(mine).length,
+    };
   }
 
   /** The caller's receipts, newest first (enumeration time). */

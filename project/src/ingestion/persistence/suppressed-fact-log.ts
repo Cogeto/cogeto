@@ -7,6 +7,7 @@ import { DRIZZLE } from '../../infrastructure/index';
 import type { Db, DbOrTx, Tx } from '../../infrastructure/index';
 import { suppressedFactLog } from './tables';
 import type { SuppressedFactRow } from './tables';
+import { visibleToPrincipal } from '../../memory/index';
 
 /**
  * The suppressed-fact log (V2.0 item 3.3): the record of every automatic
@@ -187,15 +188,17 @@ export class SuppressedFactLog {
    * surface over your own corpus.
    */
   private visibleTo(principal: Principal): SQL {
-    const scopeGate = or(
-      eq(suppressedFactLog.ownerId, principal.userId),
-      eq(suppressedFactLog.scope, 'shared'),
-    )!;
-    const sensitiveGate = or(
-      eq(suppressedFactLog.sensitive, false),
-      eq(suppressedFactLog.ownerId, principal.userId),
-    )!;
-    return and(scopeGate, sensitiveGate)!;
+    return visibleToPrincipal(
+      {
+        ownerId: suppressedFactLog.ownerId,
+        scope: suppressedFactLog.scope,
+        sensitive: suppressedFactLog.sensitive,
+      },
+      principal,
+      // The owner's own sensitive entries are included; a PEER's never are,
+      // which is what the shared gate's opt-in already means.
+      { includeSensitive: true },
+    );
   }
 
   /** Filters are ANDed onto the gate, never a substitute for it. */

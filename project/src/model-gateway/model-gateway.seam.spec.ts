@@ -4,14 +4,11 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
-import {
-  loadPrompt,
-  MistralModelGateway,
-  ModelGatewayError,
-  ModelGatewayNotConfiguredError,
-  recordPromptVersion,
-  UnconfiguredModelGateway,
-} from './index';
+import { loadPrompt, MistralModelGateway, ModelGatewayError, recordPromptVersion } from './index';
+// Module-internal, so straight from the source: the barrel is the seam's
+// PUBLIC interface and neither of these is part of it (V2.0 item 3.7).
+import { ModelGatewayNotConfiguredError } from './errors';
+import { UnconfiguredModelGateway } from './mistral.gateway';
 
 /** Reach the private Mistral client to spy on it — no network is ever touched. */
 function clientOf(gateway: MistralModelGateway): {

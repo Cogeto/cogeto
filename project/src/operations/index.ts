@@ -8,13 +8,8 @@
  */
 export { OperationsModule } from './operations.module';
 export { OPERATIONS_OPTIONS } from './operations.options';
-export type { OperationsOptions } from './operations.options';
 export {
   CapabilitiesService,
   CAPABILITY_JOB_SOURCES,
-  CAPABILITY_CACHE_TTL_MS,
   formatCapabilitiesBanner,
 } from './capabilities';
-export type { CapabilitiesSnapshot, CapabilityJobSources } from './capabilities';
-export { redactHealthReport, isLoopbackRequest } from './health-access.guard';
-export type { HealthRequest } from './health-access.guard';

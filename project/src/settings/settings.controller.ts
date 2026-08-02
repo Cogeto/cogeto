@@ -1,10 +1,11 @@
-import { BadRequestException, Body, Controller, Get, Put, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Put, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import type { UserSettingsDto } from '@cogeto/shared';
 import { MEMORY_SCOPES } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { UserSettingsService } from './user-settings.service';
+import { parseOrBadRequest } from '../infrastructure/index';
 
 const updateSchema = z
   .object({
@@ -34,10 +35,7 @@ export class SettingsController {
     @Req() request: AuthenticatedRequest,
     @Body() body: unknown,
   ): Promise<UserSettingsDto> {
-    const parsed = updateSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
-    return this.settings.update(request.principal, parsed.data);
+    const parsed = parseOrBadRequest(updateSchema, body);
+    return this.settings.update(request.principal, parsed);
   }
 }

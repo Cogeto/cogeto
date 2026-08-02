@@ -1,5 +1,6 @@
 import type { Db } from '../infrastructure/index';
 import { MemoryStore } from './memory.store';
+import { MemorySystemStore } from './memory-system.store';
 import { MemoryReconciliation } from './reconciliation';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
@@ -38,14 +39,30 @@ export function createMemoryStore(options: CreateMemoryStoreOptions): MemoryStor
   return new MemoryStore(options.db, buildVectors(options));
 }
 
+/**
+ * The unscoped machine reads for non-Nest callers (V2.0 item 3.7). The CLIs
+ * that run the nightly cycle by hand (`npm run dream`, the chat eval harness)
+ * are the same worker-side caller the Nest wiring serves; `entrypoints/` is
+ * where a tool composes what it needs (boundary contract, B19), and no request
+ * path can reach a function only a CLI calls.
+ */
+export function createMemorySystemStore(options: CreateMemoryStoreOptions): MemorySystemStore {
+  return new MemorySystemStore(options.db, buildVectors(options));
+}
+
 /** The reconciliation actions for non-Nest callers (integration tests, eval). */
 export function createMemoryReconciliation(options: CreateMemoryStoreOptions): {
   store: MemoryStore;
+  systemStore: MemorySystemStore;
   reconciliation: MemoryReconciliation;
 } {
   const vectors = buildVectors(options);
   const store = new MemoryStore(options.db, vectors);
-  return { store, reconciliation: new MemoryReconciliation(options.db, store, vectors) };
+  return {
+    store,
+    systemStore: new MemorySystemStore(options.db, vectors),
+    reconciliation: new MemoryReconciliation(options.db, store, vectors),
+  };
 }
 
 /** Boot assertion: a vector-less store must be explicitly marked. */

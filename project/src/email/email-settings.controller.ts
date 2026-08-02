@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -19,6 +18,7 @@ import type { AuthenticatedRequest } from '../identity/index';
 import { EmailAllowlistService } from './email-allowlist.service';
 import { MAIL_OPTIONS } from './mail-options';
 import type { MailOptions } from './mail-options';
+import { parseOrBadRequest } from '../infrastructure/index';
 
 const addEntrySchema = z.object({
   kind: z.enum(['address', 'domain']),
@@ -60,11 +60,8 @@ export class EmailSettingsController {
     @Req() request: AuthenticatedRequest,
     @Body() body: unknown,
   ): Promise<EmailAllowlistEntryDto> {
-    const parsed = addEntrySchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
-    return this.allowlist.addEntry(request.principal, parsed.data);
+    const parsed = parseOrBadRequest(addEntrySchema, body);
+    return this.allowlist.addEntry(request.principal, parsed);
   }
 
   @Delete('allowlist/:id')

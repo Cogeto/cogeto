@@ -5,7 +5,13 @@ import type { FactKind, Principal } from '@cogeto/shared';
 import { startTestDatabase, startTestQdrant } from '../testing/index';
 import type { TestDatabase, TestQdrant } from '../testing/index';
 import { createMemoryReconciliation } from '../memory/index';
-import type { MemoryReconciliation, MemoryRow, MemoryStore, NewFact } from '../memory/index';
+import type {
+  MemoryReconciliation,
+  MemoryRow,
+  MemoryStore,
+  MemorySystemStore,
+  NewFact,
+} from '../memory/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import type { AuthenticatedRequest } from '../identity/index';
@@ -69,11 +75,12 @@ describe('dreaming cycle (integration, real Postgres + Qdrant, scripted judge)',
   let tdb: TestDatabase;
   let qdrant: TestQdrant;
   let store: MemoryStore;
+  let systemStore: MemorySystemStore;
   let reconciliation: MemoryReconciliation;
 
   beforeAll(async () => {
     [tdb, qdrant] = await Promise.all([startTestDatabase(), startTestQdrant()]);
-    ({ store, reconciliation } = createMemoryReconciliation({
+    ({ store, systemStore, reconciliation } = createMemoryReconciliation({
       db: tdb.db,
       qdrant: { url: qdrant.url, embeddingModel: EMBED_MODEL, dimensions: DIMS },
     }));
@@ -84,7 +91,12 @@ describe('dreaming cycle (integration, real Postgres + Qdrant, scripted judge)',
   });
 
   const dreamer = (gateway: CountingJudgeGateway) =>
-    new DreamingService(tdb.db, store, new ReconciliationService(gateway, store, reconciliation));
+    new DreamingService(
+      tdb.db,
+      store,
+      systemStore,
+      new ReconciliationService(gateway, store, reconciliation),
+    );
 
   const seed = async (
     owner: string,

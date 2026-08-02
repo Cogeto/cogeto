@@ -7,8 +7,8 @@ import { InMemoryDailyCounters, EMPTY_USER_CONTEXT, idempotentTask } from '../in
 import type { ResearchQuota, UserContextService } from '../infrastructure/index';
 import { fakeEmbedding, settleJobs, startTestDatabase, startTestQdrant } from '../testing/index';
 import type { TestDatabase, TestQdrant } from '../testing/index';
-import { createMemoryStore, MemoryReconciliation } from '../memory/index';
-import type { MemoryObjectStore, MemoryStore } from '../memory/index';
+import { createMemoryStore, createMemorySystemStore, MemoryReconciliation } from '../memory/index';
+import type { MemoryObjectStore, MemoryStore, MemorySystemStore } from '../memory/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type {
   CompletionRequest,
@@ -141,6 +141,7 @@ describe('research-brief skill: the brief (integration)', () => {
   let tdb: TestDatabase;
   let qdrant: TestQdrant;
   let store: MemoryStore;
+  let systemMemories: MemorySystemStore;
   let gateway: BriefGateway;
   let research: ResearchService;
   let runs: SkillRunService;
@@ -153,6 +154,11 @@ describe('research-brief skill: the brief (integration)', () => {
   beforeAll(async () => {
     [tdb, qdrant] = await Promise.all([startTestDatabase(), startTestQdrant()]);
     store = createMemoryStore({
+      db: tdb.db,
+      qdrant: { url: qdrant.url, embeddingModel: EMBED_MODEL, dimensions: DIMS },
+    });
+    // The worker-only machine reads the advance path needs (V2.0 item 3.7).
+    systemMemories = createMemorySystemStore({
       db: tdb.db,
       qdrant: { url: qdrant.url, embeddingModel: EMBED_MODEL, dimensions: DIMS },
     });
@@ -206,7 +212,10 @@ describe('research-brief skill: the brief (integration)', () => {
     const userContext = {
       get: async () => ({ ...EMPTY_USER_CONTEXT, preferredLanguage: 'hr' as const }),
     } as unknown as UserContextService;
-    engine = new SkillEngine(tdb.db, runs, research, gateway, store, quota, { userContext });
+    engine = new SkillEngine(tdb.db, runs, research, gateway, quota, {
+      userContext,
+      systemMemories,
+    });
 
     // Seed the profile: agreed terms (active) + a headcount note the web will
     // contradict — reconciliation's verdict simulated as the stored status.

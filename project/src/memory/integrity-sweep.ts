@@ -252,6 +252,9 @@ export class IntegritySweep {
       ...(chain.error ? { chainError: chain.error } : {}),
     };
     // The sweep's own ledger entry — status reads the latest of these.
+    // No org, deliberately (V2.0 item 3.7): the sweep is instance-wide
+    // operator integrity with no owner and no org, and NULL is the contract's
+    // marker for exactly that.
     await writeAudit(this.db, {
       actor: 'integrity_sweep',
       action: 'sweep.completed',

@@ -1,9 +1,10 @@
-import { BadRequestException, Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import type { MemoryListItem, PointInTimeDto, TimelineDiffDto, TimelineDto } from '@cogeto/shared';
 import { BearerAuthGuard, UserDirectory } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { TimelineService } from './timeline.service';
+import { parseOrBadRequest } from '../infrastructure/index';
 
 /** Zod at the boundary: a subject entity, and ISO instants for the temporal views. */
 const subjectSchema = z.object({
@@ -36,7 +37,7 @@ export class TimelineController {
     @Req() request: AuthenticatedRequest,
     @Query() query: unknown,
   ): Promise<TimelineDto> {
-    const { subject } = this.parse(subjectSchema, query);
+    const { subject } = parseOrBadRequest(subjectSchema, query);
     const result = await this.timeline.forSubject(request.principal, subject);
     await this.attribute(result.spans.map((span) => span.memory));
     return result;
@@ -45,7 +46,7 @@ export class TimelineController {
   /** The subject as understood at an instant, each fact labelled with its later fate. */
   @Get('at')
   async at(@Req() request: AuthenticatedRequest, @Query() query: unknown): Promise<PointInTimeDto> {
-    const { subject, at } = this.parse(atSchema, query);
+    const { subject, at } = parseOrBadRequest(atSchema, query);
     const result = await this.timeline.pointInTime(request.principal, subject, new Date(at));
     await this.attribute(result.facts.map((fact) => fact.memory));
     return result;
@@ -57,7 +58,7 @@ export class TimelineController {
     @Req() request: AuthenticatedRequest,
     @Query() query: unknown,
   ): Promise<TimelineDiffDto> {
-    const { subject, from, to } = this.parse(diffSchema, query);
+    const { subject, from, to } = parseOrBadRequest(diffSchema, query);
     const result = await this.timeline.diff(
       request.principal,
       subject,
@@ -71,14 +72,6 @@ export class TimelineController {
       ...result.changed.flatMap((change) => [change.before, change.after]),
     ]);
     return result;
-  }
-
-  private parse<T>(schema: z.ZodType<T>, query: unknown): T {
-    const parsed = schema.safeParse(query);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((issue) => issue.message).join('; '));
-    }
-    return parsed.data;
   }
 
   /** Fill `ownerName` in place so shared facts owned by teammates are attributable. */

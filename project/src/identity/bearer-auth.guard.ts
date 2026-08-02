@@ -40,7 +40,7 @@ export class BearerAuthGuard implements CanActivate {
     // Attribute this request's model calls to the principal: fills
     // in the per-request usage scope opened by the app's middleware, so the
     // gateway budget decorator can meter/cap by user without a seam change.
-    setUsageUser(request.principal.userId);
+    setUsageUser(request.principal.userId, request.principal.orgId);
     return true;
   }
 }

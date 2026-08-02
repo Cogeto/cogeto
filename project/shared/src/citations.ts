@@ -22,6 +22,34 @@ export const CITATION_RE = new RegExp(`\\{\\{cite:(${UUID})\\}\\}`, 'g');
 export const UNSOURCED_TOKEN = '{{unsourced}}';
 
 /**
+ * The RESEARCH and SKILL provenance marker (V2.0 item 3.7): `[W1]` cites a
+ * fetched page, `[M3]` a remembered fact. A different grammar from the chat
+ * `[F1]`/`{{cite:…}}` pair above, because a research answer is written against a
+ * numbered list of supplied sources rather than against a fact map — kept in the
+ * same file because there is exactly one place to look for what a marker is.
+ *
+ * The shape was spelled out as a literal in four places (two resolvers on the
+ * server, the brief segmenter and the answer renderer in the SPA). It is one
+ * shape and two USES, so it is one definition and two exported forms rather
+ * than one form with a switch:
+ *
+ * - {@link RESEARCH_MARKER_CAPTURING} for resolvers, which read the kind and
+ *   the index out of the match;
+ * - {@link RESEARCH_MARKER_TOKEN} for `split`, where inner capture groups would
+ *   leak into the result array, and for alternations that want the whole token.
+ *
+ * Sources, not RegExp objects: a `/g` RegExp carries `lastIndex`, so a shared
+ * instance is a cross-call bug waiting to happen. Callers build their own, as
+ * {@link CITATION_RE}'s callers already do.
+ */
+const MARKER_KIND = '[WM]';
+const MARKER_INDEX = '\\d+';
+/** `[W1]` with the kind and the index captured, in that order. */
+export const RESEARCH_MARKER_CAPTURING = `\\[(${MARKER_KIND})(${MARKER_INDEX})\\]`;
+/** `[W1]` as one whole token, no inner groups. */
+export const RESEARCH_MARKER_TOKEN = `\\[${MARKER_KIND}${MARKER_INDEX}\\]`;
+
+/**
  * Any "special token" that must be classified: a canonical cite, the canonical
  * unsourced marker, or junk to strip (double braces, single braces, or square
  * brackets). Ordered so the canonical forms are tried first.

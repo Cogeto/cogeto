@@ -1,3 +1,4 @@
+import { RESEARCH_MARKER_TOKEN } from '@cogeto/shared';
 import type { AnswerSegment, ResearchCitationDto } from '@cogeto/shared';
 
 /**
@@ -10,7 +11,7 @@ import type { AnswerSegment, ResearchCitationDto } from '@cogeto/shared';
  * unsourced segment. A marker without a stored citation stays literal text —
  * degrading, never guessing (the chat-markdown rule).
  */
-const BRIEF_TOKEN_RE = /(\[[WM]\d+\]|\(unsourced\))/g;
+const BRIEF_TOKEN_RE = new RegExp(`(${RESEARCH_MARKER_TOKEN}|\\(unsourced\\))`, 'g');
 
 export function briefSegments(text: string, citations: ResearchCitationDto[]): AnswerSegment[] {
   const known = new Set(citations.map((c) => c.marker));

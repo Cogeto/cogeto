@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -31,6 +30,7 @@ import { getSkill } from './skill-registry';
 import { SkillEngine } from './skill-engine';
 import { SkillPlanner } from './skill-planner';
 import { SkillRunService } from './skill-run.service';
+import { parseOrBadRequest } from '../infrastructure/index';
 
 const proposeSchema = z.object({
   skillId: z.string().min(1).max(100),
@@ -124,14 +124,11 @@ export class SkillsController {
     @Req() request: AuthenticatedRequest,
     @Body() body: unknown,
   ): Promise<ProposeSkillRunResponse> {
-    const parsed = proposeSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
+    const parsed = parseOrBadRequest(proposeSchema, body);
     const outcome = await this.planner.propose(
       request.principal,
-      parsed.data.skillId,
-      parsed.data.subject.trim(),
+      parsed.skillId,
+      parsed.subject.trim(),
     );
     if (outcome.status === 'ambiguous') {
       return { status: 'ambiguous', candidates: outcome.candidates };
@@ -161,11 +158,8 @@ export class SkillsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
   ): Promise<SkillRunDetailDto> {
-    const parsed = planSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
-    const run = await this.engine.approvePlan(request.principal, id, parsed.data.queries);
+    const parsed = parseOrBadRequest(planSchema, body);
+    const run = await this.engine.approvePlan(request.principal, id, parsed.queries);
     return this.detail(request.principal, run);
   }
 

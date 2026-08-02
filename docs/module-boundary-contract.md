@@ -254,6 +254,16 @@ the port tokens by identity; the app root then asserts at boot that every
 seam took (`ChatService.assertFullyWired`), so a wiring regression fails the
 boot rather than silently disabling an intent.
 
+**Registration options can also withhold a provider, not only supply one**
+(V2.0 item 3.7). `MemoryModule.register({ systemReads: true })` is what makes
+`MemorySystemStore`, the unscoped machine-read surface, exist at all: the worker
+root passes it, the app root does not, so a request-path service that asked for
+it would fail to resolve at boot instead of reading across every owner at
+runtime. `SettingsPortsModule` joined the slim source-ports family in the same
+item, for the same reason those exist: the chat source reader needs the owner's
+default capture scope, and importing the full settings module into the chat ports
+would close the cycle memory → chat ports → settings → memory.
+
 ### Token ownership
 
 Every injection token is declared by, and belongs to, one module. Ports (a token
@@ -261,9 +271,9 @@ defined by the module that *consumes* the implementation) are marked.
 
 | Owner | Tokens |
 |---|---|
-| `infrastructure` | `DRIZZLE`, `PG_POOL`, `RATE_LIMIT_OPTIONS`, `INGEST_QUOTA`, `RESEARCH_QUOTA`, `SSE_LIMITS`, `MODEL_USAGE_METER`, `PARSE_CAPS`, `INSTANCE_TIMEZONE` |
+| `infrastructure` | `DRIZZLE`, `PG_POOL`, `RATE_LIMIT_OPTIONS`, `INGEST_QUOTA`, `RESEARCH_QUOTA`, `SSE_LIMITS`, `MODEL_USAGE_METER`, `MODEL_EGRESS_AUDIT`, `PARSE_CAPS`, `INSTANCE_TIMEZONE` |
 | `identity` | `PRINCIPAL`, `IDENTITY_OPTIONS`, `WEB_CONFIG_OPTIONS` |
-| `memory` | `SOURCE_DELETIONS` (port), `DERIVED_CASCADES` (port), `INGESTION_GUARD` (port), `INSTANCE_KEY_DIR`, `SWEEP_OPTIONS`, `DELETION_SAGA_OPTIONS` |
+| `memory` | `RECEIPTS_ADMIN_ROLE`, `SOURCE_DELETIONS` (port), `DERIVED_CASCADES` (port), `INGESTION_GUARD` (port), `INSTANCE_KEY_DIR`, `SWEEP_OPTIONS`, `DELETION_SAGA_OPTIONS` |
 | `ingestion` | `SOURCE_READERS` (port) |
 | `retrieval` | `RETRIEVAL_SERVICE_OPTIONS` |
 | `chat` | `CHAT_REPLY_RESOLVER` (port), `CHAT_RESEARCH_RESOLVER` (port), `CHAT_SKILL_RESOLVER` (port), `CONVERSATION_APPEND` (port), `CHAT_SERVICE_OPTIONS` |

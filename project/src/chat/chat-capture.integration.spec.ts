@@ -13,6 +13,7 @@ import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import { RetrievalService } from '../retrieval/index';
 import { ChatService } from './chat.service';
+import { UserSettingsService } from '../settings/index';
 import { ChatSourceReader } from './chat.source-reader';
 import { ChatSourceDeletion } from './chat.source-deletion';
 import { chatMessage, conversation } from './persistence/tables';
@@ -114,7 +115,7 @@ describe('chat capture (integration, real Postgres + Qdrant)', () => {
 
   const pipelineWith = (gateway: ScriptedGateway): IngestionPipeline =>
     createIngestionPipeline({
-      readers: [new ChatSourceReader(tdb.db)],
+      readers: [new ChatSourceReader(tdb.db, new UserSettingsService(tdb.db))],
       gateway,
       store,
       reconciliation,
@@ -150,7 +151,7 @@ describe('chat capture (integration, real Postgres + Qdrant)', () => {
 
   it('chat_source_reader_loads_user_messages_only: the assistant is never a source', async () => {
     const owner = `chat-reader-${randomUUID()}`;
-    const reader = new ChatSourceReader(tdb.db);
+    const reader = new ChatSourceReader(tdb.db, new UserSettingsService(tdb.db));
     const userId = await seedMessage(owner, 'user', 'I will send Marko the contract on Monday.');
     const assistantId = await seedMessage(owner, 'assistant', 'Noted — I will remember that.');
 
@@ -171,7 +172,35 @@ describe('chat capture (integration, real Postgres + Qdrant)', () => {
     const { rows } = await memoriesForChat(id);
     expect(rows.length).toBeGreaterThanOrEqual(1);
     expect(rows[0]!.status).toBe('active');
-    expect(rows[0]!.scope).toBe('private'); // chat capture defaults private (ruling 6)
+    // A user with no settings row keeps the private default (ruling 6) — but
+    // it now comes from the SETTING, not from the pipeline's fallback.
+    expect(rows[0]!.scope).toBe('private');
+  });
+
+  it('chat_capture_stamps_the_owners_default_scope: shared by setting, not private by default', async () => {
+    // V2.0 item 3.7. The reader used to omit `scope` entirely, so
+    // `embed-store.stage`'s `?? 'private'` decided it and a user whose default
+    // capture scope is `shared` silently got shared memories from notes, files,
+    // email and web, and private ones from chat. Both directions asserted, so a
+    // regression that hardcodes either value fails.
+    const sharedOwner = `chat-scope-shared-${randomUUID()}`;
+    const privateOwner = `chat-scope-private-${randomUUID()}`;
+    await new UserSettingsService(tdb.db).update(principalFor(sharedOwner), {
+      defaultScope: 'shared',
+    });
+
+    const sharedId = await seedMessage(sharedOwner, 'user', 'We chose Postgres for Atlas.');
+    const privateId = await seedMessage(privateOwner, 'user', 'We chose Postgres for Atlas.');
+    const pipeline = pipelineWith(new ScriptedGateway('decision'));
+    await runPipeline(pipeline, sharedId);
+    await runPipeline(pipeline, privateId);
+
+    expect((await memoriesForChat(sharedId)).rows.map((r) => r.scope)).toEqual(['shared']);
+    expect((await memoriesForChat(privateId)).rows.map((r) => r.scope)).toEqual(['private']);
+
+    // And the item the reader hands the pipeline says so itself.
+    const reader = new ChatSourceReader(tdb.db, new UserSettingsService(tdb.db));
+    expect((await reader.load(sharedId))?.scope).toBe('shared');
   });
 
   it('remember_refuses_assistant_and_foreign, captures own: the audited affordance gates role + owner', async () => {

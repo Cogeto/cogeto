@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { UNCERTAINTY_REASONS } from '@cogeto/shared';
 import type {
@@ -12,6 +12,7 @@ import type { AuthenticatedRequest } from '../identity/index';
 import { SuppressedFactLog } from './persistence/suppressed-fact-log';
 import type { SuppressedFactQuery } from './persistence/suppressed-fact-log';
 import type { SuppressedFactRow } from './persistence/tables';
+import { parseOrBadRequest } from '../infrastructure/index';
 
 /**
  * /api/suppressed-facts — the query surface over the suppressed-fact log
@@ -64,11 +65,8 @@ export class SuppressedFactsController {
 }
 
 function parseQuery(raw: unknown): SuppressedFactQuery {
-  const parsed = querySchema.safeParse(raw ?? {});
-  if (!parsed.success) {
-    throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-  }
-  const { from, to, ...rest } = parsed.data;
+  const parsed = parseOrBadRequest(querySchema, raw ?? {});
+  const { from, to, ...rest } = parsed;
   return {
     ...rest,
     from: from ? new Date(from) : undefined,

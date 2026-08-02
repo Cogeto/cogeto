@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -25,6 +24,7 @@ import type { AuthenticatedRequest } from '../identity/index';
 import { ResearchService } from './research.service';
 import { ResearchSynthesisService } from './research-synthesis.service';
 import type { ResearchRunRow } from './persistence/tables';
+import { parseOrBadRequest } from '../infrastructure/index';
 
 const proposeSchema = z.object({
   intent: z
@@ -86,15 +86,12 @@ export class ResearchRunController {
     @Req() request: AuthenticatedRequest,
     @Body() body: unknown,
   ): Promise<ResearchRunDto> {
-    const parsed = proposeSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
+    const parsed = parseOrBadRequest(proposeSchema, body);
     return toDto(
       await this.research.propose(
         request.principal,
-        parsed.data.intent.trim(),
-        parsed.data.conversationId ?? null,
+        parsed.intent.trim(),
+        parsed.conversationId ?? null,
       ),
     );
   }
@@ -121,14 +118,11 @@ export class ResearchRunController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
   ): Promise<ApproveResearchResponse> {
-    const parsed = approveSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
+    const parsed = parseOrBadRequest(approveSchema, body);
     const { run, search } = await this.research.approveAndSearch(
       request.principal,
       id,
-      parsed.data.query,
+      parsed.query,
     );
     if (search.status === 'unavailable') {
       // The approval is recorded; the engine is not reachable. 503 keeps the
@@ -172,11 +166,8 @@ export class ResearchRunController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
   ): Promise<ResearchCaptureResponse> {
-    const parsed = captureSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
-    const results = await this.research.capture(request.principal, parsed.data.urls, 'private', id);
+    const parsed = parseOrBadRequest(captureSchema, body);
+    const results = await this.research.capture(request.principal, parsed.urls, 'private', id);
     return { results };
   }
 

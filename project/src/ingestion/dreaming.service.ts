@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { desc, eq, isNotNull, isNull } from 'drizzle-orm';
 import { DRIZZLE, runWithUsageContext, setUsageUser, writeAudit } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
-import { MemoryStore } from '../memory/index';
+import { MemoryStore, MemorySystemStore } from '../memory/index';
 import type { MemoryRow } from '../memory/index';
 import { dormantFlag, dreamAction, dreamRun } from './persistence/tables';
 import type { DreamPass, DreamRunRow } from './persistence/tables';
@@ -60,6 +60,12 @@ export class DreamingService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Db,
     private readonly memoryStore: MemoryStore,
+    /**
+     * The unscoped corpus scans this cycle exists to run (V2.0 item 3.7). A
+     * separate construction the app root does not provide, so an ungated
+     * read is not something a request-path service can reach.
+     */
+    private readonly systemMemories: MemorySystemStore,
     private readonly reconciliationService: ReconciliationService,
   ) {}
 
@@ -88,13 +94,13 @@ export class DreamingService {
     };
 
     // ── Passes 1–3: batch reconciliation per owner ──────────────────────────
-    const touched = await this.memoryStore.listTouchedBetween(scopeFrom, now);
+    const touched = await this.systemMemories.listTouchedBetween(scopeFrom, now);
     const byOwner = new Map<string, MemoryRow[]>();
     for (const row of touched) {
       byOwner.set(row.ownerId, [...(byOwner.get(row.ownerId) ?? []), row]);
     }
     for (const [ownerId, rows] of byOwner) {
-      const embeddings = await this.memoryStore.retrieveEmbeddings(rows.map((r) => r.id));
+      const embeddings = await this.systemMemories.retrieveEmbeddings(rows.map((r) => r.id));
       const items: ReconcileInput[] = rows
         .filter((row) => embeddings.has(row.id))
         .map((row) => ({ row, embedding: embeddings.get(row.id)! }));
@@ -127,7 +133,7 @@ export class DreamingService {
     }
 
     // ── Pass 4a: staleness — deterministic, zero model calls ────────────────
-    const lapsed = await this.memoryStore.listLapsedActive(now);
+    const lapsed = await this.systemMemories.listLapsedActive(now);
     for (const row of lapsed) {
       await this.memoryStore.transition(
         { kind: 'consolidation' },
@@ -141,7 +147,7 @@ export class DreamingService {
 
     // ── Pass 4b: dormant flags (flag, never transition) ─────────────────────
     const quietBefore = new Date(now.getTime() - DORMANT_SILENCE_DAYS * 24 * 3600 * 1000);
-    const quiet = await this.memoryStore.listQuietCommitments(quietBefore);
+    const quiet = await this.systemMemories.listQuietCommitments(quietBefore);
     for (const row of quiet) {
       const inserted = await this.db
         .insert(dormantFlag)
@@ -160,6 +166,10 @@ export class DreamingService {
       .update(dreamRun)
       .set({ finishedAt, countsJson: { ...report, runId: undefined } })
       .where(eq(dreamRun.id, runId));
+    // No org, deliberately (V2.0 item 3.7): the nightly cycle covers every
+    // owner in the instance, so it belongs to no one org and its detail is
+    // structural counts. NULL is the contract's marker for a genuine system
+    // entry, not an unstamped one.
     await writeAudit(this.db, {
       actor: 'consolidation',
       action: 'dreaming.completed',
@@ -217,7 +227,7 @@ export class DreamingService {
   private async clearSettledFlags(): Promise<number> {
     const open = await this.db.select().from(dormantFlag).where(isNull(dormantFlag.clearedAt));
     if (open.length === 0) return 0;
-    const rows = await this.memoryStore.getManySystem(open.map((f) => f.memoryId));
+    const rows = await this.systemMemories.getManySystem(open.map((f) => f.memoryId));
     const activeIds = new Set(rows.filter((r) => r.status === 'active').map((r) => r.id));
     let cleared = 0;
     for (const flag of open) {

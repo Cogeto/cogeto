@@ -1,14 +1,4 @@
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  Get,
-  Param,
-  ParseUUIDPipe,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import type { ContradictionDto } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
@@ -16,6 +6,7 @@ import type { AuthenticatedRequest } from '../identity/index';
 import { MemoryReconciliation } from './reconciliation';
 import type { ContradictionResolveAction } from './reconciliation';
 import { toListItem } from './list-item';
+import { parseOrBadRequest } from '../infrastructure/index';
 
 /** Zod at the boundary: the three resolutions. */
 const contentSchema = z
@@ -58,11 +49,8 @@ export class RelationsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
   ): Promise<{ resolved: boolean }> {
-    const parsed = resolveSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues.map((i) => i.message).join('; '));
-    }
-    const data = parsed.data;
+    const parsed = parseOrBadRequest(resolveSchema, body);
+    const data = parsed;
     const action: ContradictionResolveAction =
       data.action === 'confirm_a'
         ? { type: 'confirm', winner: 'a' }
