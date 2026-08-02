@@ -20,12 +20,12 @@ import {
   ConnectorsModule,
   EmailSourceDeletion,
   EmailSourceReader,
-  FileSourceReader,
   RESEARCH_SYNTHESIS_OPTIONS,
   ResearchSynthesisService,
   WebSourceDeletion,
   WebSourceReader,
 } from '../connectors/index';
+import { FilesModule, FileSourceReader } from '../files/index';
 import { NotesModule, NotesSourceDeletion, NotesSourceReader } from '../notes/index';
 import type { ResearchSynthesisOptions } from '../connectors/index';
 import {
@@ -54,6 +54,17 @@ import type { CogetoConfig } from './config';
  * implementations — the only place allowed to know both sides.
  */
 export function createWorkerRootModule(config: CogetoConfig): unknown {
+  // ONE dynamic instance per family module, threaded everywhere it is needed
+  // (the root's import list AND the registration options of the modules that
+  // bind its port adapters). Registering twice would duplicate controllers
+  // and providers; this hoisted-instance pattern is the part-4 replacement
+  // for globality.
+  const filesModule = FilesModule.register({
+    fileUpload: {
+      uploadMaxBytes: config.uploadMaxBytes,
+      downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
+    },
+  });
   @Module({
     imports: [
       DatabaseModule.register({ databaseUrl: config.databaseUrl, poolMax: config.pgPoolMax }),
@@ -145,7 +156,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       IngestionModule.register({
         // Each reader's family module is named here; the remaining connector
         // readers still resolve from the global ConnectorsModule (B14).
-        imports: [ChatSourceModule, NotesModule],
+        imports: [ChatSourceModule, NotesModule, filesModule],
         readers: [
           NotesSourceReader,
           FileSourceReader,
@@ -157,11 +168,8 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       ChatSourceModule,
       NotesModule,
       AgentsModule,
+      filesModule,
       ConnectorsModule.register({
-        fileUpload: {
-          uploadMaxBytes: config.uploadMaxBytes,
-          downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
-        },
         mail: mailOptions(config),
         research: researchOptions(config),
       }),

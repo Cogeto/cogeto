@@ -1,15 +1,6 @@
 /** Public interface of the connectors bounded context (spec §15 rule 1). */
 export { ConnectorsModule } from './connectors.module';
 export type { ConnectorsModuleOptions } from './connectors.module';
-export { FilesService } from './files.service';
-export { FileSourceReader } from './file.source-reader';
-export { FILE_UPLOAD_OPTIONS } from './file-upload-options';
-export type { FileUploadOptions } from './file-upload-options';
-export {
-  extractDocumentText,
-  sniffContentType,
-  PermanentExtractionError,
-} from './document-extract';
 // Inbound email.
 export { EmailIntakeService } from './email-intake.service';
 export type { MailEnvelope, IntakeResult } from './email-intake.service';

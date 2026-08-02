@@ -28,6 +28,7 @@ import {
   SkillsModule,
   WebSourceDeletion,
 } from '../connectors/index';
+import { FilesModule } from '../files/index';
 import { NotesModule, NotesSourceDeletion } from '../notes/index';
 import {
   PassportCascadeModule,
@@ -148,11 +149,13 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       ChatSourceModule, // the chat source-deletion adapter for the delete endpoint
       IngestionModule.forQueries(), // verification + dreaming read endpoints
       AgentsModule,
-      ConnectorsModule.register({
+      FilesModule.register({
         fileUpload: {
           uploadMaxBytes: config.uploadMaxBytes,
           downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
         },
+      }),
+      ConnectorsModule.register({
         mail: mailOptions(config),
         research: researchOptions(config),
       }),

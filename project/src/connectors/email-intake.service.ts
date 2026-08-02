@@ -16,7 +16,7 @@ import { MemoryFileStore, MemoryObjectStore } from '../memory/index';
 import { UserDirectory } from '../identity/index';
 import { EmailAllowlistService } from './email-allowlist.service';
 import { UserSettingsService } from '../settings/index';
-import { sniffContentType } from './document-extract';
+import { sniffContentType } from '../files/index';
 import { summarizeCalendarInvites } from './email-calendar';
 import { matchSender, normalizeAddress, sanitizeHtml } from './email-parse';
 import { emailAttachment, emailMessage } from './persistence/tables';

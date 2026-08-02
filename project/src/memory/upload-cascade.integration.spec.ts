@@ -23,7 +23,7 @@ import {
 import type { TestDatabase, TestMinio, TestQdrant } from '../testing/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
-import { FilesService, FileSourceReader } from '../connectors/index';
+import { FilesService, FileSourceReader } from '../files/index';
 import {
   FILE_DISCARD_CLEANUP_JOB_TYPE,
   INGESTION_PIPELINE_JOB_TYPE,

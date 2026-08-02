@@ -27,7 +27,7 @@ import { EmailAllowlistService } from './email-allowlist.service';
 import { EmailIntakeService } from './email-intake.service';
 import { UserSettingsService } from '../settings/index';
 import { EmailSourceReader } from './email.source-reader';
-import { FileSourceReader } from './file.source-reader';
+import { FileSourceReader } from '../files/index';
 import { NotesSourceReader } from '../notes/index';
 import type { MailOptions } from './mail-options';
 

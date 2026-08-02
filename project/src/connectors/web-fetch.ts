@@ -3,7 +3,7 @@ import { isIP } from 'node:net';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { DEFAULT_PARSE_CAPS, PARSE_CAPS } from '../infrastructure/index';
 import type { ParseCaps } from '../infrastructure/index';
-import { extractDocumentText } from './document-extract';
+import { extractDocumentText } from '../files/index';
 import { extractReadableHtml } from './html-text';
 import { RESEARCH_OPTIONS } from './research-options';
 import type { ResearchOptions } from './research-options';

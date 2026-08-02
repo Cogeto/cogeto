@@ -2,11 +2,6 @@ import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import { UserContextModule } from '../infrastructure/index';
 import { SettingsModule } from '../settings/index';
-import { FilesController } from './files.controller';
-import { FilesService } from './files.service';
-import { FileSourceReader } from './file.source-reader';
-import { FILE_UPLOAD_OPTIONS } from './file-upload-options';
-import type { FileUploadOptions } from './file-upload-options';
 import { EmailIntakeService } from './email-intake.service';
 import { EmailAllowlistService } from './email-allowlist.service';
 import { EmailSourceReader } from './email.source-reader';
@@ -37,8 +32,6 @@ import {
 } from '../infrastructure/index';
 
 export interface ConnectorsModuleOptions {
-  /** File-upload knobs from validated config (default 25 MB, short TTL). */
-  fileUpload: FileUploadOptions;
   /** Inbound-email knobs from validated config. */
   mail: MailOptions;
   /** Web-research knobs from validated config (0042/0043). */
@@ -76,15 +69,12 @@ export class ConnectorsModule {
       // default capture scope through its UserSettingsService.
       imports: [UserContextModule, SettingsModule],
       controllers: [
-        FilesController,
         EmailIntakeController,
         EmailSettingsController,
         EmailSourceController,
         ResearchController,
       ],
       providers: [
-        FilesService,
-        FileSourceReader,
         EmailIntakeService,
         EmailAllowlistService,
         EmailSourceReader,
@@ -118,13 +108,10 @@ export class ConnectorsModule {
             { token: INSTANCE_TIMEZONE, optional: true },
           ],
         },
-        { provide: FILE_UPLOAD_OPTIONS, useValue: options.fileUpload },
         { provide: MAIL_OPTIONS, useValue: options.mail },
         { provide: RESEARCH_OPTIONS, useValue: options.research },
       ],
       exports: [
-        FilesService,
-        FileSourceReader,
         EmailIntakeService,
         EmailAllowlistService,
         EmailSourceReader,

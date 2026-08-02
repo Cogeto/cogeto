@@ -163,7 +163,8 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
   CHAT_SERVICE_OPTIONS: 'retrieval',
   RETRIEVAL_SERVICE_OPTIONS: 'retrieval',
 
-  FILE_UPLOAD_OPTIONS: 'connectors',
+  // Split out of connectors (V2.0 item 3.6 part 4).
+  FILE_UPLOAD_OPTIONS: 'files',
   MAIL_OPTIONS: 'connectors',
   RESEARCH_OPTIONS: 'connectors',
   // Named-options bags (V2.0 item 3.6 part 4), as above.
@@ -243,7 +244,7 @@ const RAW_SQL_EXCEPTIONS: Readonly<Record<string, string>> = {
   'entrypoints/erase-task-conclusions.ts': 'CLI: erases task_conclusion provenance before 0035',
   // B20, part 3: connectors schedules the discard-cleanup backstop with a raw
   // graphile_worker.add_job because the outbox helper has no delayed enqueue.
-  'connectors/files.service.ts': 'graphile_worker',
+  'files/files.service.ts': 'graphile_worker',
   // B21: the Testcontainers harness resets the queue between suites. `testing/`
   // is the harness, not a bounded context; it is listed rather than exempted.
   'testing/pg.ts': 'graphile_worker',
