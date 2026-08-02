@@ -1,16 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
 import type { Principal } from '@cogeto/shared';
 import { startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
 import { readAuditEntries, UserContextService } from '../infrastructure/index';
-// RECORDED EXCEPTION B17 (docs/module-boundary-contract.md): this connectors
-// spec resets infrastructure's two user-context tables between cases. The
-// service exposes no reset (correctly — nothing in production clears a
-// dismissal), so the fixture names the tables. Allowlisted by name in
-// .dependency-cruiser.cjs; it follows UserContextService in V2.0 item 3.6
-// part 2.
-import { contextSuggestionDismissal, userContext } from '../infrastructure/persistence/tables';
 import { ModelGateway } from '../model-gateway/index';
 import type { MemoryRow, MemoryStore } from '../memory/index';
 import { ContextSuggestionsService } from './context-suggestions.service';
@@ -22,14 +15,28 @@ import { ContextSuggestionsService } from './context-suggestions.service';
  * values are never overridden or re-proposed.
  */
 
-const owner: Principal = {
-  userId: 'user-suggest-spec',
-  name: 'Ivan',
-  email: null,
-  orgId: 'org-s',
-  orgName: 'Org',
-  roles: [],
-};
+/**
+ * A FRESH user per case, rather than one shared id reset between them.
+ *
+ * The reset was the only reason this spec named `user_context` and
+ * `context_suggestion_dismissal` — two tables `infrastructure` owns — and
+ * `UserContextService` exposes no reset, correctly: nothing in production ever
+ * clears a dismissal. A per-case id needs no reset at all, so the boundary
+ * exception goes away instead of being allowlisted (V2.0 item 3.6 part 2,
+ * recorded exception B17).
+ */
+let owner: Principal = principalFor('seed');
+
+function principalFor(suffix: string): Principal {
+  return {
+    userId: `user-suggest-${suffix}`,
+    name: 'Ivan',
+    email: null,
+    orgId: 'org-s',
+    orgName: 'Org',
+    roles: [],
+  };
+}
 
 const MEM_A = '66666666-6666-4666-8666-666666666661';
 const MEM_B = '66666666-6666-4666-8666-666666666662';
@@ -89,15 +96,12 @@ describe('context suggestions (integration: real Postgres, scripted gateway)', (
     await tdb.stop();
   });
 
-  beforeEach(async () => {
+  beforeEach(() => {
     gateway.verdict = { company: { confirmed: true }, role_title: { confirmed: true } };
     gateway.calls = 0;
     rows = [];
-    // A clean slate per test: no context row, no dismissals.
-    await tdb.db.delete(userContext).where(eq(userContext.userId, owner.userId));
-    await tdb.db
-      .delete(contextSuggestionDismissal)
-      .where(eq(contextSuggestionDismissal.userId, owner.userId));
+    // A clean slate per test: a user who has never been seen before.
+    owner = principalFor(randomUUID());
   });
 
   it('proposes a confirmed, single-valued company with its newest source', async () => {
@@ -137,12 +141,9 @@ describe('context suggestions (integration: real Postgres, scripted gateway)', (
   it('suggestion_provenance: accepting records which memory suggested the value', async () => {
     await contextService.applySuggestion(owner, 'company', 'MVT Solutions', MEM_B);
 
-    const [row] = await tdb.db
-      .select()
-      .from(userContext)
-      .where(eq(userContext.userId, owner.userId));
-    expect(row!.company).toBe('MVT Solutions');
-    expect(row!.companySourceMemoryId).toBe(MEM_B);
+    const row = await contextService.get(owner.userId);
+    expect(row.company).toBe('MVT Solutions');
+    expect(row.companySourceMemoryId).toBe(MEM_B);
 
     const mine = await readAuditEntries(tdb.db, {
       actions: ['context.suggestion_accepted'],
@@ -162,12 +163,9 @@ describe('context suggestions (integration: real Postgres, scripted gateway)', (
     // An explicit user value: the field is set, so it is never re-derived.
     await contextService.update(owner, { company: 'Handwritten Ltd' });
     expect(await service.suggestions(owner)).toEqual([]);
-    const [afterUpdate] = await tdb.db
-      .select()
-      .from(userContext)
-      .where(eq(userContext.userId, owner.userId));
-    expect(afterUpdate!.company).toBe('Handwritten Ltd');
-    expect(afterUpdate!.companySourceMemoryId).toBeNull(); // user value, no provenance
+    const afterUpdate = await contextService.get(owner.userId);
+    expect(afterUpdate.company).toBe('Handwritten Ltd');
+    expect(afterUpdate.companySourceMemoryId).toBeNull(); // user value, no provenance
 
     // Cleared again + dismissed: the same value never returns.
     await contextService.update(owner, { company: null });
@@ -177,10 +175,7 @@ describe('context suggestions (integration: real Postgres, scripted gateway)', (
     // A user edit also clears an earlier suggestion provenance.
     await contextService.applySuggestion(owner, 'roleTitle', 'CTO', MEM_A);
     await contextService.update(owner, { roleTitle: 'Chief Technology Officer' });
-    const [afterEdit] = await tdb.db
-      .select()
-      .from(userContext)
-      .where(eq(userContext.userId, owner.userId));
-    expect(afterEdit!.roleTitleSourceMemoryId).toBeNull();
+    const afterEdit = await contextService.get(owner.userId);
+    expect(afterEdit.roleTitleSourceMemoryId).toBeNull();
   });
 });

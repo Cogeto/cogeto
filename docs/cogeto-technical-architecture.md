@@ -62,6 +62,8 @@ Accepted consequences: no separate cache or message broker, and no server render
 | `sources` | Readers per source type, anchoring, the extraction gate, bulk import |
 | `connectors` | External systems: mail, files, web research, named skills |
 | `agents` | The approval state machine and executor for actions requiring human sign off |
+| `attention` | The "what needs my attention" feed and the dashboard statistics, plus their read state |
+| `operations` | The instance's own operational surface: health, the capability registry, queue administration, the audit browse |
 | `reporting` | The findings report assembler and its signing path |
 | `identity` | The identity seam, default deny guard, principal resolution |
 | `model-gateway` | The single outbound model egress, provider adapters, tier routing, redaction and budget decorators, the immutable prompt registry |

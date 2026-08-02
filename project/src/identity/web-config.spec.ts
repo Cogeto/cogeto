@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { UnauthorizedException } from '@nestjs/common';
 import { WebConfigController } from './web-config.controller';
-import type { CogetoConfig } from './config';
+import type { WebConfigOptions } from './identity-options';
 
 /**
  * Ana sandbox is FAIL-CLOSED and, since, PASSWORD-GATED: the
@@ -34,16 +34,16 @@ describe('web-config demo password gate', () => {
   });
   afterAll(() => undefined);
 
-  const configWith = (over: Partial<CogetoConfig>): CogetoConfig =>
+  const configWith = (over: Partial<WebConfigOptions>): WebConfigOptions =>
     ({
       webConfigFile,
       demoSessionFile: sessionFile,
       demoMode: false,
       production: false,
       ...over,
-    }) as CogetoConfig;
+    }) as WebConfigOptions;
 
-  const controller = (config: CogetoConfig) => new WebConfigController(config);
+  const controller = (config: WebConfigOptions) => new WebConfigController(config);
 
   it('serves NO token or demo flags when demo mode is off, even with the files present', async () => {
     const result = await controller(configWith({ demoMode: false })).webConfig();

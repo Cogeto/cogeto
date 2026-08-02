@@ -35,18 +35,10 @@ import {
   PASSPORT_EXPORT_RETENTION_HOURS,
 } from '../passport/index';
 import { ModelGatewayModule } from '../model-gateway/index';
+import { AttentionModule } from '../attention/index';
+import { OperationsModule } from '../operations/index';
 import { COGETO_CONFIG, mailOptions, redactionOptions, researchOptions } from './config';
 import type { CogetoConfig } from './config';
-import { AttentionController, DashboardController } from './attention.controller';
-import { AttentionService } from './attention.service';
-import { CapabilitiesService } from './capabilities';
-import { AuditController } from './audit.controller';
-import { HealthController } from './health.controller';
-import { HealthAccessGuard } from './health-access.guard';
-import { InstanceController } from './instance.controller';
-import { JobsController } from './jobs.controller';
-import { WebConfigController } from './web-config.controller';
-import { ModelConfigController } from './model-config.controller';
 
 /**
  * Composition root of the app process (fast path only: API, dashboard,
@@ -74,6 +66,14 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         issuer: config.oidc.issuer,
         expectedAudience: readOidcClientId(config.webConfigFile),
         adminRole: config.adminRole,
+        // The login bootstrap, GET /api/config + POST /api/config/demo-login.
+        // App-only: the worker authenticates nothing over HTTP.
+        webConfig: {
+          webConfigFile: config.webConfigFile,
+          demoSessionFile: config.demoSessionFile,
+          production: config.production,
+          demoMode: config.demoMode,
+        },
       }),
       ModelGatewayModule.register({
         providers: config.modelProviders,
@@ -81,6 +81,12 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         // Enforce the per-user daily model budget on the app's user-attributed
         // calls; the worker registers this without budget.
         budget: true,
+        // GET /api/settings/model-config displays the gateway's own resolved
+        // configuration, so the seam serves it; app-only (the worker has no HTTP).
+        modelConfig: {
+          modelProviders: config.modelProviders,
+          redactionEnabled: config.redactionEnabled,
+        },
       }),
       MemoryModule.register({
         qdrantUrl: config.qdrantUrl,
@@ -166,29 +172,33 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
         exportRetentionHours: PASSPORT_EXPORT_RETENTION_HOURS,
       }),
-    ],
-    controllers: [
-      AttentionController,
-      DashboardController,
-      AuditController,
-      HealthController,
-      InstanceController,
-      JobsController,
-      WebConfigController,
-      ModelConfigController,
+      // The "what needs my attention" feed + the dashboard statistics. Its own
+      // context (V2.0 item 3.6 part 2): the surface composes memory, retrieval,
+      // agents and ingestion, and owns the read-state pair behind it.
+      AttentionModule,
+      // The instance's own operational surface: /api/health and the capability
+      // registry, /api/jobs, /api/audit. It owns no tables; every read goes
+      // through the owning module's public interface.
+      OperationsModule.register({
+        qdrantUrl: config.qdrantUrl,
+        s3Url: config.s3Url,
+        mailSmtpAddress: config.mailSmtpAddress,
+        adminRole: config.adminRole,
+        production: config.production,
+        demoMode: config.demoMode,
+        consolesEnabled: config.consolesEnabled,
+        redactionEnabled: config.redactionEnabled,
+        redactionUrl: config.redactionUrl,
+        researchEnabled: config.researchEnabled,
+        searxngUrl: config.searxngUrl,
+        mailEnabled: config.mailEnabled,
+        composeProfiles: config.composeProfiles,
+        jobsOverdueHours: config.jobsOverdueHours,
+        modelProviders: config.modelProviders,
+      }),
     ],
     providers: [
       { provide: COGETO_CONFIG, useValue: config },
-      // The attention/stats aggregator composes memory, retrieval's open-loops
-      // read, agents and the dreaming digest through their public interfaces
-      //.
-      AttentionService,
-      // The capability registry: /api/health's
-      // capability/job summaries and the boot banner read one snapshot.
-      CapabilitiesService,
-      // SEC-3: decides who may read the aggregate health report and with how
-      // much detail. Registered here because it needs COGETO_CONFIG.
-      HealthAccessGuard,
       // Default-deny auth: the bearer guard runs on EVERY route; only
       // routes marked @Public (health/config/instance) opt out. A new
       // controller that forgets @UseGuards is closed, not silently open.

@@ -11,10 +11,10 @@ import { readFile } from 'node:fs/promises';
 import { timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import type { WebConfig } from '@cogeto/shared';
-import { Public } from '../identity/index';
-import { COGETO_CONFIG } from './config';
-import type { CogetoConfig } from './config';
-import { readDemoLogin } from './demo/credentials';
+import { Public } from './public.decorator';
+import { WEB_CONFIG_OPTIONS } from './identity-options';
+import type { WebConfigOptions } from './identity-options';
+import { readDemoLogin } from './demo-login';
 
 const demoLoginSchema = z.object({
   username: z.string().min(1),
@@ -27,11 +27,15 @@ const demoLoginSchema = z.object({
  * password gate for the Ana sandbox: the operator exchanges the
  * generated username + password for the demo session token. The token is NEVER
  * served on GET /api/config anymore — the sandbox is no longer auto-open.
+ *
+ * Lives in the identity seam (V2.0 item 3.6 part 2): both routes are the login
+ * bootstrap — what the SPA must know before it can authenticate, and the one
+ * credential exchange that mints a session. It sits beside `/api/me`.
  */
 @Public()
 @Controller('config')
 export class WebConfigController {
-  constructor(@Inject(COGETO_CONFIG) private readonly config: CogetoConfig) {}
+  constructor(@Inject(WEB_CONFIG_OPTIONS) private readonly config: WebConfigOptions) {}
 
   @Get()
   async webConfig(): Promise<WebConfig> {

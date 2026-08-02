@@ -1,6 +1,8 @@
 import { randomBytes } from 'node:crypto';
-import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { DEMO_USERNAME, demoLoginFile, readDemoLogin } from '../../identity/index';
+import type { DemoCredentials } from '../../identity/index';
 
 /**
  * Demo login credentials (revising 0022 ruling 1). The sandbox is
@@ -15,23 +17,14 @@ import { dirname, join } from 'node:path';
  *    like the session file, because the app runs as a different uid.
  *  - `demo-credentials.txt` — human-readable, for the operator to `cat`.
  *
- * A leaf by design: it imports only node built-ins, so the app's web-config
- * controller can reuse the path/read helpers without pulling in the rest of the
- * demo bootstrap (zitadel-admin, http-client, …).
+ * The WRITE side lives here; the file contract and its reader belong to the
+ * identity seam, which verifies the login (V2.0 item 3.6 part 2). This is a CLI
+ * and may import a module; the module may not import back, which is exactly why
+ * the split runs this way. Re-exported below so the demo barrel is unchanged.
  */
 
-/** The fixed sandbox login name. The password rotates; this does not. */
-export const DEMO_USERNAME = 'ana@cogeto.localhost';
-
-export interface DemoCredentials {
-  username: string;
-  password: string;
-}
-
-/** The machine-readable credentials file the app reads to verify a login. */
-export function demoLoginFile(demoSessionFile: string): string {
-  return join(dirname(demoSessionFile), 'demo-login.json');
-}
+export { DEMO_USERNAME, demoLoginFile, readDemoLogin };
+export type { DemoCredentials };
 
 /** The human-readable credentials file the operator reads. */
 export function demoCredentialsTextFile(demoSessionFile: string): string {
@@ -41,26 +34,6 @@ export function demoCredentialsTextFile(demoSessionFile: string): string {
 /** A strong, URL-safe random password — long enough that online guessing is infeasible. */
 export function generatePassword(): string {
   return randomBytes(24).toString('base64url');
-}
-
-/** Reads the persisted { username, password }, or null if absent/malformed. */
-export async function readDemoLogin(demoSessionFile: string): Promise<DemoCredentials | null> {
-  try {
-    const parsed = JSON.parse(await readFile(demoLoginFile(demoSessionFile), 'utf8')) as {
-      username?: unknown;
-      password?: unknown;
-    };
-    if (
-      typeof parsed.username === 'string' &&
-      typeof parsed.password === 'string' &&
-      parsed.password
-    ) {
-      return { username: parsed.username, password: parsed.password };
-    }
-    return null;
-  } catch {
-    return null;
-  }
 }
 
 async function writeWorldReadable(file: string, content: string): Promise<void> {

@@ -1,8 +1,16 @@
 # src/: application source root
 
 One directory per DDD bounded context (spec §15): `memory`, `ingestion`, `retrieval`,
-`agents`, `connectors`, `passport`, `identity`, `model-gateway`, plus the shared
-`infrastructure` leaf, `entrypoints` (app, worker), `migrations` and `testing`.
+`agents`, `connectors`, `passport`, `attention`, `operations`, `identity`,
+`model-gateway`, plus the shared `infrastructure` leaf, `entrypoints` (app,
+worker), `migrations` and `testing`.
+
+`attention` (the "what needs my attention" feed and the dashboard statistics) and
+`operations` (health, the capability registry, queue administration, the audit
+browse) are the two surfaces that genuinely span several contexts. They are
+declared contexts because of that, **not** residents of a composition root:
+V2.0 item 3.6 part 2 moved them out of `entrypoints/`, which had accreted seven
+production controllers and two services.
 
 Module rules (binding, CI-enforced, spec §15):
 
@@ -23,6 +31,12 @@ Module rules (binding, CI-enforced, spec §15):
  port and the composition root passes the implementing module through that module's
  registration options (`sourceDeletions.imports`, `derivedCascades.imports`,
  `IngestionModule.register({ imports })`).
+
+7. **A module never imports a composition root.** Configuration a module needs is
+ declared as that module's own options type and mapped by the root that registers
+ it (`OperationsOptions`, `WebConfigOptions`, `MemoryModuleOptions`, …). Injecting
+ the root's whole `CogetoConfig` is how seven surfaces ended up depending on an
+ entrypoint.
 
 **The contract, with the owner of every table, job type and DI token, the
 global-module policy, what enforces each rule and every recorded exception:**

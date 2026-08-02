@@ -54,6 +54,12 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   chat_message: 'retrieval',
   conversation: 'retrieval',
 
+  // The attention surface's own read-state (V2.0 item 3.6 part 2). It used to
+  // sit in `infrastructure` because "the surface spans every context"; that was
+  // true of its reads and false of its state, which only attention writes.
+  attention_state: 'attention',
+  attention_dismissal: 'attention',
+
   approval: 'agents',
 
   note: 'connectors',
@@ -75,8 +81,6 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   outbox_event: 'infrastructure',
   job_execution: 'infrastructure',
   dead_letter: 'infrastructure',
-  attention_state: 'infrastructure',
-  attention_dismissal: 'infrastructure',
   user_context: 'infrastructure',
   context_suggestion_dismissal: 'infrastructure',
   usage_counter: 'infrastructure',
@@ -132,6 +136,9 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
 
   PRINCIPAL: 'identity',
   IDENTITY_OPTIONS: 'identity',
+  // The login bootstrap's options (V2.0 item 3.6 part 2): /api/config is what
+  // the SPA must know before it can authenticate.
+  WEB_CONFIG_OPTIONS: 'identity',
 
   // Ports: memory defines them, the implementing module is bound at the root.
   SOURCE_DELETIONS: 'memory',
@@ -151,10 +158,23 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
   MAIL_OPTIONS: 'connectors',
   RESEARCH_OPTIONS: 'connectors',
 
+  // What /api/settings/model-config displays: the seam's own resolved
+  // configuration, so the seam serves it (V2.0 item 3.6 part 2).
+  MODEL_CONFIG_VIEW: 'model-gateway',
+
+  // What the instance's operational surface knows about this deployment,
+  // instead of the whole CogetoConfig it used to inject from a composition root.
+  OPERATIONS_OPTIONS: 'operations',
+
   PASSPORT_OPTIONS: 'passport',
 
+  // The capability registry's injectable job reads followed the registry into
+  // `operations` (V2.0 item 3.6 part 2).
+  CAPABILITY_JOB_SOURCES: 'operations',
+
+  // The one token entrypoints still owns: the validated configuration a
+  // composition root hands to the modules it registers.
   COGETO_CONFIG: 'entrypoints',
-  CAPABILITY_JOB_SOURCES: 'entrypoints',
 };
 
 /**
@@ -172,7 +192,7 @@ const ALLOWED_GLOBAL_MODULES: Readonly<Record<string, string>> = {
 
   // RECORDED EXCEPTIONS (docs/module-boundary-contract.md). Each is a domain
   // module and therefore fails the policy; each names the part that removes it.
-  MemoryModule: 'EXCEPTION B13, part 2: dynamic storage config, five injectors',
+  MemoryModule: 'EXCEPTION B13, part 3: dynamic storage config, five injectors',
   ConnectorsModule: 'EXCEPTION B14, part 3: source ports reach ingestion/memory by globality',
   EmailReplyModule: 'EXCEPTION B15, part 4: binds CHAT_REPLY_RESOLVER for ChatService',
   ResearchChatModule: 'EXCEPTION B15, part 4: binds CHAT_RESEARCH_RESOLVER for ChatService',
@@ -192,22 +212,23 @@ const ALLOWED_GLOBAL_MODULES: Readonly<Record<string, string>> = {
  * coupling rather than an assertion.
  */
 const RAW_SQL_EXCEPTIONS: Readonly<Record<string, string>> = {
-  // B9, part 2: the queue-administration surface.
-  'entrypoints/jobs.controller.ts': 'job_execution, dead_letter, graphile_worker',
-  // B11, part 2: the capability snapshot's install date.
-  'entrypoints/capabilities.ts': 'cogeto_migrations',
-  // B18, part 2: the aggregate health report reads three infrastructure sources.
-  'entrypoints/health.controller.ts': 'cogeto_migrations, dead_letter, graphile_worker',
-  // B12, part 2: a one-shot CLI for a table dropped in migration 0035; deleted,
-  // not moved, once no instance predates 2.0.
-  'entrypoints/erase-task-conclusions.ts': 'task_conclusion, memory',
-  // B19, part 2: dev/eval/demo tooling that predates the contract and is
-  // excluded from the production image (item 3.7 finishes that eviction).
-  'entrypoints/vector-smoke.ts': 'memory',
-  'entrypoints/eval-chat.ts': 'the chat eval harness seeds six modules directly',
-  'entrypoints/demo/ops.ts': 'the demo reset truncates every domain table',
-  'entrypoints/demo/seed.ts': 'note',
-  'entrypoints/demo/assertions.ts': 'the demo world assertions read four modules',
+  // B19: the CLIs. `entrypoints/` is composition roots and command-line tools,
+  // and a tool that builds or asserts on a fixture world reaches the database
+  // directly by nature — that is what makes it a tool rather than a request
+  // path. Every one is named here, none ships in the production image, and item
+  // 3.7 evicts the demo and dev-seed ones from the repository's image entirely.
+  'entrypoints/vector-smoke.ts': 'CLI: the Qdrant smoke reads memory rows',
+  'entrypoints/eval-chat.ts': 'CLI: the chat eval harness seeds six modules directly',
+  'entrypoints/demo/ops.ts': 'CLI: the demo reset truncates every domain table',
+  'entrypoints/demo/seed.ts': 'CLI: the demo seed writes notes',
+  'entrypoints/demo/assertions.ts': 'CLI: the demo world assertions read four modules',
+  // B12: the pre-2.0 upgrade tool. NOT deleted in part 2 after all, and the
+  // reason is stated rather than the checklist satisfied: migration 0035
+  // refuses to drop `task_conclusion` while memories still carry that
+  // provenance and names this command in the error, and the operator runbook
+  // documents it as the required step for an instance upgrading from the 1.x
+  // line. It goes when the 2.0 release notes can declare that path closed.
+  'entrypoints/erase-task-conclusions.ts': 'CLI: erases task_conclusion provenance before 0035',
   // B20, part 3: connectors schedules the discard-cleanup backstop with a raw
   // graphile_worker.add_job because the outbox helper has no delayed enqueue.
   'connectors/files.service.ts': 'graphile_worker',

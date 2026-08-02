@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, gte, inArray } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, isNull, lt, or, sql } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 import type { DbOrTx } from './db';
 import { auditLog } from './persistence/tables';
 
@@ -67,8 +68,7 @@ export interface AuditRecord {
  * (spec §15.2). This is the one place the table is read.
  *
  * Deliberately not a query builder: a filter of exactly the predicates the
- * domain modules ask for. The instance-wide audit endpoint's `ILIKE` filtering
- * stays where it is until part 2 (recorded exception B8).
+ * domain modules ask for. The instance-wide browse is {@link readAuditPage}.
  */
 export async function readAuditEntries(
   executor: DbOrTx,
@@ -102,7 +102,12 @@ export async function readAuditEntries(
     .where(and(...where))
     .orderBy(desc(auditLog.createdAt), asc(auditLog.id));
   const rows = await (filter.limit === undefined ? query : query.limit(filter.limit));
-  return rows.map((row) => ({
+  return rows.map(toRecord);
+}
+
+/** The one row shape both readers hand back: the stored row, nothing derived. */
+function toRecord(row: typeof auditLog.$inferSelect): AuditRecord {
+  return {
     id: row.id,
     actor: row.actor,
     action: row.action,
@@ -112,5 +117,69 @@ export async function readAuditEntries(
     orgId: row.orgId,
     ownerId: row.ownerId,
     createdAt: row.createdAt,
-  }));
+  };
+}
+
+/**
+ * The trail's paged browse (V2.0 item 3.6 part 2). The `/api/audit` surface ran
+ * this query from the composition root against a table it does not own
+ * (recorded exception B8); the SQL is unchanged, it just lives with the table.
+ *
+ * `orgId` is not optional: the org gate is spec §4.2 and a caller sees only
+ * their org's entries plus system/global (null-org) ones. Making it a required
+ * argument is the point — an unscoped browse of the trail is unrepresentable
+ * here, the same way unscoped memory queries are in retrieval.
+ *
+ * The owner gate on `detail_json` stays with the caller, which is where the
+ * Principal is: this returns the rows, including `ownerId`, and the reader
+ * decides what to show.
+ */
+export async function readAuditPage(
+  executor: DbOrTx,
+  filter: {
+    /** The caller's org. Entries from other orgs are never returned. */
+    orgId: string;
+    /** Case-insensitive substring; LIKE metacharacters are matched literally. */
+    actor?: string;
+    action?: string;
+    entityType?: string;
+    /** Inclusive lower bound / exclusive upper bound on `created_at`. */
+    from?: Date;
+    to?: Date;
+    limit: number;
+    offset: number;
+  },
+): Promise<{ rows: AuditRecord[]; total: number }> {
+  const clauses: SQL[] = [
+    // The org gate — never another org's entries; null-org = system/global.
+    or(eq(auditLog.orgId, filter.orgId), isNull(auditLog.orgId))!,
+  ];
+  // Escape LIKE metacharacters so a user-supplied `%`/`_` is matched literally
+  // (not as a wildcard): no match-everything, no slow leading-wildcard
+  // patterns. The bound ESCAPE clause makes `\` the escape character.
+  if (filter.actor)
+    clauses.push(sql`${auditLog.actor} ILIKE ${`%${escapeLike(filter.actor)}%`} ESCAPE '\\'`);
+  if (filter.action)
+    clauses.push(sql`${auditLog.action} ILIKE ${`%${escapeLike(filter.action)}%`} ESCAPE '\\'`);
+  if (filter.entityType) clauses.push(eq(auditLog.entityType, filter.entityType));
+  if (filter.from) clauses.push(gte(auditLog.createdAt, filter.from));
+  if (filter.to) clauses.push(lt(auditLog.createdAt, filter.to));
+  const where = and(...clauses);
+
+  const [rows, totalRows] = await Promise.all([
+    executor
+      .select()
+      .from(auditLog)
+      .where(where)
+      .orderBy(desc(auditLog.createdAt))
+      .limit(filter.limit)
+      .offset(filter.offset),
+    executor.select({ n: count() }).from(auditLog).where(where),
+  ]);
+  return { rows: rows.map(toRecord), total: Number(totalRows[0]?.n ?? 0) };
+}
+
+/** Escape LIKE/ILIKE metacharacters so user input matches literally. */
+export function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
 }

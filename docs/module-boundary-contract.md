@@ -1,7 +1,8 @@
 # The module boundary contract
 
 **Status: BINDING.** This is the decision record for V2.0 item 3.6 and the
-specification the boundary tooling enforces. It makes spec §15.1 and §15.2
+specification the boundary tooling enforces. Written in part 1 (enforcement),
+updated in part 2 (the entrypoints dissolution). It makes spec §15.1 and §15.2
 concrete:
 
 > **§15.1** A boundary is imports plus table ownership plus job type contracts
@@ -19,9 +20,10 @@ bypassed the module graph entirely, and one whole bounded context was absent
 from the rule set. A green check over an unenforced boundary is worse than no
 check: it is a claim.
 
-This is **part 1 of four**. It fixes the enforcement, not the layout. The
-violations enforcement reveals are listed in
-[Recorded exceptions](#recorded-exceptions) with the part that closes each one.
+Parts **1** (enforcement) and **2** (the entrypoints dissolution) have landed.
+Part 1 fixed the enforcement and enumerated what it revealed; part 2 closed
+every entrypoints entry on that list. What remains is in
+[Recorded exceptions](#recorded-exceptions), each with the part that closes it.
 
 ---
 
@@ -56,12 +58,14 @@ may name the table in a query, in Drizzle or in SQL.
 | `memory` | `memory`, `memory_relation`, `file_metadata`, `deletion_receipt`, `integrity_alert` |
 | `ingestion` | `verification_result`, `suppressed_fact_log`, `dream_run`, `dream_action`, `dormant_flag` |
 | `retrieval` | `chat_message`, `conversation` |
+| `attention` | `attention_state`, `attention_dismissal` |
 | `agents` | `approval` |
 | `connectors` | `note`, `user_settings`, `email_message`, `email_attachment`, `email_allowlist`, `email_refusal`, `web_page`, `research_run`, `skill_run`, `skill_run_step` |
 | `identity` | `app_user` |
 | `model-gateway` | `prompt_registry` |
 | `passport` | `passport_export` |
-| `infrastructure` | `audit_log`, `outbox_event`, `job_execution`, `dead_letter`, `attention_state`, `attention_dismissal`, `user_context`, `context_suggestion_dismissal`, `usage_counter`, `rate_limit_window` |
+| `infrastructure` | `audit_log`, `outbox_event`, `job_execution`, `dead_letter`, `user_context`, `context_suggestion_dismissal`, `usage_counter`, `rate_limit_window` |
+| `operations` | none. It reports on other modules' data and owns no table of its own. |
 
 Two schemas have no Drizzle declaration and belong to `infrastructure` as the
 module that creates and runs them: **`cogeto_migrations`** (the migration
@@ -72,15 +76,21 @@ The check has two halves, so neither drifts: every table a migration creates and
 does not drop must have an owner, and every owner entry must name a table some
 migration creates. A table that arrives without an owner fails `test`.
 
-### Why infrastructure owns ten tables
+### Why infrastructure owns eight tables
 
 `infrastructure` is not a bounded context and owns no domain concept. It owns
-the ten tables that every context appends to and none of them owns: the audit
-trail, the outbox, the queue's two ledgers, the two content-free attention
-read-state tables, the per-user context that feeds prompts in three different
-contexts, and the two abuse counters shared by the app and the worker. Putting
-any of them inside a domain module would make every other module a
-cross-module table reader, which is the rule this contract exists to enforce.
+the eight tables that every context appends to and none of them owns: the audit
+trail, the outbox, the queue's two ledgers, the per-user context that feeds
+prompts in three different contexts and its dismissals, and the two abuse
+counters shared by the app and the worker. Putting any of them inside a domain
+module would make every other module a cross-module table reader, which is the
+rule this contract exists to enforce.
+
+It owned ten until part 2. The attention read-state pair was justified the same
+way, "the surface spans every context and none owns it", which was true of the
+surface's *reads* and false of its *state*: only the attention surface ever
+writes those two tables. They moved with it (same tables, same columns, no
+migration), which is what "owner" is supposed to mean.
 
 That ownership is a **contract, not a permission**: a domain module still may
 not read `audit_log` directly. It calls a function on infrastructure's public
@@ -94,7 +104,22 @@ reaching into its tables for:
 | Function | Replaces | Callers |
 |---|---|---|
 | `jobRunState(db, { sourceType, sourceId, jobType })` → `'done' \| 'failed' \| 'processing'` | Five byte-identical hand-rolled `job_execution` + `dead_letter` probes | `connectors` (notes, files, research, research-conclude), `retrieval` (chat) |
-| `readAuditEntries(db, filter)` → `AuditEntry[]` | Three hand-rolled `audit_log` reads | `memory` (change feed, sweep status), `agents` (execution summaries), `passport` (test assertion) |
+| `readAuditEntries(db, filter)` → `AuditRecord[]` | Three hand-rolled `audit_log` reads | `memory` (change feed, sweep status), `agents` (execution summaries), `passport` (test assertion) |
+| `readAuditPage(db, filter)` → `{ rows, total }` | The `/api/audit` browse's `ILIKE` filter builder, run from a composition root | `operations` |
+| `listQueuedJobs`, `recentJobExecutions`, `listDeadLetters`, `queueTotals`, `retryDeadLetter` | The queue-administration view's five raw queries and its retry transaction | `operations` |
+| `InstanceProbes` (`ping`, `queueDepth`, `migrations`, `installedAt`) | The health report's four raw queries, and the capability registry's install-date read | `operations` |
+
+`readAuditPage` takes `orgId` as a **required** argument rather than an optional
+filter: the org gate is spec §4.2, so an unscoped browse of the trail is
+unrepresentable, the same way unscoped memory queries are in retrieval. The
+per-row owner gate on `detail_json` stays with the caller, which is where the
+Principal is.
+
+`InstanceProbes` keeps its own two-connection pool, which is why it lives in
+`infrastructure` rather than in the module serving `/api/health`: the health
+controller had a dedicated pool so a saturated application pool could not make
+the report hang, and that property is worth keeping. But owning a `Pool` is
+exactly what a domain module may not do.
 
 Both preserve their callers' SQL exactly. `readAuditEntries` applies one
 consistent ordering (`created_at DESC, id ASC`) where two of the three call
@@ -157,6 +182,14 @@ module, whether or not any module declares a dependency on it. That makes
 globality a hole in the boundary exactly as large as the module behind it, and
 it is invisible to the import graph, because the consumer has no import to check.
 
+There is a second way a provider escapes the graph, and part 2 closed it: a
+module that injects the composition root's own configuration object. Seven
+controllers and two services took `COGETO_CONFIG`, which meant importing
+`entrypoints/config`, the one import direction the rules forbid outright, and it
+meant each of them could read anything about the deployment. Every module now
+declares the fields it needs as its own options type, and the root maps its
+config onto them.
+
 ### The policy
 
 > A module may be global only if it is (a) registered exactly once per
@@ -172,7 +205,7 @@ The last clause is not new: `MemoryModule.register` already accepts
 cascade adapter can be bound without either module knowing the other. That is
 the pattern; globality was the shortcut around it.
 
-### The eighteen modules
+### The twenty modules
 
 | Module | Global? | Verdict |
 |---|---|---|
@@ -182,11 +215,12 @@ the pattern; globality was the shortcut around it.
 | `ModelGatewayModule` | yes | **Keep.** A seam, dynamic and provider-config-carrying; un-globaling means every consumer re-invoking `.register()` with the same configuration, which builds a second gateway. |
 | `UserContextModule` | ~~yes~~ **no** | **Fixed here.** A static module exporting one service. Now imported by `connectors`, `ingestion`, `retrieval`, `ResearchChatModule` and the app root. |
 | `ChatSourceModule` | ~~yes~~ **no** | **Fixed here.** A static module of chat's source ports. Now passed explicitly through `IngestionModule.register({ imports })`, `MemoryModule.register({ sourceDeletions.imports })`, and `ResearchChatModule`. |
-| `MemoryModule` | yes | **Exception, part 2.** A domain module, so it fails the policy, but it is dynamic and carries the Qdrant/MinIO/signing-key configuration, and five modules inject `MemoryStore`. |
+| `MemoryModule` | yes | **Exception, part 3.** A domain module, so it fails the policy, but it is dynamic and carries the Qdrant/MinIO/signing-key configuration, and five modules inject `MemoryStore`. Reassigned from part 2: un-globaling it means threading one dynamic-module reference through every consumer's registration options, which is the same mechanical change part 3 makes for `ConnectorsModule`, and doing them together is one composition rewrite instead of two. |
 | `ConnectorsModule` | yes | **Exception, part 3.** A domain module. Un-globaling it means threading one dynamic-module reference through `IngestionModule`, `MemoryModule` and three sub-modules, which is the composition part 3 rewrites when `connectors/` splits into its families. |
 | `EmailReplyModule` | yes | **Exception, part 4.** Global for exactly one reason: `ChatService` lives in `RetrievalModule` and must resolve `CHAT_REPLY_RESOLVER`, which this module binds. |
 | `ResearchChatModule` | yes | **Exception, part 4.** Same, for `CHAT_RESEARCH_RESOLVER`. |
 | `SkillsModule` | yes | **Exception, part 4.** Same, for `CHAT_SKILL_RESOLVER`. |
+| `AttentionModule`, `OperationsModule` | no | New in part 2, explicit from birth. |
 | `RetrievalModule`, `IngestionModule`, `AgentsModule`, `PassportModule`, `SuppressedFactCascadeModule`, `ReplyDraftCascadeModule`, `PassportCascadeModule` | no | Already explicit. |
 
 The three part-4 exceptions share one cause and one fix. Each is global only so
@@ -206,13 +240,15 @@ defined by the module that *consumes* the implementation) are marked.
 | Owner | Tokens |
 |---|---|
 | `infrastructure` | `DRIZZLE`, `PG_POOL`, `RATE_LIMIT_OPTIONS`, `INGEST_QUOTA`, `RESEARCH_QUOTA`, `SSE_LIMITS`, `MODEL_USAGE_METER`, `PARSE_CAPS`, `INSTANCE_TIMEZONE` |
-| `identity` | `PRINCIPAL`, `IDENTITY_OPTIONS` |
+| `identity` | `PRINCIPAL`, `IDENTITY_OPTIONS`, `WEB_CONFIG_OPTIONS` |
 | `memory` | `SOURCE_DELETIONS` (port), `DERIVED_CASCADES` (port), `INGESTION_GUARD` (port), `INSTANCE_KEY_DIR`, `SWEEP_OPTIONS` |
 | `ingestion` | `SOURCE_READERS` (port) |
 | `retrieval` | `CHAT_REPLY_RESOLVER` (port), `CHAT_RESEARCH_RESOLVER` (port), `CHAT_SKILL_RESOLVER` (port), `CONVERSATION_APPEND` (port) |
 | `connectors` | `FILE_UPLOAD_OPTIONS`, `MAIL_OPTIONS`, `RESEARCH_OPTIONS` |
+| `model-gateway` | `MODEL_CONFIG_VIEW` |
 | `passport` | `PASSPORT_OPTIONS` |
-| `entrypoints` | `COGETO_CONFIG`, `CAPABILITY_JOB_SOURCES` |
+| `operations` | `OPERATIONS_OPTIONS`, `CAPABILITY_JOB_SOURCES` |
+| `entrypoints` | `COGETO_CONFIG` |
 
 `IDENTITY_OPTIONS` is deliberately absent from `identity/index.ts`: it is
 DI-visible (the seam exports it as a provider so `AdminGuard` resolves inside
@@ -225,7 +261,7 @@ another module's injector) but not import-visible, which is the correct pair.
 | Check | Mechanism | Runs in |
 |---|---|---|
 | Barrel-only imports; internals private; seams and infrastructure import no domain module; nothing imports entrypoints; client-library confinement; no cycles | `.dependency-cruiser.cjs` | `boundaries` |
-| No module imports another module's `persistence/` (named exception list) | `.dependency-cruiser.cjs` | `boundaries` |
+| No module imports another module's `persistence/` (named exception list, **empty** since part 2) | `.dependency-cruiser.cjs` | `boundaries` |
 | **No barrel re-exports a live table** (type-only exports allowed: a row shape is a contract, a table object is a handle to the data) | `.dependency-cruiser.cjs` | `boundaries` |
 | Every module directory is named in the dependency rules | `entrypoints/boundary-contract.spec.ts` | `test` |
 | Every table declared under exactly one module, matching the owner map | `entrypoints/boundary-contract.spec.ts` | `test` |
@@ -254,7 +290,7 @@ hidden. An integration test's job is to assert against the database, and spec
 tables at once; a rule forbidding that would forbid the test the specification
 demands. Tests are still bound by the import rule: a spec may not import another
 module's Drizzle table objects, because an import is compile-time coupling
-rather than an assertion, and exactly one spec is allowlisted for it (B17).
+rather than an assertion, and after part 2 **no spec is allowlisted for it**.
 
 The SQL scan reads string and template-literal **contents only**, through a
 hand-written scanner rather than a regex sweep, so a comment mentioning a table
@@ -266,14 +302,14 @@ about its limit: SQL assembled from lowercase fragments would not be seen.
 
 ## Recorded exceptions
 
-Every one of these was invisible before this part and is enumerated now. None is
-a behaviour change; all are enforcement debts with an owner.
+Every one of these was invisible before part 1 and is enumerated now. None is a
+behaviour change; all are enforcement debts with an owner.
 
-### Fixed in this part
+### Closed in part 1 (enforcement)
 
 | # | Violation | Fix |
 |---|---|---|
-| B1 | `infrastructure/index.ts` re-exported ten live Drizzle tables (spec §15.2 MUST) | Re-exports removed |
+| B1 | `infrastructure/index.ts` re-exported ten live Drizzle tables (spec §15.2 MUST) | Re-exports removed; a rule now forbids it |
 | B2 | `connectors` (notes, files, research, research-conclude) and `retrieval` (chat) each hand-rolled the same `job_execution` + `dead_letter` probe against a table they do not own | One `jobRunState()` on infrastructure's public interface; five call sites collapsed |
 | B3 | `memory` (change feed, sweep status) and `agents` (execution summaries) read `audit_log` directly | `readAuditEntries()` on infrastructure's public interface |
 | B4 | `passport`'s deletion integration spec read `audit_log` directly | Uses `readAuditEntries()` |
@@ -281,37 +317,75 @@ a behaviour change; all are enforcement debts with an owner.
 | B6 | `UserContextModule` and `ChatSourceModule` were global with no reason the policy accepts | Un-globaled; six explicit imports added |
 | B7 | `entrypoints/demo/ops.ts`, `entrypoints/eval-chat.ts` and `entrypoints/worker-tasks.ts` spelled `dreaming_cycle`, `ingestion.pipeline` and `memory.embed` as bare string literals | Replaced with the owning module's exported constant |
 
-### Deferred, with the part that closes them
+### Closed in part 2 (the entrypoints dissolution)
+
+`entrypoints/` held seven production controllers, two services and raw SQL
+spanning six modules' tables. Every entry below was an entrypoints exception,
+and every one is gone: the dependency-cruiser table-ownership allowlist is now
+**empty**.
+
+| # | Violation | Fix |
+|---|---|---|
+| B8 | `entrypoints/audit.controller.ts` queried `audit_log` with an `ILIKE` filter builder | `readAuditPage()` on infrastructure's public interface; the controller moved to `operations` and keeps only what needs the Principal (the org argument and the per-row owner gate) |
+| B9 | `entrypoints/jobs.controller.ts` queried `job_execution`, `dead_letter` and the `graphile_worker` schema, and re-enqueued from a dead letter | Five readers plus `retryDeadLetter()` on infrastructure's public interface; the controller moved to `operations` |
+| B10 | `entrypoints/attention.service.ts` queried `attention_state` and `attention_dismissal` | Both tables moved to the new `attention` context with the service and its two controllers. The surface owns its own state now, so there is nothing to allowlist |
+| B11 | `entrypoints/capabilities.ts` read `cogeto_migrations` in raw SQL | `InstanceProbes.installedAt()`; the registry moved to `operations` |
+| B18 | `entrypoints/health.controller.ts` read `cogeto_migrations`, `dead_letter` and the `graphile_worker` schema in raw SQL, on a `Pool` it opened itself | `InstanceProbes` in `infrastructure`, which keeps the dedicated two-connection pool; the controller moved to `operations` |
+| B17 | `connectors/context-suggestions.spec.ts` imported two infrastructure tables to reset them between cases | A fresh user id per case needs no reset; the two remaining assertions go through `UserContextService.get()` |
+
+Three more controllers had exactly one owner each and moved to it: `/api/settings/model-config`
+to **`model-gateway`** (it displays the seam's own resolved configuration),
+`/api/config` + `/api/config/demo-login` to **`identity`** (the login bootstrap
+and the one credential exchange that mints a session), and
+`/api/instance/public-key` to **`memory`** (the verification key for the receipts
+that module signs, beside `/api/receipts` and `/api/integrity`).
+
+Each moved surface stopped injecting the whole `CogetoConfig`, a composition
+root's type that no module may import, and declares the fields it actually
+reads instead (`OperationsOptions`, `WebConfigOptions`, `ModelConfigView`). That
+list is now a written answer to "what does this surface know about the
+deployment", which was previously "all of it".
+
+### Still open, with the part that closes them
 
 | # | Violation | Why not now | Closed by |
 |---|---|---|---|
-| B8 | `entrypoints/audit.controller.ts` queries `audit_log` (an `ILIKE` filter builder over actor/action/entity/date with owner-gated detail projection) | Moving it means moving a query builder and its DTO into `infrastructure`, which is a real code move, not enforcement | **Part 2** (entrypoints dissolution) |
-| B9 | `entrypoints/jobs.controller.ts` queries `job_execution`, `dead_letter` and the `graphile_worker` schema, and re-enqueues from a dead letter | Same: this is a queue-administration surface that belongs behind infrastructure's interface, not a config change | **Part 2** |
-| B10 | `entrypoints/attention.service.ts` queries `attention_state` and `attention_dismissal` | The attention aggregator is the largest piece of the accidental thirteenth context | **Part 2** |
-| B11 | `entrypoints/capabilities.ts` reads `cogeto_migrations` in raw SQL | Same shape, one query | **Part 2** |
-| B12 | `entrypoints/erase-task-conclusions.ts` runs raw SQL against `task_conclusion` | A one-shot migration CLI for a table dropped in migration 0035; it is dead once no instance predates 2.0 | **Part 2** (deleted, not moved) |
-| B13 | `MemoryModule` is a global domain module | Five modules inject `MemoryStore`; un-globaling is a composition rewrite, not a declaration change | **Part 2** |
+| B13 | `MemoryModule` is a global domain module | Five modules inject `MemoryStore`; un-globaling means threading one dynamic-module reference through every consumer's registration options. Reassigned from part 2: it is the same mechanical change part 3 makes for `ConnectorsModule`, and doing both at once is one composition rewrite instead of two | **Part 3** |
 | B14 | `ConnectorsModule` is a global domain module | Its providers reach `ingestion` and `memory` through globality instead of the registration options that exist for it | **Part 3** (connectors split) |
 | B15 | `EmailReplyModule`, `ResearchChatModule`, `SkillsModule` are global only to bind chat's resolver ports | Un-globaling now silently nulls three optional constructor arguments and disables research, skills and reply drafting with the suite still green | **Part 4** (chat split) |
 | B16 | `source_type` is a hard Postgres enum owned by `memory`, so every new reader costs a memory-owned migration and a switch edit in six files | Explicitly its own item in the 3.6 plan | **Part 3** |
-| B17 | `connectors/context-suggestions.spec.ts` imports `user_context` and `context_suggestion_dismissal` to reset them between cases | `UserContextService` exposes no reset, correctly: nothing in production clears a dismissal | **Part 2** (follows the service) |
-| B18 | `entrypoints/health.controller.ts` reads `cogeto_migrations`, `dead_letter` and the `graphile_worker` schema in raw SQL | The aggregate health report is the same shape of surface as B9 | **Part 2** |
-| B19 | `entrypoints/{vector-smoke,eval-chat}.ts` and `entrypoints/demo/{ops,seed,assertions}.ts` reach into six modules' tables in raw SQL | Dev, eval and demo tooling, all excluded from the production image; item **3.7** finishes evicting it | **Part 2** |
 | B20 | `connectors/files.service.ts` schedules the discard-cleanup backstop with a raw `graphile_worker.add_job` | The outbox helper has no delayed-enqueue option, so the fix is an infrastructure API, not a move | **Part 3** |
 | B21 | `testing/pg.ts` truncates the `graphile_worker` tables between suites | The Testcontainers harness is not a bounded context; listed rather than exempted so it stays visible | **Part 3** |
 
-Every exception above is allowlisted **by file path, by name, with the part
-number in the comment** in `.dependency-cruiser.cjs` and in
-`entrypoints/boundary-contract.spec.ts`. Adding a file to either allowlist is a
-deliberate, reviewable act, and the only exemption granted by category is the
-one argued for in §5.
+### B19: the CLIs, which is what `entrypoints/` is for
 
-### What the newly-enforced rules cost, measured
+`entrypoints/{vector-smoke,eval-chat}.ts` and `entrypoints/demo/{ops,seed,assertions}.ts`
+reach into six modules' tables in raw SQL, and they keep doing so. This is not a
+deferral, it is the line: **a command-line tool that builds or asserts on a
+fixture world reaches the database directly, and that is what makes it a tool
+rather than a request path.** Every one is named in the spec's allowlist, and
+none ships in the production image; item **3.7** evicts the demo and dev-seed
+ones from the image entirely.
 
-Before this part: `npm run boundaries` reported **0 violations** and no other
-dimension was checked at all. After it, with the same behaviour and the same
-tests: **7 violations fixed**, **14 recorded** with an owner and a part. The
-number that matters is that it moved off zero.
+**B12 belongs here too, and part 1 was wrong about it.** The record said
+`erase-task-conclusions.ts` would be *deleted* in part 2 because it is "dead
+once no instance predates 2.0". That condition is not met: migration 0035
+refuses to drop `task_conclusion` while memories still carry that provenance and
+names this command in its error, and
+[`operator-runbook.md`](operator-runbook.md) §6a documents it as the required
+step for an instance upgrading from the 1.x line. Deleting a load-bearing
+upgrade tool to satisfy a checklist entry would be the wrong trade. It stays,
+as a CLI, until the 2.0 release notes can declare that upgrade path closed.
+
+### What the two parts cost, measured
+
+| | Before part 1 | After part 1 | After part 2 |
+|---|---|---|---|
+| Dimensions enforced | 1 of 4, incompletely | 4 of 4 | 4 of 4 |
+| Reported violations | 0 (over unenforced boundaries) | 7 fixed, 14 recorded | 13 fixed, 6 recorded + the CLI line |
+| Table-ownership allowlist | n/a | 4 files | **empty** |
+| Production controllers in a composition root | 7 | 7 | **0** |
+| Production services in a composition root | 2 | 2 | **0** |
 
 ---
 
@@ -324,5 +398,12 @@ number that matters is that it moved off zero.
   type with no declaration, fails `test`.
 - **Adding a global module**: state the reason here against the policy in §4 and
   add it to the allowlist. If the reason is "it was easier", the answer is no.
+- **Adding a controller or a service**: it belongs to the module that owns its
+  data. If it genuinely spans several, give it a declared context of its own
+  (`attention`, `operations`), never a composition root. See
+  [`project/src/entrypoints/README.md`](../project/src/entrypoints/README.md).
+- **Needing configuration in a module**: declare the fields as the module's own
+  options type and let the composition root map them. Injecting `COGETO_CONFIG`
+  means importing an entrypoint, which the rules refuse.
 - **Removing an exception**: delete the row, delete the allowlist entry, and the
   check starts enforcing it. That is the whole point of enumerating them.

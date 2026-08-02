@@ -6,7 +6,7 @@ import { assertAppKeyMount, describeErrorLine, runWithUsageContext } from '../in
 import { logRedactionState } from './redaction-boot';
 import { assertEmbeddingSpaceConsistent, logModelConfiguration } from './model-boot';
 import { assertLocalRuntimeReady } from '../model-gateway/index';
-import { CapabilitiesService, formatCapabilitiesBanner } from './capabilities';
+import { CapabilitiesService, formatCapabilitiesBanner } from '../operations/index';
 import { loadConfig } from './config';
 import { createLogger, PinoNestLogger } from './logger';
 import { createAppRootModule } from './app-root.module';

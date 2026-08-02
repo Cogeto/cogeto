@@ -4,8 +4,8 @@ import type { Request } from 'express';
 import type { HealthCheck, HealthReport } from '@cogeto/shared';
 import { IdentityService } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
-import { COGETO_CONFIG } from './config';
-import type { CogetoConfig } from './config';
+import { OPERATIONS_OPTIONS } from './operations.options';
+import type { OperationsOptions } from './operations.options';
 
 /**
  * The request as this guard leaves it: the principal when one authenticated,
@@ -49,7 +49,7 @@ export interface HealthRequest extends Request {
 export class HealthAccessGuard implements CanActivate {
   constructor(
     private readonly identity: IdentityService,
-    @Inject(COGETO_CONFIG) private readonly config: CogetoConfig,
+    @Inject(OPERATIONS_OPTIONS) private readonly config: OperationsOptions,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

@@ -4,6 +4,7 @@ import { MemoriesController } from './memories.controller';
 import { RelationsController } from './relations.controller';
 import { SourcesController } from './sources.controller';
 import { IntegrityController, ReceiptsController } from './receipts.controller';
+import { InstanceController } from './instance.controller';
 import { TimelineController } from './timeline.controller';
 import { IntegritySweep } from './integrity-sweep';
 import { MemoryStore } from './memory.store';
@@ -88,6 +89,8 @@ export class MemoryModule {
         ReceiptsController,
         IntegrityController,
         TimelineController,
+        // The receipts' verification key (V2.0 item 3.6 part 2).
+        InstanceController,
       ],
       providers: [
         {
