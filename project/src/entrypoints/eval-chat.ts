@@ -28,7 +28,7 @@ import {
   WebDiscoveryService,
   WebFetchService,
 } from '../research/index';
-import { ChatSkillResolver, SkillEngine, SkillPlanner, SkillRunService } from '../connectors/index';
+import { ChatSkillResolver, SkillEngine, SkillPlanner, SkillRunService } from '../skills/index';
 import type { ResearchOptions } from '../research/index';
 import { InMemoryDailyCounters } from '../infrastructure/index';
 import { createModelGateway, loadPrompt, ModelGateway } from '../model-gateway/index';

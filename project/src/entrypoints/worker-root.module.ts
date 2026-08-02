@@ -16,7 +16,7 @@ import {
   SuppressedFactCascadeModule,
 } from '../ingestion/index';
 import { AgentsModule, ReplyDraftCascade, ReplyDraftCascadeModule } from '../agents/index';
-import { ConnectorsModule, SKILL_ADVANCE_JOB_TYPE } from '../connectors/index';
+import { SKILL_ADVANCE_JOB_TYPE, SkillsModule } from '../skills/index';
 import {
   RESEARCH_SYNTHESIS_OPTIONS,
   ResearchModule,
@@ -70,6 +70,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
     research: researchOptions(config),
     skillAdvance: { skillAdvanceJobType: SKILL_ADVANCE_JOB_TYPE },
   });
+  const skillsModule = SkillsModule.register({ imports: [researchModule] });
   @Module({
     imports: [
       DatabaseModule.register({ databaseUrl: config.databaseUrl, poolMax: config.pgPoolMax }),
@@ -176,7 +177,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       filesModule,
       emailModule,
       researchModule,
-      ConnectorsModule.register({ imports: [researchModule] }),
+      skillsModule,
       // The Memory Passport export + retention jobs run here (spec §15.4 slow path);
       // the worker holds the private signing key to sign each manifest.
       PassportModule.register({

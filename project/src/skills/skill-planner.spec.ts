@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { MemoryRow } from '../../memory/index';
-import type { RetrievalService } from '../../retrieval/index';
-import type { ModelGateway } from '../../model-gateway/index';
-import type { ResearchService } from '../../research/index';
+import type { MemoryRow } from '../memory/index';
+import type { RetrievalService } from '../retrieval/index';
+import type { ModelGateway } from '../model-gateway/index';
+import type { ResearchService } from '../research/index';
 import type { SkillRunService } from './skill-run.service';
 import { ambiguousCandidates, fallbackQueries, SkillPlanner } from './skill-planner';
 import { selectPagesForSubject } from './page-select';

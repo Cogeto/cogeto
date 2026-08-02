@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Principal } from '@cogeto/shared';
-import type { ChatSkillProposal, ChatSkillResolverPort } from '../../retrieval/index';
+import type { ChatSkillProposal, ChatSkillResolverPort } from '../retrieval/index';
 import { RESEARCH_BRIEF_SKILL } from './skill-registry';
 import { SkillPlanner } from './skill-planner';
 import { SkillRunService } from './skill-run.service';

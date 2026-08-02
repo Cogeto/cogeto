@@ -20,9 +20,8 @@ import {
   RetrievalModule,
 } from '../retrieval/index';
 import { AgentsModule, ReplyDraftCascade, ReplyDraftCascadeModule } from '../agents/index';
-import { ConnectorsModule, SkillsModule } from '../connectors/index';
 import { ResearchChatModule, ResearchModule, WebSourceDeletion } from '../research/index';
-import { SKILL_ADVANCE_JOB_TYPE } from '../connectors/index';
+import { SKILL_ADVANCE_JOB_TYPE, SkillsChatModule, SkillsModule } from '../skills/index';
 import { EmailModule, EmailReplyModule, EmailSourceDeletion } from '../email/index';
 import { FilesModule } from '../files/index';
 import { NotesModule, NotesSourceDeletion } from '../notes/index';
@@ -53,6 +52,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
     research: researchOptions(config),
     skillAdvance: { skillAdvanceJobType: SKILL_ADVANCE_JOB_TYPE },
   });
+  const skillsModule = SkillsModule.register({ imports: [researchModule] });
   @Module({
     imports: [
       DatabaseModule.register({ databaseUrl: config.databaseUrl, poolMax: config.pgPoolMax }),
@@ -161,7 +161,8 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       }),
       emailModule,
       researchModule,
-      ConnectorsModule.register({ imports: [researchModule] }),
+      skillsModule,
+      SkillsChatModule.register({ imports: [researchModule, skillsModule] }),
       // Reply drafting + the chat → reply resolver (O4) — app-only (needs
       // RetrievalService + ApprovalService); the worker never drafts. Global, so
       // ChatService resolves CHAT_REPLY_RESOLVER.
@@ -169,10 +170,6 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       // The research gate + chat → research resolver + synthesis (
       // Part B) — app-only for the same reason; the worker never researches.
       ResearchChatModule,
-      // Named skills: the planner + run surface +
-      // chat → skill resolver — app-only (planning needs retrieval); the
-      // engine's execution reaches the worker as the skill.advance job.
-      SkillsModule,
       // The Memory Passport (spec §11.4): export trigger/status/download.
       // Assembly is a worker job; the app only creates requests and serves reads.
       PassportModule.register({

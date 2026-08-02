@@ -1,10 +1,10 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Principal, SkillRunStatus, SkillStepLinks, SkillStepStatus } from '@cogeto/shared';
-import { DRIZZLE, writeAudit } from '../../infrastructure/index';
-import type { Db } from '../../infrastructure/index';
-import { skillRun, skillRunStep } from '../persistence/tables';
-import type { SkillRunRow, SkillRunStepRow } from '../persistence/tables';
+import { DRIZZLE, writeAudit } from '../infrastructure/index';
+import type { Db } from '../infrastructure/index';
+import { skillRun, skillRunStep } from './persistence/tables';
+import type { SkillRunRow, SkillRunStepRow } from './persistence/tables';
 import type { SkillDefinition } from './skill-registry';
 
 /** The worker's re-runnable advance job. */

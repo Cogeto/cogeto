@@ -1,15 +1,15 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { z } from 'zod';
 import type { Principal } from '@cogeto/shared';
-import { loadPrompt, ModelGateway } from '../../model-gateway/index';
-import type { PromptArtifact } from '../../model-gateway/index';
-import { RetrievalService } from '../../retrieval/index';
-import type { RetrieveOptions, RetrievedMemory } from '../../retrieval/index';
-import type { MemoryRow } from '../../memory/index';
-import { ResearchService } from '../../research/index';
+import { loadPrompt, ModelGateway } from '../model-gateway/index';
+import type { PromptArtifact } from '../model-gateway/index';
+import { RetrievalService } from '../retrieval/index';
+import type { RetrieveOptions, RetrievedMemory } from '../retrieval/index';
+import type { MemoryRow } from '../memory/index';
+import { ResearchService } from '../research/index';
 import { SkillRunService } from './skill-run.service';
 import { getSkill } from './skill-registry';
-import type { SkillRunRow } from '../persistence/tables';
+import type { SkillRunRow } from './persistence/tables';
 
 export const SKILL_PLAN_PROMPT = { family: 'skill_plan', version: 'v0001' };
 

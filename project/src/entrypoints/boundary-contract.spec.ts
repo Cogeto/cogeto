@@ -72,8 +72,8 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   email_refusal: 'email',
   web_page: 'research',
   research_run: 'research',
-  skill_run: 'connectors',
-  skill_run_step: 'connectors',
+  skill_run: 'skills',
+  skill_run_step: 'skills',
 
   app_user: 'identity',
   prompt_registry: 'model-gateway',
@@ -112,7 +112,7 @@ const JOB_TYPE_OWNERS: Readonly<Record<string, string>> = {
   'approval.execute': 'agents',
   approval_expiry: 'agents',
   'research.conclude': 'research',
-  'skill.advance': 'connectors',
+  'skill.advance': 'skills',
   email_refusal_retention: 'email',
   'conversation.title': 'retrieval',
   passport_export: 'passport',
@@ -170,7 +170,7 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
   // Named-options bags (V2.0 item 3.6 part 4), as above.
   RESEARCH_SYNTHESIS_OPTIONS: 'research',
   RESEARCH_CONCLUDE_WIRING: 'research',
-  SKILL_ENGINE_OPTIONS: 'connectors',
+  SKILL_ENGINE_OPTIONS: 'skills',
 
   // What /api/settings/model-config displays: the seam's own resolved
   // configuration, so the seam serves it (V2.0 item 3.6 part 2).
@@ -206,11 +206,12 @@ const ALLOWED_GLOBAL_MODULES: Readonly<Record<string, string>> = {
 
   // RECORDED EXCEPTIONS (docs/module-boundary-contract.md). Each is a domain
   // module and therefore fails the policy; each names the part that removes it.
-  MemoryModule: 'EXCEPTION B13, part 3: dynamic storage config, five injectors',
-  ConnectorsModule: 'EXCEPTION B14, part 3: source ports reach ingestion/memory by globality',
+  MemoryModule: 'EXCEPTION B13, part 4: dynamic storage config, five injectors',
+  // B14 CLOSED (part 4): ConnectorsModule is dissolved; every family module
+  // is explicit and the port adapters are threaded through registration options.
   EmailReplyModule: 'EXCEPTION B15, part 4: binds CHAT_REPLY_RESOLVER for ChatService',
   ResearchChatModule: 'EXCEPTION B15, part 4: binds CHAT_RESEARCH_RESOLVER for ChatService',
-  SkillsModule: 'EXCEPTION B15, part 4: binds CHAT_SKILL_RESOLVER for ChatService',
+  SkillsChatModule: 'EXCEPTION B15, part 4: binds CHAT_SKILL_RESOLVER for ChatService',
 };
 
 /**

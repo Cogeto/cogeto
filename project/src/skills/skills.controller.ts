@@ -22,11 +22,11 @@ import type {
   SkillStepKind,
   SkillStepLinks,
 } from '@cogeto/shared';
-import { BearerAuthGuard } from '../../identity/index';
-import type { AuthenticatedRequest } from '../../identity/index';
-import { ResearchService } from '../../research/index';
-import type { SkillRunRow, SkillRunStepRow } from '../persistence/tables';
-import type { ResearchRunRow } from '../../research/index';
+import { BearerAuthGuard } from '../identity/index';
+import type { AuthenticatedRequest } from '../identity/index';
+import { ResearchService } from '../research/index';
+import type { SkillRunRow, SkillRunStepRow } from './persistence/tables';
+import type { ResearchRunRow } from '../research/index';
 import { getSkill } from './skill-registry';
 import { SkillEngine } from './skill-engine';
 import { SkillPlanner } from './skill-planner';

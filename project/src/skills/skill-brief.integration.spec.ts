@@ -3,34 +3,30 @@ import { runOnce } from 'graphile-worker';
 import type { TaskList } from 'graphile-worker';
 import type { ZodType } from 'zod';
 import type { Principal, ResearchCitationDto, SkillStepLinks } from '@cogeto/shared';
-import {
-  InMemoryDailyCounters,
-  EMPTY_USER_CONTEXT,
-  idempotentTask,
-} from '../../infrastructure/index';
-import type { ResearchQuota, UserContextService } from '../../infrastructure/index';
-import { fakeEmbedding, settleJobs, startTestDatabase, startTestQdrant } from '../../testing/index';
-import type { TestDatabase, TestQdrant } from '../../testing/index';
-import { createMemoryStore, MemoryReconciliation } from '../../memory/index';
-import type { MemoryObjectStore, MemoryStore } from '../../memory/index';
-import { ModelGateway, ModelGatewayError } from '../../model-gateway/index';
+import { InMemoryDailyCounters, EMPTY_USER_CONTEXT, idempotentTask } from '../infrastructure/index';
+import type { ResearchQuota, UserContextService } from '../infrastructure/index';
+import { fakeEmbedding, settleJobs, startTestDatabase, startTestQdrant } from '../testing/index';
+import type { TestDatabase, TestQdrant } from '../testing/index';
+import { createMemoryStore, MemoryReconciliation } from '../memory/index';
+import type { MemoryObjectStore, MemoryStore } from '../memory/index';
+import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type {
   CompletionRequest,
   CompletionResult,
   StructuredExtractionRequest,
-} from '../../model-gateway/index';
+} from '../model-gateway/index';
 import {
   createSuppressedFactLog,
   createIngestionPipeline,
   INGESTION_PIPELINE_JOB_TYPE,
-} from '../../ingestion/index';
-import type { RetrievalService } from '../../retrieval/index';
-import { ResearchService } from '../../research/index';
-import { ResearchConclusionService } from '../../research/index';
-import { WebDiscoveryService } from '../../research/index';
-import { WebFetchService } from '../../research/index';
-import { WebSourceReader } from '../../research/index';
-import type { ResearchOptions } from '../../research/index';
+} from '../ingestion/index';
+import type { RetrievalService } from '../retrieval/index';
+import { ResearchService } from '../research/index';
+import { ResearchConclusionService } from '../research/index';
+import { WebDiscoveryService } from '../research/index';
+import { WebFetchService } from '../research/index';
+import { WebSourceReader } from '../research/index';
+import type { ResearchOptions } from '../research/index';
 import { SkillEngine } from './skill-engine';
 import { SkillPlanner } from './skill-planner';
 import { SKILL_ADVANCE_JOB_TYPE, SkillRunService } from './skill-run.service';

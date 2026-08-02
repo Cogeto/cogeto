@@ -17,21 +17,21 @@ import {
   UserContextService,
   withTransactionalEnqueue,
   writeAudit,
-} from '../../infrastructure/index';
-import type { Db, ResearchQuota } from '../../infrastructure/index';
-import { MemoryStore } from '../../memory/index';
-import type { MemoryRow } from '../../memory/index';
+} from '../infrastructure/index';
+import type { Db, ResearchQuota } from '../infrastructure/index';
+import { MemoryStore } from '../memory/index';
+import type { MemoryRow } from '../memory/index';
 import {
   fenceUntrusted,
   loadPrompt,
   ModelGateway,
   untrustedBoundary,
-} from '../../model-gateway/index';
-import type { PromptArtifact } from '../../model-gateway/index';
-import { ResearchService } from '../../research/index';
-import { skillRun } from '../persistence/tables';
-import type { SkillRunRow } from '../persistence/tables';
-import type { WebPageRow } from '../../research/index';
+} from '../model-gateway/index';
+import type { PromptArtifact } from '../model-gateway/index';
+import { ResearchService } from '../research/index';
+import { skillRun } from './persistence/tables';
+import type { SkillRunRow } from './persistence/tables';
+import type { WebPageRow } from '../research/index';
 import { selectPagesForSubject } from './page-select';
 import { SKILL_ADVANCE_JOB_TYPE, SkillRunService } from './skill-run.service';
 
