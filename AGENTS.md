@@ -126,6 +126,35 @@ describes the shape it is built in.
 - [ ] Extraction **fabricates nothing**. A parse or model failure produces zero
       memories, never an invented one.
 
+## User-visible copy (V2.0 item 3.5)
+
+- [ ] **No user-visible literal ever goes into a component.** Every string a user
+      reads is a key resolved through `t()`, in the namespace of the surface it
+      belongs to. This covers headings, labels, buttons, placeholders, tooltips,
+      empty states, loading text, error and validation copy, confirmation dialogs
+      including their consequence text, chart labels, badge and status labels,
+      aria-labels, and document titles. Log lines, developer errors, test
+      fixtures and prompt assembly are NOT copy and stay where they are.
+- [ ] **A feature is not finished until its keys exist in EVERY locale.** Adding
+      copy means adding it to `en` (the source of truth) and to every other
+      locale, where the English text is a legitimate value for an untranslated
+      language. `npm run i18n:check` runs inside `lint` and fails the build on a
+      missing, orphaned or unused key; a new namespace must be created in every
+      locale and registered in `project/web/src/i18n/namespaces.ts`.
+- [ ] **Keys are structural, never named after their English content.**
+      `sources.detail.emptyState.title`, so rewording English never invalidates a
+      translation.
+- [ ] **Enum values are never translated**, only their display names, through an
+      explicit value → key map. A translated label never travels to an API.
+- [ ] **One sentence is one key.** Named interpolation (`{{count}}`), never
+      positional; plurals through the CLDR suffix keys, never manual
+      concatenation; markup inside a sentence is a `<tag>` slot filled by
+      `<Trans>`, never a fragment joined at the call site.
+- [ ] **Nothing formats a date, time, number or file size by hand.** They go
+      through the shared locale-aware helper, so a user's interface language, not
+      their browser, decides. Full rules and the translator workflow:
+      [`docs/features/i18n.md`](docs/features/i18n.md).
+
 ## Prompts and evaluation (spec §12.3, §14)
 
 - [ ] Every prompt that decides what Cogeto remembers is a **versioned artifact** in

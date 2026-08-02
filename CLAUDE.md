@@ -87,12 +87,11 @@ scaffolds carrying the English text: authoring the translations is a separate
 task. `npm run i18n:check` runs inside `lint` and fails the build on a missing,
 orphaned or unused key, a missing plural category, a dropped `{{placeholder}}`,
 an em dash in English copy, or a reintroduced hardcoded literal. Add a language
-with `npm run i18n:add -- <locale>`. Two rules worth knowing before editing
-anything user-facing: **never write a literal into a component** (use `t()`), and
-**enum values are never translated**, only their display names, through an
-explicit value to key map. Interface language is not extraction quality: only
-English and Croatian have corpora and gates, and nothing in the product may imply
-otherwise.
+with `npm run i18n:add -- <locale>`. **The rules that bind every change touching
+user-visible copy are in [`AGENTS.md`](AGENTS.md) under "User-visible copy", and
+a feature is not done until its keys exist in every locale.** Interface language
+is not extraction quality: only English and Croatian have corpora and gates, and
+nothing in the product may imply otherwise.
 
 Work proceeds through the V2 plan in order.
 
@@ -130,6 +129,9 @@ substitute a mechanical hyphen. Enforced by the `lint` check.
 - CI module-boundary checks pass (spec §15); no cross-module table access.
 - The binding invariant tests pass: scope-leak, deletion-cascade (spec §11.1),
   approval-gate, golden-set eval gate (spec §14).
+- **Every string the feature added is a key, present in every locale**
+  (`npm run i18n:check` is part of `lint`). A feature that ships English text
+  hardcoded in a component, or a key only `en` has, is not done.
 - Docs updated in the same change when behavior contradicts them.
 
 ## Needs owner sign-off (ask first)
