@@ -21,12 +21,12 @@ import {
   INGESTION_PIPELINE_JOB_TYPE,
 } from '../../ingestion/index';
 import type { RetrievalService } from '../../retrieval/index';
-import { ResearchService } from '../research.service';
-import { ResearchConclusionService } from '../research-conclude';
-import { WebDiscoveryService } from '../web-discovery.service';
-import { WebFetchService } from '../web-fetch';
-import { WebSourceReader } from '../web.source-reader';
-import type { ResearchOptions } from '../research-options';
+import { ResearchService } from '../../research/index';
+import { ResearchConclusionService } from '../../research/index';
+import { WebDiscoveryService } from '../../research/index';
+import { WebFetchService } from '../../research/index';
+import { WebSourceReader } from '../../research/index';
+import type { ResearchOptions } from '../../research/index';
 import { SkillEngine } from './skill-engine';
 import { SkillPlanner } from './skill-planner';
 import { SKILL_ADVANCE_JOB_TYPE, SkillRunService } from './skill-run.service';
@@ -261,7 +261,9 @@ describe('skill runtime (integration: real Postgres + Qdrant, scripted gateway +
       reconciliation: new MemoryReconciliation(tdb.db, store),
       suppressedFacts: createSuppressedFactLog(tdb.db),
     });
-    const concluder = new ResearchConclusionService();
+    const concluder = new ResearchConclusionService({
+      skillAdvanceJobType: SKILL_ADVANCE_JOB_TYPE,
+    });
     const taskList: TaskList = {
       [INGESTION_PIPELINE_JOB_TYPE]: idempotentTask(
         tdb.db,
@@ -482,7 +484,9 @@ describe('skill runtime (integration: real Postgres + Qdrant, scripted gateway +
       reconciliation: new MemoryReconciliation(tdb.db, store),
       suppressedFacts: createSuppressedFactLog(tdb.db),
     });
-    const concluder = new ResearchConclusionService();
+    const concluder = new ResearchConclusionService({
+      skillAdvanceJobType: SKILL_ADVANCE_JOB_TYPE,
+    });
     const taskList: TaskList = {
       [INGESTION_PIPELINE_JOB_TYPE]: idempotentTask(
         tdb.db,

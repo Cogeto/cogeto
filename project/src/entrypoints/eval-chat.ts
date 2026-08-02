@@ -23,16 +23,13 @@ import { ActionRegistry, ApprovalService } from '../agents/index';
 import { ChatReplyResolver, EmailReplyDraftService, EmailSourceService } from '../email/index';
 import {
   ChatResearchResolver,
-  ChatSkillResolver,
   ResearchService,
   ResearchSynthesisService,
-  SkillEngine,
-  SkillPlanner,
-  SkillRunService,
   WebDiscoveryService,
   WebFetchService,
-} from '../connectors/index';
-import type { ResearchOptions } from '../connectors/index';
+} from '../research/index';
+import { ChatSkillResolver, SkillEngine, SkillPlanner, SkillRunService } from '../connectors/index';
+import type { ResearchOptions } from '../research/index';
 import { InMemoryDailyCounters } from '../infrastructure/index';
 import { createModelGateway, loadPrompt, ModelGateway } from '../model-gateway/index';
 import type { ResolvedModelProviders } from '../model-gateway/index';

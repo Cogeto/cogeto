@@ -6,7 +6,7 @@ import type { PromptArtifact } from '../../model-gateway/index';
 import { RetrievalService } from '../../retrieval/index';
 import type { RetrieveOptions, RetrievedMemory } from '../../retrieval/index';
 import type { MemoryRow } from '../../memory/index';
-import { ResearchService } from '../research.service';
+import { ResearchService } from '../../research/index';
 import { SkillRunService } from './skill-run.service';
 import { getSkill } from './skill-registry';
 import type { SkillRunRow } from '../persistence/tables';

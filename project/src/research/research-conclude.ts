@@ -1,14 +1,27 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { and, eq, inArray } from 'drizzle-orm';
 import { jobRunState, withTransactionalEnqueue } from '../infrastructure/index';
 import type { Tx } from '../infrastructure/index';
 import { INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
 import { researchRun, webPage } from './persistence/tables';
-import { SKILL_ADVANCE_JOB_TYPE } from './skills/skill-run.service';
 
 /** The server-side conclusion job: synthesise + store the
  * run's answer once the last captured page's extraction settles. */
 export const RESEARCH_CONCLUDE_JOB_TYPE = 'research.conclude';
+
+/**
+ * The one cross-family seam that points the other way (V2.0 item 3.6 part 4):
+ * when a settled run belongs to a SKILL, the watcher enqueues the skills
+ * family's advance job. Skills owns and exports that job-type constant; the
+ * composition root passes it here, so the one-declaration rule holds and no
+ * research → skills module cycle exists. Absent (bare harnesses without the
+ * skills family), a skill-plan run simply never advances from this watcher.
+ */
+export interface ResearchConcludeWiring {
+  skillAdvanceJobType?: string;
+}
+
+export const RESEARCH_CONCLUDE_WIRING = Symbol('RESEARCH_CONCLUDE_WIRING');
 
 /**
  * Watches a research run's pages settle. Called by the worker
@@ -23,6 +36,12 @@ export const RESEARCH_CONCLUDE_JOB_TYPE = 'research.conclude';
 @Injectable()
 export class ResearchConclusionService {
   private readonly log = new Logger(ResearchConclusionService.name);
+
+  constructor(
+    @Optional()
+    @Inject(RESEARCH_CONCLUDE_WIRING)
+    private readonly wiring?: ResearchConcludeWiring,
+  ) {}
 
   async afterPageProcessed(tx: Tx, pageId: string): Promise<boolean> {
     const pageRows = await tx
@@ -80,6 +99,11 @@ export class ResearchConclusionService {
    * duplicate enqueue from two pages settling concurrently is harmless: the
    * advance job is re-runnable and its steps compare-and-set. */
   private async afterSkillPageProcessed(tx: Tx, skillRunId: string): Promise<boolean> {
+    const skillAdvanceJobType = this.wiring?.skillAdvanceJobType;
+    if (!skillAdvanceJobType) {
+      this.log.warn(`skill run ${skillRunId}: no skill-advance wiring; leaving the run to settle`);
+      return false;
+    }
     const planRuns = await tx
       .select({ id: researchRun.id, ownerId: researchRun.ownerId })
       .from(researchRun)
@@ -110,7 +134,7 @@ export class ResearchConclusionService {
         },
       },
       {
-        type: SKILL_ADVANCE_JOB_TYPE,
+        type: skillAdvanceJobType,
         payload: { source_type: 'skill_run', source_id: skillRunId },
         // SEC-10: the advance pass drives brief synthesis; charge the owner.
         principalId: planRuns[0]!.ownerId,

@@ -27,8 +27,8 @@ import {
   WebFetchService,
   WebSourceDeletion,
   WebSourceReader,
-} from '../connectors/index';
-import type { ResearchOptions } from '../connectors/index';
+} from '../research/index';
+import type { ResearchOptions } from '../research/index';
 import {
   INGESTION_PIPELINE_JOB_TYPE,
   createIngestionPipeline,

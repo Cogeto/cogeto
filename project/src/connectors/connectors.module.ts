@@ -1,75 +1,39 @@
 import { Module } from '@nestjs/common';
-import type { DynamicModule } from '@nestjs/common';
-import { UserContextModule } from '../infrastructure/index';
-import { SettingsModule } from '../settings/index';
-import { ResearchController } from './research.controller';
-import { ResearchService } from './research.service';
-import { ResearchConclusionService } from './research-conclude';
-import { RESEARCH_OPTIONS } from './research-options';
-import type { ResearchOptions } from './research-options';
-import { WebDiscoveryService } from './web-discovery.service';
-import { WebFetchService } from './web-fetch';
-import { WebSourceReader } from './web.source-reader';
-import { WebSourceDeletion } from './web.source-deletion';
-import { SkillRunService } from './skills/skill-run.service';
-import { SKILL_ENGINE_OPTIONS, SkillEngine } from './skills/skill-engine';
-import type { SkillEngineOptions } from './skills/skill-engine';
+import type { DynamicModule, ModuleMetadata } from '@nestjs/common';
 import {
   DEFAULT_INSTANCE_TIMEZONE,
   INSTANCE_TIMEZONE,
   UserContextService,
 } from '../infrastructure/index';
+import { SkillRunService } from './skills/skill-run.service';
+import { SKILL_ENGINE_OPTIONS, SkillEngine } from './skills/skill-engine';
+import type { SkillEngineOptions } from './skills/skill-engine';
 
 export interface ConnectorsModuleOptions {
-  /** Web-research knobs from validated config (0042/0043). */
-  research: ResearchOptions;
+  /** The research family's dynamic module instance — the skill engine drives
+   * discovery and capture through ResearchService (the approval gate). */
+  imports?: ModuleMetadata['imports'];
 }
 
 /**
- * connectors — notes, files, then email.
- * shipped notes; O1 added the file source; O4 adds email — a per-tenant,
- * receive-only Haraka SMTP server feeding the SAME pipeline (source_type
- * 'email'). Registered once per process and marked global so the source readers
- * / deletions it exports resolve into ingestion and memory without those modules
- * re-importing it.
- *
- * File + email bytes are the memory module's: the
- * connectors sources reach them only through the memory module's public ports
- * (MemoryObjectStore, MemoryFileStore).
+ * connectors — what remains after the part-4 family split: the named-skills
+ * runtime (the run record + engine live in BOTH roots; the planner and its
+ * surface are the app-only SkillsModule). The final split step dissolves this
+ * module into `skills/` and deletes the directory.
  */
 @Module({})
 export class ConnectorsModule {
-  static register(options: ConnectorsModuleOptions): DynamicModule {
+  static register(options: ConnectorsModuleOptions = {}): DynamicModule {
     return {
       module: ConnectorsModule,
-      // RECORDED EXCEPTION B14 (docs/module-boundary-contract.md): a global
-      // DOMAIN module, which the boundary policy does not allow. Its source
-      // readers and deletion adapters reach ingestion and memory through
-      // globality instead of the registration options that exist for exactly
-      // that. Un-globaling means threading one dynamic-module reference through
-      // IngestionModule, MemoryModule and three sub-modules, which is the
-      // composition V2.0 item 3.6 part 3 rewrites when connectors/ splits.
+      // RECORDED EXCEPTION B14 (docs/module-boundary-contract.md): still a
+      // global domain module until the skills split lands; the remaining
+      // globality is exactly the skill runtime.
       global: true,
-      // UserContextModule: the settings surface, the context-suggestion
-      // service and the skill engine. Explicit since it stopped being global.
-      // SettingsModule: the notes/files/email surfaces apply the user's
-      // default capture scope through its UserSettingsService.
-      imports: [UserContextModule, SettingsModule],
-      controllers: [ResearchController],
+      imports: [...(options.imports ?? [])],
       providers: [
-        ResearchService,
-        ResearchConclusionService,
-        WebDiscoveryService,
-        WebFetchService,
-        WebSourceReader,
-        WebSourceDeletion,
-        // Named skills: the run record + the
-        // engine live in BOTH roots (the app approves plans, the worker
-        // advances); the planner + controller are app-only (SkillsModule).
         SkillRunService,
         SkillEngine,
-        // The engine's optional collaborators, by TOKEN into a named bag
-        // (V2.0 item 3.6 part 4): identity, never position.
         {
           provide: SKILL_ENGINE_OPTIONS,
           useFactory: (
@@ -84,16 +48,8 @@ export class ConnectorsModule {
             { token: INSTANCE_TIMEZONE, optional: true },
           ],
         },
-        { provide: RESEARCH_OPTIONS, useValue: options.research },
       ],
-      exports: [
-        ResearchService,
-        ResearchConclusionService,
-        WebSourceReader,
-        WebSourceDeletion,
-        SkillRunService,
-        SkillEngine,
-      ],
+      exports: [SkillRunService, SkillEngine],
     };
   }
 }

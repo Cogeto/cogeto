@@ -27,13 +27,8 @@ import { APPROVAL_EXPIRY_CRONTAB, ApprovalExecutor, ApprovalService } from '../a
 import { PassportExportExecutor, PASSPORT_RETENTION_CRONTAB } from '../passport/index';
 import { CONTEXT_SUGGEST_PROMPT } from '../settings/index';
 import { EmailAllowlistService, EMAIL_REFUSAL_RETENTION_CRONTAB } from '../email/index';
-import {
-  ResearchConclusionService,
-  ResearchSynthesisService,
-  SKILL_BRIEF_PROMPT,
-  SKILL_PLAN_PROMPT,
-  SkillEngine,
-} from '../connectors/index';
+import { ResearchConclusionService, ResearchSynthesisService } from '../research/index';
+import { SKILL_BRIEF_PROMPT, SKILL_PLAN_PROMPT, SkillEngine } from '../connectors/index';
 import {
   ANSWER_PROMPT,
   CONVERSATION_TITLE_PROMPT,

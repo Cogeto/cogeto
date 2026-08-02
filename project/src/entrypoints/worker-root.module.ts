@@ -16,17 +16,18 @@ import {
   SuppressedFactCascadeModule,
 } from '../ingestion/index';
 import { AgentsModule, ReplyDraftCascade, ReplyDraftCascadeModule } from '../agents/index';
+import { ConnectorsModule, SKILL_ADVANCE_JOB_TYPE } from '../connectors/index';
 import {
-  ConnectorsModule,
   RESEARCH_SYNTHESIS_OPTIONS,
+  ResearchModule,
   ResearchSynthesisService,
   WebSourceDeletion,
   WebSourceReader,
-} from '../connectors/index';
+} from '../research/index';
 import { EmailModule, EmailSourceDeletion, EmailSourceReader } from '../email/index';
 import { FilesModule, FileSourceReader } from '../files/index';
 import { NotesModule, NotesSourceDeletion, NotesSourceReader } from '../notes/index';
-import type { ResearchSynthesisOptions } from '../connectors/index';
+import type { ResearchSynthesisOptions } from '../research/index';
 import {
   PassportCascadeModule,
   PassportExportCascade,
@@ -65,6 +66,10 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
     },
   });
   const emailModule = EmailModule.register({ mail: mailOptions(config) });
+  const researchModule = ResearchModule.register({
+    research: researchOptions(config),
+    skillAdvance: { skillAdvanceJobType: SKILL_ADVANCE_JOB_TYPE },
+  });
   @Module({
     imports: [
       DatabaseModule.register({ databaseUrl: config.databaseUrl, poolMax: config.pgPoolMax }),
@@ -114,7 +119,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
           // Each adapter's family module is named here; the remaining
           // connector adapters still resolve from the global ConnectorsModule
           // (B14, closing family by family in part 4).
-          imports: [ChatSourceModule, NotesModule, emailModule],
+          imports: [ChatSourceModule, NotesModule, emailModule, researchModule],
           adapters: [
             NotesSourceDeletion,
             ChatSourceDeletion,
@@ -156,7 +161,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       IngestionModule.register({
         // Each reader's family module is named here; the remaining connector
         // readers still resolve from the global ConnectorsModule (B14).
-        imports: [ChatSourceModule, NotesModule, filesModule, emailModule],
+        imports: [ChatSourceModule, NotesModule, filesModule, emailModule, researchModule],
         readers: [
           NotesSourceReader,
           FileSourceReader,
@@ -170,9 +175,8 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       AgentsModule,
       filesModule,
       emailModule,
-      ConnectorsModule.register({
-        research: researchOptions(config),
-      }),
+      researchModule,
+      ConnectorsModule.register({ imports: [researchModule] }),
       // The Memory Passport export + retention jobs run here (spec §15.4 slow path);
       // the worker holds the private signing key to sign each manifest.
       PassportModule.register({

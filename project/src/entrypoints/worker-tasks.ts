@@ -34,12 +34,10 @@ import { PASSPORT_EXPORT_JOB_TYPE, PASSPORT_RETENTION_JOB_TYPE } from '../passpo
 import type { PassportExportExecutor } from '../passport/index';
 import { EMAIL_REFUSAL_RETENTION_JOB_TYPE } from '../email/index';
 import type { EmailAllowlistService } from '../email/index';
-import { RESEARCH_CONCLUDE_JOB_TYPE, SKILL_ADVANCE_JOB_TYPE } from '../connectors/index';
-import type {
-  ResearchConclusionService,
-  ResearchSynthesisService,
-  SkillEngine,
-} from '../connectors/index';
+import { SKILL_ADVANCE_JOB_TYPE } from '../connectors/index';
+import { RESEARCH_CONCLUDE_JOB_TYPE } from '../research/index';
+import type { ResearchConclusionService, ResearchSynthesisService } from '../research/index';
+import type { SkillEngine } from '../connectors/index';
 import { CONVERSATION_TITLE_JOB_TYPE } from '../retrieval/index';
 import type { ConversationTitler } from '../retrieval/index';
 import type { ModelGateway } from '../model-gateway/index';

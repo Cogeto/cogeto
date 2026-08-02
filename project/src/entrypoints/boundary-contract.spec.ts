@@ -70,8 +70,8 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   email_attachment: 'email',
   email_allowlist: 'email',
   email_refusal: 'email',
-  web_page: 'connectors',
-  research_run: 'connectors',
+  web_page: 'research',
+  research_run: 'research',
   skill_run: 'connectors',
   skill_run_step: 'connectors',
 
@@ -111,7 +111,7 @@ const JOB_TYPE_OWNERS: Readonly<Record<string, string>> = {
   deletion_sweep: 'memory',
   'approval.execute': 'agents',
   approval_expiry: 'agents',
-  'research.conclude': 'connectors',
+  'research.conclude': 'research',
   'skill.advance': 'connectors',
   email_refusal_retention: 'email',
   'conversation.title': 'retrieval',
@@ -166,9 +166,10 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
   // Split out of connectors (V2.0 item 3.6 part 4).
   FILE_UPLOAD_OPTIONS: 'files',
   MAIL_OPTIONS: 'email',
-  RESEARCH_OPTIONS: 'connectors',
+  RESEARCH_OPTIONS: 'research',
   // Named-options bags (V2.0 item 3.6 part 4), as above.
-  RESEARCH_SYNTHESIS_OPTIONS: 'connectors',
+  RESEARCH_SYNTHESIS_OPTIONS: 'research',
+  RESEARCH_CONCLUDE_WIRING: 'research',
   SKILL_ENGINE_OPTIONS: 'connectors',
 
   // What /api/settings/model-config displays: the seam's own resolved
