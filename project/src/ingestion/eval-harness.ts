@@ -237,7 +237,19 @@ export async function runGoldenEval(options: {
     // carry the fetcher's OUTPUT (clean readable text) as source.txt and file
     // cases the extracted document text — production preprocessing happened
     // before the pipeline, so no prep here.
-    const sourceType: SourceType = testCase.expected.source_type;
+    //
+    // The chat-typed cases have ALWAYS extracted under the 'user_note' label:
+    // the pre-registry ladder mapped every non-email/web/file type there, and
+    // the cached fixtures and gate floors are recorded against that input.
+    // Kept bit-for-bit, now stated instead of accidental. Re-labelling them
+    // `SOURCE TYPE: chat` (production-faithful) is a deliberate eval change of
+    // its own: a cache refresh plus a gate re-justification, not something the
+    // registry conversion may smuggle in, since it must not move one envelope.
+    const declaredType: SourceType = testCase.expected.source_type;
+    const sourceType: SourceType =
+      declaredType === 'email' || declaredType === 'web' || declaredType === 'file'
+        ? declaredType
+        : 'user_note';
     const isEmail = sourceType === 'email';
     const isolated = isEmail ? isolateEmailContentDetailed(testCase.source) : null;
     const content = isolated ? isolated.content : testCase.source;
