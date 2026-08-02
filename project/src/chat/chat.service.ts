@@ -9,37 +9,29 @@ import {
 import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import type {
   ChatContextDto,
-  ChatFactDto,
   ChatMessagePage,
   ChatRememberedDto,
   ChatStreamEvent,
   ConversationDto,
   NoteProcessingState,
   Principal,
-  PreferredLanguage,
 } from '@cogeto/shared';
-import { LOCALE_TAGS } from '@cogeto/shared';
 import {
   buildContextBlock,
   DEFAULT_INSTANCE_TIMEZONE,
   DRIZZLE,
   EMPTY_USER_CONTEXT,
-  hasProfileContext,
   jobRunState,
   UserContextService,
   withTransactionalEnqueue,
-  serverT,
-  serverTranslator,
 } from '../infrastructure/index';
 import type { Db, UserContextRecord } from '../infrastructure/index';
 import { INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
-import { isPastBelief } from '../memory/index';
 import { loadPrompt, ModelGateway } from '../model-gateway/index';
 import type { PromptArtifact } from '../model-gateway/index';
 import { UserDirectory } from '../identity/index';
 import { RetrievalService } from '../retrieval/index';
-import type { RetrievedMemory } from '../retrieval/index';
-import type { ConversationTurn, SmallTalkIntent } from '../retrieval/index';
+import type { ConversationTurn } from '../retrieval/index';
 import {
   ANAPHORA_RE,
   detectResearchIntent,
@@ -54,17 +46,13 @@ import type { ChatSkillResolverPort } from './chat-skill-resolver.port';
 import { chatMessage, conversation } from './persistence/tables';
 import type { ConversationRow } from './persistence/tables';
 import { CONVERSATION_TITLE_JOB_TYPE } from './conversation-titler';
-import {
-  ANSWER_PROMPT,
-  buildAnswerInput,
-  buildSmallTalkInput,
-  nothingOnRecord,
-  nothingOpen,
-  toStoredAnswer,
-} from './answer-prompt';
-
-/** How many facts the answer context receives (wider so aggregation fits, F5). */
-const ANSWER_FACTS_TOP_K = 12;
+import { MemoryAnswerHandler } from './intents/answer.handler';
+import { ReplyIntentHandler } from './intents/reply.handler';
+import { ResearchIntentHandler } from './intents/research.handler';
+import { SkillBriefHandler } from './intents/skill-brief.handler';
+import { SmallTalkHandler } from './intents/small-talk.handler';
+import type { ChatTurnSink } from './intents/intent-plumbing';
+import { ANSWER_PROMPT } from './answer-prompt';
 /** How much history the chat page loads per request (the default page size). */
 const HISTORY_LIMIT = 200;
 /** Turns of prior conversation the rewriter sees to resolve references (F3).
@@ -135,6 +123,8 @@ export class ChatService {
   private readonly timeZone: string;
   private readonly userContext?: UserContextService;
 
+  private readonly smallTalkHandler: SmallTalkHandler;
+
   constructor(
     @Inject(DRIZZLE) private readonly db: Db,
     private readonly retrieval: RetrievalService,
@@ -148,6 +138,17 @@ export class ChatService {
     this.skillResolver = options?.skillResolver;
     this.timeZone = options?.timeZone ?? DEFAULT_INSTANCE_TIMEZONE;
     this.userContext = options?.userContext;
+    this.smallTalkHandler = new SmallTalkHandler(this.gateway, this.sink());
+  }
+
+  /** The handlers' narrow view of this service (see intent-plumbing). */
+  private sink(): ChatTurnSink {
+    return {
+      storeAssistant: (principal: Principal, conversationId: string, content: string) =>
+        this.storeAssistant(principal, conversationId, content),
+      getPrompt: () => this.getPrompt(),
+      logWarn: (message: string) => this.logger.warn(message),
+    };
   }
 
   /**
@@ -411,6 +412,21 @@ export class ChatService {
    * intent (with resolved anaphora), and the memory/knowledge answer paths.
    * Classification failure falls back to the memory-question path.
    */
+  /**
+   * One question → one SSE stream: sources first (the frontend builds its
+   * citation map before tokens arrive), then token deltas, then done with the
+   * stored form of the answer.
+   *
+   * THE ORCHESTRATOR (V2.0 item 3.6 part 4). Routing order is
+   * CHAT_ROUTING_ORDER, asserted by chat-routing.spec.ts — one router, all
+   * capabilities: deterministic guards first (small-talk lexicon, skill
+   * brief, research), then ONE bounded pipeline-tier call (the rewriter, now
+   * also the classifier) whose result routes model-classified small talk, the
+   * reply intent (with resolved anaphora), and the memory/knowledge answer
+   * paths. Classification failure falls back to the memory-question path.
+   * Each intent's body lives in its handler under ./intents; this method owns
+   * only the sequence.
+   */
   async *ask(
     principal: Principal,
     content: string,
@@ -433,32 +449,35 @@ export class ChatService {
       .returning();
     await this.touchConversation(conversationId, userRow!.createdAt);
 
-    // Small talk, deterministic: a pure pleasantry gets a
-    // natural reply — no retrieval, no model call, no citation theatre.
+    // 1. small_talk_lexicon — deterministic: a pure pleasantry gets a
+    // natural reply; no retrieval, no model call, no citation theatre.
     const smallTalk = detectSmallTalk(content);
     if (smallTalk) {
-      yield* this.handleSmallTalk(principal, conversationId, smallTalk);
+      yield* this.smallTalkHandler.handleLexicon(principal, conversationId, smallTalk);
       return;
     }
 
-    // Skill-brief intent: checked BEFORE the
-    // research patterns so "research X before Thursday" becomes a brief, not
-    // a plain search. This turn only starts PLANNING (gather + propose
-    // queries); nothing leaves until the plan is approved on the run view.
+    // 2. skill_brief — checked BEFORE the research patterns so
+    // "research X before Thursday" becomes a brief, not a plain search. This
+    // turn only starts PLANNING; nothing leaves until the plan is approved.
     if (this.skillResolver) {
       const brief = detectSkillBriefIntent(content);
       if (brief) {
-        yield* this.handleSkillBriefIntent(principal, conversationId, brief.subject, brief.lang);
+        yield* new SkillBriefHandler(this.skillResolver, this.sink()).handle(
+          principal,
+          conversationId,
+          brief.subject,
+          brief.lang,
+        );
         return;
       }
     }
 
-    // Research intent: deterministic,
-    // explicitly invoked — an imperative research verb, never an ordinary
-    // question. This turn only OPENS the gate (minimise + record a proposed
-    // run); NOTHING is sent until the user approves on the Research page.
-    // A topic leaning on earlier turns ("research her company") resolves
-    // through the rewriter first.
+    // 3. research — deterministic, explicitly invoked: an imperative research
+    // verb, never an ordinary question. This turn only OPENS the gate;
+    // NOTHING is sent until the user approves on the Research page. A topic
+    // leaning on earlier turns ("research her company") resolves through the
+    // rewriter first.
     if (this.researchResolver) {
       const research = detectResearchIntent(content);
       if (research) {
@@ -472,20 +491,25 @@ export class ChatService {
             topic = resolved.query;
           }
         }
-        yield* this.handleResearchIntent(principal, conversationId, topic, research.lang);
+        yield* new ResearchIntentHandler(this.researchResolver, this.sink()).handle(
+          principal,
+          conversationId,
+          topic,
+          research.lang,
+        );
         return;
       }
     }
 
-    // The router call: ONE bounded pipeline-tier call rewrites
-    // the turn AND classifies it. Failure/timeout falls back to the raw query
-    // with class 'personal' — the memory-question path.
+    // 4. router_rewrite — ONE bounded pipeline-tier call rewrites the turn
+    // AND classifies it. Failure/timeout falls back to the raw query with
+    // class 'personal' — the memory-question path.
     const rewrite = await this.routerRewrite(history, content, { alwaysClassify: true }, ctx);
 
-    // Model-classified small talk / meta (beyond the lexicon): a natural,
-    // brief answer-tier reply — still no retrieval.
+    // 5. model_small_talk — pleasantries and meta beyond the lexicon: a
+    // natural, brief answer-tier reply; still no retrieval.
     if (rewrite.questionClass === 'smalltalk') {
-      yield* this.handleModelSmallTalk(
+      yield* this.smallTalkHandler.handleModel(
         principal,
         conversationId,
         content,
@@ -495,13 +519,11 @@ export class ChatService {
       return;
     }
 
-    // Draft-a-reply intent: deterministic detection on the raw
-    // turn; the router's resolved entities let "draft a reply to her last
-    // email" reach the right sender. If the resolver is wired, this turn
-    // creates an email reply draft (or asks / declines) — fast path, no
-    // ingestion work, no sending. Then we return.
+    // 6. reply_draft — deterministic detection on the raw turn; the router's
+    // resolved entities let "draft a reply to her last email" reach the right
+    // sender. Fast path, no ingestion work, no sending.
     if (this.replyResolver && rewrite.emailReply) {
-      yield* this.handleReplyIntent(
+      yield* new ReplyIntentHandler(this.replyResolver, this.sink()).handle(
         principal,
         conversationId,
         rewrite.emailReply.target,
@@ -510,74 +532,14 @@ export class ChatService {
       return;
     }
 
-    // Memory-first: retrieval runs for BOTH personal and
-    // knowledge questions — grounded facts always come first; general
-    // knowledge supplements, marked, never replaces.
-    const knowledge = rewrite.questionClass === 'knowledge';
-    const retrieved = await this.retrieval.retrieve(principal, content, {
-      topK: ANSWER_FACTS_TOP_K,
-      history,
-      rewrite,
+    // 7. memory_answer — memory-first retrieval for BOTH personal and
+    // knowledge questions; grounded facts always come first.
+    yield* new MemoryAnswerHandler(this.retrieval, this.gateway, this.directory, this.sink(), () =>
+      Boolean(this.researchResolver),
+    ).handle(principal, conversationId, content, history, rewrite, {
+      record: ctx.record,
+      answerBlock: ctx.answerBlock,
     });
-    const facts = retrieved.memories.map((hit, i) => toFactDto(hit, i));
-    // Attribute cited shared facts to their owner — name-only; the gates
-    // already decided these were visible to the caller.
-    const names = await this.directory.displayNames(facts.map((f) => f.ownerId));
-    for (const fact of facts) fact.ownerName = names.get(fact.ownerId) ?? null;
-    yield { type: 'sources', facts };
-
-    let answer: string;
-    if (retrieved.mode === 'open_loops' && (retrieved.openLoops?.length ?? 0) === 0) {
-      // Zero open loops is an ANSWER (all clear), not a data gap. A
-      // deterministic string cannot mirror; it follows the anchor (0052).
-      answer = nothingOpen(ctx.record.preferredLanguage);
-      yield { type: 'token', text: answer };
-    } else if (facts.length === 0 && !knowledge && !hasProfileContext(ctx.record)) {
-      // The zero-retrieval path: no model call, no generation from thin air.
-      // With profile context set, the model DOES answer: the
-      // settings are provided ground ("where do I work?" deserves the honest
-      // "you've set … in Settings" reply), the honest-gap rules still hold,
-      // and the sanitizer still strips any invented citation.
-      answer = nothingOnRecord(ctx.record.preferredLanguage);
-      yield { type: 'token', text: answer };
-    } else {
-      const prompt = await this.getPrompt();
-      let buffer = '';
-      const stream = this.gateway.completeStream({
-        system: prompt.content,
-        input: buildAnswerInput(facts, content, retrieved.mode, {
-          temporal: retrieved.temporal,
-          changes: retrieved.changes,
-          openLoops: retrieved.openLoops,
-          knowledge,
-          context: ctx.answerBlock,
-        }),
-        tier: 'answer',
-      });
-      for await (const text of stream) {
-        buffer += text;
-        yield { type: 'token', text };
-      }
-      answer = buffer;
-    }
-
-    const { text: stored, violations } = toStoredAnswer(answer, facts);
-    if (violations > 0) {
-      // Metadata only — never the answer content or tokens (pino rule).
-      this.logger.warn(`citation_violation stripped=${violations}`);
-    }
-    const row = await this.storeAssistant(principal, conversationId, stored);
-    // The research offer: every knowledge-class answer OFFERS
-    // research as a one-tap bridge into the existing gate — never a silent
-    // search. The offer carries the self-contained topic; tapping it proposes.
-    const researchOffer = knowledge && this.researchResolver ? { topic: rewrite.query } : null;
-    yield {
-      type: 'done',
-      messageId: row.id,
-      content: stored,
-      citationViolations: violations,
-      researchOffer,
-    };
   }
 
   /** The router's bounded rewrite call — shared fallback semantics (0046).
@@ -623,191 +585,6 @@ export class ChatService {
       rewriteBlock: buildContextBlock(record, now, timeZone),
       answerBlock: buildContextBlock(record, now, timeZone, { language: true }),
     };
-  }
-
-  /**
-   * Deterministic small talk: a natural, brief reply in the
-   * matched language. No retrieval, no model call, no citations"thanks!"
-   * never earns a source chip or a "nothing on record".
-   */
-  private async *handleSmallTalk(
-    principal: Principal,
-    conversationId: string,
-    intent: SmallTalkIntent,
-  ): AsyncGenerator<ChatStreamEvent> {
-    yield { type: 'sources', facts: [] };
-    // Small talk mirrors the matched language of the turn (unchanged); the
-    // words come from the server catalogue (V2.0 item 3.5). The KIND is the
-    // detector's value and is never translated, only its reply is.
-    const answer = serverT(intent.lang, 'chat', `smallTalk.${intent.kind}`);
-    yield { type: 'token', text: answer };
-    const row = await this.storeAssistant(principal, conversationId, answer);
-    yield { type: 'done', messageId: row.id, content: answer, citationViolations: 0 };
-  }
-
-  /**
-   * Model-classified small talk / meta: pleasantries and
-   * questions about Cogeto itself that the lexicon does not cover ("what can
-   * you do?"). A brief answer-tier reply with the recent turns for tone — no
-   * retrieval, and the sanitizer still guarantees no marker can leak.
-   */
-  private async *handleModelSmallTalk(
-    principal: Principal,
-    conversationId: string,
-    content: string,
-    history: ConversationTurn[],
-    contextBlock?: string,
-  ): AsyncGenerator<ChatStreamEvent> {
-    yield { type: 'sources', facts: [] };
-    const prompt = await this.getPrompt();
-    let buffer = '';
-    const stream = this.gateway.completeStream({
-      system: prompt.content,
-      input: buildSmallTalkInput(history, content, contextBlock),
-      tier: 'answer',
-    });
-    for await (const text of stream) {
-      buffer += text;
-      yield { type: 'token', text };
-    }
-    const { text: stored, violations } = toStoredAnswer(buffer, []);
-    if (violations > 0) {
-      this.logger.warn(`citation_violation stripped=${violations}`);
-    }
-    const row = await this.storeAssistant(principal, conversationId, stored);
-    yield { type: 'done', messageId: row.id, content: stored, citationViolations: violations };
-  }
-
-  /**
-   * The draft-a-reply chat flow. Resolve the target email against
-   * the owner's recent emails, then act like a thoughtful assistant
-   *  - 0 matches      → say so, point to the drawer's "Draft reply".
-   *  - >1 for a NAMED target → list the candidates and ask which (create nothing).
-   *  - 1 (or "the last one") → create the draft via the approval path and confirm
-   *    with a link. Cogeto never sends. No retrieval-answer, no ingestion work.
-   */
-  /**
-   * The research gate opener: minimise the query and record a PROPOSED run —
-   * the deterministic confirmation states plainly that nothing has been sent
-   * and points at the Research page, where the user edits/approves/cancels.
-   * The confirmation is deterministic text except the disclosed query itself.
-   */
-  private async *handleResearchIntent(
-    principal: Principal,
-    conversationId: string,
-    topic: string,
-    lang: 'en' | 'hr',
-  ): AsyncGenerator<ChatStreamEvent> {
-    yield { type: 'sources', facts: [] };
-    let answer: string;
-    // The inline gate's handle: lets the chat surface open the
-    // SAME gate in place. Null when proposing failed.
-    let proposalRef: { runId: string } | null = null;
-    try {
-      const proposal = await this.researchResolver!.propose(principal, topic, conversationId);
-      proposalRef = { runId: proposal.runId };
-      answer = serverT(lang, 'chat', 'research.prepared', {
-        query: proposal.minimisedQuery,
-        reason: proposal.minimiseReason,
-      });
-    } catch (error) {
-      this.logger.warn(
-        `research_intent_failed: ${error instanceof Error ? error.message : 'error'}`,
-      );
-      answer = serverT(lang, 'chat', 'research.failed');
-    }
-    yield { type: 'token', text: answer };
-    const row = await this.storeAssistant(principal, conversationId, answer);
-    yield {
-      type: 'done',
-      messageId: row.id,
-      content: answer,
-      citationViolations: 0,
-      researchProposal: proposalRef,
-    };
-  }
-
-  /**
-   * The skill-brief opener: start planning —
-   * gather from memory, propose the query plan — and hand the user the run
-   * view, where the plan gate lives. Deterministic confirmation text; an
-   * ambiguous subject asks and creates nothing.
-   */
-  private async *handleSkillBriefIntent(
-    principal: Principal,
-    conversationId: string,
-    subject: string,
-    lang: 'en' | 'hr',
-  ): AsyncGenerator<ChatStreamEvent> {
-    yield { type: 'sources', facts: [] };
-    let answer: string;
-    let runRef: { runId: string } | null = null;
-    try {
-      const proposal = await this.skillResolver!.propose(principal, subject);
-      if (proposal.status === 'ambiguous') {
-        const list = proposal.candidates.map((c, i) => `${i + 1}. ${c}`).join('\n');
-        answer = serverT(lang, 'chat', 'skillBrief.ambiguous', { candidates: list });
-      } else {
-        runRef = { runId: proposal.runId };
-        answer = serverT(lang, 'chat', 'skillBrief.preparing', {
-          subject,
-          count: proposal.queryCount,
-        });
-      }
-    } catch (error) {
-      this.logger.warn(`skill_intent_failed: ${error instanceof Error ? error.message : 'error'}`);
-      answer = serverT(lang, 'chat', 'skillBrief.failed');
-    }
-    yield { type: 'token', text: answer };
-    const row = await this.storeAssistant(principal, conversationId, answer);
-    yield {
-      type: 'done',
-      messageId: row.id,
-      content: answer,
-      citationViolations: 0,
-      skillRun: runRef,
-    };
-  }
-
-  private async *handleReplyIntent(
-    principal: Principal,
-    conversationId: string,
-    target: string | null,
-    lang: PreferredLanguage,
-  ): AsyncGenerator<ChatStreamEvent> {
-    yield { type: 'sources', facts: [] };
-    const t = serverTranslator(lang, 'chat');
-    let answer: string;
-    try {
-      const candidates = await this.replyResolver!.findCandidates(principal, target);
-      if (candidates.length === 0) {
-        answer = target ? t('reply.noneForTarget', { target }) : t('reply.noneAtAll');
-      } else if (target && candidates.length > 1) {
-        const list = candidates
-          .map((c, i) =>
-            t('reply.candidateLine', {
-              index: i + 1,
-              from: c.from,
-              subject: c.subject ?? t('reply.noSubject'),
-              date: formatCandidateDate(c.receivedAt, lang),
-            }),
-          )
-          .join('\n');
-        answer = t('reply.ambiguous', { target, candidates: list });
-      } else {
-        const draft = await this.replyResolver!.createDraft(principal, candidates[0]!.emailId);
-        answer = draft.recipientResolved
-          ? t('reply.drafted', { recipient: draft.to })
-          : t('reply.draftedUnknownRecipient');
-      }
-    } catch (error) {
-      this.logger.warn(`reply_intent_failed: ${error instanceof Error ? error.message : 'error'}`);
-      answer = t('reply.failed');
-    }
-
-    yield { type: 'token', text: answer };
-    const row = await this.storeAssistant(principal, conversationId, answer);
-    yield { type: 'done', messageId: row.id, content: answer, citationViolations: 0 };
   }
 
   /** The last few turns of THIS conversation, oldest first — context for the
@@ -931,36 +708,4 @@ function toConversationDto(row: ConversationRow, lastMessage: string | null): Co
     updatedAt: row.updatedAt.toISOString(),
     lastMessagePreview: lastMessage === null ? null : lastMessage.slice(0, PREVIEW_CHARS),
   };
-}
-
-function toFactDto(hit: RetrievedMemory, index: number): ChatFactDto {
-  return {
-    marker: `F${index + 1}`,
-    memoryId: hit.memory.id,
-    claim: hit.memory.content,
-    status: hit.memory.status,
-    scope: hit.memory.scope,
-    ownerId: hit.memory.ownerId,
-    ownerName: null,
-    sensitive: hit.memory.sensitive,
-    subjectEntity: hit.memory.subjectEntity,
-    sourceType: hit.memory.sourceType,
-    sourceId: hit.memory.sourceId,
-    validFrom: hit.memory.validFrom?.toISOString() ?? null,
-    validUntil: hit.memory.validUntil?.toISOString() ?? null,
-    signals: hit.signals,
-    // The past-framing data contract: computed here,
-    // consumed by the answer prompt AND the UI chip — testable without a model.
-    pastBelief: isPastBelief(hit.memory),
-    supersededBy: hit.memory.supersededBy,
-  };
-}
-
-/**
- * The date beside a candidate email, in the READER'S locale (V2.0 item 3.5,
- * Issue C). It used to follow whatever locale the server process happened to
- * have, which is nobody's choice.
- */
-function formatCandidateDate(iso: string | Date, lang: PreferredLanguage): string {
-  return new Intl.DateTimeFormat(LOCALE_TAGS[lang]).format(new Date(iso));
 }

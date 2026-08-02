@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { CHAT_ROUTING_ORDER } from './intents/intent-plumbing';
 import { detectEntityProfile } from '../retrieval/index';
 import {
   detectEmailReplyIntent,
@@ -57,6 +58,23 @@ describe('routing_matrix', () => {
    * earlier guard may now swallow a turn the later one owns. Order was
    * load-bearing before; this pins what it is now.
    */
+  it('routing_order_as_data: the orchestrator sequence is exactly the documented seven steps', () => {
+    // The order used to be implied by where each guard sat inside a 900-line
+    // ask(); it is DATA now, and this assertion is what fails when someone
+    // reorders it. The behavioural halves live below (detector precedence)
+    // and in chat-research-intent.integration.spec (orchestrator precedence:
+    // an input matching skill-brief AND research resolves to the brief).
+    expect(CHAT_ROUTING_ORDER).toEqual([
+      'small_talk_lexicon',
+      'skill_brief',
+      'research',
+      'router_rewrite',
+      'model_small_talk',
+      'reply_draft',
+      'memory_answer',
+    ]);
+  });
+
   it('routing_order: the surviving deterministic guards do not overlap', () => {
     // 1. Small talk is whole-turn only, so it never eats a real request.
     expect(detectSmallTalk('remind me to reply to Ana')).toBeNull();

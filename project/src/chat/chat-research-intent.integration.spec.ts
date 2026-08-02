@@ -76,17 +76,21 @@ describe('chat research intent (integration: real Postgres, stubbed seams)', () 
   let retrieveCalls: number;
   let chat: ChatService;
   let conversationId: string;
+  let chatRetrievalRef: () => RetrievalService;
+  const chatRetrieval = (): RetrievalService => chatRetrievalRef();
 
   beforeAll(async () => {
     tdb = await startTestDatabase();
     resolver = new RecordingResolver();
     retrieveCalls = 0;
-    const retrieval = {
-      retrieve: async () => {
-        retrieveCalls += 1;
-        return { memories: [], mode: 'default' };
-      },
-    } as unknown as RetrievalService;
+    chatRetrievalRef = () =>
+      ({
+        retrieve: async () => {
+          retrieveCalls += 1;
+          return { memories: [], mode: 'default' };
+        },
+      }) as unknown as RetrievalService;
+    const retrieval = chatRetrieval();
     chat = new ChatService(tdb.db, retrieval, new InertGateway(), new UserDirectory(tdb.db), {
       researchResolver: resolver,
     });
@@ -128,6 +132,46 @@ describe('chat research intent (integration: real Postgres, stubbed seams)', () 
     expect(resolver.proposals.at(-1)).toBe('rokove EU AI Acta');
     const done = events.find((e) => e.type === 'done');
     expect(done && done.type === 'done' ? done.content : '').toContain('ništa još nije poslano');
+  });
+
+  it('orchestrator_order: an input matching skill-brief AND research resolves to the brief (step 2 before step 3)', async () => {
+    // "research X before <occasion>" matches BOTH detectors' families; the
+    // routing order (CHAT_ROUTING_ORDER) puts skill_brief first, so with both
+    // seams wired the turn must open a skill run, never a plain research
+    // proposal. This is the orchestrator-level half of the order assertion in
+    // chat-routing.spec.ts.
+    const skillProposals: string[] = [];
+    const skillResolver = {
+      propose: async (_principal: unknown, subject: string) => {
+        skillProposals.push(subject);
+        return {
+          status: 'proposed' as const,
+          runId: '00000000-0000-4000-8000-00000000abcd',
+          queryCount: 2,
+        };
+      },
+    };
+    const both = new ChatService(
+      tdb.db,
+      chatRetrieval(),
+      new InertGateway(),
+      new UserDirectory(tdb.db),
+      {
+        researchResolver: resolver,
+        skillResolver: skillResolver as never,
+      },
+    );
+    const conv = (await both.createConversation(owner)).id;
+    const before = resolver.proposals.length;
+    const events = await collect(both.ask(owner, 'research Adriatic Foods before Thursday', conv));
+    const done = events.find((e) => e.type === 'done') as {
+      skillRun?: unknown;
+      researchProposal?: unknown;
+    };
+    expect(skillProposals).toEqual(['Adriatic Foods']);
+    expect(resolver.proposals.length).toBe(before); // research seam untouched
+    expect(done.skillRun).toEqual({ runId: '00000000-0000-4000-8000-00000000abcd' });
+    expect(done.researchProposal).toBeUndefined();
   });
 
   it('not_ambient: an ordinary question touches retrieval, never the research seam', async () => {
