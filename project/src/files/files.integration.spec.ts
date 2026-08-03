@@ -3,12 +3,13 @@ import { runOnce } from 'graphile-worker';
 import type { TaskList } from 'graphile-worker';
 import type { ZodType } from 'zod';
 import type { Principal } from '@cogeto/shared';
-import { PDF_CONTENT_TYPE, DOCX_CONTENT_TYPE } from '@cogeto/shared';
-import { idempotentTask, InMemoryDailyCounters } from '../infrastructure/index';
+import { PDF_CONTENT_TYPE, DOCX_CONTENT_TYPE, XLSX_CONTENT_TYPE } from '@cogeto/shared';
+import { DEFAULT_PARSE_CAPS, idempotentTask, InMemoryDailyCounters } from '../infrastructure/index';
 import {
   fakeEmbedding,
   makeDocx,
   makePdf,
+  makeXlsx,
   startTestDatabase,
   startTestMinio,
   startTestQdrant,
@@ -16,7 +17,12 @@ import {
 import type { TestDatabase, TestMinio, TestQdrant } from '../testing/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
-import { createMemoryReconciliation, MemoryFileStore, MemoryObjectStore } from '../memory/index';
+import {
+  createMemoryReconciliation,
+  DeletionSaga,
+  MemoryFileStore,
+  MemoryObjectStore,
+} from '../memory/index';
 import type { MemoryStore, MemoryReconciliation } from '../memory/index';
 import {
   FILE_DISCARD_CLEANUP_JOB_TYPE,
@@ -27,7 +33,9 @@ import {
 import type { IngestionPipeline } from '../ingestion/index';
 import { NotesService, NotesSourceReader } from '../notes/index';
 import { FilesService } from './files.service';
+import { FileReadReportStore } from './persistence/file-read-report';
 import { FileSourceReader } from './file.source-reader';
+import { FileReadReportCascade } from './file-read-report.cascade';
 import { UserSettingsService } from '../settings/index';
 import { FilesController } from './files.controller';
 import type { AuthenticatedRequest } from '../identity/index';
@@ -170,6 +178,7 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
       uploadOpts,
       new InMemoryDailyCounters(),
       { captureMax: 1_000_000, uploadMax: 1_000_000 },
+      new FileReadReportStore(tdb.db),
     );
     userSettings = new UserSettingsService(tdb.db);
     notes = new NotesService(tdb.db, new InMemoryDailyCounters(), {
@@ -186,7 +195,10 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
 
   const buildPipeline = (gateway: ScriptedGateway) =>
     createIngestionPipeline({
-      readers: [new FileSourceReader(fileStore, objects), new NotesSourceReader(tdb.db)],
+      readers: [
+        new FileSourceReader(fileStore, objects, undefined, new FileReadReportStore(tdb.db)),
+        new NotesSourceReader(tdb.db),
+      ],
       gateway,
       store,
       reconciliation,
@@ -284,6 +296,7 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
       uploadOpts,
       new InMemoryDailyCounters(),
       { captureMax: 1_000_000, uploadMax: 1_000_000 },
+      new FileReadReportStore(tdb.db),
     );
 
     const jobsBefore = await pipelineJobCount();
@@ -388,6 +401,140 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
     // The original + metadata survive an extraction failure (only the saga erases).
     expect(await objects.objectExists(objectKey)).toBe(true);
     expect(await fileMetaExists(objectKey)).toBe(true);
+
+    // …and the failure is EXPLAINED (V2.1 item 4.1, issue A4). The reason is
+    // committed on its own connection, which is the only way it can survive a
+    // pipeline transaction that rolls back, and it distinguishes "these bytes
+    // are not a PDF" from "Cogeto cannot read PDFs".
+    const report = await filesService.getSourceForOwner(userA, objectKey);
+    expect(report?.read).toMatchObject({ outcome: 'read_failed', reasonCode: 'parse_failed' });
+  });
+
+  it('spreadsheet_pipeline: an XLSX flows through the same stages, and the read report says what was read', async () => {
+    const gateway = new ScriptedGateway(() => ({
+      facts: [fact('Adriatic Foods has payment terms of 30 days', ['Adriatic Foods'])],
+    }));
+    const pipeline = buildPipeline(gateway);
+    const xlsx = await makeXlsx([
+      {
+        name: 'Supplier terms',
+        rows: [
+          ['Supplier', 'Payment terms (days)'],
+          ['Adriatic Foods', 30],
+          ['Nordic Packaging', 45],
+        ],
+      },
+    ]);
+    const { objectKey } = await filesService.upload(
+      userA,
+      { buffer: xlsx, originalName: 'terms.xlsx', mimeType: XLSX_CONTENT_TYPE },
+      { scope: 'private', sensitive: false, discard: false },
+    );
+    await runWorker(pipeline);
+
+    // The pipeline contract is untouched: the reader produced text, and the
+    // SAME stages ran. What reached extraction is a statement carrying its
+    // column context, not a dumped grid.
+    expect(
+      gateway.extractInputs.some((input) =>
+        input.includes('Supplier: Adriatic Foods; Payment terms (days): 30'),
+      ),
+    ).toBe(true);
+    const rows = (await memoriesFor('file', objectKey)).rows;
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.status).toBe('active');
+
+    const source = await filesService.getSourceForOwner(userA, objectKey);
+    expect(source?.read).toMatchObject({ format: 'xlsx', outcome: 'read', reasonCode: null });
+    expect(source?.read?.sheets).toEqual([
+      { name: 'Supplier terms', index: 1, rowsRead: 2, rowsTotal: 2, truncated: false },
+    ]);
+  });
+
+  it('read_truncation_visible: a capped read is recorded as partial, so a part-read file never looks whole', async () => {
+    const gateway = new ScriptedGateway(() => ({ facts: [] }));
+    // The per-sheet cap the deployment configures, tightened to bite here.
+    const cappedReader = new FileSourceReader(
+      fileStore,
+      objects,
+      { ...DEFAULT_PARSE_CAPS, maxSheetRows: 3 },
+      new FileReadReportStore(tdb.db),
+    );
+    const pipeline = createIngestionPipeline({
+      readers: [cappedReader],
+      gateway,
+      store,
+      reconciliation,
+      suppressedFacts: createSuppressedFactLog(tdb.db),
+    });
+    const rows: (string | number)[][] = [['Invoice', 'Amount EUR']];
+    for (let i = 1; i <= 12; i += 1) rows.push([`INV-${i}`, 100 * i]);
+    const { objectKey } = await filesService.upload(
+      userA,
+      {
+        buffer: await makeXlsx([{ name: 'Invoices', rows }]),
+        originalName: 'invoices.xlsx',
+        mimeType: XLSX_CONTENT_TYPE,
+      },
+      { scope: 'private', sensitive: false, discard: false },
+    );
+    await runWorker(pipeline);
+
+    const source = await filesService.getSourceForOwner(userA, objectKey);
+    expect(source?.state).toBe('done'); // a cap is not an error
+    expect(source?.read).toMatchObject({ outcome: 'truncated', reasonCode: 'row_cap_sheet' });
+    expect(source?.read?.sheets[0]).toEqual({
+      name: 'Invoices',
+      index: 1,
+      rowsRead: 3,
+      rowsTotal: 12,
+      truncated: true,
+    });
+  });
+
+  it('read_report_erased: deleting the source erases its read report under the receipt', async () => {
+    const gateway = new ScriptedGateway(() => ({
+      facts: [fact('Nordic Packaging has payment terms of 45 days', ['Nordic Packaging'])],
+    }));
+    const pipeline = buildPipeline(gateway);
+    const { objectKey } = await filesService.upload(
+      userA,
+      {
+        buffer: await makeXlsx([
+          {
+            name: 'Terms',
+            rows: [
+              ['Supplier', 'Payment terms (days)'],
+              ['Nordic Packaging', 45],
+            ],
+          },
+        ]),
+        originalName: 'terms.xlsx',
+        mimeType: XLSX_CONTENT_TYPE,
+      },
+      { scope: 'private', sensitive: false, discard: false },
+    );
+    await runWorker(pipeline);
+    const reports = new FileReadReportStore(tdb.db);
+    expect(await reports.get(objectKey)).not.toBeNull();
+
+    // The saga with the cascade bound exactly as the composition roots bind it:
+    // memory owns the port, files owns the table, neither reaches into the other.
+    const saga = new DeletionSaga(tdb.db, {
+      adapters: [],
+      derivedCascades: [new FileReadReportCascade(reports)],
+    });
+    const { receiptId } = await saga.requestSourceDeletion(userA, 'file', objectKey);
+    expect(receiptId).not.toBeNull();
+
+    // Gone. Sheet names are the document's own words, so a read report the saga
+    // could not reach would be a hole in the erasure promise (spec §11.1).
+    expect(await reports.get(objectKey)).toBeNull();
+    const { rows: receipt } = await tdb.pool.query<{ counts_json: Record<string, unknown> }>(
+      'SELECT counts_json FROM deletion_receipt WHERE id = $1',
+      [receiptId],
+    );
+    expect(receipt[0]!.counts_json['file_read_reports_removed']).toBe(1);
   });
 
   it('signed_url_gated: sensitive files gate download to the owner; shared non-sensitive files are org-shareable', async () => {

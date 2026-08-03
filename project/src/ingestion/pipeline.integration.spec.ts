@@ -5,7 +5,12 @@ import type { TaskList } from 'graphile-worker';
 import type { ZodType } from 'zod';
 import { fakeEmbedding, settleJobs, startTestDatabase, startTestQdrant } from '../testing/index';
 import type { TestDatabase, TestQdrant } from '../testing/index';
-import { idempotentTask, withTransactionalEnqueue } from '../infrastructure/index';
+import {
+  DEFAULT_PARSE_CAPS,
+  idempotentTask,
+  withTransactionalEnqueue,
+} from '../infrastructure/index';
+import type { ParseCaps } from '../infrastructure/index';
 import { createMemoryStore, MemoryReconciliation } from '../memory/index';
 import type { MemoryStore } from '../memory/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
@@ -152,12 +157,7 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
   const buildPipeline = (
     gateway: ScriptedGateway,
     memoryStore: MemoryStore = store,
-    parseCaps?: {
-      maxTextChars: number;
-      maxChunks: number;
-      timeoutSeconds: number;
-      maxFacts: number;
-    },
+    parseCaps?: Partial<ParseCaps>,
   ) =>
     new IngestionPipeline(
       [reader],
@@ -170,7 +170,7 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
         new MemoryReconciliation(tdb.db, memoryStore),
       ),
       createSuppressedFactLog(tdb.db),
-      parseCaps,
+      parseCaps ? { ...DEFAULT_PARSE_CAPS, ...parseCaps } : undefined,
     );
 
   const count = async (sql: string, params: unknown[] = []): Promise<number> => {

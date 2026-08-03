@@ -51,10 +51,15 @@ Upload mints the object key, PUTs the bytes, then in **one transaction** inserts
 `file_metadata` through the memory port and enqueues the pipeline job. If that
 transaction aborts, a compensating delete removes the object.
 
-PDF and DOCX extraction runs on the resolved content type. A parse failure is
-permanent and **fabricates nothing**: the extractor throws, the job dead-letters, and
-the file reads `error`. File jobs cap at 3 attempts, so a corrupt document reaches its
-error state promptly while a transient object-store blip still retries.
+Reading runs through the **reader seam**: PDF, DOCX, XLSX and CSV, selected by the
+magic bytes with the declared type and the extension as hints. A parse failure is
+permanent and **fabricates nothing**: the reader throws, the job dead-letters, and the
+file reads `error`. File jobs cap at 3 attempts, so a corrupt document reaches its
+error state promptly while a transient object-store blip still retries. What the
+reading layer made of the bytes is recorded on `file_read_report` and shown in the
+source drawer, including which of the two failures happened and whether a spreadsheet
+was truncated at the row cap. Full design, including the provenance locators and the
+spreadsheet flattening rules: [`reading.md`](reading.md).
 
 **Filename and content type live on the object**, not in a new column, as the object's
 `Content-Type` and a metadata header. They are therefore **erased with the bytes**, so

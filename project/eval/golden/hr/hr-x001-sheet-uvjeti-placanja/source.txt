@@ -1,0 +1,3 @@
+Sheet "Uvjeti plaćanja". Columns: Dobavljač, Država, Rok plaćanja (dana), Ugovor istječe
+Row 2: Dobavljač: Jadranska hrana; Država: Hrvatska; Rok plaćanja (dana): 30; Ugovor istječe: 2027-03-31
+Row 3: Dobavljač: Nordijska ambalaža; Država: Švedska; Rok plaćanja (dana): 45; Ugovor istječe: 2026-12-31

@@ -1,0 +1,5 @@
+Sheet "Invoices". Columns: Invoice, Customer, Amount EUR, Due date
+Row 2: Invoice: INV-2001; Customer: Nordic Packaging; Amount EUR: 1025; Due date: 2026-09-02
+Row 3: Invoice: INV-2002; Customer: Alpine Logistics; Amount EUR: 1050; Due date: 2026-09-03
+Row 4: Invoice: INV-2003; Customer: Adriatic Foods; Amount EUR: 1075; Due date: 2026-09-04
+Row 5: Invoice: INV-2004; Customer: Nordic Packaging; Amount EUR: 1100; Due date: 2026-09-05

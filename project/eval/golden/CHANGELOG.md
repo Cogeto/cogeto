@@ -201,3 +201,21 @@ One line per label change (docs/eval-golden-set.md §4 rule 5).
   against the tasks module's REAL first-person predicate, part of the standard
   gate) and `email_authored_by_owner` (the fixture's declared intake routing).
   No gate lowered.
+- 2026-08-03 (V2.1 item 4.1 — the reading layer, native formats): ten
+  spreadsheet cases, five scenarios in each language. `en-x001`/`hr-x001` a
+  clean tabular sheet, `en-x002`/`hr-x002` a title block above the header,
+  `en-x003`/`hr-x003` a multi-sheet workbook, `en-x004`/`hr-x004` a
+  semicolon-delimited CSV in a Windows codepage (1252 and 1250 respectively),
+  and `en-x005`/`hr-x005` a 24-row ledger read under a 4-row cap. Each case
+  directory holds the REAL `source.xlsx` or `source.csv` plus the `read.json`
+  options it is read under; `source.txt` is the reading layer's output and is
+  pinned to it by `files/reading/golden-fixtures.spec.ts`, so a reader change
+  cannot leave the corpus scoring text no reader produces. Regenerate with
+  `node scripts/dev/build-spreadsheet-fixtures.mjs`.
+  **Metric effect stated deliberately** (the rule from the v1.1.0 record):
+  these are the first cases whose extraction input is machine-generated
+  statement text rather than prose, and they are labelled row by row, including
+  labels marked `must_extract: false` for the defensible-but-unremarkable facts
+  (a supplier's country), so precision is not punished for a reasonable
+  extraction. The gate floors are re-measured with the cases in, not before.
+  No gate lowered.

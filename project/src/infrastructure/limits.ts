@@ -64,6 +64,23 @@ export interface ParseCaps {
   timeoutSeconds: number;
   /** Cap the extractor's facts array per source (`.max` at the schema). */
   maxFacts: number;
+  /**
+   * Spreadsheets (V2.1 item 4.1): data rows turned into statements, per sheet.
+   * A fifty-thousand-row export must not become fifty thousand extraction
+   * inputs, and a user must be able to see that they got part of the file —
+   * truncation is recorded on the source, never silent.
+   */
+  maxSheetRows: number;
+  /** The same budget across the whole file, so a hundred small sheets cannot
+   * add up to what the per-sheet cap forbids in one. */
+  maxFileRows: number;
+  /**
+   * How CSV bytes are decoded when they are not valid UTF-8 and carry no BOM.
+   * Nothing in the bytes can say which legacy codepage they use, so this is a
+   * documented guess: `windows-1250` carries the Croatian letters, and the
+   * choice only affects bytes ≥ 0x80. Recorded on every read.
+   */
+  csvFallbackEncoding: string;
 }
 
 export interface LimitsConfig {
@@ -105,4 +122,7 @@ export const DEFAULT_PARSE_CAPS: ParseCaps = {
   maxChunks: 200,
   timeoutSeconds: 30,
   maxFacts: 100,
+  maxSheetRows: 5_000,
+  maxFileRows: 20_000,
+  csvFallbackEncoding: 'windows-1250',
 };

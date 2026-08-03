@@ -1,0 +1,50 @@
+{
+  "case_id": "en-x005",
+  "source_type": "file",
+  "source_date": "2026-07-20T09:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Invoice INV-2001 to Nordic Packaging is 1025 EUR, due 2 September 2026",
+      "kind": "fact",
+      "entities": ["Nordic Packaging"],
+      "condition": null,
+      "temporal": {
+        "valid_until": "2026-09-02"
+      },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Invoice INV-2002 to Alpine Logistics is 1050 EUR, due 3 September 2026",
+      "kind": "fact",
+      "entities": ["Alpine Logistics"],
+      "condition": null,
+      "temporal": {
+        "valid_until": "2026-09-03"
+      },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Invoice INV-2003 to Adriatic Foods is 1075 EUR, due 4 September 2026",
+      "kind": "fact",
+      "entities": ["Adriatic Foods"],
+      "condition": null,
+      "temporal": {
+        "valid_until": "2026-09-04"
+      },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Invoice INV-2004 to Nordic Packaging is 1100 EUR, due 5 September 2026",
+      "kind": "fact",
+      "entities": ["Nordic Packaging"],
+      "condition": null,
+      "temporal": {
+        "valid_until": "2026-09-05"
+      },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": ["anything about the twenty rows below the cap, which this read never saw"],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

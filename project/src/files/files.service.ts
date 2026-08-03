@@ -8,7 +8,11 @@ import {
   Logger,
 } from '@nestjs/common';
 import type { FileProcessingState, FileSourceDto, MemoryScope, Principal } from '@cogeto/shared';
-import { ALLOWED_UPLOAD_CONTENT_TYPES } from '@cogeto/shared';
+import {
+  ALLOWED_UPLOAD_CONTENT_TYPES,
+  CSV_ALIAS_CONTENT_TYPES,
+  CSV_CONTENT_TYPE,
+} from '@cogeto/shared';
 import {
   DailyCounters,
   DRIZZLE,
@@ -22,6 +26,7 @@ import type { Db, IngestQuota } from '../infrastructure/index';
 import { FILE_DISCARD_CLEANUP_JOB_TYPE, INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
 import { MemoryFileStore, MemoryObjectStore, MemoryStore } from '../memory/index';
 import { sniffContentType } from './document-extract';
+import { FileReadReportStore } from './persistence/file-read-report';
 import { FILE_UPLOAD_OPTIONS } from './file-upload-options';
 import type { FileUploadOptions } from './file-upload-options';
 
@@ -90,6 +95,8 @@ export class FilesService {
     @Inject(FILE_UPLOAD_OPTIONS) private readonly options: FileUploadOptions,
     private readonly counters: DailyCounters,
     @Inject(INGEST_QUOTA) private readonly quota: IngestQuota,
+    /** What the reading layer made of each file (V2.1 item 4.1). */
+    private readonly readReports: FileReadReportStore,
   ) {}
 
   /**
@@ -294,6 +301,8 @@ export class FilesService {
       if (metadata.ownerId !== principal.userId) return null;
       const stat = await this.objects.statObject(objectKey);
       const rawFilename = stat?.metadata['original-filename'] ?? null;
+      // Owner-gated above; the read report is as visible as its source.
+      const read = await this.readReports.get(objectKey);
       return {
         objectKey,
         filename: rawFilename ? safeDecode(rawFilename) : null,
@@ -304,6 +313,7 @@ export class FilesService {
         uploadDate: metadata.uploadDate.toISOString(),
         state: await this.getProcessingState(objectKey),
         discarded: false,
+        read,
       };
     }
 
@@ -322,6 +332,9 @@ export class FilesService {
       uploadDate: derived.createdAt.toISOString(),
       state: await this.getProcessingState(objectKey),
       discarded: true,
+      // A discarded original has no bytes left; the read report is the only
+      // remaining account of what was read out of them.
+      read: await this.readReports.get(objectKey),
     };
   }
 
@@ -414,20 +427,47 @@ export class FilesService {
    * Validates the type at the boundary: the declared MIME must be accepted, and
    * the magic bytes must corroborate it (or, when the client sent a generic
    * type, name the type on their behalf). Returns the content type to store.
+   *
+   * **The bytes are the authority** (V2.1 item 4.1, issue A1). A declared type
+   * only survives when the bytes agree with it or say nothing at all, which is
+   * what makes a mislabelled upload either route correctly or be refused rather
+   * than trusted. Two consequences worth naming:
+   *
+   * - DOCX and XLSX are both ZIP containers, so `sniffContentType` inspects the
+   *   package entries. A workbook uploaded as a document is now stored as a
+   *   workbook instead of failing at parse time.
+   * - CSV has no magic bytes, so it is the one type accepted on its label. The
+   *   label a browser sends for a `.csv` is unreliable (Windows reports
+   *   `application/vnd.ms-excel` whenever Excel owns the extension), so the
+   *   EXTENSION resolves those aliases, and only when the bytes are not some
+   *   other format we recognise.
    */
   private resolveContentType(file: UploadedFile): string {
     const declared = file.mimeType.split(';')[0]!.trim().toLowerCase();
     const sniffed = sniffContentType(file.buffer);
-    if (ALLOWED_UPLOAD_CONTENT_TYPES.includes(declared)) {
-      // Guard against a mismatched extension/content: if the bytes sniff to a
-      // DIFFERENT allowed type, trust the bytes.
-      return sniffed && sniffed !== declared ? sniffed : declared;
+    if (sniffed) {
+      // The bytes named a format. If the label disagrees, the bytes win; if the
+      // label is one we accept and matches, nothing changes.
+      if (!ALLOWED_UPLOAD_CONTENT_TYPES.includes(sniffed)) {
+        throw new BadRequestException(unsupportedTypeMessage(file.mimeType));
+      }
+      return sniffed;
     }
-    if (sniffed) return sniffed;
-    throw new BadRequestException(
-      `unsupported file type '${file.mimeType}': only PDF and DOCX are accepted`,
-    );
+    // No signature in the bytes. Only a text format can legitimately look like
+    // this, so accept the declared CSV type, or a `.csv` name whose declared
+    // type is one of the aliases a browser really sends.
+    if (declared === CSV_CONTENT_TYPE) return CSV_CONTENT_TYPE;
+    const isCsvName = /\.(csv|tsv)$/i.test(file.originalName);
+    if (isCsvName && (declared === '' || CSV_ALIAS_CONTENT_TYPES.includes(declared))) {
+      return CSV_CONTENT_TYPE;
+    }
+    throw new BadRequestException(unsupportedTypeMessage(file.mimeType));
   }
+}
+
+/** One refusal message for every rejected type, naming what IS accepted. */
+function unsupportedTypeMessage(declaredType: string): string {
+  return `unsupported file type '${declaredType}': only PDF, DOCX, XLSX and CSV are accepted`;
 }
 
 function safeDecode(value: string): string {

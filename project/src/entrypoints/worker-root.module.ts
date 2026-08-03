@@ -31,7 +31,12 @@ import {
   EmailSourcePortsModule,
   EmailSourceReader,
 } from '../email/index';
-import { FilesModule, FileSourceReader } from '../files/index';
+import {
+  FileReadReportCascade,
+  FileReadReportCascadeModule,
+  FilesModule,
+  FileSourceReader,
+} from '../files/index';
 import {
   NotesModule,
   NotesSourceDeletion,
@@ -110,6 +115,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         ReplyDraftCascadeModule,
         PassportCascadeModule,
         SuppressedFactCascadeModule,
+        FileReadReportCascadeModule,
       ],
       // Assistant answers citing erased memories are redacted; reply drafts
       // grounded on the source are too. A ready passport export is a signed
@@ -121,6 +127,9 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         ReplyDraftCascade,
         PassportExportCascade,
         SuppressedFactCascade,
+        // The file read report is content-bearing (sheet names) and can exist
+        // with no memory at all, so it goes with its source (V2.1 item 4.1).
+        FileReadReportCascade,
       ],
     },
     // Delete-vs-ingestion serialization: the saga cancels a source's pending

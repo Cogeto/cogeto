@@ -1,0 +1,3 @@
+Table from kontakti.csv. Columns: Dobavljač, Kontakt, Kontakt za eskalaciju, Dugovanje EUR
+Row 2: Dobavljač: Jadranska hrana; Kontakt: Željka Perić; Kontakt za eskalaciju: Ivan Šarić; Dugovanje EUR: 18400
+Row 3: Dobavljač: Nordijska ambalaža; Kontakt: Božidar Kovačić; Kontakt za eskalaciju: Ana Đurić; Dugovanje EUR: 9600

@@ -1,10 +1,27 @@
-import { Inject, Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { MemoryScope } from '@cogeto/shared';
 import { DEFAULT_PARSE_CAPS, PARSE_CAPS } from '../infrastructure/index';
 import type { ParseCaps, Tx } from '../infrastructure/index';
 import { MemoryFileStore, MemoryObjectStore } from '../memory/index';
 import type { SourceItem, SourceReader } from '../ingestion/index';
-import { extractDocumentText } from './document-extract';
+import { FileReadReportStore } from './persistence/file-read-report';
+import { emptyReport, PermanentExtractionError } from './reading/reader';
+import type { ReadResult } from './reading/reader';
+import { readDocument } from './reading/registry';
+
+/**
+ * The stored filename, URL-decoded (S3 metadata must be US-ASCII). A HINT for
+ * reader selection: a text format has no magic bytes, so its extension is the
+ * only signal, and the bytes still outrank it for every format that has one.
+ */
+function decodeFilename(raw: string | undefined): string | null {
+  if (!raw) return null;
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
 
 /** Derives a source key's staging twin: the scope segment becomes `staging`. */
 function toStagingKey(sourceKey: string): string {
@@ -31,13 +48,60 @@ function toStagingKey(sourceKey: string): string {
 @Injectable()
 export class FileSourceReader implements SourceReader {
   readonly sourceType = 'file' as const;
+  private readonly logger = new Logger(FileSourceReader.name);
 
   constructor(
     private readonly files: MemoryFileStore,
     private readonly objects: MemoryObjectStore,
     /** Parse caps; optional so a bare/test construction still works. */
     @Optional() @Inject(PARSE_CAPS) private readonly parseCaps: ParseCaps = DEFAULT_PARSE_CAPS,
+    /**
+     * The read report (V2.1 item 4.1). Optional and appended LAST so a bare
+     * construction (tests, the eval harness) still works; when it is absent the
+     * read behaves exactly as before, it is simply not explained afterwards.
+     */
+    @Optional() private readonly reports?: FileReadReportStore,
   ) {}
+
+  /**
+   * Reads the bytes and records what happened, in both directions.
+   *
+   * The failure path is the reason this wrapper exists. A permanent read
+   * failure propagates (the pipeline job retries, then dead-letters, and the
+   * file's state reads `error`, all unchanged), but before it propagates the
+   * reason is committed on its own connection, so the source drawer can say
+   * whether Cogeto does not read this KIND of file or failed to read THIS one.
+   */
+  private async readAndRecord(
+    sourceId: string,
+    ownerId: string,
+    bytes: Buffer,
+    contentType: string | null,
+    filename: string | null,
+  ): Promise<ReadResult> {
+    try {
+      const result = await readDocument(bytes, {
+        declaredContentType: contentType,
+        filename,
+        caps: this.parseCaps,
+      });
+      await this.reports?.record(sourceId, ownerId, result.report, this.logger);
+      return result;
+    } catch (error) {
+      if (error instanceof PermanentExtractionError) {
+        await this.reports?.record(
+          sourceId,
+          ownerId,
+          {
+            ...emptyReport(error.format, error.outcome),
+            reasonCode: error.reasonCode,
+          },
+          this.logger,
+        );
+      }
+      throw error;
+    }
+  }
 
   async load(sourceId: string): Promise<SourceItem | null> {
     const metadata = await this.files.get(sourceId);
@@ -63,12 +127,18 @@ export class FileSourceReader implements SourceReader {
     const stat = await this.objects.statObject(sourceId);
     if (!stat) return null;
     const object = await this.objects.getObject(sourceId);
-    const content = await extractDocumentText(object.body, object.contentType, this.parseCaps);
+    const { text } = await this.readAndRecord(
+      sourceId,
+      metadata.ownerId,
+      object.body,
+      object.contentType,
+      decodeFilename(object.metadata['original-filename']),
+    );
     return {
       sourceType: this.sourceType,
       sourceId,
       ownerId: metadata.ownerId,
-      content,
+      content: text,
       createdAt: metadata.uploadDate,
       scope: metadata.scope,
       sensitive: metadata.sensitive,
@@ -89,12 +159,21 @@ export class FileSourceReader implements SourceReader {
 
     const object = await this.objects.getObject(stagingKey);
     const md = object.metadata;
-    const content = await extractDocumentText(object.body, object.contentType, this.parseCaps);
+    // Recorded under the SOURCE key, never the staging key: a staging key never
+    // enters file_metadata, provenance or any receipt (F1 handoff §3), and the
+    // report has to survive the staging object it describes.
+    const { text } = await this.readAndRecord(
+      sourceId,
+      md['owner-id'] ?? '',
+      object.body,
+      object.contentType,
+      decodeFilename(md['original-filename']),
+    );
     return {
       sourceType: this.sourceType,
       sourceId,
       ownerId: md['owner-id'] ?? '',
-      content,
+      content: text,
       createdAt: md['uploaded-at'] ? new Date(md['uploaded-at']!) : new Date(),
       scope: (md['scope'] as MemoryScope | undefined) ?? 'private',
       sensitive: md['sensitive'] === 'true',

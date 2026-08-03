@@ -56,7 +56,7 @@ module that never imports `connectors` but injects `NotesService` because
 
 ## 2. Table ownership
 
-Thirty-seven tables, one owner each. The owner is the module whose
+Thirty-eight tables, one owner each. The owner is the module whose
 `persistence/tables.ts` declares the Drizzle table; it is the only module that
 may name the table in a query, in Drizzle or in SQL.
 
@@ -68,6 +68,7 @@ may name the table in a query, in Drizzle or in SQL.
 | `attention` | `attention_state`, `attention_dismissal` |
 | `agents` | `approval` |
 | `notes` | `note` |
+| `files` | `file_read_report` (V2.1 item 4.1: what the reading layer made of an uploaded file. NOT in `memory` beside `file_metadata`, because a discard-mode upload has no metadata row and is exactly the upload whose original is gone) |
 | `settings` | `user_settings` |
 | `email` | `email_message`, `email_attachment`, `email_allowlist`, `email_refusal` |
 | `research` | `web_page`, `research_run` |

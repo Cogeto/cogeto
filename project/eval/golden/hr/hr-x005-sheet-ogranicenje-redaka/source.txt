@@ -1,0 +1,5 @@
+Sheet "Računi". Columns: Račun, Kupac, Iznos EUR, Dospijeće
+Row 2: Račun: RN-2001; Kupac: Nordijska ambalaža; Iznos EUR: 1025; Dospijeće: 2026-09-02
+Row 3: Račun: RN-2002; Kupac: Alpska logistika; Iznos EUR: 1050; Dospijeće: 2026-09-03
+Row 4: Račun: RN-2003; Kupac: Jadranska hrana; Iznos EUR: 1075; Dospijeće: 2026-09-04
+Row 5: Račun: RN-2004; Kupac: Nordijska ambalaža; Iznos EUR: 1100; Dospijeće: 2026-09-05

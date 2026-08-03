@@ -1,0 +1,7 @@
+Sheet "Dobavljači" (sheet 1 of 2). Columns: Dobavljač, Kategorija, Kontakt
+Row 2: Dobavljač: Jadranska hrana; Kategorija: Sirovine; Kontakt: Petra Novak
+Row 3: Dobavljač: Nordijska ambalaža; Kategorija: Ambalaža; Kontakt: Björn Nordström
+
+Sheet "Obnove" (sheet 2 of 2). Columns: Dobavljač, Datum obnove, Otkazni rok (dana)
+Row 2: Dobavljač: Jadranska hrana; Datum obnove: 2027-03-31; Otkazni rok (dana): 60
+Row 3: Dobavljač: Nordijska ambalaža; Datum obnove: 2026-12-31; Otkazni rok (dana): 90
