@@ -1,0 +1,46 @@
+{
+  "case_id": "hr-x003",
+  "source_type": "file",
+  "source_date": "2026-07-20T09:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Petra Novak je kontakt za Jadransku hranu, koja isporučuje sirovine",
+      "kind": "fact",
+      "entities": ["Petra Novak", "Jadranska hrana"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Björn Nordström je kontakt za Nordijsku ambalažu, koja isporučuje ambalažu",
+      "kind": "fact",
+      "entities": ["Björn Nordström", "Nordijska ambalaža"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Ugovor s Jadranskom hranom obnavlja se 31. ožujka 2027. uz otkazni rok od 60 dana",
+      "kind": "fact",
+      "entities": ["Jadranska hrana"],
+      "condition": null,
+      "temporal": {
+        "valid_until": "2027-03-31"
+      },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Ugovor s Nordijskom ambalažom obnavlja se 31. prosinca 2026. uz otkazni rok od 90 dana",
+      "kind": "fact",
+      "entities": ["Nordijska ambalaža"],
+      "condition": null,
+      "temporal": {
+        "valid_until": "2026-12-31"
+      },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

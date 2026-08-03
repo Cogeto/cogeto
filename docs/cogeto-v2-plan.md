@@ -97,9 +97,23 @@ Every automatic demotion or non-admission writes a `suppressed_fact_log` entry (
 
 | # | Item | Priority | Difficulty |
 |---|---|---|---|
-| 4.1 | **Reading layer: spreadsheets, scans, vision** | P0 | L |
+| 4.1 | **Reading layer: spreadsheets, scans, vision** (native formats DELIVERED 2026-08-03) | P0 | L |
 | 4.2 | **Source-context anchoring** | P0 | M |
 | 4.3 | **Per-source extraction gate** | P0 | M |
+
+**4.1 Reading layer, native-format half: DELIVERED 2026-08-03** (migration 0041, `feature/reading-layer-native`). **XLSX and CSV are read**, and a format is now a **registered reader rather than a branch in a switch**, which is the part the OCR and vision tiers plug into next.
+
+The seam (`project/src/files/reading/`) selects by **magic bytes, with the declared type and the extension as hints**: `PK` was never enough once workbooks existed, so the sniff walks the ZIP central directory for `word/document.xml` or `xl/workbook.xml`, and a pre-2007 OLE2 file is refused by name rather than as a generic failure. A mislabelled upload is routed by what it is or refused, never trusted. PDF and DOCX moved behind the seam **unchanged and byte-identical**, proved against the pre-seam implementation copied verbatim into the spec, because the golden set is scored on that text and the eval cache is keyed on it.
+
+Provenance is a **structured locator** now, not a string: page number, paragraph index, or sheet name plus row plus A1 cell range plus the columns involved. Nothing downstream consumes it yet, and that is deliberate: 5.2 and 6.x render it, and defining the shape after those surfaces exist would mean parsing a string back into what the reader already knew. A span that cannot be found resolves to nothing rather than to a guess.
+
+Spreadsheets are read as **statements, not grids**: every row carries its column context on every row (chunking strands headers), the header is FOUND under title blocks and merged banners rather than assumed, merged cells resolve to their master, decorative and empty rows are skipped without shifting row numbers, and formulas contribute their **computed value**, never their text, with an uncached or errored cell left out and recorded by reference instead of guessed. CSV detects delimiter and encoding with a documented fallback (BOM, then strict UTF-8, then `windows-1250`, because Croatian is the non-English corpus language and the choice only touches bytes at or above 0x80).
+
+Row caps are per sheet and per file, configurable, and **truncation is recorded on the source and shown in the drawer**, never written into the text where the extractor would remember it as a fact. That report (`file_read_report`, owned by `files`, in the deletion cascade) also separates **`unsupported_format` from `read_failed`**, which are different facts about the world, and labels a file that yielded nothing as `empty`/`no_text`: the honest label that the OCR half replaces with recovered text.
+
+Ten golden cases, five scenarios in English and Croatian, each holding the real workbook or CSV plus the reader options it is read under, with a spec pinning the corpus text to the reader so the two cannot drift.
+
+**Still open in 4.1:** local OCR for scanned and image-only PDFs, the local vision tier for hard cases, and the "scanned document, no readable text" copy that replaces the `empty` label.
 
 **4.1 Reading layer.** Extend beyond PDF and DOCX text to **XLSX and CSV** (sheets and tables flattened into extractable statements) and to **scanned or image-only PDFs**, which today pass silently as "done, zero facts". Scanned pages go first through **local OCR** (Tesseract-class, CPU-only, English and Croatian language packs, in-instance, nothing leaves the box). When the instance runs a **local vision model** via the local runtime, hard cases (poor scans, handwriting, tables, simple diagrams) are read by the vision tier through the model gateway. Recovered text enters the existing pipeline unchanged: extraction, independent verification against the recovered span, statuses, provenance to the file and page. A file that still yields nothing readable is **honestly labelled** ("scanned document, no readable text") in the source drawer rather than shown as processed: no silent emptiness, no fabricated facts. Ships with golden cases per format and language; the vision path is eval-gated like every other model task.
 

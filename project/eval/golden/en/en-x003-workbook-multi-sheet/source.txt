@@ -1,0 +1,7 @@
+Sheet "Vendors" (sheet 1 of 2). Columns: Vendor, Category, Contact
+Row 2: Vendor: Adriatic Foods; Category: Ingredients; Contact: Petra Novak
+Row 3: Vendor: Nordic Packaging; Category: Packaging; Contact: Björn Nordström
+
+Sheet "Renewals" (sheet 2 of 2). Columns: Vendor, Renewal date, Notice period (days)
+Row 2: Vendor: Adriatic Foods; Renewal date: 2027-03-31; Notice period (days): 60
+Row 3: Vendor: Nordic Packaging; Renewal date: 2026-12-31; Notice period (days): 90

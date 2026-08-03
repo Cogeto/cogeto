@@ -1,0 +1,3 @@
+Table from contacts.csv. Columns: Supplier, Contact, Escalation contact, Amount due EUR
+Row 2: Supplier: Nordic Packaging; Contact: Björn Nordström; Escalation contact: Anna Lindqvist; Amount due EUR: 18400
+Row 3: Supplier: Alpine Logistics; Contact: Émile Rousseau; Escalation contact: Claire Dubois; Amount due EUR: 9600

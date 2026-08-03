@@ -1,0 +1,52 @@
+{
+  "case_id": "hr-x005",
+  "source_type": "file",
+  "source_date": "2026-07-20T09:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Račun RN-2001 za Nordijsku ambalažu iznosi 1025 EUR, dospijeće 2. rujna 2026.",
+      "kind": "fact",
+      "entities": ["Nordijska ambalaža"],
+      "condition": null,
+      "temporal": {
+        "valid_until": "2026-09-02"
+      },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Račun RN-2002 za Alpsku logistiku iznosi 1050 EUR, dospijeće 3. rujna 2026.",
+      "kind": "fact",
+      "entities": ["Alpska logistika"],
+      "condition": null,
+      "temporal": {
+        "valid_until": "2026-09-03"
+      },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Račun RN-2003 za Jadransku hranu iznosi 1075 EUR, dospijeće 4. rujna 2026.",
+      "kind": "fact",
+      "entities": ["Jadranska hrana"],
+      "condition": null,
+      "temporal": {
+        "valid_until": "2026-09-04"
+      },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Račun RN-2004 za Nordijsku ambalažu iznosi 1100 EUR, dospijeće 5. rujna 2026.",
+      "kind": "fact",
+      "entities": ["Nordijska ambalaža"],
+      "condition": null,
+      "temporal": {
+        "valid_until": "2026-09-05"
+      },
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "bilo što o dvadeset redaka ispod ograničenja, koje ovo čitanje nije vidjelo"
+  ],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

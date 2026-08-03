@@ -1,11 +1,41 @@
 import { crc32 } from 'node:zlib';
+import ExcelJS from 'exceljs';
 
 /**
- * Test-only document fixtures: real PDF and DOCX bytes so pdf-parse and mammoth
- * run for real in the O1 pipeline tests (a stubbed extractor would prove
- * nothing). Pure functions — no imports beyond node:zlib — so any spec may use
- * them, in any module.
+ * Test-only document fixtures: real PDF, DOCX and XLSX bytes so pdf-parse,
+ * mammoth and exceljs run for real in the pipeline and reading tests (a stubbed
+ * extractor would prove nothing). Any spec may use them, in any module.
  */
+
+/** A cell as a fixture declares it. `formula` with no `result` is an uncached
+ * value — the case the reader must report as unavailable rather than guess. */
+export type XlsxCell =
+  string | number | boolean | Date | null | { formula: string; result?: string | number };
+
+export interface XlsxSheetFixture {
+  name: string;
+  rows: XlsxCell[][];
+  /** A1-style ranges to merge, e.g. `['A1:D1']`. */
+  merges?: string[];
+}
+
+/** A real .xlsx workbook. Written by the same library the reader reads with,
+ * which is the point: the fixture exercises the container, not a mock of it. */
+export async function makeXlsx(sheets: XlsxSheetFixture[]): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  for (const sheet of sheets) {
+    const worksheet = workbook.addWorksheet(sheet.name);
+    sheet.rows.forEach((cells, rowIndex) => {
+      cells.forEach((value, columnIndex) => {
+        if (value === null) return;
+        worksheet.getRow(rowIndex + 1).getCell(columnIndex + 1).value = value as never;
+      });
+    });
+    for (const merge of sheet.merges ?? []) worksheet.mergeCells(merge);
+  }
+  const written = await workbook.xlsx.writeBuffer();
+  return Buffer.from(written);
+}
 
 /** A minimal single-page PDF whose text `pdf-parse` can extract. */
 export function makePdf(text: string): Buffer {

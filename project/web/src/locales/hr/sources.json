@@ -94,5 +94,32 @@
     "computingImpact": "Izračun što bi brisanje uklonilo…",
     "deleteSource": "Izbriši izvor…",
     "deleting": "Brisanje…"
+  },
+  "read": {
+    "title": "What Cogeto read",
+    "outcome": {
+      "read": "Read in full",
+      "truncated": "Read in part",
+      "empty": "Nothing readable",
+      "unsupported_format": "Format not supported",
+      "read_failed": "Could not be read"
+    },
+    "reason": {
+      "row_cap_sheet": "This file is longer than the per-sheet row limit, so Cogeto read the first rows of each sheet.",
+      "row_cap_file": "This file is longer than the row limit for one file, so Cogeto stopped once the limit was reached.",
+      "no_text": "Cogeto found no readable text in this file. Nothing was extracted, and nothing was invented.",
+      "unsupported_type": "Cogeto does not read this kind of file yet.",
+      "legacy_office_format": "This is a pre-2007 Office file. Save it as .docx or .xlsx and upload it again.",
+      "parse_failed": "The file is of a kind Cogeto reads, but these bytes could not be parsed. It may be corrupt or password protected.",
+      "parse_timeout": "Reading this file took too long and was stopped.",
+      "text_over_cap": "This file expands to more text than Cogeto reads from one document.",
+      "undecodable_text": "The text in this file could not be decoded."
+    },
+    "sheetRows": "{{rowsRead}} of {{rowsTotal}} rows read",
+    "sheetRowsAll": "all {{rowsTotal}} rows read",
+    "unnamedSheet": "Table",
+    "valuesUnavailable_one": "{{count}} cells had no stored value, so they were left out rather than guessed.",
+    "valuesUnavailable_few": "{{count}} cells had no stored value, so they were left out rather than guessed.",
+    "valuesUnavailable_other": "{{count}} cells had no stored value, so they were left out rather than guessed."
   }
 }

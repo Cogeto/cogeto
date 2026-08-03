@@ -1,141 +1,45 @@
-import { PDFParse } from 'pdf-parse';
-import mammoth from 'mammoth';
-import { DOCX_CONTENT_TYPE, PDF_CONTENT_TYPE } from '@cogeto/shared';
+import type { ParseCaps } from '../infrastructure/index';
+import { readDocument } from './reading/registry';
 
 /**
- * Document → clean text for the ingestion pipeline (O1, session log: library
- * choice). PDF via `pdf-parse` (a thin, maintained wrapper over Mozilla's
- * pdf.js exposing a Buffer API — no ESM-interop friction with the CommonJS tsc
- * build, unlike importing pdfjs-dist directly); DOCX via `mammoth`. Both take
- * the bytes in memory — the worker already holds them.
+ * Document → clean text for the ingestion pipeline.
  *
- * A parse failure is a PERMANENT error (corrupt/unsupported bytes): it must
- * surface as an error state and yield ZERO memories — never a fabricated one
- * (spec §2, scope §4.9). Callers let it propagate so the pipeline job dead-letters
- * and the file's status reads `error`.
+ * Since V2.1 item 4.1 this is a THIN ADAPTER over the reader seam
+ * (`./reading/`), kept because two callers want exactly this and nothing more:
+ * the fetched-PDF path in `research` and the email intake's attachment sniff.
+ * They pass bytes and get text; they have no use for segments or a read report,
+ * and inventing one for them would be churn.
+ *
+ * Everything the old implementation guaranteed still holds, and is now enforced
+ * in one place for every format: a parse failure is a PERMANENT error (corrupt
+ * or unsupported bytes) that must surface as an error state and yield ZERO
+ * memories, never a fabricated one (spec §2, scope §4.9). Callers let it
+ * propagate so the pipeline job dead-letters and the file's status reads
+ * `error`.
  */
 
-/** Thrown when bytes cannot be parsed — a permanent, do-not-fabricate failure. */
-export class PermanentExtractionError extends Error {
-  constructor(message: string, cause?: unknown) {
-    super(message, cause === undefined ? undefined : { cause });
-    this.name = 'PermanentExtractionError';
-  }
-}
+export { PermanentExtractionError } from './reading/reader';
+export { sniffContentType } from './reading/sniff';
 
 /**
- * Sniffs the document type from magic bytes — defence in depth over the
- * client-declared content type, and the fallback when the stored object has
- * none. PDFs start with `%PDF`; DOCX is a ZIP (`PK\x03\x04`).
+ * The subset of the parse caps a text-only caller cares about. A superset (the
+ * full {@link ParseCaps}) is accepted, which is what the file source reader
+ * passes.
  */
-export function sniffContentType(buffer: Buffer): string | null {
-  if (buffer.length >= 4 && buffer.toString('latin1', 0, 4) === '%PDF') return PDF_CONTENT_TYPE;
-  if (buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4b) return DOCX_CONTENT_TYPE;
-  return null;
-}
+export type ExtractCaps = Partial<ParseCaps>;
 
 /**
- * Parse caps: a wall-clock timeout around the parse and a cap on
- * the resulting (decompressed) text length. The 25 MB upload cap bounds only
- * COMPRESSED input, so a zip-bomb DOCX/PDF can still decompress to GBs of text;
- * these bound the parse time and reject over-long output as a PERMANENT error
- * (error state, zero downstream model calls) rather than OOM-ing the worker.
- */
-export interface ExtractCaps {
-  maxTextChars: number;
-  timeoutSeconds: number;
-}
-
-const DEFAULT_EXTRACT_CAPS: ExtractCaps = { maxTextChars: 1_000_000, timeoutSeconds: 30 };
-
-/**
- * Extracts text, routing on the resolved content type (declared type, else
- * sniffed). Unknown/unsupported types, parse failures, a parse that exceeds the
- * wall-clock timeout, and text over the length cap all throw
- * PermanentExtractionError (no fabricated memory, spec §2).
+ * Extracts text, routing on the resolved content type (the magic bytes first,
+ * the declared type and the filename as hints). Unknown or unsupported types,
+ * parse failures, a parse that outruns the wall-clock timeout, and text over
+ * the length cap all throw `PermanentExtractionError`.
  */
 export async function extractDocumentText(
   buffer: Buffer,
   declaredContentType: string | null,
-  caps: ExtractCaps = DEFAULT_EXTRACT_CAPS,
+  caps: ExtractCaps = {},
+  filename: string | null = null,
 ): Promise<string> {
-  const contentType = normalizeType(declaredContentType) ?? sniffContentType(buffer);
-  const parse =
-    contentType === PDF_CONTENT_TYPE
-      ? () => extractPdf(buffer)
-      : contentType === DOCX_CONTENT_TYPE
-        ? () => extractDocx(buffer)
-        : null;
-  if (!parse) {
-    throw new PermanentExtractionError(
-      `unsupported document type '${declaredContentType ?? 'unknown'}'`,
-    );
-  }
-  const text = await withParseTimeout(parse, caps.timeoutSeconds);
-  if (text.length > caps.maxTextChars) {
-    throw new PermanentExtractionError(
-      `extracted text (${text.length} chars) exceeds the ${caps.maxTextChars}-char cap ` +
-        `(possible decompression bomb)`,
-    );
-  }
-  return text;
-}
-
-/** Rejects with a PermanentExtractionError if the parse outruns the timeout. */
-async function withParseTimeout(
-  parse: () => Promise<string>,
-  timeoutSeconds: number,
-): Promise<string> {
-  if (timeoutSeconds <= 0) return parse();
-  let timer: NodeJS.Timeout | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(
-      () => reject(new PermanentExtractionError(`document parse exceeded ${timeoutSeconds}s`)),
-      timeoutSeconds * 1000,
-    );
-  });
-  try {
-    return await Promise.race([parse(), timeout]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
-
-async function extractPdf(buffer: Buffer): Promise<string> {
-  const parser = new PDFParse({ data: new Uint8Array(buffer) });
-  try {
-    const result = await parser.getText();
-    // Join per-page text directly (result.pages), NOT result.text — the latter
-    // interleaves `-- N of M --` page markers that would pollute extraction.
-    return normalizeWhitespace(result.pages.map((page) => page.text).join('\n\n'));
-  } catch (error) {
-    throw new PermanentExtractionError('could not parse PDF', error);
-  } finally {
-    await parser.destroy().catch(() => undefined);
-  }
-}
-
-async function extractDocx(buffer: Buffer): Promise<string> {
-  try {
-    const result = await mammoth.extractRawText({ buffer });
-    return normalizeWhitespace(result.value);
-  } catch (error) {
-    throw new PermanentExtractionError('could not parse DOCX', error);
-  }
-}
-
-function normalizeType(contentType: string | null): string | null {
-  if (!contentType) return null;
-  // Strip any `; charset=…` parameter and lowercase.
-  const base = contentType.split(';')[0]!.trim().toLowerCase();
-  return base === PDF_CONTENT_TYPE || base === DOCX_CONTENT_TYPE ? base : null;
-}
-
-/** Collapses runs of blank lines / trailing spaces so chunking sees clean text. */
-function normalizeWhitespace(text: string): string {
-  return text
-    .replace(/\r\n?/g, '\n')
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  const result = await readDocument(buffer, { declaredContentType, filename, caps });
+  return result.text;
 }

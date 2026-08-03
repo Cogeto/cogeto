@@ -260,6 +260,14 @@ const countsSchema = z.object({
    * identifier — the sweep verifies memories, points and objects as ever.
    */
   suppressed_facts_removed: z.int().optional(),
+  /**
+   * File read reports erased with this source (V2.1 item 4.1). The report
+   * carries sheet names, which are the document's own words, so the erasure
+   * claim would be incomplete without it. ADDITIVE and OPTIONAL, like every
+   * count before it: earlier receipts parse unchanged and hash to the same
+   * value, so the chain verifies across the change. A count, not an identifier.
+   */
+  file_read_reports_removed: z.int().optional(),
   /** Qdrant point id = memory id (spec §4.2); duplicated for receipt readability. */
   point_ids: z.array(z.string()),
   object_keys: z.array(z.string()),
@@ -505,6 +513,7 @@ export class DeletionSaga {
       let replyDraftsRedacted = 0;
       let passportExportsExpired = 0;
       let suppressedFactsRemoved = 0;
+      let fileReadReportsRemoved = 0;
       const ownerExpiredObjectKeys: string[] = [];
       // Every source this deletion erases, not just the one it was asked for:
       // the primary source plus its cascaded members. Source-keyed artifacts
@@ -536,6 +545,10 @@ export class DeletionSaga {
             const redacted = await cascade.cascadeForSource(tx, ref.sourceType, ref.sourceId);
             if (cascade.artifact === 'reply_drafts') replyDraftsRedacted += redacted;
             if (cascade.artifact === 'suppressed_facts') suppressedFactsRemoved += redacted;
+            // What the reading layer made of an erased file: sheet names are
+            // content, and the report can exist with no memory at all (a file
+            // that yielded nothing readable), so only this leg reaches it.
+            if (cascade.artifact === 'file_read_reports') fileReadReportsRemoved += redacted;
           }
         }
         // SEC-8: owner-scoped artifacts that would outlive the deletion. Their
@@ -588,6 +601,9 @@ export class DeletionSaga {
         ...(passportExportsExpired > 0 ? { passport_exports_expired: passportExportsExpired } : {}),
         ...(chatMessagesRemoved === null ? {} : { chat_messages_removed: chatMessagesRemoved }),
         ...(suppressedFactsRemoved > 0 ? { suppressed_facts_removed: suppressedFactsRemoved } : {}),
+        ...(fileReadReportsRemoved > 0
+          ? { file_read_reports_removed: fileReadReportsRemoved }
+          : {}),
         point_ids: memoryIds,
         object_keys: objectKeys,
         superseded_by_nulled: nulledPointers,

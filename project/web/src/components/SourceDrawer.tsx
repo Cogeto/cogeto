@@ -45,6 +45,39 @@ const FILE_STATE_KEY: Record<string, string> = {
 const formatBytes = (bytes: number | null): string | null => formatFileSize(bytes);
 
 /**
+ * The read OUTCOME and its reason are API enum values (V2.1 item 4.1); only
+ * their display names are translated, through explicit value → key maps. An
+ * unknown value renders nothing rather than a raw code.
+ */
+const READ_OUTCOME_KEY: Record<string, string> = {
+  read: 'read.outcome.read',
+  truncated: 'read.outcome.truncated',
+  empty: 'read.outcome.empty',
+  unsupported_format: 'read.outcome.unsupported_format',
+  read_failed: 'read.outcome.read_failed',
+};
+
+const READ_REASON_KEY: Record<string, string> = {
+  row_cap_sheet: 'read.reason.row_cap_sheet',
+  row_cap_file: 'read.reason.row_cap_file',
+  no_text: 'read.reason.no_text',
+  unsupported_type: 'read.reason.unsupported_type',
+  legacy_office_format: 'read.reason.legacy_office_format',
+  parse_failed: 'read.reason.parse_failed',
+  parse_timeout: 'read.reason.parse_timeout',
+  text_over_cap: 'read.reason.text_over_cap',
+  undecodable_text: 'read.reason.undecodable_text',
+};
+
+/** A partial read and a failed read are different news; so is a clean one. */
+const readTone = (outcome: string): Tone =>
+  outcome === 'read'
+    ? 'positive'
+    : outcome === 'truncated' || outcome === 'empty'
+      ? 'warning'
+      : 'danger';
+
+/**
  * Which drawer body a source type gets, typed over the source-type registry's
  * union: adding a source type without deciding its drawer treatment is a
  * compile error, never a silent fallback. `none` (container and defunct
@@ -226,6 +259,50 @@ export function SourceDrawer({
                   {t('scopeLine', { scope: t(`common:memoryScope.${fileQuery.data.scope}`) })}
                 </span>
               </p>
+              {fileQuery.data.read && (
+                <div className="space-y-1 rounded-md border border-slate-200 bg-surface p-2">
+                  <p className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="font-medium text-slate-600">{t('read.title')}</span>
+                    <Pill tone={readTone(fileQuery.data.read.outcome)}>
+                      {READ_OUTCOME_KEY[fileQuery.data.read.outcome]
+                        ? t(READ_OUTCOME_KEY[fileQuery.data.read.outcome]!)
+                        : fileQuery.data.read.outcome}
+                    </Pill>
+                  </p>
+                  {fileQuery.data.read.reasonCode &&
+                    READ_REASON_KEY[fileQuery.data.read.reasonCode] && (
+                      <p className="text-xs text-slate-500">
+                        {t(READ_REASON_KEY[fileQuery.data.read.reasonCode]!)}
+                      </p>
+                    )}
+                  {fileQuery.data.read.sheets.length > 0 && (
+                    <ul className="space-y-0.5 text-xs text-slate-500">
+                      {fileQuery.data.read.sheets.map((sheet) => (
+                        <li key={sheet.index} className="flex flex-wrap gap-1">
+                          <span className="font-medium text-slate-600">
+                            {sheet.name ?? t('read.unnamedSheet')}
+                          </span>
+                          <span>
+                            {sheet.truncated
+                              ? t('read.sheetRows', {
+                                  rowsRead: sheet.rowsRead,
+                                  rowsTotal: sheet.rowsTotal,
+                                })
+                              : t('read.sheetRowsAll', { rowsTotal: sheet.rowsTotal })}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {fileQuery.data.read.valuesUnavailable > 0 && (
+                    <p className="text-xs text-slate-500">
+                      {t('read.valuesUnavailable', {
+                        count: fileQuery.data.read.valuesUnavailable,
+                      })}
+                    </p>
+                  )}
+                </div>
+              )}
               {!fileQuery.data.discarded && (
                 <>
                   <button

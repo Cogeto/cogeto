@@ -1,0 +1,7 @@
+{
+  "declaredContentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "filename": "invoices.xlsx",
+  "caps": {
+    "maxSheetRows": 4
+  }
+}

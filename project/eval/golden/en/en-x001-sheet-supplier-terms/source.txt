@@ -1,0 +1,3 @@
+Sheet "Supplier terms". Columns: Supplier, Country, Payment terms (days), Contract ends
+Row 2: Supplier: Adriatic Foods; Country: Croatia; Payment terms (days): 30; Contract ends: 2027-03-31
+Row 3: Supplier: Nordic Packaging; Country: Sweden; Payment terms (days): 45; Contract ends: 2026-12-31

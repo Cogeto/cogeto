@@ -1,0 +1,3 @@
+Sheet "Commitments". Delivery commitments, Q3 2026. Prepared by Ana Kovač, 1 July 2026. Columns: Project, Owner, Milestone, Due date
+Row 5: Project: CRM migration; Owner: Ana Kovač; Milestone: Migration plan delivered to Adriatic Foods; Due date: 2026-08-15
+Row 6: Project: Warehouse rollout; Owner: Marko Babić; Milestone: Pilot site live; Due date: 2026-09-30

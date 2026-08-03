@@ -117,6 +117,11 @@ export function buildLimits(env: NodeJS.ProcessEnv, demoMode: boolean): LimitsCo
       maxChunks: num(env.COGETO_PARSE_MAX_CHUNKS, 200),
       timeoutSeconds: num(env.COGETO_PARSE_TIMEOUT_SECONDS, 30),
       maxFacts: num(env.COGETO_EXTRACT_MAX_FACTS, 100),
+      // Spreadsheets (V2.1 item 4.1): rows read per sheet and per file. The
+      // read is truncated at these and the source says so.
+      maxSheetRows: num(env.COGETO_PARSE_MAX_SHEET_ROWS, 5_000),
+      maxFileRows: num(env.COGETO_PARSE_MAX_FILE_ROWS, 20_000),
+      csvFallbackEncoding: env.COGETO_PARSE_CSV_FALLBACK_ENCODING?.trim() || 'windows-1250',
     },
   };
 }

@@ -65,6 +65,11 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
 
   // Split out of connectors (V2.0 item 3.6 part 4).
   note: 'notes',
+  // What the reading layer made of an uploaded file (V2.1 item 4.1). Owned by
+  // `files` and NOT by `memory` alongside file_metadata: a discard-mode upload
+  // has no metadata row at all, and it is exactly the upload whose original is
+  // gone, so this row can be the only account of what was read.
+  file_read_report: 'files',
   // Split out of connectors (V2.0 item 3.6 part 4).
   user_settings: 'settings',
   email_message: 'email',
