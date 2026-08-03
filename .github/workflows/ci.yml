@@ -257,19 +257,48 @@ jobs:
 
       - name: pip-audit (redaction sidecar lock)
         working-directory: project/services/redaction
-        # ALLOWLIST — reviewed 2026-07-30, revisit when the lock is next
-        # regenerated:
-        #   GHSA-537c-gmf6-5ccf  cryptography 46.0.7 (fix: 48.0.1)
-        #     Transitive, not a declared dependency of the sidecar. The service
-        #     is stateless, internal-network-only (no published ports), speaks
-        #     plain HTTP behind the model-gateway seam, and terminates no TLS and
-        #     parses no certificates — the paths this library is exercised
-        #     through. Bumping it means regenerating the hash-locked tree, which
-        #     is a change of its own and not part of this security wave.
+        # ALLOWLIST. Every entry below is the SAME finding in the same place:
+        # `cryptography`, pinned at 46.0.7 in the hash-locked tree, reached only
+        # as a transitive dependency of presidio-anonymizer. It is not declared
+        # in requirements.txt, the sidecar imports no part of it, and the
+        # advisories are all in TLS and X.509 code paths the service never
+        # enters: it is stateless, internal-network-only (no published ports),
+        # speaks plain HTTP behind the model-gateway seam, terminates no TLS and
+        # parses no certificates.
+        #
+        # WHY NOT JUST BUMP IT: the ceiling is upstream, not ours.
+        # presidio-anonymizer 2.2.363 requires cryptography <47.0.0, and even
+        # its newest release, 2.2.364, only widens that to <49.0.0. The fixes
+        # below land in 49.0.0 and 50.0.0, so NO available presidio release
+        # permits a cryptography that resolves them. Revisit when presidio
+        # widens the constraint; that is the trigger, not a calendar date, and
+        # it is also when the lock should be regenerated.
+        #
+        #   reviewed 2026-07-30
+        #   GHSA-537c-gmf6-5ccf  high    (fix: 48.0.1)
+        #     Vulnerable OpenSSL included in the cryptography wheels.
+        #
+        #   reviewed 2026-08-04, published upstream 2026-08-03 21:17 to 21:27
+        #   UTC, which is why this job went from green to red with no commit in
+        #   between:
+        #   GHSA-g6cj-pr64-35w5  high    CVE-2026-69247  (fix: 50.0.0)
+        #     PKCS#7 EnvelopedData decryption exposes a Bleichenbacher oracle
+        #     through distinguishable errors and timing. The sidecar decrypts no
+        #     PKCS#7.
+        #   GHSA-jwv3-5hgf-82ww  high    CVE-2026-69249  (fix: 49.0.0)
+        #     Duplicate self-signed intermediates cause exponential path
+        #     building. The sidecar builds no certificate chains.
+        #   GHSA-m2h6-j472-rp4c  medium  CVE-2026-69248  (fix: 49.0.0)
+        #     The verifier accepts wildcard DNS names, allowing escape from
+        #     permittedSubtrees name constraints. The sidecar verifies no
+        #     certificates.
         run: |
           pip install --quiet pip-audit
           pip-audit -r requirements.lock --no-deps \
-            --ignore-vuln GHSA-537c-gmf6-5ccf
+            --ignore-vuln GHSA-537c-gmf6-5ccf \
+            --ignore-vuln GHSA-g6cj-pr64-35w5 \
+            --ignore-vuln GHSA-jwv3-5hgf-82ww \
+            --ignore-vuln GHSA-m2h6-j472-rp4c
 
       # The built image, not just the manifests: catches anything the base image
       # drags in. Fails on CRITICAL/HIGH in application dependencies and OS
