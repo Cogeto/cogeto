@@ -8,7 +8,7 @@
 
 # ── Stage 1a: install all workspace dependencies ─────────────────────────────
 # node:22-alpine
-FROM node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS deps
+FROM node@sha256:a9875b5ccb02aa527cf7f2297b16ae425a0ff3da2f7d87fce3df41f04ffa0524 AS deps
 WORKDIR /repo
 COPY package.json package-lock.json ./
 COPY project/shared/package.json project/shared/package.json
@@ -28,7 +28,7 @@ RUN npm run build
 
 # ── Stage 2: slim runtime — app, worker, and migrate run from this image ─────
 # node:22-alpine
-FROM node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS runtime
+FROM node@sha256:a9875b5ccb02aa527cf7f2297b16ae425a0ff3da2f7d87fce3df41f04ffa0524 AS runtime
 ENV NODE_ENV=production
 WORKDIR /repo
 # The reading ladder's local tiers (V2.1 item 4.1). Both are CPU-only and run
