@@ -19,6 +19,7 @@ enablement is determined, how health is checked, and its failure semantics.
 | `demo` | the demo-mode flag | passive: the production-guard state | demo plus production makes the guard refuse the seed, loudly |
 | `consoles` | the `consoles` profile, or an explicit flag | none | the console edge binds to host loopback; the app has nothing it can probe, and says so |
 | `local-models` | any tier resolved to the local provider | runtime reachability plus required models pulled | **external dependency**: boot refuses, and a runtime that dies later goes loud here |
+| `vision` | Reading pages that are pictures (V2.1 item 4.1). PROBED by sending a real image: the same weights are served with and without a multimodal projector, so nothing short of an image can answer the question. `off` means the reading ladder stops at local OCR, which is a supported state; `unreachable` names which of the four failures happened. |
 
 Scheduled jobs join the same surface as a second category: `dreaming` and `sweep`, each
 with last-run time, last result, and an overdue state.

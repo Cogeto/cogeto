@@ -31,6 +31,23 @@ RUN npm run build
 FROM node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS runtime
 ENV NODE_ENV=production
 WORKDIR /repo
+# The reading ladder's local tiers (V2.1 item 4.1). Both are CPU-only and run
+# IN-INSTANCE: a scanned page is rendered and read here, and nothing about it
+# leaves the box unless the operator has configured a vision tier and the page
+# needs one.
+#   poppler-utils  pdftoppm, which renders a PDF page to a PNG at a chosen DPI.
+#                  Rendering at a bounded DPI is also what bounds image size,
+#                  which is why no image-processing library is needed anywhere.
+#   tesseract-ocr  the OCR engine, plus the language data for the three
+#                  languages the product supports. Each pack is a few MB; they
+#                  are listed explicitly rather than pulling `tesseract-ocr-data-all`,
+#                  which would add a hundred languages nobody asked for.
+RUN apk add --no-cache \
+      poppler-utils \
+      tesseract-ocr \
+      tesseract-ocr-data-eng \
+      tesseract-ocr-data-hrv \
+      tesseract-ocr-data-deu
 COPY package.json package-lock.json ./
 COPY project/shared/package.json project/shared/package.json
 COPY project/src/package.json project/src/package.json

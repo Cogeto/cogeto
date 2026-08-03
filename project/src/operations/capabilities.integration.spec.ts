@@ -100,6 +100,9 @@ describe('capability registry (integration, real Postgres)', () => {
       'demo',
       'consoles',
       'local-models',
+      // Reading pages that are pictures (V2.1 item 4.1): probed by sending a
+      // real image, because no configuration flag can answer the question.
+      'vision',
     ]);
     expect(report.jobs.map((j) => j.id)).toEqual(['dreaming', 'sweep']);
     // A fresh instance (migrations just applied) is not overdue: never-ran

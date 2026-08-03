@@ -7,8 +7,9 @@ import type {
   ModelTier,
   StructuredExtractionRequest,
   TokenUsage,
+  VisionRequest,
 } from './model-gateway.service';
-import { ModelGatewayError } from './errors';
+import { ModelGatewayError, VisionUnavailableError } from './errors';
 import {
   callWithRetry,
   postJson,
@@ -18,6 +19,7 @@ import {
   structuredWithRepair,
 } from './provider';
 import { DEFAULT_OPENAI_BASE_URL } from './provider-config';
+import { classifyVisionFailure } from './vision-failure';
 
 export interface OpenAiCompatibleGatewayOptions {
   apiKey: string;
@@ -28,6 +30,8 @@ export interface OpenAiCompatibleGatewayOptions {
   pipelineModel?: string;
   answerModel?: string;
   embedModel?: string;
+  /** The image model (V2.1 item 4.1); absent → this adapter has no vision. */
+  visionModel?: string;
   /** Sampling temperature for free-text completions; structured
    * extraction is ALWAYS temperature 0. */
   temperature?: number;
@@ -41,7 +45,7 @@ export interface OpenAiCompatibleGatewayOptions {
    * behavior. A timed-out call is FATAL, not retryable — retrying a
    * saturated local runtime only piles on.
    */
-  tierTimeoutsMs?: { pipeline?: number; answer?: number; embedding?: number };
+  tierTimeoutsMs?: { pipeline?: number; answer?: number; embedding?: number; vision?: number };
   /**
    * Marks this instance as a LOCAL Ollama runtime: `rootUrl`
    * is the runtime root; `reachable` probes `<root>/api/tags`, and an HTTP
@@ -73,6 +77,7 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
   private readonly headers: Record<string, string>;
   private readonly models: Partial<Record<ModelTier, string>>;
   private readonly embedModel?: string;
+  private readonly visionModel?: string;
   private readonly temperature?: number;
   private readonly label: string;
   private readonly tierTimeoutsMs?: OpenAiCompatibleGatewayOptions['tierTimeoutsMs'];
@@ -85,6 +90,7 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
     this.headers = { authorization: `Bearer ${options.apiKey}` };
     this.models = { pipeline: options.pipelineModel, answer: options.answerModel };
     this.embedModel = options.embedModel;
+    this.visionModel = options.visionModel;
     this.temperature = options.temperature;
     this.label = options.providerLabel ?? 'openai';
     this.tierTimeoutsMs = options.tierTimeoutsMs;
@@ -106,7 +112,7 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
    * model-not-found rethrown fatal with the exact `ollama pull` fix.
    */
   private async call<T>(
-    tier: 'pipeline' | 'answer' | 'embedding',
+    tier: 'pipeline' | 'answer' | 'embedding' | 'vision',
     model: string,
     fn: (signal?: AbortSignal) => Promise<T>,
   ): Promise<T> {
@@ -230,6 +236,72 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
       );
       return contentToText(response.choices?.[0]?.message?.content);
     });
+  }
+
+  /**
+   * Reads one image (V2.1 item 4.1).
+   *
+   * The OpenAI chat shape carries images as content PARTS with a `data:` URL,
+   * and both OpenAI and Ollama's compatible surface accept exactly that, so no
+   * provider-specific branch appears here. The bytes are inlined rather than
+   * given as a link: the model must never be handed a URL it would fetch, which
+   * would be an egress path the instance does not control.
+   *
+   * Failure classification is the point of this method. An endpoint that
+   * answers and REFUSES the image is a different fact from one that is down,
+   * and for a local runtime it usually means one specific thing: the model was
+   * loaded without its multimodal projector. The same GGUF serves happily as a
+   * text model, and nothing in its name says which way it was loaded, so the
+   * message says it outright instead of leaving the operator to guess.
+   */
+  override async describeImage(request: VisionRequest): Promise<CompletionResult> {
+    const model = this.visionModel;
+    if (!model) {
+      throw new VisionUnavailableError(
+        'not_configured',
+        `no vision model configured for provider "${this.label}"`,
+      );
+    }
+    const dataUrl = `data:${request.image.mediaType};base64,${request.image.bytes.toString('base64')}`;
+    const body = {
+      model,
+      ...(request.maxTokens !== undefined ? { max_tokens: request.maxTokens } : {}),
+      // Reading a page is a transcription task, not a creative one.
+      temperature: 0,
+      messages: [
+        ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
+        {
+          role: 'user' as const,
+          content: [
+            { type: 'text', text: request.input },
+            { type: 'image_url', image_url: { url: dataUrl } },
+          ],
+        },
+      ],
+    };
+
+    let response: ChatResponse;
+    try {
+      response = await this.call('vision', model, (signal) =>
+        postJson<ChatResponse>(`${this.baseUrl}/chat/completions`, this.headers, body, signal),
+      );
+    } catch (error) {
+      throw classifyVisionFailure(error, {
+        label: this.label,
+        model,
+        endpoint: this.baseUrl,
+        localRuntime: this.localRuntime !== undefined,
+      });
+    }
+
+    const text = contentToText(response.choices?.[0]?.message?.content);
+    if (text.trim().length === 0) {
+      throw new VisionUnavailableError(
+        'unusable_response',
+        `the vision model "${model}" on ${this.label} accepted the image and returned no text`,
+      );
+    }
+    return { text, ...usageOf(response) };
   }
 
   async embed(texts: string[]): Promise<number[][]> {

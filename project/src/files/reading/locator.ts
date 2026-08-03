@@ -22,6 +22,17 @@ export type ReadGranularity = 'page' | 'paragraph' | 'sheet_row' | 'document';
 export interface PageLocator {
   kind: 'page';
   page: number;
+  /**
+   * Which tier of the reading ladder produced this page's text (V2.1 item 4.1).
+   * Absent means the page's own text layer, which is also what every locator
+   * produced before the ladder existed meant.
+   *
+   * It is on the LOCATOR rather than beside it because this is the thing the
+   * Sources view and the findings report render: a fact transcribed from a
+   * photograph by a model is weaker evidence than one lifted from a text layer,
+   * and a reader deserves to see which they are looking at.
+   */
+  tier?: 'text' | 'ocr' | 'vision';
 }
 
 /** A paragraph of a flowed document (DOCX). 1-based. */
@@ -69,7 +80,9 @@ export interface ReadSegment {
 export function describeLocator(locator: ReadLocator): string {
   switch (locator.kind) {
     case 'page':
-      return `page ${locator.page}`;
+      return locator.tier && locator.tier !== 'text'
+        ? `page ${locator.page} (${locator.tier})`
+        : `page ${locator.page}`;
     case 'paragraph':
       return `paragraph ${locator.paragraph}`;
     case 'sheet_row':

@@ -5,6 +5,7 @@ import type {
   CompletionResult,
   GatewayReachability,
   StructuredExtractionRequest,
+  VisionRequest,
 } from './model-gateway.service';
 import { ModelBudgetExceededError } from './errors';
 import type { ModelUsageMeter } from '../infrastructure/index';
@@ -68,6 +69,29 @@ export class BudgetedModelGateway extends ModelGateway {
     const userId = await this.gate();
     const result = await this.inner.extractStructured(schema, request);
     await this.charge(userId, request.input, JSON.stringify(result));
+    return result;
+  }
+
+  /**
+   * Vision is metered like every other call, and it is the one that most needs
+   * it: a page image is the most expensive thing the pipeline can ask for.
+   *
+   * The charge uses provider-reported usage when the adapter normalized one and
+   * otherwise falls back to the documented estimate over the PROMPT plus the
+   * answer. The image bytes are deliberately not counted as characters: a
+   * megabyte of PNG is not four hundred thousand tokens, and inventing a number
+   * would make the budget lie in the other direction. The real ceiling on image
+   * work is the per-document and per-user PAGE caps in the reading ladder,
+   * which bound it by construction rather than by estimate.
+   */
+  override async describeImage(request: VisionRequest): Promise<CompletionResult> {
+    const userId = await this.gate();
+    const result = await this.inner.describeImage(request);
+    if (userId && result.usage) {
+      await this.record(userId, result.usage.inputTokens + result.usage.outputTokens);
+    } else {
+      await this.charge(userId, `${request.system ?? ''}${request.input}`, result.text);
+    }
     return result;
   }
 

@@ -33,7 +33,9 @@ export interface TierBinding {
  */
 export interface OllamaRuntimeConfig {
   baseUrl: string;
-  timeoutsMs: { pipeline: number; answer: number; embedding: number };
+  /** Vision is sized separately: reading a page image is the slowest call the
+   * instance makes, and a timeout tuned for a sentence of text will cut it. */
+  timeoutsMs: { pipeline: number; answer: number; embedding: number; vision: number };
 }
 
 export interface ResolvedModelProviders {
@@ -44,6 +46,14 @@ export interface ResolvedModelProviders {
   /** The matched preset name, or null for a custom tier mix. */
   preset: string | null;
   tiers: { pipeline: TierBinding; answer: TierBinding; embedding: TierBinding };
+  /**
+   * The vision binding, or null when this instance has none (V2.1 item 4.1).
+   * Deliberately OUTSIDE `tiers` and absent from every preset: vision is a
+   * capability an operator opts into for their own runtime, never something a
+   * default turns on. Null is a complete answer, not a missing value: it means
+   * the reading ladder stops at OCR and says so.
+   */
+  vision: TierBinding | null;
   /** API keys per provider — never logged, stored, or serialized to any DTO. */
   keys: Partial<Record<ModelProviderId, string>>;
   endpoints: { openaiBaseUrl: string; anthropicBaseUrl: string };
@@ -96,6 +106,9 @@ export const OLLAMA_TIMEOUT_DEFAULTS_MS = {
   pipeline: 300_000,
   answer: 300_000,
   embedding: 120_000,
+  // A page image through a local multimodal model on consumer hardware is
+  // minutes, not seconds; the pipeline that calls it is a background job.
+  vision: 600_000,
 } as const;
 
 const TIERS = ['pipeline', 'answer', 'embedding'] as const;
@@ -123,8 +136,16 @@ const slug = (value: string): string =>
 
 /** Deterministic configuration id (ruling 3): preset name on an exact match,
  * else the full per-tier derivation; `-redacted` suffix as before. */
-export function deriveProvidersId(tiers: PresetTiers, redacted: boolean): string {
-  const suffix = redacted ? '-redacted' : '';
+export function deriveProvidersId(
+  tiers: PresetTiers,
+  redacted: boolean,
+  vision: TierBinding | null = null,
+): string {
+  // Vision joins the id because it changes what a run MEASURED: the same corpus
+  // read with and without vision is two different measurements, and the trust
+  // page joins on this key.
+  const visionPart = vision ? `--vis-${vision.provider}-${slug(vision.model)}` : '';
+  const suffix = `${visionPart}${redacted ? '-redacted' : ''}`;
   for (const [name, preset] of Object.entries(PROVIDER_PRESETS)) {
     if (
       TIERS.every(
@@ -252,6 +273,26 @@ export function resolveModelProviders(
     );
   }
 
+  // The vision binding (V2.1 item 4.1): entirely opt-in, no preset, no default
+  // model. A provider alone is not enough — an image model must be NAMED,
+  // because no provider has one obvious choice and guessing would produce a
+  // capability that claims to exist and fails on the first page.
+  const visionProviderVar = read(env, 'COGETO_PROVIDER_VISION');
+  const visionModelVar = read(env, 'COGETO_MODEL_VISION');
+  let vision: TierBinding | null = null;
+  if (visionProviderVar || visionModelVar) {
+    if (!visionProviderVar || !visionModelVar) {
+      throw new ModelProviderConfigError(
+        'the vision tier needs BOTH COGETO_PROVIDER_VISION and COGETO_MODEL_VISION: ' +
+          'no provider has a default image model, and a guessed one would fail on the first page',
+      );
+    }
+    vision = {
+      provider: parseProvider('COGETO_PROVIDER_VISION', visionProviderVar),
+      model: visionModelVar,
+    };
+  }
+
   const keys: Partial<Record<ModelProviderId, string>> = {};
   const mistralKey = read(env, 'COGETO_MISTRAL_API_KEY') ?? read(env, 'MISTRAL_API_KEY');
   if (mistralKey) keys.mistral = mistralKey;
@@ -265,7 +306,12 @@ export function resolveModelProviders(
   // ollama while staying exactly as strict for every hosted provider.
   keys.ollama = read(env, 'COGETO_OLLAMA_API_KEY') ?? 'ollama';
 
-  const referenced = [...new Set(TIERS.map((tier) => tiers[tier].provider))];
+  const referenced = [
+    ...new Set([
+      ...TIERS.map((tier) => tiers[tier].provider),
+      ...(vision ? [vision.provider] : []),
+    ]),
+  ];
   const missingKeys = referenced.filter((provider) => !keys[provider]);
 
   // Local runtime binding: the base URL has NO
@@ -278,9 +324,10 @@ export function resolveModelProviders(
     const rawBaseUrl = read(env, 'COGETO_OLLAMA_BASE_URL');
     if (!rawBaseUrl) {
       throw new ModelProviderConfigError(
-        `provider "ollama" is selected for ${TIERS.filter(
-          (tier) => tiers[tier].provider === 'ollama',
-        ).join(', ')} but COGETO_OLLAMA_BASE_URL is not set, set it to the Ollama runtime root ` +
+        `provider "ollama" is selected for ${[
+          ...TIERS.filter((tier) => tiers[tier].provider === 'ollama'),
+          ...(vision?.provider === 'ollama' ? ['vision'] : []),
+        ].join(', ')} but COGETO_OLLAMA_BASE_URL is not set, set it to the Ollama runtime root ` +
           `(e.g. http://10.0.0.1:11434)`,
       );
     }
@@ -290,6 +337,7 @@ export function resolveModelProviders(
         pipeline: readTimeoutMs(env, 'COGETO_OLLAMA_TIMEOUT_PIPELINE_MS', 'pipeline'),
         answer: readTimeoutMs(env, 'COGETO_OLLAMA_TIMEOUT_ANSWER_MS', 'answer'),
         embedding: readTimeoutMs(env, 'COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS', 'embedding'),
+        vision: readTimeoutMs(env, 'COGETO_OLLAMA_TIMEOUT_VISION_MS', 'vision'),
       },
     };
   }
@@ -304,9 +352,10 @@ export function resolveModelProviders(
       const details = missingKeys
         .map(
           (provider) =>
-            `provider "${provider}" is selected for ${TIERS.filter(
-              (tier) => tiers[tier].provider === provider,
-            ).join(', ')} but ${KEY_VAR[provider]} is not set`,
+            `provider "${provider}" is selected for ${[
+              ...TIERS.filter((tier) => tiers[tier].provider === provider),
+              ...(vision?.provider === provider ? ['vision'] : []),
+            ].join(', ')} but ${KEY_VAR[provider]} is not set`,
         )
         .join('; ');
       throw new ModelProviderConfigError(details);
@@ -315,9 +364,10 @@ export function resolveModelProviders(
 
   return {
     configured,
-    id: configured ? deriveProvidersId(tiers, options.redacted) : 'unconfigured',
+    id: configured ? deriveProvidersId(tiers, options.redacted, vision) : 'unconfigured',
     preset: presetForTiers(tiers),
     tiers,
+    vision,
     keys,
     endpoints: {
       openaiBaseUrl: read(env, 'COGETO_OPENAI_BASE_URL') ?? DEFAULT_OPENAI_BASE_URL,

@@ -144,6 +144,19 @@ on the source (`file_read_report`, migration 0041, owned by `files`, in the dele
 cascade) instead of quietly looking whole. That row also separates
 **`unsupported_format` from `read_failed`** and labels an unreadable file `empty` /
 `no_text`, which is the hook the OCR and vision half replaces with recovered text.
+The OCR and vision half followed: a page that is a picture is read by a
+**deterministic, cheapest-first ladder** (usable text layer, then local
+Tesseract with en/hr/de data, then a vision model), and a page that cannot be
+read says so instead of arriving as done-with-zero-facts. **Vision is a PROBED
+capability**: the probe sends a real image, because a GGUF model is multimodal
+only when its multimodal projector is loaded and nothing in its name says which
+way it was served. Redaction and vision are mutually exclusive and fail closed.
+The tier is recorded on the provenance locator; caps bound image work by
+construction; `needs_vision` is a state about the INSTANCE, so a source can be
+**reprocessed** once the capability arrives, and reprocessing reconciles rather
+than duplicating. The vision path is deliberately NOT gated in CI, because
+gating it would need a vision model in CI.
+
 **Before changing anything in the reading path, read
 [`docs/features/reading.md`](docs/features/reading.md).**
 

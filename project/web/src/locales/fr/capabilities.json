@@ -15,8 +15,16 @@
     "notCompleting": "Aucune exécution réussie depuis {{hours}} heures. La tâche nocturne ne se termine pas.",
     "neverCompleted": "Aucune exécution réussie depuis {{hours}} heures. La tâche ne s’est jamais terminée."
   },
-  "state": { "on": "activé", "off": "désactivé", "unreachable": "activé, inaccessible" },
-  "jobState": { "ok": "correct", "overdue": "en retard", "failing": "en échec" },
+  "state": {
+    "on": "activé",
+    "off": "désactivé",
+    "unreachable": "activé, inaccessible"
+  },
+  "jobState": {
+    "ok": "correct",
+    "overdue": "en retard",
+    "failing": "en échec"
+  },
   "capability": {
     "redaction": {
       "name": "Masquage",
@@ -47,6 +55,11 @@
       "name": "Modèles locaux",
       "description": "Exécute les tâches des modèles dans un environnement Ollama local au lieu d’un fournisseur hébergé, afin que le contenu reste sur votre matériel.",
       "consequence": "L’environnement local des modèles est inaccessible : les fonctions des modèles sur les niveaux locaux échouent jusqu’à son rétablissement."
+    },
+    "vision": {
+      "name": "Reading pictures",
+      "description": "Reads pages that are images: scans, photographs, drawings and schematics. Cheapest first, so a page with real text is never sent to a model. Off means those pages are labelled unreadable instead of silently empty.",
+      "consequence": "Vision is configured but not working: pages that are pictures cannot be read, and they are labelled as needing it rather than shown as processed."
     }
   },
   "job": {

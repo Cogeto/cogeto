@@ -53,7 +53,18 @@ export interface FileSourceDto {
  * who uploaded a fifty-thousand-row workbook must be able to see that Cogeto
  * read part of it, rather than believe it read all of it.
  */
-export type FileReadOutcome = 'read' | 'truncated' | 'empty' | 'unsupported_format' | 'read_failed';
+export type FileReadOutcome =
+  | 'read'
+  | 'truncated'
+  | 'empty'
+  | 'unsupported_format'
+  | 'read_failed'
+  /**
+   * Pages that need a model that can see, on an instance that has none working
+   * (V2.1 item 4.1). Not a property of the document: enable vision and the same
+   * file reads. This is what the reprocess action exists for.
+   */
+  | 'needs_vision';
 
 export interface FileReadSheetDto {
   name: string | null;
@@ -74,6 +85,32 @@ export interface FileReadReportDto {
   /** Cells whose stored value could not be recovered (uncached formulas, errors). */
   valuesUnavailable: number;
   readAt: string;
+  /** Pages read, by tier, and pages not read, with why (V2.1 item 4.1). */
+  pages?: FileReadPageDto[];
+  /** Pages escalated to the vision tier, so the cost is visible. */
+  visionPagesUsed?: number;
+}
+
+export interface FileReadPageDto {
+  page: number;
+  /** `text`, `ocr`, `vision`, or null when the page was not read at all. */
+  tier: string | null;
+  reason: string | null;
+}
+
+/**
+ * Sources that could not be read for want of a capability (V2.1 item 4.1).
+ * Enabling vision on an instance should be followed by reading what it
+ * previously could not, and that needs a list to work from.
+ */
+export interface AwaitingCapabilityDto {
+  objectKey: string;
+  filename: string | null;
+  outcome: FileReadOutcome;
+  reasonCode: string | null;
+  readAt: string;
+  /** Pages that would be retried. */
+  pagesAwaiting: number;
 }
 
 /** GET /api/files/:key/download — a short-lived signed URL, owner-gated. */
@@ -90,6 +127,17 @@ export const DOCX_CONTENT_TYPE =
 export const XLSX_CONTENT_TYPE =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 export const CSV_CONTENT_TYPE = 'text/csv';
+/**
+ * Standalone images (V2.1 item 4.1). A photograph of a page, a screenshot or an
+ * exported diagram is a document: it goes through the reading ladder like any
+ * scanned page, cheapest tier first.
+ */
+export const IMAGE_CONTENT_TYPES: readonly string[] = [
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/tiff',
+];
 
 /**
  * Types a browser genuinely sends for a `.csv`, mapped to the one Cogeto
@@ -111,10 +159,22 @@ export const ALLOWED_UPLOAD_CONTENT_TYPES: readonly string[] = [
   DOCX_CONTENT_TYPE,
   XLSX_CONTENT_TYPE,
   CSV_CONTENT_TYPE,
+  ...IMAGE_CONTENT_TYPES,
 ];
 
 /** Accept-friendly extensions for the file picker + client-side validation. */
-export const ALLOWED_UPLOAD_EXTENSIONS: readonly string[] = ['.pdf', '.docx', '.xlsx', '.csv'];
+export const ALLOWED_UPLOAD_EXTENSIONS: readonly string[] = [
+  '.pdf',
+  '.docx',
+  '.xlsx',
+  '.csv',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.webp',
+  '.tif',
+  '.tiff',
+];
 
 /** Default cap; the server's configurable ceiling (COGETO_UPLOAD_MAX_BYTES) wins. */
 export const DEFAULT_UPLOAD_MAX_BYTES = 25 * 1024 * 1024;

@@ -283,6 +283,48 @@ export async function retryDeadLetter(
   };
 }
 
+/**
+ * Clears a source's idempotency key so its pipeline job can run AGAIN, and
+ * enqueues it (V2.1 item 4.1, reprocessing).
+ *
+ * Every other path in the product treats the key as final, and that is right:
+ * it is what makes a redelivered job a no-op. Reprocessing is the one deliberate
+ * exception, and it exists because a document that could not be read is not
+ * finished with. The bytes are retained, so a scan that needed vision on an
+ * instance that had none becomes readable the moment vision is configured, and
+ * without this it would stay unread forever.
+ *
+ * The dead-letter row goes too: a file that failed to read has one, and leaving
+ * it would show the file as permanently failed next to its successful re-read.
+ *
+ * Callers audit the decision. This function only makes the re-run possible.
+ */
+export async function clearIdempotencyForReprocess(
+  tx: Tx,
+  key: JobIdempotencyKey,
+): Promise<{ clearedExecution: boolean; clearedDeadLetters: number }> {
+  const removed = await tx
+    .delete(jobExecution)
+    .where(
+      and(
+        eq(jobExecution.sourceType, key.sourceType),
+        eq(jobExecution.sourceId, key.sourceId),
+        eq(jobExecution.jobType, key.jobType),
+      ),
+    )
+    .returning({ id: jobExecution.id });
+  const deadLetters = await tx
+    .delete(deadLetter)
+    .where(
+      and(
+        eq(deadLetter.jobType, key.jobType),
+        sql`${deadLetter.payload}->>'source_id' = ${key.sourceId}`,
+      ),
+    )
+    .returning({ id: deadLetter.id });
+  return { clearedExecution: removed.length > 0, clearedDeadLetters: deadLetters.length };
+}
+
 const idempotentPayloadSchema = z.looseObject({
   source_type: z.string().min(1),
   source_id: z.string().min(1),

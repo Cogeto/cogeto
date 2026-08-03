@@ -6,6 +6,7 @@ import type {
   GatewayReachability,
   ModelTier,
   StructuredExtractionRequest,
+  VisionRequest,
 } from './model-gateway.service';
 import type { ModelEgressAudit } from '../infrastructure/index';
 import type { ZodType } from 'zod';
@@ -114,6 +115,33 @@ export class AuditedModelGateway extends ModelGateway {
     }
   }
 
+  /**
+   * Vision egress (V2.1 item 4.1). A page image leaving the box is the largest
+   * single thing this instance ever sends to a rented model, and V2.0 item 3.7
+   * put model egress in the trail precisely so that is inspectable.
+   *
+   * `imageBytes` is recorded instead of pretending an image has a character
+   * count: it is the honest size of what moved. Structural only, as ever, so
+   * nothing about what the page SHOWED reaches the trail.
+   */
+  override async describeImage(request: VisionRequest): Promise<CompletionResult> {
+    const started = Date.now();
+    try {
+      const result = await this.inner.describeImage(request);
+      await this.record('describeImage', 'vision', started, {
+        inputChars: request.input.length,
+        imageBytes: request.image.bytes.length,
+        outputChars: result.text.length,
+        inputTokens: result.usage?.inputTokens,
+        outputTokens: result.usage?.outputTokens,
+      });
+      return result;
+    } catch (error) {
+      await this.recordFailure('describeImage', 'vision', started, error);
+      throw error;
+    }
+  }
+
   async embed(texts: string[]): Promise<number[][]> {
     const started = Date.now();
     const inputChars = texts.reduce((total, text) => total + text.length, 0);
@@ -139,7 +167,7 @@ export class AuditedModelGateway extends ModelGateway {
 
   private async record(
     operation: string,
-    tier: ModelTier | 'embedding',
+    tier: ModelTier | 'embedding' | 'vision',
     started: number,
     detail: Record<string, number | undefined>,
   ): Promise<void> {
@@ -148,7 +176,7 @@ export class AuditedModelGateway extends ModelGateway {
 
   private async recordFailure(
     operation: string,
-    tier: ModelTier | 'embedding',
+    tier: ModelTier | 'embedding' | 'vision',
     started: number,
     error: unknown,
   ): Promise<void> {

@@ -7,6 +7,9 @@ import { FileReadReportCascade } from './file-read-report.cascade';
 import { FileReadReportStore } from './persistence/file-read-report';
 import { FILE_UPLOAD_OPTIONS } from './file-upload-options';
 import type { FileUploadOptions } from './file-upload-options';
+import { VisionSource } from './file.source-reader';
+import { ProbedVisionSource, VISION_PROVIDERS } from './reading/vision-source';
+import type { ResolvedModelProviders } from '../model-gateway/index';
 
 /**
  * files — document upload (V2.0 item 3.6 part 4, split out of the connectors
@@ -25,6 +28,14 @@ import type { FileUploadOptions } from './file-upload-options';
 export class FilesModule {
   static register(options: {
     fileUpload: FileUploadOptions;
+    /**
+     * The instance's model configuration, supplied by a root that runs the
+     * reading ladder (the worker). Present → the ladder may escalate a page to
+     * the vision tier, subject to the probe saying the configuration actually
+     * reads images. Absent → the ladder stops at OCR, which is a supported
+     * state, not a degraded one.
+     */
+    modelProviders?: ResolvedModelProviders;
     imports?: ModuleMetadata['imports'];
   }): DynamicModule {
     return {
@@ -39,6 +50,12 @@ export class FilesModule {
         FileReadReportStore,
         FileReadReportCascade,
         { provide: FILE_UPLOAD_OPTIONS, useValue: options.fileUpload },
+        ...(options.modelProviders
+          ? [
+              { provide: VISION_PROVIDERS, useValue: options.modelProviders },
+              { provide: VisionSource, useClass: ProbedVisionSource },
+            ]
+          : []),
       ],
       exports: [FilesService, FileSourceReader, FileReadReportCascade, FILE_UPLOAD_OPTIONS],
     };

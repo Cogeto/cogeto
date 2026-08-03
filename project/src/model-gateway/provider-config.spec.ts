@@ -240,11 +240,13 @@ describe('local_timeouts_config — per-tier local timeouts', () => {
     COGETO_OLLAMA_BASE_URL: 'http://10.0.0.1:11434',
   };
 
-  it('defaults are high for local inference: 300s generation, 120s embeddings', () => {
+  it('defaults are high for local inference: 300s generation, 120s embeddings, 600s vision', () => {
     expect(resolve(OLLAMA).ollama?.timeoutsMs).toEqual({
       pipeline: 300_000,
       answer: 300_000,
       embedding: 120_000,
+      // Reading a page image is the slowest call the instance makes.
+      vision: 600_000,
     });
   });
 
@@ -254,14 +256,21 @@ describe('local_timeouts_config — per-tier local timeouts', () => {
       pipeline: 300_000,
       answer: 600_000,
       embedding: 120_000,
+      vision: 600_000,
     });
     const all = resolve({
       ...OLLAMA,
       COGETO_OLLAMA_TIMEOUT_PIPELINE_MS: '10000',
       COGETO_OLLAMA_TIMEOUT_ANSWER_MS: '20000',
       COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS: '30000',
+      COGETO_OLLAMA_TIMEOUT_VISION_MS: '40000',
     });
-    expect(all.ollama?.timeoutsMs).toEqual({ pipeline: 10_000, answer: 20_000, embedding: 30_000 });
+    expect(all.ollama?.timeoutsMs).toEqual({
+      pipeline: 10_000,
+      answer: 20_000,
+      embedding: 30_000,
+      vision: 40_000,
+    });
   });
 
   it('a non-numeric timeout refuses boot naming the variable', () => {

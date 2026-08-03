@@ -97,7 +97,7 @@ Every automatic demotion or non-admission writes a `suppressed_fact_log` entry (
 
 | # | Item | Priority | Difficulty |
 |---|---|---|---|
-| 4.1 | **Reading layer: spreadsheets, scans, vision** (native formats DELIVERED 2026-08-03) | P0 | L |
+| 4.1 | **Reading layer: spreadsheets, scans, vision** (DELIVERED 2026-08-03) | P0 | L |
 | 4.2 | **Source-context anchoring** | P0 | M |
 | 4.3 | **Per-source extraction gate** | P0 | M |
 
@@ -113,7 +113,17 @@ Row caps are per sheet and per file, configurable, and **truncation is recorded 
 
 Ten golden cases, five scenarios in English and Croatian, each holding the real workbook or CSV plus the reader options it is read under, with a spec pinning the corpus text to the reader so the two cannot drift.
 
-**Still open in 4.1:** local OCR for scanned and image-only PDFs, the local vision tier for hard cases, and the "scanned document, no readable text" copy that replaces the `empty` label.
+**4.1 Reading layer, OCR and vision half: DELIVERED 2026-08-03** (`feature/reading-layer-vision`). A page that is a picture is now read, and a page that cannot be read says so.
+
+The ladder is **deterministic, cheapest-first, decided per page, and spends no model call on deciding**: the page's own text layer when it is USABLE (scored, because a scan usually carries a token layer of ligature soup and treating presence as usability is how a scan reports itself as read), then local Tesseract with English, Croatian and German data, then a vision model for what OCR could not read and for pages that are pictures rather than text. Two thresholds were measured rather than guessed, and the ink one was measured because the first value was wrong: a blank page reads 0.000 and one line of text reads 0.010, so the 2% picture threshold reasoned from "a diagram covers whole percents" would have discarded pages with content on them. It is 0.3%.
+
+**Vision is a PROBED capability, never a configuration flag.** A GGUF model is multimodal only when its multimodal projector is loaded beside the weights, the same weights serve happily as a text model, and neither the model name nor `ollama list` shows the difference, so the probe sends a real image at boot and on the registry's schedule. Its failures are four distinguishable reasons, and `image_rejected` names the projector on a local runtime because that is where the problem is and the last place an operator looks. Redaction and vision are mutually exclusive and fail closed: pixels cannot be pseudonymized.
+
+Recovered text enters the pipeline unchanged. The TIER is recorded on the provenance locator, because a fact transcribed from a photograph is weaker evidence than one lifted from a text layer; facts are otherwise statused normally, since marking every fact from every scan `uncertain` would empty that status of the meaning it has. Caps bound the cost by construction (20 pages per document, 100 per user per day), and hitting one stops escalation and marks the rest honestly rather than failing the file.
+
+**No silent emptiness.** `needs_vision` is a state about the INSTANCE, not the document, so the retained bytes are re-readable: a reprocess action per source and a list of everything awaiting a capability. Making a re-read reconcile rather than duplicate required a real fix, and it was a latent defect this feature exposed: reconciliation excluded candidates from the same SOURCE, which was identical to "the same run" only because a source was ingested exactly once. The pipeline now excludes the same BATCH and dreaming keeps the source rule.
+
+**Not delivered, stated plainly:** the vision path is not gated in CI, because gating it needs a vision model in CI and there is none. The deterministic ladder is fully covered by the `test` check; the vision prompt's own quality is exercised by fixtures an operator runs against their own runtime.
 
 **4.1 Reading layer.** Extend beyond PDF and DOCX text to **XLSX and CSV** (sheets and tables flattened into extractable statements) and to **scanned or image-only PDFs**, which today pass silently as "done, zero facts". Scanned pages go first through **local OCR** (Tesseract-class, CPU-only, English and Croatian language packs, in-instance, nothing leaves the box). When the instance runs a **local vision model** via the local runtime, hard cases (poor scans, handwriting, tables, simple diagrams) are read by the vision tier through the model gateway. Recovered text enters the existing pipeline unchanged: extraction, independent verification against the recovered span, statuses, provenance to the file and page. A file that still yields nothing readable is **honestly labelled** ("scanned document, no readable text") in the source drawer rather than shown as processed: no silent emptiness, no fabricated facts. Ships with golden cases per format and language; the vision path is eval-gated like every other model task.
 

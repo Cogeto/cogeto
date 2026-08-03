@@ -1,5 +1,6 @@
 import { Readable } from 'node:stream';
 import type { ParseCaps } from '../../infrastructure/index';
+import type { PageLadderServices } from './page-ladder';
 import type { ReadGranularity, ReadSegment } from './locator';
 
 /**
@@ -13,7 +14,7 @@ import type { ReadGranularity, ReadSegment } from './locator';
  */
 
 /** The formats registered today. A new reader adds a member. */
-export type DocumentFormat = 'pdf' | 'docx' | 'xlsx' | 'csv';
+export type DocumentFormat = 'pdf' | 'docx' | 'xlsx' | 'csv' | 'image';
 
 /**
  * What the registry hands a reader. `bytes` is always populated (the worker
@@ -23,6 +24,14 @@ export type DocumentFormat = 'pdf' | 'docx' | 'xlsx' | 'csv';
  */
 export interface ReadInput {
   bytes: Buffer;
+  /**
+   * The reading ladder's executable tiers (V2.1 item 4.1), when the caller has
+   * them. ABSENT is a complete and supported state: without it a PDF is read
+   * from its text layer exactly as it was before the ladder existed, which is
+   * what keeps every existing document's text byte-identical and what lets the
+   * eval harness read fixtures without a rasterizer.
+   */
+  ladder?: PageLadderServices;
   /** A fresh readable over `bytes`. Safe to call more than once. */
   stream(): Readable;
   /** The uploader's filename, when known. A HINT for selection, never trusted. */
@@ -60,7 +69,20 @@ export interface DocumentReader {
  * should have been able to read this file and could not" are different facts
  * about the world and lead a user to different actions.
  */
-export type ReadOutcome = 'read' | 'truncated' | 'empty' | 'unsupported_format' | 'read_failed';
+export type ReadOutcome =
+  | 'read'
+  | 'truncated'
+  | 'empty'
+  | 'unsupported_format'
+  | 'read_failed'
+  /**
+   * Pages that need a model that can see, on an instance that cannot (V2.1
+   * item 4.1). Distinct from `empty` because it is not a fact about the
+   * document, it is a fact about this instance's configuration, and it becomes
+   * readable the moment vision is enabled. The reprocess action exists for
+   * exactly these.
+   */
+  | 'needs_vision';
 
 /**
  * The specific reason behind the outcome. An enum value, never a sentence: the
@@ -77,6 +99,11 @@ export type ReadReasonCode =
   // unsupported_format
   | 'unsupported_type'
   | 'legacy_office_format'
+  // needs_vision / partially read
+  | 'vision_unavailable'
+  | 'vision_cap_reached'
+  | 'vision_failed'
+  | 'no_readable_text'
   // read_failed
   | 'parse_failed'
   | 'parse_timeout'
@@ -99,6 +126,20 @@ export interface SheetReadDetail {
  * the source drawer. Identifiers, counts and enum values only. Sheet names are
  * document content, which is why the row lives in the deletion cascade.
  */
+/**
+ * What happened to one page of a paginated document (V2.1 item 4.1). This is
+ * what makes "the file was read" answerable page by page instead of as a single
+ * yes: a 40-page scan where 38 pages read and 2 needed vision is neither a
+ * success nor a failure, and the drawer has to be able to say so.
+ */
+export interface PageReadDetail {
+  page: number;
+  /** The tier that produced this page's text, or null when it was not read. */
+  tier: 'text' | 'ocr' | 'vision' | null;
+  /** Why it was not read. Null when it was. */
+  reason: string | null;
+}
+
 export interface ReadReport {
   format: DocumentFormat | null;
   granularity: ReadGranularity;
@@ -117,6 +158,10 @@ export interface ReadReport {
   /** CSV only: what detection settled on, so the fallback is inspectable. */
   delimiter?: string;
   encoding?: string;
+  /** Per-page outcomes for a paginated document read through the ladder. */
+  pages?: PageReadDetail[];
+  /** How many pages were escalated to the vision tier, for cost visibility. */
+  visionPagesUsed?: number;
 }
 
 export interface ReadResult {

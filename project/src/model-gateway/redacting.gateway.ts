@@ -1,5 +1,6 @@
 import type { ZodType } from 'zod';
 import { ModelGateway } from './model-gateway.service';
+import { VisionUnavailableError } from './errors';
 import type {
   CompletionRequest,
   CompletionResult,
@@ -51,6 +52,27 @@ export class RedactingModelGateway extends ModelGateway {
     const result = await this.inner.extractStructured(schema, { ...request, input });
     // The model answered in pseudonym space; re-identify every string it produced.
     return reidentifyDeep(result, mapping);
+  }
+
+  /**
+   * Refuses (V2.1 item 4.1). Redaction's whole contract is that nothing leaves
+   * the box carrying identities, and it keeps that contract by pseudonymizing
+   * TEXT. A page image cannot be pseudonymized: the names are pixels, and this
+   * decorator has no way to find or replace them.
+   *
+   * So with redaction enabled, a vision call would be the single path in the
+   * product that sends unredacted content to a model. It fails closed, exactly
+   * as an unreachable sidecar does, and the capability probe reports it as a
+   * policy refusal rather than a broken endpoint, so the operator sees the
+   * real reason instead of hunting a runtime that is working fine.
+   */
+  override async describeImage(): Promise<CompletionResult> {
+    throw new VisionUnavailableError(
+      'refused_by_policy',
+      'redaction is enabled and an image cannot be pseudonymized: reading pages with a vision ' +
+        'model would be the one path that sends unredacted content to a model, so it is refused. ' +
+        'Run the reading ladder without vision, or disable redaction for this instance.',
+    );
   }
 
   async embed(texts: string[]): Promise<number[][]> {

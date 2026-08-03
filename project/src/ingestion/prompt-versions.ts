@@ -25,10 +25,16 @@ export const RECONCILE_CONTRADICTION_PROMPT: PromptVersionRef = {
   version: 'v0001',
 };
 
+/** Tier three of the reading ladder (V2.1 item 4.1): reading a page that is a
+ * picture. Registered here with every other prompt that decides what Cogeto
+ * remembers, because that is exactly what it does. */
+export const VISION_READ_PROMPT: PromptVersionRef = { family: 'vision_read', version: 'v0001' };
+
 export const ACTIVE_PROMPTS: readonly PromptVersionRef[] = [
   EXTRACTION_PROMPT,
   VERIFICATION_PROMPT,
   VERIFICATION_BATCH_PROMPT,
   RECONCILE_DEDUP_PROMPT,
   RECONCILE_CONTRADICTION_PROMPT,
+  VISION_READ_PROMPT,
 ];

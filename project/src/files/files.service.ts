@@ -7,13 +7,20 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import type { FileProcessingState, FileSourceDto, MemoryScope, Principal } from '@cogeto/shared';
+import type {
+  AwaitingCapabilityDto,
+  FileProcessingState,
+  FileSourceDto,
+  MemoryScope,
+  Principal,
+} from '@cogeto/shared';
 import {
   ALLOWED_UPLOAD_CONTENT_TYPES,
   CSV_ALIAS_CONTENT_TYPES,
   CSV_CONTENT_TYPE,
 } from '@cogeto/shared';
 import {
+  clearIdempotencyForReprocess,
   DailyCounters,
   DRIZZLE,
   enqueueDelayedJob,
@@ -292,6 +299,65 @@ export class FilesService {
     }
 
     return { objectKey };
+  }
+
+  /**
+   * Reads a source again (V2.1 item 4.1).
+   *
+   * The point of retaining the original bytes is that an unreadable document is
+   * only unreadable FOR NOW. A scan that needed vision on an instance that had
+   * none becomes readable the moment vision is configured, and without an
+   * explicit action it would stay unread forever while the capability sits
+   * there working.
+   *
+   * Owner-gated, audited, and it goes through the NORMAL pipeline: the same
+   * stages, the same verification, and the same reconciliation, which is what
+   * makes a re-read produce supersessions and merges rather than a second copy
+   * of every fact. Nothing here special-cases the second run.
+   */
+  async reprocess(principal: Principal, objectKey: string): Promise<{ queued: boolean } | null> {
+    const metadata = await this.files.get(objectKey);
+    const ownerId =
+      metadata?.ownerId ?? (await this.memory.describeSource('file', objectKey))?.ownerId ?? null;
+    if (!ownerId || ownerId !== principal.userId) return null;
+    // A discarded original has no bytes to re-read; saying so is better than
+    // queueing a job that can only fail.
+    if (!metadata && !(await this.objects.statObject(objectKey))) return { queued: false };
+
+    await this.db.transaction(async (tx) => {
+      await clearIdempotencyForReprocess(tx, {
+        sourceType: 'file',
+        sourceId: objectKey,
+        jobType: INGESTION_PIPELINE_JOB_TYPE,
+      });
+      await withTransactionalEnqueue(
+        tx,
+        {
+          type: 'file.reprocess_requested',
+          payload: { source_type: 'file', source_id: objectKey, owner_id: principal.userId },
+        },
+        {
+          type: INGESTION_PIPELINE_JOB_TYPE,
+          payload: { source_type: 'file', source_id: objectKey },
+          maxAttempts: FILE_PIPELINE_MAX_ATTEMPTS,
+        },
+      );
+      await writeAudit(tx, {
+        actor: `user:${principal.userId}`,
+        action: 'file.reprocess_requested',
+        entityType: 'file',
+        entityId: objectKey,
+        detail: { reason: 'capability_available' },
+        orgId: principal.orgId,
+        ownerId: principal.userId,
+      });
+    });
+    return { queued: true };
+  }
+
+  /** Sources this owner has that could not be read for want of a capability. */
+  async awaitingCapability(principal: Principal): Promise<AwaitingCapabilityDto[]> {
+    return this.readReports.awaitingCapability(principal.userId);
   }
 
   /** The source drawer's file facts — owner-only (null → the controller 404s). */

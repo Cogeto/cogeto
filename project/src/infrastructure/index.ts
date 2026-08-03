@@ -25,6 +25,7 @@ export {
   consumeIdempotencyKey,
   runSingleFlight,
   jobRunState,
+  clearIdempotencyForReprocess,
   listQueuedJobs,
   recentJobExecutions,
   listDeadLetters,

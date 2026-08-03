@@ -164,7 +164,28 @@ export class ReconciliationService {
     this.judge = new ReconcileJudge(gateway);
   }
 
-  async reconcile(tx: Tx, items: ReconcileInput[], log: PipelineLog): Promise<ReconcileSummary> {
+  /**
+   * `options` states WHICH neighbours a fact may be compared against, and the
+   * two callers need opposite rules:
+   *
+   * - The **pipeline** excludes the facts admitted by the same run. One
+   *   document legitimately says several related things, and merging them
+   *   against each other as they arrive would destroy distinct facts.
+   * - **Dreaming** excludes the same SOURCE instead. Its batch is the corpus
+   *   being re-examined, so excluding it would leave nothing to compare.
+   *
+   * Until V2.1 item 4.1 both were served by one source-based rule, because a
+   * source was only ever ingested once and "same source" and "same run" were
+   * the same set. Reprocessing separated them: a document re-read after vision
+   * is enabled must reconcile against its own earlier reading, which the
+   * source rule forbade, so every recovered fact arrived as a duplicate.
+   */
+  async reconcile(
+    tx: Tx,
+    items: ReconcileInput[],
+    log: PipelineLog,
+    options: { exclude: 'same_batch' | 'same_source' } = { exclude: 'same_batch' },
+  ): Promise<ReconcileSummary> {
     const summary: ReconcileSummary = {
       considered: 0,
       dedupChecks: 0,
@@ -178,6 +199,8 @@ export class ReconciliationService {
     const record = (factId: string, candidateId: string, result: PairActionResult) => {
       if (result.action !== 'skipped') summary.actions.push({ factId, candidateId, result });
     };
+    /** Everything in this call; see the `options` note above. */
+    const batchIds = new Set(items.map((item) => item.row.id));
 
     for (const item of items) {
       const fact = item.row;
@@ -185,7 +208,12 @@ export class ReconciliationService {
       if (fact.status !== 'active' && fact.status !== 'uncertain') continue;
       summary.considered += 1;
 
-      const candidates = await this.gatherCandidates(fact, item.embedding);
+      const candidates = await this.gatherCandidates(
+        fact,
+        item.embedding,
+        batchIds,
+        options.exclude,
+      );
       if (candidates.length === 0) continue;
       const spans = await this.loadSpans(tx, [fact.id, ...candidates.map((c) => c.row.id)]);
       const factView = this.toView(fact, spans);
@@ -291,7 +319,13 @@ export class ReconciliationService {
    * Zero model calls. Same-source rows are excluded — reconciliation is
    * new-vs-existing, never within-batch.
    */
-  private async gatherCandidates(fact: MemoryRow, embedding: number[]): Promise<Candidate[]> {
+  private async gatherCandidates(
+    fact: MemoryRow,
+    embedding: number[],
+    /** The ids passed to this call. */
+    batchIds: ReadonlySet<string>,
+    exclude: 'same_batch' | 'same_source',
+  ): Promise<Candidate[]> {
     const principal = ownerPrincipal(fact.ownerId);
     const readOpts = { includeSensitive: fact.sensitive };
     const eligibleStatuses = [
@@ -329,7 +363,14 @@ export class ReconciliationService {
     const candidates: Candidate[] = [];
     for (const row of byId.values()) {
       if (row.id === fact.id) continue;
-      if (row.sourceType === fact.sourceType && row.sourceId === fact.sourceId) continue;
+      if (exclude === 'same_batch' && batchIds.has(row.id)) continue;
+      if (
+        exclude === 'same_source' &&
+        row.sourceType === fact.sourceType &&
+        row.sourceId === fact.sourceId
+      ) {
+        continue;
+      }
       if (row.ownerId !== fact.ownerId || row.scope !== fact.scope) continue;
       if (!eligibleStatuses.includes(row.status)) continue;
       candidates.push({ row, similarity: similarityById.get(row.id) ?? null });

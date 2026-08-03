@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { z } from 'zod';
 import type {
+  AwaitingCapabilityDto,
   FileDownloadDto,
   FileSourceDto,
   FileStatusDto,
@@ -97,6 +98,32 @@ export class FilesController {
     const state = await this.files.getUploadState(request.principal, key);
     if (!state) throw new NotFoundException(`file ${key} not found`);
     return { state };
+  }
+
+  /**
+   * Every source this owner has that could not be read for want of a
+   * capability (V2.1 item 4.1). Declared BEFORE `:key` so the literal path is
+   * not swallowed by the parameter route.
+   */
+  @Get('awaiting-capability')
+  async awaitingCapability(@Req() request: AuthenticatedRequest): Promise<AwaitingCapabilityDto[]> {
+    return this.files.awaitingCapability(request.principal);
+  }
+
+  /**
+   * Reads a source again (V2.1 item 4.1): the action that turns "enable vision"
+   * into "and now read everything it could not read before". Owner-only,
+   * audited, and it goes through the normal pipeline, so a re-read reconciles
+   * against what is already stored rather than duplicating it.
+   */
+  @Post(':key/reprocess')
+  async reprocess(
+    @Req() request: AuthenticatedRequest,
+    @Param('key') key: string,
+  ): Promise<{ queued: boolean }> {
+    const result = await this.files.reprocess(request.principal, key);
+    if (!result) throw new NotFoundException(`file ${key} not found`);
+    return result;
   }
 
   /** The source drawer's file facts (owner-only). */

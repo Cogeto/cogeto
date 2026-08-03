@@ -1,13 +1,28 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { MemoryScope } from '@cogeto/shared';
-import { DEFAULT_PARSE_CAPS, PARSE_CAPS } from '../infrastructure/index';
+import { DailyCounters, DEFAULT_PARSE_CAPS, PARSE_CAPS } from '../infrastructure/index';
 import type { ParseCaps, Tx } from '../infrastructure/index';
+import type { ModelGateway } from '../model-gateway/index';
 import { MemoryFileStore, MemoryObjectStore } from '../memory/index';
 import type { SourceItem, SourceReader } from '../ingestion/index';
 import { FileReadReportStore } from './persistence/file-read-report';
+import { buildLadderServices } from './reading/ladder-services';
 import { emptyReport, PermanentExtractionError } from './reading/reader';
 import type { ReadResult } from './reading/reader';
 import { readDocument } from './reading/registry';
+
+/**
+ * How a composition root supplies the vision tier: a function, not a gateway,
+ * because whether vision WORKS is a probed fact that can change while the
+ * worker is running. Asking per document keeps a runtime that went away from
+ * being discovered one page at a time.
+ */
+export abstract class VisionSource {
+  abstract visionGateway(): Promise<ModelGateway | null>;
+}
+
+/** The daily-counter bucket vision pages are charged to. */
+export const VISION_PAGE_BUCKET = 'vision_page';
 
 /**
  * The stored filename, URL-decoded (S3 metadata must be US-ASCII). A HINT for
@@ -61,6 +76,16 @@ export class FileSourceReader implements SourceReader {
      * read behaves exactly as before, it is simply not explained afterwards.
      */
     @Optional() private readonly reports?: FileReadReportStore,
+    /**
+     * The reading ladder's vision tier (V2.1 item 4.1). Optional and supplied
+     * ONLY by a root that has both a configured vision binding and a working
+     * probe: a tier that is configured but broken is not vision, and handing it
+     * over would turn every picture page into a slow failure instead of an
+     * honest label.
+     */
+    @Optional() private readonly visionGateway?: VisionSource,
+    /** Per-user daily vision spend, for the second of the two caps. */
+    @Optional() private readonly counters?: DailyCounters,
   ) {}
 
   /**
@@ -79,12 +104,25 @@ export class FileSourceReader implements SourceReader {
     contentType: string | null,
     filename: string | null,
   ): Promise<ReadResult> {
+    const ladder = await buildLadderServices({
+      caps: this.parseCaps,
+      vision: (await this.visionGateway?.visionGateway()) ?? null,
+      budget: this.counters
+        ? { usedToday: await this.counters.get(ownerId, VISION_PAGE_BUCKET) }
+        : undefined,
+    });
     try {
       const result = await readDocument(bytes, {
         declaredContentType: contentType,
         filename,
         caps: this.parseCaps,
+        ladder,
       });
+      // Charge the day's vision spend to the owner the pages were read for.
+      const spent = result.report.visionPagesUsed ?? 0;
+      if (spent > 0 && this.counters) {
+        await this.counters.add(ownerId, VISION_PAGE_BUCKET, spent, 'ingestion');
+      }
       await this.reports?.record(sourceId, ownerId, result.report, this.logger);
       return result;
     } catch (error) {

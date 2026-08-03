@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq, inArray } from 'drizzle-orm';
-import type { FileReadReportDto } from '@cogeto/shared';
+import { and, desc, eq, inArray } from 'drizzle-orm';
+import type { AwaitingCapabilityDto, FileReadReportDto } from '@cogeto/shared';
 import { DRIZZLE } from '../../infrastructure/index';
 import type { Db, DbOrTx } from '../../infrastructure/index';
 import type { ReadReport } from '../reading/reader';
@@ -83,7 +83,40 @@ export class FileReadReportStore {
       sheets: detail.sheets ?? [],
       valuesUnavailable: detail.valuesUnavailable ?? 0,
       readAt: row.readAt.toISOString(),
+      ...(detail.pages ? { pages: detail.pages } : {}),
+      ...(detail.visionPagesUsed !== undefined ? { visionPagesUsed: detail.visionPagesUsed } : {}),
     };
+  }
+
+  /**
+   * Sources this instance could not read for want of a capability (V2.1 item
+   * 4.1). Owner-scoped, because a read report is as visible as its source.
+   *
+   * This is the list an operator works from after turning vision on: without
+   * it, "enable vision" leaves every previously unreadable document sitting
+   * exactly as it was, and the honest label becomes a permanent one.
+   */
+  async awaitingCapability(
+    ownerId: string,
+    options: { limit?: number } = {},
+  ): Promise<AwaitingCapabilityDto[]> {
+    const rows = await this.db
+      .select()
+      .from(fileReadReport)
+      .where(and(eq(fileReadReport.ownerId, ownerId), eq(fileReadReport.outcome, 'needs_vision')))
+      .orderBy(desc(fileReadReport.readAt))
+      .limit(options.limit ?? 200);
+    return rows.map((row) => {
+      const detail = (row.detailJson ?? {}) as ReadReportDetail;
+      return {
+        objectKey: row.objectKey,
+        filename: null,
+        outcome: row.outcome as AwaitingCapabilityDto['outcome'],
+        reasonCode: row.reasonCode,
+        readAt: row.readAt.toISOString(),
+        pagesAwaiting: (detail.pages ?? []).filter((page) => page.tier === null).length,
+      };
+    });
   }
 
   /** Deletion-cascade leg: the reports for these sources. Returns the count. */
@@ -106,6 +139,8 @@ interface ReadReportDetail {
   unavailableCells?: string[];
   delimiter?: string;
   encoding?: string;
+  pages?: FileReadReportDto['pages'];
+  visionPagesUsed?: number;
 }
 
 function toDetail(report: ReadReport): ReadReportDetail {
@@ -117,5 +152,7 @@ function toDetail(report: ReadReport): ReadReportDetail {
     unavailableCells: report.unavailableCells,
     ...(report.delimiter === undefined ? {} : { delimiter: report.delimiter }),
     ...(report.encoding === undefined ? {} : { encoding: report.encoding }),
+    ...(report.pages === undefined ? {} : { pages: report.pages }),
+    ...(report.visionPagesUsed === undefined ? {} : { visionPagesUsed: report.visionPagesUsed }),
   };
 }
