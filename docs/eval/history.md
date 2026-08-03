@@ -2355,3 +2355,22 @@ four-case coverage mean is too small a denominator to gate honestly.
 | strict_mode_hr |  |  |  | PASS | PASS |  | PASS |  |  | PASS | PASS |
 | whats_still_open |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
 | who_is_ana | PASS | 29% | PASS | PASS | PASS |  |  |  |  |  | FAIL |
+
+### Note on the three golden runs of 2026-08-03
+
+All three are real live runs made while landing V2.1 item 4.1 (the reading layer),
+and they are kept rather than pruned because each measured something different.
+
+1. The first run is the ten new spreadsheet cases labelled **one expected memory per
+   column pair**. It passed every gate, and it exposed a labelling flaw rather than a
+   system one: `en` split each ledger row into two facts and `hr` merged the identical
+   row into one, so the same content scored differently in the two languages.
+2. The second run is those cases relabelled **one `must_extract` per row**, with the
+   column splits beside them as `must_extract: false`.
+3. The third is a re-record of the second. The second run's cache had silently lost
+   one query-rewrite entry: a model call failed mid-run and `rewriteQuery` swallows
+   the error, so nothing was recorded for `hr-rw09` and the replay then scored it as a
+   failure for the wrong reason. **Always run `eval:cached` after a refresh and check
+   for `CACHE MISS`.** The third run is the one the committed fixtures came from.
+
+No gate was lowered or raised in any of them.

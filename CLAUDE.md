@@ -128,6 +128,25 @@ Zod-to-400 adapter (`parseOrBadRequest`), one research citation-marker grammar i
 (`memory/domain/scope-gate.ts`) serving both gated tables, and 230-odd unused barrel
 exports removed.
 
+V2.1 item 4.1 delivered its **native-format half**: Cogeto reads **XLSX and CSV**,
+and a format is now a **registered reader** (`project/src/files/reading/`) rather than
+a branch in a switch. Selection is by **magic bytes with the declared type and the
+extension as hints**, so a mislabelled upload is routed by what it is or refused;
+DOCX and XLSX are both ZIP, so the sniff inspects the package entries. PDF and DOCX
+moved behind the seam **byte-identically**, proved against the pre-seam code copied
+into the spec. A reader emits text plus a **structured locator** per segment (page,
+paragraph, or sheet + row + A1 cell range + columns) that nothing downstream consumes
+yet, because V2.2 and V2.3 render it; the pipeline contract is unchanged. Spreadsheets
+become **statements, not grids**: column context on every row, headers found under
+title blocks, merged cells resolved, formulas contributing their computed value and
+never their text. Row caps are per sheet and per file, and a truncated read **says so**
+on the source (`file_read_report`, migration 0041, owned by `files`, in the deletion
+cascade) instead of quietly looking whole. That row also separates
+**`unsupported_format` from `read_failed`** and labels an unreadable file `empty` /
+`no_text`, which is the hook the OCR and vision half replaces with recovered text.
+**Before changing anything in the reading path, read
+[`docs/features/reading.md`](docs/features/reading.md).**
+
 Work proceeds through the V2 plan in order.
 
 ## Delivery loop
