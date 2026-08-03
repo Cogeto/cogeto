@@ -20,8 +20,28 @@ export const OCR_LANGUAGES = ['eng', 'hrv', 'deu'] as const;
 
 export const OCR_TIMEOUT_MS = 120_000;
 
-/** Tesseract's own confidence, 0..100, below which output is treated as noise. */
-export const MIN_MEAN_CONFIDENCE = 55;
+/**
+ * Tesseract's own mean word confidence, 0..100, below which its output is
+ * treated as noise no matter how word-shaped it looks.
+ *
+ * MEASURED on the same page rendered three ways:
+ *
+ *   a clean scan          91.9
+ *   a screenshot of text  92.3
+ *   a poor scan           55.7   ("CONIULTING AGREEMENT. KEY OBLIGATIOMS")
+ *
+ * The poor scan is why this exists. Its output is garbage a human would reject
+ * on sight, and it sails through the word-quality gate: `Ginsillani` and
+ * `Kavac` have vowels, ordinary length and no impossible consonant runs, so a
+ * dictionary-free heuristic calls them words. Confidence is the signal that
+ * separates "shaped like words" from "read correctly", and it is the one thing
+ * the engine knows that the text itself cannot tell us.
+ *
+ * 70 sits well below clean output and well above the poor scan, so a page the
+ * engine is unsure about escalates to a model that may do better instead of
+ * being stored as facts nobody can trust.
+ */
+export const MIN_MEAN_CONFIDENCE = 70;
 
 export class OcrError extends Error {
   constructor(

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { decideNextStep, PICTURE_INK_FRACTION } from './ladder';
 import type { LadderLimits } from './ladder';
 import { isUsable, plausibleWord, scoreText } from './page-quality';
+import { MIN_MEAN_CONFIDENCE } from './ocr';
 
 /**
  * The routing is arithmetic, so it is testable without a binary, a model, or a
@@ -143,6 +144,20 @@ describe('the ladder routes cheapest-first', () => {
       limits({ ocrAvailable: false }),
     );
     expect(decision.step).toBe('run_vision');
+  });
+
+  it('escalates word-SHAPED garbage that OCR was unsure about', () => {
+    // The case a dictionary-free quality gate cannot catch on its own. A poor
+    // scan reads as "CONIULTING AGREEMENT. KEY OBLIGATIOMS ... Ginsillani, Ara
+    // Kavac": those tokens have vowels, ordinary length and no impossible
+    // consonant runs, so they pass as words. Tesseract knew it was guessing
+    // (mean confidence 55.7 against 91.9 for the same page rendered cleanly),
+    // and that is the signal the ladder consults.
+    const garbage =
+      'CONIULTING AGREEMENT. KEY OBLIGATIOMS The Ginsillani, Ara Kavac wil Calr CAM mignuioo';
+    expect(isUsable(scoreText(garbage, A4))).toBe(true); // text alone says fine
+    expect(MIN_MEAN_CONFIDENCE).toBeGreaterThan(55.7); // the engine says otherwise
+    expect(MIN_MEAN_CONFIDENCE).toBeLessThan(91.9); // and clean output still passes
   });
 
   it('reads a standalone image, which has no ink measurement to consult', () => {

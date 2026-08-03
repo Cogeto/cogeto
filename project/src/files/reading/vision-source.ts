@@ -30,9 +30,18 @@ export class ProbedVisionSource extends VisionSource {
   constructor(
     private readonly gateway: ModelGateway,
     @Optional() @Inject(VISION_PROVIDERS) private readonly providers?: ResolvedModelProviders,
-    private readonly now: () => number = () => Date.now(),
   ) {
     super();
+  }
+
+  /**
+   * Overridable in a test rather than injected. A constructor parameter with a
+   * default value is still a parameter to Nest, which tried to resolve the
+   * clock as a provider and crash-looped the worker at boot: the kind of
+   * failure no unit test sees, because a suite never boots the roots.
+   */
+  protected now(): number {
+    return Date.now();
   }
 
   async visionGateway(): Promise<ModelGateway | null> {
