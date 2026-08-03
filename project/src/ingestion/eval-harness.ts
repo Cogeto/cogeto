@@ -83,6 +83,40 @@ const expectedFileSchema = z.object({
   email_authored_by_owner: z.boolean().optional(),
 });
 
+/**
+ * A case may not assert a verdict it is structurally unable to reach.
+ *
+ * `supported` and `partial` are scored over the facts that MATCHED an expected
+ * label (`matchedVerdicts.length > 0 && every(...)`), so a case with no label
+ * that can ever match is counted as disagreeing on every run, forever, no
+ * matter how the system behaves. Three Croatian cases were in exactly that
+ * state and each one cost the language a permanent point of verification
+ * agreement, which is how the hr floor came to sit one case away from red.
+ *
+ * The trap rule (`unsupported`) is the declaration for a case that must remember
+ * NOTHING: it asserts that no stray fact was admitted supported and unhedged.
+ * Omitting the field entirely is the other correct answer, and it means "this
+ * case does not measure verification" (en-0005, hr-0002).
+ *
+ * Enforced at LOAD, loudly, like the source-type check above: a corpus mistake
+ * that cannot be expressed is better than one that has to be noticed.
+ */
+export function assertVerificationDeclarable(testCase: {
+  case_id: string;
+  expected_memories: { must_extract: boolean }[];
+  verification_expected?: 'supported' | 'partial' | 'unsupported';
+}): void {
+  const verdict = testCase.verification_expected;
+  if (verdict !== 'supported' && verdict !== 'partial') return;
+  if (testCase.expected_memories.length > 0) return;
+  throw new Error(
+    `${testCase.case_id}: verification_expected '${verdict}' is unreachable with no expected ` +
+      `memories. It is scored over MATCHED facts, so this case can never agree. Use ` +
+      `'unsupported' (the trap rule: nothing may be admitted supported and unhedged), or omit ` +
+      `the field to leave this case out of the verification denominator.`,
+  );
+}
+
 export const evalConfigSchema = z.object({
   version: z.number(),
   similarity_threshold: z.number().min(0).max(1),
@@ -171,6 +205,7 @@ async function loadCases(goldenDir: string): Promise<LoadedCase[]> {
       const expected = expectedFileSchema.parse(
         JSON.parse(await readFile(path.join(base, 'expected.json'), 'utf8')),
       );
+      assertVerificationDeclarable(expected);
       cases.push({ lang, caseId: expected.case_id, source, expected });
     }
   }

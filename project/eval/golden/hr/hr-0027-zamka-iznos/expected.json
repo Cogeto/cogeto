@@ -4,5 +4,5 @@
   "expected_memories": [],
   "must_not_extract": ["prolazni trošak (14 eura, kava) bez trajne vrijednosti za pamćenje"],
   "expected_relations": [],
-  "verification_expected": "supported"
+  "verification_expected": "unsupported"
 }

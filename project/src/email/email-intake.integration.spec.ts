@@ -7,6 +7,7 @@ import { idempotentTask, PostgresRateLimitStore } from '../infrastructure/index'
 import {
   fakeEmbedding,
   makePdf,
+  settleJobs,
   startTestDatabase,
   startTestMinio,
   startTestQdrant,
@@ -292,15 +293,37 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
         ])
       ).rows[0].n,
     );
-  const pipelineJobCount = async () =>
-    Number(
-      (
-        await tdb.pool.query(
-          'SELECT count(*)::text AS n FROM graphile_worker.jobs WHERE task_identifier = $1',
-          [INGESTION_PIPELINE_JOB_TYPE],
-        )
-      ).rows[0].n,
+  /**
+   * Queued pipeline jobs, read only once the queue's own bookkeeping has
+   * settled.
+   *
+   * The settle is not defensive padding, it is the difference between a stable
+   * assertion and a race. Since graphile-worker 0.17 a finished attempt's write
+   * (the DELETE of a completed job, or attempts++ and the backoff on a failed
+   * one) can land AFTER `runOnce` resolves, so a count taken straight after a
+   * previous test ran the worker sees a row that is about to disappear. That is
+   * exactly how this file's `intake_transactional` failed on main: `jobsBefore`
+   * counted a completed job from the previous test, the intake added its own,
+   * the late DELETE removed the stale one, and `jobsBefore + 1` read back as
+   * `jobsBefore`. `testing/pg.ts` documents the hazard and `settleJobs` is the
+   * primitive for it; putting it inside the reader means no test in this file
+   * can reintroduce the race by forgetting it.
+   */
+  /** The source ids of every queued pipeline job, settled first. */
+  const pipelineJobSourceIds = async (): Promise<string[]> => {
+    await settleJobs(tdb.pool);
+    const { rows } = await tdb.pool.query<{ id: string | null }>(
+      // The `jobs` view drops `payload` (0.17 moved it to the private table),
+      // so this reads the private pair the view itself joins.
+      `SELECT j.payload->>'source_id' AS id
+         FROM graphile_worker._private_jobs j
+         JOIN graphile_worker._private_tasks t ON t.id = j.task_id
+        WHERE t.identifier = $1`,
+      [INGESTION_PIPELINE_JOB_TYPE],
     );
+    return rows.map((row) => row.id ?? '');
+  };
+
   const memoriesFor = async (sourceType: string, sourceId: string) =>
     (
       await tdb.pool.query(
@@ -349,7 +372,7 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
 
   it('allowlist_enforced: allowlisted address + domain accepted; non-allowlisted refused with no trace; empty allowlist refuses all', async () => {
     // Non-allowlisted sender (no entries yet) → refused, nothing stored.
-    const before = await pipelineJobCount();
+    const jobSourcesBefore = await pipelineJobSourceIds();
     const objsBefore = await objectCount();
     const refused = await intake.intake(rawEmail({ from: 'stranger@example.net' }), {
       mailFrom: 'stranger@example.net',
@@ -357,7 +380,7 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     });
     expect(refused.accepted).toBe(false);
     expect(await emailRowCount()).toBe(0);
-    expect(await pipelineJobCount()).toBe(before);
+    expect(await pipelineJobSourceIds()).toEqual(jobSourcesBefore); // nothing enqueued
     expect(await objectCount()).toBe(objsBefore);
     expect(await refusalCount('sender_not_recognized')).toBeGreaterThanOrEqual(1);
 
@@ -494,14 +517,18 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     await allow('domain', 'adriatic-foods.hr');
 
     // Success invariant.
-    const jobsBefore = await pipelineJobCount();
     const ok = await intake.intake(
       rawEmail({ from: 'ana@adriatic-foods.hr', subject: 'Tx', text: 'a durable fact.' }),
       { ...envelope, mailFrom: 'ana@adriatic-foods.hr' },
     );
     expect(ok.accepted).toBe(true);
     if (!ok.accepted) return;
-    expect(await pipelineJobCount()).toBe(jobsBefore + 1);
+    // The assertion NAMES the source rather than counting the whole table. The
+    // count version asserted `jobsBefore + 1`, which is a statement about every
+    // job in the queue, not about this intake: any unrelated row that a
+    // previous test's worker was still finishing with could move it. This says
+    // exactly what the test means, and no other test's residue can change it.
+    expect(await pipelineJobSourceIds()).toContain(ok.emailIds[0]!);
     const okRow = await emailRow(ok.emailIds[0]!);
     expect(await objects.statObject(okRow.raw_object_key)).not.toBeNull();
 
@@ -528,7 +555,7 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     );
 
     const rowsBefore = await emailRowCount();
-    const jobsBefore2 = await pipelineJobCount();
+    const jobSourcesBefore = await pipelineJobSourceIds();
     const objsBefore = await objectCount();
     await expect(
       brokenIntake.intake(
@@ -547,7 +574,10 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
     expect(capturedAttachmentKey).not.toBe('');
     expect(await objects.statObject(capturedAttachmentKey)).toBeNull(); // orphan cleaned
     expect(await emailRowCount()).toBe(rowsBefore); // no new source
-    expect(await pipelineJobCount()).toBe(jobsBefore2); // no new job
+    // No NEW job, expressed as a set difference: a job that disappeared while
+    // an earlier test's worker finished up is not this rollback's business.
+    const jobSourcesAfter = await pipelineJobSourceIds();
+    expect(jobSourcesAfter.filter((id) => !jobSourcesBefore.includes(id))).toEqual([]);
     expect(await objectCount()).toBe(objsBefore); // raw + attachment both cleaned
   });
 
