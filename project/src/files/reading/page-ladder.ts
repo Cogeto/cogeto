@@ -3,9 +3,9 @@ import { VisionUnavailableError } from '../../model-gateway/index';
 import type { ModelGateway } from '../../model-gateway/index';
 import { decideNextStep } from './ladder';
 import type { LadderLimits, PageOutcome, PageSignals, PageUnreadReason, ReadTier } from './ladder';
-import { MIN_MEAN_CONFIDENCE, readImage } from './ocr';
+import { readImage, scoreOcrResult } from './ocr';
 import { measurePageInk, renderPagePng } from './rasterize';
-import { scoreText } from './page-quality';
+import { isUsable, scoreText } from './page-quality';
 import type { TextQuality } from './page-quality';
 import { readPageWithVision } from './vision-read';
 
@@ -144,22 +144,10 @@ export async function readPage(
       const result = await readImage(rendered.bytes, { timeoutMs: services.caps.ocrTimeoutMs });
       ocrText = result.text;
       ocrConfidence = result.meanConfidence;
-      ocrQuality = scoreText(ocrText, pageSize);
-      // The engine's own confidence, which the text alone cannot supply. A poor
-      // scan produces word-SHAPED garbage that the quality gate accepts, and
-      // only Tesseract knows it was guessing. Below the floor the output is
-      // discarded and the page escalates.
-      if (ocrConfidence !== null && ocrConfidence < MIN_MEAN_CONFIDENCE) {
-        ocrQuality = {
-          ...ocrQuality,
-          score: Math.min(ocrQuality.score, 0.3),
-          notes: [
-            ...ocrQuality.notes,
-            `OCR mean confidence ${ocrConfidence.toFixed(0)} is below ${MIN_MEAN_CONFIDENCE}`,
-          ],
-        };
-        ocrText = '';
-      }
+      ocrQuality = scoreOcrResult(result, (text) => scoreText(text, pageSize));
+      // Output the engine was unsure about is discarded, not merely scored
+      // down: it must not reach extraction if the page escalates.
+      if (!isUsable(ocrQuality)) ocrText = '';
     } catch (error) {
       logger.warn(`page ${page}: OCR failed (${describe(error)})`);
       ocrQuality = scoreText('', pageSize);

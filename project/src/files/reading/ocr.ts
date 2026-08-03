@@ -1,4 +1,5 @@
 import { binaryAvailable, BinaryRunError, runBinary } from './run-binary';
+import type { TextQuality } from './page-quality';
 
 /**
  * Tier two of the reading ladder (V2.1 item 4.1): local OCR.
@@ -172,4 +173,35 @@ export function parseTsv(tsv: string): { text: string; meanConfidence: number | 
       ? null
       : scored.reduce((total, word) => total + word.confidence, 0) / scored.length;
   return { text: parts.join('').trim(), meanConfidence };
+}
+
+/**
+ * Is this OCR output usable? (V2.1 item 4.1.)
+ *
+ * The single answer for every caller. It lives here, beside the engine, because
+ * the two signals it combines come from different places and both are needed:
+ * the TEXT's own quality, and the ENGINE's confidence in having read it.
+ *
+ * Keeping this in one function is not tidiness. The PDF path and the standalone
+ * image path judged OCR output separately at first, the confidence gate was
+ * added to one of them, and a photographed diagram that Tesseract read at 47.8
+ * confidence, producing `e n ai` and `oi MEE`, was accepted as a good read
+ * because the other path never asked.
+ */
+export function scoreOcrResult(
+  result: OcrResult,
+  score: (text: string) => TextQuality,
+): TextQuality {
+  const quality = score(result.text);
+  if (result.meanConfidence === null || result.meanConfidence >= MIN_MEAN_CONFIDENCE) {
+    return quality;
+  }
+  return {
+    ...quality,
+    score: Math.min(quality.score, 0.3),
+    notes: [
+      ...quality.notes,
+      `OCR mean confidence ${result.meanConfidence.toFixed(0)} is below ${MIN_MEAN_CONFIDENCE}`,
+    ],
+  };
 }

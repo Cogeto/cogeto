@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { decideNextStep, PICTURE_INK_FRACTION } from './ladder';
 import type { LadderLimits } from './ladder';
 import { isUsable, plausibleWord, scoreText } from './page-quality';
-import { MIN_MEAN_CONFIDENCE } from './ocr';
+import { MIN_MEAN_CONFIDENCE, scoreOcrResult } from './ocr';
 
 /**
  * The routing is arithmetic, so it is testable without a binary, a model, or a
@@ -158,6 +158,25 @@ describe('the ladder routes cheapest-first', () => {
     expect(isUsable(scoreText(garbage, A4))).toBe(true); // text alone says fine
     expect(MIN_MEAN_CONFIDENCE).toBeGreaterThan(55.7); // the engine says otherwise
     expect(MIN_MEAN_CONFIDENCE).toBeLessThan(91.9); // and clean output still passes
+  });
+
+  it('judges OCR output the SAME way for an image as for a page', () => {
+    // The two readers judged this separately at first, the confidence gate was
+    // added to one of them, and a photographed diagram Tesseract read at 47.8
+    // confidence (`e n ai`, `oi MEE`) counted as a good read in the other.
+    const garbled = {
+      text: 'Adriatic Foods; Rijeka warahouse network',
+      meanConfidence: 47.8,
+      languages: ['eng'],
+    };
+    expect(isUsable(scoreOcrResult(garbled, (t) => scoreText(t)))).toBe(false);
+
+    const clean = { text: prose(6), meanConfidence: 90.6, languages: ['eng'] };
+    expect(isUsable(scoreOcrResult(clean, (t) => scoreText(t)))).toBe(true);
+
+    // No confidence reported at all: the text has to stand on its own.
+    const unscored = { text: prose(6), meanConfidence: null, languages: ['eng'] };
+    expect(isUsable(scoreOcrResult(unscored, (t) => scoreText(t)))).toBe(true);
   });
 
   it('reads a standalone image, which has no ink measurement to consult', () => {

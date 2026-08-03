@@ -4,7 +4,7 @@ import type { ReadSegment } from './locator';
 import { isUsable, scoreText } from './page-quality';
 import { readFailed } from './reader';
 import type { DocumentReader, PageReadDetail, ReadInput, ReadResult } from './reader';
-import { readImage } from './ocr';
+import { readImage, scoreOcrResult } from './ocr';
 import { readPageWithVision } from './vision-read';
 
 /**
@@ -43,7 +43,10 @@ export class ImageReader implements DocumentReader {
     if (ladder?.ocr) {
       try {
         const result = await readImage(bytes, { timeoutMs: ladder.caps.ocrTimeoutMs });
-        if (isUsable(scoreText(result.text))) {
+        // The SAME judgment the paginated path makes, including the engine's
+        // own confidence. Judging it separately here is what let a
+        // photographed diagram read at 47.8 confidence count as a good read.
+        if (isUsable(scoreOcrResult(result, (value) => scoreText(value)))) {
           text = result.text;
           tier = 'ocr';
         }
