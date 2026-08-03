@@ -7,7 +7,12 @@ import { IntegritySweep } from '../memory/index';
 import type { IntegrityStatus } from '../memory/index';
 import { dreamRunStatus } from '../ingestion/index';
 import type { DreamRunStatus } from '../ingestion/index';
-import { ModelGateway, probeLocalRuntime, probeVision } from '../model-gateway/index';
+import {
+  DEFAULT_VISION_PROBE_TIMEOUT_MS,
+  ModelGateway,
+  probeLocalRuntime,
+  probeVision,
+} from '../model-gateway/index';
 import { OPERATIONS_OPTIONS } from './operations.options';
 import type { OperationsOptions } from './operations.options';
 
@@ -265,7 +270,12 @@ export class CapabilitiesService {
   private async vision(checkedAt: string): Promise<CapabilitySummary> {
     const base = { id: 'vision' as const, checkedAt };
     if (!this.gateway) return { ...base, state: 'off', probed: false };
-    const probe = await probeVision(this.gateway, this.config.modelProviders, { timeoutMs: 8000 });
+    // The SAME deadline the reader uses. An 8-second panel probe against a
+    // 30-second reader probe would report a working remote runtime as broken
+    // while documents were being read by it.
+    const probe = await probeVision(this.gateway, this.config.modelProviders, {
+      timeoutMs: this.config.visionProbeTimeoutMs ?? DEFAULT_VISION_PROBE_TIMEOUT_MS,
+    });
     if (probe.ok) return { ...base, state: 'on', probed: true, detail: probe.detail };
     // Not configured is OFF, not broken: an instance that never asked for
     // vision is not degraded, it simply stops the reading ladder at OCR.

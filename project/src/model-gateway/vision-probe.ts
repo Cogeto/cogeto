@@ -89,6 +89,13 @@ export function probeImagePng(): Buffer {
 export const PROBE_IMAGE_MEDIA_TYPE = 'image/png';
 
 /**
+ * Default probe deadline. Generous on purpose: the cost of waiting is one slow
+ * capability check, and the cost of being too quick is declaring a working
+ * runtime dead and never using it.
+ */
+export const DEFAULT_VISION_PROBE_TIMEOUT_MS = 30_000;
+
+/**
  * Probes the configured vision tier. Returns null when the instance declares no
  * vision binding at all AND the caller wants that treated as "nothing to
  * probe"; by default a missing binding is reported as an honest unavailable,
@@ -151,9 +158,17 @@ export async function probeVision(
 }
 
 /**
- * The probe gets its own short deadline. The tier's own timeout is sized for a
- * full page and is minutes long on a local runtime; a boot check and a
- * capability poll must not sit behind that.
+ * The probe's own deadline, separate from the tier's.
+ *
+ * The tier timeout is sized for a full page and runs to minutes; a boot check
+ * and a capability poll must not sit behind that. But the first version of this
+ * was 8 seconds, sized for a warm runtime on the same machine, and that is
+ * wrong for the setup people actually have: a remote GPU warming a vision model
+ * takes tens of seconds on its first request and would have been declared
+ * unavailable while working perfectly.
+ *
+ * A timeout is therefore reported as `probe_timeout`, not `unreachable`, and it
+ * names the variable that raises it.
  */
 async function withTimeout<T>(work: Promise<T>, timeoutMs: number | undefined, binding: string) {
   if (timeoutMs === undefined) return work;
@@ -163,8 +178,11 @@ async function withTimeout<T>(work: Promise<T>, timeoutMs: number | undefined, b
       () =>
         reject(
           new VisionUnavailableError(
-            'unreachable',
-            `the vision probe against ${binding} did not answer within ${timeoutMs} ms`,
+            'probe_timeout',
+            `the vision probe against ${binding} did not answer within ${timeoutMs} ms. ` +
+              `A remote or cold model can take far longer to warm than to run, so this is ` +
+              `not the same as unreachable: raise COGETO_VISION_PROBE_TIMEOUT_MS if the ` +
+              `endpoint is otherwise healthy.`,
           ),
         ),
       timeoutMs,

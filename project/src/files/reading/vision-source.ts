@@ -1,4 +1,6 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import { DEFAULT_PARSE_CAPS, PARSE_CAPS } from '../../infrastructure/index';
+import type { ParseCaps } from '../../infrastructure/index';
 import { ModelGateway, probeVision } from '../../model-gateway/index';
 import type { ResolvedModelProviders } from '../../model-gateway/index';
 import { VisionSource } from '../file.source-reader';
@@ -30,8 +32,13 @@ export class ProbedVisionSource extends VisionSource {
   constructor(
     private readonly gateway: ModelGateway,
     @Optional() @Inject(VISION_PROVIDERS) private readonly providers?: ResolvedModelProviders,
+    @Optional() @Inject(PARSE_CAPS) private readonly caps: ParseCaps = DEFAULT_PARSE_CAPS,
   ) {
     super();
+  }
+
+  private get probeTimeoutMs(): number {
+    return this.caps.visionProbeTimeoutMs;
   }
 
   /**
@@ -49,7 +56,9 @@ export class ProbedVisionSource extends VisionSource {
     const at = this.now();
     if (this.cached && at - this.cached.at < VISION_PROBE_TTL_MS) return this.cached.gateway;
 
-    const probe = await probeVision(this.gateway, this.providers, { timeoutMs: 15_000 });
+    const probe = await probeVision(this.gateway, this.providers, {
+      timeoutMs: this.probeTimeoutMs,
+    });
     if (!probe.ok) {
       // Logged once per window, not once per page: a broken runtime should be
       // one line an operator can act on, not a wall of identical warnings.

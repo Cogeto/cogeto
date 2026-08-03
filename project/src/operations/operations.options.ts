@@ -40,6 +40,8 @@ export interface OperationsOptions {
   jobsOverdueHours: number;
   /** The resolved provider configuration, for the local-runtime probe. */
   modelProviders: ResolvedModelProviders;
+  /** Deadline for the vision probe; the same one the reading ladder uses. */
+  visionProbeTimeoutMs?: number;
 }
 
 export const OPERATIONS_OPTIONS = Symbol('OPERATIONS_OPTIONS');

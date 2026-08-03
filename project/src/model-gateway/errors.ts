@@ -31,6 +31,10 @@ export class ModelGatewayNotConfiguredError extends ModelGatewayError {
  *   runtime this almost always means the model is being served without its
  *   multimodal projector: the same GGUF weights run happily as a text model,
  *   and nothing in the model's name says which way it was loaded.
+ * - `probe_timeout` — it did not answer within the probe's deadline. Kept apart
+ *   from `unreachable` because a remote GPU warming a vision model is slow, not
+ *   broken, and reporting it as unreachable sends an operator to look at the
+ *   network when the fix is a larger number.
  * - `unusable_response` — it answered, took the image, and returned nothing
  *   a reader could use.
  * - `refused_by_policy` — a local rule forbids the call. Redaction is the case
@@ -38,7 +42,12 @@ export class ModelGatewayNotConfiguredError extends ModelGatewayError {
  *   vision call would be the one path that sends unredacted content out.
  */
 export type VisionUnavailableReason =
-  'not_configured' | 'unreachable' | 'image_rejected' | 'unusable_response' | 'refused_by_policy';
+  | 'not_configured'
+  | 'unreachable'
+  | 'probe_timeout'
+  | 'image_rejected'
+  | 'unusable_response'
+  | 'refused_by_policy';
 
 export class VisionUnavailableError extends ModelGatewayError {
   constructor(

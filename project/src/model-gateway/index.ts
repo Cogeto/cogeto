@@ -14,7 +14,12 @@ export { assertLocalRuntimeReady, probeLocalRuntime } from './local-runtime';
 // The vision probe (V2.1 item 4.1): the only honest answer to "can this
 // configuration read images" is to send one, so this is what the capability
 // registry and the boot banner call.
-export { probeVision, probeImagePng, PROBE_IMAGE_MEDIA_TYPE } from './vision-probe';
+export {
+  probeVision,
+  probeImagePng,
+  PROBE_IMAGE_MEDIA_TYPE,
+  DEFAULT_VISION_PROBE_TIMEOUT_MS,
+} from './vision-probe';
 export type { VisionProbeResult } from './vision-probe';
 export { VisionUnavailableError } from './errors';
 export type { VisionUnavailableReason } from './errors';

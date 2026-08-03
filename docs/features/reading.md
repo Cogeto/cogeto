@@ -208,8 +208,175 @@ harness scores. Regenerate the text with
 `node scripts/dev/build-spreadsheet-fixtures.mjs` after a deliberate reader change,
 and refresh the eval cache in the same change, because the extraction input moved.
 
-## What comes next
+## The ladder: pages that are pictures
 
-The OCR and vision half of V2.1 item 4.1 plugs in here as two more registered
-readers: a scanned or image-only PDF currently reports `empty` / `no_text`, which is
-the honest label this half introduced and the exact hook the next one replaces.
+A page with no usable text layer used to end the story. It now enters a ladder
+that is **deterministic, cheapest-first, decided per page, and spends no model
+call on deciding** (`reading/ladder.ts` decides, `reading/page-ladder.ts`
+executes, which is what lets every routing rule be tested without a binary or a
+model).
+
+| Tier | Runs | Where |
+| --- | --- | --- |
+| 1 `text` | the page's own text layer, when usable | nothing runs |
+| 2 `ocr` | Tesseract, `eng`+`hrv`+`deu` | in the instance, CPU only |
+| 3 `vision` | a model that can see | only if configured and probed working |
+
+**Tier one asks whether the text is USABLE, not whether it exists.** That
+distinction is the whole reason scanned PDFs read as empty before: a scan
+usually carries a text layer of a folio number, ligature soup, or somebody
+else's bad OCR baked in, and taking it is how a two-hundred-page contract
+reports itself as read.
+
+**Escalation needs something on the page.** Before spending a vision call the
+reader renders a 25 DPI gray PGM and counts dark pixels, so a blank separator
+sheet costs one cheap render and stops.
+
+### The thresholds, and why they are numbers rather than adjectives
+
+Every one of these was wrong when it was reasoned out and right once it was
+measured. The measurements are in the code beside each constant.
+
+| Threshold | Value | Measured |
+| --- | --- | --- |
+| Picture ink coverage | 0.3% | blank page 0.000, one line of text 0.010 (vector and scanned alike) |
+| OCR mean confidence | 70 | clean scan 91.9, screenshot 92.3, poor scan 55.7 |
+| Meaningful characters | 20 | `Page 3 of 12` is 12, `Atlas proposal details` is 22 |
+
+The ink threshold started at 2%, reasoned from "a diagram covers whole
+percents", which would have discarded every page carrying a single line of text.
+The character floor started at 40 and called a real 22-character line furniture.
+
+The confidence threshold exists for a case the text alone cannot catch. A poor
+scan reads as `CONIULTING AGREEMENT. KEY OBLIGATIOMS ... Ginsillani, Ara Kavac`:
+those tokens have vowels, ordinary length and no impossible consonant runs, so
+every dictionary-free quality test passes them. Tesseract knew it was guessing
+and nothing else did, so its own confidence decides.
+
+**Tier three transcribes; it does not interpret.** The prompt
+(`project/prompts/vision_read/v0001.md`) bans completing patterns, filling in
+illegible labels, and contributing knowledge the model has but the page does
+not, and makes `[unreadable]` and a nothing-readable sentinel first-class
+answers. This matters more than usual: output from tier three becomes the page's
+text, and verification then checks claims AGAINST THAT TEXT, so an invented word
+cannot be caught downstream. The span verification would check is the invention.
+
+**The tier is recorded on the provenance locator**, because a fact transcribed
+from a photograph is weaker evidence than one lifted from a text layer. Facts
+are otherwise statused normally: `uncertain` keeps meaning "the verifier judged
+it so", and marking every fact from every scan uncertain would empty that status
+of the meaning it has.
+
+**Text-layer reads are unchanged.** Without a ladder the PDF reader behaves
+exactly as before and no locator gains a tier, so the golden set and the eval
+cache are untouched.
+
+## Vision is a probed capability
+
+The only honest answer to "can this instance read images" is to send one.
+`probeVision` does that at boot and on the capability registry's schedule. A
+GGUF model is multimodal **only when its multimodal projector is loaded** beside
+the weights; the same weights serve happily as a text model, and neither the
+model name nor `ollama list` shows the difference, so a configuration flag would
+be a claim rather than a check.
+
+Failures are classified into reasons that lead somewhere different:
+
+| Reason | Means |
+| --- | --- |
+| `not_configured` | no vision tier; the ladder stops at OCR, which is supported, not broken |
+| `unreachable` | the endpoint did not answer at all |
+| `probe_timeout` | it is slow, not broken (see below) |
+| `image_rejected` | it answered and refused the IMAGE; on a local runtime this names the projector |
+| `unusable_response` | it took the image and returned nothing usable |
+| `refused_by_policy` | redaction is on |
+
+`probe_timeout` is kept apart from `unreachable` deliberately: a remote GPU
+warming a vision model takes tens of seconds on its first request, and calling
+that unreachable sends an operator to look at the network when the fix is
+`COGETO_VISION_PROBE_TIMEOUT_MS`.
+
+**Redaction and vision are mutually exclusive.** Pixels cannot be
+pseudonymized, so with redaction enabled a vision call would be the one path
+that sends unredacted content to a model. It fails closed, as an unreachable
+sidecar does.
+
+## Running the model yourself
+
+`openai` names a **protocol**, not a company. A model you run through llama.cpp,
+vLLM or LM Studio speaks it, so `COGETO_PROVIDER_VISION=openai` with
+`COGETO_OPENAI_BASE_URL` pointing at your own server is expected configuration.
+Two things follow from the endpoint being yours rather than hosted:
+
+- **Per-tier timeouts apply.** They used to be attached only when the provider
+  was `ollama`, so a self-hosted OpenAI-compatible endpoint had no client-side
+  deadline at all and one slow page could hang a pipeline job indefinitely. They
+  now apply to any self-hosted endpoint under the provider-neutral
+  `COGETO_MODEL_TIMEOUT_*_MS` names; hosted providers keep no explicit timeout,
+  exactly as before.
+- **No API key is required.** Your own server often runs with no auth, and
+  demanding a meaningless placeholder is friction with no safety in it. The key
+  stays required for the hosted `api.openai.com`, where a missing one is a real
+  misconfiguration worth refusing at boot.
+
+One constraint: `COGETO_OPENAI_BASE_URL` is a single global for the provider, so
+every tier bound to `openai` reaches the same endpoint. Pointing it at your own
+server means no tier can use the hosted API at the same time.
+
+This also changes the boundary, and the change is worth stating rather than
+leaving to inference. Tiers one and two run in the instance and pages they read
+never travel. Tier three is a network call: when the vision tier points at a
+machine elsewhere, page images leave the instance to reach it. That is usually
+the intent, but "nothing leaves the box" describes the local tiers, not this one.
+
+## Vision caps
+
+| Cap | Default | Env |
+| --- | --- | --- |
+| Vision pages per document | 20 | `COGETO_VISION_PAGES_PER_DOCUMENT` |
+| Vision pages per user per day | 100 | `COGETO_VISION_PAGES_PER_USER_DAILY` |
+| Vision probe deadline | 30s | `COGETO_VISION_PROBE_TIMEOUT_MS` |
+
+Hitting a cap **stops escalation and marks the remaining pages honestly**; it
+never fails the file. One vision failure ends vision for that document rather
+than repeating itself twenty times, because the honest label is identical for
+every remaining page and each retry costs minutes.
+
+## Honest failure, and reading again
+
+| `outcome` | Means |
+| --- | --- |
+| `read` | read in full |
+| `truncated` | read in part, with per-sheet counts |
+| `empty` | nothing readable, and no capability would have changed that |
+| `needs_vision` | pages need a model that can see, which this instance has not |
+| `unsupported_format` | Cogeto does not read this kind of file |
+| `read_failed` | Cogeto reads this kind of file and could not read this one |
+
+`needs_vision` is a fact about the INSTANCE, not the document, which is why the
+retained bytes matter: `POST /api/files/:key/reprocess` reads the source again
+through the normal pipeline, and `GET /api/files/awaiting-capability` lists
+everything worth re-reading after enabling vision. That endpoint has **no UI
+yet**: the Sources list in V2.2 item 5.2 is where it belongs, and building a
+bespoke page for it now would be building something 5.2 deletes.
+
+What does have a surface is the moment it matters: an upload that produced
+nothing **keeps its row** on the Memories page, with the reason and the re-read
+action. The row used to be dropped as soon as the pipeline job succeeded, and a
+job succeeds even when the reader produced no text at all, so a scan needing
+vision vanished and looked exactly like a document that had been processed. The
+row now settles on the read report rather than on the queue's state.
+
+A re-read reconciles rather than duplicates, and making that true required a
+real fix: reconciliation used to exclude candidates from the same SOURCE, which
+was identical to "the same run" only because a source was ingested exactly once.
+Reprocessing separated the two, so the pipeline now excludes the same BATCH and
+dreaming keeps the source rule its own work needs.
+
+## What is not gated
+
+The vision path is **not eval-gated in CI**, because gating it needs a vision
+model in CI and there is none. The deterministic ladder is fully covered by the
+`test` check, including integration tests against the real binaries. The vision
+prompt's own behaviour is exercised against a real runtime by hand. Adding a
+gate that is permanently skipped would be worse than saying this.

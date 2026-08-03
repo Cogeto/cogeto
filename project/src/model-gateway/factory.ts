@@ -143,6 +143,11 @@ function buildProviderGateway(
         adapter = new OpenAiCompatibleModelGateway({
           apiKey: key,
           baseUrl: endpoints.openaiBaseUrl,
+          // Timeouts apply to a SELF-HOSTED endpoint only. A model on your own
+          // hardware answers in seconds to minutes, and until now nothing
+          // bounded those calls at all unless the provider happened to be
+          // Ollama; hosted OpenAI keeps its historical no-timeout behaviour.
+          ...(providers.openaiSelfHosted ? { tierTimeoutsMs: providers.timeoutsMs } : {}),
           pipelineModel: modelIf('pipeline'),
           answerModel: modelIf('answer'),
           embedModel: modelIf('embedding'),
@@ -170,7 +175,7 @@ function buildProviderGateway(
           apiKey: key,
           baseUrl: `${ollama.baseUrl}/v1`,
           providerLabel: 'ollama',
-          tierTimeoutsMs: ollama.timeoutsMs,
+          tierTimeoutsMs: providers.timeoutsMs,
           localRuntime: { rootUrl: ollama.baseUrl },
           pipelineModel: modelIf('pipeline'),
           answerModel: modelIf('answer'),

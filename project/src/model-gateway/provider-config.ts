@@ -33,9 +33,27 @@ export interface TierBinding {
  */
 export interface OllamaRuntimeConfig {
   baseUrl: string;
-  /** Vision is sized separately: reading a page image is the slowest call the
-   * instance makes, and a timeout tuned for a sentence of text will cut it. */
-  timeoutsMs: { pipeline: number; answer: number; embedding: number; vision: number };
+}
+
+/**
+ * Per-tier request timeouts for a SELF-HOSTED endpoint.
+ *
+ * These used to belong to the Ollama binding, which was true only while Ollama
+ * was the only way to run a model yourself. An OpenAI-compatible server on your
+ * own hardware (llama.cpp, vLLM, LM Studio) has exactly the same property:
+ * first-token latency is seconds to minutes, not milliseconds, and a hosted
+ * provider's implicit expectations do not apply.
+ *
+ * They are NOT applied to hosted providers. Absent is the historical behaviour
+ * for every hosted configuration and stays byte-identical.
+ */
+export interface TierTimeoutsMs {
+  pipeline: number;
+  answer: number;
+  embedding: number;
+  /** Sized separately: reading a page image is the slowest call the instance
+   * makes, and a timeout tuned for a sentence of text will cut it off. */
+  vision: number;
 }
 
 export interface ResolvedModelProviders {
@@ -59,6 +77,13 @@ export interface ResolvedModelProviders {
   endpoints: { openaiBaseUrl: string; anthropicBaseUrl: string };
   /** Present only when a tier is bound to the local runtime. */
   ollama: OllamaRuntimeConfig | null;
+  /**
+   * Per-tier timeouts, applied to SELF-HOSTED endpoints only: the local Ollama
+   * runtime, and an OpenAI-compatible base URL that is not the hosted default.
+   */
+  timeoutsMs: TierTimeoutsMs;
+  /** True when `endpoints.openaiBaseUrl` points at something self-hosted. */
+  openaiSelfHosted: boolean;
   redacted: boolean;
 }
 
@@ -293,6 +318,20 @@ export function resolveModelProviders(
     };
   }
 
+  // Is the OpenAI-compatible endpoint somebody's own server rather than
+  // OpenAI's? That single question decides two things below: whether per-tier
+  // timeouts apply (a self-hosted model answers in seconds to minutes), and
+  // whether an API key is required (your own server may well have no auth).
+  const openaiBaseUrl = read(env, 'COGETO_OPENAI_BASE_URL') ?? DEFAULT_OPENAI_BASE_URL;
+  const openaiSelfHosted = openaiBaseUrl !== DEFAULT_OPENAI_BASE_URL;
+
+  const timeoutsMs: TierTimeoutsMs = {
+    pipeline: readTimeoutMs(env, 'COGETO_MODEL_TIMEOUT_PIPELINE_MS', 'pipeline'),
+    answer: readTimeoutMs(env, 'COGETO_MODEL_TIMEOUT_ANSWER_MS', 'answer'),
+    embedding: readTimeoutMs(env, 'COGETO_MODEL_TIMEOUT_EMBEDDINGS_MS', 'embedding'),
+    vision: readTimeoutMs(env, 'COGETO_MODEL_TIMEOUT_VISION_MS', 'vision'),
+  };
+
   const keys: Partial<Record<ModelProviderId, string>> = {};
   const mistralKey = read(env, 'COGETO_MISTRAL_API_KEY') ?? read(env, 'MISTRAL_API_KEY');
   if (mistralKey) keys.mistral = mistralKey;
@@ -305,6 +344,12 @@ export function resolveModelProviders(
   // authenticating proxy — so the missing-key refusal below never fires for
   // ollama while staying exactly as strict for every hosted provider.
   keys.ollama = read(env, 'COGETO_OLLAMA_API_KEY') ?? 'ollama';
+  // A self-hosted OpenAI-compatible server (llama.cpp, vLLM, LM Studio) often
+  // runs with no auth at all, and demanding a meaningless placeholder in .env
+  // is friction with no safety in it. The requirement STAYS for the hosted API,
+  // where a missing key is a real misconfiguration and refusing at boot beats a
+  // 401 on the first request.
+  if (openaiSelfHosted && !keys.openai) keys.openai = 'self-hosted';
 
   const referenced = [
     ...new Set([
@@ -331,15 +376,7 @@ export function resolveModelProviders(
           `(e.g. http://10.0.0.1:11434)`,
       );
     }
-    ollama = {
-      baseUrl: rawBaseUrl.replace(/\/+$/, '').replace(/\/v1$/, ''),
-      timeoutsMs: {
-        pipeline: readTimeoutMs(env, 'COGETO_OLLAMA_TIMEOUT_PIPELINE_MS', 'pipeline'),
-        answer: readTimeoutMs(env, 'COGETO_OLLAMA_TIMEOUT_ANSWER_MS', 'answer'),
-        embedding: readTimeoutMs(env, 'COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS', 'embedding'),
-        vision: readTimeoutMs(env, 'COGETO_OLLAMA_TIMEOUT_VISION_MS', 'vision'),
-      },
-    };
+    ollama = { baseUrl: rawBaseUrl.replace(/\/+$/, '').replace(/\/v1$/, '') };
   }
 
   // v1 parity: a purely implicit mistral-default instance without a key boots
@@ -370,26 +407,39 @@ export function resolveModelProviders(
     vision,
     keys,
     endpoints: {
-      openaiBaseUrl: read(env, 'COGETO_OPENAI_BASE_URL') ?? DEFAULT_OPENAI_BASE_URL,
+      openaiBaseUrl,
       anthropicBaseUrl: read(env, 'COGETO_ANTHROPIC_BASE_URL') ?? DEFAULT_ANTHROPIC_BASE_URL,
     },
     ollama,
+    timeoutsMs,
+    openaiSelfHosted,
     redacted: options.redacted,
   };
 }
 
 /** Per-tier local timeout, independently settable. */
+/**
+ * A tier's timeout, from the provider-neutral variable, the legacy Ollama one,
+ * or the default.
+ *
+ * The `COGETO_OLLAMA_TIMEOUT_*` names are still honoured because they are
+ * documented and in use; they simply stopped being about Ollama when a
+ * self-hosted OpenAI-compatible server turned out to need exactly the same
+ * treatment.
+ */
 function readTimeoutMs(
   env: NodeJS.ProcessEnv,
   name: string,
   tier: keyof typeof OLLAMA_TIMEOUT_DEFAULTS_MS,
 ): number {
-  const raw = read(env, name);
+  const legacyName = name.replace('COGETO_MODEL_TIMEOUT_', 'COGETO_OLLAMA_TIMEOUT_');
+  const raw = read(env, name) ?? read(env, legacyName);
   if (raw === undefined) return OLLAMA_TIMEOUT_DEFAULTS_MS[tier];
   const value = Number(raw);
   if (!Number.isInteger(value) || value <= 0) {
     throw new ModelProviderConfigError(
-      `${name}="${raw}" is not a positive integer number of milliseconds`,
+      `${read(env, name) !== undefined ? name : legacyName}="${raw}" is not a positive ` +
+        `integer number of milliseconds`,
     );
   }
   return value;

@@ -16,6 +16,8 @@ import { resolveModelProviders } from './provider-config';
 
 class StubGateway extends ModelGateway {
   lastRequest?: VisionRequest;
+  /** Simulates a runtime that is warming rather than broken. */
+  delayMs = 0;
   constructor(private readonly behaviour: (request: VisionRequest) => CompletionResult) {
     super();
   }
@@ -37,6 +39,7 @@ class StubGateway extends ModelGateway {
   }
   override async describeImage(request: VisionRequest): Promise<CompletionResult> {
     this.lastRequest = request;
+    if (this.delayMs > 0) await new Promise((resolve) => setTimeout(resolve, this.delayMs));
     return this.behaviour(request);
   }
 }
@@ -101,6 +104,22 @@ describe('probeVision', () => {
     expect(result.ok).toBe(false);
     expect(result.reason).toBe('image_rejected');
     expect(result.error).toContain('projector');
+  });
+});
+
+describe('a slow endpoint is not a broken one', () => {
+  it('reports a probe timeout as its own reason, naming the variable that raises it', async () => {
+    // The case this exists for: a remote GPU warming a vision model takes tens
+    // of seconds on its first request. Reporting that as `unreachable` sends an
+    // operator to look at the network when the fix is a larger number.
+    const slow = new StubGateway(() => ({ text: 'never gets here' }));
+    slow.delayMs = 50;
+    const result = await probeVision(slow, providersWithVision(), { timeoutMs: 5 });
+
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe('probe_timeout');
+    expect(result.error).toContain('COGETO_VISION_PROBE_TIMEOUT_MS');
+    expect(result.reason).not.toBe('unreachable');
   });
 });
 

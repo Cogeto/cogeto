@@ -126,6 +126,7 @@ export function buildLimits(env: NodeJS.ProcessEnv, demoMode: boolean): LimitsCo
       // day. Image inference is the most expensive call the pipeline makes.
       visionPagesPerDocument: num(env.COGETO_VISION_PAGES_PER_DOCUMENT, 20),
       visionPagesPerUserDaily: num(env.COGETO_VISION_PAGES_PER_USER_DAILY, 100),
+      visionProbeTimeoutMs: num(env.COGETO_VISION_PROBE_TIMEOUT_MS, 30_000),
     },
   };
 }

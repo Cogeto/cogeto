@@ -91,6 +91,14 @@ export interface ParseCaps {
   visionPagesPerDocument: number;
   /** The same budget across one user's day, summed over every document. */
   visionPagesPerUserDaily: number;
+  /**
+   * How long the vision PROBE may take. Separate from the tier's own timeout,
+   * which is sized for a full page: this one only has to prove the endpoint
+   * accepts an image. Generous by default, because a remote or cold model takes
+   * far longer to warm than to run, and declaring a working runtime dead is a
+   * worse error than waiting.
+   */
+  visionProbeTimeoutMs: number;
 }
 
 export interface LimitsConfig {
@@ -139,4 +147,5 @@ export const DEFAULT_PARSE_CAPS: ParseCaps = {
   // bulk import quietly spending a night of local inference.
   visionPagesPerDocument: 20,
   visionPagesPerUserDaily: 100,
+  visionProbeTimeoutMs: 30_000,
 };
