@@ -57,6 +57,14 @@ Matching between an extracted fact and an expected label is semantic, not string
 - **Extraction precision** = extracted facts matching an expected label / all extracted facts.
 - **Extraction recall** = expected `must_extract` labels matched / all such labels.
 - **Verification agreement** = verifier verdicts matching `verification_expected` / all cases.
+  `supported` and `partial` are scored over the facts that MATCHED an expected label, so
+  **a case with no expected memories may not declare them**: with nothing able to match, the
+  case would be counted as disagreeing on every run forever, whatever the system did. A case
+  that must remember nothing declares the trap rule (`unsupported`: no stray fact was admitted
+  supported and unhedged) or omits the field, which means "this case does not measure
+  verification". The harness enforces this when the corpus loads and fails the run loudly;
+  three Croatian cases sat in the unreachable state long enough to hold that language's floor
+  one case away from red.
 - **Dedup accuracy** = near-duplicate pairs correctly merged / all such pairs (false merges count double, because a wrong merge destroys a distinct fact).
 - **Contradiction detection precision and recall** over the labeled contradiction pairs.
 - **Supersedes accuracy** = correct supersession decisions (verdict **and** direction) / the pairs where supersession was at stake, which is the labelled `supersedes_*` pairs **plus** any pair the system superseded that should not have been. False positives sit in the denominator on purpose: a wrong supersession closes the validity interval on a fact that still holds, which is the same class of harm as a false merge, and scoring only the labelled pairs made it invisible.

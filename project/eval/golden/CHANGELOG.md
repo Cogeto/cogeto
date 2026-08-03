@@ -219,3 +219,20 @@ One line per label change (docs/eval-golden-set.md §4 rule 5).
   (a supplier's country), so precision is not punished for a reasonable
   extraction. The gate floors are re-measured with the cases in, not before.
   No gate lowered.
+- 2026-08-03 (corpus correctness, no new cases): three Croatian cases declared
+  a verification verdict they could never reach. `hr-0023`, `hr-0025` and
+  `hr-0027` have **no expected memories**, and `verification_expected:
+  "supported"` is scored over the facts that MATCHED a label, so each was
+  counted as disagreeing on every run since it was written, whatever the system
+  did. Their correctly labelled siblings (`en-0005`, `hr-0002`) omit the field.
+  `hr-0023` (small talk) now omits it; `hr-0025` and `hr-0027` are designed
+  traps and now use the trap rule (`unsupported`), which is a real assertion:
+  nothing may be admitted supported and unhedged. The harness now REFUSES the
+  unreachable combination at load (`assertVerificationDeclarable`), so it cannot
+  return.
+  **Metric effect stated deliberately** (the rule from the v1.1.0 record): hr
+  verification agreement rises from 83.3% (40/48) to 89.4% (42/47) on the same
+  recorded run, and the aggregate from 89.4% to 92.5%. That is a scoring
+  correction, not a system improvement: the three cases were losing points the
+  system never lost. **No gate was moved**; the hr floor of 0.81 stays exactly
+  where it was, and now has honest margin above it instead of two points.

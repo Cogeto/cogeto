@@ -6,5 +6,5 @@
     "nepotvrđena, ograđena namjera (\"možda\", \"ništa nije potvrđeno\") nije trajna činjenica ni obveza"
   ],
   "expected_relations": [],
-  "verification_expected": "supported"
+  "verification_expected": "unsupported"
 }

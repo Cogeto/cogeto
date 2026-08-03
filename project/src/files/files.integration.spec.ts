@@ -10,6 +10,7 @@ import {
   makeDocx,
   makePdf,
   makeXlsx,
+  settleJobs,
   startTestDatabase,
   startTestMinio,
   startTestQdrant,
@@ -252,7 +253,15 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
     ]);
     return rows.length > 0;
   };
+  /**
+   * Queued pipeline jobs, read only once the queue's own bookkeeping has
+   * settled — the same race that broke `email-intake.integration.spec.ts` on
+   * main. Since graphile-worker 0.17 a finished attempt's write can land after
+   * `runOnce` resolves, so any count taken straight after a worker run is
+   * reading a table that is still being written to.
+   */
   const pipelineJobCount = async (): Promise<number> => {
+    await settleJobs(tdb.pool);
     const { rows } = await tdb.pool.query<{ n: string }>(
       'SELECT count(*)::text AS n FROM graphile_worker.jobs WHERE task_identifier = $1',
       [INGESTION_PIPELINE_JOB_TYPE],
