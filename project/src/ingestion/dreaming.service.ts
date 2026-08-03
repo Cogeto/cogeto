@@ -114,7 +114,12 @@ export class DreamingService {
         async () => {
           setUsageUser(ownerId);
           return this.db.transaction(async (tx) => {
-            const result = await this.reconciliationService.reconcile(tx, items, log);
+            // Dreaming re-examines the corpus, so its batch IS what must be
+            // compared; the exclusion it needs is the source one it has always
+            // had (V2.1 item 4.1 split the two rules apart).
+            const result = await this.reconciliationService.reconcile(tx, items, log, {
+              exclude: 'same_source',
+            });
             await this.recordReconcileActions(tx, runId, result.actions);
             return result;
           });

@@ -135,6 +135,16 @@ services:
       COGETO_MODEL_ANSWER: ${COGETO_MODEL_ANSWER:-}
       COGETO_PROVIDER_EMBEDDINGS: ${COGETO_PROVIDER_EMBEDDINGS:-}
       COGETO_MODEL_EMBEDDINGS: ${COGETO_MODEL_EMBEDDINGS:-}
+      # Reading pages that are pictures (V2.1 item 4.1). Opt-in, no default
+      # model: both must be set together, and without them the reading ladder
+      # stops at local OCR and labels what it could not read.
+      COGETO_PROVIDER_VISION: ${COGETO_PROVIDER_VISION:-}
+      COGETO_MODEL_VISION: ${COGETO_MODEL_VISION:-}
+      # How many pages one document, and one user per day, may escalate to the
+      # vision tier. Image inference is the most expensive call the pipeline
+      # makes, so it is bounded by construction.
+      COGETO_VISION_PAGES_PER_DOCUMENT: ${COGETO_VISION_PAGES_PER_DOCUMENT:-}
+      COGETO_VISION_PAGES_PER_USER_DAILY: ${COGETO_VISION_PAGES_PER_USER_DAILY:-}
       COGETO_OPENAI_API_KEY: ${COGETO_OPENAI_API_KEY:-}
       COGETO_OPENAI_BASE_URL: ${COGETO_OPENAI_BASE_URL:-}
       COGETO_ANTHROPIC_API_KEY: ${COGETO_ANTHROPIC_API_KEY:-}
@@ -146,6 +156,14 @@ services:
       COGETO_OLLAMA_TIMEOUT_PIPELINE_MS: ${COGETO_OLLAMA_TIMEOUT_PIPELINE_MS:-}
       COGETO_OLLAMA_TIMEOUT_ANSWER_MS: ${COGETO_OLLAMA_TIMEOUT_ANSWER_MS:-}
       COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS: ${COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS:-}
+      COGETO_OLLAMA_TIMEOUT_VISION_MS: ${COGETO_OLLAMA_TIMEOUT_VISION_MS:-}
+      # Provider-neutral per-tier timeouts: any self-hosted endpoint, not just
+      # Ollama (V2.1 item 4.1).
+      COGETO_MODEL_TIMEOUT_PIPELINE_MS: ${COGETO_MODEL_TIMEOUT_PIPELINE_MS:-}
+      COGETO_MODEL_TIMEOUT_ANSWER_MS: ${COGETO_MODEL_TIMEOUT_ANSWER_MS:-}
+      COGETO_MODEL_TIMEOUT_EMBEDDINGS_MS: ${COGETO_MODEL_TIMEOUT_EMBEDDINGS_MS:-}
+      COGETO_MODEL_TIMEOUT_VISION_MS: ${COGETO_MODEL_TIMEOUT_VISION_MS:-}
+      COGETO_VISION_PROBE_TIMEOUT_MS: ${COGETO_VISION_PROBE_TIMEOUT_MS:-}
       COGETO_LOG_LEVEL: ${COGETO_LOG_LEVEL:-info}
       # Ana sandbox. Off by default and FAIL-CLOSED:
       # serving the pre-minted demo session (a token published to anyone) now

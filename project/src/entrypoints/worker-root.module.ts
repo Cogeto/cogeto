@@ -148,6 +148,10 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       uploadMaxBytes: config.uploadMaxBytes,
       downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
     },
+    // The reading ladder's vision tier (V2.1 item 4.1) is wired in the WORKER
+    // only: reading a page with a model is slow-path ingestion work, and the
+    // app process has no business making an image call on a request.
+    modelProviders: config.modelProviders,
     imports: [memoryModule, settingsModule],
   });
   const emailModule = EmailModule.register({

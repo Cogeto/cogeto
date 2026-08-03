@@ -2,6 +2,8 @@ import { Readable } from 'node:stream';
 import { DEFAULT_PARSE_CAPS } from '../../infrastructure/index';
 import type { ParseCaps } from '../../infrastructure/index';
 import { CsvReader } from './csv.reader';
+import { ImageReader } from './image.reader';
+import type { PageLadderServices } from './page-ladder';
 import { DocxReader } from './docx.reader';
 import { PdfReader } from './pdf.reader';
 import { readFailed, unsupportedFormat } from './reader';
@@ -21,6 +23,9 @@ export const DOCUMENT_READERS: readonly DocumentReader[] = [
   new DocxReader(),
   new XlsxReader(),
   new CsvReader(),
+  // Standalone images (V2.1 item 4.1): a photograph, a screenshot or an
+  // exported diagram is a document too.
+  new ImageReader(),
 ];
 
 export interface ReadOptions {
@@ -32,6 +37,8 @@ export interface ReadOptions {
   caps?: Partial<ParseCaps>;
   /** The registry to select from. Tests substitute; production never does. */
   readers?: readonly DocumentReader[];
+  /** The reading ladder's tiers (V2.1 item 4.1); absent → text layers only. */
+  ladder?: PageLadderServices;
 }
 
 /**
@@ -64,6 +71,7 @@ export async function readDocument(bytes: Buffer, options: ReadOptions = {}): Pr
         filename,
         declaredContentType,
         caps,
+        ...(options.ladder ? { ladder: options.ladder } : {}),
       }),
     caps.timeoutSeconds,
     reader.format,

@@ -240,33 +240,95 @@ describe('local_timeouts_config — per-tier local timeouts', () => {
     COGETO_OLLAMA_BASE_URL: 'http://10.0.0.1:11434',
   };
 
-  it('defaults are high for local inference: 300s generation, 120s embeddings', () => {
-    expect(resolve(OLLAMA).ollama?.timeoutsMs).toEqual({
+  it('defaults are high for local inference: 300s generation, 120s embeddings, 600s vision', () => {
+    expect(resolve(OLLAMA).timeoutsMs).toEqual({
       pipeline: 300_000,
       answer: 300_000,
       embedding: 120_000,
+      // Reading a page image is the slowest call the instance makes.
+      vision: 600_000,
     });
   });
 
   it('each tier timeout is INDEPENDENTLY settable', () => {
     const providers = resolve({ ...OLLAMA, COGETO_OLLAMA_TIMEOUT_ANSWER_MS: '600000' });
-    expect(providers.ollama?.timeoutsMs).toEqual({
+    expect(providers.timeoutsMs).toEqual({
       pipeline: 300_000,
       answer: 600_000,
       embedding: 120_000,
+      vision: 600_000,
     });
     const all = resolve({
       ...OLLAMA,
       COGETO_OLLAMA_TIMEOUT_PIPELINE_MS: '10000',
       COGETO_OLLAMA_TIMEOUT_ANSWER_MS: '20000',
       COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS: '30000',
+      COGETO_OLLAMA_TIMEOUT_VISION_MS: '40000',
     });
-    expect(all.ollama?.timeoutsMs).toEqual({ pipeline: 10_000, answer: 20_000, embedding: 30_000 });
+    expect(all.timeoutsMs).toEqual({
+      pipeline: 10_000,
+      answer: 20_000,
+      embedding: 30_000,
+      vision: 40_000,
+    });
   });
 
   it('a non-numeric timeout refuses boot naming the variable', () => {
     expect(() => resolve({ ...OLLAMA, COGETO_OLLAMA_TIMEOUT_PIPELINE_MS: 'fast' })).toThrowError(
       /COGETO_OLLAMA_TIMEOUT_PIPELINE_MS="fast" is not a positive integer/,
     );
+  });
+});
+
+/**
+ * A model on your own hardware, reached over the OpenAI-compatible API
+ * (V2.1 item 4.1). `openai` names a PROTOCOL, not a company: llama.cpp, vLLM
+ * and LM Studio all speak it, and they behave like a local runtime rather than
+ * like a hosted API in the two ways that matter.
+ */
+describe('self-hosted OpenAI-compatible endpoints', () => {
+  const SELF_HOSTED = {
+    COGETO_PROVIDER_VISION: 'openai',
+    COGETO_MODEL_VISION: 'qwen2.5-vl',
+    COGETO_OPENAI_BASE_URL: 'https://gpu.example.net/v1',
+    COGETO_MISTRAL_API_KEY: 'k',
+  };
+
+  it('needs no API key: your own server may well have no auth', () => {
+    const providers = resolve(SELF_HOSTED);
+    expect(providers.openaiSelfHosted).toBe(true);
+    // A placeholder is synthesized rather than demanded in .env, exactly as it
+    // has always been for the local Ollama runtime.
+    expect(providers.keys.openai).toBeTruthy();
+    expect(providers.vision).toEqual({ provider: 'openai', model: 'qwen2.5-vl' });
+  });
+
+  it('still REQUIRES a key for the hosted API, where a missing one is a real mistake', () => {
+    expect(() =>
+      resolve({
+        COGETO_PROVIDER_VISION: 'openai',
+        COGETO_MODEL_VISION: 'gpt-4o',
+        COGETO_MISTRAL_API_KEY: 'k',
+      }),
+    ).toThrow(/COGETO_OPENAI_API_KEY/);
+  });
+
+  it('gets per-tier timeouts, which hosted providers still do not', () => {
+    // Nothing bounded a self-hosted call before: the timeouts were attached
+    // only when the provider happened to be `ollama`, so a remote GPU could
+    // hang a pipeline job with no client-side deadline at all.
+    expect(resolve(SELF_HOSTED).timeoutsMs.vision).toBe(600_000);
+    expect(resolve({ COGETO_MISTRAL_API_KEY: 'k' }).openaiSelfHosted).toBe(false);
+  });
+
+  it('honours the provider-neutral timeout vars and the legacy Ollama ones', () => {
+    expect(
+      resolve({ ...SELF_HOSTED, COGETO_MODEL_TIMEOUT_VISION_MS: '900000' }).timeoutsMs.vision,
+    ).toBe(900_000);
+    // The COGETO_OLLAMA_* names are documented and in use; they stopped being
+    // about Ollama, they did not stop working.
+    expect(
+      resolve({ ...SELF_HOSTED, COGETO_OLLAMA_TIMEOUT_VISION_MS: '800000' }).timeoutsMs.vision,
+    ).toBe(800_000);
   });
 });

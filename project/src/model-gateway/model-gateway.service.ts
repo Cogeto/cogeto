@@ -1,4 +1,5 @@
 import type { ZodType } from 'zod';
+import { VisionUnavailableError } from './errors';
 
 /**
  * Provider-neutral model seam (scope §5.1, spec §12.1): complete / extractStructured /
@@ -39,6 +40,25 @@ export interface CompletionResult {
   usage?: TokenUsage;
 }
 
+/**
+ * One image for the vision tier (V2.1 item 4.1): raw bytes plus the media type
+ * the adapter needs to build a data URL or a provider image block. Bytes, never
+ * a path or a URL — the seam does no I/O and the model never fetches anything.
+ */
+export interface VisionImage {
+  bytes: Buffer;
+  /** `image/png`, `image/jpeg`, … */
+  mediaType: string;
+}
+
+export interface VisionRequest {
+  /** The versioned prompt artifact's content (spec §12.3). */
+  system?: string;
+  input: string;
+  image: VisionImage;
+  maxTokens?: number;
+}
+
 export interface StructuredExtractionRequest {
   /** The system prompt — a versioned artifact loaded via the prompt loader (spec §12.3). */
   system: string;
@@ -70,6 +90,23 @@ export abstract class ModelGateway {
    * is required.
    */
   abstract embeddingModelId(): string;
+
+  /**
+   * Reads an image (V2.1 item 4.1). Separate from `complete` because it is a
+   * separate CAPABILITY, not a parameter: the same weights are served with and
+   * without a multimodal projector, so a gateway that cannot take images must
+   * say so rather than fail somewhere inside a text call.
+   *
+   * The base implementation refuses, which is the correct answer for every
+   * adapter that has no vision binding and for the unconfigured gateway. An
+   * adapter that supports images overrides it; the decorators forward it.
+   */
+  async describeImage(_request: VisionRequest): Promise<CompletionResult> {
+    throw new VisionUnavailableError(
+      'not_configured',
+      'no vision tier is configured for this instance',
+    );
+  }
 
   /**
    * Cheap, cached reachability probe for the health surface — never on a

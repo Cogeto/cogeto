@@ -1,16 +1,20 @@
 import type { ZodType } from 'zod';
 import { ModelGateway } from './model-gateway.service';
+import { VisionUnavailableError } from './errors';
 import type {
   CompletionRequest,
   CompletionResult,
   GatewayReachability,
   StructuredExtractionRequest,
+  VisionRequest,
 } from './model-gateway.service';
 
 export interface TierRoutes {
   pipeline: ModelGateway;
   answer: ModelGateway;
   embedding: ModelGateway;
+  /** Absent when this instance has no vision binding (V2.1 item 4.1). */
+  vision?: ModelGateway | null;
 }
 
 /**
@@ -41,6 +45,17 @@ export class TierRoutedModelGateway extends ModelGateway {
     return this.routes[request.tier ?? 'pipeline'].extractStructured(schema, request);
   }
 
+  /** No vision route configured is a complete answer, not a missing one. */
+  override describeImage(request: VisionRequest): Promise<CompletionResult> {
+    if (!this.routes.vision) {
+      throw new VisionUnavailableError(
+        'not_configured',
+        'no vision tier is configured: set COGETO_PROVIDER_VISION and COGETO_MODEL_VISION',
+      );
+    }
+    return this.routes.vision.describeImage(request);
+  }
+
   embed(texts: string[]): Promise<number[][]> {
     return this.routes.embedding.embed(texts);
   }
@@ -51,7 +66,7 @@ export class TierRoutedModelGateway extends ModelGateway {
 
   /** Probe each DISTINCT underlying adapter; unreachable anywhere → not ok. */
   override async reachable(): Promise<GatewayReachability> {
-    const distinct = [...new Set(Object.values(this.routes))];
+    const distinct = [...new Set(Object.values(this.routes).filter((route) => route != null))];
     const results = await Promise.all(distinct.map((gateway) => gateway.reachable()));
     const failed = results.filter((r) => !r.ok);
     if (failed.length > 0) {

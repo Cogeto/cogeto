@@ -116,8 +116,23 @@ class ScriptedGateway extends ModelGateway {
     const isReconcile = request.input.startsWith('FACT A:');
     let raw: unknown;
     if (isReconcile) {
+      // The dedup arm answers `same_fact` when the two claims are literally
+      // identical, and `distinct` otherwise. A stub that always said `distinct`
+      // could never dedup anything, which would make the reprocess test assert
+      // nothing: recognising two identical sentences is the least any real
+      // model does, and it is what stage 6 needs to do its job.
+      const claims = [...request.input.matchAll(/^claim: (.+)$/gm)].map((match) =>
+        match[1]!.trim(),
+      );
+      const identical = claims.length === 2 && claims[0] === claims[1];
       raw = request.system.includes('same_fact')
-        ? { verdict: 'distinct', reason: 'scripted', merged_content: null }
+        ? identical
+          ? {
+              verdict: 'same_fact',
+              reason: 'scripted: identical claims',
+              merged_content: claims[0],
+            }
+          : { verdict: 'distinct', reason: 'scripted', merged_content: null }
         : { verdict: 'compatible', direction: null, reason: 'scripted' };
     } else if (isVerify) {
       raw = { verdict: 'supported', reason: 'scripted' };
@@ -544,6 +559,75 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
       [receiptId],
     );
     expect(receipt[0]!.counts_json['file_read_reports_removed']).toBe(1);
+  });
+
+  it('reprocess_no_duplicates: reading a source again reconciles against what is stored', async () => {
+    // The guarantee behind the reprocess action (V2.1 item 4.1): a document
+    // that could not be read is re-readable once the capability arrives, and
+    // the second read must not leave the corpus with two copies of every fact.
+    // Nothing special-cases the second run: it is the normal pipeline, and it
+    // is stage 6 (reconcile) that makes the difference.
+    const claim = 'Adriatic Foods pays every invoice within fifteen days.';
+    const gateway = new ScriptedGateway(() => ({ facts: [fact(claim, ['Adriatic Foods'])] }));
+    const pipeline = buildPipeline(gateway);
+    const { objectKey } = await filesService.upload(
+      userA,
+      { buffer: makePdf(claim), originalName: 'terms.pdf', mimeType: PDF_CONTENT_TYPE },
+      { scope: 'private', sensitive: false, discard: false },
+    );
+    await runWorker(pipeline);
+    const first = (await memoriesFor('file', objectKey)).rows;
+    expect(first).toHaveLength(1);
+
+    // Re-read. The idempotency key is cleared deliberately — every other path
+    // treats it as final, and this is the one sanctioned exception.
+    const queued = await filesService.reprocess(userA, objectKey);
+    expect(queued).toEqual({ queued: true });
+    await runWorker(pipeline);
+
+    const second = (await memoriesFor('file', objectKey)).rows;
+    // ONE fact still holds. The re-read's copy merged with the stored one and
+    // the earlier row is `replaced`, which is supersession, not duplication:
+    // history is kept, the corpus does not grow a second copy, and retrieval
+    // (which excludes `replaced`) answers with exactly one.
+    const active = second.filter((row) => row.status === 'active');
+    expect(active).toHaveLength(1);
+    expect(second.filter((row) => row.status === 'replaced')).toHaveLength(1);
+    expect(second).toHaveLength(2);
+
+    // And the decision is in the trail: re-running ingestion on purpose is a
+    // thing an operator should be able to find afterwards.
+    const audit = await tdb.pool.query(
+      "SELECT 1 FROM audit_log WHERE action = 'file.reprocess_requested' AND entity_id = $1",
+      [objectKey],
+    );
+    expect(audit.rows).toHaveLength(1);
+  });
+
+  it('awaiting_capability: sources that need a capability are findable, owner-scoped', async () => {
+    const reports = new FileReadReportStore(tdb.db);
+    const { objectKey } = await filesService.upload(
+      userA,
+      { buffer: makePdf('a page'), originalName: 'scan.pdf', mimeType: PDF_CONTENT_TYPE },
+      { scope: 'private', sensitive: false, discard: false },
+    );
+    await reports.record(objectKey, userA.userId, {
+      format: 'pdf',
+      granularity: 'page',
+      outcome: 'needs_vision',
+      reasonCode: 'vision_unavailable',
+      segments: 0,
+      sheets: [],
+      valuesUnavailable: 0,
+      unavailableCells: [],
+      pages: [{ page: 1, tier: null, reason: 'needs_vision_unavailable' }],
+    });
+
+    const awaiting = await filesService.awaitingCapability(userA);
+    expect(awaiting.map((entry) => entry.objectKey)).toContain(objectKey);
+    expect(awaiting[0]?.pagesAwaiting).toBe(1);
+    // Somebody else's unreadable document is not somebody's business.
+    expect(await filesService.awaitingCapability(userB)).toEqual([]);
   });
 
   it('signed_url_gated: sensitive files gate download to the owner; shared non-sensitive files are org-shareable', async () => {

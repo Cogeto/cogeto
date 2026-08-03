@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { Session } from '../auth/oidc';
 import { CaptureCard, PendingNote } from '../components/CaptureCard';
 import { UploadCard, PendingUpload } from '../components/UploadCard';
+import type { UploadOutcome } from '../components/UploadCard';
 import { GovernedMemories } from '../components/GovernedMemories';
 import { MemoryDrawer } from '../components/MemoryDrawer';
 import { Shell } from '../components/Shell';
@@ -31,13 +32,19 @@ export function Memories({ session }: { session: Session }) {
   );
 
   const settleUpload = useCallback(
-    (objectKey: string, failed: boolean) => {
-      // Keep a failed upload's row visible (it carries the error copy); drop
-      // it only once it succeeds and its memories appear in the list.
-      if (failed) {
+    (objectKey: string, outcome: UploadOutcome) => {
+      // A row is dropped only when the file was actually READ, because then its
+      // memories appear in the list below and that is the confirmation. A
+      // failed upload keeps its row for the error copy, and so does a file the
+      // reader could not read: a scan needing a vision model used to disappear
+      // silently and look exactly like one that had been processed (V2.1 item
+      // 4.1). The queue's own state cannot tell those apart, since the job
+      // succeeded in both cases.
+      if (outcome === 'failed') {
         setFailedCount((n) => n + 1);
         return;
       }
+      if (outcome === 'unread') return;
       setUploads((items) => items.filter((item) => item.objectKey !== objectKey));
       void queryClient.invalidateQueries({ queryKey: ['memories'] });
     },

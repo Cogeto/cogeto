@@ -81,6 +81,24 @@ export interface ParseCaps {
    * choice only affects bytes ≥ 0x80. Recorded on every read.
    */
   csvFallbackEncoding: string;
+  /**
+   * Vision escalations allowed for ONE document (V2.1 item 4.1). Reading a page
+   * with a model is the most expensive thing the pipeline does, so a
+   * two-hundred-page scan cannot become two hundred image calls: past this many
+   * pages the ladder stops escalating and the remaining pages are marked
+   * honestly rather than the whole file failing.
+   */
+  visionPagesPerDocument: number;
+  /** The same budget across one user's day, summed over every document. */
+  visionPagesPerUserDaily: number;
+  /**
+   * How long the vision PROBE may take. Separate from the tier's own timeout,
+   * which is sized for a full page: this one only has to prove the endpoint
+   * accepts an image. Generous by default, because a remote or cold model takes
+   * far longer to warm than to run, and declaring a working runtime dead is a
+   * worse error than waiting.
+   */
+  visionProbeTimeoutMs: number;
 }
 
 export interface LimitsConfig {
@@ -125,4 +143,9 @@ export const DEFAULT_PARSE_CAPS: ParseCaps = {
   maxSheetRows: 5_000,
   maxFileRows: 20_000,
   csvFallbackEncoding: 'windows-1250',
+  // Enough to read a scanned contract or a datasheet whole; far short of a
+  // bulk import quietly spending a night of local inference.
+  visionPagesPerDocument: 20,
+  visionPagesPerUserDaily: 100,
+  visionProbeTimeoutMs: 30_000,
 };

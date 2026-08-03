@@ -33,7 +33,11 @@ export type CapabilityId =
   // profile, so an instance that does not use it runs no SMTP listener.
   | 'demo'
   | 'consoles'
-  | 'local-models';
+  | 'local-models'
+  // Reading pages that are pictures (V2.1 item 4.1). Probed by sending a real
+  // image: the same weights are served with and without a multimodal
+  // projector, so nothing short of an image can answer the question.
+  | 'vision';
 
 export type CapabilityState = 'on' | 'unreachable' | 'off';
 

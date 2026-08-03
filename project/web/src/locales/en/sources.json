@@ -100,7 +100,8 @@
       "truncated": "Read in part",
       "empty": "Nothing readable",
       "unsupported_format": "Format not supported",
-      "read_failed": "Could not be read"
+      "read_failed": "Could not be read",
+      "needs_vision": "Needs reading by a vision model"
     },
     "reason": {
       "row_cap_sheet": "This file is longer than the per-sheet row limit, so Cogeto read the first rows of each sheet.",
@@ -111,12 +112,33 @@
       "parse_failed": "The file is of a kind Cogeto reads, but these bytes could not be parsed. It may be corrupt or password protected.",
       "parse_timeout": "Reading this file took too long and was stopped.",
       "text_over_cap": "This file expands to more text than Cogeto reads from one document.",
-      "undecodable_text": "The text in this file could not be decoded."
+      "undecodable_text": "The text in this file could not be decoded.",
+      "vision_unavailable": "Some pages are pictures. Reading them needs a vision model, which this instance does not have working. Nothing was invented for those pages; the original is kept, so they can be read once it is available.",
+      "vision_cap_reached": "This document reached its limit for pages read by a vision model. The pages beyond it were left unread rather than silently skipped.",
+      "vision_failed": "A page needed a vision model and the attempt failed. The original is kept and can be read again.",
+      "no_readable_text": "Cogeto could not find readable text on this document, by any means available to it. Nothing was extracted, and nothing was invented."
     },
     "sheetRows": "{{rowsRead}} of {{rowsTotal}} rows read",
     "sheetRowsAll": "all {{rowsTotal}} rows read",
     "unnamedSheet": "Table",
     "valuesUnavailable_one": "{{count}} cell had no stored value, so it was left out rather than guessed.",
-    "valuesUnavailable_other": "{{count}} cells had no stored value, so they were left out rather than guessed."
+    "valuesUnavailable_other": "{{count}} cells had no stored value, so they were left out rather than guessed.",
+    "tier": {
+      "title": "How each page was read",
+      "text": "text layer",
+      "ocr": "read on this machine",
+      "vision": "read by a vision model",
+      "unread": "not read",
+      "summary": "{{read}} of {{total}} pages read",
+      "visionPages_one": "{{count}} page was read by a vision model.",
+      "visionPages_other": "{{count}} pages were read by a vision model."
+    },
+    "reprocess": {
+      "action": "Read this again",
+      "explainer": "The original is kept, so this can be read again once the missing capability is available. Facts already stored are reconciled, not duplicated.",
+      "queued": "Queued. The document will be read again in the background.",
+      "noBytes": "The original was discarded after extraction, so there is nothing left to read again.",
+      "failed": "Could not queue the re-read."
+    }
   }
 }

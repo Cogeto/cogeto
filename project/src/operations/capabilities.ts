@@ -7,7 +7,12 @@ import { IntegritySweep } from '../memory/index';
 import type { IntegrityStatus } from '../memory/index';
 import { dreamRunStatus } from '../ingestion/index';
 import type { DreamRunStatus } from '../ingestion/index';
-import { probeLocalRuntime } from '../model-gateway/index';
+import {
+  DEFAULT_VISION_PROBE_TIMEOUT_MS,
+  ModelGateway,
+  probeLocalRuntime,
+  probeVision,
+} from '../model-gateway/index';
 import { OPERATIONS_OPTIONS } from './operations.options';
 import type { OperationsOptions } from './operations.options';
 
@@ -68,6 +73,9 @@ export class CapabilitiesService {
     integrity: IntegritySweep,
     probes: InstanceProbes,
     @Optional() @Inject(CAPABILITY_JOB_SOURCES) sources?: CapabilityJobSources,
+    /** The seam the vision probe goes through. Optional so a bare construction
+     * (unit tests, a root without the gateway) reports vision as off. */
+    @Optional() private readonly gateway?: ModelGateway,
   ) {
     this.sources = sources ?? {
       dreaming: () => dreamRunStatus(db),
@@ -102,6 +110,7 @@ export class CapabilitiesService {
       this.demo(checkedAt),
       this.consoles(checkedAt),
       this.localModels(checkedAt),
+      this.vision(checkedAt),
     ]);
   }
 
@@ -243,6 +252,39 @@ export class CapabilitiesService {
 
   /** Local models: enabled when any tier resolves to the local
    * runtime; the boot probe's logic (reachability + models pulled) is reused. */
+  /**
+   * Vision (V2.1 item 4.1): can this instance read a page that is a picture?
+   *
+   * Probed by SENDING AN IMAGE, never by reading a model name. A GGUF model is
+   * multimodal only when its multimodal projector is loaded beside the weights,
+   * the same weights are served either way, and `ollama list` shows no
+   * difference — so a configuration flag would be a claim and this is a check.
+   *
+   * Re-probed on the registry's normal schedule, which is what turns "the
+   * runtime went away" into a panel state rather than a surprise in the middle
+   * of ingesting a hundred-page scan. The reasons are kept distinct because
+   * they send an operator to four different places; `image_rejected` in
+   * particular names the projector, which is where the problem almost always
+   * is and the last place an operator looks.
+   */
+  private async vision(checkedAt: string): Promise<CapabilitySummary> {
+    const base = { id: 'vision' as const, checkedAt };
+    if (!this.gateway) return { ...base, state: 'off', probed: false };
+    // The SAME deadline the reader uses. An 8-second panel probe against a
+    // 30-second reader probe would report a working remote runtime as broken
+    // while documents were being read by it.
+    const probe = await probeVision(this.gateway, this.config.modelProviders, {
+      timeoutMs: this.config.visionProbeTimeoutMs ?? DEFAULT_VISION_PROBE_TIMEOUT_MS,
+    });
+    if (probe.ok) return { ...base, state: 'on', probed: true, detail: probe.detail };
+    // Not configured is OFF, not broken: an instance that never asked for
+    // vision is not degraded, it simply stops the reading ladder at OCR.
+    if (probe.reason === 'not_configured') {
+      return { ...base, state: 'off', probed: false, detail: probe.error };
+    }
+    return { ...base, state: 'unreachable', probed: true, error: probe.error };
+  }
+
   private async localModels(checkedAt: string): Promise<CapabilitySummary> {
     const base = { id: 'local-models' as const, checkedAt };
     const probe = await probeLocalRuntime(this.config.modelProviders, { timeoutMs: 3000 });

@@ -178,6 +178,10 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
 
   // Split out of connectors (V2.0 item 3.6 part 4).
   FILE_UPLOAD_OPTIONS: 'files',
+  // The instance's model configuration, handed to the files module by the root
+  // that runs the reading ladder (V2.1 item 4.1). The module names what it
+  // needs; it does not read the environment or reach into an entrypoint.
+  VISION_PROVIDERS: 'files',
   MAIL_OPTIONS: 'email',
   RESEARCH_OPTIONS: 'research',
   // Named-options bags (V2.0 item 3.6 part 4), as above.

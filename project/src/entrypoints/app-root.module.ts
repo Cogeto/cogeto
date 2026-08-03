@@ -258,6 +258,9 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         composeProfiles: config.composeProfiles,
         jobsOverdueHours: config.jobsOverdueHours,
         modelProviders: config.modelProviders,
+        // The same vision-probe deadline the reading ladder uses, so the panel
+        // and the reader cannot disagree about whether vision works.
+        visionProbeTimeoutMs: config.limits.parse.visionProbeTimeoutMs,
       }),
     ],
     providers: [

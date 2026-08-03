@@ -96,6 +96,11 @@ function routesOf(
     pipeline: { provider: tiers.pipeline.provider, model: tiers.pipeline.model },
     answer: { provider: tiers.answer.provider, model: tiers.answer.model },
     embedding: { provider: tiers.embedding.provider, model: tiers.embedding.model },
+    // Vision egress is audited under its own route name, so "an image left the
+    // box" is distinguishable in the trail from "a sentence did".
+    ...(providers.vision
+      ? { vision: { provider: providers.vision.provider, model: providers.vision.model } }
+      : {}),
   };
 }
 
@@ -117,6 +122,8 @@ function buildProviderGateway(
     if (existing) return existing;
     const modelIf = (tier: 'pipeline' | 'answer' | 'embedding'): string | undefined =>
       tiers[tier].provider === provider ? tiers[tier].model : undefined;
+    const visionModel =
+      providers.vision?.provider === provider ? providers.vision.model : undefined;
     // The resolver already refused any referenced provider without a key
     // (0040 ruling 3) — the assertion here is a belt for hand-built configs.
     const key = keys[provider];
@@ -136,9 +143,15 @@ function buildProviderGateway(
         adapter = new OpenAiCompatibleModelGateway({
           apiKey: key,
           baseUrl: endpoints.openaiBaseUrl,
+          // Timeouts apply to a SELF-HOSTED endpoint only. A model on your own
+          // hardware answers in seconds to minutes, and until now nothing
+          // bounded those calls at all unless the provider happened to be
+          // Ollama; hosted OpenAI keeps its historical no-timeout behaviour.
+          ...(providers.openaiSelfHosted ? { tierTimeoutsMs: providers.timeoutsMs } : {}),
           pipelineModel: modelIf('pipeline'),
           answerModel: modelIf('answer'),
           embedModel: modelIf('embedding'),
+          visionModel,
           temperature,
         });
         break;
@@ -162,11 +175,12 @@ function buildProviderGateway(
           apiKey: key,
           baseUrl: `${ollama.baseUrl}/v1`,
           providerLabel: 'ollama',
-          tierTimeoutsMs: ollama.timeoutsMs,
+          tierTimeoutsMs: providers.timeoutsMs,
           localRuntime: { rootUrl: ollama.baseUrl },
           pipelineModel: modelIf('pipeline'),
           answerModel: modelIf('answer'),
           embedModel: modelIf('embedding'),
+          visionModel,
           temperature,
         });
         break;
@@ -180,7 +194,12 @@ function buildProviderGateway(
     pipeline: adapterFor(tiers.pipeline.provider),
     answer: adapterFor(tiers.answer.provider),
     embedding: adapterFor(tiers.embedding.provider),
+    vision: providers.vision ? adapterFor(providers.vision.provider) : null,
   };
-  if (adapters.size === 1) return routes.pipeline;
+  // A single-provider configuration returns its adapter directly, byte-identical
+  // to the path before tiers existed — but only when there is no vision binding
+  // to route, because the adapter itself cannot say "no vision configured" for
+  // a provider that simply has no image model.
+  if (adapters.size === 1 && !providers.vision) return routes.pipeline;
   return new TierRoutedModelGateway(routes);
 }

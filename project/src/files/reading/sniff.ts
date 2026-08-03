@@ -31,6 +31,33 @@ import type { DocumentFormat } from './reader';
 /** What the bytes are, when the bytes say so. */
 export type SniffedFormat = DocumentFormat | 'ole2';
 
+/**
+ * The image formats the reading ladder accepts, by signature. Images are the
+ * one family where the magic bytes are both short and completely reliable, so
+ * a mislabelled screenshot routes correctly rather than being refused.
+ */
+export function sniffImage(buffer: Buffer): string | null {
+  if (buffer.length < 12) return null;
+  if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    return 'image/png';
+  }
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg';
+  if (
+    buffer.subarray(0, 4).toString('latin1') === 'RIFF' &&
+    buffer.subarray(8, 12).toString('latin1') === 'WEBP'
+  ) {
+    return 'image/webp';
+  }
+  // TIFF, both byte orders.
+  if (
+    (buffer[0] === 0x49 && buffer[1] === 0x49 && buffer[2] === 0x2a && buffer[3] === 0x00) ||
+    (buffer[0] === 0x4d && buffer[1] === 0x4d && buffer[2] === 0x00 && buffer[3] === 0x2a)
+  ) {
+    return 'image/tiff';
+  }
+  return null;
+}
+
 const OOXML_ENTRY_MARKERS: ReadonlyArray<{ entry: string; format: DocumentFormat }> = [
   { entry: 'word/document.xml', format: 'docx' },
   { entry: 'xl/workbook.xml', format: 'xlsx' },
@@ -51,6 +78,8 @@ const EOCD_SEARCH_WINDOW = 66 * 1024;
  */
 export function sniffFormat(buffer: Buffer): SniffedFormat | null {
   if (buffer.length >= 4 && buffer.toString('latin1', 0, 4) === '%PDF') return 'pdf';
+  const image = sniffImage(buffer);
+  if (image) return 'image';
   // OLE2 compound file: legacy .doc/.xls/.ppt.
   if (
     buffer.length >= 8 &&
@@ -83,6 +112,8 @@ export function sniffContentType(buffer: Buffer): string | null {
       return DOCX_CONTENT_TYPE;
     case 'xlsx':
       return XLSX_CONTENT_TYPE;
+    case 'image':
+      return sniffImage(buffer);
     case 'csv':
       return CSV_CONTENT_TYPE;
     // An OLE2 file is recognised, not supported: naming a content type for it

@@ -30,7 +30,7 @@ export type { DreamRunStatus } from './dreaming.service';
 // there is one digest, gated once — plus the dreaming activity series.
 export { buildDreamDigest, dreamingActivityForPrincipal } from './dream-digest';
 export { ReconciliationService } from './pipeline/reconcile.stage';
-export { ACTIVE_PROMPTS } from './prompt-versions';
+export { ACTIVE_PROMPTS, VISION_READ_PROMPT } from './prompt-versions';
 export { runGoldenEval, evalConfigSchema } from './eval-harness';
 export type { EvalMetrics } from './eval-harness';
 export { runReconcileEval } from './eval-reconcile';

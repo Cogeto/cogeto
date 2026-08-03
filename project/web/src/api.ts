@@ -29,6 +29,7 @@ import type {
   ChainVerificationDto,
   DeletionPreviewDto,
   DeletionRequestedDto,
+  AwaitingCapabilityDto,
   FileDownloadDto,
   FileSourceDto,
   FileStatusDto,
@@ -162,6 +163,18 @@ export const fetchFileSource = (session: Session, objectKey: string): Promise<Fi
   apiGet(`/api/files/${fileKey(objectKey)}`, session);
 export const fetchFileDownload = (session: Session, objectKey: string): Promise<FileDownloadDto> =>
   apiGet(`/api/files/${fileKey(objectKey)}/download`, session);
+/**
+ * Read a source again (V2.1 item 4.1): what turns "vision is now configured"
+ * into "and everything it could not read before has been read".
+ */
+export const reprocessSource = (
+  session: Session,
+  objectKey: string,
+): Promise<{ queued: boolean }> =>
+  apiPost(`/api/files/${fileKey(objectKey)}/reprocess`, {}, session);
+/** Sources this owner has that are waiting for a capability to arrive. */
+export const fetchAwaitingCapability = (session: Session): Promise<AwaitingCapabilityDto[]> =>
+  apiGet('/api/files/awaiting-capability', session);
 // The dashboard is the owner's governance surface: explicit sensitive opt-in
 // — the store still returns only the owner's own rows.
 export interface MemoryListParams {

@@ -11,6 +11,7 @@ import {
   fetchFileSource,
   fetchNote,
   fetchWebSource,
+  reprocessSource,
 } from '../api';
 import { isRegisteredSourceType } from '@cogeto/shared';
 import type { SourceTypeKey } from '@cogeto/shared';
@@ -55,9 +56,14 @@ const READ_OUTCOME_KEY: Record<string, string> = {
   empty: 'read.outcome.empty',
   unsupported_format: 'read.outcome.unsupported_format',
   read_failed: 'read.outcome.read_failed',
+  needs_vision: 'read.outcome.needs_vision',
 };
 
 const READ_REASON_KEY: Record<string, string> = {
+  vision_unavailable: 'read.reason.vision_unavailable',
+  vision_cap_reached: 'read.reason.vision_cap_reached',
+  vision_failed: 'read.reason.vision_failed',
+  no_readable_text: 'read.reason.no_readable_text',
   row_cap_sheet: 'read.reason.row_cap_sheet',
   row_cap_file: 'read.reason.row_cap_file',
   no_text: 'read.reason.no_text',
@@ -73,9 +79,20 @@ const READ_REASON_KEY: Record<string, string> = {
 const readTone = (outcome: string): Tone =>
   outcome === 'read'
     ? 'positive'
-    : outcome === 'truncated' || outcome === 'empty'
+    : outcome === 'truncated' || outcome === 'empty' || outcome === 'needs_vision'
       ? 'warning'
       : 'danger';
+
+/** Which tier read a page. An API value; only its display name is translated. */
+const READ_TIER_KEY: Record<string, string> = {
+  text: 'read.tier.text',
+  ocr: 'read.tier.ocr',
+  vision: 'read.tier.vision',
+};
+
+/** A read that is missing pages can be retried once the capability exists. */
+const canReprocess = (outcome: string): boolean =>
+  outcome === 'needs_vision' || outcome === 'read_failed' || outcome === 'empty';
 
 /**
  * Which drawer body a source type gets, typed over the source-type registry's
@@ -162,6 +179,18 @@ export function SourceDrawer({
       setDrafted(true);
     },
     onError: (e: unknown) => setDraftError(e instanceof Error ? e.message : String(e)),
+  });
+
+  const [reprocessed, setReprocessed] = useState(false);
+  const [reprocessError, setReprocessError] = useState<string | null>(null);
+  const reprocess = useMutation({
+    mutationFn: () => reprocessSource(session, sourceId),
+    onSuccess: ({ queued }) => {
+      setReprocessError(queued ? null : t('read.reprocess.noBytes'));
+      setReprocessed(queued);
+    },
+    onError: (error: unknown) =>
+      setReprocessError(error instanceof Error ? error.message : t('read.reprocess.failed')),
   });
 
   const download = useMutation({
@@ -300,6 +329,54 @@ export function SourceDrawer({
                         count: fileQuery.data.read.valuesUnavailable,
                       })}
                     </p>
+                  )}
+                  {fileQuery.data.read.pages && fileQuery.data.read.pages.length > 0 && (
+                    <div className="space-y-0.5 text-xs text-slate-500">
+                      <p className="font-medium text-slate-600">{t('read.tier.title')}</p>
+                      <p>
+                        {t('read.tier.summary', {
+                          read: fileQuery.data.read.pages.filter((page) => page.tier !== null)
+                            .length,
+                          total: fileQuery.data.read.pages.length,
+                        })}
+                      </p>
+                      <ul className="flex flex-wrap gap-x-3">
+                        {fileQuery.data.read.pages.map((page) => (
+                          <li key={page.page}>
+                            {page.page}:{' '}
+                            {page.tier && READ_TIER_KEY[page.tier]
+                              ? t(READ_TIER_KEY[page.tier]!)
+                              : t('read.tier.unread')}
+                          </li>
+                        ))}
+                      </ul>
+                      {(fileQuery.data.read.visionPagesUsed ?? 0) > 0 && (
+                        <p>
+                          {t('read.tier.visionPages', {
+                            count: fileQuery.data.read.visionPagesUsed ?? 0,
+                          })}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {canReprocess(fileQuery.data.read.outcome) && !fileQuery.data.discarded && (
+                    <div className="space-y-1 pt-1">
+                      <p className="text-xs text-slate-500">{t('read.reprocess.explainer')}</p>
+                      <button
+                        type="button"
+                        disabled={reprocess.isPending || reprocessed}
+                        onClick={() => reprocess.mutate()}
+                        className={btnSecondary}
+                      >
+                        {t('read.reprocess.action')}
+                      </button>
+                      {reprocessed && (
+                        <p className="text-xs text-slate-500">{t('read.reprocess.queued')}</p>
+                      )}
+                      {reprocessError && (
+                        <p className="text-xs text-red-600 dark:text-red-300">{reprocessError}</p>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
