@@ -20,3 +20,4 @@ export * from './user-context';
 export * from './passport';
 export * from './health';
 export * from './web-config';
+export * from './extraction';

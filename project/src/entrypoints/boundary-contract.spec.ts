@@ -50,6 +50,11 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   dream_run: 'ingestion',
   dream_action: 'ingestion',
   dormant_flag: 'ingestion',
+  // The per-source extraction gate (V2.1 item 4.3): admission control the
+  // pipeline enforces, so the module that enforces it owns its tables.
+  extraction_gate: 'ingestion',
+  extraction_gate_rule: 'ingestion',
+  extraction_gate_refusal: 'ingestion',
 
   // The chat context owns its tables since part 4 (chat left retrieval).
   chat_message: 'chat',
@@ -120,6 +125,7 @@ const JOB_TYPE_OWNERS: Readonly<Record<string, string>> = {
   'research.conclude': 'research',
   'skill.advance': 'skills',
   email_refusal_retention: 'email',
+  extraction_refusal_retention: 'ingestion',
   'conversation.title': 'chat',
   passport_export: 'passport',
   passport_retention: 'passport',

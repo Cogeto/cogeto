@@ -5,6 +5,8 @@ import { DatabaseModule, LimitsModule, UserContextModule } from '../infrastructu
 import { BearerAuthGuard, IdentityModule } from '../identity/index';
 import { ModelBudgetExceptionFilter } from './model-budget.filter';
 import {
+  ExtractionRefusalCascade,
+  ExtractionRefusalCascadeModule,
   IngestionModule,
   PipelineIngestionGuard,
   SuppressedFactCascade,
@@ -101,6 +103,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         ReplyDraftCascadeModule,
         PassportCascadeModule,
         SuppressedFactCascadeModule,
+        ExtractionRefusalCascadeModule,
         FileReadReportCascadeModule,
       ],
       // Assistant answers citing erased memories are redacted; reply drafts
@@ -113,6 +116,9 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         ReplyDraftCascade,
         PassportExportCascade,
         SuppressedFactCascade,
+        // The gate refusal ledger is metadata-only, but a refusal row for an
+        // erased source is a dangling provenance reference (V2.1 item 4.3).
+        ExtractionRefusalCascade,
         // The file read report is content-bearing (sheet names) and can exist
         // with no memory at all, so it goes with its source (V2.1 item 4.1).
         FileReadReportCascade,

@@ -1,0 +1,47 @@
+{
+  "heading": "Extraction gate",
+  "explainer": "Controls what Cogeto extracts facts from, per source kind. A blocked source is still stored; <b>only its extraction is refused</b>, and every refusal is listed below rather than silently dropped.",
+  "connectors": {
+    "heading": "Source kinds",
+    "explainer": "Untouched rows keep the defaults: extraction on, the built-in budget, facts kept until something supersedes them.",
+    "factBudget": "Fact budget",
+    "factBudgetPlaceholder": "default",
+    "retention": "Retention (days)",
+    "retentionPlaceholder": "keep",
+    "saveFailed": "Saving the gate failed."
+  },
+  "sourceType": {
+    "user_note": "Notes",
+    "chat": "Chat captures",
+    "email": "Email",
+    "file": "Files",
+    "web": "Web research"
+  },
+  "rules": {
+    "heading": "File format rules",
+    "explainer": "Allow or block extraction by detected file format. The format comes from the file's bytes, never its name. \"Allow\" rules make the list exclusive: only the allowed formats extract.",
+    "effect": "Effect",
+    "effectValue": {
+      "allow": "allow",
+      "deny": "block"
+    },
+    "documentClass": "Format",
+    "class": {
+      "pdf": "PDF",
+      "docx": "Word (DOCX)",
+      "xlsx": "Spreadsheet (XLSX)",
+      "csv": "CSV",
+      "image": "Image"
+    },
+    "addFailed": "Adding the rule failed."
+  },
+  "refusals": {
+    "heading": "Recently refused",
+    "explainer": "Sources the gate refused to extract from. The source itself is kept; change the settings above and reprocess it to extract after all."
+  },
+  "refusalReason": {
+    "extraction_disabled": "extraction is off for this source kind",
+    "source_disabled": "this source was switched off individually",
+    "document_class_denied": "its file format is blocked by a rule"
+  }
+}

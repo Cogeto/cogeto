@@ -160,7 +160,26 @@ gating it would need a vision model in CI.
 **Before changing anything in the reading path, read
 [`docs/features/reading.md`](docs/features/reading.md).**
 
-Work proceeds through the V2 plan in order.
+V2.1 item 4.3 delivered the **per-source extraction gate** (spec 1.6, migration
+0042): extraction is admission controlled per owner and source kind, at one
+deterministic chokepoint in the pipeline before any model call. Enable/disable,
+fact budgets (tightest of parse cap, registry budget, gate budget), retention
+(stamps `valid_until` only on facts without their own validity; the dreaming
+staleness pass handles the lapse), and allow/deny rules (`document_class` =
+the reading layer's detected format; `source_id` deny-only; `channel`/`folder`
+reserved for connectors and bulk import). Refusals are a metadata-only ledger
+(`extraction_gate_refusal`, 30-day prune, in the deletion cascade) so a gated
+source never looks processed-with-zero-facts, and an absent gate row is
+byte-identical to prior behaviour. The Settings page has the surface; the
+tables and the API are `ingestion`'s. Spec 1.7 (injection defence for observed
+content) was found already satisfied by the SEC-4 fence and guards, so no
+prompt changed and the eval cache is untouched:
+[`docs/features/extraction-gate.md`](docs/features/extraction-gate.md).
+
+Work proceeds through the V2 plan in order, with one owner-approved insertion:
+reasoning-model support Part B (the probed `reasoning` capability and the
+maxTokens headroom) landed 2026-08-04; Parts A (the thinking channel) and C
+(storage and UI) follow after V2.1 item 4.2.
 
 ## Delivery loop
 

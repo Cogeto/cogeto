@@ -14,6 +14,8 @@ import {
   ACTIVE_PROMPTS,
   DREAM_CRONTAB,
   DreamingService,
+  EXTRACTION_REFUSAL_RETENTION_CRONTAB,
+  ExtractionGateStore,
   IngestionPipeline,
 } from '../ingestion/index';
 import {
@@ -154,6 +156,7 @@ async function main(): Promise<void> {
     approvalExecutor: context.get(ApprovalExecutor),
     passportExecutor: context.get(PassportExportExecutor),
     allowlist: context.get(EmailAllowlistService),
+    extractionGate: context.get(ExtractionGateStore),
     conversationTitler: context.get(ConversationTitler),
     researchConcluder: context.get(ResearchConclusionService),
     researchSynthesis: context.get(ResearchSynthesisService),
@@ -218,7 +221,7 @@ async function main(): Promise<void> {
     // DST transition can still make a wall-clock hour repeat/skip on non-UTC
     // hosts; the single-flight advisory lock on each recurring job (worker-tasks)
     // makes a double-fire a clean skip, and the jobs are idempotent by design.
-    crontab: `${SWEEP_CRONTAB}\n${DREAM_CRONTAB}\n${APPROVAL_EXPIRY_CRONTAB}\n${PASSPORT_RETENTION_CRONTAB}\n${EMAIL_REFUSAL_RETENTION_CRONTAB}${demoLine}`,
+    crontab: `${SWEEP_CRONTAB}\n${DREAM_CRONTAB}\n${APPROVAL_EXPIRY_CRONTAB}\n${PASSPORT_RETENTION_CRONTAB}\n${EMAIL_REFUSAL_RETENTION_CRONTAB}\n${EXTRACTION_REFUSAL_RETENTION_CRONTAB}${demoLine}`,
     noHandleSignals: true,
   });
   logger.info('cogeto worker started (graphile runner + task registry)');

@@ -56,14 +56,14 @@ module that never imports `connectors` but injects `NotesService` because
 
 ## 2. Table ownership
 
-Thirty-eight tables, one owner each. The owner is the module whose
+Forty-one tables, one owner each. The owner is the module whose
 `persistence/tables.ts` declares the Drizzle table; it is the only module that
 may name the table in a query, in Drizzle or in SQL.
 
 | Owner | Tables |
 |---|---|
 | `memory` | `memory`, `memory_relation`, `file_metadata`, `deletion_receipt`, `integrity_alert` |
-| `ingestion` | `verification_result`, `suppressed_fact_log`, `dream_run`, `dream_action`, `dormant_flag` |
+| `ingestion` | `verification_result`, `suppressed_fact_log`, `dream_run`, `dream_action`, `dormant_flag`, `extraction_gate`, `extraction_gate_rule`, `extraction_gate_refusal` (V2.1 item 4.3: the per-source extraction gate. Owned here because the pipeline is the enforcement point; the settings surface is ingestion's own controller, the email-settings precedent) |
 | `chat` | `chat_message`, `conversation` (moved from `retrieval` in part 4: chat is a capture connector by structure) |
 | `attention` | `attention_state`, `attention_dismissal` |
 | `agents` | `approval` |
@@ -147,7 +147,7 @@ well-defined.
 
 ## 3. Job-type contracts
 
-Fifteen job types. Each is declared **once**, as an exported constant, in the
+Sixteen job types. Each is declared **once**, as an exported constant, in the
 module that owns the payload contract and writes the handler body. The worker
 composition root is the only place that maps a job type to a handler, and it
 imports every constant rather than spelling any of them.
@@ -165,6 +165,7 @@ imports every constant rather than spelling any of them.
 | `research.conclude` | `research` | `RESEARCH_CONCLUDE_JOB_TYPE` | per-source |
 | `skill.advance` | `skills` | `SKILL_ADVANCE_JOB_TYPE` | per-source |
 | `email_refusal_retention` | `email` | `EMAIL_REFUSAL_RETENTION_JOB_TYPE` | recurring |
+| `extraction_refusal_retention` | `ingestion` | `EXTRACTION_REFUSAL_RETENTION_JOB_TYPE` | recurring |
 | `conversation.title` | `chat` | `CONVERSATION_TITLE_JOB_TYPE` | per-source |
 | `passport_export` | `passport` | `PASSPORT_EXPORT_JOB_TYPE` | per-source |
 | `passport_retention` | `passport` | `PASSPORT_RETENTION_JOB_TYPE` | recurring |
