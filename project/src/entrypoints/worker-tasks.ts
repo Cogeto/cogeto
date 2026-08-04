@@ -12,10 +12,16 @@ import {
 import type { Db } from '../infrastructure/index';
 import {
   DREAM_JOB_TYPE,
+  EXTRACTION_REFUSAL_RETENTION_JOB_TYPE,
   FILE_DISCARD_CLEANUP_JOB_TYPE,
   INGESTION_PIPELINE_JOB_TYPE,
 } from '../ingestion/index';
-import type { DreamingService, IngestionPipeline, PipelineLog } from '../ingestion/index';
+import type {
+  DreamingService,
+  ExtractionGateStore,
+  IngestionPipeline,
+  PipelineLog,
+} from '../ingestion/index';
 import {
   DELETION_JOB_TYPE,
   MEMORY_EMBED_JOB_TYPE,
@@ -52,6 +58,7 @@ export interface WorkerTaskDeps {
   approvalExecutor: ApprovalExecutor;
   passportExecutor: PassportExportExecutor;
   allowlist: EmailAllowlistService;
+  extractionGate: ExtractionGateStore;
   conversationTitler: ConversationTitler;
   researchConcluder: ResearchConclusionService;
   researchSynthesis: ResearchSynthesisService;
@@ -313,6 +320,18 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       const removed = await deps.allowlist.pruneRefusalsOlderThan();
       deps.log({ removed }, 'email refusal retention pass completed');
     }),
+
+    // Prune extraction-gate refusal records past the retention window (V2.1
+    // item 4.3): the ledger is metadata-only, so this is growth hygiene, the
+    // same shape as the email refusal prune. Recurring + idempotent;
+    // single-flight.
+    [EXTRACTION_REFUSAL_RETENTION_JOB_TYPE]: recurring(
+      EXTRACTION_REFUSAL_RETENTION_JOB_TYPE,
+      async () => {
+        const removed = await deps.extractionGate.pruneRefusalsOlderThan();
+        deps.log({ removed }, 'extraction refusal retention pass completed');
+      },
+    ),
 
     // The conversation auto-title: one pipeline-tier
     // call naming an untitled thread from its opening messages. Idempotency

@@ -54,8 +54,28 @@ export class EmbedStoreStage {
     private readonly timeZone: string = DEFAULT_INSTANCE_TIMEZONE,
   ) {}
 
-  async run(tx: Tx, source: SourceItem, verified: VerifiedFact[]): Promise<AdmittedMemory[]> {
+  async run(
+    tx: Tx,
+    source: SourceItem,
+    verified: VerifiedFact[],
+    options: {
+      /**
+       * Gate retention (V2.1 item 4.3): facts from this source's gate live this
+       * many days from ADMISSION (not from the source's own timestamp — an old
+       * email ingested today would otherwise expire on arrival). Applied only
+       * when the extractor resolved no `valid_until` of its own: a fact's own
+       * stated validity always outranks a blanket policy. Lapse is then the
+       * dreaming staleness pass's existing job (`active` → `outdated`); nothing
+       * is deleted and history is never destroyed.
+       */
+      retentionDays?: number | null;
+    } = {},
+  ): Promise<AdmittedMemory[]> {
     if (verified.length === 0) return [];
+    const retentionUntil =
+      options.retentionDays != null
+        ? new Date(Date.now() + options.retentionDays * 24 * 3_600_000)
+        : null;
 
     const embeddings = await this.gateway.embed(verified.map((v) => v.fact.claim));
     const embeddingModel = this.gateway.embeddingModelId();
@@ -101,7 +121,7 @@ export class EmbedStoreStage {
         authoredByUser: source.authoredByUser,
         sensitive: source.sensitive ?? false,
         validFrom,
-        validUntil,
+        validUntil: validUntil ?? retentionUntil ?? undefined,
         temporalUnresolved: unresolved,
         initialStatus: status,
         uncertaintyReason: uncertaintyReason ?? undefined,

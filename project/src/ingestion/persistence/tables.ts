@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   boolean,
   index,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -121,6 +122,78 @@ export const suppressedFactLog = pgTable(
 );
 
 export type SuppressedFactRow = typeof suppressedFactLog.$inferSelect;
+
+/**
+ * The per-source extraction gate (V2.1 item 4.3, migration 0042, spec 1.6):
+ * admission control over extraction, per owner and source type, enforced by the
+ * pipeline before any model spend. An ABSENT gate row is today's behaviour,
+ * byte-identical: enabled, registry fact budget, no retention. Dimensions and
+ * effects are plain text validated in code (the source-type-registry precedent,
+ * spec 15.3), so 'channel' and 'folder' need no migration when connectors and
+ * bulk import arrive.
+ */
+export const extractionGate = pgTable(
+  'extraction_gate',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: text('owner_id').notNull(),
+    sourceType: text('source_type').notNull(),
+    enabled: boolean('enabled').notNull().default(true),
+    /** NULL: the source-type registry's budget (and the parse cap) decide. */
+    factBudget: integer('fact_budget'),
+    /** NULL: facts live until their own validity or a transition ends them. */
+    retentionDays: integer('retention_days'),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('extraction_gate_owner_type_idx').on(t.ownerId, t.sourceType)],
+);
+
+export const extractionGateRule = pgTable(
+  'extraction_gate_rule',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: text('owner_id').notNull(),
+    sourceType: text('source_type').notNull(),
+    dimension: text('dimension').notNull(),
+    value: text('value').notNull(),
+    effect: text('effect').$type<'allow' | 'deny'>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('extraction_gate_rule_owner_idx').on(t.ownerId, t.sourceType, t.dimension, t.value),
+  ],
+);
+
+/**
+ * The honest refusal ledger, mirroring email_refusal: a source the gate blocked
+ * must not look processed-with-zero-facts. Metadata only, NEVER content; pruned
+ * after 30 days by the nightly job, and erased with its source through
+ * ingestion's cascade so no dangling provenance reference outlives a receipt.
+ */
+export const extractionGateRefusal = pgTable(
+  'extraction_gate_refusal',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: text('owner_id').notNull(),
+    sourceType: text('source_type').notNull(),
+    sourceId: text('source_id').notNull(),
+    reason: text('reason').$type<ExtractionRefusalReason>().notNull(),
+    /** The detected class the decision was made on, when a class rule made it. */
+    documentClass: text('document_class'),
+    refusedAt: timestamp('refused_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('extraction_gate_refusal_owner_idx').on(t.ownerId, t.refusedAt),
+    index('extraction_gate_refusal_source_idx').on(t.sourceType, t.sourceId),
+  ],
+);
+
+export type ExtractionRefusalReason =
+  'extraction_disabled' | 'source_disabled' | 'document_class_denied';
+
+export type ExtractionGateRow = typeof extractionGate.$inferSelect;
+export type ExtractionGateRuleRow = typeof extractionGateRule.$inferSelect;
+export type ExtractionGateRefusalRow = typeof extractionGateRefusal.$inferSelect;
 
 /**
  * The dreaming cycle's tables (migration 0012). Ingestion-owned

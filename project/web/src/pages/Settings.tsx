@@ -11,9 +11,11 @@ import { LANGUAGE_ENDONYMS, MEASURED_LANGUAGES, SUPPORTED_LANGUAGES } from '@cog
 import {
   acceptContextSuggestion,
   addEmailAllowlistEntry,
+  addExtractionGateRule,
   dismissContextSuggestion,
   fetchContextSuggestions,
   fetchEmailConfig,
+  fetchExtractionGateConfig,
   fetchInstancePublicKey,
   fetchModelConfig,
   fetchPassportDownload,
@@ -21,6 +23,8 @@ import {
   fetchSettings,
   fetchUserContext,
   removeEmailAllowlistEntry,
+  removeExtractionGateRule,
+  setExtractionGate,
   triggerPassportExport,
   updateSettings,
   updateUserContext,
@@ -130,6 +134,8 @@ export function Settings({ session }: { session: Session }) {
       <ModelConfigSection session={session} />
 
       <EmailCaptureSection session={session} />
+
+      <ExtractionGateSection session={session} />
 
       <PassportSection session={session} />
 
@@ -963,5 +969,282 @@ function EmailCaptureSection({ session }: { session: Session }) {
         </>
       )}
     </section>
+  );
+}
+
+/** The reading layer's detected formats — the document classes rules bind to. */
+const EXTRACTION_DOCUMENT_CLASSES = ['pdf', 'docx', 'xlsx', 'csv', 'image'];
+
+/** Refusal reasons the ledger records; unknown values render raw, as email does. */
+const EXTRACTION_REFUSAL_REASONS = [
+  'extraction_disabled',
+  'source_disabled',
+  'document_class_denied',
+];
+
+/**
+ * The extraction gate (V2.1 item 4.3): per-connector admission control over
+ * extraction. One row per extraction-capable source type (enable, fact budget,
+ * retention), document-class rules for files, and the recent refusals so a
+ * gated source never silently disappears.
+ */
+function ExtractionGateSection({ session }: { session: Session }) {
+  const { t } = useTranslation('extraction');
+  const queryClient = useQueryClient();
+  const config = useQuery({
+    queryKey: ['extraction-gate'],
+    queryFn: () => fetchExtractionGateConfig(session),
+  });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['extraction-gate'] });
+
+  const [ruleClass, setRuleClass] = useState('image');
+  const [ruleEffect, setRuleEffect] = useState<'allow' | 'deny'>('deny');
+
+  const addRule = useMutation({
+    mutationFn: () =>
+      addExtractionGateRule(session, {
+        sourceType: 'file',
+        dimension: 'document_class',
+        value: ruleClass,
+        effect: ruleEffect,
+      }),
+    onSuccess: invalidate,
+  });
+  const removeRule = useMutation({
+    mutationFn: (id: string) => removeExtractionGateRule(session, id),
+    onSuccess: invalidate,
+  });
+
+  const gates = new Map((config.data?.gates ?? []).map((gate) => [gate.sourceType, gate]));
+  const rules = (config.data?.rules ?? []).filter((rule) => rule.dimension === 'document_class');
+  const refusals = config.data?.recentRefusals ?? [];
+
+  const typeLabel = (sourceType: string): string =>
+    t(`sourceType.${sourceType}`, { defaultValue: sourceType });
+
+  return (
+    <section className="mt-4 space-y-4 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
+      <div>
+        <SectionTitle>{t('heading')}</SectionTitle>
+        <p className="mt-1 text-xs text-slate-400">
+          <Trans i18nKey="explainer" ns="extraction" components={{ b: <strong /> }} />
+        </p>
+      </div>
+
+      {config.isPending && <Skeleton className="h-24 w-full" />}
+
+      {config.data && (
+        <>
+          <div>
+            <div className="text-sm font-medium text-slate-700">{t('connectors.heading')}</div>
+            <p className="text-xs text-slate-400">{t('connectors.explainer')}</p>
+            <ul className="mt-2 divide-y divide-slate-100 rounded-md border border-slate-200">
+              {config.data.sourceTypes.map((sourceType) => (
+                <ExtractionGateRow
+                  key={sourceType}
+                  session={session}
+                  sourceType={sourceType}
+                  label={typeLabel(sourceType)}
+                  gate={gates.get(sourceType)}
+                  onSaved={invalidate}
+                />
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <div className="text-sm font-medium text-slate-700">{t('rules.heading')}</div>
+            <p className="text-xs text-slate-400">{t('rules.explainer')}</p>
+            {rules.length > 0 && (
+              <ul className="mt-2 divide-y divide-slate-100 rounded-md border border-slate-200">
+                {rules.map((rule) => (
+                  <li key={rule.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                    <span className="min-w-0 text-sm text-slate-700">
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">
+                        {t(`rules.effectValue.${rule.effect}`)}
+                      </span>{' '}
+                      <span className="font-mono">
+                        {t(`rules.class.${rule.value}`, { defaultValue: rule.value })}
+                      </span>
+                      <span className="ml-2 text-xs text-slate-400">
+                        {typeLabel(rule.sourceType)}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeRule.mutate(rule.id)}
+                      disabled={removeRule.isPending}
+                      className="shrink-0 text-xs text-red-700 dark:text-red-300 hover:underline"
+                    >
+                      {t('common:action.remove')}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="mt-2 flex flex-wrap items-end gap-2">
+              <label className="text-xs text-slate-500">
+                <span className="block">{t('rules.effect')}</span>
+                <select
+                  value={ruleEffect}
+                  onChange={(e) => setRuleEffect(e.target.value as 'allow' | 'deny')}
+                  className="mt-1 rounded-md border border-slate-300 px-2 py-1 text-sm"
+                >
+                  <option value="deny">{t('rules.effectValue.deny')}</option>
+                  <option value="allow">{t('rules.effectValue.allow')}</option>
+                </select>
+              </label>
+              <label className="text-xs text-slate-500">
+                <span className="block">{t('rules.documentClass')}</span>
+                <select
+                  value={ruleClass}
+                  onChange={(e) => setRuleClass(e.target.value)}
+                  className="mt-1 rounded-md border border-slate-300 px-2 py-1 text-sm"
+                >
+                  {EXTRACTION_DOCUMENT_CLASSES.map((value) => (
+                    <option key={value} value={value}>
+                      {t(`rules.class.${value}`)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={() => addRule.mutate()}
+                disabled={addRule.isPending}
+                className={btnPrimary}
+              >
+                {t('common:action.add')}
+              </button>
+            </div>
+            {addRule.isError && (
+              <p className="mt-1 text-xs text-red-700 dark:text-red-300">
+                {addRule.error instanceof Error ? addRule.error.message : t('rules.addFailed')}
+              </p>
+            )}
+          </div>
+
+          {refusals.length > 0 && (
+            <div>
+              <div className="text-sm font-medium text-slate-700">{t('refusals.heading')}</div>
+              <p className="text-xs text-slate-400">{t('refusals.explainer')}</p>
+              <ul className="mt-2 space-y-1">
+                {refusals.map((refusal) => (
+                  <li
+                    key={refusal.id}
+                    className="flex items-center justify-between gap-3 rounded-md bg-slate-50 px-3 py-1.5"
+                  >
+                    <span className="min-w-0 truncate text-sm text-slate-600">
+                      <span>{typeLabel(refusal.sourceType)}</span>
+                      {refusal.documentClass && (
+                        <span className="ml-2 font-mono text-xs">
+                          {t(`rules.class.${refusal.documentClass}`, {
+                            defaultValue: refusal.documentClass,
+                          })}
+                        </span>
+                      )}
+                      <span className="ml-2 text-xs text-slate-400">
+                        {EXTRACTION_REFUSAL_REASONS.includes(refusal.reason)
+                          ? t(`refusalReason.${refusal.reason}`)
+                          : refusal.reason}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-xs text-slate-400">
+                      {timeAgo(refusal.refusedAt)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+/** One connector's gate row: enable, fact budget, retention, saved per row. */
+function ExtractionGateRow({
+  session,
+  sourceType,
+  label,
+  gate,
+  onSaved,
+}: {
+  session: Session;
+  sourceType: string;
+  label: string;
+  gate?: { enabled: boolean; factBudget: number | null; retentionDays: number | null };
+  onSaved: () => void;
+}) {
+  const { t } = useTranslation('extraction');
+  const [enabled, setEnabled] = useState(gate?.enabled ?? true);
+  const [budget, setBudget] = useState(gate?.factBudget?.toString() ?? '');
+  const [retention, setRetention] = useState(gate?.retentionDays?.toString() ?? '');
+
+  useEffect(() => {
+    setEnabled(gate?.enabled ?? true);
+    setBudget(gate?.factBudget?.toString() ?? '');
+    setRetention(gate?.retentionDays?.toString() ?? '');
+  }, [gate?.enabled, gate?.factBudget, gate?.retentionDays]);
+
+  const dirty =
+    enabled !== (gate?.enabled ?? true) ||
+    budget !== (gate?.factBudget?.toString() ?? '') ||
+    retention !== (gate?.retentionDays?.toString() ?? '');
+
+  const save = useMutation({
+    mutationFn: () =>
+      setExtractionGate(session, sourceType, {
+        enabled,
+        factBudget: budget.trim() === '' ? null : Number(budget),
+        retentionDays: retention.trim() === '' ? null : Number(retention),
+      }),
+    onSuccess: onSaved,
+  });
+
+  return (
+    <li className="flex flex-wrap items-end gap-3 px-3 py-2">
+      <label className="flex min-w-[10rem] flex-1 items-center gap-2 text-sm text-slate-700">
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => setEnabled(e.target.checked)}
+          className="rounded border-slate-300"
+        />
+        {label}
+      </label>
+      <label className="text-xs text-slate-500">
+        <span className="block">{t('connectors.factBudget')}</span>
+        <input
+          value={budget}
+          onChange={(e) => setBudget(e.target.value.replace(/[^0-9]/g, ''))}
+          placeholder={t('connectors.factBudgetPlaceholder')}
+          className="mt-1 w-24 rounded-md border border-slate-300 px-2 py-1 text-sm"
+        />
+      </label>
+      <label className="text-xs text-slate-500">
+        <span className="block">{t('connectors.retention')}</span>
+        <input
+          value={retention}
+          onChange={(e) => setRetention(e.target.value.replace(/[^0-9]/g, ''))}
+          placeholder={t('connectors.retentionPlaceholder')}
+          className="mt-1 w-24 rounded-md border border-slate-300 px-2 py-1 text-sm"
+        />
+      </label>
+      <button
+        type="button"
+        onClick={() => save.mutate()}
+        disabled={!dirty || save.isPending}
+        className={btnSecondary}
+      >
+        {t('common:action.save')}
+      </button>
+      {save.isError && (
+        <span className="text-xs text-red-700 dark:text-red-300">
+          {save.error instanceof Error ? save.error.message : t('connectors.saveFailed')}
+        </span>
+      )}
+    </li>
   );
 }

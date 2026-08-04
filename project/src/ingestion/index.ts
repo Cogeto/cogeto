@@ -11,6 +11,20 @@ export {
 // adapter (memory owns the DerivedCascade port; ingestion owns the table).
 export { createSuppressedFactLog } from './persistence/suppressed-fact-log';
 export { SuppressedFactCascade } from './suppressed-fact-cascade';
+// The per-source extraction gate (V2.1 item 4.3, spec 1.6): admission control
+// enforced by the pipeline, its refusal ledger's retention job, and the
+// cascade that removes refusal rows with their source.
+export {
+  ExtractionGateStore,
+  createExtractionGateStore,
+  EXTRACTION_REFUSAL_RETENTION_DAYS,
+  EXTRACTION_REFUSAL_RETENTION_JOB_TYPE,
+  EXTRACTION_REFUSAL_RETENTION_CRONTAB,
+} from './persistence/extraction-gate.store';
+export {
+  ExtractionRefusalCascade,
+  ExtractionRefusalCascadeModule,
+} from './extraction-refusal-cascade';
 // The admission taxonomy: the pure mapping every outcome passes through.
 export { SOURCE_READERS } from './pipeline/source-reader';
 export type { SourceReader, SourceItem } from './pipeline/source-reader';

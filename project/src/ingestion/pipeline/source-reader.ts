@@ -34,6 +34,16 @@ export interface SourceItem {
    */
   authoredByUser?: boolean;
   /**
+   * The reading layer's detected document class (V2.1 item 4.3): the reader
+   * seam's format id (`pdf`, `docx`, `xlsx`, `csv`, `image`), stamped by the
+   * file reader from the magic-byte sniff — structural, never a model
+   * judgment, the `authoredByUser` precedent. Omitted by sources that have no
+   * document (notes, chat, email bodies, web pages); the extraction gate's
+   * document-class rules then simply do not apply to them. When 4.2 lands,
+   * anchoring's document class (contract, datasheet, manual) upgrades this.
+   */
+  documentClass?: string;
+  /**
    * Extract-and-discard (F1 handoff §3): the transient staging object the
    * bytes were read from, present ONLY in discard mode. The pipeline schedules
    * its deletion AFTER the derived memories commit — so a discarded original is

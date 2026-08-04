@@ -15,8 +15,13 @@ import type {
   ModelConfigDto,
   UpdateUserSettingsRequest,
   AddEmailAllowlistEntryRequest,
+  AddExtractionGateRuleRequest,
   EmailAllowlistEntryDto,
   EmailCaptureConfigDto,
+  ExtractionGateConfigDto,
+  ExtractionGateDto,
+  ExtractionGateRuleDto,
+  SetExtractionGateRequest,
   EmailReplyDraftView,
   EmailSourceDto,
   ChatContextDto,
@@ -342,6 +347,29 @@ export const addEmailAllowlistEntry = (
 ): Promise<EmailAllowlistEntryDto> => apiPost('/api/email/allowlist', request, session);
 export async function removeEmailAllowlistEntry(session: Session, id: string): Promise<void> {
   const path = `/api/email/allowlist/${encodeURIComponent(id)}`;
+  const response = await fetch(path, {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${session.accessToken}` },
+  });
+  if (!response.ok) throw await toError(path, response);
+}
+
+// The extraction gate (V2.1 item 4.3): per-connector admission control over
+// extraction — enable, budget, retention, rules — plus the recent refusals.
+export const fetchExtractionGateConfig = (session: Session): Promise<ExtractionGateConfigDto> =>
+  apiGet('/api/extraction-gate', session);
+export const setExtractionGate = (
+  session: Session,
+  sourceType: string,
+  patch: SetExtractionGateRequest,
+): Promise<ExtractionGateDto> =>
+  apiPut(`/api/extraction-gate/${encodeURIComponent(sourceType)}`, patch, session);
+export const addExtractionGateRule = (
+  session: Session,
+  request: AddExtractionGateRuleRequest,
+): Promise<ExtractionGateRuleDto> => apiPost('/api/extraction-gate/rules', request, session);
+export async function removeExtractionGateRule(session: Session, id: string): Promise<void> {
+  const path = `/api/extraction-gate/rules/${encodeURIComponent(id)}`;
   const response = await fetch(path, {
     method: 'DELETE',
     headers: { authorization: `Bearer ${session.accessToken}` },

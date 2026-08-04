@@ -165,7 +165,7 @@ export class FileSourceReader implements SourceReader {
     const stat = await this.objects.statObject(sourceId);
     if (!stat) return null;
     const object = await this.objects.getObject(sourceId);
-    const { text } = await this.readAndRecord(
+    const { text, report } = await this.readAndRecord(
       sourceId,
       metadata.ownerId,
       object.body,
@@ -184,6 +184,9 @@ export class FileSourceReader implements SourceReader {
       // Its obligations are facts about the document, never the user's own
       // commitments, so they never become open loops.
       authoredByUser: false,
+      // The sniffed format, for the extraction gate's document-class rules
+      // (V2.1 item 4.3) — what the bytes ARE, never what the label claimed.
+      documentClass: report.format ?? undefined,
     };
   }
 
@@ -200,7 +203,7 @@ export class FileSourceReader implements SourceReader {
     // Recorded under the SOURCE key, never the staging key: a staging key never
     // enters file_metadata, provenance or any receipt (F1 handoff §3), and the
     // report has to survive the staging object it describes.
-    const { text } = await this.readAndRecord(
+    const { text, report } = await this.readAndRecord(
       sourceId,
       md['owner-id'] ?? '',
       object.body,
@@ -217,6 +220,9 @@ export class FileSourceReader implements SourceReader {
       sensitive: md['sensitive'] === 'true',
       // Same rule as the durable path: a document is not the user's own voice.
       authoredByUser: false,
+      // Same rule as the durable path: the sniffed format for the gate's
+      // document-class rules (V2.1 item 4.3).
+      documentClass: report.format ?? undefined,
       // Signals the pipeline to delete the staging object once memories commit.
       stagingKey,
     };

@@ -12,6 +12,7 @@ import type { MemoryReconciliation, MemoryStore } from '../../memory/index';
 import type { ModelGateway } from '../../model-gateway/index';
 import { structurallyValid } from '../domain/uncertainty';
 import { UserDirectory } from '../../identity/index';
+import { ExtractionGateStore } from '../persistence/extraction-gate.store';
 import { SuppressedFactLog } from '../persistence/suppressed-fact-log';
 import type { SuppressedFactEntry } from '../persistence/suppressed-fact-log';
 import { chunkContent } from './chunk';
@@ -66,8 +67,10 @@ export interface PipelineSummary {
    * `source_missing`: the source vanished before the run started (stage 1).
    * `source_deleted`: the deletion saga erased the source DURING the run —
    * the admission checkpoint aborted before any row was written.
+   * `gate_refused`: the extraction gate (V2.1 item 4.3, spec 1.6) refused the
+   * source before any model call; the refusal ledger has the row that says so.
    */
-  skipped?: 'source_missing' | 'source_deleted';
+  skipped?: 'source_missing' | 'source_deleted' | 'gate_refused';
 }
 
 /**
@@ -97,6 +100,13 @@ export class IngestionPipeline {
      * existing wiring shifts; optional because bare harnesses have none, and
      * their entries then stay NULL-org, which is the safe direction. */
     @Optional() private readonly directory?: UserDirectory,
+    /**
+     * The per-source extraction gate (V2.1 item 4.3, spec 1.6). Optional so
+     * bare harnesses (eval, old tests) run exactly as before: no gate service
+     * means no admission control, which is also what an owner without gate
+     * rows gets — today's behaviour, byte-identical.
+     */
+    @Optional() private readonly gate?: ExtractionGateStore,
   ) {}
 
   async run(
@@ -149,6 +159,43 @@ export class IngestionPipeline {
       return summary;
     }
 
+    // Stage 1.5 — the extraction gate (V2.1 item 4.3, spec 1.6): the analogue
+    // of the first-person rule, one stage earlier. A cheap deterministic table
+    // read decides admission BEFORE any model call, so a disabled connector or
+    // a denied document class costs nothing and floods nothing. The decision
+    // needs the owner and the reader-stamped document class, which is why it
+    // sits after load rather than before it; a refused source is recorded in
+    // the metadata-only refusal ledger so it never looks processed-with-zero-
+    // facts. The source itself stays stored — the gate controls extraction,
+    // never capture.
+    let gateBudget: number | null = null;
+    let gateRetentionDays: number | null = null;
+    if (this.gate) {
+      const decision = await this.gate.decisionFor(tx, {
+        ownerId: source.ownerId,
+        sourceType: payload.source_type,
+        sourceId: payload.source_id,
+        documentClass: source.documentClass,
+      });
+      if (!decision.allowed) {
+        summary.skipped = 'gate_refused';
+        await this.gate.recordRefusal(tx, {
+          ownerId: source.ownerId,
+          sourceType: payload.source_type,
+          sourceId: payload.source_id,
+          reason: decision.reason,
+          documentClass: decision.documentClass,
+        });
+        log(
+          { stage: 'gate', ...ref, reason: decision.reason },
+          'extraction refused by the gate; recorded in the refusal ledger',
+        );
+        return summary;
+      }
+      gateBudget = decision.factBudget;
+      gateRetentionDays = decision.retentionDays;
+    }
+
     // Stage 2 — chunk: transient values, never rows. Parse caps bound
     // the work a single source can drive: text length (defense in depth over
     // the file extractor's own cap, covering every source type) and chunk count
@@ -181,9 +228,14 @@ export class IngestionPipeline {
     // registry (web: salient facts, not a hundred rows of page noise — the cap
     // also bounds the verify/reconcile/embed fan-out that made big pages
     // slow). First-person sources have no budget and keep the full cap.
+    // The gate's own budget (V2.1 item 4.3) joins the min: the tightest of the
+    // parse cap, the registry budget and the owner's configured budget wins.
     const factBudget = sourceTypeDescriptor(payload.source_type)?.factBudget ?? null;
-    const maxFacts =
-      factBudget === null ? this.parseCaps.maxFacts : Math.min(this.parseCaps.maxFacts, factBudget);
+    const maxFacts = Math.min(
+      ...[this.parseCaps.maxFacts, factBudget, gateBudget].filter(
+        (cap): cap is number => cap !== null,
+      ),
+    );
     if (facts.length > maxFacts) {
       log({ stage: 'extract', ...ref, cappedFacts: maxFacts }, 'fact count capped');
       facts = facts.slice(0, maxFacts);
@@ -274,8 +326,11 @@ export class IngestionPipeline {
     }
 
     // Stage 5 — embed + store: batched embedding, Postgres rows (status per
-    // verdict), Qdrant points last.
-    const admitted = await this.embedStoreStage.run(tx, source, verified);
+    // verdict), Qdrant points last. Gate retention (V2.1 item 4.3) rides along:
+    // it bounds only facts with no extractor-resolved validity of their own.
+    const admitted = await this.embedStoreStage.run(tx, source, verified, {
+      retentionDays: gateRetentionDays,
+    });
     for (const { status } of admitted) summary.admitted[status] += 1;
     summary.embedded = admitted.length;
     log(
@@ -323,6 +378,9 @@ export interface CreatePipelineOptions {
   suppressedFacts: SuppressedFactLog;
   /** Parse/extraction caps; the generous defaults apply when omitted. */
   parseCaps?: ParseCaps;
+  /** The extraction gate (V2.1 item 4.3); omitted = no admission control,
+   * exactly what an owner without gate rows gets. */
+  gate?: ExtractionGateStore;
 }
 
 /**
@@ -340,5 +398,7 @@ export function createIngestionPipeline(options: CreatePipelineOptions): Ingesti
     new ReconciliationService(options.gateway, options.store, options.reconciliation),
     options.suppressedFacts,
     options.parseCaps ?? DEFAULT_PARSE_CAPS,
+    undefined,
+    options.gate,
   );
 }

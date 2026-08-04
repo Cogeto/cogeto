@@ -16,6 +16,7 @@ import type { MemoryStore } from '../memory/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import type { CandidateFact } from './domain/candidate-fact';
+import { createExtractionGateStore } from './persistence/extraction-gate.store';
 import { createSuppressedFactLog } from './persistence/suppressed-fact-log';
 import { EmbedStoreStage } from './pipeline/embed-store.stage';
 import { ExtractStage } from './pipeline/extract.stage';
@@ -104,7 +105,7 @@ class FakeReader implements SourceReader {
   readonly sourceType = 'user_note' as const;
   readonly sources = new Map<string, SourceItem>();
 
-  add(content: string): string {
+  add(content: string, overrides: Partial<SourceItem> = {}): string {
     const sourceId = randomUUID();
     this.sources.set(sourceId, {
       sourceType: this.sourceType,
@@ -112,6 +113,7 @@ class FakeReader implements SourceReader {
       ownerId: 'user-pipeline',
       content,
       createdAt: new Date('2026-07-02T10:00:00Z'),
+      ...overrides,
     });
     return sourceId;
   }
@@ -456,5 +458,152 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
         [dullId],
       ),
     ).toBe(0);
+  });
+
+  describe('extraction_gate (V2.1 item 4.3): admission control before model spend', () => {
+    const OWNER = 'user-pipeline';
+    const gatedPipeline = (gateway: ScriptedGateway) =>
+      new IngestionPipeline(
+        [reader],
+        new ExtractStage(gateway),
+        new VerifyStage(gateway),
+        new EmbedStoreStage(gateway, store, createSuppressedFactLog(tdb.db)),
+        new ReconciliationService(gateway, store, new MemoryReconciliation(tdb.db, store)),
+        createSuppressedFactLog(tdb.db),
+        undefined,
+        undefined,
+        createExtractionGateStore(tdb.db),
+      );
+    const run = (pipeline: IngestionPipeline, sourceId: string) =>
+      tdb.db.transaction((tx) =>
+        pipeline.run(tx, { source_type: 'user_note', source_id: sourceId }),
+      );
+    const claim = 'Ana will send the revised proposal to Luka after he confirms the budget.';
+    const clearGate = async () => {
+      await tdb.pool.query(`DELETE FROM extraction_gate`);
+      await tdb.pool.query(`DELETE FROM extraction_gate_rule`);
+      await tdb.pool.query(`DELETE FROM extraction_gate_refusal`);
+    };
+
+    it('parity: the gate wired with no rows changes nothing', async () => {
+      await clearGate();
+      const gateway = new ScriptedGateway(() => ({ facts: [fact(claim)] }));
+      const sourceId = reader.add(claim);
+      const summary = await run(gatedPipeline(gateway), sourceId);
+      expect(summary.skipped).toBeUndefined();
+      expect(summary.admitted.active).toBe(1);
+      expect(await count(`SELECT count(*)::text AS n FROM extraction_gate_refusal`)).toBe(0);
+    });
+
+    it('a disabled source type is refused before ANY model call, and the ledger says so', async () => {
+      await clearGate();
+      await tdb.pool.query(
+        `INSERT INTO extraction_gate (owner_id, source_type, enabled) VALUES ($1, 'user_note', false)`,
+        [OWNER],
+      );
+      const gateway = new ScriptedGateway(() => ({ facts: [fact(claim)] }));
+      const sourceId = reader.add(claim);
+      const summary = await run(gatedPipeline(gateway), sourceId);
+
+      expect(summary.skipped).toBe('gate_refused');
+      expect(gateway.extractCalls).toBe(0);
+      expect(gateway.verifyCalls).toBe(0);
+      expect(gateway.embedCalls).toBe(0);
+      expect((await memoriesFor(sourceId)).rows).toHaveLength(0);
+      const refusal = await tdb.pool.query<{ reason: string; owner_id: string }>(
+        `SELECT reason, owner_id FROM extraction_gate_refusal WHERE source_id = $1`,
+        [sourceId],
+      );
+      expect(refusal.rows).toEqual([{ reason: 'extraction_disabled', owner_id: OWNER }]);
+    });
+
+    it('a source_id deny rule switches off exactly that source', async () => {
+      await clearGate();
+      const gateway = new ScriptedGateway(() => ({ facts: [fact(claim)] }));
+      const blocked = reader.add(claim);
+      const open = reader.add(claim);
+      await tdb.pool.query(
+        `INSERT INTO extraction_gate_rule (owner_id, source_type, dimension, value, effect)
+         VALUES ($1, 'user_note', 'source_id', $2, 'deny')`,
+        [OWNER, blocked],
+      );
+      expect((await run(gatedPipeline(gateway), blocked)).skipped).toBe('gate_refused');
+      expect((await run(gatedPipeline(gateway), open)).skipped).toBeUndefined();
+      const refusal = await tdb.pool.query<{ reason: string }>(
+        `SELECT reason FROM extraction_gate_refusal WHERE source_id = $1`,
+        [blocked],
+      );
+      expect(refusal.rows[0]?.reason).toBe('source_disabled');
+    });
+
+    it('a document_class deny refuses the class and records it on the refusal', async () => {
+      await clearGate();
+      await tdb.pool.query(
+        `INSERT INTO extraction_gate_rule (owner_id, source_type, dimension, value, effect)
+         VALUES ($1, 'user_note', 'document_class', 'image', 'deny')`,
+        [OWNER],
+      );
+      const gateway = new ScriptedGateway(() => ({ facts: [fact(claim)] }));
+      const image = reader.add(claim, { documentClass: 'image' });
+      const pdf = reader.add(claim, { documentClass: 'pdf' });
+      const classless = reader.add(claim);
+
+      expect((await run(gatedPipeline(gateway), image)).skipped).toBe('gate_refused');
+      expect((await run(gatedPipeline(gateway), pdf)).skipped).toBeUndefined();
+      expect((await run(gatedPipeline(gateway), classless)).skipped).toBeUndefined();
+      const refusal = await tdb.pool.query<{ reason: string; document_class: string | null }>(
+        `SELECT reason, document_class FROM extraction_gate_refusal WHERE source_id = $1`,
+        [image],
+      );
+      expect(refusal.rows).toEqual([{ reason: 'document_class_denied', document_class: 'image' }]);
+    });
+
+    it('the gate fact budget joins the min: tightest cap wins', async () => {
+      await clearGate();
+      await tdb.pool.query(
+        `INSERT INTO extraction_gate (owner_id, source_type, fact_budget) VALUES ($1, 'user_note', 1)`,
+        [OWNER],
+      );
+      const gateway = new ScriptedGateway(() => ({
+        facts: [fact(claim), fact('Ana will also call Marko about the invoice.')],
+      }));
+      const sourceId = reader.add(`${claim} Ana will also call Marko about the invoice.`);
+      const summary = await run(gatedPipeline(gateway), sourceId);
+      expect(summary.extracted).toBe(1);
+      expect((await memoriesFor(sourceId)).rows).toHaveLength(1);
+    });
+
+    it('retention stamps valid_until only on facts with no validity of their own', async () => {
+      await clearGate();
+      await tdb.pool.query(
+        `INSERT INTO extraction_gate (owner_id, source_type, retention_days) VALUES ($1, 'user_note', 30)`,
+        [OWNER],
+      );
+      const own = fact('The maintenance window is fixed until the end of 2030.', {
+        temporal: {
+          valid_from: null,
+          valid_until: '2030-12-31T00:00:00Z',
+          anchors_resolved: true,
+        },
+      });
+      const bare = fact(claim);
+      const gateway = new ScriptedGateway(() => ({ facts: [bare, own] }));
+      const sourceId = reader.add(
+        `${claim} The maintenance window is fixed until the end of 2030.`,
+      );
+      await run(gatedPipeline(gateway), sourceId);
+
+      const rows = await tdb.pool.query<{ content: string; valid_until: Date | null }>(
+        `SELECT content, valid_until FROM memory WHERE source_id = $1`,
+        [sourceId],
+      );
+      const bareRow = rows.rows.find((row) => row.content === bare.claim);
+      const ownRow = rows.rows.find((row) => row.content === own.claim);
+      expect(ownRow?.valid_until?.toISOString()).toBe('2030-12-31T00:00:00.000Z');
+      const days = (t: Date) => (t.getTime() - Date.now()) / 86_400_000;
+      expect(bareRow?.valid_until).toBeTruthy();
+      expect(days(bareRow!.valid_until!)).toBeGreaterThan(29);
+      expect(days(bareRow!.valid_until!)).toBeLessThan(31);
+    });
   });
 });
