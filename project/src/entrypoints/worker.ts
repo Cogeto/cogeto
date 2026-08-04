@@ -35,6 +35,7 @@ import {
   assertLocalRuntimeReady,
   loadPrompt,
   ModelGateway,
+  probeReasoning,
   recordPromptVersion,
 } from '../model-gateway/index';
 import { attributedTask, buildTaskList } from './worker-tasks';
@@ -72,6 +73,25 @@ async function main(): Promise<void> {
     { logger: new PinoNestLogger(logger) },
   );
   context.enableShutdownHooks();
+
+  // Reasoning warmup (Part B of reasoning support): learn at boot whether the
+  // generation bindings return a separate reasoning field, so the FIRST capped
+  // call this process makes — above all the reading ladder's vision probe —
+  // already gets its maxTokens headroom instead of failing empty. Never
+  // refuses boot: a failed probe leaves headroom off, and the adapter still
+  // learns from the first real response that carries the field.
+  try {
+    const probe = await probeReasoning(context.get(ModelGateway), config.modelProviders, {
+      timeoutMs: config.reasoningProbeTimeoutMs,
+    });
+    logger.info(
+      `reasoning ${probe.reasoning ? 'ON' : 'OFF'}${probe.detail ? ` (${probe.detail})` : ''}`,
+    );
+  } catch (error) {
+    logger.warn(
+      `reasoning warmup probe failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 
   // explicit pool ceiling. This pool backs BOTH the graphile runner and
   // the job handlers' idempotency transactions (which the pipeline holds open

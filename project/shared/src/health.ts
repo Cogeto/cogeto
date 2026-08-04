@@ -37,7 +37,13 @@ export type CapabilityId =
   // Reading pages that are pictures (V2.1 item 4.1). Probed by sending a real
   // image: the same weights are served with and without a multimodal
   // projector, so nothing short of an image can answer the question.
-  | 'vision';
+  | 'vision'
+  // The generation model returns its thinking in a separate reasoning field
+  // (Part B of reasoning support). Probed by sending a real prompt, for the
+  // same reason vision is probed: the same weights are served both ways. On
+  // means maxTokens headroom is applied so reasoning cannot silently consume
+  // an answer's token budget; off is a complete, healthy answer.
+  | 'reasoning';
 
 export type CapabilityState = 'on' | 'unreachable' | 'off';
 

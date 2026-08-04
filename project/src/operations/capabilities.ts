@@ -8,9 +8,11 @@ import type { IntegrityStatus } from '../memory/index';
 import { dreamRunStatus } from '../ingestion/index';
 import type { DreamRunStatus } from '../ingestion/index';
 import {
+  DEFAULT_REASONING_PROBE_TIMEOUT_MS,
   DEFAULT_VISION_PROBE_TIMEOUT_MS,
   ModelGateway,
   probeLocalRuntime,
+  probeReasoning,
   probeVision,
 } from '../model-gateway/index';
 import { OPERATIONS_OPTIONS } from './operations.options';
@@ -38,6 +40,17 @@ import type { OperationsOptions } from './operations.options';
 
 export const CAPABILITY_CACHE_TTL_MS = 20_000;
 
+/**
+ * The reasoning probe's own, longer window (Part B of reasoning support).
+ * Unlike every other probe here, this one costs a MODEL COMPLETION, and unlike
+ * the vision probe it applies to every configured instance, not only the few
+ * with a vision binding — re-running it per 20-second snapshot would turn the
+ * panel's poll into steady hosted-model traffic. Ten minutes bounds the only
+ * staleness that matters (a runtime restarted the other way), and the adapter
+ * keeps learning from every real response in between.
+ */
+export const REASONING_PROBE_TTL_MS = 600_000;
+
 /** A run that started this long ago and never finished counts as crashed. */
 const STUCK_RUN_HOURS = 2;
 
@@ -64,6 +77,10 @@ export class CapabilitiesService {
   private readonly logger = new Logger('capabilities');
   private readonly sources: CapabilityJobSources;
   private cache: { at: number; snapshot: CapabilitiesSnapshot } | null = null;
+  /** The reasoning probe's own cache (REASONING_PROBE_TTL_MS): a completion
+   * per snapshot would be too much traffic; a stale entry keeps its honest
+   * original checkedAt. */
+  private reasoningCache: { at: number; summary: CapabilitySummary } | null = null;
   /** Loud keys already warned about — warn on transition, not every poll. */
   private warned = new Set<string>();
 
@@ -103,7 +120,13 @@ export class CapabilitiesService {
   }
 
   private async assembleCapabilities(checkedAt: string): Promise<CapabilitySummary[]> {
-    return Promise.all([
+    // The reasoning probe runs FIRST, alone (Part B of reasoning support): its
+    // side effect arms the maxTokens headroom in the adapter, and the vision
+    // probe's small cap depends on that headroom when the vision binding is a
+    // reasoning model. Probing them concurrently would report vision broken on
+    // the one snapshot that matters, the boot banner's.
+    const reasoning = await this.reasoning(checkedAt);
+    const [redaction, research, mail, demo, consoles, localModels, vision] = await Promise.all([
       this.redaction(checkedAt),
       this.research(checkedAt),
       this.mail(checkedAt),
@@ -112,6 +135,7 @@ export class CapabilitiesService {
       this.localModels(checkedAt),
       this.vision(checkedAt),
     ]);
+    return [redaction, research, mail, demo, consoles, localModels, reasoning, vision];
   }
 
   /** Redaction (spec §12.2): REDACTION_ENABLED is the authority — the same flag the
@@ -283,6 +307,46 @@ export class CapabilitiesService {
       return { ...base, state: 'off', probed: false, detail: probe.error };
     }
     return { ...base, state: 'unreachable', probed: true, error: probe.error };
+  }
+
+  /**
+   * Reasoning (Part B of reasoning support): does the generation model return
+   * its thinking in a separate reasoning field?
+   *
+   * Probed by SENDING A PROMPT, never by reading a model name or a flag, for
+   * the same reason vision is probed: the identical weights are served both
+   * ways, and only a response says which way this instance got them. On means
+   * the adapter multiplies maxTokens so reasoning cannot silently consume an
+   * answer's entire token budget; off is a complete, healthy answer — a
+   * non-reasoning instance is not degraded, and nothing about its requests
+   * changes. A failed probe also reports off (with the failure in the detail)
+   * rather than loud: the gateway health check already owns "the endpoint is
+   * down", and a missing headroom on a dead endpoint breaks nothing further.
+   */
+  private async reasoning(checkedAt: string): Promise<CapabilitySummary> {
+    const at = Date.parse(checkedAt);
+    if (this.reasoningCache && at - this.reasoningCache.at < REASONING_PROBE_TTL_MS) {
+      return this.reasoningCache.summary;
+    }
+    const base = { id: 'reasoning' as const, checkedAt };
+    let summary: CapabilitySummary;
+    if (!this.gateway) {
+      summary = { ...base, state: 'off', probed: false };
+    } else {
+      const probe = await probeReasoning(this.gateway, this.config.modelProviders, {
+        timeoutMs: this.config.reasoningProbeTimeoutMs ?? DEFAULT_REASONING_PROBE_TIMEOUT_MS,
+      });
+      summary = probe.probed
+        ? {
+            ...base,
+            state: probe.reasoning ? 'on' : 'off',
+            probed: true,
+            detail: probe.error ? `${probe.detail}: ${probe.error}` : probe.detail,
+          }
+        : { ...base, state: 'off', probed: false, detail: probe.detail };
+    }
+    this.reasoningCache = { at, summary };
+    return summary;
   }
 
   private async localModels(checkedAt: string): Promise<CapabilitySummary> {

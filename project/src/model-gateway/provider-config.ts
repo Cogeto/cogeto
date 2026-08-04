@@ -82,6 +82,14 @@ export interface ResolvedModelProviders {
    * runtime, and an OpenAI-compatible base URL that is not the hosted default.
    */
   timeoutsMs: TierTimeoutsMs;
+  /**
+   * The maxTokens multiplier applied to a binding the reasoning probe marked
+   * as reasoning (Part B of reasoning support): a cap sized for an answer is
+   * not sized for an answer plus its deliberation. Applied ONLY after a
+   * response actually carried a reasoning field — configuration alone never
+   * changes a request, so a non-reasoning instance is byte-identical.
+   */
+  reasoningHeadroom: number;
   /** True when `endpoints.openaiBaseUrl` points at something self-hosted. */
   openaiSelfHosted: boolean;
   redacted: boolean;
@@ -399,6 +407,23 @@ export function resolveModelProviders(
     }
   }
 
+  // Reasoning headroom (Part B). Deliberately NOT part of the configuration id:
+  // the id fingerprints what a measurement ran against, and whether a binding
+  // reasons is a PROBED runtime fact, not configuration — the id is derived
+  // before any probe can run. The fingerprint marker is Part C's, alongside the
+  // channel, when a reasoning-routed configuration can publish a measurement.
+  const headroomRaw = read(env, 'COGETO_REASONING_HEADROOM');
+  let reasoningHeadroom = 4;
+  if (headroomRaw !== undefined) {
+    const value = Number(headroomRaw);
+    if (!Number.isInteger(value) || value < 1) {
+      throw new ModelProviderConfigError(
+        `COGETO_REASONING_HEADROOM="${headroomRaw}" is not a positive integer multiplier`,
+      );
+    }
+    reasoningHeadroom = value;
+  }
+
   return {
     configured,
     id: configured ? deriveProvidersId(tiers, options.redacted, vision) : 'unconfigured',
@@ -412,6 +437,7 @@ export function resolveModelProviders(
     },
     ollama,
     timeoutsMs,
+    reasoningHeadroom,
     openaiSelfHosted,
     redacted: options.redacted,
   };

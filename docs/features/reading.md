@@ -290,6 +290,7 @@ Failures are classified into reasons that lead somewhere different:
 | `image_rejected` | it answered and refused the IMAGE; on a local runtime this names the projector |
 | `unusable_response` | it took the image and returned nothing usable |
 | `refused_by_policy` | redaction is on |
+| `reasoning_exhausted` | a reasoning model spent its entire output budget thinking, so the answer never started; the fix is a token budget, never the network or the projector (Part B of reasoning support) |
 
 `probe_timeout` is kept apart from `unreachable` deliberately: a remote GPU
 warming a vision model takes tens of seconds on its first request, and calling

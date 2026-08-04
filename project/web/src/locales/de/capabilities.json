@@ -56,6 +56,11 @@
       "description": "Führt Modellaufgaben in einer lokalen Ollama-Laufzeit statt bei einem gehosteten Anbieter aus, damit Inhalte auf Ihrer Hardware bleiben.",
       "consequence": "Die lokale Modelllaufzeit ist nicht erreichbar: Modellfunktionen auf lokalen Stufen schlagen fehl, bis sie wieder verfügbar ist."
     },
+    "reasoning": {
+      "name": "Reasoning model",
+      "description": "Detects, by probing with a real prompt, whether the model thinks in a separate reasoning channel before answering. When it does, token caps are enlarged so the thinking cannot silently consume the answer's budget. Off simply means the model answers directly.",
+      "consequence": "Reasoning could not be determined: token caps stay unenlarged, and a reasoning model may return empty answers until a probe succeeds."
+    },
     "vision": {
       "name": "Reading pictures",
       "description": "Reads pages that are images: scans, photographs, drawings and schematics. Cheapest first, so a page with real text is never sent to a model. Off means those pages are labelled unreadable instead of silently empty.",

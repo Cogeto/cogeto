@@ -153,6 +153,7 @@ function buildProviderGateway(
           embedModel: modelIf('embedding'),
           visionModel,
           temperature,
+          reasoningHeadroom: providers.reasoningHeadroom,
         });
         break;
       case 'anthropic':
@@ -182,6 +183,7 @@ function buildProviderGateway(
           embedModel: modelIf('embedding'),
           visionModel,
           temperature,
+          reasoningHeadroom: providers.reasoningHeadroom,
         });
         break;
       }

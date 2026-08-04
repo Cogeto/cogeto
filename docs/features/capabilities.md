@@ -19,7 +19,8 @@ enablement is determined, how health is checked, and its failure semantics.
 | `demo` | the demo-mode flag | passive: the production-guard state | demo plus production makes the guard refuse the seed, loudly |
 | `consoles` | the `consoles` profile, or an explicit flag | none | the console edge binds to host loopback; the app has nothing it can probe, and says so |
 | `local-models` | any tier resolved to the local provider | runtime reachability plus required models pulled | **external dependency**: boot refuses, and a runtime that dies later goes loud here |
-| `vision` | Reading pages that are pictures (V2.1 item 4.1). PROBED by sending a real image: the same weights are served with and without a multimodal projector, so nothing short of an image can answer the question. `off` means the reading ladder stops at local OCR, which is a supported state; `unreachable` names which of the four failures happened. |
+| `vision` | Reading pages that are pictures (V2.1 item 4.1). PROBED by sending a real image: the same weights are served with and without a multimodal projector, so nothing short of an image can answer the question. `off` means the reading ladder stops at local OCR, which is a supported state; `unreachable` names which of the failures happened. |
+| `reasoning` | The generation model returns its thinking in a separate reasoning field (Part B of reasoning support). PROBED by sending a real prompt, for the same reason vision is probed: the identical weights are served both ways, and only a response says which way this instance got them. `on` arms a maxTokens headroom multiplier (COGETO_REASONING_HEADROOM, default 4) on the bindings that reasoned, so thinking cannot silently consume an answer's token budget; `off` is a complete, healthy answer and changes nothing. Never `unreachable`: a dead endpoint is the gateway health check's finding. |
 
 Scheduled jobs join the same surface as a second category: `dreaming` and `sweep`, each
 with last-run time, last result, and an overdue state.
@@ -36,6 +37,38 @@ transition**, not on every poll.
 Nothing is inferred silently where it can be checked. Enabled capabilities with a probe
 are probed on every uncached read; pure-configuration entries are reported as such,
 never guessed at.
+
+## Reasoning: a probed fact with a behavioural consequence
+
+The `reasoning` entry differs from the others in two deliberate ways.
+
+First, its probe has a side effect. A reasoning model leaves `content` empty
+until its thinking finishes, so any maxTokens cap can be entirely consumed by
+reasoning and come back as an empty string that looks like a model failure.
+The probe's completion teaches the provider adapter which bindings reason, and
+the adapter then multiplies every maxTokens on those bindings by the headroom
+factor. That is why the registry runs the reasoning probe BEFORE the vision
+probe: the vision probe's small cap only survives a reasoning vision binding
+once the headroom is armed. When the budget is still exhausted by reasoning,
+the failure is named (`reasoning_exhausted`, "the model spent its entire
+output budget on reasoning") instead of masquerading as a network or projector
+fault. The worker runs the same probe at boot as a warmup, so the first
+document read after a restart is not the discovery mechanism.
+
+Second, its probe costs a model completion on every configured instance, not
+only on instances that opted into a binding, so it keeps its own longer cache
+(ten minutes) inside the registry instead of re-running per 20-second
+snapshot. The adapter keeps learning from every real response in between, so
+a runtime restarted the other way is caught by the first response either way.
+
+The probe reads the reasoning field only as a yes/no. The thinking text is
+discarded in the adapter: it is never stored, verified, cited, displayed or
+evaluated, and it can never reach the JSON parser behind structured
+extraction. Displaying it as a channel is Parts A and C of the reasoning
+design, deliberately not this. The configuration fingerprint does not yet
+carry a reasoning marker for the same reason: whether a binding reasons is a
+probed runtime fact, and the fingerprint is derived before any probe can run;
+the marker lands with the channel in Part C.
 
 ## Thresholds
 

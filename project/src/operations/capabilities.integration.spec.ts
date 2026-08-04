@@ -100,6 +100,10 @@ describe('capability registry (integration, real Postgres)', () => {
       'demo',
       'consoles',
       'local-models',
+      // The generation model thinks in a separate reasoning field (Part B of
+      // reasoning support): probed with a real prompt BEFORE the vision probe,
+      // because its side effect arms the maxTokens headroom vision needs.
+      'reasoning',
       // Reading pages that are pictures (V2.1 item 4.1): probed by sending a
       // real image, because no configuration flag can answer the question.
       'vision',

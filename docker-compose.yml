@@ -164,6 +164,11 @@ services:
       COGETO_MODEL_TIMEOUT_EMBEDDINGS_MS: ${COGETO_MODEL_TIMEOUT_EMBEDDINGS_MS:-}
       COGETO_MODEL_TIMEOUT_VISION_MS: ${COGETO_MODEL_TIMEOUT_VISION_MS:-}
       COGETO_VISION_PROBE_TIMEOUT_MS: ${COGETO_VISION_PROBE_TIMEOUT_MS:-}
+      # Reasoning models (Part B of reasoning support): probed at boot, and the
+      # detected capability multiplies maxTokens so thinking cannot silently
+      # consume an answer's token budget.
+      COGETO_REASONING_HEADROOM: ${COGETO_REASONING_HEADROOM:-}
+      COGETO_REASONING_PROBE_TIMEOUT_MS: ${COGETO_REASONING_PROBE_TIMEOUT_MS:-}
       COGETO_LOG_LEVEL: ${COGETO_LOG_LEVEL:-info}
       # Ana sandbox. Off by default and FAIL-CLOSED:
       # serving the pre-minted demo session (a token published to anyone) now

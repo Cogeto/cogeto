@@ -21,7 +21,18 @@ export {
   DEFAULT_VISION_PROBE_TIMEOUT_MS,
 } from './vision-probe';
 export type { VisionProbeResult } from './vision-probe';
-export { VisionUnavailableError } from './errors';
+// The reasoning probe (Part B of reasoning support): whether a configuration
+// returns a separate reasoning field can only be answered by sending a prompt,
+// for the same reason vision can only be answered by sending an image. Called
+// by the capability registry (BEFORE the vision probe, because its side effect
+// arms the maxTokens headroom the vision probe needs) and by the worker at boot.
+export {
+  probeReasoning,
+  DEFAULT_REASONING_PROBE_TIMEOUT_MS,
+  REASONING_PROBE_MAX_TOKENS,
+} from './reasoning-probe';
+export type { ReasoningProbeResult } from './reasoning-probe';
+export { VisionUnavailableError, ReasoningExhaustedBudgetError } from './errors';
 export type { VisionUnavailableReason } from './errors';
 export type {
   CompletionRequest,

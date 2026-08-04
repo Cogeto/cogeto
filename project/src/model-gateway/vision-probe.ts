@@ -89,6 +89,20 @@ export function probeImagePng(): Buffer {
 export const PROBE_IMAGE_MEDIA_TYPE = 'image/png';
 
 /**
+ * The probe's answer budget. 64 was sized for the answer alone and MEASURED
+ * wrong twice over: a verbose model can exceed it on one sentence, and a
+ * reasoning model deliberates before answering, which the headroom multiplier
+ * (Part B of reasoning support) covers by multiplying this by its factor once
+ * reasoning is detected. Measured on the reference reasoning model at
+ * temperature 0: the probe image takes ~397 completion tokens of thinking plus
+ * answer, so 128 x the default headroom of 4 = 512 passes with margin, while
+ * 64 x 4 = 256 was consumed entirely by reasoning. For a non-reasoning model
+ * 128 is still a ceiling, not a target: a correct one-sentence answer is
+ * unchanged, and a rambling one is merely cut later.
+ */
+export const VISION_PROBE_MAX_TOKENS = 128;
+
+/**
  * Default probe deadline. Generous on purpose: the cost of waiting is one slow
  * capability check, and the cost of being too quick is declaring a working
  * runtime dead and never using it.
@@ -130,7 +144,7 @@ export async function probeVision(
       gateway.describeImage({
         input: PROBE_INSTRUCTION,
         image: { bytes: probeImagePng(), mediaType: PROBE_IMAGE_MEDIA_TYPE },
-        maxTokens: 64,
+        maxTokens: VISION_PROBE_MAX_TOKENS,
       }),
       options.timeoutMs,
       binding,

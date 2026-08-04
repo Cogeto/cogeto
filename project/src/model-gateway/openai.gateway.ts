@@ -9,7 +9,7 @@ import type {
   TokenUsage,
   VisionRequest,
 } from './model-gateway.service';
-import { ModelGatewayError, VisionUnavailableError } from './errors';
+import { ModelGatewayError, ReasoningExhaustedBudgetError, VisionUnavailableError } from './errors';
 import {
   callWithRetry,
   postJson,
@@ -53,12 +53,35 @@ export interface OpenAiCompatibleGatewayOptions {
    * model and the `ollama pull` command.
    */
   localRuntime?: { rootUrl: string };
+  /**
+   * maxTokens multiplier for models that returned a separate reasoning field
+   * (Part B of reasoning support). Applied per model, and ONLY after a real
+   * response carried the field — never off a name or a flag, for the same
+   * reason vision is probed. Default 4; a model that never reasons never sees
+   * a changed request.
+   */
+  reasoningHeadroom?: number;
 }
 
 const EMBED_BATCH_SIZE = 128;
 
+/**
+ * The assistant message, with the reasoning field names servers actually use:
+ * `reasoning_content` (llama.cpp, DeepSeek), `reasoning` (OpenAI-style
+ * surfaces), `thinking` (Ollama). Typing them is the point (Part B of
+ * reasoning support): the reasoning text is read ONLY to answer "did this
+ * model reason?" and to detect the exhausted-budget failure — it never joins
+ * the answer text, never reaches a JSON parser, and is dropped here.
+ */
+interface ChatMessage {
+  content?: unknown;
+  reasoning_content?: unknown;
+  reasoning?: unknown;
+  thinking?: unknown;
+}
+
 interface ChatResponse {
-  choices?: { message?: { content?: unknown } }[];
+  choices?: { message?: ChatMessage; finish_reason?: unknown }[];
   usage?: { prompt_tokens?: unknown; completion_tokens?: unknown };
 }
 
@@ -82,6 +105,15 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
   private readonly label: string;
   private readonly tierTimeoutsMs?: OpenAiCompatibleGatewayOptions['tierTimeoutsMs'];
   private readonly localRuntime?: { rootUrl: string };
+  private readonly reasoningHeadroom: number;
+  /**
+   * Models a response has shown to reason, learned from real responses only:
+   * the boot/registry probe primes it, and any non-streaming response carrying
+   * a reasoning field keeps it current. Per model, so a mixed configuration
+   * (one binding reasons, another does not) applies headroom exactly where the
+   * evidence is.
+   */
+  private readonly reasoningModels = new Set<string>();
   private reachabilityCache?: { at: number; value: GatewayReachability };
 
   constructor(options: OpenAiCompatibleGatewayOptions) {
@@ -95,6 +127,52 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
     this.label = options.providerLabel ?? 'openai';
     this.tierTimeoutsMs = options.tierTimeoutsMs;
     this.localRuntime = options.localRuntime;
+    this.reasoningHeadroom = options.reasoningHeadroom ?? 4;
+  }
+
+  /**
+   * Records whether this response carried a separate reasoning field and
+   * discards its text in the same breath. Returns the bare fact; the text
+   * never leaves this method — thinking is a channel, not content, and Part B
+   * deliberately does not build the channel.
+   */
+  private noteReasoning(model: string, message: ChatMessage | undefined): boolean {
+    if (!message) return false;
+    const reasoningText = contentToText(
+      message.reasoning_content ?? message.reasoning ?? message.thinking,
+    );
+    if (reasoningText.trim().length === 0) return false;
+    this.reasoningModels.add(model);
+    return true;
+  }
+
+  /**
+   * The headroom multiplier (Part B): a cap sized for an answer is not sized
+   * for an answer plus its deliberation, so a model that has shown it reasons
+   * gets its maxTokens multiplied. A model that never has gets the caller's
+   * number byte-identically.
+   */
+  private capFor(model: string, maxTokens: number | undefined): number | undefined {
+    if (maxTokens === undefined) return undefined;
+    return this.reasoningModels.has(model) ? maxTokens * this.reasoningHeadroom : maxTokens;
+  }
+
+  /**
+   * The honest failure (Part B): empty answer + non-empty reasoning +
+   * `finish_reason: length` means the model spent the whole output budget on
+   * reasoning. Surfacing that as "returned no text" sends the reader to the
+   * network or the projector, and the problem is in neither place.
+   */
+  private assertNotExhaustedByReasoning(
+    model: string,
+    response: ChatResponse,
+    text: string,
+    reasoned: boolean,
+    maxTokens: number | undefined,
+  ): void {
+    if (text.trim().length === 0 && reasoned && response.choices?.[0]?.finish_reason === 'length') {
+      throw new ReasoningExhaustedBudgetError(model, this.label, maxTokens);
+    }
   }
 
   private modelFor(tier: ModelTier): string {
@@ -153,9 +231,11 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
   }
 
   private chatBody(request: CompletionRequest, extra: Record<string, unknown> = {}): object {
+    const model = this.modelFor(request.tier ?? 'answer');
+    const maxTokens = this.capFor(model, request.maxTokens);
     return {
-      model: this.modelFor(request.tier ?? 'answer'),
-      ...(request.maxTokens !== undefined ? { max_tokens: request.maxTokens } : {}),
+      model,
+      ...(maxTokens !== undefined ? { max_tokens: maxTokens } : {}),
       ...(this.temperature !== undefined ? { temperature: this.temperature } : {}),
       messages: [
         ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
@@ -167,7 +247,8 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
 
   async complete(request: CompletionRequest): Promise<CompletionResult> {
     const tier = request.tier ?? 'answer';
-    const response = await this.call(tier, this.modelFor(tier), (signal) =>
+    const model = this.modelFor(tier);
+    const response = await this.call(tier, model, (signal) =>
       postJson<ChatResponse>(
         `${this.baseUrl}/chat/completions`,
         this.headers,
@@ -175,8 +256,13 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
         signal,
       ),
     );
+    const message = response.choices?.[0]?.message;
+    const reasoned = this.noteReasoning(model, message);
+    const text = contentToText(message?.content);
+    this.assertNotExhaustedByReasoning(model, response, text, reasoned, request.maxTokens);
     return {
-      text: contentToText(response.choices?.[0]?.message?.content),
+      text,
+      ...(reasoned ? { reasoned: true } : {}),
       ...usageOf(response),
     };
   }
@@ -234,7 +320,15 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
           signal,
         ),
       );
-      return contentToText(response.choices?.[0]?.message?.content);
+      // The reasoning field is DISCARDED here, before the JSON parser ever
+      // runs (Part B): only `content` may reach schema validation, because a
+      // model's private reasoning must be structurally unable to become a
+      // stored fact. `noteReasoning` reads it solely as a yes/no.
+      const message = response.choices?.[0]?.message;
+      const reasoned = this.noteReasoning(model, message);
+      const text = contentToText(message?.content);
+      this.assertNotExhaustedByReasoning(model, response, text, reasoned, undefined);
+      return text;
     });
   }
 
@@ -263,9 +357,13 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
       );
     }
     const dataUrl = `data:${request.image.mediaType};base64,${request.image.bytes.toString('base64')}`;
+    // Headroom applies here too (Part B): the vision binding can be the same
+    // reasoning model as the text tiers, and a cap sized for a page transcript
+    // is not sized for the transcript plus the model's deliberation about it.
+    const maxTokens = this.capFor(model, request.maxTokens);
     const body = {
       model,
-      ...(request.maxTokens !== undefined ? { max_tokens: request.maxTokens } : {}),
+      ...(maxTokens !== undefined ? { max_tokens: maxTokens } : {}),
       // Reading a page is a transcription task, not a creative one.
       temperature: 0,
       messages: [
@@ -294,14 +392,29 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
       });
     }
 
-    const text = contentToText(response.choices?.[0]?.message?.content);
+    const message = response.choices?.[0]?.message;
+    const reasoned = this.noteReasoning(model, message);
+    const text = contentToText(message?.content);
     if (text.trim().length === 0) {
+      // The honest diagnosis first (Part B): an empty answer beside a
+      // non-empty reasoning field at `finish_reason: length` is a token
+      // budget spent on reasoning, not a projector or network fault, and
+      // "returned no text" would send the operator to both wrong places.
+      if (reasoned && response.choices?.[0]?.finish_reason === 'length') {
+        throw new VisionUnavailableError(
+          'reasoning_exhausted',
+          `the vision model "${model}" on ${this.label} accepted the image and spent its ` +
+            `entire output budget${request.maxTokens !== undefined ? ` (max_tokens ${request.maxTokens})` : ''} ` +
+            `on reasoning before any answer text: raise the caller's maxTokens or ` +
+            `COGETO_REASONING_HEADROOM`,
+        );
+      }
       throw new VisionUnavailableError(
         'unusable_response',
         `the vision model "${model}" on ${this.label} accepted the image and returned no text`,
       );
     }
-    return { text, ...usageOf(response) };
+    return { text, ...(reasoned ? { reasoned: true } : {}), ...usageOf(response) };
   }
 
   async embed(texts: string[]): Promise<number[][]> {
