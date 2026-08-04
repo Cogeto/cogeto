@@ -74,9 +74,20 @@ the marker lands with the channel in Part C.
 
 - **Overdue**: no successful run within 26 hours, one nightly slot plus slack. A job
   that never ran stays quiet until the instance itself is older than the threshold.
-- **Cache**: registry snapshots are cached 20 seconds in-process. Probes are cheap but
-  not free and the panel polls every 10 seconds, so 20 seconds keeps "kill the
-  container, watch it go loud" under half a minute.
+- **Cache**: registry snapshots are cached 20 seconds in-process, and since issue
+  #418 a STALE snapshot is served instantly while one background pass (single
+  flight) rebuilds it: the vision probe on a reasoning binding is a 10-to-15-second
+  model call, and a panel poll must never sit behind it. Every entry carries the
+  `checkedAt` of the pass that measured it, and a dead capability still goes loud
+  on the next background pass rather than on somebody's page load. The very first
+  read (the boot banner's) builds synchronously; the banner states measured truth.
+- **Model-call probes cache longer.** Two probes cost a model call and keep their
+  own windows inside the registry: reasoning ten minutes (a completion on every
+  configured instance) and vision three minutes (an image through a possibly
+  thinking model). "Kill the runtime, watch it go loud" is minutes for those two
+  and still under half a minute for everything else; the reading ladder's own
+  per-document vision probe (60 seconds) is separate and unchanged, so document
+  reads discover a dead runtime at the old speed.
 
 ## Profiles are passed in; explicit flags stay authoritative
 

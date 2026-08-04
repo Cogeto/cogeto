@@ -10,6 +10,7 @@ import {
   CapabilitiesService,
   formatCapabilitiesBanner,
   REASONING_PROBE_TTL_MS,
+  VISION_PROBE_TTL_MS,
 } from './capabilities';
 import type { CapabilityJobSources } from './capabilities';
 import type { OperationsOptions } from './operations.options';
@@ -403,10 +404,29 @@ describe('reasoning_capability', () => {
     // Past the snapshot TTL, within the reasoning TTL: everything else
     // re-probes; the reasoning completion does not re-run.
     await svc.snapshot(new Date(NOW.getTime() + CAPABILITY_CACHE_TTL_MS + 1000));
+    await svc.settle();
     expect(completeCalls()).toBe(1);
 
     await svc.snapshot(new Date(NOW.getTime() + REASONING_PROBE_TTL_MS + 1000));
+    await svc.settle();
     expect(completeCalls()).toBe(2);
+  });
+
+  it('the vision probe keeps its own cache too (issue #418): one image per window', async () => {
+    const { svc, order } = probedService(true);
+    const visionProbes = () => order.filter((call) => call === 'describeImage').length;
+    await svc.snapshot(NOW);
+    expect(visionProbes()).toBe(1);
+
+    // Past the snapshot TTL, within the vision TTL: no new image is sent.
+    await svc.snapshot(new Date(NOW.getTime() + CAPABILITY_CACHE_TTL_MS + 1000));
+    await svc.settle();
+    expect(visionProbes()).toBe(1);
+
+    // Past the vision TTL: the next pass probes with a real image again.
+    await svc.snapshot(new Date(NOW.getTime() + VISION_PROBE_TTL_MS + 1000));
+    await svc.settle();
+    expect(visionProbes()).toBe(2);
   });
 
   it('the banner states it like every other capability', async () => {
@@ -427,8 +447,28 @@ describe('probe_cached', () => {
     await svc.snapshot(new Date(NOW.getTime() + CAPABILITY_CACHE_TTL_MS - 1000));
     expect(calls.length).toBe(probesAfterFirst); // served from cache
 
+    // Past the TTL the stale snapshot is served INSTANTLY (issue #418) and one
+    // background pass re-probes; settle() is the deterministic wait for it.
     await svc.snapshot(new Date(NOW.getTime() + CAPABILITY_CACHE_TTL_MS + 1000));
+    await svc.settle();
     expect(calls.length).toBe(probesAfterFirst * 2); // TTL passed → probed again
+  });
+
+  it('stale-while-revalidate: a stale read serves the old snapshot and one refresh runs behind', async () => {
+    stubFetch(() => ({ status: 200 }));
+    const svc = service(config({ redactionEnabled: true }));
+    const first = await svc.snapshot(NOW);
+
+    const staleAt = new Date(NOW.getTime() + CAPABILITY_CACHE_TTL_MS + 1000);
+    const [servedA, servedB] = await Promise.all([svc.snapshot(staleAt), svc.snapshot(staleAt)]);
+    // Both stale reads got the OLD snapshot without waiting for probes.
+    expect(servedA).toBe(first);
+    expect(servedB).toBe(first);
+
+    await svc.settle();
+    const refreshed = await svc.snapshot(staleAt);
+    expect(refreshed).not.toBe(first);
+    expect(refreshed.capabilities[0]!.checkedAt).toBe(staleAt.toISOString());
   });
 });
 
