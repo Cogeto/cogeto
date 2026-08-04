@@ -37,6 +37,7 @@ export type { VisionUnavailableReason } from './errors';
 export type {
   CompletionRequest,
   CompletionResult,
+  StreamDelta,
   StructuredExtractionRequest,
   VisionImage,
   VisionRequest,

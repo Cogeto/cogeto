@@ -5,7 +5,7 @@ import { evalConfigSchema, runGoldenEval, runReconcileEval } from '../ingestion/
 import type { EvalMetrics, ReconcileEvalMetrics } from '../ingestion/index';
 import { runRewriteEval } from '../retrieval/index';
 import type { RewriteEvalMetrics } from '../retrieval/index';
-import { createModelGateway } from '../model-gateway/index';
+import { createModelGateway, probeReasoning } from '../model-gateway/index';
 import { resolveEvalProviders, requireConfiguredProviders } from './eval-env';
 import { EVAL_SCORING_VERSION, evalCacheModeFromEnv, wrapWithEvalCache } from './eval-cache';
 import { configurationForEmission, emitPartial } from './trust-scores';
@@ -227,8 +227,13 @@ async function main(): Promise<void> {
       process.exit(2);
     }
     // The ACTIVE configuration, from the same resolver the gateway was built
-    // with — id and models are exact by construction.
-    const { id, models } = configurationForEmission(providers);
+    // with — id and models are exact by construction. Reasoning is PROBED so
+    // the emitted id labels what this run actually measured (Part C); replay
+    // never reaches this branch, so the probe only runs on live emissions.
+    const reasoningProbe = await probeReasoning(gateway, providers);
+    const { id, models } = configurationForEmission(providers, {
+      reasoning: reasoningProbe.reasoning,
+    });
     const reconcileByLabel = new Map(reconcile.perLanguage.map((m) => [m.label, m]));
     const rewriteByLabel = new Map(rewrite.perLanguage.map((m) => [m.label, m]));
     emitPartial(emitPath, {

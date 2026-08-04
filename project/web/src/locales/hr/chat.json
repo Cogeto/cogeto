@@ -100,5 +100,9 @@
       "approvedNote_other": "Napomena: vi ste odobrili {{count}} od tih sjećanja.",
       "alternative": "Arhiviranjem se umjesto toga sve zadržava. Ovo se ne može poništiti."
     }
+  },
+  "reasoning": {
+    "heading": "Thinking",
+    "streaming": "Thinking, streaming live"
   }
 }

@@ -14,6 +14,7 @@ import type { ParseCaps } from '../infrastructure/index';
 import { createMemoryStore, MemoryReconciliation } from '../memory/index';
 import type { MemoryStore } from '../memory/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import type { CandidateFact } from './domain/candidate-fact';
 import { AnchorStage } from './pipeline/anchor.stage';
@@ -68,7 +69,7 @@ class ScriptedGateway extends ModelGateway {
     throw new Error('complete() is not used by the pipeline');
   }
   // eslint-disable-next-line require-yield -- not used by the pipeline
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('completeStream() is not used by the pipeline');
   }
   async embed(texts: string[]): Promise<number[][]> {

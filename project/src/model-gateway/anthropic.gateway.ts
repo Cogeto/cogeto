@@ -7,6 +7,7 @@ import type {
   ModelTier,
   StructuredExtractionRequest,
   TokenUsage,
+  StreamDelta,
 } from './model-gateway.service';
 import { ModelGatewayError } from './errors';
 import {
@@ -106,7 +107,7 @@ export class AnthropicModelGateway extends ModelGateway {
     return { text: textOf(response), ...usageOf(response) };
   }
 
-  async *completeStream(request: CompletionRequest): AsyncIterable<string> {
+  async *completeStream(request: CompletionRequest): AsyncIterable<StreamDelta> {
     const response = await callWithRetry('anthropic', () =>
       postStream(
         `${this.baseUrl}/v1/messages`,
@@ -134,7 +135,14 @@ export class AnthropicModelGateway extends ModelGateway {
       }
       if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
         const text = event.delta.text;
-        if (typeof text === 'string' && text) yield text;
+        if (typeof text === 'string' && text) yield { channel: 'text', text };
+      }
+      // Anthropic thinking blocks arrive only when extended thinking is
+      // requested, which Cogeto does not do; mapped anyway (Part A) so a
+      // future opt-in cannot silently lose the channel.
+      if (event.type === 'content_block_delta' && event.delta?.type === 'thinking_delta') {
+        const thinking = (event.delta as { thinking?: unknown }).thinking;
+        if (typeof thinking === 'string' && thinking) yield { channel: 'thinking', text: thinking };
       }
     }
   }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ZodType } from 'zod';
 import { ModelGateway } from '../../model-gateway/index';
+import type { StreamDelta } from '../../model-gateway/index';
 import type { StructuredExtractionRequest } from '../../model-gateway/index';
 import type { CandidateFact } from '../domain/candidate-fact';
 import { buildVerificationBatchInput, VerifyStage } from './verify.stage';
@@ -31,7 +32,7 @@ class RecordingGateway extends ModelGateway {
     throw new Error('unused');
   }
   // eslint-disable-next-line require-yield -- unused
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('unused');
   }
   async embed(): Promise<number[][]> {

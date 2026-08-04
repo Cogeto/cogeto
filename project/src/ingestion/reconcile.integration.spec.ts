@@ -7,6 +7,7 @@ import type { TestDatabase, TestQdrant } from '../testing/index';
 import { createMemoryReconciliation } from '../memory/index';
 import type { MemoryReconciliation, MemoryRow, MemoryStore, NewFact } from '../memory/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import { ReconciliationService } from './pipeline/reconcile.stage';
 import { noopLog } from './pipeline/pipeline-log';
@@ -55,7 +56,7 @@ class ScriptedJudgeGateway extends ModelGateway {
     throw new Error('not used');
   }
   // eslint-disable-next-line require-yield -- not used by reconciliation
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('not used');
   }
   async embed(texts: string[]): Promise<number[][]> {

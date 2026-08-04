@@ -6,6 +6,7 @@ import type {
   CompletionResult,
   GatewayReachability,
   StructuredExtractionRequest,
+  StreamDelta,
 } from './model-gateway.service';
 import type { RedactionPort } from './redaction-client';
 import { reidentifyDeep, reidentifyStream, reidentifyText } from './redaction-utils';
@@ -39,9 +40,24 @@ export class RedactingModelGateway extends ModelGateway {
     return { ...result, text: reidentifyText(result.text, mapping) };
   }
 
-  async *completeStream(request: CompletionRequest): AsyncIterable<string> {
+  /**
+   * Thinking is STRIPPED under redaction (Part A) — the vision posture, fail
+   * closed. Re-identification maps pseudonyms back into the TEXT the user
+   * reads; a reasoning model's deliberation interleaves pseudonym fragments
+   * the flush logic cannot bound, and half-re-identified reasoning about
+   * redacted entities is exactly what redaction promises can never surface.
+   * So under redaction the thinking channel does not exist: no delta, no
+   * empty disclosure, nothing.
+   */
+  async *completeStream(request: CompletionRequest): AsyncIterable<StreamDelta> {
     const { text: input, mapping } = await this.redactor.pseudonymize(request.input);
-    yield* reidentifyStream(this.inner.completeStream({ ...request, input }), mapping);
+    const inner = this.inner.completeStream({ ...request, input });
+    const textOnly = async function* (): AsyncIterable<string> {
+      for await (const delta of inner) if (delta.channel === 'text') yield delta.text;
+    };
+    for await (const text of reidentifyStream(textOnly(), mapping)) {
+      yield { channel: 'text', text };
+    }
   }
 
   async extractStructured<T>(

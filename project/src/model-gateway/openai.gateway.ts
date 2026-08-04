@@ -5,6 +5,7 @@ import type {
   CompletionResult,
   GatewayReachability,
   ModelTier,
+  StreamDelta,
   StructuredExtractionRequest,
   TokenUsage,
   VisionRequest,
@@ -267,9 +268,17 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
     };
   }
 
-  async *completeStream(request: CompletionRequest): AsyncIterable<string> {
+  /**
+   * Streams both channels (Part A of reasoning support): a reasoning model
+   * interleaves `reasoning_content` (llama.cpp, DeepSeek) / `reasoning`
+   * (OpenAI-style) / `thinking` (Ollama) deltas with `content` deltas, and the
+   * seam labels each. A thinking delta also marks the model as reasoning, so
+   * the maxTokens headroom (Part B) arms from live chat traffic too.
+   */
+  async *completeStream(request: CompletionRequest): AsyncIterable<StreamDelta> {
     const tier = request.tier ?? 'answer';
-    const response = await this.call(tier, this.modelFor(tier), (signal) =>
+    const model = this.modelFor(tier);
+    const response = await this.call(tier, model, (signal) =>
       postStream(
         `${this.baseUrl}/chat/completions`,
         this.headers,
@@ -279,14 +288,22 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
     );
     for await (const data of sseData(response)) {
       if (data === '[DONE]') break;
-      let event: { choices?: { delta?: { content?: unknown } }[] };
+      let event: { choices?: { delta?: ChatMessage }[] };
       try {
         event = JSON.parse(data) as typeof event;
       } catch {
         continue;
       }
-      const text = contentToText(event.choices?.[0]?.delta?.content);
-      if (text) yield text;
+      const delta = event.choices?.[0]?.delta;
+      const thinking = contentToText(
+        delta?.reasoning_content ?? delta?.reasoning ?? delta?.thinking,
+      );
+      if (thinking) {
+        this.reasoningModels.add(model);
+        yield { channel: 'thinking', text: thinking };
+      }
+      const text = contentToText(delta?.content);
+      if (text) yield { channel: 'text', text };
     }
   }
 

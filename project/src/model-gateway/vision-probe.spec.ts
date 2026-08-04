@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ModelGateway } from './model-gateway.service';
+import type { StreamDelta } from './model-gateway.service';
 import type { CompletionResult, VisionRequest } from './model-gateway.service';
 import { VisionUnavailableError } from './errors';
 import { probeImagePng, probeVision } from './vision-probe';
@@ -25,7 +26,7 @@ class StubGateway extends ModelGateway {
     throw new Error('unused');
   }
   // eslint-disable-next-line require-yield -- unused by the probe
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('unused');
   }
   extractStructured(): never {

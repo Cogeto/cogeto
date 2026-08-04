@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ZodType } from 'zod';
 import type { Principal } from '@cogeto/shared';
 import { ModelGateway } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import type { MemoryRow, MemoryStore } from '../memory/index';
 import { RetrievalService } from './retrieval.service';
@@ -43,7 +44,7 @@ class RewriteGateway extends ModelGateway {
     throw new Error('not used');
   }
   // eslint-disable-next-line require-yield -- not used
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('not used');
   }
   async embed(texts: string[]): Promise<number[][]> {

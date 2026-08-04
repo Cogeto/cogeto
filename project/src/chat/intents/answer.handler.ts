@@ -55,6 +55,7 @@ export class MemoryAnswerHandler {
     yield { type: 'sources', facts };
 
     let answer: string;
+    let thinking = '';
     if (retrieved.mode === 'open_loops' && (retrieved.openLoops?.length ?? 0) === 0) {
       // Zero open loops is an ANSWER (all clear), not a data gap. A
       // deterministic string cannot mirror; it follows the anchor (0052).
@@ -82,9 +83,17 @@ export class MemoryAnswerHandler {
         }),
         tier: 'answer',
       });
-      for await (const text of stream) {
-        buffer += text;
-        yield { type: 'token', text };
+      // Two channels, two fates (Part C): thinking streams to the disclosure
+      // and is stored BESIDE the answer; only the text channel becomes the
+      // answer — it alone is sanitized, cited, capturable, and evaluated.
+      for await (const delta of stream) {
+        if (delta.channel === 'thinking') {
+          thinking += delta.text;
+          yield { type: 'thinking', text: delta.text };
+          continue;
+        }
+        buffer += delta.text;
+        yield { type: 'token', text: delta.text };
       }
       answer = buffer;
     }
@@ -94,7 +103,12 @@ export class MemoryAnswerHandler {
       // Metadata only — never the answer content or tokens (pino rule).
       this.sink.logWarn(`citation_violation stripped=${violations}`);
     }
-    const row = await this.sink.storeAssistant(principal, conversationId, stored);
+    const row = await this.sink.storeAssistant(
+      principal,
+      conversationId,
+      stored,
+      thinking.trim() ? thinking : null,
+    );
     // The research offer: every knowledge-class answer OFFERS
     // research as a one-tap bridge into the existing gate — never a silent
     // search. The offer carries the self-contained topic; tapping it proposes.

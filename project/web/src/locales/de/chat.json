@@ -96,5 +96,9 @@
       "approvedNote_other": "Hinweis: {{count}} dieser Erinnerungen wurden von Ihnen genehmigt.",
       "alternative": "Beim Archivieren bleibt stattdessen alles erhalten. Dies kann nicht rückgängig gemacht werden."
     }
+  },
+  "reasoning": {
+    "heading": "Thinking",
+    "streaming": "Thinking, streaming live"
   }
 }

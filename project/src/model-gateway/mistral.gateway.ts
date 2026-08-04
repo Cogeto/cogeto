@@ -7,6 +7,7 @@ import type {
   GatewayReachability,
   StructuredExtractionRequest,
   TokenUsage,
+  StreamDelta,
 } from './model-gateway.service';
 import { ModelGatewayError, ModelGatewayNotConfiguredError } from './errors';
 import type { ModelTier } from './model-gateway.service';
@@ -73,7 +74,7 @@ export class MistralModelGateway extends ModelGateway {
     return { text: contentToText(response.choices?.[0]?.message?.content), ...usageOf(response) };
   }
 
-  async *completeStream(request: CompletionRequest): AsyncIterable<string> {
+  async *completeStream(request: CompletionRequest): AsyncIterable<StreamDelta> {
     const stream = await callWithRetry('mistral', () =>
       this.client.chat.stream({
         model: this.models[request.tier ?? 'answer'],
@@ -87,7 +88,7 @@ export class MistralModelGateway extends ModelGateway {
     );
     for await (const event of stream) {
       const text = contentToText(event.data.choices?.[0]?.delta?.content);
-      if (text) yield text;
+      if (text) yield { channel: 'text', text };
     }
   }
 
@@ -175,7 +176,7 @@ export class UnconfiguredModelGateway extends ModelGateway {
     throw new ModelGatewayNotConfiguredError();
   }
   // eslint-disable-next-line require-yield -- fails on first pull, like the rest
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new ModelGatewayNotConfiguredError();
   }
   extractStructured<T>(): Promise<T> {

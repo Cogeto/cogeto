@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
 import { ModelGateway } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import { chatMessage, conversation } from './persistence/tables';
 import { ConversationTitler, sanitizeTitle } from './conversation-titler';
 
@@ -20,7 +21,7 @@ class TitleGateway extends ModelGateway {
     throw new Error('unused');
   }
   // eslint-disable-next-line require-yield -- unused
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('unused');
   }
   async embed(): Promise<number[][]> {

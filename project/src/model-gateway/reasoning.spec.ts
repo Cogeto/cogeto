@@ -395,3 +395,55 @@ describe('reasoning_probe_unreachable_error', () => {
     expect(error.reason).toBe('reasoning_exhausted');
   });
 });
+
+describe('reasoning_stream_channel', () => {
+  const sse = (...events: object[]): Response =>
+    new Response(
+      new ReadableStream({
+        start(controller) {
+          const encoder = new TextEncoder();
+          for (const event of events) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+          }
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.close();
+        },
+      }),
+      { status: 200, headers: { 'content-type': 'text/event-stream' } },
+    );
+  const delta = (fields: object): object => ({ choices: [{ delta: fields }] });
+
+  it('yields thinking and text as labeled channels, in order, and arms headroom', async () => {
+    const { calls } = stubFetch(
+      sse(
+        delta({ reasoning_content: 'Thinking about it. ' }),
+        delta({ reasoning_content: 'Still thinking. ' }),
+        delta({ content: 'OK' }),
+        delta({ content: '.' }),
+      ),
+      chat('follow-up'),
+    );
+    const g = gateway();
+    const seen: { channel: string; text: string }[] = [];
+    for await (const d of g.completeStream({ input: 'q', maxTokens: 64 })) seen.push(d);
+    expect(seen).toEqual([
+      { channel: 'thinking', text: 'Thinking about it. ' },
+      { channel: 'thinking', text: 'Still thinking. ' },
+      { channel: 'text', text: 'OK' },
+      { channel: 'text', text: '.' },
+    ]);
+    // A thinking delta marked the model: the NEXT capped call gets headroom.
+    await g.complete({ input: 'q', maxTokens: 64 });
+    expect(calls[1]!.body.max_tokens).toBe(256);
+  });
+
+  it('a non-reasoning stream yields text deltas only — the same bytes as ever', async () => {
+    stubFetch(sse(delta({ content: 'plain ' }), delta({ content: 'answer' })));
+    const seen: { channel: string; text: string }[] = [];
+    for await (const d of gateway().completeStream({ input: 'q' })) seen.push(d);
+    expect(seen).toEqual([
+      { channel: 'text', text: 'plain ' },
+      { channel: 'text', text: 'answer' },
+    ]);
+  });
+});

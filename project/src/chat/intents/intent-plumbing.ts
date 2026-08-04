@@ -14,6 +14,8 @@ export interface ChatTurnSink {
     principal: Principal,
     conversationId: string,
     content: string,
+    /** The displayed deliberation (Part C); null when the model produced none. */
+    thinking?: string | null,
   ): Promise<{ id: string }>;
   getPrompt(): Promise<PromptArtifact>;
   /** Metadata only — never answer content or tokens (pino rule). */

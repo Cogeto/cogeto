@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import type { ZodType } from 'zod';
 import { ModelGateway } from './model-gateway.service';
+import type { StreamDelta } from './model-gateway.service';
 import type {
   CompletionRequest,
   CompletionResult,
@@ -346,9 +347,9 @@ class FakeGateway extends ModelGateway {
     this.seen.push(`complete:${request.tier ?? 'answer'}`);
     return { text: this.name, usage: { inputTokens: 100, outputTokens: 50 } };
   }
-  async *completeStream(request: CompletionRequest): AsyncIterable<string> {
+  async *completeStream(request: CompletionRequest): AsyncIterable<StreamDelta> {
     this.seen.push(`stream:${request.tier ?? 'answer'}`);
-    yield this.name;
+    yield { channel: 'text', text: this.name } as const;
   }
   async extractStructured<T>(
     schema: ZodType<T, unknown>,

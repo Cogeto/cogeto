@@ -10,6 +10,7 @@ import {
 } from '../testing/index';
 import type { TestDatabase, TestMinio, TestQdrant } from '../testing/index';
 import { ModelGateway } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import type { CompletionResult, StructuredExtractionRequest } from '../model-gateway/index';
 import { createMemoryStore, MemoryFileStore, MemoryObjectStore } from '../memory/index';
 import type { MemoryStore } from '../memory/index';
@@ -39,7 +40,7 @@ class ScriptedGateway extends ModelGateway {
     return { text: 'Thanks — Friday works for the delivery. Best regards.' };
   }
   // eslint-disable-next-line require-yield -- unused
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('unused');
   }
   async embed(texts: string[]): Promise<number[][]> {

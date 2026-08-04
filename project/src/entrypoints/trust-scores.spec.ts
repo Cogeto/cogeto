@@ -205,6 +205,15 @@ describe('eval_emission_config_correct', () => {
     expect(emission.id.endsWith('-redacted')).toBe(true);
     // The emitted id stays inside the published schema's pattern.
     expect(emission.id).toMatch(/^[a-z0-9][a-z0-9-]*$/);
+
+    // The PROBED reasoning marker (Part C, honesty rule 3): a run with
+    // thinking on is a different measurement and its id says so; probed off
+    // emits the unchanged id, so every existing artifact and gate is
+    // untouched — a Mistral-routed run can never gain the marker by accident.
+    const marked = configurationForEmission(providers, { reasoning: true });
+    expect(marked.id).toBe(`${providers.id}--reasoning`);
+    expect(marked.id).toMatch(/^[a-z0-9][a-z0-9-]*$/);
+    expect(configurationForEmission(providers, { reasoning: false }).id).toBe(providers.id);
   });
 
   it('emits the local configurations with correct ids', () => {

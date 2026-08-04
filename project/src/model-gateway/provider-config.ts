@@ -410,8 +410,8 @@ export function resolveModelProviders(
   // Reasoning headroom (Part B). Deliberately NOT part of the configuration id:
   // the id fingerprints what a measurement ran against, and whether a binding
   // reasons is a PROBED runtime fact, not configuration — the id is derived
-  // before any probe can run. The fingerprint marker is Part C's, alongside the
-  // channel, when a reasoning-routed configuration can publish a measurement.
+  // before any probe can run. The fingerprint marker is appended at trust
+  // EMISSION time from the probe (Part C, configurationForEmission), never here.
   const headroomRaw = read(env, 'COGETO_REASONING_HEADROOM');
   let reasoningHeadroom = 4;
   if (headroomRaw !== undefined) {

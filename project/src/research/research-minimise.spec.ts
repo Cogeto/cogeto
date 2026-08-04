@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { ZodType } from 'zod';
 import { ModelGateway } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import { minimiseQuery, RESEARCH_MINIMISE_PROMPT } from './research-minimise';
 
@@ -26,7 +27,7 @@ class ScriptedMinimiser extends ModelGateway {
     throw new Error('unused');
   }
   // eslint-disable-next-line require-yield -- unused
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('unused');
   }
   async embed(): Promise<number[][]> {

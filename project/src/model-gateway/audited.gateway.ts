@@ -7,6 +7,7 @@ import type {
   ModelTier,
   StructuredExtractionRequest,
   VisionRequest,
+  StreamDelta,
 } from './model-gateway.service';
 import type { ModelEgressAudit } from '../infrastructure/index';
 import type { ZodType } from 'zod';
@@ -70,14 +71,16 @@ export class AuditedModelGateway extends ModelGateway {
     }
   }
 
-  async *completeStream(request: CompletionRequest): AsyncIterable<string> {
+  async *completeStream(request: CompletionRequest): AsyncIterable<StreamDelta> {
     const started = Date.now();
     const tier = request.tier ?? 'answer';
+    // Structural counts only, as ever — but BOTH channels moved over the wire,
+    // so both count as egress volume (Part A).
     let outputChars = 0;
     let failure: unknown;
     try {
       for await (const delta of this.inner.completeStream(request)) {
-        outputChars += delta.length;
+        outputChars += delta.text.length;
         yield delta;
       }
     } catch (error) {

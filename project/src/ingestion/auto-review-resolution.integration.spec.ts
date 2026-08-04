@@ -14,6 +14,7 @@ import {
 import type { MemoryStore, SourceDeletion } from '../memory/index';
 import type { Tx } from '../infrastructure/index';
 import { ModelGateway } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import { createSuppressedFactLog } from './persistence/suppressed-fact-log';
 import type { SuppressedFactLog } from './persistence/suppressed-fact-log';
@@ -67,7 +68,7 @@ class ScriptedGateway extends ModelGateway {
     throw new Error('not used');
   }
   // eslint-disable-next-line require-yield -- not used
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('not used');
   }
   async embed(texts: string[]): Promise<number[][]> {

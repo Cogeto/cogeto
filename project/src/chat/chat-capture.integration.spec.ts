@@ -10,6 +10,7 @@ import { createIngestionPipeline, createSuppressedFactLog } from '../ingestion/i
 import type { IngestionPipeline } from '../ingestion/index';
 import { UserDirectory } from '../identity/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import { RetrievalService } from '../retrieval/index';
 import { ChatService } from './chat.service';
@@ -30,7 +31,7 @@ class ScriptedGateway extends ModelGateway {
     throw new Error('unused');
   }
   // eslint-disable-next-line require-yield -- unused
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('unused');
   }
   async embed(texts: string[]): Promise<number[][]> {

@@ -11,6 +11,7 @@ import type { TestDatabase, TestQdrant } from '../testing/index';
 import { createMemoryStore, MemoryReconciliation } from '../memory/index';
 import type { MemoryObjectStore, MemoryStore } from '../memory/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import {
   createSuppressedFactLog,
@@ -70,7 +71,7 @@ class RecordingGateway extends ModelGateway {
     throw new Error('the pipeline must never use the answer tier');
   }
   // eslint-disable-next-line require-yield -- must never be reached
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     this.answerTierCalls += 1;
     throw new Error('the pipeline must never use the answer tier');
   }

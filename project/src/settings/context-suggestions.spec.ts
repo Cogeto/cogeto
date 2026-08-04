@@ -5,6 +5,7 @@ import { startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
 import { readAuditEntries, UserContextService } from '../infrastructure/index';
 import { ModelGateway } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import type { MemoryRow, MemoryStore } from '../memory/index';
 import { ContextSuggestionsService } from './context-suggestions.service';
 
@@ -59,7 +60,7 @@ class VerdictGateway extends ModelGateway {
     throw new Error('unexpected');
   }
   // eslint-disable-next-line require-yield
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('unexpected');
   }
   async embed(texts: string[]): Promise<number[][]> {

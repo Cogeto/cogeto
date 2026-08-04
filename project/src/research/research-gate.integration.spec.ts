@@ -6,6 +6,7 @@ import { startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
 import type { MemoryObjectStore } from '../memory/index';
 import { ModelGateway } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import { ResearchService } from './research.service';
 import { WebDiscoveryService } from './web-discovery.service';
 import { WebFetchService } from './web-fetch';
@@ -41,7 +42,7 @@ class MinimiserGateway extends ModelGateway {
     throw new Error('unused');
   }
   // eslint-disable-next-line require-yield -- unused
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('unused');
   }
   async embed(): Promise<number[][]> {

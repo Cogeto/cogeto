@@ -290,7 +290,7 @@ describe('reasoning_headroom_config — the maxTokens multiplier (Part B)', () =
   it('defaults to 4 and never joins the configuration id', () => {
     const providers = resolve({ COGETO_MISTRAL_API_KEY: 'k' });
     expect(providers.reasoningHeadroom).toBe(4);
-    expect(providers.id).toBe('mistral-default'); // no reasoning marker (Part C)
+    expect(providers.id).toBe('mistral-default'); // marker joins at emission, never here
   });
 
   it('is configurable', () => {
