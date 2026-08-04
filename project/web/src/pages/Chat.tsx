@@ -227,6 +227,26 @@ function RememberAction({ session, messageId }: { session: Session; messageId: s
 }
 
 /** The question as a confident heading. */
+/**
+ * The reasoning channel (Part C of reasoning support): the model's own
+ * deliberation, collapsed by default, streaming live while it thinks and
+ * reopenable on a stored answer. Renders nothing when there is no thinking —
+ * a non-reasoning model must leave no empty affordance.
+ */
+function ReasoningDisclosure({ text, streaming = false }: { text: string; streaming?: boolean }) {
+  const { t } = useTranslation('chat');
+  return (
+    <details className="mb-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs dark:bg-slate-800/40">
+      <summary className="cursor-pointer select-none text-slate-500">
+        {streaming ? t('reasoning.streaming') : t('reasoning.heading')}
+      </summary>
+      <pre className="mt-1 max-h-64 overflow-y-auto whitespace-pre-wrap font-sans text-slate-500">
+        {text}
+      </pre>
+    </details>
+  );
+}
+
 function AskHeading({ time, children }: { time?: string; children: ReactNode }) {
   const { t } = useTranslation('chat');
   return (
@@ -318,7 +338,12 @@ function CogetoMark() {
  */
 const SUGGESTED_PROMPT_IDS = ['promisedThisWeek', 'openCommitments', 'changedSince', 'whoInvolved'];
 
-type ChatMessage = { id: string; role: 'user' | 'assistant'; content: string };
+type ChatMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  thinking?: string | null;
+};
 type Turn = { key: string; question?: ChatMessage; answer?: ChatMessage };
 
 /** Pair the alternating message stream into ask → briefing turns. */
@@ -380,6 +405,9 @@ export function Chat({ session }: { session: Session }) {
   const [failMessage, setFailMessage] = useState<string | null>(null);
   const [liveQuestion, setLiveQuestion] = useState<string | null>(null);
   const [liveText, setLiveText] = useState('');
+  /** The reasoning channel, streamed live (Part C): shown collapsed above the
+   * answer, and nothing renders when the model does not think. */
+  const [liveThinking, setLiveThinking] = useState('');
   const [liveFacts, setLiveFacts] = useState<ChatFactDto[]>([]);
   /** The latest answer's research offer (0046) — ephemeral, cleared on the next ask. */
   const [offer, setOffer] = useState<ChatResearchOffer | null>(null);
@@ -447,6 +475,7 @@ export function Chat({ session }: { session: Session }) {
     setBusy(false);
     setLiveQuestion(null);
     setLiveText('');
+    setLiveThinking('');
     setLiveFacts([]);
     setOffer(null);
     setInlineRun(null);
@@ -492,6 +521,7 @@ export function Chat({ session }: { session: Session }) {
     setDraft('');
     setLiveQuestion(content);
     setLiveText('');
+    setLiveThinking('');
     setLiveFacts([]);
     setOffer(null);
     setSkillRunId(null);
@@ -548,6 +578,7 @@ export function Chat({ session }: { session: Session }) {
     void queryClient.invalidateQueries({ queryKey: ['conversations'] });
     setLiveQuestion(null);
     setLiveText('');
+    setLiveThinking('');
     setLiveFacts([]);
     setBusy(false);
   };
@@ -663,6 +694,9 @@ export function Chat({ session }: { session: Session }) {
                   {turn.answer && (
                     <div id={`msg-${turn.answer.id}`}>
                       <AnswerBlock>
+                        {turn.answer.thinking && (
+                          <ReasoningDisclosure text={turn.answer.thinking} />
+                        )}
                         <MessageBody
                           session={session}
                           content={turn.answer.content}
@@ -678,6 +712,9 @@ export function Chat({ session }: { session: Session }) {
                 <article>
                   <AskHeading>{liveQuestion}</AskHeading>
                   <AnswerBlock>
+                    {liveThinking && (
+                      <ReasoningDisclosure text={liveThinking} streaming={!liveText} />
+                    )}
                     <div aria-live="polite" aria-busy={!liveText}>
                       {liveText ? (
                         <MessageBody
@@ -686,7 +723,7 @@ export function Chat({ session }: { session: Session }) {
                           facts={liveFacts}
                           onOpenMemory={setOpenMemoryId}
                         />
-                      ) : (
+                      ) : liveThinking ? null : (
                         <ThinkingDots
                           label={
                             liveFacts.length > 0

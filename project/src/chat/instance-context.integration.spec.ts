@@ -4,6 +4,7 @@ import { startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
 import { UserDirectory } from '../identity/index';
 import { ModelGateway } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import { formatNow, UserContextService } from '../infrastructure/index';
 import type { RetrievalService } from '../retrieval/index';
 import { ChatService } from './chat.service';
@@ -34,9 +35,9 @@ class ScriptedGateway extends ModelGateway {
   complete(): never {
     throw new Error('no completion expected');
   }
-  async *completeStream(request: { input: string }): AsyncIterable<string> {
+  async *completeStream(request: { input: string }): AsyncIterable<StreamDelta> {
     this.streamCalls.push(request.input);
-    yield this.streamText;
+    yield { channel: 'text', text: this.streamText } as const;
   }
   async embed(texts: string[]): Promise<number[][]> {
     return texts.map(() => [0, 0, 0, 0]);

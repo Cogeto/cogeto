@@ -13,6 +13,7 @@ import type {
   NewFact,
 } from '../memory/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { DreamingService } from './dreaming.service';
@@ -42,7 +43,7 @@ class CountingJudgeGateway extends ModelGateway {
     throw new Error('not used');
   }
   // eslint-disable-next-line require-yield -- not used by dreaming
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('not used');
   }
   async embed(): Promise<number[][]> {

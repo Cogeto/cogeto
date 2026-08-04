@@ -14,6 +14,7 @@ import type { MemoryStore } from '../memory/index';
 import { createIngestionPipeline, createSuppressedFactLog } from '../ingestion/index';
 import { UserDirectory } from '../identity/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import type { ZodType } from 'zod';
 import { RetrievalService } from '../retrieval/index';
@@ -60,9 +61,9 @@ class ScriptedGateway extends ModelGateway {
   complete(): never {
     throw new Error('unused');
   }
-  async *completeStream(request: { input: string }): AsyncIterable<string> {
+  async *completeStream(request: { input: string }): AsyncIterable<StreamDelta> {
     this.streamCalls.push(request.input);
-    yield this.streamText;
+    yield { channel: 'text', text: this.streamText } as const;
   }
   async embed(texts: string[]): Promise<number[][]> {
     return texts.map((t) => fakeEmbedding(t, DIMS));
@@ -88,7 +89,7 @@ class CaptureGateway extends ModelGateway {
     throw new Error('unused');
   }
   // eslint-disable-next-line require-yield -- unused
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('unused');
   }
   async embed(texts: string[]): Promise<number[][]> {

@@ -161,12 +161,26 @@ export const indexSchema = z.array(indexEntrySchema);
  * construction. Ids are the website's join key — the derivation (preset name
  * or the full per-tier form, `-redacted` suffix) lives with the resolver.
  */
-export function configurationForEmission(providers: ResolvedModelProviders): {
+export function configurationForEmission(
+  providers: ResolvedModelProviders,
+  options: {
+    /**
+     * PROBED reasoning state (reasoning support Part C, honesty rule 3): a run
+     * with thinking on is a different measurement, so the marker joins the id
+     * the way `--vis-` does. Appended HERE, at emission time, rather than in
+     * the resolver: whether a binding reasons is a runtime fact the static
+     * resolver cannot know, and only emission labels a measurement. A
+     * Mistral-routed run probes false and emits the unchanged id, so every
+     * existing artifact, gate and cached fixture is untouched.
+     */
+    reasoning?: boolean;
+  } = {},
+): {
   id: string;
   models: { pipeline: string; answer: string; embedding: string };
 } {
   return {
-    id: providers.id,
+    id: options.reasoning ? `${providers.id}--reasoning` : providers.id,
     models: {
       pipeline: providers.tiers.pipeline.model,
       answer: providers.tiers.answer.model,

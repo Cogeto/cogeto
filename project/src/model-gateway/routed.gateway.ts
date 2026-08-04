@@ -7,6 +7,7 @@ import type {
   GatewayReachability,
   StructuredExtractionRequest,
   VisionRequest,
+  StreamDelta,
 } from './model-gateway.service';
 
 export interface TierRoutes {
@@ -34,7 +35,7 @@ export class TierRoutedModelGateway extends ModelGateway {
     return this.routes[request.tier ?? 'answer'].complete(request);
   }
 
-  completeStream(request: CompletionRequest): AsyncIterable<string> {
+  completeStream(request: CompletionRequest): AsyncIterable<StreamDelta> {
     return this.routes[request.tier ?? 'answer'].completeStream(request);
   }
 

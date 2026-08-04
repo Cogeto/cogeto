@@ -4,6 +4,7 @@ import { startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
 import { UserDirectory } from '../identity/index';
 import { ModelGateway } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import type { RetrievalService } from '../retrieval/index';
 import type { ChatResearchProposal, ChatResearchResolverPort } from './chat-research-resolver.port';
 import { ChatService } from './chat.service';
@@ -49,7 +50,7 @@ class InertGateway extends ModelGateway {
     throw new Error('no completion expected');
   }
   // eslint-disable-next-line require-yield -- ordinary-question path is stubbed to no facts
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('no stream expected');
   }
   async embed(texts: string[]): Promise<number[][]> {

@@ -23,6 +23,7 @@ import {
 } from '../ingestion/index';
 import type { IngestionPipeline } from '../ingestion/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import { MemoryStore } from './memory.store';
 import { MemoryReconciliation } from './reconciliation';
@@ -64,7 +65,7 @@ class SlowExtractionGateway extends ModelGateway {
     throw new Error('complete() is not used by the pipeline');
   }
   // eslint-disable-next-line require-yield -- not used by the pipeline
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('completeStream() is not used by the pipeline');
   }
   async embed(texts: string[]): Promise<number[][]> {

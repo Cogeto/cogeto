@@ -9,6 +9,7 @@ import type {
   CompletionResult,
   ResolvedModelProviders,
   StructuredExtractionRequest,
+  StreamDelta,
 } from '../model-gateway/index';
 
 /**
@@ -342,7 +343,7 @@ export class CachingModelGateway extends ModelGateway {
    * full text and score that, so chunk boundaries are not observable; nothing
    * that is scored depends on them.
    */
-  async *completeStream(request: CompletionRequest): AsyncIterable<string> {
+  async *completeStream(request: CompletionRequest): AsyncIterable<StreamDelta> {
     const model = this.modelFor(request.tier, 'answer');
     const key = evalCacheKey({
       op: 'complete',
@@ -353,13 +354,16 @@ export class CachingModelGateway extends ModelGateway {
     });
     const hit = this.options.store.getText(key);
     if (hit !== undefined) {
-      yield hit;
+      yield { channel: 'text', text: hit };
       return;
     }
     if (this.options.mode === 'replay') throw this.miss('stream', request.input);
+    // The TEXT channel only is recorded (Part A): thinking is never evaluated
+    // (honesty rule 2), so a fixture that froze it would be a measurement of
+    // something the harness must not measure.
     let assembled = '';
     for await (const delta of this.inner.completeStream(request)) {
-      assembled += delta;
+      if (delta.channel === 'text') assembled += delta.text;
       yield delta;
     }
     this.options.store.putText(key, {

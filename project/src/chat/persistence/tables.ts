@@ -44,6 +44,14 @@ export const chatMessage = pgTable(
       .references(() => conversation.id),
     role: chatRoleEnum('role').notNull(),
     content: text('content').notNull(),
+    /**
+     * The model's displayed deliberation (Part C of reasoning support,
+     * migration 0044): a CHANNEL beside the answer, never content. Null for
+     * user rows and non-reasoning models. Content-bearing, so the answer
+     * redaction cascade nulls it with the content overwrite, and row deletion
+     * takes it implicitly.
+     */
+    thinking: text('thinking'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

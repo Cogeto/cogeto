@@ -12,6 +12,7 @@ import type { TestDatabase, TestMinio, TestQdrant } from '../../testing/index';
 import { createMemoryStore, MemoryObjectStore, reindexMemories } from '../../memory/index';
 import type { MemoryStore } from '../../memory/index';
 import { ModelGateway } from '../../model-gateway/index';
+import type { StreamDelta } from '../../model-gateway/index';
 import { assertEndState, inspectEndState } from './assertions';
 import { fileObjectKeys, truncateDomainTables } from './ops';
 
@@ -33,7 +34,7 @@ class FakeGateway extends ModelGateway {
     throw new Error('unused');
   }
   // eslint-disable-next-line require-yield -- unused
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('unused');
   }
   async embed(texts: string[]): Promise<number[][]> {

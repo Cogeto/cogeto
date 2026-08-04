@@ -4,6 +4,7 @@ import type { Principal } from '@cogeto/shared';
 import { fakeEmbedding, startTestDatabase, startTestQdrant } from '../testing/index';
 import type { TestDatabase, TestQdrant } from '../testing/index';
 import { ModelGateway } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import { MemoryStore } from './memory.store';
 import type { NewFact } from './memory.store';
 import { runMemoryEmbedJob } from './embed-job';
@@ -34,7 +35,7 @@ class FakeEmbedGateway extends ModelGateway {
     throw new Error('not used');
   }
   // eslint-disable-next-line require-yield -- not used
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('not used');
   }
   extractStructured<T>(): Promise<T> {

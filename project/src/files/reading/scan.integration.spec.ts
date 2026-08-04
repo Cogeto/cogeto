@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PDF_CONTENT_TYPE } from '@cogeto/shared';
 import { makeScannedPdf } from '../../testing/index';
 import { ModelGateway } from '../../model-gateway/index';
+import type { StreamDelta } from '../../model-gateway/index';
 import type { CompletionResult, VisionRequest } from '../../model-gateway/index';
 import { VisionUnavailableError } from '../../model-gateway/index';
 import { ocrAvailable } from './ocr';
@@ -50,7 +51,7 @@ class ScriptedVision extends ModelGateway {
     throw new Error('unused');
   }
   // eslint-disable-next-line require-yield -- unused here
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('unused');
   }
   extractStructured(): never {

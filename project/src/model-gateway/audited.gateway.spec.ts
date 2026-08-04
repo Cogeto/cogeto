@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import type { ZodType } from 'zod';
 import { ModelGateway } from './model-gateway.service';
+import type { StreamDelta } from './model-gateway.service';
 import type { CompletionRequest, StructuredExtractionRequest } from './model-gateway.service';
 import { AuditedModelGateway } from './audited.gateway';
 import { createModelGateway } from './factory';
@@ -23,9 +24,9 @@ class RecordingGateway extends ModelGateway {
   async complete(_request: CompletionRequest) {
     return { text: SECRET_OUTPUT, usage: { inputTokens: 11, outputTokens: 7 } };
   }
-  async *completeStream(_request: CompletionRequest): AsyncIterable<string> {
-    yield SECRET_OUTPUT.slice(0, 5);
-    yield SECRET_OUTPUT.slice(5);
+  async *completeStream(_request: CompletionRequest): AsyncIterable<StreamDelta> {
+    yield { channel: 'text', text: SECRET_OUTPUT.slice(0, 5) } as const;
+    yield { channel: 'text', text: SECRET_OUTPUT.slice(5) } as const;
   }
   async extractStructured<T>(schema: ZodType<T, unknown>, _r: StructuredExtractionRequest) {
     return schema.parse({ claim: SECRET_OUTPUT });

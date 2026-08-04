@@ -46,7 +46,13 @@ export class ChatAnswerCascade implements DerivedCascade {
       );
       const updated = await tx
         .update(chatMessage)
-        .set({ content: CHAT_ANSWER_REDACTED })
+        .set({
+          content: CHAT_ANSWER_REDACTED,
+          // Reasoning ABOUT an erased memory goes with the citation that
+          // grounded it (Part C): the thinking channel is content-bearing and
+          // must not outlive the answer it deliberated.
+          thinking: null,
+        })
         .where(and(eq(chatMessage.role, 'assistant'), or(...citeMatches)))
         .returning({ id: chatMessage.id });
       redacted += updated.length;

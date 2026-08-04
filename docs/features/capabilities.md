@@ -65,10 +65,11 @@ The probe reads the reasoning field only as a yes/no. The thinking text is
 discarded in the adapter: it is never stored, verified, cited, displayed or
 evaluated, and it can never reach the JSON parser behind structured
 extraction. Displaying it as a channel is Parts A and C of the reasoning
-design, deliberately not this. The configuration fingerprint does not yet
-carry a reasoning marker for the same reason: whether a binding reasons is a
-probed runtime fact, and the fingerprint is derived before any probe can run;
-the marker lands with the channel in Part C.
+design, deliberately not this. The configuration fingerprint carries the
+reasoning marker at EMISSION time (Parts A and C): whether a binding reasons
+is a probed runtime fact the static resolver cannot know, so the trust-artifact
+id gains `--reasoning` from the same probe when a measurement is emitted, and
+never anywhere else. Full narrative: [`reasoning.md`](reasoning.md).
 
 ## Thresholds
 

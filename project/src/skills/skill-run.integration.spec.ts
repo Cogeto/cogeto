@@ -10,6 +10,7 @@ import type { TestDatabase, TestQdrant } from '../testing/index';
 import { createMemoryStore, createMemorySystemStore, MemoryReconciliation } from '../memory/index';
 import type { MemoryObjectStore, MemoryStore, MemorySystemStore } from '../memory/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import type {
   CompletionRequest,
   CompletionResult,
@@ -95,7 +96,7 @@ class SkillGateway extends ModelGateway {
     return { text: this.briefText };
   }
   // eslint-disable-next-line require-yield -- unused
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('unused');
   }
   async embed(texts: string[]): Promise<number[][]> {

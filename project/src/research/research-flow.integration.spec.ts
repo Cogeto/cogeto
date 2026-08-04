@@ -9,6 +9,7 @@ import type { TestDatabase, TestQdrant } from '../testing/index';
 import { createMemoryStore, MemoryReconciliation } from '../memory/index';
 import type { MemoryObjectStore, MemoryStore } from '../memory/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import type { CompletionResult, StructuredExtractionRequest } from '../model-gateway/index';
 import {
   createSuppressedFactLog,
@@ -60,7 +61,7 @@ class FlowGateway extends ModelGateway {
     return { text: this.answerText };
   }
   // eslint-disable-next-line require-yield -- unused
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('unused');
   }
   async embed(texts: string[]): Promise<number[][]> {

@@ -5,6 +5,7 @@ import type { TestDatabase, TestQdrant } from '../testing/index';
 import { createMemoryStore } from '../memory/index';
 import type { MemoryStore, NewFact } from '../memory/index';
 import { ModelGateway } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import type { CompletionRequest } from '../model-gateway/index';
 import { UserDirectory } from '../identity/index';
 import { ChatService } from './chat.service';
@@ -49,11 +50,16 @@ class ScriptedChatGateway extends ModelGateway {
   embeddingModelId(): string {
     return MODEL;
   }
-  async *completeStream(request: CompletionRequest): AsyncIterable<string> {
+  /** Thinking deltas emitted before the answer (Part C tests). */
+  thinkingDeltas: string[] = [];
+
+  async *completeStream(request: CompletionRequest): AsyncIterable<StreamDelta> {
     this.streamRequests.push(request);
-    yield 'You owe Maja the draft contract before Thursday ';
-    yield '[F1]';
-    yield '.';
+    for (const thinking of this.thinkingDeltas)
+      yield { channel: 'thinking', text: thinking } as const;
+    yield { channel: 'text', text: 'You owe Maja the draft contract before Thursday ' } as const;
+    yield { channel: 'text', text: '[F1]' } as const;
+    yield { channel: 'text', text: '.' } as const;
   }
 }
 
@@ -211,5 +217,43 @@ describe('chat (integration, real Postgres + real Qdrant, gateway mocked)', () =
       void event;
     }
     expect(await counts()).toEqual(afterFirst);
+  });
+
+  it('chat_thinking (Part C): streamed as its own event, stored beside the answer, never inside it', async () => {
+    gateway.thinkingDeltas = ['Considering the retrieved facts. ', 'Deciding on the citation. '];
+    try {
+      const conversationId = (await chat.createConversation(userA)).id;
+      const events: import('@cogeto/shared').ChatStreamEvent[] = [];
+      for await (const event of chat.ask(userA, 'What do I owe Maja?', conversationId)) {
+        events.push(event);
+      }
+
+      const thinkingEvents = events.filter((event) => event.type === 'thinking');
+      expect(thinkingEvents.map((event) => (event as { text: string }).text)).toEqual([
+        'Considering the retrieved facts. ',
+        'Deciding on the citation. ',
+      ]);
+      // The thinking never leaks into the answer text or its stored form.
+      const done = events.find((event) => event.type === 'done') as { content: string };
+      expect(done.content).not.toContain('Considering the retrieved facts.');
+
+      const row = await tdb.pool.query<{ thinking: string | null; content: string }>(
+        `SELECT thinking, content FROM chat_message
+         WHERE conversation_id = $1 AND role = 'assistant'
+         ORDER BY created_at DESC LIMIT 1`,
+        [conversationId],
+      );
+      expect(row.rows[0]!.thinking).toBe(
+        'Considering the retrieved facts. Deciding on the citation. ',
+      );
+      expect(row.rows[0]!.content).not.toContain('Considering');
+
+      // The message page DTO carries it for reopening the conversation.
+      const page = await chat.listMessages(userA, conversationId, { limit: 10 });
+      const assistant = page.items.find((message) => message.role === 'assistant');
+      expect(assistant?.thinking).toContain('Deciding on the citation.');
+    } finally {
+      gateway.thinkingDeltas = [];
+    }
   });
 });

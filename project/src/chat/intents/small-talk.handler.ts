@@ -48,20 +48,31 @@ export class SmallTalkHandler {
     yield { type: 'sources', facts: [] };
     const prompt = await this.sink.getPrompt();
     let buffer = '';
+    let thinking = '';
     const stream = this.gateway.completeStream({
       system: prompt.content,
       input: buildSmallTalkInput(history, content, contextBlock),
       tier: 'answer',
     });
-    for await (const text of stream) {
-      buffer += text;
-      yield { type: 'token', text };
+    for await (const delta of stream) {
+      if (delta.channel === 'thinking') {
+        thinking += delta.text;
+        yield { type: 'thinking', text: delta.text };
+        continue;
+      }
+      buffer += delta.text;
+      yield { type: 'token', text: delta.text };
     }
     const { text: stored, violations } = toStoredAnswer(buffer, []);
     if (violations > 0) {
       this.sink.logWarn(`citation_violation stripped=${violations}`);
     }
-    const row = await this.sink.storeAssistant(principal, conversationId, stored);
+    const row = await this.sink.storeAssistant(
+      principal,
+      conversationId,
+      stored,
+      thinking.trim() ? thinking : null,
+    );
     yield { type: 'done', messageId: row.id, content: stored, citationViolations: violations };
   }
 }

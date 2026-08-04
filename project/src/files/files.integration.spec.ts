@@ -17,6 +17,7 @@ import {
 } from '../testing/index';
 import type { TestDatabase, TestMinio, TestQdrant } from '../testing/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import {
   createMemoryReconciliation,
@@ -88,7 +89,7 @@ class ScriptedGateway extends ModelGateway {
     throw new Error('complete() is not used by the pipeline');
   }
   // eslint-disable-next-line require-yield -- not used by the pipeline
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     throw new Error('completeStream() is not used by the pipeline');
   }
   async embed(texts: string[]): Promise<number[][]> {

@@ -76,13 +76,29 @@ export interface StructuredExtractionRequest {
   tier?: ModelTier;
 }
 
+/**
+ * One streamed delta (Part A of reasoning support): the seam yields
+ * channel-tagged text instead of bare strings, because a reasoning model
+ * produces two interleaved streams and only one of them is the answer.
+ *
+ * `thinking` is a CHANNEL, not content: it is displayed live and stored beside
+ * the chat message it explains, and it is never captured, cited, verified, or
+ * evaluated. A non-reasoning model only ever yields `text` deltas — the same
+ * bytes it always yielded, one field deeper.
+ */
+export interface StreamDelta {
+  channel: 'thinking' | 'text';
+  text: string;
+}
+
 export abstract class ModelGateway {
   abstract complete(request: CompletionRequest): Promise<CompletionResult>;
   /**
-   * Streaming completion for the fast path (chat, spec §3.4): yields text deltas in
-   * order. Same seam rule as everything else — no provider types leak out.
+   * Streaming completion for the fast path (chat, spec §3.4): yields
+   * channel-tagged deltas in order (Part A). Same seam rule as everything
+   * else — no provider types leak out.
    */
-  abstract completeStream(request: CompletionRequest): AsyncIterable<string>;
+  abstract completeStream(request: CompletionRequest): AsyncIterable<StreamDelta>;
   /**
    * Requests JSON output, parses it, and validates it against the Zod schema.
    * The input type is free so schemas may use.default for omitted fields.

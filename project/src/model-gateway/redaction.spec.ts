@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import type { ZodType } from 'zod';
 import { ModelGateway } from './model-gateway.service';
+import type { StreamDelta } from './model-gateway.service';
 import type {
   CompletionRequest,
   CompletionResult,
@@ -54,6 +55,8 @@ class RecordingUpstream extends ModelGateway {
   lastInput: string | null = null;
   embedInputs: string[] = [];
   called = false;
+  /** Thinking deltas the fake emits before the text (Part A tests). */
+  thinkingDeltas: string[] = [];
 
   async complete(request: CompletionRequest): Promise<CompletionResult> {
     this.called = true;
@@ -61,10 +64,13 @@ class RecordingUpstream extends ModelGateway {
     // The model echoes the pseudonymized entities in its answer.
     return { text: `Noted: ${request.input}` };
   }
-  async *completeStream(request: CompletionRequest): AsyncIterable<string> {
+  async *completeStream(request: CompletionRequest): AsyncIterable<StreamDelta> {
     this.called = true;
     this.lastInput = request.input;
-    for (const piece of ['Sending to ', '[person2]', ' now.']) yield piece;
+    for (const thinking of this.thinkingDeltas)
+      yield { channel: 'thinking', text: thinking } as const;
+    for (const piece of ['Sending to ', '[person2]', ' now.'])
+      yield { channel: 'text', text: piece } as const;
   }
   async extractStructured<T>(
     _schema: ZodType<T, unknown>,
@@ -131,9 +137,21 @@ describe('redaction_in_path', () => {
     const gateway = new RedactingModelGateway(upstream, new FakeRedactor());
 
     let text = '';
-    for await (const delta of gateway.completeStream({ input: NOTE })) text += delta;
+    for await (const delta of gateway.completeStream({ input: NOTE })) text += delta.text;
 
     expect(text).toBe('Sending to Marko now.');
+  });
+
+  it('thinking is STRIPPED under redaction — fail closed, the vision posture (Part A)', async () => {
+    const upstream = new RecordingUpstream();
+    upstream.thinkingDeltas = ['deliberating about [person1]... '];
+    const gateway = new RedactingModelGateway(upstream, new FakeRedactor());
+
+    const seen: { channel: string; text: string }[] = [];
+    for await (const delta of gateway.completeStream({ input: NOTE })) seen.push(delta);
+
+    expect(seen.every((delta) => delta.channel === 'text')).toBe(true);
+    expect(seen.map((delta) => delta.text).join('')).toBe('Sending to Marko now.');
   });
 });
 

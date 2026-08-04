@@ -5,6 +5,7 @@ import type { TestDatabase, TestQdrant } from '../testing/index';
 import { createMemoryStore } from '../memory/index';
 import type { MemoryStore } from '../memory/index';
 import { ModelGateway } from '../model-gateway/index';
+import type { StreamDelta } from '../model-gateway/index';
 import { UserDirectory } from '../identity/index';
 import { ChatService } from './chat.service';
 import { RetrievalService } from '../retrieval/index';
@@ -42,7 +43,7 @@ class NoAnswerGateway extends ModelGateway {
     return 'test-embed';
   }
   // eslint-disable-next-line require-yield -- must not be used
-  async *completeStream(): AsyncIterable<string> {
+  async *completeStream(): AsyncIterable<StreamDelta> {
     this.streamCalls += 1;
     throw new Error('reply intent must not stream an answer');
   }

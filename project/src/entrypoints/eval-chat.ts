@@ -37,7 +37,12 @@ import {
 import { ChatSkillResolver, SkillEngine, SkillPlanner, SkillRunService } from '../skills/index';
 import type { ResearchOptions } from '../research/index';
 import { InMemoryDailyCounters } from '../infrastructure/index';
-import { createModelGateway, loadPrompt, ModelGateway } from '../model-gateway/index';
+import {
+  createModelGateway,
+  loadPrompt,
+  ModelGateway,
+  probeReasoning,
+} from '../model-gateway/index';
 import type { ResolvedModelProviders } from '../model-gateway/index';
 import { resolveEvalProviders, requireConfiguredProviders } from './eval-env';
 import { EVAL_SCORING_VERSION, evalCacheModeFromEnv, wrapWithEvalCache } from './eval-cache';
@@ -1098,8 +1103,12 @@ async function main(): Promise<void> {
       process.exit(2);
     }
     // The ACTIVE configuration, from the same resolver the gateway was built
-    // with — id and models are exact by construction.
-    const { id, models } = configurationForEmission(providers);
+    // with — id and models are exact by construction. The reasoning probe
+    // mirrors eval.ts exactly, so the partial-merge id guard holds (Part C).
+    const reasoningProbe = await probeReasoning(gateway, providers);
+    const { id, models } = configurationForEmission(providers, {
+      reasoning: reasoningProbe.reasoning,
+    });
     emitPartial(emitPath, {
       schema_version: TRUST_SCORES_SCHEMA_VERSION,
       harness: `chat ${ANSWER_PROMPT.family}/${ANSWER_PROMPT.version} · grader ${COVERAGE_PROMPT.family}/${COVERAGE_PROMPT.version}`,

@@ -144,8 +144,12 @@ export class ChatService {
   /** The handlers' narrow view of this service (see intent-plumbing). */
   private sink(): ChatTurnSink {
     return {
-      storeAssistant: (principal: Principal, conversationId: string, content: string) =>
-        this.storeAssistant(principal, conversationId, content),
+      storeAssistant: (
+        principal: Principal,
+        conversationId: string,
+        content: string,
+        thinking?: string | null,
+      ) => this.storeAssistant(principal, conversationId, content, thinking ?? null),
       getPrompt: () => this.getPrompt(),
       logWarn: (message: string) => this.logger.warn(message),
     };
@@ -281,6 +285,7 @@ export class ChatService {
         id: row.id,
         role: row.role,
         content: row.content,
+        thinking: row.thinking,
         createdAt: row.createdAt.toISOString(),
       })),
       total: totalRows[0]?.count ?? 0,
@@ -632,10 +637,11 @@ export class ChatService {
     principal: Principal,
     conversationId: string,
     content: string,
+    thinking: string | null = null,
   ): Promise<{ id: string }> {
     const [row] = await this.db
       .insert(chatMessage)
-      .values({ ownerId: principal.userId, conversationId, role: 'assistant', content })
+      .values({ ownerId: principal.userId, conversationId, role: 'assistant', content, thinking })
       .returning();
     await this.touchConversation(conversationId, row!.createdAt);
     await this.maybeRequestTitle(principal, conversationId);

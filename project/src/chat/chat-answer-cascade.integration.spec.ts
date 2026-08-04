@@ -41,7 +41,12 @@ describe(' chat-answer cascade (integration: real Postgres, real saga)', () => {
 
   // Messages need a container since — one per owner is enough here.
   const conversationIds = new Map<string, string>();
-  const insertMessage = async (ownerId: string, role: 'user' | 'assistant', content: string) => {
+  const insertMessage = async (
+    ownerId: string,
+    role: 'user' | 'assistant',
+    content: string,
+    thinking: string | null = null,
+  ) => {
     let conversationId = conversationIds.get(ownerId);
     if (!conversationId) {
       const [conv] = await tdb.db.insert(conversation).values({ ownerId }).returning();
@@ -50,7 +55,7 @@ describe(' chat-answer cascade (integration: real Postgres, real saga)', () => {
     }
     const [row] = await tdb.db
       .insert(chatMessage)
-      .values({ ownerId, conversationId, role, content })
+      .values({ ownerId, conversationId, role, content, thinking })
       .returning({ id: chatMessage.id });
     return row!.id;
   };
@@ -82,6 +87,8 @@ describe(' chat-answer cascade (integration: real Postgres, real saga)', () => {
       userA.userId,
       'assistant',
       `The renewal is agreed {{cite:${m1.id}}}.`,
+      // Reasoning about the memory being erased (Part C): must go with it.
+      'The Novira renewal fact seems most relevant here.',
     );
     const citingOther = await insertMessage(
       userA.userId,
@@ -105,6 +112,13 @@ describe(' chat-answer cascade (integration: real Postgres, real saga)', () => {
     // owner's AND the peer's (erasure is erasure); the timeline rows survive.
     expect(await contentOf(citing)).toBe(CHAT_ANSWER_REDACTED);
     expect(await contentOf(peerCiting)).toBe(CHAT_ANSWER_REDACTED);
+    // The thinking channel goes with the answer it deliberated (Part C):
+    // reasoning ABOUT an erased memory must not survive its citation.
+    const { rows: thinkingRows } = await tdb.pool.query<{ thinking: string | null }>(
+      `SELECT thinking FROM chat_message WHERE id = $1`,
+      [citing],
+    );
+    expect(thinkingRows[0]!.thinking).toBeNull();
     // An answer citing a different memory and the user's own words are untouched.
     expect(await contentOf(citingOther)).toContain(other.id);
     expect(await contentOf(userTurn)).toContain(m1.id);

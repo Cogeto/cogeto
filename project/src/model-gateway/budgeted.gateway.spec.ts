@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ZodType } from 'zod';
 import { z } from 'zod';
 import { ModelGateway } from './model-gateway.service';
+import type { StreamDelta } from './model-gateway.service';
 import type { CompletionRequest, StructuredExtractionRequest } from './model-gateway.service';
 import { BudgetedModelGateway } from './budgeted.gateway';
 import { ModelBudgetExceededError } from './errors';
@@ -10,14 +11,18 @@ import type { ModelUsageMeter } from '../infrastructure/index';
 /** A gateway that records what it was asked and returns canned output. */
 class RecordingGateway extends ModelGateway {
   calls = 0;
+  /** Thinking deltas emitted before the text (Part A: charged like text). */
+  thinkingDeltas: string[] = [];
   async complete(_request: CompletionRequest) {
     this.calls++;
     return { text: 'the answer text' };
   }
-  async *completeStream(_request: CompletionRequest): AsyncIterable<string> {
+  async *completeStream(_request: CompletionRequest): AsyncIterable<StreamDelta> {
     this.calls++;
-    yield 'hello ';
-    yield 'world';
+    for (const thinking of this.thinkingDeltas)
+      yield { channel: 'thinking', text: thinking } as const;
+    yield { channel: 'text', text: 'hello ' } as const;
+    yield { channel: 'text', text: 'world' } as const;
   }
   async extractStructured<T>(
     schema: ZodType<T, unknown>,
@@ -95,9 +100,30 @@ describe('BudgetedModelGateway', () => {
     const gateway = new BudgetedModelGateway(inner, meter);
 
     let text = '';
-    for await (const delta of gateway.completeStream({ input: 'question' })) text += delta;
+    for await (const delta of gateway.completeStream({ input: 'question' })) text += delta.text;
     expect(text).toBe('hello world');
     expect(meter.records).toHaveLength(1);
+  });
+
+  it('thinking is CHARGED (Part A ruling): reasoning tokens cost real money', async () => {
+    const plain = new RecordingGateway();
+    const plainMeter = new FakeMeter();
+    for await (const _ of new BudgetedModelGateway(plain, plainMeter).completeStream({
+      input: 'question',
+    })) {
+      void _;
+    }
+
+    const reasoning = new RecordingGateway();
+    reasoning.thinkingDeltas = ['a long deliberation before the same answer '];
+    const reasoningMeter = new FakeMeter();
+    for await (const _ of new BudgetedModelGateway(reasoning, reasoningMeter).completeStream({
+      input: 'question',
+    })) {
+      void _;
+    }
+
+    expect(reasoningMeter.records[0]!.tokens).toBeGreaterThan(plainMeter.records[0]!.tokens);
   });
 
   it('extractStructured stays validated and metered', async () => {

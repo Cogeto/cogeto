@@ -188,10 +188,15 @@ Re-anchoring after an edit is the reprocess action, superseding via reconcile.
 The plan-named golden cases gate it and the eval fixtures were refreshed
 Mistral-routed: [`docs/features/anchoring.md`](docs/features/anchoring.md).
 
-Work proceeds through the V2 plan in order, with one owner-approved insertion:
-reasoning-model support Part B (the probed `reasoning` capability and the
-maxTokens headroom) landed 2026-08-04; Parts A (the thinking channel) and C
-(storage and UI) follow after V2.1 item 4.2.
+Work proceeds through the V2 plan in order, with one owner-approved insertion,
+now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).
+Thinking is a CHANNEL, not content: `completeStream` yields channel-tagged
+deltas, the budget charges thinking, redaction strips it fail-closed, chat
+stores it (`chat_message.thinking`, migration 0044) and shows it as a
+collapsed live disclosure, the answer-redaction cascade erases it with its
+answer, and the trust-artifact id gains a probed `--reasoning` marker at
+emission time only. Never captured, cited, verified, or evaluated:
+[`docs/features/reasoning.md`](docs/features/reasoning.md).
 
 ## Delivery loop
 

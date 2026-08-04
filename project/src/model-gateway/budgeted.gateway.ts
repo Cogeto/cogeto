@@ -6,6 +6,7 @@ import type {
   GatewayReachability,
   StructuredExtractionRequest,
   VisionRequest,
+  StreamDelta,
 } from './model-gateway.service';
 import { ModelBudgetExceededError } from './errors';
 import type { ModelUsageMeter } from '../infrastructure/index';
@@ -52,11 +53,14 @@ export class BudgetedModelGateway extends ModelGateway {
     return result;
   }
 
-  async *completeStream(request: CompletionRequest): AsyncIterable<string> {
+  async *completeStream(request: CompletionRequest): AsyncIterable<StreamDelta> {
     const userId = await this.gate();
+    // BOTH channels are charged (Part A ruling): thinking costs real tokens
+    // at the provider, and on a reasoning model it is most of them — leaving
+    // it out would under-report spend several times over.
     let output = '';
     for await (const delta of this.inner.completeStream(request)) {
-      output += delta;
+      output += delta.text;
       yield delta;
     }
     await this.charge(userId, request.input, output);

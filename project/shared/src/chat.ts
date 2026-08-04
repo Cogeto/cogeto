@@ -41,6 +41,10 @@ export interface ChatMessageDto {
   id: string;
   role: ChatRole;
   content: string;
+  /** The model's displayed deliberation (Part C of reasoning support), when a
+   * reasoning model produced one. A CHANNEL, never content: not capturable,
+   * not citable, not evaluated. Null for user rows and non-reasoning models. */
+  thinking: string | null;
   createdAt: string;
 }
 
@@ -105,6 +109,10 @@ export interface ChatResearchProposalRef {
 
 /** Server-sent events on POST /api/chat, in order: sources → token* → done. */
 export type ChatStreamEvent =
+  /** A reasoning delta (Part C): displayed live in the collapsed Thinking
+   * disclosure. Interleaves with `token` events; absent entirely for a
+   * non-reasoning model. */
+  | { type: 'thinking'; text: string }
   | { type: 'sources'; facts: ChatFactDto[] }
   | { type: 'token'; text: string }
   | {
