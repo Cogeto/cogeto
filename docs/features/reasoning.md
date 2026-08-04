@@ -30,7 +30,7 @@ measurement.
 
 ## Part B: the probed capability (delivered first, separately)
 
-Whether a configuration reasons cannot be read off a model name — the same
+Whether a configuration reasons cannot be read off a model name: the same
 weights are served both ways. So it is probed, like vision: a trivial prompt
 at boot and per registry window, the answer surfaced on the capability panel
 and boot banner. When on, every `maxTokens` is multiplied by
@@ -45,7 +45,7 @@ masquerading as "returned no text". Details:
 `ModelGateway.completeStream` yields channel-tagged deltas
 (`{channel: 'thinking' | 'text', text}`). The OpenAI-compatible adapter
 surfaces `reasoning_content` (llama.cpp, DeepSeek), `reasoning` (OpenAI-style)
-and `thinking` (Ollama) deltas on the thinking channel — and a thinking delta
+and `thinking` (Ollama) deltas on the thinking channel, and a thinking delta
 also arms the Part B headroom, so live chat traffic teaches the adapter too.
 Mistral yields text only; Anthropic maps `thinking_delta` blocks although
 Cogeto never requests extended thinking. A non-reasoning model yields the
@@ -54,9 +54,9 @@ same bytes it always did, one field deeper.
 The four decorators keep their contracts, two by explicit ruling:
 
 - **The budget charges BOTH channels.** Thinking costs real tokens at the
-  provider — on the reference reasoning model it is most of them — and a
+  provider, and on the reference reasoning model it is most of them; a
   meter that ignored it would under-report spend several times over.
-- **Redaction strips thinking, fail closed** — the vision posture.
+- **Redaction strips thinking, fail closed**, the vision posture.
   Re-identification maps pseudonyms back into the text a user reads; a
   reasoning model's deliberation interleaves pseudonym fragments the flush
   logic cannot bound. Under redaction the thinking channel does not exist:
@@ -69,8 +69,8 @@ The four decorators keep their contracts, two by explicit ruling:
 `chat_message.thinking` (migration 0044, nullable text) stores the
 deliberation beside the answer it produced. A `thinking` SSE event streams
 deltas live, interleaved with `token` events. The chat UI renders a collapsed
-**Thinking** disclosure above the answer — streaming while the model
-deliberates, expandable, reopenable on a stored answer — and renders NOTHING
+**Thinking** disclosure above the answer (streaming while the model
+deliberates, expandable, reopenable on a stored answer) and renders NOTHING
 when there is no thinking: a non-reasoning model leaves no empty affordance.
 
 Erasure follows the answer. The answer-redaction cascade nulls `thinking` in
