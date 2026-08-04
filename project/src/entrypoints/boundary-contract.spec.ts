@@ -55,6 +55,9 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   extraction_gate: 'ingestion',
   extraction_gate_rule: 'ingestion',
   extraction_gate_refusal: 'ingestion',
+  // The anchoring context (V2.1 item 4.2): the anchor stage writes it, the
+  // extract stage consumes it, so the pipeline's module owns it.
+  source_context: 'ingestion',
 
   // The chat context owns its tables since part 4 (chat left retrieval).
   chat_message: 'chat',

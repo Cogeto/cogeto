@@ -16,7 +16,9 @@ import type { MemoryStore } from '../memory/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import type { CandidateFact } from './domain/candidate-fact';
+import { AnchorStage } from './pipeline/anchor.stage';
 import { createExtractionGateStore } from './persistence/extraction-gate.store';
+import { createSourceContextStore } from './persistence/source-context.store';
 import { createSuppressedFactLog } from './persistence/suppressed-fact-log';
 import { EmbedStoreStage } from './pipeline/embed-store.stage';
 import { ExtractStage } from './pipeline/extract.stage';
@@ -43,6 +45,14 @@ class ScriptedGateway extends ModelGateway {
   extractCalls = 0;
   verifyCalls = 0;
   embedCalls = 0;
+  anchorCalls = 0;
+  lastExtractInput = '';
+  /** The anchor answer (V2.1 item 4.2); tests override per scenario. */
+  anchorOutput: () => unknown = () => ({
+    subjects: [{ name: 'PWR-3100', confident: true }],
+    document_class: { value: 'datasheet', confident: true },
+    revision: null,
+  });
 
   constructor(
     private readonly extractOutput: () => unknown,
@@ -70,6 +80,7 @@ class ScriptedGateway extends ModelGateway {
   }
 
   async extractStructured<T>(schema: ZodType<T>, request: StructuredExtractionRequest): Promise<T> {
+    const isAnchor = request.input.startsWith('FILENAME:');
     const isVerify = request.input.startsWith('CLAIM UNDER REVIEW');
     // The batched form (verification/v0005): split the numbered
     // claim blocks and answer each through the same scripted verdict rule.
@@ -77,21 +88,23 @@ class ScriptedGateway extends ModelGateway {
     // Stage 6 may probe pairs of stored facts; these tests exercise
     // stages 1–5, so the judge conservatively rules every pair unrelated.
     const isReconcile = request.input.startsWith('FACT A:');
-    const raw = isReconcile
-      ? request.system.includes('same_fact')
-        ? { verdict: 'distinct', reason: 'scripted', merged_content: null }
-        : { verdict: 'compatible', direction: null, reason: 'scripted' }
-      : isVerifyBatch
-        ? (this.verifyCalls++,
-          {
-            verdicts: [...request.input.matchAll(/CLAIM (\d+):\n([^\n]*)/g)].map((m) => ({
-              claim: Number(m[1]),
-              ...(this.verifyOutput(`CLAIM UNDER REVIEW:\n${m[2]}`) as object),
-            })),
-          })
-        : isVerify
-          ? (this.verifyCalls++, this.verifyOutput(request.input))
-          : (this.extractCalls++, this.extractOutput());
+    const raw = isAnchor
+      ? (this.anchorCalls++, this.anchorOutput())
+      : isReconcile
+        ? request.system.includes('same_fact')
+          ? { verdict: 'distinct', reason: 'scripted', merged_content: null }
+          : { verdict: 'compatible', direction: null, reason: 'scripted' }
+        : isVerifyBatch
+          ? (this.verifyCalls++,
+            {
+              verdicts: [...request.input.matchAll(/CLAIM (\d+):\n([^\n]*)/g)].map((m) => ({
+                claim: Number(m[1]),
+                ...(this.verifyOutput(`CLAIM UNDER REVIEW:\n${m[2]}`) as object),
+              })),
+            })
+          : isVerify
+            ? (this.verifyCalls++, this.verifyOutput(request.input))
+            : (this.extractCalls++, (this.lastExtractInput = request.input), this.extractOutput());
     const parsed = schema.safeParse(raw);
     if (!parsed.success) {
       throw new ModelGatewayError('structured output failed schema validation twice', false);
@@ -123,6 +136,35 @@ class FakeReader implements SourceReader {
   }
 
   /** Admission checkpoint: the in-memory map IS the durable source here. */
+  async existsForAdmission(_tx: unknown, sourceId: string): Promise<boolean> {
+    return this.sources.has(sourceId);
+  }
+}
+
+/** File-typed stage-1 port for the anchoring tests (V2.1 item 4.2). */
+class FakeFileReader implements SourceReader {
+  readonly sourceType = 'file' as const;
+  readonly sources = new Map<string, SourceItem>();
+
+  add(content: string, overrides: Partial<SourceItem> = {}): string {
+    const sourceId = randomUUID();
+    this.sources.set(sourceId, {
+      sourceType: this.sourceType,
+      sourceId,
+      ownerId: 'user-pipeline',
+      content,
+      createdAt: new Date('2026-07-02T10:00:00Z'),
+      documentClass: 'pdf',
+      filename: 'PWR-3000_RevB.pdf',
+      ...overrides,
+    });
+    return sourceId;
+  }
+
+  async load(sourceId: string): Promise<SourceItem | null> {
+    return this.sources.get(sourceId) ?? null;
+  }
+
   async existsForAdmission(_tx: unknown, sourceId: string): Promise<boolean> {
     return this.sources.has(sourceId);
   }
@@ -604,6 +646,95 @@ describe('ingestion pipeline stages 1-5 (integration, real Postgres + Qdrant, sc
       expect(bareRow?.valid_until).toBeTruthy();
       expect(days(bareRow!.valid_until!)).toBeGreaterThan(29);
       expect(days(bareRow!.valid_until!)).toBeLessThan(31);
+    });
+  });
+
+  describe('source_context anchoring (V2.1 item 4.2): the anchor call and its injection', () => {
+    const fileReader = new FakeFileReader();
+    const anchoredPipeline = (gateway: ScriptedGateway) =>
+      new IngestionPipeline(
+        [fileReader],
+        new ExtractStage(gateway),
+        new VerifyStage(gateway),
+        new EmbedStoreStage(gateway, store, createSuppressedFactLog(tdb.db)),
+        new ReconciliationService(gateway, store, new MemoryReconciliation(tdb.db, store)),
+        createSuppressedFactLog(tdb.db),
+        undefined,
+        undefined,
+        undefined,
+        new AnchorStage(gateway, createSourceContextStore(tdb.db)),
+      );
+    const runFile = (pipeline: IngestionPipeline, sourceId: string) =>
+      tdb.db.transaction((tx) => pipeline.run(tx, { source_type: 'file', source_id: sourceId }));
+
+    it('anchors a document, stores the context, and injects it into extraction', async () => {
+      const claim = 'The PWR-3100 has a continuous output of 100 W.';
+      const gateway = new ScriptedGateway(() => ({
+        facts: [fact(claim, { source_span: 'Continuous output: 100 W.' })],
+      }));
+      const sourceId = fileReader.add('Model PWR-3100\nContinuous output: 100 W.');
+      const summary = await runFile(anchoredPipeline(gateway), sourceId);
+
+      expect(gateway.anchorCalls).toBe(1);
+      expect(summary.admitted.active + summary.admitted.uncertain).toBe(1);
+      // The extraction input carried the fenced context block.
+      expect(gateway.lastExtractInput).toContain('DOCUMENT CONTEXT:');
+      expect(gateway.lastExtractInput).toContain('subjects: PWR-3100');
+      // The context row was stored with the machine prompt version.
+      const rows = await tdb.pool.query<{
+        subjects: unknown;
+        edited_by_user: boolean;
+        prompt_version: string | null;
+      }>(
+        `SELECT subjects, edited_by_user, prompt_version FROM source_context WHERE source_id = $1`,
+        [sourceId],
+      );
+      expect(rows.rows).toHaveLength(1);
+      expect(rows.rows[0]!.edited_by_user).toBe(false);
+      expect(rows.rows[0]!.prompt_version).toBe('anchoring/v0001');
+      expect(rows.rows[0]!.subjects).toEqual([{ name: 'PWR-3100', confident: true }]);
+    });
+
+    it('a user-edited context is authoritative: no anchor call, the edit is injected', async () => {
+      const claim = 'The corrected model has a continuous output of 100 W.';
+      const gateway = new ScriptedGateway(() => ({
+        facts: [fact(claim, { source_span: 'Continuous output: 100 W.' })],
+      }));
+      const sourceId = fileReader.add('Continuous output: 100 W.');
+      await tdb.pool.query(
+        `INSERT INTO source_context (owner_id, source_type, source_id, subjects, edited_by_user)
+         VALUES ('user-pipeline', 'file', $1, $2::jsonb, true)`,
+        [sourceId, JSON.stringify([{ name: 'Corrected AAA', confident: true }])],
+      );
+      await runFile(anchoredPipeline(gateway), sourceId);
+
+      expect(gateway.anchorCalls).toBe(0);
+      expect(gateway.lastExtractInput).toContain('subjects: Corrected AAA');
+      // Still marked edited, still the user's row.
+      const rows = await tdb.pool.query<{ edited_by_user: boolean; prompt_version: string | null }>(
+        `SELECT edited_by_user, prompt_version FROM source_context WHERE source_id = $1`,
+        [sourceId],
+      );
+      expect(rows.rows[0]).toEqual({ edited_by_user: true, prompt_version: null });
+    });
+
+    it('a failed anchor call degrades to no context and the run still succeeds', async () => {
+      const claim = 'The device has a continuous output of 100 W.';
+      const gateway = new ScriptedGateway(() => ({
+        facts: [fact(claim, { source_span: 'Continuous output: 100 W.' })],
+      }));
+      gateway.anchorOutput = () => {
+        throw new ModelGatewayError('anchor model down', false);
+      };
+      const sourceId = fileReader.add('Continuous output: 100 W.');
+      const summary = await runFile(anchoredPipeline(gateway), sourceId);
+
+      expect(summary.admitted.active + summary.admitted.uncertain).toBe(1);
+      expect(gateway.lastExtractInput).not.toContain('DOCUMENT CONTEXT');
+      const rows = await tdb.pool.query(`SELECT id FROM source_context WHERE source_id = $1`, [
+        sourceId,
+      ]);
+      expect(rows.rows).toHaveLength(0);
     });
   });
 });

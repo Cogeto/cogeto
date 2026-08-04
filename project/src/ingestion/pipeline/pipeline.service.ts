@@ -13,6 +13,7 @@ import type { ModelGateway } from '../../model-gateway/index';
 import { structurallyValid } from '../domain/uncertainty';
 import { UserDirectory } from '../../identity/index';
 import { ExtractionGateStore } from '../persistence/extraction-gate.store';
+import { AnchorStage } from './anchor.stage';
 import { SuppressedFactLog } from '../persistence/suppressed-fact-log';
 import type { SuppressedFactEntry } from '../persistence/suppressed-fact-log';
 import { chunkContent } from './chunk';
@@ -107,6 +108,12 @@ export class IngestionPipeline {
      * rows gets — today's behaviour, byte-identical.
      */
     @Optional() private readonly gate?: ExtractionGateStore,
+    /**
+     * The anchor stage (V2.1 item 4.2, spec 1.5). Optional so bare harnesses
+     * run without it: no anchor means no document context, which is exactly
+     * the pre-anchoring input, byte-identical.
+     */
+    @Optional() private readonly anchorStage?: AnchorStage,
   ) {}
 
   async run(
@@ -196,6 +203,24 @@ export class IngestionPipeline {
       gateRetentionDays = decision.retentionDays;
     }
 
+    // Stage 1.6 — anchor (V2.1 item 4.2, spec 1.5): one cheap call over the
+    // document's opening and filename produces the source context, stored on
+    // the source and injected into every chunk's extraction call below. A
+    // user-edited context is reused verbatim; a failed call degrades to no
+    // context (anchoring only reduces ambiguity, never blocks).
+    const sourceContext = this.anchorStage ? await this.anchorStage.run(tx, source, log) : null;
+    if (sourceContext) {
+      log(
+        {
+          stage: 'anchor',
+          ...ref,
+          subjects: sourceContext.subjects.length,
+          hasClass: sourceContext.documentClass !== null,
+        },
+        'source context anchored',
+      );
+    }
+
     // Stage 2 — chunk: transient values, never rows. Parse caps bound
     // the work a single source can drive: text length (defense in depth over
     // the file extractor's own cap, covering every source type) and chunk count
@@ -223,7 +248,7 @@ export class IngestionPipeline {
     // a durable-fact-free source legitimately yields [] (calibrated abstention).
     // The facts array is capped so a pathological source cannot fan out
     // into thousands of verify/reconcile/embed calls and memory rows.
-    let facts = await this.extractStage.run(source, chunks);
+    let facts = await this.extractStage.run(source, chunks, sourceContext);
     // Reference-material types carry a tighter fact budget in the source-type
     // registry (web: salient facts, not a hundred rows of page noise — the cap
     // also bounds the verify/reconcile/embed fan-out that made big pages
@@ -381,6 +406,8 @@ export interface CreatePipelineOptions {
   /** The extraction gate (V2.1 item 4.3); omitted = no admission control,
    * exactly what an owner without gate rows gets. */
   gate?: ExtractionGateStore;
+  /** The anchor stage (V2.1 item 4.2); omitted = no document context. */
+  anchor?: AnchorStage;
 }
 
 /**
@@ -400,5 +427,6 @@ export function createIngestionPipeline(options: CreatePipelineOptions): Ingesti
     options.parseCaps ?? DEFAULT_PARSE_CAPS,
     undefined,
     options.gate,
+    options.anchor,
   );
 }

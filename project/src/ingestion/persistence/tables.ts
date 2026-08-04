@@ -195,6 +195,47 @@ export type ExtractionGateRow = typeof extractionGate.$inferSelect;
 export type ExtractionGateRuleRow = typeof extractionGateRule.$inferSelect;
 export type ExtractionGateRefusalRow = typeof extractionGateRefusal.$inferSelect;
 
+/** One anchored subject: the name as the document gives it, plus whether the
+ * anchor call (or the editing user) was confident about it. */
+export interface SourceContextSubject {
+  name: string;
+  confident: boolean;
+}
+
+/**
+ * The source context (V2.1 item 4.2, migration 0043, spec 1.5): what the
+ * document as a whole is about, produced by the anchoring call over its
+ * opening and filename, stored once per source and injected into every
+ * chunk's extraction call. Content-bearing (subjects and revision are the
+ * document's own words), so it joins the deletion cascade. A user-edited row
+ * (`edited_by_user`) is authoritative: the anchor call never overwrites it.
+ */
+export const sourceContext = pgTable(
+  'source_context',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: text('owner_id').notNull(),
+    sourceType: text('source_type').notNull(),
+    sourceId: text('source_id').notNull(),
+    subjects: jsonb('subjects').$type<SourceContextSubject[]>().notNull().default([]),
+    documentClass: text('document_class'),
+    documentClassConfident: boolean('document_class_confident').notNull().default(false),
+    revision: text('revision'),
+    revisionConfident: boolean('revision_confident').notNull().default(false),
+    editedByUser: boolean('edited_by_user').notNull().default(false),
+    /** The anchoring prompt that produced a machine context; NULL once edited. */
+    promptVersion: text('prompt_version'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('source_context_source_idx').on(t.sourceType, t.sourceId),
+    index('source_context_owner_idx').on(t.ownerId),
+  ],
+);
+
+export type SourceContextRow = typeof sourceContext.$inferSelect;
+
 /**
  * The dreaming cycle's tables (migration 0012). Ingestion-owned
  * dreaming is the consolidation half of the pipeline. Memory-referencing

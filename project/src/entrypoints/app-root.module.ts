@@ -8,6 +8,8 @@ import {
   ExtractionRefusalCascade,
   ExtractionRefusalCascadeModule,
   IngestionModule,
+  SourceContextCascade,
+  SourceContextCascadeModule,
   PipelineIngestionGuard,
   SuppressedFactCascade,
   SuppressedFactCascadeModule,
@@ -104,6 +106,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         PassportCascadeModule,
         SuppressedFactCascadeModule,
         ExtractionRefusalCascadeModule,
+        SourceContextCascadeModule,
         FileReadReportCascadeModule,
       ],
       // Assistant answers citing erased memories are redacted; reply drafts
@@ -119,6 +122,8 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         // The gate refusal ledger is metadata-only, but a refusal row for an
         // erased source is a dangling provenance reference (V2.1 item 4.3).
         ExtractionRefusalCascade,
+        // The source context is the document's own words (V2.1 item 4.2).
+        SourceContextCascade,
         // The file read report is content-bearing (sheet names) and can exist
         // with no memory at all, so it goes with its source (V2.1 item 4.1).
         FileReadReportCascade,

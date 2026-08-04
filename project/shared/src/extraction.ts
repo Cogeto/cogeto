@@ -72,3 +72,35 @@ export interface AddExtractionGateRuleRequest {
   value: string;
   effect: ExtractionGateEffect;
 }
+
+/**
+ * The source context (V2.1 item 4.2, spec 1.5): what a document as a whole is
+ * about, produced by the anchoring call and editable by the owner. Editing it
+ * and reprocessing the source re-anchors its facts as supersessions.
+ */
+export interface SourceContextSubjectDto {
+  name: string;
+  confident: boolean;
+}
+
+export interface SourceContextDto {
+  sourceType: string;
+  sourceId: string;
+  subjects: SourceContextSubjectDto[];
+  documentClass: string | null;
+  documentClassConfident: boolean;
+  revision: string | null;
+  revisionConfident: boolean;
+  /** True once the owner corrected it; the anchor call then never overwrites. */
+  editedByUser: boolean;
+  /** The anchoring prompt that produced a machine context; null once edited. */
+  promptVersion: string | null;
+  updatedAt: string;
+}
+
+export interface SetSourceContextRequest {
+  /** `confident` defaults to true: a subject the user typed is not a guess. */
+  subjects: { name: string; confident?: boolean }[];
+  documentClass: string | null;
+  revision: string | null;
+}

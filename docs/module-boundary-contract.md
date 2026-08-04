@@ -56,14 +56,14 @@ module that never imports `connectors` but injects `NotesService` because
 
 ## 2. Table ownership
 
-Forty-one tables, one owner each. The owner is the module whose
+Forty-two tables, one owner each. The owner is the module whose
 `persistence/tables.ts` declares the Drizzle table; it is the only module that
 may name the table in a query, in Drizzle or in SQL.
 
 | Owner | Tables |
 |---|---|
 | `memory` | `memory`, `memory_relation`, `file_metadata`, `deletion_receipt`, `integrity_alert` |
-| `ingestion` | `verification_result`, `suppressed_fact_log`, `dream_run`, `dream_action`, `dormant_flag`, `extraction_gate`, `extraction_gate_rule`, `extraction_gate_refusal` (V2.1 item 4.3: the per-source extraction gate. Owned here because the pipeline is the enforcement point; the settings surface is ingestion's own controller, the email-settings precedent) |
+| `ingestion` | `verification_result`, `suppressed_fact_log`, `dream_run`, `dream_action`, `dormant_flag`, `extraction_gate`, `extraction_gate_rule`, `extraction_gate_refusal`, `source_context` (V2.1 items 4.2 and 4.3: the per-source extraction gate. Owned here because the pipeline is the enforcement point; the settings surface is ingestion's own controller, the email-settings precedent) |
 | `chat` | `chat_message`, `conversation` (moved from `retrieval` in part 4: chat is a capture connector by structure) |
 | `attention` | `attention_state`, `attention_dismissal` |
 | `agents` | `approval` |

@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r014",
+  "task": "dedup",
+  "expected": "distinct",
+  "a": {
+    "content": "Senzor SEN-210 zahtijeva ventilacijski razmak od 30 mm iznad kucista.",
+    "kind": "fact",
+    "entities": ["SEN-210"],
+    "subject_entity": "SEN-210",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Zahtijeva ventilacijski razmak od 30 mm iznad kucista."
+  },
+  "b": {
+    "content": "Senzor SEN-220 zahtijeva ventilacijski razmak od 30 mm iznad kucista.",
+    "kind": "fact",
+    "entities": ["SEN-220"],
+    "subject_entity": "SEN-220",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Zahtijeva ventilacijski razmak od 30 mm iznad kucista."
+  },
+  "notes": "Hrvatska inacica en-r015: ista recenica iz dva tehnicka lista, razliciti usidreni subjekti. Spajanje bi unistilo cinjenicu o drugom modelu; presuda mora biti distinct."
+}

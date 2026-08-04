@@ -2,6 +2,24 @@
 
 One line per label change (docs/eval-golden-set.md §4 rule 5).
 
+- 2026-08-04 (V2.1 item 4.2, source-context anchoring): added the plan-named
+  anchoring cases, both languages. Extraction: `en-a001`, `hr-a001` — one
+  multi-model datasheet each, generic section bodies, exact `subject_entity`
+  assertions per section under the zero-tolerance `subject_mismatches` gate;
+  these introduce a new optional case field `filename`, fed to the anchor call
+  exactly as the file reader stamps it in production. Reconcile pairs:
+  `en-r015`/`hr-r014` (dedup, `distinct`: identical boilerplate from two
+  datasheets must not merge across anchored subjects) and `en-r016`/`hr-r015`
+  (contradiction, `compatible`: two models' differing values are not a
+  contradiction). Corpus totals: en 62 → 65, hr 63 → 66. File-typed cases now
+  run the real anchor → extract chain (anchoring/v0001 then extraction/v0005),
+  so this entry rides the same cache refresh as the prompt bump. **Metric
+  effect stated deliberately:** the four extraction labels per a-case are
+  deliberately hard (subject comes only from a section heading plus the
+  anchor), so extraction precision/recall and the reconcile rates may move in
+  either direction; the refresh run's numbers are recorded in the pull request
+  and no gate moves except upward.
+
 - 2026-07-30 (issue #313): added four subject-trap cases (`en-s001`, `en-s002`,
   `hr-s001`, `hr-s002`) whose expected memories DECLARE `subject_entity` (a new
   optional label field): a reporting frame (meeting/session/relaying person) must

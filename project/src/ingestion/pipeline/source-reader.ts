@@ -44,6 +44,13 @@ export interface SourceItem {
    */
   documentClass?: string;
   /**
+   * The original filename, when the source has one (file uploads). The anchor
+   * call (V2.1 item 4.2) reads it beside the document opening: a filename like
+   * `spec_v2.1.pdf` often carries the subject or revision the first page
+   * repeats.
+   */
+  filename?: string;
+  /**
    * Extract-and-discard (F1 handoff §3): the transient staging object the
    * bytes were read from, present ONLY in discard mode. The pipeline schedules
    * its deletion AFTER the derived memories commit — so a discarded original is

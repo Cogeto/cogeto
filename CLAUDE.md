@@ -176,6 +176,18 @@ content) was found already satisfied by the SEC-4 fence and guards, so no
 prompt changed and the eval cache is untouched:
 [`docs/features/extraction-gate.md`](docs/features/extraction-gate.md).
 
+V2.1 item 4.2 delivered **source-context anchoring** (spec 1.5, migration
+0043): one cheap anchor call over a document's opening and filename produces
+its subjects, class and revision (each confident or uncertain), stored on the
+ingestion-owned `source_context` row (content-bearing, in the deletion
+cascade), editable on the source drawer, and injected into every chunk's
+extraction call as a FENCED `DOCUMENT CONTEXT` block under `extraction/v0005`.
+A fact's own text outranks the section heading, which outranks the document
+default; empty or failed context renders a byte-identical pre-anchoring input.
+Re-anchoring after an edit is the reprocess action, superseding via reconcile.
+The plan-named golden cases gate it and the eval fixtures were refreshed
+Mistral-routed: [`docs/features/anchoring.md`](docs/features/anchoring.md).
+
 Work proceeds through the V2 plan in order, with one owner-approved insertion:
 reasoning-model support Part B (the probed `reasoning` capability and the
 maxTokens headroom) landed 2026-08-04; Parts A (the thinking channel) and C

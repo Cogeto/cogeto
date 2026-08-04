@@ -1,0 +1,46 @@
+{
+  "case_id": "hr-a001",
+  "source_type": "file",
+  "source_date": "2026-07-20T09:00:00.000Z",
+  "filename": "SEN-200_tehnicki-list_izdanje3.pdf",
+  "expected_memories": [
+    {
+      "content_gist": "Senzor SEN-210 ima radni raspon temperature od -20 do 60 stupnjeva C",
+      "kind": "fact",
+      "entities": ["SEN-210"],
+      "subject_entity": "SEN-210",
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Senzor SEN-210 zahtijeva ventilacijski razmak od 30 mm iznad kucista",
+      "kind": "fact",
+      "entities": ["SEN-210"],
+      "subject_entity": "SEN-210",
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Senzor SEN-220 ima radni raspon temperature od -40 do 85 stupnjeva C",
+      "kind": "fact",
+      "entities": ["SEN-220"],
+      "subject_entity": "SEN-220",
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Senzor SEN-220 zahtijeva prisilno hladenje zrakom u ormarima iznad 35 stupnjeva C okoline",
+      "kind": "fact",
+      "entities": ["SEN-220"],
+      "subject_entity": "SEN-220",
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": ["marketinska recenica da serija obuhvaca dva modela"],
+  "verification_expected": "supported"
+}

@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r015",
+  "task": "dedup",
+  "expected": "distinct",
+  "a": {
+    "content": "The PWR-3100 requires a ventilation gap of 30 mm above the housing.",
+    "kind": "fact",
+    "entities": ["PWR-3100"],
+    "subject_entity": "PWR-3100",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Requires a ventilation gap of 30 mm above the housing."
+  },
+  "b": {
+    "content": "The PWR-3200 requires a ventilation gap of 30 mm above the housing.",
+    "kind": "fact",
+    "entities": ["PWR-3200"],
+    "subject_entity": "PWR-3200",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Requires a ventilation gap of 30 mm above the housing."
+  },
+  "notes": "The plan-named trap (V2.1 item 4.2): two datasheets share the same boilerplate sentence, so the pair embeds nearly identically, but the anchored subjects differ. Merging would destroy a distinct fact about a distinct model; the judge must rule distinct on the subject line."
+}

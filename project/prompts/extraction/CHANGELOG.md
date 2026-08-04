@@ -1,5 +1,20 @@
 # extraction — changelog
 
+- **v0005** (2026-08-04, V2.1 item 4.2, spec 1.5): source-context anchoring. The
+  input gains an optional `DOCUMENT CONTEXT` block (subjects, document class,
+  revision, from the anchoring/v0001 call over the document opening), FENCED
+  with the same boundary as the content, because its values are the document's
+  own words read by a model and an unfenced block would be a laundered path
+  around the fence. One new field-rule section, "subject_entity, anchored
+  documents": a single confident subject resolves generically-worded facts; with
+  several subjects the nearest section heading decides WHICH subject applies
+  while the name is copied as the context writes it, never the heading's longer
+  phrasing (the first recording caught "Model SEN-210" where the subject is
+  "SEN-210"); a subject the text itself names always beats the document default; uncertain subjects are
+  never a default; the ambiguity fallback stays null (spec 1.5.2, anchoring can
+  only reduce ambiguity); spans never come from the context block; class and
+  revision are never emitted as facts. The fence clause adds `DOCUMENT CONTEXT:`
+  to the imitation list. No other wording changed from v0004.
 - **v0004** (2026-07-30, issue #313): the subject_entity rule now names projects and
   initiatives as valid subjects (the reconciliation canon always treated them as
   such, e.g. en-r005 expects "Atlas CRM Migration" on both sides, while the prompt

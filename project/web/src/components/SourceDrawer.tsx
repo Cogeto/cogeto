@@ -12,9 +12,12 @@ import {
   fetchNote,
   fetchWebSource,
   reprocessSource,
+  fetchSourceContext,
+  setSourceContext,
 } from '../api';
 import { isRegisteredSourceType } from '@cogeto/shared';
 import type { SourceTypeKey } from '@cogeto/shared';
+import type { SourceContextDto } from '@cogeto/shared';
 import type { Session } from '../auth/oidc';
 import { formatDateTime, formatFileSize } from '../i18n/format';
 import { invalidateAfterSourceDeletion } from '../query-invalidation';
@@ -380,6 +383,7 @@ export function SourceDrawer({
                   )}
                 </div>
               )}
+              <AnchorContextPanel session={session} sourceId={sourceId} />
               {!fileQuery.data.discarded && (
                 <>
                   <button
@@ -646,5 +650,169 @@ export function SourceDrawer({
         </button>
       </section>
     </Drawer>
+  );
+}
+
+/**
+ * The anchoring context (V2.1 item 4.2): what this document is about, read
+ * from its opening; editable, and authoritative once edited. Re-anchoring is
+ * the reprocess action above — the panel only says so.
+ */
+function AnchorContextPanel({ session, sourceId }: { session: Session; sourceId: string }) {
+  const { t } = useTranslation('sources');
+  const queryClient = useQueryClient();
+  const context = useQuery<SourceContextDto | null>({
+    queryKey: ['source-context', sourceId],
+    queryFn: async () => {
+      try {
+        return await fetchSourceContext(session, 'file', sourceId);
+      } catch {
+        // No context yet (or not this owner's): the panel offers to create one.
+        return null;
+      }
+    },
+  });
+
+  const [editing, setEditing] = useState(false);
+  const [subjects, setSubjects] = useState('');
+  const [documentClass, setDocumentClass] = useState('');
+  const [revision, setRevision] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  const beginEdit = () => {
+    const data = context.data;
+    setSubjects((data?.subjects ?? []).map((subject) => subject.name).join(', '));
+    setDocumentClass(data?.documentClass ?? '');
+    setRevision(data?.revision ?? '');
+    setSaved(false);
+    setEditing(true);
+  };
+
+  const save = useMutation({
+    mutationFn: () =>
+      setSourceContext(session, 'file', sourceId, {
+        subjects: subjects
+          .split(',')
+          .map((name) => name.trim())
+          .filter((name) => name.length > 0)
+          .map((name) => ({ name })),
+        documentClass: documentClass.trim() || null,
+        revision: revision.trim() || null,
+      }),
+    onSuccess: async () => {
+      setEditing(false);
+      setSaved(true);
+      await queryClient.invalidateQueries({ queryKey: ['source-context', sourceId] });
+    },
+  });
+
+  if (context.isPending) return null;
+  const data = context.data;
+
+  return (
+    <div className="space-y-1 rounded-md border border-slate-200 bg-surface p-2">
+      <p className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <span className="font-medium text-slate-600">{t('anchor.title')}</span>
+        {!editing && (
+          <button
+            type="button"
+            onClick={beginEdit}
+            className="text-xs text-brand-teal-ink dark:text-brand-teal hover:underline"
+          >
+            {t('anchor.editAction')}
+          </button>
+        )}
+      </p>
+      {!editing && (
+        <>
+          {data ? (
+            <div className="space-y-0.5 text-xs text-slate-600">
+              {data.subjects.length > 0 && (
+                <p>
+                  {t('anchor.subjects')}:{' '}
+                  {data.subjects
+                    .map(
+                      (subject) =>
+                        subject.name + (subject.confident ? '' : ' ' + t('anchor.uncertain')),
+                    )
+                    .join(', ')}
+                </p>
+              )}
+              {data.documentClass && (
+                <p>
+                  {t('anchor.documentClass')}: {data.documentClass}
+                  {data.documentClassConfident ? '' : ' ' + t('anchor.uncertain')}
+                </p>
+              )}
+              {data.revision && (
+                <p>
+                  {t('anchor.revision')}: {data.revision}
+                  {data.revisionConfident ? '' : ' ' + t('anchor.uncertain')}
+                </p>
+              )}
+              <p className="text-slate-400">
+                {data.editedByUser ? t('anchor.edited') : t('anchor.detected')}
+              </p>
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400">{t('anchor.none')}</p>
+          )}
+          {saved && <p className="text-xs text-slate-500">{t('anchor.saveHint')}</p>}
+        </>
+      )}
+      {editing && (
+        <div className="space-y-2">
+          <label className="block text-xs text-slate-500">
+            <span className="block">{t('anchor.subjects')}</span>
+            <input
+              value={subjects}
+              onChange={(e) => setSubjects(e.target.value)}
+              placeholder={t('anchor.subjectsPlaceholder')}
+              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <label className="text-xs text-slate-500">
+              <span className="block">{t('anchor.documentClass')}</span>
+              <input
+                value={documentClass}
+                onChange={(e) => setDocumentClass(e.target.value)}
+                className="mt-1 w-40 rounded-md border border-slate-300 px-2 py-1 text-sm"
+              />
+            </label>
+            <label className="text-xs text-slate-500">
+              <span className="block">{t('anchor.revision')}</span>
+              <input
+                value={revision}
+                onChange={(e) => setRevision(e.target.value)}
+                className="mt-1 w-32 rounded-md border border-slate-300 px-2 py-1 text-sm"
+              />
+            </label>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => save.mutate()}
+              disabled={save.isPending}
+              className={btnSecondary}
+            >
+              {t('common:action.save')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="text-xs text-slate-500 hover:underline"
+            >
+              {t('common:action.cancel')}
+            </button>
+          </div>
+          {save.isError && (
+            <p className="text-xs text-red-600 dark:text-red-300">
+              {save.error instanceof Error ? save.error.message : t('anchor.saveFailed')}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

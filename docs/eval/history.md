@@ -2374,3 +2374,123 @@ and they are kept rather than pruned because each measured something different.
    for `CACHE MISS`.** The third run is the one the committed fixtures came from.
 
 No gate was lowered or raised in any of them.
+
+## 2026-08-04, extraction/v0005 + verification/v0006 (thresholds v1, 98 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 48 | 82.5% (80/97) | 93.2% (69/74) | 95.7% (45/47) |
+| hr | 50 | 81.5% (75/92) | 93.2% (69/74) | 87.5% (42/48) |
+| aggregate | 98 | 82.0% (155/189) | 93.2% (138/148) | 91.6% (87/95) |
+
+## 2026-08-04, reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 33 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 6 | 100.0% (10/10) | 11 | 60.0% (3/5) | 100.0% (3/3) | 50.0% (2/4) | 1 |
+| hr | 5 | 87.5% (7/8) | 11 | 60.0% (3/5) | 100.0% (3/3) | 75.0% (3/4) | 1 |
+| aggregate | 11 | 94.4% (17/18) | 22 | 60.0% (6/10) | 100.0% (6/6) | 62.5% (5/8) | 2 |
+
+## 2026-08-04, query_rewrite/v0006 (query-rewrite routing, 32 cases)
+
+| set | cases | routing accuracy |
+|---|---|---|
+| en | 16 | 100.0% (16/16) |
+| hr | 16 | 81.3% (13/16) |
+| aggregate | 32 | 90.6% (29/32) |
+
+## 2026-08-04, extraction/v0005 + verification/v0006 (thresholds v1, 98 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 48 | 84.2% (80/95) | 95.9% (71/74) | 91.5% (43/47) |
+| hr | 50 | 77.6% (76/98) | 94.6% (70/74) | 89.6% (43/48) |
+| aggregate | 98 | 80.8% (156/193) | 95.3% (141/148) | 90.5% (86/95) |
+
+## 2026-08-04, reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 33 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 6 | 100.0% (10/10) | 11 | 75.0% (3/4) | 100.0% (3/3) | 75.0% (3/4) | 1 |
+| hr | 5 | 87.5% (7/8) | 11 | 75.0% (3/4) | 100.0% (3/3) | 100.0% (4/4) | 1 |
+| aggregate | 11 | 94.4% (17/18) | 22 | 75.0% (6/8) | 100.0% (6/6) | 87.5% (7/8) | 2 |
+
+## 2026-08-04, query_rewrite/v0006 (query-rewrite routing, 32 cases)
+
+| set | cases | routing accuracy |
+|---|---|---|
+| en | 16 | 100.0% (16/16) |
+| hr | 16 | 81.3% (13/16) |
+| aggregate | 32 | 90.6% (29/32) |
+
+## 2026-08-04, extraction/v0005 + verification/v0006 (thresholds v1, 98 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 48 | 82.3% (79/96) | 93.2% (69/74) | 95.7% (45/47) |
+| hr | 50 | 80.6% (75/93) | 91.9% (68/74) | 91.7% (44/48) |
+| aggregate | 98 | 81.5% (154/189) | 92.6% (137/148) | 93.7% (89/95) |
+
+## 2026-08-04, reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 33 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 6 | 100.0% (10/10) | 11 | 60.0% (3/5) | 100.0% (3/3) | 50.0% (2/4) | 1 |
+| hr | 5 | 87.5% (7/8) | 11 | 50.0% (2/4) | 66.7% (2/3) | 60.0% (3/5, 1 FALSE) | 1 |
+| aggregate | 11 | 94.4% (17/18) | 22 | 55.6% (5/9) | 83.3% (5/6) | 55.6% (5/9, 1 FALSE) | 2 |
+
+## 2026-08-04, query_rewrite/v0006 (query-rewrite routing, 32 cases)
+
+| set | cases | routing accuracy |
+|---|---|---|
+| en | 16 | 100.0% (16/16) |
+| hr | 16 | 81.3% (13/16) |
+| aggregate | 32 | 90.6% (29/32) |
+
+## 2026-08-04, extraction/v0005 + verification/v0006 (thresholds v1, 98 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 48 | 83.5% (76/91) | 90.5% (67/74) | 93.6% (44/47) |
+| hr | 50 | 78.5% (73/93) | 89.2% (66/74) | 87.5% (42/48) |
+| aggregate | 98 | 81.0% (149/184) | 89.9% (133/148) | 90.5% (86/95) |
+
+## 2026-08-04, reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 33 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 6 | 100.0% (10/10) | 11 | 75.0% (3/4) | 100.0% (3/3) | 75.0% (3/4) | 1 |
+| hr | 5 | 87.5% (7/8) | 11 | 75.0% (3/4) | 100.0% (3/3) | 75.0% (3/4) | 1 |
+| aggregate | 11 | 94.4% (17/18) | 22 | 75.0% (6/8) | 100.0% (6/6) | 75.0% (6/8) | 2 |
+
+## 2026-08-04, query_rewrite/v0006 (query-rewrite routing, 32 cases)
+
+| set | cases | routing accuracy |
+|---|---|---|
+| en | 16 | 100.0% (16/16) |
+| hr | 16 | 81.3% (13/16) |
+| aggregate | 32 | 90.6% (29/32) |
+
+## 2026-08-04, extraction/v0005 + verification/v0006 (thresholds v1, 98 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 48 | 84.5% (82/97) | 94.6% (70/74) | 93.6% (44/47) |
+| hr | 50 | 82.2% (74/90) | 89.2% (66/74) | 89.6% (43/48) |
+| aggregate | 98 | 83.4% (156/187) | 91.9% (136/148) | 91.6% (87/95) |
+
+## 2026-08-04, reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 33 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 6 | 100.0% (10/10) | 11 | 60.0% (3/5) | 100.0% (3/3) | 50.0% (2/4) | 1 |
+| hr | 5 | 87.5% (7/8) | 11 | 60.0% (3/5) | 100.0% (3/3) | 75.0% (3/4) | 1 |
+| aggregate | 11 | 94.4% (17/18) | 22 | 60.0% (6/10) | 100.0% (6/6) | 62.5% (5/8) | 2 |
+
+## 2026-08-04, query_rewrite/v0006 (query-rewrite routing, 32 cases)
+
+| set | cases | routing accuracy |
+|---|---|---|
+| en | 16 | 100.0% (16/16) |
+| hr | 16 | 81.3% (13/16) |
+| aggregate | 32 | 90.6% (29/32) |

@@ -9,7 +9,7 @@ export interface PromptVersionRef {
   version: string;
 }
 
-export const EXTRACTION_PROMPT: PromptVersionRef = { family: 'extraction', version: 'v0004' };
+export const EXTRACTION_PROMPT: PromptVersionRef = { family: 'extraction', version: 'v0005' };
 export const VERIFICATION_PROMPT: PromptVersionRef = { family: 'verification', version: 'v0006' };
 /** The batch form of v0004 — multi-fact sources only. */
 export const VERIFICATION_BATCH_PROMPT: PromptVersionRef = {
@@ -30,6 +30,11 @@ export const RECONCILE_CONTRADICTION_PROMPT: PromptVersionRef = {
  * remembers, because that is exactly what it does. */
 export const VISION_READ_PROMPT: PromptVersionRef = { family: 'vision_read', version: 'v0001' };
 
+/** The source-context anchor (V2.1 item 4.2, spec 1.5): what a document as a
+ * whole is about, injected into every chunk's extraction call. It decides what
+ * Cogeto remembers a fact is ABOUT, so it registers with the rest. */
+export const ANCHORING_PROMPT: PromptVersionRef = { family: 'anchoring', version: 'v0001' };
+
 export const ACTIVE_PROMPTS: readonly PromptVersionRef[] = [
   EXTRACTION_PROMPT,
   VERIFICATION_PROMPT,
@@ -37,4 +42,5 @@ export const ACTIVE_PROMPTS: readonly PromptVersionRef[] = [
   RECONCILE_DEDUP_PROMPT,
   RECONCILE_CONTRADICTION_PROMPT,
   VISION_READ_PROMPT,
+  ANCHORING_PROMPT,
 ];
