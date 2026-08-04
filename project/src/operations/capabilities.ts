@@ -51,6 +51,19 @@ export const CAPABILITY_CACHE_TTL_MS = 20_000;
  */
 export const REASONING_PROBE_TTL_MS = 600_000;
 
+/**
+ * The vision probe's own window (issue #418), the reasoning precedent: the
+ * probe sends a real image, and on a reasoning vision binding the model now
+ * THINKS about it for 10 to 15 seconds before answering — per 20-second
+ * snapshot that made the panel's poll both slow and a steady image feed to
+ * the model runtime. Three minutes keeps "kill the runtime, watch it go loud"
+ * in the minutes rather than the seconds, which is the price of the probe
+ * having become a real model call; the reading ladder's own per-document
+ * probe (`ProbedVisionSource`, 60 s) is unchanged and still catches a dead
+ * runtime document-by-document.
+ */
+export const VISION_PROBE_TTL_MS = 180_000;
+
 /** A run that started this long ago and never finished counts as crashed. */
 const STUCK_RUN_HOURS = 2;
 
@@ -81,6 +94,12 @@ export class CapabilitiesService {
    * per snapshot would be too much traffic; a stale entry keeps its honest
    * original checkedAt. */
   private reasoningCache: { at: number; summary: CapabilitySummary } | null = null;
+  /** The vision probe's own cache (VISION_PROBE_TTL_MS, issue #418): an image
+   * through a thinking model per snapshot was the panel's 10-second hang. */
+  private visionCache: { at: number; summary: CapabilitySummary } | null = null;
+  /** Single-flight guard for the background refresh (issue #418): ten stale
+   * polls must trigger ONE rebuild, not ten. */
+  private refreshInFlight: Promise<void> | null = null;
   /** Loud keys already warned about — warn on transition, not every poll. */
   private warned = new Set<string>();
 
@@ -103,11 +122,55 @@ export class CapabilitiesService {
     };
   }
 
-  /** The registry state, cached (probe_cached): honest within the TTL window. */
+  /**
+   * The registry state, stale-while-revalidate (issue #418): a fresh cache is
+   * served as before; a STALE cache is served immediately while ONE background
+   * pass rebuilds it, because the vision probe on a reasoning binding is a
+   * 10-to-15-second model call and a panel poll must never sit behind it. The
+   * very first read (the boot banner's) still builds synchronously — there is
+   * nothing stale to serve, and the banner must state the truth, not a blank.
+   *
+   * Honesty is per entry, not per response: every summary carries the
+   * `checkedAt` of the pass that measured it, and a dead capability still goes
+   * loud (warn log + degraded health) on the next background pass rather than
+   * on somebody's page load.
+   */
   async snapshot(now: Date = new Date()): Promise<CapabilitiesSnapshot> {
     if (this.cache && now.getTime() - this.cache.at < CAPABILITY_CACHE_TTL_MS) {
       return this.cache.snapshot;
     }
+    if (this.cache) {
+      this.scheduleRefresh(now);
+      return this.cache.snapshot;
+    }
+    await this.rebuild(now);
+    return this.cache!.snapshot;
+  }
+
+  /** One background rebuild at a time; a failed pass keeps the stale snapshot
+   * and says so at warn, never throws into a poll. */
+  private scheduleRefresh(now: Date): void {
+    if (this.refreshInFlight) return;
+    this.refreshInFlight = this.rebuild(now)
+      .catch((error: unknown) => {
+        this.logger.warn(
+          `capability snapshot refresh failed; serving the previous snapshot: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      })
+      .finally(() => {
+        this.refreshInFlight = null;
+      });
+  }
+
+  /** Waits out any in-flight background refresh — the deterministic seam the
+   * unit suite uses; nothing on a request path calls it. */
+  async settle(): Promise<void> {
+    await this.refreshInFlight;
+  }
+
+  private async rebuild(now: Date): Promise<void> {
     const checkedAt = now.toISOString();
     const [capabilities, jobs] = await Promise.all([
       this.assembleCapabilities(checkedAt),
@@ -116,7 +179,6 @@ export class CapabilitiesService {
     const snapshot = { capabilities, jobs };
     this.cache = { at: now.getTime(), snapshot };
     this.warnOnLoud(snapshot);
-    return snapshot;
   }
 
   private async assembleCapabilities(checkedAt: string): Promise<CapabilitySummary[]> {
@@ -292,21 +354,33 @@ export class CapabilitiesService {
    * is and the last place an operator looks.
    */
   private async vision(checkedAt: string): Promise<CapabilitySummary> {
-    const base = { id: 'vision' as const, checkedAt };
-    if (!this.gateway) return { ...base, state: 'off', probed: false };
-    // The SAME deadline the reader uses. An 8-second panel probe against a
-    // 30-second reader probe would report a working remote runtime as broken
-    // while documents were being read by it.
-    const probe = await probeVision(this.gateway, this.config.modelProviders, {
-      timeoutMs: this.config.visionProbeTimeoutMs ?? DEFAULT_VISION_PROBE_TIMEOUT_MS,
-    });
-    if (probe.ok) return { ...base, state: 'on', probed: true, detail: probe.detail };
-    // Not configured is OFF, not broken: an instance that never asked for
-    // vision is not degraded, it simply stops the reading ladder at OCR.
-    if (probe.reason === 'not_configured') {
-      return { ...base, state: 'off', probed: false, detail: probe.error };
+    const at = Date.parse(checkedAt);
+    if (this.visionCache && at - this.visionCache.at < VISION_PROBE_TTL_MS) {
+      return this.visionCache.summary;
     }
-    return { ...base, state: 'unreachable', probed: true, error: probe.error };
+    const base = { id: 'vision' as const, checkedAt };
+    let summary: CapabilitySummary;
+    if (!this.gateway) {
+      summary = { ...base, state: 'off', probed: false };
+    } else {
+      // The SAME deadline the reader uses. An 8-second panel probe against a
+      // 30-second reader probe would report a working remote runtime as broken
+      // while documents were being read by it.
+      const probe = await probeVision(this.gateway, this.config.modelProviders, {
+        timeoutMs: this.config.visionProbeTimeoutMs ?? DEFAULT_VISION_PROBE_TIMEOUT_MS,
+      });
+      if (probe.ok) {
+        summary = { ...base, state: 'on', probed: true, detail: probe.detail };
+      } else if (probe.reason === 'not_configured') {
+        // Not configured is OFF, not broken: an instance that never asked for
+        // vision is not degraded, it simply stops the reading ladder at OCR.
+        summary = { ...base, state: 'off', probed: false, detail: probe.error };
+      } else {
+        summary = { ...base, state: 'unreachable', probed: true, error: probe.error };
+      }
+    }
+    this.visionCache = { at, summary };
+    return summary;
   }
 
   /**
