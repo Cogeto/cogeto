@@ -3,7 +3,9 @@ import type { DynamicModule, ModuleMetadata, Type } from '@nestjs/common';
 import { UserContextModule } from '../infrastructure/index';
 import { DreamingController } from './dreaming.controller';
 import { DreamingService } from './dreaming.service';
+import { AnchorStage } from './pipeline/anchor.stage';
 import { ExtractionGateController } from './extraction-gate.controller';
+import { SourceContextController } from './source-context.controller';
 import { EmbedStoreStage } from './pipeline/embed-store.stage';
 import { ExtractStage } from './pipeline/extract.stage';
 import { IngestionPipeline } from './pipeline/pipeline.service';
@@ -12,6 +14,7 @@ import { SOURCE_READERS } from './pipeline/source-reader';
 import type { SourceReader } from './pipeline/source-reader';
 import { VerifyStage } from './pipeline/verify.stage';
 import { ExtractionGateStore } from './persistence/extraction-gate.store';
+import { SourceContextStore } from './persistence/source-context.store';
 import { SuppressedFactLog } from './persistence/suppressed-fact-log';
 import { SuppressedFactCascade } from './suppressed-fact-cascade';
 import { SuppressedFactsController } from './suppressed-facts.controller';
@@ -41,6 +44,8 @@ export class IngestionModule {
       providers: [
         ExtractStage,
         VerifyStage,
+        AnchorStage,
+        SourceContextStore,
         SuppressedFactLog,
         SuppressedFactCascade,
         ExtractionGateStore,
@@ -64,6 +69,7 @@ export class IngestionModule {
         SuppressedFactLog,
         SuppressedFactCascade,
         ExtractionGateStore,
+        SourceContextStore,
       ],
     };
   }
@@ -88,8 +94,10 @@ export class IngestionModule {
         // The extraction gate's settings surface (V2.1 item 4.3): app-side
         // configuration reads and writes; enforcement stays worker-side.
         ExtractionGateController,
+        // The anchoring context's read/edit surface (V2.1 item 4.2).
+        SourceContextController,
       ],
-      providers: [SuppressedFactLog, ExtractionGateStore],
+      providers: [SuppressedFactLog, ExtractionGateStore, SourceContextStore],
     };
   }
 }

@@ -1,0 +1,13 @@
+Serija senzora SEN-200
+Tehnicki list, izdanje 3
+Jadranska Elektronika d.o.o., 12. svibnja 2026.
+
+Serija SEN-200 obuhvaca dva modela senzora za ormaricne instalacije.
+
+Model SEN-210
+Radni raspon temperature: od -20 do 60 stupnjeva C.
+Zahtijeva ventilacijski razmak od 30 mm iznad kucista.
+
+Model SEN-220
+Radni raspon temperature: od -40 do 85 stupnjeva C.
+Zahtijeva prisilno hladenje zrakom u ormarima iznad 35 stupnjeva C okoline.

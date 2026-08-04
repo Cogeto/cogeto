@@ -4,13 +4,16 @@ import { z } from 'zod';
 import { isRegisteredSourceType } from '@cogeto/shared';
 import { ModelGateway } from '../model-gateway/index';
 import type { SourceType } from '../memory/index';
+import { loadPrompt } from '../model-gateway/index';
 import { chunkContent } from './pipeline/chunk';
+import { computeSourceContext } from './pipeline/anchor.stage';
+import type { SourceContextValue } from './persistence/source-context.store';
 import { ExtractStage } from './pipeline/extract.stage';
 import { isolateEmailContentDetailed } from './pipeline/email-preprocess';
 import type { SourceItem } from './pipeline/source-reader';
 import { VerifyStage } from './pipeline/verify.stage';
 import type { CandidateFact } from './domain/candidate-fact';
-import { EXTRACTION_PROMPT, VERIFICATION_PROMPT } from './prompt-versions';
+import { ANCHORING_PROMPT, EXTRACTION_PROMPT, VERIFICATION_PROMPT } from './prompt-versions';
 
 /**
  * The golden-set eval harness v0 (docs/eval-golden-set.md; spec §14): runs
@@ -81,6 +84,9 @@ const expectedFileSchema = z.object({
   verification_expected: z.enum(['supported', 'partial', 'unsupported']).optional(),
   /** Email cases: the fixture's declared intake routing (self-sent?). */
   email_authored_by_owner: z.boolean().optional(),
+  /** File cases (V2.1 item 4.2): the document's filename, fed to the anchor
+   * call exactly as the file reader stamps it in production. */
+  filename: z.string().optional(),
 });
 
 /**
@@ -251,6 +257,10 @@ export async function runGoldenEval(options: {
   const cases = await loadCases(options.goldenDir);
   const extract = new ExtractStage(options.gateway);
   const verify = new VerifyStage(options.gateway);
+  // The anchor prompt (V2.1 item 4.2), loaded once: file cases run the real
+  // chain (anchor over the opening, then extraction with the context), so the
+  // harness measures anchoring exactly as production applies it.
+  const anchoringPrompt = await loadPrompt(ANCHORING_PROMPT.family, ANCHORING_PROMPT.version);
   const referenceTime = new Date(config.reference_time);
 
   const byLang = new Map<string, EvalMetrics>();
@@ -306,10 +316,26 @@ export async function runGoldenEval(options: {
       authoredByUser: authoredByUser ?? undefined,
     };
     const chunks = chunkContent(source.content);
+    // The anchor (V2.1 item 4.2): file cases only, mirroring the pipeline's
+    // stage 1.6. Spec 1.5.2 semantics are preserved exactly: a failed anchor
+    // call degrades to no context rather than failing the case.
+    let sourceContext: SourceContextValue | null = null;
+    if (sourceType === 'file') {
+      try {
+        sourceContext = await computeSourceContext(options.gateway, anchoringPrompt.content, {
+          content: source.content,
+          filename: testCase.expected.filename,
+        });
+      } catch (error) {
+        log(
+          `${testCase.caseId}: anchor call failed (${error instanceof Error ? error.message : error}); extracting without context`,
+        );
+      }
+    }
     let facts: CandidateFact[];
     let verified;
     try {
-      facts = await extract.run(source, chunks);
+      facts = await extract.run(source, chunks, sourceContext);
       verified = await verify.run(chunks, facts);
     } catch (error) {
       // A hard model failure on one case must not abort the whole run; the

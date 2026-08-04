@@ -22,6 +22,8 @@ import type {
   ExtractionGateDto,
   ExtractionGateRuleDto,
   SetExtractionGateRequest,
+  SetSourceContextRequest,
+  SourceContextDto,
   EmailReplyDraftView,
   EmailSourceDto,
   ChatContextDto,
@@ -368,6 +370,29 @@ export const addExtractionGateRule = (
   session: Session,
   request: AddExtractionGateRuleRequest,
 ): Promise<ExtractionGateRuleDto> => apiPost('/api/extraction-gate/rules', request, session);
+// The anchoring context (V2.1 item 4.2): what a document is about, editable;
+// re-anchoring is the existing reprocess action.
+export const fetchSourceContext = (
+  session: Session,
+  sourceType: string,
+  sourceId: string,
+): Promise<SourceContextDto> =>
+  apiGet(
+    `/api/source-context/${encodeURIComponent(sourceType)}/${encodeURIComponent(sourceId)}`,
+    session,
+  );
+export const setSourceContext = (
+  session: Session,
+  sourceType: string,
+  sourceId: string,
+  request: SetSourceContextRequest,
+): Promise<SourceContextDto> =>
+  apiPut(
+    `/api/source-context/${encodeURIComponent(sourceType)}/${encodeURIComponent(sourceId)}`,
+    request,
+    session,
+  );
+
 export async function removeExtractionGateRule(session: Session, id: string): Promise<void> {
   const path = `/api/extraction-gate/rules/${encodeURIComponent(id)}`;
   const response = await fetch(path, {

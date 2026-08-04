@@ -1,0 +1,13 @@
+PWR-3000 Series Power Supplies
+Product Datasheet, Rev B
+Nordwind Elektronik GmbH, 12 May 2026
+
+The PWR-3000 series covers two supply models for cabinet installations.
+
+Model PWR-3100
+Continuous output: 100 W.
+Requires a ventilation gap of 30 mm above the housing.
+
+Model PWR-3200
+Continuous output: 200 W.
+Requires forced-air cooling in enclosures above 35 degrees C ambient.

@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r016",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "The PWR-3100 has a continuous output of 100 W.",
+    "kind": "fact",
+    "entities": ["PWR-3100"],
+    "subject_entity": "PWR-3100",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Continuous output: 100 W."
+  },
+  "b": {
+    "content": "The PWR-3200 has a continuous output of 200 W.",
+    "kind": "fact",
+    "entities": ["PWR-3200"],
+    "subject_entity": "PWR-3200",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Continuous output: 200 W."
+  },
+  "notes": "The other half of the plan-named trap (V2.1 item 4.2): same slot shape, two values, but two different anchored subjects. 100 W vs 200 W is not a contradiction across two models; the candidate gate and the judge must both treat distinct subjects as compatible."
+}

@@ -214,8 +214,18 @@ to answer.
 ### Still not gated at all (spec §14.4)
 
 §14.4 requires **anchoring** and **ambiguity handling** to be measured and gated
-too. Neither is, and this is the **first wave**. They are named here so the gap
-is visible rather than implied by their absence.
+too. This was written when neither was; the anchoring half closed with V2.1
+item 4.2. **Anchoring is measured and gated through the existing surfaces**,
+not a new headline metric: the multi-model datasheet cases (`en-a001`,
+`hr-a001`) assert per-section subjects exactly, under the zero-tolerance
+`subject_mismatches` gate, and the same-boilerplate datasheet pairs
+(`en-r015`/`hr-r014`, `en-r016`/`hr-r015`) hold dedup and contradiction to the
+anchored-subject line inside the reconcile rates. File-typed golden cases run
+the real anchor → extract chain, so a regression in the anchoring prompt or
+its injection fails these gates the same way an extraction regression does. A
+dedicated published anchoring metric is item 6.4's (the second wave), where
+the plan puts it. **Ambiguity handling remains ungated** until item 6.3
+exists; it stays named here so the remaining gap is visible.
 
 ## What is deliberately strict
 

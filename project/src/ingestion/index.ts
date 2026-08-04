@@ -25,6 +25,13 @@ export {
   ExtractionRefusalCascade,
   ExtractionRefusalCascadeModule,
 } from './extraction-refusal-cascade';
+// The source context (V2.1 item 4.2, spec 1.5): the anchor call's stored
+// result, its cascade, and the storage-free anchor computation the eval
+// harness runs the real chain with.
+export { SourceContextStore, createSourceContextStore } from './persistence/source-context.store';
+export type { SourceContextValue } from './persistence/source-context.store';
+export { SourceContextCascade, SourceContextCascadeModule } from './source-context-cascade';
+export { AnchorStage, computeSourceContext, ANCHOR_OPENING_CHARS } from './pipeline/anchor.stage';
 // The admission taxonomy: the pure mapping every outcome passes through.
 export { SOURCE_READERS } from './pipeline/source-reader';
 export type { SourceReader, SourceItem } from './pipeline/source-reader';
@@ -44,7 +51,7 @@ export type { DreamRunStatus } from './dreaming.service';
 // there is one digest, gated once — plus the dreaming activity series.
 export { buildDreamDigest, dreamingActivityForPrincipal } from './dream-digest';
 export { ReconciliationService } from './pipeline/reconcile.stage';
-export { ACTIVE_PROMPTS, VISION_READ_PROMPT } from './prompt-versions';
+export { ACTIVE_PROMPTS, ANCHORING_PROMPT, VISION_READ_PROMPT } from './prompt-versions';
 export { runGoldenEval, evalConfigSchema } from './eval-harness';
 export type { EvalMetrics } from './eval-harness';
 export { runReconcileEval } from './eval-reconcile';

@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r015",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "Senzor SEN-210 ima radni raspon temperature od -20 do 60 stupnjeva C.",
+    "kind": "fact",
+    "entities": ["SEN-210"],
+    "subject_entity": "SEN-210",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Radni raspon temperature: od -20 do 60 stupnjeva C."
+  },
+  "b": {
+    "content": "Senzor SEN-220 ima radni raspon temperature od -40 do 85 stupnjeva C.",
+    "kind": "fact",
+    "entities": ["SEN-220"],
+    "subject_entity": "SEN-220",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Radni raspon temperature: od -40 do 85 stupnjeva C."
+  },
+  "notes": "Hrvatska inacica en-r016: dvije vrijednosti istog utora, ali dva razlicita usidrena subjekta. Rasponi dvaju modela nisu proturjecje."
+}
