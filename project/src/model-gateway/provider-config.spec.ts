@@ -286,6 +286,28 @@ describe('local_timeouts_config — per-tier local timeouts', () => {
  * and LM Studio all speak it, and they behave like a local runtime rather than
  * like a hosted API in the two ways that matter.
  */
+describe('reasoning_headroom_config — the maxTokens multiplier (Part B)', () => {
+  it('defaults to 4 and never joins the configuration id', () => {
+    const providers = resolve({ COGETO_MISTRAL_API_KEY: 'k' });
+    expect(providers.reasoningHeadroom).toBe(4);
+    expect(providers.id).toBe('mistral-default'); // no reasoning marker (Part C)
+  });
+
+  it('is configurable', () => {
+    expect(
+      resolve({ COGETO_MISTRAL_API_KEY: 'k', COGETO_REASONING_HEADROOM: '8' }).reasoningHeadroom,
+    ).toBe(8);
+  });
+
+  it('refuses a non-integer or non-positive multiplier at boot, naming the variable', () => {
+    for (const bad of ['0', '-2', '1.5', 'lots']) {
+      expect(() =>
+        resolve({ COGETO_MISTRAL_API_KEY: 'k', COGETO_REASONING_HEADROOM: bad }),
+      ).toThrowError(ModelProviderConfigError);
+    }
+  });
+});
+
 describe('self-hosted OpenAI-compatible endpoints', () => {
   const SELF_HOSTED = {
     COGETO_PROVIDER_VISION: 'openai',

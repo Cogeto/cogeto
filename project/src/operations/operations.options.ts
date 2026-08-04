@@ -42,6 +42,8 @@ export interface OperationsOptions {
   modelProviders: ResolvedModelProviders;
   /** Deadline for the vision probe; the same one the reading ladder uses. */
   visionProbeTimeoutMs?: number;
+  /** Deadline for the reasoning probe (Part B of reasoning support). */
+  reasoningProbeTimeoutMs?: number;
 }
 
 export const OPERATIONS_OPTIONS = Symbol('OPERATIONS_OPTIONS');

@@ -124,6 +124,12 @@ const configSchema = z
      * slack; raise it only for deliberately less frequent schedules.
      */
     jobsOverdueHours: z.coerce.number().positive().prefault(26),
+    /**
+     * Deadline for the reasoning probe (Part B of reasoning support). Same
+     * rationale as the vision probe's: a cold model warms slowly, and a probe
+     * declared dead disarms the maxTokens headroom on a working runtime.
+     */
+    reasoningProbeTimeoutMs: z.coerce.number().int().positive().prefault(30_000),
     researchResultCap: z.coerce.number().int().positive().prefault(8),
     researchSearchTimeoutSeconds: z.coerce.number().int().positive().prefault(10),
     researchFetchTimeoutSeconds: z.coerce.number().int().positive().prefault(15),
@@ -277,6 +283,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
     mailEnabled: env.COGETO_MAIL_ENABLED,
     consolesEnabled: env.COGETO_CONSOLES_ENABLED,
     jobsOverdueHours: env.COGETO_JOBS_OVERDUE_HOURS || undefined,
+    reasoningProbeTimeoutMs: env.COGETO_REASONING_PROBE_TIMEOUT_MS || undefined,
     researchResultCap: env.COGETO_RESEARCH_RESULT_CAP || undefined,
     researchSearchTimeoutSeconds: env.COGETO_RESEARCH_SEARCH_TIMEOUT_SECONDS || undefined,
     researchFetchTimeoutSeconds: env.COGETO_RESEARCH_FETCH_TIMEOUT_SECONDS || undefined,

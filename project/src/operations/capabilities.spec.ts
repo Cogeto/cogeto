@@ -3,12 +3,13 @@ import { createServer } from 'node:net';
 import type { AddressInfo } from 'node:net';
 import type { IntegrityStatus, IntegritySweep } from '../memory/index';
 import type { DreamRunStatus } from '../ingestion/index';
-import type { ResolvedModelProviders } from '../model-gateway/index';
+import type { ModelGateway, ResolvedModelProviders } from '../model-gateway/index';
 import type { Db, InstanceProbes } from '../infrastructure/index';
 import {
   CAPABILITY_CACHE_TTL_MS,
   CapabilitiesService,
   formatCapabilitiesBanner,
+  REASONING_PROBE_TTL_MS,
 } from './capabilities';
 import type { CapabilityJobSources } from './capabilities';
 import type { OperationsOptions } from './operations.options';
@@ -328,6 +329,89 @@ describe('jobs_overdue', () => {
     };
     const snapshot = await service(config(), staleSweep).snapshot(NOW);
     expect(snapshot.jobs.find((j) => j.id === 'sweep')!.state).toBe('overdue');
+  });
+});
+
+describe('reasoning_capability', () => {
+  const reasoningProviders = {
+    configured: true,
+    reasoningHeadroom: 4,
+    ollama: null,
+    tiers: {
+      pipeline: { provider: 'openai', model: 'ff711' },
+      answer: { provider: 'openai', model: 'ff711' },
+      embedding: { provider: 'mistral', model: 'mistral-embed' },
+    },
+    vision: { provider: 'openai', model: 'ff711' },
+  } as unknown as ResolvedModelProviders;
+
+  function probedService(reasoned: boolean): {
+    svc: CapabilitiesService;
+    order: string[];
+    completeCalls: () => number;
+  } {
+    const order: string[] = [];
+    const complete = vi.fn(async () => {
+      order.push('complete');
+      return reasoned ? { text: 'OK.', reasoned: true } : { text: 'OK.' };
+    });
+    const gateway = {
+      complete,
+      describeImage: async (): Promise<{ text: string }> => {
+        order.push('describeImage');
+        return { text: 'a blue square' };
+      },
+    } as unknown as ModelGateway;
+    const svc = new CapabilitiesService(
+      config({ modelProviders: reasoningProviders }),
+      null as unknown as Db,
+      null as unknown as IntegritySweep,
+      null as unknown as InstanceProbes,
+      quietJobs,
+      gateway,
+    );
+    return { svc, order, completeCalls: () => complete.mock.calls.length };
+  }
+
+  it('a probed reasoning field reports on; plain answers report a healthy off', async () => {
+    const on = await probedService(true).svc.snapshot(NOW);
+    expect(byId(on, 'reasoning')).toMatchObject({ state: 'on', probed: true });
+    expect(byId(on, 'reasoning').detail).toContain('openai/ff711');
+
+    const off = await probedService(false).svc.snapshot(NOW);
+    expect(byId(off, 'reasoning')).toMatchObject({ state: 'off', probed: true });
+    expect(byId(off, 'reasoning').error).toBeUndefined(); // off is not loud
+  });
+
+  it('no gateway to probe means off, unprobed — a bare root is not degraded', async () => {
+    const snapshot = await service(config({ modelProviders: reasoningProviders })).snapshot(NOW);
+    expect(byId(snapshot, 'reasoning')).toMatchObject({ state: 'off', probed: false });
+  });
+
+  it('the reasoning probe runs BEFORE the vision probe, so headroom is armed first', async () => {
+    const { svc, order } = probedService(true);
+    await svc.snapshot(NOW);
+    expect(order[0]).toBe('complete');
+    expect(order).toContain('describeImage');
+  });
+
+  it('keeps its own longer cache: snapshots re-probe vision but not reasoning', async () => {
+    const { svc, completeCalls } = probedService(true);
+    await svc.snapshot(NOW);
+    expect(completeCalls()).toBe(1);
+
+    // Past the snapshot TTL, within the reasoning TTL: everything else
+    // re-probes; the reasoning completion does not re-run.
+    await svc.snapshot(new Date(NOW.getTime() + CAPABILITY_CACHE_TTL_MS + 1000));
+    expect(completeCalls()).toBe(1);
+
+    await svc.snapshot(new Date(NOW.getTime() + REASONING_PROBE_TTL_MS + 1000));
+    expect(completeCalls()).toBe(2);
+  });
+
+  it('the banner states it like every other capability', async () => {
+    const snapshot = await probedService(true).svc.snapshot(NOW);
+    expect(formatCapabilitiesBanner(snapshot, NOW)).toContain('reasoning ON (healthy)');
   });
 });
 

@@ -261,6 +261,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         // The same vision-probe deadline the reading ladder uses, so the panel
         // and the reader cannot disagree about whether vision works.
         visionProbeTimeoutMs: config.limits.parse.visionProbeTimeoutMs,
+        reasoningProbeTimeoutMs: config.reasoningProbeTimeoutMs,
       }),
     ],
     providers: [

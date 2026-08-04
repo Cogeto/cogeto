@@ -40,6 +40,12 @@ export class ModelGatewayNotConfiguredError extends ModelGatewayError {
  * - `refused_by_policy` — a local rule forbids the call. Redaction is the case
  *   that exists: pixels cannot be pseudonymized, so with redaction enabled a
  *   vision call would be the one path that sends unredacted content out.
+ * - `reasoning_exhausted` — the model took the image and spent its ENTIRE
+ *   output budget on reasoning, so the answer text never started. This is a
+ *   token-budget fact, not a network or projector fault: the fix is a larger
+ *   max_tokens (the reasoning headroom multiplier applies it automatically once
+ *   the reasoning capability is detected), and reporting it as "returned no
+ *   text" sends the operator to the two places the problem is not.
  */
 export type VisionUnavailableReason =
   | 'not_configured'
@@ -47,7 +53,8 @@ export type VisionUnavailableReason =
   | 'probe_timeout'
   | 'image_rejected'
   | 'unusable_response'
-  | 'refused_by_policy';
+  | 'refused_by_policy'
+  | 'reasoning_exhausted';
 
 export class VisionUnavailableError extends ModelGatewayError {
   constructor(
@@ -60,6 +67,31 @@ export class VisionUnavailableError extends ModelGatewayError {
     // the pipeline's attempts.
     super(message, false, cause);
     this.name = 'VisionUnavailableError';
+  }
+}
+
+/**
+ * A reasoning model spent its entire output budget (`max_tokens`) on its
+ * private reasoning and returned no answer text (Part B of reasoning support):
+ * `content` came back empty, the reasoning field did not, and the provider
+ * reported `finish_reason: length`.
+ *
+ * Named because the generic "returned no text" is a FALSE diagnosis here: the
+ * endpoint is up and the model worked, the cap was simply sized for an answer
+ * rather than an answer plus its deliberation. Not retryable — the same cap
+ * produces the same result; the fix is a larger `maxTokens` or the reasoning
+ * headroom multiplier (COGETO_REASONING_HEADROOM), which applies automatically
+ * once the reasoning capability is detected.
+ */
+export class ReasoningExhaustedBudgetError extends ModelGatewayError {
+  constructor(model: string, provider: string, maxTokens: number | undefined) {
+    super(
+      `the model "${model}" on ${provider} spent its entire output budget` +
+        `${maxTokens !== undefined ? ` (max_tokens ${maxTokens})` : ''} on reasoning and ` +
+        `returned no answer text: raise the caller's maxTokens or COGETO_REASONING_HEADROOM`,
+      false,
+    );
+    this.name = 'ReasoningExhaustedBudgetError';
   }
 }
 

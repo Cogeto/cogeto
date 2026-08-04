@@ -38,6 +38,15 @@ export interface CompletionResult {
   text: string;
   /** Present when the provider reported usage for this call (ruling 4). */
   usage?: TokenUsage;
+  /**
+   * True when the provider returned a separate reasoning field beside the
+   * answer (Part B of reasoning support). A fact about the RESPONSE SHAPE for
+   * the reasoning capability probe, never the reasoning text: thinking is a
+   * channel, not content, and the text itself is discarded in the adapter.
+   * Absent (not false) for providers and models that do not reason, so a
+   * non-reasoning result is byte-identical to what it always was.
+   */
+  reasoned?: boolean;
 }
 
 /**
