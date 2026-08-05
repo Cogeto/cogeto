@@ -232,17 +232,42 @@ function RememberAction({ session, messageId }: { session: Session; messageId: s
  * deliberation, collapsed by default, streaming live while it thinks and
  * reopenable on a stored answer. Renders nothing when there is no thinking —
  * a non-reasoning model must leave no empty affordance.
+ *
+ * Styled as the answer rail's quieter sibling (issue #424 follow-up): the same
+ * mono micro-label language, a slate rail where the answer's is teal, and the
+ * text rendered through the SAME markdown renderer the answer uses — thinking
+ * is prose the model wrote, not preformatted source.
  */
 function ReasoningDisclosure({ text, streaming = false }: { text: string; streaming?: boolean }) {
   const { t } = useTranslation('chat');
+  const { segments } = scanAnswer(text, undefined);
   return (
-    <details className="mb-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs dark:bg-slate-800/40">
-      <summary className="cursor-pointer select-none text-slate-500">
-        {streaming ? t('reasoning.streaming') : t('reasoning.heading')}
-      </summary>
-      <pre className="mt-1 max-h-64 overflow-y-auto whitespace-pre-wrap font-sans text-slate-500">
-        {text}
-      </pre>
+    <details className="group mb-3 grid grid-cols-[3px_1fr] gap-5">
+      <div
+        className="rounded bg-gradient-to-b from-slate-300 to-slate-300/20 dark:from-slate-600 dark:to-slate-600/20"
+        aria-hidden="true"
+      />
+      <div className="min-w-0">
+        <summary className="flex cursor-pointer select-none list-none items-center gap-2 font-mono text-[0.68rem] uppercase tracking-[0.1em] text-slate-400 transition-colors hover:text-slate-500 [&::-webkit-details-marker]:hidden">
+          {streaming ? (
+            <span
+              className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400"
+              aria-hidden="true"
+            />
+          ) : (
+            <span
+              className="inline-block text-[0.6rem] transition-transform group-open:rotate-90"
+              aria-hidden="true"
+            >
+              ▸
+            </span>
+          )}
+          {streaming ? t('reasoning.streaming') : t('reasoning.heading')}
+        </summary>
+        <div className="mt-2 max-h-72 space-y-2 overflow-y-auto text-[0.8rem] leading-relaxed text-slate-500 dark:text-slate-400">
+          <ChatMarkdown segments={segments} renderChip={() => null} />
+        </div>
+      </div>
     </details>
   );
 }
