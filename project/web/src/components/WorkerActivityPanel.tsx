@@ -21,8 +21,21 @@ const JOB_TYPE_KEYS: Record<string, string> = {
   deletion_sweep: 'deletionSweep',
   dreaming_cycle: 'dreamingCycle',
   echo: 'echo',
+  // The other ten registered job types (issue #429): every identifier the
+  // worker can run has a display name, or an operator reads queue vocabulary.
+  'file.discard_cleanup': 'fileDiscardCleanup',
+  'approval.execute': 'approvalExecute',
+  approval_expiry: 'approvalExpiry',
+  'research.conclude': 'researchConclude',
+  'skill.advance': 'skillAdvance',
+  email_refusal_retention: 'emailRefusalRetention',
+  extraction_refusal_retention: 'extractionRefusalRetention',
+  'conversation.title': 'conversationTitle',
+  passport_export: 'passportExport',
+  passport_retention: 'passportRetention',
+  demo_reset: 'demoReset',
 };
-const jobLabel = (type: string): string => {
+export const jobLabel = (type: string): string => {
   const key = JOB_TYPE_KEYS[type];
   return key ? i18next.t(`system:job.${key}`) : type;
 };

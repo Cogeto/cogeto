@@ -13,7 +13,7 @@ import { invalidateAfterJobRetry } from '../query-invalidation';
 import { CapabilitiesPanel } from '../components/CapabilitiesPanel';
 import { Shell } from '../components/Shell';
 import { StatusPanel } from '../components/StatusPanel';
-import { WorkerActivityPanel } from '../components/WorkerActivityPanel';
+import { jobLabel, WorkerActivityPanel } from '../components/WorkerActivityPanel';
 import { timeAgo } from '../components/status';
 import {
   btnSecondary,
@@ -172,7 +172,7 @@ function DeadLetterTable({ session }: { session: Session }) {
             <tbody>
               {data.map((job) => (
                 <tr key={job.id} className="border-b border-slate-100 align-top">
-                  <td className="py-2 pr-3 font-medium text-slate-700">{job.jobType}</td>
+                  <td className="py-2 pr-3 font-medium text-slate-700">{jobLabel(job.jobType)}</td>
                   <td className="py-2 pr-3 text-xs text-slate-500">
                     {job.sourceType ?? t('deadLetter.noSource')}
                     {job.sourceId ? ` / ${job.sourceId.slice(0, 8)}…` : ''}
