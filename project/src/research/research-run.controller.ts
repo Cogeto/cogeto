@@ -62,6 +62,7 @@ function toDto(row: ResearchRunRow): ResearchRunDto {
     cancelledAt: row.cancelledAt?.toISOString() ?? null,
     concludedAt: row.concludedAt?.toISOString() ?? null,
     answerSeenAt: row.answerSeenAt?.toISOString() ?? null,
+    fromSkill: row.skillRunId !== null,
   };
 }
 

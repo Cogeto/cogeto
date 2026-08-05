@@ -25,6 +25,7 @@ const run = (over: Partial<ResearchRunDto> & Pick<ResearchRunDto, 'id'>): Resear
   cancelledAt: null,
   concludedAt: null,
   answerSeenAt: null,
+  fromSkill: false,
   ...over,
 });
 
@@ -61,5 +62,14 @@ describe('research_resume', () => {
       run({ id: 'stale', approvedAt: hoursAgo(RESUME_WINDOW_HOURS + 1) }),
     ];
     expect(pickResumeRun(runs, NOW)).toBeNull();
+  });
+
+  it('never claims a skill-launched run: its answer belongs to the skill view (issue #427)', () => {
+    const picked = pickResumeRun(
+      [run({ id: 'skill-owned', fromSkill: true }), run({ id: 'chat-owned' })],
+      NOW,
+    );
+    expect(picked?.id).toBe('chat-owned');
+    expect(pickResumeRun([run({ id: 'only-skill', fromSkill: true })], NOW)).toBeNull();
   });
 });
