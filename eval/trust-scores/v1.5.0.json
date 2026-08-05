@@ -1,0 +1,87 @@
+{
+  "schema_version": "1.1",
+  "generated_by": {
+    "release": "v1.5.0",
+    "commit": "0c5f8cc1a2330b4e6db7c57e5bcaa9700200d1c4",
+    "harness": "extraction/v0005 + verification/v0006 · reconcile_dedup/v0001 + reconcile_contradiction/v0001 · query_rewrite/v0006 · thresholds v1 + chat answer/v0007 · grader eval-coverage/v0001",
+    "generated_at": "2026-08-05T14:45:41.561Z",
+    "backfilled": false
+  },
+  "configurations": [
+    {
+      "id": "mistral-default",
+      "models": {
+        "pipeline": "mistral-small-latest",
+        "answer": "mistral-medium-latest",
+        "embedding": "mistral-embed"
+      },
+      "redaction": false,
+      "corpus": {
+        "golden_cases": 98,
+        "reconcile_pairs": 33,
+        "chat_cases": 24,
+        "rewrite_cases": 32,
+        "per_language": [
+          {
+            "language": "en",
+            "golden_cases": 48,
+            "reconcile_pairs": 17,
+            "rewrite_cases": 16
+          },
+          {
+            "language": "hr",
+            "golden_cases": 50,
+            "reconcile_pairs": 16,
+            "rewrite_cases": 16
+          }
+        ]
+      },
+      "metrics": {
+        "per_language": [
+          {
+            "language": "en",
+            "golden_cases": 48,
+            "extraction_precision": 0.8350515463917526,
+            "extraction_recall": 0.9324324324324325,
+            "verification_agreement": 0.9787234042553191,
+            "dedup_accuracy": 1,
+            "contradiction_recall": 1,
+            "contradiction_precision": 0.75,
+            "supersedes_accuracy": 0.75,
+            "supersedes_pairs": 4,
+            "rewrite_accuracy": 1
+          },
+          {
+            "language": "hr",
+            "golden_cases": 50,
+            "extraction_precision": 0.8191489361702128,
+            "extraction_recall": 0.9459459459459459,
+            "verification_agreement": 0.875,
+            "dedup_accuracy": 0.875,
+            "contradiction_recall": 1,
+            "contradiction_precision": 0.75,
+            "supersedes_accuracy": 0.75,
+            "supersedes_pairs": 4,
+            "rewrite_accuracy": 0.8125
+          }
+        ],
+        "aggregate": {
+          "extraction_precision": 0.8272251308900523,
+          "extraction_recall": 0.9391891891891891,
+          "verification_agreement": 0.9263157894736842,
+          "dedup_accuracy": 0.9444444444444444,
+          "contradiction_recall": 1,
+          "contradiction_precision": 0.75,
+          "supersedes_accuracy": 0.75,
+          "supersedes_pairs": 8,
+          "rewrite_accuracy": 0.90625
+        },
+        "chat": {
+          "cases": 24,
+          "passed": 24,
+          "failed": []
+        }
+      }
+    }
+  ]
+}
