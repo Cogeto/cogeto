@@ -12,6 +12,7 @@ import {
   partialFileSchema,
   publishTrustScores,
   rebuildIndex,
+  RELEASE_FILE_RE,
   TRUST_SCORES_SCHEMA_VERSION,
   trustScoresDocumentSchema,
 } from './trust-scores';
@@ -100,7 +101,7 @@ describe('trust scores — published files validate', () => {
   });
 
   it('every backfilled release file is schema-valid and marked backfilled', () => {
-    const files = readdirSync(SCORES_DIR).filter((f) => /^v\d+\.\d+\.\d+\.json$/.test(f));
+    const files = readdirSync(SCORES_DIR).filter((f) => RELEASE_FILE_RE.test(f));
     expect(files.length).toBeGreaterThanOrEqual(2); // v0.8.0 + v0.9.1 backfill
     for (const file of files) {
       const doc = trustScoresDocumentSchema.parse(
@@ -118,7 +119,7 @@ describe('trust scores — published files validate', () => {
     const index = indexSchema.parse(
       JSON.parse(readFileSync(path.join(SCORES_DIR, 'index.json'), 'utf8')),
     );
-    const files = readdirSync(SCORES_DIR).filter((f) => /^v\d+\.\d+\.\d+\.json$/.test(f));
+    const files = readdirSync(SCORES_DIR).filter((f) => RELEASE_FILE_RE.test(f));
     expect(index.map((e) => e.path).sort()).toEqual(files.sort());
     for (const entry of index) {
       expect(entry.path).toBe(`${entry.version}.json`);
@@ -323,6 +324,34 @@ describe('trust scores — publish (immutability + index)', () => {
     }
     const index = indexSchema.parse(JSON.parse(readFileSync(path.join(dir, 'index.json'), 'utf8')));
     expect(index.map((e) => e.version)).toEqual(['v0.10.0', 'v0.9.1', 'v0.9.0']);
+  });
+
+  it('publishes a suffixed non-release version and orders it below the plain release', () => {
+    const dir = tmp();
+    const partial = writePartial(dir);
+    for (const version of ['v1.4.2-local', 'v1.5.0', 'v1.4.1']) {
+      publishTrustScores({
+        outDir: dir,
+        version,
+        commit: 'f'.repeat(40),
+        partialPaths: [partial],
+        generatedAt: '2026-07-16T00:00:00.000Z',
+      });
+    }
+    const index = indexSchema.parse(JSON.parse(readFileSync(path.join(dir, 'index.json'), 'utf8')));
+    expect(index.map((e) => e.version)).toEqual(['v1.5.0', 'v1.4.2-local', 'v1.4.1']);
+    // The semver pre-release rule: a suffix sorts below the plain same-number release.
+    expect(compareSemverDesc('v1.4.2', 'v1.4.2-local')).toBeLessThan(0);
+    // An uppercase or leading-hyphen suffix stays outside the grammar.
+    expect(() =>
+      publishTrustScores({
+        outDir: dir,
+        version: 'v9.9.9-LOCAL',
+        commit: 'f'.repeat(40),
+        partialPaths: [partial],
+        generatedAt: '2026-07-16T00:00:00.000Z',
+      }),
+    ).toThrow(/version must be/);
   });
 
   it('rebuildIndex rejects a file whose content version disagrees with its name', () => {

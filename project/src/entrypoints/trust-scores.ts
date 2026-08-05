@@ -106,8 +106,20 @@ export const configurationSchema = z.object({
   metrics: metricsSchema,
 });
 
+/**
+ * The version grammar: a release is `vX.Y.Z`; an
+ * optional lowercase `-suffix` marks a NON-release measurement published
+ * beside the releases (e.g. `v1.4.2-local`, a maintainer-run self-hosted
+ * configuration). Suffixed versions are listed and validated like any other
+ * file; release tags themselves stay plain semver, and the ordering treats a
+ * suffixed version as OLDER than the plain release of the same number, the
+ * semver pre-release rule.
+ */
+export const RELEASE_VERSION_RE = /^v\d+\.\d+\.\d+(?:-[a-z0-9][a-z0-9-]*)?$/;
+export const RELEASE_FILE_RE = /^v\d+\.\d+\.\d+(?:-[a-z0-9][a-z0-9-]*)?\.json$/;
+
 export const generatedBySchema = z.object({
-  release: z.string().regex(/^v\d+\.\d+\.\d+$/),
+  release: z.string().regex(RELEASE_VERSION_RE),
   commit: z.string().regex(/^[0-9a-f]{7,40}$/),
   harness: z.string().min(1),
   generated_at: z.iso.datetime(),
@@ -148,9 +160,9 @@ export const partialFileSchema = z.object({
 export type PartialFile = z.infer<typeof partialFileSchema>;
 
 export const indexEntrySchema = z.object({
-  version: z.string().regex(/^v\d+\.\d+\.\d+$/),
+  version: z.string().regex(RELEASE_VERSION_RE),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  path: z.string().regex(/^v\d+\.\d+\.\d+\.json$/),
+  path: z.string().regex(RELEASE_FILE_RE),
 });
 export const indexSchema = z.array(indexEntrySchema);
 
@@ -237,8 +249,8 @@ export interface PublishArgs {
  * rebuilt from the directory so it can never list a missing file.
  */
 export function publishTrustScores(args: PublishArgs): { file: string; index: string } {
-  if (!/^v\d+\.\d+\.\d+$/.test(args.version)) {
-    throw new Error(`version must be vX.Y.Z (got '${args.version}')`);
+  if (!RELEASE_VERSION_RE.test(args.version)) {
+    throw new Error(`version must be vX.Y.Z or vX.Y.Z-suffix (got '${args.version}')`);
   }
   const outFile = path.join(args.outDir, `${args.version}.json`);
   if (existsSync(outFile)) {
@@ -280,7 +292,7 @@ export function publishTrustScores(args: PublishArgs): { file: string; index: st
 
 /** Rebuild index.json from the directory contents — newest first by semver. */
 export function rebuildIndex(outDir: string): string {
-  const files = readdirSync(outDir).filter((f) => /^v\d+\.\d+\.\d+\.json$/.test(f));
+  const files = readdirSync(outDir).filter((f) => RELEASE_FILE_RE.test(f));
   const entries = files.map((file) => {
     const doc = trustScoresDocumentSchema.parse(
       JSON.parse(readFileSync(path.join(outDir, file), 'utf8')),
@@ -304,10 +316,20 @@ export function rebuildIndex(outDir: string): string {
 }
 
 export function compareSemverDesc(a: string, b: string): number {
-  const pa = a.replace(/^v/, '').split('.').map(Number);
-  const pb = b.replace(/^v/, '').split('.').map(Number);
+  const parse = (v: string): { nums: [number, number, number]; suffix: string } => {
+    const m = /^v(\d+)\.(\d+)\.(\d+)(?:-([a-z0-9-]+))?$/.exec(v);
+    if (!m) return { nums: [0, 0, 0], suffix: v };
+    return { nums: [Number(m[1]), Number(m[2]), Number(m[3])], suffix: m[4] ?? '' };
+  };
+  const pa = parse(a);
+  const pb = parse(b);
   for (let i = 0; i < 3; i += 1) {
-    if (pa[i]! !== pb[i]!) return pb[i]! - pa[i]!;
+    if (pa.nums[i] !== pb.nums[i]) return pb.nums[i]! - pa.nums[i]!;
   }
-  return 0;
+  if (pa.suffix === pb.suffix) return 0;
+  // The semver pre-release rule: a suffixed version is OLDER than the plain
+  // release of the same number; among suffixes, alphabetical for determinism.
+  if (pa.suffix === '') return -1;
+  if (pb.suffix === '') return 1;
+  return pa.suffix < pb.suffix ? -1 : 1;
 }

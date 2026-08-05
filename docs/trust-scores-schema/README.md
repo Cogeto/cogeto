@@ -34,6 +34,13 @@ the schema before it is written.
 `[{version, date, path}]`, newest first, and is rebuilt from the directory on
 every publish, so it can never reference a missing file.
 
+A version is `vX.Y.Z`, optionally followed by a lowercase `-suffix`
+(`v1.4.2-local`). The suffix marks a measurement published beside the releases
+without being one: a maintainer-run configuration on a given release's code,
+named so it can never be mistaken for the release artifact. Release tags stay
+plain semver, and ordering treats a suffixed version as older than the plain
+release of the same number.
+
 ## How the data is produced
 
 ```sh

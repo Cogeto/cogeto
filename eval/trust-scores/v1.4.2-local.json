@@ -1,7 +1,7 @@
 {
   "schema_version": "1.1",
   "generated_by": {
-    "release": "v1.4.2",
+    "release": "v1.4.2-local",
     "commit": "be2254dc6e1c74233d042ae4855a035797923ec4",
     "harness": "extraction/v0005 + verification/v0006 · reconcile_dedup/v0001 + reconcile_contradiction/v0001 · query_rewrite/v0006 · thresholds v1 + chat answer/v0007 · grader eval-coverage/v0001",
     "generated_at": "2026-08-05T13:01:05.690Z",
