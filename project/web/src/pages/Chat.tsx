@@ -232,18 +232,59 @@ function RememberAction({ session, messageId }: { session: Session; messageId: s
  * deliberation, collapsed by default, streaming live while it thinks and
  * reopenable on a stored answer. Renders nothing when there is no thinking —
  * a non-reasoning model must leave no empty affordance.
+ *
+ * A CONTROLLED toggle, not a native <details>: a <summary> that is not a
+ * direct child of its <details> makes the browser render its own "Details"
+ * label and marker, which is exactly the unstyled artifact this replaces.
+ * Styled as the answer rail's quieter sibling: the same grid-and-rail layout
+ * and mono micro-label, a slate rail where the answer's is teal, the
+ * ThinkingDots cascade (in slate) while deliberation streams, and the text
+ * rendered through the SAME markdown renderer the answer uses.
  */
 function ReasoningDisclosure({ text, streaming = false }: { text: string; streaming?: boolean }) {
   const { t } = useTranslation('chat');
+  const [open, setOpen] = useState(false);
+  const { segments } = scanAnswer(text, undefined);
   return (
-    <details className="mb-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs dark:bg-slate-800/40">
-      <summary className="cursor-pointer select-none text-slate-500">
-        {streaming ? t('reasoning.streaming') : t('reasoning.heading')}
-      </summary>
-      <pre className="mt-1 max-h-64 overflow-y-auto whitespace-pre-wrap font-sans text-slate-500">
-        {text}
-      </pre>
-    </details>
+    <div className="mb-3 grid grid-cols-[3px_1fr] gap-5">
+      <div
+        className={`rounded bg-gradient-to-b from-slate-300 to-slate-300/20 dark:from-slate-600 dark:to-slate-600/20 ${
+          streaming ? 'animate-pulse' : ''
+        }`}
+        aria-hidden="true"
+      />
+      <div className="min-w-0">
+        <button
+          type="button"
+          onClick={() => setOpen((wasOpen) => !wasOpen)}
+          aria-expanded={open}
+          className="inline-flex items-center gap-2 font-mono text-[0.68rem] uppercase tracking-[0.1em] text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300"
+        >
+          <svg
+            viewBox="0 0 8 8"
+            className={`h-2 w-2 fill-current transition-transform duration-200 ${
+              open ? 'rotate-90' : ''
+            }`}
+            aria-hidden="true"
+          >
+            <path d="M2 0 L7 4 L2 8 Z" />
+          </svg>
+          {streaming ? t('reasoning.streaming') : t('reasoning.heading')}
+          {streaming && (
+            <span className="inline-flex gap-0.5" aria-hidden="true">
+              <span className="h-1 w-1 animate-pulse rounded-full bg-slate-400" />
+              <span className="h-1 w-1 animate-pulse rounded-full bg-slate-400 [animation-delay:150ms]" />
+              <span className="h-1 w-1 animate-pulse rounded-full bg-slate-400 [animation-delay:300ms]" />
+            </span>
+          )}
+        </button>
+        {open && (
+          <div className="mt-2 max-h-72 space-y-2 overflow-y-auto pr-1 text-[0.8rem] leading-relaxed text-slate-500 dark:text-slate-400">
+            <ChatMarkdown segments={segments} renderChip={() => null} />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
