@@ -17,6 +17,7 @@ export { SuppressedFactCascade } from './suppressed-fact-cascade';
 export {
   ExtractionGateStore,
   createExtractionGateStore,
+  latestGateRefusalFor,
   EXTRACTION_REFUSAL_RETENTION_DAYS,
   EXTRACTION_REFUSAL_RETENTION_JOB_TYPE,
   EXTRACTION_REFUSAL_RETENTION_CRONTAB,
@@ -25,6 +26,14 @@ export {
   ExtractionRefusalCascade,
   ExtractionRefusalCascadeModule,
 } from './extraction-refusal-cascade';
+// The honest per-source pipeline stage (V2.2 item 5.1): the pipeline reports
+// each stage it enters on the store's own connection; any surface reads the
+// stage back through the plain function beside its jobRunState terminal read.
+export { IngestionProgressStore, pipelineStageFor } from './persistence/ingestion-progress';
+export {
+  IngestionProgressCascade,
+  IngestionProgressCascadeModule,
+} from './ingestion-progress-cascade';
 // The source context (V2.1 item 4.2, spec 1.5): the anchor call's stored
 // result, its cascade, and the storage-free anchor computation the eval
 // harness runs the real chain with.

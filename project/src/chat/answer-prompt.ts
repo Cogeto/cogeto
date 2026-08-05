@@ -7,6 +7,7 @@ import {
 } from '@cogeto/shared';
 import { serverT } from '../infrastructure/index';
 import type { MemoryChange } from '../memory/index';
+import { fenceUntrusted, untrustedBoundary } from '../model-gateway/index';
 import type { ConversationTurn, TemporalIntent } from '../retrieval/index';
 import type { OpenLoop, RetrievalMode } from '../retrieval/index';
 
@@ -14,7 +15,13 @@ import type { OpenLoop, RetrievalMode } from '../retrieval/index';
  * The answer prompt family (spec §12.3): versioned artifact in project/prompts/answer,
  * registered on worker boot alongside the ingestion families.
  */
-export const ANSWER_PROMPT = { family: 'answer', version: 'v0007' } as const;
+export const ANSWER_PROMPT = { family: 'answer', version: 'v0008' } as const;
+
+/** A transient attachment's contribution to the answer input (V2.2 item 5.1). */
+export interface AnswerAttachment {
+  name: string;
+  text: string;
+}
 
 /**
  * The two deterministic chat replies. A deterministic string cannot mirror the
@@ -49,6 +56,13 @@ export interface AnswerTemporalContext {
    * before MODE; absent means the block simply does not appear.
    */
   context?: string;
+  /**
+   * Transient conversation attachments (V2.2 item 5.1): each file's text is
+   * FENCED (the document's words are untrusted input, exactly as they are in
+   * extraction) under an `ATTACHED FILES` header. Absent or empty renders a
+   * byte-identical pre-attachment input.
+   */
+  attachments?: AnswerAttachment[];
 }
 
 /** The zero-retrieval path: no facts, no generation from thin air. */
@@ -114,6 +128,17 @@ export function buildAnswerInput(
     lines.push('', 'GENERAL KNOWLEDGE: allowed');
   }
 
+  if (extras.attachments && extras.attachments.length > 0) {
+    // One boundary per call, shared by every fence in it (the SEC-4 rule).
+    // The filename is flattened to one plain line so a name cannot imitate a
+    // framing label; the text itself sits inside the fence.
+    const boundary = untrustedBoundary();
+    lines.push('', 'ATTACHED FILES (this conversation only, not remembered):');
+    for (const attachment of extras.attachments) {
+      lines.push(`File: ${oneLine(attachment.name)}`, fenceUntrusted(attachment.text, boundary));
+    }
+  }
+
   if (extras.temporal?.at) {
     lines.push('', `ASKED ABOUT THE STATE AT: ${extras.temporal.at.toISOString().slice(0, 10)}`);
   }
@@ -152,6 +177,11 @@ export function buildAnswerInput(
 
   lines.push('', 'QUESTION:', question);
   return lines.join('\n');
+}
+
+/** A filename as one plain line: no newlines, no marker-shaped runs, bounded. */
+function oneLine(name: string): string {
+  return name.replace(/\s+/g, ' ').replace(/-{3,}/g, '-').trim().slice(0, 120);
 }
 
 /**

@@ -386,3 +386,28 @@ export function evaluateGateDecision(
 export function createExtractionGateStore(db: Db): ExtractionGateStore {
   return new ExtractionGateStore(db);
 }
+
+/**
+ * The latest refusal for one source, as a plain function over any handle (the
+ * jobRunState shape): the surfaces that must say a gated source was refused
+ * rather than processed-with-zero-facts (the chat attachment card, the Sources
+ * upload rows -- V2.2 item 5.1) live in other modules and must not name this
+ * table. Callers gate on the source's owner before asking.
+ */
+export async function latestGateRefusalFor(
+  db: DbOrTx,
+  ref: { sourceType: string; sourceId: string },
+): Promise<{ reason: string; refusedAt: Date } | null> {
+  const rows = await db
+    .select({ reason: extractionGateRefusal.reason, refusedAt: extractionGateRefusal.refusedAt })
+    .from(extractionGateRefusal)
+    .where(
+      and(
+        eq(extractionGateRefusal.sourceType, ref.sourceType),
+        eq(extractionGateRefusal.sourceId, ref.sourceId),
+      ),
+    )
+    .orderBy(desc(extractionGateRefusal.refusedAt))
+    .limit(1);
+  return rows[0] ?? null;
+}

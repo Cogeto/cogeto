@@ -2,27 +2,16 @@ import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { MemoryScope } from '@cogeto/shared';
 import { DailyCounters, DEFAULT_PARSE_CAPS, PARSE_CAPS } from '../infrastructure/index';
 import type { ParseCaps, Tx } from '../infrastructure/index';
-import type { ModelGateway } from '../model-gateway/index';
 import { MemoryFileStore, MemoryObjectStore } from '../memory/index';
 import type { SourceItem, SourceReader } from '../ingestion/index';
 import { FileReadReportStore } from './persistence/file-read-report';
-import { buildLadderServices } from './reading/ladder-services';
+import { LadderedDocumentReader, VisionSource } from './laddered-read';
 import { emptyReport, PermanentExtractionError } from './reading/reader';
 import type { ReadResult } from './reading/reader';
-import { readDocument } from './reading/registry';
 
-/**
- * How a composition root supplies the vision tier: a function, not a gateway,
- * because whether vision WORKS is a probed fact that can change while the
- * worker is running. Asking per document keeps a runtime that went away from
- * being discovered one page at a time.
- */
-export abstract class VisionSource {
-  abstract visionGateway(): Promise<ModelGateway | null>;
-}
-
-/** The daily-counter bucket vision pages are charged to. */
-export const VISION_PAGE_BUCKET = 'vision_page';
+// VisionSource moved to ./laddered-read with the shared laddered reader (V2.2
+// item 5.1); re-exported here so existing import sites keep working.
+export { VisionSource, VISION_PAGE_BUCKET } from './laddered-read';
 
 /**
  * The stored filename, URL-decoded (S3 metadata must be US-ASCII). A HINT for
@@ -104,25 +93,12 @@ export class FileSourceReader implements SourceReader {
     contentType: string | null,
     filename: string | null,
   ): Promise<ReadResult> {
-    const ladder = await buildLadderServices({
-      caps: this.parseCaps,
-      vision: (await this.visionGateway?.visionGateway()) ?? null,
-      budget: this.counters
-        ? { usedToday: await this.counters.get(ownerId, VISION_PAGE_BUCKET) }
-        : undefined,
-    });
+    // ONE laddered read for every caller (V2.2 item 5.1): the shared reader
+    // is constructed from this adapter's own deps so the DI signature (and
+    // every bare construction site) stays exactly as it was.
+    const laddered = new LadderedDocumentReader(this.parseCaps, this.visionGateway, this.counters);
     try {
-      const result = await readDocument(bytes, {
-        declaredContentType: contentType,
-        filename,
-        caps: this.parseCaps,
-        ladder,
-      });
-      // Charge the day's vision spend to the owner the pages were read for.
-      const spent = result.report.visionPagesUsed ?? 0;
-      if (spent > 0 && this.counters) {
-        await this.counters.add(ownerId, VISION_PAGE_BUCKET, spent, 'ingestion');
-      }
+      const result = await laddered.read(ownerId, bytes, contentType, filename);
       await this.reports?.record(sourceId, ownerId, result.report, this.logger);
       return result;
     } catch (error) {

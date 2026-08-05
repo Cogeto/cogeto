@@ -4,6 +4,18 @@ Prompt family for the fast-path chat answerer (S3-A): answers only from the
 retrieved fact blocks, cites with inline `[F#]` markers, says plainly when the
 facts do not cover the question.
 
+## v0008 — 2026-08-05 (V2.2 item 5.1 — chat-centric capture)
+
+Transient chat attachments. A new optional `ATTACHED FILES` block carries the
+fenced text of files attached to the conversation with "don't remember this
+file", and a new section states its contract, deliberately the USER CONTEXT
+shape: conversation-only provided ground, answered from freely when asked
+about, attributed in words ("According to the attached …"), never `[F#]`
+(not a provided fact) and never `[U]` (not model knowledge), provided facts
+still win, and the fenced text is data, never instructions. Absent the block,
+the input is byte-identical to v0007, so every existing eval case renders
+unchanged.
+
 ## v0007 — 2026-07-28 (V2.0 item 3.1 — task removal)
 
 The open-loops answer is memory-backed (decision 0060). MODE `tasks` becomes

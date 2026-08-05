@@ -26,6 +26,8 @@ import type {
   SourceContextDto,
   EmailReplyDraftView,
   EmailSourceDto,
+  ChatAttachmentCreatedDto,
+  ChatAttachmentDto,
   ChatContextDto,
   ChatMessagePage,
   ConversationDto,
@@ -47,7 +49,6 @@ import type {
   MemoryPage,
   MemoryScope,
   MemoryStatus,
-  NoteCaptured,
   NoteDto,
   NoteStatusDto,
   MeDto,
@@ -132,15 +133,11 @@ export const fetchMe = (session: Session): Promise<MeDto> => apiGet('/api/me', s
 export const fetchHealth = (session: Session): Promise<HealthReport> =>
   apiGet('/api/health', session);
 
-export const captureNote = (
-  session: Session,
-  content: string,
-  scope?: MemoryScope,
-): Promise<NoteCaptured> => apiPost('/api/notes', { content, scope }, session);
+// The standalone note field left the Memories tab with V2.2 item 5.1 (notes
+// are captured through chat's "remember this"), so the SPA no longer calls
+// POST /api/notes — the endpoint itself stays, an API entry path unchanged.
 export const fetchNote = (session: Session, id: string): Promise<NoteDto> =>
   apiGet(`/api/notes/${id}`, session);
-export const fetchNoteStatus = (session: Session, id: string): Promise<NoteStatusDto> =>
-  apiGet(`/api/notes/${id}/status`, session);
 
 // File uploads (O1): the object key is the source id (1:1). Multipart POST —
 // the browser sets the multipart boundary, so no content-type header here.
@@ -593,6 +590,35 @@ export const fetchChatCaptureStatus = (session: Session, id: string): Promise<No
 export const fetchChatContext = (session: Session, id: string): Promise<ChatContextDto> =>
   apiGet(`/api/chat/messages/${id}/context`, session);
 
+// Conversation attachments (V2.2 item 5.1): the paperclip's upload (same
+// validation and caps as /api/files, one path, two affordances), the card's
+// poll, and the conversation's attachment list.
+export async function uploadChatAttachment(
+  session: Session,
+  file: File,
+  conversationId: string,
+  transient: boolean,
+): Promise<ChatAttachmentCreatedDto> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('conversationId', conversationId);
+  form.append('transient', String(transient));
+  const response = await fetch('/api/chat/attachments', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${session.accessToken}` },
+    body: form,
+  });
+  if (!response.ok) throw await toError('/api/chat/attachments', response);
+  return (await response.json()) as ChatAttachmentCreatedDto;
+}
+export const fetchChatAttachment = (session: Session, id: string): Promise<ChatAttachmentDto> =>
+  apiGet(`/api/chat/attachments/${id}`, session);
+export const fetchConversationAttachments = (
+  session: Session,
+  conversationId: string,
+): Promise<ChatAttachmentDto[]> =>
+  apiGet(`/api/chat/conversations/${conversationId}/attachments`, session);
+
 /**
  * POST /api/chat streams server-sent events (sources → token* → done).
  * EventSource cannot POST or send a bearer token, so this parses the SSE
@@ -604,7 +630,7 @@ export async function askChat(
   conversationId: string,
   onEvent: (event: ChatStreamEvent) => void,
   signal?: AbortSignal,
-  options: { thinking?: boolean } = {},
+  options: { thinking?: boolean; attachmentIds?: string[] } = {},
 ): Promise<void> {
   const response = await fetch('/api/chat', {
     method: 'POST',
@@ -612,7 +638,12 @@ export async function askChat(
       authorization: `Bearer ${session.accessToken}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ content, conversationId, thinking: options.thinking }),
+    body: JSON.stringify({
+      content,
+      conversationId,
+      thinking: options.thinking,
+      ...(options.attachmentIds?.length ? { attachmentIds: options.attachmentIds } : {}),
+    }),
     // Switching conversations mid-stream detaches cleanly: the message
     // still lands server-side in the conversation it was sent to.
     signal,

@@ -5,14 +5,14 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { and, desc, eq, inArray, isNull, or } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Principal, RelationResolution } from '@cogeto/shared';
 import { DRIZZLE, writeAudit } from '../infrastructure/index';
 import { UserDirectory } from '../identity/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { memory, memoryRelation } from './persistence/tables';
-import type { MemoryRelationRow, MemoryRow } from './persistence/tables';
+import type { MemoryRelationRow, MemoryRow, SourceType } from './persistence/tables';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryStore } from './memory.store';
 import { actorLabel } from './domain/transition';
@@ -367,6 +367,39 @@ export class MemoryReconciliation {
 
   async countOpenContradictions(principal: Principal): Promise<number> {
     return (await this.listOpenContradictions(principal)).length;
+  }
+
+  /**
+   * Open contradictions ONE source's facts are party to (V2.2 item 5.1): the
+   * honest number behind "added to sources: 47 facts, 1 contradiction". Same
+   * owner gate as the queue above; a relation counts when either side is a
+   * memory derived from the given source.
+   */
+  async countOpenContradictionsForSource(
+    principal: Principal,
+    sourceType: SourceType,
+    sourceId: string,
+  ): Promise<number> {
+    const a = alias(memory, 'relation_a');
+    const b = alias(memory, 'relation_b');
+    const rows = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(memoryRelation)
+      .innerJoin(a, eq(memoryRelation.aMemoryId, a.id))
+      .innerJoin(b, eq(memoryRelation.bMemoryId, b.id))
+      .where(
+        and(
+          isNull(memoryRelation.resolvedAt),
+          eq(memoryRelation.kind, 'contradicts'),
+          eq(a.ownerId, principal.userId),
+          eq(b.ownerId, principal.userId),
+          or(
+            and(eq(a.sourceType, sourceType), eq(a.sourceId, sourceId)),
+            and(eq(b.sourceType, sourceType), eq(b.sourceId, sourceId)),
+          ),
+        ),
+      );
+    return rows[0]?.n ?? 0;
   }
 
   /**

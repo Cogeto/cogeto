@@ -18,7 +18,7 @@ import type { TestDatabase, TestMinio, TestQdrant } from '../testing/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StreamDelta } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
-import { ChatSourceReader, ConversationSourceDeletion } from '../chat/index';
+import { ChatAttachmentCascade, ChatSourceReader, ConversationSourceDeletion } from '../chat/index';
 import { UserSettingsService } from '../settings/index';
 import { createIngestionPipeline, createSuppressedFactLog } from '../ingestion/index';
 import { MemoryStore } from './memory.store';
@@ -150,7 +150,13 @@ describe('conversation deletion cascade (integration: real Postgres + Qdrant + M
     });
     await objects.ensureBucket();
     store = new MemoryStore(tdb.db, vectors);
-    saga = new DeletionSaga(tdb.db, { adapters: [new ConversationSourceDeletion()], vectors });
+    saga = new DeletionSaga(tdb.db, {
+      adapters: [new ConversationSourceDeletion()],
+      vectors,
+      // Conversation attachments (V2.2 item 5.1): a transient row holds the
+      // file's extracted text, so the receipt must count its erasure.
+      derivedCascades: [new ChatAttachmentCascade()],
+    });
     executor = new DeletionExecutor(vectors, objects, keyDir);
   }, 180_000);
 
@@ -201,6 +207,15 @@ describe('conversation deletion cascade (integration: real Postgres + Qdrant + M
     for (const id of [m1, m2]) {
       await tdb.db.transaction((tx) => pipeline().run(tx, { source_type: 'chat', source_id: id }));
     }
+    // A transient attachment (V2.2 item 5.1): its row holds the file's
+    // extracted text, conversation-only, and must be erased WITH the thread
+    // and counted on the receipt.
+    await tdb.pool.query(
+      `INSERT INTO chat_attachment
+         (owner_id, conversation_id, message_id, transient, display_name, status, content_text)
+       VALUES ($1, $2, $3, true, 'notes.pdf', 'ready', 'the transient text the receipt must cover')`,
+      [owner.userId, conv, m1],
+    );
     const memoryRows = await tdb.pool.query<{ id: string }>(
       `SELECT id FROM memory WHERE source_type = 'chat' AND source_id IN ($1, $2)`,
       [m1, m2],
@@ -234,6 +249,9 @@ describe('conversation deletion cascade (integration: real Postgres + Qdrant + M
       (await tdb.pool.query(`SELECT 1 FROM ${table} WHERE ${where}`, params)).rows.length;
     expect(await left('conversation', 'id = $1', [conv])).toBe(0);
     expect(await left('chat_message', 'conversation_id = $1', [conv])).toBe(0);
+    // The attachment row (and with it the transient text) went in the same
+    // enumeration transaction.
+    expect(await left('chat_attachment', 'conversation_id = $1', [conv])).toBe(0);
     expect(await left('memory', `source_type = 'chat' AND source_id IN ($1, $2)`, [m1, m2])).toBe(
       0,
     );
@@ -250,6 +268,7 @@ describe('conversation deletion cascade (integration: real Postgres + Qdrant + M
     const counts = parseReceiptCounts(receipt['counts_json']);
     expect(new Set(counts.memory_ids)).toEqual(new Set(memoryIds));
     expect(counts.chat_messages_removed).toBe(3);
+    expect(counts.chat_attachments_removed).toBe(1);
     // Never written again since — but still parseable (the
     // schema keeps it optional forever so historical receipts verify).
     expect(counts.tasks_removed).toBeUndefined();

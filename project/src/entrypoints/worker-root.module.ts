@@ -13,6 +13,8 @@ import {
   ExtractionRefusalCascade,
   ExtractionRefusalCascadeModule,
   IngestionModule,
+  IngestionProgressCascade,
+  IngestionProgressCascadeModule,
   SourceContextCascade,
   SourceContextCascadeModule,
   PipelineIngestionGuard,
@@ -57,6 +59,8 @@ import {
 } from '../passport/index';
 import {
   ChatAnswerCascade,
+  ChatAttachmentCascade,
+  ChatAttachmentWorkerModule,
   ChatSourceDeletion,
   ChatSourceModule,
   ChatSourceReader,
@@ -122,6 +126,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         ExtractionRefusalCascadeModule,
         SourceContextCascadeModule,
         FileReadReportCascadeModule,
+        IngestionProgressCascadeModule,
       ],
       // Assistant answers citing erased memories are redacted; reply drafts
       // grounded on the source are too. A ready passport export is a signed
@@ -141,6 +146,11 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         // The file read report is content-bearing (sheet names) and can exist
         // with no memory at all, so it goes with its source (V2.1 item 4.1).
         FileReadReportCascade,
+        // Conversation attachments (V2.2 item 5.1): rows go with their
+        // conversation; a durable link to an erased file loses its filename.
+        ChatAttachmentCascade,
+        // The pipeline stage row is metadata-only hygiene, like the refusals.
+        IngestionProgressCascade,
       ],
     },
     // Delete-vs-ingestion serialization: the saga cancels a source's pending
@@ -231,6 +241,10 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         ],
       }),
       ChatSourceModule,
+      // The transient attachment read job (V2.2 item 5.1): needs memory's
+      // object store and files' laddered reader, so it lives in its own
+      // module and receives the two family instances explicitly.
+      ChatAttachmentWorkerModule.register({ imports: [memoryModule, filesModule] }),
       notesModule,
       settingsModule,
       agentsModule,

@@ -1,15 +1,4 @@
 {
-  "capturesFailed_one": "{{count}} capture failed processing. See System for the dead-letter queue.",
-  "capturesFailed_other": "{{count}} captures failed processing. See System for the dead-letter queue.",
-  "capture": {
-    "placeholder": "Remember this...",
-    "scope": "Scope",
-    "scopeTitle": "Shared facts are visible to everyone in your organization; private stays yours.",
-    "submit": "Remember",
-    "hint": "Facts appear below once verified.",
-    "failed": "Capture failed. Try again.",
-    "pending": "Remembering… extraction and verification are running."
-  },
   "uncertaintyReason": {
     "hedged_in_source": "stated tentatively in the source",
     "partially_supported": "only partly supported by the source",
@@ -109,5 +98,9 @@
     "correction": "correction",
     "viewing": "viewing",
     "noCorrections": "No corrections. This is the original."
+  },
+  "capturePointer": {
+    "body": "Capture lives in chat now: tell Cogeto something and use Remember this, or attach a file with the paperclip on <chatLink>the chat page</chatLink>. Deliberate document uploads live on <sourcesLink>the Sources page</sourcesLink>.",
+    "dismiss": "Got it"
   }
 }

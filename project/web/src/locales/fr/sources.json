@@ -158,5 +158,11 @@
     "editAction": "Edit",
     "saveHint": "Saved. Reprocess the file to re-anchor its facts to the corrected context.",
     "saveFailed": "Saving the context failed."
+  },
+  "page": {
+    "uploadHeading": "Add a document",
+    "uploadIntro": "The deliberate way in: documents you intend to keep and audit. Files also attach in chat with the paperclip; either way they go through the same pipeline.",
+    "openDetails": "Open details",
+    "note": "Every upload becomes a source with its verified facts, provenance and read report. Its memories appear on the Memories page."
   }
 }

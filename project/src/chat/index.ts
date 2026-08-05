@@ -29,3 +29,12 @@ export {
 export { CONVERSATION_APPEND, ConversationScribe } from './conversation-scribe';
 export type { ConversationAppendPort } from './conversation-scribe';
 export { ChatAnswerCascade } from './chat-answer-cascade';
+// Conversation attachments (V2.2 item 5.1): the transient read job + its
+// worker module, and the deletion cascade that erases attachment rows with
+// their conversation and clears links to an erased file source.
+export {
+  CHAT_ATTACHMENT_READ_JOB_TYPE,
+  ChatAttachmentReadService,
+  ChatAttachmentWorkerModule,
+} from './attachment-read';
+export { ChatAttachmentCascade } from './chat-attachment-cascade';

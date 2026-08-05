@@ -6,7 +6,9 @@ import {
   UserContextModule,
   UserContextService,
 } from '../infrastructure/index';
+import { DocumentUploadInterceptor } from '../files/index';
 import { ChatController } from './chat.controller';
+import { ChatAttachmentsService } from './chat-attachments.service';
 import { CHAT_SERVICE_OPTIONS, ChatService } from './chat.service';
 import type { ChatServiceOptions } from './chat.service';
 import { CHAT_REPLY_RESOLVER } from './chat-reply-resolver.port';
@@ -38,6 +40,13 @@ export class ChatModule {
       controllers: [ChatController],
       providers: [
         ChatService,
+        // The conversation-attachment surface (V2.2 item 5.1): the service
+        // resolves FilesService / MemoryStore / UserSettingsService from the
+        // family instances the root threads into `imports`; the interceptor
+        // reuses files' exported FILE_UPLOAD_OPTIONS so the chat endpoint's
+        // byte cap can never drift from the upload endpoint's.
+        ChatAttachmentsService,
+        DocumentUploadInterceptor,
         {
           provide: CHAT_SERVICE_OPTIONS,
           useFactory: (
@@ -46,12 +55,14 @@ export class ChatModule {
             skillResolver?: ChatSkillResolverPort,
             timeZone?: string,
             userContext?: UserContextService,
+            attachments?: ChatAttachmentsService,
           ): ChatServiceOptions => ({
             replyResolver,
             researchResolver,
             skillResolver,
             timeZone: timeZone ?? DEFAULT_INSTANCE_TIMEZONE,
             userContext,
+            attachments,
           }),
           inject: [
             { token: CHAT_REPLY_RESOLVER, optional: true },
@@ -59,6 +70,7 @@ export class ChatModule {
             { token: CHAT_SKILL_RESOLVER, optional: true },
             { token: INSTANCE_TIMEZONE, optional: true },
             { token: UserContextService, optional: true },
+            { token: ChatAttachmentsService, optional: true },
           ],
         },
       ],

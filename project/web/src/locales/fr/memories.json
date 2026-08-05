@@ -1,16 +1,4 @@
 {
-  "capturesFailed_one": "Échec du traitement de {{count}} capture. Consultez la file des tâches définitivement en échec dans Système.",
-  "capturesFailed_many": "Échec du traitement de {{count}} captures. Consultez la file des tâches définitivement en échec dans Système.",
-  "capturesFailed_other": "Échec du traitement de {{count}} captures. Consultez la file des tâches définitivement en échec dans Système.",
-  "capture": {
-    "placeholder": "Mémoriser ceci...",
-    "scope": "Portée",
-    "scopeTitle": "Les faits partagés sont visibles par tous les membres de votre organisation. Les faits privés restent les vôtres.",
-    "submit": "Mémoriser",
-    "hint": "Les faits apparaissent ci-dessous après leur vérification.",
-    "failed": "Échec de la capture. Réessayez.",
-    "pending": "Mémorisation… extraction et vérification en cours."
-  },
   "uncertaintyReason": {
     "hedged_in_source": "formulé avec réserve dans la source",
     "partially_supported": "seulement partiellement confirmé par la source",
@@ -112,5 +100,9 @@
     "correction": "correction",
     "viewing": "affiché",
     "noCorrections": "Aucune correction. Ceci est l’original."
+  },
+  "capturePointer": {
+    "body": "Capture lives in chat now: tell Cogeto something and use Remember this, or attach a file with the paperclip on <chatLink>the chat page</chatLink>. Deliberate document uploads live on <sourcesLink>the Sources page</sourcesLink>.",
+    "dismiss": "Got it"
   }
 }

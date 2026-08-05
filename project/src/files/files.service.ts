@@ -10,6 +10,7 @@ import {
 import type {
   AwaitingCapabilityDto,
   FileProcessingState,
+  FileReadReportDto,
   FileSourceDto,
   MemoryScope,
   Principal,
@@ -168,6 +169,66 @@ export class FilesService {
     return flags.discard
       ? this.uploadDiscard(principal, file, flags, objectKey, contentType)
       : this.uploadStored(principal, file, flags, objectKey, contentType);
+  }
+
+  /**
+   * Stages the bytes of a TRANSIENT chat attachment (V2.2 item 5.1): the same
+   * validation, caps, quota and content-type authority as `upload`, the same
+   * staging-twin key discard mode uses — and deliberately nothing else. No
+   * `file_metadata`, no pipeline job, no source: a transient file is
+   * conversation-only, and the chat module owns the row, the read job and the
+   * cleanup enqueue. Staging keys never enter provenance or receipts, so the
+   * sweep is blind to them by construction, exactly as in discard mode.
+   */
+  async stageTransient(
+    principal: Principal,
+    file: UploadedFile,
+  ): Promise<{ stagingKey: string; contentType: string; sizeBytes: number }> {
+    if (file.buffer.length === 0) throw new BadRequestException('the uploaded file is empty');
+    if (file.buffer.length > this.options.uploadMaxBytes) {
+      throw new BadRequestException(
+        `file exceeds the ${this.options.uploadMaxBytes}-byte upload limit`,
+      );
+    }
+    // The same per-user daily cap as a durable upload: a transient file skips
+    // extraction, but its read (OCR, vision) is the same bounded work.
+    if ((await this.counters.get(principal.userId, 'upload')) >= this.quota.uploadMax) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.TOO_MANY_REQUESTS,
+          error: 'Too Many Requests',
+          code: 'daily_upload_limit',
+          message: `daily upload limit reached (${this.quota.uploadMax}), try again tomorrow`,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+    const contentType = this.resolveContentType(file);
+    await this.counters.add(principal.userId, 'upload', 1);
+
+    const objectKey = `${principal.orgId}/${principal.userId}/private/file-${randomUUID()}`;
+    const stagingKey = toStagingKey(objectKey);
+    await this.objects.putObject(stagingKey, file.buffer, {
+      contentType,
+      metadata: {
+        'original-filename': encodeURIComponent(file.originalName),
+        'owner-id': principal.userId,
+        'uploaded-at': new Date().toISOString(),
+      },
+    });
+    return { stagingKey, contentType, sizeBytes: file.buffer.length };
+  }
+
+  /**
+   * Compensating delete for a staged transient object whose enqueue
+   * transaction failed (the chat module's abort window). Staging keys only —
+   * refusing anything else keeps this from ever deleting a durable original.
+   */
+  async deleteStagedTransient(stagingKey: string): Promise<void> {
+    if (stagingKey.split('/')[2] !== 'staging') {
+      throw new BadRequestException('not a staging key');
+    }
+    await this.cleanupOrphanObject(stagingKey);
   }
 
   /** Stored mode (F1 handoff §1): durable object + file_metadata row. */
@@ -360,6 +421,14 @@ export class FilesService {
     return this.readReports.awaitingCapability(principal.userId);
   }
 
+  /**
+   * The read report alone, without the object HEAD `getSourceForOwner` pays —
+   * for surfaces that already gated the source (the chat attachment card).
+   */
+  async getReadReport(objectKey: string): Promise<FileReadReportDto | null> {
+    return this.readReports.get(objectKey);
+  }
+
   /** The source drawer's file facts — owner-only (null → the controller 404s). */
   async getSourceForOwner(principal: Principal, objectKey: string): Promise<FileSourceDto | null> {
     const metadata = await this.files.get(objectKey);
@@ -533,7 +602,7 @@ export class FilesService {
 
 /** One refusal message for every rejected type, naming what IS accepted. */
 function unsupportedTypeMessage(declaredType: string): string {
-  return `unsupported file type '${declaredType}': only PDF, DOCX, XLSX and CSV are accepted`;
+  return `unsupported file type '${declaredType}': only PDF, DOCX, XLSX, CSV and images are accepted`;
 }
 
 function safeDecode(value: string): string {

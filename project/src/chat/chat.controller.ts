@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -13,10 +14,13 @@ import {
   Req,
   Res,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { z } from 'zod';
 import type {
+  ChatAttachmentCreatedDto,
+  ChatAttachmentDto,
   ChatContextDto,
   ChatMessagePage,
   ChatRememberedDto,
@@ -29,7 +33,12 @@ import type { SseLimits } from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { ModelBudgetExceededError } from '../model-gateway/index';
+import { DocumentUploadInterceptor } from '../files/index';
+import { ChatAttachmentsService } from './chat-attachments.service';
 import { ChatService } from './chat.service';
+
+/** How many attachments one message can carry. */
+const MAX_ATTACHMENTS_PER_MESSAGE = 4;
 
 /** Zod at the boundary — same bounds as note capture. */
 const askSchema = z.object({
@@ -42,6 +51,23 @@ const askSchema = z.object({
   /** Thinking mode for this turn (issue #424): false answers directly on a
    * controllable reasoning endpoint; absent or true deliberates as before. */
   thinking: z.boolean().optional(),
+  /** Attachments sent with this message (V2.2 item 5.1) — already created via
+   * POST /api/chat/attachments; the send links them to the message row. */
+  attachmentIds: z.array(z.uuid()).max(MAX_ATTACHMENTS_PER_MESSAGE).optional(),
+});
+
+/** Multipart text fields arrive as strings; accept the common truthy forms. */
+const boolField = z
+  .union([z.boolean(), z.enum(['true', 'false', 'on', 'off', '1', '0'])])
+  .transform((value) =>
+    typeof value === 'boolean' ? value : value === 'true' || value === 'on' || value === '1',
+  );
+
+/** The paperclip's flags: which conversation, and whether to remember. */
+const attachSchema = z.object({
+  conversationId: z.uuid(),
+  /** "Don't remember this file": conversation-only, never a source. */
+  transient: boolField.optional(),
 });
 
 /** Rename bounds: one plain line, never blank. */
@@ -68,8 +94,50 @@ export class ChatController {
 
   constructor(
     private readonly chat: ChatService,
+    private readonly attachments: ChatAttachmentsService,
     @Inject(SSE_LIMITS) private readonly sse: SseLimits,
   ) {}
+
+  /**
+   * The paperclip (V2.2 item 5.1): attach one file to a conversation. The
+   * same multipart interceptor, byte cap, rate bucket and daily quota as
+   * POST /api/files — one path, two affordances. Default is ingestion through
+   * the normal pipeline; `transient=true` keeps the file conversation-only.
+   */
+  @Post('attachments')
+  @UseGuards(RateLimitGuard)
+  @RateLimit('upload')
+  @UseInterceptors(DocumentUploadInterceptor)
+  async attach(@Req() request: AuthenticatedRequest): Promise<ChatAttachmentCreatedDto> {
+    const file = request.file;
+    if (!file) throw new BadRequestException('no file provided (field name must be "file")');
+    const parsed = parseOrBadRequest(attachSchema, request.body ?? {});
+    const attachment = await this.attachments.attach(
+      request.principal,
+      parsed.conversationId,
+      { buffer: file.buffer, originalName: file.originalname, mimeType: file.mimetype },
+      { transient: parsed.transient ?? false },
+    );
+    return { attachment };
+  }
+
+  /** One attachment's current state — the card's poll. */
+  @Get('attachments/:id')
+  async attachment(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ChatAttachmentDto> {
+    return this.attachments.get(request.principal, id);
+  }
+
+  /** A conversation's attachments, oldest first — the timeline's cards. */
+  @Get('conversations/:id/attachments')
+  async conversationAttachments(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ChatAttachmentDto[]> {
+    return this.attachments.listForConversation(request.principal, id);
+  }
 
   /** The sidebar's conversation list: newest activity first. */
   @Get('conversations')
@@ -214,6 +282,7 @@ export class ChatController {
 
     const stream = this.chat.ask(request.principal, parsed.content, parsed.conversationId, {
       thinking: parsed.thinking,
+      attachmentIds: parsed.attachmentIds,
     });
     const iterator = stream[Symbol.asyncIterator]();
     try {

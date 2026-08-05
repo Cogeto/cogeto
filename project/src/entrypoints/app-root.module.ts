@@ -8,6 +8,8 @@ import {
   ExtractionRefusalCascade,
   ExtractionRefusalCascadeModule,
   IngestionModule,
+  IngestionProgressCascade,
+  IngestionProgressCascadeModule,
   SourceContextCascade,
   SourceContextCascadeModule,
   PipelineIngestionGuard,
@@ -18,6 +20,7 @@ import { MemoryModule } from '../memory/index';
 import { RetrievalModule } from '../retrieval/index';
 import {
   ChatAnswerCascade,
+  ChatAttachmentCascade,
   ChatModule,
   ChatService,
   ChatSourceDeletion,
@@ -108,6 +111,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         ExtractionRefusalCascadeModule,
         SourceContextCascadeModule,
         FileReadReportCascadeModule,
+        IngestionProgressCascadeModule,
       ],
       // Assistant answers citing erased memories are redacted; reply drafts
       // grounded on the source are too. A ready passport export is a signed
@@ -127,6 +131,11 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         // The file read report is content-bearing (sheet names) and can exist
         // with no memory at all, so it goes with its source (V2.1 item 4.1).
         FileReadReportCascade,
+        // Conversation attachments (V2.2 item 5.1): rows go with their
+        // conversation; a durable link to an erased file loses its filename.
+        ChatAttachmentCascade,
+        // The pipeline stage row is metadata-only hygiene, like the refusals.
+        IngestionProgressCascade,
       ],
     },
     // Delete-vs-ingestion serialization: the saga cancels a source's pending
@@ -171,7 +180,18 @@ export function createAppRootModule(config: CogetoConfig): unknown {
     imports: [retrievalModule, researchModule, skillsModule],
   });
   const chatModule = ChatModule.register({
-    imports: [retrievalModule, emailReplyModule, researchChatModule, skillsChatModule],
+    // filesModule / memoryModule / settingsModule: the conversation-attachment
+    // surface (V2.2 item 5.1) delegates upload to files, counts through
+    // memory's gated stores, and applies the owner's capture defaults.
+    imports: [
+      retrievalModule,
+      emailReplyModule,
+      researchChatModule,
+      skillsChatModule,
+      filesModule,
+      memoryModule,
+      settingsModule,
+    ],
   });
   @Module({
     imports: [

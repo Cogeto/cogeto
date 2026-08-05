@@ -6,6 +6,7 @@ import { CountBadge } from './ui';
 export type NavSection =
   | 'dashboard'
   | 'memories'
+  | 'sources'
   | 'chat'
   | 'research'
   | 'skills'
@@ -25,6 +26,8 @@ export type NavSection =
 const ENABLED: { key: NavSection; href: string }[] = [
   { key: 'dashboard', href: '/' },
   { key: 'memories', href: '/memories' },
+  // The deliberate door (V2.2 item 5.1): single upload now, bulk import next.
+  { key: 'sources', href: '/sources' },
   { key: 'chat', href: '/chat' },
   { key: 'research', href: '/research' },
   { key: 'skills', href: '/skills' },
@@ -72,6 +75,14 @@ const ICONS: Record<NavSection, ReactNode> = {
       <circle cx="13.4" cy="9.2" r="2.4" />
       <circle cx="8.6" cy="13.4" r="2.4" />
       <path d="M8.9 8.3 11.5 9M8 9.7 8.3 11.3" />
+    </svg>
+  ),
+  // The document tray: sources land here, deliberately.
+  sources: (
+    <svg viewBox="0 0 20 20" {...G}>
+      <path d="M3.4 11.5V14a2.2 2.2 0 0 0 2.2 2.2h8.8a2.2 2.2 0 0 0 2.2-2.2v-2.5" />
+      <path d="M3.4 11.5h4.1l1 1.6h3l1-1.6h4.1" opacity="0.7" />
+      <path d="M10 3.4v6.2M7.6 7.4 10 9.8l2.4-2.4" />
     </svg>
   ),
   chat: (

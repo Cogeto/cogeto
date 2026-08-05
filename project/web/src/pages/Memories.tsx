@@ -1,10 +1,6 @@
-import { useCallback, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import type { Session } from '../auth/oidc';
-import { CaptureCard, PendingNote } from '../components/CaptureCard';
-import { UploadCard, PendingUpload } from '../components/UploadCard';
-import type { UploadOutcome } from '../components/UploadCard';
 import { GovernedMemories } from '../components/GovernedMemories';
 import { MemoryDrawer } from '../components/MemoryDrawer';
 import { Shell } from '../components/Shell';
@@ -14,42 +10,59 @@ function openedFromUrl(): string | null {
   return new URLSearchParams(window.location.search).get('open');
 }
 
+const POINTER_DISMISSED_KEY = 'cogeto-capture-pointer-dismissed';
+
+/**
+ * A brief, dismissible pointer for the capture move (V2.2 item 5.1): the note
+ * field and the upload control used to live here, and a user who reaches for
+ * them must find directions, not a gap. Guidance, not an apology; remove in a
+ * later version once the pattern is established.
+ */
+function CapturePointer() {
+  const { t } = useTranslation('memories');
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(POINTER_DISMISSED_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  if (dismissed) return null;
+  const dismiss = () => {
+    try {
+      localStorage.setItem(POINTER_DISMISSED_KEY, '1');
+    } catch {
+      // The pointer simply shows again next visit.
+    }
+    setDismissed(true);
+  };
+  const link = 'font-semibold underline underline-offset-2';
+  return (
+    <div className="flex flex-wrap items-start gap-3 rounded-lg border border-brand-teal/30 bg-brand-teal/5 px-4 py-3 text-sm text-slate-600">
+      <p className="min-w-0 flex-1 leading-relaxed">
+        <Trans
+          i18nKey="capturePointer.body"
+          ns="memories"
+          components={{
+            chatLink: <a href="/chat" className={link} />,
+            sourcesLink: <a href="/sources" className={link} />,
+          }}
+        />
+      </p>
+      <button
+        type="button"
+        onClick={dismiss}
+        className="shrink-0 text-xs font-semibold text-slate-500 underline underline-offset-2 hover:text-slate-700"
+      >
+        {t('capturePointer.dismiss')}
+      </button>
+    </div>
+  );
+}
+
 export function Memories({ session }: { session: Session }) {
   const { t } = useTranslation('memories');
-  const [pending, setPending] = useState<string[]>([]);
-  const [uploads, setUploads] = useState<{ objectKey: string; filename: string }[]>([]);
-  const [failedCount, setFailedCount] = useState(0);
   const [openId, setOpenId] = useState<string | null>(openedFromUrl);
-  const queryClient = useQueryClient();
-
-  const settle = useCallback(
-    (noteId: string, failed: boolean) => {
-      setPending((ids) => ids.filter((id) => id !== noteId));
-      if (failed) setFailedCount((n) => n + 1);
-      void queryClient.invalidateQueries({ queryKey: ['memories'] });
-    },
-    [queryClient],
-  );
-
-  const settleUpload = useCallback(
-    (objectKey: string, outcome: UploadOutcome) => {
-      // A row is dropped only when the file was actually READ, because then its
-      // memories appear in the list below and that is the confirmation. A
-      // failed upload keeps its row for the error copy, and so does a file the
-      // reader could not read: a scan needing a vision model used to disappear
-      // silently and look exactly like one that had been processed (V2.1 item
-      // 4.1). The queue's own state cannot tell those apart, since the job
-      // succeeded in both cases.
-      if (outcome === 'failed') {
-        setFailedCount((n) => n + 1);
-        return;
-      }
-      if (outcome === 'unread') return;
-      setUploads((items) => items.filter((item) => item.objectKey !== objectKey));
-      void queryClient.invalidateQueries({ queryKey: ['memories'] });
-    },
-    [queryClient],
-  );
 
   const openDrawer = (memoryId: string | null) => {
     setOpenId(memoryId);
@@ -59,32 +72,7 @@ export function Memories({ session }: { session: Session }) {
 
   return (
     <Shell session={session} title={t('navigation:section.memories')} active="memories">
-      <div className="grid gap-3 md:grid-cols-2">
-        <CaptureCard session={session} onCaptured={(id) => setPending((ids) => [...ids, id])} />
-        <UploadCard
-          session={session}
-          onUploaded={(objectKey, filename) =>
-            setUploads((items) => [...items, { objectKey, filename }])
-          }
-        />
-      </div>
-      {pending.map((id) => (
-        <PendingNote key={id} session={session} noteId={id} onSettled={settle} />
-      ))}
-      {uploads.map((upload) => (
-        <PendingUpload
-          key={upload.objectKey}
-          session={session}
-          objectKey={upload.objectKey}
-          filename={upload.filename}
-          onSettled={settleUpload}
-        />
-      ))}
-      {failedCount > 0 && (
-        <p className="text-sm text-red-600 dark:text-red-300">
-          {t('capturesFailed', { count: failedCount })}
-        </p>
-      )}
+      <CapturePointer />
       <GovernedMemories session={session} onOpen={openDrawer} />
       {openId && (
         <MemoryDrawer

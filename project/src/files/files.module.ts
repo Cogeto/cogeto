@@ -7,7 +7,7 @@ import { FileReadReportCascade } from './file-read-report.cascade';
 import { FileReadReportStore } from './persistence/file-read-report';
 import { FILE_UPLOAD_OPTIONS } from './file-upload-options';
 import type { FileUploadOptions } from './file-upload-options';
-import { VisionSource } from './file.source-reader';
+import { LadderedDocumentReader, VisionSource } from './laddered-read';
 import { ProbedVisionSource, VISION_PROVIDERS } from './reading/vision-source';
 import type { ResolvedModelProviders } from '../model-gateway/index';
 
@@ -47,6 +47,7 @@ export class FilesModule {
       providers: [
         FilesService,
         FileSourceReader,
+        LadderedDocumentReader,
         FileReadReportStore,
         FileReadReportCascade,
         { provide: FILE_UPLOAD_OPTIONS, useValue: options.fileUpload },
@@ -57,7 +58,13 @@ export class FilesModule {
             ]
           : []),
       ],
-      exports: [FilesService, FileSourceReader, FileReadReportCascade, FILE_UPLOAD_OPTIONS],
+      exports: [
+        FilesService,
+        FileSourceReader,
+        LadderedDocumentReader,
+        FileReadReportCascade,
+        FILE_UPLOAD_OPTIONS,
+      ],
     };
   }
 }

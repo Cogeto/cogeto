@@ -106,5 +106,33 @@
     "streaming": "Thinking, streaming live",
     "toggleOn": "Thinking on",
     "toggleOff": "Thinking off"
+  },
+  "attachment": {
+    "attachLabel": "Attach a file",
+    "transientToggle": "Don't remember this file",
+    "transientChip": "this conversation only",
+    "transientMeaning": "Used only in this conversation: the file is read once, its bytes are discarded right after, and the extracted text stays with this conversation until you delete the conversation. It never becomes a source or a memory, and no other conversation can see it.",
+    "durableHint": "This file will be added to your sources: read, its facts extracted and verified, kept with full provenance.",
+    "removeStaged": "Remove",
+    "stage": {
+      "queued": "Queued",
+      "reading": "Reading",
+      "extracting": "Extracting facts",
+      "verifying": "Verifying",
+      "storing": "Storing"
+    },
+    "failed": "This file could not be processed.",
+    "transientReady": "Read for this conversation. Ask about it here; it was not remembered.",
+    "gateRefused": "Stored, but not extracted: {{reason}}.",
+    "addedToSources": "Added to sources: {{facts}}, {{contradictions}}.",
+    "factsCount_one": "{{count}} facts",
+    "factsCount_few": "{{count}} facts",
+    "factsCount_other": "{{count}} facts",
+    "contradictionsCount_one": "{{count}} contradictions",
+    "contradictionsCount_few": "{{count}} contradictions",
+    "contradictionsCount_other": "{{count}} contradictions",
+    "truncatedNote": "The file was read in part; open the source for what was left out.",
+    "viewInSources": "View in Sources",
+    "sourceRemoved": "Attachment removed with its source"
   }
 }

@@ -1,3 +1,4 @@
+import type { FileProcessingState, FileReadOutcome } from './files';
 import type { MemoryScope, MemoryStatus } from './memory';
 import type { ChatSkillRunRef } from './skills';
 
@@ -139,6 +140,62 @@ export type ChatStreamEvent =
        * duration abort). Absent for a generic failure. */
       code?: 'model_budget_exceeded' | 'timeout';
     };
+
+/**
+ * The honest in-flight stage of a source's pipeline run (V2.2 item 5.1),
+ * mirroring the stages the pipeline actually reports: reading the bytes,
+ * extracting facts, verifying them against their spans, storing and
+ * reconciling. Terminal state comes from the queue's ledgers, not from here.
+ */
+export type IngestionStage = 'reading' | 'extracting' | 'verifying' | 'storing';
+
+/**
+ * One file attached in a conversation (V2.2 item 5.1). Durable attachments
+ * ARE ordinary file sources (same pipeline, same provenance); this DTO is the
+ * conversation's view of one: the link, the honest progress, and the settled
+ * outcome with real numbers. Transient attachments never become sources; their
+ * text serves this conversation only.
+ */
+export interface ChatAttachmentDto {
+  id: string;
+  conversationId: string;
+  /** The user message it was sent with; null for an attachment sent alone. */
+  messageId: string | null;
+  transient: boolean;
+  /** Display name; null once the source (and with it the filename) was erased. */
+  name: string | null;
+  contentType: string | null;
+  sizeBytes: number | null;
+  /**
+   * Durable: the pipeline job state (`processing` | `done` | `error`).
+   * Transient: `processing` while the read job runs, `done` when the text is
+   * ready, `error` when the bytes could not be read.
+   */
+  state: FileProcessingState;
+  /** The in-flight pipeline stage while `state` is `processing`, when known. */
+  stage: IngestionStage | null;
+  /** Durable: the file source's object key — the link into Sources. Null for
+   * transient attachments and after the source was deleted. */
+  objectKey: string | null;
+  /** What the reading layer made of the bytes, once settled. */
+  readOutcome: FileReadOutcome | null;
+  /** The read report's reason code for an unreadable file, once settled. */
+  readReason: string | null;
+  /** Durable, settled: facts admitted from this source. */
+  factsCount: number | null;
+  /** Durable, settled: open contradictions this source's facts are party to. */
+  contradictionsCount: number | null;
+  /** Durable, settled: the extraction gate's refusal reason, when it refused. */
+  gateRefusal: string | null;
+  /** True when the durable file source was deleted after ingestion. */
+  sourceDeleted: boolean;
+  createdAt: string;
+}
+
+/** POST /api/chat/attachments — the created attachment. */
+export interface ChatAttachmentCreatedDto {
+  attachment: ChatAttachmentDto;
+}
 
 /** POST /api/chat/messages/:id/remember: the enqueued capture. */
 export interface ChatRememberedDto {

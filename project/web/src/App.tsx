@@ -17,6 +17,7 @@ import { Login } from './pages/Login';
 import { Approvals } from './pages/Approvals';
 import { Audit } from './pages/Audit';
 import { Memories } from './pages/Memories';
+import { Sources } from './pages/Sources';
 import { Review } from './pages/Review';
 import { Settings } from './pages/Settings';
 import { Skills } from './pages/Skills';
@@ -107,6 +108,8 @@ function renderPage(session: Session) {
   switch (window.location.pathname) {
     case '/memories':
       return <Memories session={session} />;
+    case '/sources':
+      return <Sources session={session} />;
     case '/chat':
       return <Chat session={session} />;
     case '/research':
