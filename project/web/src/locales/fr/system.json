@@ -23,7 +23,18 @@
     "memoryEmbed": "Vectorisation",
     "deletionSweep": "Vérification d’intégrité",
     "dreamingCycle": "Rêve",
-    "echo": "Écho"
+    "echo": "Écho",
+    "fileDiscardCleanup": "Cleaning up a discarded original",
+    "approvalExecute": "Executing an approved action",
+    "approvalExpiry": "Expiring stale approvals",
+    "researchConclude": "Concluding research",
+    "skillAdvance": "Advancing a skill run",
+    "emailRefusalRetention": "Pruning refused-mail records",
+    "extractionRefusalRetention": "Pruning extraction refusals",
+    "conversationTitle": "Naming a conversation",
+    "passportExport": "Preparing a Passport export",
+    "passportRetention": "Expiring Passport downloads",
+    "demoReset": "Resetting the demo"
   },
   "worker": {
     "heading": "Activité du processus de fond",

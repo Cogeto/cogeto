@@ -23,7 +23,18 @@
     "memoryEmbed": "Einbettung",
     "deletionSweep": "Integritätsprüfung",
     "dreamingCycle": "Träumen",
-    "echo": "Echo"
+    "echo": "Echo",
+    "fileDiscardCleanup": "Cleaning up a discarded original",
+    "approvalExecute": "Executing an approved action",
+    "approvalExpiry": "Expiring stale approvals",
+    "researchConclude": "Concluding research",
+    "skillAdvance": "Advancing a skill run",
+    "emailRefusalRetention": "Pruning refused-mail records",
+    "extractionRefusalRetention": "Pruning extraction refusals",
+    "conversationTitle": "Naming a conversation",
+    "passportExport": "Preparing a Passport export",
+    "passportRetention": "Expiring Passport downloads",
+    "demoReset": "Resetting the demo"
   },
   "worker": {
     "heading": "Aktivität des Hintergrundprozesses",
@@ -66,7 +77,12 @@
     "chainRow": "(Kette)",
     "lastSweep": "letzte Prüfung {{when}}, geprüft: {{receipts}} Belege und {{identifiers}} Kennungen",
     "neverRun": "Prüfung wurde noch nicht ausgeführt, nächtlich um 03:00 Uhr oder bei Bedarf starten",
-    "column": { "kind": "Art", "identifier": "Kennung", "receipt": "Beleg", "detected": "Erkannt" }
+    "column": {
+      "kind": "Art",
+      "identifier": "Kennung",
+      "receipt": "Beleg",
+      "detected": "Erkannt"
+    }
   },
   "deadLetter": {
     "heading": "Warteschlange endgültig fehlgeschlagener Aufträge",

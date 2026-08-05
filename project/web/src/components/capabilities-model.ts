@@ -42,6 +42,7 @@ const KNOWN_CAPABILITIES = [
   'demo',
   'consoles',
   'local-models',
+  'reasoning',
   'vision',
 ] as const;
 
