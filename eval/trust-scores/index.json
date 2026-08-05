@@ -1,5 +1,10 @@
 [
   {
+    "version": "v1.4.2-local",
+    "date": "2026-08-05",
+    "path": "v1.4.2-local.json"
+  },
+  {
     "version": "v1.4.1",
     "date": "2026-08-01",
     "path": "v1.4.1.json"
