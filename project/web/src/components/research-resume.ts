@@ -15,7 +15,14 @@ export function pickResumeRun(runs: ResearchRunDto[], now: Date): ResearchRunDto
   const cutoff = now.getTime() - RESUME_WINDOW_HOURS * 3_600_000;
   const fresh = (iso: string | null) => iso !== null && new Date(iso).getTime() >= cutoff;
   const candidates = runs.filter(
-    (run) => run.answerSeenAt === null && run.status === 'approved' && fresh(run.approvedAt),
+    (run) =>
+      run.answerSeenAt === null &&
+      run.status === 'approved' &&
+      fresh(run.approvedAt) &&
+      // A skill-launched run answers to its skill, never to chat (issue #427):
+      // its answer is consumed there, so answerSeenAt legitimately stays null
+      // and chat must not keep resurrecting it.
+      !run.fromSkill,
   );
   if (candidates.length === 0) return null;
   const at = (run: ResearchRunDto) => new Date(run.approvedAt ?? run.createdAt).getTime();

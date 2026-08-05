@@ -96,6 +96,9 @@ export interface ResearchRunDto {
   /** When the owner saw the stored answer — the chat resume surface shows a
    * run until this is set, never after. */
   answerSeenAt: string | null;
+  /** True when a named skill launched this run (issue #427): its consumer is
+   * the skill run view, so the chat resume surface never claims it. */
+  fromSkill: boolean;
 }
 
 export interface ApproveResearchRequest {
