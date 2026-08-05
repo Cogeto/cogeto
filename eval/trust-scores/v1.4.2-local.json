@@ -1,0 +1,92 @@
+{
+  "schema_version": "1.1",
+  "generated_by": {
+    "release": "v1.4.2",
+    "commit": "be2254dc6e1c74233d042ae4855a035797923ec4",
+    "harness": "extraction/v0005 + verification/v0006 · reconcile_dedup/v0001 + reconcile_contradiction/v0001 · query_rewrite/v0006 · thresholds v1 + chat answer/v0007 · grader eval-coverage/v0001",
+    "generated_at": "2026-08-05T13:01:05.690Z",
+    "backfilled": false
+  },
+  "configurations": [
+    {
+      "id": "cogeto-offline",
+      "models": {
+        "pipeline": "cogeto",
+        "answer": "cogeto",
+        "embedding": "bge-m3"
+      },
+      "redaction": false,
+      "corpus": {
+        "golden_cases": 98,
+        "reconcile_pairs": 33,
+        "chat_cases": 24,
+        "rewrite_cases": 32,
+        "per_language": [
+          {
+            "language": "en",
+            "golden_cases": 48,
+            "reconcile_pairs": 17,
+            "rewrite_cases": 16
+          },
+          {
+            "language": "hr",
+            "golden_cases": 50,
+            "reconcile_pairs": 16,
+            "rewrite_cases": 16
+          }
+        ]
+      },
+      "metrics": {
+        "per_language": [
+          {
+            "language": "en",
+            "golden_cases": 48,
+            "extraction_precision": 0.8061224489795918,
+            "extraction_recall": 0.972972972972973,
+            "verification_agreement": 0.9361702127659575,
+            "dedup_accuracy": 1,
+            "contradiction_recall": 0.6666666666666666,
+            "contradiction_precision": 0.6666666666666666,
+            "supersedes_accuracy": 0.8,
+            "supersedes_pairs": 5,
+            "rewrite_accuracy": 0.6875
+          },
+          {
+            "language": "hr",
+            "golden_cases": 50,
+            "extraction_precision": 0.8041237113402062,
+            "extraction_recall": 0.918918918918919,
+            "verification_agreement": 0.9375,
+            "dedup_accuracy": 1,
+            "contradiction_recall": 0.6666666666666666,
+            "contradiction_precision": 0.6666666666666666,
+            "supersedes_accuracy": 0.8,
+            "supersedes_pairs": 5,
+            "rewrite_accuracy": 0.8125
+          }
+        ],
+        "aggregate": {
+          "extraction_precision": 0.8051282051282052,
+          "extraction_recall": 0.9459459459459459,
+          "verification_agreement": 0.9368421052631579,
+          "dedup_accuracy": 1,
+          "contradiction_recall": 0.6666666666666666,
+          "contradiction_precision": 0.6666666666666666,
+          "supersedes_accuracy": 0.8,
+          "supersedes_pairs": 10,
+          "rewrite_accuracy": 0.75
+        },
+        "chat": {
+          "cases": 24,
+          "passed": 23,
+          "failed": [
+            "followup_cross_capability"
+          ]
+        }
+      }
+    }
+  ],
+  "notes": [
+    "Self-hosted configuration measurement (llama.cpp ff711 + bge-m3 on the operator's own hardware), thinking suppressed on every call. Advisory against the Mistral-measured gates: contradiction recall and query-rewrite accuracy sit below their floors; both zero-tolerance gates (injection, subject) pass. Not a release measurement."
+  ]
+}
