@@ -103,6 +103,8 @@
   },
   "reasoning": {
     "heading": "Thinking",
-    "streaming": "Thinking, streaming live"
+    "streaming": "Thinking, streaming live",
+    "toggleOn": "Thinking on",
+    "toggleOff": "Thinking off"
   }
 }

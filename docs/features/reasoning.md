@@ -79,6 +79,32 @@ ABOUT an erased memory must not survive the citation that grounded it; row
 deletion (message, conversation, source cascade) removes it implicitly, and
 receipts are unchanged.
 
+## The thinking toggle (issue #424)
+
+Thinking is also COSTLY: at self-hosted speeds it multiplies every call's
+latency. So the mode is controllable per request, three ways:
+
+- **Chat**: a per-device toggle in the composer, default on. Off asks the
+  model to answer directly, with the measured non-thinking sampler profile
+  (temperature 0.7, top_p 0.80, presence_penalty 1.5, the anti-loop guard
+  free-form generation needs); on pairs the thinking profile (temperature
+  1.0, top_p 0.95, no penalty). No deliberation means no disclosure.
+- **Structured tasks** (extraction, verification, reconciliation, anchoring,
+  the auto-title) and **vision page reads** disable thinking unconditionally:
+  they discard reasoning by design, so they never pay for it. Temperature
+  stays 0 and no sampler profile applies; the presence penalty tested
+  unnecessary against JSON and is deliberately not sent there.
+- **The mechanism**: a provider-neutral `thinking: on | off` on the gateway
+  request. The OpenAI-compatible adapter maps it to
+  `chat_template_kwargs.enable_thinking` (the flag the reference llama.cpp
+  build honours; top-level `reasoning: "off"` tested not honoured) on
+  SELF-HOSTED endpoints only, because the hosted API rejects unknown
+  parameters. Mistral and Anthropic ignore the mode; a request that sets no
+  mode is byte-identical to before; a server that ignores the flag still
+  works, because the probe and the headroom stay as the safety net. A pinned
+  adapter temperature (the eval harness pins 0) suppresses the sampler
+  profile but never the flag, so measurements stay deterministic.
+
 ## What is deliberately NOT here
 
 - No thinking in the answer prompt, the reply drafts, research synthesis, or

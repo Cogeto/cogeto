@@ -403,6 +403,25 @@ export function Chat({ session }: { session: Session }) {
   const [failed, setFailed] = useState(false);
   /** Specific failure copy: rate limit / daily budget / timeout. */
   const [failMessage, setFailMessage] = useState<string | null>(null);
+  /** Thinking mode (issue #424): per device, default on. Off answers fast
+   * with no deliberation and no disclosure. */
+  const [thinkingOn, setThinkingOn] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('cogeto-thinking') !== '0';
+    } catch {
+      return true;
+    }
+  });
+  const toggleThinking = () => {
+    setThinkingOn((prev) => {
+      try {
+        localStorage.setItem('cogeto-thinking', prev ? '0' : '1');
+      } catch {
+        // Preference simply resets next visit.
+      }
+      return !prev;
+    });
+  };
   const [liveQuestion, setLiveQuestion] = useState<string | null>(null);
   const [liveText, setLiveText] = useState('');
   /** The reasoning channel, streamed live (Part C): shown collapsed above the
@@ -528,39 +547,47 @@ export function Chat({ session }: { session: Session }) {
     const controller = new AbortController();
     streamRef.current = controller;
     try {
-      await askChat(session, content, conversationId, (event) => {
-        if (event.type === 'sources') setLiveFacts(event.facts);
-        else if (event.type === 'token') setLiveText((prev) => prev + event.text);
-        else if (event.type === 'done') {
-          if (event.skillRun) setSkillRunId(event.skillRun.runId);
-          if (event.researchProposal) {
-            // A research-class question already proposed a run: open it inline.
-            setOffer(null);
-            void fetchResearchRun(session, event.researchProposal.runId)
-              .then((run) => setInlineRun(run))
-              .catch(() => setInlineRun(null));
-          } else {
-            // A knowledge answer may offer research. With auto-research on
-            // the tap is implicit: propose + run it immediately;
-            // otherwise show the one-tap offer. (Concluding turns never re-offer.)
-            const nextOffer = opts.suppressOffer ? null : (event.researchOffer ?? null);
-            if (nextOffer && getAutoResearch()) {
+      await askChat(
+        session,
+        content,
+        conversationId,
+        (event) => {
+          if (event.type === 'sources') setLiveFacts(event.facts);
+          else if (event.type === 'thinking') setLiveThinking((prev) => prev + event.text);
+          else if (event.type === 'token') setLiveText((prev) => prev + event.text);
+          else if (event.type === 'done') {
+            if (event.skillRun) setSkillRunId(event.skillRun.runId);
+            if (event.researchProposal) {
+              // A research-class question already proposed a run: open it inline.
               setOffer(null);
-              void proposeResearch(session, nextOffer.topic, conversationId ?? undefined)
+              void fetchResearchRun(session, event.researchProposal.runId)
                 .then((run) => setInlineRun(run))
-                .catch(() => setOffer(nextOffer));
+                .catch(() => setInlineRun(null));
             } else {
-              setOffer(nextOffer);
+              // A knowledge answer may offer research. With auto-research on
+              // the tap is implicit: propose + run it immediately;
+              // otherwise show the one-tap offer. (Concluding turns never re-offer.)
+              const nextOffer = opts.suppressOffer ? null : (event.researchOffer ?? null);
+              if (nextOffer && getAutoResearch()) {
+                setOffer(null);
+                void proposeResearch(session, nextOffer.topic, conversationId ?? undefined)
+                  .then((run) => setInlineRun(run))
+                  .catch(() => setOffer(nextOffer));
+              } else {
+                setOffer(nextOffer);
+              }
+            }
+          } else if (event.type === 'error') {
+            setFailed(true);
+            // Specific copy for the daily budget / stream-timeout aborts.
+            if (event.code === 'model_budget_exceeded' || event.code === 'timeout') {
+              setFailMessage(event.message);
             }
           }
-        } else if (event.type === 'error') {
-          setFailed(true);
-          // Specific copy for the daily budget / stream-timeout aborts.
-          if (event.code === 'model_budget_exceeded' || event.code === 'timeout') {
-            setFailMessage(event.message);
-          }
-        }
-      });
+        },
+        controller.signal,
+        { thinking: thinkingOn },
+      );
     } catch (error) {
       // A detached stream (conversation switch) is intentional — not a failure.
       if (!controller.signal.aborted) {
@@ -823,9 +850,23 @@ export function Chat({ session }: { session: Session }) {
                   )}
                 </button>
               </div>
-              <p className="mt-2 text-center font-mono text-[0.66rem] tracking-[0.04em] text-slate-400">
-                {t('composer.hint')}
-              </p>
+              <div className="mt-2 flex items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={toggleThinking}
+                  aria-pressed={thinkingOn}
+                  className={`rounded-full border px-2 py-0.5 font-mono text-[0.66rem] tracking-[0.04em] transition-colors ${
+                    thinkingOn
+                      ? 'border-brand-teal text-brand-teal-ink dark:text-brand-teal'
+                      : 'border-slate-300 text-slate-400'
+                  }`}
+                >
+                  {thinkingOn ? t('reasoning.toggleOn') : t('reasoning.toggleOff')}
+                </button>
+                <p className="text-center font-mono text-[0.66rem] tracking-[0.04em] text-slate-400">
+                  {t('composer.hint')}
+                </p>
+              </div>
             </form>
           </div>
         </div>

@@ -22,6 +22,15 @@ export interface CompletionRequest {
   maxTokens?: number;
   /** Defaults to `answer` — completion is the user-facing synthesis path. */
   tier?: ModelTier;
+  /**
+   * Requested thinking MODE (reasoning support): `off` asks a reasoning model
+   * to answer directly, `on` to deliberate. Provider-neutral intent: the
+   * OpenAI-compatible adapter maps it to the server's template flag and the
+   * paired sampler profile on self-hosted endpoints; every other adapter and
+   * a hosted endpoint ignore it. Unset sends byte-identical requests, and a
+   * server that ignores the flag still works — the probe and headroom stay.
+   */
+  thinking?: 'on' | 'off';
 }
 
 /**

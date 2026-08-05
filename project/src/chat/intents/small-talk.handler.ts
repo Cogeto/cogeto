@@ -44,6 +44,7 @@ export class SmallTalkHandler {
     content: string,
     history: ConversationTurn[],
     contextBlock?: string,
+    thinkingMode: 'on' | 'off' = 'on',
   ): AsyncGenerator<ChatStreamEvent> {
     yield { type: 'sources', facts: [] };
     const prompt = await this.sink.getPrompt();
@@ -53,6 +54,7 @@ export class SmallTalkHandler {
       system: prompt.content,
       input: buildSmallTalkInput(history, content, contextBlock),
       tier: 'answer',
+      thinking: thinkingMode,
     });
     for await (const delta of stream) {
       if (delta.channel === 'thinking') {

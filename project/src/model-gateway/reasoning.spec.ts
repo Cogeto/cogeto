@@ -447,3 +447,79 @@ describe('reasoning_stream_channel', () => {
     ]);
   });
 });
+
+describe('thinking_control (issue #424)', () => {
+  const controlled = (temperature?: number): OpenAiCompatibleModelGateway =>
+    new OpenAiCompatibleModelGateway({
+      apiKey: 'ok',
+      pipelineModel: 'PIPE',
+      answerModel: 'ANS',
+      visionModel: 'ANS',
+      thinkingControl: true,
+      ...(temperature !== undefined ? { temperature } : {}),
+    });
+
+  it('maps the mode to the template flag plus the paired sampler profile', async () => {
+    const { calls } = stubFetch(chat('fast'), chat('slow'));
+    await controlled().complete({ input: 'q', thinking: 'off' });
+    expect(calls[0]!.body.chat_template_kwargs).toEqual({ enable_thinking: false });
+    expect(calls[0]!.body.temperature).toBe(0.7);
+    expect(calls[0]!.body.top_p).toBe(0.8);
+    expect(calls[0]!.body.presence_penalty).toBe(1.5);
+
+    await controlled().complete({ input: 'q', thinking: 'on' });
+    expect(calls[1]!.body.chat_template_kwargs).toEqual({ enable_thinking: true });
+    expect(calls[1]!.body.temperature).toBe(1.0);
+    expect(calls[1]!.body.top_p).toBe(0.95);
+    expect(calls[1]!.body.presence_penalty).toBe(0.0);
+  });
+
+  it('a pinned adapter temperature (the eval harness) suppresses the profile, never the flag', async () => {
+    const { calls } = stubFetch(chat('deterministic'));
+    await controlled(0).complete({ input: 'q', thinking: 'off' });
+    expect(calls[0]!.body.chat_template_kwargs).toEqual({ enable_thinking: false });
+    expect(calls[0]!.body.temperature).toBe(0);
+    expect(calls[0]!.body.presence_penalty).toBeUndefined();
+  });
+
+  it('no mode, or no control, sends byte-identical requests', async () => {
+    const { calls } = stubFetch(chat('a'), chat('b'));
+    await controlled().complete({ input: 'q' });
+    expect(calls[0]!.body.chat_template_kwargs).toBeUndefined();
+    expect(calls[0]!.body.presence_penalty).toBeUndefined();
+    await gateway().complete({ input: 'q', thinking: 'off' }); // control off
+    expect(calls[1]!.body.chat_template_kwargs).toBeUndefined();
+  });
+
+  it('structured extraction and vision reads disable thinking unconditionally under control', async () => {
+    const { calls } = stubFetch(chat('{"value": 1}'), chat('a page'));
+    await controlled().extractStructured(z.object({ value: z.number() }), {
+      system: 's',
+      input: 'i',
+    });
+    expect(calls[0]!.body.chat_template_kwargs).toEqual({ enable_thinking: false });
+    expect(calls[0]!.body.temperature).toBe(0); // the MUST survives
+    expect(calls[0]!.body.presence_penalty).toBeUndefined(); // no profile on JSON
+
+    await controlled().describeImage({ input: 'p', image: { bytes: png, mediaType: 'image/png' } });
+    expect(calls[1]!.body.chat_template_kwargs).toEqual({ enable_thinking: false });
+    expect(calls[1]!.body.temperature).toBe(0);
+  });
+
+  it('the stream path carries the mode too', async () => {
+    const { calls } = stubFetch(
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+            controller.close();
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+    for await (const _ of controlled().completeStream({ input: 'q', thinking: 'off' })) void _;
+    expect(calls[0]!.body.chat_template_kwargs).toEqual({ enable_thinking: false });
+    expect(calls[0]!.body.presence_penalty).toBe(1.5);
+  });
+});
