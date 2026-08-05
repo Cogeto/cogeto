@@ -39,6 +39,9 @@ const askSchema = z.object({
     .refine((value) => value.trim().length > 0, 'message must not be blank'),
   /** The conversation the message is sent to — it always lands there. */
   conversationId: z.uuid(),
+  /** Thinking mode for this turn (issue #424): false answers directly on a
+   * controllable reasoning endpoint; absent or true deliberates as before. */
+  thinking: z.boolean().optional(),
 });
 
 /** Rename bounds: one plain line, never blank. */
@@ -209,7 +212,9 @@ export class ChatController {
       maxMs > 0 ? setTimeout(() => controller.abort(new Error('duration')), maxMs) : undefined;
     resetIdle();
 
-    const stream = this.chat.ask(request.principal, parsed.content, parsed.conversationId);
+    const stream = this.chat.ask(request.principal, parsed.content, parsed.conversationId, {
+      thinking: parsed.thinking,
+    });
     const iterator = stream[Symbol.asyncIterator]();
     try {
       for (;;) {

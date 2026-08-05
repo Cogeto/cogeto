@@ -40,6 +40,7 @@ export class MemoryAnswerHandler {
     history: ConversationTurn[],
     rewrite: RewriteResult,
     context: { record: UserContextRecord; answerBlock: string },
+    thinkingMode: 'on' | 'off' = 'on',
   ): AsyncGenerator<ChatStreamEvent> {
     const knowledge = rewrite.questionClass === 'knowledge';
     const retrieved = await this.retrieval.retrieve(principal, content, {
@@ -82,6 +83,7 @@ export class MemoryAnswerHandler {
           context: context.answerBlock,
         }),
         tier: 'answer',
+        thinking: thinkingMode,
       });
       // Two channels, two fates (Part C): thinking streams to the disclosure
       // and is stored BESIDE the answer; only the text channel becomes the

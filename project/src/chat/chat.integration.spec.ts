@@ -252,6 +252,16 @@ describe('chat (integration, real Postgres + real Qdrant, gateway mocked)', () =
       const page = await chat.listMessages(userA, conversationId, { limit: 10 });
       const assistant = page.items.find((message) => message.role === 'assistant');
       expect(assistant?.thinking).toContain('Deciding on the citation.');
+
+      // The chat path is explicit about the mode (issue #424): default on.
+      expect(gateway.streamRequests.at(-1)?.thinking).toBe('on');
+      // And the toggle reaches the gateway as 'off'.
+      for await (const event of chat.ask(userA, 'And Maja again?', conversationId, {
+        thinking: false,
+      })) {
+        void event;
+      }
+      expect(gateway.streamRequests.at(-1)?.thinking).toBe('off');
     } finally {
       gateway.thinkingDeltas = [];
     }

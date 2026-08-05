@@ -62,6 +62,15 @@ export interface OpenAiCompatibleGatewayOptions {
    * a changed request.
    */
   reasoningHeadroom?: number;
+  /**
+   * Enables per-request thinking control (issue #424): the adapter then sends
+   * `chat_template_kwargs.enable_thinking` (the flag the reference llama.cpp
+   * build honours; top-level `reasoning: "off"` tested NOT honoured) and the
+   * paired sampler profiles. SELF-HOSTED endpoints only — the hosted API
+   * rejects unknown parameters — which is why this is an option the factory
+   * sets rather than a default.
+   */
+  thinkingControl?: boolean;
 }
 
 const EMBED_BATCH_SIZE = 128;
@@ -107,6 +116,7 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
   private readonly tierTimeoutsMs?: OpenAiCompatibleGatewayOptions['tierTimeoutsMs'];
   private readonly localRuntime?: { rootUrl: string };
   private readonly reasoningHeadroom: number;
+  private readonly thinkingControl: boolean;
   /**
    * Models a response has shown to reason, learned from real responses only:
    * the boot/registry probe primes it, and any non-streaming response carrying
@@ -129,6 +139,42 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
     this.tierTimeoutsMs = options.tierTimeoutsMs;
     this.localRuntime = options.localRuntime;
     this.reasoningHeadroom = options.reasoningHeadroom ?? 4;
+    this.thinkingControl = options.thinkingControl ?? false;
+  }
+
+  /**
+   * The thinking mode's request fields (issue #424). Two parts:
+   * - the template flag, always sent when a mode is requested;
+   * - the owner-measured sampler profile, sent ONLY when this adapter has no
+   *   pinned temperature (the eval harness pins 0 and must stay pinned). The
+   *   non-thinking profile carries presence_penalty 1.5 because free-form
+   *   generation without thinking loops without it; structured JSON does not
+   *   get a profile at all (temperature 0 rules, and the penalty tested
+   *   unnecessary against JSON).
+   */
+  private thinkingFields(mode: 'on' | 'off' | undefined): Record<string, unknown> {
+    if (!this.thinkingControl || mode === undefined) return {};
+    const samplers =
+      this.temperature !== undefined
+        ? {}
+        : mode === 'on'
+          ? {
+              temperature: 1.0,
+              top_p: 0.95,
+              top_k: 20,
+              min_p: 0.0,
+              presence_penalty: 0.0,
+              repetition_penalty: 1.0,
+            }
+          : {
+              temperature: 0.7,
+              top_p: 0.8,
+              top_k: 20,
+              min_p: 0.0,
+              presence_penalty: 1.5,
+              repetition_penalty: 1.0,
+            };
+    return { chat_template_kwargs: { enable_thinking: mode === 'on' }, ...samplers };
   }
 
   /**
@@ -238,6 +284,7 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
       model,
       ...(maxTokens !== undefined ? { max_tokens: maxTokens } : {}),
       ...(this.temperature !== undefined ? { temperature: this.temperature } : {}),
+      ...this.thinkingFields(request.thinking),
       messages: [
         ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
         { role: 'user' as const, content: request.input },
@@ -323,6 +370,11 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
             // ALWAYS deterministic sampling: structured
             // extraction decides what Cogeto remembers — never a dice roll.
             temperature: 0,
+            // Structured tasks never display thinking, so on a controllable
+            // endpoint they never pay for it (issue #424). Temperature stays
+            // 0 and no sampler profile applies; JSON tested clean without the
+            // anti-loop penalty.
+            ...(this.thinkingControl ? { chat_template_kwargs: { enable_thinking: false } } : {}),
             response_format: { type: 'json_object' },
             messages: [
               { role: 'system' as const, content: request.system },
@@ -383,6 +435,10 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
       ...(maxTokens !== undefined ? { max_tokens: maxTokens } : {}),
       // Reading a page is a transcription task, not a creative one.
       temperature: 0,
+      // Transcription never displays thinking either (issue #424): pages read
+      // several times faster on a controllable reasoning endpoint. The probe
+      // and headroom stay as the safety net for servers ignoring the flag.
+      ...(this.thinkingControl ? { chat_template_kwargs: { enable_thinking: false } } : {}),
       messages: [
         ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
         {

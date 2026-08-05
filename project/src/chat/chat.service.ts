@@ -436,7 +436,14 @@ export class ChatService {
     principal: Principal,
     content: string,
     conversationId: string,
+    options: {
+      /** issue #424: false answers directly; absent or true deliberates. */
+      thinking?: boolean;
+    } = {},
   ): AsyncGenerator<ChatStreamEvent> {
+    // The chat path is always EXPLICIT about the mode (the paired sampler
+    // profiles belong to it); background callers stay unset and unchanged.
+    const thinkingMode: 'on' | 'off' = options.thinking === false ? 'off' : 'on';
     // The conversation resolves FIRST (owner-gated, 404 otherwise): a message
     // always lands in the conversation it was sent to, even if the
     // client switches threads mid-stream.
@@ -520,6 +527,7 @@ export class ChatService {
         content,
         history,
         ctx.answerBlock,
+        thinkingMode,
       );
       return;
     }
@@ -541,10 +549,18 @@ export class ChatService {
     // knowledge questions; grounded facts always come first.
     yield* new MemoryAnswerHandler(this.retrieval, this.gateway, this.directory, this.sink(), () =>
       Boolean(this.researchResolver),
-    ).handle(principal, conversationId, content, history, rewrite, {
-      record: ctx.record,
-      answerBlock: ctx.answerBlock,
-    });
+    ).handle(
+      principal,
+      conversationId,
+      content,
+      history,
+      rewrite,
+      {
+        record: ctx.record,
+        answerBlock: ctx.answerBlock,
+      },
+      thinkingMode,
+    );
   }
 
   /** The router's bounded rewrite call — shared fallback semantics (0046).

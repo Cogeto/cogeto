@@ -604,6 +604,7 @@ export async function askChat(
   conversationId: string,
   onEvent: (event: ChatStreamEvent) => void,
   signal?: AbortSignal,
+  options: { thinking?: boolean } = {},
 ): Promise<void> {
   const response = await fetch('/api/chat', {
     method: 'POST',
@@ -611,7 +612,7 @@ export async function askChat(
       authorization: `Bearer ${session.accessToken}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ content, conversationId }),
+    body: JSON.stringify({ content, conversationId, thinking: options.thinking }),
     // Switching conversations mid-stream detaches cleanly: the message
     // still lands server-side in the conversation it was sent to.
     signal,

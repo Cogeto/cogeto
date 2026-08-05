@@ -154,6 +154,9 @@ function buildProviderGateway(
           visionModel,
           temperature,
           reasoningHeadroom: providers.reasoningHeadroom,
+          // Per-request thinking control (issue #424): self-hosted only — the
+          // hosted API rejects unknown parameters.
+          thinkingControl: providers.openaiSelfHosted,
         });
         break;
       case 'anthropic':
@@ -184,6 +187,8 @@ function buildProviderGateway(
           visionModel,
           temperature,
           reasoningHeadroom: providers.reasoningHeadroom,
+          // The local runtime is always ours to control (issue #424).
+          thinkingControl: true,
         });
         break;
       }
