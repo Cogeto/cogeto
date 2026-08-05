@@ -727,8 +727,7 @@ export function Chat({ session }: { session: Session }) {
 
   const turns = history ? buildTurns(history as ChatMessage[]) : [];
   const loading = activeId !== null && isPending;
-  const empty =
-    !loading && turns.length === 0 && !liveQuestion && (attachments?.length ?? 0) === 0;
+  const empty = !loading && turns.length === 0 && !liveQuestion && (attachments?.length ?? 0) === 0;
 
   // The conversations sidebar rides the Shell's left
   // rail — OUTSIDE the header/content column, so the breadcrumb and the
