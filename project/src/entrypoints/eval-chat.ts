@@ -668,6 +668,10 @@ async function main(): Promise<void> {
           principal,
           question,
           conversationRef.id,
+          // Local-eval run style (branch local-evals-cogeto-1.4.2): thinking
+          // suppressed on every call, so the measurement is thinking-off and
+          // the emitted id says so.
+          { thinking: false },
         ) as AsyncIterable<ChatStreamEvent>) {
           if (event.type === 'sources') {
             sourceCount = event.facts.length;
@@ -1105,7 +1109,7 @@ async function main(): Promise<void> {
     // The ACTIVE configuration, from the same resolver the gateway was built
     // with — id and models are exact by construction. The reasoning probe
     // mirrors eval.ts exactly, so the partial-merge id guard holds (Part C).
-    const reasoningProbe = await probeReasoning(gateway, providers);
+    const reasoningProbe = await probeReasoning(gateway, providers, { thinking: 'off' });
     const { id, models } = configurationForEmission(providers, {
       reasoning: reasoningProbe.reasoning,
     });

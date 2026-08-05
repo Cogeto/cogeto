@@ -60,7 +60,12 @@ export const DEFAULT_REASONING_PROBE_TIMEOUT_MS = 30_000;
 export async function probeReasoning(
   gateway: ModelGateway,
   providers: ResolvedModelProviders | undefined,
-  options: { timeoutMs?: number } = {},
+  options: {
+    timeoutMs?: number;
+    /** Probe in a specific request style: a harness that suppresses thinking
+     * on every call labels its measurement by probing the same way. */
+    thinking?: 'on' | 'off';
+  } = {},
 ): Promise<ReasoningProbeResult> {
   if (!providers?.configured) {
     return {
@@ -89,6 +94,7 @@ export async function probeReasoning(
           input: PROBE_INSTRUCTION,
           maxTokens: REASONING_PROBE_MAX_TOKENS,
           tier,
+          ...(options.thinking ? { thinking: options.thinking } : {}),
         }),
         options.timeoutMs,
         key,

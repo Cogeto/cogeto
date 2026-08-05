@@ -2494,3 +2494,56 @@ No gate was lowered or raised in any of them.
 | en | 16 | 100.0% (16/16) |
 | hr | 16 | 81.3% (13/16) |
 | aggregate | 32 | 90.6% (29/32) |
+
+## 2026-08-05, extraction/v0005 + verification/v0006 (thresholds v1, 98 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 48 | 80.6% (79/98) | 97.3% (72/74) | 93.6% (44/47) |
+| hr | 50 | 80.4% (78/97) | 91.9% (68/74) | 93.8% (45/48) |
+| aggregate | 98 | 80.5% (157/195) | 94.6% (140/148) | 93.7% (89/95) |
+
+## 2026-08-05, reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v1, 33 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 6 | 100.0% (10/10) | 11 | 66.7% (2/3) | 66.7% (2/3) | 80.0% (4/5, 1 FALSE) | 1 |
+| hr | 5 | 100.0% (8/8) | 11 | 66.7% (2/3) | 66.7% (2/3) | 80.0% (4/5, 1 FALSE) | 1 |
+| aggregate | 11 | 100.0% (18/18) | 22 | 66.7% (4/6) | 66.7% (4/6) | 80.0% (8/10, 2 FALSE) | 2 |
+
+## 2026-08-05, query_rewrite/v0006 (query-rewrite routing, 32 cases)
+
+| set | cases | routing accuracy |
+|---|---|---|
+| en | 16 | 68.8% (11/16) |
+| hr | 16 | 81.3% (13/16) |
+| aggregate | 32 | 75.0% (24/32) |
+
+## 2026-08-05, chat eval (configuration=pipe-openai-ff711--ans-openai-ff711--emb-openai-bge-m3--vis-openai-ff711 · pipeline=openai/ff711 · answer=openai/ff711 · answer-prompt=answer/v0007 · grader=openai/ff711 eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | research | skill | conversation | overall |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| atlas_scope |  | 100% |  | PASS | PASS |  |  |  |  |  | PASS |
+| blended_origins_en | PASS | 100% |  | PASS | PASS |  | PASS |  |  | PASS | PASS |
+| changed_since |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| default_no_time_travel |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| digest_hr_preferred |  |  |  |  |  |  |  |  |  | PASS | PASS |
+| followup_cross_capability |  |  |  | PASS | PASS |  | PASS | FAIL |  |  | FAIL |
+| knowledge_offer_en |  |  |  | PASS | PASS |  |  |  |  | PASS | PASS |
+| knowledge_offer_hr |  |  |  | PASS | PASS |  | PASS |  |  | PASS | PASS |
+| memory_beats_model | PASS |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| nothing_on_record |  |  |  |  |  | PASS |  |  |  |  | PASS |
+| open_with_entity |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| point_in_time_march |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| previously_decided |  | 100% |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| reply_hr_zadnja |  |  |  |  |  |  | PASS |  |  |  | PASS |
+| reply_to_ana |  |  |  |  |  |  | PASS |  |  |  | PASS |
+| research_keeps_subject_hr |  |  |  | PASS |  |  | PASS | PASS |  |  | PASS |
+| research_minimise_drop |  |  |  | PASS |  |  | PASS | PASS |  |  | PASS |
+| skill_brief_en |  |  |  | PASS |  |  | PASS |  | PASS |  | PASS |
+| skill_brief_hr |  |  |  | PASS |  |  | PASS |  | PASS | PASS | PASS |
+| smalltalk_hvala_hr |  |  |  | PASS | PASS |  |  |  |  | PASS | PASS |
+| smalltalk_thanks |  |  |  | PASS | PASS |  |  |  |  | PASS | PASS |
+| strict_mode_hr |  |  |  | PASS | PASS |  | PASS |  |  | PASS | PASS |
+| whats_still_open |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| who_is_ana | PASS | 86% | PASS | PASS | PASS |  |  |  |  |  | PASS |

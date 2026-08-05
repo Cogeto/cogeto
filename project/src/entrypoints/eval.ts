@@ -230,7 +230,9 @@ async function main(): Promise<void> {
     // with — id and models are exact by construction. Reasoning is PROBED so
     // the emitted id labels what this run actually measured (Part C); replay
     // never reaches this branch, so the probe only runs on live emissions.
-    const reasoningProbe = await probeReasoning(gateway, providers);
+    // Probed in the harness's own request style: the golden run suppresses
+    // thinking on every structured call, so the label must measure that.
+    const reasoningProbe = await probeReasoning(gateway, providers, { thinking: 'off' });
     const { id, models } = configurationForEmission(providers, {
       reasoning: reasoningProbe.reasoning,
     });
