@@ -14,6 +14,12 @@ export interface JobSpec {
   payload: { source_type: string; source_id: string } & Record<string, unknown>;
   maxAttempts?: number;
   /**
+   * Queue priority (V2.2 item 5.3): numerically SMALLER runs first, default 0.
+   * Bulk-import pipeline jobs pass a positive number so any interactive job
+   * enqueued while an import runs jumps ahead of the import's queued work.
+   */
+  priority?: number;
+  /**
    * The user this job's model spend is charged to (security audit 2.0 SEC-10).
    * Defaults to the enqueuing usage scope's principal, which covers every
    * request-driven enqueue and every worker-driven follow-up enqueue. Pass it
@@ -56,7 +62,8 @@ export async function enqueueDelayedJob(
       ${job.type},
       payload := ${JSON.stringify(job.payload)}::json,
       run_at := now() + (${delayMinutes} || ' minutes')::interval,
-      max_attempts := ${job.maxAttempts ?? 10}
+      max_attempts := ${job.maxAttempts ?? 10},
+      priority := ${job.priority ?? 0}
     )
   `);
 }
@@ -76,7 +83,8 @@ export async function withTransactionalEnqueue(
     SELECT graphile_worker.add_job(
       ${job.type},
       payload := ${JSON.stringify(payload)}::json,
-      max_attempts := ${job.maxAttempts ?? 10}
+      max_attempts := ${job.maxAttempts ?? 10},
+      priority := ${job.priority ?? 0}
     )
   `);
 }

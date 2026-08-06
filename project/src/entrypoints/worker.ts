@@ -32,6 +32,7 @@ import { EmailAllowlistService, EMAIL_REFUSAL_RETENTION_CRONTAB } from '../email
 import { ResearchConclusionService, ResearchSynthesisService } from '../research/index';
 import { SKILL_BRIEF_PROMPT, SKILL_PLAN_PROMPT, SkillEngine } from '../skills/index';
 import { QUERY_REWRITE_PROMPT } from '../retrieval/index';
+import { ImportCoordinator } from '../imports/index';
 import {
   ANSWER_PROMPT,
   ChatAttachmentReadService,
@@ -164,6 +165,7 @@ async function main(): Promise<void> {
     extractionGate: context.get(ExtractionGateStore),
     conversationTitler: context.get(ConversationTitler),
     attachmentReader: context.get(ChatAttachmentReadService),
+    importCoordinator: context.get(ImportCoordinator),
     researchConcluder: context.get(ResearchConclusionService),
     researchSynthesis: context.get(ResearchSynthesisService),
     skillEngine: context.get(SkillEngine),

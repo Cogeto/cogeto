@@ -56,20 +56,21 @@ module that never imports `connectors` but injects `NotesService` because
 
 ## 2. Table ownership
 
-Forty-four tables, one owner each. The owner is the module whose
+Forty-seven tables, one owner each. The owner is the module whose
 `persistence/tables.ts` declares the Drizzle table; it is the only module that
 may name the table in a query, in Drizzle or in SQL.
 
 | Owner | Tables |
 |---|---|
 | `memory` | `memory`, `memory_relation`, `file_metadata`, `deletion_receipt`, `integrity_alert` |
-| `ingestion` | `verification_result`, `suppressed_fact_log`, `dream_run`, `dream_action`, `dormant_flag`, `extraction_gate`, `extraction_gate_rule`, `extraction_gate_refusal`, `source_context` (V2.1 items 4.2 and 4.3: the per-source extraction gate. Owned here because the pipeline is the enforcement point; the settings surface is ingestion's own controller, the email-settings precedent), `ingestion_progress` (V2.2 item 5.1: the honest per-source pipeline stage, reported by the pipeline outside its job transaction; surfaces read it through the exported `pipelineStageFor`) |
+| `ingestion` | `verification_result`, `suppressed_fact_log`, `dream_run`, `dream_action`, `dormant_flag`, `extraction_gate`, `extraction_gate_rule`, `extraction_gate_refusal`, `source_context` (V2.1 items 4.2 and 4.3: the per-source extraction gate. Owned here because the pipeline is the enforcement point; the settings surface is ingestion's own controller, the email-settings precedent), `ingestion_progress` (V2.2 item 5.1: the honest per-source pipeline stage, reported by the pipeline outside its job transaction; surfaces read it through the exported `pipelineStageFor`), `source_revision` (V2.2 item 5.3: the document revision link, supersedes-source with basis and confidence per [`docs/features/revisions.md`](features/revisions.md). Owned here beside `source_context`, whose anchored revision field is its strongest signal; the import coordinator detects candidates but records them through `SourceRevisionStore`, and the import summary's grouped counts go through the exported `revisionCountsForSuccessors`) |
 | `chat` | `chat_message`, `conversation` (moved from `retrieval` in part 4: chat is a capture connector by structure), `chat_attachment` (V2.2 item 5.1: a conversation's link to a durable file source, or a transient file's conversation-only text; erased with its conversation by the saga, counted on the receipt) |
 | `attention` | `attention_state`, `attention_dismissal` |
 | `agents` | `approval` |
 | `notes` | `note` |
 | `files` | `file_read_report` (V2.1 item 4.1: what the reading layer made of an uploaded file. NOT in `memory` beside `file_metadata`, because a discard-mode upload has no metadata row and is exactly the upload whose original is gone) |
 | `settings` | `user_settings` |
+| `imports` | `import_run`, `import_item` (V2.2 item 5.3: the first-class import record. Items carry filenames, so the deletion cascade TOMBSTONES an item when its ingested source is erased: name cleared, outcome kept as arithmetic, receipts unchanged because nothing content-bearing survives) |
 | `email` | `email_message`, `email_attachment`, `email_allowlist`, `email_refusal` |
 | `research` | `web_page`, `research_run` |
 | `skills` | `skill_run`, `skill_run_step` |
@@ -147,7 +148,7 @@ well-defined.
 
 ## 3. Job-type contracts
 
-Seventeen job types. Each is declared **once**, as an exported constant, in the
+Eighteen job types. Each is declared **once**, as an exported constant, in the
 module that owns the payload contract and writes the handler body. The worker
 composition root is the only place that maps a job type to a handler, and it
 imports every constant rather than spelling any of them.
@@ -168,6 +169,7 @@ imports every constant rather than spelling any of them.
 | `extraction_refusal_retention` | `ingestion` | `EXTRACTION_REFUSAL_RETENTION_JOB_TYPE` | recurring |
 | `conversation.title` | `chat` | `CONVERSATION_TITLE_JOB_TYPE` | per-source |
 | `chat.attachment_read` | `chat` | `CHAT_ATTACHMENT_READ_JOB_TYPE` | per-source |
+| `import.advance` | `imports` | `IMPORT_ADVANCE_JOB_TYPE` | per-source (plain, re-runnable: one run advances many times under a per-run single-flight lock, the `research.conclude` shape) |
 | `passport_export` | `passport` | `PASSPORT_EXPORT_JOB_TYPE` | per-source |
 | `passport_retention` | `passport` | `PASSPORT_RETENTION_JOB_TYPE` | recurring |
 | `demo_reset` | `entrypoints` (dev only) | `DEMO_RESET_JOB_TYPE` | recurring, profile-gated |
@@ -287,6 +289,7 @@ defined by the module that *consumes* the implementation) are marked.
 | `model-gateway` | `MODEL_CONFIG_VIEW` |
 | `passport` | `PASSPORT_OPTIONS` |
 | `operations` | `OPERATIONS_OPTIONS`, `CAPABILITY_JOB_SOURCES` |
+| `imports` | `IMPORT_IN_FLIGHT` (the coordinator's in-flight cap, bound by the worker root from `COGETO_IMPORT_IN_FLIGHT`), `IMPORT_ZIP_MAX_BYTES` (the archive-size bound on the manifest endpoint) |
 | `entrypoints` | `COGETO_CONFIG` |
 
 `IDENTITY_OPTIONS` is deliberately absent from `identity/index.ts`: it is

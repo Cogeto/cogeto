@@ -15,6 +15,8 @@ import {
   IngestionModule,
   IngestionProgressCascade,
   IngestionProgressCascadeModule,
+  SourceRevisionCascade,
+  SourceRevisionCascadeModule,
   SourceContextCascade,
   SourceContextCascadeModule,
   PipelineIngestionGuard,
@@ -57,6 +59,7 @@ import {
   PassportModule,
   PASSPORT_EXPORT_RETENTION_HOURS,
 } from '../passport/index';
+import { ImportItemCascade, ImportItemCascadeModule, ImportsModule } from '../imports/index';
 import {
   ChatAnswerCascade,
   ChatAttachmentCascade,
@@ -127,6 +130,8 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         SourceContextCascadeModule,
         FileReadReportCascadeModule,
         IngestionProgressCascadeModule,
+        SourceRevisionCascadeModule,
+        ImportItemCascadeModule,
       ],
       // Assistant answers citing erased memories are redacted; reply drafts
       // grounded on the source are too. A ready passport export is a signed
@@ -151,6 +156,10 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         ChatAttachmentCascade,
         // The pipeline stage row is metadata-only hygiene, like the refusals.
         IngestionProgressCascade,
+        // A revision link naming an erased source goes with it (V2.2 5.3).
+        SourceRevisionCascade,
+        // An import item's filename dies with its source: tombstoned.
+        ImportItemCascade,
       ],
     },
     // Delete-vs-ingestion serialization: the saga cancels a source's pending
@@ -245,6 +254,12 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       // object store and files' laddered reader, so it lives in its own
       // module and receives the two family instances explicitly.
       ChatAttachmentWorkerModule.register({ imports: [memoryModule, filesModule] }),
+      // The bulk-import coordinator (V2.2 item 5.3): ingests through files'
+      // one upload path at demoted priority, bounded in flight.
+      ImportsModule.forWorker({
+        inFlight: config.importInFlight,
+        imports: [memoryModule, filesModule],
+      }),
       notesModule,
       settingsModule,
       agentsModule,

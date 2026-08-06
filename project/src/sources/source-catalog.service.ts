@@ -22,6 +22,7 @@ import {
   INGESTION_PIPELINE_JOB_TYPE,
   SuppressedFactLog,
   SourceContextStore,
+  SourceRevisionStore,
   contextNamesForSources,
   latestGateRefusalFor,
   refusalsForSources,
@@ -85,6 +86,7 @@ export class SourceCatalogService {
     private readonly objects: MemoryObjectStore,
     private readonly suppressed: SuppressedFactLog,
     private readonly contexts: SourceContextStore,
+    private readonly revisions: SourceRevisionStore,
   ) {}
 
   async list(principal: Principal, query: CatalogQuery): Promise<SourceCatalogPageDto> {
@@ -142,18 +144,20 @@ export class SourceCatalogService {
       mine: true,
       limit: 200,
     });
-    const [verifications, suppressedPage, contradictions, context, refusal] = await Promise.all([
-      verificationsForMemories(
-        this.db,
-        facts.map((row) => row.id),
-      ),
-      this.suppressed.list(principal, { sourceType, sourceId, limit: 200 }),
-      this.reconciliation.contradictionsForSource(principal, sourceType, sourceId, {
-        includeResolved: true,
-      }),
-      this.contexts.getForOwner(principal, sourceType, sourceId).catch(() => null),
-      latestGateRefusalFor(this.db, { sourceType, sourceId }),
-    ]);
+    const [verifications, suppressedPage, contradictions, context, refusal, revisionRows] =
+      await Promise.all([
+        verificationsForMemories(
+          this.db,
+          facts.map((row) => row.id),
+        ),
+        this.suppressed.list(principal, { sourceType, sourceId, limit: 200 }),
+        this.reconciliation.contradictionsForSource(principal, sourceType, sourceId, {
+          includeResolved: true,
+        }),
+        this.contexts.getForOwner(principal, sourceType, sourceId).catch(() => null),
+        latestGateRefusalFor(this.db, { sourceType, sourceId }),
+        this.revisions.forSource(principal, { sourceType, sourceId }),
+      ]);
     return {
       sourceType,
       sourceId,
@@ -200,6 +204,17 @@ export class SourceCatalogService {
           }
         : null,
       gateRefusal: refusal?.reason ?? null,
+      revisions: revisionRows.map((row) => ({
+        id: row.id,
+        successorType: row.successorType,
+        successorId: row.successorId,
+        predecessorType: row.predecessorType,
+        predecessorId: row.predecessorId,
+        status: row.status,
+        basis: row.basisJson ?? null,
+        createdAt: row.createdAt.toISOString(),
+        decidedAt: row.decidedAt?.toISOString() ?? null,
+      })),
     };
   }
 

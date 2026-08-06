@@ -23,3 +23,4 @@ export * from './web-config';
 export * from './extraction';
 export * from './locator';
 export * from './source-catalog';
+export * from './imports';

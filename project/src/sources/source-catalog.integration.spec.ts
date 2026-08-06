@@ -16,6 +16,7 @@ import {
   createSourceContextStore,
   SuppressedFactLog,
   SourceContextStore,
+  SourceRevisionStore,
 } from '../ingestion/index';
 import type { IngestionPipeline, SourceItem, SourceReader } from '../ingestion/index';
 import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
@@ -117,6 +118,7 @@ describe('source catalog (integration: real Postgres + Qdrant)', () => {
       objects,
       suppressedLog,
       contextStore,
+      new SourceRevisionStore(tdb.db),
     );
   }, 180_000);
 

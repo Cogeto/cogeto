@@ -5,6 +5,7 @@ import type { SourceBadgeFilter, SourceCatalogItemDto, SourceTypeKey } from '@co
 import { SOURCE_BADGE_FILTERS, SOURCE_TYPE_KEYS } from '@cogeto/shared';
 import { fetchSourceCatalog } from '../api';
 import type { Session } from '../auth/oidc';
+import { ImportPanel } from '../components/ImportPanel';
 import { MemoryDrawer } from '../components/MemoryDrawer';
 import { Shell } from '../components/Shell';
 import { SourceDrawer } from '../components/SourceDrawer';
@@ -103,6 +104,8 @@ export function Sources({ session }: { session: Session }) {
           }
         />
       )}
+      {/* Bulk import (5.3): manifest first, honest progress, durable summary. */}
+      <ImportPanel session={session} />
       {uploads.map((upload) => (
         <PendingUpload
           key={upload.objectKey}

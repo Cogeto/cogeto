@@ -61,6 +61,8 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   // The honest per-source pipeline stage (V2.2 item 5.1): the pipeline
   // reports it, so the module that runs the pipeline owns it.
   ingestion_progress: 'ingestion',
+  // The document revision link (V2.2 item 5.3, docs/features/revisions.md).
+  source_revision: 'ingestion',
 
   // The chat context owns its tables since part 4 (chat left retrieval).
   chat_message: 'chat',
@@ -94,6 +96,10 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   research_run: 'research',
   skill_run: 'skills',
   skill_run_step: 'skills',
+
+  // Bulk import (V2.2 item 5.3): the import record and its per-file outcomes.
+  import_run: 'imports',
+  import_item: 'imports',
 
   app_user: 'identity',
   prompt_registry: 'model-gateway',
@@ -138,6 +144,8 @@ const JOB_TYPE_OWNERS: Readonly<Record<string, string>> = {
   'conversation.title': 'chat',
   // The transient attachment read (V2.2 item 5.1).
   'chat.attachment_read': 'chat',
+  // The bulk-import coordinator (V2.2 item 5.3).
+  'import.advance': 'imports',
   passport_export: 'passport',
   passport_retention: 'passport',
   // Dev-only, profile-gated, defined and registered in the demo entrypoint.
@@ -213,6 +221,9 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
   // What the instance's operational surface knows about this deployment,
   // instead of the whole CogetoConfig it used to inject from a composition root.
   OPERATIONS_OPTIONS: 'operations',
+  // Bulk import (V2.2 item 5.3).
+  IMPORT_IN_FLIGHT: 'imports',
+  IMPORT_ZIP_MAX_BYTES: 'imports',
 
   PASSPORT_OPTIONS: 'passport',
 

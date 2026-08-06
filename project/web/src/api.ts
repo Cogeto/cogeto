@@ -78,6 +78,12 @@ import type {
   PassportExportDto,
   PassportDownloadDto,
   VerificationDto,
+  FolderManifestRequest,
+  ImportItemDto,
+  ImportRunDetailDto,
+  ImportRunDto,
+  S3ManifestRequest,
+  SourceRevisionDto,
 } from '@cogeto/shared';
 import type { Session } from './auth/oidc';
 
@@ -248,6 +254,74 @@ export const fetchSourceInspection = (
   sourceId: string,
 ): Promise<SourceInspectionDto> =>
   apiGet(`/api/source-catalog/${sourceType}/${encodeURIComponent(sourceId)}`, session);
+// Bulk import (V2.2 item 5.3): manifest first, confirm explicitly, watch
+// honestly, keep the record. S3 credentials travel in request bodies only and
+// are never stored by the server.
+export async function createZipImport(session: Session, file: File): Promise<ImportRunDetailDto> {
+  const form = new FormData();
+  form.append('file', file);
+  const response = await fetch('/api/imports/zip', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${session.accessToken}` },
+    body: form,
+  });
+  if (!response.ok) throw await toError('/api/imports/zip', response);
+  return (await response.json()) as ImportRunDetailDto;
+}
+export const createFolderImport = (
+  session: Session,
+  request: FolderManifestRequest,
+): Promise<ImportRunDetailDto> => apiPost('/api/imports/folder', request, session);
+export const createS3Import = (
+  session: Session,
+  request: S3ManifestRequest,
+): Promise<ImportRunDetailDto> => apiPost('/api/imports/s3', request, session);
+export async function stageImportItem(
+  session: Session,
+  runId: string,
+  itemId: string,
+  file: File,
+): Promise<ImportItemDto> {
+  const form = new FormData();
+  form.append('file', file);
+  const path = `/api/imports/${runId}/items/${itemId}/file`;
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${session.accessToken}` },
+    body: form,
+  });
+  if (!response.ok) throw await toError(path, response);
+  return (await response.json()) as ImportItemDto;
+}
+export const excludeImportItems = (
+  session: Session,
+  runId: string,
+  itemIds: string[],
+): Promise<ImportRunDetailDto> => apiPost(`/api/imports/${runId}/exclude`, { itemIds }, session);
+export const confirmImport = (
+  session: Session,
+  runId: string,
+  s3?: S3ManifestRequest,
+): Promise<ImportRunDto> => apiPost(`/api/imports/${runId}/confirm`, s3 ? { s3 } : {}, session);
+export const cancelImport = (session: Session, runId: string): Promise<ImportRunDto> =>
+  apiPost(`/api/imports/${runId}/cancel`, {}, session);
+export const fetchImports = (session: Session): Promise<ImportRunDto[]> =>
+  apiGet('/api/imports', session);
+export const fetchImportDetail = (session: Session, runId: string): Promise<ImportRunDetailDto> =>
+  apiGet(`/api/imports/${runId}`, session);
+
+// Revision links (V2.2 item 5.3): read on the inspection, decided here.
+export const confirmSourceRevision = (session: Session, id: string): Promise<SourceRevisionDto> =>
+  apiPost(`/api/source-revisions/${id}/confirm`, {}, session);
+export const rejectSourceRevision = (session: Session, id: string): Promise<SourceRevisionDto> =>
+  apiPost(`/api/source-revisions/${id}/reject`, {}, session);
+export const linkSourceRevision = (
+  session: Session,
+  successor: { sourceType: string; sourceId: string },
+  predecessor: { sourceType: string; sourceId: string },
+): Promise<SourceRevisionDto> =>
+  apiPost('/api/source-revisions/link', { successor, predecessor }, session);
+
 export const fetchMemoryRelations = (session: Session, id: string): Promise<MemoryRelationDto[]> =>
   apiGet(`/api/relations/for-memory/${id}`, session);
 export const fetchCitingAnswers = (session: Session, id: string): Promise<CitingAnswerDto[]> =>
