@@ -467,3 +467,58 @@ export async function settleQueueBookkeeping(pool: Pool, timeoutMs = 5000): Prom
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
 }
+
+/**
+ * Set-based twin of {@link jobRunState} for one page of catalog refs (V2.2
+ * item 5.2): two grouped queries instead of two per row. Refs absent from the
+ * result are 'processing' (queued or in flight), exactly as in the singular
+ * read.
+ */
+export async function jobRunStates(
+  executor: DbOrTx,
+  refs: readonly { sourceType: string; sourceId: string }[],
+  jobType: string,
+): Promise<Map<string, JobRunState>> {
+  const out = new Map<string, JobRunState>();
+  if (refs.length === 0) return out;
+  const pairs = refs.map((ref) => sql`(${ref.sourceType}, ${ref.sourceId})`);
+  const done = await executor
+    .select({ sourceType: jobExecution.sourceType, sourceId: jobExecution.sourceId })
+    .from(jobExecution)
+    .where(
+      and(
+        eq(jobExecution.jobType, jobType),
+        sql`(${jobExecution.sourceType}, ${jobExecution.sourceId}) IN (${sql.join(pairs, sql`, `)})`,
+      ),
+    );
+  for (const row of done) out.set(`${row.sourceType} ${row.sourceId}`, 'done');
+  const ids = refs
+    .filter((ref) => !out.has(`${ref.sourceType} ${ref.sourceId}`))
+    .map((ref) => ref.sourceId);
+  if (ids.length > 0) {
+    const failed = await executor
+      .select({ sourceId: sql<string>`${deadLetter.payload}->>'source_id'` })
+      .from(deadLetter)
+      .where(
+        and(
+          eq(deadLetter.jobType, jobType),
+          sql`${deadLetter.payload}->>'source_id' IN (${sql.join(
+            ids.map((id) => sql`${id}`),
+            sql`, `,
+          )})`,
+        ),
+      );
+    const failedIds = new Set(failed.map((row) => row.sourceId));
+    for (const ref of refs) {
+      const key = `${ref.sourceType} ${ref.sourceId}`;
+      if (!out.has(key)) out.set(key, failedIds.has(ref.sourceId) ? 'failed' : 'processing');
+    }
+  } else {
+    // Every ref already resolved 'done'.
+  }
+  for (const ref of refs) {
+    const key = `${ref.sourceType} ${ref.sourceId}`;
+    if (!out.has(key)) out.set(key, 'processing');
+  }
+  return out;
+}

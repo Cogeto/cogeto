@@ -5,7 +5,6 @@ import { CountBadge } from './ui';
 
 export type NavSection =
   | 'dashboard'
-  | 'memories'
   | 'sources'
   | 'chat'
   | 'research'
@@ -25,8 +24,9 @@ export type NavSection =
  */
 const ENABLED: { key: NavSection; href: string }[] = [
   { key: 'dashboard', href: '/' },
-  { key: 'memories', href: '/memories' },
-  // The deliberate door (V2.2 item 5.1): single upload now, bulk import next.
+  // The Memories tab became Sources (V2.2 item 5.2): the read, audit and
+  // resolve surface. The old flat list survives as the filtered fact search
+  // on /memories, reachable from the Sources page rather than the rail.
   { key: 'sources', href: '/sources' },
   { key: 'chat', href: '/chat' },
   { key: 'research', href: '/research' },
@@ -67,14 +67,6 @@ const ICONS: Record<NavSection, ReactNode> = {
       <circle cx="10" cy="10" r="7" />
       <path d="M10 10 13 6.5" />
       <circle cx="10" cy="10" r="1.1" fill="currentColor" stroke="none" />
-    </svg>
-  ),
-  memories: (
-    <svg viewBox="0 0 20 20" {...G}>
-      <circle cx="7" cy="7.5" r="2.4" />
-      <circle cx="13.4" cy="9.2" r="2.4" />
-      <circle cx="8.6" cy="13.4" r="2.4" />
-      <path d="M8.9 8.3 11.5 9M8 9.7 8.3 11.3" />
     </svg>
   ),
   // The document tray: sources land here, deliberately.

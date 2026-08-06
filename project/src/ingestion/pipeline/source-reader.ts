@@ -1,4 +1,4 @@
-import type { MemoryScope } from '@cogeto/shared';
+import type { MemoryScope, ReadSegment } from '@cogeto/shared';
 import type { Tx } from '../../infrastructure/index';
 import type { SourceType } from '../../memory/index';
 
@@ -50,6 +50,17 @@ export interface SourceItem {
    * repeats.
    */
   filename?: string;
+  /**
+   * The reader seam's provenance segments (V2.2 item 5.2): half-open character
+   * ranges of `content` with a structured locator each, emitted by the file
+   * reader and consumed at admission, where each stored fact's span is
+   * resolved ONCE to its locators (`verification_result.span_locators`).
+   * Admission time is the only honest moment: a discard-mode original cannot
+   * be re-read later, and re-parsing a document per page view would be
+   * reading it twice to say where a fact came from. Omitted by sources whose
+   * reader produces no segments (notes, chat, email bodies, web pages).
+   */
+  segments?: readonly ReadSegment[];
   /**
    * Extract-and-discard (F1 handoff §3): the transient staging object the
    * bytes were read from, present ONLY in discard mode. The pipeline schedules

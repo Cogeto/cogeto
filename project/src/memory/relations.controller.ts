@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
-import type { ContradictionDto } from '@cogeto/shared';
+import type { ContradictionDto, MemoryRelationDto } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { MemoryReconciliation } from './reconciliation';
@@ -40,6 +40,26 @@ export class RelationsController {
       reason: relation.reason ?? null,
       a: toListItem(a),
       b: toListItem(b),
+    }));
+  }
+
+  /**
+   * Every contradiction relation ONE memory is party to, resolved included,
+   * with the counterpart riding along (V2.2 item 5.2, the fact detail view).
+   */
+  @Get('for-memory/:memoryId')
+  async forMemory(
+    @Req() request: AuthenticatedRequest,
+    @Param('memoryId', ParseUUIDPipe) memoryId: string,
+  ): Promise<MemoryRelationDto[]> {
+    const relations = await this.reconciliation.relationsForMemory(request.principal, memoryId);
+    return relations.map(({ relation, other }) => ({
+      relationId: relation.id,
+      detectedAt: relation.detectedAt.toISOString(),
+      resolvedAt: relation.resolvedAt?.toISOString() ?? null,
+      resolution: relation.resolution,
+      reason: relation.reason ?? null,
+      other: toListItem(other),
     }));
   }
 

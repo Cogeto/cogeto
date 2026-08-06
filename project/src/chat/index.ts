@@ -38,3 +38,8 @@ export {
   ChatAttachmentWorkerModule,
 } from './attachment-read';
 export { ChatAttachmentCascade } from './chat-attachment-cascade';
+
+// The Sources surface's chat reads (V2.2 item 5.2): capture excerpts for the
+// catalog, and the answers that cited one memory (the token-scan linkage).
+export { hydrateChatSources, answersCiting } from './source-listing';
+export type { CitingAnswerRow } from './source-listing';

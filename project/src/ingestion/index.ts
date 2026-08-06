@@ -9,7 +9,7 @@ export {
 // The suppressed-fact log (V2.0 item 3.3): the record of every automatic
 // demotion or non-admission, its gated query surface, and its deletion-cascade
 // adapter (memory owns the DerivedCascade port; ingestion owns the table).
-export { createSuppressedFactLog } from './persistence/suppressed-fact-log';
+export { createSuppressedFactLog, SuppressedFactLog } from './persistence/suppressed-fact-log';
 export { SuppressedFactCascade } from './suppressed-fact-cascade';
 // The per-source extraction gate (V2.1 item 4.3, spec 1.6): admission control
 // enforced by the pipeline, its refusal ledger's retention job, and the
@@ -82,3 +82,12 @@ export {
   isolateEmailContentDetailed,
   parseForwardedHeaders,
 } from './pipeline/email-preprocess';
+
+// The source catalog's suppressed and refusal badges (V2.2 item 5.2).
+export {
+  suppressedCountsForSources,
+  sourceRefsWithSuppressed,
+} from './persistence/suppressed-fact-log';
+export { refusalsForSources, sourceRefsWithRefusals } from './persistence/extraction-gate.store';
+export { contextNamesForSources } from './persistence/source-context.store';
+export { verificationsForMemories } from './verification.controller';

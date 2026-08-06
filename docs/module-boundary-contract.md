@@ -77,7 +77,7 @@ may name the table in a query, in Drizzle or in SQL.
 | `model-gateway` | `prompt_registry` |
 | `passport` | `passport_export` |
 | `infrastructure` | `audit_log`, `outbox_event`, `job_execution`, `dead_letter`, `user_context`, `context_suggestion_dismissal`, `usage_counter`, `rate_limit_window` |
-| `retrieval`, `operations` | none. Retrieval is pure search since part 4; operations reports on other modules' data. |
+| `retrieval`, `operations`, `sources` | none. Retrieval is pure search since part 4; operations reports on other modules' data; sources (V2.2 item 5.2) is the Sources surface's read context, composing the owners' public interfaces. |
 
 The six family rows and `chat` replaced the single `connectors` row in part 4:
 the 7.9k-line context held six unrelated families, and each now owns its

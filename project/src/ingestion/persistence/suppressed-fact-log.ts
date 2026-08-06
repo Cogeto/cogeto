@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, count, desc, eq, gte, inArray, lte, or } from 'drizzle-orm';
+import { and, count, desc, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { UNCERTAINTY_REASONS } from '@cogeto/shared';
-import type { MemoryScope, Principal, UncertaintyReason } from '@cogeto/shared';
+import type { MemoryScope, Principal, ReadLocator, UncertaintyReason } from '@cogeto/shared';
 import { DRIZZLE } from '../../infrastructure/index';
 import type { Db, DbOrTx, Tx } from '../../infrastructure/index';
 import { suppressedFactLog } from './tables';
@@ -35,6 +35,8 @@ export interface SuppressedFactEntry {
   factContent: string;
   factKind: string | null;
   sourceSpan: string;
+  /** The span's structured locators (V2.2 item 5.2); null when unlocatable. */
+  spanLocators?: ReadLocator[] | null;
   reason: UncertaintyReason;
   /** NULL when no verification ran (a structurally invalid fact never does). */
   verificationVerdict: 'supported' | 'partial' | 'unsupported' | null;
@@ -216,4 +218,72 @@ export class SuppressedFactLog {
 /** Composition helper for non-Nest callers (integration tests, eval). */
 export function createSuppressedFactLog(db: Db): SuppressedFactLog {
   return new SuppressedFactLog(db);
+}
+
+/**
+ * Grouped suppressed-log facts for the source catalog (V2.2 item 5.2), as
+ * plain gated functions in the `latestGateRefusalFor` shape. Both apply the
+ * identical visibility predicate the class reads apply.
+ */
+export async function suppressedCountsForSources(
+  db: DbOrTx,
+  principal: Principal,
+  refs: readonly { sourceType: string; sourceId: string }[],
+): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (refs.length === 0) return out;
+  const pairs = refs.map((ref) => sql`(${ref.sourceType}, ${ref.sourceId})`);
+  const rows = await db
+    .select({
+      sourceType: suppressedFactLog.sourceType,
+      sourceId: suppressedFactLog.sourceId,
+      n: sql<number>`count(*)::int`,
+    })
+    .from(suppressedFactLog)
+    .where(
+      and(
+        visibleToPrincipal(
+          {
+            ownerId: suppressedFactLog.ownerId,
+            scope: suppressedFactLog.scope,
+            sensitive: suppressedFactLog.sensitive,
+          },
+          principal,
+          { includeSensitive: true },
+        ),
+        sql`(${suppressedFactLog.sourceType}, ${suppressedFactLog.sourceId}) IN (${sql.join(pairs, sql`, `)})`,
+      ),
+    )
+    .groupBy(suppressedFactLog.sourceType, suppressedFactLog.sourceId);
+  for (const row of rows) out.set(`${row.sourceType} ${row.sourceId}`, row.n);
+  return out;
+}
+
+/** The refs of sources with at least one visible suppressed-log entry — the
+ * driving query behind the suppressed badge filter. */
+export async function sourceRefsWithSuppressed(
+  db: DbOrTx,
+  principal: Principal,
+  options: { limit?: number } = {},
+): Promise<{ sourceType: string; sourceId: string }[]> {
+  const rows = await db
+    .select({
+      sourceType: suppressedFactLog.sourceType,
+      sourceId: suppressedFactLog.sourceId,
+    })
+    .from(suppressedFactLog)
+    .where(
+      visibleToPrincipal(
+        {
+          ownerId: suppressedFactLog.ownerId,
+          scope: suppressedFactLog.scope,
+          sensitive: suppressedFactLog.sensitive,
+        },
+        principal,
+        { includeSensitive: true },
+      ),
+    )
+    .groupBy(suppressedFactLog.sourceType, suppressedFactLog.sourceId)
+    .limit(Math.min(options.limit ?? 200, 500));
+  return rows;
 }

@@ -52,6 +52,7 @@ import {
 } from '../passport/index';
 import { ModelGatewayModule } from '../model-gateway/index';
 import { AttentionModule } from '../attention/index';
+import { SourcesModule } from '../sources/index';
 import { OperationsModule } from '../operations/index';
 import { COGETO_CONFIG, mailOptions, redactionOptions, researchOptions } from './config';
 import type { CogetoConfig } from './config';
@@ -268,6 +269,12 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       // agents and ingestion, and owns the read-state pair behind it.
       AttentionModule.register({
         imports: [memoryModule, retrievalModule, agentsModule],
+      }),
+      // The Sources surface's read context (V2.2 item 5.2): the catalog and
+      // the per-source inspection. Owns no tables; every read goes through the
+      // owning modules' public interfaces.
+      SourcesModule.register({
+        imports: [memoryModule, filesModule, notesModule, emailModule, researchModule, chatModule],
       }),
       // The instance's own operational surface: /api/health and the capability
       // registry, /api/jobs, /api/audit. It owns no tables; every read goes

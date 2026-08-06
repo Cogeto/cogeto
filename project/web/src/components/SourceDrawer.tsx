@@ -33,6 +33,7 @@ import {
 } from './ui';
 
 import { EMAIL_FRAME_SANDBOX, emailFrameDocument } from './email-body';
+import { InspectionPanels } from './InspectionPanels';
 import type { Tone } from './status';
 
 /**
@@ -126,6 +127,7 @@ export function SourceDrawer({
   sourceId,
   onClose,
   onDeleted,
+  onOpenMemory,
 }: {
   session: Session;
   sourceType: string;
@@ -136,6 +138,9 @@ export function SourceDrawer({
    * nothing erasable derived from the source, so there is no receipt to open
    * (SEC-30). */
   onDeleted: (receiptId: string | null) => void;
+  /** Opens the fact detail (V2.2 item 5.2, level three); absent renders the
+   * inspection's rows without navigation. */
+  onOpenMemory?: (memoryId: string) => void;
 }) {
   const { t } = useTranslation('sources');
   const queryClient = useQueryClient();
@@ -625,6 +630,15 @@ export function SourceDrawer({
       {!isNote && !isFile && !isChat && !isEmail && !isWeb && (
         <p className="break-all rounded-md bg-slate-50 p-3 text-xs text-slate-600">{sourceId}</p>
       )}
+
+      {/* Level two of the Sources surface (V2.2 item 5.2): the facts with
+          their located spans, the suppressed log, the contradictions. */}
+      <InspectionPanels
+        session={session}
+        sourceType={sourceType}
+        sourceId={sourceId}
+        onOpenMemory={onOpenMemory}
+      />
 
       {deleteError && <ErrorState>{deleteError}</ErrorState>}
 

@@ -1,5 +1,6 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
-import { SOURCE_TYPES, sourceTypeDescriptor } from '@cogeto/shared';
+import { locateSpan, SOURCE_TYPES, sourceTypeDescriptor } from '@cogeto/shared';
+import type { ReadLocator, ReadSegment } from '@cogeto/shared';
 import {
   acquireJobRunLock,
   DEFAULT_PARSE_CAPS,
@@ -351,6 +352,12 @@ export class IngestionPipeline {
         factContent: fact.claim,
         factKind: fact.kind,
         sourceSpan: fact.source_span,
+        // A structurally invalid fact usually has a BLANK span, so this is
+        // almost always null; located when the span exists (V2.2 item 5.2).
+        spanLocators:
+          source.segments && fact.source_span
+            ? locatedOrNull(source.content, source.segments, fact.source_span)
+            : null,
         reason: 'structurally_invalid',
         // No verification ran: a fact this malformed never reaches the verifier,
         // and inventing a verdict for it would be inventing evidence.
@@ -405,6 +412,16 @@ export class IngestionPipeline {
     }
     return summary;
   }
+}
+
+/** A span's locators for the suppressed log, or null when none resolve. */
+function locatedOrNull(
+  content: string,
+  segments: readonly ReadSegment[],
+  span: string,
+): ReadLocator[] | null {
+  const found = locateSpan(content, segments, span);
+  return found.length > 0 ? found : null;
 }
 
 export interface CreatePipelineOptions {

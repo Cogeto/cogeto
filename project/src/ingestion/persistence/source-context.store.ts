@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, or } from 'drizzle-orm';
+import { and, eq, or, sql } from 'drizzle-orm';
 import type { Principal } from '@cogeto/shared';
 import { DRIZZLE, writeAudit } from '../../infrastructure/index';
 import type { Db, DbOrTx, Tx } from '../../infrastructure/index';
@@ -184,4 +184,39 @@ export class SourceContextStore {
 /** Composition helper for non-Nest callers (integration tests, eval). */
 export function createSourceContextStore(db: Db): SourceContextStore {
   return new SourceContextStore(db);
+}
+
+/**
+ * Grouped context reads for the source catalog (V2.2 item 5.2), plain
+ * functions in the `latestGateRefusalFor` shape: the anchored first subject
+ * names a document whose filename is gone (a discarded original), and the
+ * inspection view needs verifications joined to a page of memories without a
+ * cross-module table read.
+ */
+export async function contextNamesForSources(
+  db: DbOrTx,
+  ownerId: string,
+  refs: readonly { sourceType: string; sourceId: string }[],
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (refs.length === 0) return out;
+  const pairs = refs.map((ref) => sql`(${ref.sourceType}, ${ref.sourceId})`);
+  const rows = await db
+    .select({
+      sourceType: sourceContext.sourceType,
+      sourceId: sourceContext.sourceId,
+      subjects: sourceContext.subjects,
+    })
+    .from(sourceContext)
+    .where(
+      and(
+        eq(sourceContext.ownerId, ownerId),
+        sql`(${sourceContext.sourceType}, ${sourceContext.sourceId}) IN (${sql.join(pairs, sql`, `)})`,
+      ),
+    );
+  for (const row of rows) {
+    const first = (row.subjects ?? [])[0]?.name?.trim();
+    if (first) out.set(`${row.sourceType} ${row.sourceId}`, first);
+  }
+  return out;
 }

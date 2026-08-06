@@ -156,3 +156,49 @@ function toDetail(report: ReadReport): ReadReportDetail {
     ...(report.visionPagesUsed === undefined ? {} : { visionPagesUsed: report.visionPagesUsed }),
   };
 }
+
+/**
+ * Grouped read-report facts for the source catalog (V2.2 item 5.2), as plain
+ * functions in the `latestGateRefusalFor` shape: the composing surface passes
+ * its handle, the table is named only in this module.
+ */
+export interface ReadReportBadgeRow {
+  objectKey: string;
+  outcome: string;
+  reasonCode: string | null;
+}
+
+/** The outcome per object key, for one page of catalog rows. */
+export async function readOutcomesForKeys(
+  db: DbOrTx,
+  keys: readonly string[],
+): Promise<Map<string, ReadReportBadgeRow>> {
+  if (keys.length === 0) return new Map();
+  const rows = await db
+    .select({
+      objectKey: fileReadReport.objectKey,
+      outcome: fileReadReport.outcome,
+      reasonCode: fileReadReport.reasonCode,
+    })
+    .from(fileReadReport)
+    .where(inArray(fileReadReport.objectKey, [...keys]));
+  return new Map(rows.map((row) => [row.objectKey, row]));
+}
+
+/** The owner's object keys whose read landed on one of `outcomes` — the
+ * driving query behind the truncated / unreadable badge filters. */
+export async function keysWithReadOutcome(
+  db: DbOrTx,
+  ownerId: string,
+  outcomes: readonly string[],
+  options: { limit?: number } = {},
+): Promise<string[]> {
+  if (outcomes.length === 0) return [];
+  const rows = await db
+    .select({ objectKey: fileReadReport.objectKey })
+    .from(fileReadReport)
+    .where(and(eq(fileReadReport.ownerId, ownerId), inArray(fileReadReport.outcome, [...outcomes])))
+    .orderBy(desc(fileReadReport.readAt))
+    .limit(Math.min(options.limit ?? 200, 500));
+  return rows.map((row) => row.objectKey);
+}

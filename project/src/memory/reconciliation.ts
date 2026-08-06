@@ -403,6 +403,138 @@ export class MemoryReconciliation {
   }
 
   /**
+   * Open-contradiction counts for ONE page of catalog refs (V2.2 item 5.2):
+   * one grouped query over both sides of the relation join, never a query per
+   * row. A relation counts for every source it touches.
+   */
+  async openContradictionCountsForSources(
+    principal: Principal,
+    refs: readonly { sourceType: string; sourceId: string }[],
+  ): Promise<Map<string, number>> {
+    const out = new Map<string, number>();
+    if (refs.length === 0) return out;
+    const a = alias(memory, 'relation_a');
+    const b = alias(memory, 'relation_b');
+    const pairs = refs.map((ref) => sql`(${ref.sourceType}, ${ref.sourceId})`);
+    const inPage = (side: typeof a | typeof b) =>
+      sql`(${side.sourceType}, ${side.sourceId}) IN (${sql.join(pairs, sql`, `)})`;
+    const rows = await this.db
+      .select({
+        aType: a.sourceType,
+        aId: a.sourceId,
+        bType: b.sourceType,
+        bId: b.sourceId,
+      })
+      .from(memoryRelation)
+      .innerJoin(a, eq(memoryRelation.aMemoryId, a.id))
+      .innerJoin(b, eq(memoryRelation.bMemoryId, b.id))
+      .where(
+        and(
+          isNull(memoryRelation.resolvedAt),
+          eq(memoryRelation.kind, 'contradicts'),
+          eq(a.ownerId, principal.userId),
+          eq(b.ownerId, principal.userId),
+          or(inPage(a), inPage(b)),
+        ),
+      );
+    const bump = (type: string, id: string) => {
+      const key = `${type} ${id}`;
+      out.set(key, (out.get(key) ?? 0) + 1);
+    };
+    for (const row of rows) {
+      bump(row.aType, row.aId);
+      // A relation inside one source counts once for it, not twice.
+      if (row.aType !== row.bType || row.aId !== row.bId) bump(row.bType, row.bId);
+    }
+    return out;
+  }
+
+  /**
+   * The refs of sources party to at least one OPEN contradiction (V2.2 item
+   * 5.2): the driving query behind "every document with a contradiction".
+   */
+  async sourceRefsWithOpenContradictions(
+    principal: Principal,
+  ): Promise<{ sourceType: string; sourceId: string }[]> {
+    const open = await this.listOpenContradictions(principal);
+    const seen = new Map<string, { sourceType: string; sourceId: string }>();
+    for (const { a, b } of open) {
+      seen.set(`${a.sourceType} ${a.sourceId}`, { sourceType: a.sourceType, sourceId: a.sourceId });
+      seen.set(`${b.sourceType} ${b.sourceId}`, { sourceType: b.sourceType, sourceId: b.sourceId });
+    }
+    return [...seen.values()];
+  }
+
+  /**
+   * The contradictions ONE source's facts are party to (V2.2 item 5.2, the
+   * source detail view): open first, then resolved with their resolution, so
+   * the surface can show the finding in context and the report (V2.3) can
+   * state detection date and resolution status. Same owner gate as the queue.
+   */
+  async contradictionsForSource(
+    principal: Principal,
+    sourceType: string,
+    sourceId: string,
+    options: { includeResolved?: boolean } = {},
+  ): Promise<OpenContradiction[]> {
+    const a = alias(memory, 'relation_a');
+    const b = alias(memory, 'relation_b');
+    const touches = (side: typeof a | typeof b) =>
+      and(eq(side.sourceType, sql`${sourceType}`), eq(side.sourceId, sourceId));
+    const rows = await this.db
+      .select({ relation: memoryRelation, a, b })
+      .from(memoryRelation)
+      .innerJoin(a, eq(memoryRelation.aMemoryId, a.id))
+      .innerJoin(b, eq(memoryRelation.bMemoryId, b.id))
+      .where(
+        and(
+          eq(memoryRelation.kind, 'contradicts'),
+          eq(a.ownerId, principal.userId),
+          eq(b.ownerId, principal.userId),
+          options.includeResolved ? undefined : isNull(memoryRelation.resolvedAt),
+          or(touches(a), touches(b)),
+        ),
+      )
+      .orderBy(
+        sql`${memoryRelation.resolvedAt} IS NOT NULL`,
+        desc(memoryRelation.detectedAt),
+        memoryRelation.id,
+      );
+    return rows.map((row) => ({ relation: row.relation, a: row.a, b: row.b }));
+  }
+
+  /**
+   * Every contradiction relation ONE memory is party to, resolved included
+   * (V2.2 item 5.2, the fact detail view). The counterpart rides along; the
+   * owner gate is the queue's.
+   */
+  async relationsForMemory(
+    principal: Principal,
+    memoryId: string,
+  ): Promise<{ relation: MemoryRelationRow; other: MemoryRow }[]> {
+    const a = alias(memory, 'relation_a');
+    const b = alias(memory, 'relation_b');
+    const rows = await this.db
+      .select({ relation: memoryRelation, a, b })
+      .from(memoryRelation)
+      .innerJoin(a, eq(memoryRelation.aMemoryId, a.id))
+      .innerJoin(b, eq(memoryRelation.bMemoryId, b.id))
+      .where(
+        and(
+          eq(memoryRelation.kind, 'contradicts'),
+          eq(a.ownerId, principal.userId),
+          eq(b.ownerId, principal.userId),
+          or(eq(memoryRelation.aMemoryId, memoryId), eq(memoryRelation.bMemoryId, memoryId)),
+        ),
+      )
+      .orderBy(desc(memoryRelation.detectedAt), memoryRelation.id);
+    return rows.map((row) => ({
+      relation: row.relation,
+      other: row.relation.aMemoryId === memoryId ? row.b : row.a,
+    }));
+  }
+
+  /**
    * Owner resolution of a contradiction (0010 ruling 3). One transaction
    * status outcomes per the ruling, the relation resolved, every touched
    * entity audited. Resolving an already-resolved relation is a no-op (the

@@ -5,10 +5,12 @@ import type { ChatStreamEvent } from '@cogeto/shared';
 import { ChatController } from './chat.controller';
 import type { ChatAttachmentsService } from './chat-attachments.service';
 import type { ChatService } from './chat.service';
-import type { SseLimits } from '../infrastructure/index';
+import type { Db, SseLimits } from '../infrastructure/index';
 
 /** The attachments surface is not under test here; the ask path never calls it. */
 const attachmentsStub = {} as unknown as ChatAttachmentsService;
+/** Neither is the citing-answers scan, the only reason the controller holds a handle. */
+const dbStub = {} as unknown as Db;
 
 /**: concurrent-stream cap + idle/max-duration abort on chat SSE. */
 
@@ -72,6 +74,7 @@ describe('chat SSE limits', () => {
     const controller = new ChatController(
       chat,
       attachmentsStub,
+      dbStub,
       limits({ maxConcurrentPerPrincipal: 1 }),
     );
 
@@ -100,6 +103,7 @@ describe('chat SSE limits', () => {
     const controller = new ChatController(
       chat,
       attachmentsStub,
+      dbStub,
       limits({ idleTimeoutSeconds: 0.05, maxDurationSeconds: 0.05 }),
     );
     const res = fakeResponse();
@@ -121,6 +125,7 @@ describe('chat SSE limits', () => {
     const controller = new ChatController(
       chat,
       attachmentsStub,
+      dbStub,
       limits({ maxConcurrentPerPrincipal: 1 }),
     );
     await controller.ask(req(), { content: 'q1', conversationId: CONV }, fakeResponse());

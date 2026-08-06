@@ -22,3 +22,6 @@ export { RESEARCH_OPTIONS } from './research-options';
 export type { ResearchOptions } from './research-options';
 export type { ResearchRunRow, WebPageRow } from './persistence/tables';
 export { ResearchSourcePortsModule } from './research-source-ports.module';
+
+// The source catalog's web listing (V2.2 item 5.2).
+export { listWebSources, hydrateWebSources, countWebSources } from './source-listing';

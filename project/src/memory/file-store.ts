@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, lt, sql } from 'drizzle-orm';
 import { DRIZZLE } from '../infrastructure/index';
-import type { Db, Tx } from '../infrastructure/index';
+import type { Db, DbOrTx, Tx } from '../infrastructure/index';
 import { fileMetadata } from './persistence/tables';
 import type { MemoryScope } from '@cogeto/shared';
 
@@ -72,4 +72,65 @@ export class MemoryFileStore {
       .limit(1);
     return rows[0] ?? null;
   }
+}
+
+/**
+ * The file rows' contribution to the source catalog (V2.2 item 5.2): plain
+ * owner-scoped listings over `file_metadata`, memory's own table. The display
+ * name is deliberately ABSENT here: a filename lives on the object's metadata
+ * (erased with the bytes), so the catalog resolves names per page via the
+ * object store and the anchoring context, never from a column.
+ */
+export interface FileSourceRefRow {
+  objectKey: string;
+  at: Date;
+}
+
+export async function listFileSourceRefs(
+  db: DbOrTx,
+  ownerId: string,
+  options: { cursor?: Date; order?: 'asc' | 'desc'; limit?: number } = {},
+): Promise<FileSourceRefRow[]> {
+  const clauses = [eq(fileMetadata.ownerId, ownerId)];
+  const order = options.order ?? 'desc';
+  if (options.cursor) {
+    clauses.push(
+      order === 'desc'
+        ? lt(fileMetadata.uploadDate, options.cursor)
+        : gt(fileMetadata.uploadDate, options.cursor),
+    );
+  }
+  const rows = await db
+    .select({ objectKey: fileMetadata.objectKey, uploadDate: fileMetadata.uploadDate })
+    .from(fileMetadata)
+    .where(and(...clauses))
+    .orderBy(
+      order === 'desc' ? desc(fileMetadata.uploadDate) : asc(fileMetadata.uploadDate),
+      order === 'desc' ? desc(fileMetadata.objectKey) : asc(fileMetadata.objectKey),
+    )
+    .limit(Math.min(options.limit ?? 50, 200));
+  return rows.map((row) => ({ objectKey: row.objectKey, at: row.uploadDate }));
+}
+
+export async function hydrateFileSourceRefs(
+  db: DbOrTx,
+  ownerId: string,
+  keys: readonly string[],
+): Promise<Map<string, FileSourceRefRow>> {
+  if (keys.length === 0) return new Map();
+  const rows = await db
+    .select({ objectKey: fileMetadata.objectKey, uploadDate: fileMetadata.uploadDate })
+    .from(fileMetadata)
+    .where(and(eq(fileMetadata.ownerId, ownerId), inArray(fileMetadata.objectKey, [...keys])));
+  return new Map(
+    rows.map((row) => [row.objectKey, { objectKey: row.objectKey, at: row.uploadDate }]),
+  );
+}
+
+export async function countFileSourceRefs(db: DbOrTx, ownerId: string): Promise<number> {
+  const rows = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(fileMetadata)
+    .where(eq(fileMetadata.ownerId, ownerId));
+  return rows[0]?.n ?? 0;
 }

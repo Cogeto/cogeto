@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, lt, or } from 'drizzle-orm';
+import { and, desc, eq, lt, or, sql } from 'drizzle-orm';
 import type { Principal } from '@cogeto/shared';
 import { DRIZZLE, writeAudit } from '../../infrastructure/index';
 import type { Db, DbOrTx, Tx } from '../../infrastructure/index';
@@ -410,4 +410,47 @@ export async function latestGateRefusalFor(
     .orderBy(desc(extractionGateRefusal.refusedAt))
     .limit(1);
   return rows[0] ?? null;
+}
+
+/** Grouped refusal presence for one page of catalog refs (V2.2 item 5.2). */
+export async function refusalsForSources(
+  db: DbOrTx,
+  refs: readonly { sourceType: string; sourceId: string }[],
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (refs.length === 0) return out;
+  const pairs = refs.map((ref) => sql`(${ref.sourceType}, ${ref.sourceId})`);
+  const rows = await db
+    .select({
+      sourceType: extractionGateRefusal.sourceType,
+      sourceId: extractionGateRefusal.sourceId,
+      reason: extractionGateRefusal.reason,
+      refusedAt: extractionGateRefusal.refusedAt,
+    })
+    .from(extractionGateRefusal)
+    .where(
+      sql`(${extractionGateRefusal.sourceType}, ${extractionGateRefusal.sourceId}) IN (${sql.join(pairs, sql`, `)})`,
+    )
+    .orderBy(extractionGateRefusal.refusedAt);
+  // Later rows overwrite earlier ones, so the LATEST refusal reason wins.
+  for (const row of rows) out.set(`${row.sourceType} ${row.sourceId}`, row.reason);
+  return out;
+}
+
+/** The owner's refs with a refusal on the ledger — the gated badge filter. */
+export async function sourceRefsWithRefusals(
+  db: DbOrTx,
+  ownerId: string,
+  options: { limit?: number } = {},
+): Promise<{ sourceType: string; sourceId: string }[]> {
+  const rows = await db
+    .select({
+      sourceType: extractionGateRefusal.sourceType,
+      sourceId: extractionGateRefusal.sourceId,
+    })
+    .from(extractionGateRefusal)
+    .where(eq(extractionGateRefusal.ownerId, ownerId))
+    .groupBy(extractionGateRefusal.sourceType, extractionGateRefusal.sourceId)
+    .limit(Math.min(options.limit ?? 200, 500));
+  return rows;
 }

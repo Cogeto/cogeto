@@ -82,6 +82,7 @@ function toDto(row: SuppressedFactRow): SuppressedFactDto {
     factContent: row.factContent,
     factKind: row.factKind as FactKind | null,
     sourceSpan: row.sourceSpan,
+    spanLocators: row.spanLocators ?? null,
     reason: row.reason,
     verificationVerdict: row.verificationVerdict,
     verificationReason: row.verificationReason,

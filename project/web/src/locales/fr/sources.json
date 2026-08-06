@@ -162,7 +162,83 @@
   "page": {
     "uploadHeading": "Add a document",
     "uploadIntro": "The deliberate way in: documents you intend to keep and audit. Files also attach in chat with the paperclip; either way they go through the same pipeline.",
-    "openDetails": "Open details",
-    "note": "Every upload becomes a source with its verified facts, provenance and read report. Its memories appear on the Memories page."
+    "hideUpload": "Hide upload"
+  },
+  "list": {
+    "searchPlaceholder": "Search sources by name or content...",
+    "typeLabel": "Type",
+    "typeAll": "All types",
+    "orderNewest": "Newest first",
+    "orderOldest": "Oldest first",
+    "badgeFilter": {
+      "contradicted": "has contradictions",
+      "superseded": "has superseded facts",
+      "suppressed": "has suppressed facts",
+      "truncated": "truncated",
+      "gated": "gated",
+      "unreadable": "unreadable",
+      "processing": "processing"
+    },
+    "loading": "Loading sources...",
+    "error": "We couldn't load your sources just now.",
+    "firstRun": {
+      "what": "A source is anything Cogeto has read: a document, a note, an email, a chat capture, a web page.",
+      "how": "Attach a file or say \"remember this\" in chat, or add a document with the upload action above."
+    },
+    "emptyFiltered": "Nothing matches these filters.",
+    "unnamed": "(name no longer available)",
+    "factCount_one": "{{count}} facts",
+    "factCount_many": "{{count}} facts",
+    "factCount_other": "{{count}} facts",
+    "badge": {
+      "contradictions_one": "{{count}} contradictions",
+      "contradictions_many": "{{count}} contradictions",
+      "contradictions_other": "{{count}} contradictions",
+      "superseded_one": "{{count}} superseded",
+      "superseded_many": "{{count}} superseded",
+      "superseded_other": "{{count}} superseded",
+      "suppressed_one": "{{count}} suppressed",
+      "suppressed_many": "{{count}} suppressed",
+      "suppressed_other": "{{count}} suppressed",
+      "truncated": "truncated",
+      "gated": "gated",
+      "unreadable": "unreadable",
+      "processing": "processing"
+    },
+    "pageBack": "Newer",
+    "pageMore": "Load more",
+    "factSearchLink": "Search across all facts instead"
+  },
+  "detail": {
+    "loading": "Loading what this source produced...",
+    "error": "We couldn't load this source's facts just now.",
+    "facts_one": "{{count}} extracted facts",
+    "facts_many": "{{count}} extracted facts",
+    "facts_other": "{{count}} extracted facts",
+    "noFacts": "No facts were extracted from this source.",
+    "span": "From the source: \"{{span}}\"",
+    "noLocation": "No location recorded: this fact was admitted before span locators existed. Reprocess the source to locate it.",
+    "gateRefused": "The extraction gate withheld this source: {{reason}}.",
+    "suppressed_one": "{{count}} suppressed or demoted facts",
+    "suppressed_many": "{{count}} suppressed or demoted facts",
+    "suppressed_other": "{{count}} suppressed or demoted facts",
+    "suppressedExplainer": "What Cogeto decided not to trust, with the reason. Demoted facts were admitted as uncertain; withheld ones were never stored as memories.",
+    "withheld": "Withheld: {{reason}}",
+    "demoted": "Admitted uncertain: {{reason}}",
+    "contradictions_one": "{{count}} contradictions involving this source",
+    "contradictions_many": "{{count}} contradictions involving this source",
+    "contradictions_other": "{{count}} contradictions involving this source",
+    "versus": "versus",
+    "contradictionOpen": "Open, detected {{when}}.",
+    "contradictionResolved": "Detected {{when}}, resolved: {{resolution}}.",
+    "contentUnavailable": "(content unavailable)"
+  },
+  "locator": {
+    "page": "page {{page}}",
+    "pageWithTier": "page {{page}}, read by {{tier}}",
+    "paragraph": "paragraph {{paragraph}}",
+    "row": "row {{row}} ({{range}})",
+    "sheetRange": "{{sheet}}!{{range}}",
+    "document": "whole document"
   }
 }

@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trans, useTranslation } from 'react-i18next';
-import type { MemoryListItem, MemoryScope, MemoryStatus } from '@cogeto/shared';
-import { BULK_OUTDATE_ACTION, MEMORY_SCOPES, MEMORY_STATUSES } from '@cogeto/shared';
+import type { MemoryListItem, MemoryScope, MemoryStatus, UncertaintyReason } from '@cogeto/shared';
+import {
+  BULK_OUTDATE_ACTION,
+  MEMORY_SCOPES,
+  MEMORY_STATUSES,
+  UNCERTAINTY_REASONS,
+} from '@cogeto/shared';
 import { createApproval, fetchMe, fetchMemories } from '../api';
 import type { Session } from '../auth/oidc';
 import { statusLabel, timeAgo } from './status';
@@ -106,6 +111,7 @@ export function GovernedMemories({
       : '';
   });
   const [scope, setScope] = useState<MemoryScope | ''>('');
+  const [uncertaintyReason, setUncertaintyReason] = useState<UncertaintyReason | ''>('');
   const [sensitiveOnly, setSensitiveOnly] = useState(false);
   const [entity, setEntity] = useState('');
   const [page, setPage] = useState(0);
@@ -139,6 +145,7 @@ export function GovernedMemories({
     q: q || undefined,
     status: status || undefined,
     scope: scope || undefined,
+    uncertaintyReason: uncertaintyReason || undefined,
     sensitiveOnly,
     entity: entity || undefined,
     limit: PAGE_SIZE,
@@ -244,6 +251,21 @@ export function GovernedMemories({
           {MEMORY_SCOPES.map((value) => (
             <option key={value} value={value}>
               {t(`common:memoryScope.${value}`)}
+            </option>
+          ))}
+        </select>
+        <select
+          value={uncertaintyReason}
+          onChange={(e) => {
+            setUncertaintyReason(e.target.value as UncertaintyReason | '');
+            resetPage();
+          }}
+          className="rounded-md border border-slate-300 px-2 py-1.5 text-xs text-slate-600"
+        >
+          <option value="">{t('list.filter.anyReason')}</option>
+          {UNCERTAINTY_REASONS.map((reason) => (
+            <option key={reason} value={reason}>
+              {t(`uncertaintyReason.${reason}`)}
             </option>
           ))}
         </select>

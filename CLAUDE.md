@@ -208,6 +208,23 @@ this"); the single-file upload moved to the new **Sources** page, where the
 5.2 redesign and 5.3 bulk import will land. Every prior entry path survives,
 including `POST /api/notes` and `POST /api/files` unchanged.
 
+V2.2 item 5.2 delivered the **three-level Sources surface**: a new `sources/`
+composition context (no tables, the attention/operations shape) serves
+`GET /api/source-catalog` (one row per source with badge conditions as the
+scan layer, cursor-paged and grouped-count cheap) and its per-source
+inspection (facts joined to verification evidence, the suppressed log,
+contradictions with resolution state, anchoring context, gate refusal).
+**Span locators persist at admission** since migration 0046
+(`verification_result.span_locators`, `suppressed_fact_log.span_locators`,
+located via the shared `locateSpan`, which moved to `@cogeto/shared`), so a
+fact's page/paragraph/cell position survives discard mode; older facts read
+"no location recorded". Fact detail (the memory drawer) gained the hedge
+phrase, located spans, a relations panel and **cited-by answers** (a scan of
+the stored `{{cite:<id>}}` tokens, no new table). The flat memories list is
+now the **filtered fact search** on /memories (plus a changed-since mode over
+the change feed's new route); the nav rail shows Sources, and every legacy
+deep link still resolves.
+
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).
 Thinking is a CHANNEL, not content: `completeStream` yields channel-tagged
