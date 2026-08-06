@@ -4,7 +4,8 @@ import type { Tx } from '../../infrastructure/index';
 import { MemoryStore } from '../../memory/index';
 import type { MemoryRow } from '../../memory/index';
 import { ModelGateway } from '../../model-gateway/index';
-import type { UncertaintyReason } from '@cogeto/shared';
+import { locateSpan } from '@cogeto/shared';
+import type { ReadLocator, UncertaintyReason } from '@cogeto/shared';
 import { resolveFactTemporal } from '../domain/candidate-fact';
 import { classifyAdmission } from '../domain/uncertainty';
 import { SuppressedFactLog } from '../persistence/suppressed-fact-log';
@@ -127,6 +128,13 @@ export class EmbedStoreStage {
         uncertaintyReason: uncertaintyReason ?? undefined,
         embeddingModel,
       });
+      // The span is resolved to its structured locators ONCE, here, where the
+      // reader's segments are still in hand (V2.2 item 5.2): a discard-mode
+      // original cannot be re-read later, and re-parsing a document per page
+      // view to say where a fact came from would be absurd. `[]` is stored as
+      // NULL: locateSpan's honest "cannot say where" and a source with no
+      // segments (notes, chat, email, web) both render as no location.
+      const locators = this.locate(source, fact.source_span);
       await tx.insert(verificationResult).values({
         memoryId: row.id,
         verdict,
@@ -134,6 +142,7 @@ export class EmbedStoreStage {
         promptVersion,
         sourceSpan: fact.source_span,
         hedgePhrase: fact.hedged ? fact.hedge_phrase : null,
+        spanLocators: locators,
       });
       // Every demotion is logged, with the memory id, because the fact WAS
       // admitted: inspectable in Sources and explained here. Nothing is lost and
@@ -153,6 +162,7 @@ export class EmbedStoreStage {
           verificationReason: reason,
           promptVersion,
           memoryId: row.id,
+          spanLocators: locators,
         });
       }
       rows.push(row);
@@ -168,6 +178,13 @@ export class EmbedStoreStage {
     await this.suppressedFacts.record(tx, suppressed);
     await this.memoryStore.upsertVectors(rows, embeddings);
     return admitted;
+  }
+
+  /** A span's locators, or null when the source has none or none were found. */
+  private locate(source: SourceItem, span: string): ReadLocator[] | null {
+    if (!source.segments || source.segments.length === 0) return null;
+    const found = locateSpan(source.content, source.segments, span);
+    return found.length > 0 ? found : null;
   }
 }
 

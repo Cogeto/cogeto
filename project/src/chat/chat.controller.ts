@@ -20,6 +20,7 @@ import type { Response } from 'express';
 import { z } from 'zod';
 import type {
   ChatAttachmentCreatedDto,
+  CitingAnswerDto,
   ChatAttachmentDto,
   ChatContextDto,
   ChatMessagePage,
@@ -28,13 +29,20 @@ import type {
   ConversationDto,
   NoteStatusDto,
 } from '@cogeto/shared';
-import { RateLimit, RateLimitGuard, SSE_LIMITS, parseOrBadRequest } from '../infrastructure/index';
-import type { SseLimits } from '../infrastructure/index';
+import {
+  DRIZZLE,
+  RateLimit,
+  RateLimitGuard,
+  SSE_LIMITS,
+  parseOrBadRequest,
+} from '../infrastructure/index';
+import type { Db, SseLimits } from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { ModelBudgetExceededError } from '../model-gateway/index';
 import { DocumentUploadInterceptor } from '../files/index';
 import { ChatAttachmentsService } from './chat-attachments.service';
+import { answersCiting } from './source-listing';
 import { ChatService } from './chat.service';
 
 /** How many attachments one message can carry. */
@@ -95,6 +103,7 @@ export class ChatController {
   constructor(
     private readonly chat: ChatService,
     private readonly attachments: ChatAttachmentsService,
+    @Inject(DRIZZLE) private readonly db: Db,
     @Inject(SSE_LIMITS) private readonly sse: SseLimits,
   ) {}
 
@@ -204,6 +213,26 @@ export class ChatController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<NoteStatusDto> {
     return { state: await this.chat.captureState(request.principal, id) };
+  }
+
+  /**
+   * The answers that cited one memory (V2.2 item 5.2, the fact detail view).
+   * The linkage is the stored content itself: persisted answers carry
+   * canonical `{{cite:<memoryId>}}` tokens and redaction erases them with the
+   * cited memory, so the scan is honest history, never a fabricated one.
+   */
+  @Get('citing/:memoryId')
+  async citing(
+    @Req() request: AuthenticatedRequest,
+    @Param('memoryId', ParseUUIDPipe) memoryId: string,
+  ): Promise<CitingAnswerDto[]> {
+    const rows = await answersCiting(this.db, request.principal.userId, memoryId);
+    return rows.map((row) => ({
+      messageId: row.messageId,
+      conversationId: row.conversationId,
+      conversationTitle: row.conversationTitle,
+      createdAt: row.createdAt.toISOString(),
+    }));
   }
 
   /** The chat context behind a remembered memory's source drawer. */

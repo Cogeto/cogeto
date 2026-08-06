@@ -29,6 +29,43 @@ exactly that, expected to return nothing forever; since the column became text, 
 same arm also flags any value the registry does not know at all, a state only a
 manual database write can create.
 
+## The surface: three levels (V2.2 item 5.2)
+
+Sources is the read, audit and resolve surface: where you see and prove what
+the system knows, and the surface the findings report (V2.3) renders from.
+
+- **The catalog** (`GET /api/source-catalog`): one row per source of every
+  type, with the badges that make the list a scan layer (contradictions,
+  superseded, suppressed, truncation, gated, unreadable, processing) and
+  filters that drive from each condition's own indexed query. Enumeration is
+  cursor-paged per family and merged by date; chat captures and discarded
+  originals enumerate from their facts' provenance, because no other durable
+  trace of them exists. Badges for a page are grouped queries, never a query
+  per row. Name search covers notes, email subjects and page titles; file
+  names deliberately live on the object (erased with the bytes), so files are
+  found by content.
+- **The inspection** (`GET /api/source-catalog/:type/:id`, rendered in the
+  source drawer): every fact with its status, its uncertainty sub-reason and
+  its exact span shown as located text, the suppressed-fact log beside what
+  was kept, the contradictions in context with resolution state, the
+  anchoring context, the gate refusal, the read report and the deletion
+  action. Owner-only, with ownership resolved structurally per type.
+- **Fact detail** (the memory drawer): the whole lifecycle, including the
+  verification passage and hedge phrase, the supersession chain, every
+  contradiction relation, and which stored answers cited the fact, read from
+  their canonical citation tokens.
+
+**Span locators persist at admission** (migration 0046): the pipeline
+resolves each admitted or suppressed fact's span to the reader's structured
+locators while the segments are still in hand, which is the only moment that
+exists for a discard-mode original. NULL means an honest "no location": a
+segment-less source, an unfindable span, or a fact admitted before locators
+existed (reprocess the source to locate it).
+
+The old flat memories list survives as the **filtered fact search** on
+`/memories` (status, sub-reason, entity, content, changed-since), linked from
+Sources rather than the navigation rail.
+
 ## The three ports
 
 A connector never reaches into ingestion or memory; it implements ports those modules

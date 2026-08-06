@@ -23,6 +23,13 @@ import type {
   ExtractionGateRuleDto,
   SetExtractionGateRequest,
   SetSourceContextRequest,
+  SourceCatalogPageDto,
+  SourceInspectionDto,
+  CitingAnswerDto,
+  MemoryChangeDto,
+  MemoryRelationDto,
+  SourceBadgeFilter,
+  UncertaintyReason,
   SourceContextDto,
   EmailReplyDraftView,
   EmailSourceDto,
@@ -187,6 +194,8 @@ export interface MemoryListParams {
   status?: MemoryStatus;
   sensitiveOnly?: boolean;
   entity?: string;
+  /** The admission taxonomy arm (V2.2 item 5.2). */
+  uncertaintyReason?: UncertaintyReason;
   /** Owner-only: the Review queue reviews your own facts, not peers'. */
   mine?: boolean;
   limit?: number;
@@ -203,11 +212,52 @@ export function fetchMemories(
   if (params.status) search.set('status', params.status);
   if (params.sensitiveOnly) search.set('sensitive', 'true');
   if (params.entity?.trim()) search.set('entity', params.entity.trim());
+  if (params.uncertaintyReason) search.set('uncertaintyReason', params.uncertaintyReason);
   if (params.mine) search.set('mine', 'true');
   if (params.limit !== undefined) search.set('limit', String(params.limit));
   if (params.offset !== undefined) search.set('offset', String(params.offset));
   return apiGet(`/api/memories?${search.toString()}`, session);
 }
+
+// The Sources surface (V2.2 item 5.2): the catalog (level one), the
+// inspection (level two), and the fact detail's relations + citing answers.
+export function fetchSourceCatalog(
+  session: Session,
+  params: {
+    type?: string;
+    badge?: SourceBadgeFilter;
+    q?: string;
+    order?: 'asc' | 'desc';
+    cursor?: string;
+    limit?: number;
+  } = {},
+): Promise<SourceCatalogPageDto> {
+  const search = new URLSearchParams();
+  if (params.type) search.set('type', params.type);
+  if (params.badge) search.set('badge', params.badge);
+  if (params.q?.trim()) search.set('q', params.q.trim());
+  if (params.order) search.set('order', params.order);
+  if (params.cursor) search.set('cursor', params.cursor);
+  if (params.limit !== undefined) search.set('limit', String(params.limit));
+  const qs = search.toString();
+  return apiGet(`/api/source-catalog${qs ? `?${qs}` : ''}`, session);
+}
+export const fetchSourceInspection = (
+  session: Session,
+  sourceType: string,
+  sourceId: string,
+): Promise<SourceInspectionDto> =>
+  apiGet(`/api/source-catalog/${sourceType}/${encodeURIComponent(sourceId)}`, session);
+export const fetchMemoryRelations = (session: Session, id: string): Promise<MemoryRelationDto[]> =>
+  apiGet(`/api/relations/for-memory/${id}`, session);
+export const fetchCitingAnswers = (session: Session, id: string): Promise<CitingAnswerDto[]> =>
+  apiGet(`/api/chat/citing/${id}`, session);
+export const fetchMemoryChanges = (
+  session: Session,
+  since: string,
+  limit = 100,
+): Promise<MemoryChangeDto[]> =>
+  apiGet(`/api/memories/changes?since=${encodeURIComponent(since)}&limit=${limit}`, session);
 
 export const fetchMemory = (session: Session, id: string): Promise<MemoryListItem> =>
   apiGet(`/api/memories/${id}`, session);

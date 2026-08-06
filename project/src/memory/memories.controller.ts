@@ -12,8 +12,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { z } from 'zod';
-import type { MemoryListItem, MemoryPage } from '@cogeto/shared';
-import { MEMORY_SCOPES, MEMORY_STATUSES } from '@cogeto/shared';
+import type { MemoryChangeDto, MemoryListItem, MemoryPage } from '@cogeto/shared';
+import { MEMORY_SCOPES, MEMORY_STATUSES, UNCERTAINTY_REASONS } from '@cogeto/shared';
 import { BearerAuthGuard, UserDirectory } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { MemoryStore } from './memory.store';
@@ -28,10 +28,17 @@ const listQuerySchema = z.object({
   status: z.enum(MEMORY_STATUSES).optional(),
   sensitive: z.enum(['true', 'false']).optional(),
   entity: z.string().max(200).optional(),
+  /** The admission taxonomy arm (V2.2 item 5.2, the filtered fact search). */
+  uncertaintyReason: z.enum(UNCERTAINTY_REASONS).optional(),
   includeSensitive: z.enum(['true', 'false']).optional(),
   mine: z.enum(['true', 'false']).optional(),
   limit: z.coerce.number().int().min(1).max(100).prefault(25),
   offset: z.coerce.number().int().min(0).prefault(0),
+});
+
+const changesQuerySchema = z.object({
+  since: z.iso.datetime({ offset: true }),
+  limit: z.coerce.number().int().min(1).max(200).prefault(100),
 });
 
 const editSchema = z.object({
@@ -77,6 +84,7 @@ export class MemoriesController {
       status: q.status,
       sensitiveOnly: q.sensitive === 'true',
       entity: q.entity,
+      uncertaintyReason: q.uncertaintyReason,
       mine: q.mine === 'true',
     } satisfies MemoryFilters & { includeSensitive: boolean };
 
@@ -99,6 +107,35 @@ export class MemoriesController {
       this.store.countForPrincipal(request.principal, opts),
     ]);
     return { items: await this.withOwnerNames(rows.map(toListItem)), total };
+  }
+
+  /**
+   * The change feed for the filtered search's changed-since mode (V2.2 item
+   * 5.2): learned, status-changed and superseded events since a date, each
+   * carrying the memory as it is NOW through the gated read. Declared before
+   * `:id` so the literal path is not swallowed by the parameter route.
+   */
+  @Get('changes')
+  async changes(
+    @Req() request: AuthenticatedRequest,
+    @Query() query: unknown,
+  ): Promise<MemoryChangeDto[]> {
+    const parsed = parseOrBadRequest(changesQuerySchema, query ?? {});
+    const changes = await this.store.changesSince(request.principal, new Date(parsed.since), {
+      includeSensitive: true,
+      limit: parsed.limit,
+    });
+    const items = await this.withOwnerNames(changes.map((change) => toListItem(change.memory)));
+    return changes.map((change, i) => ({
+      kind: change.kind,
+      at: change.at.toISOString(),
+      memory: items[i]!,
+      detail: {
+        from: change.detail.from ?? null,
+        to: change.detail.to ?? null,
+        supersededBy: change.detail.supersededBy ?? null,
+      },
+    }));
   }
 
   /** One memory — detail drawer + chat citation chips. */

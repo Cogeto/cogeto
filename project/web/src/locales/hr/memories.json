@@ -34,7 +34,8 @@
       "entityPlaceholder": "entitet…",
       "anyStatus": "bilo koji status",
       "anyScope": "bilo koji opseg",
-      "sensitiveOnly": "samo osjetljivo"
+      "sensitiveOnly": "samo osjetljivo",
+      "anyReason": "Any reason"
     },
     "empty": {
       "none": {
@@ -67,7 +68,9 @@
       "contradiction": "Proturječnost",
       "verification": "Provjera",
       "provenance": "Podrijetlo",
-      "history": "Povijest"
+      "history": "Povijest",
+      "relations": "Contradictions",
+      "citedBy": "Cited by answers"
     },
     "confirm": "Potvrdi ovu činjenicu",
     "confirmTitle": "Od ovog trenutka vaša potvrda ima prednost pred strojnom procjenom",
@@ -99,10 +102,34 @@
     "original": "izvornik",
     "correction": "ispravak",
     "viewing": "prikazano",
-    "noCorrections": "Nema ispravaka. Ovo je izvornik."
+    "noCorrections": "Nema ispravaka. Ovo je izvornik.",
+    "hedgePhrase": "Stated tentatively in the source: \"{{phrase}}\"",
+    "relationCounterpart": "(counterpart unavailable)",
+    "relationOpen": "Open, detected {{when}}.",
+    "relationResolved": "Detected {{when}}, resolved: {{resolution}}.",
+    "noRelations": "No contradictions involve this fact.",
+    "untitledConversation": "Untitled conversation",
+    "noCitations": "No stored answer has cited this fact yet."
   },
   "capturePointer": {
     "body": "Capture lives in chat now: tell Cogeto something and use Remember this, or attach a file with the paperclip on <chatLink>the chat page</chatLink>. Deliberate document uploads live on <sourcesLink>the Sources page</sourcesLink>.",
     "dismiss": "Got it"
+  },
+  "search": {
+    "title": "Fact search",
+    "explainer": "A filtered search across every fact Cogeto holds. For the source-first view of what the system knows, use <sourcesLink>Sources</sourcesLink>."
+  },
+  "changes": {
+    "sinceLabel": "Changed since",
+    "clear": "Clear",
+    "loading": "Loading changes...",
+    "error": "We couldn't load the changes just now.",
+    "empty": "Nothing changed since that date.",
+    "kind": {
+      "learned": "Learned",
+      "status_changed": "Status changed",
+      "superseded": "Superseded"
+    },
+    "transition": "{{from}} to {{to}}"
   }
 }

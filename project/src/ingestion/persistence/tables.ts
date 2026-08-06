@@ -13,6 +13,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { MEMORY_SCOPES, UNCERTAINTY_REASONS } from '@cogeto/shared';
+import type { ReadLocator } from '@cogeto/shared';
 
 /**
  * Tables owned by the ingestion module (migration 0003). Module-private —
@@ -40,6 +41,14 @@ export const verificationResult = pgTable('verification_result', {
   sourceSpan: text('source_span'),
   /** The tentative wording that made this memory uncertain (migration 0008; F7). */
   hedgePhrase: text('hedge_phrase'),
+  /**
+   * The span resolved to the reader seam's structured locators at admission
+   * (V2.2 item 5.2, migration 0046): page/paragraph/sheet-cell positions, as a
+   * JSON array of ReadLocator. NULL means no location: the source has no
+   * segments (notes, chat, email, web), the span could not be found (the
+   * honest empty from locateSpan), or the row predates locators.
+   */
+  spanLocators: jsonb('span_locators').$type<ReadLocator[]>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -113,6 +122,9 @@ export const suppressedFactLog = pgTable(
      * extraction's content behind after the user removed its row.
      */
     memoryId: uuid('memory_id'),
+    /** The span's structured locators, exactly as on `verification_result`
+     * (V2.2 item 5.2): a withheld fact's position is evidence too. */
+    spanLocators: jsonb('span_locators').$type<ReadLocator[]>(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

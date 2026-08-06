@@ -5,10 +5,12 @@ import {
   approveMemory,
   changeMemoryScope,
   editMemory,
+  fetchCitingAnswers,
   fetchContradictions,
   fetchMe,
   fetchMemory,
   fetchMemoryChain,
+  fetchMemoryRelations,
   fetchNote,
   fetchVerification,
   markMemoryOutdated,
@@ -18,6 +20,7 @@ import {
 import type { Session } from '../auth/oidc';
 import { invalidateAfterGovernance } from '../query-invalidation';
 import { formatShortDate } from '../i18n/format';
+import { LocatorChips } from './LocatorChips';
 import { SourceDrawer } from './SourceDrawer';
 import { timeAgo } from './status';
 import {
@@ -108,6 +111,18 @@ export function MemoryDrawer({
     queryKey: ['note', memory?.sourceId],
     queryFn: () => fetchNote(session, memory!.sourceId),
     enabled: memory?.sourceType === 'user_note',
+  });
+  // The fact's whole life (V2.2 item 5.2): every contradiction relation it is
+  // party to (resolved included), and the answers that cited it.
+  const relationsQuery = useQuery({
+    queryKey: ['memory-relations', memoryId],
+    queryFn: () => fetchMemoryRelations(session, memoryId),
+    enabled: Boolean(memory),
+  });
+  const citingQuery = useQuery({
+    queryKey: ['memory-citing', memoryId],
+    queryFn: () => fetchCitingAnswers(session, memoryId),
+    enabled: Boolean(memory) && isMine,
   });
   // Contradicted memories show the OTHER side of the conflict right here —
   // the warning chip's promise is both facts, both sources.
@@ -415,14 +430,82 @@ export function MemoryDrawer({
                     </span>
                   </p>
                   <p className="text-slate-600">{verificationQuery.data.reason}</p>
+                  {verificationQuery.data.hedgePhrase && (
+                    <p className="text-xs text-amber-800 dark:text-amber-300">
+                      {t('drawer.hedgePhrase', { phrase: verificationQuery.data.hedgePhrase })}
+                    </p>
+                  )}
                   {verificationQuery.data.sourceSpan && (
                     <p className="rounded bg-slate-50 p-2 text-xs italic text-slate-500">
                       {t('drawer.citedSpan', { span: verificationQuery.data.sourceSpan })}
                     </p>
                   )}
+                  {verificationQuery.data.spanLocators ? (
+                    <LocatorChips locators={verificationQuery.data.spanLocators} />
+                  ) : (
+                    verificationQuery.data.sourceSpan &&
+                    memory.sourceType === 'file' && (
+                      <p className="text-[0.68rem] text-slate-400">
+                        {t('sources:detail.noLocation')}
+                      </p>
+                    )
+                  )}
                 </div>
               ) : (
                 <p className="text-sm text-slate-400">{t('drawer.noVerification')}</p>
+              )}
+            </Panel>
+
+            <Panel title={t('drawer.panel.relations')}>
+              {relationsQuery.data && relationsQuery.data.length > 0 ? (
+                <ul className="space-y-2">
+                  {relationsQuery.data.map((item) => (
+                    <li
+                      key={item.relationId}
+                      className="rounded-md border border-slate-200 p-2 text-sm"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => onNavigate(item.other.id)}
+                        className="w-full text-left text-slate-700 underline-offset-2 hover:underline"
+                      >
+                        {item.other.content ?? t('drawer.relationCounterpart')}
+                      </button>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {item.resolvedAt
+                          ? t('drawer.relationResolved', {
+                              when: timeAgo(item.detectedAt),
+                              resolution: item.resolution ?? '',
+                            })
+                          : t('drawer.relationOpen', { when: timeAgo(item.detectedAt) })}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-400">{t('drawer.noRelations')}</p>
+              )}
+            </Panel>
+
+            <Panel title={t('drawer.panel.citedBy')}>
+              {citingQuery.data && citingQuery.data.length > 0 ? (
+                <ul className="space-y-1.5">
+                  {citingQuery.data.map((answer) => (
+                    <li key={answer.messageId} className="text-sm">
+                      <a
+                        href={`/chat?c=${encodeURIComponent(answer.conversationId)}&m=${encodeURIComponent(answer.messageId)}`}
+                        className="text-slate-700 underline underline-offset-2 hover:text-slate-900"
+                      >
+                        {answer.conversationTitle ?? t('drawer.untitledConversation')}
+                      </a>
+                      <span className="ml-2 text-xs text-slate-400" title={answer.createdAt}>
+                        {timeAgo(answer.createdAt)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-400">{t('drawer.noCitations')}</p>
               )}
             </Panel>
 
@@ -508,6 +591,10 @@ export function MemoryDrawer({
           session={session}
           sourceType={memory.sourceType}
           sourceId={memory.sourceId}
+          onOpenMemory={(id) => {
+            setShowSource(false);
+            onNavigate(id);
+          }}
           onClose={() => setShowSource(false)}
           onDeleted={() => {
             // The source, this memory and its siblings are gone; a signed

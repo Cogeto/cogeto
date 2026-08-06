@@ -8,7 +8,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, inArray } from 'drizzle-orm';
 import type { VerificationDto } from '@cogeto/shared';
 import { DRIZZLE } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
@@ -56,7 +56,42 @@ export class VerificationController {
       reason: row.reason,
       promptVersion: row.promptVersion,
       sourceSpan: row.sourceSpan,
+      hedgePhrase: row.hedgePhrase,
+      spanLocators: row.spanLocators ?? null,
       createdAt: row.createdAt.toISOString(),
     };
   }
+}
+
+/**
+ * Grouped verification evidence for one page of memories (V2.2 item 5.2), a
+ * plain function in the `latestGateRefusalFor` shape: the inspection view
+ * joins facts to their verdicts in one query, and the table stays named only
+ * inside its owner.
+ */
+export async function verificationsForMemories(
+  db: Db,
+  memoryIds: readonly string[],
+): Promise<Map<string, VerificationDto>> {
+  const out = new Map<string, VerificationDto>();
+  if (memoryIds.length === 0) return out;
+  const rows = await db
+    .select()
+    .from(verificationResult)
+    .where(inArray(verificationResult.memoryId, [...memoryIds]))
+    .orderBy(verificationResult.createdAt);
+  // Later rows overwrite earlier ones, so the LATEST verification wins,
+  // matching the singular endpoint's `order by created_at desc limit 1`.
+  for (const row of rows) {
+    out.set(row.memoryId, {
+      verdict: row.verdict,
+      reason: row.reason,
+      promptVersion: row.promptVersion,
+      sourceSpan: row.sourceSpan,
+      hedgePhrase: row.hedgePhrase,
+      spanLocators: row.spanLocators ?? null,
+      createdAt: row.createdAt.toISOString(),
+    });
+  }
+  return out;
 }

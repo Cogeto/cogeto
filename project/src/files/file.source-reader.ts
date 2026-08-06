@@ -142,7 +142,7 @@ export class FileSourceReader implements SourceReader {
     if (!stat) return null;
     const object = await this.objects.getObject(sourceId);
     const storedFilename = decodeFilename(object.metadata['original-filename']);
-    const { text, report } = await this.readAndRecord(
+    const { text, segments, report } = await this.readAndRecord(
       sourceId,
       metadata.ownerId,
       object.body,
@@ -154,6 +154,9 @@ export class FileSourceReader implements SourceReader {
       sourceId,
       ownerId: metadata.ownerId,
       content: text,
+      // The reader's provenance segments ride to admission, where each stored
+      // fact's span is located once (V2.2 item 5.2).
+      segments,
       createdAt: metadata.uploadDate,
       scope: metadata.scope,
       sensitive: metadata.sensitive,
@@ -184,7 +187,7 @@ export class FileSourceReader implements SourceReader {
     // enters file_metadata, provenance or any receipt (F1 handoff §3), and the
     // report has to survive the staging object it describes.
     const discardFilename = decodeFilename(md['original-filename']);
-    const { text, report } = await this.readAndRecord(
+    const { text, segments, report } = await this.readAndRecord(
       sourceId,
       md['owner-id'] ?? '',
       object.body,
@@ -196,6 +199,9 @@ export class FileSourceReader implements SourceReader {
       sourceId,
       ownerId: md['owner-id'] ?? '',
       content: text,
+      // Discard mode is exactly why locators persist at admission (V2.2 item
+      // 5.2): once the staging bytes go, this read was the only chance.
+      segments,
       createdAt: md['uploaded-at'] ? new Date(md['uploaded-at']!) : new Date(),
       scope: (md['scope'] as MemoryScope | undefined) ?? 'private',
       sensitive: md['sensitive'] === 'true',

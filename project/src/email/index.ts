@@ -24,3 +24,6 @@ export { MAIL_OPTIONS } from './mail-options';
 // families reuse on retained markup.
 export { sanitizeHtml } from './email-parse';
 export { EmailSourcePortsModule } from './email-source-ports.module';
+
+// The source catalog's email listing (V2.2 item 5.2).
+export { listEmailSources, hydrateEmailSources, countEmailSources } from './source-listing';

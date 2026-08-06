@@ -9,3 +9,7 @@ export { NotesService } from './notes.service';
 export { NotesSourceReader } from './notes.source-reader';
 export { NotesSourceDeletion } from './notes.source-deletion';
 export { NotesSourcePortsModule } from './notes-source-ports.module';
+
+// The source catalog's note listing (V2.2 item 5.2): plain owner-scoped
+// functions, the `latestGateRefusalFor` shape.
+export { listNoteSources, hydrateNoteSources, countNoteSources } from './source-listing';

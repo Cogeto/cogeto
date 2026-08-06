@@ -101,6 +101,12 @@ export interface MemoryFilters {
    * uncertain facts, never a peer's shared ones (which you cannot action).
    */
   mine?: boolean;
+  /** One source's facts (V2.2 item 5.2, the source detail view). Both parts
+   * or neither: an id without a type would match across types. */
+  sourceType?: SourceType;
+  sourceId?: string;
+  /** The admission taxonomy arm (V2.2 item 5.2, the filtered fact search). */
+  uncertaintyReason?: UncertaintyReason;
 }
 
 export interface ListOptions extends ReadOptions, MemoryFilters {
@@ -419,6 +425,132 @@ export class MemoryStore {
         ),
       );
     return rows[0]?.n ?? 0;
+  }
+
+  /**
+   * The distinct sources the caller's visible memories point at, newest first
+   * by earliest fact (V2.2 item 5.2). This is how source KINDS with no table
+   * row of their own enumerate for the catalog: a chat capture's only durable
+   * trace is its facts' provenance, and a discard-mode file's metadata row
+   * never existed. One grouped query over `memory_source_idx`; the cursor is
+   * the group's min(created_at), so pages are stable under new ingestion.
+   */
+  async listSourceRefsForPrincipal(
+    principal: Principal,
+    options: {
+      sourceType?: SourceType;
+      cursor?: Date;
+      order?: 'asc' | 'desc';
+      limit?: number;
+    } = {},
+  ): Promise<{ sourceType: SourceType; sourceId: string; firstAt: Date; facts: number }[]> {
+    const limit = Math.min(options.limit ?? 50, 200);
+    const clauses: SQL[] = [this.visibleTo(principal, { includeSensitive: true })];
+    if (options.sourceType) clauses.push(eq(memory.sourceType, options.sourceType));
+    const grouped = this.db
+      .select({
+        sourceType: memory.sourceType,
+        sourceId: memory.sourceId,
+        firstAt: sql<string>`min(${memory.createdAt})`.as('first_at'),
+        facts: sql<number>`count(*)::int`.as('facts'),
+      })
+      .from(memory)
+      .where(and(...clauses))
+      .groupBy(memory.sourceType, memory.sourceId)
+      .as('grouped');
+    const order = options.order ?? 'desc';
+    const rows = await this.db
+      .select()
+      .from(grouped)
+      .where(
+        options.cursor
+          ? order === 'desc'
+            ? sql`${grouped.firstAt} < ${options.cursor}`
+            : sql`${grouped.firstAt} > ${options.cursor}`
+          : undefined,
+      )
+      .orderBy(order === 'desc' ? sql`${grouped.firstAt} DESC` : sql`${grouped.firstAt} ASC`)
+      .limit(limit);
+    return rows.map((row) => ({
+      sourceType: row.sourceType,
+      sourceId: row.sourceId,
+      firstAt: new Date(row.firstAt),
+      facts: row.facts,
+    }));
+  }
+
+  /**
+   * Per-source fact statistics for ONE page of catalog rows (V2.2 item 5.2):
+   * total visible facts and how many are superseded or uncertain, grouped, in
+   * one indexed query over the page's refs — never a query per row.
+   */
+  async sourceFactStatsForRefs(
+    principal: Principal,
+    refs: readonly { sourceType: string; sourceId: string }[],
+  ): Promise<Map<string, { facts: number; superseded: number; uncertain: number }>> {
+    const out = new Map<string, { facts: number; superseded: number; uncertain: number }>();
+    if (refs.length === 0) return out;
+    const pairs = refs.map((ref) => sql`(${ref.sourceType}, ${ref.sourceId})`);
+    const rows = await this.db
+      .select({
+        sourceType: memory.sourceType,
+        sourceId: memory.sourceId,
+        facts: sql<number>`count(*)::int`,
+        superseded: sql<number>`count(*) FILTER (WHERE ${memory.status} = 'replaced')::int`,
+        uncertain: sql<number>`count(*) FILTER (WHERE ${memory.status} = 'uncertain')::int`,
+      })
+      .from(memory)
+      .where(
+        and(
+          this.visibleTo(principal, { includeSensitive: true }),
+          sql`(${memory.sourceType}, ${memory.sourceId}) IN (${sql.join(pairs, sql`, `)})`,
+        ),
+      )
+      .groupBy(memory.sourceType, memory.sourceId);
+    for (const row of rows) {
+      out.set(`${row.sourceType} ${row.sourceId}`, {
+        facts: row.facts,
+        superseded: row.superseded,
+        uncertain: row.uncertain,
+      });
+    }
+    return out;
+  }
+
+  /**
+   * The refs of sources holding at least one visible memory in `status`
+   * (V2.2 item 5.2): the driving query behind "every source with a superseded
+   * fact" — the badge condition produces the rows, never a scan of all
+   * sources testing each.
+   */
+  async sourceRefsWithStatus(
+    principal: Principal,
+    status: MemoryStatus,
+    options: { limit?: number } = {},
+  ): Promise<{ sourceType: SourceType; sourceId: string; firstAt: Date; facts: number }[]> {
+    const grouped = this.db
+      .select({
+        sourceType: memory.sourceType,
+        sourceId: memory.sourceId,
+        firstAt: sql<string>`min(${memory.createdAt})`.as('first_at'),
+        facts: sql<number>`count(*)::int`.as('facts'),
+      })
+      .from(memory)
+      .where(this.visibleTo(principal, { includeSensitive: true }))
+      .groupBy(memory.sourceType, memory.sourceId)
+      .having(sql`count(*) FILTER (WHERE ${memory.status} = ${status}) > 0`)
+      .as('grouped');
+    const rows = await this.db
+      .select()
+      .from(grouped)
+      .orderBy(sql`${grouped.firstAt} DESC`)
+      .limit(Math.min(options.limit ?? 200, 500));
+    return rows.map((row) => ({
+      sourceType: row.sourceType,
+      sourceId: row.sourceId,
+      firstAt: new Date(row.firstAt),
+      facts: row.facts,
+    }));
   }
 
   /**
@@ -1261,6 +1393,13 @@ export class MemoryStore {
     if (filters.scope) clauses.push(eq(memory.scope, filters.scope));
     if (filters.status) clauses.push(eq(memory.status, filters.status));
     if (filters.sensitiveOnly) clauses.push(eq(memory.sensitive, true));
+    if (filters.sourceType && filters.sourceId) {
+      clauses.push(eq(memory.sourceType, filters.sourceType));
+      clauses.push(eq(memory.sourceId, filters.sourceId));
+    }
+    if (filters.uncertaintyReason) {
+      clauses.push(eq(memory.uncertaintyReason, filters.uncertaintyReason));
+    }
     if (filters.entity?.trim()) {
       clauses.push(
         sql`EXISTS (

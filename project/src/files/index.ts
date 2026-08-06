@@ -37,3 +37,6 @@ export type {
   ReadOutcome,
   ReadReasonCode,
 } from './reading/reader';
+
+// The source catalog's read-report badges (V2.2 item 5.2).
+export { readOutcomesForKeys, keysWithReadOutcome } from './persistence/file-read-report';

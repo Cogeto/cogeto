@@ -59,3 +59,8 @@ export type { MemoryRow, SourceType } from './persistence/tables';
 // callers pass primitives and a gateway, never a client.
 export { reindexMemories } from './reindex';
 export { listForeignEmbeddingModels, vectorIndexDimensionMismatch } from './embedding-space';
+
+// The source catalog's file-ref listings (V2.2 item 5.2): plain owner-scoped
+// functions over file_metadata, memory's own table.
+export { listFileSourceRefs, hydrateFileSourceRefs, countFileSourceRefs } from './file-store';
+export { toListItem } from './list-item';

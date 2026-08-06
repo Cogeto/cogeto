@@ -1,3 +1,4 @@
+import type { ReadLocator } from './locator';
 import type { FactKind, MemoryScope, MemoryStatus, UncertaintyReason } from './memory';
 
 /** Notes capture DTOs: POST /api/notes and the processing-status poll. */
@@ -74,6 +75,15 @@ export interface VerificationDto {
   promptVersion: string;
   /** The extractor's cited source passage; null for pre- rows. */
   sourceSpan: string | null;
+  /** The tentative wording behind `hedged_in_source`; null otherwise. */
+  hedgePhrase: string | null;
+  /**
+   * The span resolved to the reader seam's structured locators at admission
+   * (V2.2 item 5.2). Null means no location: a segment-less source (note,
+   * chat, email, web), a span locateSpan could not find, or a fact admitted
+   * before locators were persisted.
+   */
+  spanLocators: ReadLocator[] | null;
   createdAt: string;
 }
 
@@ -91,6 +101,8 @@ export interface SuppressedFactDto {
   factKind: FactKind | null;
   /** The exact source substring the claim was drawn from. */
   sourceSpan: string;
+  /** The span's structured locators (V2.2 item 5.2); null when unlocatable. */
+  spanLocators: ReadLocator[] | null;
   reason: UncertaintyReason;
   /** The verification detail behind the decision; null when none ran. */
   verificationVerdict: 'supported' | 'partial' | 'unsupported' | null;
