@@ -13,6 +13,7 @@ import type { ModelGateway } from '../../model-gateway/index';
 import { structurallyValid } from '../domain/uncertainty';
 import { UserDirectory } from '../../identity/index';
 import { ExtractionGateStore } from '../persistence/extraction-gate.store';
+import { IngestionProgressStore } from '../persistence/ingestion-progress';
 import { AnchorStage } from './anchor.stage';
 import { SuppressedFactLog } from '../persistence/suppressed-fact-log';
 import type { SuppressedFactEntry } from '../persistence/suppressed-fact-log';
@@ -114,6 +115,13 @@ export class IngestionPipeline {
      * the pre-anchoring input, byte-identical.
      */
     @Optional() private readonly anchorStage?: AnchorStage,
+    /**
+     * The honest stage reporter (V2.2 item 5.1). Optional so bare harnesses
+     * (eval, old tests) run exactly as before; when present, each stage the
+     * run enters is upserted on the store's OWN connection, so a surface can
+     * say "verifying" instead of a bare spinner. Never a way to fail the run.
+     */
+    @Optional() private readonly progress?: IngestionProgressStore,
   ) {}
 
   async run(
@@ -158,6 +166,8 @@ export class IngestionPipeline {
     if (!reader) {
       throw new Error(`no source reader registered for source_type '${payload.source_type}'`);
     }
+    const stageRef = { sourceType: payload.source_type, sourceId: payload.source_id };
+    await this.progress?.report(stageRef, 'reading');
     const source = await reader.load(payload.source_id);
     if (!source) {
       // The source vanished before processing (e.g. deleted). Complete cleanly.
@@ -244,6 +254,7 @@ export class IngestionPipeline {
     }
     summary.chunks = chunks.length;
 
+    await this.progress?.report(stageRef, 'extracting');
     // Stage 3 — extract: empty content short-circuits with zero model calls;
     // a durable-fact-free source legitimately yields [] (calibrated abstention).
     // The facts array is capped so a pathological source cannot fan out
@@ -284,6 +295,7 @@ export class IngestionPipeline {
     }
 
     // Stage 4 — verify: the independent spec §2 pass decides each fact's verdict.
+    await this.progress?.report(stageRef, 'verifying');
     const verified = await this.verifyStage.run(chunks, facts);
     for (const { verdict } of verified) summary.verdicts[verdict] += 1;
     log(
@@ -353,6 +365,7 @@ export class IngestionPipeline {
     // Stage 5 — embed + store: batched embedding, Postgres rows (status per
     // verdict), Qdrant points last. Gate retention (V2.1 item 4.3) rides along:
     // it bounds only facts with no extractor-resolved validity of their own.
+    await this.progress?.report(stageRef, 'storing');
     const admitted = await this.embedStoreStage.run(tx, source, verified, {
       retentionDays: gateRetentionDays,
     });
@@ -408,6 +421,8 @@ export interface CreatePipelineOptions {
   gate?: ExtractionGateStore;
   /** The anchor stage (V2.1 item 4.2); omitted = no document context. */
   anchor?: AnchorStage;
+  /** The honest stage reporter (V2.2 item 5.1); omitted = no stage rows. */
+  progress?: IngestionProgressStore;
 }
 
 /**
@@ -428,5 +443,6 @@ export function createIngestionPipeline(options: CreatePipelineOptions): Ingesti
     undefined,
     options.gate,
     options.anchor,
+    options.progress,
   );
 }

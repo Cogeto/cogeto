@@ -6,6 +6,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -292,3 +293,22 @@ export const dormantFlag = pgTable(
 export type DreamRunRow = typeof dreamRun.$inferSelect;
 export type DreamActionRow = typeof dreamAction.$inferSelect;
 export type DormantFlagRow = typeof dormantFlag.$inferSelect;
+
+/**
+ * The honest per-source pipeline stage (V2.2 item 5.1, migration 0045):
+ * reading, extracting, verifying, storing. Upserted OUTSIDE the job
+ * transaction (the file_read_report precedent), metadata only, one row per
+ * source, erased with the source through ingestion's deletion cascade.
+ */
+export const ingestionProgress = pgTable(
+  'ingestion_progress',
+  {
+    sourceType: text('source_type').notNull(),
+    sourceId: text('source_id').notNull(),
+    stage: text('stage').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.sourceType, t.sourceId] })],
+);
+
+export type IngestionProgressRow = typeof ingestionProgress.$inferSelect;

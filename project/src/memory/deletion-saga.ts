@@ -268,6 +268,14 @@ const countsSchema = z.object({
    * value, so the chain verifies across the change. A count, not an identifier.
    */
   file_read_reports_removed: z.int().optional(),
+  /**
+   * Chat attachment rows erased with a conversation source (V2.2 item 5.1).
+   * A transient attachment's row holds the file's extracted text and its
+   * name, so the erasure claim would be incomplete without it. ADDITIVE and
+   * OPTIONAL, like every count before it: earlier receipts parse unchanged
+   * and hash to the same value. A count, not an identifier.
+   */
+  chat_attachments_removed: z.int().optional(),
   /** Qdrant point id = memory id (spec §4.2); duplicated for receipt readability. */
   point_ids: z.array(z.string()),
   object_keys: z.array(z.string()),
@@ -514,6 +522,7 @@ export class DeletionSaga {
       let passportExportsExpired = 0;
       let suppressedFactsRemoved = 0;
       let fileReadReportsRemoved = 0;
+      let chatAttachmentsRemoved = 0;
       const ownerExpiredObjectKeys: string[] = [];
       // Every source this deletion erases, not just the one it was asked for:
       // the primary source plus its cascaded members. Source-keyed artifacts
@@ -549,6 +558,11 @@ export class DeletionSaga {
             // content, and the report can exist with no memory at all (a file
             // that yielded nothing readable), so only this leg reaches it.
             if (cascade.artifact === 'file_read_reports') fileReadReportsRemoved += redacted;
+            // Conversation attachments (V2.2 item 5.1): a transient row holds
+            // the file's extracted text, so it goes with its conversation; the
+            // file leg of the same cascade only CLEARS a durable link's name
+            // and returns 0, so this count is real removals only.
+            if (cascade.artifact === 'chat_attachments') chatAttachmentsRemoved += redacted;
           }
         }
         // SEC-8: owner-scoped artifacts that would outlive the deletion. Their
@@ -604,6 +618,7 @@ export class DeletionSaga {
         ...(fileReadReportsRemoved > 0
           ? { file_read_reports_removed: fileReadReportsRemoved }
           : {}),
+        ...(chatAttachmentsRemoved > 0 ? { chat_attachments_removed: chatAttachmentsRemoved } : {}),
         point_ids: memoryIds,
         object_keys: objectKeys,
         superseded_by_nulled: nulledPointers,

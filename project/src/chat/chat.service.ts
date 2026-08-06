@@ -43,6 +43,7 @@ import { queryEntityCandidates } from '../retrieval/index';
 import type { ChatReplyResolverPort } from './chat-reply-resolver.port';
 import type { ChatResearchResolverPort } from './chat-research-resolver.port';
 import type { ChatSkillResolverPort } from './chat-skill-resolver.port';
+import type { ChatAttachmentsService } from './chat-attachments.service';
 import { chatMessage, conversation } from './persistence/tables';
 import type { ConversationRow } from './persistence/tables';
 import { CONVERSATION_TITLE_JOB_TYPE } from './conversation-titler';
@@ -66,6 +67,15 @@ const PREVIEW_CHARS = 120;
 
 /** Surrounding turns shown either side of a remembered message in its drawer. */
 const CONTEXT_TURNS = 2;
+
+/**
+ * Caps on transient-attachment text entering the answer input (V2.2 item
+ * 5.1): per file and across the conversation's files, oldest first. The read
+ * itself is already bounded by the parse caps; these bound the PROMPT, so a
+ * long document contributes its opening rather than crowding out the facts.
+ */
+const ATTACHMENT_ANSWER_CHARS = 16_000;
+const ATTACHMENT_ANSWER_TOTAL_CHARS = 32_000;
 
 /** The per-turn user context: record + effective tz + rendered blocks. */
 interface AskContext {
@@ -99,6 +109,10 @@ export interface ChatServiceOptions {
   timeZone?: string;
   /** Per-user context + language; absent → instance defaults, English. */
   userContext?: UserContextService;
+  /** Conversation attachments (V2.2 item 5.1); absent → the ask path neither
+   * links attachments nor injects transient texts, and attaching is a
+   * controller capability this service does not reach. */
+  attachments?: ChatAttachmentsService;
 }
 
 export const CHAT_SERVICE_OPTIONS = Symbol('CHAT_SERVICE_OPTIONS');
@@ -122,6 +136,7 @@ export class ChatService {
   private readonly skillResolver?: ChatSkillResolverPort;
   private readonly timeZone: string;
   private readonly userContext?: UserContextService;
+  private readonly attachments?: ChatAttachmentsService;
 
   private readonly smallTalkHandler: SmallTalkHandler;
 
@@ -138,6 +153,7 @@ export class ChatService {
     this.skillResolver = options?.skillResolver;
     this.timeZone = options?.timeZone ?? DEFAULT_INSTANCE_TIMEZONE;
     this.userContext = options?.userContext;
+    this.attachments = options?.attachments;
     this.smallTalkHandler = new SmallTalkHandler(this.gateway, this.sink());
   }
 
@@ -168,6 +184,7 @@ export class ChatService {
       this.researchResolver ? null : 'researchResolver',
       this.skillResolver ? null : 'skillResolver',
       this.userContext ? null : 'userContext',
+      this.attachments ? null : 'attachments',
     ].filter((name): name is string => name !== null);
     if (missing.length > 0) {
       throw new Error(
@@ -439,6 +456,9 @@ export class ChatService {
     options: {
       /** issue #424: false answers directly; absent or true deliberates. */
       thinking?: boolean;
+      /** Attachments sent with this message (V2.2 item 5.1) — linked to the
+       * user row so the conversation renders them under it. */
+      attachmentIds?: string[];
     } = {},
   ): AsyncGenerator<ChatStreamEvent> {
     // The chat path is always EXPLICIT about the mode (the paired sampler
@@ -460,6 +480,14 @@ export class ChatService {
       .values({ ownerId: principal.userId, conversationId, role: 'user', content })
       .returning();
     await this.touchConversation(conversationId, userRow!.createdAt);
+    if (this.attachments && (options.attachmentIds?.length ?? 0) > 0) {
+      await this.attachments.linkToMessage(
+        principal,
+        conversationId,
+        userRow!.id,
+        options.attachmentIds!,
+      );
+    }
 
     // 1. small_talk_lexicon — deterministic: a pure pleasantry gets a
     // natural reply; no retrieval, no model call, no citation theatre.
@@ -546,7 +574,10 @@ export class ChatService {
     }
 
     // 7. memory_answer — memory-first retrieval for BOTH personal and
-    // knowledge questions; grounded facts always come first.
+    // knowledge questions; grounded facts always come first. Transient
+    // conversation attachments (V2.2 item 5.1) join as fenced provided
+    // ground — this conversation's only, capped so a long file contributes
+    // its opening rather than crowding out the facts.
     yield* new MemoryAnswerHandler(this.retrieval, this.gateway, this.directory, this.sink(), () =>
       Boolean(this.researchResolver),
     ).handle(
@@ -558,9 +589,28 @@ export class ChatService {
       {
         record: ctx.record,
         answerBlock: ctx.answerBlock,
+        attachments: await this.transientAttachments(principal, conversationId),
       },
       thinkingMode,
     );
+  }
+
+  /** The conversation's ready transient texts, capped for the answer input. */
+  private async transientAttachments(
+    principal: Principal,
+    conversationId: string,
+  ): Promise<{ name: string; text: string }[]> {
+    if (!this.attachments) return [];
+    const texts = await this.attachments.transientTextsFor(principal.userId, conversationId);
+    const capped: { name: string; text: string }[] = [];
+    let budget = ATTACHMENT_ANSWER_TOTAL_CHARS;
+    for (const item of texts) {
+      if (budget <= 0) break;
+      const slice = item.text.slice(0, Math.min(ATTACHMENT_ANSWER_CHARS, budget));
+      budget -= slice.length;
+      capped.push({ name: item.name, text: slice });
+    }
+    return capped;
   }
 
   /** The router's bounded rewrite call — shared fallback semantics (0046).

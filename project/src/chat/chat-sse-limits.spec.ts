@@ -3,8 +3,12 @@ import type { Response } from 'express';
 import type { Principal } from '@cogeto/shared';
 import type { ChatStreamEvent } from '@cogeto/shared';
 import { ChatController } from './chat.controller';
+import type { ChatAttachmentsService } from './chat-attachments.service';
 import type { ChatService } from './chat.service';
 import type { SseLimits } from '../infrastructure/index';
+
+/** The attachments surface is not under test here; the ask path never calls it. */
+const attachmentsStub = {} as unknown as ChatAttachmentsService;
 
 /**: concurrent-stream cap + idle/max-duration abort on chat SSE. */
 
@@ -65,7 +69,11 @@ describe('chat SSE limits', () => {
         yield { type: 'token', text: 'x' } as ChatStreamEvent;
       },
     } as unknown as ChatService;
-    const controller = new ChatController(chat, limits({ maxConcurrentPerPrincipal: 1 }));
+    const controller = new ChatController(
+      chat,
+      attachmentsStub,
+      limits({ maxConcurrentPerPrincipal: 1 }),
+    );
 
     // Stream #1 opens and holds a slot (floating — it stays inside the loop).
     const first = controller.ask(req(), { content: 'q1', conversationId: CONV }, fakeResponse());
@@ -91,6 +99,7 @@ describe('chat SSE limits', () => {
     } as unknown as ChatService;
     const controller = new ChatController(
       chat,
+      attachmentsStub,
       limits({ idleTimeoutSeconds: 0.05, maxDurationSeconds: 0.05 }),
     );
     const res = fakeResponse();
@@ -109,7 +118,11 @@ describe('chat SSE limits', () => {
         yield { type: 'token', text: 'done' } as ChatStreamEvent;
       },
     } as unknown as ChatService;
-    const controller = new ChatController(chat, limits({ maxConcurrentPerPrincipal: 1 }));
+    const controller = new ChatController(
+      chat,
+      attachmentsStub,
+      limits({ maxConcurrentPerPrincipal: 1 }),
+    );
     await controller.ask(req(), { content: 'q1', conversationId: CONV }, fakeResponse());
     // The first stream completed and freed the slot — this must not 429.
     await expect(

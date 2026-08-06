@@ -195,6 +195,46 @@ double-clicks capture at most once.
 - v1 captures the whole message. Span selection is deferred, and **no dead UI ships
   for it**.
 
+## Attachments: the paperclip (V2.2 item 5.1)
+
+Files enter conversationally through a paperclip on the composer, under exactly
+the upload endpoint's validation, byte cap, rate bucket and daily quota. The
+message sends immediately; ingestion is worker work and never blocks the turn.
+
+**The default is ingestion.** The chat endpoint delegates to the files module's
+upload, so an attached file is an ordinary `file` source: same pipeline, same
+read report, same anchoring, same extraction-gate policy, same provenance. A
+chat-owned `chat_attachment` row (migration 0045) links the source to its
+conversation and message, and the conversation renders a first-class,
+persistent card, never a toast: honest stages while the pipeline runs
+(reading, extracting, verifying, storing, from the `ingestion_progress` row
+the pipeline reports outside its transaction), then, stamped once on settle,
+the real numbers: facts admitted, open contradictions the source's facts are
+party to, and a link to the source on Sources. A gate refusal is stated as a
+refusal, never a zero that looks processed; an unreadable file shows the
+reading layer's own reason. When the file source is later deleted, the
+cascade nulls the card's filename (a filename is erased with its bytes) and
+the card reads "attachment removed".
+
+**"Don't remember this file"** keeps an attachment transient, and transient
+has exact storage terms. The bytes are staged at the discard-mode staging
+twin, read ONCE by a chat-owned worker job (`chat.attachment_read`) through
+the same reading ladder as any upload (OCR and vision included, same caps,
+same vision spend metering), and deleted the moment the extracted text
+commits, with the 15-minute backstop deleting them even if the read never
+succeeds. The text lives on the chat-owned row, scoped to this conversation,
+until the conversation is deleted; the deletion saga erases it in the same
+enumeration transaction and counts it on the receipt
+(`chat_attachments_removed`). It never becomes a source, never reaches
+extraction (so the gate has nothing to admit; the parse, OCR and vision caps
+still bound the read), never enters memory or Qdrant, and no other
+conversation can see it. Asked about it in this conversation, the answer path
+receives the text as a FENCED `ATTACHED FILES` block (`answer/v0008`) and
+attributes claims from it in words, with no `[F#]` (not a provided fact) and
+no `[U]` (not model knowledge), the user-context rule; asked in another
+conversation, Cogeto honestly has nothing on record. The composer states this
+in one line before sending.
+
 ## Conversations
 
 **Memory is the continuity; conversations are workspaces.** The rewriter, router, and

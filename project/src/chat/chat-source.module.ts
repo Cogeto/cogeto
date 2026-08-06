@@ -3,6 +3,7 @@ import { SettingsPortsModule } from '../settings/index';
 import { ChatSourceReader } from './chat.source-reader';
 import { ChatSourceDeletion } from './chat.source-deletion';
 import { ChatAnswerCascade } from './chat-answer-cascade';
+import { ChatAttachmentCascade } from './chat-attachment-cascade';
 import { ConversationSourceDeletion } from './conversation.source-deletion';
 import { ConversationTitler } from './conversation-titler';
 import { CONVERSATION_APPEND, ConversationScribe } from './conversation-scribe';
@@ -34,6 +35,7 @@ import { CONVERSATION_APPEND, ConversationScribe } from './conversation-scribe';
     ChatSourceDeletion,
     ConversationSourceDeletion,
     ChatAnswerCascade,
+    ChatAttachmentCascade,
     ConversationTitler,
     ConversationScribe,
     // The conversation-append seam: research (connectors)
@@ -45,6 +47,7 @@ import { CONVERSATION_APPEND, ConversationScribe } from './conversation-scribe';
     ChatSourceDeletion,
     ConversationSourceDeletion,
     ChatAnswerCascade,
+    ChatAttachmentCascade,
     ConversationTitler,
     ConversationScribe,
     CONVERSATION_APPEND,

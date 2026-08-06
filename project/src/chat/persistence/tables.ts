@@ -1,4 +1,13 @@
-import { boolean, index, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 /**
  * Tables owned by the retrieval module's chat area (migrations 0005 + 0031).
@@ -60,5 +69,57 @@ export const chatMessage = pgTable(
   ],
 );
 
+/**
+ * One file attached in a conversation (V2.2 item 5.1, migration 0045).
+ *
+ * Durable rows are LINKS: the file itself is an ordinary file source (its
+ * object key is `object_key`), and this row lets the conversation render the
+ * honest card — progress, then the stamped outcome (facts, contradictions,
+ * read outcome, gate refusal). When the file source is deleted, the cascade
+ * nulls `display_name` (a filename is erased with its bytes) and marks the
+ * row `source_deleted`.
+ *
+ * Transient rows are CONTENT: `content_text` is what the reading layer made
+ * of a "don't remember this file" attachment, held for this conversation's
+ * answer path only, erased by the conversation deletion saga and counted on
+ * its receipt. `staging_key` points at the staged bytes until the read job
+ * commits their deletion, then nulls.
+ */
+export const chatAttachment = pgTable(
+  'chat_attachment',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: text('owner_id').notNull(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversation.id, { onDelete: 'cascade' }),
+    /** The user message it was sent with; null for an attachment sent alone. */
+    messageId: uuid('message_id'),
+    transient: boolean('transient').notNull(),
+    objectKey: text('object_key'),
+    stagingKey: text('staging_key'),
+    displayName: text('display_name'),
+    contentType: text('content_type'),
+    sizeBytes: integer('size_bytes'),
+    status: text('status')
+      .$type<'pending' | 'ready' | 'failed' | 'settled' | 'source_deleted'>()
+      .notNull()
+      .default('pending'),
+    contentText: text('content_text'),
+    readOutcome: text('read_outcome'),
+    readReason: text('read_reason'),
+    factsCount: integer('facts_count'),
+    contradictionsCount: integer('contradictions_count'),
+    gateRefusal: text('gate_refusal'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    settledAt: timestamp('settled_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('chat_attachment_conversation_idx').on(t.conversationId, t.createdAt),
+    index('chat_attachment_object_key_idx').on(t.objectKey),
+  ],
+);
+
 export type ChatMessageRow = typeof chatMessage.$inferSelect;
 export type ConversationRow = typeof conversation.$inferSelect;
+export type ChatAttachmentRow = typeof chatAttachment.$inferSelect;

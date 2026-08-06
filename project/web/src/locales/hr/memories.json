@@ -1,16 +1,4 @@
 {
-  "capturesFailed_one": "Obrada {{count}} spremljenog unosa nije uspjela. Red neuspjelih zadataka pogledajte u Sustavu.",
-  "capturesFailed_few": "Obrada {{count}} spremljena unosa nije uspjela. Red neuspjelih zadataka pogledajte u Sustavu.",
-  "capturesFailed_other": "Obrada {{count}} spremljenih unosa nije uspjela. Red neuspjelih zadataka pogledajte u Sustavu.",
-  "capture": {
-    "placeholder": "Zapamti ovo...",
-    "scope": "Opseg",
-    "scopeTitle": "Dijeljene činjenice vidljive su svima u vašoj organizaciji, a privatne ostaju vaše.",
-    "submit": "Zapamti",
-    "hint": "Činjenice se prikazuju u nastavku nakon provjere.",
-    "failed": "Spremanje nije uspjelo. Pokušajte ponovno.",
-    "pending": "Spremanje u pamćenje… izdvajanje i provjera su u tijeku."
-  },
   "uncertaintyReason": {
     "hedged_in_source": "u izvoru je navedeno s ogradom",
     "partially_supported": "izvor to samo djelomično podržava",
@@ -112,5 +100,9 @@
     "correction": "ispravak",
     "viewing": "prikazano",
     "noCorrections": "Nema ispravaka. Ovo je izvornik."
+  },
+  "capturePointer": {
+    "body": "Capture lives in chat now: tell Cogeto something and use Remember this, or attach a file with the paperclip on <chatLink>the chat page</chatLink>. Deliberate document uploads live on <sourcesLink>the Sources page</sourcesLink>.",
+    "dismiss": "Got it"
   }
 }

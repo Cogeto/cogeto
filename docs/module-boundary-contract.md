@@ -56,15 +56,15 @@ module that never imports `connectors` but injects `NotesService` because
 
 ## 2. Table ownership
 
-Forty-two tables, one owner each. The owner is the module whose
+Forty-four tables, one owner each. The owner is the module whose
 `persistence/tables.ts` declares the Drizzle table; it is the only module that
 may name the table in a query, in Drizzle or in SQL.
 
 | Owner | Tables |
 |---|---|
 | `memory` | `memory`, `memory_relation`, `file_metadata`, `deletion_receipt`, `integrity_alert` |
-| `ingestion` | `verification_result`, `suppressed_fact_log`, `dream_run`, `dream_action`, `dormant_flag`, `extraction_gate`, `extraction_gate_rule`, `extraction_gate_refusal`, `source_context` (V2.1 items 4.2 and 4.3: the per-source extraction gate. Owned here because the pipeline is the enforcement point; the settings surface is ingestion's own controller, the email-settings precedent) |
-| `chat` | `chat_message`, `conversation` (moved from `retrieval` in part 4: chat is a capture connector by structure) |
+| `ingestion` | `verification_result`, `suppressed_fact_log`, `dream_run`, `dream_action`, `dormant_flag`, `extraction_gate`, `extraction_gate_rule`, `extraction_gate_refusal`, `source_context` (V2.1 items 4.2 and 4.3: the per-source extraction gate. Owned here because the pipeline is the enforcement point; the settings surface is ingestion's own controller, the email-settings precedent), `ingestion_progress` (V2.2 item 5.1: the honest per-source pipeline stage, reported by the pipeline outside its job transaction; surfaces read it through the exported `pipelineStageFor`) |
+| `chat` | `chat_message`, `conversation` (moved from `retrieval` in part 4: chat is a capture connector by structure), `chat_attachment` (V2.2 item 5.1: a conversation's link to a durable file source, or a transient file's conversation-only text; erased with its conversation by the saga, counted on the receipt) |
 | `attention` | `attention_state`, `attention_dismissal` |
 | `agents` | `approval` |
 | `notes` | `note` |
@@ -147,7 +147,7 @@ well-defined.
 
 ## 3. Job-type contracts
 
-Sixteen job types. Each is declared **once**, as an exported constant, in the
+Seventeen job types. Each is declared **once**, as an exported constant, in the
 module that owns the payload contract and writes the handler body. The worker
 composition root is the only place that maps a job type to a handler, and it
 imports every constant rather than spelling any of them.
@@ -167,6 +167,7 @@ imports every constant rather than spelling any of them.
 | `email_refusal_retention` | `email` | `EMAIL_REFUSAL_RETENTION_JOB_TYPE` | recurring |
 | `extraction_refusal_retention` | `ingestion` | `EXTRACTION_REFUSAL_RETENTION_JOB_TYPE` | recurring |
 | `conversation.title` | `chat` | `CONVERSATION_TITLE_JOB_TYPE` | per-source |
+| `chat.attachment_read` | `chat` | `CHAT_ATTACHMENT_READ_JOB_TYPE` | per-source |
 | `passport_export` | `passport` | `PASSPORT_EXPORT_JOB_TYPE` | per-source |
 | `passport_retention` | `passport` | `PASSPORT_RETENTION_JOB_TYPE` | recurring |
 | `demo_reset` | `entrypoints` (dev only) | `DEMO_RESET_JOB_TYPE` | recurring, profile-gated |

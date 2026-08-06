@@ -47,6 +47,20 @@ connector tables private.
 
 ## Files
 
+A file enters through one of two doors, and one path (V2.2 item 5.1): the
+**Sources page** (the deliberate door, for documents you intend to keep and
+audit; bulk import joins it in 5.3) and the **chat paperclip** (the
+conversational door, whose endpoint delegates to the same upload service, so
+validation, caps, quota, gating and ingestion are identical and only the entry
+point and the presentation differ). The Memories tab stopped being an input
+surface: it governs what is remembered, and a dismissible pointer says where
+capture now lives. A chat attachment additionally records a chat-owned link
+row so the conversation can render honest progress and the settled outcome;
+see [`conversation.md`](conversation.md). A chat attachment marked "don't
+remember this file" is **not a source at all**: its bytes are staged and
+deleted after one read, its text serves only its conversation, and it is
+erased with that conversation under the same receipt.
+
 Upload mints the object key, PUTs the bytes, then in **one transaction** inserts
 `file_metadata` through the memory port and enqueues the pipeline job. If that
 transaction aborts, a compensating delete removes the object.

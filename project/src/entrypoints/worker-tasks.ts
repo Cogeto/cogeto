@@ -44,8 +44,8 @@ import { SKILL_ADVANCE_JOB_TYPE } from '../skills/index';
 import { RESEARCH_CONCLUDE_JOB_TYPE } from '../research/index';
 import type { ResearchConclusionService, ResearchSynthesisService } from '../research/index';
 import type { SkillEngine } from '../skills/index';
-import { CONVERSATION_TITLE_JOB_TYPE } from '../chat/index';
-import type { ConversationTitler } from '../chat/index';
+import { CHAT_ATTACHMENT_READ_JOB_TYPE, CONVERSATION_TITLE_JOB_TYPE } from '../chat/index';
+import type { ChatAttachmentReadService, ConversationTitler } from '../chat/index';
 import type { ModelGateway } from '../model-gateway/index';
 
 export interface WorkerTaskDeps {
@@ -60,6 +60,7 @@ export interface WorkerTaskDeps {
   allowlist: EmailAllowlistService;
   extractionGate: ExtractionGateStore;
   conversationTitler: ConversationTitler;
+  attachmentReader: ChatAttachmentReadService;
   researchConcluder: ResearchConclusionService;
   researchSynthesis: ResearchSynthesisService;
   skillEngine: SkillEngine;
@@ -346,6 +347,25 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
         deps.log(
           { source_type: payload.source_type, source_id: payload.source_id, titled },
           'conversation title job completed',
+        );
+      },
+    ),
+
+    // The transient attachment read (V2.2 item 5.1): reads a "don't remember
+    // this file" attachment's staged bytes once through the laddered reader,
+    // stores the text on the chat-owned row, and schedules the bytes'
+    // deletion in the same transaction. Idempotency key
+    // ('chat', <attachment id>, this) — a duplicate delivery skips; an
+    // unreadable file is recorded on the row as an honest outcome, so only
+    // infrastructure errors retry.
+    [CHAT_ATTACHMENT_READ_JOB_TYPE]: idempotentTask(
+      db,
+      CHAT_ATTACHMENT_READ_JOB_TYPE,
+      async (tx, payload) => {
+        const { read } = await deps.attachmentReader.run(tx, payload.source_id);
+        deps.log(
+          { source_type: payload.source_type, source_id: payload.source_id, read },
+          'chat attachment read completed',
         );
       },
     ),

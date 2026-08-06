@@ -18,7 +18,7 @@
     "error": "Extraction failed"
   },
   "upload": {
-    "dropzone": "Drop a PDF, DOCX, XLSX or CSV here, or click to choose",
+    "dropzone": "Drop a PDF, DOCX, XLSX, CSV or image here, or click to choose",
     "uploading": "Uploading…",
     "hint": "Its facts are extracted, verified and added to your memories. Spreadsheets are read sheet by sheet, row by row.",
     "scope": "Scope",
@@ -154,5 +154,11 @@
     "editAction": "Edit",
     "saveHint": "Saved. Reprocess the file to re-anchor its facts to the corrected context.",
     "saveFailed": "Saving the context failed."
+  },
+  "page": {
+    "uploadHeading": "Add a document",
+    "uploadIntro": "The deliberate way in: documents you intend to keep and audit. Files also attach in chat with the paperclip; either way they go through the same pipeline.",
+    "openDetails": "Open details",
+    "note": "Every upload becomes a source with its verified facts, provenance and read report. Its memories appear on the Memories page."
   }
 }

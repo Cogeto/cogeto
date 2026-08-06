@@ -2,20 +2,34 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import type { AnswerSegment, ChatFactDto, ChatResearchOffer, ResearchRunDto } from '@cogeto/shared';
-import { mapMarkersToCitations, mapUnsourcedMarkers, scanAnswer } from '@cogeto/shared';
+import type {
+  AnswerSegment,
+  ChatAttachmentDto,
+  ChatFactDto,
+  ChatResearchOffer,
+  ResearchRunDto,
+} from '@cogeto/shared';
+import {
+  ALLOWED_UPLOAD_EXTENSIONS,
+  mapMarkersToCitations,
+  mapUnsourcedMarkers,
+  scanAnswer,
+} from '@cogeto/shared';
 import {
   askChat,
   createConversation,
   fetchChatCaptureStatus,
   fetchChatMessages,
+  fetchConversationAttachments,
   fetchConversations,
   fetchResearchRun,
   fetchResearchRuns,
   proposeResearch,
   rememberChatMessage,
+  uploadChatAttachment,
 } from '../api';
 import type { Session } from '../auth/oidc';
+import { AttachmentCard, TransientMeaningLine } from '../components/AttachmentCard';
 import { ChatMarkdown } from '../components/ChatMarkdown';
 import { CitationChip } from '../components/CitationChip';
 import { ConversationSidebar } from '../components/ConversationSidebar';
@@ -31,6 +45,7 @@ import { pickResumeRun } from '../components/research-resume';
 import { Shell } from '../components/Shell';
 import { UnsourcedChip } from '../components/UnsourcedChip';
 import { getAutoResearch, setAutoResearch } from '../research-pref';
+import { validateUploadFile } from '../upload-validation';
 
 /**
  * Chat, reimagined as "Ask → Briefing": the question is a
@@ -435,6 +450,26 @@ export function Chat({ session }: { session: Session }) {
   });
   const history = page?.items;
 
+  // The conversation's attachments (V2.2 item 5.1): rendered as cards under
+  // the message each was sent with; the cards poll their own state while the
+  // pipeline runs.
+  const { data: attachments } = useQuery({
+    queryKey: ['chat-attachments', activeId],
+    queryFn: () => fetchConversationAttachments(session, activeId!),
+    enabled: activeId !== null,
+  });
+  const attachmentsByMessage = new Map<string, ChatAttachmentDto[]>();
+  const unlinkedAttachments: ChatAttachmentDto[] = [];
+  for (const item of attachments ?? []) {
+    if (item.messageId === null) {
+      unlinkedAttachments.push(item);
+    } else {
+      const list = attachmentsByMessage.get(item.messageId) ?? [];
+      list.push(item);
+      attachmentsByMessage.set(item.messageId, list);
+    }
+  }
+
   // A ?q= param prefills the box — the timeline's "Explain in chat" hand-off
   // lands here with the question ready to send (never auto-sent).
   const [draft, setDraft] = useState(
@@ -463,6 +498,11 @@ export function Chat({ session }: { session: Session }) {
       return !prev;
     });
   };
+  /** The paperclip's staged file (V2.2 item 5.1): picked but not yet sent,
+   * with its "don't remember this file" choice. Uploaded on send. */
+  const [pendingFile, setPendingFile] = useState<{ file: File; transient: boolean } | null>(null);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [liveQuestion, setLiveQuestion] = useState<string | null>(null);
   const [liveText, setLiveText] = useState('');
   /** The reasoning channel, streamed live (Part C): shown collapsed above the
@@ -560,7 +600,8 @@ export function Chat({ session }: { session: Session }) {
 
   const send = async (text?: string, opts: { suppressOffer?: boolean } = {}) => {
     const content = (text ?? draft).trim();
-    if (!content || busy) return;
+    const staged = pendingFile;
+    if ((!content && !staged) || busy) return;
     // The first send on an empty instance creates the conversation it lands in.
     let conversationId = activeId;
     if (!conversationId) {
@@ -578,6 +619,35 @@ export function Chat({ session }: { session: Session }) {
     setBusy(true);
     setFailed(false);
     setFailMessage(null);
+    // The staged attachment uploads first (V2.2 item 5.1), so its id can ride
+    // the ask and land under the message. The conversation is never blocked:
+    // ingestion runs in the worker and the card reports the honest progress.
+    let attachmentIds: string[] = [];
+    if (staged) {
+      try {
+        const created = await uploadChatAttachment(
+          session,
+          staged.file,
+          conversationId,
+          staged.transient,
+        );
+        attachmentIds = [created.attachment.id];
+        setPendingFile(null);
+        setAttachError(null);
+        void queryClient.invalidateQueries({ queryKey: ['chat-attachments', conversationId] });
+      } catch (error) {
+        // The message is NOT sent over a failed upload: the user decides
+        // whether to retry, drop the file, or send the text alone.
+        setBusy(false);
+        setAttachError(error instanceof Error ? error.message : String(error));
+        return;
+      }
+    }
+    if (!content) {
+      // An attachment-only send: nothing to ask, the card carries the rest.
+      setBusy(false);
+      return;
+    }
     setDraft('');
     setLiveQuestion(content);
     setLiveText('');
@@ -627,7 +697,7 @@ export function Chat({ session }: { session: Session }) {
           }
         },
         controller.signal,
-        { thinking: thinkingOn },
+        { thinking: thinkingOn, attachmentIds },
       );
     } catch (error) {
       // A detached stream (conversation switch) is intentional — not a failure.
@@ -644,6 +714,10 @@ export function Chat({ session }: { session: Session }) {
     // The sidebar's preview + recency move; the auto-title lands moments later
     // via the worker, picked up by the sidebar's refetch.
     void queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    // The send linked its attachments to the stored message row.
+    if (attachmentIds.length > 0) {
+      void queryClient.invalidateQueries({ queryKey: ['chat-attachments', conversationId] });
+    }
     setLiveQuestion(null);
     setLiveText('');
     setLiveThinking('');
@@ -653,7 +727,7 @@ export function Chat({ session }: { session: Session }) {
 
   const turns = history ? buildTurns(history as ChatMessage[]) : [];
   const loading = activeId !== null && isPending;
-  const empty = !loading && turns.length === 0 && !liveQuestion;
+  const empty = !loading && turns.length === 0 && !liveQuestion && (attachments?.length ?? 0) === 0;
 
   // The conversations sidebar rides the Shell's left
   // rail — OUTSIDE the header/content column, so the breadcrumb and the
@@ -756,6 +830,9 @@ export function Chat({ session }: { session: Session }) {
                   {turn.question && (
                     <div id={`msg-${turn.question.id}`}>
                       <AskHeading>{turn.question.content}</AskHeading>
+                      {(attachmentsByMessage.get(turn.question.id) ?? []).map((item) => (
+                        <AttachmentCard key={item.id} session={session} attachment={item} />
+                      ))}
                       <RememberAction session={session} messageId={turn.question.id} />
                     </div>
                   )}
@@ -775,6 +852,14 @@ export function Chat({ session }: { session: Session }) {
                   )}
                 </article>
               ))}
+
+              {unlinkedAttachments.length > 0 && (
+                <article>
+                  {unlinkedAttachments.map((item) => (
+                    <AttachmentCard key={item.id} session={session} attachment={item} />
+                  ))}
+                </article>
+              )}
 
               {liveQuestion && (
                 <article>
@@ -856,10 +941,87 @@ export function Chat({ session }: { session: Session }) {
               <label className="sr-only" htmlFor="chat-input">
                 {t('composer.label')}
               </label>
+              {pendingFile && (
+                <div className="mb-2 space-y-1 rounded-xl border border-slate-200 bg-surface px-3 py-2">
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="truncate font-medium text-slate-700">
+                      {pendingFile.file.name}
+                    </span>
+                    <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={pendingFile.transient}
+                        onChange={(e) =>
+                          setPendingFile({ file: pendingFile.file, transient: e.target.checked })
+                        }
+                      />
+                      {t('attachment.transientToggle')}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPendingFile(null);
+                        setAttachError(null);
+                      }}
+                      className="ml-auto text-xs text-slate-400 underline underline-offset-2 hover:text-slate-600"
+                    >
+                      {t('attachment.removeStaged')}
+                    </button>
+                  </div>
+                  {pendingFile.transient ? (
+                    <TransientMeaningLine />
+                  ) : (
+                    <p className="text-xs leading-relaxed text-slate-400">
+                      {t('attachment.durableHint')}
+                    </p>
+                  )}
+                </div>
+              )}
+              {attachError && (
+                <p role="alert" className="mb-2 text-xs text-red-700 dark:text-red-300">
+                  {attachError}
+                </p>
+              )}
               <div className="flex items-end gap-2.5 rounded-2xl border border-slate-300 bg-surface px-4 py-2.5 shadow-sm transition-shadow focus-within:border-brand-teal focus-within:shadow-glow">
                 <span className="self-center text-brand-teal" aria-hidden="true">
                   <CogetoMark />
                 </span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={ALLOWED_UPLOAD_EXTENSIONS.join(',')}
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = ''; // allow re-selecting the same file
+                    if (!file) return;
+                    const problem = validateUploadFile(file);
+                    if (problem) {
+                      setAttachError(problem);
+                      return;
+                    }
+                    setAttachError(null);
+                    setPendingFile({ file, transient: false });
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label={t('attachment.attachLabel')}
+                  title={t('attachment.attachLabel')}
+                  className="grid h-8 w-8 shrink-0 select-none place-items-center self-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700/40"
+                >
+                  <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden="true">
+                    <path
+                      d="M13.8 8.2 8.9 13.1a2.4 2.4 0 0 1-3.4-3.4l5.6-5.6a3.6 3.6 0 0 1 5.1 5.1l-6 6a4.8 4.8 0 0 1-6.8-6.8l5.3-5.3"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
                 <textarea
                   id="chat-input"
                   ref={inputRef}
@@ -877,7 +1039,7 @@ export function Chat({ session }: { session: Session }) {
                 />
                 <button
                   type="submit"
-                  disabled={busy || !draft.trim()}
+                  disabled={busy || (!draft.trim() && !pendingFile)}
                   aria-label={t('composer.send')}
                   className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-teal text-white transition-transform hover:-translate-y-px hover:brightness-105 disabled:opacity-40"
                 >

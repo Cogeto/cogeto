@@ -2,11 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { FileProcessingState, MemoryScope } from '@cogeto/shared';
-import {
-  ALLOWED_UPLOAD_CONTENT_TYPES,
-  ALLOWED_UPLOAD_EXTENSIONS,
-  DEFAULT_UPLOAD_MAX_BYTES,
-} from '@cogeto/shared';
+import { ALLOWED_UPLOAD_EXTENSIONS } from '@cogeto/shared';
 import {
   fetchFileSource,
   fetchFileStatus,
@@ -15,32 +11,14 @@ import {
   uploadFile,
 } from '../api';
 import type { Session } from '../auth/oidc';
-import { i18next } from '../i18n';
+import { validateUploadFile } from '../upload-validation';
 import { Card } from './ui';
 
 /**
- * Client-side pre-check — the server re-validates type (magic bytes) and size.
- * Returns a TRANSLATED message: these are field-validation strings a user
- * reads, so they live in the `validation` namespace.
- */
-function validate(file: File): string | null {
-  const name = file.name.toLowerCase();
-  const okExt = ALLOWED_UPLOAD_EXTENSIONS.some((ext) => name.endsWith(ext));
-  const okType = !file.type || ALLOWED_UPLOAD_CONTENT_TYPES.includes(file.type);
-  if (!okExt && !okType) return i18next.t('validation:upload.unsupportedType');
-  if (file.size > DEFAULT_UPLOAD_MAX_BYTES) {
-    return i18next.t('validation:upload.tooLarge', {
-      megabytes: Math.round(DEFAULT_UPLOAD_MAX_BYTES / (1024 * 1024)),
-    });
-  }
-  if (file.size === 0) return i18next.t('validation:upload.empty');
-  return null;
-}
-
-/**
- * The Memories upload affordance beside the capture card (O1): drag-or-select a
- * PDF/DOCX, choose scope + sensitive, and it enters the SAME pipeline as a note.
- * Derived facts appear in the list below once verified.
+ * The deliberate upload on Sources (V2.2 item 5.1, moved from Memories): the
+ * path for documents you intend to keep and audit. Drag-or-select a document,
+ * choose scope + sensitive, and it enters the SAME pipeline as every source;
+ * the result lands on Sources, not in a conversation.
  */
 export function UploadCard({
   session,
@@ -72,7 +50,7 @@ export function UploadCard({
   const submit = (file: File | undefined) => {
     if (!file) return;
     setError(null);
-    const problem = validate(file);
+    const problem = validateUploadFile(file);
     if (problem) {
       setError(problem);
       return;

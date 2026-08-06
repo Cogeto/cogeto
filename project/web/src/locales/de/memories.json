@@ -1,15 +1,4 @@
 {
-  "capturesFailed_one": "Die Verarbeitung von {{count}} Erfassung ist fehlgeschlagen. Die Warteschlange endgültig fehlgeschlagener Aufträge finden Sie unter System.",
-  "capturesFailed_other": "Die Verarbeitung von {{count}} Erfassungen ist fehlgeschlagen. Die Warteschlange endgültig fehlgeschlagener Aufträge finden Sie unter System.",
-  "capture": {
-    "placeholder": "Merken...",
-    "scope": "Umfang",
-    "scopeTitle": "Geteilte Fakten sind für alle in Ihrer Organisation sichtbar, private bleiben bei Ihnen.",
-    "submit": "Merken",
-    "hint": "Fakten erscheinen nach der Überprüfung unten.",
-    "failed": "Erfassung fehlgeschlagen. Versuchen Sie es erneut.",
-    "pending": "Wird gemerkt… Extraktion und Überprüfung laufen."
-  },
   "uncertaintyReason": {
     "hedged_in_source": "in der Quelle unter Vorbehalt formuliert",
     "partially_supported": "von der Quelle nur teilweise belegt",
@@ -55,7 +44,11 @@
         "body": "Löschen Sie den Suchbegriff oder Statusfilter."
       }
     },
-    "pager": { "newer": "Neuer", "older": "Älter", "position": "Seite {{page}} von {{pages}}" }
+    "pager": {
+      "newer": "Neuer",
+      "older": "Älter",
+      "position": "Seite {{page}} von {{pages}}"
+    }
   },
   "drawer": {
     "title": "Erinnerung",
@@ -105,5 +98,9 @@
     "correction": "Korrektur",
     "viewing": "angezeigt",
     "noCorrections": "Keine Korrekturen. Dies ist das Original."
+  },
+  "capturePointer": {
+    "body": "Capture lives in chat now: tell Cogeto something and use Remember this, or attach a file with the paperclip on <chatLink>the chat page</chatLink>. Deliberate document uploads live on <sourcesLink>the Sources page</sourcesLink>.",
+    "dismiss": "Got it"
   }
 }

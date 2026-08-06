@@ -58,10 +58,16 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   // The anchoring context (V2.1 item 4.2): the anchor stage writes it, the
   // extract stage consumes it, so the pipeline's module owns it.
   source_context: 'ingestion',
+  // The honest per-source pipeline stage (V2.2 item 5.1): the pipeline
+  // reports it, so the module that runs the pipeline owns it.
+  ingestion_progress: 'ingestion',
 
   // The chat context owns its tables since part 4 (chat left retrieval).
   chat_message: 'chat',
   conversation: 'chat',
+  // Conversation attachments (V2.2 item 5.1): the conversation's link to a
+  // durable file source, or a transient file's conversation-only text.
+  chat_attachment: 'chat',
 
   // The attention surface's own read-state (V2.0 item 3.6 part 2). It used to
   // sit in `infrastructure` because "the surface spans every context"; that was
@@ -130,6 +136,8 @@ const JOB_TYPE_OWNERS: Readonly<Record<string, string>> = {
   email_refusal_retention: 'email',
   extraction_refusal_retention: 'ingestion',
   'conversation.title': 'chat',
+  // The transient attachment read (V2.2 item 5.1).
+  'chat.attachment_read': 'chat',
   passport_export: 'passport',
   passport_retention: 'passport',
   // Dev-only, profile-gated, defined and registered in the demo entrypoint.

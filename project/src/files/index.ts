@@ -9,10 +9,18 @@
  */
 export { FilesModule, FileReadReportCascadeModule } from './files.module';
 export { FilesService } from './files.service';
+export type { UploadedFile, UploadFlags } from './files.service';
 export { FileSourceReader } from './file.source-reader';
 export { FileReadReportCascade } from './file-read-report.cascade';
 export { FILE_UPLOAD_OPTIONS } from './file-upload-options';
 export { extractDocumentText, sniffContentType } from './document-extract';
+// The shared laddered read (V2.2 item 5.1): bytes → text + report through the
+// full ladder (text layer, OCR, probed vision) under the parse caps — the ONE
+// reading path a transient chat attachment shares with a durable upload. The
+// multipart interceptor rides along so the chat attachment endpoint enforces
+// the same byte cap the upload endpoint does.
+export { LadderedDocumentReader } from './laddered-read';
+export { DocumentUploadInterceptor } from './document-upload.interceptor';
 // The reader seam. A format Cogeto can read is a registered reader, never a
 // branch in a switch: `readDocument` selects by magic bytes (the declared type
 // and the extension are hints), runs the reader under the parse caps, and

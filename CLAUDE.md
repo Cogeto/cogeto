@@ -188,6 +188,26 @@ Re-anchoring after an edit is the reprocess action, superseding via reconcile.
 The plan-named golden cases gate it and the eval fixtures were refreshed
 Mistral-routed: [`docs/features/anchoring.md`](docs/features/anchoring.md).
 
+V2.2 item 5.1 made **chat the conversational door and Sources the deliberate
+one**. Files attach in chat via a paperclip whose endpoint delegates to the
+files module's upload (one path, two affordances): a durable attachment is an
+ordinary file source, linked to its conversation by the chat-owned
+`chat_attachment` row (migration 0045), whose card shows honest pipeline
+stages from the new ingestion-owned `ingestion_progress` row and, on settle,
+the stamped real numbers (facts, contradictions, gate refusal, read outcome)
+plus a link into Sources. The **"don't remember this file"** toggle keeps an
+attachment transient: bytes staged at the discard staging twin, read once by
+the chat-owned `chat.attachment_read` job through the same reading ladder,
+deleted commit-then-delete with a backstop; the text lives on the row for that
+conversation only, enters the answer path as a fenced `ATTACHED FILES` block
+(`answer/v0008`, attribution in words, never `[F#]` or `[U]`), and is erased
+with the conversation under its receipt (`chat_attachments_removed`). The
+Memories tab lost its note field and upload control (a dismissible pointer
+says where capture lives; notes are captured only via chat's "remember
+this"); the single-file upload moved to the new **Sources** page, where the
+5.2 redesign and 5.3 bulk import will land. Every prior entry path survives,
+including `POST /api/notes` and `POST /api/files` unchanged.
+
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).
 Thinking is a CHANNEL, not content: `completeStream` yields channel-tagged

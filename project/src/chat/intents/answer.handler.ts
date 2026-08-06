@@ -11,6 +11,7 @@ import type {
   RewriteResult,
 } from '../../retrieval/index';
 import { buildAnswerInput, nothingOnRecord, nothingOpen, toStoredAnswer } from '../answer-prompt';
+import type { AnswerAttachment } from '../answer-prompt';
 import type { ChatTurnSink } from './intent-plumbing';
 
 /** How many facts the answer context receives (wider so aggregation fits, F5). */
@@ -39,9 +40,15 @@ export class MemoryAnswerHandler {
     content: string,
     history: ConversationTurn[],
     rewrite: RewriteResult,
-    context: { record: UserContextRecord; answerBlock: string },
+    context: {
+      record: UserContextRecord;
+      answerBlock: string;
+      /** Transient conversation attachments (V2.2 item 5.1), fenced ground. */
+      attachments?: AnswerAttachment[];
+    },
     thinkingMode: 'on' | 'off' = 'on',
   ): AsyncGenerator<ChatStreamEvent> {
+    const attachments = context.attachments ?? [];
     const knowledge = rewrite.questionClass === 'knowledge';
     const retrieved = await this.retrieval.retrieve(principal, content, {
       topK: ANSWER_FACTS_TOP_K,
@@ -62,12 +69,19 @@ export class MemoryAnswerHandler {
       // deterministic string cannot mirror; it follows the anchor (0052).
       answer = nothingOpen(context.record.preferredLanguage);
       yield { type: 'token', text: answer };
-    } else if (facts.length === 0 && !knowledge && !hasProfileContext(context.record)) {
+    } else if (
+      facts.length === 0 &&
+      !knowledge &&
+      !hasProfileContext(context.record) &&
+      attachments.length === 0
+    ) {
       // The zero-retrieval path: no model call, no generation from thin air.
       // With profile context set, the model DOES answer: the
       // settings are provided ground ("where do I work?" deserves the honest
       // "you've set … in Settings" reply), the honest-gap rules still hold,
-      // and the sanitizer still strips any invented citation.
+      // and the sanitizer still strips any invented citation. A transient
+      // attachment is provided ground the same way (V2.2 item 5.1): a
+      // question about the attached file deserves an answer from it.
       answer = nothingOnRecord(context.record.preferredLanguage);
       yield { type: 'token', text: answer };
     } else {
@@ -81,6 +95,7 @@ export class MemoryAnswerHandler {
           openLoops: retrieved.openLoops,
           knowledge,
           context: context.answerBlock,
+          attachments,
         }),
         tier: 'answer',
         thinking: thinkingMode,

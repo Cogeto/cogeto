@@ -14,6 +14,7 @@ import { SOURCE_READERS } from './pipeline/source-reader';
 import type { SourceReader } from './pipeline/source-reader';
 import { VerifyStage } from './pipeline/verify.stage';
 import { ExtractionGateStore } from './persistence/extraction-gate.store';
+import { IngestionProgressStore } from './persistence/ingestion-progress';
 import { SourceContextStore } from './persistence/source-context.store';
 import { SuppressedFactLog } from './persistence/suppressed-fact-log';
 import { SuppressedFactCascade } from './suppressed-fact-cascade';
@@ -49,6 +50,7 @@ export class IngestionModule {
         SuppressedFactLog,
         SuppressedFactCascade,
         ExtractionGateStore,
+        IngestionProgressStore,
         EmbedStoreStage,
         ReconciliationService,
         IngestionPipeline,
