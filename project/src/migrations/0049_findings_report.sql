@@ -18,9 +18,9 @@
 -- predecessor's disappearance (rows are never deleted today, but the schema
 -- must not make that impossible).
 --
--- Reversal: DROP TABLE findings_report; the artifacts in object storage are
--- swept by the retention pass keyed on this table, so drop only after it runs
--- dry.
+-- Reversal: dropping the table below reverses this migration; the artifacts
+-- in object storage are swept by the retention pass keyed on it, so reverse
+-- only after that pass runs dry.
 
 CREATE TABLE findings_report (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
