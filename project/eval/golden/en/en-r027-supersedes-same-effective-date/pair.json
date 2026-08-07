@@ -5,9 +5,7 @@
   "a": {
     "content": "The revised travel policy effective June 15 sets the daily allowance at 80 EUR.",
     "kind": "decision",
-    "entities": [
-      "travel policy"
-    ],
+    "entities": ["travel policy"],
     "subject_entity": "travel policy",
     "captured_at": "2026-07-04T10:00:00.000Z",
     "valid_from": "2026-06-15T00:00:00.000Z",
@@ -16,9 +14,7 @@
   "b": {
     "content": "The travel policy effective June 15 sets the daily allowance at 60 EUR.",
     "kind": "decision",
-    "entities": [
-      "travel policy"
-    ],
+    "entities": ["travel policy"],
     "subject_entity": "travel policy",
     "captured_at": "2026-07-01T10:00:00.000Z",
     "valid_from": "2026-06-15T00:00:00.000Z",
