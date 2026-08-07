@@ -48,11 +48,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "dependency-cruiser": "^18.1.0",
-    "eslint": "^10.7.0",
-    "prettier": "^3.5.3",
+    "dependency-cruiser": "^18.1.1",
+    "eslint": "^10.8.0",
+    "prettier": "^3.9.6",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.64.0",
+    "typescript-eslint": "^8.66.0",
     "vitest": "^4.1.10"
   }
 }
