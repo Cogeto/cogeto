@@ -1,0 +1,243 @@
+{
+  "title": "Findings report",
+  "toc": {
+    "heading": "Contents"
+  },
+  "footer": {
+    "reportId": "Report {{id}}",
+    "page": "Page {{page}} of {{total}}"
+  },
+  "value": {
+    "unknown": "not recorded",
+    "empty": "none",
+    "none": "none",
+    "notMeasured": "not measured",
+    "range": "{{from}} to {{to}}"
+  },
+  "scope": {
+    "corpus": "Everything in this workspace",
+    "import": "Import {{id}}",
+    "sources": "A selected set of {{count}} sources",
+    "dateRange": "Sources from a date range"
+  },
+  "source": {
+    "unnamed": "unnamed {{type}} source",
+    "revision": "(revision {{revision}})"
+  },
+  "locator": {
+    "none": "no location recorded",
+    "page": "page {{page}}",
+    "tierOcr": "(read by OCR)",
+    "tierVision": "(read by a vision model)",
+    "paragraph": "paragraph {{paragraph}}",
+    "sheetRow": "sheet {{sheet}}, cells {{range}}",
+    "document": "whole document"
+  },
+  "cover": {
+    "generatedAt": "Generated",
+    "reportId": "Report identifier",
+    "configuration": "Model configuration",
+    "dateRange": "Material examined",
+    "instanceKey": "Instance key",
+    "atAGlance": "At a glance",
+    "verifyHint": "This document is signed by the instance that produced it. The verification values and the step-by-step procedure are on the last page."
+  },
+  "summary": {
+    "sourcesExamined": "Documents and sources examined",
+    "factsExtracted": "Facts extracted and verified",
+    "findingsOpen": "Open findings (unresolved contradictions)",
+    "findingsResolved": "Findings resolved",
+    "sourcesNotFullyRead": "Sources not fully read",
+    "factsWithheld": "Statements withheld from the record"
+  },
+  "provenance": {
+    "heading": "About this report",
+    "intro": "This report was produced automatically from the documents listed in the coverage section. Every claim in it traces to a stored, verifiable record: each quoted passage names its document and its location, and the counts are computed from the same records the quoted passages come from.",
+    "reportId": "Report identifier",
+    "generatedAt": "Generated",
+    "scope": "Scope",
+    "previousRun": "Compared against",
+    "previousRunValue": "Report {{id}} of {{date}}",
+    "noPreviousRun": "No earlier report exists for this scope, so no comparison is shown. Changes over time appear from the second report onward.",
+    "configurationId": "Configuration",
+    "pipelineModel": "Extraction model",
+    "embeddingModel": "Embedding model",
+    "visionModel": "Vision model",
+    "prompts": "Prompt versions",
+    "reconcileConfig": "Reconciliation rules"
+  },
+  "trust": {
+    "heading": "Measured accuracy of this configuration",
+    "published": "The model configuration that produced this report was measured against a labelled evaluation corpus before release {{release}} (configuration {{configuration}}). The scores below are published and are reproduced here so findings can be weighed against measured accuracy rather than assumed accuracy.",
+    "notPublished": "No published accuracy measurement exists for the model configuration that produced this report ({{configuration}}). The findings below are computed by the same verified process, but its error rate on this configuration has not been measured. Treat each finding as a pointer to the quoted passages, which can be checked by hand.",
+    "aggregate": "All languages",
+    "readingNote": "Values are fractions between 0 and 1. A rate is always published with its denominator; the full metric set, including the unflattering ones, is in the machine-readable artifact.",
+    "column": {
+      "set": "Language",
+      "extractionPrecision": "Extraction precision",
+      "extractionRecall": "Extraction recall",
+      "contradictionRecall": "Contradiction recall",
+      "contradictionPrecision": "Contradiction precision",
+      "supersedes": "Supersedes accuracy"
+    }
+  },
+  "executive": {
+    "heading": "Executive summary",
+    "examined": "Documents and sources examined: {{sources}}. Individual factual statements extracted from them and verified against their own wording: {{facts}}.",
+    "findings": "Contradictions between documents currently open: {{open}}. Findings resolved earlier: {{resolved}}.",
+    "delta": "Since the previous report over this same scope: {{resolved}} resolved, {{appeared}} newly appeared, {{reopened}} previously resolved and now returned.",
+    "noDelta": "This is the first report over this scope, so no comparison with an earlier run is possible. Nothing here should be read as a trend.",
+    "limits": "Sources not fully read: {{notFullyRead}}. Sources excluded from extraction by policy: {{gated}}. Statements withheld because they could not be verified against their source: {{withheld}}. The details are in the coverage section, before the findings, because they bound what this report can claim.",
+    "sensitiveExcluded": "Items omitted from this document because they are marked sensitive: {{count}}. They remain in the workspace, visible to their owner.",
+    "superseded": "Facts replaced by newer information during the period covered: {{count}}. Their full history is in the superseded facts section."
+  },
+  "coverage": {
+    "heading": "Coverage and limits",
+    "intro": "This section states what was examined and what was not, before any finding is presented. A finding count is only meaningful against the material that was actually read.",
+    "scopeTruncated": "The scope exceeded the {{limit}} sources this report can carry, and was cut at that bound. The counts below describe the included sources only.",
+    "allClean": "Every source in scope was read in full and admitted to extraction.",
+    "problemsIntro": "Sources not fully read or excluded by policy: {{total}}.",
+    "ocrIntro": "Sources with pages recovered by OCR or a vision model rather than read from a text layer: {{total}}. Statements taken from those pages depend on the quality of that transcription, and each affected finding says so.",
+    "skippedIntro": "Requested sources that could not be included: {{total}}.",
+    "spanLanguageNote": "Quoted passages are reproduced verbatim in the language of their source document, whatever language this report is written in. Altering evidence, even to translate it, would make it something other than evidence.",
+    "column": {
+      "document": "Document",
+      "state": "State",
+      "detail": "Detail",
+      "pagesOcr": "Pages via OCR",
+      "pagesVision": "Pages via vision model"
+    },
+    "state": {
+      "gated": "excluded by policy"
+    },
+    "gateReason": {
+      "extraction_disabled": "Extraction is disabled for this source kind (refused {{date}}).",
+      "source_disabled": "Extraction is disabled for this specific source (refused {{date}}).",
+      "document_class_denied": "This document class is excluded by an extraction rule (refused {{date}})."
+    },
+    "readOutcome": {
+      "read": "read in full",
+      "truncated": "partially read",
+      "empty": "no text found",
+      "unsupported_format": "format not supported",
+      "read_failed": "could not be read",
+      "needs_vision": "needs a vision model"
+    },
+    "readReason": {
+      "row_cap_sheet": "A sheet exceeded the per-sheet row cap; rows beyond it were not read.",
+      "row_cap_file": "The file exceeded the total row cap; rows beyond it were not read.",
+      "no_text": "The file contains no extractable text.",
+      "unsupported_type": "The file format is not one Cogeto can read.",
+      "legacy_office_format": "A legacy office format that cannot be read; convert and re-upload.",
+      "vision_unavailable": "Pages are images and no vision capability is available on this instance.",
+      "vision_cap_reached": "The per-file image budget was reached before every page was read.",
+      "vision_failed": "The vision model could not read the page.",
+      "no_readable_text": "Neither the text layer nor OCR produced readable text.",
+      "parse_failed": "The file could not be parsed.",
+      "parse_timeout": "Reading the file took longer than the allowed time.",
+      "text_over_cap": "The text exceeds the size cap; content beyond it was not read.",
+      "undecodable_text": "The text encoding could not be decoded."
+    },
+    "skipReason": {
+      "unknown_source_type": "not a known source type",
+      "not_found_or_not_owned": "not found in this workspace"
+    },
+    "import": {
+      "documents": "Documents ingested from the import",
+      "duplicates": "Skipped as exact duplicates",
+      "unreadable": "Not readable",
+      "failed": "Failed to ingest",
+      "excluded": "Excluded before ingestion",
+      "unsupported": "Unsupported formats"
+    },
+    "truncatedDetail": "Read {{read}} of {{total}} rows; sheets truncated: {{sheets}}."
+  },
+  "findings": {
+    "heading": "Findings",
+    "none": "No contradictions between documents are on record for this scope.",
+    "intro": "Findings that follow: {{total}}. Each presents two statements that cannot both hold, quoted verbatim from their source documents. To check any finding without trusting this report: open the two named documents, go to the stated locations, and read the two passages.",
+    "groupingNote": "Findings are grouped by the subject they are about, because a conflict belongs to a question, not to either document. Within a group, findings appear in the order they were detected.",
+    "unattributed": "No named subject"
+  },
+  "finding": {
+    "title": "Finding {{index}}",
+    "state": "State",
+    "detectedAt": "Detected",
+    "resolvedAt": "Resolved",
+    "stateOpen": "open",
+    "stateReopened": "open (previously resolved, the conflict returned)",
+    "resolutionLabel": {
+      "confirmed_a": "resolved: the first statement was confirmed",
+      "confirmed_b": "resolved: the second statement was confirmed",
+      "corrected": "resolved: both statements were corrected",
+      "dismissed": "resolved: dismissed as not a real conflict",
+      "revision": "resolved by a newer revision of a document"
+    },
+    "resolvedByRevision": "Resolved by a newer document: {{source}}.",
+    "claimA": "Statement A: {{claim}}",
+    "claimB": "Statement B: {{claim}}",
+    "recordedAt": "valid from {{date}}",
+    "recovered": {
+      "ocr": "The passage below was recovered by OCR, not read from a text layer. The transcription itself is part of the evidence to check.",
+      "vision": "The passage below was read by a vision model, not from a text layer. The transcription itself is part of the evidence to check."
+    },
+    "spanTruncated": "The quotation was shortened to fit this page. The machine-readable artifact carries the full passage.",
+    "hedge": "The source itself hedges this statement (\"{{phrase}}\").",
+    "noSpan": "No verbatim source passage is on record for this statement.",
+    "historyHeading": "History",
+    "event": {
+      "party_superseded": "one side was replaced by a newer statement and the conflict persisted",
+      "resolved_by_user": "resolved by the owner",
+      "resolved_by_revision": "resolved by a newer document revision",
+      "kept_open": "a side changed but the conflict could not be safely closed",
+      "reopened": "the conflict returned after having been resolved"
+    }
+  },
+  "superseded": {
+    "heading": "Superseded facts",
+    "none": "No facts were replaced by newer information in this scope.",
+    "intro": "Chains recorded here: {{total}}. Each shows what was on record, what replaced it, when, and which document caused the change. This is the history a reviewer needs in order to understand why the current state is current.",
+    "truncated": "Only the {{limit}} most recent chains are shown here; the machine-readable artifact is bounded the same way and states it.",
+    "chainTitle": "Chain {{index}}",
+    "currentBelief": "Current",
+    "replacedBelief": "Previously on record",
+    "recorded": "recorded {{date}}",
+    "validUntil": "held until {{date}}"
+  },
+  "suppressed": {
+    "heading": "What was withheld",
+    "intro": "Statements Cogeto declined to admit to the record because they could not be verified against their own source wording: {{total}}. They are listed here because a reader deserves to know what was set aside, not only what was accepted.",
+    "entriesIntro": "The withheld statements:",
+    "entriesTruncated": "The first {{shown}} withheld statements are shown (bounded at {{limit}}); the by-reason totals above cover all of them.",
+    "column": {
+      "reason": "Reason",
+      "count": "Count",
+      "fact": "Withheld statement",
+      "document": "Document",
+      "date": "Date"
+    },
+    "reason": {
+      "hedged_in_source": "hedged in the source itself",
+      "partially_supported": "only partially supported by the source",
+      "unsupported": "not supported by the source wording",
+      "unjudgeable": "could not be judged against the source",
+      "structurally_invalid": "structurally invalid extraction",
+      "legacy_unspecified": "recorded before reasons were tracked"
+    }
+  },
+  "verify": {
+    "heading": "Verifying this report",
+    "intro": "This report is signed by the private key of the instance that produced it. Anyone holding the machine-readable artifact (the JSON download of this same report) can verify that it is genuine and unaltered, using only standard tools and the published schema. This printed document is a rendering of that signed record and carries the same identifier, hash and signature.",
+    "reportId": "Report identifier",
+    "hash": "Payload SHA-256",
+    "signature": "Signature (ed25519, base64)",
+    "keyFingerprint": "Public key fingerprint",
+    "keyEndpoint": "Public key endpoint",
+    "step1": "1. Canonicalize the payload: serialize the JSON artifact's \"payload\" object with keys sorted at every depth and no whitespace, UTF-8.",
+    "step2": "2. Hash it with SHA-256 and compare the result with the payload hash above and with the one inside the artifact.",
+    "step3": "3. Verify the ed25519 signature over the ASCII hex hash string, using the public key embedded in the artifact.",
+    "step4": "4. Confirm the public key against the instance itself at the endpoint above, or against a copy obtained earlier.",
+    "commands": "With standard command-line tools:",
+    "pdfNote": "The full procedure, the schema, and a worked example are published in the repository under docs/findings-report-schema/."
+  }
+}

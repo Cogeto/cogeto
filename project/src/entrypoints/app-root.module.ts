@@ -58,6 +58,11 @@ import { ModelGatewayModule } from '../model-gateway/index';
 import { AttentionModule } from '../attention/index';
 import { SourcesModule } from '../sources/index';
 import { ImportsModule } from '../imports/index';
+import {
+  FindingsReportCascade,
+  FindingsReportCascadeModule,
+  ReportsModule,
+} from '../reports/index';
 import { OperationsModule } from '../operations/index';
 import { COGETO_CONFIG, mailOptions, redactionOptions, researchOptions } from './config';
 import type { CogetoConfig } from './config';
@@ -120,6 +125,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         IngestionProgressCascadeModule,
         SourceRevisionCascadeModule,
         ImportItemCascadeModule,
+        FindingsReportCascadeModule,
       ],
       // Assistant answers citing erased memories are redacted; reply drafts
       // grounded on the source are too. A ready passport export is a signed
@@ -148,6 +154,9 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         SourceRevisionCascade,
         // An import item's filename dies with its source: tombstoned.
         ImportItemCascade,
+        // A findings report quotes verbatim spans: the second content-bearing
+        // artifact under the passport's SEC-8 rule (V2.3 item 6.2).
+        FindingsReportCascade,
       ],
     },
     // Delete-vs-ingestion serialization: the saga cancels a source's pending
@@ -182,6 +191,9 @@ export function createAppRootModule(config: CogetoConfig): unknown {
     imports: [memoryModule],
   });
   const skillsModule = SkillsModule.register({ imports: [memoryModule, researchModule] });
+  // One imports instance, threaded to the root AND to reports (V2.3 item
+  // 6.2): the report validates an import-scope run id through the service.
+  const importsModule = ImportsModule.register({ imports: [memoryModule, filesModule] });
   // The three resolver-binding modules, un-globaled (B15 closed): each is a
   // dynamic instance receiving the modules it composes, and ChatModule
   // receives all three so its options factory resolves the port tokens by
@@ -292,7 +304,13 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         imports: [memoryModule, filesModule, notesModule, emailModule, researchModule, chatModule],
       }),
       // Bulk import (V2.2 item 5.3): manifest + confirm + record surface.
-      ImportsModule.register({ imports: [memoryModule, filesModule] }),
+      importsModule,
+      // The findings report (V2.3 item 6.2): trigger/status/download only.
+      // Generation, signing and retention are the worker's.
+      ReportsModule.register({
+        downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
+        imports: [memoryModule, importsModule],
+      }),
       // The instance's own operational surface: /api/health and the capability
       // registry, /api/jobs, /api/audit. It owns no tables; every read goes
       // through the owning module's public interface.

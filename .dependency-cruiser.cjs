@@ -18,7 +18,7 @@
  * listing disagree, so the omission cannot repeat.
  */
 const DOMAIN_MODULES =
-  'chat|memory|ingestion|retrieval|agents|email|files|notes|research|settings|skills|passport|attention|operations|sources|imports';
+  'chat|memory|ingestion|retrieval|agents|email|files|notes|research|settings|skills|passport|attention|operations|sources|imports|reports';
 const SEAMS = 'identity|model-gateway';
 const SHARED = 'infrastructure';
 const NON_CONTEXT = 'entrypoints|testing|migrations';

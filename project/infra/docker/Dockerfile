@@ -68,6 +68,13 @@ RUN rm -f project/src/dist/entrypoints/seed-object.js project/src/dist/entrypoin
 COPY --from=build /repo/project/src/migrations project/src/migrations
 COPY --from=build /repo/project/prompts project/prompts
 COPY --from=build /repo/project/demo project/demo
+# Findings-report rendering inputs (V2.3 item 6.2): the vendored report fonts
+# (DejaVu, full hr/de/fr glyph coverage, license alongside), the canonical
+# brand assets (the logo is drawn from the provided file), and the published
+# trust-score artifacts the report looks its model configuration up in.
+COPY project/fonts project/fonts
+COPY assets/brand assets/brand
+COPY eval/trust-scores eval/trust-scores
 USER node
 # app is the default; worker and migrate override the command in compose
 CMD ["node", "project/src/dist/entrypoints/app.js"]

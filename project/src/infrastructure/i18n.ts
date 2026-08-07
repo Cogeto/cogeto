@@ -12,6 +12,10 @@ import researchEn from './locales/en/research.json';
 import researchHr from './locales/hr/research.json';
 import researchDe from './locales/de/research.json';
 import researchFr from './locales/fr/research.json';
+import reportEn from './locales/en/report.json';
+import reportHr from './locales/hr/report.json';
+import reportDe from './locales/de/report.json';
+import reportFr from './locales/fr/report.json';
 
 /**
  * The server-side copy catalogue (V2.0 item 3.5, Issue C).
@@ -39,16 +43,16 @@ import researchFr from './locales/fr/research.json';
  * assembly) stay exactly where they are: they are not copy.
  */
 
-export const SERVER_NAMESPACES = ['digest', 'chat', 'research'] as const;
+export const SERVER_NAMESPACES = ['digest', 'chat', 'research', 'report'] as const;
 export type ServerNamespace = (typeof SERVER_NAMESPACES)[number];
 
 type Catalogue = Record<string, unknown>;
 
 const BUNDLES: Record<PreferredLanguage, Record<ServerNamespace, Catalogue>> = {
-  en: { digest: digestEn, chat: chatEn, research: researchEn },
-  hr: { digest: digestHr, chat: chatHr, research: researchHr },
-  de: { digest: digestDe, chat: chatDe, research: researchDe },
-  fr: { digest: digestFr, chat: chatFr, research: researchFr },
+  en: { digest: digestEn, chat: chatEn, research: researchEn, report: reportEn },
+  hr: { digest: digestHr, chat: chatHr, research: researchHr, report: reportHr },
+  de: { digest: digestDe, chat: chatDe, research: researchDe, report: reportDe },
+  fr: { digest: digestFr, chat: chatFr, research: researchFr, report: reportFr },
 };
 
 const PLURAL_RULES = new Map<PreferredLanguage, Intl.PluralRules>(

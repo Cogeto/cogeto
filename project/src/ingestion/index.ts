@@ -75,6 +75,9 @@ export {
   RECONCILE_DEDUP_PROMPT,
   VISION_READ_PROMPT,
 } from './prompt-versions';
+// The reconcile configuration identity (V2.3 item 6.2): the findings report
+// stamps the configuration in force, and this is its version number.
+export { RECONCILE_CONFIG_VERSION } from './reconcile-config';
 export { runGoldenEval, evalConfigSchema } from './eval-harness';
 export type { EvalMetrics } from './eval-harness';
 export { runReconcileEval } from './eval-reconcile';

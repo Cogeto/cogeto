@@ -24,3 +24,4 @@ export * from './extraction';
 export * from './locator';
 export * from './source-catalog';
 export * from './imports';
+export * from './reports';

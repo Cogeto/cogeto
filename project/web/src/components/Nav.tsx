@@ -11,6 +11,7 @@ export type NavSection =
   | 'skills'
   | 'timeline'
   | 'review'
+  | 'reports'
   | 'approvals'
   | 'forgotten'
   | 'audit'
@@ -36,6 +37,9 @@ const ENABLED: { key: NavSection; href: string }[] = [
   // surface is named for what is actually on it. The route stays `/review` so
   // the digest's conflict deep-links and attention hrefs do not dangle.
   { key: 'review', href: '/review' },
+  // The findings report (V2.3 item 6.2): the signed artifact a QA lead
+  // forwards. Beside Contradictions because a report is a findings run.
+  { key: 'reports', href: '/reports' },
   { key: 'approvals', href: '/approvals' },
   { key: 'forgotten', href: '/forgotten' },
   { key: 'audit', href: '/audit' },
@@ -110,6 +114,15 @@ const ICONS: Record<NavSection, ReactNode> = {
     <svg viewBox="0 0 20 20" {...G}>
       <path d="M10 2.6 16.5 5.4v4.3c0 4-2.7 6.6-6.5 7.7C6.2 16.3 3.5 13.7 3.5 9.7V5.4z" />
       <path d="M7.2 9.8 9.3 11.9 12.9 7.9" />
+    </svg>
+  ),
+  reports: (
+    <svg viewBox="0 0 20 20" {...G}>
+      <path d="M5 2.8h7l3 3v11.4H5z" />
+      <path d="M12 2.8v3h3" />
+      <path d="M7.4 9.6h5.2M7.4 12.2h5.2" opacity="0.75" />
+      <circle cx="14.2" cy="14.4" r="2.6" fill="var(--bg, #fff)" stroke="currentColor" />
+      <path d="M13.2 14.5l0.8 0.8 1.4-1.6" />
     </svg>
   ),
   approvals: (

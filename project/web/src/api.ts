@@ -85,6 +85,10 @@ import type {
   ImportRunDto,
   S3ManifestRequest,
   SourceRevisionDto,
+  FindingsReportDto,
+  ReportDownloadDto,
+  ReportDownloadFormat,
+  ReportScopeDto,
 } from '@cogeto/shared';
 import type { Session } from './auth/oidc';
 
@@ -702,6 +706,20 @@ export const fetchPassportExports = (session: Session): Promise<PassportExportDt
   apiGet('/api/passport/exports', session);
 export const fetchPassportDownload = (session: Session, id: string): Promise<PassportDownloadDto> =>
   apiGet(`/api/passport/exports/${id}/download`, session);
+
+// The findings report (V2.3 item 6.2): a signed, printable artifact from a
+// findings run. Trigger → poll (progress) → download per format.
+export const triggerReport = (
+  session: Session,
+  scope: ReportScopeDto,
+): Promise<FindingsReportDto> => apiPost('/api/reports', { scope }, session);
+export const fetchReports = (session: Session): Promise<FindingsReportDto[]> =>
+  apiGet('/api/reports', session);
+export const fetchReportDownload = (
+  session: Session,
+  id: string,
+  format: ReportDownloadFormat,
+): Promise<ReportDownloadDto> => apiGet(`/api/reports/${id}/download?format=${format}`, session);
 
 // Conversations: the sidebar's containers. Memory is the
 // continuity, conversations are workspaces — deleting one is a SOURCE deletion

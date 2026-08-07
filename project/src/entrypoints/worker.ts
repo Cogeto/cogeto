@@ -28,6 +28,7 @@ import {
 } from '../memory/index';
 import { APPROVAL_EXPIRY_CRONTAB, ApprovalExecutor, ApprovalService } from '../agents/index';
 import { PassportExportExecutor, PASSPORT_RETENTION_CRONTAB } from '../passport/index';
+import { ReportExportExecutor, REPORT_RETENTION_CRONTAB } from '../reports/index';
 import { CONTEXT_SUGGEST_PROMPT } from '../settings/index';
 import { EmailAllowlistService, EMAIL_REFUSAL_RETENTION_CRONTAB } from '../email/index';
 import { ResearchConclusionService, ResearchSynthesisService } from '../research/index';
@@ -163,6 +164,7 @@ async function main(): Promise<void> {
     approvalService: context.get(ApprovalService),
     approvalExecutor: context.get(ApprovalExecutor),
     passportExecutor: context.get(PassportExportExecutor),
+    reportExecutor: context.get(ReportExportExecutor),
     allowlist: context.get(EmailAllowlistService),
     extractionGate: context.get(ExtractionGateStore),
     conversationTitler: context.get(ConversationTitler),
@@ -231,7 +233,7 @@ async function main(): Promise<void> {
     // DST transition can still make a wall-clock hour repeat/skip on non-UTC
     // hosts; the single-flight advisory lock on each recurring job (worker-tasks)
     // makes a double-fire a clean skip, and the jobs are idempotent by design.
-    crontab: `${SWEEP_CRONTAB}\n${DREAM_CRONTAB}\n${APPROVAL_EXPIRY_CRONTAB}\n${PASSPORT_RETENTION_CRONTAB}\n${EMAIL_REFUSAL_RETENTION_CRONTAB}\n${EXTRACTION_REFUSAL_RETENTION_CRONTAB}${demoLine}`,
+    crontab: `${SWEEP_CRONTAB}\n${DREAM_CRONTAB}\n${APPROVAL_EXPIRY_CRONTAB}\n${PASSPORT_RETENTION_CRONTAB}\n${REPORT_RETENTION_CRONTAB}\n${EMAIL_REFUSAL_RETENTION_CRONTAB}\n${EXTRACTION_REFUSAL_RETENTION_CRONTAB}${demoLine}`,
     noHandleSignals: true,
   });
   logger.info('cogeto worker started (graphile runner + task registry)');

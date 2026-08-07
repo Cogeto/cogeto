@@ -41,6 +41,8 @@ import { APPROVAL_EXECUTE_JOB_TYPE, APPROVAL_EXPIRY_JOB_TYPE } from '../agents/i
 import type { ApprovalExecutor, ApprovalService } from '../agents/index';
 import { PASSPORT_EXPORT_JOB_TYPE, PASSPORT_RETENTION_JOB_TYPE } from '../passport/index';
 import type { PassportExportExecutor } from '../passport/index';
+import { REPORT_GENERATE_JOB_TYPE, REPORT_RETENTION_JOB_TYPE } from '../reports/index';
+import type { ReportExportExecutor } from '../reports/index';
 import { EMAIL_REFUSAL_RETENTION_JOB_TYPE } from '../email/index';
 import type { EmailAllowlistService } from '../email/index';
 import { SKILL_ADVANCE_JOB_TYPE } from '../skills/index';
@@ -63,6 +65,7 @@ export interface WorkerTaskDeps {
   approvalService: ApprovalService;
   approvalExecutor: ApprovalExecutor;
   passportExecutor: PassportExportExecutor;
+  reportExecutor: ReportExportExecutor;
   allowlist: EmailAllowlistService;
   extractionGate: ExtractionGateStore;
   conversationTitler: ConversationTitler;
@@ -348,6 +351,40 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
     [PASSPORT_RETENTION_JOB_TYPE]: recurring(PASSPORT_RETENTION_JOB_TYPE, async () => {
       const report = await deps.passportExecutor.runRetention(new Date());
       deps.log({ ...report }, 'passport retention pass completed');
+    }),
+
+    // The findings-report generation job (V2.3 item 6.2): the run re-reads
+    // everything through gated interfaces and writes idempotent objects + a
+    // guarded status flip, so a retry overwrites rather than duplicates. On
+    // error the row is marked failed (visible on the Reports page) and
+    // rethrown so graphile retries with backoff.
+    [REPORT_GENERATE_JOB_TYPE]: async (rawPayload) => {
+      const reportId = (rawPayload as { source_id?: unknown }).source_id;
+      if (typeof reportId !== 'string' || !reportId) return;
+      try {
+        const result = await deps.reportExecutor.run(reportId, new Date());
+        deps.log(
+          { source_id: reportId, published: result.published },
+          result.published
+            ? 'findings report ready'
+            : 'findings report expired by a source deletion while assembling; artifacts discarded',
+        );
+      } catch (error) {
+        await deps.reportExecutor.fail(
+          reportId,
+          error instanceof Error ? error.message : 'report generation failed',
+        );
+        throw error;
+      }
+    },
+
+    // The hourly findings-report retention pass (the passport retention
+    // decision applied to the second artifact): deletes rendered artifacts
+    // past their expiry and marks the rows expired; the run rows stay for the
+    // delta view. Recurring + idempotent; single-flight.
+    [REPORT_RETENTION_JOB_TYPE]: recurring(REPORT_RETENTION_JOB_TYPE, async () => {
+      const expired = await deps.reportExecutor.runRetention(new Date());
+      deps.log({ expired }, 'findings report retention pass completed');
     }),
 
     // Prune refused-mail records past the retention window (/GAP-6) —

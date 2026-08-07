@@ -2,7 +2,7 @@
 
 One directory per DDD bounded context (spec §15): `memory`, `ingestion`, `retrieval`,
 `chat`, `agents`, `notes`, `files`, `email`, `research`, `skills`, `settings`,
-`passport`, `attention`, `operations`, `sources`, `imports`, `identity`,
+`passport`, `attention`, `operations`, `sources`, `imports`, `reports`, `identity`,
 `model-gateway`, plus the shared `infrastructure` leaf, `entrypoints` (app,
 worker), `migrations` and `testing`.
 
@@ -21,7 +21,10 @@ V2.0 item 3.6 part 2 moved them out of `entrypoints/`, which had accreted seven
 production controllers and two services. V2.2 added `sources` (item 5.2, the
 Sources surface's read context, no tables) and `imports` (item 5.3, bulk
 import: the manifest, the queued coordinator and the first-class import
-record, owning `import_run` + `import_item`).
+record, owning `import_run` + `import_item`). V2.3 added `reports` (item 6.2,
+the findings report: the signed PDF + JSON artifact from a findings run,
+owning the `findings_report` run ledger and generating everything else
+through the owners' gated reads).
 
 Module rules (binding, CI-enforced, spec §15):
 

@@ -77,6 +77,7 @@ may name the table in a query, in Drizzle or in SQL.
 | `identity` | `app_user` |
 | `model-gateway` | `prompt_registry` |
 | `passport` | `passport_export` |
+| `reports` | `findings_report` (V2.3 item 6.2: the findings-run ledger; the row outlives its rendered artifacts because the delta view compares against it, and carries no quoted content) |
 | `infrastructure` | `audit_log`, `outbox_event`, `job_execution`, `dead_letter`, `user_context`, `context_suggestion_dismissal`, `usage_counter`, `rate_limit_window` |
 | `retrieval`, `operations`, `sources` | none. Retrieval is pure search since part 4; operations reports on other modules' data; sources (V2.2 item 5.2) is the Sources surface's read context, composing the owners' public interfaces. |
 
@@ -173,6 +174,8 @@ imports every constant rather than spelling any of them.
 | `import.advance` | `imports` | `IMPORT_ADVANCE_JOB_TYPE` | per-source (plain, re-runnable: one run advances many times under a per-run single-flight lock, the `research.conclude` shape) |
 | `passport_export` | `passport` | `PASSPORT_EXPORT_JOB_TYPE` | per-source |
 | `passport_retention` | `passport` | `PASSPORT_RETENTION_JOB_TYPE` | recurring |
+| `report.generate` | `reports` | `REPORT_GENERATE_JOB_TYPE` | per-source (V2.3 item 6.2: one findings run) |
+| `report_retention` | `reports` | `REPORT_RETENTION_JOB_TYPE` | recurring |
 | `demo_reset` | `entrypoints` (dev only) | `DEMO_RESET_JOB_TYPE` | recurring, profile-gated |
 
 The rules:
@@ -289,6 +292,7 @@ defined by the module that *consumes* the implementation) are marked.
 | `skills` | `SKILL_ENGINE_OPTIONS` |
 | `model-gateway` | `MODEL_CONFIG_VIEW` |
 | `passport` | `PASSPORT_OPTIONS` |
+| `reports` | `REPORT_OPTIONS` (composition-root options: signing key dir, retention, the vendored font/brand/trust-score paths, and the model configuration in force) |
 | `operations` | `OPERATIONS_OPTIONS`, `CAPABILITY_JOB_SOURCES` |
 | `imports` | `IMPORT_IN_FLIGHT` (the coordinator's in-flight cap, bound by the worker root from `COGETO_IMPORT_IN_FLIGHT`), `IMPORT_ZIP_MAX_BYTES` (the archive-size bound on the manifest endpoint) |
 | `entrypoints` | `COGETO_CONFIG` |

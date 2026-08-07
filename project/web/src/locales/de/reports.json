@@ -1,0 +1,50 @@
+{
+  "title": "Reports",
+  "trigger": {
+    "title": "Generate a findings report",
+    "explainer": "A findings run examines a stated scope and produces a signed, printable report: every finding with both verbatim passages and their exact locations, what could not be read, and what was withheld. The PDF is for people; the JSON is the signed record a third party can verify.",
+    "scopeLabel": "Scope",
+    "importLabel": "Import to report on",
+    "importPlaceholder": "Choose an import",
+    "fromLabel": "From date",
+    "toLabel": "To date",
+    "button": "Generate report"
+  },
+  "scope": {
+    "corpus": "Everything in this workspace",
+    "import": "One import",
+    "sources": "Selected sources",
+    "date_range": "A date range"
+  },
+  "status": {
+    "pending": "Queued",
+    "ready": "Ready",
+    "failed": "Failed",
+    "expired": "Expired",
+    "stage": {
+      "enumerating": "Listing sources",
+      "assembling": "Assembling",
+      "rendering": "Rendering",
+      "signing": "Signing",
+      "uploading": "Storing"
+    }
+  },
+  "progress": {
+    "assembling": "Examined {{done}} of {{total}} sources"
+  },
+  "countsLine": "Sources examined: {{sources}} · facts: {{facts}} · open findings: {{open}} · withheld: {{withheld}} · not fully read: {{notFullyRead}}",
+  "delta": {
+    "firstRun": "First report over this scope; changes will show from the next run.",
+    "sincePrevious": "Since the previous run: {{resolved}} resolved, {{appeared}} new, {{reopened}} reopened."
+  },
+  "download": {
+    "pdf": "Download PDF",
+    "json": "Download JSON"
+  },
+  "expiredNote": "This report is no longer downloadable: a source it may have quoted was deleted, or its retention window passed. The run record stays for comparison; generate a new report for current findings.",
+  "list": {
+    "title": "Past runs",
+    "emptyTitle": "No reports yet",
+    "emptyHint": "Generate a report to get a signed, forwardable record of the contradictions in your documents, with the evidence quoted and located."
+  }
+}
