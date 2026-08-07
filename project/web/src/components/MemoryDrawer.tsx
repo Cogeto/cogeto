@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trans, useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
   approveMemory,
   changeMemoryScope,
@@ -22,6 +23,7 @@ import { invalidateAfterGovernance } from '../query-invalidation';
 import { formatShortDate } from '../i18n/format';
 import { LocatorChips } from './LocatorChips';
 import { SourceDrawer } from './SourceDrawer';
+import { RESOLUTION_KEY_SUFFIX } from './relation-labels';
 import { timeAgo } from './status';
 import {
   btnDanger,
@@ -48,6 +50,12 @@ function timelineHref(subject: string, at?: string | null): string {
     params.set('at', at);
   }
   return `/timeline?${params.toString()}`;
+}
+
+/** Enum → key map (AGENTS.md): unknown values render raw, never a broken key. */
+function relationResolutionLabel(t: TFunction, resolution: string | null): string {
+  const suffix = RESOLUTION_KEY_SUFFIX[resolution ?? ''];
+  return suffix ? t(`drawer.resolutionLabel.${suffix}`) : (resolution ?? '');
 }
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
@@ -475,10 +483,29 @@ export function MemoryDrawer({
                         {item.resolvedAt
                           ? t('drawer.relationResolved', {
                               when: timeAgo(item.detectedAt),
-                              resolution: item.resolution ?? '',
+                              resolution: relationResolutionLabel(t, item.resolution),
                             })
                           : t('drawer.relationOpen', { when: timeAgo(item.detectedAt) })}
                       </p>
+                      {item.detectedBy && (
+                        <p className="mt-0.5 text-[0.68rem] text-slate-400">
+                          {t(`drawer.detectedBy.${item.detectedBy}`, {
+                            defaultValue: item.detectedBy,
+                          })}
+                        </p>
+                      )}
+                      {item.events.length > 0 && (
+                        <ul className="mt-1.5 space-y-0.5 border-t border-slate-100 pt-1.5">
+                          {item.events.map((event, index) => (
+                            <li key={index} className="text-[0.68rem] text-slate-400">
+                              {t(`drawer.event.${event.event}`, { defaultValue: event.event })}
+                              <span className="ml-1.5" title={event.createdAt}>
+                                {timeAgo(event.createdAt)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </li>
                   ))}
                 </ul>

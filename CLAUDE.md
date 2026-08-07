@@ -247,6 +247,31 @@ ingestion-owned `source_revision` table; facts get nothing new (existing
 reconciliation only). The completion summary's numbers are computed from the
 owning stores and each click lands on evidence in Sources.
 
+V2.3 item 6.1 delivered the **contradiction coverage overhaul and the findings
+lifecycle** (migration 0048, prompt `reconcile_contradiction/v0002`, reconcile
+config v2). Entity pairing is folding plus a growable `entity_alias` set (the
+cross-language mechanism, Settings surface) plus a narrow mid-token typo rule,
+with an alias-expanded subject search as a third candidate path; `related`
+dedup verdicts escalate beside `distinct`, and `contradicted` rows are
+candidates so a corrected revision can supersede a finding's party. **Numeric
+and unit reasoning is deterministic first** (`ingestion/domain/quantity.ts`):
+a same-slot conflict such as 3.2 mm vs 3.4 mm needs no model call, and
+everything the parser cannot decide reaches the judge with parsed values. The
+**checked-pair ledger** (`checked_pair`) persists every verdict with its
+prompt version and model configuration: an unchanged pair is never re-judged,
+so the nightly flip-flop and its token cost are structurally gone. Thresholds
+are per-embedding-model and fail loudly on an unknown model; the supersession
+guard tie-breaks equal event times on recording order; losers close at event
+time. Timing misses are covered by the delayed `reconcile.repair` job and the
+confirm-time eligibility re-pair; findings record `detected_by`. **A finding
+has a lifecycle** ([`docs/features/findings.md`](docs/features/findings.md),
+frozen before code; `memory_relation_event`): resolved by user or by revision
+(conservative, cause recorded, `source_revision` link included), kept open
+with the reason when ambiguous, following the successor when the conflict
+persists, and reopening the ORIGINAL finding when a regression reintroduces
+it. Resolved findings leave every current surface and stay queryable with
+history.
+
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).
 Thinking is a CHANNEL, not content: `completeStream` yields channel-tagged

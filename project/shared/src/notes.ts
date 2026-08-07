@@ -134,6 +134,8 @@ export interface ContradictionDto {
   /** Why reconciliation flagged the pair — owner-gated (from the relation row,
    * migration 0020); null on pre-0020 detections. */
   reason: string | null;
+  /** Which pass found it (V2.3 item 6.1); null means "not recorded". */
+  detectedBy: string | null;
   a: MemoryListItem;
   b: MemoryListItem;
 }

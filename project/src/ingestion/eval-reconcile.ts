@@ -4,10 +4,12 @@ import { z } from 'zod';
 import { FACT_KINDS } from '@cogeto/shared';
 import { supersessionUnambiguous } from '../memory/index';
 import { ModelGateway } from '../model-gateway/index';
-import { ReconcileJudge } from './pipeline/reconcile.stage';
+import { deterministicContradiction, ReconcileJudge } from './pipeline/reconcile.stage';
 import type { ReconcileFactView } from './pipeline/reconcile.stage';
 import { isContradictionCandidate, isDedupCandidate } from './domain/reconcile-candidates';
-import { RECONCILE_CONFIG_VERSION } from './reconcile-config';
+import type { DedupRuling } from './domain/reconcile-candidates';
+import { EntityAliasIndex } from './domain/entity-match';
+import { RECONCILE_CONFIG_VERSION, reconcileThresholdsFor } from './reconcile-config';
 
 /**
  * Reconciliation pair-case eval (docs/eval-golden-set.md
@@ -48,6 +50,15 @@ export const pairCaseSchema = z.object({
   /** a = the more recently recorded fact (mirrors the relation convention). */
   a: pairFactSchema,
   b: pairFactSchema,
+  /**
+   * Recorded alias pairs in force for this case (V2.3 item 6.1, issue A) —
+   * the eval twin of the owner's entity_alias rows. Cross-language cases
+   * declare the equivalence here; a case without aliases runs exactly as
+   * before.
+   */
+  aliases: z
+    .array(z.object({ canonical: z.string().min(1), alias: z.string().min(1) }))
+    .default([]),
   notes: z.string().optional(),
 });
 export type PairCase = z.infer<typeof pairCaseSchema>;
@@ -174,6 +185,8 @@ export async function judgePair(
   gateway: ModelGateway,
   pair: PairCase,
 ): Promise<PairOutcome> {
+  const thresholds = reconcileThresholdsFor(gateway.embeddingModelId());
+  const aliases = new EntityAliasIndex(pair.aliases);
   const [vecA, vecB] = await gateway.embed([pair.a.content, pair.b.content]);
   const similarity = Math.min(1, Math.max(0, (cosine(vecA!, vecB!) + 1) / 2));
   const a = { kind: pair.a.kind, entities: pair.a.entities, subjectEntity: pair.a.subject_entity };
@@ -181,18 +194,28 @@ export async function judgePair(
   const viewA = toView(pair.a);
   const viewB = toView(pair.b);
 
-  let dedupJudgedDistinct = false;
-  if (isDedupCandidate(similarity, a, b)) {
+  let dedupRuling: DedupRuling = null;
+  if (isDedupCandidate(similarity, a, b, thresholds, aliases)) {
     const verdict = await judge.judgeDedup(viewA, viewB);
     if (verdict.verdict === 'same_fact') return 'merged';
-    dedupJudgedDistinct = verdict.verdict === 'distinct';
+    // Both non-merge rulings escalate above the dedup threshold (the v2
+    // escalation rule): a paraphrased conflict is as often `related` as
+    // `distinct`.
+    dedupRuling =
+      verdict.verdict === 'distinct' || verdict.verdict === 'related' ? verdict.verdict : null;
     if (pair.task === 'dedup') return 'no_merge';
   } else if (pair.task === 'dedup') {
     return 'not_a_candidate';
   }
 
-  if (!isContradictionCandidate(similarity, a, b, dedupJudgedDistinct)) {
+  if (!isContradictionCandidate(similarity, a, b, thresholds, dedupRuling, aliases)) {
     return 'not_a_candidate';
+  }
+  // The deterministic quantity arm, exactly as stage 6 runs it: a same-slot
+  // numeric conflict with no update reading needs no model.
+  const deterministic = deterministicContradiction(viewA, viewB);
+  if (deterministic.conclusive && deterministic.decision.decision === 'conflict') {
+    return 'contradiction';
   }
   const verdict = await judge.judgeContradiction(viewA, viewB);
   if (verdict.verdict === 'compatible') return 'compatible';

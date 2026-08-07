@@ -38,6 +38,7 @@ export class RelationsController {
       id: relation.id,
       detectedAt: relation.detectedAt.toISOString(),
       reason: relation.reason ?? null,
+      detectedBy: relation.detectedBy ?? null,
       a: toListItem(a),
       b: toListItem(b),
     }));
@@ -53,12 +54,24 @@ export class RelationsController {
     @Param('memoryId', ParseUUIDPipe) memoryId: string,
   ): Promise<MemoryRelationDto[]> {
     const relations = await this.reconciliation.relationsForMemory(request.principal, memoryId);
+    // One events read for the whole answer: the finding's history rides along
+    // (V2.3 item 6.1), owner-gated inside eventsForRelations itself.
+    const events = await this.reconciliation.eventsForRelations(
+      request.principal,
+      relations.map(({ relation }) => relation.id),
+    );
     return relations.map(({ relation, other }) => ({
       relationId: relation.id,
       detectedAt: relation.detectedAt.toISOString(),
       resolvedAt: relation.resolvedAt?.toISOString() ?? null,
       resolution: relation.resolution,
       reason: relation.reason ?? null,
+      detectedBy: relation.detectedBy ?? null,
+      events: (events.get(relation.id) ?? []).map((event) => ({
+        event: event.event,
+        detail: (event.detailJson as Record<string, unknown> | null) ?? null,
+        createdAt: event.createdAt.toISOString(),
+      })),
       other: toListItem(other),
     }));
   }

@@ -64,6 +64,17 @@
       "embeddings": "Embeddings"
     }
   },
+  "aliases": {
+    "heading": "Entity aliases",
+    "explainer": "Two names for the same thing pair for contradiction checks, including a Croatian and an English name for one company.",
+    "pair": "\"{{alias}}\" counts as \"{{canonical}}\"",
+    "canonical": "Canonical name",
+    "canonicalPlaceholder": "The name your documents use most",
+    "alias": "Alias",
+    "aliasPlaceholder": "Another name for the same thing",
+    "empty": "No aliases recorded yet.",
+    "error": "Couldn't load your aliases."
+  },
   "signingKey": {
     "heading": "Instance signing key",
     "explainer": "Every deletion receipt is signed with this instance's private key (spec §11.1). Anyone can verify a receipt or the Forgotten ledger against the public key below, proof that a deletion really happened, independent of Cogeto.",

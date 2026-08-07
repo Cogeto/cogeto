@@ -7,6 +7,7 @@ import {
   pgEnum,
   pgTable,
   primaryKey,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -359,6 +360,62 @@ export const sourceRevision = pgTable(
     index('source_revision_predecessor_idx').on(t.predecessorType, t.predecessorId),
   ],
 );
+
+/**
+ * The judged-pair ledger (V2.3 item 6.1, migration 0048): every
+ * reconciliation verdict — model or deterministic — persisted with the prompt
+ * version, model configuration, similarity at judgment time and timestamp.
+ * An unchanged pair is never re-judged, so a borderline `compatible` cannot
+ * flip to `contradicted` days later from sampling variance, the nightly
+ * re-judging token cost is gone, and near-miss decisions leave an audit
+ * trace. No content: the verdict is a decision about two rows, and the rows
+ * carry the words. FK CASCADE erases the entry with either fact — a
+ * successor is a new id, so a superseded pair simply never recurs.
+ */
+export const checkedPair = pgTable(
+  'checked_pair',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: text('owner_id').notNull(),
+    aMemoryId: uuid('a_memory_id').notNull(),
+    bMemoryId: uuid('b_memory_id').notNull(),
+    family: text('family').$type<'dedup' | 'contradiction'>().notNull(),
+    verdict: text('verdict').notNull(),
+    direction: text('direction'),
+    /** Normalized [0,1]; NULL when the pair reached the check unscored. */
+    similarity: real('similarity'),
+    /** 'deterministic:<rule>' when no model was asked (quantity reasoning). */
+    promptVersion: text('prompt_version').notNull(),
+    modelConfig: text('model_config').notNull(),
+    configVersion: integer('config_version').notNull(),
+    judgedAt: timestamp('judged_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('checked_pair_a_idx').on(t.aMemoryId), index('checked_pair_b_idx').on(t.bMemoryId)],
+);
+
+export type CheckedPairRow = typeof checkedPair.$inferSelect;
+
+/**
+ * The growable entity-alias set (V2.3 item 6.1, migration 0048): recorded
+ * name equivalences behind alias-aware pairing. Cross-language identity is
+ * data — no folding rule knows the Croatian name of an English company.
+ * Owner-scoped vocabulary (not source-derived content): rows live until the
+ * owner removes them, and the reconciliation candidate gate is their one
+ * consumer. Surface on Settings, the extraction-gate precedent.
+ */
+export const entityAlias = pgTable(
+  'entity_alias',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: text('owner_id').notNull(),
+    canonical: text('canonical').notNull(),
+    alias: text('alias').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('entity_alias_owner_idx').on(t.ownerId)],
+);
+
+export type EntityAliasRow = typeof entityAlias.$inferSelect;
 
 /** Every measured signal behind a revision decision. Metadata, never content
  * beyond the values the documents themselves anchored. */

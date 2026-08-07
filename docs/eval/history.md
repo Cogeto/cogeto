@@ -2494,3 +2494,133 @@ No gate was lowered or raised in any of them.
 | en | 16 | 100.0% (16/16) |
 | hr | 16 | 81.3% (13/16) |
 | aggregate | 32 | 90.6% (29/32) |
+
+## 2026-08-07, extraction/v0005 + verification/v0006 (thresholds v1, 98 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 48 | 82.7% (81/98) | 93.2% (69/74) | 95.7% (45/47) |
+| hr | 50 | 80.2% (73/91) | 89.2% (66/74) | 91.7% (44/48) |
+| aggregate | 98 | 81.5% (154/189) | 91.2% (135/148) | 93.7% (89/95) |
+
+## 2026-08-07, reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v2, 54 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 6 | 100.0% (10/10) | 22 | 53.8% (7/13) | 100.0% (7/7) | 20.0% (1/5) | 1 |
+| hr | 5 | 87.5% (7/8) | 21 | 58.3% (7/12) | 100.0% (7/7) | 25.0% (1/4) | 2 |
+| aggregate | 11 | 94.4% (17/18) | 43 | 56.0% (14/25) | 100.0% (14/14) | 22.2% (2/9) | 3 |
+
+## 2026-08-07, query_rewrite/v0006 (query-rewrite routing, 32 cases)
+
+| set | cases | routing accuracy |
+|---|---|---|
+| en | 16 | 100.0% (16/16) |
+| hr | 16 | 75.0% (12/16) |
+| aggregate | 32 | 87.5% (28/32) |
+
+## 2026-08-07, extraction/v0005 + verification/v0006 (thresholds v1, 98 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 48 | 82.5% (80/97) | 93.2% (69/74) | 93.6% (44/47) |
+| hr | 50 | 80.9% (76/94) | 93.2% (69/74) | 85.4% (41/48) |
+| aggregate | 98 | 81.7% (156/191) | 93.2% (138/148) | 89.5% (85/95) |
+
+## 2026-08-07, reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v2, 54 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 6 | 100.0% (10/10) | 22 | 77.8% (7/9) | 100.0% (7/7) | 40.0% (2/5) | 2 |
+| hr | 5 | 87.5% (7/8) | 21 | 75.0% (6/8) | 85.7% (6/7) | 50.0% (2/4) | 2 |
+| aggregate | 11 | 94.4% (17/18) | 43 | 76.5% (13/17) | 92.9% (13/14) | 44.4% (4/9) | 4 |
+
+## 2026-08-07, query_rewrite/v0006 (query-rewrite routing, 32 cases)
+
+| set | cases | routing accuracy |
+|---|---|---|
+| en | 16 | 100.0% (16/16) |
+| hr | 16 | 81.3% (13/16) |
+| aggregate | 32 | 90.6% (29/32) |
+
+## 2026-08-07, extraction/v0005 + verification/v0006 (thresholds v1, 98 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 48 | 83.2% (79/95) | 93.2% (69/74) | 95.7% (45/47) |
+| hr | 50 | 80.4% (78/97) | 95.9% (71/74) | 89.6% (43/48) |
+| aggregate | 98 | 81.8% (157/192) | 94.6% (140/148) | 92.6% (88/95) |
+
+## 2026-08-07, reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v2, 54 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 6 | 100.0% (10/10) | 22 | 77.8% (7/9) | 100.0% (7/7) | 60.0% (3/5) | 2 |
+| hr | 5 | 87.5% (7/8) | 21 | 87.5% (7/8) | 100.0% (7/7) | 75.0% (3/4) | 2 |
+| aggregate | 11 | 94.4% (17/18) | 43 | 82.4% (14/17) | 100.0% (14/14) | 66.7% (6/9) | 4 |
+
+## 2026-08-07, query_rewrite/v0006 (query-rewrite routing, 32 cases)
+
+| set | cases | routing accuracy |
+|---|---|---|
+| en | 16 | 100.0% (16/16) |
+| hr | 16 | 81.3% (13/16) |
+| aggregate | 32 | 90.6% (29/32) |
+
+## 2026-08-07, chat eval (configuration=mistral-default--vis-mistral-pixtral-12b-2409 · pipeline=mistral/mistral-small-latest · answer=mistral/mistral-medium-latest · answer-prompt=answer/v0008 · grader=mistral/mistral-medium-latest eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | research | skill | conversation | overall |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| atlas_scope |  | 83% |  | PASS | PASS |  |  |  |  |  | PASS |
+| blended_origins_en | PASS | 100% |  | PASS | PASS |  | PASS |  |  | PASS | PASS |
+| changed_since |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| default_no_time_travel |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| digest_hr_preferred |  |  |  |  |  |  |  |  |  | PASS | PASS |
+| followup_cross_capability |  |  |  | PASS | PASS |  | PASS | PASS |  |  | PASS |
+| knowledge_offer_en |  |  |  | PASS | PASS |  |  |  |  | PASS | PASS |
+| knowledge_offer_hr |  |  |  | PASS | PASS |  | PASS |  |  | PASS | PASS |
+| memory_beats_model | PASS |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| nothing_on_record |  |  |  |  |  | PASS |  |  |  |  | PASS |
+| open_with_entity |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| point_in_time_march |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| previously_decided |  | 100% |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| reply_hr_zadnja |  |  |  |  |  |  | PASS |  |  |  | PASS |
+| reply_to_ana |  |  |  |  |  |  | PASS |  |  |  | PASS |
+| research_keeps_subject_hr |  |  |  | PASS |  |  | PASS | PASS |  |  | PASS |
+| research_minimise_drop |  |  |  | PASS |  |  | PASS | PASS |  |  | PASS |
+| skill_brief_en |  |  |  | PASS |  |  | PASS |  | PASS |  | PASS |
+| skill_brief_hr |  |  |  | PASS |  |  | PASS |  | PASS | PASS | PASS |
+| smalltalk_hvala_hr |  |  |  | PASS | PASS |  |  |  |  | PASS | PASS |
+| smalltalk_thanks |  |  |  | PASS | PASS |  |  |  |  | PASS | PASS |
+| strict_mode_hr |  |  |  | PASS | PASS |  | PASS |  |  | FAIL | FAIL |
+| whats_still_open |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| who_is_ana | PASS | 0% | PASS | PASS | PASS |  |  |  |  |  | FAIL |
+
+## 2026-08-07, chat eval (configuration=mistral-default--vis-mistral-pixtral-12b-2409 · pipeline=mistral/mistral-small-latest · answer=mistral/mistral-medium-latest · answer-prompt=answer/v0008 · grader=mistral/mistral-medium-latest eval-coverage/v0001)
+
+| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | research | skill | conversation | overall |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| atlas_scope |  | 83% |  | PASS | PASS |  |  |  |  |  | PASS |
+| blended_origins_en | PASS | 100% |  | PASS | PASS |  | PASS |  |  | PASS | PASS |
+| changed_since |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| default_no_time_travel |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| digest_hr_preferred |  |  |  |  |  |  |  |  |  | PASS | PASS |
+| followup_cross_capability |  |  |  | PASS | PASS |  | PASS | PASS |  |  | PASS |
+| knowledge_offer_en |  |  |  | PASS | PASS |  |  |  |  | PASS | PASS |
+| knowledge_offer_hr |  |  |  | PASS | PASS |  | PASS |  |  | PASS | PASS |
+| memory_beats_model | PASS |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| nothing_on_record |  |  |  |  |  | PASS |  |  |  |  | PASS |
+| open_with_entity |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| point_in_time_march |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| previously_decided |  | 100% |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| reply_hr_zadnja |  |  |  |  |  |  | PASS |  |  |  | PASS |
+| reply_to_ana |  |  |  |  |  |  | PASS |  |  |  | PASS |
+| research_keeps_subject_hr |  |  |  | PASS |  |  | PASS | PASS |  |  | PASS |
+| research_minimise_drop |  |  |  | PASS |  |  | PASS | PASS |  |  | PASS |
+| skill_brief_en |  |  |  | PASS |  |  | PASS |  | PASS |  | PASS |
+| skill_brief_hr |  |  |  | PASS |  |  | PASS |  | PASS | PASS | PASS |
+| smalltalk_hvala_hr |  |  |  | PASS | PASS |  |  |  |  | PASS | PASS |
+| smalltalk_thanks |  |  |  | PASS | PASS |  |  |  |  | PASS | PASS |
+| strict_mode_hr |  |  |  | PASS | PASS |  | PASS |  |  | PASS | PASS |
+| whats_still_open |  |  |  | PASS | PASS |  | PASS |  |  |  | PASS |
+| who_is_ana | PASS | 86% | PASS | PASS | PASS |  |  |  |  |  | PASS |

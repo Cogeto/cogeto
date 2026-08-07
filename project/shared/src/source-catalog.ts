@@ -72,6 +72,15 @@ export interface SourceFactDto {
   verification: VerificationDto | null;
 }
 
+/** One lifecycle event of a finding (V2.3 item 6.1): the append-only history
+ * the report's delta view and both inspection surfaces render. */
+export interface RelationEventDto {
+  event: string;
+  /** Structural metadata only (ids, sides, pass names), never content. */
+  detail: Record<string, unknown> | null;
+  createdAt: string;
+}
+
 /** One contradiction touching a source, both parties resolved for display. */
 export interface SourceContradictionDto {
   relationId: string;
@@ -80,6 +89,10 @@ export interface SourceContradictionDto {
   resolution: string | null;
   /** Why the pair was flagged, the owner-gated explanation. */
   reason: string | null;
+  /** Which pass found it (V2.3 item 6.1); null means "not recorded". */
+  detectedBy: string | null;
+  /** The finding's history, oldest first. */
+  events: RelationEventDto[];
   a: MemoryListItem;
   b: MemoryListItem;
 }
@@ -114,6 +127,10 @@ export interface MemoryRelationDto {
   resolvedAt: string | null;
   resolution: string | null;
   reason: string | null;
+  /** Which pass found it (V2.3 item 6.1); null means "not recorded". */
+  detectedBy: string | null;
+  /** The finding's history, oldest first. */
+  events: RelationEventDto[];
   other: MemoryListItem;
 }
 

@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r019",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "R7 kontroler radi između 10 i 30 stupnjeva C.",
+    "kind": "fact",
+    "entities": ["R7 kontroler"],
+    "subject_entity": "R7 kontroler",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Radni raspon R7 kontrolera: 10–30 °C."
+  },
+  "b": {
+    "content": "R7 kontroler je testiran stabilno od 15 do 25 stupnjeva C.",
+    "kind": "fact",
+    "entities": ["R7 kontroler"],
+    "subject_entity": "R7 kontroler",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Izvještaj testiranja: R7 stabilan 15–25 °C."
+  },
+  "notes": "Negativan slučaj: testirani podraspon unutar specificiranog raspona slaže se s njim."
+}

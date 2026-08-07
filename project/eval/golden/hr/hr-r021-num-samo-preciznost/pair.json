@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r021",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "Osnovna ploča VX-9 debela je 3,2 mm.",
+    "kind": "fact",
+    "entities": ["osnovna ploča VX-9"],
+    "subject_entity": "osnovna ploča VX-9",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Debljina osnovne ploče: 3,2 mm."
+  },
+  "b": {
+    "content": "Osnovna ploča VX-9 mjeri 3,24 mm.",
+    "kind": "fact",
+    "entities": ["osnovna ploča VX-9"],
+    "subject_entity": "osnovna ploča VX-9",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "CMM izvještaj: osnovna ploča 3,24 mm."
+  },
+  "notes": "Negativan slučaj: razlika ispod iskazane preciznosti grublje strane je slaganje, ne sukob."
+}

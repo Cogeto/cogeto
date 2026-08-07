@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r025",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "Adriatic Foods payment terms are 30 days.",
+    "kind": "fact",
+    "entities": ["Adriatic Foods"],
+    "subject_entity": "Adriatic Foods",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Terms with Adriatic Foods: net 30."
+  },
+  "b": {
+    "content": "Adriatic Goods payment terms are 60 days.",
+    "kind": "fact",
+    "entities": ["Adriatic Goods"],
+    "subject_entity": "Adriatic Goods",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Adriatic Goods invoices are due in 60 days."
+  },
+  "notes": "Precision trap for the widened matching: Foods and Goods differ at a token-initial letter, which is how two genuinely different companies look. Pairing them would be the false alarm the typo rule must never produce."
+}

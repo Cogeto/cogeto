@@ -290,6 +290,38 @@ deserves the same plainness: with three contradiction pairs, one flip is 33
 points, so no floor on that denominator can be both honest and meaningful. The
 floor is honest. Making it meaningful is corpus growth, not arithmetic.
 
+## Addendum, 2026-08-07: the V2.3 item 6.1 corpus and engine
+
+The contradiction coverage overhaul changed the thing these floors measure,
+in the direction 3.4 promised: the pair corpus grew from 33 to 54 (numeric
+and unit shapes in both languages with their negatives, alias and typo
+entity cases with their negatives, paraphrase-escalation conflicts, a
+same-effective-date supersession), the judge moved to
+`reconcile_contradiction/v0002` (the machine-parsed `PARSED QUANTITIES`
+block, the measured-value exception, update-evidence-first), the candidate
+rules widened (alias-aware subjects, `related`-verdict escalation, the
+entity-path lower bound), the deterministic quantity arm decides same-slot
+numeric conflicts without a model, and thresholds became per-embedding-model
+(reconcile config v2).
+
+Measured on the delivery run (one live run, same configuration as the
+floors): aggregate contradiction precision **82.4%** (floor 0.54, previously
+observed 54.5 to 66.7), contradiction recall **100%** (floor 0.83), dedup
+**94.4%** (floor 0.92), supersedes **66.7%** on 9 pairs (floor 0.50), with
+per-language values all above their floors (en 77.8 / 100 / 100 / 60.0; hr
+87.5 / 100 / 87.5 / 75.0). Every widening's negative cases hold: the three
+entity traps score `not_a_candidate`, and zero injection violations and zero
+subject mismatches stand.
+
+**No floor moved.** The floors remain the worst-of-nine-runs values from
+2026-07-31: a single delivery run is not a variance band, and raising a floor
+from one good draw is exactly the flattery this document exists to prevent.
+When the new corpus has a few more live runs behind it, the ratchet applies
+as written below. The supersedes remainder is stated plainly: 3 of 9 pairs
+still land as human-facing contradictions rather than clean supersessions
+(the safe failure direction, counted against precision), and the judge on
+those pairs is the remaining variance source.
+
 ## Changing a number here
 
 - **Raising a floor** is a config edit. Do it when a metric has cleared its

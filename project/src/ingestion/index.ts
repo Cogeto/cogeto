@@ -60,7 +60,21 @@ export type { DreamRunStatus } from './dreaming.service';
 // there is one digest, gated once — plus the dreaming activity series.
 export { buildDreamDigest, dreamingActivityForPrincipal } from './dream-digest';
 export { ReconciliationService } from './pipeline/reconcile.stage';
-export { ACTIVE_PROMPTS, ANCHORING_PROMPT, VISION_READ_PROMPT } from './prompt-versions';
+export {
+  ReconcileRepair,
+  ReconcileRepairEligibilityHook,
+  RECONCILE_REPAIR_JOB_TYPE,
+} from './reconcile-repair';
+export type { ReconcileRepairPayload } from './reconcile-repair';
+export { EntityAliasStore } from './persistence/entity-alias.store';
+export { CheckedPairStore } from './persistence/checked-pair.store';
+export {
+  ACTIVE_PROMPTS,
+  ANCHORING_PROMPT,
+  RECONCILE_CONTRADICTION_PROMPT,
+  RECONCILE_DEDUP_PROMPT,
+  VISION_READ_PROMPT,
+} from './prompt-versions';
 export { runGoldenEval, evalConfigSchema } from './eval-harness';
 export type { EvalMetrics } from './eval-harness';
 export { runReconcileEval } from './eval-reconcile';

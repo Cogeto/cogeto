@@ -119,6 +119,7 @@ export class DreamingService {
             // had (V2.1 item 4.1 split the two rules apart).
             const result = await this.reconciliationService.reconcile(tx, items, log, {
               exclude: 'same_source',
+              detectedBy: 'dreaming',
             });
             await this.recordReconcileActions(tx, runId, result.actions);
             return result;
@@ -217,7 +218,10 @@ export class DreamingService {
         pass = 'supersession';
         memoryId = result.winnerId;
         relatedMemoryId = result.loserId;
-      } else if (result.action === 'contradiction_created') {
+      } else if (
+        result.action === 'contradiction_created' ||
+        result.action === 'contradiction_reopened'
+      ) {
         pass = 'contradiction';
         memoryId = factId;
         relationId = result.relationId;

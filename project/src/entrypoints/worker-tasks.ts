@@ -15,12 +15,15 @@ import {
   EXTRACTION_REFUSAL_RETENTION_JOB_TYPE,
   FILE_DISCARD_CLEANUP_JOB_TYPE,
   INGESTION_PIPELINE_JOB_TYPE,
+  RECONCILE_REPAIR_JOB_TYPE,
 } from '../ingestion/index';
 import type {
   DreamingService,
   ExtractionGateStore,
   IngestionPipeline,
   PipelineLog,
+  ReconcileRepair,
+  ReconcileRepairPayload,
 } from '../ingestion/index';
 import {
   DELETION_JOB_TYPE,
@@ -56,6 +59,7 @@ export interface WorkerTaskDeps {
   deletionExecutor: DeletionExecutor;
   integritySweep: IntegritySweep;
   dreaming: DreamingService;
+  reconcileRepair: ReconcileRepair;
   approvalService: ApprovalService;
   approvalExecutor: ApprovalExecutor;
   passportExecutor: PassportExportExecutor;
@@ -237,6 +241,35 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       const report = await deps.dreaming.run(deps.log);
       deps.log({ ...report }, 'dreaming cycle completed (scheduled)');
     }),
+
+    // Reconcile repair (V2.3 item 6.1, issue B): the delayed re-pair that
+    // catches near-simultaneous uploads and eligibility changes. A plain task
+    // (not idempotentTask): the reconcile engine is idempotent by
+    // construction (tombstoned relations, the checked-pair ledger), so a
+    // duplicate delivery provably re-spends nothing.
+    [RECONCILE_REPAIR_JOB_TYPE]: async (rawPayload) => {
+      const payload = rawPayload as ReconcileRepairPayload & Record<string, unknown>;
+      const principalId = payload[JOB_PRINCIPAL_KEY];
+      await runWithUsageContext(
+        async () => {
+          if (typeof principalId === 'string') setUsageUser(principalId);
+          const summary = await deps.reconcileRepair.run(payload, deps.log);
+          deps.log(
+            {
+              source_type: payload.source_type,
+              source_id: payload.source_id,
+              considered: summary.considered,
+              ledger_hits: summary.ledgerHits,
+              contradictions: summary.contradictions,
+              reopened: summary.reopened,
+              superseded: summary.superseded,
+            },
+            'reconcile repair pass complete',
+          );
+        },
+        { taskFamily: 'reconciliation' },
+      );
+    },
 
     // Extract-and-discard staging cleanup: deletes the transient
     // staging object once its extraction is durable (enqueued by the pipeline

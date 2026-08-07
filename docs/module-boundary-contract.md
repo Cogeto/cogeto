@@ -62,8 +62,8 @@ may name the table in a query, in Drizzle or in SQL.
 
 | Owner | Tables |
 |---|---|
-| `memory` | `memory`, `memory_relation`, `file_metadata`, `deletion_receipt`, `integrity_alert` |
-| `ingestion` | `verification_result`, `suppressed_fact_log`, `dream_run`, `dream_action`, `dormant_flag`, `extraction_gate`, `extraction_gate_rule`, `extraction_gate_refusal`, `source_context` (V2.1 items 4.2 and 4.3: the per-source extraction gate. Owned here because the pipeline is the enforcement point; the settings surface is ingestion's own controller, the email-settings precedent), `ingestion_progress` (V2.2 item 5.1: the honest per-source pipeline stage, reported by the pipeline outside its job transaction; surfaces read it through the exported `pipelineStageFor`), `source_revision` (V2.2 item 5.3: the document revision link, supersedes-source with basis and confidence per [`docs/features/revisions.md`](features/revisions.md). Owned here beside `source_context`, whose anchored revision field is its strongest signal; the import coordinator detects candidates but records them through `SourceRevisionStore`, and the import summary's grouped counts go through the exported `revisionCountsForSuccessors`) |
+| `memory` | `memory`, `memory_relation`, `memory_relation_event` (V2.3 item 6.1: the finding's append-only lifecycle history per [`docs/features/findings.md`](features/findings.md); the relation is the finding, so its event log lives with it and cascades with it), `file_metadata`, `deletion_receipt`, `integrity_alert` |
+| `ingestion` | `verification_result`, `suppressed_fact_log`, `dream_run`, `dream_action`, `dormant_flag`, `extraction_gate`, `extraction_gate_rule`, `extraction_gate_refusal`, `source_context` (V2.1 items 4.2 and 4.3: the per-source extraction gate. Owned here because the pipeline is the enforcement point; the settings surface is ingestion's own controller, the email-settings precedent), `ingestion_progress` (V2.2 item 5.1: the honest per-source pipeline stage, reported by the pipeline outside its job transaction; surfaces read it through the exported `pipelineStageFor`), `source_revision` (V2.2 item 5.3: the document revision link, supersedes-source with basis and confidence per [`docs/features/revisions.md`](features/revisions.md). Owned here beside `source_context`, whose anchored revision field is its strongest signal; the import coordinator detects candidates but records them through `SourceRevisionStore`, and the import summary's grouped counts go through the exported `revisionCountsForSuccessors`), `checked_pair` (V2.3 item 6.1: the judged-pair ledger; the module that judges owns the record of its judgments), `entity_alias` (V2.3 item 6.1: the owner's recorded entity equivalences behind alias-aware pairing; the candidate rules are their one consumer, the settings surface is ingestion's own controller) |
 | `chat` | `chat_message`, `conversation` (moved from `retrieval` in part 4: chat is a capture connector by structure), `chat_attachment` (V2.2 item 5.1: a conversation's link to a durable file source, or a transient file's conversation-only text; erased with its conversation by the saga, counted on the receipt) |
 | `attention` | `attention_state`, `attention_dismissal` |
 | `agents` | `approval` |
@@ -158,6 +158,7 @@ imports every constant rather than spelling any of them.
 | `ingestion.pipeline` | `ingestion` | `INGESTION_PIPELINE_JOB_TYPE` | per-source |
 | `file.discard_cleanup` | `ingestion` | `FILE_DISCARD_CLEANUP_JOB_TYPE` | per-source |
 | `dreaming_cycle` | `ingestion` | `DREAM_JOB_TYPE` | recurring |
+| `reconcile.repair` | `ingestion` | `RECONCILE_REPAIR_JOB_TYPE` | per-source (plain, re-runnable: the engine is idempotent by construction, tombstoned relations plus the checked-pair ledger, the dreaming shape) |
 | `memory.embed` | `memory` | `MEMORY_EMBED_JOB_TYPE` | per-source |
 | `deletion.execute` | `memory` | `DELETION_JOB_TYPE` | per-source |
 | `deletion_sweep` | `memory` | `SWEEP_JOB_TYPE` | recurring |
@@ -278,8 +279,8 @@ defined by the module that *consumes* the implementation) are marked.
 |---|---|
 | `infrastructure` | `DRIZZLE`, `PG_POOL`, `RATE_LIMIT_OPTIONS`, `INGEST_QUOTA`, `RESEARCH_QUOTA`, `SSE_LIMITS`, `MODEL_USAGE_METER`, `MODEL_EGRESS_AUDIT`, `PARSE_CAPS`, `INSTANCE_TIMEZONE` |
 | `identity` | `PRINCIPAL`, `IDENTITY_OPTIONS`, `WEB_CONFIG_OPTIONS` |
-| `memory` | `RECEIPTS_ADMIN_ROLE`, `SOURCE_DELETIONS` (port), `DERIVED_CASCADES` (port), `INGESTION_GUARD` (port), `INSTANCE_KEY_DIR`, `SWEEP_OPTIONS`, `DELETION_SAGA_OPTIONS` |
-| `ingestion` | `SOURCE_READERS` (port) |
+| `memory` | `RECEIPTS_ADMIN_ROLE`, `SOURCE_DELETIONS` (port), `DERIVED_CASCADES` (port), `INGESTION_GUARD` (port), `INSTANCE_KEY_DIR`, `SWEEP_OPTIONS`, `DELETION_SAGA_OPTIONS`, `MEMORY_ELIGIBILITY_HOOK` (port, V2.3 item 6.1: confirming an uncertain fact re-pairs it; ingestion's `ReconcileRepairEligibilityHook` implements it, the `ingestionGuard` shape) |
+| `ingestion` | `SOURCE_READERS` (port), `RECONCILE_MODEL_CONFIG` (V2.3 item 6.1: the generation binding the checked-pair ledger records, handed in by the root) |
 | `retrieval` | `RETRIEVAL_SERVICE_OPTIONS` |
 | `chat` | `CHAT_REPLY_RESOLVER` (port), `CHAT_RESEARCH_RESOLVER` (port), `CHAT_SKILL_RESOLVER` (port), `CONVERSATION_APPEND` (port), `CHAT_SERVICE_OPTIONS` |
 | `files` | `FILE_UPLOAD_OPTIONS` |

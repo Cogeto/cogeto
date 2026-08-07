@@ -18,6 +18,7 @@ import type {
   AddExtractionGateRuleRequest,
   EmailAllowlistEntryDto,
   EmailCaptureConfigDto,
+  EntityAliasDto,
   ExtractionGateConfigDto,
   ExtractionGateDto,
   ExtractionGateRuleDto,
@@ -427,6 +428,27 @@ export const fetchDeadLetterJobs = (session: Session): Promise<DeadLetterJobDto[
   apiGet('/api/jobs/dead-letter', session);
 export const fetchWorkerActivity = (session: Session): Promise<WorkerActivityDto> =>
   apiGet('/api/jobs/activity', session);
+
+// Entity aliases (V2.3 item 6.1): the recorded equivalences behind
+// alias-aware contradiction pairing, managed on the Settings page.
+export const fetchEntityAliases = (session: Session): Promise<EntityAliasDto[]> =>
+  apiGet('/api/reconcile-aliases', session);
+export const addEntityAlias = (
+  session: Session,
+  request: { canonical: string; alias: string },
+): Promise<EntityAliasDto> => apiPost('/api/reconcile-aliases', request, session);
+export async function removeEntityAlias(
+  session: Session,
+  id: string,
+): Promise<{ removed: boolean }> {
+  const path = `/api/reconcile-aliases/${id}`;
+  const response = await fetch(path, {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${session.accessToken}` },
+  });
+  if (!response.ok) throw await toError(path, response);
+  return (await response.json()) as { removed: boolean };
+}
 
 // Per-user capture/upload defaults (Settings).
 export const fetchSettings = (session: Session): Promise<UserSettingsDto> =>

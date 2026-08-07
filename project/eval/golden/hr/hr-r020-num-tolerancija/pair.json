@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r020",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "Napon napajanja adaptera AD-3 je 230 V plus-minus 5 posto.",
+    "kind": "fact",
+    "entities": ["adapter AD-3"],
+    "subject_entity": "adapter AD-3",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "AD-3 ulaz: 230 V ±5%."
+  },
+  "b": {
+    "content": "Izmjereni napon napajanja adaptera AD-3 bio je 235 V.",
+    "kind": "fact",
+    "entities": ["adapter AD-3"],
+    "subject_entity": "adapter AD-3",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Mjerenje: napajanje AD-3 na 235 V."
+  },
+  "notes": "Negativan slučaj: izmjerena vrijednost unutar deklarirane tolerancije slaže se sa specifikacijom."
+}

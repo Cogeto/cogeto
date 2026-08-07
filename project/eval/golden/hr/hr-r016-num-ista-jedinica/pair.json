@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r016",
+  "task": "contradiction",
+  "expected": "contradicts",
+  "a": {
+    "content": "Debljina stijenke kućišta VX-9 je 3,2 mm.",
+    "kind": "fact",
+    "entities": ["kućište VX-9"],
+    "subject_entity": "kućište VX-9",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Debljina stijenke za kućište VX-9: 3,2 mm."
+  },
+  "b": {
+    "content": "Debljina stijenke kućišta VX-9 je 3,4 mm.",
+    "kind": "fact",
+    "entities": ["kućište VX-9"],
+    "subject_entity": "kućište VX-9",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Nacrt rev B za kućište VX-9 navodi debljinu stijenke 3,4 mm."
+  },
+  "notes": "Numerička jezgra s decimalnim zarezom: ista dimenzija, dvije vrijednosti u istoj jedinici. Deterministička usporedba mora uhvatiti bez modela."
+}

@@ -22,7 +22,7 @@ export const RECONCILE_DEDUP_PROMPT: PromptVersionRef = {
 };
 export const RECONCILE_CONTRADICTION_PROMPT: PromptVersionRef = {
   family: 'reconcile_contradiction',
-  version: 'v0001',
+  version: 'v0002',
 };
 
 /** Tier three of the reading ladder (V2.1 item 4.1): reading a page that is a

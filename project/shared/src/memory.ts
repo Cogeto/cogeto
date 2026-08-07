@@ -72,14 +72,48 @@ export const UNCERTAINTY_REASON_LABELS: Record<UncertaintyReason, string> = {
 export const FACT_KINDS = ['commitment', 'decision', 'preference', 'fact', 'open_loop'] as const;
 export type FactKind = (typeof FACT_KINDS)[number];
 
-/** How the owner resolved a contradiction in Review. */
+/**
+ * How a contradiction finding was resolved: the four owner actions from
+ * Review, plus `revision` (V2.3 item 6.1), the automatic resolution recorded
+ * when a supersession settled the conflict without a human. Both paths are
+ * uniform for reporting: `resolved_at` set, one of these values, the cause in
+ * the finding's event log (docs/features/findings.md).
+ */
 export const RELATION_RESOLUTIONS = [
   'confirmed_a',
   'confirmed_b',
   'corrected',
   'dismissed',
+  'revision',
 ] as const;
 export type RelationResolution = (typeof RELATION_RESOLUTIONS)[number];
+
+/** Which pass detected a finding (V2.3 item 6.1): inline at ingestion, the
+ * nightly batch, or the post-commit repair window. NULL on pre-0048 rows
+ * reads as "not recorded". */
+export const RELATION_DETECTORS = ['pipeline', 'dreaming', 'repair'] as const;
+export type RelationDetector = (typeof RELATION_DETECTORS)[number];
+
+/** The finding lifecycle's event vocabulary (memory_relation_event, migration
+ * 0048). Frozen: the V2.3 report's delta view renders these. */
+export const RELATION_EVENTS = [
+  'detected',
+  'party_superseded',
+  'resolved_by_user',
+  'resolved_by_revision',
+  'kept_open',
+  'reopened',
+] as const;
+export type RelationEvent = (typeof RELATION_EVENTS)[number];
+
+/** One recorded entity-alias pair (V2.3 item 6.1): the Settings surface's
+ * row shape over `/api/reconcile-aliases`. */
+export interface EntityAliasDto {
+  id: string;
+  canonical: string;
+  alias: string;
+  createdAt: string;
+}
 
 /** Retrieval score multipliers per status (spec §3.4). */
 export const STATUS_MULTIPLIERS: Record<MemoryStatus, number> = {

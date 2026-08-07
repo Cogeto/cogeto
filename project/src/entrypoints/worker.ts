@@ -17,6 +17,7 @@ import {
   EXTRACTION_REFUSAL_RETENTION_CRONTAB,
   ExtractionGateStore,
   IngestionPipeline,
+  ReconcileRepair,
 } from '../ingestion/index';
 import {
   DeletionExecutor,
@@ -158,6 +159,7 @@ async function main(): Promise<void> {
     deletionExecutor: context.get(DeletionExecutor),
     integritySweep: context.get(IntegritySweep),
     dreaming: context.get(DreamingService),
+    reconcileRepair: context.get(ReconcileRepair),
     approvalService: context.get(ApprovalService),
     approvalExecutor: context.get(ApprovalExecutor),
     passportExecutor: context.get(PassportExportExecutor),

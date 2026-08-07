@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r018",
+  "task": "contradiction",
+  "expected": "contradicts",
+  "a": {
+    "content": "Raspon temperature skladištenja R7 kontrolera je od 10 do 20 stupnjeva C.",
+    "kind": "fact",
+    "entities": ["R7 kontroler"],
+    "subject_entity": "R7 kontroler",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Skladištenje: R7 kontroler držati između 10 i 20 °C."
+  },
+  "b": {
+    "content": "Raspon temperature skladištenja R7 kontrolera je od 30 do 40 stupnjeva C.",
+    "kind": "fact",
+    "entities": ["R7 kontroler"],
+    "subject_entity": "R7 kontroler",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "R7 kontroler, raspon skladištenja: 30–40 °C."
+  },
+  "notes": "Odvojeni rasponi za isti uvjet ne mogu oba vrijediti."
+}

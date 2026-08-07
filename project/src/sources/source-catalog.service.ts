@@ -158,6 +158,12 @@ export class SourceCatalogService {
         latestGateRefusalFor(this.db, { sourceType, sourceId }),
         this.revisions.forSource(principal, { sourceType, sourceId }),
       ]);
+    // One events read for the page's findings (V2.3 item 6.1): the history
+    // rides along with each contradiction, owner-gated inside the read.
+    const relationEvents = await this.reconciliation.eventsForRelations(
+      principal,
+      contradictions.map(({ relation }) => relation.id),
+    );
     return {
       sourceType,
       sourceId,
@@ -186,6 +192,12 @@ export class SourceCatalogService {
         resolvedAt: relation.resolvedAt?.toISOString() ?? null,
         resolution: relation.resolution,
         reason: relation.reason,
+        detectedBy: relation.detectedBy ?? null,
+        events: (relationEvents.get(relation.id) ?? []).map((event) => ({
+          event: event.event,
+          detail: (event.detailJson as Record<string, unknown> | null) ?? null,
+          createdAt: event.createdAt.toISOString(),
+        })),
         a: toListItem(a),
         b: toListItem(b),
       })),

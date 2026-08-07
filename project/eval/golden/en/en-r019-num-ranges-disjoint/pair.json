@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r019",
+  "task": "contradiction",
+  "expected": "contradicts",
+  "a": {
+    "content": "The R7 controller storage temperature range is 10 to 20 degrees C.",
+    "kind": "fact",
+    "entities": ["R7 controller"],
+    "subject_entity": "R7 controller",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Storage: keep the R7 controller between 10 and 20 °C."
+  },
+  "b": {
+    "content": "The R7 controller storage temperature range is 30 to 40 degrees C.",
+    "kind": "fact",
+    "entities": ["R7 controller"],
+    "subject_entity": "R7 controller",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "R7 controller storage range: 30–40 °C."
+  },
+  "notes": "Disjoint ranges for the same slot cannot both govern storage."
+}

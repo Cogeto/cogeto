@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r024",
+  "task": "contradiction",
+  "expected": "contradicts",
+  "a": {
+    "content": "Adriatic Fods payment terms are 30 days.",
+    "kind": "fact",
+    "entities": ["Adriatic Fods"],
+    "subject_entity": "Adriatic Fods",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Terms with Adriatic Fods: net 30."
+  },
+  "b": {
+    "content": "Adriatic Foods payment terms are 60 days.",
+    "kind": "fact",
+    "entities": ["Adriatic Foods"],
+    "subject_entity": "Adriatic Foods",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Adriatic Foods invoices are due in 60 days."
+  },
+  "notes": "A mid-token typo in the subject must still pair: before 6.1, byte-inequality made this conflict invisible."
+}

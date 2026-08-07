@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r017",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "Najveća duljina PX kabela je 0,5 m.",
+    "kind": "fact",
+    "entities": ["PX kabel"],
+    "subject_entity": "PX kabel",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "PX kabel: najveća duljina 0,5 m."
+  },
+  "b": {
+    "content": "Najveća duljina PX kabela je 50 cm.",
+    "kind": "fact",
+    "entities": ["PX kabel"],
+    "subject_entity": "PX kabel",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Maksimalna duljina PX kabela iznosi 50 cm."
+  },
+  "notes": "Negativan slučaj: ista vrijednost u različitim jedinicama nije sukob."
+}

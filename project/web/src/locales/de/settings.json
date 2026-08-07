@@ -38,7 +38,10 @@
     "heading": "Darstellung",
     "explainer": "Dunkel ist die Standardeinstellung. Ihre Auswahl wird auf diesem Gerät gespeichert und überall angewendet.",
     "themeLabel": "Design",
-    "theme": { "dark": "Dunkel", "light": "Hell" }
+    "theme": {
+      "dark": "Dunkel",
+      "light": "Hell"
+    }
   },
   "research": {
     "heading": "Webrecherche",
@@ -55,7 +58,22 @@
     "notConfigured": "kein Anbieterschlüssel festgelegt, Modellfunktionen sind deaktiviert",
     "redaction": "Redaktion",
     "error": "Die Modellkonfiguration konnte nicht geladen werden.",
-    "tier": { "pipeline": "Verarbeitung", "answer": "Antwort", "embeddings": "Einbettungen" }
+    "tier": {
+      "pipeline": "Verarbeitung",
+      "answer": "Antwort",
+      "embeddings": "Einbettungen"
+    }
+  },
+  "aliases": {
+    "heading": "Entity aliases",
+    "explainer": "Two names for the same thing pair for contradiction checks, including a Croatian and an English name for one company.",
+    "pair": "\"{{alias}}\" counts as \"{{canonical}}\"",
+    "canonical": "Canonical name",
+    "canonicalPlaceholder": "The name your documents use most",
+    "alias": "Alias",
+    "aliasPlaceholder": "Another name for the same thing",
+    "empty": "No aliases recorded yet.",
+    "error": "Couldn't load your aliases."
   },
   "signingKey": {
     "heading": "Signierschlüssel der Instanz",

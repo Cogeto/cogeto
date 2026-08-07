@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r022",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "Struja senzora M2 je 150 mA pri punom opterećenju.",
+    "kind": "fact",
+    "entities": ["senzor M2"],
+    "subject_entity": "senzor M2",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "M2 vuče 150 mA pri punom opterećenju."
+  },
+  "b": {
+    "content": "Struja senzora M2 je 40 mA u mirovanju.",
+    "kind": "fact",
+    "entities": ["senzor M2"],
+    "subject_entity": "senzor M2",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Potrošnja senzora M2 u mirovanju: 40 mA."
+  },
+  "notes": "Negativan slučaj: vrijednosti uz različite radne uvjete različiti su utori, ne sukob."
+}

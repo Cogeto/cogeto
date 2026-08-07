@@ -11,6 +11,7 @@ import {
 } from '../api';
 import type { Session } from '../auth/oidc';
 import { LocatorChips } from './LocatorChips';
+import { RESOLUTION_KEY_SUFFIX } from './relation-labels';
 import { ErrorState, Pill, SkeletonRows, StatusChip } from './ui';
 import { timeAgo } from './status';
 
@@ -40,6 +41,11 @@ export function InspectionPanels({
   if (inspection.isPending) return <SkeletonRows rows={3} label={t('detail.loading')} />;
   if (inspection.isError) return <ErrorState>{t('detail.error')}</ErrorState>;
   const data = inspection.data;
+  // Enum → key map (AGENTS.md): unknown values render raw, never a broken key.
+  const resolutionLabel = (resolution: string | null) => {
+    const suffix = RESOLUTION_KEY_SUFFIX[resolution ?? ''];
+    return suffix ? t(`detail.resolutionLabel.${suffix}`) : (resolution ?? '');
+  };
 
   return (
     <>
@@ -121,10 +127,27 @@ export function InspectionPanels({
                   {item.resolvedAt
                     ? t('detail.contradictionResolved', {
                         when: timeAgo(item.detectedAt),
-                        resolution: item.resolution ?? '',
+                        resolution: resolutionLabel(item.resolution),
                       })
                     : t('detail.contradictionOpen', { when: timeAgo(item.detectedAt) })}
                 </p>
+                {item.detectedBy && (
+                  <p className="mt-0.5 text-[0.68rem] text-slate-400">
+                    {t(`detail.detectedBy.${item.detectedBy}`, { defaultValue: item.detectedBy })}
+                  </p>
+                )}
+                {item.events.length > 0 && (
+                  <ul className="mt-1.5 space-y-0.5 border-t border-slate-100 pt-1.5">
+                    {item.events.map((event, index) => (
+                      <li key={index} className="text-[0.68rem] text-slate-400">
+                        {t(`detail.event.${event.event}`, { defaultValue: event.event })}
+                        <span className="ml-1.5" title={event.createdAt}>
+                          {timeAgo(event.createdAt)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>
