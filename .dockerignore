@@ -4,5 +4,10 @@
 !package-lock.json
 !tsconfig.base.json
 !project
+# Findings-report rendering inputs (V2.3 item 6.2): the canonical brand
+# assets the PDF logo is drawn from, and the published trust-score artifacts
+# the report looks its model configuration up in.
+!assets/brand
+!eval/trust-scores
 project/**/node_modules
 project/**/dist

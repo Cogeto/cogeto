@@ -1,0 +1,2237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "findings_report_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string",
+              "const": "1.0"
+            },
+            "generated_at": {
+              "type": "string",
+              "minLength": 1
+            },
+            "locale": {
+              "type": "string"
+            },
+            "scope": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "corpus",
+                    "import",
+                    "sources",
+                    "date_range"
+                  ]
+                },
+                "import_run_id": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "refs": {
+                  "anyOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "source_type": {
+                            "type": "string"
+                          },
+                          "source_id": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "source_type",
+                          "source_id"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "from": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "to": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "import_run_id",
+                "refs",
+                "from",
+                "to"
+              ],
+              "additionalProperties": false
+            },
+            "date_range": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "to": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "from",
+                "to"
+              ],
+              "additionalProperties": false
+            },
+            "previous_report": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "generated_at": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "generated_at"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "public_key_endpoint": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "version",
+            "generated_at",
+            "locale",
+            "scope",
+            "date_range",
+            "previous_report",
+            "public_key_endpoint"
+          ],
+          "additionalProperties": false
+        },
+        "configuration": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "tiers": {
+              "type": "object",
+              "properties": {
+                "pipeline": {
+                  "type": "object",
+                  "properties": {
+                    "provider": {
+                      "type": "string"
+                    },
+                    "model": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "provider",
+                    "model"
+                  ],
+                  "additionalProperties": false
+                },
+                "answer": {
+                  "type": "object",
+                  "properties": {
+                    "provider": {
+                      "type": "string"
+                    },
+                    "model": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "provider",
+                    "model"
+                  ],
+                  "additionalProperties": false
+                },
+                "embedding": {
+                  "type": "object",
+                  "properties": {
+                    "provider": {
+                      "type": "string"
+                    },
+                    "model": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "provider",
+                    "model"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "pipeline",
+                "answer",
+                "embedding"
+              ],
+              "additionalProperties": false
+            },
+            "vision": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "provider": {
+                      "type": "string"
+                    },
+                    "model": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "provider",
+                    "model"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "redaction_enabled": {
+              "type": "boolean"
+            },
+            "prompt_versions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "family": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "family",
+                  "version"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "reconcile_config_version": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "trust_scores": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "published",
+                    "not_published"
+                  ]
+                },
+                "release": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "matched_configuration_id": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "generated_at": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "aggregate": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "extraction_precision": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "extraction_recall": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "verification_agreement": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "dedup_accuracy": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "contradiction_recall": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "contradiction_precision": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "supersedes_accuracy": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "supersedes_pairs": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "rewrite_accuracy": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "extraction_precision",
+                        "extraction_recall",
+                        "verification_agreement",
+                        "dedup_accuracy",
+                        "contradiction_recall",
+                        "contradiction_precision",
+                        "supersedes_accuracy",
+                        "supersedes_pairs",
+                        "rewrite_accuracy"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "per_language": {
+                  "anyOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "extraction_precision": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "extraction_recall": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "verification_agreement": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "dedup_accuracy": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "contradiction_recall": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "contradiction_precision": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "supersedes_accuracy": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "supersedes_pairs": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "rewrite_accuracy": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "language": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "extraction_precision",
+                          "extraction_recall",
+                          "verification_agreement",
+                          "dedup_accuracy",
+                          "contradiction_recall",
+                          "contradiction_precision",
+                          "supersedes_accuracy",
+                          "supersedes_pairs",
+                          "rewrite_accuracy",
+                          "language"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "status",
+                "release",
+                "matched_configuration_id",
+                "generated_at",
+                "aggregate",
+                "per_language"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "id",
+            "tiers",
+            "vision",
+            "redaction_enabled",
+            "prompt_versions",
+            "reconcile_config_version",
+            "trust_scores"
+          ],
+          "additionalProperties": false
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "sources_examined": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "facts_extracted": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "findings_open": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "findings_resolved": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "resolved_since_previous": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "new_since_previous": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reopened_since_previous": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sources_not_fully_read": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "facts_withheld": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "superseded_facts": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "gate_refusals": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "sensitive_facts_excluded": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "sources_examined",
+            "facts_extracted",
+            "findings_open",
+            "findings_resolved",
+            "resolved_since_previous",
+            "new_since_previous",
+            "reopened_since_previous",
+            "sources_not_fully_read",
+            "facts_withheld",
+            "superseded_facts",
+            "gate_refusals",
+            "sensitive_facts_excluded"
+          ],
+          "additionalProperties": false
+        },
+        "coverage": {
+          "type": "object",
+          "properties": {
+            "sources": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "type": "object",
+                    "properties": {
+                      "source_type": {
+                        "type": "string"
+                      },
+                      "source_id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "document_class": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "revision": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "source_type",
+                      "source_id",
+                      "name",
+                      "document_class",
+                      "revision"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "first_seen_at": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "facts": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "suppressed": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "read": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "outcome": {
+                            "type": "string"
+                          },
+                          "reason_code": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "pages_total": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "pages_ocr": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "pages_vision": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "sheets_truncated": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "rows_read": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "rows_total": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "outcome",
+                          "reason_code",
+                          "pages_total",
+                          "pages_ocr",
+                          "pages_vision",
+                          "sheets_truncated",
+                          "rows_read",
+                          "rows_total"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "gate_refusal": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "reason": {
+                            "type": "string"
+                          },
+                          "refused_at": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "reason",
+                          "refused_at"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "source",
+                  "first_seen_at",
+                  "facts",
+                  "suppressed",
+                  "read",
+                  "gate_refusal"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "skipped_refs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "source_type": {
+                    "type": "string"
+                  },
+                  "source_id": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "source_type",
+                  "source_id",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "scope_truncated": {
+              "type": "boolean"
+            },
+            "scope_limit": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "import_counts": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "documents": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "duplicates_skipped": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "unreadable": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "failed": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "excluded": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "unsupported": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "documents",
+                    "duplicates_skipped",
+                    "unreadable",
+                    "failed",
+                    "excluded",
+                    "unsupported"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "sources",
+            "skipped_refs",
+            "scope_truncated",
+            "scope_limit",
+            "import_counts"
+          ],
+          "additionalProperties": false
+        },
+        "findings": {
+          "type": "object",
+          "properties": {
+            "grouping": {
+              "type": "string",
+              "const": "subject_entity"
+            },
+            "groups": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "subject": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "findings": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "detected_at": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "detected_by": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "resolved"
+                          ]
+                        },
+                        "reopened": {
+                          "type": "boolean"
+                        },
+                        "resolution": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "resolved_at": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "resolved_by_revision": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "source_revision_id": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "successor_source": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "source_type": {
+                                          "type": "string"
+                                        },
+                                        "source_id": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "document_class": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "revision": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "source_type",
+                                        "source_id",
+                                        "name",
+                                        "document_class",
+                                        "revision"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "source_revision_id",
+                                "successor_source"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "explanation": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "parties": {
+                          "type": "array",
+                          "prefixItems": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "memory_id": {
+                                  "type": "string"
+                                },
+                                "claim": {
+                                  "type": "string"
+                                },
+                                "status": {
+                                  "type": "string"
+                                },
+                                "kind": {
+                                  "type": "string"
+                                },
+                                "valid_from": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "valid_until": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "source": {
+                                  "type": "object",
+                                  "properties": {
+                                    "source_type": {
+                                      "type": "string"
+                                    },
+                                    "source_id": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "document_class": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "revision": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "source_type",
+                                    "source_id",
+                                    "name",
+                                    "document_class",
+                                    "revision"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "span": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "text": {
+                                          "type": "string"
+                                        },
+                                        "locators": {
+                                          "anyOf": [
+                                            {
+                                              "type": "array",
+                                              "items": {
+                                                "anyOf": [
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "kind": {
+                                                        "type": "string",
+                                                        "const": "page"
+                                                      },
+                                                      "page": {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      "tier": {
+                                                        "anyOf": [
+                                                          {
+                                                            "type": "string",
+                                                            "enum": [
+                                                              "text",
+                                                              "ocr",
+                                                              "vision"
+                                                            ]
+                                                          },
+                                                          {
+                                                            "type": "null"
+                                                          }
+                                                        ]
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "kind",
+                                                      "page",
+                                                      "tier"
+                                                    ],
+                                                    "additionalProperties": false
+                                                  },
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "kind": {
+                                                        "type": "string",
+                                                        "const": "paragraph"
+                                                      },
+                                                      "paragraph": {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "kind",
+                                                      "paragraph"
+                                                    ],
+                                                    "additionalProperties": false
+                                                  },
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "kind": {
+                                                        "type": "string",
+                                                        "const": "sheet_row"
+                                                      },
+                                                      "sheet": {
+                                                        "anyOf": [
+                                                          {
+                                                            "type": "string"
+                                                          },
+                                                          {
+                                                            "type": "null"
+                                                          }
+                                                        ]
+                                                      },
+                                                      "sheet_index": {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      "row": {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      "cell_range": {
+                                                        "type": "string"
+                                                      },
+                                                      "columns": {
+                                                        "type": "array",
+                                                        "items": {
+                                                          "type": "string"
+                                                        }
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "kind",
+                                                      "sheet",
+                                                      "sheet_index",
+                                                      "row",
+                                                      "cell_range",
+                                                      "columns"
+                                                    ],
+                                                    "additionalProperties": false
+                                                  },
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "kind": {
+                                                        "type": "string",
+                                                        "const": "document"
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "kind"
+                                                    ],
+                                                    "additionalProperties": false
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "recovered_by": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "ocr",
+                                                "vision"
+                                              ]
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "hedge": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "text",
+                                        "locators",
+                                        "recovered_by",
+                                        "hedge"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "memory_id",
+                                "claim",
+                                "status",
+                                "kind",
+                                "valid_from",
+                                "valid_until",
+                                "source",
+                                "span"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "memory_id": {
+                                  "type": "string"
+                                },
+                                "claim": {
+                                  "type": "string"
+                                },
+                                "status": {
+                                  "type": "string"
+                                },
+                                "kind": {
+                                  "type": "string"
+                                },
+                                "valid_from": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "valid_until": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "source": {
+                                  "type": "object",
+                                  "properties": {
+                                    "source_type": {
+                                      "type": "string"
+                                    },
+                                    "source_id": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "document_class": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "revision": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "source_type",
+                                    "source_id",
+                                    "name",
+                                    "document_class",
+                                    "revision"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "span": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "text": {
+                                          "type": "string"
+                                        },
+                                        "locators": {
+                                          "anyOf": [
+                                            {
+                                              "type": "array",
+                                              "items": {
+                                                "anyOf": [
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "kind": {
+                                                        "type": "string",
+                                                        "const": "page"
+                                                      },
+                                                      "page": {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      "tier": {
+                                                        "anyOf": [
+                                                          {
+                                                            "type": "string",
+                                                            "enum": [
+                                                              "text",
+                                                              "ocr",
+                                                              "vision"
+                                                            ]
+                                                          },
+                                                          {
+                                                            "type": "null"
+                                                          }
+                                                        ]
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "kind",
+                                                      "page",
+                                                      "tier"
+                                                    ],
+                                                    "additionalProperties": false
+                                                  },
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "kind": {
+                                                        "type": "string",
+                                                        "const": "paragraph"
+                                                      },
+                                                      "paragraph": {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "kind",
+                                                      "paragraph"
+                                                    ],
+                                                    "additionalProperties": false
+                                                  },
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "kind": {
+                                                        "type": "string",
+                                                        "const": "sheet_row"
+                                                      },
+                                                      "sheet": {
+                                                        "anyOf": [
+                                                          {
+                                                            "type": "string"
+                                                          },
+                                                          {
+                                                            "type": "null"
+                                                          }
+                                                        ]
+                                                      },
+                                                      "sheet_index": {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      "row": {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      "cell_range": {
+                                                        "type": "string"
+                                                      },
+                                                      "columns": {
+                                                        "type": "array",
+                                                        "items": {
+                                                          "type": "string"
+                                                        }
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "kind",
+                                                      "sheet",
+                                                      "sheet_index",
+                                                      "row",
+                                                      "cell_range",
+                                                      "columns"
+                                                    ],
+                                                    "additionalProperties": false
+                                                  },
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "kind": {
+                                                        "type": "string",
+                                                        "const": "document"
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "kind"
+                                                    ],
+                                                    "additionalProperties": false
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "recovered_by": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "ocr",
+                                                "vision"
+                                              ]
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "hedge": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "text",
+                                        "locators",
+                                        "recovered_by",
+                                        "hedge"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "memory_id",
+                                "claim",
+                                "status",
+                                "kind",
+                                "valid_from",
+                                "valid_until",
+                                "source",
+                                "span"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "history": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "event": {
+                                "type": "string"
+                              },
+                              "at": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "detail": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string"
+                                    },
+                                    "additionalProperties": {}
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "event",
+                              "at",
+                              "detail"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "detected_at",
+                        "detected_by",
+                        "state",
+                        "reopened",
+                        "resolution",
+                        "resolved_at",
+                        "resolved_by_revision",
+                        "explanation",
+                        "parties",
+                        "history"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "subject",
+                  "findings"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "grouping",
+            "groups"
+          ],
+          "additionalProperties": false
+        },
+        "superseded": {
+          "type": "object",
+          "properties": {
+            "chains": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "links": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "memory_id": {
+                          "type": "string"
+                        },
+                        "content": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "valid_from": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "valid_until": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "recorded_at": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "source": {
+                          "type": "object",
+                          "properties": {
+                            "source_type": {
+                              "type": "string"
+                            },
+                            "source_id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "document_class": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "revision": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "source_type",
+                            "source_id",
+                            "name",
+                            "document_class",
+                            "revision"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "memory_id",
+                        "content",
+                        "status",
+                        "valid_from",
+                        "valid_until",
+                        "recorded_at",
+                        "source"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "links"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "chains_truncated": {
+              "type": "boolean"
+            },
+            "chains_limit": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "chains",
+            "chains_truncated",
+            "chains_limit"
+          ],
+          "additionalProperties": false
+        },
+        "suppressed": {
+          "type": "object",
+          "properties": {
+            "total": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "by_reason": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string"
+                  },
+                  "fact_content": {
+                    "type": "string"
+                  },
+                  "span_text": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "locators": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "page"
+                                },
+                                "page": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "tier": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "text",
+                                        "ocr",
+                                        "vision"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "page",
+                                "tier"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "paragraph"
+                                },
+                                "paragraph": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "paragraph"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "sheet_row"
+                                },
+                                "sheet": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "sheet_index": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "row": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "cell_range": {
+                                  "type": "string"
+                                },
+                                "columns": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "sheet",
+                                "sheet_index",
+                                "row",
+                                "cell_range",
+                                "columns"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "document"
+                                }
+                              },
+                              "required": [
+                                "kind"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "verification_verdict": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "source": {
+                    "type": "object",
+                    "properties": {
+                      "source_type": {
+                        "type": "string"
+                      },
+                      "source_id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "document_class": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "revision": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "source_type",
+                      "source_id",
+                      "name",
+                      "document_class",
+                      "revision"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "reason",
+                  "fact_content",
+                  "span_text",
+                  "locators",
+                  "verification_verdict",
+                  "source",
+                  "created_at"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "entries_truncated": {
+              "type": "boolean"
+            },
+            "entries_limit": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "total",
+            "by_reason",
+            "entries",
+            "entries_truncated",
+            "entries_limit"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "report",
+        "configuration",
+        "summary",
+        "coverage",
+        "findings",
+        "superseded",
+        "suppressed"
+      ],
+      "additionalProperties": false
+    },
+    "integrity": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "const": "ed25519"
+        },
+        "canonicalization": {
+          "type": "string",
+          "const": "sorted-keys-compact-json"
+        },
+        "payload_sha256": {
+          "type": "string"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "public_key_pem": {
+          "type": "string"
+        },
+        "public_key_endpoint": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "algorithm",
+        "canonicalization",
+        "payload_sha256",
+        "signature",
+        "public_key_pem",
+        "public_key_endpoint"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "findings_report_version",
+    "payload",
+    "integrity"
+  ],
+  "additionalProperties": false,
+  "$id": "https://cogeto.eu/schemas/findings-report/1.0/findings-report.schema.json",
+  "title": "Cogeto findings report artifact",
+  "description": "The signed findings-report JSON artifact: the payload plus the integrity block a third party verifies. Version 1.0."
+}

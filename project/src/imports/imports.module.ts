@@ -52,11 +52,15 @@ export class ImportsModule {
         ImportCoordinator,
         SourceRevisionStore,
         SourceContextStore,
+        // The record's reads (V2.3 item 6.2): the findings-report assembler
+        // resolves an import-scope run through the same gated service the
+        // app serves; it needs only DRIZZLE and the object store.
+        ImportService,
         ...(options.inFlight !== undefined
           ? [{ provide: IMPORT_IN_FLIGHT, useValue: options.inFlight }]
           : []),
       ],
-      exports: [ImportCoordinator],
+      exports: [ImportCoordinator, ImportService],
     };
   }
 }

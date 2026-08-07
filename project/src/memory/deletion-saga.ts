@@ -276,6 +276,15 @@ const countsSchema = z.object({
    * and hash to the same value. A count, not an identifier.
    */
   chat_attachments_removed: z.int().optional(),
+  /**
+   * Findings reports expired with this deletion (V2.3 item 6.2). A rendered
+   * report quotes verbatim source spans, so it is the second content-bearing
+   * derived artifact after the passport and is covered the same way: expired
+   * in the enumeration transaction, its object keys erased by the worker leg
+   * and verified absent by the sweep. ADDITIVE and OPTIONAL, like every count
+   * before it: earlier receipts parse unchanged and hash to the same value.
+   */
+  findings_reports_expired: z.int().optional(),
   /** Qdrant point id = memory id (spec §4.2); duplicated for receipt readability. */
   point_ids: z.array(z.string()),
   object_keys: z.array(z.string()),
@@ -520,6 +529,7 @@ export class DeletionSaga {
       let chatMessagesRedacted = 0;
       let replyDraftsRedacted = 0;
       let passportExportsExpired = 0;
+      let findingsReportsExpired = 0;
       let suppressedFactsRemoved = 0;
       let fileReadReportsRemoved = 0;
       let chatAttachmentsRemoved = 0;
@@ -573,6 +583,11 @@ export class DeletionSaga {
           if (cascade.artifact === 'passport_exports') {
             passportExportsExpired += expired.count;
           }
+          // V2.3 item 6.2: findings reports quote verbatim spans, so they are
+          // the second artifact under the same rule.
+          if (cascade.artifact === 'findings_reports') {
+            findingsReportsExpired += expired.count;
+          }
           ownerExpiredObjectKeys.push(...expired.objectKeys);
         }
       }
@@ -613,6 +628,7 @@ export class DeletionSaga {
         chat_messages_redacted: chatMessagesRedacted,
         reply_drafts_redacted: replyDraftsRedacted,
         ...(passportExportsExpired > 0 ? { passport_exports_expired: passportExportsExpired } : {}),
+        ...(findingsReportsExpired > 0 ? { findings_reports_expired: findingsReportsExpired } : {}),
         ...(chatMessagesRemoved === null ? {} : { chat_messages_removed: chatMessagesRemoved }),
         ...(suppressedFactsRemoved > 0 ? { suppressed_facts_removed: suppressedFactsRemoved } : {}),
         ...(fileReadReportsRemoved > 0
@@ -647,6 +663,7 @@ export class DeletionSaga {
         chatMessagesRedacted > 0 ||
         replyDraftsRedacted > 0 ||
         passportExportsExpired > 0 ||
+        findingsReportsExpired > 0 ||
         suppressedFactsRemoved > 0 ||
         (chatMessagesRemoved ?? 0) > 0;
       if (!erasedSomething) {

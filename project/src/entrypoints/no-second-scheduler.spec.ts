@@ -42,6 +42,7 @@ describe('no_second_scheduler', () => {
       'DREAM_CRONTAB',
       'APPROVAL_EXPIRY_CRONTAB',
       'PASSPORT_RETENTION_CRONTAB',
+      'REPORT_RETENTION_CRONTAB',
       'EMAIL_REFUSAL_RETENTION_CRONTAB',
     ]) {
       expect(worker, `${line} must be scheduled on the one crontab`).toMatch(

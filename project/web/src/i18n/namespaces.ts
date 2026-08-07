@@ -46,6 +46,8 @@ export const NAMESPACES = [
   'timeline',
   /** Memory Passport export. */
   'passport',
+  /** The findings report (V2.3 item 6.2): trigger, progress, downloads. */
+  'reports',
   /** Email capture: inbound address, allowlist, refusals. */
   'email',
   /** The extraction gate: per-connector admission control (V2.1 item 4.3). */

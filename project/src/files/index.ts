@@ -40,3 +40,6 @@ export type {
 
 // The source catalog's read-report badges (V2.2 item 5.2).
 export { readOutcomesForKeys, keysWithReadOutcome } from './persistence/file-read-report';
+// The full per-source read report (V2.3 item 6.2): the findings report's
+// coverage section explains truncation and per-page tiers from it.
+export { FileReadReportStore } from './persistence/file-read-report';

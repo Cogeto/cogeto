@@ -19,6 +19,7 @@ import { Audit } from './pages/Audit';
 import { Memories } from './pages/Memories';
 import { Sources } from './pages/Sources';
 import { Review } from './pages/Review';
+import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { Skills } from './pages/Skills';
 import { System } from './pages/System';
@@ -120,6 +121,8 @@ function renderPage(session: Session) {
       return <Timeline session={session} />;
     case '/review':
       return <Review session={session} />;
+    case '/reports':
+      return <Reports session={session} />;
     case '/approvals':
       return <Approvals session={session} />;
     case '/forgotten':

@@ -61,6 +61,12 @@ import {
 } from '../passport/index';
 import { ImportItemCascade, ImportItemCascadeModule, ImportsModule } from '../imports/index';
 import {
+  FindingsReportCascade,
+  FindingsReportCascadeModule,
+  ReportsModule,
+  REPORT_RETENTION_HOURS,
+} from '../reports/index';
+import {
   ChatAnswerCascade,
   ChatAttachmentCascade,
   ChatAttachmentWorkerModule,
@@ -132,6 +138,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         IngestionProgressCascadeModule,
         SourceRevisionCascadeModule,
         ImportItemCascadeModule,
+        FindingsReportCascadeModule,
       ],
       // Assistant answers citing erased memories are redacted; reply drafts
       // grounded on the source are too. A ready passport export is a signed
@@ -160,6 +167,9 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         SourceRevisionCascade,
         // An import item's filename dies with its source: tombstoned.
         ImportItemCascade,
+        // A findings report quotes verbatim spans: the second content-bearing
+        // artifact under the passport's SEC-8 rule (V2.3 item 6.2).
+        FindingsReportCascade,
       ],
     },
     // Delete-vs-ingestion serialization: the saga cancels a source's pending
@@ -194,6 +204,12 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
     imports: [memoryModule],
   });
   const skillsModule = SkillsModule.register({ imports: [memoryModule, researchModule] });
+  // One imports instance, threaded to the root AND to reports (V2.3 item
+  // 6.2): the report assembler reads an import-scope run's record.
+  const importsModule = ImportsModule.forWorker({
+    inFlight: config.importInFlight,
+    imports: [memoryModule, filesModule],
+  });
   const agentsModule = AgentsModule.register({ imports: [memoryModule] });
   @Module({
     imports: [
@@ -259,9 +275,42 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       ChatAttachmentWorkerModule.register({ imports: [memoryModule, filesModule] }),
       // The bulk-import coordinator (V2.2 item 5.3): ingests through files'
       // one upload path at demoted priority, bounded in flight.
-      ImportsModule.forWorker({
-        inFlight: config.importInFlight,
-        imports: [memoryModule, filesModule],
+      importsModule,
+      // The findings-report generation + retention jobs (V2.3 item 6.2, spec
+      // §15.4 slow path); the worker holds the private key to sign each
+      // payload hash, exactly as it signs receipts and passport manifests.
+      ReportsModule.forWorker({
+        instanceKeyDir: config.instanceKeyDir,
+        downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
+        exportRetentionHours: REPORT_RETENTION_HOURS,
+        fontsDir: config.reportFontsDir,
+        brandDir: config.reportBrandDir,
+        trustScoresDir: config.trustScoresDir,
+        modelConfig: {
+          id: config.modelProviders.id,
+          tiers: {
+            pipeline: {
+              provider: config.modelProviders.tiers.pipeline.provider,
+              model: config.modelProviders.tiers.pipeline.model,
+            },
+            answer: {
+              provider: config.modelProviders.tiers.answer.provider,
+              model: config.modelProviders.tiers.answer.model,
+            },
+            embedding: {
+              provider: config.modelProviders.tiers.embedding.provider,
+              model: config.modelProviders.tiers.embedding.model,
+            },
+          },
+          vision: config.modelProviders.vision
+            ? {
+                provider: config.modelProviders.vision.provider,
+                model: config.modelProviders.vision.model,
+              }
+            : null,
+          redactionEnabled: config.modelProviders.redacted,
+        },
+        imports: [memoryModule, importsModule],
       }),
       notesModule,
       settingsModule,

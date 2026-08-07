@@ -7,3 +7,4 @@ export { startTestMinio } from './minio';
 export type { TestMinio } from './minio';
 export { makePdf, makeDocx, makeXlsx, makeScannedPdf } from './documents';
 export type { XlsxCell, XlsxSheetFixture } from './documents';
+export { buildReportFixturePayload } from '../reports/index';

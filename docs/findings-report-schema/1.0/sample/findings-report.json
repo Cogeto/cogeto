@@ -1,0 +1,502 @@
+{
+  "findings_report_version": "1.0",
+  "payload": {
+    "report": {
+      "id": "3f1c2a9e-0000-4000-8000-000000000001",
+      "version": "1.0",
+      "generated_at": "2026-08-07T10:00:00.000Z",
+      "locale": "en",
+      "scope": {
+        "kind": "corpus",
+        "import_run_id": null,
+        "refs": null,
+        "from": null,
+        "to": null
+      },
+      "date_range": {
+        "from": "2026-06-01T08:00:00.000Z",
+        "to": "2026-08-01T09:30:00.000Z"
+      },
+      "previous_report": {
+        "id": "3f1c2a9e-0000-4000-8000-000000000000",
+        "generated_at": "2026-07-01T10:00:00.000Z"
+      },
+      "public_key_endpoint": "/api/instance/public-key"
+    },
+    "configuration": {
+      "id": "mistral-default",
+      "tiers": {
+        "pipeline": {
+          "provider": "mistral",
+          "model": "mistral-small-latest"
+        },
+        "answer": {
+          "provider": "mistral",
+          "model": "mistral-small-latest"
+        },
+        "embedding": {
+          "provider": "mistral",
+          "model": "mistral-embed"
+        }
+      },
+      "vision": null,
+      "redaction_enabled": false,
+      "prompt_versions": [
+        {
+          "family": "extraction",
+          "version": "v0005"
+        },
+        {
+          "family": "verification",
+          "version": "v0007"
+        },
+        {
+          "family": "reconcile_contradiction",
+          "version": "v0002"
+        }
+      ],
+      "reconcile_config_version": 2,
+      "trust_scores": {
+        "status": "published",
+        "release": "v1.5.0",
+        "matched_configuration_id": "mistral-default",
+        "generated_at": "2026-08-01T00:00:00.000Z",
+        "aggregate": {
+          "extraction_precision": "0.914",
+          "extraction_recall": "0.887",
+          "verification_agreement": "0.940",
+          "dedup_accuracy": "0.905",
+          "contradiction_recall": "1.000",
+          "contradiction_precision": "0.824",
+          "supersedes_accuracy": "0.833",
+          "supersedes_pairs": 12,
+          "rewrite_accuracy": "0.910"
+        },
+        "per_language": [
+          {
+            "extraction_precision": "0.921",
+            "extraction_recall": "0.890",
+            "verification_agreement": "0.945",
+            "dedup_accuracy": "0.910",
+            "contradiction_recall": "1.000",
+            "contradiction_precision": "0.840",
+            "supersedes_accuracy": "0.857",
+            "supersedes_pairs": 7,
+            "rewrite_accuracy": "0.915",
+            "language": "en"
+          },
+          {
+            "extraction_precision": "0.902",
+            "extraction_recall": "0.881",
+            "verification_agreement": "0.930",
+            "dedup_accuracy": "0.897",
+            "contradiction_recall": "1.000",
+            "contradiction_precision": "0.800",
+            "supersedes_accuracy": "0.800",
+            "supersedes_pairs": 5,
+            "rewrite_accuracy": "0.902",
+            "language": "hr"
+          }
+        ]
+      }
+    },
+    "summary": {
+      "sources_examined": 4,
+      "facts_extracted": 63,
+      "findings_open": 1,
+      "findings_resolved": 1,
+      "resolved_since_previous": 1,
+      "new_since_previous": 1,
+      "reopened_since_previous": 0,
+      "sources_not_fully_read": 2,
+      "facts_withheld": 3,
+      "superseded_facts": 2,
+      "gate_refusals": 1,
+      "sensitive_facts_excluded": 1
+    },
+    "coverage": {
+      "sources": [
+        {
+          "source": {
+            "source_type": "file",
+            "source_id": "org-1/user-1/private/file-aaaa",
+            "name": "Weld procedure WPS-114.pdf",
+            "document_class": "specification",
+            "revision": "2.0"
+          },
+          "first_seen_at": "2026-06-01T08:00:00.000Z",
+          "facts": 41,
+          "suppressed": 2,
+          "read": {
+            "outcome": "read",
+            "reason_code": null,
+            "pages_total": 12,
+            "pages_ocr": 3,
+            "pages_vision": 0,
+            "sheets_truncated": 0,
+            "rows_read": null,
+            "rows_total": null
+          },
+          "gate_refusal": null
+        },
+        {
+          "source": {
+            "source_type": "file",
+            "source_id": "org-1/user-1/private/file-bbbb",
+            "name": "Inspection report IR-2026-031.pdf",
+            "document_class": "report",
+            "revision": null
+          },
+          "first_seen_at": "2026-07-15T14:00:00.000Z",
+          "facts": 22,
+          "suppressed": 1,
+          "read": {
+            "outcome": "truncated",
+            "reason_code": "row_cap_sheet",
+            "pages_total": null,
+            "pages_ocr": 0,
+            "pages_vision": 0,
+            "sheets_truncated": 1,
+            "rows_read": 5000,
+            "rows_total": 12400
+          },
+          "gate_refusal": null
+        },
+        {
+          "source": {
+            "source_type": "file",
+            "source_id": "org-1/user-1/private/file-dddd",
+            "name": "Scanned appendix (1987).pdf",
+            "document_class": null,
+            "revision": null
+          },
+          "first_seen_at": "2026-07-20T10:00:00.000Z",
+          "facts": 0,
+          "suppressed": 0,
+          "read": {
+            "outcome": "needs_vision",
+            "reason_code": "vision_unavailable",
+            "pages_total": 6,
+            "pages_ocr": 0,
+            "pages_vision": 0,
+            "sheets_truncated": 0,
+            "rows_read": null,
+            "rows_total": null
+          },
+          "gate_refusal": null
+        },
+        {
+          "source": {
+            "source_type": "email",
+            "source_id": "email-1",
+            "name": "RE: weld thickness query",
+            "document_class": null,
+            "revision": null
+          },
+          "first_seen_at": "2026-08-01T09:30:00.000Z",
+          "facts": 0,
+          "suppressed": 0,
+          "read": null,
+          "gate_refusal": {
+            "reason": "extraction_disabled",
+            "refused_at": "2026-08-01T09:31:00.000Z"
+          }
+        }
+      ],
+      "skipped_refs": [],
+      "scope_truncated": false,
+      "scope_limit": 1000,
+      "import_counts": null
+    },
+    "findings": {
+      "grouping": "subject_entity",
+      "groups": [
+        {
+          "subject": "weld seam W-12",
+          "findings": [
+            {
+              "id": "a0000000-0000-4000-8000-000000000001",
+              "detected_at": "2026-07-16T02:10:00.000Z",
+              "detected_by": "pipeline",
+              "state": "open",
+              "reopened": false,
+              "resolution": null,
+              "resolved_at": null,
+              "resolved_by_revision": null,
+              "explanation": "The specification requires a minimum thickness of 3.2 mm; the inspection report records 2.9 mm for the same seam.",
+              "parties": [
+                {
+                  "memory_id": "b0000000-0000-4000-8000-000000000001",
+                  "claim": "Weld seam W-12 requires a minimum throat thickness of 3.2 mm.",
+                  "status": "contradicted",
+                  "kind": "fact",
+                  "valid_from": "2026-06-01T00:00:00.000Z",
+                  "valid_until": null,
+                  "source": {
+                    "source_type": "file",
+                    "source_id": "org-1/user-1/private/file-aaaa",
+                    "name": "Weld procedure WPS-114.pdf",
+                    "document_class": "specification",
+                    "revision": "2.0"
+                  },
+                  "span": {
+                    "text": "Minimalna debljina vara šava W-12 iznosi 3,2 mm, mjereno u grlu vara prema HRN EN ISO 5817, razred kvalitete C. Odstupanja ispod propisane vrijednosti nisu dopuštena bez pisanog odobrenja glavnog inženjera zavarivanja.",
+                    "locators": [
+                      {
+                        "kind": "page",
+                        "page": 4,
+                        "tier": "text"
+                      }
+                    ],
+                    "recovered_by": null,
+                    "hedge": null
+                  }
+                },
+                {
+                  "memory_id": "b0000000-0000-4000-8000-000000000002",
+                  "claim": "The measured throat thickness of weld seam W-12 is 2.9 mm.",
+                  "status": "contradicted",
+                  "kind": "fact",
+                  "valid_from": "2026-07-15T00:00:00.000Z",
+                  "valid_until": null,
+                  "source": {
+                    "source_type": "file",
+                    "source_id": "org-1/user-1/private/file-bbbb",
+                    "name": "Inspection report IR-2026-031.pdf",
+                    "document_class": "report",
+                    "revision": null
+                  },
+                  "span": {
+                    "text": "Seam W-12: measured throat thickness 2.9 mm (gauge #7, calibrated 2026-05-02). Deviation flagged for engineering review.",
+                    "locators": [
+                      {
+                        "kind": "page",
+                        "page": 2,
+                        "tier": "ocr"
+                      }
+                    ],
+                    "recovered_by": "ocr",
+                    "hedge": null
+                  }
+                }
+              ],
+              "history": [
+                {
+                  "event": "detected",
+                  "at": "2026-07-16T02:10:00.000Z",
+                  "detail": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "subject": "coating batch KB-7",
+          "findings": [
+            {
+              "id": "a0000000-0000-4000-8000-000000000002",
+              "detected_at": "2026-06-20T02:05:00.000Z",
+              "detected_by": "dreaming",
+              "state": "resolved",
+              "reopened": false,
+              "resolution": "revision",
+              "resolved_at": "2026-07-30T02:00:00.000Z",
+              "resolved_by_revision": {
+                "source_revision_id": "c0000000-0000-4000-8000-000000000001",
+                "successor_source": {
+                  "source_type": "file",
+                  "source_id": "org-1/user-1/private/file-cccc",
+                  "name": "Specifikacija zavarivanja, revizija 2.1.pdf",
+                  "document_class": "specification",
+                  "revision": "2.1"
+                }
+              },
+              "explanation": "The two documents stated different cure temperatures for the same coating batch.",
+              "parties": [
+                {
+                  "memory_id": "b0000000-0000-4000-8000-000000000003",
+                  "claim": "Coating batch KB-7 cures at 180 °C.",
+                  "status": "replaced",
+                  "kind": "fact",
+                  "valid_from": "2026-06-01T00:00:00.000Z",
+                  "valid_until": "2026-07-30T00:00:00.000Z",
+                  "source": {
+                    "source_type": "file",
+                    "source_id": "org-1/user-1/private/file-aaaa",
+                    "name": "Weld procedure WPS-114.pdf",
+                    "document_class": "specification",
+                    "revision": "2.0"
+                  },
+                  "span": {
+                    "text": "Premaz šarže KB-7 polimerizira na 180 °C u trajanju od 45 minuta.",
+                    "locators": [
+                      {
+                        "kind": "page",
+                        "page": 9,
+                        "tier": "text"
+                      }
+                    ],
+                    "recovered_by": null,
+                    "hedge": null
+                  }
+                },
+                {
+                  "memory_id": "b0000000-0000-4000-8000-000000000004",
+                  "claim": "Coating batch KB-7 cures at 160 °C.",
+                  "status": "active",
+                  "kind": "fact",
+                  "valid_from": "2026-07-30T00:00:00.000Z",
+                  "valid_until": null,
+                  "source": {
+                    "source_type": "file",
+                    "source_id": "org-1/user-1/private/file-cccc",
+                    "name": "Specifikacija zavarivanja, revizija 2.1.pdf",
+                    "document_class": "specification",
+                    "revision": "2.1"
+                  },
+                  "span": {
+                    "text": "Ispravak: premaz šarže KB-7 polimerizira na 160 °C; ranija vrijednost od 180 °C odnosila se na šaržu KB-6.",
+                    "locators": [
+                      {
+                        "kind": "paragraph",
+                        "paragraph": 12
+                      }
+                    ],
+                    "recovered_by": null,
+                    "hedge": null
+                  }
+                }
+              ],
+              "history": [
+                {
+                  "event": "detected",
+                  "at": "2026-06-20T02:05:00.000Z",
+                  "detail": null
+                },
+                {
+                  "event": "resolved_by_revision",
+                  "at": "2026-07-30T02:00:00.000Z",
+                  "detail": {
+                    "superseded": "b0000000-0000-4000-8000-000000000003",
+                    "successor": "b0000000-0000-4000-8000-000000000004",
+                    "source_revision": "c0000000-0000-4000-8000-000000000001"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "superseded": {
+      "chains": [
+        {
+          "links": [
+            {
+              "memory_id": "b0000000-0000-4000-8000-000000000003",
+              "content": "Coating batch KB-7 cures at 180 °C.",
+              "status": "replaced",
+              "valid_from": "2026-06-01T00:00:00.000Z",
+              "valid_until": "2026-07-30T00:00:00.000Z",
+              "recorded_at": "2026-06-01T08:05:00.000Z",
+              "source": {
+                "source_type": "file",
+                "source_id": "org-1/user-1/private/file-aaaa",
+                "name": "Weld procedure WPS-114.pdf",
+                "document_class": "specification",
+                "revision": "2.0"
+              }
+            },
+            {
+              "memory_id": "b0000000-0000-4000-8000-000000000004",
+              "content": "Coating batch KB-7 cures at 160 °C.",
+              "status": "active",
+              "valid_from": "2026-07-30T00:00:00.000Z",
+              "valid_until": null,
+              "recorded_at": "2026-07-30T01:55:00.000Z",
+              "source": {
+                "source_type": "file",
+                "source_id": "org-1/user-1/private/file-cccc",
+                "name": "Specifikacija zavarivanja, revizija 2.1.pdf",
+                "document_class": "specification",
+                "revision": "2.1"
+              }
+            }
+          ]
+        }
+      ],
+      "chains_truncated": false,
+      "chains_limit": 100
+    },
+    "suppressed": {
+      "total": 3,
+      "by_reason": {
+        "hedged_in_source": 1,
+        "unsupported": 2
+      },
+      "entries": [
+        {
+          "reason": "hedged_in_source",
+          "fact_content": "The primer may be applied below 5 °C.",
+          "span_text": "The primer can probably be applied below 5 °C, although the datasheet has not been updated to confirm this.",
+          "locators": [
+            {
+              "kind": "page",
+              "page": 11,
+              "tier": "text"
+            }
+          ],
+          "verification_verdict": "supported",
+          "source": {
+            "source_type": "file",
+            "source_id": "org-1/user-1/private/file-aaaa",
+            "name": "Weld procedure WPS-114.pdf",
+            "document_class": "specification",
+            "revision": "2.0"
+          },
+          "created_at": "2026-06-01T08:06:00.000Z"
+        },
+        {
+          "reason": "unsupported",
+          "fact_content": "Seam W-13 passed inspection.",
+          "span_text": null,
+          "locators": null,
+          "verification_verdict": "unsupported",
+          "source": {
+            "source_type": "file",
+            "source_id": "org-1/user-1/private/file-bbbb",
+            "name": "Inspection report IR-2026-031.pdf",
+            "document_class": "report",
+            "revision": null
+          },
+          "created_at": "2026-07-15T14:10:00.000Z"
+        },
+        {
+          "reason": "unsupported",
+          "fact_content": "All seams were inspected twice.",
+          "span_text": null,
+          "locators": null,
+          "verification_verdict": "unsupported",
+          "source": {
+            "source_type": "file",
+            "source_id": "org-1/user-1/private/file-bbbb",
+            "name": "Inspection report IR-2026-031.pdf",
+            "document_class": "report",
+            "revision": null
+          },
+          "created_at": "2026-07-15T14:11:00.000Z"
+        }
+      ],
+      "entries_truncated": false,
+      "entries_limit": 200
+    }
+  },
+  "integrity": {
+    "algorithm": "ed25519",
+    "canonicalization": "sorted-keys-compact-json",
+    "payload_sha256": "4f87e82c713654c14ccfe421379866d20fe2f011ca9b8a7f844f9068a5431d60",
+    "signature": "p3El5uNJYfywSaI5RdDfdL7VPnjMOaEJYZcFq8xfLhwMBUfhFMI/jq8ZIUcGD9RHR+nKQromINcOz894kxxYBA==",
+    "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAn1RW0rqf29VaeVIz706TAcGEQann/zyGAL/7k1wzDFQ=\n-----END PUBLIC KEY-----\n",
+    "public_key_endpoint": "/api/instance/public-key"
+  }
+}

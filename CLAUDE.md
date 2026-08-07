@@ -272,6 +272,29 @@ persists, and reopening the ORIGINAL finding when a regression reintroduces
 it. Resolved findings leave every current surface and stay queryable with
 history.
 
+V2.3 item 6.2 delivered the **findings report generator** (migration 0049, the
+new `reports/` module): a signed, printable artifact from a findings run over a
+stated scope (corpus, import, source set, date range), generated in the worker
+with visible progress through the owners' gated reads only. One payload feeds
+both formats: the **JSON is the signed record** (receipt-convention ed25519
+over the canonical payload hash; schema published at
+`docs/findings-report-schema/` with a fictional sample, drift-guarded in CI,
+verifiable end to end with jq + openssl), the **PDF a deterministic,
+dependency-free rendering** (hand-rolled writer over `node:zlib`, vendored
+DejaVu faces in `project/fonts/` with a ToUnicode map so quoted evidence
+survives copy/paste, the brand logo drawn as vectors from the provided file).
+Coverage and limits precede the findings; trust scores are matched by exact
+configuration id from the bundled `eval/trust-scores` artifacts and their
+absence is stated, never borrowed; findings group by subject entity with both
+verbatim spans located per the reader seam, OCR/vision recovery flagged, and
+the 6.1 event log driving the delta view (resolved by which revision, newly
+appeared, reopened; a first run says so). Deletion coverage repeats the
+passport pattern exactly: `findings_reports_expired` on the receipt, both
+object keys erased and swept, downloads refused with the reason, the SEC-8
+mid-assembly race guarded; lifecycle audited (requested, ready, downloaded,
+expired); artifacts retained 24 hours, run rows permanent. Details:
+[`docs/features/report.md`](docs/features/report.md).
+
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).
 Thinking is a CHANNEL, not content: `completeStream` yields channel-tagged

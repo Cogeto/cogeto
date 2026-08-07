@@ -111,6 +111,9 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   app_user: 'identity',
   prompt_registry: 'model-gateway',
   passport_export: 'passport',
+  // The findings-run ledger (V2.3 item 6.2): the run record outlives its
+  // rendered artifacts; only the objects are content-bearing.
+  findings_report: 'reports',
 
   audit_log: 'infrastructure',
   outbox_event: 'infrastructure',
@@ -157,6 +160,9 @@ const JOB_TYPE_OWNERS: Readonly<Record<string, string>> = {
   'import.advance': 'imports',
   passport_export: 'passport',
   passport_retention: 'passport',
+  // The findings report (V2.3 item 6.2): generation + artifact retention.
+  'report.generate': 'reports',
+  report_retention: 'reports',
   // Dev-only, profile-gated, defined and registered in the demo entrypoint.
   demo_reset: 'entrypoints',
 };
@@ -241,6 +247,8 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
   IMPORT_ZIP_MAX_BYTES: 'imports',
 
   PASSPORT_OPTIONS: 'passport',
+
+  REPORT_OPTIONS: 'reports',
 
   // The capability registry's injectable job reads followed the registry into
   // `operations` (V2.0 item 3.6 part 2).

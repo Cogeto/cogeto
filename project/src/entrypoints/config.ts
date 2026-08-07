@@ -181,6 +181,17 @@ const configSchema = z
      */
     importInFlight: z.coerce.number().int().min(1).max(8).default(1),
     /**
+     * Findings-report rendering inputs (V2.3 item 6.2). The vendored report
+     * fonts, the canonical brand assets (the logo is drawn from the provided
+     * file, never a copy), and the published trust-score artifacts the report
+     * looks its configuration up in. The defaults are the repo-relative paths
+     * the Docker image reproduces under /repo; an absent trust-scores
+     * directory is honest (the report states no published measurement).
+     */
+    reportFontsDir: z.string().min(1).default('project/fonts'),
+    reportBrandDir: z.string().min(1).default('assets/brand'),
+    trustScoresDir: z.string().min(1).default('eval/trust-scores'),
+    /**
      * Ana sandbox. `demoMode` turns this instance into the public
      * sandbox: the app serves the pre-minted demo session on GET /api/config and
      * the worker schedules the periodic reset. Never set on a customer instance.
@@ -306,6 +317,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
     timezone: env.COGETO_TIMEZONE || undefined,
     adminRole: env.COGETO_ADMIN_ROLE || undefined,
     importInFlight: env.COGETO_IMPORT_IN_FLIGHT ? Number(env.COGETO_IMPORT_IN_FLIGHT) : undefined,
+    reportFontsDir: env.COGETO_REPORT_FONTS_DIR || undefined,
+    reportBrandDir: env.COGETO_REPORT_BRAND_DIR || undefined,
+    trustScoresDir: env.COGETO_TRUST_SCORES_DIR || undefined,
     demoMode: env.COGETO_DEMO_MODE || undefined,
     // Either explicit flag or the conventional COGETO_ENV=production marker.
     production:
