@@ -72,9 +72,14 @@ COPY --from=build /repo/project/demo project/demo
 # (DejaVu, full hr/de/fr glyph coverage, license alongside), the canonical
 # brand assets (the logo is drawn from the provided file), and the published
 # trust-score artifacts the report looks its model configuration up in.
+# COPY preserves source permissions and the brand files are 0600 in the repo;
+# the runtime user is `node`, so read (and directory traversal) must be added
+# explicitly. `a+rX` adds read everywhere and execute only where it means
+# traversal.
 COPY project/fonts project/fonts
 COPY assets/brand assets/brand
 COPY eval/trust-scores eval/trust-scores
+RUN chmod -R a+rX project/fonts assets/brand eval/trust-scores
 USER node
 # app is the default; worker and migrate override the command in compose
 CMD ["node", "project/src/dist/entrypoints/app.js"]
