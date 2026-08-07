@@ -15,6 +15,7 @@ import {
   SourceContextCascade,
   SourceContextCascadeModule,
   PipelineIngestionGuard,
+  ReconcileRepairEligibilityHook,
   SuppressedFactCascade,
   SuppressedFactCascadeModule,
 } from '../ingestion/index';
@@ -152,6 +153,10 @@ export function createAppRootModule(config: CogetoConfig): unknown {
     // Delete-vs-ingestion serialization: the saga cancels a source's pending
     // pipeline run inside its enumeration tx.
     ingestionGuard: PipelineIngestionGuard,
+    // Eligibility re-pair (V2.3 item 6.1): confirming an uncertain fact
+    // enqueues a reconcile repair for it. Ingestion's dependency-free hook,
+    // instantiated by the memory module like the guard above.
+    eligibilityHook: ReconcileRepairEligibilityHook,
     // Who may read the INSTANCE-WIDE receipt-chain report (V2.0 item 3.7);
     // every other caller gets the verdict over their own receipts.
     adminRole: config.adminRole,

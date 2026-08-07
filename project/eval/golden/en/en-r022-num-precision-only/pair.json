@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r022",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "The VX-9 base plate is 3.2 mm thick.",
+    "kind": "fact",
+    "entities": ["VX-9 base plate"],
+    "subject_entity": "VX-9 base plate",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Base plate thickness: 3.2 mm."
+  },
+  "b": {
+    "content": "The VX-9 base plate measures 3.24 mm.",
+    "kind": "fact",
+    "entities": ["VX-9 base plate"],
+    "subject_entity": "VX-9 base plate",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "CMM report: base plate 3.24 mm."
+  },
+  "notes": "Negative numeric case: a difference below the coarser side's stated precision is agreement; 3.24 rounds to 3.2."
+}

@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r021",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "The AD-3 adapter supply voltage is 230 V plus or minus 5 percent.",
+    "kind": "fact",
+    "entities": ["AD-3 adapter"],
+    "subject_entity": "AD-3 adapter",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "AD-3 input: 230 V ±5%."
+  },
+  "b": {
+    "content": "The AD-3 adapter measured supply voltage was 235 V.",
+    "kind": "fact",
+    "entities": ["AD-3 adapter"],
+    "subject_entity": "AD-3 adapter",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Bench measurement: AD-3 supply at 235 V."
+  },
+  "notes": "Negative numeric case: a measured value inside the stated tolerance band agrees with the specification."
+}

@@ -64,6 +64,17 @@
       "embeddings": "Ugradnje"
     }
   },
+  "aliases": {
+    "heading": "Entity aliases",
+    "explainer": "Two names for the same thing pair for contradiction checks, including a Croatian and an English name for one company.",
+    "pair": "\"{{alias}}\" counts as \"{{canonical}}\"",
+    "canonical": "Canonical name",
+    "canonicalPlaceholder": "The name your documents use most",
+    "alias": "Alias",
+    "aliasPlaceholder": "Another name for the same thing",
+    "empty": "No aliases recorded yet.",
+    "error": "Couldn't load your aliases."
+  },
   "signingKey": {
     "heading": "Ključ za potpisivanje instance",
     "explainer": "Svaka potvrda brisanja potpisuje se privatnim ključem ove instance (spec. §11.1). Svatko može provjeriti potvrdu ili knjigu Zaboravljenog prema javnom ključu u nastavku. To neovisno o sustavu Cogeto dokazuje da se brisanje doista dogodilo.",

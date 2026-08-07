@@ -15,8 +15,13 @@ import { ReconciliationService } from './pipeline/reconcile.stage';
 import { SOURCE_READERS } from './pipeline/source-reader';
 import type { SourceReader } from './pipeline/source-reader';
 import { VerifyStage } from './pipeline/verify.stage';
+import { CheckedPairStore } from './persistence/checked-pair.store';
+import { EntityAliasStore } from './persistence/entity-alias.store';
+import { EntityAliasesController } from './entity-aliases.controller';
 import { ExtractionGateStore } from './persistence/extraction-gate.store';
 import { IngestionProgressStore } from './persistence/ingestion-progress';
+import { ReconcileRepair, ReconcileRepairEligibilityHook } from './reconcile-repair';
+import { RECONCILE_MODEL_CONFIG } from './pipeline/reconcile.stage';
 import { SourceContextStore } from './persistence/source-context.store';
 import { SuppressedFactLog } from './persistence/suppressed-fact-log';
 import { SuppressedFactCascade } from './suppressed-fact-cascade';
@@ -28,6 +33,12 @@ export interface IngestionModuleOptions {
   imports?: ModuleMetadata['imports'];
   /** Source-reader implementations, one per connector source type. */
   readers: Type<SourceReader>[];
+  /**
+   * The generation binding recorded beside every ledger verdict (V2.3 item
+   * 6.1): `<provider>/<model>` for the pipeline tier. A model change makes
+   * stored verdicts disagree with this string, which re-opens judged pairs.
+   */
+  reconcileModelConfig?: string;
 }
 
 /**
@@ -54,6 +65,18 @@ export class IngestionModule {
         ExtractionGateStore,
         IngestionProgressStore,
         EmbedStoreStage,
+        // The reconcile engine's V2.3 collaborators: the judged-pair ledger,
+        // the alias set, the revision link (the auto-resolution evidence),
+        // and the repair pass with its eligibility-hook implementation.
+        CheckedPairStore,
+        EntityAliasStore,
+        SourceRevisionStore,
+        ReconcileRepair,
+        ReconcileRepairEligibilityHook,
+        {
+          provide: RECONCILE_MODEL_CONFIG,
+          useValue: options.reconcileModelConfig ?? 'unconfigured',
+        },
         ReconciliationService,
         IngestionPipeline,
         DreamingService,
@@ -74,6 +97,7 @@ export class IngestionModule {
         SuppressedFactCascade,
         ExtractionGateStore,
         SourceContextStore,
+        ReconcileRepair,
       ],
     };
   }
@@ -102,8 +126,16 @@ export class IngestionModule {
         SourceContextController,
         // The revision link's owner surface (V2.2 item 5.3).
         SourceRevisionsController,
+        // The entity-alias settings surface (V2.3 item 6.1).
+        EntityAliasesController,
       ],
-      providers: [SuppressedFactLog, ExtractionGateStore, SourceContextStore, SourceRevisionStore],
+      providers: [
+        SuppressedFactLog,
+        ExtractionGateStore,
+        SourceContextStore,
+        SourceRevisionStore,
+        EntityAliasStore,
+      ],
     };
   }
 }

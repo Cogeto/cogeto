@@ -84,7 +84,21 @@ describe('reconcile policy (unit — 7)', () => {
     expect(supersessionUnambiguous({ ...later, status: 'user_approved' as const }, earlier)).toBe(
       false,
     );
-    // Equal event times are ambiguous by definition.
-    expect(supersessionUnambiguous(later, { ...earlier, validFrom: later.validFrom })).toBe(false);
+    // Equal event times fall back to recording order (V2.3 item 6.1, issue D):
+    // a correction re-issued with the SAME effective date supersedes cleanly
+    // when the model's winner is also the later-recorded memory.
+    expect(supersessionUnambiguous(later, { ...earlier, validFrom: later.validFrom })).toBe(true);
+  });
+
+  it('direction guard: equal event times tie-break on recording order, both-equal refuses', () => {
+    // The hr-r011 shape: both sides carry explicit validity naming the same
+    // day; the later-recorded row is the correction and must supersede.
+    const original = party('o', 'active', '2026-07-01', { validFrom: '2026-06-15' });
+    const correction = party('c', 'active', '2026-07-04', { validFrom: '2026-06-15' });
+    expect(supersessionUnambiguous(correction, original)).toBe(true);
+    expect(supersessionUnambiguous(original, correction)).toBe(false);
+    // Same event time AND same recording instant: genuinely ambiguous.
+    const twin = party('t', 'active', '2026-07-04', { validFrom: '2026-06-15' });
+    expect(supersessionUnambiguous(correction, twin)).toBe(false);
   });
 });

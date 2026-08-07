@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r023",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "The M2 sensor current draw is 150 mA at full load.",
+    "kind": "fact",
+    "entities": ["M2 sensor"],
+    "subject_entity": "M2 sensor",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "M2 draws 150 mA at full load."
+  },
+  "b": {
+    "content": "The M2 sensor current draw is 40 mA in standby.",
+    "kind": "fact",
+    "entities": ["M2 sensor"],
+    "subject_entity": "M2 sensor",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Standby consumption of the M2 sensor: 40 mA."
+  },
+  "notes": "Negative numeric case: values qualified by different operating conditions are different slots, not a conflict."
+}

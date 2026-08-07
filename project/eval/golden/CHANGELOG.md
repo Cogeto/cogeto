@@ -2,6 +2,17 @@
 
 One line per label change (docs/eval-golden-set.md §4 rule 5).
 
+- 2026-08-07 (V2.3 item 6.1): 21 new pair cases for the contradiction coverage
+  overhaul, every widening shipped with its negatives. Numeric and unit shapes
+  in both languages (en-r017..r023, hr-r016..r022): same-unit conflict, unit
+  conversion, disjoint and overlapping ranges, tolerance, precision-only
+  difference, condition-qualified values. Entity matching (en-r024 typo
+  positive, en-r025 Foods-vs-Goods negative trap, hr-r023 cross-language alias
+  pair with the new `aliases` case field, hr-r024 hrana-vs-banka negative
+  trap). High-similarity paraphrased conflicts exercising the related-verdict
+  escalation (en-r026, hr-r025). Same-effective-date supersession exercising
+  the direction guard's recording-order tie-break (en-r027).
+
 - 2026-08-04 (V2.1 item 4.2, source-context anchoring): added the plan-named
   anchoring cases, both languages. Extraction: `en-a001`, `hr-a001` — one
   multi-model datasheet each, generic section bodies, exact `subject_entity`

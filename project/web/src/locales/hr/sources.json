@@ -231,6 +231,26 @@
     "versus": "versus",
     "contradictionOpen": "Open, detected {{when}}.",
     "contradictionResolved": "Detected {{when}}, resolved: {{resolution}}.",
+    "resolutionLabel": {
+      "confirmedA": "kept the newer fact",
+      "confirmedB": "kept the earlier fact",
+      "corrected": "corrected by you",
+      "dismissed": "dismissed as not a conflict",
+      "revision": "resolved by a document revision"
+    },
+    "detectedBy": {
+      "pipeline": "found at ingestion",
+      "dreaming": "found by the nightly pass",
+      "repair": "found by the repair pass"
+    },
+    "event": {
+      "detected": "detected",
+      "party_superseded": "a fact was superseded, the finding follows its successor",
+      "resolved_by_user": "resolved by you",
+      "resolved_by_revision": "resolved by a document revision",
+      "kept_open": "kept open, could not be safely closed",
+      "reopened": "reopened, the conflict came back"
+    },
     "contentUnavailable": "(content unavailable)"
   },
   "locator": {

@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r025",
+  "task": "contradiction",
+  "expected": "contradicts",
+  "a": {
+    "content": "Uprava je odobrila uvođenje projekta Neptun.",
+    "kind": "decision",
+    "entities": ["projekt Neptun"],
+    "subject_entity": "projekt Neptun",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Odluka uprave: uvođenje projekta Neptun odobreno."
+  },
+  "b": {
+    "content": "Uprava je odbila odobriti uvođenje projekta Neptun.",
+    "kind": "decision",
+    "entities": ["projekt Neptun"],
+    "subject_entity": "projekt Neptun",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Uprava nije odobrila uvođenje projekta Neptun."
+  },
+  "notes": "Parafrazirani sukob vrlo visoke sličnosti: presuda related prije 6.1 nikad nije eskalirala pa je ovaj oblik bio nevidljiv."
+}

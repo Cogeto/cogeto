@@ -3,7 +3,9 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   NotFoundException,
+  Optional,
   Param,
   ParseUUIDPipe,
   Post,
@@ -16,6 +18,8 @@ import type { MemoryChangeDto, MemoryListItem, MemoryPage } from '@cogeto/shared
 import { MEMORY_SCOPES, MEMORY_STATUSES, UNCERTAINTY_REASONS } from '@cogeto/shared';
 import { BearerAuthGuard, UserDirectory } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
+import { MEMORY_ELIGIBILITY_HOOK } from './eligibility-hook';
+import type { MemoryEligibilityHook } from './eligibility-hook';
 import { MemoryStore } from './memory.store';
 import type { MemoryFilters } from './memory.store';
 import { toListItem } from './list-item';
@@ -63,6 +67,9 @@ export class MemoriesController {
   constructor(
     private readonly store: MemoryStore,
     private readonly directory: UserDirectory,
+    @Optional()
+    @Inject(MEMORY_ELIGIBILITY_HOOK)
+    private readonly eligibilityHook?: MemoryEligibilityHook | null,
   ) {}
 
   /** Attach owner display names so shared rows owned by others are
@@ -175,6 +182,15 @@ export class MemoriesController {
       'user_approved',
       'dashboard review approval',
     );
+    // Eligibility re-pair (V2.3 item 6.1): a confirmed fact enters the
+    // contradiction candidate pool NOW, not at the next nightly pass. The
+    // approval already committed; a failed enqueue must not un-approve it,
+    // and the nightly batch remains the backstop.
+    try {
+      await this.eligibilityHook?.onEligibilityChanged(row);
+    } catch {
+      // Swallowed by design: the dreaming cycle re-covers this fact.
+    }
     return toListItem(row);
   }
 

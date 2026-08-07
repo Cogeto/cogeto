@@ -11,8 +11,10 @@ import { LANGUAGE_ENDONYMS, MEASURED_LANGUAGES, SUPPORTED_LANGUAGES } from '@cog
 import {
   acceptContextSuggestion,
   addEmailAllowlistEntry,
+  addEntityAlias,
   addExtractionGateRule,
   dismissContextSuggestion,
+  fetchEntityAliases,
   fetchContextSuggestions,
   fetchEmailConfig,
   fetchExtractionGateConfig,
@@ -23,6 +25,7 @@ import {
   fetchSettings,
   fetchUserContext,
   removeEmailAllowlistEntry,
+  removeEntityAlias,
   removeExtractionGateRule,
   setExtractionGate,
   triggerPassportExport,
@@ -136,6 +139,8 @@ export function Settings({ session }: { session: Session }) {
       <EmailCaptureSection session={session} />
 
       <ExtractionGateSection session={session} />
+
+      <EntityAliasesSection session={session} />
 
       <PassportSection session={session} />
 
@@ -1246,5 +1251,111 @@ function ExtractionGateRow({
         </span>
       )}
     </li>
+  );
+}
+
+/**
+ * Entity aliases (V2.3 item 6.1): the owner's recorded equivalences behind
+ * alias-aware contradiction pairing, cross-language names above all. The list
+ * stays a record of what the DATA adds: a pair the folding rules already
+ * unify is refused by the API with the reason, surfaced verbatim below.
+ */
+function EntityAliasesSection({ session }: { session: Session }) {
+  const { t } = useTranslation('settings');
+  const queryClient = useQueryClient();
+  const aliases = useQuery({
+    queryKey: ['reconcile-aliases'],
+    queryFn: () => fetchEntityAliases(session),
+  });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['reconcile-aliases'] });
+
+  const [canonical, setCanonical] = useState('');
+  const [alias, setAlias] = useState('');
+
+  const add = useMutation({
+    mutationFn: () => addEntityAlias(session, { canonical: canonical.trim(), alias: alias.trim() }),
+    onSuccess: async () => {
+      setCanonical('');
+      setAlias('');
+      await invalidate();
+    },
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => removeEntityAlias(session, id),
+    onSuccess: invalidate,
+  });
+
+  return (
+    <section className="mt-4 space-y-4 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
+      <div>
+        <SectionTitle>{t('aliases.heading')}</SectionTitle>
+        <p className="mt-1 text-xs text-slate-400">{t('aliases.explainer')}</p>
+      </div>
+
+      {aliases.isPending && <Skeleton className="h-16 w-full" />}
+      {aliases.isError && (
+        <p className="text-xs text-red-700 dark:text-red-300">{t('aliases.error')}</p>
+      )}
+
+      {aliases.data && (
+        <>
+          {aliases.data.length === 0 ? (
+            <p className="text-xs text-slate-400">{t('aliases.empty')}</p>
+          ) : (
+            <ul className="divide-y divide-slate-100 rounded-md border border-slate-200">
+              {aliases.data.map((row) => (
+                <li key={row.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                  <span className="min-w-0 truncate text-sm text-slate-700">
+                    {t('aliases.pair', { canonical: row.canonical, alias: row.alias })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => remove.mutate(row.id)}
+                    disabled={remove.isPending}
+                    className="shrink-0 text-xs text-red-700 dark:text-red-300 hover:underline"
+                  >
+                    {t('common:action.remove')}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="text-xs text-slate-500">
+              <span className="block">{t('aliases.canonical')}</span>
+              <input
+                value={canonical}
+                onChange={(e) => setCanonical(e.target.value)}
+                placeholder={t('aliases.canonicalPlaceholder')}
+                className="mt-1 w-56 rounded-md border border-slate-300 px-2 py-1 text-sm"
+              />
+            </label>
+            <label className="text-xs text-slate-500">
+              <span className="block">{t('aliases.alias')}</span>
+              <input
+                value={alias}
+                onChange={(e) => setAlias(e.target.value)}
+                placeholder={t('aliases.aliasPlaceholder')}
+                className="mt-1 w-56 rounded-md border border-slate-300 px-2 py-1 text-sm"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => add.mutate()}
+              disabled={add.isPending || !canonical.trim() || !alias.trim()}
+              className={btnPrimary}
+            >
+              {t('common:action.add')}
+            </button>
+          </div>
+          {add.isError && (
+            <p className="text-xs text-red-700 dark:text-red-300">
+              {add.error instanceof Error ? add.error.message : t('saveFailed')}
+            </p>
+          )}
+        </>
+      )}
+    </section>
   );
 }

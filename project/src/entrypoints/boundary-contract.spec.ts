@@ -41,6 +41,9 @@ const REPO = path.resolve(SRC, '../..');
 const TABLE_OWNERS: Readonly<Record<string, string>> = {
   memory: 'memory',
   memory_relation: 'memory',
+  // The finding's lifecycle history (V2.3 item 6.1, docs/features/findings.md):
+  // the relation is the finding, so its event log lives with it.
+  memory_relation_event: 'memory',
   file_metadata: 'memory',
   deletion_receipt: 'memory',
   integrity_alert: 'memory',
@@ -63,6 +66,10 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   ingestion_progress: 'ingestion',
   // The document revision link (V2.2 item 5.3, docs/features/revisions.md).
   source_revision: 'ingestion',
+  // The judged-pair ledger and the entity-alias set (V2.3 item 6.1): the
+  // reconcile engine's collaborators, owned by the module that judges.
+  checked_pair: 'ingestion',
+  entity_alias: 'ingestion',
 
   // The chat context owns its tables since part 4 (chat left retrieval).
   chat_message: 'chat',
@@ -132,6 +139,8 @@ const JOB_TYPE_OWNERS: Readonly<Record<string, string>> = {
   'ingestion.pipeline': 'ingestion',
   'file.discard_cleanup': 'ingestion',
   dreaming_cycle: 'ingestion',
+  // The delayed re-pair pass (V2.3 item 6.1, issue B).
+  'reconcile.repair': 'ingestion',
   'memory.embed': 'memory',
   'deletion.execute': 'memory',
   deletion_sweep: 'memory',
@@ -189,8 +198,14 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
   // Named-options bag (V2.0 item 3.6 part 4): the saga's collaborators
   // resolved by identity instead of constructor position.
   DELETION_SAGA_OPTIONS: 'memory',
+  // The eligibility port (V2.3 item 6.1): fired when confirming an uncertain
+  // fact makes it contradiction-eligible; ingestion implements it.
+  MEMORY_ELIGIBILITY_HOOK: 'memory',
 
   SOURCE_READERS: 'ingestion',
+  // The generation binding the checked-pair ledger records (V2.3 item 6.1),
+  // handed in by the root: the module names what it needs, never reads env.
+  RECONCILE_MODEL_CONFIG: 'ingestion',
 
   CHAT_REPLY_RESOLVER: 'chat',
   CHAT_RESEARCH_RESOLVER: 'chat',

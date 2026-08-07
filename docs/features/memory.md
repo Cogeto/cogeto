@@ -175,22 +175,70 @@ chosen.
 No model call happens in candidate generation. Candidates come from committed
 memory of the **same owner and same scope**, through the gated primitives, with
 rows from the incoming fact's own source excluded. Thresholds live in one versioned
-config (`project/src/ingestion/reconcile-config.ts`).
+config (`project/src/ingestion/reconcile-config.ts`) and are **calibrated per
+embedding model** since V2.3 item 6.1: 0.93 under one model and 0.93 under another
+are different claims, and an embedding model with no calibration entry fails
+loudly instead of borrowing another model's geometry.
 
-- **Dedup candidates**: embedding similarity ≥ `dedupSimilarity` (0.93), **or**
-  entity overlap `|A∩B| / min(|A|,|B|)` ≥ 0.8 with identical `kind`.
-- **Contradiction candidates**: equal `subject_entity`, both kinds in
-  {fact, decision, preference, commitment}, and similarity in the mid band
-  [0.80, 0.93): similar topic, different content.
-- **Escalation**: a pair *above* the dedup threshold that the dedup model ruled
-  `distinct` is also contradiction-eligible. "Go-live October 1" and "go-live
-  September 1" embed nearly identically, and same-slot-different-value is exactly
-  what `distinct` flags. Without escalation, high-similarity contradictions would be
-  structurally invisible. `related` verdicts do not escalate.
+Subject identity is **alias-aware** (`ingestion/domain/entity-match.ts`): case,
+punctuation, diacritic and legal-suffix folding; the owner's recorded
+`entity_alias` pairs, which is how a Croatian and an English name for one company
+pair at all; and a narrow typo rule (one edit, long names, never at a token
+start). The candidate pool draws from three searches: the vector top-K, the
+entity trigram path, and the **subject path**, which expands the fact's subject
+through the alias set, the only search that can surface a cross-language
+counterpart.
 
-At most three model confirmations per family per fact, best-similarity first; the
-first `same_fact` merge stops that fact; at most one contradiction action per fact
-per run.
+- **Dedup candidates**: embedding similarity ≥ the calibrated `dedupSimilarity`,
+  **or** canonical entity overlap `|A∩B| / min(|A|,|B|)` ≥ 0.8 with identical
+  `kind`.
+- **Contradiction candidates**: matching subjects (alias-aware), both kinds in
+  {fact, decision, preference, commitment}, and a similarity rule that depends
+  on how the subjects matched: pairs found by the entity/subject path (no
+  vector score) qualify outright; scored pairs need the calibrated floor unless
+  the subjects match through a recorded **alias** (cross-language names
+  legitimately embed far apart); `contradicted` rows are candidates too, so a
+  corrected revision can supersede a finding's party.
+- **Escalation**: a pair *above* the dedup threshold reaches the contradiction
+  check after ANY non-merge dedup ruling, `distinct` **or** `related`. A
+  paraphrased conflict embeds nearly identically and the dedup judge calls it
+  `related` as often as `distinct`; before 6.1 only `distinct` escalated, which
+  made that shape structurally invisible. A pair that was never dedup-eligible
+  (a `contradicted` candidate) escalates directly.
+
+**The judged-pair ledger runs in front of every model call** (`checked_pair`,
+V2.3 item 6.1): a pair already judged under the same prompt version and model
+configuration keeps its verdict, so the nightly pass cannot flip a borderline
+`compatible` days later from sampling variance, and re-examination costs no
+tokens. A pair re-opens only when a fact changes (supersession mints a new id),
+when the prompt or model configuration changes, or on an explicit re-run.
+
+**Numeric and unit reasoning runs before the judge**
+(`ingestion/domain/quantity.ts`): quantities are parsed from both claims (both
+decimal conventions), converted within their dimension, and compared with
+range, tolerance, approximation and stated-precision handling. A same-slot
+conflict with no update language and no temporal ordering IS the verdict, with
+no model call; everything the parser cannot decide goes to the judge with the
+parsed values appended as a `PARSED QUANTITIES` block
+(`reconcile_contradiction/v0002`), so the model compares converted values
+rather than doing arithmetic in its head.
+
+At most three **fresh** model confirmations per family per fact (ledger hits are
+free), ranked by conflict likelihood rather than raw similarity: a pair whose
+quantities already compare as a same-slot conflict outranks everything, so a
+crowded topic cannot hide the true conflict behind the first few neighbours.
+The first `same_fact` merge stops that fact; at most one contradiction action
+per fact per run.
+
+**Timing** (V2.3 item 6.1, issue B): facts admitted by concurrent jobs are
+invisible to each other's inline pass, so the pipeline enqueues one delayed
+`reconcile.repair` job per source, which re-pairs against whatever committed
+meanwhile (the ledger keeps the re-run free). Confirming an `uncertain` fact
+fires the memory module's eligibility port, which enqueues the same repair for
+that fact immediately, instead of waiting for the nightly cycle. Every finding
+records which pass detected it (`detected_by`) and when (`detected_at`),
+because a finding surfaced days later by the nightly pass is a different thing
+from one caught inline, and the report must say so.
 
 ### Merging
 
@@ -227,6 +275,17 @@ Detected pairs become `memory_relation` rows. Convention: **a** is the incoming
 **A relation row permanently excludes its pair from re-detection, resolved or not.
 Dismissed stays dismissed**: the user has already ruled the pair compatible, and
 reconciliation never asks again.
+
+Since V2.3 item 6.1 a finding has a **lifecycle**
+([`docs/features/findings.md`](findings.md)): open, resolved by user, resolved
+by revision, reopened, with an append-only event log
+(`memory_relation_event`) the report's delta view renders. A supersession that
+genuinely settles the conflict resolves the finding automatically with the
+cause recorded (the source revision link included, where one exists); a
+persisting conflict follows the successor as the SAME finding; a reintroduced
+conflict REOPENS the original with its history rather than minting a new one.
+Resolved findings disappear from everything presented as current and stay
+queryable with their history.
 
 The three resolutions are owner-only, single-transaction, and audited:
 

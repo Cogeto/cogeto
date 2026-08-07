@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r020",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "The R7 controller operates between 10 and 30 degrees C.",
+    "kind": "fact",
+    "entities": ["R7 controller"],
+    "subject_entity": "R7 controller",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Operating range for the R7 controller: 10–30 °C."
+  },
+  "b": {
+    "content": "The R7 controller was tested stable from 15 to 25 degrees C.",
+    "kind": "fact",
+    "entities": ["R7 controller"],
+    "subject_entity": "R7 controller",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Thermal test report: R7 stable 15–25 °C."
+  },
+  "notes": "Negative numeric case: a tested sub-range inside a specified range agrees with it."
+}

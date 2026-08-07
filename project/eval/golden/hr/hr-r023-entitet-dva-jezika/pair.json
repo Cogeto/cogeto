@@ -1,0 +1,28 @@
+{
+  "case_id": "hr-r023",
+  "task": "contradiction",
+  "expected": "contradicts",
+  "a": {
+    "content": "Godišnji kapacitet pogona Jadranske hrane je 90 tisuća tona.",
+    "kind": "fact",
+    "entities": ["Jadranska hrana"],
+    "subject_entity": "Jadranska hrana",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Pogon Jadranske hrane: godišnji kapacitet 90 tisuća tona."
+  },
+  "b": {
+    "content": "The Adriatic Foods plant annual capacity is 120 thousand tonnes.",
+    "kind": "fact",
+    "entities": ["Adriatic Foods"],
+    "subject_entity": "Adriatic Foods",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Adriatic Foods plant capacity: 120 thousand tonnes per year."
+  },
+  "aliases": [
+    {
+      "canonical": "Adriatic Foods",
+      "alias": "Jadranska hrana"
+    }
+  ],
+  "notes": "Isti subjekt pod hrvatskim i engleskim imenom: bez zabilježenog aliasa ovaj par strukturno nikad nije mogao nastati. Alias je podatak, ne algoritam."
+}

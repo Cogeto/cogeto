@@ -5,14 +5,24 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { and, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import type { Principal, RelationResolution } from '@cogeto/shared';
+import type {
+  Principal,
+  RelationDetector,
+  RelationEvent,
+  RelationResolution,
+} from '@cogeto/shared';
 import { DRIZZLE, writeAudit } from '../infrastructure/index';
 import { UserDirectory } from '../identity/index';
 import type { Db, Tx } from '../infrastructure/index';
-import { memory, memoryRelation } from './persistence/tables';
-import type { MemoryRelationRow, MemoryRow, SourceType } from './persistence/tables';
+import { memory, memoryRelation, memoryRelationEvent } from './persistence/tables';
+import type {
+  MemoryRelationEventRow,
+  MemoryRelationRow,
+  MemoryRow,
+  SourceType,
+} from './persistence/tables';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryStore } from './memory.store';
 import { actorLabel } from './domain/transition';
@@ -51,8 +61,20 @@ import type { PolicyParty } from './domain/reconcile-policy';
 export type PairActionResult =
   | { action: 'merged'; survivorId: string; loserId: string; enriched: boolean }
   | { action: 'contradiction_created'; relationId: string }
+  | {
+      /** An earlier finding on the pair's ancestors came back (V2.3 item 6.1):
+       * reopened with its history rather than minted as new. */
+      action: 'contradiction_reopened';
+      relationId: string;
+    }
   | { action: 'superseded'; winnerId: string; loserId: string }
   | { action: 'skipped'; reason: string };
+
+/** What settling a finding after a party's supersession concluded. */
+export type FindingSettlement =
+  | { outcome: 'resolved_by_revision'; relationId: string }
+  | { outcome: 'follows_successor'; relationId: string }
+  | { outcome: 'kept_open'; relationId: string; reason: string };
 
 export type ContradictionResolveAction =
   | { type: 'confirm'; winner: 'a' | 'b' }
@@ -264,12 +286,19 @@ export class MemoryReconciliation {
    * unique index makes re-detection a no-op), record prior statuses, and
    * transition both parties to `contradicted` — the one legal touch of a
    * user_approved memory (ruling 5).
+   *
+   * V2.3 item 6.1: before minting a new finding, detection walks both
+   * parties' supersession ancestry. A finding that already tracked this
+   * conflict on earlier revisions of the same facts REOPENS (resolved) or
+   * FOLLOWS the successors (still open), with its history intact — a corpus
+   * that regresses shows that it regressed, not a fresh discovery.
    */
   async createContradiction(
     tx: Tx,
     incomingId: string,
     existingId: string,
     reason: string,
+    detectedBy: RelationDetector = 'pipeline',
   ): Promise<PairActionResult> {
     const [first, second] = await this.lockPair(tx, incomingId, existingId);
     const incoming = first.id === incomingId ? first : second;
@@ -277,6 +306,48 @@ export class MemoryReconciliation {
     if (incoming.status === 'replaced' || existing.status === 'replaced') {
       return { action: 'skipped', reason: 'a party is already replaced' };
     }
+
+    // The exact pair's tombstone wins over everything, ancestry included:
+    // resolved or not, this pair was already ruled on, and re-pointing an
+    // ancestral finding onto it would collide with the canonical-pair index.
+    if (await this.exactRelation(tx, incoming.id, existing.id)) {
+      return { action: 'skipped', reason: 'relation already exists for this pair (tombstone)' };
+    }
+
+    const ancestral = await this.ancestralRelation(tx, incoming.id, existing.id);
+    if (ancestral) {
+      if (!ancestral.resolvedAt) {
+        // Still open on predecessor rows (an edit-supersession moved a party
+        // under it): the finding follows the successors; no second finding.
+        await this.repointParties(tx, ancestral, incoming, existing, reason);
+        await this.relationEvent(tx, ancestral.id, 'party_superseded', {
+          a: incoming.id,
+          b: existing.id,
+          detected_by: detectedBy,
+        });
+        return { action: 'skipped', reason: 'open finding followed the pair onto its successors' };
+      }
+      const reopened = await this.repointParties(tx, ancestral, incoming, existing, reason, {
+        clearResolution: true,
+      });
+      await this.relationEvent(tx, ancestral.id, 'reopened', {
+        a: incoming.id,
+        b: existing.id,
+        undoes: ancestral.resolution,
+        detected_by: detectedBy,
+      });
+      await writeAudit(tx, {
+        actor: actorLabel(RECONCILER),
+        action: 'memory.contradiction_reopened',
+        entityType: 'memory_relation',
+        entityId: ancestral.id,
+        detail: { a: incoming.id, b: existing.id, undoes: ancestral.resolution },
+        ownerId: incoming.ownerId,
+        orgId: await this.orgFor(incoming.ownerId),
+      });
+      return { action: 'contradiction_reopened', relationId: reopened.id };
+    }
+
     const inserted = await tx
       .insert(memoryRelation)
       .values({
@@ -289,6 +360,7 @@ export class MemoryReconciliation {
         // Review queue reads — never in the org-readable audit trail (
         //). Erased with the relation (FK CASCADE with the pair).
         reason,
+        detectedBy,
       })
       .onConflictDoNothing()
       .returning();
@@ -301,16 +373,194 @@ export class MemoryReconciliation {
         await this.store.transitionInTx(tx, RECONCILER, row.id, 'contradicted', reason);
       }
     }
+    await this.relationEvent(tx, relation.id, 'detected', {
+      a: incoming.id,
+      b: existing.id,
+      detected_by: detectedBy,
+    });
     await writeAudit(tx, {
       actor: actorLabel(RECONCILER),
       action: 'memory.contradiction_detected',
       entityType: 'memory_relation',
       entityId: relation.id,
-      detail: { a: incoming.id, b: existing.id },
+      detail: { a: incoming.id, b: existing.id, detectedBy },
       ownerId: incoming.ownerId,
       orgId: await this.orgFor(incoming.ownerId),
     });
     return { action: 'contradiction_created', relationId: relation.id };
+  }
+
+  // ── Findings lifecycle (V2.3 item 6.1; docs/features/findings.md) ──────────
+
+  /** Open findings a memory is party to, locked for the caller's settlement. */
+  async openRelationsTouching(tx: Tx, memoryId: string): Promise<MemoryRelationRow[]> {
+    return tx
+      .select()
+      .from(memoryRelation)
+      .where(
+        and(
+          isNull(memoryRelation.resolvedAt),
+          eq(memoryRelation.kind, 'contradicts'),
+          or(eq(memoryRelation.aMemoryId, memoryId), eq(memoryRelation.bMemoryId, memoryId)),
+        ),
+      )
+      .for('update');
+  }
+
+  /**
+   * The conflict is genuinely gone: the finding resolves as `revision`, the
+   * surviving counterpart is restored to its recorded prior status, and the
+   * event names the cause — the superseded party, its successor, and the
+   * source revision link where the caller found one. Conservative by
+   * construction: the CALLER established compatibility first.
+   */
+  async resolveByRevision(
+    tx: Tx,
+    relation: MemoryRelationRow,
+    cause: {
+      supersededId: string;
+      successorId: string;
+      sourceRevisionId?: string | null;
+    },
+  ): Promise<FindingSettlement> {
+    const counterpartSide = relation.aMemoryId === cause.supersededId ? 'b' : 'a';
+    const counterpartId = counterpartSide === 'a' ? relation.aMemoryId : relation.bMemoryId;
+    const prior = counterpartSide === 'a' ? relation.aPriorStatus : relation.bPriorStatus;
+    const rows = await tx.select().from(memory).where(eq(memory.id, counterpartId)).for('update');
+    const counterpart = rows[0];
+    if (counterpart) {
+      await restoreFromContradiction(
+        tx,
+        counterpart,
+        prior,
+        'memory.contradiction_lifted',
+        actorLabel(RECONCILER),
+        this.vectors,
+        await this.orgFor(counterpart.ownerId),
+      );
+    }
+    await tx
+      .update(memoryRelation)
+      .set({ resolvedAt: new Date(), resolution: 'revision' })
+      .where(eq(memoryRelation.id, relation.id));
+    await this.relationEvent(tx, relation.id, 'resolved_by_revision', {
+      superseded: cause.supersededId,
+      successor: cause.successorId,
+      source_revision: cause.sourceRevisionId ?? null,
+    });
+    if (counterpart) {
+      await writeAudit(tx, {
+        actor: actorLabel(RECONCILER),
+        action: 'memory.contradiction_resolved',
+        entityType: 'memory_relation',
+        entityId: relation.id,
+        detail: { resolution: 'revision', superseded: cause.supersededId },
+        ownerId: counterpart.ownerId,
+        orgId: await this.orgFor(counterpart.ownerId),
+      });
+    }
+    return { outcome: 'resolved_by_revision', relationId: relation.id };
+  }
+
+  /**
+   * The conflict persists against the successor: same finding, new party.
+   * The successor takes the superseded party's side (transitioned to
+   * `contradicted`, its prior status recorded), and the event log says so.
+   */
+  async followSuccessor(
+    tx: Tx,
+    relation: MemoryRelationRow,
+    supersededId: string,
+    successorId: string,
+  ): Promise<FindingSettlement> {
+    const [firstRow, secondRow] = await this.lockPair(
+      tx,
+      successorId,
+      relation.aMemoryId === supersededId ? relation.bMemoryId : relation.aMemoryId,
+    );
+    const successor = firstRow.id === successorId ? firstRow : secondRow;
+    const side = relation.aMemoryId === supersededId ? 'a' : 'b';
+    const duplicate = await this.exactRelation(
+      tx,
+      successorId,
+      side === 'a' ? relation.bMemoryId : relation.aMemoryId,
+    );
+    if (duplicate) {
+      // A finding for the successor pair already exists; folding two rows
+      // into one would erase a history. Resolve this one toward it.
+      await tx
+        .update(memoryRelation)
+        .set({ resolvedAt: new Date(), resolution: 'revision' })
+        .where(eq(memoryRelation.id, relation.id));
+      await this.relationEvent(tx, relation.id, 'resolved_by_revision', {
+        superseded: supersededId,
+        successor: successorId,
+        merged_into: duplicate.id,
+      });
+      return { outcome: 'resolved_by_revision', relationId: relation.id };
+    }
+    await tx
+      .update(memoryRelation)
+      .set(
+        side === 'a'
+          ? { aMemoryId: successorId, aPriorStatus: successor.status }
+          : { bMemoryId: successorId, bPriorStatus: successor.status },
+      )
+      .where(eq(memoryRelation.id, relation.id));
+    if (successor.status !== 'contradicted') {
+      await this.store.transitionInTx(
+        tx,
+        RECONCILER,
+        successorId,
+        'contradicted',
+        'finding follows the successor of a superseded party',
+      );
+    }
+    await this.relationEvent(tx, relation.id, 'party_superseded', {
+      from: supersededId,
+      to: successorId,
+      side,
+    });
+    return { outcome: 'follows_successor', relationId: relation.id };
+  }
+
+  /**
+   * Ambiguity: the finding stays open and the event log records why it was
+   * not closed — a findings report that clears items it should not is worse
+   * than one that clears too few.
+   */
+  async keepOpen(tx: Tx, relation: MemoryRelationRow, reason: string): Promise<FindingSettlement> {
+    await this.relationEvent(tx, relation.id, 'kept_open', { reason });
+    return { outcome: 'kept_open', relationId: relation.id, reason };
+  }
+
+  /** The finding's history, oldest first (owner-gated through the relation). */
+  async eventsForRelations(
+    principal: Principal,
+    relationIds: string[],
+  ): Promise<Map<string, MemoryRelationEventRow[]>> {
+    const out = new Map<string, MemoryRelationEventRow[]>();
+    if (relationIds.length === 0) return out;
+    const a = alias(memory, 'relation_a');
+    const b = alias(memory, 'relation_b');
+    const rows = await this.db
+      .select({ event: memoryRelationEvent })
+      .from(memoryRelationEvent)
+      .innerJoin(memoryRelation, eq(memoryRelationEvent.relationId, memoryRelation.id))
+      .innerJoin(a, eq(memoryRelation.aMemoryId, a.id))
+      .innerJoin(b, eq(memoryRelation.bMemoryId, b.id))
+      .where(
+        and(
+          inArray(memoryRelationEvent.relationId, relationIds),
+          eq(a.ownerId, principal.userId),
+          eq(b.ownerId, principal.userId),
+        ),
+      )
+      .orderBy(asc(memoryRelationEvent.createdAt), memoryRelationEvent.id);
+    for (const { event } of rows) {
+      out.set(event.relationId, [...(out.get(event.relationId) ?? []), event]);
+    }
+    return out;
   }
 
   /**
@@ -582,6 +832,9 @@ export class MemoryReconciliation {
         .set({ resolvedAt: new Date(), resolution })
         .where(eq(memoryRelation.id, relation.id))
         .returning();
+      // Both resolution paths are uniform for reporting (V2.3 item 6.1):
+      // the user's action lands in the same event log the revision path uses.
+      await this.relationEvent(tx, relation.id, 'resolved_by_user', { resolution });
       await writeAudit(tx, {
         actor: actorLabel(user),
         action: 'memory.contradiction_resolved',
@@ -596,6 +849,129 @@ export class MemoryReconciliation {
   }
 
   // ── Private mechanics ───────────────────────────────────────────────────────
+
+  /** Append one lifecycle event (docs/features/findings.md). Structural ids only. */
+  private async relationEvent(
+    tx: Tx,
+    relationId: string,
+    event: RelationEvent,
+    detail: Record<string, unknown>,
+  ): Promise<void> {
+    await tx.insert(memoryRelationEvent).values({ relationId, event, detailJson: detail });
+  }
+
+  /** The relation for exactly this pair, either order, if one exists. */
+  private async exactRelation(
+    tx: Tx,
+    oneId: string,
+    otherId: string,
+  ): Promise<MemoryRelationRow | null> {
+    const rows = await tx
+      .select()
+      .from(memoryRelation)
+      .where(
+        and(
+          eq(memoryRelation.kind, 'contradicts'),
+          or(
+            and(eq(memoryRelation.aMemoryId, oneId), eq(memoryRelation.bMemoryId, otherId)),
+            and(eq(memoryRelation.aMemoryId, otherId), eq(memoryRelation.bMemoryId, oneId)),
+          ),
+        ),
+      );
+    return rows[0] ?? null;
+  }
+
+  /** Supersession ancestry of a row: every predecessor, transitively, bounded. */
+  private async ancestorsOf(tx: Tx, id: string): Promise<Set<string>> {
+    const out = new Set<string>([id]);
+    let frontier = [id];
+    for (let depth = 0; depth < 8 && frontier.length > 0; depth += 1) {
+      const rows = await tx
+        .select({ id: memory.id })
+        .from(memory)
+        .where(inArray(memory.supersededBy, frontier));
+      frontier = rows.map((row) => row.id).filter((rowId) => !out.has(rowId));
+      for (const rowId of frontier) out.add(rowId);
+    }
+    return out;
+  }
+
+  /**
+   * The most recent finding whose parties are ancestors of this pair (one on
+   * each side, either orientation), excluding the exact pair itself — the
+   * reopen/follow anchor (V2.3 item 6.1). Resolved rows preferred newest
+   * first; an open row wins over any resolved one.
+   */
+  private async ancestralRelation(
+    tx: Tx,
+    incomingId: string,
+    existingId: string,
+  ): Promise<MemoryRelationRow | null> {
+    const [ancestorsA, ancestorsB] = [
+      await this.ancestorsOf(tx, incomingId),
+      await this.ancestorsOf(tx, existingId),
+    ];
+    if (ancestorsA.size <= 1 && ancestorsB.size <= 1) return null;
+    const sideA = [...ancestorsA];
+    const sideB = [...ancestorsB];
+    const rows = await tx
+      .select()
+      .from(memoryRelation)
+      .where(
+        and(
+          eq(memoryRelation.kind, 'contradicts'),
+          or(
+            and(inArray(memoryRelation.aMemoryId, sideA), inArray(memoryRelation.bMemoryId, sideB)),
+            and(inArray(memoryRelation.aMemoryId, sideB), inArray(memoryRelation.bMemoryId, sideA)),
+          ),
+        ),
+      )
+      .orderBy(
+        sql`${memoryRelation.resolvedAt} IS NOT NULL`,
+        desc(memoryRelation.resolvedAt),
+        memoryRelation.id,
+      )
+      .for('update');
+    const candidate = rows.find(
+      (row) =>
+        !(row.aMemoryId === incomingId && row.bMemoryId === existingId) &&
+        !(row.aMemoryId === existingId && row.bMemoryId === incomingId),
+    );
+    return candidate ?? null;
+  }
+
+  /**
+   * Moves a finding onto the current pair: party ids and prior statuses
+   * updated, both parties transitioned to `contradicted`, the fresh reason
+   * recorded; `clearResolution` additionally reopens a resolved row.
+   */
+  private async repointParties(
+    tx: Tx,
+    relation: MemoryRelationRow,
+    incoming: MemoryRow,
+    existing: MemoryRow,
+    reason: string,
+    opts: { clearResolution?: boolean } = {},
+  ): Promise<MemoryRelationRow> {
+    const [updated] = await tx
+      .update(memoryRelation)
+      .set({
+        aMemoryId: incoming.id,
+        bMemoryId: existing.id,
+        aPriorStatus: incoming.status,
+        bPriorStatus: existing.status,
+        reason,
+        ...(opts.clearResolution ? { resolvedAt: null, resolution: null } : {}),
+      })
+      .where(eq(memoryRelation.id, relation.id))
+      .returning();
+    for (const row of [incoming, existing]) {
+      if (row.status !== 'contradicted') {
+        await this.store.transitionInTx(tx, RECONCILER, row.id, 'contradicted', reason);
+      }
+    }
+    return updated as MemoryRelationRow;
+  }
 
   /** Locks both rows in id order (deadlock-free) and returns them. */
   private async lockPair(tx: Tx, idOne: string, idTwo: string): Promise<[MemoryRow, MemoryRow]> {
@@ -720,7 +1096,11 @@ export class MemoryReconciliation {
     actor: string = actorLabel(RECONCILER),
     closeAt?: Date,
   ): Promise<void> {
-    const validUntil = closeAt ?? target.validFrom ?? new Date();
+    // Event time, never merge time (V2.3 item 6.1, issue D): a loser closed
+    // at `now()` claimed the old fact held until the moment the ENGINE ran,
+    // when what is known is that the winner's fact took over at its own
+    // event time (validFrom, else when it was recorded).
+    const validUntil = closeAt ?? target.validFrom ?? target.createdAt;
     await tx
       .update(memory)
       .set({ status: 'replaced', supersededBy: target.id, validUntil, updatedAt: new Date() })

@@ -248,6 +248,9 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
           EmailSourceReader,
           WebSourceReader,
         ],
+        // The generation binding the checked-pair ledger records beside every
+        // verdict (V2.3 item 6.1): a model change re-opens judged pairs.
+        reconcileModelConfig: `${config.modelProviders.tiers.pipeline.provider}/${config.modelProviders.tiers.pipeline.model}`,
       }),
       ChatSourceModule,
       // The transient attachment read job (V2.2 item 5.1): needs memory's

@@ -1155,6 +1155,44 @@ export class MemoryStore {
   }
 
   /**
+   * Subject-entity match (V2.3 item 6.1): rows anchored to any of the given
+   * names, by case-insensitive equality or trigram proximity on
+   * `subject_entity`, gated exactly like every other read. SQL recall only —
+   * the caller applies the canonical alias-aware match for precision. This is
+   * the one search that can surface a cross-language counterpart, whose
+   * embedding similarity and full-name trigram distance are both unhelpful.
+   */
+  async subjectSearch(
+    principal: Principal,
+    names: string[],
+    opts: FilteredSearchOptions,
+  ): Promise<MemoryRow[]> {
+    const wanted = [...new Set(names.map((n) => n.trim()).filter((n) => n.length > 0))];
+    if (wanted.length === 0) return [];
+    const namesArray = sql`ARRAY[${sql.join(
+      wanted.map((name) => sql`${name}`),
+      sql`, `,
+    )}]::text[]`;
+    const rows = await this.db
+      .select()
+      .from(memory)
+      .where(
+        and(
+          this.visibleTo(principal, opts),
+          sql`subject_entity IS NOT NULL AND EXISTS (
+            SELECT 1 FROM unnest(${namesArray}) AS wanted(name)
+            WHERE lower(subject_entity) = lower(wanted.name)
+               OR subject_entity % wanted.name
+          )`,
+          ...this.filterClauses(principal, opts),
+        ),
+      )
+      .orderBy(memory.id)
+      .limit(opts.topK);
+    return rows;
+  }
+
+  /**
    * Gated batch read — how retrieval resolves vectorSearch's id hits into rows.
    * Same gates as every read; ids the principal may not see simply drop out.
    */

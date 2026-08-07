@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r017",
+  "task": "contradiction",
+  "expected": "contradicts",
+  "a": {
+    "content": "The VX-9 housing wall thickness is 3.2 mm.",
+    "kind": "fact",
+    "entities": ["VX-9 housing"],
+    "subject_entity": "VX-9 housing",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Wall thickness for the VX-9 housing: 3.2 mm."
+  },
+  "b": {
+    "content": "The VX-9 housing wall thickness is 3.4 mm.",
+    "kind": "fact",
+    "entities": ["VX-9 housing"],
+    "subject_entity": "VX-9 housing",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "VX-9 housing drawing rev B lists wall thickness 3.4 mm."
+  },
+  "notes": "Numeric core case: one dimension, one part, two values in the same unit. The deterministic quantity arm must catch this without a model call; before 6.1 the judge's compatible-in-doubt bias missed it."
+}

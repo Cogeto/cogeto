@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r018",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "The PX link cable maximum length is 0.5 m.",
+    "kind": "fact",
+    "entities": ["PX link cable"],
+    "subject_entity": "PX link cable",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "PX link cable: max length 0.5 m."
+  },
+  "b": {
+    "content": "The PX link cable maximum length is 50 cm.",
+    "kind": "fact",
+    "entities": ["PX link cable"],
+    "subject_entity": "PX link cable",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Max PX link cable run is 50 cm."
+  },
+  "notes": "Negative numeric case: the same value in different units is presentation, not conflict. Guards the deterministic arm's unit conversion against false alarms."
+}

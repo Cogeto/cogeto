@@ -1,0 +1,28 @@
+{
+  "case_id": "en-r027",
+  "task": "contradiction",
+  "expected": "supersedes_a_over_b",
+  "a": {
+    "content": "The revised travel policy effective June 15 sets the daily allowance at 80 EUR.",
+    "kind": "decision",
+    "entities": [
+      "travel policy"
+    ],
+    "subject_entity": "travel policy",
+    "captured_at": "2026-07-04T10:00:00.000Z",
+    "valid_from": "2026-06-15T00:00:00.000Z",
+    "source": "Correction to the travel policy (still effective June 15): the daily allowance is 80 EUR, not what the earlier circular said."
+  },
+  "b": {
+    "content": "The travel policy effective June 15 sets the daily allowance at 60 EUR.",
+    "kind": "decision",
+    "entities": [
+      "travel policy"
+    ],
+    "subject_entity": "travel policy",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "valid_from": "2026-06-15T00:00:00.000Z",
+    "source": "Travel policy effective June 15: daily allowance 60 EUR."
+  },
+  "notes": "Both sides carry explicit validity naming the SAME effective date; the later-recorded side presents itself as a correction. Before 6.1 the strict direction guard blocked even a clean supersedes verdict here into a human-facing contradiction; the recording-order tie-break fixes the guard, and the update evidence in the source passage carries the verdict."
+}

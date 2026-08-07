@@ -1,0 +1,22 @@
+{
+  "case_id": "en-r026",
+  "task": "contradiction",
+  "expected": "contradicts",
+  "a": {
+    "content": "The board approved the Project Neptune rollout.",
+    "kind": "decision",
+    "entities": ["Project Neptune"],
+    "subject_entity": "Project Neptune",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Board decision: Project Neptune rollout approved."
+  },
+  "b": {
+    "content": "The board declined to approve the Project Neptune rollout.",
+    "kind": "decision",
+    "entities": ["Project Neptune"],
+    "subject_entity": "Project Neptune",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "The board did not approve rolling out Project Neptune."
+  },
+  "notes": "High-similarity paraphrased conflict: embeds near-identically, and the dedup judge often rules related rather than distinct. Before 6.1 a related ruling never escalated, so this shape was structurally invisible."
+}

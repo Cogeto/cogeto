@@ -78,8 +78,19 @@ export function confirmLoserOutcome(
  * be the temporally later memory, and neither party may be user_approved —
  * anything else routes to contradiction so the user decides. Never silent
  * supersession on doubt.
+ *
+ * V2.3 item 6.1 (issue D): equal event times fall back to RECORDING order.
+ * The strict comparison alone missed the correction case — both sides carry
+ * explicit validity naming the SAME effective date (a re-issued policy
+ * effective the same day), the judge rules supersedes with a clean
+ * direction, and the guard blocked it into a human-facing contradiction.
+ * When the model's winner is also the later-recorded memory, the direction
+ * is not ambiguous; equal on both axes still refuses.
  */
 export function supersessionUnambiguous(winner: PolicyParty, loser: PolicyParty): boolean {
   if (winner.status === 'user_approved' || loser.status === 'user_approved') return false;
-  return eventTime(winner).getTime() > eventTime(loser).getTime();
+  const winnerAt = eventTime(winner).getTime();
+  const loserAt = eventTime(loser).getTime();
+  if (winnerAt !== loserAt) return winnerAt > loserAt;
+  return winner.createdAt.getTime() > loser.createdAt.getTime();
 }

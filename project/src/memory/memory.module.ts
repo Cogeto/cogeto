@@ -35,6 +35,8 @@ import type { SweepOptions } from './integrity-sweep';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
 import { MemoryFileStore } from './file-store';
+import { MEMORY_ELIGIBILITY_HOOK } from './eligibility-hook';
+import type { MemoryEligibilityHook } from './eligibility-hook';
 
 export interface MemoryModuleOptions {
   qdrantUrl: string;
@@ -54,6 +56,15 @@ export interface MemoryModuleOptions {
    * the composition root, mirroring ingestion's SourceReader port (spec §15).
    */
   sourceDeletions?: { imports?: ModuleMetadata['imports']; adapters: Type<SourceDeletion>[] };
+  /**
+   * The eligibility port (V2.3 item 6.1): fired when the owner confirms an
+   * `uncertain` fact, which admits it to the contradiction candidate pool.
+   * Implemented by ingestion (ReconcileRepairEligibilityHook, the repair
+   * job's owner); like `ingestionGuard`, the class must be dependency-free
+   * beyond global infrastructure, because it is instantiated here. Optional:
+   * harnesses and the worker run without it.
+   */
+  eligibilityHook?: Type<MemoryEligibilityHook>;
   /** Derived-artifact cascades (0013 ruling 6) — chat answers and reply drafts
    * today, bound like the source deletions: memory defines the port, the
    * deriving module implements. */
@@ -148,6 +159,9 @@ export class MemoryModule {
           inject: options.derivedCascades?.adapters ?? [],
         },
         { provide: INGESTION_GUARD, useClass: options.ingestionGuard },
+        options.eligibilityHook
+          ? { provide: MEMORY_ELIGIBILITY_HOOK, useClass: options.eligibilityHook }
+          : { provide: MEMORY_ELIGIBILITY_HOOK, useValue: null },
         // The saga's and the sweep's collaborators, resolved BY TOKEN into one
         // named options bag each (V2.0 item 3.6 part 4): identity, never
         // position. The port tokens above remain the binding surface; these

@@ -1,0 +1,22 @@
+{
+  "case_id": "hr-r024",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "Rok plaćanja prema Jadranskoj hrani je 30 dana.",
+    "kind": "fact",
+    "entities": ["Jadranska hrana"],
+    "subject_entity": "Jadranska hrana",
+    "captured_at": "2026-07-03T10:00:00.000Z",
+    "source": "Uvjeti s Jadranskom hranom: 30 dana."
+  },
+  "b": {
+    "content": "Rok plaćanja prema Jadranskoj banci je 60 dana.",
+    "kind": "fact",
+    "entities": ["Jadranska banka"],
+    "subject_entity": "Jadranska banka",
+    "captured_at": "2026-07-01T10:00:00.000Z",
+    "source": "Računi Jadranske banke dospijevaju za 60 dana."
+  },
+  "notes": "Zamka preciznosti: hrana i banka razlikuju se na početku riječi, dakle dva različita subjekta. Uparivanje bi bilo lažna uzbuna koju proširenje ne smije proizvesti."
+}

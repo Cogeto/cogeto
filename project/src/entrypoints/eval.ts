@@ -1,7 +1,13 @@
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { z } from 'zod';
-import { evalConfigSchema, runGoldenEval, runReconcileEval } from '../ingestion/index';
+import {
+  evalConfigSchema,
+  RECONCILE_CONTRADICTION_PROMPT,
+  RECONCILE_DEDUP_PROMPT,
+  runGoldenEval,
+  runReconcileEval,
+} from '../ingestion/index';
 import type { EvalMetrics, ReconcileEvalMetrics } from '../ingestion/index';
 import { runRewriteEval } from '../retrieval/index';
 import type { RewriteEvalMetrics } from '../retrieval/index';
@@ -239,7 +245,8 @@ async function main(): Promise<void> {
     emitPartial(emitPath, {
       schema_version: TRUST_SCORES_SCHEMA_VERSION,
       harness:
-        `${result.promptVersions} · reconcile_dedup/v0001 + reconcile_contradiction/v0001 · ` +
+        `${result.promptVersions} · ${RECONCILE_DEDUP_PROMPT.family}/${RECONCILE_DEDUP_PROMPT.version} + ` +
+        `${RECONCILE_CONTRADICTION_PROMPT.family}/${RECONCILE_CONTRADICTION_PROMPT.version} · ` +
         `${rewrite.promptVersion} · thresholds v${result.config.version}`,
       configuration: {
         id,

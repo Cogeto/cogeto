@@ -25,6 +25,7 @@ import { noopLog } from './pipeline-log';
 import type { PipelineLog } from './pipeline-log';
 import { ReconciliationService } from './reconcile.stage';
 import type { ReconcileSummary } from './reconcile.stage';
+import { enqueueSourceRepair } from '../reconcile-repair';
 import { SOURCE_READERS } from './source-reader';
 import type { SourceReader } from './source-reader';
 import { VerifyStage } from './verify.stage';
@@ -143,10 +144,14 @@ export class IngestionPipeline {
         considered: 0,
         dedupChecks: 0,
         contradictionChecks: 0,
+        ledgerHits: 0,
+        deterministicChecks: 0,
         merged: 0,
         enriched: 0,
         contradictions: 0,
+        reopened: 0,
         superseded: 0,
+        resolvedByRevision: 0,
         actions: [],
       },
     };
@@ -389,12 +394,24 @@ export class IngestionPipeline {
       tx,
       admitted.map(({ row, embedding }) => ({ row, embedding })),
       log,
+      { exclude: 'same_batch', detectedBy: 'pipeline' },
     );
     const { actions, ...reconcileCounts } = summary.reconcile;
     log(
       { stage: 'reconcile', ...ref, ...reconcileCounts, actionCount: actions.length },
       'reconciliation complete',
     );
+
+    // Repair window (V2.3 item 6.1, issue B): facts admitted by CONCURRENT
+    // jobs are invisible to this transaction, so near-simultaneous uploads
+    // never pair inline. One delayed repair per source re-pairs against
+    // whatever committed meanwhile; the checked-pair ledger keeps the re-run
+    // free of duplicate model spend. Enqueued in THIS transaction, so it
+    // fires only if the admission commits.
+    if (admitted.length > 0) {
+      await enqueueSourceRepair(tx, source.sourceType, source.sourceId);
+      log({ stage: 'reconcile', ...ref }, 'repair window enqueued');
+    }
 
     // Extract-and-discard (F1 handoff §3): schedule the staging object's
     // deletion in THIS transaction — it fires only when the derived memories

@@ -36,7 +36,9 @@ export { createMemoryStore, createMemorySystemStore, createMemoryReconciliation 
 export type { NewFact } from './memory.store';
 export { runMemoryEmbedJob } from './embed-job';
 export { MemoryReconciliation } from './reconciliation';
-export type { PairActionResult } from './reconciliation';
+export type { PairActionResult, FindingSettlement } from './reconciliation';
+export { MEMORY_ELIGIBILITY_HOOK } from './eligibility-hook';
+export type { MemoryEligibilityHook } from './eligibility-hook';
 export { chooseSurvivor, supersessionUnambiguous } from './domain/reconcile-policy';
 export type { PolicyParty } from './domain/reconcile-policy';
 /**

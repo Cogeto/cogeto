@@ -16,7 +16,7 @@ import {
   RELATION_RESOLUTIONS,
   UNCERTAINTY_REASONS,
 } from '@cogeto/shared';
-import type { SourceTypeKey } from '@cogeto/shared';
+import type { RelationDetector, RelationEvent, SourceTypeKey } from '@cogeto/shared';
 
 /**
  * Tables owned by the memory module (migration 0001; as amended by 0003).
@@ -179,6 +179,9 @@ export const memoryRelation = pgTable(
      * this owner-gated row — NEVER in the org-readable audit trail — and is
      * erased with the pair (FK CASCADE). NULL on pre-0020 rows. */
     reason: text('reason'),
+    /** Which pass found it (migration 0048): pipeline, dreaming, or repair.
+     * NULL on pre-0048 rows means "not recorded", never a guess. */
+    detectedBy: text('detected_by').$type<RelationDetector>(),
     resolvedAt: timestamp('resolved_at', { withTimezone: true }),
     resolution: memoryRelationResolutionEnum('resolution'),
   },
@@ -188,7 +191,28 @@ export const memoryRelation = pgTable(
   ],
 );
 
+/**
+ * The finding's append-only history (V2.3 item 6.1, migration 0048;
+ * docs/features/findings.md): detection, party replacement under
+ * supersession, both resolution paths, kept-open records, reopening. The
+ * report's delta view renders these. Structural metadata only in
+ * `detail_json` (ids, sides, pass names, resolution values) — never content;
+ * FK CASCADE erases the history with its finding.
+ */
+export const memoryRelationEvent = pgTable(
+  'memory_relation_event',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    relationId: uuid('relation_id').notNull(),
+    event: text('event').$type<RelationEvent>().notNull(),
+    detailJson: jsonb('detail_json'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('memory_relation_event_relation_idx').on(t.relationId, t.createdAt)],
+);
+
 export type MemoryRow = typeof memory.$inferSelect;
 export type MemoryRelationRow = typeof memoryRelation.$inferSelect;
+export type MemoryRelationEventRow = typeof memoryRelationEvent.$inferSelect;
 /** The registry's closed union — the compile-time half of the old enum's guarantee. */
 export type SourceType = SourceTypeKey;
