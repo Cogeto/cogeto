@@ -18,6 +18,7 @@ import {
   rateString,
 } from './report-format';
 import type { ReportArtifact } from './report-format';
+import { readTrustScoresFor } from './report-assembler';
 
 /**
  * The findings-report format contract (V2.3 item 6.2): the fixture payload
@@ -135,5 +136,30 @@ describe('report format', () => {
     expect(rateString(0.8235294)).toBe('0.824');
     expect(rateString(1)).toBe('1.000');
     expect(rateString(null)).toBeNull();
+  });
+});
+
+// Pinned against the REAL published artifacts: the reader must match the
+// document shape trust-scores actually publish (configurations[] entries),
+// so a shape change cannot silently turn every report into "not_published".
+describe('trust score lookup', () => {
+  const trustDir = join(__dirname, '..', '..', '..', 'eval', 'trust-scores');
+
+  it('report_trust_lookup: finds the published mistral-default scores', async () => {
+    const result = await readTrustScoresFor(trustDir, 'mistral-default');
+    expect(result.status).toBe('published');
+    expect(result.matched_configuration_id).toBe('mistral-default');
+    expect(result.release).toMatch(/^v\d/);
+    expect(result.aggregate?.extraction_precision).toMatch(/^0\.\d{3}$/);
+    expect(result.per_language?.some((lang) => lang.language === 'hr')).toBe(true);
+  });
+
+  it('report_trust_lookup_honest_miss: an unmeasured configuration states not_published', async () => {
+    const result = await readTrustScoresFor(
+      trustDir,
+      'pipe-openai-ff711--ans-openai-ff711--emb-openai-bge-m3',
+    );
+    expect(result.status).toBe('not_published');
+    expect(result.aggregate).toBeNull();
   });
 });

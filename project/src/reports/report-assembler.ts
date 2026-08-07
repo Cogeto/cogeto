@@ -718,51 +718,13 @@ export class ReportAssembler {
   private async trustScoresFor(
     configurationId: string,
   ): Promise<ReportPayload['configuration']['trust_scores']> {
-    const notPublished = {
-      status: 'not_published' as const,
-      release: null,
-      matched_configuration_id: null,
-      generated_at: null,
-      aggregate: null,
-      per_language: null,
-    };
-    let index: { version: string; path: string }[];
-    try {
-      const raw = await readFile(join(this.options.trustScoresDir, 'index.json'), 'utf8');
-      index = JSON.parse(raw) as { version: string; path: string }[];
-    } catch {
-      return notPublished;
+    const result = await readTrustScoresFor(this.options.trustScoresDir, configurationId);
+    if (result.status === 'not_published') {
+      this.logger.log(
+        `no published trust scores match configuration ${configurationId}: the report states so`,
+      );
     }
-    const accepted = new Set([configurationId, `${configurationId}--reasoning`]);
-    for (const entry of index) {
-      let doc: TrustScoresFile;
-      try {
-        const raw = await readFile(join(this.options.trustScoresDir, entry.path), 'utf8');
-        doc = JSON.parse(raw) as TrustScoresFile;
-      } catch {
-        continue;
-      }
-      const artifactId = doc.configuration?.id;
-      if (!artifactId || !accepted.has(artifactId)) continue;
-      const metrics = doc.metrics;
-      return {
-        status: 'published',
-        release: entry.version,
-        matched_configuration_id: artifactId,
-        generated_at: doc.generated_by?.generated_at ?? null,
-        aggregate: metrics?.aggregate ? toTrustMetrics(metrics.aggregate) : null,
-        per_language: metrics?.per_language
-          ? metrics.per_language.map((lang) => ({
-              language: lang.language ?? '',
-              ...toTrustMetrics(lang),
-            }))
-          : null,
-      };
-    }
-    this.logger.log(
-      `no published trust scores match configuration ${configurationId}: the report states so`,
-    );
-    return notPublished;
+    return result;
   }
 
   // ── Enumeration helpers (the catalog's shapes, exhaustively paged) ──────
@@ -1018,6 +980,64 @@ function toReportLocator(locator: ReadLocator): ReportLocator {
   return { kind: 'document' };
 }
 
+/**
+ * Published trust scores for THIS configuration, from the bundled artifacts
+ * (newest release first). A missing directory, an unreadable index, or no
+ * entry whose id matches (with or without the probed `--reasoning` marker)
+ * all land on `not_published`: measured accuracy is never borrowed from a
+ * different configuration. Exported pure so the published-artifact shape is
+ * pinned by a test against the real files in eval/trust-scores.
+ */
+export async function readTrustScoresFor(
+  trustScoresDir: string,
+  configurationId: string,
+): Promise<ReportPayload['configuration']['trust_scores']> {
+  const notPublished = {
+    status: 'not_published' as const,
+    release: null,
+    matched_configuration_id: null,
+    generated_at: null,
+    aggregate: null,
+    per_language: null,
+  };
+  let index: { version: string; path: string }[];
+  try {
+    const raw = await readFile(join(trustScoresDir, 'index.json'), 'utf8');
+    index = JSON.parse(raw) as { version: string; path: string }[];
+  } catch {
+    return notPublished;
+  }
+  const accepted = new Set([configurationId, `${configurationId}--reasoning`]);
+  for (const entry of index) {
+    let doc: TrustScoresFile;
+    try {
+      const raw = await readFile(join(trustScoresDir, entry.path), 'utf8');
+      doc = JSON.parse(raw) as TrustScoresFile;
+    } catch {
+      continue;
+    }
+    const matched = (doc.configurations ?? []).find(
+      (candidate) => candidate.id !== undefined && accepted.has(candidate.id),
+    );
+    if (!matched) continue;
+    const metrics = matched.metrics;
+    return {
+      status: 'published',
+      release: entry.version,
+      matched_configuration_id: matched.id ?? null,
+      generated_at: doc.generated_by?.generated_at ?? null,
+      aggregate: metrics?.aggregate ? toTrustMetrics(metrics.aggregate) : null,
+      per_language: metrics?.per_language
+        ? metrics.per_language.map((lang) => ({
+            language: lang.language ?? '',
+            ...toTrustMetrics(lang),
+          }))
+        : null,
+    };
+  }
+  return notPublished;
+}
+
 function toTrustMetrics(raw: TrustMetricsRaw): ReportTrustMetrics {
   return {
     extraction_precision: rateString(raw.extraction_precision),
@@ -1045,13 +1065,17 @@ interface TrustMetricsRaw {
   language?: string;
 }
 
+/** The published trust-scores document (schema 1.x): one entry per measured
+ * configuration, matched here by its exact id. */
 interface TrustScoresFile {
-  configuration?: { id?: string };
   generated_by?: { generated_at?: string };
-  metrics?: {
-    aggregate?: TrustMetricsRaw;
-    per_language?: TrustMetricsRaw[];
-  };
+  configurations?: {
+    id?: string;
+    metrics?: {
+      aggregate?: TrustMetricsRaw;
+      per_language?: TrustMetricsRaw[];
+    };
+  }[];
 }
 
 interface SuppressedRowLike {
