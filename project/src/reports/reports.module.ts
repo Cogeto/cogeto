@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule, ModuleMetadata } from '@nestjs/common';
+import { UserContextModule } from '../infrastructure/index';
 import { SuppressedFactLog, SourceContextStore, SourceRevisionStore } from '../ingestion/index';
 import { FileReadReportStore } from '../files/index';
 import { ReportsController } from './reports.controller';
@@ -34,7 +35,9 @@ export class ReportsModule {
   ): DynamicModule {
     return {
       module: ReportsModule,
-      imports: [...(options.imports ?? [])],
+      // UserContextModule: the trigger resolves the owner's preferred
+      // language (the report's anchor locale) through it.
+      imports: [UserContextModule, ...(options.imports ?? [])],
       controllers: [ReportsController],
       providers: [{ provide: REPORT_OPTIONS, useValue: options }, ReportService, ReportStore],
       exports: [ReportService],
