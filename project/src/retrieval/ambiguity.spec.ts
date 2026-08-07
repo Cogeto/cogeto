@@ -273,7 +273,12 @@ describe('decideAmbiguity', () => {
     const decision = decideAmbiguity(
       [
         cluster({ key: 'ana', subject: 'Ana', entityNamed: true, fused: 0.03 }),
-        cluster({ key: 'adriatic foods', subject: 'Adriatic Foods', entityNamed: true, fused: 0.028 }),
+        cluster({
+          key: 'adriatic foods',
+          subject: 'Adriatic Foods',
+          entityNamed: true,
+          fused: 0.028,
+        }),
       ],
       ['Atlas CRM'],
       fold,
