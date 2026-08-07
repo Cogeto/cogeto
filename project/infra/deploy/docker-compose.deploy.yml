@@ -394,7 +394,7 @@ services:
     cpus: 1.0
     pids_limit: 64
     # busybox:stable
-    image: busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+    image: busybox@sha256:dc2d74b28e4cf8984fa52af1f39bc7c3d9c73760b41a74d629f5d11b1ab28616
     command: ['chown', '-R', '1000:1000', '/instance-keys', '/instance-pubkey']
     volumes:
       - instance-keys:/instance-keys
@@ -461,7 +461,7 @@ services:
     cpus: 1.0
     pids_limit: 64
     # busybox:stable (pinned by digest —)
-    image: busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+    image: busybox@sha256:dc2d74b28e4cf8984fa52af1f39bc7c3d9c73760b41a74d629f5d11b1ab28616
     command: ['chown', '-R', '1000:1000', '/machinekey']
     volumes:
       - zitadel-machinekey:/machinekey
