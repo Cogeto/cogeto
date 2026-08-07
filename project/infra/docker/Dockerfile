@@ -86,7 +86,7 @@ CMD ["node", "project/src/dist/entrypoints/app.js"]
 
 # ── Edge: Caddy with the built SPA baked in ──────────────────────────────────
 # caddy:2-alpine
-FROM caddy@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648 AS caddy
+FROM caddy@sha256:844f60b64e4724a5aa8245e019dace0d3f199f7433ce6c57676cb30a920dbad9 AS caddy
 COPY project/infra/docker/caddy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /repo/project/web/dist /srv
 
@@ -94,5 +94,5 @@ COPY --from=build /repo/project/web/dist /srv
 # Qdrant) + the S3 presign origin, served ONLY here so they never answer on the
 # public 443 listener by Host header. Compose binds this to 127.0.0.1 only.
 # caddy:2-alpine
-FROM caddy@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648 AS caddy-consoles
+FROM caddy@sha256:844f60b64e4724a5aa8245e019dace0d3f199f7433ce6c57676cb30a920dbad9 AS caddy-consoles
 COPY project/infra/docker/caddy/Caddyfile.consoles /etc/caddy/Caddyfile
