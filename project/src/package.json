@@ -41,7 +41,7 @@
     "@types/mailparser": "^3.4.6",
     "@types/multer": "^2.2.0",
     "@types/node": "^22.15.0",
-    "@types/pg": "^8.15.0",
+    "@types/pg": "^8.20.3",
     "ajv": "^8.20.0"
   }
 }
