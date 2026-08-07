@@ -160,7 +160,9 @@ export class ReportAssembler {
         });
       }
     } else {
-      sources = await this.enumerateCorpus(principal);
+      const enumerated = await this.enumerateCorpus(principal);
+      sources = enumerated.sources;
+      scopeTruncated = enumerated.stalled;
       if (scope.kind === 'date_range') {
         const from = new Date(scope.from).getTime();
         const to = new Date(scope.to).getTime();
@@ -220,6 +222,11 @@ export class ReportAssembler {
       if (done % 25 === 0) await onProgress(done, sources.length);
     }
 
+    // Sources OUTSIDE the scope that a finding or chain references still need
+    // a display name (the reader must be able to open both documents), but
+    // they were not examined: they live in this separate map and never join
+    // the coverage rows, the counts, or the scope cap.
+    const referencedSources = new Map<string, { name: string | null }>();
     const sourceRefFor = (sourceType: string, sourceId: string): ReportSourceRef => {
       const key = keyOf(sourceType, sourceId);
       const inScope = sources.find((s) => s.sourceType === sourceType && s.sourceId === sourceId);
@@ -227,7 +234,7 @@ export class ReportAssembler {
       return {
         source_type: sourceType,
         source_id: sourceId,
-        name: inScope?.name ?? null,
+        name: inScope?.name ?? referencedSources.get(key)?.name ?? null,
         document_class: context?.documentClass ?? null,
         revision: context?.revision ?? null,
       };
@@ -273,6 +280,7 @@ export class ReportAssembler {
           party.sourceType,
           party.sourceId,
           sources,
+          referencedSources,
           contextBySource,
         );
       }
@@ -362,7 +370,14 @@ export class ReportAssembler {
           break outer;
         }
         for (const row of chain) {
-          await this.ensureNamed(principal, row.sourceType, row.sourceId, sources, contextBySource);
+          await this.ensureNamed(
+            principal,
+            row.sourceType,
+            row.sourceId,
+            sources,
+            referencedSources,
+            contextBySource,
+          );
         }
         chains.push({
           links: chain.map((row) => ({
@@ -661,16 +676,26 @@ export class ReportAssembler {
       collect(page.items as unknown as SuppressedRowLike[]);
     } else {
       for (const ref of scopeRefs) {
-        const page = await this.suppressed.list(principal, {
-          sourceType: ref.sourceType,
-          sourceId: ref.sourceId,
-          limit: SUPPRESSED_ENTRY_LIMIT,
-        });
-        total += page.total;
-        for (const row of page.items as unknown as SuppressedRowLike[]) {
-          byReason[row.reason] = (byReason[row.reason] ?? 0) + 1;
+        // Page the WHOLE per-source log for the by-reason counts (bounded,
+        // and the bound is far above any real source), so the stated total
+        // and the by-reason table cannot disagree; only the ENTRIES list is
+        // capped, and it says so.
+        let offset = 0;
+        for (let pageIndex = 0; pageIndex < 50; pageIndex += 1) {
+          const page = await this.suppressed.list(principal, {
+            sourceType: ref.sourceType,
+            sourceId: ref.sourceId,
+            limit: SUPPRESSED_ENTRY_LIMIT,
+            offset,
+          });
+          if (offset === 0) total += page.total;
+          for (const row of page.items as unknown as SuppressedRowLike[]) {
+            byReason[row.reason] = (byReason[row.reason] ?? 0) + 1;
+          }
+          collect(page.items as unknown as SuppressedRowLike[]);
+          offset += page.items.length;
+          if (offset >= page.total || page.items.length === 0) break;
         }
-        collect(page.items as unknown as SuppressedRowLike[]);
       }
     }
     onSensitiveWithheld(withheld);
@@ -742,78 +767,94 @@ export class ReportAssembler {
 
   // ── Enumeration helpers (the catalog's shapes, exhaustively paged) ──────
 
-  private async enumerateCorpus(principal: Principal): Promise<ScopeSource[]> {
+  private async enumerateCorpus(
+    principal: Principal,
+  ): Promise<{ sources: ScopeSource[]; stalled: boolean }> {
     const out = new Map<string, ScopeSource>();
+    let stalled = false;
     const push = (s: ScopeSource) => out.set(keyOf(s.sourceType, s.sourceId), s);
 
-    await this.drain(
-      (cursor) => listNoteSources(this.db, principal.userId, pageOpts(cursor)),
-      (row) =>
-        push({ sourceType: 'user_note', sourceId: row.sourceId, name: row.name, at: row.at }),
-    );
-    await this.drain(
-      (cursor) => listEmailSources(this.db, principal.userId, pageOpts(cursor)),
-      (row) => push({ sourceType: 'email', sourceId: row.sourceId, name: row.name, at: row.at }),
-    );
-    await this.drain(
-      (cursor) => listWebSources(this.db, principal.userId, pageOpts(cursor)),
-      (row) => push({ sourceType: 'web', sourceId: row.sourceId, name: row.name, at: row.at }),
-    );
+    stalled =
+      (await this.drain(
+        (cursor) => listNoteSources(this.db, principal.userId, pageOpts(cursor)),
+        (row) =>
+          push({ sourceType: 'user_note', sourceId: row.sourceId, name: row.name, at: row.at }),
+      )) || stalled;
+    stalled =
+      (await this.drain(
+        (cursor) => listEmailSources(this.db, principal.userId, pageOpts(cursor)),
+        (row) => push({ sourceType: 'email', sourceId: row.sourceId, name: row.name, at: row.at }),
+      )) || stalled;
+    stalled =
+      (await this.drain(
+        (cursor) => listWebSources(this.db, principal.userId, pageOpts(cursor)),
+        (row) => push({ sourceType: 'web', sourceId: row.sourceId, name: row.name, at: row.at }),
+      )) || stalled;
     // Chat captures enumerate from their facts' provenance.
-    await this.drain(
-      async (cursor) => {
-        const refs = await this.memory.listSourceRefsForPrincipal(principal, {
-          ...pageOpts(cursor),
-          sourceType: 'chat',
-        });
-        return refs.map((r) => ({ sourceId: r.sourceId, name: null, at: r.firstAt }));
-      },
-      (row) => push({ sourceType: 'chat', sourceId: row.sourceId, name: row.name, at: row.at }),
-    );
+    stalled =
+      (await this.drain(
+        async (cursor) => {
+          const refs = await this.memory.listSourceRefsForPrincipal(principal, {
+            ...pageOpts(cursor),
+            sourceType: 'chat',
+          });
+          return refs.map((r) => ({ sourceId: r.sourceId, name: null, at: r.firstAt }));
+        },
+        (row) => push({ sourceType: 'chat', sourceId: row.sourceId, name: row.name, at: row.at }),
+      )) || stalled;
     // Files: stored uploads plus discard-mode sources whose only trace is
     // their facts' provenance; metadata rows win the date.
-    await this.drain(
-      async (cursor) => {
-        const refs = await this.memory.listSourceRefsForPrincipal(principal, {
-          ...pageOpts(cursor),
-          sourceType: 'file',
-        });
-        return refs.map((r) => ({ sourceId: r.sourceId, name: null, at: r.firstAt }));
-      },
-      (row) => push({ sourceType: 'file', sourceId: row.sourceId, name: row.name, at: row.at }),
-    );
-    await this.drain(
-      async (cursor) => {
-        const rows = await listFileSourceRefs(this.db, principal.userId, pageOpts(cursor));
-        return rows.map((r) => ({ sourceId: r.objectKey, name: null, at: r.at }));
-      },
-      (row) => push({ sourceType: 'file', sourceId: row.sourceId, name: row.name, at: row.at }),
-    );
+    stalled =
+      (await this.drain(
+        async (cursor) => {
+          const refs = await this.memory.listSourceRefsForPrincipal(principal, {
+            ...pageOpts(cursor),
+            sourceType: 'file',
+          });
+          return refs.map((r) => ({ sourceId: r.sourceId, name: null, at: r.firstAt }));
+        },
+        (row) => push({ sourceType: 'file', sourceId: row.sourceId, name: row.name, at: row.at }),
+      )) || stalled;
+    stalled =
+      (await this.drain(
+        async (cursor) => {
+          const rows = await listFileSourceRefs(this.db, principal.userId, pageOpts(cursor));
+          return rows.map((r) => ({ sourceId: r.objectKey, name: null, at: r.at }));
+        },
+        (row) => push({ sourceType: 'file', sourceId: row.sourceId, name: row.name, at: row.at }),
+      )) || stalled;
 
-    return [...out.values()].sort((a, b) => {
+    const sorted = [...out.values()].sort((a, b) => {
       const at = a.at?.getTime() ?? 0;
       const bt = b.at?.getTime() ?? 0;
       if (at !== bt) return bt - at;
       return a.sourceId < b.sourceId ? -1 : 1;
     });
+    return { sources: sorted, stalled };
   }
 
-  /** Exhausts a cursor-paged listing up to the scope cap. */
+  /**
+   * Exhausts a cursor-paged listing up to the scope cap. The listings page on
+   * a strictly-greater timestamp cursor, so a full page ending in a run of
+   * identical timestamps cannot advance; that stall is RETURNED and lands on
+   * the report as scope truncation, never a silent omission.
+   */
   private async drain(
     page: (
       cursor: Date | undefined,
     ) => Promise<{ sourceId: string; name: string | null; at: Date }[]>,
     push: (row: { sourceId: string; name: string | null; at: Date }) => void,
-  ): Promise<void> {
+  ): Promise<boolean> {
     let cursor: Date | undefined;
     for (let i = 0; i < Math.ceil((SCOPE_SOURCE_LIMIT + 1) / PAGE_SIZE) + 1; i += 1) {
       const rows = await page(cursor);
       for (const row of rows) push(row);
-      if (rows.length < PAGE_SIZE) return;
+      if (rows.length < PAGE_SIZE) return false;
       const last = rows[rows.length - 1]!.at;
-      if (cursor && last.getTime() === cursor.getTime()) return;
+      if (cursor && last.getTime() === cursor.getTime()) return true;
       cursor = last;
     }
+    return true;
   }
 
   private async ownsSource(
@@ -901,6 +942,7 @@ export class ReportAssembler {
     sourceType: SourceType,
     sourceId: string,
     sources: ScopeSource[],
+    referencedSources: Map<string, { name: string | null }>,
     contextBySource: Map<
       string,
       { documentClass: string | null; revision: string | null; subjects: { name: string }[] }
@@ -909,6 +951,7 @@ export class ReportAssembler {
     const existing = sources.find((s) => s.sourceType === sourceType && s.sourceId === sourceId);
     if (existing?.name) return;
     const key = keyOf(sourceType, sourceId);
+    if (!existing && referencedSources.has(key)) return;
     if (sourceType === 'file' && !contextBySource.has(key)) {
       const context = await this.contexts
         .getForOwner(principal, sourceType, sourceId)
@@ -928,7 +971,10 @@ export class ReportAssembler {
     if (existing) {
       existing.name = name;
     } else {
-      sources.push({ sourceType, sourceId, name, at: null });
+      // NEVER pushed into the examined scope: coverage rows and counts were
+      // computed from the scope snapshot, and a referenced document was not
+      // examined.
+      referencedSources.set(key, { name });
     }
   }
 }

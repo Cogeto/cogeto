@@ -138,6 +138,10 @@ export function renderReportPdf(input: RenderPdfInput): Buffer {
   composer.spacer(6);
   composer.para(t('cover.verifyHint'), { size: 8.5, gray: true });
 
+  // The cover stands alone; the body starts on its own page, which also
+  // keeps the TOC's page arithmetic exact (body pages are always >= 1).
+  composer.newPage();
+
   // ── Body sections ────────────────────────────────────────────────────────
   renderProvenance(composer, payload, t, { d, dt, n });
   renderExecutiveSummary(composer, payload, t, { d, dt, n });

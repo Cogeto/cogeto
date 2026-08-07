@@ -44,7 +44,10 @@ export class FindingsReportCascade implements DerivedCascade {
       .where(
         and(
           eq(findingsReport.userId, ownerId),
-          inArray(findingsReport.status, ['ready', 'pending', 'running']),
+          // 'failed' joins the list: a failed attempt may have recorded and
+          // uploaded artifact keys before it failed, and those bytes must
+          // ride the same receipt as everything else.
+          inArray(findingsReport.status, ['ready', 'pending', 'running', 'failed']),
         ),
       )
       .for('update');

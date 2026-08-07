@@ -57,8 +57,10 @@ export class ReportExportExecutor {
   async run(reportId: string, now: Date): Promise<{ published: boolean }> {
     const run = await this.store.getById(reportId);
     if (!run) throw new Error(`findings report ${reportId} not found`);
-    if (run.status !== 'pending' && run.status !== 'running') {
-      // Expired by a deletion or already settled: nothing to do, honestly.
+    if (run.status === 'ready' || run.status === 'expired') {
+      // Settled, or expired by a deletion: nothing to do, honestly. A
+      // 'failed' row IS resumable — the previous attempt marked it before
+      // graphile's retry, and this attempt may succeed.
       this.logger.log(`findings report ${reportId} is ${run.status}: generation skipped`);
       return { published: false };
     }
@@ -113,6 +115,10 @@ export class ReportExportExecutor {
     await this.store.reportProgress(reportId, { stage: 'uploading', done: 0, total: 0 });
     const jsonKey = this.objectKeyFor(principal, reportId, 'json');
     const pdfKey = this.objectKeyFor(principal, reportId, 'pdf');
+    // Keys are recorded BEFORE the uploads: a failure between putObject and
+    // markReady must never leave quoted-content bytes no row points at (the
+    // cascade and the retention pass collect keys from the row).
+    await this.store.recordArtifactKeys(reportId, jsonKey, pdfKey);
     await this.objects.putObject(jsonKey, jsonBytes, { contentType: 'application/json' });
     await this.objects.putObject(pdfKey, pdfBytes, { contentType: 'application/pdf' });
 
@@ -174,7 +180,10 @@ export class ReportExportExecutor {
   /** The hourly retention pass: delete artifacts past their expiry and flip
    * the row to expired. The row and its counts stay — the delta needs them. */
   async runRetention(now: Date): Promise<number> {
-    const expired = await this.store.listExpired(now);
+    const expired = await this.store.listExpired(
+      now,
+      this.options.exportRetentionHours * 3_600_000,
+    );
     for (const row of expired) {
       if (row.jsonObjectKey) await this.objects.deleteObject(row.jsonObjectKey);
       if (row.pdfObjectKey) await this.objects.deleteObject(row.pdfObjectKey);

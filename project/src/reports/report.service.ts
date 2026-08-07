@@ -1,4 +1,11 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { sql } from 'drizzle-orm';
 import type {
   FindingsReportDto,
   Principal,
@@ -41,18 +48,30 @@ export class ReportService {
   /**
    * Trigger a findings run. At most one in-flight run per user: generation
    * walks the whole scope, so queueing a second concurrently would only
-   * contend with the first for the same reads.
+   * contend with the first for the same reads. The check runs INSIDE the
+   * insert transaction under a per-user advisory lock (the single-flight
+   * shape), so two simultaneous triggers cannot both pass it; a same-scope
+   * duplicate returns the in-flight run, a different scope is refused
+   * honestly rather than silently answered with the wrong run.
    */
   async trigger(principal: Principal, scope: ReportScopeDto): Promise<FindingsReportDto> {
     await this.validateScope(principal, scope);
-    const existing = await this.store.unfinishedForOwner(principal.userId);
-    if (existing) return toReportDto(existing);
 
     // The report is Cogeto-initiated copy, so its language follows the anchor
     // (the user's preferred language), never the request's Accept-Language.
     const locale = await this.userContext.preferredLanguageFor(principal.userId);
 
     const row = await this.db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtextextended(${'cogeto:report-trigger:' + principal.userId}, 0))`,
+      );
+      const existing = await this.store.unfinishedForOwner(tx, principal.userId, new Date());
+      if (existing) {
+        if (existing.scopeKey === canonicalize(scope)) return existing;
+        throw new ConflictException(
+          'a report over a different scope is already being generated; wait for it to finish',
+        );
+      }
       const created = await this.store.createInTx(
         tx,
         principal.userId,

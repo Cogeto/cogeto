@@ -1,11 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, inArray, lt, lte, ne } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNotNull, lt, lte, ne, or } from 'drizzle-orm';
 import type { FindingsReportDto, ReportProgressDto, ReportScopeDto } from '@cogeto/shared';
 import { FINDINGS_REPORT_VERSION } from '@cogeto/shared';
 import { DRIZZLE } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { findingsReport } from './persistence/tables';
 import type { FindingsReportRow } from './persistence/tables';
+
+/** Statuses an attempt may resume or settle; only ready/expired are terminal. */
+const RESUMABLE = ['pending', 'running', 'failed'] as const;
+
+/** How long a pending/running row counts as in flight for the dedupe. */
+const STALE_RUN_MS = 2 * 3_600_000;
 
 /**
  * The findings-run ledger (V2.3 item 6.2) — module-private CRUD. Owner-scoping
@@ -69,15 +75,27 @@ export class ReportStore {
       .limit(50);
   }
 
-  /** An unfinished run for the owner, if any — the trigger dedupes on it. */
-  async unfinishedForOwner(userId: string): Promise<FindingsReportRow | null> {
-    const rows = await this.db
+  /**
+   * An unfinished RECENT run for the owner, if any — the trigger dedupes on
+   * it inside its transaction. Age-bounded: a run whose worker died on every
+   * attempt (nothing left to call markFailed) must not block the owner
+   * forever, so a stuck row older than the bound stops counting as in
+   * flight; a retriggered generation is idempotent by construction.
+   */
+  async unfinishedForOwner(
+    executor: Db | Tx,
+    userId: string,
+    now: Date,
+  ): Promise<FindingsReportRow | null> {
+    const staleBefore = new Date(now.getTime() - STALE_RUN_MS);
+    const rows = await executor
       .select()
       .from(findingsReport)
       .where(
         and(
           eq(findingsReport.userId, userId),
           inArray(findingsReport.status, ['pending', 'running']),
+          gt(findingsReport.createdAt, staleBefore),
         ),
       )
       .limit(1);
@@ -103,6 +121,7 @@ export class ReportStore {
           eq(findingsReport.userId, userId),
           eq(findingsReport.scopeKey, scopeKey),
           inArray(findingsReport.status, ['ready', 'expired']),
+          isNotNull(findingsReport.readyAt),
           lt(findingsReport.createdAt, before),
           ne(findingsReport.id, excludeId),
         ),
@@ -172,7 +191,7 @@ export class ReportStore {
         expiresAt: fields.expiresAt,
         progressJson: null,
       })
-      .where(and(eq(findingsReport.id, id), inArray(findingsReport.status, ['pending', 'running'])))
+      .where(and(eq(findingsReport.id, id), inArray(findingsReport.status, RESUMABLE)))
       .returning({ id: findingsReport.id });
     return rows.length > 0;
   }
@@ -181,17 +200,43 @@ export class ReportStore {
     await this.db
       .update(findingsReport)
       .set({ status: 'failed', error: error.slice(0, 500), progressJson: null })
-      .where(
-        and(eq(findingsReport.id, id), inArray(findingsReport.status, ['pending', 'running'])),
-      );
+      .where(and(eq(findingsReport.id, id), inArray(findingsReport.status, RESUMABLE)));
   }
 
-  /** Ready runs past their artifact expiry — the retention job's work list. */
-  async listExpired(now: Date, limit = 100): Promise<FindingsReportRow[]> {
+  /**
+   * Record the artifact object keys BEFORE the uploads begin, so a failure
+   * between putObject and markReady can never leave content-bearing bytes no
+   * row points at: the deletion cascade and the retention pass both collect
+   * keys from these columns, and an unrecorded object would be invisible to
+   * both (the erasure promise would over-claim).
+   */
+  async recordArtifactKeys(id: string, jsonObjectKey: string, pdfObjectKey: string): Promise<void> {
+    await this.db
+      .update(findingsReport)
+      .set({ jsonObjectKey, pdfObjectKey })
+      .where(and(eq(findingsReport.id, id), inArray(findingsReport.status, RESUMABLE)));
+  }
+
+  /**
+   * The retention job's work list: ready runs past their artifact expiry,
+   * plus FAILED runs old enough that no retry is coming whose recorded keys
+   * may point at partially uploaded artifacts.
+   */
+  async listExpired(now: Date, retentionMs: number, limit = 100): Promise<FindingsReportRow[]> {
+    const failedCutoff = new Date(now.getTime() - retentionMs);
     return this.db
       .select()
       .from(findingsReport)
-      .where(and(eq(findingsReport.status, 'ready'), lte(findingsReport.expiresAt, now)))
+      .where(
+        or(
+          and(eq(findingsReport.status, 'ready'), lte(findingsReport.expiresAt, now)),
+          and(
+            eq(findingsReport.status, 'failed'),
+            lte(findingsReport.createdAt, failedCutoff),
+            or(isNotNull(findingsReport.jsonObjectKey), isNotNull(findingsReport.pdfObjectKey)),
+          ),
+        ),
+      )
       .limit(limit);
   }
 
