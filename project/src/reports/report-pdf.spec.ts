@@ -48,7 +48,7 @@ function render(input: ReportArtifact): Buffer {
       regular: parseTtf(readFileSync(join(FONTS_DIR, 'DejaVuSans.ttf'))),
       bold: parseTtf(readFileSync(join(FONTS_DIR, 'DejaVuSans-Bold.ttf'))),
     },
-    logo: parseLogoSvg(readFileSync(join(BRAND_DIR, 'cogeto-final-logo-horizontal.svg'), 'utf8')),
+    logo: parseLogoSvg(readFileSync(join(BRAND_DIR, 'cogeto-final-logo-mono.svg'), 'utf8')),
   });
 }
 

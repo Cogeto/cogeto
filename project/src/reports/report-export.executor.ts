@@ -208,10 +208,9 @@ export class ReportExportExecutor {
 
   private async getLogo(): Promise<ParsedLogo> {
     if (!this.logo) {
-      const svg = await readFile(
-        join(this.options.brandDir, 'cogeto-final-logo-horizontal.svg'),
-        'utf8',
-      );
+      // The single-color variant: the brand README designates it for print
+      // and monochrome contexts, which a findings report is.
+      const svg = await readFile(join(this.options.brandDir, 'cogeto-final-logo-mono.svg'), 'utf8');
       this.logo = parseLogoSvg(svg);
     }
     return this.logo;
