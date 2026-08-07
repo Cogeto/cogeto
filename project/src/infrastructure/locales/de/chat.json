@@ -1,6 +1,19 @@
 {
   "nothingOpen": "Es ist nichts mehr offen, nichts Erfasstes wartet auf Sie.",
   "nothingOnRecord": "Dazu habe ich noch nichts. Erfassen Sie es als Notiz auf der Seite Erinnerungen, dann merke ich es mir und kann beim nächsten Mal antworten.",
+  "ambiguity": {
+    "silentPreamble": "Dazu habe ich nichts in Ihren Quellen. Was folgt, ist allgemeines Wissen, nicht aus Ihren Quellen.",
+    "fanoutIntro": "Das kann sich in Ihren Quellen auf mehrere Dinge beziehen:",
+    "line": "- **{{subject}}**: {{fact}} {{cite}}{{verdict}}",
+    "verdict": {
+      "uncertain": "unbestätigt",
+      "contradicted": "widersprüchlich",
+      "past": "nicht mehr aktuell"
+    },
+    "more_one": "{{count}} weiteres Thema passt. Nennen Sie es beim Namen, um es zu sehen.",
+    "more_other": "{{count}} weitere Themen passen. Nennen Sie eines beim Namen, um es zu sehen.",
+    "whichDidYouMean": "Welches meinten Sie?"
+  },
   "smallTalk": {
     "thanks": "Gern geschehen, schön, dass es geholfen hat.",
     "greeting": "Hallo! Wobei kann ich Ihnen helfen?",

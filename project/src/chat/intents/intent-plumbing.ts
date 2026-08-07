@@ -1,4 +1,4 @@
-import type { Principal } from '@cogeto/shared';
+import type { AmbiguityDecisionDto, Principal } from '@cogeto/shared';
 import type { PromptArtifact } from '../../model-gateway/index';
 
 /**
@@ -16,6 +16,9 @@ export interface ChatTurnSink {
     content: string,
     /** The displayed deliberation (Part C); null when the model produced none. */
     thinking?: string | null,
+    /** The ambiguity decision behind a grounded answer (V2.3 item 6.3);
+     * null when the path computed none. */
+    ambiguity?: AmbiguityDecisionDto | null,
   ): Promise<{ id: string }>;
   getPrompt(): Promise<PromptArtifact>;
   /** Metadata only — never answer content or tokens (pino rule). */

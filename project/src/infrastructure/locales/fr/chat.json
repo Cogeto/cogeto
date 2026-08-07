@@ -1,6 +1,20 @@
 {
   "nothingOpen": "Rien ne reste ouvert, aucun élément enregistré n’attend votre intervention.",
   "nothingOnRecord": "Je n’ai encore rien à ce sujet. Capturez-le comme note sur la page Souvenirs, je le mémoriserai et pourrai répondre la prochaine fois.",
+  "ambiguity": {
+    "silentPreamble": "Je n’ai rien à ce sujet dans vos sources. Ce qui suit relève des connaissances générales, pas de vos sources.",
+    "fanoutIntro": "Cela peut désigner plusieurs choses dans vos sources :",
+    "line": "- **{{subject}}**: {{fact}} {{cite}}{{verdict}}",
+    "verdict": {
+      "uncertain": "non confirmé",
+      "contradicted": "contradictoire",
+      "past": "plus d’actualité"
+    },
+    "more_one": "{{count}} autre sujet correspond. Nommez-le pour le voir.",
+    "more_many": "{{count}} autres sujets correspondent. Nommez-en un pour le voir.",
+    "more_other": "{{count}} autres sujets correspondent. Nommez-en un pour le voir.",
+    "whichDidYouMean": "Lequel vouliez-vous dire ?"
+  },
   "smallTalk": {
     "thanks": "Je vous en prie, je suis heureux que cela vous ait aidé.",
     "greeting": "Bonjour ! Comment puis-je vous aider ?",

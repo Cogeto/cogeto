@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type {
+  AmbiguityDecisionDto,
   AnswerSegment,
   ChatAttachmentDto,
   ChatFactDto,
@@ -62,11 +63,16 @@ function MessageBody({
   session,
   content,
   facts,
+  ambiguity,
   onOpenMemory,
 }: {
   session: Session;
   content: string;
   facts?: ChatFactDto[];
+  /** The stored ambiguity decision (V2.3 item 6.3): a fan-out renders as a
+   * labeled set of alternatives rather than a list of facts; the silent
+   * branch needs nothing here — its banner IS the unsourced treatment. */
+  ambiguity?: AmbiguityDecisionDto | null;
   onOpenMemory: (memoryId: string) => void;
 }) {
   const { t } = useTranslation('chat');
@@ -92,23 +98,40 @@ function MessageBody({
   }
   const factFor = (id: string): ChatFactDto | undefined => facts?.find((f) => f.memoryId === id);
 
+  const rendered = (
+    <ChatMarkdown
+      segments={segments}
+      renderChip={(segment: Extract<AnswerSegment, { kind: 'cite' | 'unsourced' }>) =>
+        segment.kind === 'unsourced' ? (
+          <UnsourcedChip />
+        ) : (
+          <CitationChip
+            session={session}
+            memoryId={segment.memoryId}
+            fact={factFor(segment.memoryId)}
+            onOpen={onOpenMemory}
+          />
+        )
+      }
+    />
+  );
+
   return (
     <div>
-      <ChatMarkdown
-        segments={segments}
-        renderChip={(segment: Extract<AnswerSegment, { kind: 'cite' | 'unsourced' }>) =>
-          segment.kind === 'unsourced' ? (
-            <UnsourcedChip />
-          ) : (
-            <CitationChip
-              session={session}
-              memoryId={segment.memoryId}
-              fact={factFor(segment.memoryId)}
-              onOpen={onOpenMemory}
-            />
-          )
-        }
-      />
+      {ambiguity?.branch === 'fan_out' ? (
+        <div
+          role="group"
+          aria-label={t('ambiguity.alternatives')}
+          className="rounded-lg border border-brand-teal/30 bg-brand-teal-surface/40 p-3.5 dark:bg-brand-teal/5"
+        >
+          <span className="mb-2 block font-mono text-[0.64rem] uppercase tracking-[0.12em] text-brand-teal-ink dark:text-brand-teal">
+            {t('ambiguity.alternatives')}
+          </span>
+          {rendered}
+        </div>
+      ) : (
+        rendered
+      )}
       {(citedIds.length > 0 || hasUnsourced) && (
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-dashed border-slate-200 pt-3">
           <span className="font-mono text-[0.64rem] uppercase tracking-[0.12em] text-slate-400">
@@ -399,6 +422,7 @@ type ChatMessage = {
   role: 'user' | 'assistant';
   content: string;
   thinking?: string | null;
+  ambiguity?: AmbiguityDecisionDto | null;
 };
 type Turn = { key: string; question?: ChatMessage; answer?: ChatMessage };
 
@@ -509,6 +533,8 @@ export function Chat({ session }: { session: Session }) {
    * answer, and nothing renders when the model does not think. */
   const [liveThinking, setLiveThinking] = useState('');
   const [liveFacts, setLiveFacts] = useState<ChatFactDto[]>([]);
+  /** The live answer's ambiguity decision (V2.3 item 6.3), from `done`. */
+  const [liveAmbiguity, setLiveAmbiguity] = useState<AmbiguityDecisionDto | null>(null);
   /** The latest answer's research offer (0046) — ephemeral, cleared on the next ask. */
   const [offer, setOffer] = useState<ChatResearchOffer | null>(null);
   // A skill run proposed from chat: the run view
@@ -653,6 +679,7 @@ export function Chat({ session }: { session: Session }) {
     setLiveText('');
     setLiveThinking('');
     setLiveFacts([]);
+    setLiveAmbiguity(null);
     setOffer(null);
     setSkillRunId(null);
     const controller = new AbortController();
@@ -667,6 +694,7 @@ export function Chat({ session }: { session: Session }) {
           else if (event.type === 'thinking') setLiveThinking((prev) => prev + event.text);
           else if (event.type === 'token') setLiveText((prev) => prev + event.text);
           else if (event.type === 'done') {
+            setLiveAmbiguity(event.ambiguity ?? null);
             if (event.skillRun) setSkillRunId(event.skillRun.runId);
             if (event.researchProposal) {
               // A research-class question already proposed a run: open it inline.
@@ -845,6 +873,7 @@ export function Chat({ session }: { session: Session }) {
                         <MessageBody
                           session={session}
                           content={turn.answer.content}
+                          ambiguity={turn.answer.ambiguity}
                           onOpenMemory={setOpenMemoryId}
                         />
                       </AnswerBlock>
@@ -874,6 +903,7 @@ export function Chat({ session }: { session: Session }) {
                           session={session}
                           content={liveText}
                           facts={liveFacts}
+                          ambiguity={liveAmbiguity}
                           onOpenMemory={setOpenMemoryId}
                         />
                       ) : liveThinking ? null : (

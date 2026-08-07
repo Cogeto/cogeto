@@ -1,0 +1,27 @@
+{
+  "case_id": "ambiguity_silent_en",
+  "description": "6.3 gated: a silent-corpus knowledge question must state plainly that the sources hold nothing, then answer from general knowledge under the unsourced marking, citing nothing and fabricating nothing.",
+  "anchor": "2026-08-01T09:00:00.000Z",
+  "facts": [
+    {
+      "content": "The VX-9 mounting bracket fastening torque is 3.2 Nm.",
+      "entities": ["VX-9"],
+      "subject_entity": "VX-9"
+    },
+    {
+      "content": "The SEN-210 mounting bracket fastening torque is 3.4 Nm.",
+      "entities": ["SEN-210"],
+      "subject_entity": "SEN-210"
+    }
+  ],
+  "script": ["What is the standard boiling point of liquid nitrogen?"],
+  "checks": {
+    "ambiguity_branch": "silent",
+    "unsourced_required": true,
+    "research_offer": true,
+    "must_include": ["I have nothing about this in your sources"],
+    "must_exclude": ["{{cite"],
+    "citations_valid": true,
+    "no_mechanics": true
+  }
+}

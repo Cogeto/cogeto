@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { eq } from 'drizzle-orm';
 import { InMemoryDailyCounters } from '../infrastructure/index';
 import type { Principal } from '@cogeto/shared';
 import { startTestDatabase } from '../testing/index';
@@ -90,6 +91,32 @@ describe(' chat-answer cascade (integration: real Postgres, real saga)', () => {
       // Reasoning about the memory being erased (Part C): must go with it.
       'The Novira renewal fact seems most relevant here.',
     );
+    // The ambiguity decision names cluster subjects (V2.3 item 6.3):
+    // content-bearing, so it must go with the answer it explains.
+    await tdb.db
+      .update(chatMessage)
+      .set({
+        ambiguity: {
+          branch: 'dominant',
+          clusters: [
+            {
+              subject: 'Novira',
+              key: 'novira',
+              relevance: 0.8,
+              entityNamed: false,
+              fused: 0.03,
+              size: 1,
+              topMemoryId: m1.id,
+              shown: false,
+            },
+          ],
+          named: [],
+          capped: false,
+          configVersion: 1,
+          embeddingModel: 'test-embed',
+        },
+      })
+      .where(eq(chatMessage.id, citing));
     const citingOther = await insertMessage(
       userA.userId,
       'assistant',
@@ -114,11 +141,13 @@ describe(' chat-answer cascade (integration: real Postgres, real saga)', () => {
     expect(await contentOf(peerCiting)).toBe(CHAT_ANSWER_REDACTED);
     // The thinking channel goes with the answer it deliberated (Part C):
     // reasoning ABOUT an erased memory must not survive its citation.
-    const { rows: thinkingRows } = await tdb.pool.query<{ thinking: string | null }>(
-      `SELECT thinking FROM chat_message WHERE id = $1`,
-      [citing],
-    );
+    const { rows: thinkingRows } = await tdb.pool.query<{
+      thinking: string | null;
+      ambiguity: unknown;
+    }>(`SELECT thinking, ambiguity FROM chat_message WHERE id = $1`, [citing]);
     expect(thinkingRows[0]!.thinking).toBeNull();
+    // The decision record named the erased memory's subject: gone with it.
+    expect(thinkingRows[0]!.ambiguity).toBeNull();
     // An answer citing a different memory and the user's own words are untouched.
     expect(await contentOf(citingOther)).toContain(other.id);
     expect(await contentOf(userTurn)).toContain(m1.id);

@@ -1,0 +1,34 @@
+{
+  "case_id": "ambiguity_fanout_cold_en",
+  "description": "6.3 gated: a cold ambiguous value question (no subject named, no prior turns) must fan across exactly the subjects holding related facts — one line each with fact and citation, ending with the disambiguating question — and never drag in an unrelated subject or guess silently.",
+  "anchor": "2026-08-01T09:00:00.000Z",
+  "facts": [
+    {
+      "content": "The VX-9 mounting bracket fastening torque is 3.2 Nm.",
+      "entities": ["VX-9"],
+      "subject_entity": "VX-9"
+    },
+    {
+      "content": "The SEN-210 mounting bracket fastening torque is 3.4 Nm.",
+      "entities": ["SEN-210"],
+      "subject_entity": "SEN-210"
+    },
+    {
+      "content": "Marko Petrić approved the September budget for the Neptune rollout.",
+      "entities": ["Marko Petrić", "Neptune"],
+      "subject_entity": "Neptune"
+    }
+  ],
+  "script": ["What is the mounting bracket fastening torque?"],
+  "checks": {
+    "ambiguity_branch": "fan_out",
+    "entity": {
+      "mustMention": ["vx-9", "sen-210"],
+      "notIdentity": []
+    },
+    "must_include": ["3.2", "3.4", "{{cite", "Which did you mean?"],
+    "must_exclude": ["Neptune"],
+    "citations_valid": true,
+    "no_mechanics": true
+  }
+}

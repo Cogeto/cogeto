@@ -46,6 +46,9 @@
     "always": "Always do this automatically",
     "alwaysTitle": "Cogeto will check the web automatically from now on. You can turn this off in Settings."
   },
+  "ambiguity": {
+    "alternatives": "Multiple matches in your sources"
+  },
   "citation": {
     "unresolved": "source",
     "teammate": "a teammate",

@@ -46,6 +46,9 @@
     "always": "Uvijek to radi automatski",
     "alwaysTitle": "Cogeto će odsad automatski provjeravati web. To možete isključiti u Postavkama."
   },
+  "ambiguity": {
+    "alternatives": "Multiple matches in your sources"
+  },
   "citation": {
     "unresolved": "izvor",
     "teammate": "član tima",

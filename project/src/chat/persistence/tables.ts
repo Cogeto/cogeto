@@ -2,12 +2,14 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
+import type { AmbiguityDecisionDto } from '@cogeto/shared';
 
 /**
  * Tables owned by the retrieval module's chat area (migrations 0005 + 0031).
@@ -61,6 +63,15 @@ export const chatMessage = pgTable(
      * takes it implicitly.
      */
     thinking: text('thinking'),
+    /**
+     * The recorded ambiguity decision (V2.3 item 6.3, migration 0050): the
+     * spec §7.5 branch, the clusters considered with their scores, config
+     * version and embedding model. Null means "not computed" (user rows,
+     * non-grounded replies, pre-feature rows). Content-bearing (cluster
+     * subjects are entity names), so the answer redaction cascade nulls it
+     * with the content overwrite; row deletion takes it implicitly.
+     */
+    ambiguity: jsonb('ambiguity').$type<AmbiguityDecisionDto>(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

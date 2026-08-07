@@ -1,0 +1,31 @@
+{
+  "case_id": "ambiguity_silent_hr",
+  "description": "6.3 gated (hr): pitanje o kojem korpus suti mora izrijekom reci da izvori nemaju nista, pa nastaviti opcim znanjem pod oznakom unsourced, bez ijednog citata.",
+  "anchor": "2026-08-01T09:00:00.000Z",
+  "settings": {
+    "preferred_language": "hr"
+  },
+  "facts": [
+    {
+      "content": "Zatezni moment montažnog nosača za VX-9 iznosi 3,2 Nm.",
+      "entities": ["VX-9"],
+      "subject_entity": "VX-9"
+    },
+    {
+      "content": "Zatezni moment montažnog nosača za SEN-210 iznosi 3,4 Nm.",
+      "entities": ["SEN-210"],
+      "subject_entity": "SEN-210"
+    }
+  ],
+  "script": ["Koje je vrelište tekućeg dušika?"],
+  "checks": {
+    "ambiguity_branch": "silent",
+    "unsourced_required": true,
+    "research_offer": true,
+    "must_include": ["nemam ništa u tvojim izvorima"],
+    "must_exclude": ["{{cite"],
+    "citations_valid": true,
+    "no_mechanics": true,
+    "language": "hr"
+  }
+}

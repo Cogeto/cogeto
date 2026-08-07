@@ -52,6 +52,9 @@ export class ChatAnswerCascade implements DerivedCascade {
           // grounded it (Part C): the thinking channel is content-bearing and
           // must not outlive the answer it deliberated.
           thinking: null,
+          // The ambiguity decision names cluster subjects (V2.3 item 6.3):
+          // content-bearing, so it goes with the answer it explains.
+          ambiguity: null,
         })
         .where(and(eq(chatMessage.role, 'assistant'), or(...citeMatches)))
         .returning({ id: chatMessage.id });

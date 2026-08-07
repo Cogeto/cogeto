@@ -79,6 +79,32 @@ The renderer treats unsourced spans with a calm affordance ("Model knowledge, no
 from your sources"), deliberately distinct from every citation chip. The marking is
 a feature, not a warning.
 
+## Ambiguity: three behaviours, decided deterministically (V2.3 item 6.3)
+
+After fusion, the grounded answer path computes the spec §7.5 decision over
+anchored-entity clusters: a pure function over scores retrieval already has,
+never a model call ([`ambiguity.md`](ambiguity.md) is the full design):
+
+- **Dominant** (one cluster wins, or the question names its subject): the
+  ordinary answer, byte-identical to before.
+- **Silent** (no cluster above the calibrated relevance floor): a
+  knowledge-class question gets a localized preamble stating the sources hold
+  nothing, then marked `[U]` general knowledge with the sub-floor facts
+  withheld; a personal question keeps the deterministic nothing-on-record
+  reply, now reached over sub-floor noise too.
+- **Fan-out** (several comparable clusters): a fully server-authored answer,
+  one line per subject with its best fact verbatim and its real
+  `{{cite:<id>}}` chip plus a verdict word when the fact is not plain active,
+  capped with an honest "N more subjects matched", ending with "which did you
+  mean?". A reply naming an offered subject resolves deterministically
+  through the stored decision, without re-fanning.
+
+Every grounded assistant message stores its decision on
+`chat_message.ambiguity` (branch, clusters with scores, config version,
+embedding model), erased by the answer redaction cascade with the answer.
+Thresholds are versioned per embedding model in
+`retrieval/ambiguity-config.ts` and an unknown model fails loudly.
+
 ## Relative dates are resolved by code
 
 The extractor emits raw temporal expressions verbatim; a deterministic resolver

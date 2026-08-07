@@ -1,0 +1,38 @@
+{
+  "case_id": "ambiguity_fanout_cold_hr",
+  "description": "6.3 gated (hr): hladno visezanacno pitanje o vrijednosti mora se razgranati tocno preko subjekata koji nose povezane cinjenice, sa citatom po retku i pitanjem na kraju, na hrvatskom (sidreni jezik).",
+  "anchor": "2026-08-01T09:00:00.000Z",
+  "settings": {
+    "preferred_language": "hr"
+  },
+  "facts": [
+    {
+      "content": "Zatezni moment montažnog nosača za VX-9 iznosi 3,2 Nm.",
+      "entities": ["VX-9"],
+      "subject_entity": "VX-9"
+    },
+    {
+      "content": "Zatezni moment montažnog nosača za SEN-210 iznosi 3,4 Nm.",
+      "entities": ["SEN-210"],
+      "subject_entity": "SEN-210"
+    },
+    {
+      "content": "Marko Petrić je odobrio rujanski proračun za projekt Neptun.",
+      "entities": ["Marko Petrić", "Neptun"],
+      "subject_entity": "Neptun"
+    }
+  ],
+  "script": ["Koliki je zatezni moment montažnog nosača?"],
+  "checks": {
+    "ambiguity_branch": "fan_out",
+    "entity": {
+      "mustMention": ["vx-9", "sen-210"],
+      "notIdentity": []
+    },
+    "must_include": ["3,2", "3,4", "{{cite", "Na koji od njih misliš?"],
+    "must_exclude": ["Neptun"],
+    "citations_valid": true,
+    "no_mechanics": true,
+    "language": "hr"
+  }
+}

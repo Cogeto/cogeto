@@ -1,0 +1,37 @@
+{
+  "case_id": "ambiguity_fragment_hr",
+  "description": "6.3 gated (hr): fragment razrijesen kontekstom mora preuzeti subjekt razgovora umjesto grananja — nit je o VX-9, pa 'koliki je zatezni moment?' odgovara za VX-9, dominantna grana, bez razjasnjavanja.",
+  "anchor": "2026-08-01T09:00:00.000Z",
+  "settings": {
+    "preferred_language": "hr"
+  },
+  "facts": [
+    {
+      "content": "Zatezni moment montažnog nosača za VX-9 iznosi 3,2 Nm.",
+      "entities": ["VX-9"],
+      "subject_entity": "VX-9"
+    },
+    {
+      "content": "Kućište VX-9 ima IP67 zaštitu od prašine i uranjanja.",
+      "entities": ["VX-9"],
+      "subject_entity": "VX-9"
+    },
+    {
+      "content": "Zatezni moment montažnog nosača za SEN-210 iznosi 3,4 Nm.",
+      "entities": ["SEN-210"],
+      "subject_entity": "SEN-210"
+    }
+  ],
+  "script": ["Reci mi nešto o montažnom nosaču VX-9.", "Koliki je zatezni moment?"],
+  "checks": {
+    "ambiguity_branches": ["dominant", "dominant"],
+    "entity": {
+      "mustMention": ["vx-9"],
+      "notIdentity": []
+    },
+    "must_include": ["3,2"],
+    "must_exclude": ["Na koji od njih misliš?"],
+    "citations_valid": true,
+    "no_mechanics": true
+  }
+}

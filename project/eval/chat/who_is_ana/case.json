@@ -19,7 +19,10 @@
     "Remind me — who is she, exactly?"
   ],
   "checks": {
-    "entity": { "mustMention": ["ana"], "notIdentity": ["marta", "petra", "thomas"] },
+    "entity": {
+      "mustMention": ["ana"],
+      "notIdentity": ["marta", "petra", "thomas"]
+    },
     "coverage_facts": [
       "Ana Kovač is the client contact at Adriatic Foods for the Atlas CRM Migration",
       "Ana asked for a risk register",
@@ -30,8 +33,11 @@
       "Ana might prefer Teams over Zoom for the workshops (unconfirmed)"
     ],
     "coverage_target": 0.8,
-    "hedge": { "term": "teams" },
+    "hedge": {
+      "term": "teams"
+    },
     "no_mechanics": true,
-    "citations_valid": true
+    "citations_valid": true,
+    "ambiguity_branch": "dominant"
   }
 }

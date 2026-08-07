@@ -1,0 +1,29 @@
+{
+  "case_id": "ambiguity_weak_dominance_en",
+  "description": "6.3 edge: the boundary the thresholds decide — one subject holds the direct answer, another holds only a tangentially related fact. The direct subject dominates through signal consensus (vector + keyword versus vector alone) and the answer stays a normal cited answer.",
+  "anchor": "2026-08-01T09:00:00.000Z",
+  "facts": [
+    {
+      "content": "The VX-9 mounting bracket fastening torque is 3.2 Nm.",
+      "entities": ["VX-9"],
+      "subject_entity": "VX-9"
+    },
+    {
+      "content": "The SEN-210 housing uses M4 stainless steel fasteners.",
+      "entities": ["SEN-210"],
+      "subject_entity": "SEN-210"
+    }
+  ],
+  "script": ["What is the mounting bracket fastening torque?"],
+  "checks": {
+    "ambiguity_branch": "dominant",
+    "entity": {
+      "mustMention": ["vx-9"],
+      "notIdentity": []
+    },
+    "must_include": ["3.2", "{{cite"],
+    "must_exclude": ["Which did you mean?"],
+    "citations_valid": true,
+    "no_mechanics": true
+  }
+}

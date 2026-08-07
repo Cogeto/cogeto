@@ -8,9 +8,13 @@
   ],
   "script": ["When does Adriatic Foods' fiscal year start? Isn't that usually January?"],
   "checks": {
-    "entity": { "mustMention": ["october"], "notIdentity": [] },
+    "entity": {
+      "mustMention": ["october"],
+      "notIdentity": []
+    },
     "no_mechanics": true,
     "citations_valid": true,
-    "must_include": ["october", "{{cite"]
+    "must_include": ["october", "{{cite"],
+    "ambiguity_branch": "dominant"
   }
 }
