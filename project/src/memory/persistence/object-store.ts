@@ -136,8 +136,10 @@ export class MemoryObjectStore {
    * `lastModified` powers the mid-upload grace window (the bytes land before
    * the metadata transaction commits, so freshly-written keys are not orphans).
    */
-  async listObjects(prefix?: string): Promise<{ key: string; lastModified: Date }[]> {
-    const results: { key: string; lastModified: Date }[] = [];
+  async listObjects(
+    prefix?: string,
+  ): Promise<{ key: string; lastModified: Date; sizeBytes: number | null }[]> {
+    const results: { key: string; lastModified: Date; sizeBytes: number | null }[] = [];
     let continuationToken: string | undefined;
     for (;;) {
       const query: Record<string, string> = { 'list-type': '2', 'max-keys': '1000' };
@@ -148,9 +150,14 @@ export class MemoryObjectStore {
       if (!response.ok) throw await this.asError('listObjects', prefix ?? '(all)', response);
       const xml = await response.text();
       for (const match of xml.matchAll(
-        /<Contents>[\s\S]*?<Key>([\s\S]*?)<\/Key>[\s\S]*?<LastModified>([\s\S]*?)<\/LastModified>[\s\S]*?<\/Contents>/g,
+        /<Contents>[\s\S]*?<Key>([\s\S]*?)<\/Key>[\s\S]*?<LastModified>([\s\S]*?)<\/LastModified>([\s\S]*?)<\/Contents>/g,
       )) {
-        results.push({ key: decodeXml(match[1]!), lastModified: new Date(match[2]!) });
+        const size = /<Size>(\d+)<\/Size>/.exec(match[3]!);
+        results.push({
+          key: decodeXml(match[1]!),
+          lastModified: new Date(match[2]!),
+          sizeBytes: size ? Number(size[1]) : null,
+        });
       }
       const token = /<NextContinuationToken>([\s\S]*?)<\/NextContinuationToken>/.exec(xml);
       if (!token || !xml.includes('<IsTruncated>true</IsTruncated>')) return results;

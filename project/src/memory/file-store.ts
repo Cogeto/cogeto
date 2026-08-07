@@ -134,3 +134,18 @@ export async function countFileSourceRefs(db: DbOrTx, ownerId: string): Promise<
     .where(eq(fileMetadata.ownerId, ownerId));
   return rows[0]?.n ?? 0;
 }
+
+/** Which of these content hashes already exist as stored uploads for this
+ * owner (V2.2 item 5.3): the bulk manifest's duplicate detection. */
+export async function checksumsKnownForOwner(
+  db: DbOrTx,
+  ownerId: string,
+  checksums: readonly string[],
+): Promise<Set<string>> {
+  if (checksums.length === 0) return new Set();
+  const rows = await db
+    .select({ checksum: fileMetadata.checksum })
+    .from(fileMetadata)
+    .where(and(eq(fileMetadata.ownerId, ownerId), inArray(fileMetadata.checksum, [...checksums])));
+  return new Set(rows.map((row) => row.checksum).filter((c): c is string => c !== null));
+}

@@ -10,6 +10,8 @@ import {
   IngestionModule,
   IngestionProgressCascade,
   IngestionProgressCascadeModule,
+  SourceRevisionCascade,
+  SourceRevisionCascadeModule,
   SourceContextCascade,
   SourceContextCascadeModule,
   PipelineIngestionGuard,
@@ -18,6 +20,7 @@ import {
 } from '../ingestion/index';
 import { MemoryModule } from '../memory/index';
 import { RetrievalModule } from '../retrieval/index';
+import { ImportItemCascade, ImportItemCascadeModule } from '../imports/index';
 import {
   ChatAnswerCascade,
   ChatAttachmentCascade,
@@ -53,6 +56,7 @@ import {
 import { ModelGatewayModule } from '../model-gateway/index';
 import { AttentionModule } from '../attention/index';
 import { SourcesModule } from '../sources/index';
+import { ImportsModule } from '../imports/index';
 import { OperationsModule } from '../operations/index';
 import { COGETO_CONFIG, mailOptions, redactionOptions, researchOptions } from './config';
 import type { CogetoConfig } from './config';
@@ -113,6 +117,8 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         SourceContextCascadeModule,
         FileReadReportCascadeModule,
         IngestionProgressCascadeModule,
+        SourceRevisionCascadeModule,
+        ImportItemCascadeModule,
       ],
       // Assistant answers citing erased memories are redacted; reply drafts
       // grounded on the source are too. A ready passport export is a signed
@@ -137,6 +143,10 @@ export function createAppRootModule(config: CogetoConfig): unknown {
         ChatAttachmentCascade,
         // The pipeline stage row is metadata-only hygiene, like the refusals.
         IngestionProgressCascade,
+        // A revision link naming an erased source goes with it (V2.2 5.3).
+        SourceRevisionCascade,
+        // An import item's filename dies with its source: tombstoned.
+        ImportItemCascade,
       ],
     },
     // Delete-vs-ingestion serialization: the saga cancels a source's pending
@@ -276,6 +286,8 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       SourcesModule.register({
         imports: [memoryModule, filesModule, notesModule, emailModule, researchModule, chatModule],
       }),
+      // Bulk import (V2.2 item 5.3): manifest + confirm + record surface.
+      ImportsModule.register({ imports: [memoryModule, filesModule] }),
       // The instance's own operational surface: /api/health and the capability
       // registry, /api/jobs, /api/audit. It owns no tables; every read goes
       // through the owning module's public interface.

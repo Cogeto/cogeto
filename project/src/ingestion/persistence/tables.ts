@@ -324,3 +324,52 @@ export const ingestionProgress = pgTable(
 );
 
 export type IngestionProgressRow = typeof ingestionProgress.$inferSelect;
+
+/**
+ * The document revision link (V2.2 item 5.3, migration 0047; decision record
+ * in docs/features/revisions.md): an explicit supersedes-source relationship
+ * with its measured basis, inspectable and reversible. A rejected pair is
+ * remembered by its unique row and never re-proposed. Rows leave with either
+ * source through ingestion's deletion cascade.
+ */
+export const sourceRevision = pgTable(
+  'source_revision',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: text('owner_id').notNull(),
+    successorType: text('successor_type').notNull(),
+    successorId: text('successor_id').notNull(),
+    predecessorType: text('predecessor_type').notNull(),
+    predecessorId: text('predecessor_id').notNull(),
+    status: text('status')
+      .$type<'auto' | 'proposed' | 'confirmed' | 'rejected' | 'manual'>()
+      .notNull(),
+    basisJson: jsonb('basis_json').$type<RevisionBasis>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('source_revision_pair_idx').on(
+      t.ownerId,
+      t.successorType,
+      t.successorId,
+      t.predecessorType,
+      t.predecessorId,
+    ),
+    index('source_revision_predecessor_idx').on(t.predecessorType, t.predecessorId),
+  ],
+);
+
+/** Every measured signal behind a revision decision. Metadata, never content
+ * beyond the values the documents themselves anchored. */
+export interface RevisionBasis {
+  filename: string | null;
+  revisionNew: string | null;
+  revisionOld: string | null;
+  subjectOverlap: number | null;
+  classMatch: boolean | null;
+  shingleSimilarity: number | null;
+  confidence: 'high' | 'medium' | 'manual';
+}
+
+export type SourceRevisionRow = typeof sourceRevision.$inferSelect;

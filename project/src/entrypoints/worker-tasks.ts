@@ -45,6 +45,8 @@ import { RESEARCH_CONCLUDE_JOB_TYPE } from '../research/index';
 import type { ResearchConclusionService, ResearchSynthesisService } from '../research/index';
 import type { SkillEngine } from '../skills/index';
 import { CHAT_ATTACHMENT_READ_JOB_TYPE, CONVERSATION_TITLE_JOB_TYPE } from '../chat/index';
+import { IMPORT_ADVANCE_JOB_TYPE } from '../imports/index';
+import type { ImportCoordinator } from '../imports/index';
 import type { ChatAttachmentReadService, ConversationTitler } from '../chat/index';
 import type { ModelGateway } from '../model-gateway/index';
 
@@ -61,6 +63,7 @@ export interface WorkerTaskDeps {
   extractionGate: ExtractionGateStore;
   conversationTitler: ConversationTitler;
   attachmentReader: ChatAttachmentReadService;
+  importCoordinator: ImportCoordinator;
   researchConcluder: ResearchConclusionService;
   researchSynthesis: ResearchSynthesisService;
   skillEngine: SkillEngine;
@@ -350,6 +353,17 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
         );
       },
     ),
+
+    // The bulk-import coordinator (V2.2 item 5.3): a PLAIN, re-runnable pass
+    // (the research-conclude shape) under a per-run single-flight lock; it
+    // reaps settled documents, tops up the bounded queue, links revisions,
+    // and finalizes with the summary's real numbers.
+    [IMPORT_ADVANCE_JOB_TYPE]: async (rawPayload) => {
+      const runId = (rawPayload as { source_id?: unknown }).source_id;
+      if (typeof runId !== 'string' || !runId) return;
+      const { advanced } = await deps.importCoordinator.advance(runId);
+      deps.log({ source_id: runId, advanced }, 'import advance completed');
+    },
 
     // The transient attachment read (V2.2 item 5.1): reads a "don't remember
     // this file" attachment's staged bytes once through the laddered reader,

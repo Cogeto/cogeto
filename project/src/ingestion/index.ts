@@ -91,3 +91,18 @@ export {
 export { refusalsForSources, sourceRefsWithRefusals } from './persistence/extraction-gate.store';
 export { contextNamesForSources } from './persistence/source-context.store';
 export { verificationsForMemories } from './verification.controller';
+// Document revision linking (V2.2 item 5.3): the store, the frozen scorer,
+// the cascade, and the owner surface's controller registration.
+export {
+  SourceRevisionStore,
+  normalizeFilename,
+  parseRevisionField,
+  revisionIsLater,
+  subjectOverlap,
+  shingleSimilarity,
+  scoreRevision,
+  REVISION_SUBJECT_OVERLAP_MIN,
+  REVISION_SHINGLE_SIMILARITY_MIN,
+} from './persistence/source-revision.store';
+export { revisionCountsForSuccessors } from './persistence/source-revision.store';
+export { SourceRevisionCascade, SourceRevisionCascadeModule } from './source-revision-cascade';

@@ -138,6 +138,9 @@ export class FilesService {
     principal: Principal,
     file: UploadedFile,
     flags: UploadFlags,
+    /** Bulk import demotes its pipeline jobs so interactive work runs first
+     * (V2.2 item 5.3); a plain upload keeps the default priority. */
+    options: { jobPriority?: number } = {},
   ): Promise<{ objectKey: string }> {
     if (file.buffer.length === 0) throw new BadRequestException('the uploaded file is empty');
     if (file.buffer.length > this.options.uploadMaxBytes) {
@@ -167,8 +170,8 @@ export class FilesService {
     const objectKey = `${principal.orgId}/${principal.userId}/${flags.scope}/file-${randomUUID()}`;
 
     return flags.discard
-      ? this.uploadDiscard(principal, file, flags, objectKey, contentType)
-      : this.uploadStored(principal, file, flags, objectKey, contentType);
+      ? this.uploadDiscard(principal, file, flags, objectKey, contentType, options)
+      : this.uploadStored(principal, file, flags, objectKey, contentType, options);
   }
 
   /**
@@ -238,6 +241,7 @@ export class FilesService {
     flags: UploadFlags,
     objectKey: string,
     contentType: string,
+    options: { jobPriority?: number } = {},
   ): Promise<{ objectKey: string }> {
     const checksum = createHash('sha256').update(file.buffer).digest('hex');
 
@@ -270,6 +274,7 @@ export class FilesService {
             type: INGESTION_PIPELINE_JOB_TYPE,
             payload: { source_type: 'file', source_id: objectKey },
             maxAttempts: FILE_PIPELINE_MAX_ATTEMPTS,
+            priority: options.jobPriority,
           },
         );
       });
@@ -301,6 +306,7 @@ export class FilesService {
     flags: UploadFlags,
     objectKey: string,
     contentType: string,
+    options: { jobPriority?: number } = {},
   ): Promise<{ objectKey: string }> {
     const stagingKey = toStagingKey(objectKey);
 
@@ -335,6 +341,7 @@ export class FilesService {
             type: INGESTION_PIPELINE_JOB_TYPE,
             payload: { source_type: 'file', source_id: objectKey },
             maxAttempts: FILE_PIPELINE_MAX_ATTEMPTS,
+            priority: options.jobPriority,
           },
         );
         // Backstop: fires in 15 min even if extraction never succeeds; the

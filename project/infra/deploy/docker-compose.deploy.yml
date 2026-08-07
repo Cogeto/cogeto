@@ -148,6 +148,13 @@ services:
       COGETO_MODEL_EMBEDDINGS: ${COGETO_MODEL_EMBEDDINGS:-}
       COGETO_OPENAI_API_KEY: ${COGETO_OPENAI_API_KEY:-}
       COGETO_OPENAI_BASE_URL: ${COGETO_OPENAI_BASE_URL:-}
+      # Bulk import in-flight cap (V2.2 item 5.3): default 1, max 8.
+      COGETO_IMPORT_IN_FLIGHT: ${COGETO_IMPORT_IN_FLIGHT:-}
+      # The per-user daily upload quota an import PAUSES on rather than
+      # bypasses (documented in .env.example; plumbed here with 5.3 so the
+      # knob is reachable on a compose deployment).
+      COGETO_DAILY_UPLOAD_MAX: ${COGETO_DAILY_UPLOAD_MAX:-}
+      COGETO_DEMO_DAILY_UPLOAD_MAX: ${COGETO_DEMO_DAILY_UPLOAD_MAX:-}
       COGETO_ANTHROPIC_API_KEY: ${COGETO_ANTHROPIC_API_KEY:-}
       COGETO_ANTHROPIC_BASE_URL: ${COGETO_ANTHROPIC_BASE_URL:-}
       COGETO_LOG_LEVEL: ${COGETO_LOG_LEVEL:-info}

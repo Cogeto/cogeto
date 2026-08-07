@@ -6,6 +6,8 @@ import { DreamingService } from './dreaming.service';
 import { AnchorStage } from './pipeline/anchor.stage';
 import { ExtractionGateController } from './extraction-gate.controller';
 import { SourceContextController } from './source-context.controller';
+import { SourceRevisionsController } from './source-revisions.controller';
+import { SourceRevisionStore } from './persistence/source-revision.store';
 import { EmbedStoreStage } from './pipeline/embed-store.stage';
 import { ExtractStage } from './pipeline/extract.stage';
 import { IngestionPipeline } from './pipeline/pipeline.service';
@@ -98,8 +100,10 @@ export class IngestionModule {
         ExtractionGateController,
         // The anchoring context's read/edit surface (V2.1 item 4.2).
         SourceContextController,
+        // The revision link's owner surface (V2.2 item 5.3).
+        SourceRevisionsController,
       ],
-      providers: [SuppressedFactLog, ExtractionGateStore, SourceContextStore],
+      providers: [SuppressedFactLog, ExtractionGateStore, SourceContextStore, SourceRevisionStore],
     };
   }
 }

@@ -84,9 +84,14 @@ connector tables private.
 
 ## Files
 
-A file enters through one of two doors, and one path (V2.2 item 5.1): the
-**Sources page** (the deliberate door, for documents you intend to keep and
-audit; bulk import joins it in 5.3) and the **chat paperclip** (the
+A file enters through one of three doors, and one path (V2.2 items 5.1 and
+5.3): the **Sources page** (the deliberate door, for documents you intend to
+keep and audit), **bulk import** on the same page (folder, ZIP or S3-style
+path: manifest first, nothing ingested until confirmed, every document fed
+through the same upload service at demoted queue priority with an in-flight
+cap so an import cannot starve the instance, and same-name re-imports
+nominated for the conservative revision linker, see
+[`revisions.md`](revisions.md)), and the **chat paperclip** (the
 conversational door, whose endpoint delegates to the same upload service, so
 validation, caps, quota, gating and ingestion are identical and only the entry
 point and the presentation differ). The Memories tab stopped being an input

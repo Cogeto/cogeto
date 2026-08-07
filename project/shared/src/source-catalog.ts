@@ -95,6 +95,8 @@ export interface SourceInspectionDto {
   context: SourceContextDto | null;
   /** The extraction gate's latest refusal reason, when it refused. */
   gateRefusal: string | null;
+  /** Revision links touching this source, either side (V2.2 item 5.3). */
+  revisions: import('./imports').SourceRevisionDto[];
 }
 
 /** One answer that cited a fact (V2.2 item 5.2, the fact detail view). */

@@ -175,6 +175,12 @@ const configSchema = z
      */
     adminRole: z.string().min(1).default('admin'),
     /**
+     * How many of a bulk import's documents may be queued or processing at
+     * once (V2.2 item 5.3). Default 1: the worker runs concurrency 2, so one
+     * slot always stays free for interactive work.
+     */
+    importInFlight: z.coerce.number().int().min(1).max(8).default(1),
+    /**
      * Ana sandbox. `demoMode` turns this instance into the public
      * sandbox: the app serves the pre-minted demo session on GET /api/config and
      * the worker schedules the periodic reset. Never set on a customer instance.
@@ -299,6 +305,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
     logLevel: env.COGETO_LOG_LEVEL,
     timezone: env.COGETO_TIMEZONE || undefined,
     adminRole: env.COGETO_ADMIN_ROLE || undefined,
+    importInFlight: env.COGETO_IMPORT_IN_FLIGHT ? Number(env.COGETO_IMPORT_IN_FLIGHT) : undefined,
     demoMode: env.COGETO_DEMO_MODE || undefined,
     // Either explicit flag or the conventional COGETO_ENV=production marker.
     production:

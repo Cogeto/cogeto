@@ -225,6 +225,28 @@ now the **filtered fact search** on /memories (plus a changed-since mode over
 the change feed's new route); the nav rail shows Sources, and every legacy
 deep link still resolves.
 
+V2.2 item 5.3 delivered **bulk import and document revision linking**
+(migration 0047). A new `imports/` module owns the first-class import record
+(`import_run` + `import_item`): manifest FIRST from a folder, a dependency-free
+ZIP walk, or an S3-style listing whose credentials are used and never stored;
+content-hash duplicates and same-name revision candidates stay distinct;
+nothing ingests until confirmed. A worker-side coordinator (plain re-runnable
+`import.advance` under a per-run single-flight lock) feeds every document
+through the ONE existing upload path at demoted queue priority 100 with an
+in-flight cap of 1 (`COGETO_IMPORT_IN_FLIGHT`), so an import cannot starve
+interactive work; the extraction gate and daily caps apply unchanged, and a
+cap-exhausted import pauses visibly instead of bypassing. Resume is
+rows-only, failures are per-file with named reasons, cancellation reports
+honest counts, and erasing an ingested source TOMBSTONES its item (name
+cleared, arithmetic kept). Revision linking follows the frozen decision
+record [`docs/features/revisions.md`](docs/features/revisions.md):
+anchored-revision corroboration links auto/high, subject+class+shingle
+similarity proposes at medium, below the bar NOTHING is recorded, a rejected
+pair is never re-proposed, a manual link overrides, all audited on the
+ingestion-owned `source_revision` table; facts get nothing new (existing
+reconciliation only). The completion summary's numbers are computed from the
+owning stores and each click lands on evidence in Sources.
+
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).
 Thinking is a CHANNEL, not content: `completeStream` yields channel-tagged

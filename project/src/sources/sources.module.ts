@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule, ModuleMetadata } from '@nestjs/common';
-import { SuppressedFactLog, SourceContextStore } from '../ingestion/index';
+import { SuppressedFactLog, SourceContextStore, SourceRevisionStore } from '../ingestion/index';
 import { SourceCatalogController } from './source-catalog.controller';
 import { SourceCatalogService } from './source-catalog.service';
 
@@ -26,7 +26,7 @@ export class SourcesModule {
       module: SourcesModule,
       imports: [...(options.imports ?? [])],
       controllers: [SourceCatalogController],
-      providers: [SourceCatalogService, SuppressedFactLog, SourceContextStore],
+      providers: [SourceCatalogService, SuppressedFactLog, SourceContextStore, SourceRevisionStore],
     };
   }
 }
