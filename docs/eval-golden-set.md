@@ -107,7 +107,7 @@ The governing rule, in one line: **publish every measured metric including the u
 
 ### The chat gate
 
-Each signal is gated by its reliability. The **deterministic rule checks** (entity, hedge, no-mechanics, citations, nothing-on-record, temporal framing, language, skill) remain all-must-pass across all cases. The **LLM-judged coverage** number gates on the **mean** across coverage-graded cases, under the same ratchet policy, because coverage on a single case measurably swings under identical configuration and a per-case gate turned judge noise into failed builds. Per-case pass and fail is still computed, printed, and published unchanged; only the CI verdict arithmetic differs. There are no retries.
+Each signal is gated by its reliability. The **deterministic rule checks** (entity, hedge, no-mechanics, citations, nothing-on-record, temporal framing, language, skill, ambiguity branch) remain all-must-pass across all cases. The **LLM-judged coverage** number gates on the **mean** across coverage-graded cases, under the same ratchet policy, because coverage on a single case measurably swings under identical configuration and a per-case gate turned judge noise into failed builds. Per-case pass and fail is still computed, printed, and published unchanged; only the CI verdict arithmetic differs. There are no retries.
 
 A single noisy coverage judgment can therefore no longer fail the build, while a real regression still fails hard: it trips the rule checks and collapses the mean across cases at once.
 

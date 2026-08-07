@@ -211,7 +211,7 @@ and changing the rewriter's behaviour is a separate change with its own gate
 run. They are the first entries for the Croatian half of V2.0 item 3.5 (i18n)
 to answer.
 
-### Still not gated at all (spec §14.4)
+### Gated through existing surfaces, not headline metrics (spec §14.4)
 
 §14.4 requires **anchoring** and **ambiguity handling** to be measured and gated
 too. This was written when neither was; the anchoring half closed with V2.1
@@ -224,8 +224,29 @@ anchored-subject line inside the reconcile rates. File-typed golden cases run
 the real anchor → extract chain, so a regression in the anchoring prompt or
 its injection fails these gates the same way an extraction regression does. A
 dedicated published anchoring metric is item 6.4's (the second wave), where
-the plan puts it. **Ambiguity handling remains ungated** until item 6.3
-exists; it stays named here so the remaining gap is visible.
+the plan puts it.
+
+**Ambiguity handling closed the same way with item 6.3.** The decision itself
+is deterministic (a pure function over the post-fusion cluster distribution,
+`retrieval/ambiguity.ts`, exhaustively unit-tested), so the live gate's job is
+the behaviour, not the arithmetic: the chat suite's `ambiguity_branch` and
+`ambiguity_branches` checks are deterministic rule checks under the
+all-must-pass chat gate. Gated there: the three plan-named cases in both
+measured languages (a context-resolved fragment that must NOT fan out, a cold
+ambiguous value question that must fan across exactly the subjects holding
+related facts, a silent-corpus question that must banner general knowledge
+without fabricating a source), plus the edges (a fan-out resolved by the
+user's reply, the weak-dominance boundary, the many-subjects cap) and
+`ambiguity_branch` regression assertions on ordinary cases (`who_is_ana`,
+`atlas_scope`, `memory_beats_model`, `blended_origins_en` must stay
+`dominant`; `nothing_on_record` must stay `silent`). The harness prints the
+branch distribution over every scripted turn, so the suite-wide fan-out rate
+is a measured number in every run's output rather than an assumption. The
+thresholds behind the branches are versioned per embedding model in
+`retrieval/ambiguity-config.ts` (the reconcile-config v2 pattern, unknown
+model fails loudly), with the calibration evidence in the pull request that
+set them. A dedicated published ambiguity metric, like anchoring's, is item
+6.4's if the second wave decides it earns one.
 
 ## What is deliberately strict
 

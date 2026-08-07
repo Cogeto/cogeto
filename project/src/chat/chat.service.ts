@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import type {
+  AmbiguityDecisionDto,
   ChatContextDto,
   ChatMessagePage,
   ChatRememberedDto,
@@ -165,7 +166,15 @@ export class ChatService {
         conversationId: string,
         content: string,
         thinking?: string | null,
-      ) => this.storeAssistant(principal, conversationId, content, thinking ?? null),
+        ambiguity?: AmbiguityDecisionDto | null,
+      ) =>
+        this.storeAssistant(
+          principal,
+          conversationId,
+          content,
+          thinking ?? null,
+          ambiguity ?? null,
+        ),
       getPrompt: () => this.getPrompt(),
       logWarn: (message: string) => this.logger.warn(message),
     };
@@ -303,6 +312,7 @@ export class ChatService {
         role: row.role,
         content: row.content,
         thinking: row.thinking,
+        ambiguity: row.ambiguity ?? null,
         createdAt: row.createdAt.toISOString(),
       })),
       total: totalRows[0]?.count ?? 0,
@@ -590,9 +600,25 @@ export class ChatService {
         record: ctx.record,
         answerBlock: ctx.answerBlock,
         attachments: await this.transientAttachments(principal, conversationId),
+        // The previous assistant turn's stored decision (V2.3 item 6.3): how
+        // a fan-out's "which did you mean?" reply resolves deterministically.
+        priorAmbiguity: await this.lastAssistantAmbiguity(conversationId),
       },
       thinkingMode,
     );
+  }
+
+  /** The latest assistant message's recorded ambiguity decision, if any. */
+  private async lastAssistantAmbiguity(
+    conversationId: string,
+  ): Promise<AmbiguityDecisionDto | null> {
+    const rows = await this.db
+      .select({ ambiguity: chatMessage.ambiguity })
+      .from(chatMessage)
+      .where(and(eq(chatMessage.conversationId, conversationId), eq(chatMessage.role, 'assistant')))
+      .orderBy(desc(chatMessage.createdAt), desc(chatMessage.id))
+      .limit(1);
+    return rows[0]?.ambiguity ?? null;
   }
 
   /** The conversation's ready transient texts, capped for the answer input. */
@@ -704,10 +730,18 @@ export class ChatService {
     conversationId: string,
     content: string,
     thinking: string | null = null,
+    ambiguity: AmbiguityDecisionDto | null = null,
   ): Promise<{ id: string }> {
     const [row] = await this.db
       .insert(chatMessage)
-      .values({ ownerId: principal.userId, conversationId, role: 'assistant', content, thinking })
+      .values({
+        ownerId: principal.userId,
+        conversationId,
+        role: 'assistant',
+        content,
+        thinking,
+        ambiguity,
+      })
       .returning();
     await this.touchConversation(conversationId, row!.createdAt);
     await this.maybeRequestTitle(principal, conversationId);

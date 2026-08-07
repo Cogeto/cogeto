@@ -295,6 +295,32 @@ mid-assembly race guarded; lifecycle audited (requested, ready, downloaded,
 expired); artifacts retained 24 hours, run rows permanent. Details:
 [`docs/features/report.md`](docs/features/report.md).
 
+V2.3 item 6.3 delivered **ambiguity detection and fan-out answers** (spec
+§7.5, migration 0050). The decision is **deterministic and adds no model
+call**: a pure function (`retrieval/ambiguity.ts`) over the post-fusion
+distribution across anchored-subject clusters (alias-canonical folded keys,
+so 6.1's `entity_alias` set prevents one subject fanning out under two
+names). Relevance is the best member **vector similarity**, carried through
+fusion for the first time because a rank-derived RRF score cannot carry an
+absolute floor; comparability is the ratio of max member fused scores, which
+in practice measures signal consensus. Order: a query-named subject wins
+(also how a fan-out's follow-up resolves), then the relevance floor, then
+comparability. Thresholds are per embedding model in
+`retrieval/ambiguity-config.ts` (ambiguity config v1, fail-loud on unknown
+models, calibrated live on `mistral-default`: floor 0.90, ratio 0.55). The
+three behaviours: **dominant** answers byte-identically to before;
+**silent** states the sources hold nothing (knowledge-class gets a localized
+preamble then marked `[U]` general knowledge with sub-floor facts withheld;
+personal keeps `nothingOnRecord`); **fan_out** is a fully server-authored
+answer, one line per subject with the best fact verbatim, its real
+`{{cite}}` chip and a verdict word for non-active facts, capped at 4 with an
+honest "N more", ending with "which did you mean?". `answer/v0008` is
+unchanged and the eval cache untouched. Every grounded answer stores its
+decision on `chat_message.ambiguity` (content-bearing, cleared by the answer
+redaction cascade); the chat harness asserts branches as deterministic rule
+checks and prints the suite-wide fan-out rate. Details:
+[`docs/features/ambiguity.md`](docs/features/ambiguity.md).
+
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).
 Thinking is a CHANNEL, not content: `completeStream` yields channel-tagged

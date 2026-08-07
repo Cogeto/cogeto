@@ -6,7 +6,12 @@ import { sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { GenericContainer, Wait } from 'testcontainers';
-import type { ChatStreamEvent, Principal } from '@cogeto/shared';
+import type {
+  AmbiguityBranch,
+  AmbiguityDecisionDto,
+  ChatStreamEvent,
+  Principal,
+} from '@cogeto/shared';
 import { applyMigrations, createDb, UserContextService } from '../infrastructure/index';
 import {
   createMemoryReconciliation,
@@ -218,6 +223,21 @@ const caseSchema = z.object({
      */
     language: z.enum(['en', 'hr']).optional(),
     digest_language: z.enum(['en', 'hr']).optional(),
+    /**
+     * Ambiguity checks (V2.3 item 6.3, spec §7.5), folded into one
+     * deterministic verdict:
+     * - `ambiguity_branch` — the FINAL turn's recorded decision branch. An
+     *   expectation of `dominant` also accepts an absent decision: the
+     *   explicit modes (entity profile, temporal, open loops) compute none
+     *   because they cannot mis-branch, and for regression purposes that IS
+     *   the dominant behaviour. `silent` and `fan_out` require the literal
+     *   recorded branch.
+     * - `ambiguity_branches` — one expectation per scripted turn, in order,
+     *   for the multi-turn paths (a fan-out whose follow-up must resolve).
+     *   Same absent-decision rule for `dominant`.
+     */
+    ambiguity_branch: z.enum(['dominant', 'silent', 'fan_out']).optional(),
+    ambiguity_branches: z.array(z.enum(['dominant', 'silent', 'fan_out'])).optional(),
   }),
 });
 type ChatCase = z.infer<typeof caseSchema>;
@@ -243,7 +263,16 @@ interface TurnResult {
   citationViolations: number;
   /** Whether the done event carried the research offer. */
   researchOffer: boolean;
+  /** The recorded ambiguity decision (V2.3 item 6.3); null when the turn's
+   * path computed none (explicit modes, deterministic intents). */
+  ambiguity: AmbiguityDecisionDto | null;
 }
+
+/** `dominant` also accepts an absent decision — see the checks schema note. */
+const branchMatches = (
+  expected: AmbiguityBranch,
+  decision: AmbiguityDecisionDto | null,
+): boolean => (decision === null ? expected === 'dominant' : decision.branch === expected);
 
 interface CaseScore {
   caseId: string;
@@ -265,6 +294,9 @@ interface CaseScore {
   /** The folded conversation verdict (null = no such checks)
    * research offer without a silent search, unsourced marking, small talk. */
   conversation: boolean | null;
+  /** The folded ambiguity-branch verdict (V2.3 item 6.3; null = no such
+   * checks): final-turn branch and/or the per-turn branch sequence. */
+  ambiguity: boolean | null;
   pass: boolean;
 }
 
@@ -306,6 +338,25 @@ async function loadCases(): Promise<ChatCase[]> {
   for (const dir of dirs) {
     const raw = await readFile(path.join(CASES_DIR, dir, 'case.json'), 'utf8');
     cases.push(caseSchema.parse(JSON.parse(raw)));
+  }
+  // Development-only subset runs (`--only <case-id prefix>`): the diagnosis
+  // path for a wrong ambiguity branch or a single flaky case. A subset can
+  // never gate and never emit — a partial run reported as complete is the
+  // false green the eval machinery exists to prevent.
+  const onlyIdx = process.argv.indexOf('--only');
+  const only = onlyIdx >= 0 ? process.argv[onlyIdx + 1] : undefined;
+  if (onlyIdx >= 0 && !only) {
+    console.error('--only requires a case-id prefix');
+    process.exit(2);
+  }
+  if (only) {
+    if (process.env.COGETO_EVAL_GATE === '1' || process.argv.includes('--emit-json')) {
+      console.error('--only is a development filter: it refuses to run gated or to emit');
+      process.exit(2);
+    }
+    const subset = cases.filter((c) => c.case_id.startsWith(only));
+    console.log(`--only ${only}: ${subset.length}/${cases.length} case(s), NOT a full run`);
+    return subset;
   }
   return cases;
 }
@@ -451,6 +502,16 @@ async function main(): Promise<void> {
   const pool = new Pool({ connectionString: pg.getConnectionUri() });
 
   const scores: CaseScore[] = [];
+  /** Branch distribution over EVERY scripted turn (V2.3 item 6.3): the
+   * suite-wide fan-out rate, so a threshold change that flips ordinary
+   * questions is measured rather than assumed. `none` = no decision computed
+   * (deterministic intents, explicit modes). */
+  const branchTally: Record<AmbiguityBranch | 'none', number> = {
+    dominant: 0,
+    silent: 0,
+    fan_out: 0,
+    none: 0,
+  };
   try {
     await applyMigrations(pool, MIGRATIONS_DIR);
     const db = createDb(pool);
@@ -652,6 +713,19 @@ async function main(): Promise<void> {
         }
       }
       console.log(`  seeded ${testCase.notes.length} notes, ${testCase.facts.length} direct facts`);
+      {
+        // The admitted rows' subjects and entities drive the ambiguity
+        // clusters — print them so a wrong branch is diagnosable from the
+        // run log (eval corpus only, all fictional).
+        const admitted = await db.execute<{ subject_entity: string | null; entities: unknown }>(
+          sql`SELECT subject_entity, entities FROM memory WHERE owner_id = ${principal.userId} ORDER BY created_at`,
+        );
+        for (const row of admitted.rows) {
+          console.log(
+            `    memory: subject=${row.subject_entity ?? '(none)'} entities=${JSON.stringify(row.entities)}`,
+          );
+        }
+      }
 
       // Run the scripted conversation — inside ONE conversation container
       //, exactly as the production surface would: the script's turns
@@ -664,6 +738,7 @@ async function main(): Promise<void> {
         let sourceStatuses: string[] = [];
         let citationViolations = 0;
         let researchOffer = false;
+        let ambiguity: AmbiguityDecisionDto | null = null;
         for await (const event of chat.ask(
           principal,
           question,
@@ -676,6 +751,7 @@ async function main(): Promise<void> {
             answer = event.content;
             citationViolations = event.citationViolations;
             researchOffer = Boolean(event.researchOffer);
+            ambiguity = event.ambiguity ?? null;
           }
         }
         turns.push({
@@ -685,10 +761,24 @@ async function main(): Promise<void> {
           sourceStatuses,
           citationViolations,
           researchOffer,
+          ambiguity,
         });
         console.log(
           `  Q: ${question}\n  A (${sourceCount} facts): ${stripCites(answer).slice(0, 220)}`,
         );
+        // The decision, with its distribution — the calibration evidence for
+        // the ambiguity thresholds reads exactly these lines (issue C).
+        if (ambiguity) {
+          const clusters = ambiguity.clusters
+            .map(
+              (c) =>
+                `${c.subject || '(unanchored)'} r=${c.relevance.toFixed(3)} f=${c.fused.toFixed(4)}${c.shown ? ' shown' : ''}`,
+            )
+            .join(' | ');
+          console.log(
+            `  ambiguity: ${ambiguity.branch}${ambiguity.named.length ? ` named=[${ambiguity.named.join(', ')}]` : ''}: ${clusters || '(no clusters)'}`,
+          );
+        }
       }
 
       const final = turns[turns.length - 1]!;
@@ -992,6 +1082,30 @@ async function main(): Promise<void> {
       ];
       const temporalApplied = temporalChecks.filter((v) => v !== null);
 
+      // Ambiguity-branch checks (V2.3 item 6.3) — deterministic, folded.
+      const ambiguityChecks: boolean[] = [];
+      if (checks.ambiguity_branch) {
+        const ok = branchMatches(checks.ambiguity_branch, final.ambiguity);
+        ambiguityChecks.push(ok);
+        console.log(
+          `  ambiguity_branch(${checks.ambiguity_branch}): ${String(ok)} (recorded: ${final.ambiguity?.branch ?? 'none'})`,
+        );
+      }
+      if (checks.ambiguity_branches) {
+        const expected = checks.ambiguity_branches;
+        const ok =
+          expected.length === turns.length &&
+          expected.every((branch, i) => branchMatches(branch, turns[i]!.ambiguity));
+        ambiguityChecks.push(ok);
+        console.log(
+          `  ambiguity_branches(${expected.join(',')}): ${String(ok)} (recorded: ${turns.map((t) => t.ambiguity?.branch ?? 'none').join(',')})`,
+        );
+      }
+      const ambiguityOk = ambiguityChecks.length > 0 ? ambiguityChecks.every(Boolean) : null;
+      for (const turn of turns) {
+        branchTally[turn.ambiguity?.branch ?? 'none'] += 1;
+      }
+
       const score: CaseScore = {
         caseId: testCase.case_id,
         entityCorrect: checks.entity ? checkEntity(final.answer, checks.entity) : null,
@@ -1007,6 +1121,7 @@ async function main(): Promise<void> {
         research: researchOk,
         skill: skillOk,
         conversation: conversationOk,
+        ambiguity: ambiguityOk,
         pass: false,
       };
       score.pass = [
@@ -1020,6 +1135,7 @@ async function main(): Promise<void> {
         score.research,
         score.skill,
         score.conversation,
+        score.ambiguity,
       ]
         .filter((v) => v !== null)
         .every(Boolean);
@@ -1033,16 +1149,24 @@ async function main(): Promise<void> {
   const cell = (v: boolean | null): string => (v === null ? '' : v ? 'PASS' : 'FAIL');
   const cov = (s: CaseScore): string =>
     s.coverage === null ? '' : `${(s.coverage * 100).toFixed(0)}%`;
+  const totalTurns =
+    branchTally.dominant + branchTally.silent + branchTally.fan_out + branchTally.none;
+  const branchSummary =
+    `ambiguity branches over ${totalTurns} turn(s): ` +
+    `dominant=${branchTally.dominant} silent=${branchTally.silent} fan_out=${branchTally.fan_out} none=${branchTally.none} · ` +
+    `fan-out rate ${totalTurns === 0 ? '0.0' : ((branchTally.fan_out / totalTurns) * 100).toFixed(1)}%`;
   const table = [
-    '| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | research | skill | conversation | overall |',
-    '|---|---|---|---|---|---|---|---|---|---|---|---|---|',
+    '| case | entity | coverage | hedge | no-mechanics | citations | nothing | temporal | research | skill | conversation | ambiguity | overall |',
+    '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
     ...scores.map(
       (s) =>
         `| ${s.caseId} | ${cell(s.entityCorrect)} | ${cov(s)} | ${cell(s.hedgeMarked)} | ` +
         `${cell(s.noMechanics)} | ${cell(s.citationsValid)} | ${cell(s.nothingOnRecord)} | ` +
         `${cell(s.temporal)} | ${cell(s.research)} | ` +
-        `${cell(s.skill)} | ${cell(s.conversation)} | ${s.pass ? 'PASS' : 'FAIL'} |`,
+        `${cell(s.skill)} | ${cell(s.conversation)} | ${cell(s.ambiguity)} | ${s.pass ? 'PASS' : 'FAIL'} |`,
     ),
+    '',
+    branchSummary,
   ].join('\n');
 
   const graderModel = (graderProviders ?? providers).tiers.answer;
@@ -1060,6 +1184,10 @@ async function main(): Promise<void> {
   // harness, not the models (V2.0 item 3.4).
   if (cacheMode === 'replay') {
     console.log('cached replay: docs/eval/history.md not touched (it records live measurements)');
+  } else if (process.argv.includes('--only')) {
+    // A subset run is a diagnosis, not a measurement: recording it would put
+    // partial tables beside full ones and make the history lie by omission.
+    console.log('--only subset: docs/eval/history.md not touched (it records full runs)');
   } else {
     await mkdir(path.dirname(HISTORY_FILE), { recursive: true });
     const stamp = new Date().toISOString().slice(0, 10);
@@ -1162,6 +1290,7 @@ async function main(): Promise<void> {
         s.research,
         s.skill,
         s.conversation,
+        s.ambiguity,
       ].some((v) => v === false),
     );
     const covered = scores.filter((s) => s.coverage !== null);

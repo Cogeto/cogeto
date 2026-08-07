@@ -1,0 +1,44 @@
+{
+  "case_id": "ambiguity_cap_en",
+  "description": "6.3 edge: a question matching many subjects must cap the fan-out at the configured maximum and say plainly how many more matched, never a silent truncation.",
+  "anchor": "2026-08-01T09:00:00.000Z",
+  "facts": [
+    {
+      "content": "The VX-9 mounting bracket fastening torque is 3.2 Nm.",
+      "entities": ["VX-9"],
+      "subject_entity": "VX-9"
+    },
+    {
+      "content": "The SEN-210 mounting bracket fastening torque is 3.4 Nm.",
+      "entities": ["SEN-210"],
+      "subject_entity": "SEN-210"
+    },
+    {
+      "content": "The PWR-3100 mounting bracket fastening torque is 2.8 Nm.",
+      "entities": ["PWR-3100"],
+      "subject_entity": "PWR-3100"
+    },
+    {
+      "content": "The PWR-3200 mounting bracket fastening torque is 2.9 Nm.",
+      "entities": ["PWR-3200"],
+      "subject_entity": "PWR-3200"
+    },
+    {
+      "content": "The MX-4 mounting bracket fastening torque is 1.6 Nm.",
+      "entities": ["MX-4"],
+      "subject_entity": "MX-4"
+    },
+    {
+      "content": "The TR-7 mounting bracket fastening torque is 2.1 Nm.",
+      "entities": ["TR-7"],
+      "subject_entity": "TR-7"
+    }
+  ],
+  "script": ["What is the mounting bracket fastening torque?"],
+  "checks": {
+    "ambiguity_branch": "fan_out",
+    "must_include": ["more subject", "Which did you mean?", "{{cite"],
+    "citations_valid": true,
+    "no_mechanics": true
+  }
+}

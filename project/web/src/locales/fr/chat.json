@@ -46,6 +46,9 @@
     "always": "Toujours le faire automatiquement",
     "alwaysTitle": "Cogeto consultera désormais le web automatiquement. Vous pouvez désactiver cette option dans Paramètres."
   },
+  "ambiguity": {
+    "alternatives": "Multiple matches in your sources"
+  },
   "citation": {
     "unresolved": "source",
     "teammate": "un membre de l’équipe",

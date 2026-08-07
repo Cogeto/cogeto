@@ -22,6 +22,7 @@
     ],
     "coverage_target": 0.8,
     "no_mechanics": true,
-    "citations_valid": true
+    "citations_valid": true,
+    "ambiguity_branch": "dominant"
   }
 }

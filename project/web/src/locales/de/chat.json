@@ -46,6 +46,9 @@
     "always": "Immer automatisch ausführen",
     "alwaysTitle": "Cogeto prüft das Web ab jetzt automatisch. Sie können dies in den Einstellungen deaktivieren."
   },
+  "ambiguity": {
+    "alternatives": "Multiple matches in your sources"
+  },
   "citation": {
     "unresolved": "Quelle",
     "teammate": "ein Teammitglied",

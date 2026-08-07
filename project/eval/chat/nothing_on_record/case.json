@@ -8,6 +8,7 @@
   ],
   "script": ["What is Cogeto and what are its pricing tiers?"],
   "checks": {
-    "nothing_on_record": true
+    "nothing_on_record": true,
+    "ambiguity_branch": "silent"
   }
 }

@@ -1,6 +1,19 @@
 {
   "nothingOpen": "Nothing is still open, nothing on record is waiting on you.",
   "nothingOnRecord": "I don’t have anything on that yet. If you capture it as a note on the Memories page, I’ll remember it and can answer next time.",
+  "ambiguity": {
+    "silentPreamble": "I have nothing about this in your sources. What follows is general knowledge, not from your sources.",
+    "fanoutIntro": "That could mean more than one thing in your sources:",
+    "line": "- **{{subject}}**: {{fact}} {{cite}}{{verdict}}",
+    "verdict": {
+      "uncertain": "unconfirmed",
+      "contradicted": "contradicted",
+      "past": "no longer current"
+    },
+    "more_one": "{{count}} more subject matched. Ask about it by name to see it.",
+    "more_other": "{{count}} more subjects matched. Ask about one by name to see it.",
+    "whichDidYouMean": "Which did you mean?"
+  },
   "smallTalk": {
     "thanks": "You’re welcome, glad it helped.",
     "greeting": "Hi! What can I help you with?",

@@ -8,7 +8,10 @@
   ],
   "script": ["What is HubSpot generally known for, and which CRM does Adriatic Foods use today?"],
   "checks": {
-    "entity": { "mustMention": ["hubspot", "adriatic"], "notIdentity": [] },
+    "entity": {
+      "mustMention": ["hubspot", "adriatic"],
+      "notIdentity": []
+    },
     "unsourced_required": true,
     "no_mechanics": true,
     "citations_valid": true,
@@ -16,6 +19,7 @@
     "coverage_facts": [
       "Adriatic Foods uses HubSpot as their CRM",
       "HubSpot is known as a CRM / inbound marketing platform"
-    ]
+    ],
+    "ambiguity_branch": "dominant"
   }
 }

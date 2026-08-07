@@ -28,5 +28,15 @@ export {
 export type { SmallTalkIntent, RewriteResult, TemporalIntent } from './query-rewrite';
 export { queryEntityCandidates } from './query-entities';
 export { detectEntityProfile } from './entity-profile';
+// The ambiguity decision (V2.3 item 6.3, spec §7.5): the pure rule and its
+// versioned thresholds — chat renders the behaviours, this module decides.
+export { clusterBySubject, decideAmbiguity } from './ambiguity';
+export type { AmbiguityCluster, AmbiguityHit, EntityKeyOf } from './ambiguity';
+export {
+  AMBIGUITY_CONFIG_VERSION,
+  ambiguityThresholdsFor,
+  MAX_FANOUT_LINES,
+} from './ambiguity-config';
+export type { AmbiguityThresholds } from './ambiguity-config';
 export { runRewriteEval } from './eval-rewrite';
 export type { RewriteEvalMetrics } from './eval-rewrite';

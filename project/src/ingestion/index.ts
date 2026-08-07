@@ -67,6 +67,10 @@ export {
 } from './reconcile-repair';
 export type { ReconcileRepairPayload } from './reconcile-repair';
 export { EntityAliasStore } from './persistence/entity-alias.store';
+// The pure entity-identity half (fold + alias index), exported for
+// retrieval's ambiguity clustering (V2.3 item 6.3): functions and a pure
+// class, never a table.
+export { EMPTY_ALIAS_INDEX, EntityAliasIndex, foldEntityName } from './domain/entity-match';
 export { CheckedPairStore } from './persistence/checked-pair.store';
 export {
   ACTIVE_PROMPTS,

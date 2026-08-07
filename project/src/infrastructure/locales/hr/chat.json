@@ -1,6 +1,20 @@
 {
   "nothingOpen": "Ništa više nije otvoreno, ništa zabilježeno ne čeka na tebe.",
   "nothingOnRecord": "O tome još nemam ništa. Ako to zabilježiš kao bilješku na stranici Memories, zapamtit ću i moći odgovoriti sljedeći put.",
+  "ambiguity": {
+    "silentPreamble": "O ovome nemam ništa u tvojim izvorima. Ono što slijedi je opće znanje, a ne iz tvojih izvora.",
+    "fanoutIntro": "To se u tvojim izvorima može odnositi na više stvari:",
+    "line": "- **{{subject}}**: {{fact}} {{cite}}{{verdict}}",
+    "verdict": {
+      "uncertain": "nepotvrđeno",
+      "contradicted": "proturječno",
+      "past": "više ne vrijedi"
+    },
+    "more_one": "Još {{count}} subjekt odgovara. Spomeni ga imenom da ga vidiš.",
+    "more_few": "Još {{count}} subjekta odgovaraju. Spomeni jedan imenom da ga vidiš.",
+    "more_other": "Još {{count}} subjekata odgovara. Spomeni jedan imenom da ga vidiš.",
+    "whichDidYouMean": "Na koji od njih misliš?"
+  },
   "smallTalk": {
     "thanks": "Nema na čemu, drago mi je da je pomoglo.",
     "greeting": "Bok! Kako mogu pomoći?",

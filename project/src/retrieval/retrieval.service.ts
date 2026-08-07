@@ -1,9 +1,12 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
-import type { MemoryStatus, Principal } from '@cogeto/shared';
+import type { AmbiguityDecisionDto, MemoryStatus, Principal } from '@cogeto/shared';
 import { TEMPORAL_STATUS_MULTIPLIERS } from '@cogeto/shared';
 import { DEFAULT_INSTANCE_TIMEZONE } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
-import { listOpenDormantFlags } from '../ingestion/index';
+import { EMPTY_ALIAS_INDEX, EntityAliasStore, listOpenDormantFlags } from '../ingestion/index';
+import { clusterBySubject, decideAmbiguity } from './ambiguity';
+import type { EntityKeyOf } from './ambiguity';
+import { AMBIGUITY_CONFIG_VERSION, ambiguityThresholdsFor } from './ambiguity-config';
 import { MemoryStore } from '../memory/index';
 import type { MemoryChange, MemoryRow } from '../memory/index';
 import { ModelGateway } from '../model-gateway/index';
@@ -33,6 +36,12 @@ export interface RetrieveOptions {
    * cost exactly one bounded pipeline-tier call per turn.
    */
   rewrite?: RewriteResult;
+  /**
+   * Compute the spec §7.5 ambiguity decision over the fused results (V2.3
+   * item 6.3). Chat's grounded answer path opts in; other callers (attention,
+   * reply drafts, skills, research) neither need nor pay for it.
+   */
+  ambiguity?: boolean;
 }
 
 export interface RetrievedMemory {
@@ -41,6 +50,14 @@ export interface RetrievedMemory {
   score: number;
   /** Which of the three spec §3.4 signals surfaced this memory. */
   signals: RetrievalSignal[];
+  /**
+   * Normalized [0,1] vector similarity when the vector signal surfaced this
+   * memory; null otherwise (V2.3 item 6.3). Carried BESIDE the fused score,
+   * never re-applied to it: it is the one score with absolute meaning, which
+   * is what the ambiguity relevance floor needs and rank-derived RRF cannot
+   * provide.
+   */
+  vectorScore: number | null;
 }
 
 /** What retrieval decided, so the answerer can adapt (F1/F4). */
@@ -69,6 +86,14 @@ export interface RetrievalResult {
   changes?: MemoryChange[];
   /** What is still standing, when mode is open_loops. */
   openLoops?: OpenLoop[];
+  /**
+   * The spec §7.5 ambiguity decision, present when the caller opted in AND
+   * the default fused mode ran (V2.3 item 6.3). The explicit modes (a named
+   * profile subject, a temporal intent, open loops) carry none: their
+   * subject or shape was decided upstream of fusion and cannot mis-branch,
+   * so an absent record reads "not computed", exactly like pre-feature rows.
+   */
+  ambiguity?: AmbiguityDecisionDto;
 }
 
 /**
@@ -147,7 +172,12 @@ export class RetrievalService {
     if (rewrite.openLoops) {
       const openLoops = await this.openLoops(principal, rewrite.openLoops.entity, opts);
       return {
-        memories: openLoops.map(({ memory }) => ({ memory, score: 0, signals: [] })),
+        memories: openLoops.map(({ memory }) => ({
+          memory,
+          score: 0,
+          signals: [],
+          vectorScore: null,
+        })),
         mode: 'open_loops',
         openLoops,
       };
@@ -188,7 +218,42 @@ export class RetrievalService {
         },
       );
     }
-    return { memories: results, mode: 'default' };
+    if (!opts.ambiguity) return { memories: results, mode: 'default' };
+
+    // 6. The spec §7.5 ambiguity decision (V2.3 item 6.3): deterministic
+    // arithmetic over the fused distribution, alias-aware clustering, no
+    // model call. An unknown embedding model fails loudly here by design.
+    const ambiguity = await this.decideAmbiguity(principal, results, entityCandidates);
+    return { memories: results, mode: 'default', ambiguity };
+  }
+
+  /** Cluster the fused results by anchored subject and run the decision rule. */
+  private async decideAmbiguity(
+    principal: Principal,
+    results: RetrievedMemory[],
+    queryEntities: string[],
+  ): Promise<AmbiguityDecisionDto> {
+    const aliases = this.db
+      ? await new EntityAliasStore(this.db).indexForOwner(principal.userId)
+      : EMPTY_ALIAS_INDEX;
+    const keyOf: EntityKeyOf = (name) => aliases.keyOf(name);
+    const clusters = clusterBySubject(
+      results.map((hit) => ({
+        memoryId: hit.memory.id,
+        subjectEntity: hit.memory.subjectEntity,
+        entities: hit.memory.entities,
+        content: hit.memory.content,
+        fusedScore: hit.score,
+        vectorScore: hit.vectorScore,
+      })),
+      keyOf,
+      queryEntities,
+    );
+    const embeddingModel = this.gateway.embeddingModelId();
+    return decideAmbiguity(clusters, queryEntities, keyOf, ambiguityThresholdsFor(embeddingModel), {
+      configVersion: AMBIGUITY_CONFIG_VERSION,
+      embeddingModel,
+    });
   }
 
   /**
@@ -247,6 +312,7 @@ export class RetrievalService {
           memory: hit.memory,
           score: hit.score ?? 0,
           signals: hit.score !== null ? (['vector'] as RetrievalSignal[]) : [],
+          vectorScore: hit.score,
         })),
         mode: 'temporal',
         temporal,
@@ -261,7 +327,12 @@ export class RetrievalService {
     const byId = new Map<string, MemoryRow>();
     for (const change of changes) byId.set(change.memory.id, change.memory);
     return {
-      memories: [...byId.values()].map((memory) => ({ memory, score: 0, signals: [] })),
+      memories: [...byId.values()].map((memory) => ({
+        memory,
+        score: 0,
+        signals: [],
+        vectorScore: null,
+      })),
       mode: 'temporal',
       temporal,
       changes,
@@ -309,6 +380,9 @@ export class RetrievalService {
       { signal: 'fts', ids: ftsHits.map((h) => h.memory.id) },
       { signal: 'entity', ids: [...entityHits, ...widenHits].map((h) => h.memory.id) },
     ];
+    // The one score with absolute meaning rides along for the ambiguity
+    // relevance floor (V2.3 item 6.3); the fused rank order is untouched.
+    const vectorScoreById = new Map(vectorHits.map((h) => [h.memoryId, h.score]));
     // Widening lets the answer aggregate more than the default slice.
     const limit = extra?.widenEntity ? Math.max(topK, PROFILE_CEILING) : topK;
     return fuseAndRank(lists, (id) => rowsById.get(id)?.status, extra?.multipliers)
@@ -317,6 +391,7 @@ export class RetrievalService {
         memory: rowsById.get(hit.memoryId)!,
         score: hit.score,
         signals: hit.signals,
+        vectorScore: vectorScoreById.get(hit.memoryId) ?? null,
       }));
   }
 
@@ -359,9 +434,15 @@ export class RetrievalService {
       }
     }
 
+    const vectorScoreById = new Map(vectorHits.map((h) => [h.memoryId, h.score]));
     return [...rowsById.values()]
       .filter((row) => row.status !== 'replaced') // replaced ×0 — excluded (spec §3.4)
       .sort(byStatusThenRecency)
-      .map((memory) => ({ memory, score: 0, signals: [...(signalsById.get(memory.id) ?? [])] }));
+      .map((memory) => ({
+        memory,
+        score: 0,
+        signals: [...(signalsById.get(memory.id) ?? [])],
+        vectorScore: vectorScoreById.get(memory.id) ?? null,
+      }));
   }
 }

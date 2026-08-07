@@ -46,7 +46,61 @@ export interface ChatMessageDto {
    * reasoning model produced one. A CHANNEL, never content: not capturable,
    * not citable, not evaluated. Null for user rows and non-reasoning models. */
   thinking: string | null;
+  /** The ambiguity decision behind a grounded assistant answer (V2.3 item
+   * 6.3): which entity clusters were considered, their scores, and which
+   * branch was taken. Null for user rows, non-grounded replies, and rows
+   * older than the feature. Content-bearing (subject names), so the answer
+   * redaction cascade clears it with the answer. */
+  ambiguity: AmbiguityDecisionDto | null;
   createdAt: string;
+}
+
+/** The three deterministic outcomes of spec §7.5, in evaluation order. */
+export type AmbiguityBranch = 'dominant' | 'silent' | 'fan_out';
+
+/**
+ * One candidate answer subject considered by the ambiguity decision: an
+ * anchored-entity cluster over the post-fusion results (V2.3 item 6.3).
+ */
+export interface AmbiguityClusterDto {
+  /** The display subject: the top member's anchored subject entity. Empty
+   * for the unanchored bucket, which can never be a fan-out line. */
+  subject: string;
+  /** The alias-canonical folded cluster key; empty for the unanchored bucket. */
+  key: string;
+  /** Best member vector similarity, normalized [0,1]; 0 when no member was
+   * surfaced by the vector signal. The relevance-floor input. */
+  relevance: number;
+  /** A member's subject or entities fold-match a query-named entity: the
+   * identity lift that makes the cluster relevant whatever its similarity. */
+  entityNamed: boolean;
+  /** Max member fused score (RRF × status multiplier). The comparability input. */
+  fused: number;
+  /** Member count, recorded for diagnosis; never a score input. */
+  size: number;
+  /** The cluster's best fact — the one a fan-out line carries. */
+  topMemoryId: string;
+  /** True when this cluster produced a fan-out line. */
+  shown: boolean;
+}
+
+/**
+ * The recorded ambiguity decision (spec §7.5): stored on the assistant
+ * message, carried on the live `done` event, inspectable later. Deterministic
+ * arithmetic over scores retrieval already computed; no model call.
+ */
+export interface AmbiguityDecisionDto {
+  branch: AmbiguityBranch;
+  /** Every cluster considered, fused-score order. */
+  clusters: AmbiguityClusterDto[];
+  /** Cluster keys the question itself named (rule 1); empty otherwise. */
+  named: string[];
+  /** True when more clusters qualified for the fan-out than were shown. */
+  capped: boolean;
+  /** AMBIGUITY_CONFIG_VERSION in force when the decision was made. */
+  configVersion: number;
+  /** The embedding model whose calibrated thresholds applied. */
+  embeddingModel: string;
 }
 
 /**
@@ -131,6 +185,9 @@ export type ChatStreamEvent =
        * view's handle. Nothing has been sent when this arrives — the plan
        * gate lives on the run view. */
       skillRun?: ChatSkillRunRef | null;
+      /** The ambiguity decision behind this answer (V2.3 item 6.3), when the
+       * grounded path computed one. Mirrors the stored record. */
+      ambiguity?: AmbiguityDecisionDto | null;
     }
   | {
       type: 'error';
