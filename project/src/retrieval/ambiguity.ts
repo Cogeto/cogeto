@@ -333,6 +333,21 @@ export function decideAmbiguity(
     (c) => c.entityNamed || c.relevance >= thresholds.relevanceFloor,
   );
   if (relevant.length === 0) {
+    // A floor that was never measured under THIS embedding model may not
+    // declare the corpus empty (issue #477). An absolute similarity is vector
+    // space geometry, so a borrowed floor is a number about a different space:
+    // under bge-m3 a relevant cluster measured 0.8191 against a floor of 0.90
+    // borrowed from mistral-embed, and the product answered "I have nothing
+    // about this in your sources" while holding fifteen matching facts.
+    //
+    // With clusters present and no measured floor to judge them by, the honest
+    // branch is `dominant`: hand the retrieved facts to the answer path, which
+    // cites what it uses and can say the records do not settle the question.
+    // Silence stays reachable and stays honest, from the case below: retrieval
+    // returned nothing at all.
+    if (!thresholds.calibrated && clusters.length > 0) {
+      return record('dominant', [], none, false);
+    }
     return record('silent', [], none, false);
   }
 
