@@ -1,0 +1,86 @@
+{
+  "case_id": "hr-v004",
+  "source_type": "file",
+  "filename": "nn-112-2017-jednostavne-gradevine.txt",
+  "source_date": "2017-11-17T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Cisterna za vodu i septička jama zapremine do 27 m3 na građevnoj čestici postojeće zgrade mogu se graditi bez građevinske dozvole i glavnog projekta",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Nadstrešnica tlocrtne površine do 20 m2 izvan tlocrtnih gabarita postojeće zgrade može se graditi bez građevinske dozvole i glavnog projekta",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Terasa uz postojeću zgradu u razini terena tlocrtne površine do 20 m2 može se graditi bez građevinske dozvole i glavnog projekta",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Zgrada čuvarske službe tlocrtne površine do 12 m2 može se graditi bez građevinske dozvole i glavnog projekta",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Ograda visine do 2,2 m mjereno od najnižeg dijela konačno zaravnanog terena može se graditi bez građevinske dozvole i glavnog projekta",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Ogradni zid visine do 1,6 m i potporni zid visine do 1 m mogu se graditi bez građevinske dozvole i glavnog projekta",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Privremena građevina za prigodnu prodaju i za potrebe sajmova ima najduži rok trajanja do 90 dana",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Podzemni spremnik za smještaj tipskih kontejnera za komunalni otpad tlocrtne površine do 15 m2 i dubine do 2 m gradi se bez građevinske dozvole a u skladu s glavnim projektom",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Kiosk i druga građevina gotove konstrukcije tlocrtne površine do 15 m2 grade se bez građevinske dozvole a u skladu s glavnim projektom",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Spomeničko ili sakralno obilježje tlocrtne površine do 12 m2 i visine do 4 m od razine okolnog tla gradi se bez građevinske dozvole a u skladu s glavnim projektom",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Reklamni pano oglasne površine do 12 m2 gradi se bez građevinske dozvole a u skladu s glavnim projektom",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Prijenosni spremnik goriva zapremine do 5 m3 nije obuhvaćen izuzećem za privremene građevine za potrebe građenja",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "stavke bez brojčane vrijednosti koje su samo nabrajanje vrste građevine (vrtna sjenica, pješačka staza, boćalište)",
+    "uputnica na članak 77. Zakona o gradnji, koja nema vlastiti sadržaj"
+  ],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

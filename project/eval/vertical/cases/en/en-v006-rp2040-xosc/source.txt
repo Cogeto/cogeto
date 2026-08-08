@@ -1,0 +1,72 @@
+Table 256. INTS
+Register Bits Description Type Reset
+31:1 Reserved. - -
+0 CLK_SYS_RESUS RO 0x0
+2.16. Crystal Oscillator (XOSC)
+2.16.1. Overview
+The Crystal Oscillator (XOSC) uses an external crystal to produce an accurate reference clock. The RP2040 supports
+1MHz to 15MHz crystals and the RP2040 reference design (see the Minimal Design Example in Hardware design with
+RP2040) uses a 12MHz crystal. The reference clock is distributed to the PLLs, which can be used to multiply the XOSC
+frequency to provide accurate high speed clocks. For example, they can generate a 48MHz clock which meets the
+frequency accuracy requirement of the USB interface and a 133MHz maximum speed system clock. The XOSC clock is
+also a clock source for the clock generators, so can be used directly if required.
+If the user already has an accurate clock source then it is possible to drive an external clock directly into XIN (aka XI),
+and disable the oscillator circuit. In this mode XIN can be driven at up to 50MHz.
+If the user wants to use the XOSC clock outside the RP2040 then it must be routed out to a GPIO via a clk_gpout clock
+generator. It is not recommended to take it directly from XIN (aka XI) or XOUT (aka XO).
+Figure 33. XOSC
+overview
+2.16.1.1. Recommended Crystals
+For the best performance and stability across typical operating temperature ranges, it is recommended to use the
+Abracon ABM8-272-T3. You can source the ABM8-272-T3 directly from Abracon or from an authorised reseller. The
+Abracon ABM8-272-T3 has the following specifications:
+Table 257. Key Crystal
+Specifications. Parameters Minimum Typical Maximum Units Notes
+Center Frequency 12.000 12.000 12.000 MHz
+Operation Mode Fundamental-AT Fundamental-AT Fundamental-AT
+Operating Temperature -40 +85 ºC
+Storage Temperature -55 +125 ºC
+Frequency Tolerance (25ºC) -30 +30 ppm
+Frequency Stability (25ºC) -30 +30 ppm
+Equivalent Series Resistance (R1) 50 Ω
+Shunt Capacitance (C0) 3.0 pF
+Load Capacitance (CL) 10 10 10 pF
+Drive Level 10 200 μW
+Aging -5 +5 ppm @25±3°C, 1st year
+RP2040 Datasheet
+2.16. Crystal Oscillator (XOSC) 216
+
+Parameters Minimum Typical Maximum Units Notes
+Insulation Resistance 500 MΩ @100Vdc±15V
+Even if you use a crystal with similar specifications, you will need to test the circuit over a range of temperatures to
+ensure stability.
+The crystal oscillator is powered from the VDDIO voltage. As a result, the Abracon crystal and that particular damping
+resistor are tuned for 3.3V operation. If you use a different IO voltage, you will need to re-tune.
+Any changes to crystal parameters risk instability across any components connected to the crystal circuit.
+If you can’t source the recommended crystal directly from Abracon or a reseller, contact applications@raspberrypi.com.
+Raspberry Pi Pico has been specifically tuned for the specifications of the Abracon ABM8-272-T3 crystal. For an
+example of how to use a crystal with RP2040, see the Raspberry Pi Pico board schematic in Appendix B of the
+Raspberry Pi Pico Datasheet and the Raspberry Pi Pico design files.
+2.16.2. Usage
+The XOSC is disabled on chip startup and the RP2040 boots using the Ring Oscillator (ROSC). To start the XOSC, the
+programmer must set the CTRL_ENABLE register. The XOSC is not immediately usable because it takes time for the
+oscillations to build to sufficient amplitude. This time will be dependent on the chosen crystal but will be of the order of
+a few milliseconds. The XOSC incorporates a timer controlled by the STARTUP_DELAY register for automatically
+managing this and setting a flag (STATUS_STABLE) when the XOSC clock is usable.
+2.16.3. Startup Delay
+The STARTUP_DELAY register specifies how many clock cycles must be seen from the crystal before it can be used.
+This is specified in multiples of 256. The SDK xosc_init function sets this value. The 1ms default is sufficient for the
+RP2040 reference design (see the Minimal Design Example in Hardware design with RP2040) which runs the XOSC at
+12MHz. When the timer expires, the STATUS_STABLE flag will be set to indicate the XOSC output can be used.
+Before starting the XOSC the programmer must ensure the STARTUP_DELAY register is correctly configured. The
+required value can be calculated by:
+So with a 12MHz crystal and a 1ms wait time, the calculation is:
+ NOTE
+The value is rounded up to the nearest integer so the wait time will be just over 1ms
+2.16.4. XOSC Counter
+The COUNT register provides a method of managing short software delays. Writing a value to the COUNT register
+automatically triggers it to start counting down to zero at the XOSC frequency. The programmer then simply polls the
+register until it reaches zero. This is preferable to using NOPs in software loops because it is independent of the core
+clock frequency, the compiler and the execution time of the compiled code.
+RP2040 Datasheet
+2.16. Crystal Oscillator (XOSC) 217

@@ -1,0 +1,26 @@
+{
+  "case_id": "en-vr07",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "The Lot 4d distribution transformers are rated S = 125 MVA with a voltage ratio of 110/22 kV.",
+    "kind": "fact",
+    "entities": ["Lot 4d"],
+    "subject_entity": "Lot 4d",
+    "captured_at": "2026-03-16T00:00:00.000Z",
+    "valid_from": "2026-03-16T00:00:00.000Z",
+    "valid_until": null,
+    "source": "S = 125MVA (150MVA) Yyn10+d** U = 110/22 ± 12 x 1,31% Uk = 12,5%"
+  },
+  "b": {
+    "content": "The Lot 4c grid transformers are rated S = 300 MVA with a voltage ratio of 400/110 kV.",
+    "kind": "fact",
+    "entities": ["Lot 4c"],
+    "subject_entity": "Lot 4c",
+    "captured_at": "2026-03-16T00:00:00.000Z",
+    "valid_from": "2026-03-16T00:00:00.000Z",
+    "valid_until": null,
+    "source": "U = 400/110kV ± 13 x 1,23% S = 300MVA (360MVA) Uk =16% YNyn0"
+  },
+  "notes": "One tender, one paragraph, two lots, two ratings in the same unit. Not a conflict: the lots procure different transformers. Both facts were captured from the same document on the same day, so there is no recency signal to lean on either."
+}

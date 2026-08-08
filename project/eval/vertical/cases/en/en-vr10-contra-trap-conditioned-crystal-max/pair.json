@@ -1,0 +1,26 @@
+{
+  "case_id": "en-vr10",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "On the RP2350 the maximum crystal frequency increased from 15 MHz to 50 MHz when the appropriate range is selected in CTRL.FREQ_RANGE.",
+    "kind": "fact",
+    "entities": ["RP2350"],
+    "subject_entity": "RP2350",
+    "captured_at": "2025-07-30T00:00:00.000Z",
+    "valid_from": "2025-07-30T00:00:00.000Z",
+    "valid_until": null,
+    "source": "8.2.2. Changes from RP2040\n• Maximum crystal frequency increased from 15 MHz to 50 MHz, when appropriate range is selected in CTRL.FREQ_RANGE"
+  },
+  "b": {
+    "content": "The RP2350 supports 1 MHz to 50 MHz crystals.",
+    "kind": "fact",
+    "entities": ["RP2350"],
+    "subject_entity": "RP2350",
+    "captured_at": "2025-07-29T00:00:00.000Z",
+    "valid_from": "2025-07-29T00:00:00.000Z",
+    "valid_until": null,
+    "source": "RP2350 supports 1 MHz to 50 MHz crystals and the RP2350 reference design uses a 12 MHz crystal."
+  },
+  "notes": "Conditional qualification on ONE side only, which LABELLING.md rule 2 qualifier 3 labels compatible and flags. Both statements are about the RP2350 and both name 50 MHz; only a is qualified by a register setting. Nothing in the document says the unqualified statement was meant to exclude the qualified case."
+}

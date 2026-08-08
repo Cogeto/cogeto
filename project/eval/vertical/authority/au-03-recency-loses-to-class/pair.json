@@ -1,0 +1,26 @@
+{
+  "case_id": "au-03",
+  "task": "contradiction",
+  "expected": "supersedes_b_over_a",
+  "a": {
+    "content": "The submission deadline for the protective mask procurement is 13 January 2025 at 12:00 CET.",
+    "kind": "fact",
+    "entities": ["FFP3"],
+    "subject_entity": "protective mask procurement submission deadline",
+    "captured_at": "2025-01-03T00:00:00.000Z",
+    "valid_from": "2025-01-03T00:00:00.000Z",
+    "valid_until": null,
+    "source": "Rok za zaprimanje ponuda: 13/01/2025 12:00:00 (UTC+01:00) srednjoeuropsko vrijeme"
+  },
+  "b": {
+    "content": "PLACEHOLDER: a superseding deadline stated by a more authoritative instrument. See notes.md.",
+    "kind": "fact",
+    "entities": [],
+    "subject_entity": "protective mask procurement submission deadline",
+    "captured_at": "2024-12-01T00:00:00.000Z",
+    "valid_from": "2024-12-01T00:00:00.000Z",
+    "valid_until": null,
+    "source": "PLACEHOLDER. Not drawn from a corpus document."
+  },
+  "notes": "PENDING and PARTLY SYNTHETIC, same caveat as au-02. The shape under test is the one that matters most: the more recent document is the less authoritative one, so a system that resolves by recency gets it backwards. Recency and authority agree in every real pair this corpus contains, which is itself worth knowing."
+}

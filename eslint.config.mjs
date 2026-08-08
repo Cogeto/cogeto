@@ -103,13 +103,20 @@ export default tseslint.config(
     rules: { 'copy/no-typographic-dashes': 'error' },
   },
   {
-    // Plain-JS infra / demo / dev scripts run under Node; give them the runtime globals.
-    files: ['project/infra/**/*.mjs', 'project/demo/**/*.mjs', 'scripts/**/*.mjs'],
+    // Plain-JS infra / demo / dev / eval-corpus scripts run under Node; give
+    // them the runtime globals.
+    files: [
+      'project/infra/**/*.mjs',
+      'project/demo/**/*.mjs',
+      'project/eval/**/*.mjs',
+      'scripts/**/*.mjs',
+    ],
     languageOptions: {
       globals: {
         console: 'readonly',
         process: 'readonly',
         Buffer: 'readonly',
+        fetch: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
         URL: 'readonly',

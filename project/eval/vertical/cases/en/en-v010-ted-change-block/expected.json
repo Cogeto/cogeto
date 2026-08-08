@@ -1,0 +1,23 @@
+{
+  "case_id": "en-v010",
+  "source_type": "file",
+  "filename": "ted-178149-2026.pdf",
+  "source_date": "2026-03-16T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "This notice is a change to an earlier version of the notice, and the main reason for the change is a buyer correction",
+      "kind": "decision",
+      "entities": [],
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "the eSender organisation block: official name, registration number, town, postcode, NUTS code, country, email and telephone",
+    "the notice identifier and version UUIDs",
+    "the form type, notice type and notice subtype",
+    "the dispatch date, the publication number, the OJ S issue number and the publication date",
+    "the statement of which languages the notice is available in"
+  ],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

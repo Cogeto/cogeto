@@ -1,0 +1,26 @@
+{
+  "case_id": "en-vr02",
+  "task": "contradiction",
+  "expected": "supersedes_a_over_b",
+  "a": {
+    "content": "The password reuse requirement 03.05.08 is withdrawn for consistency with SP 800-53.",
+    "kind": "decision",
+    "entities": ["SP 800-171"],
+    "subject_entity": "SP 800-171 password reuse requirement",
+    "captured_at": "2024-05-01T00:00:00.000Z",
+    "valid_from": "2024-05-01T00:00:00.000Z",
+    "valid_until": null,
+    "source": "03.05.08 \tWithdrawn\nConsistency with SP 800-53 [8]."
+  },
+  "b": {
+    "content": "Password reuse must be prohibited for a specified number of generations.",
+    "kind": "fact",
+    "entities": ["SP 800-171"],
+    "subject_entity": "SP 800-171 password reuse requirement",
+    "captured_at": "2020-02-01T00:00:00.000Z",
+    "valid_from": "2020-02-01T00:00:00.000Z",
+    "valid_until": null,
+    "source": "3.5.8 \tProhibit password reuse for a specified number of generations."
+  },
+  "notes": "A supersession with no number in it. Revision 2 of SP 800-171 requires prohibiting password reuse; Revision 3 of the same publication marks the same control Withdrawn. Same subject, opposite decisions, and the later document is the successor revision of the earlier one, so the correct action is supersession with a over b."
+}

@@ -1,0 +1,53 @@
+{
+  "case_id": "hr-v006",
+  "source_type": "file",
+  "filename": "nn-74-2022-izmjene.txt",
+  "source_date": "2022-06-29T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Podzemni spremnik za smještaj kontejnera za komunalni otpad tlocrtne površine do 15 m2 i dubine do 3,5 m gradi se bez građevinske dozvole a u skladu s glavnim projektom",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Elektronička komunikacijska infrastruktura i kontrolne mjerne postaje s pasivnim antenama za zaštitu radiofrekvencijskog spektra mogu se graditi i sukladno propisima iz područja elektroničke komunikacijske infrastrukture",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Bez građevinske dozvole i glavnog projekta mogu se izvoditi radovi uvlačenja novih kabela ili zamjene starih kabela elektroničke komunikacijske infrastrukture u kabelskoj kanalizaciji i na stupovima",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Bez građevinske dozvole i glavnog projekta može se postavljati bežična pristupna točka kratkog dometa, takozvana mala ćelija, u skladu s Provedbenom uredbom Komisije (EU) 2020/1070",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Bez građevinske dozvole i glavnog projekta mogu se postavljati ulični ormari ili kabineti elektroničke komunikacijske infrastrukture uz suglasnost vlasnika nekretnine",
+      "kind": "fact",
+      "entities": [],
+      "condition": "uz suglasnost vlasnika nekretnine",
+      "must_extract": true
+    },
+    {
+      "content_gist": "Zamjena postojeće radijske opreme radi održavanja ili opremom novije tehnologije dopuštena je bez dozvole ako se time ne utječe na temeljne i druge zahtjeve za građevinu",
+      "kind": "fact",
+      "entities": [],
+      "condition": "ako se zamjenom ne utječe na temeljne i druge zahtjeve za građevinu",
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "formule izmjene same za sebe (briše se točka, dodaje se nova točka, mijenja se i glasi)",
+    "popis prethodnih brojeva Narodnih novina u kojima je Pravilnik objavljen",
+    "puna bibliografska uputnica na Provedbenu uredbu (EU) 2020/1070 i Direktivu (EU) 2018/1972"
+  ],
+  "expected_relations": [{ "type": "supersedes", "target_case": "hr-v004" }],
+  "verification_expected": "supported"
+}

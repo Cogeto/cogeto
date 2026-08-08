@@ -2744,3 +2744,159 @@ ambiguity branches over 42 turn(s): dominant=11 silent=5 fan_out=5 none=21 · fa
 | who_is_ana | PASS | 86% | PASS | PASS | PASS |  |  |  |  |  | PASS | PASS |
 
 ambiguity branches over 42 turn(s): dominant=12 silent=5 fan_out=4 none=21 · fan-out rate 9.5%
+
+## 2026-08-07, extraction/v0005 + verification/v0006 (thresholds v1, 98 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 48 | 100.0% (0/0) | 0.0% (0/74) | 100.0% (0/0) |
+| hr | 50 | 100.0% (0/0) | 0.0% (0/74) | 100.0% (0/0) |
+| aggregate | 98 | 100.0% (0/0) | 0.0% (0/148) | 100.0% (0/0) |
+
+## 2026-08-07, reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v2, 54 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 6 | 80.0% (8/10) | 22 | 100.0% (0/0) | 0.0% (0/7) | 0.0% (0/5) | 28 |
+| hr | 5 | 75.0% (6/8) | 21 | 100.0% (0/0) | 0.0% (0/7) | 0.0% (0/4) | 26 |
+| aggregate | 11 | 77.8% (14/18) | 43 | 100.0% (0/0) | 0.0% (0/14) | 0.0% (0/9) | 54 |
+
+## 2026-08-07, query_rewrite/v0006 (query-rewrite routing, 32 cases)
+
+| set | cases | routing accuracy |
+|---|---|---|
+| en | 16 | 50.0% (8/16) |
+| hr | 16 | 43.8% (7/16) |
+| aggregate | 32 | 46.9% (15/32) |
+
+## 2026-08-07, VERTICAL corpus (real documents, 20 cases + 23 pairs)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 12 | 100.0% (0/0) | 0.0% (0/111) | 100.0% (0/0) |
+| hr | 8 | 100.0% (0/0) | 0.0% (0/62) | 100.0% (0/0) |
+| aggregate | 20 | 100.0% (0/0) | 0.0% (0/173) | 100.0% (0/0) |
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 4 | 66.7% (4/6) | 8 | 100.0% (0/0) | 100.0% (0/0) | 0.0% (0/2) | 12 |
+| hr | 2 | 100.0% (4/4) | 5 | 100.0% (0/0) | 100.0% (0/0) | 0.0% (0/2) | 7 |
+| xl | 1 | 0.0% (0/1) | 3 | 100.0% (0/0) | 0.0% (0/1) | 0.0% (0/1) | 4 |
+| aggregate | 7 | 72.7% (8/11) | 16 | 100.0% (0/0) | 0.0% (0/1) | 0.0% (0/5) | 23 |
+
+## 2026-08-07, extraction/v0005 + verification/v0006 (thresholds v1, 98 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 48 | 82.5% (80/97) | 93.2% (69/74) | 95.7% (45/47) |
+| hr | 50 | 84.3% (75/89) | 91.9% (68/74) | 89.6% (43/48) |
+| aggregate | 98 | 83.3% (155/186) | 92.6% (137/148) | 92.6% (88/95) |
+
+## 2026-08-07, reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v2, 54 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 6 | 100.0% (10/10) | 22 | 77.8% (7/9) | 100.0% (7/7) | 60.0% (3/5) | 2 |
+| hr | 5 | 87.5% (7/8) | 21 | 87.5% (7/8) | 100.0% (7/7) | 75.0% (3/4) | 2 |
+| aggregate | 11 | 94.4% (17/18) | 43 | 82.4% (14/17) | 100.0% (14/14) | 66.7% (6/9) | 4 |
+
+## 2026-08-07, query_rewrite/v0006 (query-rewrite routing, 32 cases)
+
+| set | cases | routing accuracy |
+|---|---|---|
+| en | 16 | 100.0% (16/16) |
+| hr | 16 | 81.3% (13/16) |
+| aggregate | 32 | 90.6% (29/32) |
+
+## 2026-08-07, VERTICAL corpus (real documents, 20 cases + 24 pairs)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 12 | 51.0% (106/208) | 95.5% (106/111) | 91.7% (11/12) |
+| hr | 8 | 47.7% (53/111) | 85.5% (53/62) | 71.4% (5/7) |
+| aggregate | 20 | 49.8% (159/319) | 91.9% (159/173) | 84.2% (16/19) |
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 4 | 100.0% (6/6) | 8 | 0.0% (0/2) | 100.0% (0/0) | 0.0% (0/2) | 3 |
+| hr | 2 | 50.0% (2/4, 1 FALSE MERGE) | 5 | 0.0% (0/1) | 100.0% (0/0) | 0.0% (0/2) | 3 |
+| xl | 1 | 100.0% (1/1) | 4 | 100.0% (0/0) | 0.0% (0/2) | 0.0% (0/1) | 1 |
+| aggregate | 7 | 81.8% (9/11, 1 FALSE MERGE) | 17 | 0.0% (0/3) | 0.0% (0/2) | 0.0% (0/5) | 7 |
+
+## 2026-08-08, extraction/v0005 + verification/v0006 (thresholds v1, 98 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 48 | 84.9% (79/93) | 94.6% (70/74) | 93.6% (44/47) |
+| hr | 50 | 78.5% (73/93) | 90.5% (67/74) | 83.3% (40/48) |
+| aggregate | 98 | 81.7% (152/186) | 92.6% (137/148) | 88.4% (84/95) |
+
+## 2026-08-08, reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v2, 54 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 6 | 100.0% (10/10) | 22 | 77.8% (7/9) | 100.0% (7/7) | 60.0% (3/5) | 2 |
+| hr | 5 | 87.5% (7/8) | 21 | 87.5% (7/8) | 100.0% (7/7) | 75.0% (3/4) | 2 |
+| aggregate | 11 | 94.4% (17/18) | 43 | 82.4% (14/17) | 100.0% (14/14) | 66.7% (6/9) | 4 |
+
+## 2026-08-08, query_rewrite/v0006 (query-rewrite routing, 32 cases)
+
+| set | cases | routing accuracy |
+|---|---|---|
+| en | 16 | 100.0% (16/16) |
+| hr | 16 | 62.5% (10/16) |
+| aggregate | 32 | 81.3% (26/32) |
+
+## 2026-08-08, VERTICAL corpus (real documents, 20 cases + 24 pairs)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 12 | 54.8% (102/186) | 91.9% (102/111) | 83.3% (10/12) |
+| hr | 8 | 51.3% (58/113) | 93.5% (58/62) | 75.0% (6/8) |
+| aggregate | 20 | 53.5% (160/299) | 92.5% (160/173) | 80.0% (16/20) |
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 4 | 100.0% (6/6) | 8 | 0.0% (0/2) | 100.0% (0/0) | 0.0% (0/2) | 3 |
+| hr | 2 | 50.0% (2/4, 1 FALSE MERGE) | 5 | 0.0% (0/1) | 100.0% (0/0) | 0.0% (0/2) | 3 |
+| xl | 1 | 100.0% (1/1) | 4 | 100.0% (0/0) | 0.0% (0/2) | 0.0% (0/1) | 1 |
+| aggregate | 7 | 81.8% (9/11, 1 FALSE MERGE) | 17 | 0.0% (0/3) | 0.0% (0/2) | 0.0% (0/5) | 7 |
+
+## 2026-08-08, extraction/v0005 + verification/v0006 (thresholds v1, 98 cases)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 48 | 81.6% (80/98) | 93.2% (69/74) | 95.7% (45/47) |
+| hr | 50 | 82.1% (78/95) | 93.2% (69/74) | 85.4% (41/48) |
+| aggregate | 98 | 81.9% (158/193) | 93.2% (138/148) | 90.5% (86/95) |
+
+## 2026-08-08, reconcile_dedup/v0001 + reconcile_contradiction/v0001 (reconcile-config v2, 54 pairs)
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 6 | 100.0% (10/10) | 22 | 75.0% (6/8) | 85.7% (6/7) | 60.0% (3/5) | 2 |
+| hr | 5 | 87.5% (7/8) | 21 | 87.5% (7/8) | 100.0% (7/7) | 75.0% (3/4) | 2 |
+| aggregate | 11 | 94.4% (17/18) | 43 | 81.3% (13/16) | 92.9% (13/14) | 66.7% (6/9) | 4 |
+
+## 2026-08-08, query_rewrite/v0006 (query-rewrite routing, 32 cases)
+
+| set | cases | routing accuracy |
+|---|---|---|
+| en | 16 | 100.0% (16/16) |
+| hr | 16 | 81.3% (13/16) |
+| aggregate | 32 | 90.6% (29/32) |
+
+## 2026-08-08, VERTICAL corpus (real documents, 20 cases + 24 pairs)
+
+| set | cases | extraction precision | extraction recall | verification agreement |
+|---|---|---|---|---|
+| en | 12 | 50.5% (101/200) | 91.0% (101/111) | 83.3% (10/12) |
+| hr | 8 | 44.9% (57/127) | 91.9% (57/62) | 87.5% (7/8) |
+| aggregate | 20 | 48.3% (158/327) | 91.3% (158/173) | 85.0% (17/20) |
+
+| set | dedup pairs | dedup accuracy | contra pairs | contra precision | contra recall | supersedes accuracy | candidate misses |
+|---|---|---|---|---|---|---|---|
+| en | 4 | 100.0% (6/6) | 8 | 0.0% (0/2) | 100.0% (0/0) | 0.0% (0/2) | 3 |
+| hr | 2 | 50.0% (2/4, 1 FALSE MERGE) | 5 | 0.0% (0/1) | 100.0% (0/0) | 0.0% (0/2) | 3 |
+| xl | 1 | 100.0% (1/1) | 4 | 100.0% (0/0) | 0.0% (0/2) | 0.0% (0/1) | 1 |
+| aggregate | 7 | 81.8% (9/11, 1 FALSE MERGE) | 17 | 0.0% (0/3) | 0.0% (0/2) | 0.0% (0/5) | 7 |

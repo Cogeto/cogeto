@@ -1,0 +1,45 @@
+Article 118
+Amendment to Regulation (EC) No 178/2002
+In the third paragraph of Article 2 of Regulation (EC) No 178/2002, the following point is added:
+‘(i) medical devices within the meaning of Regulation (EU) 2017/745 of the European Parliament and of the
+Council (*).
+(*) Regulation (EU) 2017/745 of the European Parliament and of the Council of 5 April 2017 on medical devices,
+amending Directive 2001/83/EC, Regulation (EC) No 178/2002 and Regulation (EC) No 1223/2009 and
+repealing Council Directives 90/385/EEC and 93/42/EEC (OJ L 117, 5.5.2017, p. 1).’.
+Article 119
+Amendment to Regulation (EC) No 1223/2009
+In Article 2 of Regulation (EC) No 1223/2009, the following paragraph is added:
+‘4. 	The Commission may, at the request of a Member State or on its own initiative, adopt the necessary measures
+to determine whether or not a specific product or group of products falls within the definition ‘cosmetic product’.
+Those measures shall be adopted in accordance with the regulatory procedure referred to in Article 32(2).’.
+Article 120
+Transitional provisions
+1. 	From 26 May 2020, any publication of a notification in respect of a notified body in accordance with
+Directives 90/385/EEC and 93/42/EEC shall become void.
+2. 	Certificates issued by notified bodies in accordance with Directives 90/385/EEC and 93/42/EEC prior to 25 May
+2017 shall remain valid until the end of the period indicated on the certificate, except for certificates issued in
+accordance with Annex 4 to Directive 90/385/EEC or Annex IV to Directive 93/42/EEC which shall become void at the
+latest on 27 May 2022.
+Certificates issued by notified bodies in accordance with Directives 90/385/EEC and 93/42/EEC from 25 May 2017 shall
+remain valid until the end of the period indicated on the certificate, which shall not exceed five years from its issuance.
+They shall however become void at the latest on 27 May 2024.
+3. 	By way of derogation from Article 5 of this Regulation, a device with a certificate that was issued in accordance
+with Directive 90/385/EEC or Directive 93/42/EEC and which is valid by virtue of paragraph 2 of this Article may only
+be placed on the market or put into service provided that from the date of application of this Regulation it continues to
+comply with either of those Directives, and provided there are no significant changes in the design and intended
+purpose. However, the requirements of this Regulation relating to post-market surveillance, market surveillance,
+vigilance, registration of economic operators and of devices shall apply in place of the corresponding requirements in
+those Directives.
+Without prejudice to Chapter IV and paragraph 1 of this Article, the notified body that issued the certificate referred to
+in the first subparagraph shall continue to be responsible for the appropriate surveillance in respect of all of the
+applicable requirements relating to the devices it has certified.
+4. 	Devices lawfully placed on the market pursuant to Directives 90/385/EEC and 93/42/EEC prior to 26 May 2020,
+and devices placed on the market from 26 May 2020 by virtue of a certificate as referred to in paragraph 2 of this
+Article, may continue to be made available on the market or put into service until 27 May 2025.
+5. 	By way of derogation from Directives 90/385/EEC and 93/42/EEC, devices which comply with this Regulation may
+be placed on the market prior to 26 May 2020.
+6. 	By way of derogation from Directives 90/385/EEC and 93/42/EEC, conformity assessment bodies which comply
+with this Regulation may be designated and notified prior 26 May 2020. Notified bodies which are designated and
+notified in accordance with this Regulation may carry out the conformity assessment procedures laid down in this
+Regulation and issue certificates in accordance with this Regulation prior to 26 May 2020.
+5.5.2017 	L 117/89	Official Journal of the European Union	EN

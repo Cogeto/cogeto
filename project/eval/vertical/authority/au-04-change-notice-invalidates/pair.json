@@ -1,0 +1,26 @@
+{
+  "case_id": "au-04",
+  "task": "contradiction",
+  "expected": "contradicts",
+  "a": {
+    "content": "Following answers to requests for additional information, the technical specifications, bills of quantities and draft contracts of the protective mask procurement have changed, as has the submission deadline.",
+    "kind": "decision",
+    "entities": [],
+    "subject_entity": "protective mask procurement technical specifications",
+    "captured_at": "2025-01-03T00:00:00.000Z",
+    "valid_from": "2025-01-03T00:00:00.000Z",
+    "valid_until": null,
+    "source": "Slijedom odgovora na zahtjeve za dodatnim informacijama, objašnjenjima i izmjenama u vezi s dokumentacijom o nabavi mijenjaju se tehničke specifikacije, troškovnici i prijedlozi ugovora. Također, mijenja se rok za dostavu/otvaranje ponuda."
+  },
+  "b": {
+    "content": "The submission deadline for the protective mask procurement is 13 January 2025 at 12:00 CET.",
+    "kind": "fact",
+    "entities": [],
+    "subject_entity": "protective mask procurement technical specifications",
+    "captured_at": "2025-01-03T00:00:00.000Z",
+    "valid_from": "2025-01-03T00:00:00.000Z",
+    "valid_until": null,
+    "source": "Rok za zaprimanje ponuda: 13/01/2025 12:00:00 (UTC+01:00) srednjoeuropsko vrijeme"
+  },
+  "notes": "PENDING. Both sides are verbatim from ted-hr-2133-2025, so unlike au-02 and au-03 nothing here is invented. The document says a class of facts is now stale WITHOUT stating the replacements. No pair comparison can resolve that, because the new value is not in the corpus. The right behaviour is to raise it for a person, which is why the expected verdict is contradicts rather than a supersession."
+}

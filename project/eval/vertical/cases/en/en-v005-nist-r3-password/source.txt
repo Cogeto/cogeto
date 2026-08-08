@@ -1,0 +1,69 @@
+NIST SP 800-171r3 	Protecting Controlled Unclassified Information
+May 2024
+36
+REFERENCES
+Source Controls: IA-04, IA-04(04)
+Supporting Publications: SP 800-63-3 [27]
+03.05.06 	Withdrawn
+Consistency with SP 800-53 [8].
+03.05.07 	Password Management
+a. 	Maintain a list of commonly-used, expected, or compromised passwords, and
+update the list [Assignment: organization-defined frequency] and when
+organizational passwords are suspected to have been compromised.
+b. 	Verify that passwords are not found on the list of commonly used, expected, or
+compromised passwords when users create or update passwords.
+c. 	Transmit passwords only over cryptographically protected channels.
+d. 	Store passwords in a cryptographically protected form.
+e. 	Select a new password upon first use after account recovery.
+f. 	Enforce the following composition and complexity rules for passwords:
+[Assignment: organization-defined composition and complexity rules].
+DISCUSSION
+Password-based authentication applies to passwords used in single-factor or multi-
+factor authentication. Long passwords or passphrases are preferable to shorter
+passwords. Enforced composition rules provide marginal security benefits while
+decreasing usability. However, organizations may choose to establish and enforce
+certain rules for password generation (e.g., minimum character length) under
+certain circumstances. For example, account recovery can occur when a password is
+forgotten. Cryptographically protected passwords include salted one-way
+cryptographic hashes of passwords. The list of commonly used, compromised, or
+expected passwords includes passwords obtained from previous breach corpuses,
+dictionary words, and repetitive or sequential characters. The list includes context-
+specific words, such as the name of the service, username, and derivatives thereof.
+Changing temporary passwords to permanent passwords immediately after system
+logon ensures that the necessary strength of the authentication mechanism is
+implemented at the earliest opportunity and reduces susceptibility to authenticator
+compromises. Long passwords and passphrases can be used to increase the
+complexity of passwords.
+
+NIST SP 800-171r3 	Protecting Controlled Unclassified Information
+May 2024
+37
+REFERENCES
+Source Control: IA-05(01)
+Supporting Publications: SP 800-63-3 [27]
+03.05.08 	Withdrawn
+Consistency with SP 800-53 [8].
+03.05.09 	Withdrawn
+Consistency with SP 800-53 [8].
+03.05.10 	Withdrawn
+Incorporated into 03.05.07.
+03.05.11 	Authentication Feedback
+Obscure feedback of authentication information during the authentication process.
+DISCUSSION
+Authentication feedback does not provide information that would allow
+unauthorized individuals to compromise authentication mechanisms. For example,
+for desktop or notebook systems with relatively large monitors, the threat may be
+significant (commonly referred to as shoulder surfing). For mobile devices with small
+displays, this threat may be less significant and is balanced against the increased
+likelihood of input errors due to small keyboards. Therefore, the means of obscuring
+authenticator feedback is selected accordingly. Obscuring feedback includes
+displaying asterisks when users type passwords into input devices or displaying
+feedback for a limited time before fully obscuring it.
+REFERENCES
+Source Control: IA-06
+Supporting Publications: None
+03.05.12 	Authenticator Management
+a. 	Verify the identity of the individual, group, role, service, or device receiving the
+authenticator as part of the initial authenticator distribution.
+b. 	Establish initial authenticator content for any authenticators issued by the
+organization.

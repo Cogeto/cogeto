@@ -1,0 +1,84 @@
+{
+  "case_id": "en-v007",
+  "source_type": "file",
+  "filename": "rp2040-datasheet.pdf",
+  "source_date": "2024-01-01T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "The electrical specifications are obtained from characterisation over the specified temperature and voltage ranges and over process variation, unless marked Simulated, in which case the data is for information only and is not guaranteed",
+      "kind": "fact",
+      "entities": ["RP2040"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The absolute maximum IO supply voltage IOVDD for the RP2040 is -0.5 V to 3.63 V",
+      "kind": "fact",
+      "entities": ["RP2040", "IOVDD"],
+      "subject_entity": "RP2040",
+      "must_extract": true
+    },
+    {
+      "content_gist": "The absolute maximum voltage at an IO pin is -0.5 V to IOVDD plus 0.5 V",
+      "kind": "fact",
+      "entities": ["RP2040"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Human body model ESD performance is 2 kV for all pins unless otherwise stated, compliant with JEDEC JS-001-2012",
+      "kind": "fact",
+      "entities": ["RP2040"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Human body model ESD performance is 4 kV for digital fault tolerant pins only",
+      "kind": "fact",
+      "entities": ["RP2040"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Charged device model ESD performance is 500 V, compliant with JESD22-C101E",
+      "kind": "fact",
+      "entities": ["RP2040"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The RP2040 case temperature range is -40 to 85 degrees Celsius",
+      "kind": "fact",
+      "entities": ["RP2040"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Pin input leakage current is at most 1 microamp",
+      "kind": "fact",
+      "entities": ["RP2040"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Input voltage high is at least 2 V when IOVDD is 3.3 V",
+      "kind": "fact",
+      "entities": ["RP2040", "IOVDD"],
+      "condition": "at IOVDD = 3.3 V",
+      "must_extract": true
+    },
+    {
+      "content_gist": "Input voltage low is at most 0.8 V when IOVDD is 3.3 V",
+      "kind": "fact",
+      "entities": ["RP2040", "IOVDD"],
+      "condition": "at IOVDD = 3.3 V",
+      "must_extract": true
+    },
+    {
+      "content_gist": "USB data pins require a 27 ohm series resistor for USB operation",
+      "kind": "fact",
+      "entities": ["RP2040"],
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "the pin-number rows of the power supply and USB pin tables, which are a pinout listing rather than a specification a reader looks up as a fact",
+    "the running footer (RP2040 Datasheet, 5.5. Pinout, 614)",
+    "the input voltage rows at IOVDD 1.8 V and 2.5 V beyond the two labelled here, which repeat the same shape at other conditions"
+  ],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

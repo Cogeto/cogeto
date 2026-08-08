@@ -1,0 +1,27 @@
+{
+  "case_id": "xl-vr02",
+  "task": "contradiction",
+  "expected": "contradicts",
+  "aliases": [{ "canonical": "manufacturers", "alias": "proizvođači" }],
+  "a": {
+    "content": "Proizvođači ispunjavaju obveze registracije iz članaka 28., 29. i 31.",
+    "kind": "fact",
+    "entities": ["proizvođači"],
+    "subject_entity": "proizvođači",
+    "captured_at": "2017-05-06T00:00:00.000Z",
+    "valid_from": "2017-05-06T00:00:00.000Z",
+    "valid_until": null,
+    "source": "7. Proizvođači ispunjavaju obveze koje se odnose na sustav jedinstvene identifikacije proizvoda iz članka 27. i obveze registracije iz članaka 28., 29. i 31."
+  },
+  "b": {
+    "content": "Manufacturers shall comply with the registration obligations referred to in Articles 29 and 31.",
+    "kind": "fact",
+    "entities": ["manufacturers"],
+    "subject_entity": "manufacturers",
+    "captured_at": "2017-05-05T00:00:00.000Z",
+    "valid_from": "2017-05-05T00:00:00.000Z",
+    "valid_until": null,
+    "source": "7. Manufacturers shall comply with the obligations relating to the UDI system referred to in Article 27 and with the registration obligations referred to in Articles 29 and 31."
+  },
+  "notes": "A genuine divergence between two authentic language versions of one act, found rather than constructed: the Croatian text of Article 10(7) names Article 28 as well as 29 and 31, the English text does not. Same subject, same slot, both current, incompatible scopes. Neither version supersedes the other, so the correct action is a contradiction for a human to resolve, which is exactly what a findings report is for."
+}

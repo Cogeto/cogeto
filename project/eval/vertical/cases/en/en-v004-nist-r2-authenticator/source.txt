@@ -1,0 +1,42 @@
+SP 800-171, REVISION 2 	PROTECTING CONTROLLED UNCLASSIFIED INFORMATION
+_________________________________________________________________________________________________
+CHAPTER THREE 	PAGE 25
+This publication is available free of charge from: https://doi.org/10.6028/NIST.SP.800
+-171r2
+[SP 800-63-3] provides guidance on digital identities.
+3.5.4 	Employ replay-resistant authentication mechanisms for network access to privileged and non-
+privileged accounts.
+DISCUSSION
+Authentication processes resist replay attacks if it is impractical to successfully authenticate by
+recording or replaying previous authentication messages. Replay-resistant techniques include
+protocols that use nonces or challenges such as time synchronous or challenge-response one-time
+authenticators.
+[SP 800-63-3] provides guidance on digital identities.
+3.5.5 	Prevent reuse of identifiers for a defined period.
+DISCUSSION
+Identifiers are provided for users, processes acting on behalf of users, or devices (3.5.1). Preventing
+reuse of identifiers implies preventing the assignment of previously used individual, group, role, or
+device identifiers to different individuals, groups, roles, or devices.
+3.5.6 	Disable identifiers after a defined period of inactivity.
+DISCUSSION
+Inactive identifiers pose a risk to organizational information because attackers may exploit an
+inactive identifier to gain undetected access to organizational devices. The owners of the inactive
+accounts may not notice if unauthorized access to the account has been obtained.
+3.5.7 	Enforce a minimum password complexity and change of characters when new passwords are
+created.
+DISCUSSION
+This requirement applies to single-factor authentication of individuals using passwords as
+individual or group authenticators, and in a similar manner, when passwords are used as part of
+multifactor authenticators. The number of changed characters refers to the number of changes
+required with respect to the total number of positions in the current password. To mitigate certain
+brute force attacks against passwords, organizations may also consider salting passwords.
+3.5.8 	Prohibit password reuse for a specified number of generations.
+DISCUSSION
+Password lifetime restrictions do not apply to temporary passwords.
+3.5.9 	Allow temporary password use for system logons with an immediate change to a permanent
+password.
+DISCUSSION
+Changing temporary passwords to permanent passwords immediately after system logon ensures
+that the necessary strength of the authentication mechanism is implemented at the earliest
+opportunity, reducing the susceptibility to authenticator compromises.
+3.5.10 	Store and transmit only cryptographically-protected passwords.

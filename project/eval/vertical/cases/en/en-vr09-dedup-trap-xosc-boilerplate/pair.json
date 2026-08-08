@@ -1,0 +1,26 @@
+{
+  "case_id": "en-vr09",
+  "task": "dedup",
+  "expected": "distinct",
+  "a": {
+    "content": "The RP2350 crystal oscillator uses an external crystal to produce an accurate reference clock, distributed to the PLLs.",
+    "kind": "fact",
+    "entities": ["RP2350"],
+    "subject_entity": "RP2350",
+    "captured_at": "2025-07-29T00:00:00.000Z",
+    "valid_from": "2025-07-29T00:00:00.000Z",
+    "valid_until": null,
+    "source": "The Crystal Oscillator (XOSC) uses an external crystal to produce an accurate reference clock. RP2350 supports 1 MHz to 50 MHz crystals and the RP2350 reference design uses a 12 MHz crystal. The reference clock is distributed to the PLLs, which can be used to multiply the XOSC frequency to provide accurate high speed clocks."
+  },
+  "b": {
+    "content": "The RP2040 crystal oscillator uses an external crystal to produce an accurate reference clock, distributed to the PLLs.",
+    "kind": "fact",
+    "entities": ["RP2040"],
+    "subject_entity": "RP2040",
+    "captured_at": "2024-01-01T00:00:00.000Z",
+    "valid_from": "2024-01-01T00:00:00.000Z",
+    "valid_until": null,
+    "source": "The Crystal Oscillator (XOSC) uses an external crystal to produce an accurate reference clock. The RP2040 supports 1MHz to 15MHz crystals and the RP2040 reference design uses a 12MHz crystal. The reference clock is distributed to the PLLs, which can be used to multiply the XOSC frequency to provide accurate high speed clocks."
+  },
+  "notes": "A false merge here destroys a distinct fact, which is why dedup traps count double. The two claims are as close as two claims about different products can be: the vendor reused the paragraph, so the only distinguishing token in either sentence is the part number."
+}

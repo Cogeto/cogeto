@@ -83,9 +83,9 @@ export {
 // stamps the configuration in force, and this is its version number.
 export { RECONCILE_CONFIG_VERSION } from './reconcile-config';
 export { runGoldenEval, evalConfigSchema } from './eval-harness';
-export type { EvalMetrics } from './eval-harness';
+export type { EvalMetrics, EvalRunResult } from './eval-harness';
 export { runReconcileEval } from './eval-reconcile';
-export type { ReconcileEvalMetrics } from './eval-reconcile';
+export type { ReconcileEvalMetrics, ReconcileEvalResult } from './eval-reconcile';
 export { seedMemoryFromSource } from './eval-seed';
 // The dormant-flag consumption API (F2 handoff §3): the read-and-clear window
 // into ingestion's dormant_flag table. Retrieval's open-loops read consumes it

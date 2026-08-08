@@ -1,0 +1,94 @@
+{
+  "case_id": "en-v005",
+  "source_type": "file",
+  "filename": "nist-sp-800-171r3.pdf",
+  "source_date": "2024-05-01T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Requirement 03.05.06 is withdrawn for consistency with SP 800-53",
+      "kind": "decision",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Password management requires maintaining a list of commonly used, expected or compromised passwords and updating it at an organization-defined frequency and when organizational passwords are suspected to have been compromised",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Passwords must be verified against the list of commonly used, expected or compromised passwords when users create or update them",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Passwords must be transmitted only over cryptographically protected channels",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Passwords must be stored in a cryptographically protected form",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "A new password must be selected upon first use after account recovery",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Organization-defined composition and complexity rules for passwords must be enforced",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Requirement 03.05.08 is withdrawn for consistency with SP 800-53",
+      "kind": "decision",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Requirement 03.05.09 is withdrawn for consistency with SP 800-53",
+      "kind": "decision",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Requirement 03.05.10 is withdrawn and incorporated into 03.05.07",
+      "kind": "decision",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Requirement 03.05.11: obscure feedback of authentication information during the authentication process",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Authenticator management requires verifying the identity of the individual, group, role, service or device receiving the authenticator as part of the initial distribution",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Authenticator management requires establishing initial authenticator content for any authenticators issued by the organization",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "the running head (NIST SP 800-171r3, Protecting Controlled Unclassified Information, May 2024) and the page numbers",
+    "the REFERENCES blocks (Source Controls, Supporting Publications)",
+    "the DISCUSSION prose explaining why composition rules give marginal benefit",
+    "an invented value for the organization-defined frequency or the organization-defined composition rules, which the document deliberately leaves open"
+  ],
+  "expected_relations": [{ "type": "supersedes", "target_case": "en-v004" }],
+  "verification_expected": "supported"
+}

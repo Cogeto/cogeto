@@ -1,0 +1,39 @@
+{
+  "case_id": "hr-v008",
+  "source_type": "file",
+  "filename": "ted-hr-2133-2025.pdf",
+  "source_date": "2025-01-03T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Ova obavijest mijenja prethodnu verziju obavijesti, a glavni razlog promjene su ažurirane informacije",
+      "kind": "decision",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Slijedom odgovora na zahtjeve za dodatnim informacijama mijenjaju se tehničke specifikacije, troškovnici i prijedlozi ugovora te rok za dostavu i otvaranje ponuda",
+      "kind": "decision",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Promjena se odnosi na sve tri grupe nabave, LOT-0001, LOT-0002 i LOT-0003",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Datum izmjene dokumentacije o nabavi je 02/01/2025",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "zaglavlje stranice (2133-2025 Page 11/11)",
+    "podaci o eSenderu: e-pošta, telefon i internetska adresa",
+    "identifikatori i verzije obavijesti (UUID)"
+  ],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

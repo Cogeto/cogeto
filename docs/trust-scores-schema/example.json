@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "generated_by": {
     "release": "v9.9.9",
     "commit": "0123456789abcdef0123456789abcdef01234567",
@@ -85,7 +85,112 @@
           "passed": 12,
           "failed": []
         }
-      }
+      },
+      "corpora": [
+        {
+          "id": "core",
+          "label": "Notes, emails, web pages and document excerpts",
+          "description": "The corpus the engine was built against: quick captures, email threads, fetched pages and short document excerpts, grown case by case and hardened repeatedly with deliberately difficult negatives.",
+          "extraction_cases": 52,
+          "reconcile_pairs": 20,
+          "per_language": [
+            {
+              "language": "en",
+              "golden_cases": 32,
+              "reconcile_pairs": 10,
+              "extraction_precision": 0.854,
+              "extraction_recall": 0.909,
+              "verification_agreement": 0.935,
+              "dedup_accuracy": 1.0,
+              "contradiction_recall": 1.0,
+              "contradiction_precision": 0.75,
+              "supersedes_accuracy": 0.6,
+              "supersedes_pairs": 5
+            },
+            {
+              "language": "hr",
+              "golden_cases": 20,
+              "reconcile_pairs": 10,
+              "extraction_precision": 0.75,
+              "extraction_recall": 0.833,
+              "verification_agreement": 0.842,
+              "dedup_accuracy": 0.833,
+              "contradiction_recall": 1.0,
+              "contradiction_precision": 1.0,
+              "supersedes_accuracy": 0.4,
+              "supersedes_pairs": 5
+            }
+          ],
+          "aggregate": {
+            "extraction_precision": 0.81,
+            "extraction_recall": 0.878,
+            "verification_agreement": 0.9,
+            "dedup_accuracy": 0.929,
+            "contradiction_recall": 1.0,
+            "contradiction_precision": 0.857,
+            "supersedes_accuracy": 0.5,
+            "supersedes_pairs": 10
+          }
+        },
+        {
+          "id": "vertical",
+          "label": "Documents: regulatory guidance, standards, device datasheets, public tenders",
+          "description": "Real public documents of the type Cogeto is sold into, sourced whole and excerpted verbatim. Harder than the core corpus by construction, because it carries page furniture, flattened tables, registry metadata and OCR noise that a written fixture would not.",
+          "extraction_cases": 20,
+          "reconcile_pairs": 24,
+          "per_language": [
+            {
+              "language": "en",
+              "golden_cases": 12,
+              "reconcile_pairs": 12,
+              "extraction_precision": 0.412,
+              "extraction_recall": 0.981,
+              "verification_agreement": 0.917,
+              "dedup_accuracy": 1.0,
+              "contradiction_recall": 1.0,
+              "contradiction_precision": 1.0,
+              "supersedes_accuracy": 0.5,
+              "supersedes_pairs": 2
+            },
+            {
+              "language": "hr",
+              "golden_cases": 8,
+              "reconcile_pairs": 7,
+              "extraction_precision": 0.523,
+              "extraction_recall": 0.955,
+              "verification_agreement": 0.875,
+              "dedup_accuracy": 1.0,
+              "contradiction_recall": 1.0,
+              "contradiction_precision": 1.0,
+              "supersedes_accuracy": 1.0,
+              "supersedes_pairs": 1
+            },
+            {
+              "language": "xl",
+              "golden_cases": 0,
+              "reconcile_pairs": 5,
+              "extraction_precision": 1.0,
+              "extraction_recall": 1.0,
+              "verification_agreement": 1.0,
+              "dedup_accuracy": 1.0,
+              "contradiction_recall": 1.0,
+              "contradiction_precision": 1.0,
+              "supersedes_accuracy": 1.0,
+              "supersedes_pairs": 1
+            }
+          ],
+          "aggregate": {
+            "extraction_precision": 0.451,
+            "extraction_recall": 0.971,
+            "verification_agreement": 0.9,
+            "dedup_accuracy": 1.0,
+            "contradiction_recall": 1.0,
+            "contradiction_precision": 0.8,
+            "supersedes_accuracy": 0.667,
+            "supersedes_pairs": 4
+          }
+        }
+      ]
     },
     {
       "id": "mistral-default-redacted",
@@ -171,6 +276,7 @@
   ],
   "notes": [
     "Illustrative example file — the numbers are not a real release's measurements.",
-    "The redacted configuration trades a few points of extraction quality for local PII pseudonymization; the delta is published, not hidden."
+    "The redacted configuration trades a few points of extraction quality for local PII pseudonymization; the delta is published, not hidden.",
+    "Illustrative only. The vertical corpus numbers in this example are made up, like every other number in this file; the real ones are published in eval/trust-scores/. What the example fixes is the SHAPE: two corpora side by side, never averaged, and the cross-language set xl carrying reconciliation pairs with no extraction cases."
   ]
 }

@@ -1,14 +1,14 @@
 {
   "scoring_version": 1,
-  "configuration_id": "mistral-default--vis-mistral-pixtral-12b-2409",
+  "configuration_id": "mistral-default",
   "models": {
     "pipeline": "mistral-small-latest",
     "answer": "mistral-medium-latest",
     "embedding": "mistral-embed"
   },
-  "recorded_at": "2026-08-07T11:21:43.577Z",
+  "recorded_at": "2026-08-08T00:30:04.710Z",
   "counts": {
-    "text": 321,
-    "embeddings": 474
+    "text": 432,
+    "embeddings": 1011
   }
 }

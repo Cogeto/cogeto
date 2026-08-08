@@ -1,0 +1,96 @@
+{
+  "case_id": "en-v006",
+  "source_type": "file",
+  "filename": "rp2040-datasheet.pdf",
+  "source_date": "2024-01-01T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "The RP2040 supports crystals from 1 MHz to 15 MHz",
+      "kind": "fact",
+      "entities": ["RP2040"],
+      "subject_entity": "RP2040",
+      "must_extract": true
+    },
+    {
+      "content_gist": "The RP2040 reference design uses a 12 MHz crystal",
+      "kind": "fact",
+      "entities": ["RP2040"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The PLLs can generate a 48 MHz clock meeting the USB frequency accuracy requirement and a 133 MHz maximum speed system clock",
+      "kind": "fact",
+      "entities": ["RP2040"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "An external clock can be driven directly into XIN at up to 50 MHz with the oscillator circuit disabled",
+      "kind": "fact",
+      "entities": ["RP2040", "XIN"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "To use the XOSC clock outside the RP2040 it must be routed to a GPIO via a clk_gpout clock generator rather than taken directly from XIN or XOUT",
+      "kind": "fact",
+      "entities": ["RP2040"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The recommended crystal for the RP2040 is the Abracon ABM8-272-T3",
+      "kind": "fact",
+      "entities": ["Abracon ABM8-272-T3", "RP2040"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The Abracon ABM8-272-T3 crystal has a centre frequency of 12.000 MHz",
+      "kind": "fact",
+      "entities": ["Abracon ABM8-272-T3"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The Abracon ABM8-272-T3 crystal has an operating temperature range of -40 to +85 degrees Celsius",
+      "kind": "fact",
+      "entities": ["Abracon ABM8-272-T3"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The Abracon ABM8-272-T3 crystal has a storage temperature range of -55 to +125 degrees Celsius",
+      "kind": "fact",
+      "entities": ["Abracon ABM8-272-T3"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The Abracon ABM8-272-T3 crystal has a frequency tolerance of -30 to +30 ppm at 25 degrees Celsius",
+      "kind": "fact",
+      "entities": ["Abracon ABM8-272-T3"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The Abracon ABM8-272-T3 crystal has an equivalent series resistance of 50 ohms and a shunt capacitance of 3.0 pF",
+      "kind": "fact",
+      "entities": ["Abracon ABM8-272-T3"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The Abracon ABM8-272-T3 crystal has a load capacitance of 10 pF and a drive level between 10 and 200 microwatts",
+      "kind": "fact",
+      "entities": ["Abracon ABM8-272-T3"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The crystal oscillator is powered from VDDIO, so the Abracon crystal and its damping resistor are tuned for 3.3 V operation and must be re-tuned for a different IO voltage",
+      "kind": "fact",
+      "entities": ["RP2040"],
+      "condition": "if a different IO voltage is used",
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "the register table fragment (Table 256 INTS) that the page break dragged into the top of the excerpt",
+    "the running footer (RP2040 Datasheet, 2.16. Crystal Oscillator (XOSC), 216)",
+    "the figure caption stub (Figure 33. XOSC overview)",
+    "the reseller sourcing advice, which is commercial guidance rather than a specification"
+  ],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

@@ -1,0 +1,26 @@
+{
+  "case_id": "hr-vr05",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "Ogradni zid smije biti visine do 1,6 m mjereno od najnižeg dijela konačno zaravnanog terena.",
+    "kind": "fact",
+    "entities": [],
+    "subject_entity": "Ogradni zid",
+    "captured_at": "2017-11-17T00:00:00.000Z",
+    "valid_from": "2017-11-17T00:00:00.000Z",
+    "valid_until": null,
+    "source": "4. Ogradni zid visine do 1,6 m i potporni zid visine do 1 m mjereno od najnižeg dijela konačno zaravnanog i uređenog terena uz ogradu odnosno zid do najviše točke ograde odnosno zida;"
+  },
+  "b": {
+    "content": "Ograda smije biti visine do 2,2 m mjereno od najnižeg dijela konačno zaravnanog terena.",
+    "kind": "fact",
+    "entities": [],
+    "subject_entity": "Ograda",
+    "captured_at": "2017-11-17T00:00:00.000Z",
+    "valid_from": "2017-11-17T00:00:00.000Z",
+    "valid_until": null,
+    "source": "3. Ograda visine do 2,2 m mjereno od najnižeg dijela konačno zaravnanog i uređenog terena uz ogradu;"
+  },
+  "notes": "Susjedne točke istog članka, ista mjerna jedinica, isti način mjerenja, različite visine i različiti predmeti: ograda nije ogradni zid. Razlikuje ih jedna riječ."
+}

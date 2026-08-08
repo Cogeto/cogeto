@@ -1,0 +1,26 @@
+{
+  "case_id": "en-vr08",
+  "task": "dedup",
+  "expected": "same_fact",
+  "a": {
+    "content": "The Abracon ABM8-272-T3 crystal has a centre frequency of 12.000 MHz.",
+    "kind": "fact",
+    "entities": ["Abracon ABM8-272-T3"],
+    "subject_entity": "Abracon ABM8-272-T3",
+    "captured_at": "2024-01-02T00:00:00.000Z",
+    "valid_from": "2024-01-02T00:00:00.000Z",
+    "valid_until": null,
+    "source": "Table 257. Key Crystal Specifications. Parameters Minimum Typical Maximum Units Notes\nCenter Frequency 12.000 12.000 12.000 MHz"
+  },
+  "b": {
+    "content": "The recommended Abracon crystal runs at 12MHz.",
+    "kind": "fact",
+    "entities": ["Abracon ABM8-272-T3"],
+    "subject_entity": "Abracon ABM8-272-T3",
+    "captured_at": "2024-01-01T00:00:00.000Z",
+    "valid_from": "2024-01-01T00:00:00.000Z",
+    "valid_until": null,
+    "source": "the RP2040 reference design (see the Minimal Design Example in Hardware design with RP2040) uses a 12MHz crystal"
+  },
+  "notes": "A precision-only difference: 12.000 MHz in the specification table and 12MHz in the prose two paragraphs above it, about the same crystal in the same document. LABELLING.md section 2 says a precision difference is not a conflict, and here it is not even a distinct fact."
+}

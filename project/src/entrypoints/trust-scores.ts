@@ -16,11 +16,19 @@ import type { ResolvedModelProviders } from '../model-gateway/index';
  */
 
 /**
- * The version EMITTED. 1.1 is additive over 1.0 (V2.0 item 3.4): contradiction
- * precision, supersedes accuracy and query-rewrite routing accuracy joined the
- * published metrics, per language and aggregate.
+ * The version EMITTED. 1.2 is additive over 1.1 (V2.3 item 6.4): `corpora`, an
+ * optional per-corpus breakdown so a reader can see accuracy on DOCUMENTS
+ * specifically rather than one undifferentiated figure. 1.1 was additive over
+ * 1.0 (V2.0 item 3.4): contradiction precision, supersedes accuracy and
+ * query-rewrite routing accuracy joined the published metrics.
+ *
+ * `metrics` and `corpus` keep meaning exactly what they meant in 1.1: the CORE
+ * corpus (notes, emails, web pages, document excerpts) plus the query-rewrite
+ * suite. The vertical corpus is never folded into them, so every historical
+ * comparison stays valid and no trend line moves because a new corpus was
+ * added.
  */
-export const TRUST_SCORES_SCHEMA_VERSION = '1.1';
+export const TRUST_SCORES_SCHEMA_VERSION = '1.2';
 
 /**
  * The versions READABLE. Published release files are immutable, so every
@@ -28,7 +36,7 @@ export const TRUST_SCORES_SCHEMA_VERSION = '1.1';
  * directory on every publish, and a reader that rejected 1.0 would break the
  * index the moment the emitted version moved.
  */
-export const TRUST_SCORES_SCHEMA_VERSIONS = ['1.0', '1.1'] as const;
+export const TRUST_SCORES_SCHEMA_VERSIONS = ['1.0', '1.1', '1.2'] as const;
 
 /** Default model tiers (mirrors.env.example / the gateway defaults). */
 const fraction = z.number().min(0).max(1);
@@ -94,6 +102,26 @@ export const metricsSchema = z.object({
   chat: chatSummarySchema.optional(),
 });
 
+/**
+ * One measured corpus (schema 1.2, V2.3 item 6.4). The published record carries
+ * BOTH corpora side by side, never averaged: `core` is the mature notes and
+ * email set the project has measured since v0.8.0, `vertical` the real public
+ * documents item 6.4 sourced. Their difficulty differs and their numbers differ,
+ * and a reader who cannot tell them apart learns nothing from either.
+ */
+export const corpusResultSchema = z.object({
+  /** Stable join key for the website: `core`, `vertical`. */
+  id: z.string().regex(/^[a-z][a-z0-9-]*$/),
+  /** Human label for the corpus, e.g. "Documents (regulatory, standards, datasheets, tenders)". */
+  label: z.string().min(1),
+  /** One sentence on what the corpus is and why its difficulty differs. */
+  description: z.string().min(1),
+  extraction_cases: count,
+  reconcile_pairs: count,
+  per_language: z.array(languageMetricsSchema).min(1),
+  aggregate: aggregateMetricsSchema,
+});
+
 export const configurationSchema = z.object({
   id: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
   models: z.object({
@@ -104,6 +132,12 @@ export const configurationSchema = z.object({
   redaction: z.boolean(),
   corpus: corpusSchema,
   metrics: metricsSchema,
+  /**
+   * Added in schema 1.2. Optional so every immutable 1.0 and 1.1 file still
+   * validates; every file emitted from V2.3 item 6.4 on carries it, with one
+   * entry per measured corpus.
+   */
+  corpora: z.array(corpusResultSchema).min(1).optional(),
 });
 
 /**
@@ -155,6 +189,7 @@ export const partialFileSchema = z.object({
     redaction: z.boolean(),
     corpus: corpusSchema.partial().optional(),
     metrics: metricsSchema.partial().optional(),
+    corpora: z.array(corpusResultSchema).min(1).optional(),
   }),
 });
 export type PartialFile = z.infer<typeof partialFileSchema>;
@@ -218,6 +253,12 @@ export function mergePartial(existing: PartialFile | null, incoming: PartialFile
       ...incoming.configuration,
       corpus: { ...existing.configuration.corpus, ...incoming.configuration.corpus },
       metrics: { ...existing.configuration.metrics, ...incoming.configuration.metrics },
+      // Whole-array replace, not a merge: only the golden-set harness emits
+      // corpora and it emits all of them at once, so a partial merge would be
+      // a way to publish half a corpus list.
+      ...((incoming.configuration.corpora ?? existing.configuration.corpora)
+        ? { corpora: incoming.configuration.corpora ?? existing.configuration.corpora }
+        : {}),
     },
   };
 }

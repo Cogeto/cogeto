@@ -22,7 +22,8 @@ inspectable artifact. EU hosted, self hosted, or fully offline.
 | [`docs/security/`](docs/security/) | **Single entry point for security and safety**: how the protections work, how to verify them, and the co-located tests. |
 | [`docs/engineering-workflow.md`](docs/engineering-workflow.md) | **Before opening any issue, branch, or PR.** The delivery loop, Conventional Commits, required checks, tag-driven releases. |
 | [`docs/glossary.md`](docs/glossary.md) | The ubiquitous language. Names in code must match it. |
-| [`docs/eval-golden-set.md`](docs/eval-golden-set.md) | Corpus format, metrics, CI gates. Read before touching the extractor, a prompt, or the harness. |
+| [`docs/eval-golden-set.md`](docs/eval-golden-set.md) | Corpus format, metrics, CI gates, and the two corpora. Read before touching the extractor, a prompt, or the harness. |
+| [`project/eval/vertical/README.md`](project/eval/vertical/README.md) + [`docs/eval/vertical-corpus-diagnostic.md`](docs/eval/vertical-corpus-diagnostic.md) | **The document corpus and what real documents did to the pipeline.** Read before changing ingestion, anchoring, the reader seam or the quantity parser. |
 | [`docs/research/*.md`](docs/research/) | **Required before implementing the matching area.** See the table in `docs/research/README.md`. |
 | [`docs/cogeto-scope.md`](docs/cogeto-scope.md) | What Cogeto is, who it is for, what is in and out of scope, licensing. |
 | [`docs/operator-runbook.md`](docs/operator-runbook.md) + [`docs/operations/`](docs/operations/) | Running a customer instance. |
@@ -320,6 +321,33 @@ decision on `chat_message.ambiguity` (content-bearing, cleared by the answer
 redaction cascade); the chat harness asserts branches as deterministic rule
 checks and prints the suite-wide fan-out rate. Details:
 [`docs/features/ambiguity.md`](docs/features/ambiguity.md).
+
+V2.3 item 6.4 delivered the **second wave of eval gates**, anchored on a
+**vertical corpus of real public documents** (gates v3, trust-score schema
+**1.2**). **No application behaviour changed**: the diff is evaluation, corpus,
+configuration and documentation only. 44 labelled cases (20 extraction, 24
+reconciliation pairs) over 13 real documents, each recorded in
+`project/eval/vertical/documents.json` with its URL, publisher, licence,
+retrieval date and SHA-256; the bytes are fetched by `fetch.mjs`, never
+committed, and the committed excerpts are verbatim reader output that must not
+be edited (the two datasheets are CC BY-ND). The labelling rules were written
+**before** the first label
+([`LABELLING.md`](project/eval/vertical/LABELLING.md)) and every case is
+traceable to its document, page range and reasoning. The corpus is **reported
+and gated as its own set, never averaged** into the core numbers: a `vertical`
+block in `gates.json` with the same two layers and the same union rule (its
+third set, `xl`, is the cross-language pairs), both zero-tolerance gates counted
+separately, and schema 1.2's `corpora` array carrying both corpora side by side.
+**The document numbers are lower and are published anyway**: recall is strong,
+precision is not (real documents hand back page furniture and registry
+metadata), and the reconciliation arm is weakest of all, with supersession
+across document revisions and cross-language contradiction detection both
+scoring zero on this corpus. Authority-ranking cases are authored and **PENDING**
+outside the loaded directory, because gating unshipped behaviour is exactly what
+the governing rule forbids. **The first ingestion of the corpus is a deliverable
+of its own** and is written up in
+[`docs/eval/vertical-corpus-diagnostic.md`](docs/eval/vertical-corpus-diagnostic.md);
+read it before touching ingestion, anchoring or the quantity parser.
 
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).

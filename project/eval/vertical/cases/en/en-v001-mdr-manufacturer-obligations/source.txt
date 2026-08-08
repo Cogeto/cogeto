@@ -1,0 +1,48 @@
+Article 9
+Common specifications
+1. 	Without prejudice to Article 1(2) and 17(5) and the deadline laid down in those provisions, where no harmonised
+standards exist or where relevant harmonised standards are not sufficient, or where there is a need to address public
+health concerns, the Commission, after having consulted the MDCG, may, by means of implementing acts, adopt
+common specifications (CS) in respect of the general safety and performance requirements set out in Annex I, the
+technical documentation set out in Annexes II and III, the clinical evaluation and post-market clinical follow-up set out
+in Annex XIV or the requirements regarding clinical investigation set out in Annex XV. Those implementing acts shall be
+adopted in accordance with the examination procedure referred to in Article 114(3).
+2. 	Devices that are in conformity with the CS referred to in paragraph 1 shall be presumed to be in conformity with
+the requirements of this Regulation covered by those CS or the relevant parts of those CS.
+3. 	Manufacturers shall comply with the CS referred to in paragraph 1 unless they can duly justify that they have
+adopted solutions that ensure a level of safety and performance that is at least equivalent thereto.
+4. 	Notwithstanding paragraph 3, manufacturers of products listed in Annex XVI shall comply with the relevant CS
+for those products.
+Article 10
+General obligations of manufacturers
+1. 	When placing their devices on the market or putting them into service, manufacturers shall ensure that they have
+been designed and manufactured in accordance with the requirements of this Regulation.
+2. 	Manufacturers shall establish, document, implement and maintain a system for risk management as described in
+Section 3 of Annex I.
+3. 	Manufacturers shall conduct a clinical evaluation in accordance with the requirements set out in Article 61 and
+Annex XIV, including a PMCF.
+4. 	Manufacturers of devices other than custom-made devices shall draw up and keep up to date technical documen
+tation for those devices. The technical documentation shall be such as to allow the conformity of the device with the
+requirements of this Regulation to be assessed. The technical documentation shall include the elements set out in
+Annexes II and III.
+The Commission is empowered to adopt delegated acts in accordance with Article 115 amending, in the light of
+technical progress, the Annexes II and III.
+5. 	Manufacturers of custom-made devices shall draw up, keep up to date and keep available for competent authorities
+documentation in accordance with Section 2 of Annex XIII.
+6. 	Where compliance with the applicable requirements has been demonstrated following the applicable conformity
+assessment procedure, manufacturers of devices, other than custom-made or investigational devices, shall draw up an EU
+declaration of conformity in accordance with Article 19, and affix the CE marking of conformity in accordance with
+Article 20.
+7. 	Manufacturers shall comply with the obligations relating to the UDI system referred to in Article 27 and with the
+registration obligations referred to in Articles 29 and 31.
+8. 	Manufacturers shall keep the technical documentation, the EU declaration of conformity and, if applicable, a copy
+of any relevant certificate, including any amendments and supplements, issued in accordance with Article 56, available
+for the competent authorities for a period of at least 10 years after the last device covered by the EU declaration of
+conformity has been placed on the market. In the case of implantable devices, the period shall be at least 15 years after
+the last device has been placed on the market.
+Upon request by a competent authority, the manufacturer shall, as indicated therein, provide that technical documen
+tation in its entirety or a summary thereof.
+A manufacturer with a registered place of business outside the Union shall, in order to allow its authorised representative
+to fulfil the tasks mentioned in Article 11(3), ensure that the authorised representative has the necessary documentation
+permanently available.
+5.5.2017 	L 117/23	Official Journal of the European Union	EN

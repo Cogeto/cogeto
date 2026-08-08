@@ -1,0 +1,112 @@
+Name Number Type Power Domain Reset State Description
+TESTEN 19 Digital In IOVDD Pull-Down Test enable
+(connect to Gnd)
+Table 620. USB pins Name Number Type Power Domain Description
+USB_DP 47 USB IO USB_VDD USB Data +ve. 27Ω
+series resistor
+required for USB
+operation
+USB_DM 46 USB IO USB_VDD USB Data -ve. 27Ω
+series resistor
+required for USB
+operation
+Table 621. Power
+supply pins Name Number(s) Description
+IOVDD 1, 10, 22, 33, 42, 49 IO supply
+DVDD 23, 50 Core supply
+VREG_VIN 44 Voltage regulator input supply
+VREG_VOUT 45 Voltage regulator output
+USB_VDD 48 USB supply
+ADC_AVDD 43 ADC supply
+GND 57 Common ground connection via
+central pad
+5.5.3. Pin Specifications
+The following electrical specifications are obtained from characterisation over the specified temperature and voltage
+ranges, as well as process variation, unless the specification is marked as 'Simulated'. In this case, the data is for
+information purposes only, and is not guaranteed.
+5.5.3.1. Absolute Maximum Ratings
+Table 622. Absolute
+maximum ratings for
+digital IO (Standard
+and Fault Tolerant)
+Parameter Symbol Minimum Maximum Units Comment
+I/O Supply Voltage IOVDD -0.5 3.63 V
+Voltage at IO VPIN -0.5 IOVDD + 0.5 V
+5.5.3.2. ESD Performance
+Table 623. ESD
+performance for all
+pins, unless otherwise
+stated
+Parameter Symbol Maximum Units Comment
+Human Body Model HBM 2 kV Compliant with JEDEC
+specification JS-001-
+2012 (April 2012)
+RP2040 Datasheet
+5.5. Pinout 614
+
+Parameter Symbol Maximum Units Comment
+Human Body Model
+Digital (FT) pins only
+HBM 4 kV Compliant with JEDEC
+specification JS-001-
+2012 (April 2012)
+Charged Device Model CDM 500 V Compliant with
+JESD22-C101E
+(December 2009)
+5.5.3.3. Thermal Performance
+Table 624. Thermal
+Performance Parameter Symbol Minimum Typical Maximum Units Comment
+Case
+Temperature
+TC -40 85 °C
+5.5.3.4. IO Electrical Characteristics
+Table 625. Digital IO
+characteristics -
+Standard and FT
+unless otherwise
+stated
+Parameter Symbol Minimum Maximum Units Comment
+Pin Input Leakage
+Current
+IIN 1 μA
+Input Voltage High
+@ IOVDD=1.8V
+VIH 0.65 * IOVDD IOVDD + 0.3 V
+Input Voltage High
+@ IOVDD=2.5V
+VIH 1.7 IOVDD + 0.3 V
+Input Voltage High
+@ IOVDD=3.3V
+VIH 2 IOVDD + 0.3 V
+Input Voltage Low
+@ IOVDD=1.8V
+VIL -0.3 0.35 * IOVDD V
+Input Voltage Low
+@ IOVDD=2.5V
+VIL -0.3 0.7 V
+Input Voltage Low
+@ IOVDD=3.3V
+VIL -0.3 0.8 V
+Input Hysteresis
+Voltage @
+IOVDD=1.8V
+VHYS 0.1 * IOVDD V Schmitt Trigger
+enabled
+Input Hysteresis
+Voltage @
+IOVDD=2.5V
+VHYS 0.2 V Schmitt Trigger
+enabled
+Input Hysteresis
+Voltage @
+IOVDD=3.3V
+VHYS 0.2 V Schmitt Trigger
+enabled
+Output Voltage
+High @
+IOVDD=1.8V
+VOH 1.24 IOVDD V IOH = 2, 4, 8 or
+12mA depending
+on setting
+RP2040 Datasheet
+5.5. Pinout 615
