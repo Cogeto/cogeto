@@ -1,0 +1,26 @@
+{
+  "case_id": "hr-vr02",
+  "task": "contradiction",
+  "expected": "supersedes_a_over_b",
+  "a": {
+    "content": "Proizvodi s valjanom potvrdom mogu se stavljati na tržište do 31. prosinca 2027. za sve proizvode III. klase.",
+    "kind": "fact",
+    "entities": ["III. klasa"],
+    "subject_entity": "proizvodi s valjanom potvrdom",
+    "captured_at": "2023-03-20T00:00:00.000Z",
+    "valid_from": "2023-03-20T00:00:00.000Z",
+    "valid_until": null,
+    "source": "3.a Proizvodi koji imaju potvrdu koja je izdana u skladu s Direktivom 90/385/EEZ ili Direktivom 93/42/EEZ i koja je valjana na temelju stavka 2. ovog članka mogu se stavljati na tržište ili u uporabu do sljedećih datuma: (a) 31. prosinca 2027., za sve proizvode III. klase"
+  },
+  "b": {
+    "content": "Potvrde koje su prijavljena tijela izdala od 25. svibnja 2017. prestaju važiti najkasnije 27. svibnja 2024.",
+    "kind": "fact",
+    "entities": [],
+    "subject_entity": "proizvodi s valjanom potvrdom",
+    "captured_at": "2017-05-05T00:00:00.000Z",
+    "valid_from": "2017-05-05T00:00:00.000Z",
+    "valid_until": null,
+    "source": "Potvrde koje su izdala prijavljena tijela u skladu s Direktivom 90/385/EEZ i Direktivom 93/42/EEZ od 25. svibnja 2017. ostaju na snazi do kraja razdoblja koje je u njima navedeno, a koje ne prelazi pet godina od njihova izdavanja. One međutim prestaju važiti najkasnije 27. svibnja 2024."
+  },
+  "notes": "Hrvatski parnjak za en-vr01. Isti prijelazni režim, dva različita datuma, kasniji akt mijenja raniji. Datumi su u hrvatskom obliku (rednim brojem dana i genitivom mjeseca), što nije oblik koji engleski razrješivač datuma prepoznaje."
+}

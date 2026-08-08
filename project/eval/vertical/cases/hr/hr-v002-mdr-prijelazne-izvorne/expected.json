@@ -1,0 +1,57 @@
+{
+  "case_id": "hr-v002",
+  "source_type": "file",
+  "filename": "mdr-2017-745-hr.pdf",
+  "source_date": "2017-05-05T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Od 26. svibnja 2020. svaka objava obavijesti u vezi s prijavljenim tijelom u skladu s Direktivom 90/385/EEZ i Direktivom 93/42/EEZ prestaje važiti",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Potvrde koje su prijavljena tijela izdala prije 25. svibnja 2017. ostaju na snazi do isteka razdoblja navedenog u potvrdi",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Potvrde izdane u skladu s Prilogom 4. Direktivi 90/385/EEZ ili Prilogom IV. Direktivi 93/42/EEZ prestaju važiti najkasnije 27. svibnja 2022.",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Potvrde izdane od 25. svibnja 2017. vrijede najviše pet godina od izdavanja i prestaju važiti najkasnije 27. svibnja 2024.",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Proizvod s potvrdom valjanom na temelju stavka 2. može se staviti na tržište samo ako i dalje ispunjava zahtjeve prijašnjih direktiva i ako nema znatnih promjena u projektu i namjeni",
+      "kind": "fact",
+      "entities": [],
+      "condition": "ako proizvod i dalje ispunjava zahtjeve direktiva i nema znatnih promjena u projektu i namjeni",
+      "must_extract": true
+    },
+    {
+      "content_gist": "U članak 2. treći stavak Uredbe (EZ) br. 178/2002 dodaju se medicinski proizvodi u smislu Uredbe (EU) 2017/745",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Komisija može donijeti mjere kojima se utvrđuje jesu li određeni proizvod ili skupina proizvoda obuhvaćeni definicijom kozmetičkog proizvoda",
+      "kind": "fact",
+      "entities": ["Komisija"],
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "podnožje stranice Službenog lista (5.5.2017., L 117/89, HR)",
+    "puna bibliografska uputnica na Uredbu (EU) 2017/745 u bilješci uz članak 118."
+  ],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

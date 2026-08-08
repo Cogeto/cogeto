@@ -13,6 +13,40 @@ Extraction quality is the product. The golden set is the hand-labeled corpus tha
 - **Difficulty mix:** each language set includes deliberately hard cases: conditional commitments ("send it after Luka confirms budget"), relative dates ("next Friday"), multi-fact sources, contradicting pairs, near-duplicate pairs, facts that supersede earlier facts, sources containing zero durable facts (the extractor must extract nothing), and sensitive-content cases.
 - **Storage:** `project/eval/golden/{lang}/{case-id}/` with `source.txt` (or `.json` for structured items like events), `expected.json`, and optional `notes.md` explaining why the case exists. All fictional. Tracked in git; the corpus is part of the open repo, which is itself a trust artifact.
 
+### 2.1 The second corpus: the vertical set (V2.3 item 6.4)
+
+Everything in §2 describes the **core** corpus (`project/eval/golden/`). Since
+V2.3 item 6.4 a **second** corpus sits beside it,
+[`project/eval/vertical/`](../project/eval/vertical/README.md), and the rules
+below differ from §2 in exactly three ways:
+
+1. **The items are real, not fictional.** §2 says "All fictional", which is
+   right for notes and emails reconstructed from user traffic. The vertical set
+   is built from real, publicly available documents, because model-written
+   fixtures are cleaner and more internally consistent than real ones and a
+   corpus of them flatters the system. Every document records its URL,
+   publisher, licence, retrieval date and SHA-256 in `documents.json`, the
+   original bytes are fetched rather than committed, and only material that may
+   lawfully be redistributed is used.
+2. **Item types are documents**: regulatory guidance, standards, device
+   datasheets, public tender specifications and one scan, rather than the
+   45/35/10/10 proportions in §2.
+3. **It is scored, reported and gated SEPARATELY**, never averaged into the core
+   numbers. A hard new corpus folded into a mature one hides both signals.
+
+Everything else is identical: the same `expected.json` and `pair.json` formats,
+the same harness, the same thresholds, the same metrics, the same zero-tolerance
+gates. The labelling rules that only arise on real documents (what counts as a
+fact worth extracting from a specification, what counts as a genuine
+contradiction versus a legitimate difference of scope, condition or precision,
+when two documents about different models must not be paired, how to treat a
+statement hedged in the source) are written down before the first label in
+[`project/eval/vertical/LABELLING.md`](../project/eval/vertical/LABELLING.md).
+
+The corpus reports a third set beside `en` and `hr`: **`xl`**, the
+cross-language pairs. It has reconciliation pairs and no extraction cases, and
+it is gated like a language.
+
 ## 3. Label format (`expected.json`)
 
 ```json
@@ -69,7 +103,7 @@ Matching between an extracted fact and an expected label is semantic, not string
 - **Contradiction detection precision and recall** over the labeled contradiction pairs.
 - **Supersedes accuracy** = correct supersession decisions (verdict **and** direction) / the pairs where supersession was at stake, which is the labelled `supersedes_*` pairs **plus** any pair the system superseded that should not have been. False positives sit in the denominator on purpose: a wrong supersession closes the validity interval on a fact that still holds, which is the same class of harm as a false merge, and scoring only the labelled pairs made it invisible.
 - **Query-rewrite routing accuracy** (§5.1) = routing cases where every assertion held / all such cases.
-- All reported per language and aggregate. **All published**, including the unflattering ones (§7).
+- All reported per language and aggregate, **and since V2.3 item 6.4 per corpus**: the core set and the vertical document set are reported side by side and never averaged. **All published**, including the unflattering ones (§7).
 
 ### 5.1 The query-rewrite suite
 
@@ -85,10 +119,11 @@ Each case passes only if every one of its assertions holds. The corpus covers, p
 
 Gates are enforced when the gate environment switch is set (`npm run eval:gate`, CI). Values live in one versioned config next to the corpus (`project/eval/gates.json`), so the published trust score and the CI gate can never disagree about what was measured.
 
-Two layers since V2.0 item 3.4:
+Two layers since V2.0 item 3.4, and two corpora since V2.3 item 6.4:
 
-- **`gates`**: the aggregate floors.
+- **`gates`**: the aggregate floors for the core corpus.
 - **`per_language`**: floors for every language the harness reports, so a weak language can no longer hide inside a healthy average. A language the harness measures and `gates.json` does not name **fails** the check; an ungated language is the hole these floors close.
+- **`vertical.gates`** and **`vertical.per_language`**: the same two layers for the vertical document corpus, with the same union rule (a set it measures and this file does not name fails). It carries no `rewrite_accuracy` floor, because the query-rewrite suite is a corpus of chat turns rather than of documents and gating a metric a corpus cannot measure would gate the harness's empty-arm convention rather than the system. Its floors are **lower** than the core ones, which is the expected and published result rather than a regression.
 
 The zero-tolerance gates are hardcoded in the harness rather than thresholded in `gates.json`, because they are not thresholds:
 

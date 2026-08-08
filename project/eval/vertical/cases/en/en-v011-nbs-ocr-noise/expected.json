@@ -1,0 +1,13 @@
+{
+  "case_id": "en-v011",
+  "source_type": "file",
+  "filename": "nbs-sp-250-3.pdf",
+  "source_date": "1987-09-01T00:00:00.000Z",
+  "expected_memories": [],
+  "must_not_extract": [
+    "anything at all: the page is a rotated figure whose OCR text layer decoded to character debris",
+    "in particular, any reading of the fragment 73 or 00 CO or oCM as a measured value"
+  ],
+  "expected_relations": [],
+  "verification_expected": "unsupported"
+}

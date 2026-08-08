@@ -1,0 +1,49 @@
+may 	arise 	from 	small 	pressure 	fluctuations 	in 	the 	electrode 	regions 	due 	to
+occasional 	shifting 	of 	the 	arc 	termination 	points. 	If 	they 	are 	present, 	these
+instabilities 	are 	manifested 	by 	a 	varying 	arc 	length. 	A 	polycarbonate 	plastic
+extension 	tube 	is 	attached 	to 	the 	end 	piece 	on 	the 	vacuum 	side 	of 	the 	arc 	for
+the 	purposes 	of 	insulating 	the 	end 	piece 	from 	the 	vacuum 	system. 	It 	also
+allows 	remote 	mounting 	of 	a 	UV 	quality 	MgFp 	window 	with 	shutter, 	which 	doubles
+as 	an 	observing 	port 	for 	adjustment 	of 	the 	anodes. 	The 	window 	is 	located
+17 	cm 	from 	the 	arc 	because 	of 	possible 	degrading 	effects 	caused 	by 	heat 	and
+intense 	UV 	irradiation. 	Also, 	a 	gas 	input 	port 	directs 	a 	flow 	of 	gas 	onto 	the
+window 	and 	prevents 	it 	from 	collecting 	a 	layer 	of 	attenuating 	tungsten 	dust
+which 	is 	evaporated 	from 	the 	anodes 	at 	high 	power 	levels. 	The 	Suprasil 	window
+on 	the 	air 	side 	of 	the 	arc 	does 	not 	require 	similar 	precautions 	since 	the
+cathodes 	do 	not 	heat 	up 	as 	much 	as 	the 	anodes 	and 	since 	the 	window 	trans-
+mission, 	which 	is 	needed 	for 	calibrations 	in 	the 	near 	UV 	and 	visible, 	can 	be
+conveniently 	measured 	by 	simple 	removal 	during 	arc 	operation.
+As 	can 	be 	seen 	in 	Fig. 	4, 	the 	electrodes, 	especially 	insulated 	and 	sealed
+by 	o-rings, 	are 	positioned 	as 	close 	as 	possible 	(about 	0.5 	mm) 	to 	the 	arc
+plates 	in 	such 	a 	way 	as 	to 	form 	an 	extension 	of 	the 	channel. 	Four 	electrodes
+at 	each 	end 	in 	a 	cross 	arrangement 	are 	used 	tn 	order 	to 	subdivide 	the 	heat
+load 	and 	to 	minimize 	arc 	asymmetries 	in 	the 	end 	zones 	near 	the 	arc 	termination
+points. 	The 	electrode 	cooling 	is 	provided 	by 	soldering 	the 	48 	mm 	long, 	10 	mm
+diameter 	tungsten 	rods 	which 	serve 	as 	the 	electrode 	tips 	to 	water-cooled
+copper 	tubes.
+The 	arc 	plates 	themselves 	are 	of 	fairly 	complex 	design. 	Several 	varia-
+tions, 	designed 	principally 	to 	reduce 	machining 	difficulties 	and 	increase 	the
+economy 	of 	production, 	have 	been 	described 	in 	the 	1 	iterature.^^ 	»12 	Basically,
+the 	problem 	is 	to 	cool 	the 	walls 	efficiently 	and 	to 	avoid 	the 	formation 	of
+vapor 	bubbles 	and 	consequent 	thermal 	isolation 	of 	the 	heated 	channel 	walls
+which 	comes 	about 	when 	there 	is 	poor 	or 	turbulent 	contact 	between 	the 	channel
+wall 	and 	the 	flowing 	water. 	The 	particular 	method 	of 	fabrication 	for 	our
+model^^^ 	is 	illustrated 	in 	Fig. 	9. 	By 	inserting 	the 	split 	brass 	plates 	labeled
+B 	in 	Fig. 	9a 	into 	the 	central 	copper 	piece 	C, 	water 	channels 	are 	formed 	4 	mm
+wide 	at 	their 	ends 	and 	1 	mm 	wide 	in 	the 	bent 	parts 	near 	the 	2 	mm 	diameter 	bore
+as 	seen 	in 	Fig. 	9b. 	In 	this 	way 	the 	water 	entering 	from 	two 	opposite 	sides 	is
+accelerated 	near 	the 	arc 	channel, 	pressed 	towards 	the 	hot 	wall, 	and 	removed
+through 	the 	two 	remaining 	adjacent 	ports. 	Pieces 	A, 	B 	and 	C 	are 	silver-sol-
+dered 	together 	and 	machined 	to 	the 	required 	thickness 	of 	2 	mm. 	A 	photograph
+of 	an 	arc 	plate 	assembly 	with 	the 	central 	part 	cut 	open 	to 	expose 	the 	flow
+channels 	is 	included 	in 	Fig. 	9c.
+The 	operation 	of 	the 	arc 	requires 	substantial 	electric, 	water, 	and 	gas
+utilities. 	The 	electric 	current 	to 	the 	arc 	is 	supplied 	by 	a 	1200 	V, 	110 	A 	DC
+power 	source 	with 	0.05 	percent 	current 	regulation 	and 	a 	ripple 	less 	than 	0.2
+percent 	of 	the 	average 	voltage. 	In 	order 	to 	divide 	the 	arc 	current 	equally, 	a
+12 	Q. 	ballast 	resistor 	is 	placed 	in 	series 	with 	each 	of 	the 	four 	arc 	anodes 	and
+cathodes. 	These 	resistors, 	designed 	for 	loads 	up 	to 	7.5 	kW, 	are 	immersed 	and
+cooled 	in 	a 	flowing 	tap 	water 	reservoir. 	A 	separate 	12°C 	chilled 	water 	system
+with 	a 	total 	flow 	rate 	of 	about 	80 	l 	min"^ 	at 	2.5 	atm 	pressure 	is 	used 	to 	cool
+the 	arc 	plates 	and 	electrodes. 	Since 	arc 	ignition 	is 	best 	performed 	in 	pure
+-18-

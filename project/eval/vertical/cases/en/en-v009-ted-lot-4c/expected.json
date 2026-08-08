@@ -1,0 +1,75 @@
+{
+  "case_id": "en-v009",
+  "source_type": "file",
+  "filename": "ted-178149-2026.pdf",
+  "source_date": "2026-03-16T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "The Reuter Electrical Backbone project transforms the electrical system at the Reuter site and is being implemented through EU-wide tenders in 9 lots",
+      "kind": "fact",
+      "entities": ["Reuter Electrical Backbone"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Lot 4c covers the planning, delivery, installation, commissioning and product training of two 400/110 kV grid transformers with ONAN/ONAF cooling systems",
+      "kind": "fact",
+      "entities": ["Lot 4c"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The Lot 4c grid transformers are rated 300 MVA, with 360 MVA in the second rating, a voltage ratio of 400/110 kV with plus or minus 13 steps of 1.23 percent, and an impedance of 16 percent in YNyn0",
+      "kind": "fact",
+      "entities": ["Lot 4c"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The Lot 4c transformers connect the REB substation to the 380 kV network of 50Hertz at the Reuter West combined heat and power plant in Berlin",
+      "kind": "fact",
+      "entities": ["Lot 4c"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Lot 4c includes two ETOS or equivalent transformer monitoring systems connected to the station control system under IEC 61850",
+      "kind": "fact",
+      "entities": ["Lot 4c"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The secondary technology components, protection and control cabinets, are not included in the scope of delivery of Lot 4c",
+      "kind": "fact",
+      "entities": ["Lot 4c"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Lot 4d covers two 110/22.5 kV distribution transformers with cooling systems for connecting an electric hot water generator, a 120 MW electrode boiler system",
+      "kind": "fact",
+      "entities": ["Lot 4d"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The Lot 4d distribution transformers are rated 125 MVA, with 150 MVA in the second rating, a voltage ratio of 110/22 kV with plus or minus 12 steps of 1.31 percent, and an impedance of 12.5 percent in Yyn10 plus d",
+      "kind": "fact",
+      "entities": ["Lot 4d"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The 110 kV connection on the Lot 4d transformers must be made using 110 kV cables, and the 22.5 kV side must be planned for an air-insulated 24 kV high-current busbar system",
+      "kind": "fact",
+      "entities": ["Lot 4d"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The 110 kV cable and the 22.5 kV busbar connections are not part of the scope of work for Lot 4d and are provided by the customer",
+      "kind": "fact",
+      "entities": ["Lot 4d"],
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "the page header (178149-2026 Page 3/8)",
+    "the dangling exclusion-ground heading the page break left at the top of the excerpt",
+    "the internal section identifier LOT-0001"
+  ],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

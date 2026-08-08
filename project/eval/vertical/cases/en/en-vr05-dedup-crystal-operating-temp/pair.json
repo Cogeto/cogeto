@@ -1,0 +1,26 @@
+{
+  "case_id": "en-vr05",
+  "task": "dedup",
+  "expected": "same_fact",
+  "a": {
+    "content": "The Abracon ABM8-272-T3 crystal has an operating temperature range of -40 to +85 °C.",
+    "kind": "fact",
+    "entities": ["Abracon ABM8-272-T3"],
+    "subject_entity": "Abracon ABM8-272-T3",
+    "captured_at": "2025-07-29T00:00:00.000Z",
+    "valid_from": "2025-07-29T00:00:00.000Z",
+    "valid_until": null,
+    "source": "Table 597. Key Crystal Specifications. Parameters Minimum Typical Maximum Units Notes\nCenter Frequency 12.000 12.000 12.000 MHz\nOperating Temperature -40 +85 °C"
+  },
+  "b": {
+    "content": "The Abracon ABM8-272-T3 crystal has an operating temperature range of -40 to +85 ºC.",
+    "kind": "fact",
+    "entities": ["Abracon ABM8-272-T3"],
+    "subject_entity": "Abracon ABM8-272-T3",
+    "captured_at": "2024-01-01T00:00:00.000Z",
+    "valid_from": "2024-01-01T00:00:00.000Z",
+    "valid_until": null,
+    "source": "Table 257. Key Crystal Specifications. Parameters Minimum Typical Maximum Units Notes\nCenter Frequency 12.000 12.000 12.000 MHz\nOperating Temperature -40 +85 ºC"
+  },
+  "notes": "The mirror image of en-vr03. Two documents, the same table, the same part, the same numbers: one fact, and the two copies must merge. The trap inside it is invisible on screen. RP2040 writes the MASCULINE ORDINAL INDICATOR U+00BA where RP2350 writes the DEGREE SIGN U+00B0, and the quantity parser knows only the second, so the two temperatures do not parse as the same unit."
+}

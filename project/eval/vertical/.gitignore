@@ -1,0 +1,5 @@
+# The original third-party documents, re-downloadable with fetch.mjs. Never
+# committed: about 27 MB of PDFs do not belong in a source repository, and
+# documents.json records the URL, publisher, licence, retrieval date and
+# SHA-256 of every one of them.
+originals/

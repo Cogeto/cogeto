@@ -1,0 +1,26 @@
+{
+  "case_id": "hr-vr06",
+  "task": "dedup",
+  "expected": "distinct",
+  "a": {
+    "content": "Grupa nabave odnosi se na zaštitnu masku FFP2, medicinski potrošni materijal, s trajanjem ugovora od 12 mjeseci.",
+    "kind": "fact",
+    "entities": ["FFP2"],
+    "subject_entity": "Zaštitna maska FFP2",
+    "captured_at": "2025-01-03T00:00:00.000Z",
+    "valid_from": "2025-01-03T00:00:00.000Z",
+    "valid_until": null,
+    "source": "5.1. Grupa: LOT-0002\nNaslov: Zaštitna maska FFP2\nOpis: Zaštitna maska FFP2\nGlavna klasifikacija (cpv): 33140000 Medicinski potrošni materijal\nTrajanje: 12 Mjeseci"
+  },
+  "b": {
+    "content": "Grupa nabave odnosi se na zaštitnu masku FFP3 bez ventila, medicinski potrošni materijal, s trajanjem ugovora od 12 mjeseci.",
+    "kind": "fact",
+    "entities": ["FFP3"],
+    "subject_entity": "Zaštitna maska FFP3 bez ventila",
+    "captured_at": "2025-01-03T00:00:00.000Z",
+    "valid_from": "2025-01-03T00:00:00.000Z",
+    "valid_until": null,
+    "source": "5.1. Grupa: LOT-0001\nNaslov: Zaštitna maska FFP3 bez ventila\nOpis: Zaštitna maska FFP3 bez ventila\nGlavna klasifikacija (cpv): 33140000 Medicinski potrošni materijal\nTrajanje: 12 Mjeseci"
+  },
+  "notes": "Hrvatski parnjak za en-vr11. Predlošci grupa u obavijesti o nadmetanju razlikuju se samo po razredu maske; sve ostalo, uključujući CPV oznaku i trajanje ugovora, jednako je."
+}

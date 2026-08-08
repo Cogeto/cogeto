@@ -1,0 +1,26 @@
+{
+  "case_id": "hr-vr03",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "Procijenjena vrijednost grupe za zaštitnu masku FFP2 iznosi 2 992 000,00 EUR bez PDV-a.",
+    "kind": "fact",
+    "entities": ["FFP2"],
+    "subject_entity": "Zaštitna maska FFP2",
+    "captured_at": "2025-01-03T00:00:00.000Z",
+    "valid_from": "2025-01-03T00:00:00.000Z",
+    "valid_until": null,
+    "source": "5.1. Grupa: LOT-0002\nNaslov: Zaštitna maska FFP2\n5.1.5. Vrijednost\nProcijenjena vrijednost bez PDV-a: 2 992 000,00 EUR"
+  },
+  "b": {
+    "content": "Procijenjena vrijednost grupe za zaštitnu masku FFP3 bez ventila iznosi 2 472 344,00 EUR bez PDV-a.",
+    "kind": "fact",
+    "entities": ["FFP3"],
+    "subject_entity": "Zaštitna maska FFP3 bez ventila",
+    "captured_at": "2025-01-03T00:00:00.000Z",
+    "valid_from": "2025-01-03T00:00:00.000Z",
+    "valid_until": null,
+    "source": "5.1. Grupa: LOT-0001\nNaslov: Zaštitna maska FFP3 bez ventila\n5.1.5. Vrijednost\nProcijenjena vrijednost bez PDV-a: 2 472 344,00 EUR"
+  },
+  "notes": "Dvije grupe iste nabave, dvije procijenjene vrijednosti, ista valuta, isti dan. Nije proturječje: predmet nabave je različit razred maske. Iznosi su u hrvatskom zapisu, s razmakom kao razdjelnikom tisućica i zarezom kao decimalnim znakom."
+}

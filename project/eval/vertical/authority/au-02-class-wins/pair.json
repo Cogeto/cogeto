@@ -1,0 +1,26 @@
+{
+  "case_id": "au-02",
+  "task": "contradiction",
+  "expected": "supersedes_b_over_a",
+  "a": {
+    "content": "Tender documentation must be retained for 4 years from the conclusion of the procurement procedure.",
+    "kind": "fact",
+    "entities": ["tender documentation"],
+    "subject_entity": "medical device documentation retention",
+    "captured_at": "2025-01-03T00:00:00.000Z",
+    "valid_from": "2025-01-03T00:00:00.000Z",
+    "valid_until": null,
+    "source": "PLACEHOLDER: a retention clause of the kind a procurement notice carries. Not drawn from a corpus document; see notes.md."
+  },
+  "b": {
+    "content": "Manufacturers shall keep the technical documentation available for the competent authorities for a period of at least 10 years after the last device was placed on the market.",
+    "kind": "fact",
+    "entities": ["manufacturers"],
+    "subject_entity": "medical device documentation retention",
+    "captured_at": "2017-05-05T00:00:00.000Z",
+    "valid_from": "2017-05-05T00:00:00.000Z",
+    "valid_until": null,
+    "source": "available for the competent authorities for a period of at least 10 years after the last device covered by the EU declaration of conformity has been placed on the market."
+  },
+  "notes": "PENDING, and PARTLY SYNTHETIC: side b is verbatim from Regulation (EU) 2017/745, side a is a placeholder because no document in this corpus states a conflicting retention period. Flagged loudly rather than dressed up. The case must not be moved into ../cases/ until side a is replaced with a real span from a real document."
+}

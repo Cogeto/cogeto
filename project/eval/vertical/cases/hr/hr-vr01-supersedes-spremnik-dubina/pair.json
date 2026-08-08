@@ -1,0 +1,26 @@
+{
+  "case_id": "hr-vr01",
+  "task": "contradiction",
+  "expected": "supersedes_a_over_b",
+  "a": {
+    "content": "Podzemni spremnik za smještaj kontejnera za komunalni otpad ima tlocrtnu površinu do 15 m2 i dubinu do 3,5 m.",
+    "kind": "fact",
+    "entities": [],
+    "subject_entity": "Podzemni spremnik za smještaj kontejnera za komunalni otpad",
+    "captured_at": "2022-06-29T00:00:00.000Z",
+    "valid_from": "2022-06-29T00:00:00.000Z",
+    "valid_until": null,
+    "source": "U članku 2. stavku 2. točka 3. mijenja se i glasi:\n»3. Podzemni spremnik za smještaj kontejnera za komunalni otpad tlocrtne površine do 15 m² i dubine do 3,5 m;«."
+  },
+  "b": {
+    "content": "Podzemni spremnik za smještaj tipskih kontejnera za komunalni otpad ima tlocrtnu površinu do 15 m2 i dubinu do 2 m.",
+    "kind": "fact",
+    "entities": [],
+    "subject_entity": "Podzemni spremnik za smještaj kontejnera za komunalni otpad",
+    "captured_at": "2017-11-17T00:00:00.000Z",
+    "valid_from": "2017-11-17T00:00:00.000Z",
+    "valid_until": null,
+    "source": "3. Podzemni spremnik za smještaj tipskih kontejnera za komunalni otpad tlocrtne površine do 15 m² i dubine do 2 m;"
+  },
+  "notes": "Najčišća numerička supersesija u korpusu i jedina koja dolazi iz izmjene hrvatskog propisa. Isti predmet, isti slot, ista mjerna jedinica: dubina se mijenja s 2 m na 3,5 m, a površina od 15 m2 ostaje ista. Kasniji dokument izrijekom mijenja raniji."
+}

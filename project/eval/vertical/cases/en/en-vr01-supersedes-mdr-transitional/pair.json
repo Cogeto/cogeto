@@ -1,0 +1,26 @@
+{
+  "case_id": "en-vr01",
+  "task": "contradiction",
+  "expected": "supersedes_a_over_b",
+  "a": {
+    "content": "Legacy devices holding a valid certificate may be placed on the market or put into service until 31 December 2027 for all class III devices and for class IIb implantable devices.",
+    "kind": "fact",
+    "entities": ["class III devices"],
+    "subject_entity": "legacy medical devices with a valid certificate",
+    "captured_at": "2023-03-20T00:00:00.000Z",
+    "valid_from": "2023-03-20T00:00:00.000Z",
+    "valid_until": null,
+    "source": "3a. Devices which have a certificate that was issued in accordance with Directive 90/385/EEC or Directive 93/42/EEC and that is valid by virtue of paragraph 2 of this Article may be placed on the market or put into service until the following dates: (a) 31 December 2027, for all class III devices, and for class IIb implantable devices except sutures, staples, dental fillings, dental braces, tooth crowns, screws, wedges, plates, wires, pins, clips and connectors;"
+  },
+  "b": {
+    "content": "Legacy devices holding a valid certificate may continue to be made available on the market or put into service until 27 May 2025.",
+    "kind": "fact",
+    "entities": ["legacy devices"],
+    "subject_entity": "legacy medical devices with a valid certificate",
+    "captured_at": "2017-05-05T00:00:00.000Z",
+    "valid_from": "2017-05-05T00:00:00.000Z",
+    "valid_until": null,
+    "source": "4. Devices lawfully placed on the market pursuant to Directives 90/385/EEC and 93/42/EEC prior to 26 May 2020, and devices placed on the market from 26 May 2020 by virtue of a certificate as referred to in paragraph 2 of this Article, may continue to be made available on the market or put into service until 27 May 2025."
+  },
+  "notes": "Real supersession across document revisions. b is Article 120 of Regulation (EU) 2017/745 as enacted; a is Regulation (EU) 2023/607, which replaced the transitional regime six years later. Same subject, same slot (the date until which a legacy device may be placed on the market), and the later act is an amending act that names the earlier one. The correct action is supersession with a over b, not a contradiction for a human to resolve."
+}

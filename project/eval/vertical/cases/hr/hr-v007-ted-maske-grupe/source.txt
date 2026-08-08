@@ -1,0 +1,92 @@
+2133-2025 Page 2/11
+Pranje novca ili financiranje terorizma: Pranje novca ili financiranje terorizma
+Dječji rad i drugi oblici trgovanja ljudima: Rad djece i drugi oblici trgovanja ljudima
+Plaćanje poreza: Plaćanje poreza
+Plaćanje doprinosa za socijalno osiguranje: Plaćanje obveza za mirovinsko i zdravstveno
+osiguranje
+5. Grupa
+5.1. Grupa: LOT-0001
+Naslov: Zaštitna maska FFP3 bez ventila
+Opis: Zaštitna maska FFP3 bez ventila
+Interna identifikacijska oznaka: MT-6/22-1
+5.1.1. Svrha
+Priroda ugovora: Roba
+Glavna klasifikacija (cpv): 33140000 Medicinski potrošni materijal
+5.1.2. Mjesto izvršenja
+Zemlja – podregija (NUTS): Zagrebačka županija (HR065)
+Zemlja: Hrvatska
+Dodatne informacije: Logistički centar Ravnateljstva civilne zaštite, ulice Ivane Brlić Mažuranić
+bb, Jastrebarsko.
+5.1.3. Očekivano trajanje
+Datum početka: 12/05/2025
+Trajanje: 12 Mjeseci
+5.1.4. Obnova
+Maksimalan broj obnavljanja: 0
+5.1.5. Vrijednost
+Procijenjena vrijednost bez PDV-a: 2 472 344,00 EUR
+5.1.6. Opće informacije
+Rezervirano sudjelovanje:
+Sudjelovanje nije rezervirano.
+Projekt javne nabave u cijelosti se ili djelomično financira sredstvima EU-a
+Podaci o fondovima Europske unije:
+Program financijskih sredstava EU-a: Mehanizam Unije za civilnu zaštitu (rescEU) (2021/2027)
+Identifikator fondova EU-a: rescEU-TRUST i rescEU-CBRNSTOCK-HR
+Dodatne pojedinosti o financijskim sredstvima EU-a: Nabava zaštitnih maski.
+Javna nabava obuhvaćena je Sporazumom o javnoj nabavi (GPA): da
+Ova javna nabava prikladna je i za mala i srednja poduzeća (MSP-ovi): da
+5.1.8. Kriteriji pristupačnosti
+Uvjeti pristupačnosti za osobe s invaliditetom nisu uzeti u obzir jer javna nabava nije
+namijenjena fizičkim osobama
+5.1.9. Kriteriji za odabir
+Kriterij:
+Vrsta: Sposobnost za obavljanje stručne djelatnosti
+Naziv: Upis u registar
+Opis kriterija odabira: Detalji opisani u dokumentaciji o nabavi
+
+2133-2025 Page 3/11
+Primjena ovog kriterija: Upotrijebljen
+Kriterij:
+Vrsta: Ekonomska i financijska sposobnost
+Primjena ovog kriterija: Nije upotrijebljen
+Kriterij:
+Vrsta: Tehnička i stručna sposobnost
+Primjena ovog kriterija: Nije upotrijebljen
+5.1.10. Kriteriji za dodjelu
+Kriterij:
+Vrsta: Cijena
+Naziv: Cijena ponude
+Opis: Cijena ponude
+Kategorija kriterija za dodjelu težine: Ponder (točke, točan)
+Broj kriterija za dodjelu: 80
+Kriterij:
+Vrsta: Kvaliteta
+Naziv: Jamstvo
+Opis: Dužina jamstva.
+Kategorija kriterija za dodjelu težine: Ponder (točke, točan)
+Broj kriterija za dodjelu: 20
+5.1.11. Dokumentacija o nabavi
+Adresa dokumentacije o nabavi: https://eojn.hr/tender-eo/28234
+Ad hoc komunikacijski kanal:
+Naziv: https://eojn.hr/
+5.1.12. Uvjeti nabave
+Uvjeti podnošenja:
+Elektroničko podnošenje: Obvezno
+Adresa za podnošenje: https://eojn.hr/tender-eo/28234
+Jezici na kojima se mogu podnijeti ponude ili zahtjevi za sudjelovanje: hrvatski
+Elektronički katalog: Nije dopušteno
+Varijante: Nije dopušteno
+Ponuditelji mogu podnijeti više od jedne ponude: Nije dopušteno
+Opis financijskog jamstva: Ponuditelj je obvezan uz ponudu predati bankovno jamstvo za
+ozbiljnost ponude. Jamstvo banke za ozbiljnost ponude mora sadržavati naziv nadmetanja za
+koje se izdaje i evidencijski broj nabave naručitelja i grupu za koju se jamstvo dostavlja.
+Jamstvo banke mora važiti do isteka roka valjanosti ponude i mora sadržavati obvezu da će
+banka na prvi poziv i bez prigovora isplatiti iznos jamstva u slučaju: a. odustajanja ponuditelja
+od svoje ponude u roku njezine valjanosti b. nedostavljanja ažurnih popratnih dokumenata
+sukladno članku 263. Zakona o javnoj nabavi c. neprihvaćanja ispravka računske greške d.
+odbijanja potpisivanja ugovora o javnoj nabavi ili okvirnog sporazuma e. nedostavljanja
+jamstva za uredno ispunjenje ugovora o javnoj nabavi Način dostave jamstva: Jamstvo banke
+za ozbiljnost ponude, koje u ovom trenutku nije moguće slati i primati kao elektronički
+dokument, ponuditelj dostavlja naručitelju u roku za dostavu ponuda u zatvorenoj poštanskoj
+omotnici na način i adresu kao što je navedeno u točki 28. ove dokumentacije o nabavi. Javni
+naručitelj obvezan je vratiti ponuditeljima jamstvo za ozbiljnost ponude u roku od deset dana
+od dana potpisivanja ugovora o javnoj nabavi odnosno dostave jamstva za uredno izvršenje

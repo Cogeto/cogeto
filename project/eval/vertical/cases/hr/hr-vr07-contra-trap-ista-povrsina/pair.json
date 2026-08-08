@@ -1,0 +1,26 @@
+{
+  "case_id": "hr-vr07",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "Kiosk i druga građevina gotove konstrukcije imaju tlocrtnu površinu do 15 m2.",
+    "kind": "fact",
+    "entities": [],
+    "subject_entity": "Kiosk",
+    "captured_at": "2017-11-17T00:00:00.000Z",
+    "valid_from": "2017-11-17T00:00:00.000Z",
+    "valid_until": null,
+    "source": "1. Kiosk i druga građevina gotove konstrukcije tlocrtne površine do 15 m² u skladu s tipskim projektom"
+  },
+  "b": {
+    "content": "Reklamni pano ima oglasnu površinu do 12 m2.",
+    "kind": "fact",
+    "entities": [],
+    "subject_entity": "Reklamni pano",
+    "captured_at": "2017-11-17T00:00:00.000Z",
+    "valid_from": "2017-11-17T00:00:00.000Z",
+    "valid_until": null,
+    "source": "5. Reklamni pano oglasne površine do 12 m²;"
+  },
+  "notes": "Dvije susjedne točke iste liste, ista mjerna jedinica, različite vrijednosti i različiti predmeti. Uključeno jer je površinska jedinica m2 ona koju rastavljač veličina danas ne poznaje, pa se par mora riješiti bez ijednog raščlanjenog broja."
+}

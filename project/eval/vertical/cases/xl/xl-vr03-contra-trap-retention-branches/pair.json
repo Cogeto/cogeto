@@ -1,0 +1,30 @@
+{
+  "case_id": "xl-vr03",
+  "task": "contradiction",
+  "expected": "compatible",
+  "aliases": [
+    { "canonical": "manufacturers", "alias": "proizvođači" },
+    { "canonical": "implantable devices", "alias": "proizvodi za ugradnju" }
+  ],
+  "a": {
+    "content": "U slučaju proizvoda za ugradnju razdoblje čuvanja dokumentacije mora biti najmanje 15 godina od stavljanja posljednjeg proizvoda na tržište.",
+    "kind": "fact",
+    "entities": ["proizvodi za ugradnju"],
+    "subject_entity": "proizvodi za ugradnju",
+    "captured_at": "2017-05-06T00:00:00.000Z",
+    "valid_from": "2017-05-06T00:00:00.000Z",
+    "valid_until": null,
+    "source": "U slučaju proizvoda za ugradnju to razdoblje mora biti najmanje 15 godina od stavljanja posljednjeg proizvoda na tržište."
+  },
+  "b": {
+    "content": "Manufacturers shall keep the technical documentation available for the competent authorities for a period of at least 10 years after the last device was placed on the market.",
+    "kind": "fact",
+    "entities": ["manufacturers"],
+    "subject_entity": "manufacturers",
+    "captured_at": "2017-05-05T00:00:00.000Z",
+    "valid_from": "2017-05-05T00:00:00.000Z",
+    "valid_until": null,
+    "source": "available for the competent authorities for a period of at least 10 years after the last device covered by the EU declaration of conformity has been placed on the market."
+  },
+  "notes": "Deset godina i petnaest godina za čuvanje iste vrste dokumentacije, u dva jezika, iz istog članka: nije proturječje, jer je riječ o dvjema različitim vrstama proizvoda. Negativ koji dokazuje da mehanizam nadimaka ne spaja sve što je na dva jezika."
+}

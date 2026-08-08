@@ -1,0 +1,45 @@
+{
+  "case_id": "en-v012",
+  "source_type": "file",
+  "filename": "nbs-sp-250-3.pdf",
+  "source_date": "1987-09-01T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "A polycarbonate plastic extension tube is attached to the end piece on the vacuum side of the arc to insulate the end piece from the vacuum system",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The magnesium fluoride window is located 17 cm from the arc because of possible degrading effects caused by heat and intense ultraviolet irradiation",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "A gas input port directs a flow of gas onto the window to prevent it collecting a layer of attenuating tungsten dust evaporated from the anodes at high power levels",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The Suprasil window on the air side of the arc does not require similar precautions because the cathodes do not heat up as much as the anodes",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Arc instabilities may arise from small pressure fluctuations in the electrode regions caused by occasional shifting of the arc termination points, and show up as a varying arc length",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "the page number footer",
+    "OCR debris and the tab characters the scan injected between words",
+    "any reading of the mis-decoded MgFp token as a distinct chemical species"
+  ],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

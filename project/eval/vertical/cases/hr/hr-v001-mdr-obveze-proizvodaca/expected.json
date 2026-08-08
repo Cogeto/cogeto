@@ -1,0 +1,101 @@
+{
+  "case_id": "hr-v001",
+  "source_type": "file",
+  "filename": "mdr-2017-745-hr.pdf",
+  "source_date": "2017-05-05T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Ako ne postoje usklađene norme ili nisu dostatne, Komisija provedbenim aktima može donijeti zajedničke specifikacije za medicinske proizvode",
+      "kind": "fact",
+      "entities": ["Komisija"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Za proizvode koji su u skladu sa zajedničkim specifikacijama pretpostavlja se da su u skladu sa zahtjevima Uredbe koji su obuhvaćeni tim specifikacijama",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Proizvođači se moraju uskladiti sa zajedničkim specifikacijama osim ako opravdaju rješenja koja osiguravaju barem jednakovrijednu razinu sigurnosti i učinkovitosti",
+      "kind": "fact",
+      "entities": ["proizvođači"],
+      "condition": "osim ako je opravdana barem jednakovrijedna razina sigurnosti i učinkovitosti",
+      "must_extract": true
+    },
+    {
+      "content_gist": "Proizvođači osiguravaju da su proizvodi koje stavljaju na tržište projektirani i proizvedeni u skladu sa zahtjevima ove Uredbe",
+      "kind": "fact",
+      "entities": ["proizvođači"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Proizvođači uspostavljaju, dokumentiraju, provode i održavaju sustav za upravljanje rizikom kako je opisan u odjeljku 3. Priloga I.",
+      "kind": "fact",
+      "entities": ["proizvođači"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Proizvođači provode kliničku procjenu u skladu s člankom 61. i Prilogom XIV., uključujući posttržišno kliničko praćenje",
+      "kind": "fact",
+      "entities": ["proizvođači"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Proizvođači proizvoda koji nisu izrađeni po narudžbi sastavljaju i redovito ažuriraju tehničku dokumentaciju koja omogućuje ocjenjivanje sukladnosti",
+      "kind": "fact",
+      "entities": ["proizvođači"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Proizvođači proizvoda izrađenih po narudžbi sastavljaju i ažuriraju dokumentaciju te nadležnim tijelima omogućavaju uvid u nju u skladu s Prilogom XIII. odjeljkom 2.",
+      "kind": "fact",
+      "entities": ["proizvođači"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Nakon dokazane sukladnosti proizvođači sastavljaju EU izjavu o sukladnosti i stavljaju oznaku sukladnosti CE",
+      "kind": "fact",
+      "entities": ["proizvođači"],
+      "condition": "kada se dokaže usklađenost nakon provedbe primjenjivog postupka ocjenjivanja sukladnosti",
+      "must_extract": true
+    },
+    {
+      "content_gist": "Proizvođači ispunjavaju obveze sustava jedinstvene identifikacije proizvoda i obveze registracije iz članaka 28., 29. i 31.",
+      "kind": "fact",
+      "entities": ["proizvođači"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Proizvođači nadležnim tijelima osiguravaju dostupnost tehničke dokumentacije, EU izjave o sukladnosti i preslike svake relevantne potvrde tijekom razdoblja od najmanje 10 godina od stavljanja posljednjeg proizvoda na tržište",
+      "kind": "fact",
+      "entities": ["proizvođači"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "U slučaju proizvoda za ugradnju razdoblje čuvanja dokumentacije mora biti najmanje 15 godina od stavljanja posljednjeg proizvoda na tržište",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Na zahtjev nadležnog tijela proizvođač dostavlja potpunu tehničku dokumentaciju ili njezin sažetak",
+      "kind": "fact",
+      "entities": ["proizvođač"],
+      "condition": "na zahtjev nadležnog tijela",
+      "must_extract": true
+    },
+    {
+      "content_gist": "Proizvođač s registriranim mjestom poslovanja izvan Unije svojem ovlaštenom zastupniku osigurava stalan pristup potrebnoj dokumentaciji",
+      "kind": "fact",
+      "entities": ["proizvođač", "ovlašteni zastupnik"],
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "podnožje stranice Službenog lista (5.5.2017., L 117/23, HR)",
+    "puke uputnice bez vlastitog sadržaja (članak 114. stavak 3., prilozi II. i III.)"
+  ],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

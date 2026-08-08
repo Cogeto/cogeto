@@ -1,0 +1,96 @@
+{
+  "case_id": "en-v008",
+  "source_type": "file",
+  "filename": "rp2350-datasheet.pdf",
+  "source_date": "2025-07-29T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "The RP2350 supports crystals from 1 MHz to 50 MHz",
+      "kind": "fact",
+      "entities": ["RP2350"],
+      "subject_entity": "RP2350",
+      "must_extract": true
+    },
+    {
+      "content_gist": "The RP2350 reference design uses a 12 MHz crystal",
+      "kind": "fact",
+      "entities": ["RP2350"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The PLLs can generate a 48 MHz clock meeting the USB frequency accuracy requirement and a 150 MHz maximum speed system clock",
+      "kind": "fact",
+      "entities": ["RP2350"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "A minimum crystal frequency of 5 MHz is needed for the PLL",
+      "kind": "fact",
+      "entities": ["RP2350"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The recommended crystal for the RP2350 is the Abracon ABM8-272-T3",
+      "kind": "fact",
+      "entities": ["Abracon ABM8-272-T3", "RP2350"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The Abracon ABM8-272-T3 crystal has a centre frequency of 12.000 MHz",
+      "kind": "fact",
+      "entities": ["Abracon ABM8-272-T3"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The Abracon ABM8-272-T3 crystal has an operating temperature range of -40 to +85 degrees Celsius",
+      "kind": "fact",
+      "entities": ["Abracon ABM8-272-T3"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The Abracon ABM8-272-T3 crystal has a storage temperature range of -55 to +125 degrees Celsius",
+      "kind": "fact",
+      "entities": ["Abracon ABM8-272-T3"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Compared with the RP2040, the maximum crystal frequency increased from 15 MHz to 50 MHz when the appropriate range is selected in CTRL.FREQ_RANGE",
+      "kind": "decision",
+      "entities": ["RP2350", "RP2040"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "When the XOSC XIN pin is used as a CMOS clock input from an external oscillator the maximum is always 50 MHz and CTRL.FREQ_RANGE does not need configuring",
+      "kind": "fact",
+      "entities": ["RP2350"],
+      "condition": "when XIN is used as a CMOS clock input rather than with a crystal",
+      "must_extract": true
+    },
+    {
+      "content_gist": "The maximum clk_ref frequency is 25 MHz, and a crystal above 25 MHz used as the clk_ref source must be divided using the clk_ref divider",
+      "kind": "fact",
+      "entities": ["RP2350"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The XOSC is disabled at chip startup and the RP2350 boots using the ring oscillator, so the programmer must set CTRL_ENABLE to start it",
+      "kind": "fact",
+      "entities": ["RP2350"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The STARTUP_DELAY register specifies how many crystal clock cycles must be seen before the crystal can be used, in multiples of 256, and the 1 ms default suits the RP2350 reference design running the XOSC at 12 MHz",
+      "kind": "fact",
+      "entities": ["RP2350"],
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "the running footer (RP2350 Datasheet, 8.2. Crystal oscillator (XOSC), 555 and 556)",
+    "the figure caption prose describing how the amplified feedback drives the crystal into mechanical resonance",
+    "the sourcing advice and the applications contact address",
+    "the pointer to the Pico 2 board schematic in Appendix B"
+  ],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

@@ -1,0 +1,26 @@
+{
+  "case_id": "en-vr12",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "The Abracon ABM8-272-T3 crystal has a storage temperature range of -55 to +125 °C.",
+    "kind": "fact",
+    "entities": ["Abracon ABM8-272-T3"],
+    "subject_entity": "Abracon ABM8-272-T3",
+    "captured_at": "2025-07-29T00:00:00.000Z",
+    "valid_from": "2025-07-29T00:00:00.000Z",
+    "valid_until": null,
+    "source": "Operating Temperature -40 +85 °C\nStorage Temperature -55 +125 °C"
+  },
+  "b": {
+    "content": "The Abracon ABM8-272-T3 crystal has an operating temperature range of -40 to +85 °C.",
+    "kind": "fact",
+    "entities": ["Abracon ABM8-272-T3"],
+    "subject_entity": "Abracon ABM8-272-T3",
+    "captured_at": "2025-07-29T00:00:00.000Z",
+    "valid_from": "2025-07-29T00:00:00.000Z",
+    "valid_until": null,
+    "source": "Operating Temperature -40 +85 °C\nStorage Temperature -55 +125 °C"
+  },
+  "notes": "Two overlapping temperature ranges for one part, in the same unit, on adjacent rows of one table. Not a conflict: storage and operating are different slots. The plan's overlapping-ranges shape, with a real instance instead of a constructed one."
+}

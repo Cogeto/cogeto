@@ -1,0 +1,26 @@
+{
+  "case_id": "hr-vr04",
+  "task": "dedup",
+  "expected": "distinct",
+  "a": {
+    "content": "Cisterna za vodu i septička jama zapremine do 27 m3 mogu se graditi bez građevinske dozvole i glavnog projekta na građevnoj čestici postojeće zgrade.",
+    "kind": "fact",
+    "entities": [],
+    "subject_entity": "cisterna za vodu i septička jama",
+    "captured_at": "2017-11-17T00:00:00.000Z",
+    "valid_from": "2017-11-17T00:00:00.000Z",
+    "valid_until": null,
+    "source": "(1) Bez građevinske dozvole i glavnog projekta može se graditi: 1. Pomoćna građevina koja se gradi na građevnoj čestici postojeće zgrade (...) a) cisterna za vodu i septička jama zapremine do 27 m³"
+  },
+  "b": {
+    "content": "Iznimno se protivno prostornom planu mogu bez građevinske dozvole i glavnog projekta graditi cisterna za vodu i septička jama zapremine do 27 m3 na građevnoj čestici postojeće zgrade.",
+    "kind": "fact",
+    "entities": [],
+    "subject_entity": "cisterna za vodu i septička jama",
+    "captured_at": "2017-11-17T00:00:00.000Z",
+    "valid_from": "2017-11-17T00:00:00.000Z",
+    "valid_until": null,
+    "source": "(3) Iznimno od stavka 2. ovoga članka protivno prostornom planu može se bez građevinske dozvole i glavnog projekta na građevnoj čestici postojeće zgrade za potrebe te zgrade graditi cisterna za vodu i septička jama zapremine do 27 m³"
+  },
+  "notes": "Isti predmet, ista vrijednost, ista mjerna jedinica, isti dokument, a ipak dvije različite činjenice: prva daje opće izuzeće od dozvole, druga izuzeće koje vrijedi i protivno prostornom planu. Spajanje bi izgubilo razliku koja u praksi odlučuje smije li se graditi."
+}

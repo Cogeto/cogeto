@@ -1,0 +1,26 @@
+{
+  "case_id": "en-vr11",
+  "task": "dedup",
+  "expected": "distinct",
+  "a": {
+    "content": "Lot 4d covers the planning, delivery, installation, commissioning and product training of two transformers including cooling systems.",
+    "kind": "fact",
+    "entities": ["Lot 4d"],
+    "subject_entity": "Lot 4d",
+    "captured_at": "2026-03-16T00:00:00.000Z",
+    "valid_from": "2026-03-16T00:00:00.000Z",
+    "valid_until": null,
+    "source": "Lot 4d: The scope of delivery and services for Lot 4d includes the planning, delivery, installation, commissioning and product training of two 110/22.5kV distribution transformers, including cooling systems"
+  },
+  "b": {
+    "content": "Lot 4c covers the planning, delivery, installation, commissioning and product training of two transformers with associated cooling systems.",
+    "kind": "fact",
+    "entities": ["Lot 4c"],
+    "subject_entity": "Lot 4c",
+    "captured_at": "2026-03-16T00:00:00.000Z",
+    "valid_from": "2026-03-16T00:00:00.000Z",
+    "valid_until": null,
+    "source": "Lot 4c: The scope of delivery and services for Lot 4c includes the planning, delivery, installation, commissioning and product training of two 400/110kV grid transformers with associated ONAN/ONAF cooling systems"
+  },
+  "notes": "The tender's own boilerplate: the two lot scopes are the same sentence with the lot number and the transformer type swapped. Merging them would leave a buyer believing one contract covers both lots."
+}

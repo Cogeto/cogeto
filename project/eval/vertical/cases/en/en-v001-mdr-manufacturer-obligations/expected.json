@@ -1,0 +1,108 @@
+{
+  "case_id": "en-v001",
+  "source_type": "file",
+  "filename": "mdr-2017-745-en.pdf",
+  "source_date": "2017-05-05T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Where no harmonised standards exist or they are not sufficient, the Commission may adopt common specifications for medical devices by means of implementing acts",
+      "kind": "fact",
+      "entities": ["Commission"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Devices in conformity with the common specifications are presumed to be in conformity with the requirements of the Regulation covered by those common specifications",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Manufacturers must comply with the common specifications unless they can duly justify solutions that ensure an at least equivalent level of safety and performance",
+      "kind": "fact",
+      "entities": ["manufacturers"],
+      "condition": "unless an at least equivalent level of safety and performance is duly justified",
+      "must_extract": true
+    },
+    {
+      "content_gist": "Manufacturers of the products listed in Annex XVI must comply with the relevant common specifications for those products",
+      "kind": "fact",
+      "entities": ["manufacturers"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Manufacturers must ensure that devices they place on the market are designed and manufactured in accordance with the requirements of the Regulation",
+      "kind": "fact",
+      "entities": ["manufacturers"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Manufacturers must establish, document, implement and maintain a risk management system as described in Section 3 of Annex I",
+      "kind": "fact",
+      "entities": ["manufacturers"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Manufacturers must conduct a clinical evaluation in accordance with Article 61 and Annex XIV, including post-market clinical follow-up",
+      "kind": "fact",
+      "entities": ["manufacturers"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Manufacturers of devices other than custom-made devices must draw up and keep up to date technical documentation allowing conformity to be assessed",
+      "kind": "fact",
+      "entities": ["manufacturers"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Manufacturers of custom-made devices must draw up, keep up to date and keep available for competent authorities documentation in accordance with Section 2 of Annex XIII",
+      "kind": "fact",
+      "entities": ["manufacturers"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Once conformity has been demonstrated, manufacturers must draw up an EU declaration of conformity and affix the CE marking",
+      "kind": "fact",
+      "entities": ["manufacturers"],
+      "condition": "where compliance has been demonstrated following the applicable conformity assessment procedure",
+      "must_extract": true
+    },
+    {
+      "content_gist": "Manufacturers must comply with the obligations relating to the unique device identification system and with the registration obligations",
+      "kind": "fact",
+      "entities": ["manufacturers"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Manufacturers must keep the technical documentation, the EU declaration of conformity and any relevant certificate available for competent authorities for at least 10 years after the last device covered by the declaration was placed on the market",
+      "kind": "fact",
+      "entities": ["manufacturers"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "For implantable devices the retention period is at least 15 years after the last device was placed on the market",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "On request by a competent authority the manufacturer must provide the technical documentation in its entirety or a summary of it",
+      "kind": "fact",
+      "entities": ["manufacturer"],
+      "condition": "upon request by a competent authority",
+      "must_extract": true
+    },
+    {
+      "content_gist": "A manufacturer with a registered place of business outside the Union must ensure its authorised representative has the necessary documentation permanently available",
+      "kind": "fact",
+      "entities": ["manufacturer", "authorised representative"],
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "the Official Journal running footer (5.5.2017, L 117/23, EN)",
+    "bare cross-references with no content of their own (Article 114(3), Annexes II and III)",
+    "the empowerment recital about delegated acts amending the Annexes, which states no obligation a reader would look up"
+  ],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

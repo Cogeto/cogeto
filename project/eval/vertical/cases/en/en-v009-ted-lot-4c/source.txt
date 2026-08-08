@@ -1,0 +1,49 @@
+178149-2026 Page 3/8
+Breaching of obligations set under purely national exclusion grounds:
+5. Lot
+5.1. Lot: LOT-0001
+Title: REB, Lot 4c: two 400/110kV grid transformers (300 MVA) and Lot 4d: two distribution 110
+/22.5kV transformers (125 MVA), Projekt Reuter Electrical Backbone
+Description: The Reuter Electrical Backbone (REB) project involves the transformation of the
+electrical system at the Reuter site. The REB project will be implemented within the framework
+of EU-wide tenders in 9 lots. [Further project details are available in the appendix.] Subject of
+this notice are lot 4c and 4d. Lot 4c: The scope of delivery and services for Lot 4c includes the
+planning, delivery, installation, commissioning and product training of two 400/110kV grid
+transformers with associated ONAN/ONAF cooling systems for connecting the REB substation
+to the 380kV network of 50Hertz (location: Reuter West combined heat and power plant,
+Berlin). U = 400/110kV ± 13 x 1,23% S = 300MVA (360MVA) Uk =16% YNyn0 400kV – open
+air 110kV – open air The two grid transformers will be installed on designated foundations in
+open transformer boxes in the southern area of the Reuter Electrical Backbone (REB) building.
+The scope of delivery and services also includes two ETOS or equivalent transformer
+monitoring systems for recording the most important parameters (including comprehensive
+gas analysis, monitoring of the 400kV bushings, recording of current and voltage, etc.),
+including their connection to the station control system (IEC 61850). In addition to planning,
+delivery, on-site installation and product training, the contractor is also responsible for the cold
+and warm commissioning of the network transformers, including all supplied auxiliary systems
+and components. The secondary technology components (protection and control cabinets) are
+not included in the scope of delivery of this lot. Lot 4d: The scope of delivery and services for
+Lot 4d includes the planning, delivery, installation, commissioning and product training of two
+110/22.5kV distribution transformers, including cooling systems for connecting an electric hot
+water generator ("E-HWE") (120 MW – electrode boiler system) in the internal BEW
+distribution network at the Reuter West combined heat and power plant in Berlin. S = 125MVA
+(150MVA) Yyn10+d** U = 110/22 ± 12 x 1,31% Uk = 12,5% **d - is the tertiary winding
+responsible for stabilizing the magnetic system. 110kV – cable connection (e.g. Pfisterer or
+equivalent) 22.5kV – Open-air / air-insulated high-current busbar system (HSS-4000A,
+manufacturer: EGE or equivalent) The two distribution transformers will be installed on
+designated foundations in open transformer boxes on the existing E-HWE building. The 110kV
+connection on the OS side must be made using 110kV cables. The US-side 22.5kV is to be
+planned by the contractor for the connection of an air-insulated 24kV high-current busbar
+system (HSS) from the manufacturer EGE (or equivalent). The connections on both sides
+(110kV cable and 22.5kV HSS) are not part of the scope of work for lot 4d and will be provided
+by the customer. The scope of delivery and services also includes two ETOS or equivalent
+transformer monitoring systems for recording the most important parameters (including
+comprehensive gas analysis, recording of current and voltage, etc.), including their connection
+to the station control system (IEC 61850). In addition to planning, delivery, on-site installation
+and product training, the contractor is also responsible for the cold and hot commissioning of
+the two distribution transformers, including all auxiliary systems and components supplied. The
+secondary technical components (protection and control cabinets) are not included in the
+scope of delivery for this lot. From today's perspective, the following (contractual) dates are
+planned: Q3/2029: Delivery of the grid and distribution transformers Q1/2030: Installation of
+the transformers Q2/2030: Connection of the transformers to the primary technology. Q3/2030:
+Commissioning is planned in two stages: - 380/110kV grid transformers - 110/22.5kV
+distribution transformers Applications can be submitted individually or in combination.

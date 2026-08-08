@@ -1,0 +1,64 @@
+{
+  "case_id": "en-v004",
+  "source_type": "file",
+  "filename": "nist-sp-800-171r2.pdf",
+  "source_date": "2020-02-01T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Requirement 3.5.4: employ replay-resistant authentication mechanisms for network access to privileged and non-privileged accounts",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Requirement 3.5.5: prevent reuse of identifiers for a defined period",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Requirement 3.5.6: disable identifiers after a defined period of inactivity",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Requirement 3.5.7: enforce a minimum password complexity and change of characters when new passwords are created",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Requirement 3.5.8: prohibit password reuse for a specified number of generations",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Requirement 3.5.9: allow temporary password use for system logons with an immediate change to a permanent password",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Requirement 3.5.10: store and transmit only cryptographically protected passwords",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Password lifetime restrictions do not apply to temporary passwords",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "the running head (SP 800-171, REVISION 2, PROTECTING CONTROLLED UNCLASSIFIED INFORMATION) and the CHAPTER THREE PAGE 25 footer",
+    "the free-of-charge DOI banner",
+    "the repeated pointer that SP 800-63-3 provides guidance on digital identities",
+    "the DISCUSSION paragraphs, which explain why a requirement exists rather than stating one"
+  ],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

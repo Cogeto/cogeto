@@ -359,3 +359,193 @@ those pairs is the remaining variance source.
 - **Only live runs set floors.** The pull-request gate replays cached model
   responses, which measures the harness rather than the models; it can never
   publish a trust score and it must never be the source of a floor.
+
+## Addendum, 2026-08-08: the vertical corpus and its floors (V2.3 item 6.4)
+
+A **second corpus** now sits beside the one every floor above was measured on.
+[`project/eval/vertical/`](../../project/eval/vertical/README.md) is 44 labelled
+cases over 13 **real, public documents**: an EU regulation and the act that
+amends it, two revisions of a security standard, two microcontroller datasheets
+that share their boilerplate, two public tender notices, two Croatian
+construction regulations and a 1987 scan. Its provenance, licences and labelling
+rules are in that directory; what it is FOR is that the engine was proven on
+notes and emails while the claim being sold is about documents.
+
+### It is gated separately, and never averaged
+
+`gates.json` gained a `vertical` block with the same two layers as the core
+corpus: an aggregate and a per-set floor for every set the harness reports
+(`en`, `hr`, and `xl`, the cross-language pairs). The union rule is the same: a
+set the harness measures and the file does not name **fails**.
+
+Averaging the two corpora would hide both signals. The aggregate would drop and
+say nothing about why, and the document result, which is the one a buyer needs,
+would become unreadable. So `metrics` and `corpus` in the published artifact
+still describe the core corpus alone, exactly as they did under schema 1.1, and
+schema **1.2** adds a `corpora` array carrying both side by side.
+
+There is **no `rewrite_accuracy` floor** in the vertical block. The
+query-rewrite suite is a corpus of chat turns, not of documents, and gating a
+metric this corpus cannot measure would gate the harness's empty-arm convention
+(which scores 1 whatever the system does) rather than the system.
+
+### The floors are lower, and that is the finding
+
+The governing rule at the top of this document is what makes this publishable
+rather than embarrassing: **publish every measured metric including the
+unflattering ones, gate at the honest current floor, ratchet up only, never set
+a gate the project is currently failing.** A new corpus of real documents was
+always going to score worse than a mature corpus of notes, and the numbers below
+are the point of the exercise, not a problem with it.
+
+Where a metric reads **0.00**, that is not a standard being met. It is a
+published statement that the capability is **absent on this corpus**, with the
+denominator printed beside it so a reader can judge how much the zero is worth.
+A zero floor cannot fail, which is exactly why it is accompanied here by the
+target and the gap, and why the work that closes it is named.
+
+### How these floors were computed
+
+Two live runs of the final corpus on `mistral-default` at `temperature: 0`,
+2026-08-08, prompts `extraction/v0005` + `verification/v0006` +
+`reconcile_dedup/v0001` + `reconcile_contradiction/v0002`, reconcile config v2,
+thresholds v1. **Two runs is a thin band and this record says so**: the lesson
+from the 2026-07-31 correction below is that identical results inside one
+session are weak evidence of stability, so the floors here sit BELOW the worse
+of the two observed values by a margin sized from what a single case is worth on
+each denominator, rather than at the observed minimum. Each margin is stated.
+
+The reconciliation arm returned **identical outcomes on both runs**, pair for
+pair. That is worth recording and worth not over-reading: the same arm looked
+deterministic on the core corpus for a week and was not.
+
+#### Vertical aggregate
+
+| Metric | Run 1 | Run 2 | **Floor** | Margin, and what it buys | Target | Gap |
+|---|---|---|---|---|---|---|
+| Extraction precision | 49.8 | 53.5 | **0.45** | one case's fact count swung 23 to 1 between runs, moving the denominator ~7% | 0.85 | **40 pts** |
+| Extraction recall | 91.9 | 92.5 | **0.85** | room for three cases to fail outright, which happened once in run 1 | 0.80 | clear |
+| Verification agreement | 84.2 | 80.0 | **0.70** | two cases of 20, each worth 5 points | 0.90 | **20 pts** |
+| Dedup accuracy | 81.8 | 81.8 | **0.63** | one more weight-2 trap flip, worth 18 points | 0.90 | **8 pts** |
+| Contradiction precision | 0.0 | 0.0 | **0.00** | see below | none set | see below |
+| Contradiction recall | 0.0 | 0.0 | **0.00** | denominator 2 | none set | see below |
+| Supersedes accuracy | 0.0 | 0.0 | **0.00** | denominator 5 | none set | see below |
+
+#### Vertical, per set
+
+| Set | Precision | Recall | Verification | Dedup | Contra P | Contra R | Supersedes |
+|---|---|---|---|---|---|---|---|
+| **en** measured | 51.0 / 54.8 | 95.5 / 91.9 | 91.7 / 83.3 | 100 / 100 | 0 / 0 | empty | 0 / 0 |
+| **en** floor | **0.46** | **0.85** | **0.70** | **0.66** | **0.00** | **0.00** | **0.00** |
+| **hr** measured | 47.7 / 51.3 | 85.5 / 93.5 | 71.4 / 75.0 | 50.0 / 50.0 | 0 / 0 | empty | 0 / 0 |
+| **hr** floor | **0.43** | **0.75** | **0.55** | **0.50** | **0.00** | **0.00** | **0.00** |
+| **xl** measured | empty arm | empty arm | empty arm | 100 / 100 | empty | 0 / 0 | 0 / 0 |
+| **xl** floor | **1.00** | **1.00** | **1.00** | **1.00** | **0.00** | **0.00** | **0.00** |
+
+Three of those deserve a sentence each.
+
+**`xl`'s three extraction floors sit at 1.00 and measure nothing today.** The
+cross-language set has reconciliation pairs and no extraction cases, so the
+harness's empty-arm convention scores 1. The floors are set at 1.00 deliberately:
+they assert the set stays reconciliation-only, and adding an extraction case to
+it will fail the build until someone re-baselines them, which is the correct
+prompt to think about what that case measures.
+
+**`xl` dedup accuracy is 1.00 over a single pair**, and that pair is the whole
+point of the set: one MDR obligation stated in English and in Croatian, which
+must merge. A floor of 1.00 means a single flip fails the build. That is the
+same deliberate strictness already applied to English dedup and English
+contradiction recall on the core corpus, and it is applied here because
+cross-language merging is the capability V2.3 item 6.1 built and nothing else in
+this corpus checks it.
+
+**`hr` dedup accuracy is 0.50 and the floor is 0.50.** Both Croatian dedup pairs
+are must-not-merge traps at weight 2, so the only reachable scores are 0, 0.5 and
+1.0. One of the two, `hr-vr04`, produced a **false merge on both runs**: two
+provisions of one regulation permitting the same 27 m3 cistern under different
+derogations were collapsed into one fact. That is a real, reproducible defect,
+not variance, and the floor is set exactly at today's value so a second false
+merge fails the build.
+
+#### The three zeros, and why they are published rather than hidden
+
+**Supersession across document revisions: 0 of 5.** Every supersession in the
+corpus was detected as a **conflict** and handed to a human instead of being
+resolved as a supersession: the MDR's transitional deadline replaced by
+Regulation (EU) 2023/607, NIST SP 800-171's password-reuse control withdrawn in
+Revision 3, the Croatian container-depth limit changed from 2 m to 3,5 m by its
+2022 amendment. Those three landed as `contradiction`; the two cross-language
+supersessions landed as `compatible`.
+
+This is the **safe** failure direction. Nothing was marked outdated that still
+holds, and a person sees the conflict. It is nonetheless the single largest gap
+between what the document wedge claims and what it does, and it is the reason
+the core corpus's 66.7% supersedes accuracy should not be read as a statement
+about documents.
+
+**Contradiction precision: 0 of 3 flagged.** Read the denominator before reading
+the rate. All three flags are the supersessions above: real conflicts, correctly
+identified as conflicts, that the harness counts against precision because a
+supersession pair that gets a contradiction verdict scores as a precision miss
+(decision 0010 ruling 9). **They are not three hallucinated findings.** Every
+one of the fourteen negative pairs, the shapes a findings report actually drowns
+in, was handled correctly: the two datasheets' shared boilerplate did not merge
+and did not conflict, the tender's two lots stayed apart, the conditioned
+datasheet rows stayed compatible, the overlapping temperature ranges on adjacent
+table rows stayed compatible.
+
+**Contradiction recall: 0 of 2.** Both positives are cross-language, and both
+were missed: one was judged `compatible`, the other **merged as the same fact**.
+A denominator of two carries almost no information and the corpus documentation
+says so wherever the number appears. What it does establish is that the two
+genuine contradictions a machine could find in 350 pages of bilingual law, and a
+human realistically could not, are currently not found.
+
+**A floor of 0.00 cannot fail.** That is stated plainly rather than dressed up:
+these three gates ratchet, they do not currently protect anything. What protects
+the corpus today is the fourteen negatives inside dedup accuracy and
+contradiction precision, and what makes the zeros useful is that they are
+published beside the core corpus's much better numbers, so nobody can read
+"supersedes accuracy 66.7%" and believe it describes documents.
+
+**Closed by:** the section-level subject anchoring and the revision-aware
+supersession named in
+[`vertical-corpus-diagnostic.md`](vertical-corpus-diagnostic.md), and by the
+authority-ranking work whose cases are already authored and pending in
+`project/eval/vertical/authority/`. A target is set there, not here: setting one
+now against denominators of 2 and 5 would be theatre.
+
+## Correction, 2026-08-08: the English contradiction-recall floor was lowered
+
+**1.00 to 0.85, with the measurement, per the ratchet rule.** Lowered inside
+V2.3 item 6.4, a change that touches no application behaviour, which is worth
+saying first: nothing in this pull request could have caused it.
+
+The floor was one of the two remaining 1.00 floors described under "What is
+deliberately strict" above, set from nine runs on 2026-07-31 that all returned
+7 of 7, and perfect on every recorded release run for two months before that.
+The 2026-07-31 correction already recorded the lesson that a 1.00 floor
+calibrated on identical results within one session is weak evidence; this is the
+second floor to prove it.
+
+| Row | Was | Now | Evidence |
+|---|---|---|---|
+| en.contradiction_recall | 1.00 | **0.85** | 6/7 = 0.857 on the third of three live runs, 2026-08-08 |
+
+The three runs on that day returned 7/7, 7/7 and **6/7** on identical inputs.
+The English contradiction pairs are the core corpus's, unchanged by this item.
+Everything else on the same run passed, including English extraction precision,
+English dedup accuracy at its own 1.00 floor, and every aggregate.
+
+**Why not simply re-record and move on.** The recorded fixtures had already been
+re-recorded once that day, for an unrelated live flake in the Croatian
+query-rewrite arm, which came back 62.5% on one recording and 81.3% on the next.
+The rule in this document is that re-recording once for a flake is right and
+re-recording repeatedly until the numbers look good is not. A second re-record
+to chase a second metric is the beginning of that pattern, so the floor was
+moved with the measurement instead, which is the route this document prescribes.
+
+**What it costs.** A single-case regression in English contradiction recall no
+longer fails the build; a two-case one does. That is a real loss of strictness
+on a denominator of seven, and it is the price of a gate that does not flip a
+coin. The floor ratchets back up the moment a wider band supports it.

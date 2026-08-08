@@ -1,0 +1,45 @@
+{
+  "case_id": "hr-v003",
+  "source_type": "file",
+  "filename": "mdr-amend-2023-607-hr.pdf",
+  "source_date": "2023-03-20T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Stavak 3. članka 120. Uredbe (EU) 2017/745 zamjenjuje se, pa se proizvodi iz stavaka 3.a i 3.b mogu stavljati na tržište do datuma utvrđenih u tim stavcima ako su ispunjeni uvjeti iz stavka 3.c",
+      "kind": "decision",
+      "entities": [],
+      "condition": "ako su ispunjeni uvjeti iz stavka 3.c",
+      "must_extract": true
+    },
+    {
+      "content_gist": "Proizvodi s potvrdom valjanom na temelju stavka 2. mogu se stavljati na tržište do 31. prosinca 2027. za sve proizvode III. klase i za proizvode za ugradnju II.b klase, osim konaca, staplera, zubnih punila, ortodontskih aparata, zubnih kruna, vijaka, klinova, pločica, žica, kolčića, kvačica i konektora",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Rok je 31. prosinca 2028. za ostale proizvode II.b klase, za proizvode II.a klase i za proizvode I. klase koji se stavljaju na tržište u sterilnom stanju ili imaju mjernu funkciju",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Proizvodi za koje se u postupku ocjenjivanja sukladnosti na temelju Direktive 93/42/EEZ nije zahtijevala uključenost prijavljenog tijela i za koje je izjava o sukladnosti sastavljena prije 26. svibnja 2021. mogu se stavljati na tržište do 31. prosinca 2028.",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Nadležno tijelo države članice može odobriti odstupanje od primjenjivog postupka ocjenjivanja sukladnosti u skladu s člankom 59. stavkom 1.",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "podnožje stranice Službenog lista (HR, 20.3.2023., L 80/27)",
+    "uvodna formula izmjene (stavak 3. zamjenjuje se sljedećim) kao zasebna činjenica odvojena od sadržaja koji uvodi"
+  ],
+  "expected_relations": [{ "type": "supersedes", "target_case": "hr-v002" }],
+  "verification_expected": "supported"
+}

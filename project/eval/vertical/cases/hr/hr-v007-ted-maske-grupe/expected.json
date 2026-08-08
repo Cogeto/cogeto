@@ -1,0 +1,64 @@
+{
+  "case_id": "hr-v007",
+  "source_type": "file",
+  "filename": "ted-hr-2133-2025.pdf",
+  "source_date": "2025-01-03T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Grupa LOT-0001 nabave odnosi se na zaštitnu masku FFP3 bez ventila",
+      "kind": "fact",
+      "entities": ["FFP3"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Procijenjena vrijednost grupe za zaštitnu masku FFP3 bez ventila iznosi 2 472 344,00 EUR bez PDV-a",
+      "kind": "fact",
+      "entities": ["FFP3"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Ugovor za zaštitne maske sklapa se na 12 mjeseci s datumom početka 12/05/2025 i bez mogućnosti obnavljanja",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Mjesto izvršenja je Logistički centar Ravnateljstva civilne zaštite u Jastrebarskom u Zagrebačkoj županiji",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Projekt javne nabave u cijelosti se ili djelomično financira sredstvima Europske unije",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Grupa LOT-0002 nabave odnosi se na zaštitnu masku FFP2",
+      "kind": "fact",
+      "entities": ["FFP2"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Procijenjena vrijednost grupe za zaštitnu masku FFP2 iznosi 2 992 000,00 EUR bez PDV-a",
+      "kind": "fact",
+      "entities": ["FFP2"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Rok za zaprimanje ponuda je 13/01/2025 u 12:00:00 po srednjoeuropskom vremenu",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "zaglavlje stranice (2133-2025 Page 2/11)",
+    "popis osnova za isključenje koji je preuzet iz zakonskog predloška (pranje novca, dječji rad, plaćanje poreza)",
+    "interne identifikacijske oznake grupa (MT-6/22-1) i NUTS oznake",
+    "CPV klasifikacijski broj sam za sebe"
+  ],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

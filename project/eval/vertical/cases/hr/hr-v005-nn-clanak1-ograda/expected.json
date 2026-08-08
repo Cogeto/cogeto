@@ -1,0 +1,51 @@
+{
+  "case_id": "hr-v005",
+  "source_type": "file",
+  "filename": "nn-112-2017-jednostavne-gradevine.txt",
+  "source_date": "2017-11-17T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Pravilnikom se određuju jednostavne i druge građevine i radovi koji se mogu graditi bez građevinske dozvole te se propisuje obveza prijave početka građenja i stručni nadzor",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Investitor, projektant i izvođač dužni su pridržavati se svih propisa i pravila struke, a građevine se ne smiju graditi ako je to zabranjeno prostornim planom ili protivno prostornom planu",
+      "kind": "fact",
+      "entities": ["investitor", "projektant", "izvođač"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Iznimno, protivno prostornom planu mogu se bez građevinske dozvole graditi cisterna za vodu i septička jama zapremine do 27 m3 na građevnoj čestici postojeće zgrade",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Iznimno se protivno prostornom planu može graditi sustav sunčanih kolektora ili fotonaponskih modula bez mogućnosti predaje u mrežu, osim u nacionalnom parku i parku prirode",
+      "kind": "fact",
+      "entities": [],
+      "condition": "osim u nacionalnom parku i parku prirode",
+      "must_extract": true
+    },
+    {
+      "content_gist": "Iznimno se protivno prostornom planu može izraditi glavni projekt za završavanje nezavršene zgrade stambene ili poslovne namjene za koju je doneseno rješenje o izvedenom stanju",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Iznimno se protivno prostornom planu može izraditi glavni projekt za rekonstrukciju ozakonjene zgrade s ravnim krovom koja se sastoji u izvođenju kosog ili zaobljenog krova bez nadozida",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "naslov članka i broj članka sami za sebe",
+    "nabrajanje vrsta namjene zgrade bez pripadajućeg pravila"
+  ],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

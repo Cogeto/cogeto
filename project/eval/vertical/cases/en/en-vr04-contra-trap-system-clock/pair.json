@@ -1,0 +1,26 @@
+{
+  "case_id": "en-vr04",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "The PLLs can generate a 150 MHz maximum speed system clock on the RP2350.",
+    "kind": "fact",
+    "entities": ["RP2350"],
+    "subject_entity": "RP2350",
+    "captured_at": "2025-07-29T00:00:00.000Z",
+    "valid_from": "2025-07-29T00:00:00.000Z",
+    "valid_until": null,
+    "source": "For example, they can generate a 48 MHz clock which meets the frequency accuracy requirement of the USB interface and a 150 MHz maximum speed system clock."
+  },
+  "b": {
+    "content": "The PLLs can generate a 133MHz maximum speed system clock on the RP2040.",
+    "kind": "fact",
+    "entities": ["RP2040"],
+    "subject_entity": "RP2040",
+    "captured_at": "2024-01-01T00:00:00.000Z",
+    "valid_from": "2024-01-01T00:00:00.000Z",
+    "valid_until": null,
+    "source": "For example, they can generate a 48MHz clock which meets the frequency accuracy requirement of the USB interface and a 133MHz maximum speed system clock."
+  },
+  "notes": "The same trap as en-vr03 on a second slot, and a second reason it must hold: the surrounding sentence is identical apart from the number and one space, so a system that keys on textual similarity has nothing else to go on."
+}

@@ -1,0 +1,41 @@
+(b) a competent authority of a Member State has granted a derogation from the applicable conformity assessment
+procedure in accordance with Article 59(1) of this Regulation or has required the manufacturer, in accordance
+with Article 97(1) of this Regulation, to carry out the applicable conformity assessment procedure.’;
+(b) paragraph 3 is replaced by the following:
+‘3. 	By way of derogation from Article 5 and provided the conditions set out in paragraph 3c of this Article are
+met, devices referred to in paragraphs 3a and 3b of this Article may be placed on the market or put into service
+until the dates set out in those paragraphs.
+3a. 	Devices which have a certificate that was issued in accordance with Directive 90/385/EEC or
+Directive 93/42/EEC and that is valid by virtue of paragraph 2 of this Article may be placed on the market or put
+into service until the following dates:
+(a) 31 December 2027, for all class III devices, and for class IIb implantable devices except sutures, staples, dental
+fillings, dental braces, tooth crowns, screws, wedges, plates, wires, pins, clips and connectors;
+(b) 31 December 2028, for class IIb devices other than those covered by point (a) of this paragraph, for class IIa
+devices, and for class I devices placed on the market in sterile condition or having a measuring function.
+3b. 	Devices for which the conformity assessment procedure pursuant to Directive 93/42/EEC did not require
+the involvement of a notified body, for which the declaration of conformity was drawn up prior to 26 May 2021
+and for which the conformity assessment procedure pursuant to this Regulation requires the involvement of a
+notified body, may be placed on the market or put into service until 31 December 2028.
+3c. 	Devices referred to in paragraphs 3a and 3b of this Article may be placed on the market or put into service
+until the dates referred to in those paragraphs only if the following conditions are met:
+(a) those devices continue to comply with Directive 90/385/EEC or Directive 93/42/EEC, as applicable;
+(b) there are no significant changes in the design and intended purpose;
+(c) the devices do not present an unacceptable risk to the health or safety of patients, users or other persons, or to
+other aspects of the protection of public health;
+(d) no later than 26 May 2024, the manufacturer has put in place a quality management system in accordance
+with Article 10(9);
+(e) no later than 26 May 2024, the manufacturer or the authorised representative has lodged a formal application
+with a notified body in accordance with Section 4.3, first subparagraph, of Annex VII for conformity
+assessment in respect of a device referred to in paragraph 3a or 3b of this Article or in respect of a device
+intended to substitute that device, and, no later than 26 September 2024, the notified body and the
+manufacturer have signed a written agreement in accordance with Section 4.3, second subparagraph, of
+Annex VII.
+3d. 	By way of derogation from paragraph 3 of this Article, the requirements of this Regulation relating to post-
+market surveillance, market surveillance, vigilance, registration of economic operators and of devices shall apply to
+devices referred to in paragraphs 3a and 3b of this Article in place of the corresponding requirements in
+Directives 90/385/EEC and 93/42/EEC.
+3e. 	Without prejudice to Chapter IV and paragraph 1 of this Article, the notified body that issued the certificate
+referred to in paragraph 3a of this Article shall continue to be responsible for the appropriate surveillance in
+respect of the applicable requirements relating to the devices it has certified, unless the manufacturer has agreed
+with a notified body designated in accordance with Article 42 that the latter shall carry out such surveillance.
+EN 	Official Journal of the European Union	20.3.2023 	L 80/27

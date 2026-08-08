@@ -1,0 +1,32 @@
+{
+  "case_id": "xl-vr04",
+  "task": "contradiction",
+  "expected": "supersedes_a_over_b",
+  "aliases": [
+    {
+      "canonical": "legacy devices with a valid certificate",
+      "alias": "proizvodi s valjanom potvrdom"
+    }
+  ],
+  "a": {
+    "content": "Legacy devices holding a valid certificate may be placed on the market until 31 December 2027 for all class III devices.",
+    "kind": "fact",
+    "entities": ["class III devices"],
+    "subject_entity": "legacy devices with a valid certificate",
+    "captured_at": "2023-03-20T00:00:00.000Z",
+    "valid_from": "2023-03-20T00:00:00.000Z",
+    "valid_until": null,
+    "source": "(a) 31 December 2027, for all class III devices, and for class IIb implantable devices except sutures, staples, dental fillings, dental braces, tooth crowns, screws, wedges, plates, wires, pins, clips and connectors;"
+  },
+  "b": {
+    "content": "Potvrde koje su prijavljena tijela izdala od 25. svibnja 2017. prestaju važiti najkasnije 27. svibnja 2024.",
+    "kind": "fact",
+    "entities": [],
+    "subject_entity": "proizvodi s valjanom potvrdom",
+    "captured_at": "2017-05-06T00:00:00.000Z",
+    "valid_from": "2017-05-06T00:00:00.000Z",
+    "valid_until": null,
+    "source": "One međutim prestaju važiti najkasnije 27. svibnja 2024."
+  },
+  "notes": "Prijelazni rok koji se u engleskom izmjenjujućem aktu produljuje, a u hrvatskom izvorniku još stoji na starom datumu. Ovo je stvarno stanje u dvojezičnom skupu dokumenata: novija verzija stigne na jednom jeziku prije nego što itko zamijeni stariju na drugom."
+}

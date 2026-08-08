@@ -1,0 +1,26 @@
+{
+  "case_id": "en-vr06",
+  "task": "contradiction",
+  "expected": "compatible",
+  "a": {
+    "content": "The RP2040 input voltage high threshold VIH is at least 2 V when IOVDD is 3.3 V.",
+    "kind": "fact",
+    "entities": ["RP2040", "VIH"],
+    "subject_entity": "RP2040",
+    "captured_at": "2024-01-02T00:00:00.000Z",
+    "valid_from": "2024-01-02T00:00:00.000Z",
+    "valid_until": null,
+    "source": "Input Voltage High\n@ IOVDD=3.3V\nVIH 2 IOVDD + 0.3 V"
+  },
+  "b": {
+    "content": "The RP2040 input voltage high threshold VIH is at least 1.7 V when IOVDD is 2.5 V.",
+    "kind": "fact",
+    "entities": ["RP2040", "VIH"],
+    "subject_entity": "RP2040",
+    "captured_at": "2024-01-01T00:00:00.000Z",
+    "valid_from": "2024-01-01T00:00:00.000Z",
+    "valid_until": null,
+    "source": "Input Voltage High\n@ IOVDD=2.5V\nVIH 1.7 IOVDD + 0.3 V"
+  },
+  "notes": "Same part, same symbol, same unit, different values, and no conflict, because each carries its own supply-voltage condition. This is the shape a datasheet table produces most often, and the one a reconciler that drops conditions gets most wrong."
+}

@@ -1,0 +1,82 @@
+{
+  "case_id": "en-v003",
+  "source_type": "file",
+  "filename": "mdr-amend-2023-607-en.pdf",
+  "source_date": "2023-03-20T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Article 120(3) of Regulation (EU) 2017/745 is replaced, so devices referred to in paragraphs 3a and 3b may be placed on the market until the dates set out in those paragraphs provided the conditions in paragraph 3c are met",
+      "kind": "decision",
+      "entities": [],
+      "condition": "provided the conditions set out in paragraph 3c are met",
+      "must_extract": true
+    },
+    {
+      "content_gist": "Devices holding a certificate valid under paragraph 2 may be placed on the market until 31 December 2027 for all class III devices and for class IIb implantable devices, except sutures, staples, dental fillings, dental braces, tooth crowns, screws, wedges, plates, wires, pins, clips and connectors",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The deadline is 31 December 2028 for other class IIb devices, for class IIa devices, and for class I devices placed on the market in sterile condition or having a measuring function",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Devices whose conformity assessment under Directive 93/42/EEC did not require a notified body, with a declaration of conformity drawn up before 26 May 2021, may be placed on the market until 31 December 2028",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The extended deadlines apply only if the devices continue to comply with Directive 90/385/EEC or Directive 93/42/EEC as applicable",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The extended deadlines apply only if there are no significant changes in the design and intended purpose of the devices",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The extended deadlines apply only if the devices do not present an unacceptable risk to the health or safety of patients, users or other persons",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The manufacturer must have put a quality management system in place in accordance with Article 10(9) no later than 26 May 2024",
+      "kind": "fact",
+      "entities": ["manufacturer"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The manufacturer or authorised representative must have lodged a formal application with a notified body no later than 26 May 2024, and the notified body and manufacturer must have signed a written agreement no later than 26 September 2024",
+      "kind": "fact",
+      "entities": ["manufacturer", "notified body"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The Regulation's requirements on post-market surveillance, market surveillance, vigilance and registration apply to these devices in place of the corresponding requirements in the old Directives",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The notified body that issued the certificate remains responsible for surveillance unless the manufacturer has agreed with a notified body designated under Article 42 that the latter carries it out",
+      "kind": "fact",
+      "entities": ["notified body", "manufacturer"],
+      "condition": "unless the manufacturer has agreed with a notified body designated under Article 42",
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "the Official Journal running footer (EN, 20.3.2023, L 80/27)",
+    "the amending-instruction wrapper (paragraph 3 is replaced by the following) as a fact of its own, separate from the content it introduces"
+  ],
+  "expected_relations": [{ "type": "supersedes", "target_case": "en-v002" }],
+  "verification_expected": "supported"
+}

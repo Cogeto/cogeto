@@ -1,0 +1,81 @@
+{
+  "case_id": "en-v002",
+  "source_type": "file",
+  "filename": "mdr-2017-745-en.pdf",
+  "source_date": "2017-05-05T00:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "From 26 May 2020 any publication of a notification in respect of a notified body under Directives 90/385/EEC and 93/42/EEC becomes void",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Certificates issued by notified bodies under Directives 90/385/EEC and 93/42/EEC before 25 May 2017 remain valid until the end of the period indicated on the certificate",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Certificates issued under Annex 4 to Directive 90/385/EEC or Annex IV to Directive 93/42/EEC become void at the latest on 27 May 2022",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Certificates issued by notified bodies from 25 May 2017 remain valid for no more than five years from issuance and become void at the latest on 27 May 2024",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "A device with a certificate valid under paragraph 2 may be placed on the market only if it continues to comply with the old Directives and there are no significant changes in design and intended purpose",
+      "kind": "fact",
+      "entities": [],
+      "condition": "provided it continues to comply with Directive 90/385/EEC or 93/42/EEC and there are no significant changes in design and intended purpose",
+      "must_extract": true
+    },
+    {
+      "content_gist": "The notified body that issued the certificate remains responsible for the appropriate surveillance of the devices it has certified",
+      "kind": "fact",
+      "entities": ["notified body"],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Devices lawfully placed on the market before 26 May 2020 may continue to be made available on the market or put into service until 27 May 2025",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Devices that comply with this Regulation may be placed on the market before 26 May 2020 by way of derogation from the old Directives",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Conformity assessment bodies complying with this Regulation may be designated and notified before 26 May 2020",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "Medical devices within the meaning of Regulation (EU) 2017/745 are added to the third paragraph of Article 2 of Regulation (EC) No 178/2002",
+      "kind": "fact",
+      "entities": [],
+      "must_extract": true
+    },
+    {
+      "content_gist": "The Commission may adopt measures determining whether a specific product or group of products falls within the definition of cosmetic product",
+      "kind": "fact",
+      "entities": ["Commission"],
+      "must_extract": true
+    }
+  ],
+  "must_not_extract": [
+    "the Official Journal running footer (5.5.2017, L 117/89, EN)",
+    "the full citation block of Regulation (EU) 2017/745 reproduced inside the amending footnote"
+  ],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

@@ -1,0 +1,30 @@
+{
+  "case_id": "xl-vr01",
+  "task": "dedup",
+  "expected": "same_fact",
+  "aliases": [
+    { "canonical": "manufacturers", "alias": "proizvođači" },
+    { "canonical": "technical documentation", "alias": "tehnička dokumentacija" }
+  ],
+  "a": {
+    "content": "Proizvođači nadležnim tijelima osiguravaju dostupnost tehničke dokumentacije tijekom razdoblja od najmanje 10 godina od stavljanja posljednjeg proizvoda na tržište.",
+    "kind": "fact",
+    "entities": ["proizvođači"],
+    "subject_entity": "proizvođači",
+    "captured_at": "2017-05-06T00:00:00.000Z",
+    "valid_from": "2017-05-06T00:00:00.000Z",
+    "valid_until": null,
+    "source": "8. Proizvođači nadležnim tijelima osiguravaju dostupnost tehničke dokumentacije, EU izjave o sukladnosti i, ako je to primjenjivo, presliku svake relevantne potvrde, uključujući sve izmjene i dopune izdane u skladu s člankom 56. tijekom razdoblja od najmanje 10 godina od stavljanja posljednjeg proizvoda obuhvaćenog EU izjavom o sukladnosti na tržište."
+  },
+  "b": {
+    "content": "Manufacturers shall keep the technical documentation available for the competent authorities for a period of at least 10 years after the last device was placed on the market.",
+    "kind": "fact",
+    "entities": ["manufacturers"],
+    "subject_entity": "manufacturers",
+    "captured_at": "2017-05-05T00:00:00.000Z",
+    "valid_from": "2017-05-05T00:00:00.000Z",
+    "valid_until": null,
+    "source": "8. Manufacturers shall keep the technical documentation, the EU declaration of conformity and, if applicable, a copy of any relevant certificate, including any amendments and supplements, issued in accordance with Article 56, available for the competent authorities for a period of at least 10 years after the last device covered by the EU declaration of conformity has been placed on the market."
+  },
+  "notes": "One obligation, two authentic language versions of the same EU act, the same number and the same unit. The subject is named differently in each, which is precisely what the entity_alias set from V2.3 item 6.1 exists for; the declared aliases are the eval twin of the owner's recorded alias rows. If these do not merge, a bilingual organisation carries the same obligation twice and a findings report counts it twice."
+}

@@ -1,6 +1,8 @@
-# Follow-ups from V2.0 item 3.4
+# Eval follow-ups
 
-Two, both discovered by this work and both deliberately left out of it.
+Work each eval item discovered and deliberately left out of itself, because it
+belongs to another repository or needs its own gate run. Two came from V2.0 item
+3.4; the third from V2.3 item 6.4.
 
 ## 1. Stable ordering for equally scored facts (product repository)
 
@@ -126,3 +128,102 @@ Link the phrase "written down" to
 3. Switching the language filter moves the target lines to that language's
    floors.
 4. House style: no em or en dashes in any of the copy above.
+
+## 3. Distinguish the corpora on the trust page (website repository)
+
+*Written 2026-08-08 with V2.3 item 6.4.*
+
+### Status
+
+The published artifact carries **two measured corpora** from schema **1.2** on,
+under `configurations[].corpora`. The trust page will show **only the core
+corpus** until the change below is made, because it renders `metrics` and
+`corpus` and knows nothing about `corpora`.
+
+Nothing is broken in the meantime, and that is deliberate: `metrics` and
+`corpus` still mean exactly what they meant in 1.1, the core corpus alone, so
+every trend line on the page keeps its history and no published number moves
+because a new corpus was added. The page is **silently incomplete**, which is
+the condition this item exists to end.
+
+The stakes are higher than for follow-up 2. A reader who sees one extraction
+precision figure will assume it describes the documents they are about to
+upload. It describes notes and emails. The vertical numbers are **lower**, and
+publishing only the higher ones while holding the lower ones in the artifact
+would be the one thing this project must not do.
+
+### What to change, precisely
+
+Repository `Cogeto/cogeto-web`.
+
+**1. `lib/trust.ts`, a new optional `corpora` field on the configuration type.**
+
+```ts
+export type CorpusResult = {
+  id: string;                    // "core" | "vertical"
+  label: string;                 // render as the corpus name
+  description: string;           // render as the corpus explainer, verbatim
+  extraction_cases: number;
+  reconcile_pairs: number;
+  per_language: LanguageMetrics[];
+  aggregate: AggregateMetrics;
+};
+// on Configuration:
+corpora?: CorpusResult[];
+```
+
+Treat it as optional in every validator. Releases up to and including the last
+`1.1` file do not carry it, and dropping them would lose the history.
+
+**2. A corpus selector beside the existing language filter.** Default to
+**`core`**, so the page keeps showing what it shows today for a reader who does
+not change anything, and make the selector visible rather than buried: the
+whole point is that a reader can find the document numbers without knowing they
+exist. When a release predates `corpora`, disable the selector and label it
+"one corpus measured in this release" rather than hiding it, so the reader can
+see when the distinction began.
+
+**3. Render `description` verbatim under the corpus name.** It is written to be
+read by a buyer and it is the sentence that explains why the vertical numbers
+are lower. Do not summarise it.
+
+**4. Gate floors per corpus.** `gates.json` gained a `vertical` block with its
+own `gates` and `per_language` floors. `fetchGates()` currently returns one flat
+set. When the corpus selector is on `vertical`, draw **that corpus's** floors,
+and when the language filter is also set, that corpus's per-language floors.
+Drawing the core floors against vertical measurements would show a failing build
+that is not failing.
+
+Note that the vertical block has **no `rewrite_accuracy`**. The query-rewrite
+suite is a corpus of chat turns, not of documents, and there is no vertical arm
+of it. Render a dash, not a zero.
+
+**5. The `xl` set.** The vertical corpus reports a third set beside `en` and
+`hr`: `xl`, the cross-language pairs, English against Croatian on one act. It
+has reconciliation pairs and **no extraction cases**, so its extraction figures
+are the harness's empty-arm convention (1.0) and must render as a dash rather
+than as a perfect score. Label it "cross-language" in the language filter, not
+as a language.
+
+**6. Copy, next to the corpus selector.**
+
+> These numbers are measured on two different corpora and we publish both. The
+> first is the set the engine was built against: notes, emails, fetched pages
+> and short excerpts. The second is real public documents of the kind you would
+> upload: regulations, standards, device datasheets, tender specifications and
+> one scanned publication from 1987. The document numbers are lower. That is
+> what documents cost, and hiding it would make the other number useless to you.
+
+Link "real public documents" to
+`https://github.com/Cogeto/cogeto/blob/main/project/eval/vertical/README.md`,
+which lists every document with its publisher, licence and retrieval date.
+
+### Verification once done
+
+1. Every release from `v0.8.0` onward still appears; the pre-1.2 files render
+   with the corpus selector disabled rather than being dropped.
+2. Switching the corpus selector to `vertical` changes every metric, the case
+   counts, and the gate lines together.
+3. The `xl` set shows dashes for the three extraction metrics, not 100 percent.
+4. The corpus description renders in full.
+5. House style: no em or en dashes in any of the copy above.

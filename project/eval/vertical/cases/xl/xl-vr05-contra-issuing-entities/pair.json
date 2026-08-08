@@ -1,0 +1,30 @@
+{
+  "case_id": "xl-vr05",
+  "task": "contradiction",
+  "expected": "contradicts",
+  "aliases": [
+    { "canonical": "issuing entities", "alias": "subjekti za dodjelu" },
+    { "canonical": "Commission", "alias": "Komisija" }
+  ],
+  "a": {
+    "content": "GS1, HIBCC i ICCBBA smatraju se imenovanim subjektima za dodjelu sve dok Komisija, u skladu s člankom 33. stavkom 7., ne imenuje subjekte za dodjelu.",
+    "kind": "fact",
+    "entities": ["GS1", "HIBCC", "ICCBBA"],
+    "subject_entity": "imenovani subjekti za dodjelu",
+    "captured_at": "2017-05-06T00:00:00.000Z",
+    "valid_from": "2017-05-06T00:00:00.000Z",
+    "valid_until": null,
+    "source": "12. GS1, HIBCC i ICCBBA smatraju se imenovanim subjektima za dodjelu sve dok Komisija, u skladu s člankom 33. stavkom 7., ne imenuje subjekte za dodjelu."
+  },
+  "b": {
+    "content": "Until the Commission has designated issuing entities pursuant to Article 27(2), GS1, HIBCC and ICCBBA shall be considered to be designated issuing entities.",
+    "kind": "fact",
+    "entities": ["GS1", "HIBCC", "ICCBBA"],
+    "subject_entity": "designated issuing entities",
+    "captured_at": "2017-05-05T00:00:00.000Z",
+    "valid_from": "2017-05-05T00:00:00.000Z",
+    "valid_until": null,
+    "source": "12. Until the Commission has designated, pursuant to Article 27(2), issuing entities, GS1, HIBCC and ICCBBA shall be considered to be designated issuing entities."
+  },
+  "notes": "The second genuine divergence between the two authentic language versions of Regulation (EU) 2017/745, and it was found rather than constructed. Article 120(12) points at Article 27(2) in English and at Article 33(7) in Croatian: a different article AND a different paragraph, in a provision about who may issue unique device identifiers. Same subject, same slot, both current, neither superseding the other."
+}
