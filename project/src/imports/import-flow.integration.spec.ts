@@ -11,6 +11,7 @@ import {
   SourceRevisionStore,
 } from '../ingestion/index';
 import type { FilesService, LadderedDocumentReader } from '../files/index';
+import type { UserSettingsService } from '../settings/index';
 import { ImportService } from './import.service';
 import { ImportCoordinator } from './import-coordinator';
 import { importItem, importRun } from './persistence/tables';
@@ -85,10 +86,16 @@ class FakeObjectStore {
 /** The upload seam: succeeds with a minted key, or throws what it is told. */
 class FakeFiles {
   uploads: string[] = [];
+  /** The flags each upload carried — the scope choice's proof (issue #490). */
+  flags: { scope?: string; sensitive?: boolean }[] = [];
   failWith: { status: number } | null = null;
   private counter = 0;
 
-  async upload(_principal: Principal, file: { originalName: string }) {
+  async upload(
+    _principal: Principal,
+    file: { originalName: string },
+    flags?: { scope: string; sensitive: boolean },
+  ) {
     if (this.failWith) {
       const status = this.failWith.status;
       throw Object.assign(new Error(`upload refused ${status}`), { getStatus: () => status });
@@ -96,6 +103,7 @@ class FakeFiles {
     this.counter += 1;
     const objectKey = `${ORG}/${OWNER}/files/uploaded-${this.counter}`;
     this.uploads.push(file.originalName);
+    this.flags.push({ scope: flags?.scope, sensitive: flags?.sensitive });
     return { objectKey };
   }
 }
@@ -191,10 +199,19 @@ describe('import flow', () => {
 
   // ── The coordinator's pass: top-up, reap, resume, pause, cancel ──────────
 
-  async function runningRun(names: string[]): Promise<{ runId: string; itemIds: string[] }> {
+  async function runningRun(
+    names: string[],
+    options?: { scope?: 'private' | 'shared'; sensitive?: boolean },
+  ): Promise<{ runId: string; itemIds: string[] }> {
     const [run] = await tdb.db
       .insert(importRun)
-      .values({ ownerId: OWNER, orgId: ORG, kind: 'folder', state: 'running' })
+      .values({
+        ownerId: OWNER,
+        orgId: ORG,
+        kind: 'folder',
+        state: 'running',
+        ...(options ? { optionsJson: options } : {}),
+      })
       .returning();
     const itemIds: string[] = [];
     for (const name of names) {
@@ -277,6 +294,76 @@ describe('import flow', () => {
     const [run] = await tdb.db.select().from(importRun).where(eq(importRun.id, runId));
     expect(run!.state).toBe('completed');
     expect(run!.countsJson).toMatchObject({ documents: 1, failed: 1 });
+  });
+
+  // ── The run's scope choice (issue #490) ───────────────────────────────────
+
+  it('confirm records the scope choice on the run; the coordinator passes it to every upload', async () => {
+    // Confirm-time: the choice lands on the run's non-secret options and the
+    // DTO reports it.
+    const manifest = await service.createFolderManifest(principal, {
+      items: [{ name: 'shared-brief.pdf', sizeBytes: 12, contentHash: sha('shared brief') }],
+    });
+    const item = manifest.items[0]!;
+    const stagingKey = `${ORG}/${OWNER}/staging/import-${manifest.id}-${item.id}`;
+    await objects.putObject(stagingKey, Buffer.from('shared brief'), {});
+    await tdb.db.update(importItem).set({ stagingKey }).where(eq(importItem.id, item.id));
+    const confirmed = await service.confirm(principal, manifest.id, {
+      scope: 'shared',
+      sensitive: true,
+    });
+    expect(confirmed.scope).toBe('shared');
+    expect(confirmed.sensitive).toBe(true);
+
+    // Coordinator side: the stored choice reaches the one upload path.
+    files.flags = [];
+    await coordinator.advance(manifest.id);
+    expect(files.flags).toEqual([{ scope: 'shared', sensitive: true }]);
+
+    // A run confirmed BEFORE the choice existed carries no options and keeps
+    // the 'private' it always ran as.
+    const { runId: legacy } = await runningRun(['legacy.pdf']);
+    files.flags = [];
+    await coordinator.advance(legacy);
+    expect(files.flags).toEqual([{ scope: 'private', sensitive: false }]);
+  });
+
+  it('an omitted confirm-time scope falls back to the saved default, or private without settings', async () => {
+    // Without a settings service (this harness), the fallback is 'private'.
+    const bare = await service.createFolderManifest(principal, {
+      items: [{ name: 'default-scope.pdf', sizeBytes: 9, contentHash: sha('default scope') }],
+    });
+    const bareItem = bare.items[0]!;
+    const bareKey = `${ORG}/${OWNER}/staging/import-${bare.id}-${bareItem.id}`;
+    await objects.putObject(bareKey, Buffer.from('default scope'), {});
+    await tdb.db
+      .update(importItem)
+      .set({ stagingKey: bareKey })
+      .where(eq(importItem.id, bareItem.id));
+    const bareConfirmed = await service.confirm(principal, bare.id, {});
+    expect(bareConfirmed.scope).toBe('private');
+    expect(bareConfirmed.sensitive).toBe(false);
+
+    // With saved defaults, an omitted scope resolves to them, the
+    // single-upload contract.
+    const withDefaults = new ImportService(
+      tdb.db,
+      objects as unknown as MemoryObjectStore,
+      { get: async () => ({ defaultScope: 'shared' }) } as unknown as UserSettingsService,
+    );
+    const defaulted = await withDefaults.createFolderManifest(principal, {
+      items: [{ name: 'team-default.pdf', sizeBytes: 8, contentHash: sha('team default') }],
+    });
+    const defaultedItem = defaulted.items[0]!;
+    const defaultedKey = `${ORG}/${OWNER}/staging/import-${defaulted.id}-${defaultedItem.id}`;
+    await objects.putObject(defaultedKey, Buffer.from('team default'), {});
+    await tdb.db
+      .update(importItem)
+      .set({ stagingKey: defaultedKey })
+      .where(eq(importItem.id, defaultedItem.id));
+    const defaultedConfirmed = await withDefaults.confirm(principal, defaulted.id, {});
+    expect(defaultedConfirmed.scope).toBe('shared');
+    expect(defaultedConfirmed.sensitive).toBe(false);
   });
 
   it('the daily upload cap PAUSES the import visibly, and it resumes after', async () => {

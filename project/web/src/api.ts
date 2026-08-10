@@ -93,6 +93,7 @@ import type {
   FolderManifestRequest,
   ImportItemDto,
   ImportRunDetailDto,
+  ConfirmImportRequest,
   ImportRunDto,
   S3ManifestRequest,
   SourceRevisionDto,
@@ -317,8 +318,17 @@ export const excludeImportItems = (
 export const confirmImport = (
   session: Session,
   runId: string,
-  s3?: S3ManifestRequest,
-): Promise<ImportRunDto> => apiPost(`/api/imports/${runId}/confirm`, s3 ? { s3 } : {}, session);
+  request: ConfirmImportRequest = {},
+): Promise<ImportRunDto> =>
+  apiPost(
+    `/api/imports/${runId}/confirm`,
+    {
+      ...(request.s3 ? { s3: request.s3 } : {}),
+      scope: request.scope,
+      sensitive: request.sensitive,
+    },
+    session,
+  );
 export const cancelImport = (session: Session, runId: string): Promise<ImportRunDto> =>
   apiPost(`/api/imports/${runId}/cancel`, {}, session);
 export const fetchImports = (session: Session): Promise<ImportRunDto[]> =>

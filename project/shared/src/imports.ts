@@ -1,5 +1,7 @@
 /** Bulk import (V2.2 item 5.3): manifest-first, queued, honest to the end. */
 
+import type { MemoryScope } from './memory';
+
 export type ImportKind = 'zip' | 'folder' | 's3';
 export type ImportRunState = 'manifest' | 'running' | 'completed' | 'cancelled' | 'failed';
 export type ImportItemState =
@@ -63,11 +65,27 @@ export interface ImportRunDto {
   sourceLabel: string | null;
   /** Why the coordinator is waiting, when it is (the daily upload cap). */
   pausedReason: string | null;
+  /** The scope every document in this run ingests under, chosen at confirm;
+   * null while the run is still a manifest (nothing chosen yet). */
+  scope: MemoryScope | null;
+  /** Chosen at confirm beside the scope; null while still a manifest. */
+  sensitive: boolean | null;
   counts: ImportCountsDto | null;
   progress: ImportProgressDto;
   createdAt: string;
   startedAt: string | null;
   finishedAt: string | null;
+}
+
+/**
+ * POST /api/imports/:id/confirm. The scope choice covers the WHOLE run (one
+ * deliberate decision at the deliberate step); omitted, it falls back to the
+ * user's saved default scope, exactly like the single-file upload endpoint.
+ */
+export interface ConfirmImportRequest {
+  s3?: S3ManifestRequest;
+  scope?: MemoryScope;
+  sensitive?: boolean;
 }
 
 export interface ImportRunDetailDto extends ImportRunDto {

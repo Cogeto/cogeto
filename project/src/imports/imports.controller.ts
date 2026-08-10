@@ -11,6 +11,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { z } from 'zod';
+import { MEMORY_SCOPES } from '@cogeto/shared';
 import type { ImportItemDto, ImportRunDetailDto, ImportRunDto } from '@cogeto/shared';
 import { parseOrBadRequest, RateLimit, RateLimitGuard } from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
@@ -42,7 +43,14 @@ const s3Schema = z.object({
 });
 
 const excludeSchema = z.object({ itemIds: z.array(z.uuid()).min(1).max(20_000) });
-const confirmSchema = z.object({ s3: s3Schema.optional() });
+const confirmSchema = z.object({
+  s3: s3Schema.optional(),
+  // The whole run's scope, one deliberate choice at the deliberate step
+  // (issue #490); omitted falls back to the user's saved default scope,
+  // matching the single-file upload endpoint.
+  scope: z.enum(MEMORY_SCOPES).optional(),
+  sensitive: z.boolean().optional(),
+});
 
 /**
  * /api/imports — bulk import (V2.2 item 5.3): manifest first, confirm
