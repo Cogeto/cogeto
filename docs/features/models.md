@@ -55,7 +55,21 @@ use for creative variance. Production chat answering keeps the provider default,
 because conversational quality may legitimately benefit from sampling. Where a
 provider rejects sampling parameters the adapter sends none, and determinism rests on
 the JSON contract plus validation; that deviation is stated in the trust notes for any
-affected configuration.
+affected configuration. This covers models that REFUSE the pin at request time too
+(some hosted OpenAI families answer HTTP 400 to any pinned temperature): the refusal
+is learned per model and the pin dropped, the same posture, discovered live.
+
+**Parameter dialects are learned, never assumed.** OpenAI's newer model families
+reject the legacy `max_tokens` field in favour of `max_completion_tokens`, while
+every self-hosted OpenAI-compatible server and the older hosted models speak the
+legacy dialect. Which dialect a model requires is a server-side fact nothing in its
+name reveals, the same lesson vision and reasoning taught, so the adapter sends the
+legacy dialect first (byte-identical for every configuration that worked before) and,
+on the specific HTTP 400 that names the parameter, adapts the request, remembers the
+fact per model for the life of the process, and retries. A model refusing both the
+cap field and the temperature pin costs two extra round-trips, once ever. Probe
+failures carry the server's own sentence rather than a bare status, so an admin
+assigning a model reads the actual reason.
 
 ## Configuration lives in the database (V2.4 item 7.1)
 

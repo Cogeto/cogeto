@@ -382,7 +382,16 @@ function classify(error: unknown, label: string, tier: ProbeTier): ProviderProbe
     };
   }
   if (status) {
-    return { ok: false, reason: 'unusable_response', error: `${label} answered HTTP ${status}` };
+    // Carry the upstream reason (issue #492): a bare status sends an admin
+    // guessing, while the server's own sentence ("use max_completion_tokens",
+    // an org-verification requirement, a deprecation notice) names the fix.
+    // The message is already bounded by the HTTP layer's 200-char slice.
+    const detail = message.split(`(HTTP ${status}): `)[1]?.trim();
+    return {
+      ok: false,
+      reason: 'unusable_response',
+      error: `${label} answered HTTP ${status}${detail ? `: ${detail}` : ''}`,
+    };
   }
   return { ok: false, reason: 'unreachable', error: `${label} could not be reached` };
 }

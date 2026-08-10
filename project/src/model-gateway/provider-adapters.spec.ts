@@ -129,6 +129,73 @@ describe('adapter_contract_openai', () => {
     expect(calls).toHaveLength(1);
   });
 
+  // ── Parameter dialects, learned from the server's refusal (issue #492) ────
+
+  const rejection = (message: string): Response =>
+    new Response(JSON.stringify({ error: { message } }), { status: 400 });
+
+  it('a max_tokens refusal adapts to max_completion_tokens, retries once, and is remembered', async () => {
+    const { calls } = stubFetch(
+      rejection(
+        "Unsupported parameter: 'max_tokens' is not supported with this model. " +
+          "Use 'max_completion_tokens' instead.",
+      ),
+      openaiChat('ready'),
+      openaiChat('again'),
+    );
+    const g = gateway();
+    const first = await g.complete({ input: 'q', maxTokens: 8 });
+    expect(first.text).toBe('ready');
+    expect(calls[0]!.body.max_tokens).toBe(8); // the legacy dialect goes first
+    expect(calls[1]!.body.max_completion_tokens).toBe(8); // the refusal taught the flip
+    expect(calls[1]!.body).not.toHaveProperty('max_tokens');
+    // Learned for the life of the process: the next call pays no extra trip.
+    const second = await g.complete({ input: 'q2', maxTokens: 5 });
+    expect(second.text).toBe('again');
+    expect(calls).toHaveLength(3);
+    expect(calls[2]!.body.max_completion_tokens).toBe(5);
+  });
+
+  it('a temperature refusal drops the pin for that model and retries once', async () => {
+    const { calls } = stubFetch(
+      rejection(
+        "Unsupported value: 'temperature' does not support 0 with this model. " +
+          'Only the default (1) value is supported.',
+      ),
+      openaiChat('{"needed":"yes"}'),
+    );
+    const out = await gateway().extractStructured(z.object({ needed: z.string() }), {
+      system: 's',
+      input: 'x',
+    });
+    expect(out).toEqual({ needed: 'yes' });
+    expect(calls[0]!.body.temperature).toBe(0);
+    expect(calls[1]!.body).not.toHaveProperty('temperature');
+    expect(calls[1]!.body.response_format).toEqual({ type: 'json_object' });
+  });
+
+  it('an unrelated 400 teaches nothing and is not retried', async () => {
+    const { calls } = stubFetch(rejection('this model requires organisation verification'));
+    await expect(gateway().complete({ input: 'q', maxTokens: 8 })).rejects.toMatchObject({
+      retryable: false,
+    });
+    expect(calls).toHaveLength(1);
+  });
+
+  it('both refusals in sequence converge within one retry each', async () => {
+    const { calls } = stubFetch(
+      rejection("Unsupported parameter: 'max_tokens'. Use 'max_completion_tokens' instead."),
+      rejection("Unsupported value: 'temperature' does not support 0 with this model."),
+      openaiChat('settled'),
+    );
+    const g = gateway();
+    const result = await g.complete({ input: 'q', maxTokens: 8 });
+    expect(result.text).toBe('settled');
+    expect(calls).toHaveLength(3);
+    expect(calls[2]!.body.max_completion_tokens).toBe(8);
+    expect(calls[2]!.body).not.toHaveProperty('temperature');
+  });
+
   it('classifies 429/5xx/network as retryable, 4xx as fatal (pure)', () => {
     expect(isRetryableStatus(429)).toBe(true);
     expect(isRetryableStatus(500)).toBe(true);
