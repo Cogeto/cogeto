@@ -7,7 +7,7 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import type { OnModuleDestroy } from '@nestjs/common';
+import type { OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { DRIZZLE, writeAudit } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import {
@@ -84,7 +84,7 @@ export const REINDEX_COMMAND = 'docker compose exec worker npm run reindex';
 const HISTORY_LIMIT = 20;
 
 @Injectable()
-export class ProviderConfigService implements OnModuleDestroy {
+export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly logger = new Logger(ProviderConfigService.name);
   private readonly store: ProviderStore;
   /** Last probe outcome per provider id, so the list shows live health without
@@ -106,6 +106,18 @@ export class ProviderConfigService implements OnModuleDestroy {
     @Optional() private readonly embeddingRebuild?: EmbeddingRebuildService,
   ) {
     this.store = new ProviderStore(db);
+  }
+
+  /**
+   * The watch STARTS ITSELF at bootstrap (issue #494). `startWatching` existed
+   * with both roots passing the interval, but nothing ever called it: the app
+   * masked the gap by reloading on its own saves, while the worker kept
+   * extracting and reading pages with the models it resolved at boot until it
+   * happened to restart. A lifecycle hook on the service that owns the poller
+   * is the one place no root can forget.
+   */
+  onApplicationBootstrap(): void {
+    this.startWatching(this.options.pollIntervalMs);
   }
 
   /**
