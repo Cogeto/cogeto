@@ -13,6 +13,7 @@ import type {
 import { buildAnswerInput, nothingOnRecord, nothingOpen, toStoredAnswer } from '../answer-prompt';
 import type { AnswerAttachment } from '../answer-prompt';
 import { buildFanoutAnswer, matchOfferedSubjects, silentPreamble } from '../fanout-answer';
+import { recentTurnsForAnswer, resolveAnswerSubject } from '../answer-subject';
 import type { ChatTurnSink } from './intent-plumbing';
 
 /** How many facts the answer context receives (wider so aggregation fits, F5). */
@@ -141,6 +142,17 @@ export class MemoryAnswerHandler {
         yield { type: 'token', text: `${preamble}\n\n` };
       }
       const prompt = await this.sink.getPrompt();
+      // WHAT THE QUESTION IS ABOUT (issue #479). The pipeline already decided
+      // this; reading it back out is the entire fix. A model asked to
+      // re-derive the referent from the fact block does so by elimination and
+      // hedges when elimination is ambiguous, which is what shipped before.
+      const focus = await this.sink.readFocus(conversationId).catch(() => null);
+      const subject = resolveAnswerSubject(decision, focus, new Date());
+      if (subject.focusToStore) {
+        await this.sink
+          .writeFocus(conversationId, subject.focusToStore)
+          .catch(() => this.sink.logWarn('conversation focus not stored'));
+      }
       let buffer = '';
       const stream = this.gateway.completeStream({
         system: prompt.content,
@@ -151,6 +163,10 @@ export class MemoryAnswerHandler {
           knowledge,
           context: context.answerBlock,
           attachments,
+          about: subject.about ?? undefined,
+          aboutCarriedOver: subject.carriedOver,
+          resolvedQuestion: effectiveRewrite.query,
+          recentTurns: recentTurnsForAnswer(history),
         }),
         tier: 'answer',
         thinking: thinkingMode,
