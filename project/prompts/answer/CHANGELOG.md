@@ -102,3 +102,15 @@ Runs on the answer tier (decision 0007 ruling 3).
 Initial release. Grounding rules (facts-only, no invention, honest gaps +
 capture suggestion), mandatory inline markers, status and validity caveats in
 prose, answer in the question's language.
+
+## v0009 (issue #479)
+
+The grounded answer learns WHAT THE QUESTION IS ABOUT. v0008 received the raw
+question and the facts, so a follow-up using a pronoun made the model re-derive
+its own referent by elimination over the fact block, and hedge when elimination
+was ambiguous. Three new blocks, all context and none evidence: `RECENT TURNS`
+(fenced, bounded), `THE QUESTION IS ABOUT` (the subject the pipeline already
+resolved, deterministically), and `RESOLVED` (the question with its references
+filled in, under the user own words). A new section states the rule the whole
+change rests on: the conversation says what is asked, the facts say what is
+true, and a claim that appears only in an earlier turn is not on record.

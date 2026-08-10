@@ -21,6 +21,17 @@ export interface ChatTurnSink {
     ambiguity?: AmbiguityDecisionDto | null,
   ): Promise<{ id: string }>;
   getPrompt(): Promise<PromptArtifact>;
+  /**
+   * The conversation's current focus subject (issue #479, layer 3), or null.
+   * Read before the answer call so a pronoun still binds after a digression.
+   */
+  readFocus(conversationId: string): Promise<{ subject: string; setAt: Date } | null>;
+  /**
+   * Remember what this turn resolved. Called only when a subject was genuinely
+   * resolved; a score-derived guess must never become the conversation's
+   * memory of what it is about.
+   */
+  writeFocus(conversationId: string, subject: string): Promise<void>;
   /** Metadata only — never answer content or tokens (pino rule). */
   logWarn(message: string): void;
 }

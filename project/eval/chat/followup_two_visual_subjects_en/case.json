@@ -1,0 +1,36 @@
+{
+  "case_id": "followup_two_visual_subjects_en",
+  "description": "Issue #479 gated: a pronoun follow-up where TWO retrieved subjects both have visual facts. The pre-fix answerer picked by elimination and hedged; with only one visually described subject the case passes even with the bug, so both subjects carry appearance facts on purpose. The answer must describe the subject the CONVERSATION was about (M557) and must not describe or hedge toward the other one.",
+  "anchor": "2026-08-10T09:00:00.000Z",
+  "facts": [
+    {
+      "content": "The M557 component is a brass-colored metal component with a conical upper section tapering to a rounded tip.",
+      "entities": ["M557"],
+      "subject_entity": "M557"
+    },
+    {
+      "content": "The M557 component has a cylindrical section with external threading below the cone.",
+      "entities": ["M557"],
+      "subject_entity": "M557"
+    },
+    {
+      "content": "The SEN-210 housing is a matte black rectangular enclosure with rounded corners and a recessed front panel.",
+      "entities": ["SEN-210"],
+      "subject_entity": "SEN-210"
+    },
+    {
+      "content": "The SEN-210 housing has a ribbed grey heatsink along its upper surface.",
+      "entities": ["SEN-210"],
+      "subject_entity": "SEN-210"
+    }
+  ],
+  "script": ["What is the M557?", "How does it look like?"],
+  "checks": {
+    "ambiguity_branches": ["dominant", "dominant"],
+    "entity": { "mustMention": ["m557"], "notIdentity": [] },
+    "must_include": ["conical", "{{cite"],
+    "must_exclude": ["SEN-210", "matte black", "heatsink"],
+    "citations_valid": true,
+    "no_mechanics": true
+  }
+}

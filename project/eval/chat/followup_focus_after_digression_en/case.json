@@ -1,0 +1,30 @@
+{
+  "case_id": "followup_focus_after_digression_en",
+  "description": "Issue #479 layer 3 gated: the conversation focus survives a digression. The subject is named, an unrelated question intervenes, and a later pronoun must still bind to it rather than to whatever the digression retrieved.",
+  "anchor": "2026-08-10T09:00:00.000Z",
+  "facts": [
+    {
+      "content": "The M557 component is a brass-colored metal component with a conical upper section tapering to a rounded tip.",
+      "entities": ["M557"],
+      "subject_entity": "M557"
+    },
+    {
+      "content": "The M557 Mechanical Artillery Fuze has a total weight of approximately 975 g.",
+      "entities": ["M557"],
+      "subject_entity": "M557"
+    },
+    {
+      "content": "Ana Kovač is the quality lead for the fuze programme.",
+      "entities": ["Ana Kovač"],
+      "subject_entity": "Ana Kovač"
+    }
+  ],
+  "script": ["What is the M557?", "Who is Ana Kovač?", "How much does it weigh?"],
+  "checks": {
+    "entity": { "mustMention": ["975"], "notIdentity": [] },
+    "must_include": ["{{cite"],
+    "must_exclude": ["Ana Kovač"],
+    "citations_valid": true,
+    "no_mechanics": true
+  }
+}

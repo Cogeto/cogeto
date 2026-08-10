@@ -248,3 +248,85 @@ measured rather than assumed, and the pure decision rule is unit-tested
 exhaustively without the stack. Per gate-model.md, this closes the "ambiguity
 handling remains ungated" gap named there; the dedicated published metric
 lands with item 6.4 like anchoring's did.
+
+## What the question is about, and who decides it (issue #479)
+
+*Added 2026-08-10, with `answer/v0009` and migration 0051.*
+
+The ambiguity decision used to end at the branch. It chose `dominant`, the
+grounded answer path ran, and the decision was written to
+`chat_message.ambiguity` for diagnostics. The answering model received the
+facts and the user's **raw** question and nothing else.
+
+That is a gap, and it showed. Asked `what is m557?` and then `How does it look
+like?`, the pipeline resolved the pronoun, retrieved the right facts and
+recorded `named: ["m557"]`. The answerer then received six words beside fifteen
+subjects and reasoned its way to a guess:
+
+> "The user asks 'How does it look like?' without specifying what."
+> "the M557 is the only entity with specific visual description facts ... it is
+> highly likely the user refers to the M557"
+
+Right answer, wrong method. It succeeded by **elimination**, because M557 was
+the only retrieved subject carrying appearance facts, and it drafted a hedge
+across two unrelated products in case it was wrong. With several visually
+described subjects in the retrieved set, elimination fails and the model picks
+by fact density: a confidently wrong subject, correctly cited.
+
+**The subject was never unknown. It was computed, recorded, and discarded.**
+
+### Three layers, and why in this order
+
+1. **The resolved subject and the resolved question.** `resolveAnswerSubject`
+   reads the decision back out and the answer input states
+   `THE QUESTION IS ABOUT`, with the rewriter's resolved form under the user's
+   own words. Deterministic, a handful of tokens, no second model call and no
+   second chance to be wrong.
+2. **A fenced `RECENT TURNS` block**, four turns, each flattened to one bounded
+   line. For the discourse a subject cannot express ("what about the other
+   one", "and in metric"). Fenced exactly as attachments are: prior turns carry
+   text a user or a document wrote, and an instruction pasted into a chat must
+   not survive into the next answer.
+3. **The conversation focus** (`conversation.focus_subject`, migration 0051):
+   the subject carried forward so a pronoun still binds after a digression.
+   Rendered as "carried over", because it is a working assumption from an
+   earlier turn rather than something the user just said.
+
+### The rules that keep it honest
+
+- **A subject is asserted only when one was RESOLVED.** `named` is the record
+  of rule 1, the question's own naming. A branch reached by score alone
+  resolved nothing, and stating a subject there would repeat the original
+  error one layer down. Several named subjects is a comparison, not a subject,
+  and asserts nothing either.
+- **A stale focus is dropped, not warned about.** Twelve hours: long enough
+  that a lunch break does not lose the thread, short enough that tomorrow's
+  "how does it look" is not silently answered about yesterday's part. An
+  assumption the user cannot see is worse than none, and the prompt already
+  tells the model to say which subject it chose when nothing was resolved.
+- **A carried subject does not refresh its own age**, or one subject would stay
+  alive forever in a long conversation.
+- **The conversation says what is asked; the facts say what is true.**
+  `answer/v0009` states it directly: a claim that appears only in an earlier
+  turn is not on record. Citations, `{{cite}}` tokens and the memory-first rule
+  are unchanged.
+- **The silent branch carries NO turns.** When the decision is `silent` and
+  general knowledge answers, the sub-floor facts are withheld from the prompt
+  so the model cannot cite what the preamble has just disclaimed. An earlier
+  assistant turn quoting one of those facts would put it straight back in
+  front of the model, so the turns block is withheld on that path for exactly
+  the same reason. The subject line survives: a subject NAME is not a claim,
+  and it is what lets the answer say "I have nothing about the M557" instead
+  of a bare shrug. Asserted by the existing
+  `chat-ambiguity.integration.spec.ts` silent-plus-knowledge case, which
+  caught this during implementation.
+
+### What gates it
+
+A follow-up case with only one visually described subject **passes with the bug
+present**, by elimination, and proves nothing. The gating case
+(`followup_two_visual_subjects_en`) gives TWO retrieved subjects appearance
+facts and requires the answer to describe the one the conversation was about
+and to mention neither the other subject nor its attributes.
+`followup_focus_after_digression_en` covers layer 3: name a subject, ask
+something unrelated, then use a pronoun.

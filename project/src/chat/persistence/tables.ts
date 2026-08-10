@@ -39,6 +39,14 @@ export const conversation = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     /** Last-message time — the sidebar's recency order. */
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * The subject this conversation is currently about (issue #479, migration
+     * 0051), so a pronoun still binds after a digression. Set ONLY when a turn
+     * genuinely resolved a subject; never inferred from retrieval scores.
+     * Content-bearing, and erased with the conversation by the existing delete.
+     */
+    focusSubject: text('focus_subject'),
+    focusSetAt: timestamp('focus_set_at', { withTimezone: true }),
   },
   (t) => [index('conversation_owner_updated_idx').on(t.ownerId, t.updatedAt)],
 );

@@ -15,7 +15,7 @@ import type { OpenLoop, RetrievalMode } from '../retrieval/index';
  * The answer prompt family (spec §12.3): versioned artifact in project/prompts/answer,
  * registered on worker boot alongside the ingestion families.
  */
-export const ANSWER_PROMPT = { family: 'answer', version: 'v0008' } as const;
+export const ANSWER_PROMPT = { family: 'answer', version: 'v0009' } as const;
 
 /** A transient attachment's contribution to the answer input (V2.2 item 5.1). */
 export interface AnswerAttachment {
@@ -63,6 +63,45 @@ export interface AnswerTemporalContext {
    * byte-identical pre-attachment input.
    */
   attachments?: AnswerAttachment[];
+  /**
+   * WHAT THE QUESTION IS ABOUT, resolved (issue #479, layer 1). The display
+   * subject the pipeline ALREADY decided this turn is about, from the
+   * ambiguity rule's named cluster or the conversation focus carried into it.
+   *
+   * This exists because the pipeline used to resolve the question and then
+   * answer an unresolved one. `How does it look like?` reached the model as
+   * those six words beside fifteen subjects, so it re-derived the referent by
+   * elimination and hedged across three unrelated products. The subject was
+   * known: it was computed deterministically, recorded on
+   * `chat_message.ambiguity`, and thrown away.
+   *
+   * Set ONLY when a subject was genuinely resolved. A branch reached by score
+   * alone resolved nothing, and asserting a subject there would invent one.
+   */
+  about?: string;
+  /**
+   * True when `about` came from the CONVERSATION FOCUS rather than from this
+   * turn (issue #479, layer 3). Rendered as "carried over from earlier in this
+   * conversation" so the model treats it as a working assumption it may
+   * correct against the facts, not as something the user just said.
+   */
+  aboutCarriedOver?: boolean;
+  /**
+   * The resolved form of the question, when the rewriter produced one that
+   * differs from what the user typed. `and the weight?` becomes something that
+   * names its subject and its predicate; the raw question stays below it so
+   * tone, phrasing and language still follow the user.
+   */
+  resolvedQuestion?: string;
+  /**
+   * The last few exchanges, oldest first (issue #479, layer 2). FENCED as
+   * untrusted, exactly as attachments are: prior turns carry text the user or
+   * a document wrote, and an instruction pasted into a chat must not survive
+   * into the next answer. Present for the discourse a subject line cannot
+   * express ("what about the other one", "and in metric"); absent or empty
+   * renders a byte-identical input.
+   */
+  recentTurns?: { role: string; content: string }[];
 }
 
 /** The zero-retrieval path: no facts, no generation from thin air. */
@@ -175,13 +214,55 @@ export function buildAnswerInput(
     }
   }
 
+  // The conversation, in the ONE shape that cannot mislead: what the pipeline
+  // already decided the turn is about, then the recent turns as raw material.
+  //
+  // Order matters. The subject comes first because it is the deterministic
+  // conclusion; the turns come after as supporting context the model may read
+  // but never has to reason from. The facts above remain the only source of
+  // claims: this block resolves WHAT IS BEING ASKED, never what is true.
+  if (extras.recentTurns && extras.recentTurns.length > 0) {
+    const boundary = untrustedBoundary();
+    lines.push(
+      '',
+      'RECENT TURNS (context for what is being asked; never a source of facts):',
+      fenceUntrusted(
+        extras.recentTurns
+          .map((turn) => `${turn.role}: ${oneLine(turn.content, RECENT_TURN_CHARS)}`)
+          .join('\n'),
+        boundary,
+      ),
+    );
+  }
+  if (extras.about) {
+    lines.push(
+      '',
+      `THE QUESTION IS ABOUT: ${oneLine(extras.about)}${
+        extras.aboutCarriedOver ? ' (carried over from earlier in this conversation)' : ''
+      }`,
+    );
+  }
+
   lines.push('', 'QUESTION:', question);
+  // The resolved form sits UNDER the raw one: the user's own words drive tone,
+  // phrasing and language (the anchor rules), while the resolved form removes
+  // the pronoun the answerer would otherwise have to guess at.
+  if (extras.resolvedQuestion && extras.resolvedQuestion.trim() !== question.trim()) {
+    lines.push(`RESOLVED: ${oneLine(extras.resolvedQuestion, RECENT_TURN_CHARS)}`);
+  }
   return lines.join('\n');
 }
 
-/** A filename as one plain line: no newlines, no marker-shaped runs, bounded. */
-function oneLine(name: string): string {
-  return name.replace(/\s+/g, ' ').replace(/-{3,}/g, '-').trim().slice(0, 120);
+/**
+ * Per-turn budget in the recent-turns block. Enough to identify a subject and a
+ * predicate, far short of re-reading a whole answer: this block competes with
+ * the facts for the model's attention and must never win.
+ */
+const RECENT_TURN_CHARS = 240;
+
+/** Text as one plain line: no newlines, no marker-shaped runs, bounded. */
+function oneLine(name: string, max = 120): string {
+  return name.replace(/\s+/g, ' ').replace(/-{3,}/g, '-').trim().slice(0, max);
 }
 
 /**

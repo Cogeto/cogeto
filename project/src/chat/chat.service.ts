@@ -176,6 +176,9 @@ export class ChatService {
           ambiguity ?? null,
         ),
       getPrompt: () => this.getPrompt(),
+      readFocus: (conversationId: string) => this.readFocus(conversationId),
+      writeFocus: (conversationId: string, subject: string) =>
+        this.writeFocus(conversationId, subject),
       logWarn: (message: string) => this.logger.warn(message),
     };
   }
@@ -795,6 +798,30 @@ export class ChatService {
         },
       ),
     );
+  }
+
+  /**
+   * The conversation focus (issue #479, layer 3): what this conversation is
+   * currently about. Owner scoping comes from the conversation row itself,
+   * which every read in this service already gates.
+   */
+  private async readFocus(
+    conversationId: string,
+  ): Promise<{ subject: string; setAt: Date } | null> {
+    const rows = await this.db
+      .select({ subject: conversation.focusSubject, setAt: conversation.focusSetAt })
+      .from(conversation)
+      .where(eq(conversation.id, conversationId))
+      .limit(1);
+    const row = rows[0];
+    return row?.subject && row.setAt ? { subject: row.subject, setAt: row.setAt } : null;
+  }
+
+  private async writeFocus(conversationId: string, subject: string): Promise<void> {
+    await this.db
+      .update(conversation)
+      .set({ focusSubject: subject, focusSetAt: new Date() })
+      .where(eq(conversation.id, conversationId));
   }
 
   private async getPrompt(): Promise<PromptArtifact> {
