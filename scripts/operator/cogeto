@@ -1160,7 +1160,9 @@ cmd_reindex() {
     die "--provider needs --model: the target embeddings model to move to"
   fi
   if [ -n "$model" ]; then
-    say "This moves the instance's embeddings model to '${model}'${provider:+ on provider '${provider}'}."
+    target_desc="'${model}'"
+    [ -n "$provider" ] && target_desc="${target_desc} on provider '${provider}'"
+    say "This moves the instance's embeddings model to ${target_desc}."
     say "The whole corpus is re-embedded into a new index while the current one keeps"
     say "serving; the switch happens only on verified completion. Re-embedding costs"
     say "model API calls; an interrupted run resumes from where it stopped."
