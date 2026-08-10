@@ -154,8 +154,13 @@ export class MemoryAnswerHandler {
           .catch(() => this.sink.logWarn('conversation focus not stored'));
       }
       let buffer = '';
+      // The user's own answer model (V2.4 item 7.1). An opaque option id from
+      // the set an admin enabled, never a vendor model string: the call site
+      // still names a tier and the seam still owns the mapping (spec §12.1).
+      const answerOption = await this.sink.answerOptionFor(principal.userId);
       const stream = this.gateway.completeStream({
         system: prompt.content,
+        ...(answerOption ? { answerOption } : {}),
         input: buildAnswerInput(promptFacts, content, retrieved.mode, {
           temporal: retrieved.temporal,
           changes: retrieved.changes,

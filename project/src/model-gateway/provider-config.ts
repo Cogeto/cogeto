@@ -19,9 +19,54 @@ export const MODEL_PROVIDER_IDS: readonly ModelProviderId[] = [
 /** Providers with an embeddings API — Anthropic has none (ruling 3). */
 export const EMBEDDING_CAPABLE: readonly ModelProviderId[] = ['mistral', 'openai', 'ollama'];
 
+/**
+ * The concrete endpoint and credential ONE tier talks to (V2.4 item 7.1).
+ *
+ * The environment shape had exactly one endpoint and one key per provider id,
+ * which is why `endpoints` and `keys` below are keyed that way. That stopped
+ * being enough the moment providers became records an admin creates: two
+ * self-hosted endpoints, or a hosted OpenAI key beside a llama.cpp proxy, are
+ * both provider id `openai` and must not share a base URL or a bearer token.
+ *
+ * Absent means "use the instance-wide endpoint and key for this provider id",
+ * which is precisely the environment behaviour, so an environment-resolved
+ * configuration is byte-identical to what it always was.
+ */
+export interface ProviderEndpoint {
+  /** The provider record's id — the adapter cache key, so two records of the
+   * same type get two adapters and never share a credential. */
+  id: string;
+  /** The admin's label, for error messages and the boot log. Never a key. */
+  label: string;
+  /** Adapter-ready base URL (the OpenAI-compatible surface, `/v1` included). */
+  baseUrl: string;
+  /** Decrypted at the moment of use. Never logged, never serialized. */
+  apiKey: string;
+  /** True when this endpoint is somebody's own server rather than the vendor's
+   * hosted API: decides per-tier timeouts and per-request thinking control. */
+  selfHosted: boolean;
+}
+
 export interface TierBinding {
   provider: ModelProviderId;
   model: string;
+  /** V2.4 item 7.1: the provider record this binding resolves through. Absent
+   * for an environment-resolved configuration. */
+  endpoint?: ProviderEndpoint;
+}
+
+/**
+ * One answer model a user may pick for themselves (V2.4 item 7.1). The admin
+ * controls the set; a user's stored choice is the OPTION ID, never a model
+ * string, so a call site still names a tier and the seam still owns the mapping
+ * from configuration to concrete model.
+ */
+export interface AnswerModelOption {
+  /** Opaque id — what a user's stored preference references. */
+  id: string;
+  /** The admin's display name for this option. */
+  label: string;
+  binding: TierBinding;
 }
 
 /**
@@ -93,6 +138,27 @@ export interface ResolvedModelProviders {
   /** True when `endpoints.openaiBaseUrl` points at something self-hosted. */
   openaiSelfHosted: boolean;
   redacted: boolean;
+  /**
+   * Where this configuration came from (V2.4 item 7.1). `environment` is the
+   * v1 shape and the eval harness's; `database` is what a running instance
+   * uses once seeding has happened, and after that the environment's model
+   * variables are IGNORED — two sources of truth for one setting is an outage
+   * waiting to be filed.
+   */
+  source: 'environment' | 'database';
+  /**
+   * Bumped every time the live configuration is replaced (V2.4 item 7.1). The
+   * gateway caches its adapters against this number, so a saved assignment
+   * takes effect on the next call without a restart, and an unchanged
+   * configuration rebuilds nothing.
+   */
+  version: number;
+  /**
+   * The answer models an admin has enabled for users to pick between. Empty
+   * means the answer tier is not user-switchable on this instance, which is
+   * exactly the behaviour every instance had before V2.4 item 7.1.
+   */
+  answerOptions: readonly AnswerModelOption[];
 }
 
 export const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
@@ -440,6 +506,9 @@ export function resolveModelProviders(
     reasoningHeadroom,
     openaiSelfHosted,
     redacted: options.redacted,
+    source: 'environment',
+    version: 0,
+    answerOptions: [],
   };
 }
 
@@ -471,7 +540,7 @@ function readTimeoutMs(
   return value;
 }
 
-function presetForTiers(tiers: PresetTiers): string | null {
+export function presetForTiers(tiers: PresetTiers): string | null {
   for (const [name, preset] of Object.entries(PROVIDER_PRESETS)) {
     if (
       TIERS.every(

@@ -7,7 +7,9 @@ import { RedactingModelGateway } from './redacting.gateway';
 import { RedactionClient } from './redaction-client';
 import { BudgetedModelGateway } from './budgeted.gateway';
 import { AuditedModelGateway } from './audited.gateway';
-import type { ModelProviderId, ResolvedModelProviders } from './provider-config';
+import type { ResolvedModelProviders, TierBinding } from './provider-config';
+import type { LiveModelConfiguration } from './live-configuration';
+import { ReloadingModelGateway } from './reloading.gateway';
 import type { ModelEgressAudit, ModelUsageMeter } from '../infrastructure/index';
 
 /**
@@ -26,6 +28,14 @@ export interface CreateModelGatewayOptions {
   /** The resolved per-tier provider configuration. Absent or
    * unconfigured → the process boots; model calls fail with a typed error. */
   providers?: ResolvedModelProviders;
+  /**
+   * The live configuration (V2.4 item 7.1). When present, the provider stack is
+   * rebuilt whenever its version changes, so an admin saving an assignment
+   * takes effect on the next call instead of the next restart. When absent the
+   * gateway is built exactly once, which is what the eval harness and every
+   * bare entrypoint want.
+   */
+  live?: LiveModelConfiguration;
   /** Sampling temperature for free-text completions; the eval
    * harness pins 0, production leaves unset. Providers that reject sampling
    * parameters (Anthropic) ignore it — 0040 ruling 1. */
@@ -60,26 +70,36 @@ export interface CreateModelGatewayOptions {
  * latency covers what the caller actually waited for.
  */
 export function createModelGateway(options: CreateModelGatewayOptions): ModelGateway {
-  let gateway = buildProviderGateway(options.providers, options.temperature);
+  const build = (providers: ResolvedModelProviders | undefined): ModelGateway => {
+    let gateway = buildProviderGateway(providers, options.temperature);
 
-  if (options.redaction?.enabled) {
-    gateway = new RedactingModelGateway(
-      gateway,
-      new RedactionClient(options.redaction.url, options.redaction.timeoutMs),
-    );
-  }
-  if (options.usageMeter) {
-    gateway = new BudgetedModelGateway(gateway, options.usageMeter);
-  }
-  if (options.egressAudit) {
-    gateway = new AuditedModelGateway(
-      gateway,
-      options.egressAudit,
-      routesOf(options.providers),
-      options.redaction?.enabled ?? false,
-    );
-  }
-  return gateway;
+    if (options.redaction?.enabled) {
+      gateway = new RedactingModelGateway(
+        gateway,
+        new RedactionClient(options.redaction.url, options.redaction.timeoutMs),
+      );
+    }
+    if (options.usageMeter) {
+      gateway = new BudgetedModelGateway(gateway, options.usageMeter);
+    }
+    if (options.egressAudit) {
+      gateway = new AuditedModelGateway(
+        gateway,
+        options.egressAudit,
+        routesOf(providers),
+        options.redaction?.enabled ?? false,
+      );
+    }
+    return gateway;
+  };
+
+  // The live configuration wins when both are given: `providers` is then the
+  // same object the holder owns, and the holder is the one that knows when it
+  // changed. Every decorator is rebuilt with the stack, so a reloaded gateway
+  // is wrapped exactly like the one it replaced (`redaction_applies_all_providers`).
+  const live = options.live;
+  if (live) return new ReloadingModelGateway(live, build);
+  return build(options.providers);
 }
 
 /**
@@ -101,6 +121,15 @@ function routesOf(
     ...(providers.vision
       ? { vision: { provider: providers.vision.provider, model: providers.vision.model } }
       : {}),
+    // One route per user-selectable answer model (V2.4 item 7.1): when a user
+    // answers on their own choice, the trail must name the model that actually
+    // received the bytes, not the tier's assigned default.
+    ...Object.fromEntries(
+      providers.answerOptions.map((option) => [
+        `answer:${option.id}`,
+        { provider: option.binding.provider, model: option.binding.model },
+      ]),
+    ),
   };
 }
 
@@ -116,18 +145,47 @@ function buildProviderGateway(
   if (!providers || !providers.configured) return new UnconfiguredModelGateway();
 
   const { tiers, keys, endpoints } = providers;
-  const adapters = new Map<ModelProviderId, ModelGateway>();
-  const adapterFor = (provider: ModelProviderId): ModelGateway => {
-    const existing = adapters.get(provider);
+  const adapters = new Map<string, ModelGateway>();
+  /**
+   * The adapter cache key. Without provider records it is the provider id, the
+   * shape this had while one instance had one endpoint and one key per
+   * provider. With them (V2.4 item 7.1) it is the record's id plus the models
+   * the binding needs, because two records of the same type are two different
+   * endpoints with two different credentials and must never share an adapter.
+   */
+  const adapterFor = (binding: TierBinding, role: 'tier' | 'answerOption'): ModelGateway => {
+    const provider = binding.provider;
+    const endpoint = binding.endpoint;
+    const cacheKey = endpoint
+      ? `${endpoint.id}:${role === 'answerOption' ? `answer=${binding.model}` : 'tiers'}`
+      : provider;
+    const existing = adapters.get(cacheKey);
     if (existing) return existing;
-    const modelIf = (tier: 'pipeline' | 'answer' | 'embedding'): string | undefined =>
-      tiers[tier].provider === provider ? tiers[tier].model : undefined;
+    /**
+     * Which model this adapter serves for a tier. An adapter built for ONE
+     * user-selectable answer option serves that model on the answer tier and
+     * nothing else; a tier adapter serves every tier routed to the same
+     * endpoint, which is what keeps a single-provider instance on one adapter.
+     */
+    const modelIf = (tier: 'pipeline' | 'answer' | 'embedding'): string | undefined => {
+      if (role === 'answerOption') return tier === 'answer' ? binding.model : undefined;
+      const candidate = tiers[tier];
+      if (candidate.provider !== provider) return undefined;
+      if ((candidate.endpoint?.id ?? null) !== (endpoint?.id ?? null)) return undefined;
+      return candidate.model;
+    };
     const visionModel =
-      providers.vision?.provider === provider ? providers.vision.model : undefined;
+      role === 'tier' &&
+      providers.vision?.provider === provider &&
+      (providers.vision.endpoint?.id ?? null) === (endpoint?.id ?? null)
+        ? providers.vision.model
+        : undefined;
     // The resolver already refused any referenced provider without a key
     // (0040 ruling 3) — the assertion here is a belt for hand-built configs.
-    const key = keys[provider];
+    const key = endpoint?.apiKey ?? keys[provider];
     if (!key) throw new Error(`model provider "${provider}" is selected but has no API key`);
+    const baseUrl = endpoint?.baseUrl;
+    const selfHosted = endpoint ? endpoint.selfHosted : providers.openaiSelfHosted;
     let adapter: ModelGateway;
     switch (provider) {
       case 'mistral':
@@ -142,12 +200,14 @@ function buildProviderGateway(
       case 'openai':
         adapter = new OpenAiCompatibleModelGateway({
           apiKey: key,
-          baseUrl: endpoints.openaiBaseUrl,
+          // The provider record's endpoint when there is one (V2.4 item 7.1),
+          // else the instance-wide one the environment shape resolved.
+          baseUrl: baseUrl ?? endpoints.openaiBaseUrl,
           // Timeouts apply to a SELF-HOSTED endpoint only. A model on your own
           // hardware answers in seconds to minutes, and until now nothing
           // bounded those calls at all unless the provider happened to be
           // Ollama; hosted OpenAI keeps its historical no-timeout behaviour.
-          ...(providers.openaiSelfHosted ? { tierTimeoutsMs: providers.timeoutsMs } : {}),
+          ...(selfHosted ? { tierTimeoutsMs: providers.timeoutsMs } : {}),
           pipelineModel: modelIf('pipeline'),
           answerModel: modelIf('answer'),
           embedModel: modelIf('embedding'),
@@ -156,13 +216,13 @@ function buildProviderGateway(
           reasoningHeadroom: providers.reasoningHeadroom,
           // Per-request thinking control (issue #424): self-hosted only — the
           // hosted API rejects unknown parameters.
-          thinkingControl: providers.openaiSelfHosted,
+          thinkingControl: selfHosted,
         });
         break;
       case 'anthropic':
         adapter = new AnthropicModelGateway({
           apiKey: key,
-          baseUrl: endpoints.anthropicBaseUrl,
+          baseUrl: baseUrl ?? endpoints.anthropicBaseUrl,
           pipelineModel: modelIf('pipeline'),
           answerModel: modelIf('answer'),
         });
@@ -173,14 +233,18 @@ function buildProviderGateway(
         // per-tier timeouts, the tags probe, the `ollama pull` 404 hint. The
         // resolver refused boot without the base URL; the belt mirrors the
         // key assertion above.
-        const ollama = providers.ollama;
-        if (!ollama) throw new Error('provider "ollama" is selected but has no base URL');
+        // A provider record carries its own runtime root (V2.4 item 7.1); the
+        // environment shape carries the instance-wide one.
+        const rootUrl = endpoint
+          ? endpoint.baseUrl.replace(/\/v1$/, '')
+          : providers.ollama?.baseUrl;
+        if (!rootUrl) throw new Error('provider "ollama" is selected but has no base URL');
         adapter = new OpenAiCompatibleModelGateway({
           apiKey: key,
-          baseUrl: `${ollama.baseUrl}/v1`,
+          baseUrl: `${rootUrl}/v1`,
           providerLabel: 'ollama',
           tierTimeoutsMs: providers.timeoutsMs,
-          localRuntime: { rootUrl: ollama.baseUrl },
+          localRuntime: { rootUrl },
           pipelineModel: modelIf('pipeline'),
           answerModel: modelIf('answer'),
           embedModel: modelIf('embedding'),
@@ -193,20 +257,26 @@ function buildProviderGateway(
         break;
       }
     }
-    adapters.set(provider, adapter);
+    adapters.set(cacheKey, adapter);
     return adapter;
   };
 
+  const answerOptions = new Map<string, ModelGateway>();
+  for (const option of providers.answerOptions) {
+    answerOptions.set(option.id, adapterFor(option.binding, 'answerOption'));
+  }
   const routes = {
-    pipeline: adapterFor(tiers.pipeline.provider),
-    answer: adapterFor(tiers.answer.provider),
-    embedding: adapterFor(tiers.embedding.provider),
-    vision: providers.vision ? adapterFor(providers.vision.provider) : null,
+    pipeline: adapterFor(tiers.pipeline, 'tier'),
+    answer: adapterFor(tiers.answer, 'tier'),
+    embedding: adapterFor(tiers.embedding, 'tier'),
+    vision: providers.vision ? adapterFor(providers.vision, 'tier') : null,
+    answerOptions,
   };
   // A single-provider configuration returns its adapter directly, byte-identical
   // to the path before tiers existed — but only when there is no vision binding
   // to route, because the adapter itself cannot say "no vision configured" for
-  // a provider that simply has no image model.
-  if (adapters.size === 1 && !providers.vision) return routes.pipeline;
+  // a provider that simply has no image model, and no user-selectable answer
+  // option to route either (V2.4 item 7.1).
+  if (adapters.size === 1 && !providers.vision && answerOptions.size === 0) return routes.pipeline;
   return new TierRoutedModelGateway(routes);
 }

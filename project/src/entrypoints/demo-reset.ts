@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { assertDemoAllowed, loadConfig, redactionOptions } from './config';
+import { installModelConfiguration } from './model-boot';
 import { createDb } from '../infrastructure/index';
 import { MemoryObjectStore } from '../memory/index';
 import { createModelGateway } from '../model-gateway/index';
@@ -16,6 +17,12 @@ import { summarize } from './demo/assertions';
  */
 async function main(): Promise<void> {
   const config = loadConfig();
+  // The DATABASE's model configuration is what this instance runs (V2.4 item
+  // 7.1): seeded once from the environment, authoritative after that. A tool
+  // that resolved the environment instead could embed with a model the
+  // instance replaced, which is precisely the mixed embedding space the boot
+  // guard exists to refuse.
+  await installModelConfiguration(config);
   assertDemoAllowed(config);
   if (!config.modelProviders.configured) {
     console.error(

@@ -31,6 +31,14 @@ export interface CompletionRequest {
    * server that ignores the flag still works — the probe and headroom stay.
    */
   thinking?: 'on' | 'off';
+  /**
+   * The answer model this user picked for themselves (V2.4 item 7.1), as the
+   * OPAQUE option id an admin enabled — never a vendor model string, so the
+   * call site still names a tier and the seam still owns the mapping. Ignored
+   * on any tier but `answer`, and ignored when the option is no longer enabled:
+   * an admin retiring a choice must not break the next question a user asks.
+   */
+  answerOption?: string;
 }
 
 /**

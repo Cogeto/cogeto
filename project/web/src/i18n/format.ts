@@ -71,6 +71,18 @@ export function formatNumber(value: number, locale?: PreferredLanguage): string 
 }
 
 /**
+ * `81.9%` — a measured fraction as a percentage, locale-formatted (V2.4 item
+ * 7.1). One decimal, because a trust score's second decimal is noise and its
+ * first is not.
+ */
+export function formatPercent(fraction: number, locale?: PreferredLanguage): string {
+  return new Intl.NumberFormat(tag(locale), {
+    style: 'percent',
+    maximumFractionDigits: 1,
+  }).format(fraction);
+}
+
+/**
  * `640 KB` / `2.4 MB`, with the number itself locale-formatted. Binary units,
  * matching what the upload limits are actually expressed in.
  */

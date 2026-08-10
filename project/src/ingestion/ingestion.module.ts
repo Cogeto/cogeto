@@ -37,8 +37,12 @@ export interface IngestionModuleOptions {
    * The generation binding recorded beside every ledger verdict (V2.3 item
    * 6.1): `<provider>/<model>` for the pipeline tier. A model change makes
    * stored verdicts disagree with this string, which re-opens judged pairs.
+   *
+   * A GETTER is accepted as well as a string (V2.4 item 7.1): the pipeline
+   * binding can now change while the worker runs, and a label captured at boot
+   * would let the ledger skip re-judging pairs under a model that changed.
    */
-  reconcileModelConfig?: string;
+  reconcileModelConfig?: string | (() => string);
 }
 
 /**

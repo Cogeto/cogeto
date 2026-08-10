@@ -56,7 +56,7 @@ module that never imports `connectors` but injects `NotesService` because
 
 ## 2. Table ownership
 
-Forty-seven tables, one owner each. The owner is the module whose
+Fifty-three tables, one owner each. The owner is the module whose
 `persistence/tables.ts` declares the Drizzle table; it is the only module that
 may name the table in a query, in Drizzle or in SQL.
 
@@ -79,6 +79,7 @@ may name the table in a query, in Drizzle or in SQL.
 | `passport` | `passport_export` |
 | `reports` | `findings_report` (V2.3 item 6.2: the findings-run ledger; the row outlives its rendered artifacts because the delta view compares against it, and carries no quoted content) |
 | `infrastructure` | `audit_log`, `outbox_event`, `job_execution`, `dead_letter`, `user_context`, `context_suggestion_dismissal`, `usage_counter`, `rate_limit_window` |
+| `providers` | `model_provider`, `model_assignment`, `model_answer_option`, `user_answer_model`, `model_configuration_change`, `model_config_state` (V2.4 item 7.1: the instance's model and provider configuration, moved out of the environment. Owned here because this is the module that manages the records AND resolves them into the shape the model-gateway seam consumes; the sealed key column is selected in exactly one function, asserted structurally by `key-confinement.spec.ts`) |
 | `retrieval`, `operations`, `sources` | none. Retrieval is pure search since part 4; operations reports on other modules' data; sources (V2.2 item 5.2) is the Sources surface's read context, composing the owners' public interfaces. |
 
 The six family rows and `chat` replaced the single `connectors` row in part 4:
@@ -294,6 +295,7 @@ defined by the module that *consumes* the implementation) are marked.
 | `passport` | `PASSPORT_OPTIONS` |
 | `reports` | `REPORT_OPTIONS` (composition-root options: signing key dir, retention, the vendored font/brand/trust-score paths, and the model configuration in force) |
 | `operations` | `OPERATIONS_OPTIONS`, `CAPABILITY_JOB_SOURCES` |
+| `providers` | `PROVIDERS_OPTIONS` (composition-root options: the live configuration holder, the instance master key, the trust-score directory, and the watcher's poll interval) |
 | `imports` | `IMPORT_IN_FLIGHT` (the coordinator's in-flight cap, bound by the worker root from `COGETO_IMPORT_IN_FLIGHT`), `IMPORT_ZIP_MAX_BYTES` (the archive-size bound on the manifest endpoint) |
 | `entrypoints` | `COGETO_CONFIG` |
 

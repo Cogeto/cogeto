@@ -1,0 +1,150 @@
+{
+  "page": {
+    "title": "Providers"
+  },
+  "adminOnly": {
+    "title": "Administrators only",
+    "body": "Model providers decide what this instance remembers and where its content is sent, so only an administrator can change them."
+  },
+  "list": {
+    "heading": "Model providers",
+    "explainer": "Every endpoint this instance can reach. Several of the same kind are normal, so the name is what tells them apart.",
+    "add": "Add a provider",
+    "error": "The providers could not be loaded.",
+    "empty": {
+      "title": "No providers yet",
+      "body": "Add the endpoint that serves your models. Nothing is sent anywhere until a tier is assigned to it."
+    },
+    "servingTiers": "Currently serving: {{tiers}}",
+    "cannotDelete": "Reassign the tiers this provider serves before removing it."
+  },
+  "type": {
+    "mistral": {
+      "name": "Mistral",
+      "subtitle": "The hosted Mistral API"
+    },
+    "openai": {
+      "name": "OpenAI",
+      "subtitle": "The hosted OpenAI API"
+    },
+    "anthropic": {
+      "name": "Anthropic",
+      "subtitle": "The hosted Anthropic API. No embeddings."
+    },
+    "self_hosted": {
+      "name": "Self-hosted",
+      "subtitle": "llama.cpp, Ollama, vLLM, or any OpenAI-compatible endpoint"
+    },
+    "ollama": {
+      "name": "Self-hosted",
+      "subtitle": "A local Ollama runtime, carried over from this instance's earlier configuration"
+    }
+  },
+  "health": {
+    "ok": "Answered",
+    "unreachable": "Not reachable",
+    "auth_failed": "Key rejected",
+    "unknown": "Not tested yet"
+  },
+  "key": {
+    "present": "Key stored",
+    "absent": "No key",
+    "add": "Add a key",
+    "replace": "Replace the key"
+  },
+  "action": {
+    "test": "Test",
+    "testing": "Testing",
+    "save": "Save",
+    "saving": "Saving",
+    "cancel": "Cancel",
+    "remove": "Remove"
+  },
+  "form": {
+    "type": {
+      "legend": "What kind of endpoint is this?"
+    },
+    "label": {
+      "label": "Name",
+      "placeholder": "Workshop GPU",
+      "help": "Your own name for this endpoint. It has to be unique, because two of the same kind are ordinary."
+    },
+    "baseUrl": {
+      "label": "Endpoint",
+      "placeholder": "http://host.docker.internal:9000/v1",
+      "hint": "Reached from inside the containers, so localhost means the container itself. A server running on this host is at host.docker.internal or the bridge gateway address; another service in this stack is at its service name."
+    },
+    "apiKey": {
+      "label": "API key",
+      "optionalLabel": "API key (optional)",
+      "placeholder": "Paste the key",
+      "help": "Encrypted before it is stored and never shown again. A self-hosted endpoint with no authentication needs none."
+    },
+    "submit": "Add and test"
+  },
+  "assignment": {
+    "title": "Model assignment",
+    "heading": "What each tier runs on",
+    "explainer": "Four independent choices. A mixed configuration is ordinary: extraction on one endpoint, answers on another.",
+    "error": "The configuration could not be loaded.",
+    "provider": "Provider",
+    "model": "Model",
+    "modelPlaceholder": "Type or pick a model",
+    "none": "None",
+    "unassigned": "Not assigned",
+    "apply": "Test and apply",
+    "partialList": "This endpoint may serve models it does not advertise, so type the name if it is not in the list.",
+    "listUnavailable": "The model list could not be read ({{reason}}), so type the name instead.",
+    "visionOptional": "Leave this unassigned if this instance reads no images. Pages that need vision are then labelled as such rather than arriving empty."
+  },
+  "tier": {
+    "pipeline": "Extraction",
+    "answer": "Answers",
+    "embeddings": "Embeddings",
+    "vision": "Vision"
+  },
+  "tierHelp": {
+    "pipeline": "Reads documents and verifies every fact",
+    "answer": "Writes what people read in chat",
+    "embeddings": "Turns facts into the search index",
+    "vision": "Reads pages that are pictures"
+  },
+  "summary": {
+    "configuration": "Configuration",
+    "configured": "Complete",
+    "notConfigured": "Incomplete",
+    "source": {
+      "database": "Managed here. The model variables in the environment file are ignored and can be removed.",
+      "environment": "Read from the environment file. It will be carried into the database on the next start."
+    }
+  },
+  "trust": {
+    "evaluated": "Measured in {{release}}",
+    "notEvaluated": "Not evaluated",
+    "notEvaluatedHelp": "No published measurement matches this exact combination, so nothing is known about how accurately it extracts. Accuracy is never borrowed from a different configuration.",
+    "numbers": "Extraction precision {{precision}}, recall {{recall}}, verification agreement {{agreement}}."
+  },
+  "embeddings": {
+    "locked": "The embeddings model cannot be changed here. Every stored fact was turned into a vector by the current one, and searching a mix of two would quietly return the wrong results.",
+    "interim": "The managed rebuild arrives in the next release. Until then, change it with the operator command <code>{{command}}</code>, which re-embeds everything from the database."
+  },
+  "answerOptions": {
+    "heading": "Answer models people may choose",
+    "explainer": "The answer model is the one anybody may pick for themselves, from this list. Extraction, embeddings and vision stay administrator decisions.",
+    "empty": "Nobody can choose their own answer model yet. Add one here and it appears in everyone's settings.",
+    "label": "Shown as",
+    "add": "Enable"
+  },
+  "history": {
+    "heading": "Configuration history",
+    "explainer": "Every change, and the configuration identifier it produced. This is the identifier a published measurement is matched by.",
+    "entry": "{{tier}} moved to {{provider}} · {{model}}"
+  },
+  "userChoice": {
+    "heading": "Your answer model",
+    "explainer": "Which model writes the answers you read. It changes nothing about what is remembered or how it is found.",
+    "instanceDefault": "The instance default",
+    "current": "Currently answering with {{label}}.",
+    "none": "Your administrator has not offered a choice here yet."
+  }
+}

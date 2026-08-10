@@ -114,6 +114,12 @@ export interface ChatServiceOptions {
    * links attachments nor injects transient texts, and attaching is a
    * controller capability this service does not reach. */
   attachments?: ChatAttachmentsService;
+  /**
+   * The user's own answer-model choice (V2.4 item 7.1). Absent → nobody has a
+   * choice and every answer routes to the assigned answer tier, which is the
+   * behaviour of every instance before this existed.
+   */
+  answerModelChoice?: { optionIdFor(userId: string): Promise<string | null> };
 }
 
 export const CHAT_SERVICE_OPTIONS = Symbol('CHAT_SERVICE_OPTIONS');
@@ -138,6 +144,7 @@ export class ChatService {
   private readonly timeZone: string;
   private readonly userContext?: UserContextService;
   private readonly attachments?: ChatAttachmentsService;
+  private readonly answerModelChoice?: { optionIdFor(userId: string): Promise<string | null> };
 
   private readonly smallTalkHandler: SmallTalkHandler;
 
@@ -155,6 +162,7 @@ export class ChatService {
     this.timeZone = options?.timeZone ?? DEFAULT_INSTANCE_TIMEZONE;
     this.userContext = options?.userContext;
     this.attachments = options?.attachments;
+    this.answerModelChoice = options?.answerModelChoice;
     this.smallTalkHandler = new SmallTalkHandler(this.gateway, this.sink());
   }
 
@@ -179,6 +187,10 @@ export class ChatService {
       readFocus: (conversationId: string) => this.readFocus(conversationId),
       writeFocus: (conversationId: string, subject: string) =>
         this.writeFocus(conversationId, subject),
+      // Never fails a turn: an unreachable choice means the assigned answer
+      // tier, which is a working answer rather than a failed one.
+      answerOptionFor: (userId: string) =>
+        this.answerModelChoice?.optionIdFor(userId).catch(() => null) ?? Promise.resolve(null),
       logWarn: (message: string) => this.logger.warn(message),
     };
   }

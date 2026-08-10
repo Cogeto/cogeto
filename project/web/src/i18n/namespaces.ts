@@ -34,6 +34,9 @@ export const NAMESPACES = [
   'settings',
   /** The operator System page: health, jobs, dead letters. */
   'system',
+  /** Providers and model assignment (V2.4 item 7.1), plus the one model
+   * choice a user makes for themselves. */
+  'providers',
   /** The capabilities registry and panel. */
   'capabilities',
   /** Consequential actions awaiting a decision. */

@@ -9,6 +9,7 @@ export * from './settings';
 export * from './audit';
 export * from './memory';
 export * from './model-config';
+export * from './providers';
 export * from './notes';
 export * from './principal';
 export * from './receipts';

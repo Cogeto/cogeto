@@ -349,6 +349,35 @@ of its own** and is written up in
 [`docs/eval/vertical-corpus-diagnostic.md`](docs/eval/vertical-corpus-diagnostic.md);
 read it before touching ingestion, anchoring or the quantity parser.
 
+V2.4 item 7.1 delivered its **configuration half**: model and provider
+configuration moved out of the environment into the database (migration 0052,
+the new `providers` module, six tables). A provider is a **record** an admin
+manages, with a label they choose (several of one type are ordinary, so the
+label is the identity), a type (Mistral, OpenAI, Anthropic, **Self-hosted** =
+any OpenAI-compatible endpoint), an endpoint where the type needs one, and a key
+**encrypted at rest** under `COGETO_MASTER_KEY`, which stays in the environment
+because a key that guards a database cannot live inside it. **A saved key never
+comes back out**: the sealed column is selected in exactly one function and
+`key-confinement.spec.ts` asserts it structurally. Four independent assignments;
+vision may be unassigned. **Discovery offers and manual entry always works**
+(a proxied deployment legitimately serves models its `/models` route hides);
+**validation probes the tier's real job**, never a model name. The configuration
+id derivation is untouched, every change is recorded, and the page shows the
+published trust score for the exact configuration in force or says **"not
+evaluated"**. The **answer** tier is user-switchable among admin-enabled options
+(an opaque option id, so call sites still name a tier); pipeline, embeddings and
+vision stay admin-only. Changes apply **without a restart**: one live
+configuration object per process, mutated in place, with the worker polling a
+version column. **Seeding is atomic and once**: after it, the environment's
+model variables are IGNORED, not merged, and `.env` is bootstrap only.
+**An embeddings change is refused**, naming the operator reindex as the interim
+path: the managed rebuild is the second half and ships next. The legacy
+environment expansion stays for exactly one release, because it is what a v1-era
+instance's seed depends on. Read
+[`docs/features/models.md`](docs/features/models.md) and
+[`docs/operations/upgrade-notes.md`](docs/operations/upgrade-notes.md) before
+touching anything in the model-configuration path.
+
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).
 Thinking is a CHANNEL, not content: `completeStream` yields channel-tagged

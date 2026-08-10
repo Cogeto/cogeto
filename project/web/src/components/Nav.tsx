@@ -15,6 +15,8 @@ export type NavSection =
   | 'approvals'
   | 'forgotten'
   | 'audit'
+  | 'providers'
+  | 'models'
   | 'system'
   | 'settings';
 
@@ -43,6 +45,11 @@ const ENABLED: { key: NavSection; href: string }[] = [
   { key: 'approvals', href: '/approvals' },
   { key: 'forgotten', href: '/forgotten' },
   { key: 'audit', href: '/audit' },
+  // The two admin configuration surfaces (V2.4 item 7.1). Beside System, and
+  // hidden for a non-admin exactly as System is; the server-side AdminGuard
+  // stays the enforcement.
+  { key: 'providers', href: '/providers' },
+  { key: 'models', href: '/models' },
   { key: 'system', href: '/system' },
   { key: 'settings', href: '/settings' },
 ];
@@ -144,6 +151,24 @@ const ICONS: Record<NavSection, ReactNode> = {
       <path d="M7 7h6M7 10h6M7 13h4" opacity="0.75" />
     </svg>
   ),
+  // The rack: endpoints you point at, stacked. Same family, same 1.6 stroke.
+  providers: (
+    <svg viewBox="0 0 20 20" {...G}>
+      <rect x="3.4" y="3.6" width="13.2" height="4.4" rx="1.4" />
+      <rect x="3.4" y="12" width="13.2" height="4.4" rx="1.4" />
+      <path d="M6 5.8h0.01M6 14.2h0.01" strokeWidth="2" />
+      <path d="M9.4 5.8h4.2M9.4 14.2h4.2" opacity="0.6" />
+    </svg>
+  ),
+  // The assignment: one node, four tiers routed out of it.
+  models: (
+    <svg viewBox="0 0 20 20" {...G}>
+      <circle cx="10" cy="10" r="2.2" />
+      <path d="M10 7.8V3.6M10 12.2v4.2M7.8 10H3.6M12.2 10h4.2" opacity="0.75" />
+      <circle cx="10" cy="3.6" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="16.4" cy="10" r="1.1" fill="currentColor" stroke="none" />
+    </svg>
+  ),
   system: (
     <svg viewBox="0 0 20 20" {...G}>
       <rect x="3.2" y="4" width="13.6" height="12" rx="2.2" />
@@ -207,7 +232,10 @@ export function Nav({
     review: reviewCount ?? 0,
     approvals: approvalsCount ?? 0,
   };
-  const sections = ENABLED.filter((s) => s.key !== 'system' || showSystem);
+  // The three operator surfaces share one gate: System, Providers and Model
+  // assignment are all admin-only (V2.4 item 7.1).
+  const adminOnly = new Set<NavSection>(['system', 'providers', 'models']);
+  const sections = ENABLED.filter((s) => !adminOnly.has(s.key) || showSystem);
   const demo = isDemoSession();
   return (
     <nav

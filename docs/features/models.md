@@ -57,34 +57,120 @@ provider rejects sampling parameters the adapter sends none, and determinism res
 the JSON contract plus validation; that deviation is stated in the trust notes for any
 affected configuration.
 
-## Configuration is per tier
+## Configuration lives in the database (V2.4 item 7.1)
 
-A configuration names a provider and model per tier, and mixing families is normal.
+Providers, models and their API keys are **records an administrator manages in the
+interface**, not environment variables. `.env` keeps bootstrap only: database
+credentials, the instance master key, and instance configuration.
 
-**Boot validation, never first-request failure.** An unknown provider, a provider
-selected without its key, a tier with no resolvable model, an unknown preset, or the
-embeddings tier pointing at a provider with no embeddings API each **refuse boot**
-with a message naming the exact variable to fix. A fully unconfigured instance still
-boots with model features off and a typed error on use.
+**Providers are records.** A display label the admin chooses, a type, an endpoint
+where the type needs one, an encrypted key where the type needs one, and the health
+its last probe reported. Four types: **Mistral**, **OpenAI**, **Anthropic**, and
+**Self-hosted** (any OpenAI-compatible endpoint: llama.cpp, Ollama, vLLM, LM Studio,
+or a proxy in front of several). Several providers of the same type are ordinary, so
+the **label** is what tells them apart and is unique.
 
-**Embedding-space integrity.** Each vector records its producing model. Changing the
-embeddings binding is supported; mixing embedding spaces silently is not. At boot the
+A fifth stored value, `ollama`, exists but cannot be created: it is what the seed
+writes for an instance already bound to the local Ollama runtime, so that instance
+keeps its adapter, its per-tier timeouts and its configuration id exactly. It renders
+as Self-hosted with the runtime named in its subtitle.
+
+**Four independent assignments** name a provider and a model: pipeline, answer,
+embeddings, vision. Mixed configurations are ordinary rather than exceptional.
+**Vision may be unassigned**, in which case the vision capability reports unavailable
+exactly as it did before, and the reading ladder stops at OCR and says so.
+
+**Model discovery OFFERS; it never decides.** The provider's models endpoint is
+queried and its answers are offered, and **manual entry is always allowed**, because a
+proxied deployment can legitimately serve models its `/models` route does not
+advertise. The reference deployment is precisely that case: one vhost where
+`/v1/embeddings` reaches one process and everything else another, so the embeddings
+model never appears in the list. A self-hosted endpoint's list is labelled as possibly
+partial for the same reason.
+
+**Validation is a probe, never a pattern match.** Saving an assignment sends the tier's
+actual job through the real adapter: a one-token completion, a one-string embedding, a
+32-pixel image. "embed" in a model name is a naming convention, and a GGUF model is
+multimodal only when its projector is loaded, and neither fact is readable from a
+string.
+Failures are classified so an admin is sent to the right place: **unreachable**,
+**key rejected**, **model not served**, **no embeddings route**, **image refused**,
+**timed out**. An embeddings tier pointed at a type with no embeddings API (Anthropic)
+is refused before anything is sent.
+
+**Keys are encrypted at rest** with the instance master key (`COGETO_MASTER_KEY`,
+AES-256-GCM, fresh IV per encryption), which stays in the environment because a key
+that guards a database cannot live inside it. Decryption happens only where a call is
+made. **A saved key is never returned to the client, never appears in a response, a
+log line, an error, an export or a health field**, and is never rendered after entry:
+the interface shows that a key is present and offers to replace it. The sealed column
+is selected in exactly one function, and `key-confinement.spec.ts` asserts that
+structurally rather than by convention. The master key is optional until something
+needs encrypting (a self-hosted endpoint with no auth needs none) and then the failure
+names it and the command that generates one. **It is data-bound**: rotating it makes
+every stored provider key unreadable, with no recovery but re-entry.
+
+**Changes take effect without a restart.** One live configuration object per process
+is mutated in place, so every consumer that holds it is current; the gateway rebuilds
+its whole decorated stack when the version changes, and the worker, which has no
+request to notice a change on, polls the version column every 30 seconds.
+
+**One model choice belongs to the user.** The **answer** tier is switchable per person,
+among the models an admin enabled; pipeline, embeddings and vision stay admin-only,
+because they decide what gets remembered, how it is indexed and what gets read off a
+page. A user's stored choice is an opaque option id, never a model string, so call
+sites still request a tier and the seam still owns the mapping. A retired option falls
+back to the assigned tier rather than failing the next question, and the egress trail
+names the model that actually received the bytes.
+
+### Seeding, and the one source of truth
+
+On the **first start after upgrading**, the environment's model configuration is read
+once and written as the equivalent providers and assignments. The claim is atomic on a
+single state row, so of two processes starting together exactly one seeds. An instance
+with no model configuration at all is marked seeded with nothing, which is the honest
+translation.
+
+**After that, the database is authoritative.** The environment's model variables are
+**ignored**: not merged, not a lower-priority fallback. They may sit in `.env` forever
+and change nothing, which is why the upgrade note says to delete them. Two sources of
+truth for one setting is how an instance ends up running a model nobody selected. The
+boot log states the source in one word for exactly this reason.
+
+The eval harness deliberately still resolves from the environment: it runs in CI
+against no instance database, and pinning the configuration it measures is the point.
+
+### Boot validation, and what still refuses
+
+**Boot validation, never first-request failure.** An unresolvable configuration boots
+with model features off and a typed error on use, rather than refusing to start, so an
+admin is never locked out of the page that fixes it. What still refuses is the thing
+that would corrupt data:
+
+**Embedding-space integrity.** Each vector records its producing model. At boot the
 app and worker refuse to start when stored embeddings disagree with the active model
 or when the collection's vector size disagrees with the active model's dimension,
 naming the reindex command. **Refuse, not degrade**: a silently weaker retrieval
 surface is exactly the failure mode this architecture exists to prevent. `reindex` is
 exempt and is the way out.
 
+**Which is why the embeddings tier cannot be reassigned in the interface yet.** V2.4
+item 7.1 is the configuration half; the **managed reindex is the second half and ships
+next**. Until it does, the embeddings row explains that changing the model requires
+rebuilding the vector index and names the operator command
+(`docker compose exec worker npm run reindex`) as the interim path. The refusal is
+server-side, so it holds for any caller, not just the page.
+
 **Configuration identity.** The trust page's join key derives deterministically from
-the resolved tiers. An exact match to a named preset gets the preset's name; anything
-else gets a per-tier derivation, with a `-redacted` suffix when redaction is on. Any
-tier change changes the id. It is logged at every boot and shown read-only in Settings.
+the resolved tiers, exactly as before: an exact match to a named preset gets the
+preset's name, anything else a per-tier derivation, with a `-redacted` suffix when
+redaction is on and a `--vis-` part when vision is bound. Any assignment change
+changes the id, and each change is recorded with the id it produced and shown in the
+interface. The assignment page shows the **published trust score for the exact
+configuration in force**, and states **"not evaluated"** in words where none matches:
+accuracy is never borrowed from a different configuration.
 
-**Keys are operator-set instance environment, full stop.** Never entered through the
-UI, never stored in the database, never logged, never returned by any endpoint.
-Settings displays the configuration; it does not capture secrets.
-
-## Local inference
+## Local inference## Local inference
 
 A local runtime is a **provider flavor over the OpenAI-compatible adapter**, not a new
 HTTP client and not a plain OpenAI configuration with knobs. Three reasons:
@@ -99,9 +185,12 @@ HTTP client and not a plain OpenAI configuration with knobs. Three reasons:
   boot probe, the model-not-found hint. The adapter class stays one implementation with
   options, and the hosted paths stay byte-identical.
 
-The base URL names the runtime root and has **no default**; a tier bound to the local
-provider without it refuses boot. No key is required, though one is accepted for
-deployments behind an authenticating proxy.
+The base URL names the runtime root and has **no default**. No key is required, though
+one is accepted for deployments behind an authenticating proxy. Since V2.4 item 7.1
+the runtime is a provider RECORD like any other: an existing Ollama-bound instance is
+seeded to the reserved `ollama` type so nothing about its adapter or its configuration
+id changes, and a new local runtime is added as a **Self-hosted** provider pointed at
+its OpenAI-compatible surface.
 
 **Local-inference realities.** First-token latency on consumer hardware is seconds,
 and a 12B structured extraction can run minutes, so per-tier timeouts default far

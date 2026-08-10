@@ -117,6 +117,19 @@ services:
       COGETO_OIDC_INTERNAL_URL: http://zitadel:8080
       COGETO_OIDC_EXTERNAL_DOMAIN: ${COGETO_EXTERNAL_DOMAIN:-localhost}
       COGETO_WEB_CONFIG_FILE: /web-config/config.json
+      # The instance master key (V2.4 item 7.1): what encrypts the provider keys
+      # stored in the database. It stays in the environment on purpose, because
+      # a key that guards a database cannot live inside it. Optional until
+      # something needs encrypting, and then the failure names it.
+      COGETO_MASTER_KEY: ${COGETO_MASTER_KEY:-}
+      # ── The model variables below are SEED INPUT ONLY (V2.4 item 7.1) ──────
+      # They are read once, on the first start after upgrading, and carried
+      # into the database as the equivalent providers and assignments. After
+      # that the database is authoritative and these are IGNORED: not merged,
+      # not a fallback. They pass through here so an existing instance comes
+      # across unchanged, and they can be removed from .env after the first
+      # successful start.
+      #
       # Optional: without it the model gateway boots unconfigured and fails on use
       # with a typed error. Model calls start with the Notes pipeline (Session 2).
       COGETO_MISTRAL_API_KEY: ${COGETO_MISTRAL_API_KEY:-}

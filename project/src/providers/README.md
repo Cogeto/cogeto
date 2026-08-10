@@ -1,0 +1,54 @@
+# providers: the instance's model and provider configuration (bounded context)
+
+V2.4 item 7.1. Providers, models and their API keys were environment variables until
+this module existed; they are now records an administrator manages in the interface,
+and the environment keeps bootstrap only.
+
+Owns six tables (migration 0052): `model_provider`, `model_assignment`,
+`model_answer_option`, `user_answer_model`, `model_configuration_change`,
+`model_config_state`. Owns the two admin surfaces over them
+(`/api/admin/providers`, `/api/admin/model-configuration`) and the one model choice a
+user makes for themselves (`/api/settings/answer-model`).
+
+May depend on: `infrastructure` (the database handle and the audit trail),
+`identity` (the bearer and admin guards), and the `model-gateway` seam. Depends on no
+other domain module, and no other domain module depends on it except `chat`, which
+asks it which answer model this user chose.
+
+## The rules this module exists to keep
+
+**A saved key never comes back out.** It is sealed on write and opened only where a
+call is about to be made. `persistence/provider-store.ts` selects the ciphertext
+column in exactly ONE function, `listProvidersWithSecrets`; every other read names its
+columns and omits it, so no DTO can carry key material even by accident.
+`key-confinement.spec.ts` asserts that against the source rather than trusting it.
+
+**The seam does the talking.** Discovery and validation both open sockets to a
+provider endpoint, so both live in `model-gateway` (`provider-probe.ts`) and are
+called from here. A module that manages provider RECORDS is not a module that speaks
+a provider's HTTP.
+
+**A model is validated by use.** Every assignment probes the tier's real job before it
+is stored: a completion, an embedding, a 32-pixel image. Never a pattern match on a
+model name.
+
+**The embeddings tier is refused here.** Changing it needs the vector index rebuilt,
+which is the second half of item 7.1. The refusal is server-side and names the
+operator command that is the interim path.
+
+**One live configuration per process.** `LiveModelConfiguration` (the seam's) is
+mutated in place, so every consumer that holds it is current; the gateway rebuilds its
+stack on a version change, and this module's watcher polls the version column for
+changes another process made.
+
+## Files
+
+| File | What it is |
+|---|---|
+| `load-configuration.ts` | The boot path: seed once, then resolve. Called by every composition root and by the CLIs that talk to models. |
+| `domain/seed.ts` | The environment into the database, exactly once, atomically claimed. |
+| `domain/resolve.ts` | Stored rows into the seam's `ResolvedModelProviders`. The one place keys are decrypted. |
+| `domain/secret-box.ts` | AES-256-GCM under the instance master key. |
+| `domain/provider-types.ts` | What each provider family is: adapter, endpoint, key and embeddings capability. |
+| `domain/trust-lookup.ts` | What the published trust scores say about the configuration in force, or plainly that nothing does. |
+| `provider-config.service.ts` | The admin operations, the validation, the audit, the reload. |

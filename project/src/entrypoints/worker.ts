@@ -9,7 +9,11 @@ import { createLogger, PinoNestLogger } from './logger';
 import { createWorkerRootModule } from './worker-root.module';
 import { createDb, describeErrorLine, ensureInstanceKeys } from '../infrastructure/index';
 import { logRedactionState } from './redaction-boot';
-import { assertEmbeddingSpaceConsistent, logModelConfiguration } from './model-boot';
+import {
+  assertEmbeddingSpaceConsistent,
+  installModelConfiguration,
+  logModelConfiguration,
+} from './model-boot';
 import {
   ACTIVE_PROMPTS,
   DREAM_CRONTAB,
@@ -70,6 +74,10 @@ async function main(): Promise<void> {
   const config = loadConfig();
   const logger = createLogger(config.logLevel);
   logRedactionState(logger, config); //: state the effective posture loudly.
+  // The DATABASE's model configuration, in force before anything is built
+  // (V2.4 item 7.1). The worker seeds too: whichever process starts first
+  // wins the atomic claim, and the other finds the seeding already done.
+  const live = await installModelConfiguration(config, logger);
   logModelConfiguration(logger, config); // State the active configuration id.
   // Embedding-space guard: a changed embeddings
   // model refuses boot until reindex has re-embedded the stored vectors.
@@ -79,7 +87,7 @@ async function main(): Promise<void> {
   await assertLocalRuntimeReady(config.modelProviders);
 
   const context = await NestFactory.createApplicationContext(
-    createWorkerRootModule(config) as never,
+    createWorkerRootModule(config, live) as never,
     { logger: new PinoNestLogger(logger) },
   );
   context.enableShutdownHooks();

@@ -58,15 +58,27 @@ export class AuditedModelGateway extends ModelGateway {
     const started = Date.now();
     try {
       const result = await this.inner.complete(request);
-      await this.record('complete', request.tier ?? 'answer', started, {
-        inputChars: request.input.length,
-        outputChars: result.text.length,
-        inputTokens: result.usage?.inputTokens,
-        outputTokens: result.usage?.outputTokens,
-      });
+      await this.record(
+        'complete',
+        request.tier ?? 'answer',
+        started,
+        {
+          inputChars: request.input.length,
+          outputChars: result.text.length,
+          inputTokens: result.usage?.inputTokens,
+          outputTokens: result.usage?.outputTokens,
+        },
+        request.answerOption,
+      );
       return result;
     } catch (error) {
-      await this.recordFailure('complete', request.tier ?? 'answer', started, error);
+      await this.recordFailure(
+        'complete',
+        request.tier ?? 'answer',
+        started,
+        error,
+        request.answerOption,
+      );
       throw error;
     }
   }
@@ -90,12 +102,16 @@ export class AuditedModelGateway extends ModelGateway {
       // `finally`, not "after the loop": an SSE consumer that disconnects
       // mid-answer abandons the generator, and the prompt had already egressed
       // by then. The entry is written with what actually moved.
-      if (failure) await this.recordFailure('completeStream', tier, started, failure);
+      if (failure)
+        await this.recordFailure('completeStream', tier, started, failure, request.answerOption);
       else
-        await this.record('completeStream', tier, started, {
-          inputChars: request.input.length,
-          outputChars,
-        });
+        await this.record(
+          'completeStream',
+          tier,
+          started,
+          { inputChars: request.input.length, outputChars },
+          request.answerOption,
+        );
     }
   }
 
@@ -173,8 +189,9 @@ export class AuditedModelGateway extends ModelGateway {
     tier: ModelTier | 'embedding' | 'vision',
     started: number,
     detail: Record<string, number | undefined>,
+    answerOption?: string,
   ): Promise<void> {
-    await this.write(operation, tier, started, { ...detail, ok: true });
+    await this.write(operation, tier, started, { ...detail, ok: true }, answerOption);
   }
 
   private async recordFailure(
@@ -182,13 +199,20 @@ export class AuditedModelGateway extends ModelGateway {
     tier: ModelTier | 'embedding' | 'vision',
     started: number,
     error: unknown,
+    answerOption?: string,
   ): Promise<void> {
     // The error's CLASS, never its message: upstream messages carry endpoint
     // hosts and, on a validation failure, fragments of the model's own output.
-    await this.write(operation, tier, started, {
-      ok: false,
-      errorClass: error instanceof Error ? error.constructor.name : 'unknown',
-    });
+    await this.write(
+      operation,
+      tier,
+      started,
+      {
+        ok: false,
+        errorClass: error instanceof Error ? error.constructor.name : 'unknown',
+      },
+      answerOption,
+    );
   }
 
   private async write(
@@ -196,8 +220,14 @@ export class AuditedModelGateway extends ModelGateway {
     tier: string,
     started: number,
     detail: Record<string, unknown>,
+    answerOption?: string,
   ): Promise<void> {
-    const route = this.routes[tier];
+    // A user-chosen answer model is the model that actually received the bytes
+    // (V2.4 item 7.1), so the trail must name it rather than the tier's
+    // assigned default. An option that has since been retired falls back to the
+    // tier route, which is what the router did with the call itself.
+    const route =
+      (answerOption ? this.routes[`answer:${answerOption}`] : undefined) ?? this.routes[tier];
     try {
       await this.audit.recordEgress({
         operation,

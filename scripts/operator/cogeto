@@ -309,6 +309,9 @@ gen_zitadel_admin_password() {
 gen_minio_kms_key() {  # <key-name>:<base64 of 32 random bytes>
   printf 'cogeto-instance-key:%s' "$(openssl rand -base64 32)"
 }
+gen_master_key() {  # V2.4 item 7.1: 32 random bytes, base64 — encrypts provider keys
+  openssl rand -base64 32
+}
 gen_bootstrap_pat_expiry() {  # SEC-16: install date + 14 days (bootstrap backstop)
   # GNU date (Ubuntu target); BSD date fallback for a dev-box dry run.
   date -u -d '+14 days' '+%Y-%m-%dT00:00:00Z' 2>/dev/null \
@@ -863,7 +866,7 @@ add_install_checklist() {
   todo_dns "Delete a test source and confirm Forgotten shows a signed deletion receipt"
   todo_dns "Run 'sudo cogeto status' on the instance — everything green (the script installed itself to /usr/local/bin/cogeto)"
 
-  todo_vault "Store ${ENV_FILE} (all per-instance secrets) in the operator vault — losing MINIO_KMS_SECRET_KEY makes stored files unreadable"
+  todo_vault "Store ${ENV_FILE} (all per-instance secrets) in the operator vault — losing MINIO_KMS_SECRET_KEY makes stored files unreadable, and losing COGETO_MASTER_KEY makes every stored provider API key unreadable"
   todo_vault "Record the Zitadel admin login (admin@${domain} + ZITADEL_ADMIN_PASSWORD from ${ENV_FILE})"
   todo_vault "Note: the receipt-signing keypair is generated on first boot INSIDE the 'instance-keys' Docker volume (never a file on disk) — it is covered by the OVHcloud instance backup, not by ${ENV_FILE}"
 }
@@ -966,6 +969,11 @@ cmd_install() {
   env_set MINIO_ROOT_USER "cogeto"
   env_set MINIO_ROOT_PASSWORD "$(gen_password)"
   env_set MINIO_KMS_SECRET_KEY "$(gen_minio_kms_key)"
+  # The instance master key (V2.4 item 7.1): what encrypts the provider API
+  # keys the admin enters in the interface. DATA-BOUND like the MinIO KMS key
+  # — losing it makes every stored provider key unreadable, and there is no
+  # recovery except re-entering them.
+  env_set COGETO_MASTER_KEY "$(gen_master_key)"
   env_set ZITADEL_MASTERKEY "$(gen_zitadel_masterkey)"
   env_set ZITADEL_DB_PASSWORD "$(gen_password)"
   env_set ZITADEL_ORG_NAME "Cogeto"
@@ -1602,8 +1610,8 @@ cmd_configure() {
         confirm_typed "regenerate ${regen}" "rotate the scoped S3 credential (minio-init re-syncs it; app + worker restart together; no data impact)."
         env_set COGETO_S3_SECRET_KEY "$(gen_password)"
         restart_needed="${restart_needed} minio-init app worker" ;;
-      POSTGRES_PASSWORD|ZITADEL_DB_PASSWORD|MINIO_ROOT_PASSWORD|MINIO_KMS_SECRET_KEY|ZITADEL_MASTERKEY)
-        die "refusing: ${regen} is DATA-BOUND — the running Postgres/MinIO/Zitadel state was initialized with it, and swapping the env alone bricks the stack (losing MINIO_KMS_SECRET_KEY makes stored objects permanently unreadable). Rotating these is a manual, backed-up procedure — see docs/operations/operator-script.md" ;;
+      POSTGRES_PASSWORD|ZITADEL_DB_PASSWORD|MINIO_ROOT_PASSWORD|MINIO_KMS_SECRET_KEY|ZITADEL_MASTERKEY|COGETO_MASTER_KEY)
+        die "refusing: ${regen} is DATA-BOUND — the running Postgres/MinIO/Zitadel state was initialized with it, and swapping the env alone bricks the stack (losing MINIO_KMS_SECRET_KEY makes stored objects permanently unreadable; rotating COGETO_MASTER_KEY makes every stored provider API key unreadable). Rotating these is a manual, backed-up procedure — see docs/operations/operator-script.md" ;;
       INSTANCE_SIGNING_KEY|instance-signing-key)
         die "refusing LOUDLY: the receipt-signing keypair is NEVER rotated by this script — every deletion receipt chains to it (spec §11.1), and a silent rotation would break the hash-chain verification that makes forgetting provable. If a rotation is truly required, it is an owner-level, documented procedure with a chain anchor";;
       *)

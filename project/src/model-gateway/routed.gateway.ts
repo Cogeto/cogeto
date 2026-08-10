@@ -16,6 +16,13 @@ export interface TierRoutes {
   embedding: ModelGateway;
   /** Absent when this instance has no vision binding (V2.1 item 4.1). */
   vision?: ModelGateway | null;
+  /**
+   * The admin-enabled answer models a user may pick between (V2.4 item 7.1),
+   * by option id. A request naming an option that is no longer enabled falls
+   * back to the assigned answer tier rather than failing: an admin retiring an
+   * option must not break the next question a user asks.
+   */
+  answerOptions?: ReadonlyMap<string, ModelGateway>;
 }
 
 /**
@@ -32,11 +39,26 @@ export class TierRoutedModelGateway extends ModelGateway {
   }
 
   complete(request: CompletionRequest): Promise<CompletionResult> {
-    return this.routes[request.tier ?? 'answer'].complete(request);
+    return this.forCompletion(request).complete(request);
   }
 
   completeStream(request: CompletionRequest): AsyncIterable<StreamDelta> {
-    return this.routes[request.tier ?? 'answer'].completeStream(request);
+    return this.forCompletion(request).completeStream(request);
+  }
+
+  /**
+   * The adapter a completion goes to: the tier's, unless the caller named a
+   * user-chosen answer option that is still enabled (V2.4 item 7.1). The call
+   * site still names a TIER and an opaque option id, never a vendor model
+   * string, so spec §12.1 holds.
+   */
+  private forCompletion(request: CompletionRequest): ModelGateway {
+    const tier = request.tier ?? 'answer';
+    if (tier === 'answer' && request.answerOption) {
+      const chosen = this.routes.answerOptions?.get(request.answerOption);
+      if (chosen) return chosen;
+    }
+    return this.routes[tier];
   }
 
   extractStructured<T>(
@@ -65,9 +87,23 @@ export class TierRoutedModelGateway extends ModelGateway {
     return this.routes.embedding.embeddingModelId();
   }
 
-  /** Probe each DISTINCT underlying adapter; unreachable anywhere → not ok. */
+  /**
+   * Probe each DISTINCT underlying adapter serving a TIER; unreachable
+   * anywhere → not ok. The user-selectable answer options are deliberately
+   * excluded: they are optional extras, and one retired endpoint among them
+   * must not make the instance report itself unhealthy.
+   */
   override async reachable(): Promise<GatewayReachability> {
-    const distinct = [...new Set(Object.values(this.routes).filter((route) => route != null))];
+    const distinct = [
+      ...new Set(
+        [
+          this.routes.pipeline,
+          this.routes.answer,
+          this.routes.embedding,
+          this.routes.vision,
+        ].filter((route): route is ModelGateway => route != null),
+      ),
+    ];
     const results = await Promise.all(distinct.map((gateway) => gateway.reachable()));
     const failed = results.filter((r) => !r.ok);
     if (failed.length > 0) {
