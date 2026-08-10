@@ -20,6 +20,7 @@ import {
   fetchExtractionGateConfig,
   fetchInstancePublicKey,
   fetchAnswerModel,
+  fetchMe,
   fetchModelConfig,
   fetchPassportDownload,
   fetchPassportExports,
@@ -587,6 +588,10 @@ function ModelConfigSection({ session }: { session: Session }) {
     queryKey: ['model-config'],
     queryFn: () => fetchModelConfig(session),
   });
+  // An admin sees ONE extra line: where this is actually changed. Everyone else
+  // sees the disclosure unchanged, because which company receives their text is
+  // not an operator detail (V2.4 item 7.1).
+  const me = useQuery({ queryKey: ['me'], queryFn: () => fetchMe(session) });
 
   return (
     <section className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
@@ -634,6 +639,22 @@ function ModelConfigSection({ session }: { session: Session }) {
             </div>
           </dl>
           <p className="text-xs text-slate-500">{config.data.externalCalls}</p>
+          {me.data?.isAdmin === true && (
+            <p className="text-xs text-slate-400">
+              <Trans
+                i18nKey="models.managedIn"
+                ns="settings"
+                components={{
+                  link: (
+                    <a
+                      href="/models"
+                      className="font-medium text-brand-teal-ink underline dark:text-brand-teal"
+                    />
+                  ),
+                }}
+              />
+            </p>
+          )}
         </>
       )}
       {config.isError && (

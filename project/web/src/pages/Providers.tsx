@@ -317,7 +317,7 @@ function AddProviderForm({
                 checked={type === candidate}
                 onChange={() => setType(candidate)}
               />
-              <ProviderMark type={candidate as StoredProviderType} className="mt-0.5 h-5 w-5" />
+              <ProviderMark type={candidate as StoredProviderType} className="mt-0.5 h-10 w-10" />
               <span className="min-w-0">
                 <span className="block font-medium text-slate-800">
                   {t(`type.${candidate}.name`)}

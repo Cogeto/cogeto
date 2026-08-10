@@ -385,7 +385,7 @@ function AnswerOptionsSection({
         <ul className="space-y-1">
           {configuration.answerOptions.map((option) => (
             <li key={option.id} className="flex flex-wrap items-center gap-2 text-sm">
-              <ProviderMark type={option.providerType} className="h-4 w-4" />
+              <ProviderMark type={option.providerType} className="h-7 w-7" />
               <span className="font-medium text-slate-700">{option.label}</span>
               <span className="text-xs text-slate-400">
                 {option.providerLabel} · {option.model}

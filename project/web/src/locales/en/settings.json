@@ -53,7 +53,7 @@
   },
   "models": {
     "heading": "Model configuration",
-    "explainer": "Read-only. The active providers and models are set by the operator in the instance environment. API keys are never entered or shown here.",
+    "explainer": "Read-only. Which providers and models this instance uses, and what leaves it. API keys are never shown here.",
     "configuration": "Configuration",
     "notConfigured": "no provider key set, model features are disabled",
     "redaction": "Redaction",
@@ -62,7 +62,8 @@
       "pipeline": "Pipeline",
       "answer": "Answer",
       "embeddings": "Embeddings"
-    }
+    },
+    "managedIn": "Providers and model assignments are managed on the <link>Models</link> page."
   },
   "aliases": {
     "heading": "Entity aliases",
