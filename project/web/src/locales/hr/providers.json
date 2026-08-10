@@ -125,8 +125,8 @@
     "numbers": "Extraction precision {{precision}}, recall {{recall}}, verification agreement {{agreement}}."
   },
   "embeddings": {
-    "locked": "The embeddings model cannot be changed here. Every stored fact was turned into a vector by the current one, and searching a mix of two would quietly return the wrong results.",
-    "interim": "The managed rebuild arrives in the next release. Until then, change it with the operator command <code>{{command}}</code>, which re-embeds everything from the database."
+    "locked": "The embeddings model cannot be assigned directly. Every stored fact was turned into a vector by the current one, and searching a mix of two would quietly return the wrong results.",
+    "interim": "The managed rebuild is unavailable in this process. Change the model with the operator command <code>{{command}}</code>, which re-embeds everything from the database."
   },
   "answerOptions": {
     "heading": "Answer models people may choose",
@@ -146,5 +146,32 @@
     "instanceDefault": "The instance default",
     "current": "Currently answering with {{label}}.",
     "none": "Your administrator has not offered a choice here yet."
+  },
+  "rebuild": {
+    "review": "Review the change",
+    "planTitle": "Changing the embeddings model rebuilds the whole index",
+    "planWhat": "Embeddings move to {{model}} on {{provider}}, producing {{dimensions}}-dimension vectors. The probe just confirmed the model works.",
+    "planCost": "{{facts}} memories will be re-embedded: an estimated {{tokens}} tokens, taking roughly {{duration}}.",
+    "planSpend": "This is real model spend, metered against the daily model budget. If the budget runs out mid-rebuild, the rebuild pauses and resumes by itself.",
+    "planServing": "Search keeps answering from the current index for the whole rebuild. The switch happens only when the new index is verified complete, and it is instant.",
+    "planEvaluated": "The resulting configuration {{configuration}} has published trust scores.",
+    "planNotEvaluated": "The resulting configuration {{configuration}} is not evaluated: no published trust scores match it.",
+    "confirm": "Start the rebuild",
+    "back": "Back",
+    "runningTitle": "Rebuilding the vector index for {{model}}",
+    "finalizingTitle": "Finalizing the switch to {{model}}",
+    "failedTitle": "The rebuild to {{model}} stopped",
+    "progress": "{{done}} of {{total}} memories re-embedded, about {{tokens}} tokens spent.",
+    "remaining": "About {{duration}} remaining.",
+    "servingNote": "Search keeps answering from the current index; nothing changes until the rebuild completes.",
+    "resume": "Resume the rebuild",
+    "cancel": "Cancel the rebuild",
+    "cancelling": "Cancelling",
+    "durationSeconds_one": "{{count}} seconds",
+    "durationSeconds_few": "{{count}} seconds",
+    "durationSeconds_other": "{{count}} seconds",
+    "durationMinutes_one": "{{count}} minutes",
+    "durationMinutes_few": "{{count}} minutes",
+    "durationMinutes_other": "{{count}} minutes"
   }
 }

@@ -1,6 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import type { CapabilitySummary, ScheduledJobSummary } from '@cogeto/shared';
+import type {
+  CapabilitySummary,
+  EmbeddingRebuildHealth,
+  ScheduledJobSummary,
+} from '@cogeto/shared';
 import { fetchHealth } from '../api';
 import type { Session } from '../auth/oidc';
 import { capabilityView, jobView } from './capabilities-model';
@@ -78,13 +82,50 @@ function JobRow({ summary }: { summary: ScheduledJobSummary }) {
   );
 }
 
+/**
+ * The managed embedding rebuild, when one is in flight (V2.4 item 7.1 second
+ * half): an operator watching the instance sees what it is doing and how far
+ * it has come, from the same state row every other surface reads. Running is
+ * ordinary work in progress; failed carries the loud tone.
+ */
+function ReindexRow({ reindex }: { reindex: EmbeddingRebuildHealth }) {
+  const { t } = useTranslation('capabilities');
+  const failed = reindex.status === 'failed';
+  return (
+    <li className="rounded-md border border-slate-200 px-3 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm font-medium text-slate-700">{t('reindex.name')}</span>
+        <Pill tone={failed ? 'danger' : 'info'} icon={failed ? '✗' : '↻'}>
+          {failed
+            ? t('reindex.failed')
+            : reindex.phase === 'finalizing'
+              ? t('reindex.finalizing')
+              : t('reindex.running')}
+        </Pill>
+      </div>
+      <p className="mt-1 text-xs text-slate-500">
+        {t('reindex.progress', {
+          model: reindex.targetModel,
+          done: reindex.factsDone,
+          total: reindex.factsTotal,
+        })}
+      </p>
+      {reindex.error && (
+        <p className="mt-1 text-xs font-medium text-red-700 dark:text-red-300">{reindex.error}</p>
+      )}
+    </li>
+  );
+}
+
 /** Presentational section — the spec renders this directly with fixtures. */
 export function CapabilitiesSection({
   capabilities,
   jobs,
+  reindex,
 }: {
   capabilities: CapabilitySummary[];
   jobs: ScheduledJobSummary[];
+  reindex?: EmbeddingRebuildHealth | null;
 }) {
   const { t } = useTranslation('capabilities');
   return (
@@ -93,6 +134,7 @@ export function CapabilitiesSection({
         {capabilities.map((summary) => (
           <CapabilityRow key={summary.id} summary={summary} />
         ))}
+        {reindex && <ReindexRow reindex={reindex} />}
       </ul>
       <div className="mb-2 mt-4">
         <SectionTitle>{t('scheduledJobs')}</SectionTitle>
@@ -121,7 +163,13 @@ export function CapabilitiesPanel({ session }: { session: Session }) {
       </div>
       {isPending && <SkeletonRows rows={5} label={t('loading')} />}
       {isError && <ErrorState>{t('system:health.unreachable')}</ErrorState>}
-      {data && <CapabilitiesSection capabilities={data.capabilities} jobs={data.jobs} />}
+      {data && (
+        <CapabilitiesSection
+          capabilities={data.capabilities}
+          jobs={data.jobs}
+          reindex={data.reindex}
+        />
+      )}
     </Card>
   );
 }

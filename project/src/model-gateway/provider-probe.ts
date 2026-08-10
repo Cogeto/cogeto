@@ -48,6 +48,12 @@ export interface ProviderProbeResult {
   /** Present on failure: the operator-actionable message. Never a credential. */
   error?: string;
   reason?: ProviderProbeFailure;
+  /** Embeddings probes: the returned vector's length — the model's REAL
+   * dimension, which the managed rebuild records instead of a registry guess. */
+  dimensions?: number;
+  /** Embeddings probes: how long the one-string call took — the honest basis
+   * for the rebuild plan's duration estimate. */
+  latencyMs?: number;
 }
 
 /** A candidate endpoint: what a probe needs, before anything is saved. */
@@ -181,7 +187,9 @@ export async function probeProviderModel(
   const label = `${target.provider}/${request.model}`;
   try {
     if (request.tier === 'embeddings') {
+      const startedAt = Date.now();
       const vectors = await withDeadline(gateway.embed(['probe']), timeoutMs, label);
+      const latencyMs = Date.now() - startedAt;
       const dimensions = vectors[0]?.length ?? 0;
       if (dimensions === 0) {
         return {
@@ -190,7 +198,12 @@ export async function probeProviderModel(
           error: `${label} answered the embedding probe with an empty vector`,
         };
       }
-      return { ok: true, detail: `${label} returned a ${dimensions}-dimension vector` };
+      return {
+        ok: true,
+        detail: `${label} returned a ${dimensions}-dimension vector`,
+        dimensions,
+        latencyMs,
+      };
     }
     if (request.tier === 'vision') {
       const result = await withDeadline(
@@ -247,6 +260,32 @@ export async function probeProviderModel(
     }
     return classify(error, label, request.tier);
   }
+}
+
+/**
+ * The single-binding configuration the managed rebuild embeds through: the
+ * TARGET provider and model on the embeddings tier, resolved like any other
+ * binding so the ordinary factory can wrap it with the budget and audit
+ * decorators (unlike a probe, a corpus rebuild is real metered spend and real
+ * egress). The caller opens the key exactly as `targetFor` does; nothing here
+ * stores it.
+ */
+export function embeddingRunConfiguration(
+  target: ProbeTarget,
+  model: string,
+): ResolvedModelProviders {
+  const binding: TierBinding = {
+    provider: target.provider,
+    model,
+    endpoint: {
+      id: 'embedding-rebuild',
+      label: 'embedding-rebuild',
+      baseUrl: resolvedBaseUrl(target),
+      apiKey: target.apiKey,
+      selfHosted: target.selfHosted,
+    },
+  };
+  return { ...probeConfiguration(binding, 'embeddings'), id: 'embedding-rebuild' };
 }
 
 /**

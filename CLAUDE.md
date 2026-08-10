@@ -370,13 +370,35 @@ vision stay admin-only. Changes apply **without a restart**: one live
 configuration object per process, mutated in place, with the worker polling a
 version column. **Seeding is atomic and once**: after it, the environment's
 model variables are IGNORED, not merged, and `.env` is bootstrap only.
-**An embeddings change is refused**, naming the operator reindex as the interim
-path: the managed rebuild is the second half and ships next. The legacy
+The legacy
 environment expansion stays for exactly one release, because it is what a v1-era
 instance's seed depends on. Read
 [`docs/features/models.md`](docs/features/models.md) and
 [`docs/operations/upgrade-notes.md`](docs/operations/upgrade-notes.md) before
 touching anything in the model-configuration path.
+
+The **managed reindex** completed item 7.1 (migration 0053): changing the
+embeddings model is a safe in-application operation, and **no interface action
+can render the instance unstartable**. The vector index has durable state
+(`embedding_index_state`, memory-owned: active collection, active dimension,
+the rebuild in flight). The interface runs plan-then-confirm: a real probed
+embedding yields the model's TRUE dimension, and the plan states facts, the
+chars/4 token estimate the meter actually charges, a probed duration, the
+spend, and that search keeps serving from the old index. The rebuild is the
+`memory.reindex_advance` job (the `import.advance` shape), re-embedding from
+Postgres into a NEW collection with resume-by-presence, metered attributed
+spend, budget exhaustion pausing not bypassing, cancel always available. The
+**switch is one transaction** under an embedding-write lock shared by every
+stamped-vector writer: catch-up, gate-payload resync, orphan sweep, count
+verification, row stamp, assignment flip via a port bound in the worker root,
+state flip; a crash rolls it all back. Gate parity in the new collection is
+tested, not assumed; payload writes and deletions dual-apply mid-rebuild; the
+nightly sweep drops stray rebuild collections; the retired collection drops on
+a grace period so stale pollers stay coherent. The boot guard stays as a net
+with an actionable message naming **`cogeto reindex`**, the operator
+subcommand sharing the same engine (flagless in-place repair, or
+`--provider LABEL --model M` for an offline managed switch via `compose run`,
+which works while the services crash-loop).
 
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).

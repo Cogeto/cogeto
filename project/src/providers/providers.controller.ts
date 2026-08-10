@@ -13,6 +13,7 @@ import {
 import { z } from 'zod';
 import { MODEL_TIERS, PROVIDER_TYPES } from '@cogeto/shared';
 import type {
+  EmbeddingRebuildPlanDto,
   ModelConfigurationDto,
   ProviderDto,
   ProviderModelsDto,
@@ -63,6 +64,11 @@ const answerOptionSchema = z.object({
 });
 
 const tierSchema = z.enum(MODEL_TIERS);
+
+const rebuildSchema = z.object({
+  providerId: z.uuid(),
+  model: z.string().min(1).max(200),
+});
 
 @Controller('admin')
 @UseGuards(BearerAuthGuard, AdminGuard)
@@ -127,6 +133,37 @@ export class ProvidersController {
       parseOrBadRequest(tierSchema, tier),
       parseOrBadRequest(assignSchema, body),
     );
+  }
+
+  // ── The managed embedding rebuild (V2.4 item 7.1 second half) ─────────────
+  // Two-step by construction: `rebuild-plan` computes and states what will
+  // happen (cost, duration, spend, serving behaviour) and saves NOTHING;
+  // only the explicit `rebuild` POST begins the work.
+
+  @Post('model-configuration/embeddings/rebuild-plan')
+  planEmbeddingsRebuild(@Body() body: unknown): Promise<EmbeddingRebuildPlanDto> {
+    return this.providers.planEmbeddingsRebuild(parseOrBadRequest(rebuildSchema, body));
+  }
+
+  @Post('model-configuration/embeddings/rebuild')
+  beginEmbeddingsRebuild(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: unknown,
+  ): Promise<ModelConfigurationDto> {
+    return this.providers.beginEmbeddingsRebuild(
+      request.principal,
+      parseOrBadRequest(rebuildSchema, body),
+    );
+  }
+
+  @Post('model-configuration/embeddings/rebuild/cancel')
+  cancelEmbeddingsRebuild(@Req() request: AuthenticatedRequest): Promise<ModelConfigurationDto> {
+    return this.providers.cancelEmbeddingsRebuild(request.principal);
+  }
+
+  @Post('model-configuration/embeddings/rebuild/resume')
+  resumeEmbeddingsRebuild(@Req() request: AuthenticatedRequest): Promise<ModelConfigurationDto> {
+    return this.providers.resumeEmbeddingsRebuild(request.principal);
   }
 
   @Post('model-configuration/answer-options')

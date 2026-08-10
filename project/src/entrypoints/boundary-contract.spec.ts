@@ -40,6 +40,7 @@ const REPO = path.resolve(SRC, '../..');
  */
 const TABLE_OWNERS: Readonly<Record<string, string>> = {
   memory: 'memory',
+  embedding_index_state: 'memory',
   memory_relation: 'memory',
   // The finding's lifecycle history (V2.3 item 6.1, docs/features/findings.md):
   // the relation is the finding, so its event log lives with it.
@@ -156,6 +157,7 @@ const JOB_TYPE_OWNERS: Readonly<Record<string, string>> = {
   // The delayed re-pair pass (V2.3 item 6.1, issue B).
   'reconcile.repair': 'ingestion',
   'memory.embed': 'memory',
+  'memory.reindex_advance': 'memory',
   'deletion.execute': 'memory',
   deletion_sweep: 'memory',
   'approval.execute': 'agents',

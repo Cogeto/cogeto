@@ -182,6 +182,14 @@ export async function truncateDomainTables(pool: Pool): Promise<string[]> {
     'prompt_registry',
     'audit_log',
     'deletion_receipt',
+    // Instance state, not demo data: which vector collection is active
+    // (migration 0053). Truncating it would leave the instance with no index
+    // state at all and every state read failing; the reset's
+    // reindex-from-empty rebuilds the collection's CONTENT, which is the part
+    // that is demo data. (model_config_state is NOT preserved: the provider
+    // tables are wiped with the world, and the cleared seed marker is what
+    // makes the next boot re-seed them from the demo environment.)
+    'embedding_index_state',
   ]);
   const { rows } = await pool.query<{ tablename: string }>(
     `SELECT tablename FROM pg_tables WHERE schemaname = 'public'`,

@@ -147,19 +147,77 @@ with model features off and a typed error on use, rather than refusing to start,
 admin is never locked out of the page that fixes it. What still refuses is the thing
 that would corrupt data:
 
-**Embedding-space integrity.** Each vector records its producing model. At boot the
-app and worker refuse to start when stored embeddings disagree with the active model
-or when the collection's vector size disagrees with the active model's dimension,
-naming the reindex command. **Refuse, not degrade**: a silently weaker retrieval
-surface is exactly the failure mode this architecture exists to prevent. `reindex` is
-exempt and is the way out.
+**Embedding-space integrity.** Each vector records its producing model, and the
+index itself has durable state since migration 0053: a single `embedding_index_state`
+row naming the active Qdrant collection and its dimension. At boot the app and worker
+refuse to start when stored embeddings disagree with the active model or when the
+collection's vector size disagrees with the recorded dimension. **Refuse, not
+degrade**: a silently weaker retrieval surface is exactly the failure mode this
+architecture exists to prevent. Since the managed rebuild shipped, **no interface
+action can produce that state**: the guard is a net for states made by other means
+(a restored backup, a direct database edit), and its message states exactly what
+mismatched, the active and index configurations, and the `cogeto reindex` command
+that repairs it. `reindex` is exempt and is the way out.
 
-**Which is why the embeddings tier cannot be reassigned in the interface yet.** V2.4
-item 7.1 is the configuration half; the **managed reindex is the second half and ships
-next**. Until it does, the embeddings row explains that changing the model requires
-rebuilding the vector index and names the operator command
-(`docker compose exec worker npm run reindex`) as the interim path. The refusal is
-server-side, so it holds for any caller, not just the page.
+### Changing the embeddings model: the managed rebuild (V2.4 item 7.1, second half)
+
+Changing the embeddings model is a **two-step operation in the interface**. The plan
+step probes the candidate binding with a real embedding (which also yields the
+model's TRUE dimension, never a registry guess), then states everything before
+anything is saved: the corpus size in facts, the token estimate under the same
+chars/4 accounting the budget meter charges, a duration extrapolated from the
+probe's measured latency, that real model spend is involved, what search behaviour
+will be during the rebuild, and whether the resulting configuration id has published
+trust scores. Only explicit confirmation begins anything; from there it is automatic,
+with no command and no restart.
+
+**The pending model is recorded beside the active one**, on the memory-owned
+`embedding_index_state` row, and a worker job (`memory.reindex_advance`, the
+`import.advance` shape: a plain re-runnable pass under a single-flight lock)
+re-embeds the whole corpus from Postgres, the source of truth, into a **new Qdrant
+collection while the old one keeps serving untouched**. Resume state is presence in
+the target collection, so a restart resumes exactly where it stopped; progress
+(facts done against the total, phase, a rate-based time estimate, tokens spent) is
+one cheap state-row read, shown live on the Models page, in the capabilities panel
+and in the health report. The rebuild's embedding calls go through the ordinary
+gateway factory, so the budget meter, the egress audit and redaction wrap them like
+every other call; the spend is attributed to the admin who confirmed it, and an
+exhausted daily budget **pauses** the rebuild visibly and resumes it later, never
+bypasses the meter.
+
+**The switch is one transaction**, under the exclusive side of an embedding-write
+lock that every stamped-vector writer (pipeline stage 5, the memory embed job) takes
+on the shared side: a final catch-up over rows ingested mid-rebuild, a gate-payload
+resync for rows whose scope, status or sensitivity moved, an orphan sweep, a
+verification that the point count matches the embeddable corpus, the per-row model
+stamp, the assignment flip (through a port the worker root binds to the providers
+module), and the state flip. A crash at any line rolls the whole switch back to a
+still-running rebuild over a still-serving index. Every process picks the change up
+within one version poll; the replaced collection is retired on a grace period so a
+briefly stale process keeps serving a coherent old space, then dropped. The nightly
+integrity sweep drops any stray rebuild collection a crash left behind.
+
+**Serving policy: the old index serves throughout.** Qdrant holds both collections
+for the duration (the resource cost is a second copy of the vectors), searches never
+degrade, and users notice nothing but the progress banner. Gate parity in the new
+collection is asserted by test, not assumed: the same `ensureCollection` path builds
+the payload indexes, the same point construction carries the scope, status and
+sensitive gates, and payload writes and deletions during the rebuild apply to both
+collections so a mid-rebuild sensitive toggle or deletion cannot resurface after the
+switch.
+
+**Cancellation is always available**: it stops the job, drops the partial
+collection, clears the pending state and audits the cancellation; the active
+configuration was never touched. A rebuild whose passes keep failing parks as
+`failed` with the error shown, and both resume and cancel remain offered.
+
+**The operator path shares the implementation.** `cogeto reindex` (or
+`docker compose run --rm worker npm run reindex`) rebuilds the active collection in
+place for the mismatch-repair case, and `cogeto reindex --provider LABEL --model M`
+drives the same managed rebuild and the same switch from the shell, for the instance
+whose app will not start. `compose run` rather than `exec`, so it works while the
+services crash-loop; the single-flight lock makes a live worker and the CLI
+cooperate on the same rebuild instead of conflicting.
 
 **Configuration identity.** The trust page's join key derives deterministically from
 the resolved tiers, exactly as before: an exact match to a named preset gets the

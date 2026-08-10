@@ -32,7 +32,12 @@ export { createIntegritySweep } from './factory';
 export { MemoryObjectStore } from './persistence/object-store';
 export { MemoryFileStore } from './file-store';
 export { seedObjectFixture, seedOrphanPoint } from './dev-seed';
-export { createMemoryStore, createMemorySystemStore, createMemoryReconciliation } from './factory';
+export {
+  createEmbeddingRebuild,
+  createMemoryStore,
+  createMemorySystemStore,
+  createMemoryReconciliation,
+} from './factory';
 export type { NewFact } from './memory.store';
 export { runMemoryEmbedJob } from './embed-job';
 export { MemoryReconciliation } from './reconciliation';
@@ -60,7 +65,41 @@ export type { MemoryRow, SourceType } from './persistence/tables';
 // Reindex: rebuild Qdrant from Postgres (spec §4.2). Qdrant stays module-private —
 // callers pass primitives and a gateway, never a client.
 export { reindexMemories } from './reindex';
-export { listForeignEmbeddingModels, vectorIndexDimensionMismatch } from './embedding-space';
+export {
+  checkEmbeddingSpace,
+  listForeignEmbeddingModels,
+  vectorIndexDimensionMismatch,
+} from './embedding-space';
+export type { EmbeddingSpaceProblem } from './embedding-space';
+
+// The managed embedding rebuild (V2.4 item 7.1 second half). The engine and
+// its state live here because the index is memory's; the providers module
+// drives the admin flow through EmbeddingRebuildService, and the worker root
+// wires the job to `runEmbeddingRebuildPass` with the switch port.
+export { EmbeddingRebuildService } from './embedding-rebuild.service';
+export {
+  beginEmbeddingRebuild,
+  cancelEmbeddingRebuild,
+  EMBEDDING_REBUILD_JOB_TYPE,
+  EmbeddingRebuildConflictError,
+  embeddingRebuildCorpus,
+  resumeEmbeddingRebuild,
+  resumeEmbeddingRebuildOnBoot,
+  runEmbeddingRebuildPass,
+} from './embedding-rebuild';
+export type {
+  EmbeddingRebuildCorpus,
+  EmbeddingRebuildPassDeps,
+  EmbeddingRebuildPassResult,
+  EmbeddingRebuildTarget,
+  EmbeddingSwitchPort,
+} from './embedding-rebuild';
+export {
+  acquireEmbeddingWriteLockShared,
+  embeddingRebuildStatus,
+  readEmbeddingIndexState,
+} from './embedding-index';
+export type { EmbeddingRebuildStatus } from './embedding-index';
 
 // The source catalog's file-ref listings (V2.2 item 5.2): plain owner-scoped
 // functions over file_metadata, memory's own table.

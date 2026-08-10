@@ -151,6 +151,7 @@ Usage:
   cogeto upgrade    [X.Y.Z|latest]
   cogeto status
   cogeto features   [enable <id> | disable <id>] [--base-url URL]
+  cogeto reindex    [--provider LABEL --model MODEL]
   cogeto backup-info
   cogeto --help
 
@@ -201,6 +202,18 @@ Subcommands:
                closes the port again (audit 2.0 SEC-14: inbound SMTP is opt-in,
                so an instance that does not use email capture runs no
                internet-facing listener).
+  reindex      Rebuild the vector index from Postgres (spec 4.2). With no
+               flags: re-embed everything with the ACTIVE embeddings model —
+               the repair for the mismatch the boot guard refuses (restored
+               backup, direct database edit). With --provider LABEL --model
+               MODEL: move the instance to a DIFFERENT embeddings model from
+               the shell, using the same managed rebuild the interface runs
+               (a new collection is built beside the serving one; the switch
+               happens only on verified completion, so an interrupted run
+               resumes and the previous configuration keeps serving). Uses
+               'compose run', so it works while app and worker refuse to
+               start; re-embedding the corpus costs model API calls and asks
+               for a typed confirmation.
   backup-info  Exactly what to enable in the OVHcloud panel (roadmap D4 —
                the script itself performs no backups).
 
@@ -1100,12 +1113,19 @@ cmd_upgrade() {
 # recorded on existing memories (migration 0004) — then the Qdrant index must
 # be rebuilt from Postgres (spec §4.2: reindex must always work).
 check_embedding_model() {
-  configured="$(env_get COGETO_MISTRAL_EMBED_MODEL)"
-  [ -n "$configured" ] || configured="mistral-embed"
+  # The DATABASE is authoritative for the embeddings model since migration
+  # 0052; the environment variable is only what a not-yet-seeded v1-era
+  # instance still runs, so it is the fallback, never the answer.
+  configured="$(compose exec -T postgres psql -U postgres -d cogeto -tA \
+    -c "SELECT model FROM model_assignment WHERE tier = 'embeddings'" 2>/dev/null || echo "")"
+  if [ -z "$configured" ]; then
+    configured="$(env_get COGETO_MISTRAL_EMBED_MODEL)"
+    [ -n "$configured" ] || configured="mistral-embed"
+  fi
   stale="$(compose exec -T postgres psql -U postgres -d cogeto -tA \
     -c "SELECT count(*) FROM memory WHERE embedding_model IS NOT NULL AND embedding_model <> '${configured}'" 2>/dev/null || echo "")"
   if [ -z "$stale" ]; then
-    warn "could not check the recorded embedding model (postgres not reachable?) — if the release notes mention an embedding-model change, run the reindex manually"
+    warn "could not check the recorded embedding model (postgres not reachable?) — if the release notes mention an embedding-model change, run 'cogeto reindex'"
     return 0
   fi
   if [ "$stale" = "0" ]; then
@@ -1114,7 +1134,56 @@ check_embedding_model() {
   fi
   warn "${stale} memories were embedded with a DIFFERENT model than the configured '${configured}' — the vector index must be rebuilt (re-embeds via the model API; costs API calls)"
   confirm_typed "REINDEX" "rebuild the Qdrant index from Postgres now (the app keeps running; spec §4.2)."
-  run compose exec -T app node project/src/dist/entrypoints/reindex.js
+  run compose run --rm -T worker node project/src/dist/entrypoints/reindex.js
+}
+
+# ── reindex ───────────────────────────────────────────────────────────────────
+
+# The operator path over the vector index (V2.4 item 7.1 second half). Shares
+# the application's own implementation — the entrypoint drives the same rebuild
+# engine and the same switch path the interface uses — rather than duplicating
+# any of it here. 'compose run' rather than 'exec': it starts a fresh container
+# from the worker image, so it works while the app and worker services are
+# refusing to start (the exact situation this repairs).
+cmd_reindex() {
+  require_installed
+  provider=""
+  model=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --provider) provider="$2"; shift 2 ;;
+      --model)    model="$2"; shift 2 ;;
+      *) die "unknown argument '$1' — usage: cogeto reindex [--provider LABEL --model MODEL]" ;;
+    esac
+  done
+  if [ -n "$provider" ] && [ -z "$model" ]; then
+    die "--provider needs --model: the target embeddings model to move to"
+  fi
+  if [ -n "$model" ]; then
+    say "This moves the instance's embeddings model to '${model}'${provider:+ on provider '${provider}'}."
+    say "The whole corpus is re-embedded into a new index while the current one keeps"
+    say "serving; the switch happens only on verified completion. Re-embedding costs"
+    say "model API calls; an interrupted run resumes from where it stopped."
+    confirm_typed "REINDEX" "re-embed the whole corpus and switch the embeddings model at completion."
+  else
+    say "This rebuilds the vector index in place from Postgres with the ACTIVE embeddings"
+    say "model — the repair for the mismatch the boot guard refuses. Rows whose vectors"
+    say "are current are reused; the rest are re-embedded (costs model API calls)."
+    confirm_typed "REINDEX" "rebuild the Qdrant index from Postgres now (spec §4.2)."
+  fi
+  if [ "$CHECK" -eq 1 ]; then
+    say "CHECK MODE — would run: compose run --rm worker node project/src/dist/entrypoints/reindex.js${provider:+ --provider ${provider}}${model:+ --model ${model}}"
+    return 0
+  fi
+  if [ -n "$model" ]; then
+    if [ -n "$provider" ]; then
+      run compose run --rm -T worker node project/src/dist/entrypoints/reindex.js --provider "$provider" --model "$model"
+    else
+      run compose run --rm -T worker node project/src/dist/entrypoints/reindex.js --model "$model"
+    fi
+  else
+    run compose run --rm -T worker node project/src/dist/entrypoints/reindex.js
+  fi
 }
 
 # ── status ────────────────────────────────────────────────────────────────────
@@ -1681,7 +1750,7 @@ main() {
       --check) CHECK=1; shift ;;
       --root)  COGETO_ROOT="$2"; shift 2 ;;
       --help|-h|help) usage; exit 0 ;;
-      install|configure|upgrade|status|features|backup-info)
+      install|configure|upgrade|status|features|reindex|backup-info)
         [ -z "$cmd" ] || die "only one subcommand per run (got '${cmd}' and '$1')"
         cmd="$1"; shift ;;
       *)
@@ -1697,6 +1766,7 @@ main() {
     upgrade)     cmd_upgrade "${args[@]+"${args[@]}"}" ;;
     status)      cmd_status "${args[@]+"${args[@]}"}" ;;
     features)    cmd_features "${args[@]+"${args[@]}"}" ;;
+    reindex)     cmd_reindex "${args[@]+"${args[@]}"}" ;;
     backup-info) cmd_backup_info ;;
     "")          usage; exit 1 ;;
   esac

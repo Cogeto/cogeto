@@ -33,6 +33,7 @@ export { LiveModelConfiguration } from './live-configuration';
 // socket to a provider lives in the seam; the module that manages provider
 // RECORDS asks these two functions and never speaks HTTP itself.
 export {
+  embeddingRunConfiguration,
   listProviderModels,
   probeProviderModel,
   DEFAULT_PROVIDER_PROBE_TIMEOUT_MS,

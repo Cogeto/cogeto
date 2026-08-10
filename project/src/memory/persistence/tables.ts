@@ -2,6 +2,7 @@ import {
   bigint,
   boolean,
   index,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -211,8 +212,51 @@ export const memoryRelationEvent = pgTable(
   (t) => [index('memory_relation_event_relation_idx').on(t.relationId, t.createdAt)],
 );
 
+/**
+ * The vector index's durable state (V2.4 item 7.1 second half, migration
+ * 0053): which collection is active and at what dimension, plus the managed
+ * rebuild when one is live. Single row. The rebuild target names a provider
+ * RECORD by opaque id and label copy, never a foreign key: the providers
+ * module owns that table, and a deleted provider fails the next rebuild pass
+ * loudly instead of blocking the delete.
+ */
+export const embeddingIndexState = pgTable('embedding_index_state', {
+  singleton: boolean('singleton').primaryKey().default(true),
+  activeCollection: text('active_collection').notNull().default('memories'),
+  /** NULL = derive from the model registry (pre-0053); a managed switch
+   * records the dimension PROBED from a real embedding. */
+  activeDimensions: integer('active_dimensions'),
+  rebuildId: uuid('rebuild_id'),
+  /** NULL none | 'running' | 'failed'. The switch is one transaction, so no
+   * intermediate status is observable after a crash. */
+  rebuildStatus: text('rebuild_status').$type<'running' | 'failed'>(),
+  targetProviderId: text('target_provider_id'),
+  targetProviderLabel: text('target_provider_label'),
+  targetModel: text('target_model'),
+  targetCollection: text('target_collection'),
+  targetDimensions: integer('target_dimensions'),
+  factsTotal: integer('facts_total'),
+  factsDone: integer('facts_done'),
+  tokensSpent: bigint('tokens_spent', { mode: 'number' }),
+  /** Keyset cursor of the corpus scan; NULL = a sweep starts from the top. */
+  rebuildCursor: text('rebuild_cursor'),
+  /** Missing facts found by the current sweep; a completed sweep at 0 proves
+   * the target collection whole. */
+  sweepMissing: integer('sweep_missing'),
+  consecutiveFailures: integer('consecutive_failures').notNull().default(0),
+  rebuildError: text('rebuild_error'),
+  cancelRequested: boolean('cancel_requested').notNull().default(false),
+  requestedBy: text('requested_by'),
+  requestedOrg: text('requested_org'),
+  startedAt: timestamp('started_at', { withTimezone: true }),
+  retiredCollection: text('retired_collection'),
+  retiredAt: timestamp('retired_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type MemoryRow = typeof memory.$inferSelect;
 export type MemoryRelationRow = typeof memoryRelation.$inferSelect;
 export type MemoryRelationEventRow = typeof memoryRelationEvent.$inferSelect;
+export type EmbeddingIndexStateRow = typeof embeddingIndexState.$inferSelect;
 /** The registry's closed union — the compile-time half of the old enum's guarantee. */
 export type SourceType = SourceTypeKey;

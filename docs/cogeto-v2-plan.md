@@ -207,7 +207,7 @@ A **vertical corpus** of **44 labelled cases** (20 extraction, 24 reconciliation
 
 | # | Item | Priority | Difficulty |
 |---|---|---|---|
-| 7.1 | **Provider configuration in the database + admin UI**: configuration half **DELIVERED** 2026-08-10 (migration 0052); the managed reindex an embeddings change needs is the second half and ships next | P0 | M |
+| 7.1 | **Provider configuration in the database + admin UI**: **DELIVERED** in two halves, configuration 2026-08-10 (migration 0052) and the managed reindex 2026-08-10 (migration 0053) | P0 | M |
 | 7.2 | **Token accounting and the counterfactual** | P1 | M |
 | 7.3 | **Cost reduction programme** | P1 | M |
 | 7.4 | **Observability** | P1 | L |
@@ -247,6 +247,32 @@ rather than merged. `.env` is reduced to bootstrap.
 current model, so a change needs the index rebuilt, and the managed rebuild is the
 second half. The interface explains that and names the operator command as the interim
 path; the refusal is server-side, so it holds for any caller.
+
+**Delivered (managed reindex half), 2026-08-10.** Migration 0053: the vector index
+gets durable state (`embedding_index_state`, memory-owned, one row: active collection,
+active dimension, and the rebuild in flight), and changing the embeddings model
+becomes a safe in-application operation. The interface runs a two-step plan/confirm
+flow that probes the candidate with a real embedding (yielding its TRUE dimension),
+then states the corpus size, the chars/4 token estimate the meter will actually
+charge, a probed duration estimate, the spend, and the serving behaviour, before
+anything is saved. The pending model is recorded beside the active one; a
+`memory.reindex_advance` worker job (the `import.advance` shape) re-embeds the corpus
+from Postgres into a NEW collection while the old one keeps serving untouched, with
+resume-by-presence across restarts, metered and attributed spend, budget exhaustion
+pausing rather than bypassing, and cancel always available. The switch is ONE
+transaction under an embedding-write lock every stamped-vector writer shares: final
+catch-up, gate-payload resync, orphan sweep, count verification, per-row stamp,
+assignment flip through a port, state flip; a crash rolls it all back to a running
+rebuild over a serving index. Gate parity in the new collection is asserted by test,
+payload writes and deletions dual-apply during the rebuild, and the nightly sweep
+drops stray rebuild collections. The boot guard stays as a net with an actionable
+message naming `cogeto reindex`, the new operator subcommand that shares the same
+engine (flagless in-place repair, or `--provider LABEL --model M` for an offline
+managed switch via `compose run`, which works while the services crash-loop). The
+overriding property, verified end to end: **no interface action can render the
+instance unstartable**, and at every point there is a coherent active configuration
+whose index matches it. Details:
+[`docs/features/models.md`](features/models.md).
 
 **The legacy environment expansion stays, for one release.** It is not dead: it is
 exactly what a v1-era instance's SEED depends on, and this is the upgrade where those

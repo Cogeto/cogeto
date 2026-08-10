@@ -116,6 +116,19 @@ export function redactHealthReport(report: HealthReport): HealthReport {
       overdueAfterHours: j.overdueAfterHours,
       checkedAt: j.checkedAt,
     })),
+    // The rebuild's coarse state and progress stay (the status panel renders
+    // them for everyone); the error PROSE is operator detail like the rest.
+    reindex: report.reindex
+      ? {
+          status: report.reindex.status,
+          phase: report.reindex.phase,
+          targetModel: report.reindex.targetModel,
+          factsDone: report.reindex.factsDone,
+          factsTotal: report.reindex.factsTotal,
+          startedAt: report.reindex.startedAt,
+          estimatedSecondsRemaining: report.reindex.estimatedSecondsRemaining,
+        }
+      : report.reindex,
     checks: {
       postgres: check(report.checks.postgres),
       qdrant: check(report.checks.qdrant),

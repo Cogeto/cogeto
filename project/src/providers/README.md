@@ -32,9 +32,11 @@ a provider's HTTP.
 is stored: a completion, an embedding, a 32-pixel image. Never a pattern match on a
 model name.
 
-**The embeddings tier is refused here.** Changing it needs the vector index rebuilt,
-which is the second half of item 7.1. The refusal is server-side and names the
-operator command that is the interim path.
+**The embeddings tier changes only through the managed rebuild** (item 7.1 second
+half). A direct assignment still gets a server-side refusal, because it would serve
+a mixed embedding space; the plan/confirm/rebuild endpoints on this module's
+controller drive memory's rebuild engine instead, and the switch reaches this
+module's assignment through `embeddingsSwitchPort`, bound in the worker root.
 
 **One live configuration per process.** `LiveModelConfiguration` (the seam's) is
 mutated in place, so every consumer that holds it is current; the gateway rebuilds its

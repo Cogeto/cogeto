@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import type { Logger } from 'pino';
 import { createDb } from '../infrastructure/index';
-import { listForeignEmbeddingModels, vectorIndexDimensionMismatch } from '../memory/index';
+import { checkEmbeddingSpace } from '../memory/index';
 import { LiveModelConfiguration } from '../model-gateway/index';
 import type { ResolvedModelProviders } from '../model-gateway/index';
 import { loadModelConfiguration } from '../providers/index';
@@ -91,43 +91,52 @@ export function logModelConfiguration(logger: Logger, config: CogetoConfig): voi
 }
 
 /**
- * Embedding-space guard (frozen: REFUSE, not degrade)
- * if stored vectors were produced by a different embeddings model than the
- * active one, serving would silently mix embedding spaces — the app and worker
- * refuse to start until `npm run reindex` (which is exempt: it exists to
- * re-embed exactly those rows) has run. Extended by
- * the DIMENSION of the live collection must also agree with the active model —
- * a model-name check alone cannot see a collection left at another size.
+ * Embedding-space guard (frozen: REFUSE, not degrade). Since the managed
+ * rebuild (V2.4 item 7.1 second half) NO interface action can produce the
+ * state this refuses: the pending model lives beside the active one, and the
+ * switch stamps rows, flips the assignment and retargets the index in one
+ * transaction. The guard stays as the NET for states produced by other means
+ * — a direct database edit, a restored backup whose index and configuration
+ * disagree — and its message states exactly what mismatched, what the active
+ * and index configurations are, and the command that repairs it.
  */
 export async function assertEmbeddingSpaceConsistent(config: CogetoConfig): Promise<void> {
   if (!config.modelProviders.configured) return; // no active model → nothing can mix
   const active = config.modelProviders.tiers.embedding.model;
   const pool = new Pool({ connectionString: config.databaseUrl, max: 1 });
   try {
-    const foreign = await listForeignEmbeddingModels(createDb(pool), active);
-    if (foreign.length > 0) {
+    const problem = await checkEmbeddingSpace(createDb(pool), {
+      url: config.qdrantUrl,
+      apiKey: config.qdrantApiKey,
+      activeModel: active,
+    });
+    if (!problem) return;
+    const repair =
+      `Repair from the shell: \`cogeto reindex\` (or ` +
+      `\`docker compose run --rm worker npm run reindex\`) re-embeds every stored ` +
+      `memory with the active model; add \`--provider <label> --model <model>\` to ` +
+      `move to a different embeddings model instead. Restoring the previous ` +
+      `embeddings configuration also resolves it.`;
+    if (problem.kind === 'foreign_models') {
+      const stamped = (problem.foreign ?? [])
+        .map((entry) => `${entry.model} (${entry.rows} memories)`)
+        .join(', ');
       throw new Error(
-        `embedding model changed: stored vectors were produced by ${foreign.join(', ')} but the ` +
-          `active embeddings model is ${active}: refusing to serve mixed embedding spaces. ` +
-          `Run \`docker compose exec worker npm run reindex\` ` +
-          `(or restore the previous embeddings configuration), then start again.`,
+        `embedding space mismatch: stored vectors were produced by ${stamped}, but the active ` +
+          `embeddings model is ${active} (collection "${problem.activeCollection}"). ` +
+          `Serving would silently mix embedding spaces, so this process refuses to start. ` +
+          `This state is not reachable from the interface; it usually means a restored backup ` +
+          `or a direct database edit. ${repair}`,
       );
     }
+    throw new Error(
+      `vector index dimension mismatch: collection "${problem.activeCollection}" holds ` +
+        `${problem.actual}-dimension vectors, but the active embeddings model ${active} ` +
+        `produces ${problem.expected}. Refusing to serve vector search against a stale index. ` +
+        `This state is not reachable from the interface; it usually means a restored backup ` +
+        `or a direct database edit. ${repair}`,
+    );
   } finally {
     await pool.end();
-  }
-  const mismatch = await vectorIndexDimensionMismatch({
-    url: config.qdrantUrl,
-    apiKey: config.qdrantApiKey,
-    embeddingModel: active,
-  });
-  if (mismatch) {
-    throw new Error(
-      `vector index dimension mismatch: the collection holds ${mismatch.actual}-dimension ` +
-        `vectors but the active embeddings model ${active} produces ${mismatch.expected}. ` +
-        `refusing to serve vector search against a stale index. ` +
-        `Run \`docker compose exec worker npm run reindex\` (it recreates the collection at ` +
-        `the correct dimension and re-embeds from Postgres), then start again.`,
-    );
   }
 }

@@ -76,21 +76,6 @@ import type { CogetoConfig } from './config';
  * (research: project-structure-lessons §1).
  */
 export function createAppRootModule(config: CogetoConfig, live: LiveModelConfiguration): unknown {
-  // The instance's model and provider configuration (V2.4 item 7.1). One
-  // instance, threaded into the root AND into chat, whose answer path asks it
-  // which model this user chose for themselves.
-  const providersModule = ProvidersModule.register({
-    live,
-    masterKey: config.masterKey,
-    redacted: config.redactionEnabled,
-    reasoningHeadroom: config.modelProviders.reasoningHeadroom,
-    timeoutsMs: config.modelProviders.timeoutsMs,
-    trustScoresDir: config.trustScoresDir,
-    // The app reloads on its own writes, so this poll exists for the changes
-    // ANOTHER process made — a second app replica, or the operator CLI.
-    pollIntervalMs: 30_000,
-    controllers: true,
-  });
   // ONE dynamic instance per module, threaded everywhere it is needed (the
   // root's import list AND the registration options of every module that
   // resolves its providers) — the part-4 replacement for globality. Since B13
@@ -100,6 +85,11 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
     qdrantUrl: config.qdrantUrl,
     qdrantApiKey: config.qdrantApiKey,
     embeddingModel: config.modelProviders.tiers.embedding.model,
+    // The LIVE object (V2.4 item 7.1): the vector store resolves the active
+    // collection from the index state and re-resolves when the configuration
+    // version moves, which is how a completed rebuild's switch (committed in
+    // the worker) reaches this process within one version poll, no restart.
+    modelProviders: config.modelProviders,
     s3: {
       url: config.s3Url,
       publicUrl: config.s3PublicUrl,
@@ -186,6 +176,25 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
     // Who may read the INSTANCE-WIDE receipt-chain report (V2.0 item 3.7);
     // every other caller gets the verdict over their own receipts.
     adminRole: config.adminRole,
+  });
+  // The instance's model and provider configuration (V2.4 item 7.1). One
+  // instance, threaded into the root AND into chat, whose answer path asks it
+  // which model this user chose for themselves. It imports the memory module
+  // instance because the embeddings tier changes through the managed rebuild,
+  // whose engine is memory's (item 7.1 second half).
+  const providersModule = ProvidersModule.register({
+    live,
+    masterKey: config.masterKey,
+    redacted: config.redactionEnabled,
+    reasoningHeadroom: config.modelProviders.reasoningHeadroom,
+    timeoutsMs: config.modelProviders.timeoutsMs,
+    trustScoresDir: config.trustScoresDir,
+    // The app reloads on its own writes, so this poll exists for the changes
+    // ANOTHER process made — a second app replica, the worker committing a
+    // rebuild's switch, or the operator CLI.
+    pollIntervalMs: 30_000,
+    controllers: true,
+    imports: [memoryModule],
   });
   const retrievalModule = RetrievalModule.register({ imports: [memoryModule] });
   const agentsModule = AgentsModule.register({ imports: [memoryModule] });

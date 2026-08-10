@@ -1,8 +1,14 @@
 import { connect } from 'node:net';
 import { Controller, Get, HttpCode, Inject, Req, UseGuards } from '@nestjs/common';
-import type { HealthCheck, HealthReport, QueueHealthCheck } from '@cogeto/shared';
-import { InstanceProbes } from '../infrastructure/index';
-import { IntegritySweep, MemoryObjectStore } from '../memory/index';
+import type {
+  EmbeddingRebuildHealth,
+  HealthCheck,
+  HealthReport,
+  QueueHealthCheck,
+} from '@cogeto/shared';
+import { DRIZZLE, InstanceProbes } from '../infrastructure/index';
+import type { Db } from '../infrastructure/index';
+import { embeddingRebuildStatus, IntegritySweep, MemoryObjectStore } from '../memory/index';
 import { ModelGateway } from '../model-gateway/index';
 import { Public } from '../identity/index';
 import { CapabilitiesService } from './capabilities';
@@ -36,6 +42,7 @@ export class HealthController {
     /** The database-side probes, on infrastructure's own two-connection pool:
      * a saturated application pool must not make this endpoint hang. */
     private readonly probes: InstanceProbes,
+    @Inject(DRIZZLE) private readonly db: Db,
   ) {}
 
   /** Liveness: no token, no internals — just "this process is answering". */
@@ -59,6 +66,7 @@ export class HealthController {
       gateway,
       mail,
       registry,
+      reindex,
     ] = await Promise.all([
       this.checkPostgres(),
       this.checkHttp(`${this.config.qdrantUrl}/readyz`),
@@ -70,6 +78,7 @@ export class HealthController {
       this.checkGateway(),
       this.checkMail(),
       this.capabilities.snapshot(),
+      this.checkReindex(),
     ]);
     const checks = {
       postgres,
@@ -86,10 +95,17 @@ export class HealthController {
     // an enabled-but-unreachable capability or an overdue job is a broken
     // instance, not a footnote. The fields are additive; `checks` is unchanged.
     const loud = CapabilitiesService.loudness(registry);
+    // A RUNNING rebuild is healthy work in progress; a FAILED one sits waiting
+    // for a human verb and degrades like an overdue job (V2.4 item 7.1).
+    const reindexLoud = reindex?.status === 'failed';
     const report: HealthReport = {
-      status: Object.values(checks).every((c) => c.ok) && loud.length === 0 ? 'ok' : 'degraded',
+      status:
+        Object.values(checks).every((c) => c.ok) && loud.length === 0 && !reindexLoud
+          ? 'ok'
+          : 'degraded',
       capabilities: registry.capabilities,
       jobs: registry.jobs,
+      reindex,
       checks,
     };
     // Audience trim (SEC-3). The verdict — every `ok`/`state` and the overall
@@ -98,6 +114,31 @@ export class HealthController {
     // strings, probe details naming internal hosts) is held back from callers
     // without the admin role.
     return request.healthDetail ? report : redactHealthReport(report);
+  }
+
+  /**
+   * The managed embedding rebuild, from memory's state row (V2.4 item 7.1
+   * second half): one cheap single-row read, so the report states what the
+   * instance is doing without polling the corpus. Errors here must not take
+   * the health endpoint down with them.
+   */
+  private async checkReindex(): Promise<EmbeddingRebuildHealth | null> {
+    try {
+      const status = await embeddingRebuildStatus(this.db);
+      if (!status) return null;
+      return {
+        status: status.status,
+        phase: status.phase,
+        targetModel: status.targetModel,
+        factsDone: status.factsDone,
+        factsTotal: status.factsTotal,
+        startedAt: status.startedAt,
+        estimatedSecondsRemaining: status.estimatedSecondsRemaining,
+        ...(status.error ? { error: status.error } : {}),
+      };
+    } catch {
+      return null;
+    }
   }
 
   /**

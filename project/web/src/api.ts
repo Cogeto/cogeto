@@ -12,6 +12,8 @@ import type {
   UpdateUserContextRequest,
   ContextSuggestionsDto,
   ContextSuggestionActionRequest,
+  EmbeddingRebuildPlanDto,
+  EmbeddingRebuildRequest,
   ModelConfigDto,
   ModelConfigurationDto,
   ModelTierName,
@@ -529,6 +531,24 @@ export async function removeAnswerOption(
   if (!response.ok) throw await toError(path, response);
   return (await response.json()) as ModelConfigurationDto;
 }
+
+// The managed embedding rebuild (V2.4 item 7.1 second half). Two-step by
+// construction: the plan states what will happen and saves nothing; only the
+// explicit rebuild POST begins anything.
+export const planEmbeddingsRebuild = (
+  session: Session,
+  request: EmbeddingRebuildRequest,
+): Promise<EmbeddingRebuildPlanDto> =>
+  apiPost('/api/admin/model-configuration/embeddings/rebuild-plan', request, session);
+export const beginEmbeddingsRebuild = (
+  session: Session,
+  request: EmbeddingRebuildRequest,
+): Promise<ModelConfigurationDto> =>
+  apiPost('/api/admin/model-configuration/embeddings/rebuild', request, session);
+export const cancelEmbeddingsRebuild = (session: Session): Promise<ModelConfigurationDto> =>
+  apiPost('/api/admin/model-configuration/embeddings/rebuild/cancel', {}, session);
+export const resumeEmbeddingsRebuild = (session: Session): Promise<ModelConfigurationDto> =>
+  apiPost('/api/admin/model-configuration/embeddings/rebuild/resume', {}, session);
 
 // The one model choice a user makes for themselves (V2.4 item 7.1).
 export const fetchAnswerModel = (session: Session): Promise<UserAnswerModelDto> =>
