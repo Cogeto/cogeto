@@ -78,6 +78,8 @@ import {
 } from '../chat/index';
 import type { ConversationAppendPort } from '../chat/index';
 import { ModelGatewayModule } from '../model-gateway/index';
+import type { LiveModelConfiguration } from '../model-gateway/index';
+import { ProvidersModule } from '../providers/index';
 import { COGETO_CONFIG, mailOptions, redactionOptions, researchOptions } from './config';
 import type { CogetoConfig } from './config';
 
@@ -87,7 +89,24 @@ import type { CogetoConfig } from './config';
  * execution. This is where ingestion's source-reader port meets the connector
  * implementations — the only place allowed to know both sides.
  */
-export function createWorkerRootModule(config: CogetoConfig): unknown {
+export function createWorkerRootModule(
+  config: CogetoConfig,
+  live: LiveModelConfiguration,
+): unknown {
+  // The instance's model configuration (V2.4 item 7.1). The worker registers
+  // no controllers — it serves no HTTP — but it does watch: an assignment an
+  // admin saves in the app must reach background processing without a restart,
+  // and this process has no request to notice it on.
+  const providersModule = ProvidersModule.register({
+    live,
+    masterKey: config.masterKey,
+    redacted: config.redactionEnabled,
+    reasoningHeadroom: config.modelProviders.reasoningHeadroom,
+    timeoutsMs: config.modelProviders.timeoutsMs,
+    trustScoresDir: config.trustScoresDir,
+    pollIntervalMs: 30_000,
+    controllers: false,
+  });
   // ONE dynamic instance per family module, threaded everywhere it is needed
   // (the root's import list AND the registration options of the modules that
   // bind its port adapters). Registering twice would duplicate controllers
@@ -234,6 +253,8 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
       }),
       ModelGatewayModule.register({
         providers: config.modelProviders,
+        // The gateway follows the live configuration (V2.4 item 7.1).
+        live,
         redaction: redactionOptions(config),
         // SEC-10: worker model traffic was entirely unmetered — this root
         // omitted the budget wrapper, so extraction, verification, embedding,
@@ -242,6 +263,7 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         // scope from the enqueuing principal so the spend has an owner.
         budget: true,
       }),
+      providersModule,
       memoryModule,
       // ChatSourceReader gives ingestion a stage-1 reader for source_type 'chat';
       // EmailSourceReader adds source_type 'email';
@@ -266,7 +288,11 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         ],
         // The generation binding the checked-pair ledger records beside every
         // verdict (V2.3 item 6.1): a model change re-opens judged pairs.
-        reconcileModelConfig: `${config.modelProviders.tiers.pipeline.provider}/${config.modelProviders.tiers.pipeline.model}`,
+        // A GETTER, not a captured string (V2.4 item 7.1): the pipeline
+        // binding can change while this process runs, and a stale label would
+        // let the ledger skip re-judging pairs under a model that changed.
+        reconcileModelConfig: () =>
+          `${config.modelProviders.tiers.pipeline.provider}/${config.modelProviders.tiers.pipeline.model}`,
       }),
       ChatSourceModule,
       // The transient attachment read job (V2.2 item 5.1): needs memory's
@@ -286,29 +312,41 @@ export function createWorkerRootModule(config: CogetoConfig): unknown {
         fontsDir: config.reportFontsDir,
         brandDir: config.reportBrandDir,
         trustScoresDir: config.trustScoresDir,
+        // GETTERS, not a snapshot (V2.4 item 7.1): a report states the
+        // configuration it was generated under, and since an assignment can
+        // change while this process runs, a copy taken at boot would put a
+        // configuration id in a SIGNED artifact that was not the one in force.
         modelConfig: {
-          id: config.modelProviders.id,
-          tiers: {
-            pipeline: {
-              provider: config.modelProviders.tiers.pipeline.provider,
-              model: config.modelProviders.tiers.pipeline.model,
-            },
-            answer: {
-              provider: config.modelProviders.tiers.answer.provider,
-              model: config.modelProviders.tiers.answer.model,
-            },
-            embedding: {
-              provider: config.modelProviders.tiers.embedding.provider,
-              model: config.modelProviders.tiers.embedding.model,
-            },
+          get id() {
+            return config.modelProviders.id;
           },
-          vision: config.modelProviders.vision
-            ? {
-                provider: config.modelProviders.vision.provider,
-                model: config.modelProviders.vision.model,
-              }
-            : null,
-          redactionEnabled: config.modelProviders.redacted,
+          get tiers() {
+            return {
+              pipeline: {
+                provider: config.modelProviders.tiers.pipeline.provider,
+                model: config.modelProviders.tiers.pipeline.model,
+              },
+              answer: {
+                provider: config.modelProviders.tiers.answer.provider,
+                model: config.modelProviders.tiers.answer.model,
+              },
+              embedding: {
+                provider: config.modelProviders.tiers.embedding.provider,
+                model: config.modelProviders.tiers.embedding.model,
+              },
+            };
+          },
+          get vision() {
+            return config.modelProviders.vision
+              ? {
+                  provider: config.modelProviders.vision.provider,
+                  model: config.modelProviders.vision.model,
+                }
+              : null;
+          },
+          get redactionEnabled() {
+            return config.modelProviders.redacted;
+          },
         },
         imports: [memoryModule, importsModule],
       }),

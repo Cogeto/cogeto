@@ -55,6 +55,8 @@ import {
   PASSPORT_EXPORT_RETENTION_HOURS,
 } from '../passport/index';
 import { ModelGatewayModule } from '../model-gateway/index';
+import type { LiveModelConfiguration } from '../model-gateway/index';
+import { ProvidersModule } from '../providers/index';
 import { AttentionModule } from '../attention/index';
 import { SourcesModule } from '../sources/index';
 import { ImportsModule } from '../imports/index';
@@ -73,7 +75,22 @@ import type { CogetoConfig } from './config';
  * "initialize everything inline" erosion is the known failure mode
  * (research: project-structure-lessons §1).
  */
-export function createAppRootModule(config: CogetoConfig): unknown {
+export function createAppRootModule(config: CogetoConfig, live: LiveModelConfiguration): unknown {
+  // The instance's model and provider configuration (V2.4 item 7.1). One
+  // instance, threaded into the root AND into chat, whose answer path asks it
+  // which model this user chose for themselves.
+  const providersModule = ProvidersModule.register({
+    live,
+    masterKey: config.masterKey,
+    redacted: config.redactionEnabled,
+    reasoningHeadroom: config.modelProviders.reasoningHeadroom,
+    timeoutsMs: config.modelProviders.timeoutsMs,
+    trustScoresDir: config.trustScoresDir,
+    // The app reloads on its own writes, so this poll exists for the changes
+    // ANOTHER process made — a second app replica, or the operator CLI.
+    pollIntervalMs: 30_000,
+    controllers: true,
+  });
   // ONE dynamic instance per module, threaded everywhere it is needed (the
   // root's import list AND the registration options of every module that
   // resolves its providers) — the part-4 replacement for globality. Since B13
@@ -219,6 +236,8 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       filesModule,
       memoryModule,
       settingsModule,
+      // The user's own answer-model choice (V2.4 item 7.1).
+      providersModule,
     ],
   });
   @Module({
@@ -251,6 +270,9 @@ export function createAppRootModule(config: CogetoConfig): unknown {
       }),
       ModelGatewayModule.register({
         providers: config.modelProviders,
+        // The gateway follows the live configuration (V2.4 item 7.1): a saved
+        // assignment reaches the next call rather than the next restart.
+        live,
         redaction: redactionOptions(config),
         // Enforce the per-user daily model budget on the app's user-attributed
         // calls; the worker registers this without budget.
@@ -262,6 +284,7 @@ export function createAppRootModule(config: CogetoConfig): unknown {
           redactionEnabled: config.redactionEnabled,
         },
       }),
+      providersModule,
       memoryModule,
       retrievalModule,
       chatModule,

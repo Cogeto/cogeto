@@ -53,7 +53,7 @@
   },
   "models": {
     "heading": "Configuration des modèles",
-    "explainer": "Lecture seule. Les fournisseurs et modèles actifs sont définis par l’opérateur dans l’environnement de l’instance. Les clés API ne sont jamais saisies ni affichées ici.",
+    "explainer": "Lecture seule. Les fournisseurs et modèles utilisés par cette instance, et ce qui en sort. Les clés API ne sont jamais affichées ici.",
     "configuration": "Configuration",
     "notConfigured": "aucune clé de fournisseur définie, les fonctions des modèles sont désactivées",
     "redaction": "Masquage",
@@ -62,7 +62,9 @@
       "pipeline": "Traitement",
       "answer": "Réponse",
       "embeddings": "Représentations vectorielles"
-    }
+    },
+    "managedIn": "Les fournisseurs, les affectations et les modèles que les utilisateurs peuvent choisir s'y définissent.",
+    "manage": "Gérer les modèles"
   },
   "aliases": {
     "heading": "Entity aliases",

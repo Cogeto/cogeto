@@ -9,6 +9,7 @@ import { PipelineIngestionGuard } from '../ingestion/index';
 import { DeletionExecutor, DeletionSaga, MemoryModule } from '../memory/index';
 import type { SourceDeletion } from '../memory/index';
 import { loadConfig } from './config';
+import { installModelConfiguration } from './model-boot';
 
 /**
  * erase-task-conclusions — the one-shot that MUST run before migration 0035
@@ -64,6 +65,12 @@ class TaskConclusionEraseModule {}
 
 async function main(): Promise<void> {
   const config = loadConfig();
+  // The DATABASE's model configuration is what this instance runs (V2.4 item
+  // 7.1): seeded once from the environment, authoritative after that. A tool
+  // that resolved the environment instead could embed with a model the
+  // instance replaced, which is precisely the mixed embedding space the boot
+  // guard exists to refuse.
+  await installModelConfiguration(config);
 
   @Module({
     imports: [

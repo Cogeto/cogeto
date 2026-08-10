@@ -53,7 +53,7 @@
   },
   "models": {
     "heading": "Konfiguracija modela",
-    "explainer": "Samo za čitanje. Aktivne pružatelje i modele postavlja operater u okruženju instance. API ključevi ovdje se nikad ne unose niti prikazuju.",
+    "explainer": "Samo za čitanje. Koje pružatelje i modele ova instanca koristi i što je napušta. API ključevi ovdje se nikad ne prikazuju.",
     "configuration": "Konfiguracija",
     "notConfigured": "nije postavljen ključ pružatelja, značajke modela su onemogućene",
     "redaction": "Redakcija",
@@ -62,7 +62,9 @@
       "pipeline": "Obrada",
       "answer": "Odgovor",
       "embeddings": "Ugradnje"
-    }
+    },
+    "managedIn": "Ondje se postavljaju pružatelji, dodjele i modeli koje korisnici smiju birati.",
+    "manage": "Upravljaj modelima"
   },
   "aliases": {
     "heading": "Entity aliases",

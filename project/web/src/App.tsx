@@ -20,6 +20,8 @@ import { Memories } from './pages/Memories';
 import { Sources } from './pages/Sources';
 import { Review } from './pages/Review';
 import { Reports } from './pages/Reports';
+import { ModelConfiguration } from './pages/ModelConfiguration';
+import { Providers } from './pages/Providers';
 import { Settings } from './pages/Settings';
 import { Skills } from './pages/Skills';
 import { System } from './pages/System';
@@ -129,6 +131,10 @@ function renderPage(session: Session) {
       return <Forgotten session={session} />;
     case '/audit':
       return <Audit session={session} />;
+    case '/providers':
+      return <Providers session={session} />;
+    case '/models':
+      return <ModelConfiguration session={session} />;
     case '/settings':
       return <Settings session={session} />;
     case '/system':

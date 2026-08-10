@@ -19,6 +19,8 @@ import {
   fetchEmailConfig,
   fetchExtractionGateConfig,
   fetchInstancePublicKey,
+  fetchAnswerModel,
+  fetchMe,
   fetchModelConfig,
   fetchPassportDownload,
   fetchPassportExports,
@@ -29,6 +31,7 @@ import {
   removeExtractionGateRule,
   setExtractionGate,
   triggerPassportExport,
+  updateAnswerModel,
   updateSettings,
   updateUserContext,
 } from '../api';
@@ -133,6 +136,8 @@ export function Settings({ session }: { session: Session }) {
       <AppearanceSection />
 
       <ResearchSection />
+
+      <AnswerModelSection session={session} />
 
       <ModelConfigSection session={session} />
 
@@ -513,6 +518,65 @@ function ResearchSection() {
 }
 
 /**
+ * The one model choice that is a user's own (V2.4 item 7.1): which model writes
+ * the answers they read, from the set an administrator enabled.
+ *
+ * Deliberately the only one. Extraction and embeddings decide what gets
+ * remembered and how it is found, and vision decides what gets read off a page:
+ * those are instance decisions with an eval gate behind them, not preferences.
+ * When an admin has enabled nothing, the section says so and offers nothing,
+ * rather than showing an empty control.
+ */
+function AnswerModelSection({ session }: { session: Session }) {
+  const { t } = useTranslation('providers');
+  const queryClient = useQueryClient();
+  const answerModel = useQuery({
+    queryKey: ['answer-model'],
+    queryFn: () => fetchAnswerModel(session),
+  });
+  const choose = useMutation({
+    mutationFn: (optionId: string | null) => updateAnswerModel(session, optionId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['answer-model'] }),
+  });
+
+  const data = answerModel.data;
+  return (
+    <section className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
+      <div>
+        <SectionTitle>{t('userChoice.heading')}</SectionTitle>
+        <p className="mt-1 text-xs text-slate-400">{t('userChoice.explainer')}</p>
+      </div>
+      {answerModel.isPending && <Skeleton className="h-10 w-full" />}
+      {data && data.options.length === 0 && (
+        <p className="text-xs text-slate-500">{t('userChoice.none')}</p>
+      )}
+      {data && data.options.length > 0 && (
+        <>
+          <label className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
+            <span className="font-medium">{t('assignment.model')}</span>
+            <select
+              value={data.optionId ?? ''}
+              onChange={(event) => choose.mutate(event.target.value || null)}
+              className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+            >
+              <option value="">{t('userChoice.instanceDefault')}</option>
+              {data.options.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="text-xs text-slate-400">
+            {t('userChoice.current', { label: data.activeLabel })}
+          </p>
+        </>
+      )}
+    </section>
+  );
+}
+
+/**
  * Model configuration: READ-ONLY display of the active
  * provider configuration — the id the trust page joins on, the provider and
  * model per tier, redaction posture, and what leaves the instance. No key
@@ -524,6 +588,10 @@ function ModelConfigSection({ session }: { session: Session }) {
     queryKey: ['model-config'],
     queryFn: () => fetchModelConfig(session),
   });
+  // An admin sees ONE extra line: where this is actually changed. Everyone else
+  // sees the disclosure unchanged, because which company receives their text is
+  // not an operator detail (V2.4 item 7.1).
+  const me = useQuery({ queryKey: ['me'], queryFn: () => fetchMe(session) });
 
   return (
     <section className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
@@ -571,6 +639,15 @@ function ModelConfigSection({ session }: { session: Session }) {
             </div>
           </dl>
           <p className="text-xs text-slate-500">{config.data.externalCalls}</p>
+          {me.data?.isAdmin === true && (
+            <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-3">
+              <a href="/models" className={btnSecondary}>
+                {t('models.manage')}
+                <span aria-hidden="true">→</span>
+              </a>
+              <span className="text-xs text-slate-400">{t('models.managedIn')}</span>
+            </div>
+          )}
         </>
       )}
       {config.isError && (

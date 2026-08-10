@@ -207,13 +207,53 @@ A **vertical corpus** of **44 labelled cases** (20 extraction, 24 reconciliation
 
 | # | Item | Priority | Difficulty |
 |---|---|---|---|
-| 7.1 | **Provider configuration in the database + admin UI** | P0 | M |
+| 7.1 | **Provider configuration in the database + admin UI**: configuration half **DELIVERED** 2026-08-10 (migration 0052); the managed reindex an embeddings change needs is the second half and ships next | P0 | M |
 | 7.2 | **Token accounting and the counterfactual** | P1 | M |
 | 7.3 | **Cost reduction programme** | P1 | M |
 | 7.4 | **Observability** | P1 | L |
 | 7.5 | **Airgap hardening** | P2 | S to M |
 
 **7.1 Provider configuration in the database.** Move model and provider configuration out of `.env` into the database with **encrypted keys**; the master key stays in `.env`; existing `.env` values seed the database on first run. An **admin UI page** manages providers. The **chat model becomes user-switchable** in the UI. Extraction and verification models stay **admin-only**, each shown with **its eval trust scores**, and untested combinations flagged as **"not evaluated."** `.env` keeps only bootstrap: database credentials, master key, instance configuration. This is also the natural break point for the legacy environment-variable expansion kept for v1 parity.
+
+**Delivered (configuration half), 2026-08-10.** Migration 0052, the new `providers`
+module, six tables. Providers are **records** an admin manages: a label they choose, a
+type (Mistral, OpenAI, Anthropic, **Self-hosted** = any OpenAI-compatible endpoint),
+an endpoint where the type needs one, a key **encrypted at rest** with AES-256-GCM
+under `COGETO_MASTER_KEY`, which stays in the environment because a key that guards a
+database cannot live inside it. Several providers of the same type are ordinary, so
+the label is the identity; a reserved fifth stored type, `ollama`, exists only so an
+instance already on the local runtime keeps its adapter and its configuration id
+exactly. **A saved key never comes back out**: the sealed column is selected in one
+function, and `key-confinement.spec.ts` asserts that against the source rather than by
+convention. Four independent assignments (pipeline, answer, embeddings, vision), with
+vision optionally unassigned. **Discovery offers, manual entry always works**, because
+a proxied deployment legitimately serves models its `/models` route does not
+advertise; **validation is a probe of the tier's real job**, never a pattern match on
+a name, classified into unreachable / key rejected / model not served / no embeddings
+route / image refused / timed out. The configuration id derivation is untouched, every
+change is recorded with the id it produced, and the assignment page shows the published
+trust score for the exact configuration in force or says **"not evaluated"** in words.
+The **answer** tier is user-switchable among the models an admin enabled, as an opaque
+option id so call sites still name a tier; pipeline, embeddings and vision stay
+admin-only. Changes take effect **without a restart**: one live configuration object per
+process, mutated in place, and the worker polls the version column. **Seeding is
+atomic and happens once**: the reference deployment (one Caddy vhost in front of two
+llama.cpp processes at `host.docker.internal:9000/v1`, no key) comes across as one
+Self-hosted provider and four assignments resolving to the same bindings and the same
+configuration id, and after the seed the environment's model variables are **ignored**
+rather than merged. `.env` is reduced to bootstrap.
+
+**Refused on purpose: an embeddings change.** Every stored vector was produced by the
+current model, so a change needs the index rebuilt, and the managed rebuild is the
+second half. The interface explains that and names the operator command as the interim
+path; the refusal is server-side, so it holds for any caller.
+
+**The legacy environment expansion stays, for one release.** It is not dead: it is
+exactly what a v1-era instance's SEED depends on, and this is the upgrade where those
+values must still be read correctly. It becomes dead the moment every instance has
+seeded, and is removed then. Details:
+[`docs/features/models.md`](features/models.md),
+[`docs/operations/upgrade-notes.md`](operations/upgrade-notes.md).
 
 **7.2 Token accounting and the counterfactual.** Per-operation token accounting (the budget infrastructure exists; this surfaces it) rolled up per user, per instance, and per period, visible in an admin view, broken down by task family (extraction, verification, reconciliation, answering, research, vision). Plus the **counterfactual comparison**: what the same work would have cost without Cogeto, defined as a documented, checkable baseline (for example, feeding the full text of every source that a set of answers cited, or the full corpus for corpus-wide questions) rather than an invented multiplier. Shown as an estimate with the methodology stated and linkable, per the project's own honesty rules. Done right, this is both a cost tool and a sales artifact; done loosely it is exactly the kind of claim this brand cannot afford.
 

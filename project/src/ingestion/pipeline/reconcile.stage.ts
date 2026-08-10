@@ -284,7 +284,7 @@ export class ReconciliationService {
     @Optional() private readonly revisions?: SourceRevisionStore,
     @Optional()
     @Inject(RECONCILE_MODEL_CONFIG)
-    private readonly reconcileModelConfig?: string,
+    private readonly reconcileModelConfig?: string | (() => string),
   ) {
     this.judge = new ReconcileJudge(gateway);
   }
@@ -294,8 +294,13 @@ export class ReconciliationService {
     return reconcileThresholdsFor(this.gateway.embeddingModelId());
   }
 
-  /** The generation binding the ledger records beside each verdict. */
+  /**
+   * The generation binding the ledger records beside each verdict. Resolved on
+   * every call rather than captured: since V2.4 item 7.1 the binding can change
+   * while the process runs, and a stale label is a pair silently not re-judged.
+   */
   private modelConfig(): string {
+    if (typeof this.reconcileModelConfig === 'function') return this.reconcileModelConfig();
     return this.reconcileModelConfig ?? 'unconfigured';
   }
 

@@ -13,6 +13,15 @@ import type {
   ContextSuggestionsDto,
   ContextSuggestionActionRequest,
   ModelConfigDto,
+  ModelConfigurationDto,
+  ModelTierName,
+  ProviderDto,
+  ProviderModelsDto,
+  ProviderProbeDto,
+  CreateProviderRequest,
+  UpdateProviderRequest,
+  AssignTierRequest,
+  UserAnswerModelDto,
   UpdateUserSettingsRequest,
   AddEmailAllowlistEntryRequest,
   AddExtractionGateRuleRequest,
@@ -123,7 +132,7 @@ async function apiGet<T>(path: string, session?: Session): Promise<T> {
 }
 
 async function apiSend<T>(
-  method: 'POST' | 'PUT',
+  method: 'POST' | 'PUT' | 'PATCH',
   path: string,
   body: unknown,
   session: Session,
@@ -463,9 +472,71 @@ export const updateSettings = (
 ): Promise<UserSettingsDto> => apiPut('/api/settings', patch, session);
 
 // Model configuration: read-only display of the active
-// provider configuration. Keys are operator-set and never pass through here.
+// provider configuration. Keys never pass through here.
 export const fetchModelConfig = (session: Session): Promise<ModelConfigDto> =>
   apiGet('/api/settings/model-config', session);
+
+/**
+ * Providers and model assignment (V2.4 item 7.1), admin-only. An API key is
+ * WRITE-ONLY across this whole surface: it is sent on create or replace and is
+ * never present in any response, so nothing here can render one.
+ */
+export const fetchProviders = (session: Session): Promise<ProviderDto[]> =>
+  apiGet('/api/admin/providers', session);
+export const createProvider = (
+  session: Session,
+  request: CreateProviderRequest,
+): Promise<ProviderDto> => apiPost('/api/admin/providers', request, session);
+export const updateProvider = (
+  session: Session,
+  id: string,
+  request: UpdateProviderRequest,
+): Promise<ProviderDto> => apiSend('PATCH', `/api/admin/providers/${id}`, request, session);
+export const probeProvider = (session: Session, id: string): Promise<ProviderProbeDto> =>
+  apiPost(`/api/admin/providers/${id}/probe`, {}, session);
+export const fetchProviderModels = (session: Session, id: string): Promise<ProviderModelsDto> =>
+  apiGet(`/api/admin/providers/${id}/models`, session);
+export async function deleteProvider(session: Session, id: string): Promise<void> {
+  const path = `/api/admin/providers/${id}`;
+  const response = await fetch(path, {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${session.accessToken}` },
+  });
+  if (!response.ok) throw await toError(path, response);
+}
+export const fetchModelConfiguration = (session: Session): Promise<ModelConfigurationDto> =>
+  apiGet('/api/admin/model-configuration', session);
+export const assignModelTier = (
+  session: Session,
+  tier: ModelTierName,
+  request: AssignTierRequest,
+): Promise<ModelConfigurationDto> =>
+  apiPut(`/api/admin/model-configuration/${tier}`, request, session);
+export const addAnswerOption = (
+  session: Session,
+  request: { providerId: string; model: string; label: string },
+): Promise<ModelConfigurationDto> =>
+  apiPost('/api/admin/model-configuration/answer-options', request, session);
+export async function removeAnswerOption(
+  session: Session,
+  id: string,
+): Promise<ModelConfigurationDto> {
+  const path = `/api/admin/model-configuration/answer-options/${id}`;
+  const response = await fetch(path, {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${session.accessToken}` },
+  });
+  if (!response.ok) throw await toError(path, response);
+  return (await response.json()) as ModelConfigurationDto;
+}
+
+// The one model choice a user makes for themselves (V2.4 item 7.1).
+export const fetchAnswerModel = (session: Session): Promise<UserAnswerModelDto> =>
+  apiGet('/api/settings/answer-model', session);
+export const updateAnswerModel = (
+  session: Session,
+  optionId: string | null,
+): Promise<UserAnswerModelDto> => apiPut('/api/settings/answer-model', { optionId }, session);
 
 // Instance context + language (-0053).
 export const fetchUserContext = (session: Session): Promise<UserContextDto> =>

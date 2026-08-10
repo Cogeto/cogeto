@@ -2,7 +2,61 @@ import { Pool } from 'pg';
 import type { Logger } from 'pino';
 import { createDb } from '../infrastructure/index';
 import { listForeignEmbeddingModels, vectorIndexDimensionMismatch } from '../memory/index';
+import { LiveModelConfiguration } from '../model-gateway/index';
+import type { ResolvedModelProviders } from '../model-gateway/index';
+import { loadModelConfiguration } from '../providers/index';
 import type { CogetoConfig } from './config';
+
+/**
+ * Put the DATABASE's model configuration in force (V2.4 item 7.1).
+ *
+ * Called by every process that talks to a model, before anything is built. It
+ * seeds the environment in once (the first start after the upgrade), then
+ * replaces `config.modelProviders` with what the instance actually runs, so
+ * every consumer downstream — the gateway, the embedding guard, the capability
+ * registry, the reports, the boot log — reads one object and cannot disagree.
+ *
+ * The returned holder is the same object: it is what lets a saved assignment
+ * reach a running process without a restart.
+ *
+ * A process that cannot reach the database does not start, which is already
+ * true of every process here for other reasons; there is deliberately no
+ * "fall back to the environment" path, because falling back would mean an
+ * instance quietly running a configuration its admin replaced.
+ */
+export async function installModelConfiguration(
+  config: CogetoConfig,
+  logger?: Logger,
+): Promise<LiveModelConfiguration> {
+  const pool = new Pool({ connectionString: config.databaseUrl, max: 1 });
+  try {
+    const loaded = await loadModelConfiguration(createDb(pool), {
+      environment: config.modelProviders,
+      masterKey: config.masterKey,
+      redacted: config.redactionEnabled,
+      reasoningHeadroom: config.modelProviders.reasoningHeadroom,
+      timeoutsMs: config.modelProviders.timeoutsMs,
+    });
+    if (loaded.seeded) {
+      logger?.info(
+        { providers: loaded.seededProviders, configuration: loaded.providers.id },
+        loaded.seededProviders > 0
+          ? `model configuration seeded from the environment into the database ` +
+              `(${loaded.seededProviders} provider(s)); the COGETO_MODEL_* and ` +
+              `COGETO_PROVIDER_* variables are ignored from now on and may be removed`
+          : 'no model configuration in the environment to seed; configure providers in Settings',
+      );
+    }
+    const live = new LiveModelConfiguration(loaded.providers);
+    // The config object now CARRIES the live object rather than a copy of it,
+    // which is what makes every consumer that was handed `config.modelProviders`
+    // current for the life of the process.
+    (config as { modelProviders: ResolvedModelProviders }).modelProviders = live.current;
+    return live;
+  } finally {
+    await pool.end();
+  }
+}
 
 /**
  * Model-configuration boot surface: every boot states
@@ -24,6 +78,10 @@ export function logModelConfiguration(logger: Logger, config: CogetoConfig): voi
   logger.info(
     {
       configuration: p.id,
+      // Where the configuration came from (V2.4 item 7.1). Logged because an
+      // operator staring at a `.env` that no longer does anything is the one
+      // confusion this change can cause, and one word prevents it.
+      source: p.source,
       pipeline: tier('pipeline'),
       answer: tier('answer'),
       embeddings: tier('embedding'),

@@ -17,6 +17,7 @@ import { CHAT_RESEARCH_RESOLVER } from './chat-research-resolver.port';
 import type { ChatResearchResolverPort } from './chat-research-resolver.port';
 import { CHAT_SKILL_RESOLVER } from './chat-skill-resolver.port';
 import type { ChatSkillResolverPort } from './chat-skill-resolver.port';
+import { ProviderConfigService } from '../providers/index';
 
 /**
  * chat — the conversation surface, and a capture connector by structure
@@ -56,6 +57,7 @@ export class ChatModule {
             timeZone?: string,
             userContext?: UserContextService,
             attachments?: ChatAttachmentsService,
+            answerModelChoice?: ProviderConfigService,
           ): ChatServiceOptions => ({
             replyResolver,
             researchResolver,
@@ -63,6 +65,10 @@ export class ChatModule {
             timeZone: timeZone ?? DEFAULT_INSTANCE_TIMEZONE,
             userContext,
             attachments,
+            // The user's own answer model (V2.4 item 7.1). Optional: a bare
+            // harness or a root that registers no providers module leaves
+            // every answer on the assigned answer tier, unchanged.
+            answerModelChoice,
           }),
           inject: [
             { token: CHAT_REPLY_RESOLVER, optional: true },
@@ -71,6 +77,7 @@ export class ChatModule {
             { token: INSTANCE_TIMEZONE, optional: true },
             { token: UserContextService, optional: true },
             { token: ChatAttachmentsService, optional: true },
+            { token: ProviderConfigService, optional: true },
           ],
         },
       ],

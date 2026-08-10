@@ -115,6 +115,17 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   // rendered artifacts; only the objects are content-bearing.
   findings_report: 'reports',
 
+  // The instance's model and provider configuration (V2.4 item 7.1, migration
+  // 0052). Owned by `providers` because it is the module that manages the
+  // records AND resolves them into the configuration the seam consumes; the
+  // sealed key column is selected in exactly one function inside it.
+  model_provider: 'providers',
+  model_assignment: 'providers',
+  model_answer_option: 'providers',
+  user_answer_model: 'providers',
+  model_configuration_change: 'providers',
+  model_config_state: 'providers',
+
   audit_log: 'infrastructure',
   outbox_event: 'infrastructure',
   job_execution: 'infrastructure',
@@ -253,6 +264,11 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
   // The capability registry's injectable job reads followed the registry into
   // `operations` (V2.0 item 3.6 part 2).
   CAPABILITY_JOB_SOURCES: 'operations',
+
+  // The providers module's composition-root options (V2.4 item 7.1): the live
+  // configuration holder, the instance master key, and the deployment facts a
+  // domain module may not read for itself.
+  PROVIDERS_OPTIONS: 'providers',
 
   // The one token entrypoints still owns: the validated configuration a
   // composition root hands to the modules it registers.

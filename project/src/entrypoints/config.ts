@@ -7,6 +7,7 @@ import type { LimitsConfig } from '../infrastructure/index';
 import { resolveModelProviders } from '../model-gateway/index';
 import type { ResolvedModelProviders } from '../model-gateway/index';
 import { assertProductionSecrets } from './secret-preflight';
+import { readMasterKey } from '../providers/index';
 
 /**
  * Typed process configuration (research: project-structure-lessons §4).
@@ -247,6 +248,14 @@ export type CogetoConfig = z.infer<typeof configSchema> & {
    * combinations threw inside loadConfig — boot-time, never first-request.
    */
   modelProviders: ResolvedModelProviders;
+  /**
+   * The instance master key (V2.4 item 7.1), or null when the environment has
+   * none. It stays in the environment on purpose: it is what opens the provider
+   * keys stored in the database, and a key that guards a database cannot live
+   * inside it. Null is fine until something needs encrypting, and then the
+   * failure names the variable and the command that generates one.
+   */
+  masterKey: Buffer | null;
 };
 
 /**
@@ -346,8 +355,19 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
   // Model provider configuration: the same resolver every
   // process uses; an invalid combination refuses boot with the exact variable
   // to fix, never failing at first request.
+  // The ENVIRONMENT's model configuration. On an instance that has been
+  // seeded (V2.4 item 7.1) this is not what runs: `installModelConfiguration`
+  // replaces it with the database's before anything is built, and after the
+  // one-time seed these variables are ignored entirely. It stays here because
+  // it is the seed source, and because the eval harness and the bare
+  // entrypoints that never open the instance database still resolve this way.
   const modelProviders = resolveModelProviders(env, { redacted: parsed.data.redactionEnabled });
-  return { ...parsed.data, limits: buildLimits(env, parsed.data.demoMode), modelProviders };
+  return {
+    ...parsed.data,
+    limits: buildLimits(env, parsed.data.demoMode),
+    modelProviders,
+    masterKey: readMasterKey(env),
+  };
 }
 
 export const COGETO_CONFIG = Symbol('COGETO_CONFIG');

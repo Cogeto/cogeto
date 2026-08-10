@@ -53,7 +53,7 @@
   },
   "models": {
     "heading": "Modellkonfiguration",
-    "explainer": "Schreibgeschützt. Die aktiven Anbieter und Modelle werden vom Betreiber in der Umgebung der Instanz festgelegt. API-Schlüssel werden hier nie eingegeben oder angezeigt.",
+    "explainer": "Schreibgeschützt. Welche Anbieter und Modelle diese Instanz verwendet und was sie verlässt. API-Schlüssel werden hier nie angezeigt.",
     "configuration": "Konfiguration",
     "notConfigured": "kein Anbieterschlüssel festgelegt, Modellfunktionen sind deaktiviert",
     "redaction": "Redaktion",
@@ -62,7 +62,9 @@
       "pipeline": "Verarbeitung",
       "answer": "Antwort",
       "embeddings": "Einbettungen"
-    }
+    },
+    "managedIn": "Anbieter, Zuordnungen und die Modelle, die Nutzer wählen dürfen, werden dort festgelegt.",
+    "manage": "Modelle verwalten"
   },
   "aliases": {
     "heading": "Entity aliases",

@@ -6,8 +6,44 @@ export { MistralModelGateway } from './mistral.gateway';
 // composes them through createModelGateway + the configuration resolver.
 // Per-instance provider configuration: ONE resolver
 // for app, worker, bare entrypoints and the eval harness.
-export { resolveModelProviders, PROVIDER_PRESETS } from './provider-config';
-export type { ResolvedModelProviders } from './provider-config';
+export {
+  resolveModelProviders,
+  PROVIDER_PRESETS,
+  MODEL_PROVIDER_IDS,
+  EMBEDDING_CAPABLE,
+  deriveProvidersId,
+  presetForTiers,
+  OLLAMA_TIMEOUT_DEFAULTS_MS,
+  DEFAULT_OPENAI_BASE_URL,
+  DEFAULT_ANTHROPIC_BASE_URL,
+  ModelProviderConfigError,
+} from './provider-config';
+export type {
+  ResolvedModelProviders,
+  ModelProviderId,
+  TierBinding,
+  ProviderEndpoint,
+  AnswerModelOption,
+} from './provider-config';
+// The live configuration (V2.4 item 7.1): one mutable object per process, so a
+// saved assignment reaches every consumer without a restart and the gateway
+// rebuilds its adapters exactly once.
+export { LiveModelConfiguration } from './live-configuration';
+// Provider discovery and validation (V2.4 item 7.1). Everything that opens a
+// socket to a provider lives in the seam; the module that manages provider
+// RECORDS asks these two functions and never speaks HTTP itself.
+export {
+  listProviderModels,
+  probeProviderModel,
+  DEFAULT_PROVIDER_PROBE_TIMEOUT_MS,
+  DEFAULT_MODEL_LIST_TIMEOUT_MS,
+} from './provider-probe';
+export type {
+  ProbeTarget,
+  ProbeTier,
+  ProviderProbeFailure,
+  ProviderProbeResult,
+} from './provider-probe';
 // Local-runtime boot probe: fail loudly at startup,
 // never at first request. Called by the app, worker, and reindex entrypoints.
 export { assertLocalRuntimeReady, probeLocalRuntime } from './local-runtime';

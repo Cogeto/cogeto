@@ -2,7 +2,8 @@
 
 One directory per DDD bounded context (spec §15): `memory`, `ingestion`, `retrieval`,
 `chat`, `agents`, `notes`, `files`, `email`, `research`, `skills`, `settings`,
-`passport`, `attention`, `operations`, `sources`, `imports`, `reports`, `identity`,
+`passport`, `attention`, `operations`, `sources`, `imports`, `reports`, `providers`,
+`identity`,
 `model-gateway`, plus the shared `infrastructure` leaf, `entrypoints` (app,
 worker), `migrations` and `testing`.
 
@@ -24,7 +25,11 @@ import: the manifest, the queued coordinator and the first-class import
 record, owning `import_run` + `import_item`). V2.3 added `reports` (item 6.2,
 the findings report: the signed PDF + JSON artifact from a findings run,
 owning the `findings_report` run ledger and generating everything else
-through the owners' gated reads).
+through the owners' gated reads). V2.4 added `providers` (item 7.1: the
+instance's model and provider configuration, moved out of the environment into
+six tables with the API keys encrypted at rest under the instance master key,
+which stays in the environment because a key that guards a database cannot live
+inside it).
 
 Module rules (binding, CI-enforced, spec §15):
 

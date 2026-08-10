@@ -4,7 +4,11 @@ import { raw } from 'express';
 import type { NextFunction, Request, Response } from 'express';
 import { assertAppKeyMount, describeErrorLine, runWithUsageContext } from '../infrastructure/index';
 import { logRedactionState } from './redaction-boot';
-import { assertEmbeddingSpaceConsistent, logModelConfiguration } from './model-boot';
+import {
+  assertEmbeddingSpaceConsistent,
+  installModelConfiguration,
+  logModelConfiguration,
+} from './model-boot';
 import { assertLocalRuntimeReady } from '../model-gateway/index';
 import { CapabilitiesService, formatCapabilitiesBanner } from '../operations/index';
 import { loadConfig } from './config';
@@ -24,6 +28,11 @@ async function main(): Promise<void> {
     logger.info({ dir: config.instanceKeyDir }, 'signing-key mount verified: public key only');
   }
 
+  // The DATABASE's model configuration, in force before anything is built
+  // (V2.4 item 7.1). Seeds the environment in on the first start after the
+  // upgrade; after that the environment's model variables are ignored.
+  const live = await installModelConfiguration(config, logger);
+
   // Embedding-space guard: a changed embeddings
   // model refuses boot until reindex has re-embedded the stored vectors.
   await assertEmbeddingSpaceConsistent(config);
@@ -31,7 +40,7 @@ async function main(): Promise<void> {
   // runtime or a never-pulled model refuses boot, never fails at first request.
   await assertLocalRuntimeReady(config.modelProviders);
 
-  const app = await NestFactory.create(createAppRootModule(config) as never, {
+  const app = await NestFactory.create(createAppRootModule(config, live) as never, {
     logger: new PinoNestLogger(logger),
   });
   // Open a per-request usage scope as the outermost middleware, so

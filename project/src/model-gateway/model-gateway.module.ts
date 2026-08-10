@@ -4,6 +4,7 @@ import { ModelGateway } from './model-gateway.service';
 import { createModelGateway } from './factory';
 import type { RedactionConfig } from './factory';
 import type { ResolvedModelProviders } from './provider-config';
+import type { LiveModelConfiguration } from './live-configuration';
 import { ModelConfigController } from './model-config.controller';
 import { MODEL_CONFIG_VIEW } from './model-config-view';
 import type { ModelConfigView } from './model-config-view';
@@ -15,6 +16,13 @@ export interface ModelGatewayModuleOptions {
   /** The resolved per-tier provider configuration. Absent or
    * unconfigured → the process boots normally; model calls fail with a typed error. */
   providers?: ResolvedModelProviders;
+  /**
+   * The live configuration (V2.4 item 7.1). Passed by the app and worker roots,
+   * whose configuration comes from the database and can change while the
+   * process runs; absent everywhere else, which keeps every bare entrypoint on
+   * the single-build path it always had.
+   */
+  live?: LiveModelConfiguration;
   /** Redaction mode (spec §12.2) — wraps the gateway when enabled. */
   redaction?: RedactionConfig;
   /**
@@ -57,6 +65,7 @@ export class ModelGatewayModule {
           useFactory: (usageMeter?: ModelUsageMeter, egressAudit?: ModelEgressAudit) =>
             createModelGateway({
               providers: options.providers,
+              live: options.live,
               redaction: options.redaction,
               usageMeter: options.budget ? usageMeter : undefined,
               // Every call that leaves the instance is recorded wherever there

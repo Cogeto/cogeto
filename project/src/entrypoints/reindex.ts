@@ -4,6 +4,7 @@ import { createDb } from '../infrastructure/index';
 import { reindexMemories } from '../memory/index';
 import { assertLocalRuntimeReady, createModelGateway } from '../model-gateway/index';
 import { loadConfig, redactionOptions } from './config';
+import { installModelConfiguration } from './model-boot';
 
 /**
  * reindex — rebuilds the Qdrant index from Postgres (spec §4.2; memory README).
@@ -13,6 +14,12 @@ import { loadConfig, redactionOptions } from './config';
  */
 async function main(): Promise<void> {
   const config = loadConfig();
+  // The DATABASE's model configuration is what this instance runs (V2.4 item
+  // 7.1): seeded once from the environment, authoritative after that. A tool
+  // that resolved the environment instead could embed with a model the
+  // instance replaced, which is precisely the mixed embedding space the boot
+  // guard exists to refuse.
+  await installModelConfiguration(config);
   const pool = new Pool({ connectionString: config.databaseUrl });
   const db = createDb(pool);
   // Redaction wraps embeddings too: a reindex under redaction

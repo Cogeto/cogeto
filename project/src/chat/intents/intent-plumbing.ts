@@ -32,6 +32,13 @@ export interface ChatTurnSink {
    * memory of what it is about.
    */
   writeFocus(conversationId: string, subject: string): Promise<void>;
+  /**
+   * The answer model this user chose for themselves (V2.4 item 7.1), as the
+   * opaque option id an admin enabled, or null for the instance's assigned
+   * answer tier. Null is what every instance returns until an admin enables a
+   * set, which keeps the answer call byte-identical to what it was.
+   */
+  answerOptionFor(userId: string): Promise<string | null>;
   /** Metadata only — never answer content or tokens (pino rule). */
   logWarn(message: string): void;
 }

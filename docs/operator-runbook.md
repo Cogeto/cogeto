@@ -518,7 +518,10 @@ then delete the rehearsal instance.
  newer compose requires** (the wave-3 least-privilege credentials are
  generated on first upgrade past them, and the database roles converge
  automatically on the next start): re-vault `.env` after an upgrade that
- prints new secret names.
+ prints new secret names. **Check
+ [`operations/upgrade-notes.md`](operations/upgrade-notes.md) for the target
+ release**: some upgrades change what `.env` is for, and the release that
+ moved model and provider configuration into the database is one of them.
 
 5. **Verify after**: `sudo ./cogeto status` is GREEN and prints the running
  `version`, which is the authoritative check. Log in as well and confirm the

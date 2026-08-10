@@ -4,6 +4,7 @@ import { createMemoryReconciliation } from '../memory/index';
 import { DreamingService, ReconciliationService } from '../ingestion/index';
 import { createModelGateway } from '../model-gateway/index';
 import { loadConfig, redactionOptions } from './config';
+import { installModelConfiguration } from './model-boot';
 
 /**
  * dream — the on-demand dreaming cycle ( plain form). The
@@ -17,6 +18,12 @@ import { loadConfig, redactionOptions } from './config';
  */
 async function main(): Promise<void> {
   const config = loadConfig();
+  // The DATABASE's model configuration is what this instance runs (V2.4 item
+  // 7.1): seeded once from the environment, authoritative after that. A tool
+  // that resolved the environment instead could embed with a model the
+  // instance replaced, which is precisely the mixed embedding space the boot
+  // guard exists to refuse.
+  await installModelConfiguration(config);
   if (!config.modelProviders.configured) {
     console.error('dream needs MISTRAL_API_KEY: the reconcile passes are model confirmations');
     process.exit(2);
