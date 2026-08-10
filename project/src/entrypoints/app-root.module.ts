@@ -219,7 +219,11 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
   const skillsModule = SkillsModule.register({ imports: [memoryModule, researchModule] });
   // One imports instance, threaded to the root AND to reports (V2.3 item
   // 6.2): the report validates an import-scope run id through the service.
-  const importsModule = ImportsModule.register({ imports: [memoryModule, filesModule] });
+  // settingsModule joins so an omitted confirm-time scope falls back to the
+  // user's saved default, the same contract as the single-file upload (#490).
+  const importsModule = ImportsModule.register({
+    imports: [memoryModule, filesModule, settingsModule],
+  });
   // The three resolver-binding modules, un-globaled (B15 closed): each is a
   // dynamic instance receiving the modules it composes, and ChatModule
   // receives all three so its options factory resolves the port tokens by

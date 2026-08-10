@@ -5,6 +5,7 @@ import type {
   ImportItemDto,
   ImportRunDetailDto,
   ImportRunDto,
+  MemoryScope,
   S3ManifestRequest,
 } from '@cogeto/shared';
 import {
@@ -16,6 +17,7 @@ import {
   excludeImportItems,
   fetchImportDetail,
   fetchImports,
+  fetchSettings,
   stageImportItem,
 } from '../api';
 import type { Session } from '../auth/oidc';
@@ -383,6 +385,13 @@ function ManifestReview({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [staging, setStaging] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The whole run's scope (issue #490): one deliberate choice at the
+  // deliberate step, prefilled from the user's saved default like the
+  // single-file upload card.
+  const settings = useQuery({ queryKey: ['settings'], queryFn: () => fetchSettings(session) });
+  const [scope, setScope] = useState<MemoryScope | null>(null);
+  const [sensitive, setSensitive] = useState(false);
+  const effScope = scope ?? settings.data?.defaultScope ?? 'private';
 
   const listed = detail.items.filter((item) => item.state === 'listed');
   const candidates = listed.filter((item) => item.revisionOf).length;
@@ -408,11 +417,11 @@ function ManifestReview({
           setStaging((state) => state && { ...state, done: state.done + 1 });
         }
       }
-      return confirmImport(
-        session,
-        detail.id,
-        detail.kind === 's3' ? (s3Creds.current ?? undefined) : undefined,
-      );
+      return confirmImport(session, detail.id, {
+        s3: detail.kind === 's3' ? (s3Creds.current ?? undefined) : undefined,
+        scope: effScope,
+        sensitive,
+      });
     },
     onSuccess: onDone,
     onError: (cause) => setError(cause.message),
@@ -470,6 +479,36 @@ function ManifestReview({
           </li>
         ))}
       </ul>
+      <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-slate-600">
+        <span className="text-xs text-slate-500">{t('imports.manifest.scopeLabel')}</span>
+        <label className="flex items-center gap-1.5">
+          <input
+            type="radio"
+            name="import-scope"
+            checked={effScope === 'private'}
+            onChange={() => setScope('private')}
+          />
+          {t('imports.manifest.scopePrivate')}
+        </label>
+        <label className="flex items-center gap-1.5">
+          <input
+            type="radio"
+            name="import-scope"
+            checked={effScope === 'shared'}
+            onChange={() => setScope('shared')}
+          />
+          {t('imports.manifest.scopeShared')}
+        </label>
+        <label className="flex items-center gap-1.5">
+          <input
+            type="checkbox"
+            checked={sensitive}
+            onChange={(event) => setSensitive(event.target.checked)}
+          />
+          {t('imports.manifest.sensitive')}
+        </label>
+      </div>
+      <p className="mt-1 text-xs text-slate-400">{t('imports.manifest.scopeHelp')}</p>
       {staging && (
         <p className="mt-2 text-xs text-slate-500">
           {t('imports.manifest.stagingProgress', { done: staging.done, total: staging.total })}
@@ -543,6 +582,8 @@ function ImportRunCard({ session, run }: { session: Session; run: ImportRunDto }
         >
           {t(`imports.runState.${run.state}`)}
         </Pill>
+        {run.scope === 'shared' && <Pill tone="info">{t('imports.run.sharedScope')}</Pill>}
+        {run.sensitive === true && <Pill tone="warning">{t('imports.run.sensitiveScope')}</Pill>}
         <span className="ml-auto text-xs text-slate-400" title={run.createdAt}>
           {timeAgo(run.createdAt)}
         </span>

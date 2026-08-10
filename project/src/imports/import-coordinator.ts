@@ -144,7 +144,13 @@ export class ImportCoordinator {
           originalName: item.name ?? 'imported-file',
           mimeType: staged.contentType ?? 'application/octet-stream',
         },
-        { scope: 'private', sensitive: false, discard: false },
+        // The run's confirm-time choice (issue #490); a run confirmed before
+        // the choice existed carries none and keeps the 'private' it ran as.
+        {
+          scope: run.optionsJson?.scope ?? 'private',
+          sensitive: run.optionsJson?.sensitive ?? false,
+          discard: false,
+        },
         { jobPriority: IMPORT_PIPELINE_PRIORITY },
       );
       await this.setItem(item.id, { state: 'queued', objectKey });

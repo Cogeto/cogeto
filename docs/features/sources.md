@@ -91,7 +91,11 @@ path: manifest first, nothing ingested until confirmed, every document fed
 through the same upload service at demoted queue priority with an in-flight
 cap so an import cannot starve the instance, and same-name re-imports
 nominated for the conservative revision linker, see
-[`revisions.md`](revisions.md)), and the **chat paperclip** (the
+[`revisions.md`](revisions.md); the confirm step also chooses the **memory
+scope** for the whole run, private or shared plus the sensitive flag,
+prefilled from the saved default and resolved against it server-side when
+omitted, exactly the single-upload contract, and the run card reports what it
+ingested under), and the **chat paperclip** (the
 conversational door, whose endpoint delegates to the same upload service, so
 validation, caps, quota, gating and ingestion are identical and only the entry
 point and the presentation differ). The Memories tab stopped being an input

@@ -1,4 +1,5 @@
 import { bigint, index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import type { MemoryScope } from '@cogeto/shared';
 
 /**
  * Tables owned by the imports context (V2.2 item 5.3, migration 0047).
@@ -82,6 +83,12 @@ export interface ImportRunOptions {
   sourceLabel?: string;
   /** Why the coordinator is currently waiting, when it is (daily cap). */
   pausedReason?: string | null;
+  /** The scope the whole run ingests under, chosen at confirm (issue #490).
+   * Absent on runs confirmed before the choice existed: the coordinator then
+   * falls back to 'private', which is what those runs actually did. */
+  scope?: MemoryScope;
+  /** Chosen at confirm beside the scope; absent means false. */
+  sensitive?: boolean;
 }
 
 /** The completion summary's shape. Every number is real. */

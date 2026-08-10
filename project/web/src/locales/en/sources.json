@@ -290,7 +290,12 @@
       "confirm_other": "Import {{count}} files",
       "exclude_one": "Exclude {{count}} selected",
       "exclude_other": "Exclude {{count}} selected",
-      "discard": "Discard this import"
+      "discard": "Discard this import",
+      "scopeLabel": "Memory scope for this import",
+      "scopePrivate": "Private, only you",
+      "scopeShared": "Shared with your organisation",
+      "sensitive": "Mark everything sensitive",
+      "scopeHelp": "One choice for the whole import: every fact extracted from these documents lands with this scope. Individual facts can still be changed afterwards."
     },
     "itemState": {
       "listed": "listed",
@@ -317,7 +322,9 @@
       "cancel": "Cancel import",
       "noItems": "No matching files in this import.",
       "erasedItem": "(erased source)",
-      "viewSource": "View"
+      "viewSource": "View",
+      "sharedScope": "Shared",
+      "sensitiveScope": "Sensitive"
     },
     "summary": {
       "documents_one": "{{count}} document ingested",

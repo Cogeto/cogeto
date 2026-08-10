@@ -1,7 +1,15 @@
 import { createHash } from 'node:crypto';
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type {
+  ConfirmImportRequest,
   FolderManifestRequest,
   ImportItemDto,
   ImportProgressDto,
@@ -14,6 +22,7 @@ import { DRIZZLE, withTransactionalEnqueue } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { checksumsKnownForOwner, listFileSourceRefs, MemoryObjectStore } from '../memory/index';
 import { sniffContentType } from '../files/index';
+import { UserSettingsService } from '../settings/index';
 import { normalizeFilename } from '../ingestion/index';
 import { importItem, importRun } from './persistence/tables';
 import type { ImportItemRow, ImportRunRow } from './persistence/tables';
@@ -48,6 +57,10 @@ export class ImportService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Db,
     private readonly objects: MemoryObjectStore,
+    /** The user's saved defaults, for an omitted confirm-time scope (issue
+     * #490). Optional: harness roots without the settings family keep the
+     * historical 'private' fallback. */
+    @Optional() private readonly settings?: UserSettingsService,
   ) {}
 
   // ── Manifest creation ────────────────────────────────────────────────────
@@ -207,10 +220,18 @@ export class ImportService {
   async confirm(
     principal: Principal,
     runId: string,
-    options: { s3?: S3ManifestRequest } = {},
+    options: ConfirmImportRequest = {},
   ): Promise<ImportRunDto> {
     const run = await this.requireRun(principal, runId);
     if (run.state !== 'manifest') throw new BadRequestException('this import already started');
+    // The whole run's scope, decided HERE (issue #490): one deliberate choice
+    // at the deliberate nothing-ingests-until-confirmed step. Omitted falls
+    // back to the user's saved default scope, the single-upload contract; a
+    // root wired without settings keeps the historical 'private'.
+    const scope =
+      options.scope ??
+      (this.settings ? (await this.settings.get(principal)).defaultScope : 'private');
+    const sensitive = options.sensitive ?? false;
     const items = await this.itemsOf(runId);
     const pending = items.filter((item) => item.state === 'listed');
     if (pending.length === 0) throw new BadRequestException('nothing to import after exclusions');
@@ -231,7 +252,13 @@ export class ImportService {
     await this.db.transaction(async (tx) => {
       await tx
         .update(importRun)
-        .set({ state: 'running', startedAt: new Date() })
+        .set({
+          state: 'running',
+          startedAt: new Date(),
+          // The choice rides the run's non-secret options: the coordinator
+          // reads it from the row, so a worker restart cannot lose it.
+          optionsJson: { ...(run.optionsJson ?? {}), scope, sensitive },
+        })
         .where(eq(importRun.id, runId));
       await withTransactionalEnqueue(
         tx,
@@ -531,6 +558,8 @@ export class ImportService {
       state: run.state,
       sourceLabel: run.optionsJson?.sourceLabel ?? null,
       pausedReason: run.optionsJson?.pausedReason ?? null,
+      scope: run.optionsJson?.scope ?? null,
+      sensitive: run.optionsJson?.sensitive ?? null,
       counts: run.countsJson ?? null,
       progress,
       createdAt: run.createdAt.toISOString(),
