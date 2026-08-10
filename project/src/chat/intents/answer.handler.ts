@@ -166,7 +166,18 @@ export class MemoryAnswerHandler {
           about: subject.about ?? undefined,
           aboutCarriedOver: subject.carriedOver,
           resolvedQuestion: effectiveRewrite.query,
-          recentTurns: recentTurnsForAnswer(history),
+          // The recent turns are WITHHELD on the silent path, for the same
+          // reason the sub-floor facts are (spec §7.5.2). The preamble has
+          // just told the user the sources hold nothing; an earlier assistant
+          // turn quoting one of those facts would put it straight back in
+          // front of the model, which could then restate a disclaimed claim as
+          // known. A prior turn is not a citable source, so it may not be the
+          // route by which a withheld fact returns.
+          //
+          // `about` survives: a subject NAME is not a claim, and knowing which
+          // subject the user means is what lets the answer say "I have nothing
+          // about the M557" instead of a bare shrug.
+          recentTurns: silentKnowledge ? undefined : recentTurnsForAnswer(history),
         }),
         tier: 'answer',
         thinking: thinkingMode,

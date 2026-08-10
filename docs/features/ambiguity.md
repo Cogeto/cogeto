@@ -310,6 +310,16 @@ by fact density: a confidently wrong subject, correctly cited.
   `answer/v0009` states it directly: a claim that appears only in an earlier
   turn is not on record. Citations, `{{cite}}` tokens and the memory-first rule
   are unchanged.
+- **The silent branch carries NO turns.** When the decision is `silent` and
+  general knowledge answers, the sub-floor facts are withheld from the prompt
+  so the model cannot cite what the preamble has just disclaimed. An earlier
+  assistant turn quoting one of those facts would put it straight back in
+  front of the model, so the turns block is withheld on that path for exactly
+  the same reason. The subject line survives: a subject NAME is not a claim,
+  and it is what lets the answer say "I have nothing about the M557" instead
+  of a bare shrug. Asserted by the existing
+  `chat-ambiguity.integration.spec.ts` silent-plus-knowledge case, which
+  caught this during implementation.
 
 ### What gates it
 

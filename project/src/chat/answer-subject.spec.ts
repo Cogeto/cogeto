@@ -183,6 +183,20 @@ describe('answer input carries the resolved subject (issue #479)', () => {
     for (const line of input.split('\n')) expect(line.length).toBeLessThan(400);
   });
 
+  it('a withheld fact cannot return through the turns block', () => {
+    // The silent path withholds sub-floor facts so the model cannot cite what
+    // the preamble just disclaimed. An earlier assistant turn quoting one of
+    // them would smuggle it back; the handler passes no turns on that path, and
+    // this asserts the input honours the omission rather than inventing one.
+    const withheld = buildAnswerInput([], 'what is the fastening torque?', 'default', {
+      knowledge: true,
+      about: 'VX-9',
+      recentTurns: undefined,
+    });
+    expect(withheld).not.toContain('RECENT TURNS');
+    expect(withheld).toContain('THE QUESTION IS ABOUT: VX-9');
+  });
+
   it('puts the subject AFTER the turns and BEFORE the question', () => {
     // The conclusion is what the model should act on; the turns are supporting
     // material it may read. Order encodes that.
