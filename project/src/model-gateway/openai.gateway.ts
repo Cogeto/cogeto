@@ -13,6 +13,7 @@ import type {
 import { ModelGatewayError, ReasoningExhaustedBudgetError, VisionUnavailableError } from './errors';
 import {
   callWithRetry,
+  extractStatus,
   postJson,
   postStream,
   REACHABILITY_TTL_MS,
@@ -125,6 +126,19 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
    * evidence is.
    */
   private readonly reasoningModels = new Set<string>();
+  /**
+   * Parameter dialects, learned from the server's own refusals (issue #492).
+   * OpenAI's newer model families reject the legacy `max_tokens` field in
+   * favour of `max_completion_tokens`, and some reject any pinned
+   * `temperature`. Which dialect a model speaks is a server-side fact nothing
+   * in its name reveals (the vision and reasoning lesson), so the adapter
+   * sends the legacy dialect first, byte-identical for every configuration
+   * that works today including every self-hosted server, and on the specific
+   * HTTP 400 that names the parameter it adapts, remembers per model for the
+   * life of the process, and retries once.
+   */
+  private readonly capParamOverride = new Map<string, 'max_completion_tokens'>();
+  private readonly temperatureRefused = new Set<string>();
   private reachabilityCache?: { at: number; value: GatewayReachability };
 
   constructor(options: OpenAiCompatibleGatewayOptions) {
@@ -277,13 +291,74 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
     }
   }
 
+  /** The output-cap field in the dialect this model accepts. */
+  private capField(model: string, maxTokens: number | undefined): Record<string, unknown> {
+    if (maxTokens === undefined) return {};
+    return { [this.capParamOverride.get(model) ?? 'max_tokens']: maxTokens };
+  }
+
+  /** The temperature pin, unless this model has refused one. */
+  private temperatureField(
+    model: string,
+    temperature: number | undefined,
+  ): Record<string, unknown> {
+    if (temperature === undefined || this.temperatureRefused.has(model)) return {};
+    return { temperature };
+  }
+
+  /**
+   * Reads a refusal for what it teaches. True only when the failure is the
+   * recognisable parameter-dialect 400 AND it taught something new for this
+   * model, which is what bounds the retry to exactly one.
+   */
+  private learnFromRejection(model: string, error: unknown): boolean {
+    const status =
+      extractStatus(error) ?? extractStatus((error as { cause?: unknown } | undefined)?.cause);
+    if (status !== 400) return false;
+    const message = error instanceof Error ? error.message : String(error);
+    let learned = false;
+    if (/max_completion_tokens/i.test(message) && !this.capParamOverride.has(model)) {
+      this.capParamOverride.set(model, 'max_completion_tokens');
+      learned = true;
+    }
+    if (
+      /temperature/i.test(message) &&
+      /unsupported|not supported|does not support/i.test(message) &&
+      !this.temperatureRefused.has(model)
+    ) {
+      // Determinism then rests on the JSON contract plus validation, the
+      // documented posture for providers that reject sampling parameters.
+      this.temperatureRefused.add(model);
+      learned = true;
+    }
+    return learned;
+  }
+
+  /**
+   * Retry while each refusal still teaches something new — the server reports
+   * one unsupported parameter at a time, so a model refusing both costs two
+   * extra round-trips, once ever. Bounded structurally: `learnFromRejection`
+   * returns true only when it CHANGES state, there are exactly two facts to
+   * learn per model, and any failure that teaches nothing is thrown as-is.
+   * `attempt` must REBUILD its body per call so each retry carries what the
+   * refusals taught.
+   */
+  private async adaptiveCall<T>(model: string, attempt: () => Promise<T>): Promise<T> {
+    for (;;) {
+      try {
+        return await attempt();
+      } catch (error) {
+        if (!this.learnFromRejection(model, error)) throw error;
+      }
+    }
+  }
+
   private chatBody(request: CompletionRequest, extra: Record<string, unknown> = {}): object {
     const model = this.modelFor(request.tier ?? 'answer');
-    const maxTokens = this.capFor(model, request.maxTokens);
     return {
       model,
-      ...(maxTokens !== undefined ? { max_tokens: maxTokens } : {}),
-      ...(this.temperature !== undefined ? { temperature: this.temperature } : {}),
+      ...this.capField(model, this.capFor(model, request.maxTokens)),
+      ...this.temperatureField(model, this.temperature),
       ...this.thinkingFields(request.thinking),
       messages: [
         ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
@@ -296,12 +371,14 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
   async complete(request: CompletionRequest): Promise<CompletionResult> {
     const tier = request.tier ?? 'answer';
     const model = this.modelFor(tier);
-    const response = await this.call(tier, model, (signal) =>
-      postJson<ChatResponse>(
-        `${this.baseUrl}/chat/completions`,
-        this.headers,
-        this.chatBody(request),
-        signal,
+    const response = await this.adaptiveCall(model, () =>
+      this.call(tier, model, (signal) =>
+        postJson<ChatResponse>(
+          `${this.baseUrl}/chat/completions`,
+          this.headers,
+          this.chatBody(request),
+          signal,
+        ),
       ),
     );
     const message = response.choices?.[0]?.message;
@@ -325,12 +402,16 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
   async *completeStream(request: CompletionRequest): AsyncIterable<StreamDelta> {
     const tier = request.tier ?? 'answer';
     const model = this.modelFor(tier);
-    const response = await this.call(tier, model, (signal) =>
-      postStream(
-        `${this.baseUrl}/chat/completions`,
-        this.headers,
-        this.chatBody(request, { stream: true }),
-        signal,
+    // Adaptation happens while acquiring the stream, before the first yield,
+    // so a retried request can never interleave with emitted deltas.
+    const response = await this.adaptiveCall(model, () =>
+      this.call(tier, model, (signal) =>
+        postStream(
+          `${this.baseUrl}/chat/completions`,
+          this.headers,
+          this.chatBody(request, { stream: true }),
+          signal,
+        ),
       ),
     );
     for await (const data of sseData(response)) {
@@ -361,32 +442,36 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
     const tier = request.tier ?? 'pipeline';
     const model = this.modelFor(tier);
     return structuredWithRepair(schema, async (extraInstruction) => {
-      const response = await this.call(tier, model, (signal) =>
-        postJson<ChatResponse>(
-          `${this.baseUrl}/chat/completions`,
-          this.headers,
-          {
-            model,
-            // ALWAYS deterministic sampling: structured
-            // extraction decides what Cogeto remembers — never a dice roll.
-            temperature: 0,
-            // Structured tasks never display thinking, so on a controllable
-            // endpoint they never pay for it (issue #424). Temperature stays
-            // 0 and no sampler profile applies; JSON tested clean without the
-            // anti-loop penalty.
-            ...(this.thinkingControl ? { chat_template_kwargs: { enable_thinking: false } } : {}),
-            response_format: { type: 'json_object' },
-            messages: [
-              { role: 'system' as const, content: request.system },
-              {
-                role: 'user' as const,
-                content: extraInstruction
-                  ? `${request.input}\n\n${extraInstruction}`
-                  : request.input,
-              },
-            ],
-          },
-          signal,
+      const response = await this.adaptiveCall(model, () =>
+        this.call(tier, model, (signal) =>
+          postJson<ChatResponse>(
+            `${this.baseUrl}/chat/completions`,
+            this.headers,
+            {
+              model,
+              // ALWAYS deterministic sampling where the model takes the pin:
+              // structured extraction decides what Cogeto remembers — never a
+              // dice roll. A model that refuses the pin (issue #492) runs
+              // without it, determinism resting on the JSON contract.
+              ...this.temperatureField(model, 0),
+              // Structured tasks never display thinking, so on a controllable
+              // endpoint they never pay for it (issue #424). Temperature stays
+              // 0 and no sampler profile applies; JSON tested clean without the
+              // anti-loop penalty.
+              ...(this.thinkingControl ? { chat_template_kwargs: { enable_thinking: false } } : {}),
+              response_format: { type: 'json_object' },
+              messages: [
+                { role: 'system' as const, content: request.system },
+                {
+                  role: 'user' as const,
+                  content: extraInstruction
+                    ? `${request.input}\n\n${extraInstruction}`
+                    : request.input,
+                },
+              ],
+            },
+            signal,
+          ),
         ),
       );
       // The reasoning field is DISCARDED here, before the JSON parser ever
@@ -429,12 +514,13 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
     // Headroom applies here too (Part B): the vision binding can be the same
     // reasoning model as the text tiers, and a cap sized for a page transcript
     // is not sized for the transcript plus the model's deliberation about it.
-    const maxTokens = this.capFor(model, request.maxTokens);
-    const body = {
+    // A builder, not a constant: the adaptive retry rebuilds it (issue #492).
+    const body = () => ({
       model,
-      ...(maxTokens !== undefined ? { max_tokens: maxTokens } : {}),
-      // Reading a page is a transcription task, not a creative one.
-      temperature: 0,
+      ...this.capField(model, this.capFor(model, request.maxTokens)),
+      // Reading a page is a transcription task, not a creative one; a model
+      // that refuses the pin runs without it (issue #492).
+      ...this.temperatureField(model, 0),
       // Transcription never displays thinking either (issue #424): pages read
       // several times faster on a controllable reasoning endpoint. The probe
       // and headroom stay as the safety net for servers ignoring the flag.
@@ -449,12 +535,14 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
           ],
         },
       ],
-    };
+    });
 
     let response: ChatResponse;
     try {
-      response = await this.call('vision', model, (signal) =>
-        postJson<ChatResponse>(`${this.baseUrl}/chat/completions`, this.headers, body, signal),
+      response = await this.adaptiveCall(model, () =>
+        this.call('vision', model, (signal) =>
+          postJson<ChatResponse>(`${this.baseUrl}/chat/completions`, this.headers, body(), signal),
+        ),
       );
     } catch (error) {
       throw classifyVisionFailure(error, {
