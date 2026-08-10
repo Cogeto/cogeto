@@ -14,7 +14,7 @@
  * whose retrieval composition genuinely differs can carry its own value with
  * evidence instead of arguing about principle.
  */
-export const AMBIGUITY_CONFIG_VERSION = 1;
+export const AMBIGUITY_CONFIG_VERSION = 2;
 
 export interface AmbiguityThresholds {
   /**
@@ -42,6 +42,26 @@ export interface AmbiguityThresholds {
    * silent-guess hazard lives.
    */
   comparabilityRatio: number;
+  /**
+   * Was `relevanceFloor` MEASURED under this embedding model, or borrowed?
+   *
+   * This flag exists because of issue #477, and it is the difference between a
+   * safe failure and the worst one this product can produce. The relevance
+   * floor is an ABSOLUTE similarity, which is embedding-model geometry: a
+   * borrowed floor is not an approximation, it is a number about a different
+   * vector space. Under bge-m3 the live instance measured a relevant cluster at
+   * 0.8191 against a mistral-embed floor of 0.90, so every correct answer was
+   * silenced and the product said "I have nothing about this in your sources"
+   * while holding fifteen matching facts.
+   *
+   * When this is FALSE the floor may still filter fan-out lines, where being
+   * too generous costs an extra line, but it may NOT trigger the silent branch.
+   * Silence then comes only from retrieval returning nothing, which is honest
+   * under any geometry. A model whose bands nobody measured can therefore be
+   * wrong about how much to show and can never be wrong about whether the
+   * corpus holds anything.
+   */
+  calibrated: boolean;
 }
 
 /**
@@ -53,20 +73,33 @@ const CALIBRATED_THRESHOLDS: Record<string, AmbiguityThresholds> = {
   /** Calibrated: the canonical configuration, measured over the chat-suite
    * corpora (relevant versus foreign question similarity bands) in the pull
    * request that shipped V2.3 item 6.3. */
-  'mistral-embed': { relevanceFloor: 0.9, comparabilityRatio: 0.55 },
+  'mistral-embed': { relevanceFloor: 0.9, comparabilityRatio: 0.55, calibrated: true },
   /**
-   * NOT measured. These carry the mistral-embed values so the presets keep
-   * working, stated honestly instead of implied calibrated: calibrating them
-   * needs a seeded retrieval run with the model configured, and until then
-   * the honest claim is "borrowed cut points", not "calibrated".
+   * OBSERVED, not calibrated (issue #477). One live instance, one question
+   * (`what is m557?`) over a real corpus: the two clusters holding the asked
+   * about subject scored 0.8191 and 0.7674, and fifteen foreign-topic clusters
+   * scored 0.6366 to 0.6793. The bands are real and they are LOWER and WIDER
+   * than mistral-embed's, which is the whole point: 0.82 is a strong hit here
+   * and would be a miss there.
+   *
+   * The floor moves into the measured gap so fan-out lines stay sane, and
+   * `calibrated: false` means it cannot silence anything. Promoting this to
+   * calibrated needs what mistral-embed got: a seeded retrieval run measuring
+   * relevant against foreign bands across the chat-suite corpora, in the pull
+   * request that flips the flag.
    */
-  'bge-m3': { relevanceFloor: 0.9, comparabilityRatio: 0.55 },
-  'text-embedding-3-small': { relevanceFloor: 0.9, comparabilityRatio: 0.55 },
-  'text-embedding-3-large': { relevanceFloor: 0.9, comparabilityRatio: 0.55 },
+  'bge-m3': { relevanceFloor: 0.72, comparabilityRatio: 0.55, calibrated: false },
+  /**
+   * NOT measured and NOT observed. These carry the mistral-embed floor so the
+   * presets keep working, stated honestly instead of implied calibrated, and
+   * `calibrated: false` keeps that honesty from costing a user their answer.
+   */
+  'text-embedding-3-small': { relevanceFloor: 0.9, comparabilityRatio: 0.55, calibrated: false },
+  'text-embedding-3-large': { relevanceFloor: 0.9, comparabilityRatio: 0.55, calibrated: false },
   /** The deterministic fake embedding the test suites run under: mirrors the
    * mistral-embed cut points so the suites exercise the shipped bands. Never
    * a production model. */
-  'test-embed': { relevanceFloor: 0.9, comparabilityRatio: 0.55 },
+  'test-embed': { relevanceFloor: 0.9, comparabilityRatio: 0.55, calibrated: true },
 };
 
 /**

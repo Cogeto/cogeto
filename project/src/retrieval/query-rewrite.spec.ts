@@ -6,6 +6,7 @@ import type { StreamDelta } from '../model-gateway/index';
 import type { StructuredExtractionRequest } from '../model-gateway/index';
 import type { MemoryRow, MemoryStore } from '../memory/index';
 import { RetrievalService } from './retrieval.service';
+import { queryEntityCandidates } from './query-entities';
 
 /**
  * pronoun_rewrite (owner test F3): a turn that leans on the conversation
@@ -105,5 +106,33 @@ describe('pronoun_rewrite (F3)', () => {
     const service = new RetrievalService(fakeStore([]), gateway);
     await service.retrieve(principal, 'What is the overall Atlas CRM migration timeline?');
     expect(gateway.rewriteRequests).toHaveLength(0);
+  });
+});
+
+/**
+ * Issue #477: a lowercase identifier must be a deterministic query-entity
+ * candidate. On the live instance `what is m557?` contributed none, so naming
+ * fell to the model rewrite and the answer flipped between correct and
+ * "I have nothing about this in your sources" on identical input.
+ */
+describe('query entity candidates: identifiers (issue #477)', () => {
+  it('names a lowercase identifier the user typed', () => {
+    expect(queryEntityCandidates('what is m557?')).toContain('m557');
+  });
+
+  it('names identifiers however they are cased or punctuated', () => {
+    expect(queryEntityCandidates('what is M557?')).toContain('M557');
+    expect(queryEntityCandidates('specs for rp2040 please')).toContain('rp2040');
+    expect(queryEntityCandidates('is sen-210 affected')).toContain('sen-210');
+  });
+
+  it('does not treat a plain word or a plain number as an identifier', () => {
+    // The rule is deliberately narrow: only letters AND digits in one token.
+    expect(queryEntityCandidates('what is brass')).not.toContain('brass');
+    expect(queryEntityCandidates('what happened in 2027')).not.toContain('2027');
+  });
+
+  it('joins an identifier onto the capitalized run it follows', () => {
+    expect(queryEntityCandidates('the Fuze M557 weight')).toContain('Fuze M557');
   });
 });

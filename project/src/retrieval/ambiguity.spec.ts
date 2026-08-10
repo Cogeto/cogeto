@@ -17,7 +17,9 @@ const aliased = (name: string) => {
   return folded === 'vx-9 housing' ? 'vx-9' : folded;
 };
 
-const THRESHOLDS = { relevanceFloor: 0.9, comparabilityRatio: 0.55 };
+const THRESHOLDS = { relevanceFloor: 0.9, comparabilityRatio: 0.55, calibrated: true };
+/** A model whose floor was borrowed rather than measured (issue #477). */
+const UNCALIBRATED = { relevanceFloor: 0.9, comparabilityRatio: 0.55, calibrated: false };
 const META = { configVersion: AMBIGUITY_CONFIG_VERSION, embeddingModel: 'test-embed' };
 
 let nextId = 0;
@@ -569,5 +571,107 @@ describe('ambiguityThresholdsFor', () => {
 
   it('fails loudly on an unknown embedding model', () => {
     expect(() => ambiguityThresholdsFor('mystery-embed')).toThrow(/no calibrated ambiguity/);
+  });
+});
+
+/**
+ * Issue #477, reproduced from the live instance. Asked `what is m557?` over a
+ * real corpus of fifteen matching facts, the product answered "I have nothing
+ * about this in your sources". The stored decision record carried the exact
+ * numbers below, so these are measurements, not invented fixtures.
+ */
+describe('false silence on an uncalibrated embedding model (issue #477)', () => {
+  /** The live cluster distribution under bge-m3, from chat_message.ambiguity. */
+  const liveClusters = (): AmbiguityCluster[] => [
+    cluster({
+      key: 'm557',
+      subject: 'M557',
+      relevance: 0.8191,
+      fused: 0.0164,
+      memberIds: ['a', 'b', 'c', 'd', 'e', 'f'],
+    }),
+    cluster({
+      key: 'm557 mechanical artillery fuze',
+      subject: 'M557 Mechanical Artillery Fuze',
+      relevance: 0.7674,
+      fused: 0.0149,
+      memberIds: ['g'],
+    }),
+    cluster({
+      key: 'mounting bracket',
+      subject: 'mounting bracket',
+      relevance: 0.6746,
+      fused: 0.0132,
+      memberIds: ['h'],
+    }),
+    cluster({
+      key: 'guide rail',
+      subject: 'guide rail',
+      relevance: 0.6719,
+      fused: 0.0128,
+      memberIds: ['i'],
+    }),
+    cluster({
+      key: 'pump housing',
+      subject: 'pump housing',
+      relevance: 0.6638,
+      fused: 0.0125,
+      memberIds: ['j'],
+    }),
+  ];
+
+  it('does NOT go silent when the floor was borrowed rather than measured', () => {
+    // The exact live input: no query-named entity (the lowercase identifier was
+    // invisible to the candidate scan), every cluster under a 0.90 floor that
+    // was calibrated on a different embedding model.
+    const decision = decideAmbiguity(
+      liveClusters(),
+      [],
+      (n) => n.toLowerCase(),
+      UNCALIBRATED,
+      META,
+    );
+    expect(decision.branch).not.toBe('silent');
+    expect(decision.branch).toBe('dominant');
+  });
+
+  it('still goes silent on an uncalibrated model when retrieval returned nothing', () => {
+    // Silence must stay reachable: it is honest under any geometry, because it
+    // is about the absence of results rather than about a similarity value.
+    const decision = decideAmbiguity([], [], (n) => n.toLowerCase(), UNCALIBRATED, META);
+    expect(decision.branch).toBe('silent');
+  });
+
+  it('still goes silent on a CALIBRATED model whose measured floor nothing clears', () => {
+    // The branch is not weakened where the geometry was actually measured.
+    const decision = decideAmbiguity(liveClusters(), [], (n) => n.toLowerCase(), THRESHOLDS, META);
+    expect(decision.branch).toBe('silent');
+  });
+
+  it('answers from memory once the identifier is named, on either model', () => {
+    for (const thresholds of [THRESHOLDS, UNCALIBRATED]) {
+      const decision = decideAmbiguity(
+        liveClusters(),
+        ['m557'],
+        (n) => n.toLowerCase(),
+        thresholds,
+        META,
+      );
+      expect(decision.branch).toBe('dominant');
+      expect(decision.named).toContain('m557');
+    }
+  });
+
+  it('the shipped bge-m3 entry cannot silence a corpus', () => {
+    // The regression guard on the config itself, not just the decision rule.
+    expect(ambiguityThresholdsFor('bge-m3').calibrated).toBe(false);
+    const decision = decideAmbiguity(
+      liveClusters(),
+      [],
+      (n) => n.toLowerCase(),
+      ambiguityThresholdsFor('bge-m3'),
+      META,
+    );
+    expect(decision.branch).not.toBe('silent');
   });
 });
