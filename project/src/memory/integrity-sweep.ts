@@ -14,6 +14,7 @@ import type { SourceType } from './persistence/tables';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
 import { INSTANCE_KEY_DIR, parseReceiptCounts } from './deletion-saga';
+import { readEmbeddingIndexState, REBUILD_COLLECTION_PREFIX } from './embedding-index';
 import type { SourceDeletion } from './deletion-saga';
 import { verifyChain } from './domain/receipt-chain';
 import type { ConfirmedReceipt } from './domain/receipt-chain';
@@ -78,6 +79,15 @@ export interface SweepReport {
   newAlerts: number;
   /** All alert rows on record after this run. */
   openAlerts: number;
+  /**
+   * Stray rebuild collections dropped (V2.4 item 7.1 second half): a crash
+   * between a rebuild's cancellation and its cleanup can leave a
+   * `memories_r*` collection consuming storage. Unlike the deletion arms this
+   * one REPAIRS: the artifact is index hygiene, not evidence — every
+   * promised-deleted identifier was dual-deleted from it while it lived, so
+   * dropping it only makes deletion more complete.
+   */
+  strayCollectionsDropped: number;
   chainOk: boolean;
   chainError?: string;
 }
@@ -221,6 +231,10 @@ export class IntegritySweep {
     const payloads = await this.reconcilePayloads();
     found.push(...payloads.alerts);
 
+    // Stray-rebuild-collection arm (V2.4 item 7.1 second half): a rebuild
+    // collection no state references is a crash leftover; drop it.
+    const strayCollectionsDropped = await this.dropStrayRebuildCollections(log);
+
     const chain = verifyChain(
       confirmed.map(toConfirmedReceipt),
       await loadInstancePublicKey(this.instanceKeyDir),
@@ -248,6 +262,7 @@ export class IntegritySweep {
       payloadsHealed: payloads.healed,
       newAlerts,
       openAlerts,
+      strayCollectionsDropped,
       chainOk: chain.ok,
       ...(chain.error ? { chainError: chain.error } : {}),
     };
@@ -296,6 +311,33 @@ export class IntegritySweep {
       detail: row.detail,
       detectedAt: row.detectedAt.toISOString(),
     }));
+  }
+
+  /**
+   * Rebuild collections nothing references (V2.4 item 7.1 second half). A
+   * managed rebuild's target lives under the `memories_r` prefix and is named
+   * on the state row for its whole legitimate life — as target while running,
+   * as active after the switch, as retired during the drop grace. A prefixed
+   * collection the state does not name is a crash leftover consuming storage
+   * indefinitely, and this arm drops it. Repair is safe here, uniquely: the
+   * artifact carries no evidence (deletions were dual-applied to it while it
+   * lived), and destroying it can only make erasure more complete.
+   */
+  private async dropStrayRebuildCollections(log?: (message: string) => void): Promise<number> {
+    const state = await readEmbeddingIndexState(this.db);
+    const referenced = new Set(
+      [state.activeCollection, state.targetCollection, state.retiredCollection].filter(
+        (name): name is string => !!name,
+      ),
+    );
+    const strays = (await this.vectors.listCollectionNames()).filter(
+      (name) => name.startsWith(REBUILD_COLLECTION_PREFIX) && !referenced.has(name),
+    );
+    for (const name of strays) {
+      await this.vectors.view(name, 1).deleteCollectionIfExists();
+      log?.(`dropped stray rebuild collection ${name}`);
+    }
+    return strays.length;
   }
 
   /**

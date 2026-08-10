@@ -4,7 +4,7 @@ import { writeFile } from 'node:fs/promises';
 import { Pool } from 'pg';
 import { run } from 'graphile-worker';
 import type { Runner } from 'graphile-worker';
-import { loadConfig } from './config';
+import { loadConfig, redactionOptions } from './config';
 import { createLogger, PinoNestLogger } from './logger';
 import { createWorkerRootModule } from './worker-root.module';
 import { createDb, describeErrorLine, ensureInstanceKeys } from '../infrastructure/index';
@@ -25,9 +25,11 @@ import {
 } from '../ingestion/index';
 import {
   DeletionExecutor,
+  EmbeddingRebuildService,
   IntegritySweep,
   MemoryObjectStore,
   MemoryStore,
+  resumeEmbeddingRebuildOnBoot,
   SWEEP_CRONTAB,
 } from '../memory/index';
 import { APPROVAL_EXPIRY_CRONTAB, ApprovalExecutor, ApprovalService } from '../agents/index';
@@ -47,11 +49,15 @@ import {
 } from '../chat/index';
 import {
   assertLocalRuntimeReady,
+  createModelGateway,
   loadPrompt,
   ModelGateway,
   probeReasoning,
   recordPromptVersion,
 } from '../model-gateway/index';
+import { ProviderConfigService } from '../providers/index';
+import { MODEL_EGRESS_AUDIT, MODEL_USAGE_METER } from '../infrastructure/index';
+import type { ModelEgressAudit, ModelUsageMeter } from '../infrastructure/index';
 import { attributedTask, buildTaskList } from './worker-tasks';
 import {
   credentialsBanner,
@@ -162,6 +168,30 @@ async function main(): Promise<void> {
   const pipeline = context.get(IngestionPipeline);
   const objects = context.get(MemoryObjectStore);
   const gateway = context.get(ModelGateway);
+
+  // The managed embedding rebuild (V2.4 item 7.1 second half): the marriage
+  // of memory's engine and providers' assignment flip happens HERE, the one
+  // place allowed to know both sides. The target-bound gateway goes through
+  // the ordinary factory, so the budget meter, the egress audit and redaction
+  // wrap the corpus's embedding calls exactly like every other model call.
+  const providerConfig = context.get(ProviderConfigService);
+  const usageMeter = context.get<ModelUsageMeter>(MODEL_USAGE_METER, { strict: false });
+  const egressAudit = context.get<ModelEgressAudit>(MODEL_EGRESS_AUDIT, { strict: false });
+  const embeddingRebuildPass = (): ReturnType<EmbeddingRebuildService['runPass']> =>
+    context.get(EmbeddingRebuildService).runPass({
+      gatewayFor: async (target) =>
+        createModelGateway({
+          providers: await providerConfig.embeddingRunProvidersFor(target.providerId, target.model),
+          // Redaction wraps the rebuild too: re-embedding under redaction must
+          // re-embed pseudonymized text, matching how vectors are always made.
+          redaction: redactionOptions(config),
+          usageMeter,
+          egressAudit,
+        }),
+      switchPort: providerConfig.embeddingsSwitchPort(),
+      log: (message) => logger.info({}, `embedding rebuild: ${message}`),
+    });
+
   const taskList = buildTaskList(db, {
     pipeline,
     memoryStore: context.get(MemoryStore),
@@ -183,6 +213,7 @@ async function main(): Promise<void> {
     skillEngine: context.get(SkillEngine),
     objects,
     gateway,
+    embeddingRebuildPass,
     log: (event, message) => logger.info(event, message),
   });
 
@@ -225,6 +256,15 @@ async function main(): Promise<void> {
     });
     demoLine = `\n${config.demoResetCron} ${DEMO_RESET_JOB_TYPE}`;
     logger.info({ cron: config.demoResetCron }, 'demo mode: scheduled reset enabled');
+  }
+
+  // A rebuild that lost its advance job with a dead worker resumes here:
+  // duplicates are harmless (single-flight), and a boot with no live rebuild
+  // is a no-op.
+  try {
+    await resumeEmbeddingRebuildOnBoot(db);
+  } catch (error) {
+    logger.warn({ err: error }, 'embedding rebuild boot resume check failed');
   }
 
   const runner: Runner = await run({

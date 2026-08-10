@@ -105,16 +105,71 @@ export interface ModelConfigurationDto {
   /** Newest first, capped. */
   history: ConfigurationChangeDto[];
   /**
-   * Why the embeddings tier cannot be changed yet (V2.4 item 7.1 is the
-   * configuration half; the managed reindex is the second half). Null once it
-   * can be.
+   * Non-null only where the managed rebuild is unavailable (a root that wired
+   * no memory module); the interface then names the operator command. On a
+   * full instance this is null and the embeddings tier changes through the
+   * plan/confirm rebuild flow below.
    */
   embeddingsLocked: {
     /** The operator command that is the interim path. */
     operatorCommand: string;
   } | null;
+  /** The managed rebuild in flight, when there is one. */
+  embeddingRebuild: EmbeddingRebuildStatusDto | null;
   /** The answer models an admin has enabled for users to choose between. */
   answerOptions: AnswerModelOptionDto[];
+}
+
+/**
+ * The managed embedding rebuild (V2.4 item 7.1 second half): live progress
+ * for the Models page, the capabilities panel and the health report.
+ */
+export interface EmbeddingRebuildStatusDto {
+  status: 'running' | 'failed';
+  /** 'embedding' while the corpus is being re-embedded; 'finalizing' once the
+   * count is full and the atomic switch is being prepared. */
+  phase: 'embedding' | 'finalizing';
+  targetProviderLabel: string | null;
+  targetModel: string;
+  factsDone: number;
+  factsTotal: number;
+  /** Accumulated under the same chars/4 accounting the budget meter charges. */
+  tokensSpent: number;
+  startedAt: string | null;
+  /** Rate-based; null until enough progress exists to compute one. */
+  estimatedSecondsRemaining: number | null;
+  /** The failure, or the reason the rebuild is paused (budget exhausted). */
+  error: string | null;
+  cancelRequested: boolean;
+}
+
+/**
+ * POST /api/admin/model-configuration/embeddings/rebuild-plan — what changing
+ * the embeddings model to this binding will cost and do, BEFORE anything is
+ * saved. The token estimate uses the same accounting the meter charges; the
+ * duration extrapolates the plan probe's measured latency over the corpus's
+ * batches, stated as an estimate.
+ */
+export interface EmbeddingRebuildPlanDto {
+  providerId: string;
+  providerLabel: string;
+  model: string;
+  /** Memories that carry a vector and will be re-embedded. */
+  facts: number;
+  estimatedTokens: number;
+  estimatedSeconds: number;
+  /** PROBED from a real embedding, never a registry guess. */
+  dimensions: number;
+  /** The configuration id the completed switch would produce. */
+  resultingConfigurationId: string;
+  /** Whether published trust scores exist for that configuration. */
+  evaluated: boolean;
+}
+
+/** POST body for rebuild-plan and rebuild: the target embeddings binding. */
+export interface EmbeddingRebuildRequest {
+  providerId: string;
+  model: string;
 }
 
 export interface AnswerModelOptionDto {

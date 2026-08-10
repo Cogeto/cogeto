@@ -1,7 +1,7 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { DEFAULT_INSTANCE_TIMEZONE, INSTANCE_TIMEZONE } from '../../infrastructure/index';
 import type { Tx } from '../../infrastructure/index';
-import { MemoryStore } from '../../memory/index';
+import { acquireEmbeddingWriteLockShared, MemoryStore } from '../../memory/index';
 import type { MemoryRow } from '../../memory/index';
 import { ModelGateway } from '../../model-gateway/index';
 import { locateSpan } from '@cogeto/shared';
@@ -78,6 +78,11 @@ export class EmbedStoreStage {
         ? new Date(Date.now() + options.retentionDays * 24 * 3_600_000)
         : null;
 
+    // The embedding-write lock, shared side (V2.4 item 7.1 second half):
+    // taken BEFORE the embed call so "embed with the active model, stamp the
+    // row, write the point" is atomic against a managed rebuild's switch. A
+    // switch in progress makes this wait; nothing else ever does.
+    await acquireEmbeddingWriteLockShared(tx);
     const embeddings = await this.gateway.embed(verified.map((v) => v.fact.claim));
     const embeddingModel = this.gateway.embeddingModelId();
 

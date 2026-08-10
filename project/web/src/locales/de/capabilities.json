@@ -76,5 +76,12 @@
       "name": "Belegprüfung",
       "description": "Prüft jede Nacht jeden Löschbeleg gegen die Speicher, damit das Vergessen nachweisbar bleibt."
     }
+  },
+  "reindex": {
+    "name": "Embedding rebuild",
+    "running": "In progress",
+    "finalizing": "Finalizing",
+    "failed": "Stopped",
+    "progress": "Re-embedding the corpus to {{model}}: {{done}} of {{total}} memories."
   }
 }

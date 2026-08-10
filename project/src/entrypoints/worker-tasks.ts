@@ -27,10 +27,12 @@ import type {
 } from '../ingestion/index';
 import {
   DELETION_JOB_TYPE,
+  EMBEDDING_REBUILD_JOB_TYPE,
   MEMORY_EMBED_JOB_TYPE,
   runMemoryEmbedJob,
   SWEEP_JOB_TYPE,
 } from '../memory/index';
+import type { EmbeddingRebuildPassResult } from '../memory/index';
 import type {
   DeletionExecutor,
   IntegritySweep,
@@ -76,6 +78,13 @@ export interface WorkerTaskDeps {
   skillEngine: SkillEngine;
   objects: MemoryObjectStore;
   gateway: ModelGateway;
+  /**
+   * One pass of the managed embedding rebuild (V2.4 item 7.1 second half),
+   * with the target-bound gateway and the providers switch port already
+   * closed over — the marriage of memory's engine and providers' assignment
+   * flip happens in the worker entrypoint, the one place allowed to know both.
+   */
+  embeddingRebuildPass: () => Promise<EmbeddingRebuildPassResult>;
   /** Bound to pino by the worker entrypoint. Counts only — never content. */
   log: PipelineLog;
 }
@@ -463,6 +472,21 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
         'memory embed job completed',
       );
     }),
+
+    // The managed embedding rebuild's advance pass (V2.4 item 7.1 second
+    // half): a PLAIN, re-runnable pass (the import.advance shape) under the
+    // instance-wide single-flight lock. It embeds a bounded slice of the
+    // corpus into the target collection, records progress on the state row,
+    // re-enqueues itself, and performs the one-transaction switch when a full
+    // sweep proves the target complete.
+    [EMBEDDING_REBUILD_JOB_TYPE]: async (rawPayload) => {
+      const rebuildId = (rawPayload as { source_id?: unknown }).source_id;
+      const { ran, outcome } = await deps.embeddingRebuildPass();
+      deps.log(
+        { source_id: typeof rebuildId === 'string' ? rebuildId : 'unknown', ran, outcome },
+        'embedding rebuild pass completed',
+      );
+    },
   };
 
   // Every task runs inside a usage scope (SEC-10) — no registration site can

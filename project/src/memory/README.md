@@ -49,11 +49,15 @@ missing), reuses existing vectors otherwise, sweeps orphan points, then verifies
 `point count == embeddable memories` and **exits nonzero on mismatch**:
 
 ```sh
-docker compose exec app npm run reindex # or: worker
+docker compose run --rm worker npm run reindex
 ```
 
-Change the embed model by setting `MISTRAL_EMBED_MODEL` (or
-`COGETO_MISTRAL_EMBED_MODEL`) and running reindex.
+Changing the embed model is the **managed rebuild** (V2.4 item 7.1 second half):
+`embedding-rebuild.ts` re-embeds the corpus into a NEW collection while the old
+one serves, and switches in one transaction at verified completion. The index's
+durable state (active collection + dimension + the rebuild in flight) is the
+`embedding_index_state` row; drive it from the interface's Models page, or from
+the shell with `cogeto reindex --provider LABEL --model MODEL` (same engine).
 
 Read first: `docs/research/memory-architecture-patterns.md`,
 `docs/research/temporal-knowledge-patterns.md`.

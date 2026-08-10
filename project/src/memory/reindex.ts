@@ -3,8 +3,13 @@ import type { Db } from '../infrastructure/index';
 import { ModelGateway } from '../model-gateway/index';
 import { memory } from './persistence/tables';
 import type { MemoryRow } from './persistence/tables';
-import { MemoryVectorStore } from './persistence/vector-store';
+import { MemoryVectorStore, registryDimensionsFor } from './persistence/vector-store';
 import { MemoryStore } from './memory.store';
+import {
+  readEmbeddingIndexState,
+  resolveActiveIndex,
+  updateEmbeddingIndexState,
+} from './embedding-index';
 
 /**
  * Rebuilds the Qdrant index from Postgres (spec §4.2: "the reindex command must
@@ -50,12 +55,39 @@ export async function reindexMemories(options: ReindexOptions): Promise<ReindexR
   const log = options.log ?? (() => undefined);
   const model = options.embeddingModel ?? options.gateway.embeddingModelId();
   const batchSize = options.batchSize ?? 64;
+  // The ACTIVE collection is state since migration 0053: a post-switch
+  // instance no longer serves from 'memories', and an in-place repair must
+  // rebuild the collection actually being served. Explicit options still win
+  // (tests, tools addressing a specific collection).
+  const state = await readEmbeddingIndexState(options.db);
+  const active = resolveActiveIndex(state, model);
+  if (!options.collection && state.rebuildStatus) {
+    throw new Error(
+      'a managed embedding rebuild is in progress; let it finish or cancel it before an ' +
+        'in-place reindex',
+    );
+  }
+  // A registry-known model answers its own dimension; an arbitrary model's
+  // TRUE dimension is what it returns, so probe one embedding for those. A
+  // keyless run (reuse-only repair) falls back to the recorded state, which
+  // is the registry answer on a pre-0053 instance.
+  let dimensions = options.dimensions;
+  if (dimensions === undefined && !options.collection) {
+    dimensions = registryDimensionsFor(model);
+    if (dimensions === undefined) {
+      try {
+        dimensions = (await options.gateway.embed(['probe']))[0]?.length || active.dimensions;
+      } catch {
+        dimensions = active.dimensions;
+      }
+    }
+  }
   const vectors = new MemoryVectorStore({
     url: options.qdrantUrl,
     apiKey: options.qdrantApiKey,
     embeddingModel: model,
-    dimensions: options.dimensions,
-    collection: options.collection,
+    dimensions,
+    collection: options.collection ?? active.collection,
   });
   const store = new MemoryStore(options.db, vectors);
   // Reindex is the rebuild path (spec §4.2): an embeddings-model switch with a new
@@ -143,5 +175,13 @@ export async function reindexMemories(options: ReindexOptions): Promise<ReindexR
 
   report.pointCount = await vectors.count();
   report.ok = report.pointCount === report.embeddable;
+  // Record what the repaired index actually is (migration 0053): the guard's
+  // dimension half compares against this, so a repair that probed the model's
+  // real dimension leaves the state telling the same truth.
+  if (report.ok && !options.collection) {
+    await updateEmbeddingIndexState(options.db, {
+      activeDimensions: vectors.dimensions,
+    });
+  }
   return report;
 }

@@ -116,6 +116,11 @@ export function createWorkerRootModule(
     qdrantUrl: config.qdrantUrl,
     qdrantApiKey: config.qdrantApiKey,
     embeddingModel: config.modelProviders.tiers.embedding.model,
+    // The LIVE object (V2.4 item 7.1): the vector store resolves the active
+    // collection from the index state and re-resolves when the configuration
+    // version moves, which is how a completed rebuild's switch reaches this
+    // process without a restart.
+    modelProviders: config.modelProviders,
     s3: {
       url: config.s3Url,
       publicUrl: config.s3PublicUrl,

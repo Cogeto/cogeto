@@ -9,6 +9,44 @@ note, it has none.
 
 ---
 
+## The embeddings model changes from the interface (V2.4 item 7.1, second half)
+
+**What changes.** Changing the embeddings model is now a managed operation on the
+**Models** page: a plan step states the corpus size, the token estimate, the
+expected duration and the serving behaviour before anything is saved, and on
+confirmation the instance re-embeds everything into a new vector collection while
+the old one keeps serving, switching only at verified completion. Cancelling, a
+failure, or a restart mid-rebuild leaves the previous configuration serving.
+**No interface action can render the instance unstartable any more.**
+
+**What you have to do: nothing.** Migration 0053 adds the index state row; existing
+instances keep their collection and their model exactly.
+
+**What changed for the shell.** `cogeto reindex` is a first-class subcommand now:
+with no flags it rebuilds the index in place with the active model (the repair for
+a restored backup whose index and configuration disagree), and with
+`--provider LABEL --model MODEL` it moves the instance to a different embeddings
+model using the same managed rebuild the interface runs, working even while the app
+and worker refuse to start. The underlying command changed from
+`docker compose exec worker npm run reindex` to
+
+```sh
+docker compose run --rm worker npm run reindex
+```
+
+because `run` starts a fresh container and therefore works while the services
+crash-loop; the boot guard's message names both. The guard itself stays, as a net:
+a mismatch manufactured outside the interface still refuses to serve wrong results,
+with a message that states exactly what mismatched and the command that resolves it.
+
+**Watching a rebuild.** The Models page shows live progress with a cancel button;
+`GET /api/health` carries a `reindex` block while one is in flight, and the System
+page's capabilities panel shows the same. A rebuild that exhausts the daily model
+budget pauses and resumes by itself; one that keeps failing parks as failed with
+the error shown, waiting for resume or cancel.
+
+---
+
 ## Model and provider configuration moves into the database (V2.4 item 7.1)
 
 **What changes.** Providers, models and their API keys stop being environment

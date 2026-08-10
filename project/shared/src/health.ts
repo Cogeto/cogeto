@@ -60,6 +60,19 @@ export interface CapabilitySummary {
   error?: string;
 }
 
+/** The rebuild as the health report carries it — the same shape the Models
+ * page polls, minus nothing: one source row feeds every surface. */
+export interface EmbeddingRebuildHealth {
+  status: 'running' | 'failed';
+  phase: 'embedding' | 'finalizing';
+  targetModel: string;
+  factsDone: number;
+  factsTotal: number;
+  startedAt: string | null;
+  estimatedSecondsRemaining: number | null;
+  error?: string;
+}
+
 /** Scheduled jobs join the same surface: last run + overdue. */
 export type ScheduledJobId = 'dreaming' | 'sweep';
 
@@ -84,6 +97,13 @@ export interface HealthReport {
   capabilities: CapabilitySummary[];
   /** Scheduled-job states (dreaming, sweep) — additive; overdue/failing degrade. */
   jobs: ScheduledJobSummary[];
+  /**
+   * The managed embedding rebuild in flight, when there is one (V2.4 item
+   * 7.1 second half) — additive, so an operator watching the instance sees
+   * what it is doing. A RUNNING rebuild is healthy work, never a degradation;
+   * a FAILED one degrades, because it sits waiting for a human verb.
+   */
+  reindex?: EmbeddingRebuildHealth | null;
   checks: {
     postgres: HealthCheck;
     qdrant: HealthCheck;

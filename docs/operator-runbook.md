@@ -345,10 +345,14 @@ To run tiers on a customer-owned **Ollama** host:
  posture (hosted generation, local embeddings):
  `COGETO_PROVIDER_EMBEDDINGS=ollama`, `COGETO_MODEL_EMBEDDINGS=bge-m3`,
  plus the base URL. No API key is needed for Ollama.
-4. **Changing the embeddings tier requires a reindex**: the instance
- refuses to boot on a changed embedding space until it runs:
- `sudo docker compose exec worker npm run reindex` (progress prints
- done/total; safe to re-run if interrupted).
+4. **Changing the embeddings tier is a managed rebuild** (V2.4 item 7.1
+ second half): do it from the Models page, which re-embeds everything into
+ a new index while the old one keeps serving and switches at completion.
+ From the shell the same operation is `sudo cogeto reindex --provider
+ <label> --model <model>`; the flagless `sudo cogeto reindex` (or
+ `sudo docker compose run --rm worker npm run reindex`) is the in-place
+ repair for an index/configuration mismatch. Progress prints done/total;
+ every mode is safe to re-run if interrupted.
 5. `sudo docker compose up -d` and check `sudo ./cogeto status`: boot probes
  the runtime and **fails loudly** if it is unreachable or a model is not
  pulled (the error names the exact `ollama pull` command). Settings → Model
@@ -456,11 +460,13 @@ a backup.
  caught; the source of truth is Postgres, reindex reconciles them):
 
  ```sh
- cd /srv/cogeto && sudo docker compose exec -T app node project/src/dist/entrypoints/reindex.js
+ sudo cogeto reindex
  ```
 
- It exits nonzero if the rebuilt index does not match the database, treat
- that as a failed restore.
+ (equivalently `cd /srv/cogeto && sudo docker compose run --rm worker
+ npm run reindex`; `run` works even while app and worker refuse to start
+ on the mismatch). It exits nonzero if the rebuilt index does not match
+ the database, treat that as a failed restore.
 
 4. **Repoint DNS**: update the **four records** from section 2a (three A
  records + the MX target's A record) to the new IPv4, and set the **PTR**

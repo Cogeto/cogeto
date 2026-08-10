@@ -1,5 +1,5 @@
 import { asc, desc, eq, sql } from 'drizzle-orm';
-import type { Db } from '../../infrastructure/index';
+import type { DbOrTx } from '../../infrastructure/index';
 import {
   modelAnswerOption,
   modelAssignment,
@@ -52,7 +52,9 @@ const PUBLIC_COLUMNS = {
 };
 
 export class ProviderStore {
-  constructor(private readonly db: Db) {}
+  // DbOrTx: the managed rebuild's switch flips the assignment INSIDE its own
+  // transaction (through the port), so the store must run against a Tx too.
+  constructor(private readonly db: DbOrTx) {}
 
   /** Every provider, oldest first. Never carries key material. */
   async listProviders(): Promise<ProviderRecord[]> {

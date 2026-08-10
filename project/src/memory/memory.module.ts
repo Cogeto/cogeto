@@ -35,6 +35,10 @@ import type { SweepOptions } from './integrity-sweep';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
 import { MemoryFileStore } from './file-store';
+import { liveIndexBinding } from './embedding-index';
+import { EmbeddingRebuildService } from './embedding-rebuild.service';
+import { DRIZZLE } from '../infrastructure/index';
+import type { Db } from '../infrastructure/index';
 import { MEMORY_ELIGIBILITY_HOOK } from './eligibility-hook';
 import type { MemoryEligibilityHook } from './eligibility-hook';
 
@@ -46,6 +50,15 @@ export interface MemoryModuleOptions {
   embeddingModel: string;
   /** Test override for the vector size. */
   dimensions?: number;
+  /**
+   * The LIVE model configuration object (V2.4 item 7.1, mutated in place on
+   * reload). When present, the vector store resolves the active collection
+   * from the embedding_index_state row and re-resolves whenever the
+   * configuration version moves, which is what lets a managed rebuild switch
+   * collections without a restart. Absent (tests, bare harnesses) the store
+   * keeps its constructor-fixed collection, the pre-0053 behaviour.
+   */
+  modelProviders?: { version: number; tiers: { embedding: { model: string } } };
   /** Object storage — the saga's byte-deletion leg + encryption check (0008);
    * `publicUrl` is the browser-reachable origin for presigned URLs (O1). */
   s3: { url: string; publicUrl?: string; accessKey: string; secretKey: string; bucket: string };
@@ -134,13 +147,19 @@ export class MemoryModule {
       providers: [
         {
           provide: MemoryVectorStore,
-          useFactory: () =>
+          useFactory: (db: Db) =>
             new MemoryVectorStore({
               url: options.qdrantUrl,
               apiKey: options.qdrantApiKey,
               embeddingModel: options.embeddingModel,
               dimensions: options.dimensions,
+              // An explicit dimensions override (tests) keeps the fixed
+              // constructor target; live resolution would clobber it.
+              ...(options.modelProviders && options.dimensions === undefined
+                ? { liveIndex: liveIndexBinding(db, options.modelProviders) }
+                : {}),
             }),
+          inject: [DRIZZLE],
         },
         {
           provide: MemoryObjectStore,
@@ -188,6 +207,7 @@ export class MemoryModule {
         DeletionExecutor,
         IntegritySweep,
         MemoryFileStore,
+        EmbeddingRebuildService,
         // The unscoped machine-read surface exists ONLY where a root asked for
         // it (V2.0 item 3.7). In the app process this provider is absent, so an
         // ungated corpus read is not something a request-path service can
@@ -203,6 +223,7 @@ export class MemoryModule {
         IntegritySweep,
         MemoryObjectStore,
         MemoryFileStore,
+        EmbeddingRebuildService,
         ...(options.systemReads ? [MemorySystemStore] : []),
       ],
     };

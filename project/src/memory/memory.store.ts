@@ -27,7 +27,7 @@ import { UserDirectory } from '../identity/index';
 import { deletionReceipt, memory } from './persistence/tables';
 import type { MemoryRow, SourceType } from './persistence/tables';
 import type { ConfirmedReceipt } from './domain/receipt-chain';
-import { buildGateFilter, MemoryVectorStore } from './persistence/vector-store';
+import { buildGateFilter, memoryPointFor, MemoryVectorStore } from './persistence/vector-store';
 import type { MemoryPoint } from './persistence/vector-store';
 import { actorLabel, checkTransition } from './domain/transition';
 import type { MemoryActor } from './domain/transition';
@@ -1397,19 +1397,7 @@ export class MemoryStore {
         `got ${embeddings.length} embeddings for ${rows.length} memories`,
       );
     }
-    const points: MemoryPoint[] = rows.map((row, i) => ({
-      id: row.id,
-      vector: embeddings[i]!,
-      payload: {
-        owner_id: row.ownerId,
-        scope: row.scope,
-        status: row.status,
-        sensitive: row.sensitive,
-        source_type: row.sourceType,
-        source_id: row.sourceId,
-        valid_until: row.validUntil?.toISOString() ?? null,
-      },
-    }));
+    const points: MemoryPoint[] = rows.map((row, i) => memoryPointFor(row, embeddings[i]!));
     await this.requireVectors().upsert(points);
   }
 

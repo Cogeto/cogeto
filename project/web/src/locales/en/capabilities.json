@@ -76,5 +76,12 @@
       "name": "Receipt sweep",
       "description": "Verifies every deletion receipt against the stores each night, so forgetting stays provable."
     }
+  },
+  "reindex": {
+    "name": "Embedding rebuild",
+    "running": "In progress",
+    "finalizing": "Finalizing",
+    "failed": "Stopped",
+    "progress": "Re-embedding the corpus to {{model}}: {{done}} of {{total}} memories."
   }
 }

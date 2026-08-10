@@ -1,15 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trans, useTranslation } from 'react-i18next';
-import type { ModelConfigurationDto, ProviderAssignmentDto, ProviderDto } from '@cogeto/shared';
+import type {
+  EmbeddingRebuildPlanDto,
+  EmbeddingRebuildStatusDto,
+  ModelConfigurationDto,
+  ProviderAssignmentDto,
+  ProviderDto,
+} from '@cogeto/shared';
 import {
   addAnswerOption,
   assignModelTier,
+  beginEmbeddingsRebuild,
+  cancelEmbeddingsRebuild,
   fetchMe,
   fetchModelConfiguration,
   fetchProviderModels,
   fetchProviders,
+  planEmbeddingsRebuild,
   removeAnswerOption,
+  resumeEmbeddingsRebuild,
 } from '../api';
 import type { Session } from '../auth/oidc';
 import { Shell } from '../components/Shell';
@@ -31,9 +41,12 @@ import { formatPercent } from '../i18n/format';
  * Two things the page must never let an admin do by accident, and both are
  * visible rather than hidden behind a validation error:
  *
- * - **Change the embeddings model.** Every stored vector was produced by the
- *   current one, so a change needs the index rebuilt. The managed rebuild is
- *   the next release; the row states that and names the operator command.
+ * - **Change the embeddings model without seeing the cost.** Every stored
+ *   vector was produced by the current one, so a change rebuilds the whole
+ *   index: the row runs a two-step plan/confirm flow that states the corpus
+ *   size, the token estimate, the expected duration and the serving behaviour
+ *   BEFORE anything begins, then shows live progress with cancel always
+ *   available (item 7.1 second half).
  * - **Move onto an unmeasured configuration without noticing.** The published
  *   trust score for the exact configuration in force is shown, and its absence
  *   is stated in words rather than left blank.
@@ -47,6 +60,9 @@ export function ModelConfiguration({ session }: { session: Session }) {
     queryKey: ['model-configuration'],
     queryFn: () => fetchModelConfiguration(session),
     enabled: me.data?.isAdmin !== false,
+    // Live progress while a rebuild runs: the state row is one cheap read, so
+    // polling it is how progress arrives without polling the corpus.
+    refetchInterval: (query) => (query.state.data?.embeddingRebuild ? 3_000 : false),
   });
   const providers = useQuery({
     queryKey: ['providers'],
@@ -91,6 +107,7 @@ export function ModelConfiguration({ session }: { session: Session }) {
               assignment={assignment}
               providers={providers.data ?? []}
               locked={assignment.tier === 'embeddings' ? data.embeddingsLocked : null}
+              rebuild={assignment.tier === 'embeddings' ? data.embeddingRebuild : null}
             />
           ))}
       </section>
@@ -173,17 +190,24 @@ function TierRow({
   assignment,
   providers,
   locked,
+  rebuild,
 }: {
   session: Session;
   assignment: ProviderAssignmentDto;
   providers: ProviderDto[];
   locked: { operatorCommand: string } | null;
+  rebuild: EmbeddingRebuildStatusDto | null;
 }) {
   const { t } = useTranslation('providers');
   const queryClient = useQueryClient();
   const [providerId, setProviderId] = useState(assignment.providerId ?? '');
   const [model, setModel] = useState(assignment.model ?? '');
   const [failure, setFailure] = useState<string | null>(null);
+  // The embeddings plan awaiting confirmation (V2.4 item 7.1 second half):
+  // computed server-side, shown in full, and nothing begins until the
+  // explicit confirm below.
+  const [plan, setPlan] = useState<EmbeddingRebuildPlanDto | null>(null);
+  const isEmbeddings = assignment.tier === 'embeddings';
 
   useEffect(() => {
     setProviderId(assignment.providerId ?? '');
@@ -206,6 +230,10 @@ function TierRow({
   const dirty =
     providerId !== (assignment.providerId ?? '') || model.trim() !== (assignment.model ?? '');
 
+  const invalidate = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['model-configuration'] });
+    await queryClient.invalidateQueries({ queryKey: ['model-config'] });
+  };
   const save = useMutation({
     mutationFn: () =>
       assignModelTier(session, assignment.tier, {
@@ -214,8 +242,24 @@ function TierRow({
       }),
     onSuccess: async () => {
       setFailure(null);
-      await queryClient.invalidateQueries({ queryKey: ['model-configuration'] });
-      await queryClient.invalidateQueries({ queryKey: ['model-config'] });
+      await invalidate();
+    },
+    onError: (error: Error) => setFailure(error.message),
+  });
+  const reviewRebuild = useMutation({
+    mutationFn: () => planEmbeddingsRebuild(session, { providerId, model: model.trim() }),
+    onSuccess: (result) => {
+      setFailure(null);
+      setPlan(result);
+    },
+    onError: (error: Error) => setFailure(error.message),
+  });
+  const confirmRebuild = useMutation({
+    mutationFn: () => beginEmbeddingsRebuild(session, { providerId, model: model.trim() }),
+    onSuccess: async () => {
+      setFailure(null);
+      setPlan(null);
+      await invalidate();
     },
     onError: (error: Error) => setFailure(error.message),
   });
@@ -245,6 +289,10 @@ function TierRow({
         </span>
       </div>
 
+      {isEmbeddings && rebuild && (
+        <EmbeddingRebuildPanel session={session} rebuild={rebuild} onChanged={invalidate} />
+      )}
+
       {locked ? (
         <div
           className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
@@ -260,7 +308,7 @@ function TierRow({
             />
           </p>
         </div>
-      ) : (
+      ) : isEmbeddings && rebuild ? null : (
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <label className="text-xs text-slate-500">
             <span className="block">{t('assignment.provider')}</span>
@@ -294,15 +342,26 @@ function TierRow({
             </datalist>
           </label>
 
-          <button
-            type="button"
-            className={btnPrimary}
-            disabled={!dirty || save.isPending}
-            onClick={() => save.mutate()}
-          >
-            {save.isPending ? t('action.testing') : t('assignment.apply')}
-          </button>
-          {dirty && !save.isPending && (
+          {isEmbeddings ? (
+            <button
+              type="button"
+              className={btnPrimary}
+              disabled={!dirty || !providerId || !model.trim() || reviewRebuild.isPending || !!plan}
+              onClick={() => reviewRebuild.mutate()}
+            >
+              {reviewRebuild.isPending ? t('action.testing') : t('rebuild.review')}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={btnPrimary}
+              disabled={!dirty || save.isPending}
+              onClick={() => save.mutate()}
+            >
+              {save.isPending ? t('action.testing') : t('assignment.apply')}
+            </button>
+          )}
+          {dirty && !save.isPending && !plan && (
             <button
               type="button"
               className={btnSecondary}
@@ -315,6 +374,54 @@ function TierRow({
               {t('action.cancel')}
             </button>
           )}
+        </div>
+      )}
+
+      {isEmbeddings && plan && !rebuild && (
+        <div
+          className="mt-3 space-y-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-slate-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-slate-200"
+          role="note"
+        >
+          <p className="text-sm font-semibold">{t('rebuild.planTitle')}</p>
+          <p>
+            {t('rebuild.planWhat', {
+              model: plan.model,
+              provider: plan.providerLabel,
+              dimensions: plan.dimensions,
+            })}
+          </p>
+          <p>
+            {t('rebuild.planCost', {
+              facts: plan.facts,
+              tokens: plan.estimatedTokens,
+              duration: humanDuration(plan.estimatedSeconds, t),
+            })}
+          </p>
+          <p>{t('rebuild.planSpend')}</p>
+          <p>{t('rebuild.planServing')}</p>
+          <p>
+            {plan.evaluated
+              ? t('rebuild.planEvaluated', { configuration: plan.resultingConfigurationId })
+              : t('rebuild.planNotEvaluated', { configuration: plan.resultingConfigurationId })}
+          </p>
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              className={btnPrimary}
+              disabled={confirmRebuild.isPending}
+              onClick={() => confirmRebuild.mutate()}
+            >
+              {confirmRebuild.isPending ? t('action.testing') : t('rebuild.confirm')}
+            </button>
+            <button
+              type="button"
+              className={btnSecondary}
+              disabled={confirmRebuild.isPending}
+              onClick={() => setPlan(null)}
+            >
+              {t('rebuild.back')}
+            </button>
+          </div>
         </div>
       )}
 
@@ -336,6 +443,122 @@ function TierRow({
       )}
     </div>
   );
+}
+
+/**
+ * The rebuild in flight (V2.4 item 7.1 second half): honest progress from the
+ * state row (facts done against total, phase, rate-based time remaining, the
+ * same token accounting the meter charges), with cancel always available and
+ * resume offered when passes parked it as failed. Search keeps serving from
+ * the old index for the whole rebuild; this panel is the "banner".
+ */
+function EmbeddingRebuildPanel({
+  session,
+  rebuild,
+  onChanged,
+}: {
+  session: Session;
+  rebuild: EmbeddingRebuildStatusDto;
+  onChanged: () => Promise<void>;
+}) {
+  const { t } = useTranslation('providers');
+  const [failure, setFailure] = useState<string | null>(null);
+  const cancel = useMutation({
+    mutationFn: () => cancelEmbeddingsRebuild(session),
+    onSuccess: async () => {
+      setFailure(null);
+      await onChanged();
+    },
+    onError: (error: Error) => setFailure(error.message),
+  });
+  const resume = useMutation({
+    mutationFn: () => resumeEmbeddingsRebuild(session),
+    onSuccess: async () => {
+      setFailure(null);
+      await onChanged();
+    },
+    onError: (error: Error) => setFailure(error.message),
+  });
+
+  const total = Math.max(rebuild.factsTotal, 1);
+  const fraction = Math.min(1, rebuild.factsDone / total);
+  const failed = rebuild.status === 'failed';
+
+  return (
+    <div
+      className={`mt-3 space-y-2 rounded-md border p-3 text-xs ${
+        failed
+          ? 'border-red-200 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200'
+          : 'border-blue-200 bg-blue-50 text-slate-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-slate-200'
+      }`}
+      role="status"
+    >
+      <p className="text-sm font-semibold">
+        {failed
+          ? t('rebuild.failedTitle', { model: rebuild.targetModel })
+          : rebuild.phase === 'finalizing'
+            ? t('rebuild.finalizingTitle', { model: rebuild.targetModel })
+            : t('rebuild.runningTitle', { model: rebuild.targetModel })}
+      </p>
+      {!failed && (
+        <>
+          <div
+            className="h-2 overflow-hidden rounded bg-slate-200 dark:bg-slate-700"
+            aria-hidden="true"
+          >
+            <div
+              className="h-full rounded bg-blue-500 transition-all"
+              style={{ width: `${Math.round(fraction * 100)}%` }}
+            />
+          </div>
+          <p>
+            {t('rebuild.progress', {
+              done: rebuild.factsDone,
+              total: rebuild.factsTotal,
+              tokens: rebuild.tokensSpent,
+            })}
+            {rebuild.estimatedSecondsRemaining !== null &&
+              ` ${t('rebuild.remaining', {
+                duration: humanDuration(rebuild.estimatedSecondsRemaining, t),
+              })}`}
+          </p>
+          <p>{t('rebuild.servingNote')}</p>
+        </>
+      )}
+      {rebuild.error && <p role="alert">{rebuild.error}</p>}
+      <div className="flex gap-2 pt-1">
+        {failed && (
+          <button
+            type="button"
+            className={btnPrimary}
+            disabled={resume.isPending}
+            onClick={() => resume.mutate()}
+          >
+            {t('rebuild.resume')}
+          </button>
+        )}
+        <button
+          type="button"
+          className={btnSecondary}
+          disabled={cancel.isPending || rebuild.cancelRequested}
+          onClick={() => cancel.mutate()}
+        >
+          {rebuild.cancelRequested ? t('rebuild.cancelling') : t('rebuild.cancel')}
+        </button>
+      </div>
+      {failure && <p role="alert">{failure}</p>}
+    </div>
+  );
+}
+
+/** Seconds into words a human plans around: under two minutes stays seconds,
+ * everything longer rounds to minutes. */
+function humanDuration(
+  seconds: number,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  if (seconds < 120) return t('rebuild.durationSeconds', { count: Math.max(1, seconds) });
+  return t('rebuild.durationMinutes', { count: Math.round(seconds / 60) });
 }
 
 /** The answer models users may pick between: the admin controls the set. */
