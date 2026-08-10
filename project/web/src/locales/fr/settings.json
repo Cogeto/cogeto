@@ -63,7 +63,8 @@
       "answer": "Réponse",
       "embeddings": "Représentations vectorielles"
     },
-    "managedIn": "Les fournisseurs et les affectations de modèles se gèrent sur la page <link>Modèles</link>."
+    "managedIn": "Les fournisseurs, les affectations et les modèles que les utilisateurs peuvent choisir s'y définissent.",
+    "manage": "Gérer les modèles"
   },
   "aliases": {
     "heading": "Entity aliases",

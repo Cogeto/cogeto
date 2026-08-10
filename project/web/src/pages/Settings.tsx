@@ -640,20 +640,13 @@ function ModelConfigSection({ session }: { session: Session }) {
           </dl>
           <p className="text-xs text-slate-500">{config.data.externalCalls}</p>
           {me.data?.isAdmin === true && (
-            <p className="text-xs text-slate-400">
-              <Trans
-                i18nKey="models.managedIn"
-                ns="settings"
-                components={{
-                  link: (
-                    <a
-                      href="/models"
-                      className="font-medium text-brand-teal-ink underline dark:text-brand-teal"
-                    />
-                  ),
-                }}
-              />
-            </p>
+            <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-3">
+              <a href="/models" className={btnSecondary}>
+                {t('models.manage')}
+                <span aria-hidden="true">→</span>
+              </a>
+              <span className="text-xs text-slate-400">{t('models.managedIn')}</span>
+            </div>
           )}
         </>
       )}

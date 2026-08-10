@@ -63,7 +63,8 @@
       "answer": "Odgovor",
       "embeddings": "Ugradnje"
     },
-    "managedIn": "Pružateljima i dodjelama modela upravlja se na stranici <link>Modeli</link>."
+    "managedIn": "Ondje se postavljaju pružatelji, dodjele i modeli koje korisnici smiju birati.",
+    "manage": "Upravljaj modelima"
   },
   "aliases": {
     "heading": "Entity aliases",

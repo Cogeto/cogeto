@@ -63,7 +63,8 @@
       "answer": "Answer",
       "embeddings": "Embeddings"
     },
-    "managedIn": "Providers and model assignments are managed on the <link>Models</link> page."
+    "managedIn": "Providers, assignments and the models people may choose are all set there.",
+    "manage": "Manage models"
   },
   "aliases": {
     "heading": "Entity aliases",

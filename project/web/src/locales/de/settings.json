@@ -63,7 +63,8 @@
       "answer": "Antwort",
       "embeddings": "Einbettungen"
     },
-    "managedIn": "Anbieter und Modellzuordnungen werden auf der Seite <link>Modelle</link> verwaltet."
+    "managedIn": "Anbieter, Zuordnungen und die Modelle, die Nutzer wählen dürfen, werden dort festgelegt.",
+    "manage": "Modelle verwalten"
   },
   "aliases": {
     "heading": "Entity aliases",

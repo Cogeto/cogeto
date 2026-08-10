@@ -25,11 +25,18 @@ import type { StoredProviderType } from '@cogeto/shared';
  * The vendor marks in `public/vendor-marks/`. Adding one is a file, a row in
  * that README, and a line here; anything not listed falls through to the
  * neutral placeholder, which is a correct answer rather than a gap.
+ *
+ * `scale` corrects for the whitespace a publisher baked into their own file, so
+ * the marks are the same OPTICAL size rather than the same box size. OpenAI's
+ * Blossom occupies 51% of its 716-unit viewBox; Anthropic's and Mistral's fill
+ * 98% and 100% of theirs, so without this the OpenAI mark renders at roughly
+ * half the size of its neighbours. A uniform scale is sizing, not modification:
+ * nothing is stretched, deformed, cropped or recoloured.
  */
-const MARK_FILES: Partial<Record<StoredProviderType, string>> = {
-  openai: '/vendor-marks/openai-blossom-black.svg',
-  anthropic: '/vendor-marks/anthropic-icon.png',
-  mistral: '/vendor-marks/mistral-icon.png',
+const MARK_FILES: Partial<Record<StoredProviderType, { src: string; scale?: number }>> = {
+  openai: { src: '/vendor-marks/openai-blossom-black.svg', scale: 1.75 },
+  anthropic: { src: '/vendor-marks/anthropic-icon.png' },
+  mistral: { src: '/vendor-marks/mistral-icon.png' },
 };
 
 /** The line style shared with the nav rail's glyph family. */
@@ -64,7 +71,13 @@ export function ProviderMark({
   if (mark) {
     return (
       <span className={`${TILE} ${className}`} title={label}>
-        <img src={mark} alt="" aria-hidden="true" className="h-full w-full object-contain" />
+        <img
+          src={mark.src}
+          alt=""
+          aria-hidden="true"
+          className="h-full w-full object-contain"
+          {...(mark.scale ? { style: { transform: `scale(${mark.scale})` } } : {})}
+        />
       </span>
     );
   }
