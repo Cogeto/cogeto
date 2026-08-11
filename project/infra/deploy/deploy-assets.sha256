@@ -1,4 +1,4 @@
-2349a9d7ca776ffecf4f8b75839f3dd727ac369a8422c30bb2e4e719ebf5245d  project/infra/deploy/docker-compose.deploy.yml
+75bd2d440d903898e73f8c60a1274c35f99ceb8acc8fa78a0311ffb8c284c34d  project/infra/deploy/docker-compose.deploy.yml
 6489f105bf91d498ee60bd7ff6a0c6cadf40fceddbd27e4807e7ce60c81376ca  project/infra/deploy/Caddyfile
 613a33bd2bf8a2074634dbb537d8c3a6cfe1d2aa1551bc9f327a094ada818081  project/infra/docker/zitadel-init/init.mjs
 a1b74e3b99d52dd4464bcae2b65cb3442c7b17afd177dd26961c119906774087  project/infra/docker/postgres-init/db-init.sql

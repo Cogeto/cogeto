@@ -55,10 +55,15 @@ function varsIn(file: string): Set<string> {
   return found;
 }
 
+/** Read by the eval CLIs only, never by a running instance; documenting them
+ * in .env.example is for the eval workflow, not the stacks. */
+const EVAL_ONLY = new Set(['COGETO_MODEL_GRADER', 'COGETO_PROVIDER_GRADER']);
+
 describe('env_consistency: .env.example, docker-compose.yml and code agree', () => {
   const read = varsReadInCode();
   const example = varsIn('.env.example');
   const compose = varsIn('docker-compose.yml');
+  const deploy = varsIn('project/infra/deploy/docker-compose.deploy.yml');
 
   it('every COGETO_* the app reads is documented in .env.example or docker-compose.yml', () => {
     const undocumented = [...read].filter(
@@ -72,5 +77,32 @@ describe('env_consistency: .env.example, docker-compose.yml and code agree', () 
   it('every COGETO_* in .env.example is used by code or wired in compose (no dead entries)', () => {
     const dead = [...example].filter((v) => !read.has(v) && !compose.has(v));
     expect(dead, `dead .env.example entries: ${dead.join(', ')}`).toEqual([]);
+  });
+
+  // The DELIVERY half (issue #516), which the two assertions above cannot
+  // see: a variable can be read by code and documented in .env.example while
+  // the compose files silently drop it, so setting it in .env does nothing.
+  // Every documented, code-read operator variable must be NAMED in the
+  // compose file, or the stack is advertising a knob that does not turn.
+
+  it('every documented, code-read COGETO_* is wired in docker-compose.yml', () => {
+    const dropped = [...read].filter(
+      (v) => example.has(v) && !DEV_ONLY.has(v) && !EVAL_ONLY.has(v) && !compose.has(v),
+    );
+    expect(dropped, `documented knobs docker-compose.yml drops: ${dropped.join(', ')}`).toEqual([]);
+  });
+
+  it('every documented, code-read COGETO_* is wired in the deploy compose (demo profile excepted)', () => {
+    const dropped = [...read].filter(
+      (v) =>
+        example.has(v) &&
+        !DEV_ONLY.has(v) &&
+        !EVAL_ONLY.has(v) &&
+        // A customer stack must not grow a demo switch: the demo profile
+        // belongs to the dev stack alone, deliberately.
+        !v.startsWith('COGETO_DEMO') &&
+        !deploy.has(v),
+    );
+    expect(dropped, `documented knobs the deploy compose drops: ${dropped.join(', ')}`).toEqual([]);
   });
 });

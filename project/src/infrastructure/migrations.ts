@@ -39,7 +39,9 @@ export function migrationChecksum(sqlText: string): string {
 
 export async function applyMigrations(
   pool: Pool,
-  migrationsDir: string = process.env.COGETO_MIGRATIONS_DIR ?? DEFAULT_MIGRATIONS_DIR,
+  // Blank means unset: compose passes every documented knob as `${VAR:-}`,
+  // so an operator who set nothing delivers an empty string (issue #516).
+  migrationsDir: string = process.env.COGETO_MIGRATIONS_DIR || DEFAULT_MIGRATIONS_DIR,
 ): Promise<MigrationRunResult> {
   // SEC-25: hold the lock on ONE dedicated connection for the whole run. A
   // session-level lock (not xact-level) is required because the run spans many
