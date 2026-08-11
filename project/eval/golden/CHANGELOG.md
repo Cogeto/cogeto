@@ -2,6 +2,19 @@
 
 One line per label change (docs/eval-golden-set.md §4 rule 5).
 
+- 2026-08-11 (issue #499): 4 new extraction cases for commercial line items,
+  authored with prompt extraction/v0006 in the same change. en-l001 (offer,
+  tab-separated European-format table with catalog boilerplate glued to
+  items), en-l002 (invoice, space-aligned columns, shipping row, due date),
+  hr-l001 (ponuda, KOM stavke, opcija ponude), hr-l002 (račun-otpremnica,
+  dospijeće). 19 must-extract labels total: one per table line with article
+  code, quantity, unit price and line total verbatim, plus totals, validity
+  and due dates; letterhead asserted out with one scored must_not_contain
+  needle per seller (e-mail or IBAN). Synthetic by necessity: the motivating
+  corpus is a customer's private invoices whose fully-read offers produced
+  header furniture and zero product rows. Corpus: en 48 -> 50 extraction
+  cases, hr 50 -> 52.
+
 - 2026-08-07 (V2.3 item 6.1): 21 new pair cases for the contradiction coverage
   overhaul, every widening shipped with its negatives. Numeric and unit shapes
   in both languages (en-r017..r023, hr-r016..r022): same-unit conflict, unit

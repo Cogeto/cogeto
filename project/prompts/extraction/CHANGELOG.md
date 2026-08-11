@@ -1,5 +1,21 @@
 # extraction — changelog
 
+- **v0006** (2026-08-11, issue #499): commercial line items are durable facts.
+  Two additions, both from a real 38-invoice corpus where the two largest
+  offers (83k and 8.5k EUR) were read completely, faced a fact budget of 100,
+  and still produced only header furniture plus the totals — zero product
+  rows, while the reader's text held every row cleanly ("3 KOM 2.987,72 21,00
+  2.360,30 7.080,90"). One new extraction rule: in an invoice, offer, order,
+  quotation or delivery note, every product/service table line is ONE fact
+  anchored to the document's identifier, with article code, quantity, unit,
+  prices and totals copied verbatim; identifying description kept, catalog
+  boilerplate left out; total/discount/tax rows each their own fact; column
+  meanings read from the table's own headers, never guessed. And one scoped
+  demotion in the never-capture list: the issuing party's letterhead and
+  footer (address, phone, e-mail, web, registry/VAT numbers, bank details)
+  are signatures unless the document's substance is about them — the same
+  corpus stored the seller's phone number while dropping every purchased
+  item. No other wording changed from v0005.
 - **v0005** (2026-08-04, V2.1 item 4.2, spec 1.5): source-context anchoring. The
   input gains an optional `DOCUMENT CONTEXT` block (subjects, document class,
   revision, from the anchoring/v0001 call over the document opening), FENCED

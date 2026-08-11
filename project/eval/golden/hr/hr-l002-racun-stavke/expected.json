@@ -1,0 +1,54 @@
+{
+  "case_id": "hr-l002",
+  "source_type": "file",
+  "filename": "Adriatik_Racun_118-01-261.pdf",
+  "source_date": "2026-07-09T09:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Račun-otpremnica 118-01-261 uključuje 4 KOM SZ-081 senzora zastoja po cijeni 86,50, iznos 346,00",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Račun-otpremnica 118-01-261 uključuje 4 KOM NK-12 nosača senzora po cijeni 12,20, iznos 48,80",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Ukupno za platiti po računu-otpremnici 118-01-261 je 493,50 EUR, uz osnovicu 394,80 EUR i PDV 98,70 EUR",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Račun-otpremnica 118-01-261 dospijeva 08.08.2026",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {
+        "valid_until": "2026-08-08"
+      },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Reklamacije po računu-otpremnici primaju se u roku 8 dana od preuzimanja robe",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": false
+    }
+  ],
+  "must_not_extract": ["IBAN ili adresa prodavatelja iz zaglavlja kao samostalne činjenice"],
+  "must_not_contain": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

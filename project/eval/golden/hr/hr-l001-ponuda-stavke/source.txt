@@ -1,0 +1,29 @@
+Adriatik Pogoni d.o.o.
+Vukovarska 210, 21000 Split
+Tel: 021/555-340  E-mail: info@adriatik-pogoni.example
+OIB: 99887766554
+
+PONUDA 87/01                                Datum: 05.06.2026
+Kupac: Marjan Plastika d.o.o., Kaštelanska 4, Solin
+
+Rb  Šifra          Naziv                                        Kol.    Cijena      Rabat%   Iznos
+1
+VP-2200-K
+Vibracijski dodavač, 230 V, 2200 ccm, s kontrolerom
+2 KOM 	1.640,00 	5,00 	1.558,00 	3.116,00
+2
+TR-55-INox
+Transportna traka 5,5 m, inox okvir, PU traka
+1 KOM 	4.980,00 	5,00 	4.731,00 	4.731,00
+3
+SZ-081
+Senzor zastoja s nosačem
+6 KOM 	86,50 	5,00 	82,18 	493,08
+
+Osnovica: 8.340,08 EUR
+PDV 25%: 2.085,02 EUR
+Ukupno: 10.425,10 EUR
+
+Opcija ponude: do 01.08.2026. Rok isporuke: 4-5 tjedana od narudžbe.
+Plaćanje: 15 dana od datuma računa, transakcijski račun.
+Navedeni rokovi isporuke su informativni i mogu se promijeniti.

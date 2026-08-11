@@ -1,0 +1,72 @@
+{
+  "case_id": "hr-l001",
+  "source_type": "file",
+  "filename": "Adriatik_Ponuda_87-01_Marjan.pdf",
+  "source_date": "2026-06-05T10:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Ponuda 87/01 uključuje 2 KOM VP-2200-K vibracijskog dodavača po cijeni 1.640,00, iznos 3.116,00",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Ponuda 87/01 uključuje 1 KOM TR-55-INox transportne trake po cijeni 4.980,00, iznos 4.731,00",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Ponuda 87/01 uključuje 6 KOM SZ-081 senzora zastoja po cijeni 86,50, iznos 493,08",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Ukupni iznos ponude 87/01 je 10.425,10 EUR, uz osnovicu 8.340,08 EUR i PDV 2.085,02 EUR",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Opcija ponude 87/01 vrijedi do 01.08.2026",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {
+        "valid_until": "2026-08-01"
+      },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Rok isporuke za ponudu 87/01 je 4-5 tjedana od narudžbe, plaćanje 15 dana od datuma računa",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": false
+    },
+    {
+      "content_gist": "Navedeni rokovi isporuke u ponudi su informativni i mogu se promijeniti",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": false
+    }
+  ],
+  "must_not_extract": [
+    "zaglavlje prodavatelja kao činjenice: adresa, telefon, e-mail ili OIB Adriatik Pogona"
+  ],
+  "must_not_contain": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

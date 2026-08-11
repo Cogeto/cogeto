@@ -1,0 +1,16 @@
+RAČUN-OTPREMNICA 118-01-261 R1              Datum dokumenta: 09.07.2026
+Adriatik Pogoni d.o.o., Vukovarska 210, Split
+IBAN: HR6623600001102345678
+
+Kupac: Marjan Plastika d.o.o., Solin
+
+Rb  Šifra       Naziv                              Kol.     Cijena     Iznos
+1   SZ-081      Senzor zastoja s nosačem           4 KOM    86,50      346,00
+2   NK-12       Nosač senzora, inox                4 KOM    12,20      48,80
+
+Osnovica: 394,80 EUR
+PDV 25%: 98,70 EUR
+Ukupno za platiti: 493,50 EUR
+
+Račun dospijeva 08.08.2026. Način plaćanja: transakcijski račun.
+Reklamacije se primaju u roku 8 dana od preuzimanja robe.

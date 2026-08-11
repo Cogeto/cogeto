@@ -1,0 +1,64 @@
+{
+  "case_id": "en-l002",
+  "source_type": "file",
+  "filename": "Meridian_Invoice_2026-0771.pdf",
+  "source_date": "2026-07-03T09:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Invoice 2026-0771 includes 12 units of PX-330 proximity sensor at 18.60 each, amount 223.20",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Invoice 2026-0771 includes 12 units of CB-114-5 sensor cable at 7.45 each, amount 89.40",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Invoice 2026-0771 charges 24.00 for shipping and handling",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "The total due on invoice 2026-0771 is 336.60 EUR",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Invoice 2026-0771 has NET 30 DAYS payment terms and is due 02.08.2026",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {
+        "valid_until": "2026-08-02"
+      },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Goods on invoice 2026-0771 remain the property of Meridian Components until paid in full",
+      "kind": "fact",
+      "entities": ["Meridian Components"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": false
+    }
+  ],
+  "must_not_extract": [
+    "the seller's letterhead as facts: address, VAT number or e-mail of Meridian Components"
+  ],
+  "must_not_contain": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}
