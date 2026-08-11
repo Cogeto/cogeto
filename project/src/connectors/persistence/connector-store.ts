@@ -141,6 +141,13 @@ export class ConnectorStore {
       .where(eq(connector.id, id));
   }
 
+  async recordPresenceSwept(id: string): Promise<void> {
+    await this.db
+      .update(connector)
+      .set({ presenceSweptAt: new Date(), updatedAt: new Date() })
+      .where(eq(connector.id, id));
+  }
+
   /**
    * Removal, transactionally complete except for the credential (destroyed
    * by the caller through identity's store in the same transaction): every
@@ -268,10 +275,55 @@ export class ConnectorStore {
       .orderBy(connectorSubScope.key);
   }
 
+  /**
+   * A CUSTOM sub-scope the user adds by hand (V2.5 item 8.2, issue B1), for
+   * containers discovery cannot enumerate (a page subtree). The descriptor's
+   * key grammar was checked by the caller; upstream validation happens on
+   * the next sync. Upsert, so re-adding an existing key just relabels it.
+   */
+  async addSubScope(
+    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId'>,
+    key: string,
+    label: string,
+  ): Promise<void> {
+    await this.db
+      .insert(connectorSubScope)
+      .values({ connectorId: row.id, ownerId: row.ownerId, key, label, selected: true })
+      .onConflictDoUpdate({
+        target: [connectorSubScope.connectorId, connectorSubScope.key],
+        set: { label, selected: true, updatedAt: new Date() },
+      });
+    await writeAudit(this.db, {
+      actor: `user:${row.ownerId}`,
+      action: 'connector.sub_scope_added',
+      entityType: 'connector',
+      entityId: row.id,
+      detail: { custom: true },
+      orgId: row.orgId,
+      ownerId: row.ownerId,
+    });
+  }
+
+  /** The worker-computed backfill estimate for one scope (issue B2). */
+  async recordSubScopeStats(
+    connectorId: string,
+    key: string,
+    stats: NonNullable<ConnectorSubScopeRow['statsJson']>,
+  ): Promise<void> {
+    await this.db
+      .update(connectorSubScope)
+      .set({ statsJson: stats, updatedAt: new Date() })
+      .where(and(eq(connectorSubScope.connectorId, connectorId), eq(connectorSubScope.key, key)));
+  }
+
   async setSubScopeSelection(
     row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId'>,
     key: string,
-    patch: { selected?: boolean; itemCap?: number | null },
+    patch: {
+      selected?: boolean;
+      itemCap?: number | null;
+      settingsJson?: ConnectorSubScopeRow['settingsJson'];
+    },
   ): Promise<void> {
     const updated = await this.db
       .update(connectorSubScope)
@@ -328,7 +380,7 @@ export class ConnectorStore {
   async openSyncRun(
     connectorId: string,
     ownerId: string,
-    kind: 'backfill' | 'incremental' | 'webhook',
+    kind: 'backfill' | 'incremental' | 'webhook' | 'presence',
   ): Promise<ConnectorSyncRunRow> {
     const existing = await this.db
       .select()

@@ -37,10 +37,20 @@ files, web), each defaulting to today's behaviour when unset:
     dimension.
   - `source_id` switches off one document, deny-only: allowing a single id
     would silently disable the rest of its connector, so the API refuses it.
-  - `channel` and `folder` are reserved: the table takes them without a
-    migration the day connectors and bulk import enforce them, and the API
-    refuses them until then, because a control nothing enforces would be a
-    control that silently does not control.
+  - `folder` binds to a connector's sub-scope key (a Confluence space, or a
+    page subtree), enforced since the first real connector (V2.5 item 8.2):
+    the sync engine stamps the key on the materialized object and the file
+    reader carries it to the chokepoint. Same semantics as `document_class`
+    (deny blocks, allow rows make the list exclusive), and a source that
+    arrived through no connector is untouched by folder rules.
+  - Since migration 0055 a `folder` or `document_class` rule row may carry
+    its own **fact budget and retention**, so per-space policy is
+    expressible; the tightest bound wins, exactly as everywhere else
+    (parse cap, registry budget, gate row, rule).
+  - `channel` stays reserved: the table takes it without a migration the day
+    something enforces it, and the API refuses it until then, because a
+    control nothing enforces would be a control that silently does not
+    control.
 
 Email **sender** admission is deliberately not here: the email allowlist
 already owns it, and a second authority would let the two disagree.

@@ -66,6 +66,12 @@ import {
   ConnectorsModule,
 } from '../connectors/index';
 import {
+  ConfluenceModule,
+  ConfluencePageCascade,
+  ConfluencePageCascadeModule,
+  confluenceConnector,
+} from '../confluence/index';
+import {
   FindingsReportCascade,
   FindingsReportCascadeModule,
   ReportsModule,
@@ -169,6 +175,7 @@ export function createWorkerRootModule(
         ImportItemCascadeModule,
         FindingsReportCascadeModule,
         ConnectorItemCascadeModule,
+        ConfluencePageCascadeModule,
       ],
       // Assistant answers citing erased memories are redacted; reply drafts
       // grounded on the source are too. A ready passport export is a signed
@@ -204,6 +211,9 @@ export function createWorkerRootModule(
         // reference cleared and reads 'erased' thereafter, so a later sync
         // cannot resurrect the memory (V2.5 item 8.1).
         ConnectorItemCascade,
+        // Confluence provenance rows carry titles, the document's own words,
+        // so they are ERASED with their source (V2.5 item 8.2).
+        ConfluencePageCascade,
       ],
     },
     // Delete-vs-ingestion serialization: the saga cancels a source's pending
@@ -245,6 +255,15 @@ export function createWorkerRootModule(
     imports: [memoryModule, filesModule],
   });
   const agentsModule = AgentsModule.register({ imports: [memoryModule] });
+  // The connector platform's worker slice (V2.5 item 8.1): the sync engine,
+  // the webhook processor, the maintenance pass and the presence sweep. The
+  // Confluence descriptor (item 8.2) registers here; materialization goes
+  // through files' ONE upload path at demoted priority.
+  const connectorsWorkerModule = ConnectorsModule.forWorker({
+    options: { masterKey: config.masterKey },
+    connectors: [confluenceConnector()],
+    imports: [filesModule],
+  });
   @Module({
     imports: [
       DatabaseModule.register({ databaseUrl: config.databaseUrl, poolMax: config.pgPoolMax }),
@@ -323,16 +342,9 @@ export function createWorkerRootModule(
       // The bulk-import coordinator (V2.2 item 5.3): ingests through files'
       // one upload path at demoted priority, bounded in flight.
       importsModule,
-      // The connector platform's worker slice (V2.5 item 8.1): the sync
-      // engine, the webhook processor and the maintenance pass. No
-      // descriptor registers in production yet; the first external connector
-      // (item 8.2) passes its descriptor here. Materialization goes through
-      // files' ONE upload path at demoted priority.
-      ConnectorsModule.forWorker({
-        options: { masterKey: config.masterKey },
-        connectors: [],
-        imports: [filesModule],
-      }),
+      connectorsWorkerModule,
+      // The Confluence worker slice (V2.5 item 8.2): the backfill estimate.
+      ConfluenceModule.forWorker({ imports: [connectorsWorkerModule] }),
       // The findings-report generation + retention jobs (V2.3 item 6.2, spec
       // §15.4 slow path); the worker holds the private key to sign each
       // payload hash, exactly as it signs receipts and passport manifests.

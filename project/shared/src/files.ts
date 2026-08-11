@@ -128,6 +128,15 @@ export const XLSX_CONTENT_TYPE =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 export const CSV_CONTENT_TYPE = 'text/csv';
 /**
+ * Markdown and plain text (V2.5 item 8.2): a converted Confluence page uploads
+ * as `text/markdown`, and `.txt` notes ride the same reader. Like CSV they
+ * carry no magic bytes, so they are accepted on their declared label plus a
+ * text-looking name; the `.csv`/`.tsv` alias below still outranks a
+ * `text/plain` label for delimited files.
+ */
+export const MARKDOWN_CONTENT_TYPE = 'text/markdown';
+export const PLAIN_TEXT_CONTENT_TYPE = 'text/plain';
+/**
  * Standalone images (V2.1 item 4.1). A photograph of a page, a screenshot or an
  * exported diagram is a document: it goes through the reading ladder like any
  * scanned page, cheapest tier first.
@@ -159,6 +168,8 @@ export const ALLOWED_UPLOAD_CONTENT_TYPES: readonly string[] = [
   DOCX_CONTENT_TYPE,
   XLSX_CONTENT_TYPE,
   CSV_CONTENT_TYPE,
+  MARKDOWN_CONTENT_TYPE,
+  PLAIN_TEXT_CONTENT_TYPE,
   ...IMAGE_CONTENT_TYPES,
 ];
 
@@ -168,6 +179,9 @@ export const ALLOWED_UPLOAD_EXTENSIONS: readonly string[] = [
   '.docx',
   '.xlsx',
   '.csv',
+  '.md',
+  '.markdown',
+  '.txt',
   '.png',
   '.jpg',
   '.jpeg',

@@ -19,7 +19,7 @@ implements one method:
 
 | Declaration | What it decides |
 | --- | --- |
-| `format` | `pdf`, `docx`, `xlsx`, `csv` |
+| `format` | `pdf`, `docx`, `xlsx`, `csv`, `text` |
 | `contentTypes` | the declared MIME types it claims |
 | `extensions` | the file extensions it claims, as HINTS |
 | `detectable` | whether its bytes carry a signature (see selection) |
@@ -43,8 +43,12 @@ extension alone** (`reading/sniff.ts`, `reading/registry.ts`):
    `legacy_office_format`, which tells a user what to do; "unsupported file type"
    does not.
 3. **The declared type and the extension only speak when the bytes do not.** Text
-   formats have no signature, which is why CSV is selected this way and why it is
-   the only `detectable: false` reader.
+   formats have no signature, which is why CSV, Markdown and plain text are
+   selected this way: they are the `detectable: false` readers. One label gets
+   special handling: `text/plain` is what browsers put on ANY textual file, so
+   for it the extension speaks first. A `.csv` or `.tsv` declared `text/plain`
+   still routes to the CSV reader, and a `.md`, `.markdown` or `.txt` lands on
+   the text reader that claims it anyway.
 4. **A mislabelled file is routed or refused, never trusted.** A workbook uploaded
    as a document is read as a workbook. A CSV named `.pdf` is refused as
    `unsupported_format`, because we know what a PDF looks like and this is not one.
@@ -61,7 +65,7 @@ carrying a **structured locator** (`reading/locator.ts`), never a free-text stri
 | Granularity | Locator | Produced by |
 | --- | --- | --- |
 | `page` | page number | PDF |
-| `paragraph` | paragraph index | DOCX |
+| `paragraph` | paragraph index | DOCX, plain text and Markdown |
 | `sheet_row` | sheet name, sheet index, row, A1 cell range, columns | XLSX, CSV |
 
 `locateSpan(text, segments, span)` resolves a verified span back to the locators it
@@ -138,6 +142,25 @@ read C5" stays a visible fact about the read instead of a silent gap.
   is the record number, which is the row a spreadsheet program shows.
 - **No header row** is a supported shape, not an error.
 
+## Plain text and Markdown
+
+The formats a converted page arrives in (V2.5 item 8.2: a Confluence page
+uploads as `text/markdown`), read by one registered reader (`text.reader.ts`):
+
+- **Markdown is not parsed.** A heading or a list item stays its literal line.
+  The reader's job is text plus paragraph provenance, not rendering, and a
+  rendered form would break span verification against what was stored.
+- **Paragraphs are blank-line separated blocks** of the normalized text, so a
+  hard-wrapped paragraph is one segment. The locator is the shape DOCX emits:
+  a 1-based paragraph index over non-empty blocks.
+- **Encoding is the CSV ladder, reused**: a byte-order mark decides; otherwise
+  strict UTF-8; otherwise the configured fallback
+  (`COGETO_PARSE_CSV_FALLBACK_ENCODING`, default windows-1250). The encoding
+  used is on the read report.
+- **The char cap truncates at a paragraph boundary** and the read report says
+  so (`truncated`, `text_over_cap`); nothing about truncation is written into
+  the text itself.
+
 ## Caps, and saying so
 
 | Cap | Default | Env |
@@ -197,6 +220,7 @@ before. The report is what turns that state into an explanation.
 | `reading/normalize.spec.ts` | the scanner and the original regex chain agree, exhaustively |
 | `reading/reading.spec.ts` | PDF and DOCX text is byte-identical to the pre-seam implementation; selection, refusal and cap behaviour |
 | `reading/spreadsheet.spec.ts` | header detection, title blocks, merges, formulas, caps, CSV encoding and delimiter |
+| `reading/text.spec.ts` | paragraph splitting and locators, selection incl. the preserved CSV alias, encoding fallback, char-cap truncation |
 | `reading/golden-fixtures.spec.ts` | the golden corpus text is still what the reader produces, and every statement has a valid A1 locator |
 | `files/files.integration.spec.ts` | the spreadsheet path through the real pipeline, the recorded failure reason, the truncation notice, and the deletion cascade |
 

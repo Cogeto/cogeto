@@ -438,6 +438,35 @@ model calls. Notes, files, chat, email and web research were deliberately NOT
 migrated onto the platform (none is a pull-or-webhook connector; the reasons
 are in the decision record) and are byte-identical.
 
+V2.5 item 8.2 delivered the **first external connector: Confluence Cloud**
+(migration 0055, the new `confluence` module), built entirely on the 8.1
+platform and **strictly read-only by construction**: the client has one
+request helper hard-coding GET, `read-only.spec.ts` fails the build if a
+mutating verb or a second HTTP call site appears, and the security note
+([`docs/security/confluence-connector.md`](docs/security/confluence-connector.md))
+states honestly that an Atlassian API token carries its account's full
+permissions and recommends a dedicated read-only account. **A re-sync over
+unchanged content costs zero model calls AND zero body fetches**: change
+detection is the page version number from a body-less listing, and content
+became LAZY platform-wide (resolved only when the ledger decided to
+materialize). Spaces are sub-scopes; page subtrees are custom scopes; the
+backfill estimate is a worker job writing sub-scope stats; per-space policy
+activated the gate's reserved `folder` dimension (sub-scope key stamped on
+the object, carried by the file reader) with per-rule fact budgets and
+retention. Storage-format XHTML converts to structured text (tables one
+statement per row with column context, macros render inner content or drop
+cleanly, nothing fabricated) read by the new registered plain-text reader
+(`text/markdown`, paragraph locators). Provenance is the content-bearing
+`confluence_page` row (page, space, version, live URL, in the deletion
+cascade), surfaced on Sources and the drawer; an upstream edit supersedes
+via the automatic revision link carrying the Confluence version, and the
+findings lifecycle names it. The new **presence sweep** (descriptor
+`listKeys` + `connector.presence_sweep`) marks deleted, archived and
+permission-lost pages, never deleting; a partial listing never marks. The
+platform additions are recorded in
+[`docs/features/connectors.md`](docs/features/connectors.md); the decision
+record is [`docs/features/confluence.md`](docs/features/confluence.md).
+
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).
 Thinking is a CHANNEL, not content: `completeStream` yields channel-tagged

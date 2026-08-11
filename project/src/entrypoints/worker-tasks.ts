@@ -55,12 +55,15 @@ import { CHAT_ATTACHMENT_READ_JOB_TYPE, CONVERSATION_TITLE_JOB_TYPE } from '../c
 import { IMPORT_ADVANCE_JOB_TYPE } from '../imports/index';
 import {
   CONNECTOR_MAINTENANCE_JOB_TYPE,
+  CONNECTOR_PRESENCE_JOB_TYPE,
   CONNECTOR_SYNC_JOB_TYPE,
   CONNECTOR_WEBHOOK_JOB_TYPE,
   ConnectorMaintenance,
+  ConnectorPresenceSweep,
   ConnectorSyncEngine,
   ConnectorWebhookProcessor,
 } from '../connectors/index';
+import { CONFLUENCE_ESTIMATE_JOB_TYPE, ConfluenceEstimateService } from '../confluence/index';
 import type { ImportCoordinator } from '../imports/index';
 import type { ChatAttachmentReadService, ConversationTitler } from '../chat/index';
 import type { ModelGateway } from '../model-gateway/index';
@@ -84,6 +87,8 @@ export interface WorkerTaskDeps {
   connectorSyncEngine: ConnectorSyncEngine;
   connectorWebhookProcessor: ConnectorWebhookProcessor;
   connectorMaintenance: ConnectorMaintenance;
+  connectorPresenceSweep: ConnectorPresenceSweep;
+  confluenceEstimate: ConfluenceEstimateService;
   researchConcluder: ResearchConclusionService;
   researchSynthesis: ResearchSynthesisService;
   skillEngine: SkillEngine;
@@ -483,6 +488,27 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
         );
       },
     ),
+
+    // The presence sweep (V2.5 item 8.2, issue C5): reconcile the ledger
+    // against the natural keys the upstream still lists, because polling by
+    // modified date cannot observe an absence. Plain and re-runnable, under
+    // the same single-flight lock as the sync.
+    [CONNECTOR_PRESENCE_JOB_TYPE]: async (rawPayload) => {
+      const connectorId = (rawPayload as { source_id?: unknown }).source_id;
+      if (typeof connectorId !== 'string' || !connectorId) return;
+      const { swept } = await deps.connectorPresenceSweep.sweep(connectorId);
+      deps.log({ source_id: connectorId, swept }, 'connector presence sweep completed');
+    },
+
+    // The Confluence backfill estimate (V2.5 item 8.2, issue B2): one CQL
+    // count per scope, written to the sub-scope stats the settings surface
+    // polls. Plain; estimation must never wedge anything.
+    [CONFLUENCE_ESTIMATE_JOB_TYPE]: async (rawPayload) => {
+      const connectorId = (rawPayload as { source_id?: unknown }).source_id;
+      if (typeof connectorId !== 'string' || !connectorId) return;
+      await deps.confluenceEstimate.estimate(connectorId);
+      deps.log({ source_id: connectorId }, 'confluence estimate completed');
+    },
 
     // The connector maintenance pass (V2.5 item 8.1): credential refresh
     // ahead of expiry, webhook subscription renewal (degrade to polling on

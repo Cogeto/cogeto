@@ -19,7 +19,7 @@ import { BearerAuthGuard, ConnectorCredentialStore } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { ConnectorRegistry } from './connector-registry';
 import { ConnectorStore } from './persistence/connector-store';
-import { CONNECTOR_SYNC_JOB_TYPE } from './connector-jobs';
+import { CONNECTOR_PRESENCE_JOB_TYPE, CONNECTOR_SYNC_JOB_TYPE } from './connector-jobs';
 import { SYNCABLE_STATES } from './domain/lifecycle';
 import type { ConnectorRow } from './persistence/tables';
 
@@ -55,6 +55,13 @@ const settingsSchema = z.object({
 const subScopeSchema = z.object({
   selected: z.boolean().optional(),
   itemCap: z.number().int().positive().max(100_000).nullable().optional(),
+  /** Per-scope choices (V2.5 item 8.2): today the attachments toggle. */
+  attachments: z.boolean().optional(),
+});
+
+const addSubScopeSchema = z.object({
+  key: z.string().min(1).max(500),
+  label: z.string().min(1).max(500),
 });
 
 @Controller('connectors')
@@ -120,6 +127,8 @@ export class ConnectorsController {
         selected: s.selected,
         itemCap: s.itemCap,
         backfillComplete: s.backfillJson?.complete ?? false,
+        attachments: s.settingsJson?.attachments ?? false,
+        stats: s.statsJson ?? null,
       })),
       syncRuns: runs.map((r) => ({
         id: r.id,
@@ -201,8 +210,66 @@ export class ConnectorsController {
   ) {
     const row = await this.store.byIdForOwner(id, request.principal.userId);
     const parsed = parseOrBadRequest(subScopeSchema, body);
-    await this.store.setSubScopeSelection(row, key, parsed);
+    await this.store.setSubScopeSelection(row, key, {
+      selected: parsed.selected,
+      itemCap: parsed.itemCap,
+      ...(parsed.attachments === undefined
+        ? {}
+        : { settingsJson: { attachments: parsed.attachments } }),
+    });
     return { updated: true };
+  }
+
+  /**
+   * A CUSTOM sub-scope for a container discovery cannot enumerate (V2.5
+   * item 8.2, issue B1: a page and its descendants). The descriptor's key
+   * grammar decides what is acceptable; upstream validation happens on the
+   * next sync, which fails the scope with a named reason rather than here,
+   * because the app holds no upstream credential to check with.
+   */
+  @Post(':id/sub-scopes')
+  async addSubScope(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: unknown,
+  ) {
+    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const parsed = parseOrBadRequest(addSubScopeSchema, body);
+    const descriptor = this.registry.get(row.kind);
+    if (!descriptor?.acceptSubScopeKey) {
+      throw new BadRequestException('this connector kind accepts no custom sub-scopes');
+    }
+    if (!descriptor.acceptSubScopeKey(parsed.key)) {
+      throw new BadRequestException('the key does not match this connector sub-scope form');
+    }
+    await this.store.addSubScope(row, parsed.key, parsed.label);
+    return { added: true };
+  }
+
+  /** Trigger a presence sweep (issue C5): reconcile the ledger against what
+   * the upstream still lists, on demand. */
+  @Post(':id/presence')
+  async presence(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
+    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const descriptor = this.registry.get(row.kind);
+    if (!descriptor?.listKeys) {
+      throw new BadRequestException('this connector kind cannot list upstream presence');
+    }
+    if (!SYNCABLE_STATES.includes(row.state)) {
+      throw new BadRequestException(`a ${row.state} connector cannot sweep`);
+    }
+    await this.db.transaction(async (tx) => {
+      await withTransactionalEnqueue(
+        tx,
+        { type: 'connector.presence_requested', payload: { connector_id: row.id } },
+        {
+          type: CONNECTOR_PRESENCE_JOB_TYPE,
+          payload: { source_type: 'connector', source_id: row.id },
+          principalId: row.ownerId,
+        },
+      );
+    });
+    return { enqueued: true };
   }
 
   /** Trigger a sync pass (also how discovery is refreshed). */

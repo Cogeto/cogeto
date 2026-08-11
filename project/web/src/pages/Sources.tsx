@@ -259,6 +259,16 @@ export function Sources({ session }: { session: Session }) {
   );
 }
 
+/**
+ * The upstream-gone reason on a connector-synced source is an API value
+ * (V2.5 item 8.2); only its display name is translated. Unknown values
+ * render verbatim.
+ */
+const ORIGIN_GONE_KEY: Record<string, string> = {
+  absent: 'origin.gone.absent',
+  archived: 'origin.gone.archived',
+};
+
 /** One catalog row: name, date, fact count, and ONLY the badges that flag. */
 function SourceRow({ item, onOpen }: { item: SourceCatalogItemDto; onOpen: () => void }) {
   const { t } = useTranslation('sources');
@@ -290,10 +300,25 @@ function SourceRow({ item, onOpen }: { item: SourceCatalogItemDto; onOpen: () =>
         <span className="font-mono text-[0.64rem] uppercase tracking-[0.08em] text-slate-400">
           {t(`kindLabel.${item.sourceType}`, { defaultValue: item.sourceType })}
         </span>
+        {item.origin && (
+          <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.64rem] uppercase tracking-[0.08em] text-slate-500">
+            {item.origin.spaceKey ??
+              t(`origin.connectorLabel.${item.origin.connectorKind}`, {
+                defaultValue: item.origin.connectorKind,
+              })}
+          </span>
+        )}
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700">
           {item.name ?? t('list.unnamed')}
         </span>
         <span className="flex flex-wrap items-center gap-1.5">
+          {item.origin?.upstreamGone && (
+            <Pill tone="warning">
+              {ORIGIN_GONE_KEY[item.origin.upstreamGone]
+                ? t(ORIGIN_GONE_KEY[item.origin.upstreamGone]!)
+                : item.origin.upstreamGone}
+            </Pill>
+          )}
           {item.factCount > 0 && (
             <span className="text-xs text-slate-500">
               {t('list.factCount', { count: item.factCount })}

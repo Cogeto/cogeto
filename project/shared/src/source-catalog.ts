@@ -41,6 +41,25 @@ export interface SourceBadgesDto {
   processing: boolean;
 }
 
+/**
+ * Where a connector-synced source came from (V2.5 item 8.2): the audit trail
+ * from fact to original, one click. Null on sources no connector produced.
+ */
+export interface SourceOriginDto {
+  connectorKind: string;
+  kind: 'page' | 'attachment';
+  title: string | null;
+  spaceKey: string | null;
+  spaceName: string | null;
+  version: number | null;
+  /** The live upstream URL. */
+  url: string | null;
+  parentTitle: string | null;
+  /** `absent` or `archived` when the upstream no longer lists the item; the
+   * source remains, and the surface says so instead of deleting. */
+  upstreamGone: string | null;
+}
+
 export interface SourceCatalogItemDto {
   sourceType: string;
   sourceId: string;
@@ -54,6 +73,7 @@ export interface SourceCatalogItemDto {
   at: string;
   factCount: number;
   badges: SourceBadgesDto;
+  origin: SourceOriginDto | null;
 }
 
 export interface SourceCatalogPageDto {
@@ -110,6 +130,8 @@ export interface SourceInspectionDto {
   gateRefusal: string | null;
   /** Revision links touching this source, either side (V2.2 item 5.3). */
   revisions: import('./imports').SourceRevisionDto[];
+  /** Connector provenance, when a connector produced this source. */
+  origin: SourceOriginDto | null;
 }
 
 /** One answer that cited a fact (V2.2 item 5.2, the fact detail view). */

@@ -4,7 +4,12 @@ import type { Db } from '../infrastructure/index';
 import { ConnectorCredentialOpener, ConnectorCredentialStore } from '../identity/index';
 import { ConnectorRegistry } from './connector-registry';
 import { ConnectorStore } from './persistence/connector-store';
-import { CONNECTOR_SYNC_JOB_TYPE, WEBHOOK_DELIVERY_RETENTION_DAYS } from './connector-jobs';
+import {
+  CONNECTOR_PRESENCE_JOB_TYPE,
+  CONNECTOR_SYNC_JOB_TYPE,
+  PRESENCE_SWEEP_DEFAULT_DAYS,
+  WEBHOOK_DELIVERY_RETENTION_DAYS,
+} from './connector-jobs';
 import { SYNCABLE_STATES } from './domain/lifecycle';
 
 /** Refresh credentials expiring within this window. */
@@ -41,6 +46,34 @@ export class ConnectorMaintenance {
     const pruned = await this.store.pruneDeliveriesOlderThan(WEBHOOK_DELIVERY_RETENTION_DAYS);
     if (pruned > 0) this.logger.log(`pruned ${pruned} webhook delivery rows`);
     await this.enqueueDueSyncs();
+    await this.enqueueDuePresenceSweeps();
+  }
+
+  /** The presence cadence (V2.5 item 8.2, issue C5): connectors whose
+   * descriptor can list current keys get a periodic reconcile, because
+   * polling by modified date cannot observe an absence. */
+  private async enqueueDuePresenceSweeps(): Promise<void> {
+    for (const connector of await this.store.listInStates([...SYNCABLE_STATES])) {
+      const descriptor = this.registry.get(connector.kind);
+      if (!descriptor?.listKeys) continue;
+      const cadenceDays = descriptor.presenceSweepDays ?? PRESENCE_SWEEP_DEFAULT_DAYS;
+      const due =
+        !connector.presenceSweptAt ||
+        Date.now() - connector.presenceSweptAt.getTime() > cadenceDays * 86_400_000;
+      if (!due) continue;
+      await enqueueDelayedJob(
+        this.db,
+        {
+          type: CONNECTOR_PRESENCE_JOB_TYPE,
+          payload: {
+            source_type: 'connector',
+            source_id: connector.id,
+            principal_id: connector.ownerId,
+          },
+        },
+        0,
+      );
+    }
   }
 
   /** Refresh before expiry; failure moves to needs_reauth, never a retry

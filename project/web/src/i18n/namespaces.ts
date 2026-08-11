@@ -55,6 +55,8 @@ export const NAMESPACES = [
   'email',
   /** The extraction gate: per-connector admission control (V2.1 item 4.3). */
   'extraction',
+  /** Connections: the connector fleet and the Confluence door (V2.5 item 8.2). */
+  'connections',
   /** Failure copy shown to a user. Never developer or log messages. */
   'errors',
   /** Field-level validation copy. */

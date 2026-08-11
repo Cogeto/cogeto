@@ -160,7 +160,7 @@ describe('selection is by detected type, with the extension as a hint', () => {
 
   it('refuses an unknown type outright', async () => {
     const error = await readDocument(Buffer.from('not a document'), {
-      declaredContentType: 'text/plain',
+      declaredContentType: 'application/x-unknown',
     }).catch((thrown: unknown) => thrown);
     expect(error).toBeInstanceOf(PermanentExtractionError);
     expect((error as PermanentExtractionError).reasonCode).toBe('unsupported_type');

@@ -171,6 +171,10 @@ export const extractionGateRule = pgTable(
     dimension: text('dimension').notNull(),
     value: text('value').notNull(),
     effect: text('effect').$type<'allow' | 'deny'>().notNull(),
+    /** Per-rule bounds (migration 0055): per-container policy for connector
+     * sources. NULL defers to the gate row; the tightest bound wins. */
+    factBudget: integer('fact_budget'),
+    retentionDays: integer('retention_days'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -203,7 +207,7 @@ export const extractionGateRefusal = pgTable(
 );
 
 export type ExtractionRefusalReason =
-  'extraction_disabled' | 'source_disabled' | 'document_class_denied';
+  'extraction_disabled' | 'source_disabled' | 'document_class_denied' | 'folder_denied';
 
 export type ExtractionGateRow = typeof extractionGate.$inferSelect;
 export type ExtractionGateRuleRow = typeof extractionGateRule.$inferSelect;

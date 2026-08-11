@@ -72,6 +72,12 @@ import {
   ConnectorItemCascadeModule,
   ConnectorsModule,
 } from '../connectors/index';
+import {
+  ConfluenceModule,
+  ConfluencePageCascade,
+  ConfluencePageCascadeModule,
+  confluenceConnector,
+} from '../confluence/index';
 import { COGETO_CONFIG, mailOptions, redactionOptions, researchOptions } from './config';
 import type { CogetoConfig } from './config';
 
@@ -140,6 +146,7 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
         ImportItemCascadeModule,
         FindingsReportCascadeModule,
         ConnectorItemCascadeModule,
+        ConfluencePageCascadeModule,
       ],
       // Assistant answers citing erased memories are redacted; reply drafts
       // grounded on the source are too. A ready passport export is a signed
@@ -175,6 +182,9 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
         // reference cleared and reads 'erased' thereafter, so a later sync
         // cannot resurrect the memory (V2.5 item 8.1).
         ConnectorItemCascade,
+        // Confluence provenance rows carry titles, the document's own words,
+        // so they are ERASED with their source (V2.5 item 8.2).
+        ConfluencePageCascade,
       ],
     },
     // Delete-vs-ingestion serialization: the saga cancels a source's pending
@@ -237,14 +247,19 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
   });
   // The connector platform (V2.5 item 8.1): the owner API and the webhook
   // ingress. No descriptor registers in production yet; the first external
-  // connector (item 8.2) will pass its module and descriptor here. The
-  // credential store resolves from the global identity seam; the app root
-  // deliberately does NOT pass credentialReads, so the decrypting opener is
-  // unresolvable in the process that serves requests.
+  // The credential store resolves from the global identity seam; the app
+  // root deliberately does NOT pass credentialReads, so the decrypting
+  // opener is unresolvable in the process that serves requests. The
+  // Confluence descriptor (V2.5 item 8.2) is pure: its client is built per
+  // worker call from opened secrets, so registering it here adds the KIND
+  // without adding any app-side upstream access.
   const connectorsModule = ConnectorsModule.register({
     options: { masterKey: config.masterKey },
-    connectors: [],
+    connectors: [confluenceConnector()],
   });
+  // The Confluence connect surface (V2.5 item 8.2): validation with the
+  // material in hand, then the platform owns everything operational.
+  const confluenceModule = ConfluenceModule.register({ imports: [connectorsModule] });
   // The three resolver-binding modules, un-globaled (B15 closed): each is a
   // dynamic instance receiving the modules it composes, and ChatModule
   // receives all three so its options factory resolves the port tokens by
@@ -362,12 +377,23 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
       // the per-source inspection. Owns no tables; every read goes through the
       // owning modules' public interfaces.
       SourcesModule.register({
-        imports: [memoryModule, filesModule, notesModule, emailModule, researchModule, chatModule],
+        imports: [
+          memoryModule,
+          filesModule,
+          notesModule,
+          emailModule,
+          researchModule,
+          chatModule,
+          connectorsModule,
+          confluenceModule,
+        ],
       }),
       // Bulk import (V2.2 item 5.3): manifest + confirm + record surface.
       importsModule,
       // The connector platform (V2.5 item 8.1): owner API + webhook ingress.
       connectorsModule,
+      // The first real connector (V2.5 item 8.2).
+      confluenceModule,
       // The findings report (V2.3 item 6.2): trigger/status/download only.
       // Generation, signing and retention are the worker's.
       ReportsModule.register({

@@ -10,6 +10,7 @@ import { ConnectorWebhookController } from './webhook.controller';
 import { ConnectorSyncEngine } from './sync-engine';
 import { ConnectorWebhookProcessor } from './webhook-processor';
 import { ConnectorMaintenance } from './maintenance';
+import { ConnectorPresenceSweep } from './presence-sweep';
 import { ConnectorHealthSource } from './connector-health';
 import { ConnectorItemCascade } from './connector-item-cascade';
 import { CONNECTORS_OPTIONS } from './connectors.options';
@@ -47,7 +48,7 @@ export class ConnectorsModule {
         ConnectorItemLedger,
         ConnectorHealthSource,
       ],
-      exports: [ConnectorHealthSource, ConnectorStore],
+      exports: [ConnectorHealthSource, ConnectorStore, ConnectorItemLedger],
     };
   }
 
@@ -71,6 +72,7 @@ export class ConnectorsModule {
         ConnectorSyncEngine,
         ConnectorWebhookProcessor,
         ConnectorMaintenance,
+        ConnectorPresenceSweep,
         ConnectorHealthSource,
         SourceRevisionStore,
       ],
@@ -78,6 +80,7 @@ export class ConnectorsModule {
         ConnectorSyncEngine,
         ConnectorWebhookProcessor,
         ConnectorMaintenance,
+        ConnectorPresenceSweep,
         ConnectorHealthSource,
         ConnectorStore,
       ],

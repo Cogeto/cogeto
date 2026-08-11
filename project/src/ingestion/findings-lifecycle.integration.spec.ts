@@ -10,6 +10,7 @@ import { ModelGateway, ModelGatewayError } from '../model-gateway/index';
 import type { StreamDelta, StructuredExtractionRequest } from '../model-gateway/index';
 import { ReconciliationService } from './pipeline/reconcile.stage';
 import { CheckedPairStore } from './persistence/checked-pair.store';
+import { SourceRevisionStore } from './persistence/source-revision.store';
 import { EntityAliasStore } from './persistence/entity-alias.store';
 import { noopLog } from './pipeline/pipeline-log';
 
@@ -254,6 +255,102 @@ describe('findings lifecycle (integration, real Postgres + Qdrant, scripted judg
     expect((await statusOf(existing.id)).status).toBe('active');
     const events = (await eventsFor(relation.id)).map((e) => e.event);
     expect(events).toEqual(['detected', 'resolved_by_revision']);
+  });
+
+  it('a_connector_revision_resolves_the_finding_naming_the_confluence_version', async () => {
+    // The Confluence chain end to end (V2.5 item 8.2, issue C3): two pages
+    // contradict; the upstream edit arrives as a new source with the
+    // platform's automatic source_revision link carrying the page's version
+    // number; the finding resolves by revision and its event NAMES that
+    // link, from which the version is one read away.
+    const owner = freshOwner('confluence');
+    const subject = 'Atlas Migration';
+    const pageA = `${owner}/org/shared/file-page-a`;
+    const pageB = `${owner}/org/shared/file-page-b`;
+    const pageB2 = `${owner}/org/shared/file-page-b-v7`;
+    const seedFile = async (content: string, vector: number[], sourceId: string) => {
+      const row = await store.createFromFact(principalFor(owner), {
+        content,
+        scope: 'private',
+        sourceType: 'file',
+        sourceId,
+        entities: [],
+        subjectEntity: subject,
+        kind: 'decision',
+        embeddingModel: EMBED_MODEL,
+      });
+      await store.upsertVectors([row], [vector]);
+      return row;
+    };
+
+    await seedFile(`${subject} go-live is September 1.`, BASE_VEC, pageA);
+    const detectGateway = new PairScriptedGateway(() => ({
+      verdict: 'contradicts',
+      direction: null,
+      reason: 'two dates for one go-live',
+    }));
+    const incoming = await seedFile(`${subject} go-live is October 1.`, MID_BAND_VEC, pageB);
+    await runStage6(service(detectGateway), [{ row: incoming, vector: MID_BAND_VEC }]);
+    const [relation] = await relationRows(incoming.id);
+    expect(relation).toBeDefined();
+
+    // The upstream edit: the platform records the automatic link exactly as
+    // the sync engine does, with the Confluence version on the basis.
+    const revisions = new SourceRevisionStore(tdb.db);
+    const link = await revisions.recordDetected(tdb.db, {
+      ownerId: owner,
+      successor: { sourceType: 'file', sourceId: pageB2 },
+      predecessor: { sourceType: 'file', sourceId: pageB },
+      status: 'auto',
+      basis: {
+        filename: 'Engineering / Atlas Migration.md',
+        revisionNew: '7',
+        revisionOld: null,
+        subjectOverlap: null,
+        classMatch: null,
+        shingleSimilarity: null,
+        confidence: 'high',
+        upstreamIdentity: 'conf:page:123',
+      },
+    });
+    expect(link).not.toBeNull();
+
+    const resolveGateway = new PairScriptedGateway((input) => {
+      if (input.includes('October')) {
+        return { verdict: 'supersedes', direction: 'a_over_b', reason: 'corrected page' };
+      }
+      return compatible;
+    });
+    const withRevisions = new ReconciliationService(
+      resolveGateway,
+      store,
+      reconciliation,
+      ledger,
+      aliases,
+      revisions,
+      'test-provider/test-model',
+    );
+    const corrected = await seedFile(
+      `${subject} go-live is September 1, corrected.`,
+      MID_BAND_VEC,
+      pageB2,
+    );
+    const summary = await runStage6(withRevisions, [{ row: corrected, vector: MID_BAND_VEC }]);
+    expect(summary.resolvedByRevision).toBe(1);
+
+    const [after] = await relationRows(incoming.id);
+    expect(after!.resolution).toBe('revision');
+    const events = await eventsFor(relation!.id);
+    const resolvedEvent = events.find((e) => e.event === 'resolved_by_revision');
+    expect(resolvedEvent).toBeDefined();
+    const detail = resolvedEvent!.detail_json as { source_revision?: string | null };
+    // The cause names the LINK, and the link names the version.
+    expect(detail.source_revision).toBe(link!.id);
+    const { rows: linkRows } = await tdb.pool.query<{ basis_json: { revisionNew?: string } }>(
+      `SELECT basis_json FROM source_revision WHERE id = $1`,
+      [link!.id],
+    );
+    expect(linkRows[0]!.basis_json.revisionNew).toBe('7');
   });
 
   it('a revision that changes an unrelated fact leaves the finding open', async () => {

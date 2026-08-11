@@ -1,4 +1,5 @@
 import type { SourceTypeKey } from '@cogeto/shared';
+import type { DbOrTx } from '../infrastructure/index';
 import type { CredentialMaterial } from '../identity/index';
 
 /**
@@ -29,22 +30,45 @@ export interface UpstreamItemRef {
   subScope?: string | null;
 }
 
+/** The bytes to materialize through the ONE existing upload path. */
+export interface UpstreamItemContent {
+  bytes: Buffer;
+  filename: string;
+  contentType: string;
+}
+
+/**
+ * Lazy content: called ONLY when the ledger decided to materialize, so an
+ * unchanged item never fetches its body (the zero-cost re-sync property,
+ * issue C2 of the first real connector). May resolve to `'restricted'` when
+ * the item turns out to be visible to a subset of users (skipped and
+ * reported, spec 4.4.4) or `null` when it is gone upstream by the time it
+ * is fetched. A thrown `UpstreamRateLimitError` pauses the pass beyond the
+ * wall instead of failing the item.
+ */
+export type LazyUpstreamContent = () => Promise<UpstreamItemContent | 'restricted' | null>;
+
 /** One item as fetched, ready for the platform's dedup decision. */
 export interface UpstreamItem extends UpstreamItemRef {
   /**
-   * sha256 hex over the content bytes. The platform computes it when absent;
-   * a connector whose upstream provides a stable content hash or version tag
-   * should map it here so an unchanged item is skipped without reading its
-   * bytes at all.
+   * sha256 hex over the content bytes, or any stable upstream change marker
+   * (a version tag hashed). The platform computes it from the bytes when
+   * absent; REQUIRED when `content` is lazy, because the skip decision must
+   * run before any bytes exist.
    */
   contentHash?: string;
-  /** The content to materialize. Byte-backed items go through the ONE
-   * existing upload path as ordinary file sources. */
-  content: {
-    bytes: Buffer;
-    filename: string;
-    contentType: string;
-  };
+  /** The content to materialize, eager or lazy. Byte-backed items go
+   * through the ONE existing upload path as ordinary file sources. */
+  content: UpstreamItemContent | LazyUpstreamContent;
+  /**
+   * The upstream's own revision marker for this item's current content (a
+   * Confluence version number), recorded on the `source_revision` basis
+   * when an edit supersedes, so a finding resolved by the edit can name it.
+   */
+  upstreamRevision?: string | null;
+  /** Connector-private payload carried to `annotate`; opaque to the
+   * platform, never stored by it. */
+  meta?: unknown;
   /**
    * The upstream's visibility, mapped structurally (spec 4.4.4): `team`
    * becomes a shared source, `personal` becomes private, and `restricted`
@@ -69,6 +93,12 @@ export interface FetchPageArgs {
    * Incremental sync passes null and relies on the cursor.
    */
   since: Date | null;
+  /**
+   * The sub-scope's per-scope settings row, verbatim (V2.5 item 8.2): the
+   * platform stores it, the descriptor interprets it (the attachments
+   * toggle). Null when the scope has none.
+   */
+  scopeSettings: unknown;
 }
 
 export interface FetchPageResult {
@@ -150,6 +180,41 @@ export interface ConnectorDescriptor {
   hasSubScopes: boolean;
   /** Discover the upstream's containers. Required when `hasSubScopes`. */
   listSubScopes?(secrets: ConnectorSecrets): Promise<{ key: string; label: string }[]>;
+  /**
+   * Accept or refuse a CUSTOM sub-scope key the user adds by hand, for
+   * containers discovery cannot enumerate (a page subtree). Absent = no
+   * custom sub-scopes. Pure grammar check; upstream validation happens on
+   * the next sync, which fails the scope with a named reason.
+   */
+  acceptSubScopeKey?(key: string): boolean;
+  /**
+   * Page through the natural keys the upstream CURRENTLY lists for one
+   * sub-scope, identifiers only, for the presence sweep: polling by
+   * modified date structurally cannot observe an absence. `state` defaults
+   * to `present`; `archived` distinguishes an archive from a deletion where
+   * the upstream can say. Absent = no sweep for this connector.
+   */
+  listKeys?(
+    secrets: ConnectorSecrets,
+    args: { subScope: string | null; cursor: unknown; limit: number },
+  ): Promise<{
+    keys: { naturalKey: string; state?: 'present' | 'archived' }[];
+    cursor: unknown;
+    done: boolean;
+  }>;
+  /** Days between presence sweeps; default 7 where `listKeys` exists. */
+  presenceSweepDays?: number;
+  /**
+   * Record connector-owned provenance for a just-materialized source (its
+   * own table, the module rules unchanged). Failures are logged and never
+   * fail the sync: provenance is metadata, the source already exists.
+   */
+  annotate?(
+    db: DbOrTx,
+    item: UpstreamItem,
+    source: { sourceType: string; sourceId: string },
+    connector: { id: string; ownerId: string; orgId: string },
+  ): Promise<void>;
   fetchPage(secrets: ConnectorSecrets, args: FetchPageArgs): Promise<FetchPageResult>;
   /** One targeted item, for webhook-triggered sync. Null = gone upstream. */
   fetchItem(secrets: ConnectorSecrets, ref: UpstreamItemRef): Promise<UpstreamItem | null>;

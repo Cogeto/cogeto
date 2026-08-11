@@ -51,6 +51,12 @@ export interface SourceItem {
    */
   filename?: string;
   /**
+   * The connector sub-scope the source arrived through (V2.5 item 8.2), for
+   * the extraction gate's folder rules. Structural, stamped at
+   * materialization; plain uploads carry none.
+   */
+  gateFolder?: string;
+  /**
    * The reader seam's provenance segments (V2.2 item 5.2): half-open character
    * ranges of `content` with a structured locator each, emitted by the file
    * reader and consumed at admission, where each stored fact's span is

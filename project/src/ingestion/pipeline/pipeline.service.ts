@@ -199,6 +199,7 @@ export class IngestionPipeline {
         sourceType: payload.source_type,
         sourceId: payload.source_id,
         documentClass: source.documentClass,
+        folder: source.gateFolder,
       });
       if (!decision.allowed) {
         summary.skipped = 'gate_refused';

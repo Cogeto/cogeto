@@ -1,4 +1,5 @@
 import { Readable } from 'node:stream';
+import { PLAIN_TEXT_CONTENT_TYPE } from '@cogeto/shared';
 import { DEFAULT_PARSE_CAPS } from '../../infrastructure/index';
 import type { ParseCaps } from '../../infrastructure/index';
 import { CsvReader } from './csv.reader';
@@ -9,6 +10,7 @@ import { PdfReader } from './pdf.reader';
 import { readFailed, unsupportedFormat } from './reader';
 import type { DocumentFormat, DocumentReader, ReadResult } from './reader';
 import { sniffFormat } from './sniff';
+import { TextReader } from './text.reader';
 import { XlsxReader } from './xlsx.reader';
 
 /**
@@ -23,6 +25,9 @@ export const DOCUMENT_READERS: readonly DocumentReader[] = [
   new DocxReader(),
   new XlsxReader(),
   new CsvReader(),
+  // Plain text and Markdown (V2.5 item 8.2): a converted Confluence page
+  // uploads as Markdown.
+  new TextReader(),
   // Standalone images (V2.1 item 4.1): a photograph, a screenshot or an
   // exported diagram is a document too.
   new ImageReader(),
@@ -110,7 +115,7 @@ export function selectReader(
 
   const hinted =
     (declaredContentType
-      ? readers.find((candidate) => candidate.contentTypes.includes(declaredContentType))
+      ? readerForDeclaredType(declaredContentType, filename, readers)
       : undefined) ?? readerForExtension(filename, readers);
 
   if (!hinted) {
@@ -124,6 +129,26 @@ export function selectReader(
     );
   }
   return hinted;
+}
+
+/**
+ * The reader claiming a declared content type, with one exception:
+ * `text/plain` is the label browsers put on ANY textual file, so for it the
+ * extension speaks first. That keeps the CSV alias behaviour exactly as it
+ * was (a `.csv` or `.tsv` declared `text/plain` still routes to the CSV
+ * reader, and a `.pdf` name still hits the detectable-format refusal below),
+ * while a `.txt` or `.md` lands on the text reader that claims it anyway.
+ */
+function readerForDeclaredType(
+  declaredContentType: string,
+  filename: string | null,
+  readers: readonly DocumentReader[],
+): DocumentReader | undefined {
+  if (declaredContentType === PLAIN_TEXT_CONTENT_TYPE) {
+    const byExtension = readerForExtension(filename, readers);
+    if (byExtension) return byExtension;
+  }
+  return readers.find((candidate) => candidate.contentTypes.includes(declaredContentType));
 }
 
 function readerForExtension(

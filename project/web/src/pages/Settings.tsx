@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trans, useTranslation } from 'react-i18next';
 import type {
@@ -10,10 +11,16 @@ import type {
 import { LANGUAGE_ENDONYMS, MEASURED_LANGUAGES, SUPPORTED_LANGUAGES } from '@cogeto/shared';
 import {
   acceptContextSuggestion,
+  addConnectorSubScope,
   addEmailAllowlistEntry,
   addEntityAlias,
   addExtractionGateRule,
+  connectConfluence,
+  disableConnector,
   dismissContextSuggestion,
+  enableConnector,
+  fetchConnectorDetail,
+  fetchConnectors,
   fetchEntityAliases,
   fetchContextSuggestions,
   fetchEmailConfig,
@@ -26,20 +33,38 @@ import {
   fetchPassportExports,
   fetchSettings,
   fetchUserContext,
+  reconnectConfluence,
+  removeConnector,
   removeEmailAllowlistEntry,
   removeEntityAlias,
   removeExtractionGateRule,
+  requestConfluenceEstimate,
   setExtractionGate,
+  sweepConnectorPresence,
+  syncConnector,
   triggerPassportExport,
   updateAnswerModel,
+  updateConnectorSettings,
+  updateConnectorSubScope,
   updateSettings,
   updateUserContext,
 } from '../api';
+import type { ConnectorDto, ConnectorSettingsDto, ConnectorState } from '../api';
 import type { Session } from '../auth/oidc';
-import { formatLongDayMonth } from '../i18n/format';
+import { formatDate, formatLongDayMonth } from '../i18n/format';
 import { Shell } from '../components/Shell';
-import { btnPrimary, btnSecondary, SectionTitle, Skeleton } from '../components/ui';
+import {
+  btnPrimary,
+  btnSecondary,
+  Drawer,
+  ErrorState,
+  Pill,
+  SectionTitle,
+  Skeleton,
+  SkeletonRows,
+} from '../components/ui';
 import { timeAgo } from '../components/status';
+import type { Tone } from '../components/status';
 import { useTheme } from '../theme';
 import type { Theme } from '../theme';
 import { useAutoResearch } from '../research-pref';
@@ -142,6 +167,8 @@ export function Settings({ session }: { session: Session }) {
       <ModelConfigSection session={session} />
 
       <EmailCaptureSection session={session} />
+
+      <ConnectionsSection session={session} />
 
       <ExtractionGateSection session={session} />
 
@@ -1051,6 +1078,947 @@ function EmailCaptureSection({ session }: { session: Session }) {
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * The connector STATE, its paused reason and a run's vocabulary are API values
+ * (V2.5 items 8.1 and 8.2); only their display names are translated, through
+ * explicit value → key maps. An unknown value renders verbatim.
+ */
+const CONNECTOR_STATE_KEY: Record<string, string> = {
+  configured: 'state.configured',
+  authorised: 'state.authorised',
+  syncing: 'state.syncing',
+  healthy: 'state.healthy',
+  degraded: 'state.degraded',
+  needs_reauth: 'state.needs_reauth',
+  disabled: 'state.disabled',
+  removed: 'state.removed',
+};
+
+const CONNECTOR_STATE_TONE: Record<string, Tone> = {
+  configured: 'neutral',
+  authorised: 'info',
+  syncing: 'info',
+  healthy: 'positive',
+  degraded: 'warning',
+  needs_reauth: 'danger',
+  disabled: 'neutral',
+  removed: 'neutral',
+};
+
+const CONNECTOR_PAUSED_REASON_KEY: Record<string, string> = {
+  rate_limited: 'pausedReason.rate_limited',
+  daily_item_cap: 'pausedReason.daily_item_cap',
+  daily_upload_limit: 'pausedReason.daily_upload_limit',
+};
+
+const CONFLUENCE_CONNECT_FAILURE_KEY: Record<string, string> = {
+  wrong_site: 'connect.failure.wrong_site',
+  bad_credentials: 'connect.failure.bad_credentials',
+  no_permission: 'connect.failure.no_permission',
+  unreachable: 'connect.failure.unreachable',
+};
+
+const SYNC_RUN_KIND_KEY: Record<string, string> = {
+  backfill: 'detail.runs.kind.backfill',
+  incremental: 'detail.runs.kind.incremental',
+  webhook: 'detail.runs.kind.webhook',
+  presence: 'detail.runs.kind.presence',
+};
+
+const SYNC_RUN_STATE_KEY: Record<string, string> = {
+  running: 'detail.runs.state.running',
+  completed: 'detail.runs.state.completed',
+  failed: 'detail.runs.state.failed',
+  cancelled: 'detail.runs.state.cancelled',
+};
+
+const runTone = (state: string): Tone =>
+  state === 'completed'
+    ? 'positive'
+    : state === 'failed'
+      ? 'danger'
+      : state === 'running'
+        ? 'info'
+        : 'neutral';
+
+/** The lifecycle states in which sync, estimate and presence make sense. */
+const SYNCABLE_CONNECTOR_STATES: ConnectorState[] = [
+  'authorised',
+  'syncing',
+  'healthy',
+  'degraded',
+];
+
+/**
+ * Connections (V2.5 item 8.2): the connector fleet's surface. The list shows
+ * every connector with its honest state (a connector that silently stopped
+ * syncing reads degraded or needs reauthorisation, never merely quiet); the
+ * Confluence connect form states the read-only promise at the moment the
+ * token is handed over; the detail drawer holds scopes, backfill, runs.
+ */
+function ConnectionsSection({ session }: { session: Session }) {
+  const { t } = useTranslation('connections');
+  const queryClient = useQueryClient();
+  const connectors = useQuery({
+    queryKey: ['connectors'],
+    queryFn: () => fetchConnectors(session),
+  });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['connectors'] });
+
+  const [showConnect, setShowConnect] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [syncQueuedId, setSyncQueuedId] = useState<string | null>(null);
+
+  const onActionError = (error: unknown) =>
+    setActionError(error instanceof Error ? error.message : t('list.actionFailed'));
+  const sync = useMutation({
+    mutationFn: (id: string) => syncConnector(session, id),
+    onSuccess: async (_result, id) => {
+      setActionError(null);
+      setSyncQueuedId(id);
+      await invalidate();
+    },
+    onError: onActionError,
+  });
+  const disable = useMutation({
+    mutationFn: (id: string) => disableConnector(session, id),
+    onSuccess: async () => {
+      setActionError(null);
+      await invalidate();
+    },
+    onError: onActionError,
+  });
+  const enable = useMutation({
+    mutationFn: (id: string) => enableConnector(session, id),
+    onSuccess: async () => {
+      setActionError(null);
+      await invalidate();
+    },
+    onError: onActionError,
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => removeConnector(session, id),
+    onSuccess: async () => {
+      setActionError(null);
+      setOpenId(null);
+      await invalidate();
+    },
+    onError: onActionError,
+  });
+
+  // The consequence copy is explicit: ingested sources REMAIN (V2.5 item 8.1's
+  // removal rule); only the credential and the sync state are destroyed.
+  const confirmRemove = (row: ConnectorDto) => {
+    if (window.confirm(t('list.removeConfirm', { name: row.name }))) remove.mutate(row.id);
+  };
+
+  const rows = (connectors.data ?? []).filter((row) => row.state !== 'removed');
+
+  return (
+    <section className="mt-4 space-y-4 rounded-lg border border-slate-200 bg-surface p-5 shadow-sm">
+      <div>
+        <SectionTitle>{t('heading')}</SectionTitle>
+        <p className="mt-1 text-xs text-slate-400">{t('explainer')}</p>
+      </div>
+
+      {connectors.isPending && <Skeleton className="h-16 w-full" />}
+      {connectors.isError && <ErrorState>{t('list.error')}</ErrorState>}
+
+      {connectors.data && (
+        <>
+          {rows.length === 0 ? (
+            <p className="text-xs text-slate-400">{t('list.empty')}</p>
+          ) : (
+            <ul className="divide-y divide-slate-100 rounded-md border border-slate-200">
+              {rows.map((row) => (
+                <li key={row.id} className="space-y-1 px-3 py-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700">
+                      {row.name}
+                    </span>
+                    <Pill tone={CONNECTOR_STATE_TONE[row.state] ?? 'neutral'}>
+                      {CONNECTOR_STATE_KEY[row.state]
+                        ? t(CONNECTOR_STATE_KEY[row.state]!)
+                        : row.state}
+                    </Pill>
+                    <span className="text-xs text-slate-400" title={row.lastSyncAt ?? undefined}>
+                      {row.lastSyncAt
+                        ? t('list.lastSync', { when: timeAgo(row.lastSyncAt) })
+                        : t('list.neverSynced')}
+                    </span>
+                  </div>
+                  {row.settings.pausedReason && (
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      {CONNECTOR_PAUSED_REASON_KEY[row.settings.pausedReason]
+                        ? t(CONNECTOR_PAUSED_REASON_KEY[row.settings.pausedReason]!)
+                        : row.settings.pausedReason}
+                    </p>
+                  )}
+                  {row.statusReason && <p className="text-xs text-slate-500">{row.statusReason}</p>}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      className={btnSecondary}
+                      onClick={() => setOpenId(row.id)}
+                    >
+                      {t('list.open')}
+                    </button>
+                    <button
+                      type="button"
+                      className={btnSecondary}
+                      disabled={sync.isPending || !SYNCABLE_CONNECTOR_STATES.includes(row.state)}
+                      onClick={() => sync.mutate(row.id)}
+                    >
+                      {t('list.sync')}
+                    </button>
+                    {row.state === 'disabled' ? (
+                      <button
+                        type="button"
+                        className={btnSecondary}
+                        disabled={enable.isPending}
+                        onClick={() => enable.mutate(row.id)}
+                      >
+                        {t('list.enable')}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className={btnSecondary}
+                        disabled={disable.isPending || row.state === 'configured'}
+                        onClick={() => disable.mutate(row.id)}
+                      >
+                        {t('list.disable')}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="text-xs text-red-700 dark:text-red-300 hover:underline"
+                      disabled={remove.isPending}
+                      onClick={() => confirmRemove(row)}
+                    >
+                      {t('common:action.remove')}
+                    </button>
+                    {syncQueuedId === row.id && (
+                      <span className="text-xs text-slate-400">{t('list.syncQueued')}</span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          {actionError && <p className="text-xs text-red-700 dark:text-red-300">{actionError}</p>}
+
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowConnect((value) => !value)}
+              className={btnPrimary}
+            >
+              {showConnect ? t('common:action.cancel') : t('connect.open')}
+            </button>
+          </div>
+          {showConnect && <ConfluenceConnectForm session={session} onConnected={invalidate} />}
+        </>
+      )}
+
+      {openId && (
+        <ConnectorDetailDrawer session={session} id={openId} onClose={() => setOpenId(null)} />
+      )}
+    </section>
+  );
+}
+
+/**
+ * The Confluence connect form (V2.5 item 8.2, issue A). The read-only
+ * statement is shown AT THE MOMENT of connecting, because an Atlassian API
+ * token carries its account's full permissions: the promise and the stronger
+ * arrangement both belong next to the token field, not in a manual.
+ */
+function ConfluenceConnectForm({
+  session,
+  onConnected,
+}: {
+  session: Session;
+  onConnected: () => Promise<unknown>;
+}) {
+  const { t } = useTranslation('connections');
+  const [name, setName] = useState('');
+  const [siteUrl, setSiteUrl] = useState('');
+  const [email, setEmail] = useState('');
+  const [apiToken, setApiToken] = useState('');
+  const [failure, setFailure] = useState<string | null>(null);
+  const [spacesVisible, setSpacesVisible] = useState<number | null>(null);
+
+  const connect = useMutation({
+    mutationFn: () =>
+      connectConfluence(session, {
+        name: name.trim(),
+        siteUrl: siteUrl.trim(),
+        email: email.trim(),
+        apiToken: apiToken.trim(),
+      }),
+    onSuccess: async (result) => {
+      if (!result.connected) {
+        setFailure(result.reason);
+        setSpacesVisible(null);
+        return;
+      }
+      setFailure(null);
+      setSpacesVisible(result.spacesVisible);
+      setName('');
+      setSiteUrl('');
+      setEmail('');
+      setApiToken('');
+      await onConnected();
+    },
+  });
+
+  const ready =
+    name.trim() !== '' && siteUrl.trim() !== '' && email.trim() !== '' && apiToken.trim() !== '';
+  const inputClass = 'mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm';
+
+  return (
+    <div className="space-y-3 rounded-md border border-slate-200 p-3">
+      <div className="space-y-1 rounded-md border border-brand-teal/40 bg-brand-teal/5 p-3 text-xs text-slate-600">
+        <p className="font-medium">{t('connect.readOnly.statement')}</p>
+        <p>{t('connect.readOnly.recommendation')}</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs text-slate-500">
+          <span className="block">{t('connect.name')}</span>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t('connect.namePlaceholder')}
+            className={inputClass}
+            maxLength={200}
+          />
+        </label>
+        <label className="block text-xs text-slate-500">
+          <span className="block">{t('connect.siteUrl')}</span>
+          <input
+            value={siteUrl}
+            onChange={(e) => setSiteUrl(e.target.value)}
+            placeholder={t('connect.siteUrlPlaceholder')}
+            className={inputClass}
+            maxLength={500}
+          />
+        </label>
+        <label className="block text-xs text-slate-500">
+          <span className="block">{t('connect.email')}</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={inputClass}
+            maxLength={320}
+          />
+        </label>
+        <label className="block text-xs text-slate-500">
+          <span className="block">{t('connect.apiToken')}</span>
+          <input
+            type="password"
+            autoComplete="off"
+            value={apiToken}
+            onChange={(e) => setApiToken(e.target.value)}
+            className={inputClass}
+          />
+        </label>
+      </div>
+      <p className="text-xs text-slate-400">{t('connect.apiTokenHelp')}</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          disabled={connect.isPending || !ready}
+          onClick={() => connect.mutate()}
+          className={btnPrimary}
+        >
+          {connect.isPending ? t('connect.connecting') : t('connect.action')}
+        </button>
+        {spacesVisible !== null && (
+          <span className="text-xs text-brand-teal-ink dark:text-brand-teal">
+            {t('connect.success', { count: spacesVisible })}
+          </span>
+        )}
+      </div>
+      {failure && (
+        <p className="text-xs text-red-700 dark:text-red-300">
+          {CONFLUENCE_CONNECT_FAILURE_KEY[failure]
+            ? t(CONFLUENCE_CONNECT_FAILURE_KEY[failure]!)
+            : failure}
+        </p>
+      )}
+      {connect.isError && (
+        <p className="text-xs text-red-700 dark:text-red-300">
+          {connect.error instanceof Error ? connect.error.message : t('connect.failed')}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * One connector's detail: account, state, scopes with the honest estimate,
+ * backfill bounds, recent runs, the presence check. Polls only while a sync
+ * runs or an estimate is pending, the passport list's modest pattern.
+ */
+function ConnectorDetailDrawer({
+  session,
+  id,
+  onClose,
+}: {
+  session: Session;
+  id: string;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation('connections');
+  const queryClient = useQueryClient();
+  const [estimateAt, setEstimateAt] = useState<number | null>(null);
+  const detail = useQuery({
+    queryKey: ['connector', id],
+    queryFn: () => fetchConnectorDetail(session, id),
+    refetchInterval: (query) =>
+      query.state.data?.state === 'syncing' || estimateAt !== null ? 3000 : false,
+  });
+
+  // Stop the estimate poll once fresh stats landed, or give up after 90s.
+  useEffect(() => {
+    if (estimateAt === null || !detail.data) return;
+    const landed = detail.data.subScopes.some(
+      (scope) => scope.stats && Date.parse(scope.stats.computedAt) >= estimateAt,
+    );
+    if (landed || Date.now() - estimateAt > 90_000) setEstimateAt(null);
+  }, [detail.data, estimateAt]);
+
+  const invalidate = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['connector', id] });
+    await queryClient.invalidateQueries({ queryKey: ['connectors'] });
+  };
+
+  const estimate = useMutation({
+    mutationFn: () => requestConfluenceEstimate(session, id),
+    onSuccess: () => setEstimateAt(Date.now()),
+  });
+  const setScope = useMutation({
+    mutationFn: (input: { key: string; patch: { selected?: boolean; attachments?: boolean } }) =>
+      updateConnectorSubScope(session, id, input.key, input.patch),
+    onSuccess: invalidate,
+  });
+  const [presenceQueued, setPresenceQueued] = useState(false);
+  const presence = useMutation({
+    mutationFn: () => sweepConnectorPresence(session, id),
+    onSuccess: () => setPresenceQueued(true),
+  });
+
+  const data = detail.data;
+  const syncable = data ? SYNCABLE_CONNECTOR_STATES.includes(data.state) : false;
+
+  return (
+    <Drawer title={t('detail.title')} onClose={onClose}>
+      {detail.isPending && <SkeletonRows rows={4} label={t('detail.loading')} />}
+      {detail.isError && <ErrorState>{t('detail.error')}</ErrorState>}
+      {data && (
+        <>
+          <div className="space-y-1 rounded-md bg-slate-50 p-3">
+            <p className="text-sm font-medium text-slate-800">{data.name}</p>
+            {data.credential?.accountIdentity && (
+              <p className="text-xs text-slate-500">
+                <span className="font-medium">{t('detail.account')}</span>{' '}
+                <span className="font-mono">{data.credential.accountIdentity}</span>
+              </p>
+            )}
+            <p className="flex flex-wrap items-center gap-2 text-xs">
+              <Pill tone={CONNECTOR_STATE_TONE[data.state] ?? 'neutral'}>
+                {CONNECTOR_STATE_KEY[data.state] ? t(CONNECTOR_STATE_KEY[data.state]!) : data.state}
+              </Pill>
+              <span className="text-slate-400" title={data.lastSyncAt ?? undefined}>
+                {data.lastSyncAt
+                  ? t('list.lastSync', { when: timeAgo(data.lastSyncAt) })
+                  : t('list.neverSynced')}
+              </span>
+            </p>
+            {data.statusReason && <p className="text-xs text-slate-500">{data.statusReason}</p>}
+            {data.settings.pausedReason && (
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                {CONNECTOR_PAUSED_REASON_KEY[data.settings.pausedReason]
+                  ? t(CONNECTOR_PAUSED_REASON_KEY[data.settings.pausedReason]!)
+                  : data.settings.pausedReason}
+              </p>
+            )}
+          </div>
+
+          {data.state === 'needs_reauth' && data.kind === 'confluence' && (
+            <ConfluenceReconnectForm session={session} id={id} onReconnected={invalidate} />
+          )}
+
+          <div>
+            <p className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-sm font-medium text-slate-700">
+                {t('detail.spaces.heading')}
+              </span>
+              {data.kind === 'confluence' && (
+                <button
+                  type="button"
+                  className={btnSecondary}
+                  disabled={estimate.isPending || estimateAt !== null || !syncable}
+                  onClick={() => estimate.mutate()}
+                >
+                  {estimateAt !== null
+                    ? t('detail.spaces.estimating')
+                    : t('detail.spaces.estimateAction')}
+                </button>
+              )}
+            </p>
+            <p className="text-xs text-slate-400">{t('detail.spaces.explainer')}</p>
+            {estimate.isError && (
+              <p className="text-xs text-red-700 dark:text-red-300">
+                {estimate.error instanceof Error ? estimate.error.message : t('list.actionFailed')}
+              </p>
+            )}
+            {data.subScopes.length === 0 ? (
+              <p className="mt-1 text-xs text-slate-400">{t('detail.spaces.empty')}</p>
+            ) : (
+              <ul className="mt-2 divide-y divide-slate-100 rounded-md border border-slate-200">
+                {data.subScopes.map((scope) => (
+                  <li key={scope.key} className="space-y-1 px-3 py-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="flex min-w-0 flex-1 items-center gap-2 text-sm text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={scope.selected}
+                          disabled={setScope.isPending}
+                          onChange={(e) =>
+                            setScope.mutate({
+                              key: scope.key,
+                              patch: { selected: e.target.checked },
+                            })
+                          }
+                          className="rounded border-slate-300"
+                        />
+                        <span className="min-w-0 truncate">{scope.label}</span>
+                      </label>
+                      {scope.backfillComplete && (
+                        <span className="text-xs text-slate-400">
+                          {t('detail.spaces.backfillDone')}
+                        </span>
+                      )}
+                    </div>
+                    <label className="ml-6 flex items-center gap-2 text-xs text-slate-500">
+                      <input
+                        type="checkbox"
+                        checked={scope.attachments}
+                        disabled={setScope.isPending}
+                        onChange={(e) =>
+                          setScope.mutate({
+                            key: scope.key,
+                            patch: { attachments: e.target.checked },
+                          })
+                        }
+                        className="rounded border-slate-300"
+                      />
+                      {t('detail.spaces.attachments')}
+                    </label>
+                    {scope.stats && (
+                      <p className="ml-6 text-xs text-slate-400">
+                        {t('detail.spaces.about', { count: scope.stats.estimatedItems })}
+                        {' · '}
+                        {scope.stats.window === 'all'
+                          ? t('detail.spaces.windowAll')
+                          : t('detail.spaces.windowSince', {
+                              date: formatDate(scope.stats.window),
+                            })}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {data.kind === 'confluence' && (
+            <ConfluenceSubtreeForm session={session} id={id} onAdded={invalidate} />
+          )}
+
+          <ConnectorBackfillSettings
+            session={session}
+            id={id}
+            settings={data.settings}
+            onSaved={invalidate}
+          />
+
+          <div>
+            <p className="text-sm font-medium text-slate-700">{t('detail.runs.heading')}</p>
+            {data.syncRuns.length === 0 ? (
+              <p className="mt-1 text-xs text-slate-400">{t('detail.runs.empty')}</p>
+            ) : (
+              <ul className="mt-2 divide-y divide-slate-100 rounded-md border border-slate-200">
+                {data.syncRuns.map((run) => (
+                  <li key={run.id} className="space-y-0.5 px-3 py-2 text-xs">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium text-slate-600">
+                        {SYNC_RUN_KIND_KEY[run.kind] ? t(SYNC_RUN_KIND_KEY[run.kind]!) : run.kind}
+                      </span>
+                      <Pill tone={runTone(run.state)}>
+                        {SYNC_RUN_STATE_KEY[run.state]
+                          ? t(SYNC_RUN_STATE_KEY[run.state]!)
+                          : run.state}
+                      </Pill>
+                      <span className="text-slate-400" title={run.startedAt}>
+                        {timeAgo(run.startedAt)}
+                      </span>
+                    </div>
+                    {run.reason && (
+                      <p className="text-slate-500">
+                        {CONNECTOR_PAUSED_REASON_KEY[run.reason]
+                          ? t(CONNECTOR_PAUSED_REASON_KEY[run.reason]!)
+                          : run.reason}
+                      </p>
+                    )}
+                    {run.counts && (
+                      <p className="flex flex-wrap gap-x-3 text-slate-500">
+                        <span>
+                          {t('detail.runs.count.materialized', { value: run.counts.materialized })}
+                        </span>
+                        <span>
+                          {t('detail.runs.count.unchangedSkipped', {
+                            value: run.counts.unchangedSkipped,
+                          })}
+                        </span>
+                        <span>
+                          {t('detail.runs.count.revisions', { value: run.counts.revisions })}
+                        </span>
+                        <span>
+                          {t('detail.runs.count.deletedUpstream', {
+                            value: run.counts.deletedUpstream,
+                          })}
+                        </span>
+                        <span>
+                          {t('detail.runs.count.skippedRestricted', {
+                            value: run.counts.skippedRestricted,
+                          })}
+                        </span>
+                        <span>{t('detail.runs.count.failed', { value: run.counts.failed })}</span>
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="space-y-1 border-t border-slate-100 pt-3">
+            <p className="text-xs text-slate-500">{t('detail.presence.explainer')}</p>
+            <button
+              type="button"
+              className={btnSecondary}
+              disabled={presence.isPending || presenceQueued || !syncable}
+              onClick={() => presence.mutate()}
+            >
+              {t('detail.presence.action')}
+            </button>
+            {presenceQueued && (
+              <p className="text-xs text-slate-400">{t('detail.presence.queued')}</p>
+            )}
+            {presence.isError && (
+              <p className="text-xs text-red-700 dark:text-red-300">
+                {presence.error instanceof Error ? presence.error.message : t('list.actionFailed')}
+              </p>
+            )}
+          </div>
+        </>
+      )}
+    </Drawer>
+  );
+}
+
+/** Reconnect after needs_reauth: same validation, same one-way storage. */
+function ConfluenceReconnectForm({
+  session,
+  id,
+  onReconnected,
+}: {
+  session: Session;
+  id: string;
+  onReconnected: () => Promise<unknown>;
+}) {
+  const { t } = useTranslation('connections');
+  const [siteUrl, setSiteUrl] = useState('');
+  const [email, setEmail] = useState('');
+  const [apiToken, setApiToken] = useState('');
+  const [failure, setFailure] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const reconnect = useMutation({
+    mutationFn: () =>
+      reconnectConfluence(session, id, {
+        siteUrl: siteUrl.trim(),
+        email: email.trim(),
+        apiToken: apiToken.trim(),
+      }),
+    onSuccess: async (result) => {
+      if (!result.connected) {
+        setFailure(result.reason);
+        return;
+      }
+      setFailure(null);
+      setDone(true);
+      setApiToken('');
+      await onReconnected();
+    },
+  });
+
+  const ready = siteUrl.trim() !== '' && email.trim() !== '' && apiToken.trim() !== '';
+  const inputClass = 'mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm';
+
+  return (
+    <div className="space-y-2 rounded-md border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3">
+      <p className="text-xs text-amber-800 dark:text-amber-300">
+        {t('detail.reconnect.explainer')}
+      </p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <label className="block text-xs text-slate-500">
+          <span className="block">{t('connect.siteUrl')}</span>
+          <input
+            value={siteUrl}
+            onChange={(e) => setSiteUrl(e.target.value)}
+            placeholder={t('connect.siteUrlPlaceholder')}
+            className={inputClass}
+            maxLength={500}
+          />
+        </label>
+        <label className="block text-xs text-slate-500">
+          <span className="block">{t('connect.email')}</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={inputClass}
+            maxLength={320}
+          />
+        </label>
+        <label className="block text-xs text-slate-500 sm:col-span-2">
+          <span className="block">{t('connect.apiToken')}</span>
+          <input
+            type="password"
+            autoComplete="off"
+            value={apiToken}
+            onChange={(e) => setApiToken(e.target.value)}
+            className={inputClass}
+          />
+        </label>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          disabled={reconnect.isPending || !ready}
+          onClick={() => reconnect.mutate()}
+          className={btnPrimary}
+        >
+          {reconnect.isPending ? t('detail.reconnect.connecting') : t('detail.reconnect.action')}
+        </button>
+        {done && (
+          <span className="text-xs text-brand-teal-ink dark:text-brand-teal">
+            {t('detail.reconnect.success')}
+          </span>
+        )}
+      </div>
+      {failure && (
+        <p className="text-xs text-red-700 dark:text-red-300">
+          {CONFLUENCE_CONNECT_FAILURE_KEY[failure]
+            ? t(CONFLUENCE_CONNECT_FAILURE_KEY[failure]!)
+            : failure}
+        </p>
+      )}
+      {reconnect.isError && (
+        <p className="text-xs text-red-700 dark:text-red-300">
+          {reconnect.error instanceof Error ? reconnect.error.message : t('connect.failed')}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** A page and its descendants as a custom sub-scope (key form `page:{id}`). */
+function ConfluenceSubtreeForm({
+  session,
+  id,
+  onAdded,
+}: {
+  session: Session;
+  id: string;
+  onAdded: () => Promise<unknown>;
+}) {
+  const { t } = useTranslation('connections');
+  const [pageId, setPageId] = useState('');
+  const [label, setLabel] = useState('');
+  const [added, setAdded] = useState(false);
+
+  const add = useMutation({
+    mutationFn: () =>
+      addConnectorSubScope(session, id, { key: `page:${pageId.trim()}`, label: label.trim() }),
+    onSuccess: async () => {
+      setPageId('');
+      setLabel('');
+      setAdded(true);
+      await onAdded();
+    },
+  });
+
+  return (
+    <div>
+      <p className="text-sm font-medium text-slate-700">{t('detail.subtree.heading')}</p>
+      <p className="text-xs text-slate-400">{t('detail.subtree.explainer')}</p>
+      <div className="mt-2 flex flex-wrap items-end gap-2">
+        <label className="text-xs text-slate-500">
+          <span className="block">{t('detail.subtree.pageId')}</span>
+          <input
+            value={pageId}
+            onChange={(e) => setPageId(e.target.value.replace(/[^0-9]/g, ''))}
+            inputMode="numeric"
+            className="mt-1 w-32 rounded-md border border-slate-300 px-2 py-1 text-sm"
+          />
+        </label>
+        <label className="min-w-[12rem] flex-1 text-xs text-slate-500">
+          <span className="block">{t('detail.subtree.label')}</span>
+          <input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder={t('detail.subtree.labelPlaceholder')}
+            className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+            maxLength={500}
+          />
+        </label>
+        <button
+          type="button"
+          onClick={() => add.mutate()}
+          disabled={add.isPending || pageId.trim() === '' || label.trim() === ''}
+          className={btnSecondary}
+        >
+          {t('common:action.add')}
+        </button>
+      </div>
+      {added && <p className="mt-1 text-xs text-slate-500">{t('detail.subtree.added')}</p>}
+      {add.isError && (
+        <p className="mt-1 text-xs text-red-700 dark:text-red-300">
+          {add.error instanceof Error ? add.error.message : t('detail.subtree.failed')}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Backfill bounds and the daily cap; "everything" is an explicit, labelled
+ * unbounded choice, never a default. */
+function ConnectorBackfillSettings({
+  session,
+  id,
+  settings,
+  onSaved,
+}: {
+  session: Session;
+  id: string;
+  settings: ConnectorSettingsDto;
+  onSaved: () => Promise<unknown>;
+}) {
+  const { t } = useTranslation('connections');
+  const [days, setDays] = useState(settings.backfillDays?.toString() ?? '');
+  const [itemCap, setItemCap] = useState(settings.backfillItemCap?.toString() ?? '');
+  const [all, setAll] = useState(settings.backfillAll ?? false);
+  const [dailyCap, setDailyCap] = useState(settings.dailyItemCap?.toString() ?? '');
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setDays(settings.backfillDays?.toString() ?? '');
+    setItemCap(settings.backfillItemCap?.toString() ?? '');
+    setAll(settings.backfillAll ?? false);
+    setDailyCap(settings.dailyItemCap?.toString() ?? '');
+  }, [
+    settings.backfillDays,
+    settings.backfillItemCap,
+    settings.backfillAll,
+    settings.dailyItemCap,
+  ]);
+
+  const save = useMutation({
+    mutationFn: () =>
+      updateConnectorSettings(session, id, {
+        ...(days.trim() !== '' ? { backfillDays: Number(days) } : {}),
+        ...(itemCap.trim() !== '' ? { backfillItemCap: Number(itemCap) } : {}),
+        backfillAll: all,
+        ...(dailyCap.trim() !== '' ? { dailyItemCap: Number(dailyCap) } : {}),
+      }),
+    onSuccess: async () => {
+      setSaved(true);
+      await onSaved();
+    },
+  });
+
+  const numeric = (setter: (value: string) => void) => (e: ChangeEvent<HTMLInputElement>) =>
+    setter(e.target.value.replace(/[^0-9]/g, ''));
+
+  return (
+    <div>
+      <p className="text-sm font-medium text-slate-700">{t('detail.backfill.heading')}</p>
+      <p className="text-xs text-slate-400">{t('detail.backfill.explainer')}</p>
+      <div className="mt-2 flex flex-wrap items-end gap-3">
+        <label className="text-xs text-slate-500">
+          <span className="block">{t('detail.backfill.days')}</span>
+          <input
+            value={days}
+            onChange={numeric(setDays)}
+            disabled={all}
+            className="mt-1 w-24 rounded-md border border-slate-300 px-2 py-1 text-sm"
+          />
+        </label>
+        <label className="text-xs text-slate-500">
+          <span className="block">{t('detail.backfill.itemCap')}</span>
+          <input
+            value={itemCap}
+            onChange={numeric(setItemCap)}
+            disabled={all}
+            className="mt-1 w-24 rounded-md border border-slate-300 px-2 py-1 text-sm"
+          />
+        </label>
+        <label className="text-xs text-slate-500">
+          <span className="block">{t('detail.backfill.dailyItemCap')}</span>
+          <input
+            value={dailyCap}
+            onChange={numeric(setDailyCap)}
+            className="mt-1 w-24 rounded-md border border-slate-300 px-2 py-1 text-sm"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={() => save.mutate()}
+          disabled={save.isPending}
+          className={btnSecondary}
+        >
+          {t('common:action.save')}
+        </button>
+        {saved && <span className="text-xs text-slate-500">{t('common:state.saved')}</span>}
+      </div>
+      <label className="mt-2 flex items-start gap-2">
+        <input
+          type="checkbox"
+          checked={all}
+          onChange={(e) => setAll(e.target.checked)}
+          className="mt-0.5 rounded border-slate-300"
+        />
+        <span className="text-xs text-slate-500">
+          <span className="font-medium text-slate-700">{t('detail.backfill.everything')}</span>
+          <span className="block">{t('detail.backfill.everythingHelp')}</span>
+        </span>
+      </label>
+      {save.isError && (
+        <p className="mt-1 text-xs text-red-700 dark:text-red-300">
+          {save.error instanceof Error ? save.error.message : t('detail.backfill.saveFailed')}
+        </p>
+      )}
+    </div>
   );
 }
 

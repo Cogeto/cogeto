@@ -5,7 +5,12 @@ import type { Db } from '../infrastructure/index';
 import { FilesService } from '../files/index';
 import { SourceRevisionStore } from '../ingestion/index';
 import { ConnectorCredentialOpener, ConnectorCredentialStore } from '../identity/index';
-import type { ConnectorSecrets, ConnectorDescriptor, UpstreamItem } from './connector-descriptor';
+import type {
+  ConnectorSecrets,
+  ConnectorDescriptor,
+  UpstreamItem,
+  UpstreamItemContent,
+} from './connector-descriptor';
 import { UpstreamAuthError, UpstreamRateLimitError } from './connector-descriptor';
 import { ConnectorRegistry } from './connector-registry';
 import {
@@ -266,6 +271,7 @@ export class ConnectorSyncEngine {
           cursor,
           limit: PAGE_SIZE,
           since,
+          scopeSettings: scope.settingsJson ?? null,
         });
       } catch (error) {
         if (error instanceof UpstreamRateLimitError) {
@@ -288,16 +294,16 @@ export class ConnectorSyncEngine {
         counts.fetched += 1;
         const paused = await this.processItem(row, descriptor, scope, item, counts, backfill);
         if (paused) {
-          // Cap or budget hit mid-page: the cursor does NOT advance past
-          // this page, so the remainder is re-listed next pass and the
-          // ledger skips what already landed.
+          // Cap, budget or rate wall hit mid-page: the cursor does NOT
+          // advance past this page, so the remainder is re-listed next pass
+          // and the ledger skips what already landed.
           await this.store.recordBackfill(row.id, scope.key, backfill);
           return {
             pagesUsed,
             finished: false,
             stop: 'pause',
-            pauseReason: paused,
-            delayMinutes: CAP_PAUSE_MINUTES,
+            pauseReason: paused.pause,
+            delayMinutes: paused.delayMinutes,
           };
         }
       }
@@ -319,8 +325,9 @@ export class ConnectorSyncEngine {
 
   /**
    * One item through the encoded decision table (issue C2). Returns a pause
-   * reason when an admission bound stops the pass, null otherwise. Also the
-   * webhook processor's entry, so both paths converge on identical rules.
+   * when an admission bound or a rate wall stops the pass, null otherwise.
+   * Also the webhook processor's entry, so both paths converge on identical
+   * rules.
    */
   async processItem(
     row: ConnectorRow,
@@ -329,7 +336,7 @@ export class ConnectorSyncEngine {
     item: UpstreamItem,
     counts: SyncRunCounts,
     backfill?: { itemsDone: number; complete: boolean },
-  ): Promise<string | null> {
+  ): Promise<{ pause: string; delayMinutes: number } | null> {
     // spec 4.4.4: an item restricted to a subset of users is skipped and
     // reported, never guessed at.
     if (item.visibility === 'restricted') {
@@ -337,7 +344,13 @@ export class ConnectorSyncEngine {
       return null;
     }
     const subScopeKey = scope ? (scope.key === '' ? null : scope.key) : (item.subScope ?? null);
-    const hash = item.contentHash ?? contentHashOf(item.content.bytes);
+    // Lazy content exists precisely so the skip decision runs before any
+    // bytes do; a lazy item without an upstream change marker would defeat
+    // that, so it is a descriptor defect and refuses loudly.
+    if (typeof item.content === 'function' && !item.contentHash) {
+      throw new Error(`connector '${descriptor.kind}' returned lazy content without a contentHash`);
+    }
+    const hash = item.contentHash ?? contentHashOf((item.content as UpstreamItemContent).bytes);
     const decision = await this.ledger.decide(row.id, item.naturalKey, hash, subScopeKey);
 
     if (item.deleted) {
@@ -370,13 +383,11 @@ export class ConnectorSyncEngine {
       }
       case 'new': {
         const capPause = await this.admissionPause(row, descriptor, scope);
-        if (capPause) return capPause;
-        const source = await this.materialize(row, descriptor, item);
-        if (source === 'daily_upload_limit') return source;
-        if (!source) {
-          counts.failed += 1;
-          return null;
-        }
+        if (capPause) return { pause: capPause, delayMinutes: CAP_PAUSE_MINUTES };
+        const outcome = await this.materialize(row, descriptor, item, counts, subScopeKey);
+        if (outcome.kind === 'pause') return outcome.pauseResult;
+        if (outcome.kind !== 'ok') return null;
+        const source = outcome.source;
         await this.ledger.recordNew({
           connectorId: row.id,
           ownerId: row.ownerId,
@@ -387,6 +398,7 @@ export class ConnectorSyncEngine {
           sourceId: source.sourceId,
           materializedScope: item.visibility === 'team' ? 'shared' : 'private',
         });
+        await this.annotate(row, descriptor, item, source);
         counts.materialized += 1;
         if (backfill) backfill.itemsDone += 1;
         return null;
@@ -397,17 +409,15 @@ export class ConnectorSyncEngine {
         // new content" is stronger evidence than a filename match, so the
         // link is automatic (docs/features/revisions.md inherits this).
         const capPause = await this.admissionPause(row, descriptor, scope);
-        if (capPause) return capPause;
+        if (capPause) return { pause: capPause, delayMinutes: CAP_PAUSE_MINUTES };
         const predecessor = {
           sourceType: decision.item.sourceType,
           sourceId: decision.item.sourceId,
         };
-        const source = await this.materialize(row, descriptor, item);
-        if (source === 'daily_upload_limit') return source;
-        if (!source) {
-          counts.failed += 1;
-          return null;
-        }
+        const outcome = await this.materialize(row, descriptor, item, counts, subScopeKey);
+        if (outcome.kind === 'pause') return outcome.pauseResult;
+        if (outcome.kind !== 'ok') return null;
+        const source = outcome.source;
         await this.ledger.recordChanged(decision.item.id, {
           contentHash: hash,
           sourceType: source.sourceType,
@@ -424,8 +434,10 @@ export class ConnectorSyncEngine {
               },
               status: 'auto',
               basis: {
-                filename: item.content.filename,
-                revisionNew: null,
+                filename: outcome.filename,
+                // The upstream's own revision marker, so a finding resolved
+                // by this edit can name the version that resolved it.
+                revisionNew: item.upstreamRevision ?? null,
                 revisionOld: null,
                 subjectOverlap: null,
                 classMatch: null,
@@ -439,10 +451,31 @@ export class ConnectorSyncEngine {
               this.logger.warn(`revision link failed for one item: ${error.message}`);
             });
         }
+        await this.annotate(row, descriptor, item, source);
         counts.revisions += 1;
         if (backfill) backfill.itemsDone += 1;
         return null;
       }
+    }
+  }
+
+  /** Connector-owned provenance for a materialized source; metadata, so a
+   * failure is logged and never fails the sync. */
+  private async annotate(
+    row: ConnectorRow,
+    descriptor: ConnectorDescriptor,
+    item: UpstreamItem,
+    source: { sourceType: string; sourceId: string },
+  ): Promise<void> {
+    if (!descriptor.annotate) return;
+    try {
+      await descriptor.annotate(this.db, item, source, {
+        id: row.id,
+        ownerId: row.ownerId,
+        orgId: row.orgId,
+      });
+    } catch (error) {
+      this.logger.warn(`connector annotate failed for one item: ${(error as Error).message}`);
     }
   }
 
@@ -470,21 +503,74 @@ export class ConnectorSyncEngine {
   /**
    * Materialization through the ONE existing upload path at demoted
    * priority: the extraction gate, the budgets and the per-user daily caps
-   * apply exactly as for a single upload. 'daily_upload_limit' = pause.
+   * apply exactly as for a single upload. Lazy content resolves HERE, and
+   * only here, behind the same token bucket as a listing call: this is the
+   * point past which an item costs something, and everything before it is
+   * free by construction (the zero-cost re-sync property).
    */
   private async materialize(
     row: ConnectorRow,
     descriptor: ConnectorDescriptor,
     item: UpstreamItem,
-  ): Promise<{ sourceType: string; sourceId: string } | 'daily_upload_limit' | null> {
+    counts: SyncRunCounts,
+    subScopeKey: string | null,
+  ): Promise<
+    | { kind: 'ok'; source: { sourceType: string; sourceId: string }; filename: string }
+    | { kind: 'pause'; pauseResult: { pause: string; delayMinutes: number } }
+    | { kind: 'skipped' }
+    | { kind: 'failed' }
+  > {
     if (!this.files) throw new Error('connector sync requires the files module (worker)');
+    let content: UpstreamItemContent;
+    if (typeof item.content === 'function') {
+      const wait = await this.acquireRateToken(row.id, descriptor);
+      if (wait > 0) {
+        return {
+          kind: 'pause',
+          pauseResult: { pause: 'rate_limited', delayMinutes: Math.max(wait / 60, 0.1) },
+        };
+      }
+      let resolved;
+      try {
+        resolved = await item.content();
+      } catch (error) {
+        if (error instanceof UpstreamRateLimitError) {
+          await this.recordUpstreamWall(row.id, error.retryAfterSeconds);
+          return {
+            kind: 'pause',
+            pauseResult: {
+              pause: 'rate_limited',
+              delayMinutes: Math.max(error.retryAfterSeconds / 60, 0.1),
+            },
+          };
+        }
+        if (error instanceof UpstreamAuthError) throw error;
+        this.logger.warn(`connector item content fetch failed: ${(error as Error).message}`);
+        counts.failed += 1;
+        return { kind: 'failed' };
+      }
+      if (resolved === 'restricted') {
+        // Visible to a subset of users after all: skipped and reported,
+        // exactly as a restricted listing item is (spec 4.4.4).
+        counts.skippedRestricted += 1;
+        return { kind: 'skipped' };
+      }
+      if (resolved === null) {
+        // Gone upstream between the listing and the fetch.
+        counts.deletedUpstream += 1;
+        return { kind: 'skipped' };
+      }
+      content = resolved;
+    } else {
+      content = item.content;
+    }
     try {
       const { objectKey } = await this.files.upload(
         principalFor(row),
         {
-          buffer: item.content.bytes,
-          originalName: item.content.filename,
-          mimeType: item.content.contentType,
+          buffer: content.bytes,
+          originalName: content.filename,
+          mimeType: content.contentType,
         },
         {
           // spec 4.4.4: inherited from the source system, structurally.
@@ -492,14 +578,30 @@ export class ConnectorSyncEngine {
           sensitive: false,
           discard: false,
         },
-        { jobPriority: CONNECTOR_PIPELINE_PRIORITY },
+        {
+          jobPriority: CONNECTOR_PIPELINE_PRIORITY,
+          // The sub-scope key, so the extraction gate's folder dimension
+          // can express per-space policy (issue B3 of the first connector).
+          gateFolder: subScopeKey ?? item.subScope ?? undefined,
+        },
       );
-      return { sourceType: descriptor.sourceType, sourceId: objectKey };
+      return {
+        kind: 'ok',
+        source: { sourceType: descriptor.sourceType, sourceId: objectKey },
+        filename: content.filename,
+      };
     } catch (error) {
       const status = (error as { getStatus?: () => number }).getStatus?.();
-      if (status === 429) return 'daily_upload_limit'; // pause, never bypass
+      if (status === 429) {
+        // Pause, never bypass.
+        return {
+          kind: 'pause',
+          pauseResult: { pause: 'daily_upload_limit', delayMinutes: CAP_PAUSE_MINUTES },
+        };
+      }
       this.logger.warn(`connector item failed to materialize: ${(error as Error).message}`);
-      return null;
+      counts.failed += 1;
+      return { kind: 'failed' };
     }
   }
 
