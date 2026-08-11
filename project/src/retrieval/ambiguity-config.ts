@@ -14,7 +14,7 @@
  * whose retrieval composition genuinely differs can carry its own value with
  * evidence instead of arguing about principle.
  */
-export const AMBIGUITY_CONFIG_VERSION = 2;
+export const AMBIGUITY_CONFIG_VERSION = 3;
 
 export interface AmbiguityThresholds {
   /**

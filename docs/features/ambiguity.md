@@ -330,3 +330,18 @@ facts and requires the answer to describe the one the conversation was about
 and to mention neither the other subject nor its attributes.
 `followup_focus_after_digression_en` covers layer 3: name a subject, ask
 something unrelated, then use a pronoun.
+
+## Raw-text naming (config v3, issue #497)
+
+The naming rules originally keyed only on the rewrite's extracted entities,
+and recorded decisions from a real corpus showed that extraction returning
+NOTHING for follow-up phrasings ("I meant Nexen Europe Group BV", "…for
+Beckhoff") while the named subject's cluster sat on screen, so the user was
+shown the same which-did-you-mean list they were answering. Since config v3
+the query TEXT itself also names, deterministically: a cluster whose
+alias-canonical key appears token-bounded inside the folded query is
+exactly named, and a cluster one of whose key tokens of four characters or
+longer appears as a query token is partially named, with several partial
+matches fanning out over exactly those clusters (the existing two-Anas
+rule). No model call was added; stored decisions record the config version
+so old records stay interpretable.
