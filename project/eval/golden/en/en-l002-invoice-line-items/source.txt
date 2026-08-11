@@ -1,0 +1,16 @@
+INVOICE No. 2026-0771                       Issue date: 03.07.2026
+Meridian Components Ltd.
+14 Harbour Way, Dublin 2          VAT IE6388047V
+sales@meridian-components.example
+
+Bill to: Adriatic Foods d.o.o., Vukovarska 18, Split
+
+#   Article        Description                              Qty    Unit     Amount
+1   PX-330         Proximity sensor, M12, PNP, 10-30 V DC   12     18.60    223.20
+2   CB-114-5       Sensor cable 5 m, M12 4-pin, shielded    12     7.45     89.40
+
+Shipping and handling: 24.00
+Total due: 336.60 EUR
+
+Payment terms: NET 30 DAYS. Due date: 02.08.2026.
+Goods remain property of Meridian Components Ltd. until paid in full.

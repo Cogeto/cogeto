@@ -1,0 +1,73 @@
+{
+  "case_id": "en-l001",
+  "source_type": "file",
+  "filename": "Velum_Offer_412-02_Nordwind.pdf",
+  "source_date": "2026-06-12T10:00:00.000Z",
+  "expected_memories": [
+    {
+      "content_gist": "Offer 412/02 includes 4 pcs. of LM-4420-0031 linear motor module at 1.218,40 per unit, line total 4.386,24",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Offer 412/02 includes 2 pcs. of KV-77-B2 servo drive terminal at 412,90 per unit, line total 743,22",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Offer 412/02 includes 6 pcs. of TR-909-XL planar transport mover at 2.744,00 per unit, line total 14.817,60",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "The total of Offer 412/02 is 24.933,83 EUR, with a subtotal of 19.947,06 EUR and VAT of 4.986,77 EUR",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": true
+    },
+    {
+      "content_gist": "Offer 412/02 is valid until 15.08.2026",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {
+        "valid_until": "2026-08-15"
+      },
+      "must_extract": true
+    },
+    {
+      "content_gist": "Velum Industrial offers Nordwind Automation delivery in 6-8 weeks from order with payment 30 days from invoice date",
+      "kind": "fact",
+      "entities": ["Velum Industrial"],
+      "condition": null,
+      "temporal": {},
+      "must_extract": false
+    },
+    {
+      "content_gist": "Velum Industrial states that delivery dates reflect current planning and may change",
+      "kind": "fact",
+      "entities": [],
+      "condition": null,
+      "temporal": {},
+      "must_extract": false
+    }
+  ],
+  "must_not_extract": [
+    "the seller's letterhead as facts: address, phone, fax, e-mail, web site, OIB or IBAN of Velum Industrial",
+    "the UL/CSA cable listing note or the ordering-code legend as facts of their own"
+  ],
+  "must_not_contain": [],
+  "expected_relations": [],
+  "verification_expected": "supported"
+}

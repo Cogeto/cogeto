@@ -1,0 +1,33 @@
+Velum Industrial d.o.o.
+Zelengaj 44, 10000 Zagreb
+Tel: 01/4587-220  Fax: 01/4587-221
+velum@velum-industrial.example  www.velum-industrial.example
+OIB: 11224433556  IBAN: HR8324840081234567890
+
+OFFER 412/02                                    Date: 12.06.2026
+To: Nordwind Automation GmbH, Ringstrasse 9, Graz
+
+Item  Article           Description                                Qty     Unit price   Disc.%   Line total
+1
+LM-4420-0031
+Linear motor module, 48 V DC, Fmax = 850 N, vmax = 2.4 m/s, integrated encoder, IP54
+"cables for fixed installation, min. bending radius = 40 mm,
+The cable is UL and CSA listed.
+xxxx = ordering indication of cable length in decimetres"
+4 pcs. 	1.218,40 	10,00 	1.096,56 	4.386,24
+2
+KV-77-B2
+Servo drive terminal, 1-channel, 48 V DC, 8 A, STO
+2 pcs. 	412,90 	10,00 	371,61 	743,22
+3
+TR-909-XL
+Planar transport mover, payload 4.2 kg, repeatability 0.05 mm
+6 pcs. 	2.744,00 	10,00 	2.469,60 	14.817,60
+
+Subtotal without VAT: 19.947,06 EUR
+VAT 25%: 4.986,77 EUR
+Total: 24.933,83 EUR
+
+Offer valid until 15.08.2026. Delivery 6-8 weeks from order.
+Payment: 30 days from invoice date, bank transfer.
+Stated delivery dates reflect current planning and may change.
