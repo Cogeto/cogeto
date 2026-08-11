@@ -49,9 +49,11 @@ import { ImportCoordinator } from '../imports/index';
 import {
   CONNECTOR_MAINTENANCE_CRONTAB,
   ConnectorMaintenance,
+  ConnectorPresenceSweep,
   ConnectorSyncEngine,
   ConnectorWebhookProcessor,
 } from '../connectors/index';
+import { ConfluenceEstimateService } from '../confluence/index';
 import {
   ANSWER_PROMPT,
   ChatAttachmentReadService,
@@ -222,6 +224,8 @@ async function main(): Promise<void> {
     connectorSyncEngine: context.get(ConnectorSyncEngine),
     connectorWebhookProcessor: context.get(ConnectorWebhookProcessor),
     connectorMaintenance: context.get(ConnectorMaintenance),
+    connectorPresenceSweep: context.get(ConnectorPresenceSweep),
+    confluenceEstimate: context.get(ConfluenceEstimateService),
     researchConcluder: context.get(ResearchConclusionService),
     researchSynthesis: context.get(ResearchSynthesisService),
     skillEngine: context.get(SkillEngine),

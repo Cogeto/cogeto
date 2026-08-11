@@ -354,6 +354,26 @@
       "cancelled_other": "{{count}} cancelled"
     }
   },
+  "origin": {
+    "connectorLabel": {
+      "confluence": "Confluence"
+    },
+    "gone": {
+      "absent": "gone upstream",
+      "archived": "archived upstream"
+    },
+    "panel": {
+      "heading": "From {{connector}}",
+      "space": "Space: {{space}}",
+      "version": "Version {{version}}",
+      "parent": "Under: {{title}}",
+      "open": "Open the live page",
+      "notice": {
+        "absent": "This page is no longer listed upstream. The source and its facts remain until you delete them.",
+        "archived": "This page was archived upstream. The source and its facts remain until you delete them."
+      }
+    }
+  },
   "revisions": {
     "heading": "Document versions",
     "none": "No version links. When a newer version of this document is imported, the link is recorded or proposed here.",

@@ -170,6 +170,9 @@ export class FileSourceReader implements SourceReader {
       // For the anchor call (V2.1 item 4.2): the filename often carries the
       // subject or revision the first page repeats.
       filename: storedFilename ?? undefined,
+      // A connector's sub-scope key, for the gate's folder rules (V2.5 item
+      // 8.2); plain uploads carry none.
+      gateFolder: decodeFilename(object.metadata['gate-folder']) ?? undefined,
     };
   }
 

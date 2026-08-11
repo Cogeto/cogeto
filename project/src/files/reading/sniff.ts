@@ -116,6 +116,10 @@ export function sniffContentType(buffer: Buffer): string | null {
       return sniffImage(buffer);
     case 'csv':
       return CSV_CONTENT_TYPE;
+    // Plain text and Markdown have no signature, so `sniffFormat` can never
+    // return 'text'; the case exists for exhaustiveness only.
+    case 'text':
+      return null;
     // An OLE2 file is recognised, not supported: naming a content type for it
     // would let it through the upload allowlist as if it were readable.
     case 'ole2':

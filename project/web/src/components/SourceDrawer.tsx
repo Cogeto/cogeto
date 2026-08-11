@@ -10,6 +10,7 @@ import {
   fetchFileDownload,
   fetchFileSource,
   fetchNote,
+  fetchSourceInspection,
   fetchWebSource,
   reprocessSource,
   fetchSourceContext,
@@ -99,6 +100,16 @@ const canReprocess = (outcome: string): boolean =>
   outcome === 'needs_vision' || outcome === 'read_failed' || outcome === 'empty';
 
 /**
+ * The upstream-gone reason on a connector-synced source is an API value
+ * (V2.5 item 8.2); only its notice sentence is translated, through an
+ * explicit value → key map. An unknown value renders verbatim.
+ */
+const ORIGIN_GONE_NOTICE_KEY: Record<string, string> = {
+  absent: 'origin.panel.notice.absent',
+  archived: 'origin.panel.notice.archived',
+};
+
+/**
  * Which drawer body a source type gets, typed over the source-type registry's
  * union: adding a source type without deciding its drawer treatment is a
  * compile error, never a silent fallback. `none` (container and defunct
@@ -180,6 +191,14 @@ export function SourceDrawer({
     queryFn: () => fetchWebSource(session, sourceId),
     enabled: isWeb,
   });
+  // The same inspection InspectionPanels fetches (same key, so react-query
+  // dedups the request); the drawer only reads the connector origin off it.
+  const inspectionQuery = useQuery({
+    queryKey: ['source-inspection', sourceType, sourceId],
+    queryFn: () => fetchSourceInspection(session, sourceType, sourceId),
+    enabled: isFile,
+  });
+  const origin = inspectionQuery.data?.origin ?? null;
   const draftReply = useMutation({
     mutationFn: () => draftEmailReply(session, sourceId),
     onSuccess: () => {
@@ -385,6 +404,55 @@ export function SourceDrawer({
                         <p className="text-xs text-red-600 dark:text-red-300">{reprocessError}</p>
                       )}
                     </div>
+                  )}
+                </div>
+              )}
+              {origin && (
+                <div className="space-y-1 rounded-md border border-slate-200 bg-surface p-2">
+                  <p className="text-xs font-medium text-slate-600">
+                    {t('origin.panel.heading', {
+                      connector: t(`origin.connectorLabel.${origin.connectorKind}`, {
+                        defaultValue: origin.connectorKind,
+                      }),
+                    })}
+                  </p>
+                  <div className="space-y-0.5 text-xs text-slate-600">
+                    {origin.title && <p className="font-medium text-slate-700">{origin.title}</p>}
+                    {(origin.spaceName ?? origin.spaceKey) && (
+                      <p>
+                        {t('origin.panel.space', {
+                          space:
+                            origin.spaceName && origin.spaceKey
+                              ? `${origin.spaceName} (${origin.spaceKey})`
+                              : (origin.spaceName ?? origin.spaceKey),
+                        })}
+                      </p>
+                    )}
+                    {origin.version !== null && (
+                      <p>{t('origin.panel.version', { version: origin.version })}</p>
+                    )}
+                    {origin.parentTitle && (
+                      <p>{t('origin.panel.parent', { title: origin.parentTitle })}</p>
+                    )}
+                  </div>
+                  {origin.url && (
+                    <p className="break-all text-xs">
+                      <a
+                        href={origin.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-brand-teal-ink dark:text-brand-teal hover:underline"
+                      >
+                        {t('origin.panel.open')}
+                      </a>
+                    </p>
+                  )}
+                  {origin.upstreamGone && (
+                    <p className="rounded bg-amber-50 dark:bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300">
+                      {ORIGIN_GONE_NOTICE_KEY[origin.upstreamGone]
+                        ? t(ORIGIN_GONE_NOTICE_KEY[origin.upstreamGone]!)
+                        : origin.upstreamGone}
+                    </p>
                   )}
                 </div>
               )}

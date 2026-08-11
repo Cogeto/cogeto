@@ -19,6 +19,8 @@ import {
   ALLOWED_UPLOAD_CONTENT_TYPES,
   CSV_ALIAS_CONTENT_TYPES,
   CSV_CONTENT_TYPE,
+  MARKDOWN_CONTENT_TYPE,
+  PLAIN_TEXT_CONTENT_TYPE,
 } from '@cogeto/shared';
 import {
   clearIdempotencyForReprocess,
@@ -63,6 +65,14 @@ export interface UploadFlags {
   sensitive: boolean;
   /** Extract-and-discard: keep no original after extraction. */
   discard: boolean;
+}
+
+export interface UploadOptions {
+  jobPriority?: number;
+  /** The extraction gate's folder-dimension value for this source (a
+   * connector sub-scope key). Rides the object metadata to the pipeline;
+   * absent for plain uploads. */
+  gateFolder?: string;
 }
 
 /** How long the staging object lingers before the backstop cleanup runs. */
@@ -139,8 +149,10 @@ export class FilesService {
     file: UploadedFile,
     flags: UploadFlags,
     /** Bulk import demotes its pipeline jobs so interactive work runs first
-     * (V2.2 item 5.3); a plain upload keeps the default priority. */
-    options: { jobPriority?: number } = {},
+     * (V2.2 item 5.3); a plain upload keeps the default priority. A connector
+     * stamps its sub-scope key as `gateFolder` so the extraction gate's
+     * folder dimension can express per-container policy (V2.5 item 8.2). */
+    options: UploadOptions = {},
   ): Promise<{ objectKey: string }> {
     if (file.buffer.length === 0) throw new BadRequestException('the uploaded file is empty');
     if (file.buffer.length > this.options.uploadMaxBytes) {
@@ -241,7 +253,7 @@ export class FilesService {
     flags: UploadFlags,
     objectKey: string,
     contentType: string,
-    options: { jobPriority?: number } = {},
+    options: UploadOptions = {},
   ): Promise<{ objectKey: string }> {
     const checksum = createHash('sha256').update(file.buffer).digest('hex');
 
@@ -250,7 +262,10 @@ export class FilesService {
       contentType,
       // Filename URL-encoded — S3 metadata must be US-ASCII; erased with the
       // bytes on deletion, so no schema of its own (handoff: no new columns).
-      metadata: { 'original-filename': encodeURIComponent(file.originalName) },
+      metadata: {
+        'original-filename': encodeURIComponent(file.originalName),
+        ...(options.gateFolder ? { 'gate-folder': encodeURIComponent(options.gateFolder) } : {}),
+      },
     });
 
     try {
@@ -306,7 +321,7 @@ export class FilesService {
     flags: UploadFlags,
     objectKey: string,
     contentType: string,
-    options: { jobPriority?: number } = {},
+    options: UploadOptions = {},
   ): Promise<{ objectKey: string }> {
     const stagingKey = toStagingKey(objectKey);
 
@@ -603,13 +618,23 @@ export class FilesService {
     if (isCsvName && (declared === '' || CSV_ALIAS_CONTENT_TYPES.includes(declared))) {
       return CSV_CONTENT_TYPE;
     }
+    // The other signature-less formats: markdown and plain text (V2.5 item
+    // 8.2, the text reader). A declared markdown type is trusted as CSV's is;
+    // plain text needs a text-looking name so a mislabelled binary still
+    // refuses; an unlabeled `.md`/`.txt` resolves like the CSV aliases do.
+    if (declared === MARKDOWN_CONTENT_TYPE) return MARKDOWN_CONTENT_TYPE;
+    const isTextName = /\.(md|markdown|txt)$/i.test(file.originalName);
+    if (declared === PLAIN_TEXT_CONTENT_TYPE && isTextName) return PLAIN_TEXT_CONTENT_TYPE;
+    if (isTextName && (declared === '' || declared === 'application/octet-stream')) {
+      return MARKDOWN_CONTENT_TYPE;
+    }
     throw new BadRequestException(unsupportedTypeMessage(file.mimeType));
   }
 }
 
 /** One refusal message for every rejected type, naming what IS accepted. */
 function unsupportedTypeMessage(declaredType: string): string {
-  return `unsupported file type '${declaredType}': only PDF, DOCX, XLSX, CSV and images are accepted`;
+  return `unsupported file type '${declaredType}': only PDF, DOCX, XLSX, CSV, Markdown, plain text and images are accepted`;
 }
 
 function safeDecode(value: string): string {

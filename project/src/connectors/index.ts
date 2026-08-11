@@ -4,6 +4,9 @@ export { ConnectorRegistry } from './connector-registry';
 export { ConnectorSyncEngine } from './sync-engine';
 export { ConnectorWebhookProcessor } from './webhook-processor';
 export { ConnectorMaintenance } from './maintenance';
+export { ConnectorPresenceSweep } from './presence-sweep';
+export { ConnectorStore } from './persistence/connector-store';
+export { ConnectorItemLedger } from './persistence/item-ledger';
 export { ConnectorHealthSource } from './connector-health';
 export type { ConnectorFleetSummary } from './connector-health';
 export { ConnectorItemCascade } from './connector-item-cascade';
@@ -14,6 +17,7 @@ export {
   CONNECTOR_WEBHOOK_JOB_TYPE,
   CONNECTOR_MAINTENANCE_JOB_TYPE,
   CONNECTOR_MAINTENANCE_CRONTAB,
+  CONNECTOR_PRESENCE_JOB_TYPE,
 } from './connector-jobs';
 export { UpstreamAuthError, UpstreamRateLimitError } from './connector-descriptor';
 export type {
@@ -23,7 +27,9 @@ export type {
   ConnectorRateProfile,
   FetchPageArgs,
   FetchPageResult,
+  LazyUpstreamContent,
   UpstreamItem,
+  UpstreamItemContent,
   UpstreamItemRef,
 } from './connector-descriptor';
 export { CONNECTOR_STATES } from './domain/lifecycle';

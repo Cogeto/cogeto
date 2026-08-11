@@ -58,11 +58,20 @@ const addRuleSchema = z
     dimension: z.enum(EXTRACTION_GATE_DIMENSIONS),
     value: z.string().min(1).max(500),
     effect: z.enum(['allow', 'deny']),
+    factBudget: z.number().int().min(1).max(10_000).nullable().optional(),
+    retentionDays: z.number().int().min(1).max(3_650).nullable().optional(),
   })
   .refine((rule) => rule.dimension !== 'source_id' || rule.effect === 'deny', {
     message:
       'source_id rules are deny-only: allowing a single document would silently disable the rest of its connector',
-  });
+  })
+  .refine(
+    (rule) =>
+      rule.dimension !== 'source_id' || (rule.factBudget == null && rule.retentionDays == null),
+    {
+      message: 'per-rule bounds apply to folder and document_class rules only',
+    },
+  );
 
 @Controller('extraction-gate')
 @UseGuards(BearerAuthGuard)
@@ -138,6 +147,8 @@ function toRuleDto(row: ExtractionGateRuleRow): ExtractionGateRuleDto {
     dimension: row.dimension as ExtractionGateRuleDto['dimension'],
     value: row.value,
     effect: row.effect,
+    factBudget: row.factBudget,
+    retentionDays: row.retentionDays,
     createdAt: row.createdAt.toISOString(),
   };
 }

@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import type {
   Principal,
   SourceBadgeFilter,
@@ -6,6 +6,7 @@ import type {
   SourceCatalogItemDto,
   SourceCatalogPageDto,
   SourceInspectionDto,
+  SourceOriginDto,
 } from '@cogeto/shared';
 import { isRegisteredSourceType, sourceTypeDescriptor } from '@cogeto/shared';
 import { DRIZZLE, jobRunStates } from '../infrastructure/index';
@@ -32,6 +33,8 @@ import {
   verificationsForMemories,
 } from '../ingestion/index';
 import { keysWithReadOutcome, readOutcomesForKeys } from '../files/index';
+import { ConfluencePageStore } from '../confluence/index';
+import { ConnectorItemLedger } from '../connectors/index';
 import { listNoteSources, hydrateNoteSources } from '../notes/index';
 import { listEmailSources, hydrateEmailSources } from '../email/index';
 import { listWebSources, hydrateWebSources } from '../research/index';
@@ -87,6 +90,11 @@ export class SourceCatalogService {
     private readonly suppressed: SuppressedFactLog,
     private readonly contexts: SourceContextStore,
     private readonly revisions: SourceRevisionStore,
+    /** Connector provenance (V2.5 item 8.2), read through the owning
+     * modules' public stores like every other family. Optional: a root
+     * without connectors still serves the catalog, minus origins. */
+    @Optional() private readonly confluencePages?: ConfluencePageStore,
+    @Optional() private readonly connectorItems?: ConnectorItemLedger,
   ) {}
 
   async list(principal: Principal, query: CatalogQuery): Promise<SourceCatalogPageDto> {
@@ -227,6 +235,10 @@ export class SourceCatalogService {
         createdAt: row.createdAt.toISOString(),
         decidedAt: row.decidedAt?.toISOString() ?? null,
       })),
+      origin:
+        (await this.originsFor(principal.userId, [{ sourceType, sourceId }])).get(
+          `${sourceType} ${sourceId}`,
+        ) ?? null,
     };
   }
 
@@ -481,6 +493,7 @@ export class SourceCatalogService {
         contextNamesForSources(this.db, principal.userId, keys),
       ]);
     const names = await this.fileNames(refs, contextNames);
+    const origins = await this.originsFor(principal.userId, keys);
 
     return refs.map((r) => {
       const key = `${r.sourceType} ${r.sourceId}`;
@@ -506,8 +519,45 @@ export class SourceCatalogService {
         at: r.at.toISOString(),
         factCount: stat?.facts ?? 0,
         badges,
+        origin: origins.get(key) ?? null,
       };
     });
+  }
+
+  /**
+   * Connector provenance for the page's rows (V2.5 item 8.2): what space,
+   * which page, which version, and whether the upstream still lists it. Read
+   * through the owning modules' public stores, exactly like every family.
+   */
+  private async originsFor(
+    ownerId: string,
+    keys: readonly { sourceType: string; sourceId: string }[],
+  ): Promise<Map<string, SourceOriginDto>> {
+    const out = new Map<string, SourceOriginDto>();
+    if (!this.confluencePages) return out;
+    const fileKeys = keys.filter((k) => k.sourceType === 'file');
+    if (fileKeys.length === 0) return out;
+    const [pages, upstream] = await Promise.all([
+      this.confluencePages.forOwnerSources(ownerId, fileKeys),
+      this.connectorItems
+        ? this.connectorItems.upstreamStateForSources(ownerId, fileKeys)
+        : Promise.resolve(new Map<string, { state: string; reason: string | null }>()),
+    ]);
+    for (const [key, row] of pages) {
+      const gone = upstream.get(key);
+      out.set(key.replace(':', ' '), {
+        connectorKind: 'confluence',
+        kind: row.kind,
+        title: row.title,
+        spaceKey: row.spaceKey,
+        spaceName: row.spaceName,
+        version: row.version,
+        url: row.url,
+        parentTitle: row.parentTitle,
+        upstreamGone: gone?.state === 'deleted_upstream' ? (gone.reason ?? 'absent') : null,
+      });
+    }
+    return out;
   }
 
   /**

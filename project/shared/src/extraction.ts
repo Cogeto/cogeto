@@ -4,9 +4,10 @@
  * the enforcement lives in the ingestion pipeline.
  */
 
-/** Rule dimensions code binds today; channel and folder arrive with connectors
- * and bulk import and are refused by the API until something enforces them. */
-export const EXTRACTION_GATE_DIMENSIONS = ['document_class', 'source_id'] as const;
+/** Rule dimensions code binds today. `folder` is a connector's sub-scope key
+ * (a Confluence space), enforced at the chokepoint since V2.5 item 8.2;
+ * `channel` stays reserved until something enforces it. */
+export const EXTRACTION_GATE_DIMENSIONS = ['document_class', 'source_id', 'folder'] as const;
 export type ExtractionGateDimension = (typeof EXTRACTION_GATE_DIMENSIONS)[number];
 
 export type ExtractionGateEffect = 'allow' | 'deny';
@@ -16,11 +17,12 @@ export const EXTRACTION_REFUSAL_REASONS = [
   'extraction_disabled',
   'source_disabled',
   'document_class_denied',
+  'folder_denied',
 ] as const;
 export type ExtractionRefusalReasonDto = (typeof EXTRACTION_REFUSAL_REASONS)[number];
 
 /** The document classes the reading layer detects (its format ids). */
-export const EXTRACTION_DOCUMENT_CLASSES = ['pdf', 'docx', 'xlsx', 'csv', 'image'] as const;
+export const EXTRACTION_DOCUMENT_CLASSES = ['pdf', 'docx', 'xlsx', 'csv', 'image', 'text'] as const;
 
 export interface ExtractionGateDto {
   sourceType: string;
@@ -38,6 +40,10 @@ export interface ExtractionGateRuleDto {
   dimension: ExtractionGateDimension;
   value: string;
   effect: ExtractionGateEffect;
+  /** Per-rule bounds for the sources the rule matches (a connector
+   * sub-scope); NULL defers to the gate row. The tightest bound wins. */
+  factBudget: number | null;
+  retentionDays: number | null;
   createdAt: string;
 }
 

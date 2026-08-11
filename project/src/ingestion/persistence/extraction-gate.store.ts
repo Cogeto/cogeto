@@ -24,13 +24,15 @@ import type {
  */
 
 /**
- * Rule dimensions code binds TODAY. 'channel' and 'folder' are reserved for
- * observed connectors (V2.4 item 8.x) and bulk import (V2.2 item 5.3): the
- * table accepts them the day something enforces them, no migration — but the
- * API refuses them until then, because accepting a rule nothing enforces would
- * be a control that silently does not control.
+ * Rule dimensions code binds TODAY. 'folder' became real with the first
+ * external connector (V2.5 item 8.2): its value is a connector sub-scope key
+ * (a Confluence space), stamped on the materialized object and carried to
+ * the chokepoint by the file reader. 'channel' stays reserved: the table
+ * accepts it the day something enforces it, no migration — but the API
+ * refuses it until then, because accepting a rule nothing enforces would be
+ * a control that silently does not control.
  */
-export const EXTRACTION_RULE_DIMENSIONS = ['document_class', 'source_id'] as const;
+export const EXTRACTION_RULE_DIMENSIONS = ['document_class', 'source_id', 'folder'] as const;
 export type ExtractionRuleDimension = (typeof EXTRACTION_RULE_DIMENSIONS)[number];
 
 /** Refusal-ledger retention, mirroring the email refusal ledger's. */
@@ -45,6 +47,8 @@ export interface GateDecisionInput {
   sourceId: string;
   /** The reading layer's detected format, when the reader stamped one. */
   documentClass?: string;
+  /** The connector sub-scope the source arrived through, when one did. */
+  folder?: string;
 }
 
 export type GateDecision =
@@ -68,6 +72,9 @@ export interface AddRuleRequest {
   dimension: ExtractionRuleDimension;
   value: string;
   effect: 'allow' | 'deny';
+  /** Per-rule bounds for what the rule matches; NULL defers to the gate row. */
+  factBudget?: number | null;
+  retentionDays?: number | null;
 }
 
 export interface ExtractionGateConfig {
@@ -246,6 +253,8 @@ export class ExtractionGateStore {
           dimension: request.dimension,
           value: request.value,
           effect: request.effect,
+          factBudget: request.factBudget ?? null,
+          retentionDays: request.retentionDays ?? null,
         })
         .onConflictDoNothing()
         .returning();
@@ -347,8 +356,11 @@ export class ExtractionGateStore {
  */
 export function evaluateGateDecision(
   gate: Pick<ExtractionGateRow, 'enabled' | 'factBudget' | 'retentionDays'> | undefined,
-  rules: Pick<ExtractionGateRuleRow, 'dimension' | 'value' | 'effect'>[],
-  input: Pick<GateDecisionInput, 'sourceId' | 'documentClass'>,
+  rules: (Pick<ExtractionGateRuleRow, 'dimension' | 'value' | 'effect'> & {
+    factBudget?: number | null;
+    retentionDays?: number | null;
+  })[],
+  input: Pick<GateDecisionInput, 'sourceId' | 'documentClass' | 'folder'>,
 ): GateDecision {
   if (gate && !gate.enabled) return { allowed: false, reason: 'extraction_disabled' };
 
@@ -375,10 +387,48 @@ export function evaluateGateDecision(
     }
   }
 
+  // The folder dimension (V2.5 item 8.2): a connector sub-scope key, the
+  // same deny plus closed-allowlist semantics as document_class, and like it
+  // only applied to sources that HAVE a folder, so a plain upload is never
+  // caught by a rule written for a connector's containers.
+  if (input.folder !== undefined) {
+    const folderRules = rules.filter((rule) => rule.dimension === 'folder');
+    const denied = folderRules.some(
+      (rule) => rule.effect === 'deny' && rule.value === input.folder,
+    );
+    const allowRules = folderRules.filter((rule) => rule.effect === 'allow');
+    const allowMiss =
+      allowRules.length > 0 && !allowRules.some((rule) => rule.value === input.folder);
+    if (denied || allowMiss) {
+      return { allowed: false, reason: 'folder_denied' };
+    }
+  }
+
+  // Per-rule bounds from every rule that MATCHES this source; the tightest
+  // bound wins, beside the gate row's own (and, downstream, the parse cap
+  // and the registry budget, exactly as before).
+  const matching = rules.filter(
+    (rule) =>
+      rule.effect !== 'deny' &&
+      ((rule.dimension === 'folder' && rule.value === input.folder) ||
+        (rule.dimension === 'document_class' && rule.value === input.documentClass)),
+  );
+  const tightest = (base: number | null, values: (number | null)[]): number | null =>
+    values.reduce<number | null>(
+      (acc, v) => (v === null ? acc : acc === null ? v : Math.min(acc, v)),
+      base,
+    );
+
   return {
     allowed: true,
-    factBudget: gate?.factBudget ?? null,
-    retentionDays: gate?.retentionDays ?? null,
+    factBudget: tightest(
+      gate?.factBudget ?? null,
+      matching.map((rule) => rule.factBudget ?? null),
+    ),
+    retentionDays: tightest(
+      gate?.retentionDays ?? null,
+      matching.map((rule) => rule.retentionDays ?? null),
+    ),
   };
 }
 

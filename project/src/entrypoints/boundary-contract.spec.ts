@@ -120,6 +120,11 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   connector_webhook_delivery: 'connectors',
   connector_rate_limit: 'connectors',
 
+  // The Confluence connector (V2.5 item 8.2, migration 0055,
+  // docs/features/confluence.md): provenance per materialized source, page
+  // or attachment. Content-bearing (titles), in the deletion cascade.
+  confluence_page: 'confluence',
+
   app_user: 'identity',
   // Connector credential material, sealed under the instance master key
   // (V2.5 item 8.1): the plan places credential storage inside the identity
@@ -193,6 +198,13 @@ const JOB_TYPE_OWNERS: Readonly<Record<string, string>> = {
   'connector.sync': 'connectors',
   'connector.webhook_process': 'connectors',
   connector_maintenance: 'connectors',
+  // The presence sweep (V2.5 item 8.2, issue C5): polling by modified date
+  // cannot observe an absence, so the ledger is reconciled against what the
+  // upstream still lists.
+  'connector.presence_sweep': 'connectors',
+  // The Confluence backfill estimate (V2.5 item 8.2, issue B2): counting
+  // needs the credential, which opens only in the worker.
+  'confluence.estimate': 'confluence',
   passport_export: 'passport',
   passport_retention: 'passport',
   // The findings report (V2.3 item 6.2): generation + artifact retention.

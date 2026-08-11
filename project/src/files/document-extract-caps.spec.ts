@@ -13,7 +13,7 @@ import { makeDocx } from '../testing/index';
 describe('document parse caps', () => {
   it('rejects an unsupported type as a permanent error (zero downstream work)', async () => {
     await expect(
-      extractDocumentText(Buffer.from('not a document'), 'text/plain'),
+      extractDocumentText(Buffer.from('not a document'), 'application/x-unknown'),
     ).rejects.toBeInstanceOf(PermanentExtractionError);
   });
 

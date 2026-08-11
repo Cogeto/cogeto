@@ -3,7 +3,7 @@
 One directory per DDD bounded context (spec §15): `memory`, `ingestion`, `retrieval`,
 `chat`, `agents`, `notes`, `files`, `email`, `research`, `skills`, `settings`,
 `passport`, `attention`, `operations`, `sources`, `imports`, `reports`, `providers`,
-`connectors`, `identity`,
+`connectors`, `confluence`, `identity`,
 `model-gateway`, plus the shared `infrastructure` leaf, `entrypoints` (app,
 worker), `migrations` and `testing`.
 
@@ -36,7 +36,12 @@ framework, outbound rate limiting and admission defaults; credential storage
 lives in the `identity` seam, sealed under the same master key as provider
 API keys; no external service is integrated by the platform itself, and the
 old `connectors` NAME is reused deliberately with a new meaning, since the
-family modules it once held have long had homes of their own).
+family modules it once held have long had homes of their own). V2.5 item 8.2
+added `confluence`, the first real connector on that platform: strictly
+read-only by construction (a GET-only client with a build-failing
+architecture assertion), owning the `confluence_page` provenance table and
+the `confluence.estimate` job, with everything operational inherited from
+the platform.
 
 Module rules (binding, CI-enforced, spec §15):
 

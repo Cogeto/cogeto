@@ -321,6 +321,42 @@ Nothing migrated, and each reason is recorded:
 The platform is for external pull-and-webhook connectors, which none of the
 five is. Existing behaviour is byte-identical.
 
+## What the first real connector added (V2.5 item 8.2)
+
+The Confluence connector ([`confluence.md`](confluence.md)) shook out six
+additive platform extensions, each shaped for every future connector:
+
+- **Lazy content.** `UpstreamItem.content` may be a resolver, called only
+  when the ledger decided to materialize, so an unchanged item never fetches
+  its body; `contentHash` is then required (the upstream's version marker,
+  hashed). The resolver may answer `'restricted'` (skipped and reported) or
+  `null` (gone upstream), and a rate-limit throw pauses the pass beyond the
+  wall. `upstreamRevision` carries the upstream's version number onto the
+  automatic `source_revision` basis, so a finding resolved by an edit can
+  name the version that resolved it.
+- **`annotate`.** A descriptor hook called after materialization with the
+  platform's executor, the item, the source ref and the connector identity:
+  the connector records its own provenance in its own table, fail-safe,
+  never failing the sync.
+- **Custom sub-scopes.** `POST /:id/sub-scopes` creates a scope discovery
+  cannot enumerate (a page subtree), validated by the descriptor's
+  `acceptSubScopeKey` grammar; upstream validation happens on the next sync.
+- **Per-scope settings and stats.** `connector_sub_scope.settings_json`
+  (today the attachments toggle, enforced before fetch) and `stats_json`
+  (the worker-computed backfill estimate, shown before anything runs);
+  `fetchPage` receives the scope's settings verbatim.
+- **The presence sweep.** Polling by modified date structurally cannot
+  observe an absence, so a descriptor may declare `listKeys` (identifiers
+  only, paged) and the `connector.presence_sweep` job reconciles the ledger
+  on the maintenance cadence and on demand: absent items are marked with the
+  observed reason (`absent`, or `archived` where the upstream can say),
+  reappeared items are restored, and nothing is ever deleted. A partially
+  listed scope never marks anything.
+- **Gate folder rules enforced.** The reserved `folder` dimension became
+  real: the sub-scope key is stamped on the materialized object and carried
+  to the gate chokepoint, and a rule row may carry its own fact budget and
+  retention ([`extraction-gate.md`](extraction-gate.md)).
+
 ## The reference connector (tests only)
 
 The platform is proved against a fake upstream implementing paging, cursors,
@@ -336,7 +372,7 @@ unchanged upstream data costs zero model calls.
 
 | Owner | Additions |
 |---|---|
-| `connectors` (new module) | `connector`, `connector_sub_scope`, `connector_item`, `connector_sync_run`, `connector_webhook_delivery`, `connector_rate_limit`; job types `connector.sync` (per-source, plain re-runnable, single-flight per connector), `connector.webhook_process` (per-source, idempotent), `connector_maintenance` (recurring); token `CONNECTORS_OPTIONS` |
+| `connectors` (new module) | `connector`, `connector_sub_scope`, `connector_item`, `connector_sync_run`, `connector_webhook_delivery`, `connector_rate_limit`; job types `connector.sync` (per-source, plain re-runnable, single-flight per connector), `connector.webhook_process` (per-source, idempotent), `connector_maintenance` (recurring), `connector.presence_sweep` (per-source, single-flight, V2.5 item 8.2); token `CONNECTORS_OPTIONS` |
 | `identity` | `connector_credential`; registration option `credentialReads` (worker-only opener) |
 | `operations` | `CONNECTOR_HEALTH` port token (implemented by `connectors`, bound by the roots) |
 

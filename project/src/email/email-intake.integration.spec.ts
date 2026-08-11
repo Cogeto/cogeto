@@ -488,7 +488,11 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
             contentType: 'application/pdf',
             content: makePdf('Atlas proposal details'),
           },
-          { filename: 'notes.txt', contentType: 'text/plain', content: Buffer.from('loose notes') },
+          {
+            filename: 'notes.rtf',
+            contentType: 'application/rtf',
+            content: Buffer.from('loose notes'),
+          },
         ],
       }),
       { ...envelope, mailFrom: 'ana@adriatic-foods.hr' },
@@ -498,14 +502,15 @@ describe('email intake + retention + pipeline (integration: real Postgres + Qdra
 
     const atts = await attachmentRows(result.emailIds[0]!);
     const pdf = atts.find((a) => a.filename === 'proposal.pdf')!;
-    const txt = atts.find((a) => a.filename === 'notes.txt')!;
+    const rtf = atts.find((a) => a.filename === 'notes.rtf')!;
     // The pdf is a linked, stored, processed file source.
     expect(pdf.processed).toBe(true);
     expect(pdf.file_object_key).toMatch(/\/file-/);
     expect(await objects.statObject(pdf.file_object_key!)).not.toBeNull();
-    // The unsupported txt is recorded but not processed.
-    expect(txt.processed).toBe(false);
-    expect(txt.file_object_key).toBeNull();
+    // The unsupported rtf is recorded but not processed. (Plain text is a
+    // supported upload type since the text reader, V2.5 item 8.2.)
+    expect(rtf.processed).toBe(false);
+    expect(rtf.file_object_key).toBeNull();
 
     // Run the pipeline: the email body AND the pdf attachment both derive memories.
     await runWorker(pipeline);

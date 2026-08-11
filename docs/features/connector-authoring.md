@@ -40,6 +40,24 @@ summaries, the capabilities entry, and complete removal semantics.
 
 3. **Write the descriptor.** The contract, field by field, is documented in
    `connector-descriptor.ts`. The parts that deserve care:
+   - **Prefer lazy content with an upstream version marker.** Where the
+     upstream carries an incrementing version (Confluence pages) or a stable
+     etag, set `contentHash` from it in the LISTING and make `content` a
+     resolver: the ledger then skips an unchanged item before any bytes
+     exist, which is the zero-cost property at its strongest. The resolver
+     may return `'restricted'` or `null`; set `upstreamRevision` so a
+     superseding edit's `source_revision` basis names the version.
+   - **Record provenance through `annotate`**, your own table, written with
+     the executor the platform hands you; failures are logged and never
+     fail the sync. The confluence module's `confluence_page` is the
+     precedent, deletion cascade included.
+   - **Declare `listKeys` where the upstream can list identifiers**, so the
+     presence sweep can reconcile what polling by modified date cannot see:
+     deletions, archivals and permission losses. Mark archived items where
+     the upstream distinguishes them.
+   - **Declare `acceptSubScopeKey`** if users should be able to narrow to a
+     container discovery cannot enumerate (a subtree); validation of the
+     key against the upstream happens on the next sync, not at creation.
    - `naturalKey` must be container-independent: the same item in two
      sub-scopes must yield the same key, because the key is what makes it
      ONE source.

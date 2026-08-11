@@ -14,7 +14,7 @@ import type { ReadGranularity, ReadSegment } from './locator';
  */
 
 /** The formats registered today. A new reader adds a member. */
-export type DocumentFormat = 'pdf' | 'docx' | 'xlsx' | 'csv' | 'image';
+export type DocumentFormat = 'pdf' | 'docx' | 'xlsx' | 'csv' | 'text' | 'image';
 
 /**
  * What the registry hands a reader. `bytes` is always populated (the worker
@@ -107,6 +107,8 @@ export type ReadReasonCode =
   // read_failed
   | 'parse_failed'
   | 'parse_timeout'
+  // Over the char cap: `truncated` when the text reader cut at a paragraph
+  // boundary and said so; `read_failed` when the registry's bomb guard refused.
   | 'text_over_cap'
   | 'undecodable_text';
 
@@ -155,8 +157,10 @@ export interface ReadReport {
    */
   valuesUnavailable: number;
   unavailableCells: string[];
-  /** CSV only: what detection settled on, so the fallback is inspectable. */
+  /** CSV only: what delimiter detection settled on. */
   delimiter?: string;
+  /** Signature-less text formats (CSV, text): the encoding actually used, so
+   * the fallback is inspectable. */
   encoding?: string;
   /** Per-page outcomes for a paginated document read through the ladder. */
   pages?: PageReadDetail[];

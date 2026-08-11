@@ -45,6 +45,10 @@ Start with the overview, then the mechanism-specific docs:
  authentication, the refusal gates, residual limits, and how to test it live.
 - **[Instance and supply-chain hardening](instance-and-supply-chain-hardening.md)**:
  verifying signed images, per-instance secrets, encryption, and logging hygiene.
+- **[The Confluence connector: token permissions and read-only](confluence-connector.md)**:
+ an Atlassian API token carries its account's full permissions, so read-only rests
+ on Cogeto's build-asserted GET-only client; the recommended stronger arrangement
+ is a dedicated read-only Atlassian account, so Confluence enforces it too.
 
 The behaviour behind each protection is documented with the feature it belongs to:
 
@@ -58,6 +62,7 @@ The behaviour behind each protection is documented with the feature it belongs t
 | Token revocation, receipt-chain anchoring | [`isolation-and-access.md`](isolation-and-access.md), [`deletion-and-receipts.md`](deletion-and-receipts.md) |
 | Demo sandbox gating | [`../features/demo-sandbox.md`](../features/demo-sandbox.md) |
 | Inbound email routing and spoofing stance | [`inbound-email-anti-spoofing.md`](inbound-email-anti-spoofing.md), [`../features/sources.md`](../features/sources.md) |
+| Confluence read-only stance and token scope | [`confluence-connector.md`](confluence-connector.md), [`../features/confluence.md`](../features/confluence.md) |
 | Email body sanitizing and sandboxed rendering | [`inbound-email-anti-spoofing.md`](inbound-email-anti-spoofing.md) |
 | Durable abuse limits and worker model metering | [`instance-and-supply-chain-hardening.md`](instance-and-supply-chain-hardening.md) |
 | Installer trust chain (cosign, deploy assets) | [`instance-and-supply-chain-hardening.md`](instance-and-supply-chain-hardening.md) |

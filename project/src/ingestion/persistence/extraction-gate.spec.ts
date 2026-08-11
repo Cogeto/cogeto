@@ -93,4 +93,68 @@ describe('extraction_gate_decision', () => {
       evaluateGateDecision({ enabled: false, factBudget: null, retentionDays: null }, rules, input),
     ).toEqual({ allowed: false, reason: 'extraction_disabled' });
   });
+
+  // The folder dimension (V2.5 item 8.2, issue B3): a connector sub-scope
+  // key, the document_class semantics applied to containers.
+
+  it('a folder deny rule blocks that container and no other', () => {
+    const rules = [{ dimension: 'folder', value: 'space:ENG', effect: 'deny' as const }];
+    expect(evaluateGateDecision(undefined, rules, { ...input, folder: 'space:ENG' })).toEqual({
+      allowed: false,
+      reason: 'folder_denied',
+    });
+    expect(evaluateGateDecision(undefined, rules, { ...input, folder: 'space:OPS' })).toMatchObject(
+      { allowed: true },
+    );
+  });
+
+  it('folder allow rules make the container list exclusive', () => {
+    const rules = [{ dimension: 'folder', value: 'space:ENG', effect: 'allow' as const }];
+    expect(evaluateGateDecision(undefined, rules, { ...input, folder: 'space:OPS' })).toMatchObject(
+      { allowed: false, reason: 'folder_denied' },
+    );
+    expect(evaluateGateDecision(undefined, rules, { ...input, folder: 'space:ENG' })).toMatchObject(
+      { allowed: true },
+    );
+  });
+
+  it('folder rules never touch a source that arrived through no connector', () => {
+    const rules = [
+      { dimension: 'folder', value: 'space:ENG', effect: 'allow' as const },
+      { dimension: 'folder', value: 'space:OPS', effect: 'deny' as const },
+    ];
+    expect(evaluateGateDecision(undefined, rules, input)).toMatchObject({ allowed: true });
+  });
+
+  it('a matching rule carries its own bounds and the tightest wins', () => {
+    const rules = [
+      {
+        dimension: 'folder',
+        value: 'space:ENG',
+        effect: 'allow' as const,
+        factBudget: 10,
+        retentionDays: 90,
+      },
+    ];
+    expect(
+      evaluateGateDecision({ enabled: true, factBudget: 25, retentionDays: 30 }, rules, {
+        ...input,
+        folder: 'space:ENG',
+      }),
+    ).toEqual({ allowed: true, factBudget: 10, retentionDays: 30 });
+  });
+
+  it('a rule bound never applies to a source its rule does not match', () => {
+    const rules = [
+      { dimension: 'folder', value: 'space:ENG', effect: 'allow' as const, factBudget: 10 },
+      { dimension: 'document_class', value: 'pdf', effect: 'allow' as const, factBudget: 3 },
+    ];
+    expect(
+      evaluateGateDecision(undefined, rules, {
+        sourceId: 'src-1',
+        documentClass: 'pdf',
+        folder: undefined,
+      }),
+    ).toEqual({ allowed: true, factBudget: 3, retentionDays: null });
+  });
 });

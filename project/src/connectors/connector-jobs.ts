@@ -32,6 +32,19 @@ export const CONNECTOR_MAINTENANCE_JOB_TYPE = 'connector_maintenance';
 export const CONNECTOR_MAINTENANCE_CRONTAB = '*/15 * * * * connector_maintenance';
 
 /**
+ * The presence sweep for one connector (V2.5 item 8.2, issue C5): page
+ * through the natural keys the upstream still lists (identifiers only) and
+ * reconcile the ledger, because polling by modified date structurally
+ * cannot observe an absence. Plain and re-runnable, under the same
+ * per-connector single-flight lock as the sync. Enqueued by maintenance on
+ * the descriptor's cadence and on demand.
+ */
+export const CONNECTOR_PRESENCE_JOB_TYPE = 'connector.presence_sweep';
+
+/** Days between presence sweeps when the descriptor declares none. */
+export const PRESENCE_SWEEP_DEFAULT_DAYS = 7;
+
+/**
  * Connector ingestion is background work: its pipeline jobs run at the
  * bulk-import demotion so any interactive capture jumps ahead (numerically
  * smaller priority runs first; interactive default is 0).

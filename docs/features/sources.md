@@ -66,6 +66,15 @@ The old flat memories list survives as the **filtered fact search** on
 `/memories` (status, sub-reason, entity, content, changed-since), linked from
 Sources rather than the navigation rail.
 
+Since V2.5 item 8.2, a connector-synced source also carries its **origin**
+(`SourceOriginDto`, hydrated from the connector's own provenance store, the
+confluence module being the first): the space, page title, version and a
+link to the live page, so the audit trail from fact to original is one
+click. When the upstream no longer lists the item (deleted, archived, or no
+longer visible to the account), the row says so (`upstreamGone`); the source
+and its facts remain until the user deletes them, per the platform's rule
+that an upstream deletion is never an instruction to erase memory.
+
 ## The three ports
 
 A connector never reaches into ingestion or memory; it implements ports those modules

@@ -1,0 +1,132 @@
+{
+  "heading": "Connections",
+  "explainer": "External systems Cogeto reads from. A connection only ever reads; every synced page becomes an ordinary source you can inspect, audit and delete.",
+  "list": {
+    "error": "We couldn't load your connections just now.",
+    "empty": "Nothing is connected yet.",
+    "lastSync": "last sync {{when}}",
+    "neverSynced": "not synced yet",
+    "open": "Details",
+    "sync": "Sync now",
+    "syncQueued": "Sync queued.",
+    "disable": "Pause",
+    "enable": "Resume",
+    "removeConfirm": "Remove {{name}}? Its stored credential is destroyed and syncing stops. Everything already ingested remains: the sources and their facts are NOT deleted, and each one can still be deleted individually from the Sources page.\n\nRemove?",
+    "actionFailed": "The action failed."
+  },
+  "state": {
+    "configured": "not authorised",
+    "authorised": "authorised",
+    "syncing": "syncing",
+    "healthy": "healthy",
+    "degraded": "degraded",
+    "needs_reauth": "needs reauthorisation",
+    "disabled": "paused",
+    "removed": "removed"
+  },
+  "pausedReason": {
+    "rate_limited": "Waiting: the upstream rate limit was reached. Syncing resumes on its own.",
+    "daily_item_cap": "Waiting: the daily item cap is reached. Syncing continues when the cap resets.",
+    "daily_upload_limit": "Waiting: the daily upload limit is reached. Syncing continues when the limit resets."
+  },
+  "connect": {
+    "open": "Connect Confluence",
+    "name": "Name",
+    "namePlaceholder": "Team wiki",
+    "siteUrl": "Site URL",
+    "siteUrlPlaceholder": "https://your-team.atlassian.net/wiki",
+    "email": "Atlassian account email",
+    "apiToken": "API token",
+    "apiTokenHelp": "An Atlassian API token for this account. Cogeto validates it with one read call before storing it, sealed.",
+    "readOnly": {
+      "statement": "Cogeto only reads from Confluence. It never creates, edits or deletes anything there.",
+      "recommendation": "For stricter setups we recommend a dedicated Atlassian account with read-only permission on the chosen spaces, so Confluence itself enforces the restriction."
+    },
+    "action": "Connect",
+    "connecting": "Connecting…",
+    "success_one": "Connected. This account can see {{count}} spaces. Open the connection to choose what to sync.",
+    "success_few": "Connected. This account can see {{count}} spaces. Open the connection to choose what to sync.",
+    "success_other": "Connected. This account can see {{count}} spaces. Open the connection to choose what to sync.",
+    "failed": "Connecting failed.",
+    "failure": {
+      "wrong_site": "The address answered, but it is not a Confluence Cloud site. Check the site URL.",
+      "bad_credentials": "Confluence did not accept this email and API token pair.",
+      "no_permission": "The credentials work, but this account cannot see any spaces.",
+      "unreachable": "The site could not be reached. Check the address and your network."
+    }
+  },
+  "detail": {
+    "title": "Connection",
+    "loading": "Loading the connection…",
+    "error": "We couldn't load this connection just now.",
+    "account": "Account:",
+    "reconnect": {
+      "explainer": "The stored credential no longer works. Enter the site URL, the account email and a fresh API token; the new credential replaces the old one.",
+      "action": "Reconnect",
+      "connecting": "Reconnecting…",
+      "success": "Reconnected."
+    },
+    "spaces": {
+      "heading": "Spaces",
+      "explainer": "Nothing outside the spaces you select is ever fetched. Attachments are off by default because they multiply volume.",
+      "empty": "No spaces discovered yet. Run a sync to refresh the list.",
+      "attachments": "Pull attached files from this space's pages (PDF, Word, spreadsheets, images)",
+      "backfillDone": "backfill complete",
+      "estimateAction": "Estimate",
+      "estimating": "Estimating…",
+      "about_one": "about {{count}} pages",
+      "about_few": "about {{count}} pages",
+      "about_other": "about {{count}} pages",
+      "windowAll": "counting everything",
+      "windowSince": "modified since {{date}}"
+    },
+    "subtree": {
+      "heading": "Add a page subtree",
+      "explainer": "Sync one page and everything under it. The page id is the number in the page's URL.",
+      "pageId": "Page id",
+      "label": "Label",
+      "labelPlaceholder": "What to call this scope",
+      "added": "Added. It is fetched on the next sync.",
+      "failed": "Adding the subtree failed."
+    },
+    "backfill": {
+      "heading": "Backfill and caps",
+      "explainer": "How far back the first sync of a scope reaches. The default is 30 days and 500 items per space.",
+      "days": "Days back",
+      "itemCap": "Item cap per space",
+      "everything": "Everything: the full history, unbounded",
+      "everythingHelp": "No date or item bound. Every page of every selected space is fetched.",
+      "dailyItemCap": "Daily item cap",
+      "saveFailed": "Saving the settings failed."
+    },
+    "runs": {
+      "heading": "Recent syncs",
+      "empty": "No syncs have run yet.",
+      "kind": {
+        "backfill": "backfill",
+        "incremental": "incremental",
+        "webhook": "webhook",
+        "presence": "presence check"
+      },
+      "state": {
+        "running": "running",
+        "completed": "completed",
+        "failed": "failed",
+        "cancelled": "cancelled"
+      },
+      "count": {
+        "materialized": "{{value}} ingested",
+        "unchangedSkipped": "{{value}} unchanged",
+        "revisions": "{{value}} revisions",
+        "deletedUpstream": "{{value}} gone upstream",
+        "skippedRestricted": "{{value}} restricted",
+        "failed": "{{value}} failed"
+      }
+    },
+    "presence": {
+      "explainer": "Compares the record against what Confluence still lists and marks pages that disappeared or were archived. A sync never deletes anything.",
+      "action": "Check presence now",
+      "queued": "Presence check queued."
+    }
+  }
+}

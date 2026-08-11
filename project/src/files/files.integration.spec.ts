@@ -726,9 +726,9 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
       filesService.upload(
         userA,
         {
-          buffer: Buffer.from('plain text file'),
-          originalName: 'notes.txt',
-          mimeType: 'text/plain',
+          buffer: Buffer.from('{\\rtf1 not a supported format}'),
+          originalName: 'notes.rtf',
+          mimeType: 'application/rtf',
         },
         { scope: 'private', sensitive: false },
       ),

@@ -134,6 +134,85 @@ export class ConnectorItemLedger {
   }
 
   /**
+   * Presence reconciliation (V2.5 item 8.2, issue C5): the observed set of
+   * natural keys the upstream still lists for one sub-scope, against the
+   * ledger. An active item the upstream no longer lists is marked
+   * `deleted_upstream` with the observed reason (`absent`, or `archived`
+   * where the upstream can say); its source remains, because deletion is the
+   * user's act. A previously gone item the upstream lists again is restored
+   * to `active`. Erased items stay erased, always.
+   */
+  async reconcilePresence(
+    connectorId: string,
+    subScope: string | null,
+    observed: Map<string, 'present' | 'archived'>,
+  ): Promise<{ markedGone: number; restored: number }> {
+    const inScope = and(
+      eq(connectorItem.connectorId, connectorId),
+      subScope === null
+        ? undefined
+        : sql`coalesce(${connectorItem.subScopes}, '[]'::jsonb) ? ${subScope}`,
+    );
+    const rows = await this.db.select().from(connectorItem).where(inScope);
+    let markedGone = 0;
+    let restored = 0;
+    for (const item of rows) {
+      if (item.state === 'erased' || item.state === 'failed') continue;
+      const seen = observed.get(item.naturalKey);
+      if (item.state === 'active' && seen === undefined) {
+        await this.db
+          .update(connectorItem)
+          .set({ state: 'deleted_upstream', reason: 'absent', updatedAt: new Date() })
+          .where(eq(connectorItem.id, item.id));
+        markedGone += 1;
+      } else if (item.state === 'active' && seen === 'archived') {
+        await this.db
+          .update(connectorItem)
+          .set({ state: 'deleted_upstream', reason: 'archived', updatedAt: new Date() })
+          .where(eq(connectorItem.id, item.id));
+        markedGone += 1;
+      } else if (item.state === 'deleted_upstream' && seen === 'present') {
+        await this.db
+          .update(connectorItem)
+          .set({ state: 'active', reason: null, lastSeenAt: new Date(), updatedAt: new Date() })
+          .where(eq(connectorItem.id, item.id));
+        restored += 1;
+      }
+    }
+    return { markedGone, restored };
+  }
+
+  /** The gone-upstream note for one materialized source, for the surfaces
+   * that must say "the upstream no longer lists this" (owner-gated reads). */
+  async upstreamStateForSources(
+    ownerId: string,
+    refs: readonly { sourceType: string; sourceId: string }[],
+  ): Promise<Map<string, { state: string; reason: string | null }>> {
+    if (refs.length === 0) return new Map();
+    const result = new Map<string, { state: string; reason: string | null }>();
+    for (const ref of refs) {
+      const rows = await this.db
+        .select({
+          state: connectorItem.state,
+          reason: connectorItem.reason,
+          sourceId: connectorItem.sourceId,
+        })
+        .from(connectorItem)
+        .where(
+          and(
+            eq(connectorItem.ownerId, ownerId),
+            eq(connectorItem.sourceType, ref.sourceType),
+            eq(connectorItem.sourceId, ref.sourceId),
+          ),
+        )
+        .limit(1);
+      const row = rows[0];
+      if (row) result.set(`${ref.sourceType}:${ref.sourceId}`, row);
+    }
+    return result;
+  }
+
+  /**
    * Items materialized today for one connector: the admission bound's
    * denominator (issue E2). The unique index's connector_id prefix serves
    * the scan; the count is bounded by the cap itself in practice.

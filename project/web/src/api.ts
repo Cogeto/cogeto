@@ -650,6 +650,179 @@ export async function removeExtractionGateRule(session: Session, id: string): Pr
   if (!response.ok) throw await toError(path, response);
 }
 
+/**
+ * The connector fleet (V2.5 item 8.1) and its Confluence door (item 8.2).
+ * Credential material travels one way here: it is sent on connect or
+ * reconnect and never appears in any response, so nothing in the SPA can
+ * render a token. The shapes are local because no other consumer shares them.
+ */
+export type ConnectorState =
+  | 'configured'
+  | 'authorised'
+  | 'syncing'
+  | 'healthy'
+  | 'degraded'
+  | 'needs_reauth'
+  | 'disabled'
+  | 'removed';
+
+export interface ConnectorSettingsDto {
+  backfillDays?: number;
+  backfillItemCap?: number;
+  /** The user's EXPLICIT everything; never a default. */
+  backfillAll?: boolean;
+  dailyItemCap?: number;
+  /** Why the sync is currently waiting, when it is (cap, budget, rate). */
+  pausedReason?: string | null;
+}
+
+export interface ConnectorDto {
+  id: string;
+  kind: string;
+  name: string;
+  state: ConnectorState;
+  statusReason: string | null;
+  lastSyncAt: string | null;
+  settings: ConnectorSettingsDto;
+  webhookExpiresAt: string | null;
+  createdAt: string;
+}
+
+export interface ConnectorCredentialDto {
+  accountIdentity: string | null;
+  scopes: string[] | null;
+  expiresAt: string | null;
+  lastRefreshedAt: string | null;
+  refreshFailed: boolean;
+}
+
+export interface ConnectorSubScopeStatsDto {
+  /** 'all', or an ISO date meaning "modified since". */
+  window: string;
+  estimatedItems: number;
+  computedAt: string;
+}
+
+export interface ConnectorSubScopeDto {
+  key: string;
+  label: string;
+  selected: boolean;
+  itemCap: number | null;
+  backfillComplete: boolean;
+  attachments: boolean;
+  stats: ConnectorSubScopeStatsDto | null;
+}
+
+export interface ConnectorSyncCountsDto {
+  pages: number;
+  fetched: number;
+  materialized: number;
+  unchangedSkipped: number;
+  revisions: number;
+  moved: number;
+  deletedUpstream: number;
+  skippedRestricted: number;
+  scopeChangesReported: number;
+  erasedSkipped: number;
+  failed: number;
+  presenceMarkedGone?: number;
+  presenceRestored?: number;
+}
+
+export interface ConnectorSyncRunDto {
+  id: string;
+  kind: 'backfill' | 'incremental' | 'webhook' | 'presence';
+  state: 'running' | 'completed' | 'failed' | 'cancelled';
+  reason: string | null;
+  counts: ConnectorSyncCountsDto | null;
+  startedAt: string;
+  finishedAt: string | null;
+}
+
+export interface ConnectorDetailDto extends ConnectorDto {
+  credential: ConnectorCredentialDto | null;
+  subScopes: ConnectorSubScopeDto[];
+  syncRuns: ConnectorSyncRunDto[];
+}
+
+export type ConfluenceConnectFailure =
+  'wrong_site' | 'bad_credentials' | 'no_permission' | 'unreachable';
+
+export type ConfluenceConnectResult =
+  | { connected: true; connectorId: string; spacesVisible: number }
+  | { connected: false; reason: ConfluenceConnectFailure };
+
+export type ConfluenceReconnectResult =
+  | { connected: true; spacesVisible: number }
+  | { connected: false; reason: ConfluenceConnectFailure };
+
+export const connectConfluence = (
+  session: Session,
+  request: { name: string; siteUrl: string; email: string; apiToken: string },
+): Promise<ConfluenceConnectResult> => apiPost('/api/confluence/connect', request, session);
+export const reconnectConfluence = (
+  session: Session,
+  id: string,
+  request: { siteUrl: string; email: string; apiToken: string },
+): Promise<ConfluenceReconnectResult> =>
+  apiPost(`/api/confluence/${id}/credentials`, request, session);
+export const requestConfluenceEstimate = (
+  session: Session,
+  id: string,
+): Promise<{ enqueued: boolean }> => apiPost(`/api/confluence/${id}/estimate`, {}, session);
+
+export const fetchConnectors = (session: Session): Promise<ConnectorDto[]> =>
+  apiGet<{ connectors: ConnectorDto[] }>('/api/connectors', session).then(
+    (page) => page.connectors,
+  );
+export const fetchConnectorDetail = (session: Session, id: string): Promise<ConnectorDetailDto> =>
+  apiGet(`/api/connectors/${id}`, session);
+export const updateConnectorSettings = (
+  session: Session,
+  id: string,
+  patch: {
+    backfillDays?: number;
+    backfillItemCap?: number;
+    backfillAll?: boolean;
+    dailyItemCap?: number;
+  },
+): Promise<{ updated: boolean }> => apiPut(`/api/connectors/${id}/settings`, patch, session);
+/** Sub-scope keys carry a colon (`space:ENG`), so the path segment is encoded. */
+export const updateConnectorSubScope = (
+  session: Session,
+  id: string,
+  key: string,
+  patch: { selected?: boolean; itemCap?: number | null; attachments?: boolean },
+): Promise<{ updated: boolean }> =>
+  apiPut(`/api/connectors/${id}/sub-scopes/${encodeURIComponent(key)}`, patch, session);
+export const addConnectorSubScope = (
+  session: Session,
+  id: string,
+  request: { key: string; label: string },
+): Promise<{ added: boolean }> => apiPost(`/api/connectors/${id}/sub-scopes`, request, session);
+export const syncConnector = (session: Session, id: string): Promise<{ enqueued: boolean }> =>
+  apiPost(`/api/connectors/${id}/sync`, {}, session);
+export const sweepConnectorPresence = (
+  session: Session,
+  id: string,
+): Promise<{ enqueued: boolean }> => apiPost(`/api/connectors/${id}/presence`, {}, session);
+export const disableConnector = (session: Session, id: string): Promise<{ state: string }> =>
+  apiPost(`/api/connectors/${id}/disable`, {}, session);
+export const enableConnector = (session: Session, id: string): Promise<{ state: string }> =>
+  apiPost(`/api/connectors/${id}/enable`, {}, session);
+export async function removeConnector(
+  session: Session,
+  id: string,
+): Promise<{ removed: boolean; credentialDestroyed: boolean }> {
+  const path = `/api/connectors/${id}`;
+  const response = await fetch(path, {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${session.accessToken}` },
+  });
+  if (!response.ok) throw await toError(path, response);
+  return (await response.json()) as { removed: boolean; credentialDestroyed: boolean };
+}
+
 // The read-only audit trail (/spec §11.1).
 export function fetchAudit(session: Session, params: AuditQuery = {}): Promise<AuditPage> {
   const search = new URLSearchParams();

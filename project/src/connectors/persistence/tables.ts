@@ -37,6 +37,10 @@ export const connector = pgTable(
      * asserted by webhook-secret-confinement.spec.ts. */
     webhookSecret: text('webhook_secret'),
     webhookExpiresAt: timestamp('webhook_expires_at', { withTimezone: true }),
+    /** When the presence sweep last reconciled the ledger against what the
+     * upstream still lists (migration 0055): polling by modified date
+     * structurally cannot observe an absence. */
+    presenceSweptAt: timestamp('presence_swept_at', { withTimezone: true }),
     /** Owner-gated reason for degraded / needs_reauth; a code plus operator
      * words, never upstream content. */
     statusReason: text('status_reason'),
@@ -65,6 +69,12 @@ export const connectorSubScope = pgTable(
     cursorJson: jsonb('cursor_json'),
     backfillJson: jsonb('backfill_json').$type<SubScopeBackfill>(),
     itemCap: integer('item_cap'),
+    /** Per-scope behaviour the user chooses (migration 0055), enforced
+     * before fetch, which is cheaper than any gate. */
+    settingsJson: jsonb('settings_json').$type<SubScopeSettings>(),
+    /** The honest backfill estimate the worker computed for this scope,
+     * shown before anything runs (migration 0055). */
+    statsJson: jsonb('stats_json').$type<SubScopeStats>(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex('connector_sub_scope_key_idx').on(t.connectorId, t.key)],
@@ -110,7 +120,7 @@ export const connectorSyncRun = pgTable(
       .notNull()
       .references(() => connector.id, { onDelete: 'cascade' }),
     ownerId: text('owner_id').notNull(),
-    kind: text('kind').$type<'backfill' | 'incremental' | 'webhook'>().notNull(),
+    kind: text('kind').$type<'backfill' | 'incremental' | 'webhook' | 'presence'>().notNull(),
     state: text('state')
       .$type<'running' | 'completed' | 'failed' | 'cancelled'>()
       .notNull()
@@ -177,6 +187,22 @@ export interface SubScopeBackfill {
   complete: boolean;
 }
 
+/** Per-scope user choices. */
+export interface SubScopeSettings {
+  /** Pull this scope's attachments as their own sources; off by default
+   * because attachments multiply volume. */
+  attachments?: boolean;
+}
+
+/** The worker-computed backfill estimate for one scope. */
+export interface SubScopeStats {
+  /** Window the estimate was computed for: 'all', or an ISO date meaning
+   * "modified since". */
+  window: string;
+  estimatedItems: number;
+  computedAt: string;
+}
+
 /** The sync summary's shape. Every number is real (spec 4.4.4 reporting). */
 export interface SyncRunCounts {
   pages: number;
@@ -192,6 +218,10 @@ export interface SyncRunCounts {
   scopeChangesReported: number;
   erasedSkipped: number;
   failed: number;
+  /** Presence sweep results (migration 0055): items the upstream no longer
+   * lists, marked and never deleted, and items that reappeared. */
+  presenceMarkedGone?: number;
+  presenceRestored?: number;
 }
 
 export function emptyCounts(): SyncRunCounts {
