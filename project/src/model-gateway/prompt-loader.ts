@@ -21,7 +21,9 @@ export interface PromptArtifact {
 export async function loadPrompt(
   family: string,
   version: string,
-  promptsDir: string = process.env.COGETO_PROMPTS_DIR ?? DEFAULT_PROMPTS_DIR,
+  // Blank means unset: compose passes every documented knob as `${VAR:-}`,
+  // so an operator who set nothing delivers an empty string (issue #516).
+  promptsDir: string = process.env.COGETO_PROMPTS_DIR || DEFAULT_PROMPTS_DIR,
 ): Promise<PromptArtifact> {
   if (!/^v\d{4}$/.test(version)) {
     throw new Error(`prompt version must look like v0001, got: ${version}`);
