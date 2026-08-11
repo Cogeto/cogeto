@@ -47,6 +47,12 @@ import { SKILL_BRIEF_PROMPT, SKILL_PLAN_PROMPT, SkillEngine } from '../skills/in
 import { QUERY_REWRITE_PROMPT } from '../retrieval/index';
 import { ImportCoordinator } from '../imports/index';
 import {
+  CONNECTOR_MAINTENANCE_CRONTAB,
+  ConnectorMaintenance,
+  ConnectorSyncEngine,
+  ConnectorWebhookProcessor,
+} from '../connectors/index';
+import {
   ANSWER_PROMPT,
   ChatAttachmentReadService,
   CONVERSATION_TITLE_PROMPT,
@@ -213,6 +219,9 @@ async function main(): Promise<void> {
     conversationTitler: context.get(ConversationTitler),
     attachmentReader: context.get(ChatAttachmentReadService),
     importCoordinator: context.get(ImportCoordinator),
+    connectorSyncEngine: context.get(ConnectorSyncEngine),
+    connectorWebhookProcessor: context.get(ConnectorWebhookProcessor),
+    connectorMaintenance: context.get(ConnectorMaintenance),
     researchConcluder: context.get(ResearchConclusionService),
     researchSynthesis: context.get(ResearchSynthesisService),
     skillEngine: context.get(SkillEngine),
@@ -298,7 +307,7 @@ async function main(): Promise<void> {
     // DST transition can still make a wall-clock hour repeat/skip on non-UTC
     // hosts; the single-flight advisory lock on each recurring job (worker-tasks)
     // makes a double-fire a clean skip, and the jobs are idempotent by design.
-    crontab: `${SWEEP_CRONTAB}\n${DREAM_CRONTAB}\n${APPROVAL_EXPIRY_CRONTAB}\n${PASSPORT_RETENTION_CRONTAB}\n${REPORT_RETENTION_CRONTAB}\n${EMAIL_REFUSAL_RETENTION_CRONTAB}\n${EXTRACTION_REFUSAL_RETENTION_CRONTAB}${demoLine}`,
+    crontab: `${SWEEP_CRONTAB}\n${DREAM_CRONTAB}\n${APPROVAL_EXPIRY_CRONTAB}\n${PASSPORT_RETENTION_CRONTAB}\n${REPORT_RETENTION_CRONTAB}\n${EMAIL_REFUSAL_RETENTION_CRONTAB}\n${EXTRACTION_REFUSAL_RETENTION_CRONTAB}\n${CONNECTOR_MAINTENANCE_CRONTAB}${demoLine}`,
     noHandleSignals: true,
   });
   logger.info('cogeto worker started (graphile runner + task registry)');

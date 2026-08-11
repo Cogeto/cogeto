@@ -10,13 +10,14 @@ import {
 } from './secret-box';
 
 /**
- * Provider keys at rest (V2.4 item 7.1). The properties asserted here are the
- * ones the plan states as rules rather than preferences: encrypted with the
- * instance master key, which stays in the environment; never stored in the
- * clear; and a failure to decrypt is loud rather than an empty bearer token
- * sent to a provider.
+ * Secrets at rest (V2.4 item 7.1; generalized in V2.5 item 8.1 when connector
+ * credentials joined provider keys under the one mechanism). The properties
+ * asserted here are the ones the plan states as rules rather than
+ * preferences: encrypted with the instance master key, which stays in the
+ * environment; never stored in the clear; and a failure to decrypt is loud
+ * rather than an empty bearer token sent to an upstream.
  */
-describe('secret_box: provider keys are encrypted at rest', () => {
+describe('secret_box: secrets are encrypted at rest', () => {
   const key = randomBytes(32);
 
   it('key_roundtrip: what was sealed comes back exactly', () => {

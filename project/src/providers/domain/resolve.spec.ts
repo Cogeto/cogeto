@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { createModelGateway, OLLAMA_TIMEOUT_DEFAULTS_MS } from '../../model-gateway/index';
 import { resolveFromRecords } from './resolve';
-import { sealSecret } from './secret-box';
+import { sealSecret } from '../../infrastructure/index';
 import type { ProviderRecordWithSecret } from '../persistence/provider-store';
 import type { ModelAnswerOptionRow, ModelAssignmentRow } from '../persistence/tables';
 

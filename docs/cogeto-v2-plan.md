@@ -295,11 +295,13 @@ seeded, and is removed then. Details:
 
 | # | Item | Priority | Difficulty |
 |---|---|---|---|
-| 8.1 | **Connector platform** | P0 | L |
+| 8.1 | **Connector platform**: **delivered** | P0 | L |
 | 8.2 | **First external connector (by demand)** | P1 | M each |
 | 8.3 | **Projects as workspaces** | P1 | M |
 
 **8.1 Connector platform.** All greenfield, per the audit: **credential storage** (token table, secret encryption, refresh loop, kept inside the identity seam), **sync and cursor state** (delta and history tokens: promised in the README, never implemented), **outbound rate limiting** (no token bucket or Retry-After handling exists), a **webhook ingress framework** (HMAC, replay protection, dedup, subscription renewal), and **natural-key deduplication** so a polling connector re-returning the same item does not cost N extractions (no remote-id uniqueness exists anywhere today). The `source_type` registry from 3.6 and the extraction gate from 4.3 are prerequisites.
+
+**Delivered** (migration 0054, the new `connectors` module plus identity's `connector_credential`). The decision record, frozen before code, is [`docs/features/connectors.md`](features/connectors.md); the guide a future connector follows is [`docs/features/connector-authoring.md`](features/connector-authoring.md). No external service was integrated, by design: the platform is proved by a reference connector that exists only in tests, implementing paging, cursors, edits, deletions, duplicate webhook deliveries, expiring credentials, rate limiting with Retry-After and webhook signatures, and every future connector validates against that harness before it ships. The two expensive-failure properties are named tests: an interrupted and resumed sync re-extracts nothing, and a full re-sync over unchanged upstream data costs zero model calls. Existing connectors were left untouched with the reasons recorded: nothing regressed.
 
 **8.2 First external connector.** Google, Microsoft, Slack, Teams, or Jira: **one, chosen by partner demand, not five.** Observed sources carry third-party content at volume, which is why 4.3 ships first. Each subsequent connector is its own unit of work with its own eval cases.
 

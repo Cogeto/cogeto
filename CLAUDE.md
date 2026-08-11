@@ -400,6 +400,44 @@ subcommand sharing the same engine (flagless in-place repair, or
 `--provider LABEL --model M` for an offline managed switch via `compose run`,
 which works while the services crash-loop).
 
+V2.5 item 8.1 delivered the **connector platform** (migration 0054, the new
+`connectors` module): the foundation every external connector inherits, with
+**no external service integrated**, because a platform shaped around one
+vendor's quirks is not a platform. The decision record, frozen before code,
+is [`docs/features/connectors.md`](docs/features/connectors.md); a new
+connector follows
+[`docs/features/connector-authoring.md`](docs/features/connector-authoring.md).
+A connector is a registered **descriptor** (source type, auth style,
+discovery and fetch, container-independent natural key, sub-scope model,
+authored-or-observed authorship) and inherits: the eight-state lifecycle
+(removal destroys credentials and sync state but **sources remain with
+provenance intact**); credential storage inside the **identity seam**
+(`connector_credential`, sealed under `COGETO_MASTER_KEY` by the secret-box
+that moved to `infrastructure` so provider keys and credentials share ONE
+mechanism, with the decrypting opener resolvable **only in the worker root**);
+per-sub-scope cursors persisted after every page; the **natural-key ledger**
+(`connector_item`, unique on connector + natural key, identifiers and
+arithmetic only, never content) with content-hash skip, so an unchanged item
+costs zero model calls and an upstream edit becomes a `source_revision` that
+supersedes; bounded backfill (30 days / 500 items per sub-scope by default,
+"everything" only as an explicit choice); the hostile-facing **webhook
+ingress** (raw-byte HMAC before parse, replay tolerance, delivery dedup by
+event id, enqueue-then-200, payloads as signals whose items are re-fetched
+through the outbound path so webhook content never reaches a model);
+**outbound rate limiting** (durable token bucket per connector, Retry-After
+walls that reschedule instead of retrying into them); admission defaults per
+authorship class (observed 200, authored 1000 items per connector per day,
+configurable per connector and sub-scope, pausing visibly); and a
+`connectors` capability entry. The `connector_maintenance` recurring job is
+the refresh loop, the subscription renewer, and the polling fallback in one.
+The platform is proved by a **reference connector that exists only in tests**
+(`connectors/testing/reference-connector.ts`), whose harness every future
+connector validates against; the named tests are the expensive failures:
+interrupted-and-resumed re-extracts nothing, unchanged re-sync costs zero
+model calls. Notes, files, chat, email and web research were deliberately NOT
+migrated onto the platform (none is a pull-or-webhook connector; the reasons
+are in the decision record) and are byte-identical.
+
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).
 Thinking is a CHANNEL, not content: `completeStream` yields channel-tagged

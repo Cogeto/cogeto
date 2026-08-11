@@ -1,13 +1,19 @@
 import { createCipheriv, createDecipheriv, randomBytes, timingSafeEqual } from 'node:crypto';
 
 /**
- * Provider key encryption at rest (V2.4 item 7.1).
+ * Secret encryption at rest under the instance master key (V2.4 item 7.1,
+ * generalized for V2.5 item 8.1).
  *
- * A provider key is the one secret this product stores on a customer's behalf,
- * and the plan's rule is exact: keys are encrypted in the database, the master
- * key stays in the environment. That split is the whole point — a database
- * dump, a backup, a replica, or a support export contains ciphertext and
- * nothing else, and the one thing that opens it is not in there with it.
+ * Born as the provider-key mechanism and moved here when connector
+ * credentials needed the same guarantee: ONE sealed-secret mechanism, never a
+ * second. The rule is exact: secrets are encrypted in the database, the
+ * master key stays in the environment. That split is the whole point — a
+ * database dump, a backup, a replica, or a support export contains ciphertext
+ * and nothing else, and the one thing that opens it is not in there with it.
+ *
+ * Every sealed column is opened in exactly one function, asserted
+ * structurally by that column's own confinement spec (`key-confinement`,
+ * `credential-confinement`, `webhook-secret-confinement`).
  *
  * AES-256-GCM: authenticated, so a tampered ciphertext fails to open rather
  * than decrypting to garbage that gets sent to an endpoint as a bearer token.
@@ -59,13 +65,13 @@ function decodeKey(raw: string): Buffer {
 
 /** The message an operator sees when a key must be stored and cannot be. */
 export const MASTER_KEY_MISSING =
-  'COGETO_MASTER_KEY is not set, so a provider key cannot be encrypted and will not be ' +
+  'COGETO_MASTER_KEY is not set, so a secret cannot be encrypted and will not be ' +
   'stored in plaintext. Generate one with `openssl rand -base64 32`, put it in .env as ' +
   'COGETO_MASTER_KEY, and restart. It never changes after that: rotating it makes every ' +
-  'stored provider key unreadable.';
+  'stored secret unreadable.';
 
 /**
- * Encrypt a provider key. Throws when there is no master key, rather than
+ * Encrypt a secret. Throws when there is no master key, rather than
  * storing a secret in the clear — the one behaviour that must not be
  * configurable.
  */
@@ -86,18 +92,18 @@ export class SecretUnreadableError extends Error {
 }
 
 /**
- * Decrypt a stored provider key. Called only where a call is about to be made
- * — the resolver that builds the gateway's endpoints — and nowhere else.
+ * Decrypt a stored secret. Called only where the secret is about to be used —
+ * each sealed column's single opening function — and nowhere else.
  *
  * A failure here is loud and specific: a wrong or rotated master key makes
- * every stored key unreadable at once, and an instance that silently sent an
- * empty bearer token to a provider would look like a provider outage.
+ * every stored secret unreadable at once, and an instance that silently sent
+ * an empty bearer token to an upstream would look like an upstream outage.
  */
 export function openSecret(masterKey: Buffer | null, sealed: string): string {
   const parts = sealed.split('.');
   if (parts.length !== 4 || parts[0] !== VERSION) {
     throw new SecretUnreadableError(
-      'a stored provider key is not in the expected sealed format: it was written by a ' +
+      'a stored secret is not in the expected sealed format: it was written by a ' +
         'different version of this software, or the column was edited by hand',
     );
   }
@@ -115,9 +121,9 @@ export function openSecret(masterKey: Buffer | null, sealed: string): string {
     ]).toString('utf8');
   } catch {
     throw new SecretUnreadableError(
-      'a stored provider key could not be decrypted with COGETO_MASTER_KEY. The master key ' +
-        'has changed, or the value was replaced. Re-enter the provider key in the interface; ' +
-        'nothing else can recover it.',
+      'a stored secret could not be decrypted with COGETO_MASTER_KEY. The master key ' +
+        'has changed, or the value was replaced. Re-enter the secret where it was ' +
+        'configured; nothing else can recover it.',
     );
   }
 }

@@ -285,6 +285,14 @@ const countsSchema = z.object({
    * before it: earlier receipts parse unchanged and hash to the same value.
    */
   findings_reports_expired: z.int().optional(),
+  /**
+   * Connector natural-key ledger rows whose source reference was cleared
+   * with this deletion (V2.5 item 8.1). The row itself survives as dedup
+   * arithmetic in state 'erased' so a later sync cannot resurrect the
+   * memory; the count records that the dangling reference was cleared.
+   * ADDITIVE and OPTIONAL: earlier receipts parse and hash unchanged.
+   */
+  connector_items_erased: z.int().optional(),
   /** Qdrant point id = memory id (spec §4.2); duplicated for receipt readability. */
   point_ids: z.array(z.string()),
   object_keys: z.array(z.string()),
@@ -533,6 +541,7 @@ export class DeletionSaga {
       let suppressedFactsRemoved = 0;
       let fileReadReportsRemoved = 0;
       let chatAttachmentsRemoved = 0;
+      let connectorItemsErased = 0;
       const ownerExpiredObjectKeys: string[] = [];
       // Every source this deletion erases, not just the one it was asked for:
       // the primary source plus its cascaded members. Source-keyed artifacts
@@ -573,6 +582,12 @@ export class DeletionSaga {
             // file leg of the same cascade only CLEARS a durable link's name
             // and returns 0, so this count is real removals only.
             if (cascade.artifact === 'chat_attachments') chatAttachmentsRemoved += redacted;
+            // Connector items (V2.5 item 8.1): the natural-key ledger row
+            // pointing at an erased source has its source reference cleared
+            // and reads 'erased' thereafter, so a later sync can never
+            // resurrect the deleted memory. Arithmetic survives; nothing
+            // content-bearing lives there.
+            if (cascade.artifact === 'connector_items') connectorItemsErased += redacted;
           }
         }
         // SEC-8: owner-scoped artifacts that would outlive the deletion. Their
@@ -635,6 +650,7 @@ export class DeletionSaga {
           ? { file_read_reports_removed: fileReadReportsRemoved }
           : {}),
         ...(chatAttachmentsRemoved > 0 ? { chat_attachments_removed: chatAttachmentsRemoved } : {}),
+        ...(connectorItemsErased > 0 ? { connector_items_erased: connectorItemsErased } : {}),
         point_ids: memoryIds,
         object_keys: objectKeys,
         superseded_by_nulled: nulledPointers,

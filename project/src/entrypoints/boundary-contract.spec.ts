@@ -109,7 +109,23 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   import_run: 'imports',
   import_item: 'imports',
 
+  // The connector platform (V2.5 item 8.1, migration 0054,
+  // docs/features/connectors.md): lifecycle, sub-scope selection, the
+  // natural-key ledger (identifiers and arithmetic only, never content),
+  // sync summaries, webhook delivery dedup and durable rate state.
+  connector: 'connectors',
+  connector_sub_scope: 'connectors',
+  connector_item: 'connectors',
+  connector_sync_run: 'connectors',
+  connector_webhook_delivery: 'connectors',
+  connector_rate_limit: 'connectors',
+
   app_user: 'identity',
+  // Connector credential material, sealed under the instance master key
+  // (V2.5 item 8.1): the plan places credential storage inside the identity
+  // seam, and the worker-only opener is what keeps the app process unable
+  // to read a stored credential back.
+  connector_credential: 'identity',
   prompt_registry: 'model-gateway',
   passport_export: 'passport',
   // The findings-run ledger (V2.3 item 6.2): the run record outlives its
@@ -171,6 +187,12 @@ const JOB_TYPE_OWNERS: Readonly<Record<string, string>> = {
   'chat.attachment_read': 'chat',
   // The bulk-import coordinator (V2.2 item 5.3).
   'import.advance': 'imports',
+  // The connector platform (V2.5 item 8.1): the plain re-runnable sync pass,
+  // the idempotent per-delivery webhook processor, and the recurring
+  // maintenance pass (refresh, renewal, prune, polling fallback).
+  'connector.sync': 'connectors',
+  'connector.webhook_process': 'connectors',
+  connector_maintenance: 'connectors',
   passport_export: 'passport',
   passport_retention: 'passport',
   // The findings report (V2.3 item 6.2): generation + artifact retention.
@@ -266,6 +288,15 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
   // The capability registry's injectable job reads followed the registry into
   // `operations` (V2.0 item 3.6 part 2).
   CAPABILITY_JOB_SOURCES: 'operations',
+  // The connector fleet's capability port (V2.5 item 8.1, issue A4):
+  // operations declares it, the connectors platform implements it, the
+  // composition root binds it.
+  CONNECTOR_HEALTH: 'operations',
+
+  // The connector platform's composition-root options (V2.5 item 8.1):
+  // the master key for the sealed webhook signing secret and the ingress
+  // bounds; the module names what it needs, never reads env.
+  CONNECTORS_OPTIONS: 'connectors',
 
   // The providers module's composition-root options (V2.4 item 7.1): the live
   // configuration holder, the instance master key, and the deployment facts a

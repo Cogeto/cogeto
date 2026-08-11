@@ -44,6 +44,7 @@ const KNOWN_CAPABILITIES = [
   'local-models',
   'reasoning',
   'vision',
+  'connectors',
 ] as const;
 
 const KNOWN_JOBS = ['dreaming', 'sweep'] as const;

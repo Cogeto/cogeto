@@ -55,19 +55,43 @@ describe('provider_key_confinement: a stored key cannot leave the module', () =>
     expect(store).toContain('listProvidersWithSecrets');
   });
 
-  it('nothing_outside_the_module_names_the_column_or_opens_a_secret', () => {
+  it('nothing_outside_the_module_names_the_column', () => {
     const offenders = sourceFiles(SRC)
       .filter((file) => !file.startsWith(MODULE))
       .filter((file) => {
         const text = readFileSync(file, 'utf8');
-        return (
-          text.includes('api_key_secret') ||
-          text.includes('apiKeySecret') ||
-          text.includes('openSecret(')
-        );
+        return text.includes('api_key_secret') || text.includes('apiKeySecret');
       })
       .map((file) => path.relative(SRC, file));
     expect(offenders).toEqual([]);
+  });
+
+  it('every_secret_opener_is_a_known_confined_site', () => {
+    // The sealed-secret mechanism moved to infrastructure (V2.5 item 8.1) so
+    // provider keys and connector credentials share ONE implementation. The
+    // decrypting function may therefore be CALLED outside this module, but
+    // only at the enumerated sites, each of which is itself confined by its
+    // own structural spec. A new caller of openSecret() is a new place secret
+    // material exists in memory, and it must be added here deliberately,
+    // with its own confinement spec, or this test fails the build.
+    const allowed = [
+      // The mechanism itself and its unit spec.
+      'infrastructure/secret-box.ts',
+      'infrastructure/secret-box.spec.ts',
+      // Identity's connector-credential opener (credential-confinement.spec.ts).
+      'identity/persistence/connector-credential-store.ts',
+      'identity/credential-confinement.spec.ts',
+      // The connectors platform's webhook signing secret, the one secret the
+      // app-side ingress must open (webhook-secret-confinement.spec.ts).
+      'connectors/persistence/connector-store.ts',
+      'connectors/webhook-secret-confinement.spec.ts',
+    ];
+    const callers = sourceFiles(SRC)
+      .filter((file) => !file.startsWith(MODULE))
+      .filter((file) => readFileSync(file, 'utf8').includes('openSecret('))
+      .map((file) => path.relative(SRC, file))
+      .filter((file) => !allowed.includes(file));
+    expect(callers).toEqual([]);
   });
 
   it('no_response_type_carries_a_key: only the write-only request shapes mention one', () => {

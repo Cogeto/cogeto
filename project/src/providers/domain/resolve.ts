@@ -1,6 +1,6 @@
 import { deriveProvidersId, presetForTiers } from '../../model-gateway/index';
 import { adapterBaseUrl, NO_AUTH_PLACEHOLDER, PROVIDER_TYPE_SPECS } from './provider-types';
-import { MasterKeyError, openSecret, SecretUnreadableError } from './secret-box';
+import { MasterKeyError, openSecret, SecretUnreadableError } from '../../infrastructure/index';
 import type { ProviderRecordWithSecret } from '../persistence/provider-store';
 import type {
   AnswerModelOption,

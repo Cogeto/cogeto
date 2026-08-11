@@ -1,0 +1,285 @@
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Inject,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Put,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { z } from 'zod';
+import { DRIZZLE, parseOrBadRequest, withTransactionalEnqueue } from '../infrastructure/index';
+import type { Db } from '../infrastructure/index';
+import { BearerAuthGuard, ConnectorCredentialStore } from '../identity/index';
+import type { AuthenticatedRequest } from '../identity/index';
+import { ConnectorRegistry } from './connector-registry';
+import { ConnectorStore } from './persistence/connector-store';
+import { CONNECTOR_SYNC_JOB_TYPE } from './connector-jobs';
+import { SYNCABLE_STATES } from './domain/lifecycle';
+import type { ConnectorRow } from './persistence/tables';
+
+/**
+ * The owner's connector surface (V2.5 item 8.1): configure, authorise,
+ * select sub-scopes, confirm the bounded backfill, pause, remove, inspect.
+ * Everything here is metadata; credential material travels one way (in) and
+ * the webhook signing secret is returned exactly once at rotation.
+ */
+
+const createSchema = z.object({
+  kind: z.string().min(1).max(100),
+  name: z.string().min(1).max(200),
+});
+
+const credentialsSchema = z.object({
+  accessToken: z.string().min(1).max(8192),
+  refreshToken: z.string().min(1).max(8192).optional(),
+  extras: z.record(z.string(), z.string().max(8192)).optional(),
+  accountIdentity: z.string().max(500).optional(),
+  scopes: z.array(z.string().max(200)).max(100).optional(),
+  expiresAt: z.string().datetime().optional(),
+});
+
+const settingsSchema = z.object({
+  backfillDays: z.number().int().positive().max(3650).optional(),
+  backfillItemCap: z.number().int().positive().max(100_000).optional(),
+  /** The user's EXPLICIT everything; never a default (issue C4). */
+  backfillAll: z.boolean().optional(),
+  dailyItemCap: z.number().int().positive().max(100_000).optional(),
+});
+
+const subScopeSchema = z.object({
+  selected: z.boolean().optional(),
+  itemCap: z.number().int().positive().max(100_000).nullable().optional(),
+});
+
+@Controller('connectors')
+@UseGuards(BearerAuthGuard)
+export class ConnectorsController {
+  constructor(
+    @Inject(DRIZZLE) private readonly db: Db,
+    private readonly store: ConnectorStore,
+    private readonly registry: ConnectorRegistry,
+    private readonly credentials: ConnectorCredentialStore,
+  ) {}
+
+  @Get('kinds')
+  kinds(): { kinds: string[] } {
+    return { kinds: this.registry.kinds() };
+  }
+
+  @Get()
+  async list(@Req() request: AuthenticatedRequest) {
+    const rows = await this.store.listForOwner(request.principal.userId);
+    return { connectors: rows.map(publicView) };
+  }
+
+  @Post()
+  async create(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const parsed = parseOrBadRequest(createSchema, body);
+    if (!this.registry.get(parsed.kind)) {
+      throw new BadRequestException(`unknown connector kind '${parsed.kind}'`);
+    }
+    const row = await this.store.create({
+      ownerId: request.principal.userId,
+      orgId: request.principal.orgId,
+      kind: parsed.kind,
+      name: parsed.name,
+    });
+    return publicView(row);
+  }
+
+  @Get(':id')
+  async detail(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
+    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const [credential, subScopes, runs] = await Promise.all([
+      this.credentials.describe(row.id),
+      this.store.subScopes(row.id),
+      this.store.recentSyncRuns(row.id),
+    ]);
+    return {
+      ...publicView(row),
+      // What the user is entitled to see about the access they granted:
+      // scopes, account, expiry. Never the material itself (issue B3).
+      credential: credential
+        ? {
+            accountIdentity: credential.accountIdentity,
+            scopes: credential.scopes,
+            expiresAt: credential.expiresAt?.toISOString() ?? null,
+            lastRefreshedAt: credential.lastRefreshedAt?.toISOString() ?? null,
+            refreshFailed: credential.refreshFailedAt !== null,
+          }
+        : null,
+      subScopes: subScopes.map((s) => ({
+        key: s.key,
+        label: s.label,
+        selected: s.selected,
+        itemCap: s.itemCap,
+        backfillComplete: s.backfillJson?.complete ?? false,
+      })),
+      syncRuns: runs.map((r) => ({
+        id: r.id,
+        kind: r.kind,
+        state: r.state,
+        reason: r.reason,
+        counts: r.countsJson ?? null,
+        startedAt: r.startedAt.toISOString(),
+        finishedAt: r.finishedAt?.toISOString() ?? null,
+      })),
+    };
+  }
+
+  /** Store the credential (write-only) and mark the connector authorised. */
+  @Post(':id/credentials')
+  async storeCredentials(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: unknown,
+  ) {
+    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const parsed = parseOrBadRequest(credentialsSchema, body);
+    await this.db.transaction(async (tx) => {
+      await this.credentials.store(tx, {
+        ownerId: row.ownerId,
+        orgId: row.orgId,
+        connectorId: row.id,
+        material: {
+          accessToken: parsed.accessToken,
+          refreshToken: parsed.refreshToken,
+          extras: parsed.extras,
+        },
+        accountIdentity: parsed.accountIdentity ?? null,
+        scopes: parsed.scopes ?? null,
+        expiresAt: parsed.expiresAt ? new Date(parsed.expiresAt) : null,
+      });
+      if (row.state === 'configured' || row.state === 'needs_reauth') {
+        await this.store.transition(tx, row, 'authorised', {
+          actor: `user:${request.principal.userId}`,
+        });
+      }
+    });
+    return { stored: true };
+  }
+
+  /** Generate the webhook signing secret; returned ONCE, never again. */
+  @Post(':id/webhook-secret')
+  async rotateWebhookSecret(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const descriptor = this.registry.get(row.kind);
+    if (!descriptor?.webhook) {
+      throw new BadRequestException('this connector kind declares no webhook');
+    }
+    const secret = await this.store.rotateWebhookSecret(row);
+    return { secret };
+  }
+
+  @Put(':id/settings')
+  async updateSettings(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: unknown,
+  ) {
+    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const parsed = parseOrBadRequest(settingsSchema, body);
+    await this.store.updateSettings(row.id, { ...(row.settingsJson ?? {}), ...parsed });
+    return { updated: true };
+  }
+
+  @Put(':id/sub-scopes/:key')
+  async updateSubScope(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('key') key: string,
+    @Body() body: unknown,
+  ) {
+    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const parsed = parseOrBadRequest(subScopeSchema, body);
+    await this.store.setSubScopeSelection(row, key, parsed);
+    return { updated: true };
+  }
+
+  /** Trigger a sync pass (also how discovery is refreshed). */
+  @Post(':id/sync')
+  async sync(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
+    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    if (!SYNCABLE_STATES.includes(row.state)) {
+      throw new BadRequestException(`a ${row.state} connector cannot sync`);
+    }
+    await this.db.transaction(async (tx) => {
+      await withTransactionalEnqueue(
+        tx,
+        { type: 'connector.sync_requested', payload: { connector_id: row.id } },
+        {
+          type: CONNECTOR_SYNC_JOB_TYPE,
+          payload: { source_type: 'connector', source_id: row.id },
+          principalId: row.ownerId,
+        },
+      );
+    });
+    return { enqueued: true };
+  }
+
+  @Post(':id/disable')
+  async disable(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
+    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    await this.store.transition(this.db, row, 'disabled', {
+      actor: `user:${request.principal.userId}`,
+    });
+    return { state: 'disabled' };
+  }
+
+  @Post(':id/enable')
+  async enable(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
+    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const credential = await this.credentials.describe(row.id);
+    if (!credential) throw new BadRequestException('authorise the connector first');
+    await this.store.transition(this.db, row, 'authorised', {
+      actor: `user:${request.principal.userId}`,
+    });
+    return { state: 'authorised' };
+  }
+
+  /**
+   * Removal is complete (issue A2): the credential is destroyed immediately
+   * and verifiably in the same transaction, sync state is cleared, and
+   * already-ingested sources remain as sources with their provenance
+   * intact, because deleting a connector must not silently erase memory.
+   */
+  @Delete(':id')
+  async remove(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
+    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const actor = `user:${request.principal.userId}`;
+    await this.db.transaction(async (tx) => {
+      await this.credentials.destroy(tx, {
+        connectorId: row.id,
+        ownerId: row.ownerId,
+        orgId: row.orgId,
+        actor,
+      });
+      await this.store.remove(tx, row, actor);
+    });
+    const survivingCredential = await this.credentials.describe(row.id);
+    return { removed: true, credentialDestroyed: survivingCredential === null };
+  }
+}
+
+function publicView(row: ConnectorRow) {
+  return {
+    id: row.id,
+    kind: row.kind,
+    name: row.name,
+    state: row.state,
+    statusReason: row.statusReason,
+    lastSyncAt: row.lastSyncAt?.toISOString() ?? null,
+    settings: row.settingsJson ?? {},
+    webhookExpiresAt: row.webhookExpiresAt?.toISOString() ?? null,
+    createdAt: row.createdAt.toISOString(),
+  };
+}

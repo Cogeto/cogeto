@@ -56,7 +56,7 @@ module that never imports `connectors` but injects `NotesService` because
 
 ## 2. Table ownership
 
-Fifty-three tables, one owner each. The owner is the module whose
+Sixty tables, one owner each. The owner is the module whose
 `persistence/tables.ts` declares the Drizzle table; it is the only module that
 may name the table in a query, in Drizzle or in SQL.
 
@@ -71,10 +71,11 @@ may name the table in a query, in Drizzle or in SQL.
 | `files` | `file_read_report` (V2.1 item 4.1: what the reading layer made of an uploaded file. NOT in `memory` beside `file_metadata`, because a discard-mode upload has no metadata row and is exactly the upload whose original is gone) |
 | `settings` | `user_settings` |
 | `imports` | `import_run`, `import_item` (V2.2 item 5.3: the first-class import record. Items carry filenames, so the deletion cascade TOMBSTONES an item when its ingested source is erased: name cleared, outcome kept as arithmetic, receipts unchanged because nothing content-bearing survives) |
+| `connectors` | `connector`, `connector_sub_scope`, `connector_item`, `connector_sync_run`, `connector_webhook_delivery`, `connector_rate_limit` (V2.5 item 8.1, the connector platform, decision record [`docs/features/connectors.md`](features/connectors.md): lifecycle, the email-allowlist-shaped sub-scope selection, the natural-key ledger that stands in front of every model call, sync summaries, webhook delivery dedup and durable outbound rate state. `connector_item` deliberately carries identifiers and arithmetic only, never content, so it survives source deletion as dedup state: the cascade clears the source reference and marks the row erased) |
 | `email` | `email_message`, `email_attachment`, `email_allowlist`, `email_refusal` |
 | `research` | `web_page`, `research_run` |
 | `skills` | `skill_run`, `skill_run_step` |
-| `identity` | `app_user` |
+| `identity` | `app_user`, `connector_credential` (V2.5 item 8.1: connector credential material sealed under the instance master key. The plan places credential storage inside the identity seam; the sealed column is selected in exactly one function, asserted structurally by `identity/credential-confinement.spec.ts`, and the decrypting opener is provided only to roots registered with `credentialReads: true`, which the app root never passes) |
 | `model-gateway` | `prompt_registry` |
 | `passport` | `passport_export` |
 | `reports` | `findings_report` (V2.3 item 6.2: the findings-run ledger; the row outlives its rendered artifacts because the delta view compares against it, and carries no quoted content) |
@@ -150,7 +151,7 @@ well-defined.
 
 ## 3. Job-type contracts
 
-Eighteen job types. Each is declared **once**, as an exported constant, in the
+Twenty-five job types. Each is declared **once**, as an exported constant, in the
 module that owns the payload contract and writes the handler body. The worker
 composition root is the only place that maps a job type to a handler, and it
 imports every constant rather than spelling any of them.
@@ -174,6 +175,9 @@ imports every constant rather than spelling any of them.
 | `conversation.title` | `chat` | `CONVERSATION_TITLE_JOB_TYPE` | per-source |
 | `chat.attachment_read` | `chat` | `CHAT_ATTACHMENT_READ_JOB_TYPE` | per-source |
 | `import.advance` | `imports` | `IMPORT_ADVANCE_JOB_TYPE` | per-source (plain, re-runnable: one run advances many times under a per-run single-flight lock, the `research.conclude` shape) |
+| `connector.sync` | `connectors` | `CONNECTOR_SYNC_JOB_TYPE` | per-source (plain, re-runnable, single-flight per connector, the `import.advance` shape: a pass fetches a few pages behind the token bucket, persists the cursor per page and re-enqueues itself; pauses reschedule visibly) |
+| `connector.webhook_process` | `connectors` | `CONNECTOR_WEBHOOK_JOB_TYPE` | per-source (one verified delivery; the payload was only a signal, so the handler re-fetches the named items through the normal outbound path) |
+| `connector_maintenance` | `connectors` | `CONNECTOR_MAINTENANCE_JOB_TYPE` | recurring (credential refresh ahead of expiry, webhook subscription renewal with the degrade-to-polling fallback, delivery-ledger prune, and the periodic sync enqueue that IS the polling fallback) |
 | `passport_export` | `passport` | `PASSPORT_EXPORT_JOB_TYPE` | per-source |
 | `passport_retention` | `passport` | `PASSPORT_RETENTION_JOB_TYPE` | recurring |
 | `report.generate` | `reports` | `REPORT_GENERATE_JOB_TYPE` | per-source (V2.3 item 6.2: one findings run) |
@@ -295,7 +299,8 @@ defined by the module that *consumes* the implementation) are marked.
 | `model-gateway` | `MODEL_CONFIG_VIEW` |
 | `passport` | `PASSPORT_OPTIONS` |
 | `reports` | `REPORT_OPTIONS` (composition-root options: signing key dir, retention, the vendored font/brand/trust-score paths, and the model configuration in force) |
-| `operations` | `OPERATIONS_OPTIONS`, `CAPABILITY_JOB_SOURCES` |
+| `operations` | `OPERATIONS_OPTIONS`, `CAPABILITY_JOB_SOURCES`, `CONNECTOR_HEALTH` (port, V2.5 item 8.1: the connector fleet's capability entry; the connectors platform implements it, the app root binds it through operations' registration options) |
+| `connectors` | `CONNECTORS_OPTIONS` (composition-root options: the instance master key for the sealed webhook signing secret, and the ingress bounds) |
 | `providers` | `PROVIDERS_OPTIONS` (composition-root options: the live configuration holder, the instance master key, the trust-score directory, and the watcher's poll interval) |
 | `imports` | `IMPORT_IN_FLIGHT` (the coordinator's in-flight cap, bound by the worker root from `COGETO_IMPORT_IN_FLIGHT`), `IMPORT_ZIP_MAX_BYTES` (the archive-size bound on the manifest endpoint) |
 | `entrypoints` | `COGETO_CONFIG` |

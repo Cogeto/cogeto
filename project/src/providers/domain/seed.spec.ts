@@ -4,7 +4,7 @@ import { resolveModelProviders } from '../../model-gateway/index';
 import type { ResolvedModelProviders } from '../../model-gateway/index';
 import { seedFromEnvironment } from './seed';
 import { resolveFromRecords } from './resolve';
-import { openSecret } from './secret-box';
+import { openSecret } from '../../infrastructure/index';
 import type { ProviderStore } from '../persistence/provider-store';
 
 /**

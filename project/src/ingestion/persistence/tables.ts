@@ -427,6 +427,12 @@ export interface RevisionBasis {
   classMatch: boolean | null;
   shingleSimilarity: number | null;
   confidence: 'high' | 'medium' | 'manual';
+  /**
+   * V2.5 item 8.1: the upstream itself asserted "same item, new content"
+   * (stable natural key, changed content hash), evidence stronger than a
+   * filename match. Present only on links the connector platform recorded.
+   */
+  upstreamIdentity?: string | null;
 }
 
 export type SourceRevisionRow = typeof sourceRevision.$inferSelect;

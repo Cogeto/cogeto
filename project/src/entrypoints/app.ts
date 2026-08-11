@@ -53,6 +53,10 @@ async function main(): Promise<void> {
   // default JSON parser's, and the raw parser hands the controller a Buffer. The
   // JSON/urlencoded parsers skip it by content-type (message/rfc822).
   app.use('/api/email/intake', raw({ type: () => true, limit: config.mailMaxBytes }));
+  // The connector webhook ingress (V2.5 item 8.1) needs the RAW bytes:
+  // signatures verify over the body as delivered, before anything parses.
+  // 1 MiB is far above any real provider event and far below abuse size.
+  app.use('/api/connectors/webhooks', raw({ type: () => true, limit: 1024 * 1024 }));
   app.setGlobalPrefix('api');
   app.enableShutdownHooks();
 

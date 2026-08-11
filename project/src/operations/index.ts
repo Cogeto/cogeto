@@ -11,5 +11,7 @@ export { OPERATIONS_OPTIONS } from './operations.options';
 export {
   CapabilitiesService,
   CAPABILITY_JOB_SOURCES,
+  CONNECTOR_HEALTH,
   formatCapabilitiesBanner,
 } from './capabilities';
+export type { ConnectorHealthPort } from './capabilities';

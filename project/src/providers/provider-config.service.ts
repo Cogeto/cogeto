@@ -8,7 +8,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import type { OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
-import { DRIZZLE, writeAudit } from '../infrastructure/index';
+import { DRIZZLE, openSecret, sealSecret, writeAudit } from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import {
   deriveProvidersId,
@@ -32,7 +32,6 @@ import {
   NO_AUTH_PLACEHOLDER,
   PROVIDER_TYPE_SPECS,
 } from './domain/provider-types';
-import { openSecret, sealSecret } from './domain/secret-box';
 import { resolveFromRecords } from './domain/resolve';
 import { summariseTrustFor } from './domain/trust-lookup';
 import { PROVIDERS_OPTIONS } from './providers.options';

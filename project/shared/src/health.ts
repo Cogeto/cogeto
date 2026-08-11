@@ -43,7 +43,11 @@ export type CapabilityId =
   // same reason vision is probed: the same weights are served both ways. On
   // means maxTokens headroom is applied so reasoning cannot silently consume
   // an answer's token budget; off is a complete, healthy answer.
-  | 'reasoning';
+  | 'reasoning'
+  // The connector fleet (V2.5 item 8.1): off when none is configured, on
+  // while every configured connector is healthy, LOUD when any is degraded
+  // or needs reauthorisation, with the actionable fix in the message.
+  | 'connectors';
 
 export type CapabilityState = 'on' | 'unreachable' | 'off';
 
