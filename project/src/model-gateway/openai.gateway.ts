@@ -262,7 +262,11 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
         try {
           return await fn(timeoutMs !== undefined ? AbortSignal.timeout(timeoutMs) : undefined);
         } catch (error) {
-          if (isTimeoutError(error)) {
+          // Only an EXPLICIT per-tier timeout is the fatal local-inference
+          // diagnosis below; the unsignalled hosted ceiling (issue #496)
+          // aborts without one and falls through to the retry policy, which
+          // classifies a status-less abort as retryable.
+          if (timeoutMs !== undefined && isTimeoutError(error)) {
             throw new ModelGatewayError(
               `${this.label} ${tier} call timed out after ${timeoutMs} ms, raise ` +
                 `COGETO_OLLAMA_TIMEOUT_${suffix}_MS or use a smaller/faster model`,

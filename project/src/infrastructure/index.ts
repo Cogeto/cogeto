@@ -23,6 +23,7 @@ export {
   acquireJobRunLock,
   tryJobRunLock,
   consumeIdempotencyKey,
+  releaseAbandonedJobLocks,
   runSingleFlight,
   jobRunState,
   clearIdempotencyForReprocess,
