@@ -8,6 +8,7 @@ import { locateSpan } from '@cogeto/shared';
 import type { ReadLocator, UncertaintyReason } from '@cogeto/shared';
 import { resolveFactTemporal } from '../domain/candidate-fact';
 import { classifyAdmission } from '../domain/uncertainty';
+import { documentIdentityOf } from '../domain/document-identity';
 import { SuppressedFactLog } from '../persistence/suppressed-fact-log';
 import type { SuppressedFactEntry } from '../persistence/suppressed-fact-log';
 import { verificationResult } from '../persistence/tables';
@@ -120,7 +121,12 @@ export class EmbedStoreStage {
         sourceType: source.sourceType,
         sourceId: source.sourceId,
         entities: flattenEntities(fact),
-        subjectEntity: fact.subject_entity ?? undefined,
+        // A commercial document's identifier fills a subject the extractor
+        // left null (issue #498; docs/features/document-identity.md, frozen
+        // before this line): "Invoice 2026-0771 includes ..." clusters under
+        // the invoice, never under nobody. Fills ONLY nulls; a resolved
+        // subject is never overridden.
+        subjectEntity: fact.subject_entity ?? documentIdentityOf(fact.claim) ?? undefined,
         kind: fact.kind,
         // Email-path authorship — carried from the SourceReader,
         // structural, never a model judgment.
