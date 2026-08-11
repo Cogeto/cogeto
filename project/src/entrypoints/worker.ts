@@ -7,7 +7,12 @@ import type { Runner } from 'graphile-worker';
 import { loadConfig, redactionOptions } from './config';
 import { createLogger, PinoNestLogger } from './logger';
 import { createWorkerRootModule } from './worker-root.module';
-import { createDb, describeErrorLine, ensureInstanceKeys } from '../infrastructure/index';
+import {
+  createDb,
+  describeErrorLine,
+  ensureInstanceKeys,
+  releaseAbandonedJobLocks,
+} from '../infrastructure/index';
 import { logRedactionState } from './redaction-boot';
 import {
   assertEmbeddingSpaceConsistent,
@@ -256,6 +261,18 @@ async function main(): Promise<void> {
     });
     demoLine = `\n${config.demoResetCron} ${DEMO_RESET_JOB_TYPE}`;
     logger.info({ cron: config.demoResetCron }, 'demo mode: scheduled reset enabled');
+  }
+
+  // Locks a dead worker left behind are released before this one starts
+  // (issue #496): graphile would otherwise hold them for four hours, and a
+  // rebuild or restart mid-job then shows one-processing-forever. One worker
+  // per instance is the compose contract, so at boot every held lock is a
+  // dead process's.
+  try {
+    const released = await releaseAbandonedJobLocks(db);
+    if (released > 0) logger.info({ released }, 'released job locks abandoned by a dead worker');
+  } catch (error) {
+    logger.warn({ err: error }, 'abandoned-lock release failed');
   }
 
   // A rebuild that lost its advance job with a dead worker resumes here:

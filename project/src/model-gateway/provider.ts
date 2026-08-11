@@ -101,6 +101,21 @@ async function describeErrorBody(response: Response): Promise<string> {
   return response.statusText || 'request failed';
 }
 
+/**
+ * The ceiling on any provider call that carries no explicit deadline of its
+ * own (issue #496). Hosted calls historically ran with NO timeout, so a
+ * single black-holed HTTPS request hung its pipeline job forever: no error,
+ * no retry, no dead letter, just a locked job going stale (observed live,
+ * twice, on an 88 KB invoice; the network answered a fresh request in
+ * 324 ms while the wedged one sat for ten minutes). Ten minutes is generous
+ * beyond any legitimate hosted call, and an elapsed ceiling surfaces as an
+ * abort with no HTTP status, which the retry policy already classifies as
+ * RETRYABLE, so a wedged socket becomes an ordinary retried failure.
+ * Explicit signals (the self-hosted per-tier timeouts, probe deadlines)
+ * still win.
+ */
+export const UNSIGNALLED_CALL_CEILING_MS = 600_000;
+
 /** POST JSON and parse the JSON response; non-2xx throws a ProviderHttpError. */
 export async function postJson<T>(
   url: string,
@@ -112,7 +127,7 @@ export async function postJson<T>(
     method: 'POST',
     headers: { 'content-type': 'application/json', ...headers },
     body: JSON.stringify(body),
-    signal,
+    signal: signal ?? AbortSignal.timeout(UNSIGNALLED_CALL_CEILING_MS),
   });
   if (!response.ok) {
     throw new ProviderHttpError(await describeErrorBody(response), response.status);
@@ -131,7 +146,7 @@ export async function postStream(
     method: 'POST',
     headers: { 'content-type': 'application/json', ...headers },
     body: JSON.stringify(body),
-    signal,
+    signal: signal ?? AbortSignal.timeout(UNSIGNALLED_CALL_CEILING_MS),
   });
   if (!response.ok) {
     throw new ProviderHttpError(await describeErrorBody(response), response.status);

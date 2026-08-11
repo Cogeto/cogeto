@@ -517,3 +517,24 @@ describe('redaction_applies_all_providers / budget_applies_all_providers', () =>
     expect(meter.records).toEqual([{ userId: 'user-a', tokens: 150 }]); // 100 in + 50 out
   });
 });
+
+describe('unsignalled-call ceiling (issue #496)', () => {
+  it('a call with no explicit deadline still carries an abort signal', async () => {
+    let sawSignal: unknown = 'unset';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        sawSignal = init?.signal;
+        return new Response(JSON.stringify(openaiChat('ready')), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }),
+    );
+    const g = new OpenAiCompatibleModelGateway({ apiKey: 'k', answerModel: 'ANS' });
+    await g.complete({ input: 'q' });
+    // Hosted calls historically sent NO signal, which is how one wedged
+    // socket hung a pipeline job forever; the ceiling closes that.
+    expect(sawSignal).toBeInstanceOf(AbortSignal);
+  });
+});

@@ -99,6 +99,25 @@ export type JobRunState = 'done' | 'failed' | 'processing';
  * barrel re-exporting the table objects (spec §15.2). This is the one place
  * they are read; each caller maps the state to its own surface vocabulary.
  */
+/**
+ * Release job locks abandoned by a dead worker (issue #496). Graphile holds
+ * a killed worker's locks for its four-hour reclaim window, so a rebuild or
+ * restart mid-job leaves the queue showing one-processing-forever with no
+ * traffic at all. Each Cogeto instance runs exactly ONE worker process (the
+ * compose contract), so at ITS boot every held lock belongs to a process
+ * that no longer exists and is safe to release: the single-flight advisory
+ * locks guard re-entry and every job is idempotent by contract. Returns how
+ * many locks were released, for the boot log.
+ */
+export async function releaseAbandonedJobLocks(db: DbOrTx): Promise<number> {
+  const result = await db.execute(sql`
+    UPDATE graphile_worker._private_jobs
+       SET locked_at = NULL, locked_by = NULL
+     WHERE locked_at IS NOT NULL
+  `);
+  return (result as unknown as { rowCount?: number }).rowCount ?? 0;
+}
+
 export async function jobRunState(executor: DbOrTx, key: JobIdempotencyKey): Promise<JobRunState> {
   const done = await executor
     .select({ id: jobExecution.id })
