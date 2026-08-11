@@ -8,6 +8,10 @@ import { AdminGuard } from './admin.guard';
 import { MeController } from './me.controller';
 import { PRINCIPAL, principalProvider } from './principal.provider';
 import { UserDirectory } from './user-directory';
+import {
+  ConnectorCredentialOpener,
+  ConnectorCredentialStore,
+} from './persistence/connector-credential-store';
 import { WebConfigController } from './web-config.controller';
 import { WEB_CONFIG_OPTIONS } from './identity-options';
 
@@ -38,6 +42,11 @@ export class IdentityModule {
         BearerAuthGuard,
         AdminGuard,
         principalProvider,
+        ConnectorCredentialStore,
+        // The decrypting read exists only where the root says so (the
+        // worker): a request-path service asking for the opener fails boot
+        // instead of reading credentials at runtime (V2.5 item 8.1).
+        ...(options.credentialReads ? [ConnectorCredentialOpener] : []),
       ],
       // IDENTITY_OPTIONS is exported (not just provided) so that AdminGuard —
       // applied via @UseGuards on a controller in ANOTHER module (the app root's
@@ -52,6 +61,8 @@ export class IdentityModule {
         BearerAuthGuard,
         AdminGuard,
         PRINCIPAL,
+        ConnectorCredentialStore,
+        ...(options.credentialReads ? [ConnectorCredentialOpener] : []),
       ],
     };
   }

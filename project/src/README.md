@@ -3,7 +3,7 @@
 One directory per DDD bounded context (spec §15): `memory`, `ingestion`, `retrieval`,
 `chat`, `agents`, `notes`, `files`, `email`, `research`, `skills`, `settings`,
 `passport`, `attention`, `operations`, `sources`, `imports`, `reports`, `providers`,
-`identity`,
+`connectors`, `identity`,
 `model-gateway`, plus the shared `infrastructure` leaf, `entrypoints` (app,
 worker), `migrations` and `testing`.
 
@@ -29,7 +29,14 @@ through the owners' gated reads). V2.4 added `providers` (item 7.1: the
 instance's model and provider configuration, moved out of the environment into
 six tables with the API keys encrypted at rest under the instance master key,
 which stays in the environment because a key that guards a database cannot live
-inside it).
+inside it). V2.5 added `connectors` (item 8.1: the connector platform, what
+every external connector inherits: lifecycle, sync and cursor state, the
+natural-key deduplication ledger, bounded backfill, the webhook ingress
+framework, outbound rate limiting and admission defaults; credential storage
+lives in the `identity` seam, sealed under the same master key as provider
+API keys; no external service is integrated by the platform itself, and the
+old `connectors` NAME is reused deliberately with a new meaning, since the
+family modules it once held have long had homes of their own).
 
 Module rules (binding, CI-enforced, spec §15):
 

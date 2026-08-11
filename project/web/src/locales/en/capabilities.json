@@ -65,6 +65,11 @@
       "name": "Reading pictures",
       "description": "Reads pages that are images: scans, photographs, drawings and schematics. Cheapest first, so a page with real text is never sent to a model. Off means those pages are labelled unreadable instead of silently empty.",
       "consequence": "Vision is configured but not answering: pages that are pictures cannot be read, and they are labelled as needing it rather than shown as processed. If the message mentions a timeout, the endpoint may simply be warming up rather than broken."
+    },
+    "connectors": {
+      "name": "Connectors",
+      "description": "Syncs content from connected external systems into sources, so what changes outside this instance is captured and verified here.",
+      "consequence": "A connector needs attention: syncing for it is degraded or stopped until it is reconnected."
     }
   },
   "job": {

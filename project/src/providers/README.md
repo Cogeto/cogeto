@@ -50,7 +50,7 @@ changes another process made.
 | `load-configuration.ts` | The boot path: seed once, then resolve. Called by every composition root and by the CLIs that talk to models. |
 | `domain/seed.ts` | The environment into the database, exactly once, atomically claimed. |
 | `domain/resolve.ts` | Stored rows into the seam's `ResolvedModelProviders`. The one place keys are decrypted. |
-| `domain/secret-box.ts` | AES-256-GCM under the instance master key. |
+| `../infrastructure/secret-box.ts` | AES-256-GCM under the instance master key. Moved to infrastructure in V2.5 item 8.1 so provider keys and connector credentials share ONE mechanism; this module keeps consuming it unchanged. |
 | `domain/provider-types.ts` | What each provider family is: adapter, endpoint, key and embeddings capability. |
 | `domain/trust-lookup.ts` | What the published trust scores say about the configuration in force, or plainly that nothing does. |
 | `provider-config.service.ts` | The admin operations, the validation, the audit, the reload. |

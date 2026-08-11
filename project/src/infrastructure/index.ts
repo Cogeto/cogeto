@@ -36,6 +36,19 @@ export {
 } from './queue';
 export type { QueuedJobRow } from './queue';
 export { describeError, describeErrorLine } from './error-scrub';
+// Sealed secrets under the instance master key (V2.4 item 7.1, moved here in
+// V2.5 item 8.1 so provider keys and connector credentials share ONE
+// mechanism). Every sealed column is opened in exactly one function, asserted
+// by that column's own confinement spec.
+export {
+  readMasterKey,
+  sealSecret,
+  openSecret,
+  sameSecret,
+  MasterKeyError,
+  SecretUnreadableError,
+  MASTER_KEY_MISSING,
+} from './secret-box';
 export {
   ensureInstanceKeys,
   loadInstanceSigner,

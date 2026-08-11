@@ -1,6 +1,5 @@
 import { PROVIDER_TYPE_SPECS } from './provider-types';
-import { sealSecret } from './secret-box';
-import { MASTER_KEY_MISSING } from './secret-box';
+import { MASTER_KEY_MISSING, sealSecret } from '../../infrastructure/index';
 import type { ProviderStore } from '../persistence/provider-store';
 import type { ModelProviderId, ResolvedModelProviders } from '../../model-gateway/index';
 import type { StoredProviderType } from '@cogeto/shared';

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import type { DynamicModule, ModuleMetadata } from '@nestjs/common';
+import type { DynamicModule, ModuleMetadata, Provider } from '@nestjs/common';
 import { AuditController } from './audit.controller';
 import { CapabilitiesService } from './capabilities';
 import { HealthAccessGuard } from './health-access.guard';
@@ -27,7 +27,15 @@ import type { OperationsOptions } from './operations.options';
 @Module({})
 export class OperationsModule {
   static register(
-    options: OperationsOptions & { imports?: ModuleMetadata['imports'] },
+    options: OperationsOptions & {
+      imports?: ModuleMetadata['imports'];
+      /**
+       * The connector-fleet port's implementation (V2.5 item 8.1, issue A4),
+       * mapped onto CONNECTOR_HEALTH by this registration so the capability
+       * entry exists only where the root wired the platform in.
+       */
+      connectorHealth?: Provider;
+    },
   ): DynamicModule {
     return {
       module: OperationsModule,
@@ -41,6 +49,7 @@ export class OperationsModule {
         // SEC-3: decides who may read the aggregate health report and with how
         // much detail. Applied with @UseGuards inside this module.
         HealthAccessGuard,
+        ...(options.connectorHealth ? [options.connectorHealth] : []),
       ],
       // CapabilitiesService is exported for the app entrypoint's boot banner.
       exports: [CapabilitiesService],

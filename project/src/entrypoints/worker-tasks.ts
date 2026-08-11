@@ -53,6 +53,14 @@ import type { ResearchConclusionService, ResearchSynthesisService } from '../res
 import type { SkillEngine } from '../skills/index';
 import { CHAT_ATTACHMENT_READ_JOB_TYPE, CONVERSATION_TITLE_JOB_TYPE } from '../chat/index';
 import { IMPORT_ADVANCE_JOB_TYPE } from '../imports/index';
+import {
+  CONNECTOR_MAINTENANCE_JOB_TYPE,
+  CONNECTOR_SYNC_JOB_TYPE,
+  CONNECTOR_WEBHOOK_JOB_TYPE,
+  ConnectorMaintenance,
+  ConnectorSyncEngine,
+  ConnectorWebhookProcessor,
+} from '../connectors/index';
 import type { ImportCoordinator } from '../imports/index';
 import type { ChatAttachmentReadService, ConversationTitler } from '../chat/index';
 import type { ModelGateway } from '../model-gateway/index';
@@ -73,6 +81,9 @@ export interface WorkerTaskDeps {
   conversationTitler: ConversationTitler;
   attachmentReader: ChatAttachmentReadService;
   importCoordinator: ImportCoordinator;
+  connectorSyncEngine: ConnectorSyncEngine;
+  connectorWebhookProcessor: ConnectorWebhookProcessor;
+  connectorMaintenance: ConnectorMaintenance;
   researchConcluder: ResearchConclusionService;
   researchSynthesis: ResearchSynthesisService;
   skillEngine: SkillEngine;
@@ -443,6 +454,45 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
       const { advanced } = await deps.importCoordinator.advance(runId);
       deps.log({ source_id: runId, advanced }, 'import advance completed');
     },
+
+    // The connector sync pass (V2.5 item 8.1): a PLAIN, re-runnable pass
+    // (the import.advance shape) under a per-connector single-flight lock.
+    // It refreshes credentials ahead of expiry, fetches a few pages behind
+    // the token bucket, persists the cursor per page, dedups through the
+    // natural-key ledger, and re-enqueues itself; pauses reschedule visibly.
+    [CONNECTOR_SYNC_JOB_TYPE]: async (rawPayload) => {
+      const connectorId = (rawPayload as { source_id?: unknown }).source_id;
+      if (typeof connectorId !== 'string' || !connectorId) return;
+      const { advanced } = await deps.connectorSyncEngine.advance(connectorId);
+      deps.log({ source_id: connectorId, advanced }, 'connector sync pass completed');
+    },
+
+    // One verified webhook delivery (V2.5 item 8.1): the payload was only a
+    // signal, so the handler re-fetches the named items from the upstream
+    // through the normal outbound path. Idempotency key
+    // ('connector_webhook', <delivery id>, this) — a duplicate queue
+    // delivery skips before the handler runs.
+    [CONNECTOR_WEBHOOK_JOB_TYPE]: idempotentTask(
+      db,
+      CONNECTOR_WEBHOOK_JOB_TYPE,
+      async (_tx, payload) => {
+        await deps.connectorWebhookProcessor.process(payload.source_id);
+        deps.log(
+          { source_type: payload.source_type, source_id: payload.source_id },
+          'connector webhook delivery processed',
+        );
+      },
+    ),
+
+    // The connector maintenance pass (V2.5 item 8.1): credential refresh
+    // ahead of expiry, webhook subscription renewal (degrade to polling on
+    // failure, never a silent stop), delivery-ledger prune, and the periodic
+    // incremental sync enqueue, which IS the polling fallback. Recurring +
+    // idempotent; single-flight.
+    [CONNECTOR_MAINTENANCE_JOB_TYPE]: recurring(CONNECTOR_MAINTENANCE_JOB_TYPE, async () => {
+      await deps.connectorMaintenance.run();
+      deps.log({}, 'connector maintenance pass completed');
+    }),
 
     // The transient attachment read (V2.2 item 5.1): reads a "don't remember
     // this file" attachment's staged bytes once through the laddered reader,

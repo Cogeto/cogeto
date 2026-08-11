@@ -65,7 +65,13 @@ import {
   FindingsReportCascadeModule,
   ReportsModule,
 } from '../reports/index';
-import { OperationsModule } from '../operations/index';
+import { CONNECTOR_HEALTH, OperationsModule } from '../operations/index';
+import {
+  ConnectorHealthSource,
+  ConnectorItemCascade,
+  ConnectorItemCascadeModule,
+  ConnectorsModule,
+} from '../connectors/index';
 import { COGETO_CONFIG, mailOptions, redactionOptions, researchOptions } from './config';
 import type { CogetoConfig } from './config';
 
@@ -133,6 +139,7 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
         SourceRevisionCascadeModule,
         ImportItemCascadeModule,
         FindingsReportCascadeModule,
+        ConnectorItemCascadeModule,
       ],
       // Assistant answers citing erased memories are redacted; reply drafts
       // grounded on the source are too. A ready passport export is a signed
@@ -164,6 +171,10 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
         // A findings report quotes verbatim spans: the second content-bearing
         // artifact under the passport's SEC-8 rule (V2.3 item 6.2).
         FindingsReportCascade,
+        // A connector-item row pointing at an erased source has its source
+        // reference cleared and reads 'erased' thereafter, so a later sync
+        // cannot resurrect the memory (V2.5 item 8.1).
+        ConnectorItemCascade,
       ],
     },
     // Delete-vs-ingestion serialization: the saga cancels a source's pending
@@ -224,6 +235,16 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
   const importsModule = ImportsModule.register({
     imports: [memoryModule, filesModule, settingsModule],
   });
+  // The connector platform (V2.5 item 8.1): the owner API and the webhook
+  // ingress. No descriptor registers in production yet; the first external
+  // connector (item 8.2) will pass its module and descriptor here. The
+  // credential store resolves from the global identity seam; the app root
+  // deliberately does NOT pass credentialReads, so the decrypting opener is
+  // unresolvable in the process that serves requests.
+  const connectorsModule = ConnectorsModule.register({
+    options: { masterKey: config.masterKey },
+    connectors: [],
+  });
   // The three resolver-binding modules, un-globaled (B15 closed): each is a
   // dynamic instance receiving the modules it composes, and ChatModule
   // receives all three so its options factory resolves the port tokens by
@@ -272,6 +293,10 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
         issuer: config.oidc.issuer,
         expectedAudience: readOidcClientId(config.webConfigFile),
         adminRole: config.adminRole,
+        // Connector credentials seal under the instance master key (V2.5
+        // item 8.1). No credentialReads here: the app can store, describe
+        // and destroy credentials but never open one.
+        masterKey: config.masterKey,
         // The login bootstrap, GET /api/config + POST /api/config/demo-login.
         // App-only: the worker authenticates nothing over HTTP.
         webConfig: {
@@ -341,6 +366,8 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
       }),
       // Bulk import (V2.2 item 5.3): manifest + confirm + record surface.
       importsModule,
+      // The connector platform (V2.5 item 8.1): owner API + webhook ingress.
+      connectorsModule,
       // The findings report (V2.3 item 6.2): trigger/status/download only.
       // Generation, signing and retention are the worker's.
       ReportsModule.register({
@@ -351,7 +378,11 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
       // registry, /api/jobs, /api/audit. It owns no tables; every read goes
       // through the owning module's public interface.
       OperationsModule.register({
-        imports: [memoryModule],
+        imports: [memoryModule, connectorsModule],
+        // The connector fleet's capability entry (V2.5 item 8.1, issue A4):
+        // operations declares the port, the platform implements it, this
+        // binding is what makes the entry exist.
+        connectorHealth: { provide: CONNECTOR_HEALTH, useExisting: ConnectorHealthSource },
         qdrantUrl: config.qdrantUrl,
         s3Url: config.s3Url,
         mailSmtpAddress: config.mailSmtpAddress,

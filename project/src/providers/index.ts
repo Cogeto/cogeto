@@ -9,5 +9,7 @@ export type { ProvidersOptions } from './providers.options';
 // configuration is active.
 export { loadModelConfiguration } from './load-configuration';
 export type { LoadedModelConfiguration } from './load-configuration';
-export { readMasterKey, MasterKeyError } from './domain/secret-box';
+// The sealed-secret mechanism moved to infrastructure in V2.5 item 8.1 (one
+// mechanism for provider keys and connector credentials); consumers import
+// readMasterKey / MasterKeyError from the infrastructure barrel now.
 export { PROVIDER_TYPE_SPECS } from './domain/provider-types';

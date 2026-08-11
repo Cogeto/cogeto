@@ -12,3 +12,16 @@ export { DEMO_USERNAME, demoLoginFile, readDemoLogin } from './demo-login';
 export type { DemoCredentials } from './demo-login';
 export { Public } from './public.decorator';
 export { AdminGuard } from './admin.guard';
+// Connector credential storage inside the identity seam (V2.5 item 8.1).
+// The store writes, describes and destroys; the OPENER decrypts and exists
+// only in roots registered with `credentialReads: true` (the worker).
+export {
+  ConnectorCredentialStore,
+  ConnectorCredentialOpener,
+} from './persistence/connector-credential-store';
+export type {
+  CredentialMaterial,
+  ConnectorCredentialSummary,
+  OpenedCredential,
+  StoreCredentialInput,
+} from './persistence/connector-credential-store';

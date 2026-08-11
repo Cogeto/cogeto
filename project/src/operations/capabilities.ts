@@ -85,6 +85,25 @@ export interface CapabilityJobSources {
 
 export const CAPABILITY_JOB_SOURCES = Symbol('CAPABILITY_JOB_SOURCES');
 
+/**
+ * The connector fleet's health, a port in the CAPABILITY_JOB_SOURCES shape
+ * (V2.5 item 8.1, issue A4): operations declares it, the connectors platform
+ * implements it, the composition root binds it. Optional: a root without the
+ * platform (or a bare test construction) reports the entry as off.
+ */
+export interface ConnectorHealthPort {
+  summary(): Promise<{
+    configured: number;
+    healthy: number;
+    syncing: number;
+    degraded: { name: string | null; reason: string | null }[];
+    needsReauth: { name: string | null }[];
+    disabled: number;
+  }>;
+}
+
+export const CONNECTOR_HEALTH = Symbol('CONNECTOR_HEALTH');
+
 @Injectable()
 export class CapabilitiesService {
   private readonly logger = new Logger('capabilities');
@@ -112,6 +131,8 @@ export class CapabilitiesService {
     /** The seam the vision probe goes through. Optional so a bare construction
      * (unit tests, a root without the gateway) reports vision as off. */
     @Optional() private readonly gateway?: ModelGateway,
+    /** The connector fleet (V2.5 item 8.1); absent → the entry reports off. */
+    @Optional() @Inject(CONNECTOR_HEALTH) private readonly connectorHealth?: ConnectorHealthPort,
   ) {
     this.sources = sources ?? {
       dreaming: () => dreamRunStatus(db),
@@ -188,16 +209,71 @@ export class CapabilitiesService {
     // reasoning model. Probing them concurrently would report vision broken on
     // the one snapshot that matters, the boot banner's.
     const reasoning = await this.reasoning(checkedAt);
-    const [redaction, research, mail, demo, consoles, localModels, vision] = await Promise.all([
-      this.redaction(checkedAt),
-      this.research(checkedAt),
-      this.mail(checkedAt),
-      this.demo(checkedAt),
-      this.consoles(checkedAt),
-      this.localModels(checkedAt),
-      this.vision(checkedAt),
-    ]);
-    return [redaction, research, mail, demo, consoles, localModels, reasoning, vision];
+    const [redaction, research, mail, demo, consoles, localModels, vision, connectors] =
+      await Promise.all([
+        this.redaction(checkedAt),
+        this.research(checkedAt),
+        this.mail(checkedAt),
+        this.demo(checkedAt),
+        this.consoles(checkedAt),
+        this.localModels(checkedAt),
+        this.vision(checkedAt),
+        this.connectors(checkedAt),
+      ]);
+    return [redaction, research, mail, demo, consoles, localModels, reasoning, vision, connectors];
+  }
+
+  /**
+   * The connector fleet (V2.5 item 8.1, issue A4): off when none is
+   * configured (an instance without connectors is not degraded), on while
+   * every configured connector is healthy, LOUD when any is degraded or
+   * needs reauthorisation, with the actionable message naming the connector
+   * and the fix. States come from rows, not probes: the sync engine and the
+   * maintenance pass are what measure the upstream.
+   */
+  private async connectors(checkedAt: string): Promise<CapabilitySummary> {
+    const base = { id: 'connectors' as const, checkedAt };
+    if (!this.connectorHealth) return { ...base, state: 'off', probed: false };
+    try {
+      const fleet = await this.connectorHealth.summary();
+      if (fleet.configured === 0) return { ...base, state: 'off', probed: false };
+      const broken = [
+        ...fleet.needsReauth.map((c) => ({
+          name: c.name,
+          fix: 'reconnect it from Settings',
+        })),
+        ...fleet.degraded.map((c) => ({
+          name: c.name,
+          fix:
+            c.reason === 'webhook_lapsed'
+              ? 'webhook lapsed; polling carries it'
+              : 'see its sync runs',
+        })),
+      ];
+      if (broken.length > 0) {
+        const first = broken[0]!;
+        return {
+          ...base,
+          state: 'unreachable',
+          probed: true,
+          detail: `${fleet.configured} configured, ${broken.length} needing attention`,
+          error: `connector ${first.name ?? '(unnamed)'} needs attention: ${first.fix}`,
+        };
+      }
+      return {
+        ...base,
+        state: 'on',
+        probed: true,
+        detail: `${fleet.configured} configured${fleet.syncing > 0 ? `, ${fleet.syncing} syncing` : ''}${fleet.disabled > 0 ? `, ${fleet.disabled} disabled` : ''}`,
+      };
+    } catch (error) {
+      return {
+        ...base,
+        state: 'unreachable',
+        probed: true,
+        error: `connector state unreadable: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
   }
 
   /** Redaction (spec §12.2): REDACTION_ENABLED is the authority — the same flag the

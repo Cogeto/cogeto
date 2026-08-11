@@ -7,7 +7,7 @@ import type { LimitsConfig } from '../infrastructure/index';
 import { resolveModelProviders } from '../model-gateway/index';
 import type { ResolvedModelProviders } from '../model-gateway/index';
 import { assertProductionSecrets } from './secret-preflight';
-import { readMasterKey } from '../providers/index';
+import { readMasterKey } from '../infrastructure/index';
 
 /**
  * Typed process configuration (research: project-structure-lessons §4).

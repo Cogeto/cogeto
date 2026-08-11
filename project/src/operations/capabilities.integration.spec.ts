@@ -107,6 +107,10 @@ describe('capability registry (integration, real Postgres)', () => {
       // Reading pages that are pictures (V2.1 item 4.1): probed by sending a
       // real image, because no configuration flag can answer the question.
       'vision',
+      // The connector fleet (V2.5 item 8.1): off when none is configured, on
+      // while every configured connector is healthy, loud with the actionable
+      // fix when any is degraded or needs reauthorisation.
+      'connectors',
     ]);
     expect(report.jobs.map((j) => j.id)).toEqual(['dreaming', 'sweep']);
     // A fresh instance (migrations just applied) is not overdue: never-ran

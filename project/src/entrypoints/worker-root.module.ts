@@ -61,6 +61,11 @@ import {
 } from '../passport/index';
 import { ImportItemCascade, ImportItemCascadeModule, ImportsModule } from '../imports/index';
 import {
+  ConnectorItemCascade,
+  ConnectorItemCascadeModule,
+  ConnectorsModule,
+} from '../connectors/index';
+import {
   FindingsReportCascade,
   FindingsReportCascadeModule,
   ReportsModule,
@@ -163,6 +168,7 @@ export function createWorkerRootModule(
         SourceRevisionCascadeModule,
         ImportItemCascadeModule,
         FindingsReportCascadeModule,
+        ConnectorItemCascadeModule,
       ],
       // Assistant answers citing erased memories are redacted; reply drafts
       // grounded on the source are too. A ready passport export is a signed
@@ -194,6 +200,10 @@ export function createWorkerRootModule(
         // A findings report quotes verbatim spans: the second content-bearing
         // artifact under the passport's SEC-8 rule (V2.3 item 6.2).
         FindingsReportCascade,
+        // A connector-item row pointing at an erased source has its source
+        // reference cleared and reads 'erased' thereafter, so a later sync
+        // cannot resurrect the memory (V2.5 item 8.1).
+        ConnectorItemCascade,
       ],
     },
     // Delete-vs-ingestion serialization: the saga cancels a source's pending
@@ -255,6 +265,12 @@ export function createWorkerRootModule(
         internalBaseUrl: config.oidc.internalUrl,
         externalDomain: config.oidc.externalDomain,
         cacheTtlSeconds: 10, // (the worker serves no HTTP; parity only)
+        // Connector credentials (V2.5 item 8.1): the worker is the ONE
+        // process that may open them — the sync engine and the refresh loop
+        // run here. credentialReads makes the opener resolvable; the app
+        // root never passes it.
+        masterKey: config.masterKey,
+        credentialReads: true,
       }),
       ModelGatewayModule.register({
         providers: config.modelProviders,
@@ -307,6 +323,16 @@ export function createWorkerRootModule(
       // The bulk-import coordinator (V2.2 item 5.3): ingests through files'
       // one upload path at demoted priority, bounded in flight.
       importsModule,
+      // The connector platform's worker slice (V2.5 item 8.1): the sync
+      // engine, the webhook processor and the maintenance pass. No
+      // descriptor registers in production yet; the first external connector
+      // (item 8.2) passes its descriptor here. Materialization goes through
+      // files' ONE upload path at demoted priority.
+      ConnectorsModule.forWorker({
+        options: { masterKey: config.masterKey },
+        connectors: [],
+        imports: [filesModule],
+      }),
       // The findings-report generation + retention jobs (V2.3 item 6.2, spec
       // §15.4 slow path); the worker holds the private key to sign each
       // payload hash, exactly as it signs receipts and passport manifests.

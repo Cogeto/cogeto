@@ -31,6 +31,20 @@ export interface IdentityOptions {
   /** Zitadel project role the AdminGuard requires; default 'admin'. */
   adminRole?: string;
   /**
+   * The instance master key (COGETO_MASTER_KEY), for sealing connector
+   * credentials at rest (V2.5 item 8.1). Absent is fine until something asks
+   * to store one; sealing then fails loudly rather than storing plaintext.
+   */
+  masterKey?: Buffer | null;
+  /**
+   * Whether this root may DECRYPT stored connector credentials. The worker
+   * passes true; the app never does, so the app process can store, describe
+   * and destroy credentials but a request-path service that asks for the
+   * opener fails at boot (the `MemorySystemStore` withholding pattern
+   * applied to secrets).
+   */
+  credentialReads?: boolean;
+  /**
    * The login bootstrap surface, `GET /api/config` (V2.0 item 3.6 part 2).
    * Present → this root serves it; the worker leaves it unset and registers no
    * controller. The SPA needs the issuer and client id BEFORE it can log in,
