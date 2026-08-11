@@ -675,3 +675,50 @@ describe('false silence on an uncalibrated embedding model (issue #477)', () => 
     expect(decision.branch).not.toBe('silent');
   });
 });
+
+describe('raw-text naming (issue #497)', () => {
+  // The recorded decisions from a real invoice corpus: the rewrite returned
+  // NO entities for "I meant nexen europe group bv" while the cluster keyed
+  // `nexen europe group` was on screen, so the user was shown the same
+  // which-did-you-mean list they were answering. The query TEXT names.
+  it('an exact subject typed in the query resolves dominant with no rewrite entities', () => {
+    const clusters = [
+      cluster({ key: 'nexen europe group', subject: 'Nexen Europe Group BV', fused: 0.016 }),
+      cluster({ key: 'noveled group', subject: 'Noveled Group Co., Ltd', fused: 0.016 }),
+    ];
+    const decision = decideAmbiguity(clusters, [], fold, THRESHOLDS, {
+      ...META,
+      queryText: 'I meant nexen europe group bv',
+    });
+    expect(decision.branch).toBe('dominant');
+    expect(decision.named).toEqual(['nexen europe group']);
+  });
+
+  it('a partial name in the query ("for beckhoff") resolves the one cluster carrying it', () => {
+    const clusters = [
+      cluster({ key: 'beckhoff automation', subject: 'Beckhoff Automation GmbH', fused: 0.016 }),
+      cluster({ key: 'wago kontakttechnik', subject: 'WAGO Kontakttechnik', fused: 0.015 }),
+    ];
+    const decision = decideAmbiguity(clusters, [], fold, THRESHOLDS, {
+      ...META,
+      queryText: 'what is the total invoice amount for beckhoff',
+    });
+    expect(decision.branch).toBe('dominant');
+    expect(decision.named).toEqual(['beckhoff automation']);
+  });
+
+  it('short and generic key tokens cannot claim a cluster from the raw text', () => {
+    // "group" appears in the query only as part of another name; a cluster
+    // must not be claimed by a token shorter than four characters or by one
+    // the query does not actually carry token-bounded.
+    const clusters = [
+      cluster({ key: 'ab team', subject: 'AB Team', fused: 0.016, relevance: 0.95 }),
+      cluster({ key: 'cd works', subject: 'CD Works', fused: 0.0155, relevance: 0.95 }),
+    ];
+    const decision = decideAmbiguity(clusters, [], fold, THRESHOLDS, {
+      ...META,
+      queryText: 'what did we agree about the abc group',
+    });
+    expect(decision.branch).toBe('fan_out');
+  });
+});

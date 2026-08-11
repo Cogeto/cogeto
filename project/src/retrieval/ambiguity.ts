@@ -238,7 +238,7 @@ export function decideAmbiguity(
   queryEntities: readonly string[],
   keyOf: EntityKeyOf,
   thresholds: AmbiguityThresholds,
-  meta: { configVersion: number; embeddingModel: string },
+  meta: { configVersion: number; embeddingModel: string; queryText?: string },
   maxLines: number = MAX_FANOUT_LINES,
 ): AmbiguityDecisionDto {
   const record = (
@@ -293,7 +293,28 @@ export function decideAmbiguity(
     );
   };
 
-  const exactNamed = clusters.filter((c) => c.key !== '' && namedKeys.has(c.key));
+  // RAW-TEXT naming (issue #497). The keys above come from the rewrite's
+  // entity extraction, and the recorded decisions from a real corpus showed
+  // it returning NOTHING for follow-up phrasings ("I meant nexen europe
+  // group bv", "…for beckhoff") while the named subject sat on screen — the
+  // user was answering the fan-out and got the same fan-out back. So the
+  // query TEXT itself also names: a cluster whose alias-canonical key
+  // appears token-bounded inside the folded query is exactly-named, and a
+  // cluster one of whose key tokens (four characters or longer, so "d",
+  // "group" and unit words cannot claim it alone… length keeps initials and
+  // legal-suffix noise out) appears as a query token is partially-named.
+  // Both are deterministic string checks; several partial matches fan out
+  // over exactly those clusters, the existing two-Anas rule.
+  const foldedQuery = meta.queryText ? ` ${keyOf(meta.queryText)} ` : '';
+  const rawExactNamed = (clusterKey: string): boolean =>
+    foldedQuery.trim().length > 0 && foldedQuery.includes(` ${clusterKey} `);
+  const rawPartiallyNamed = (clusterKey: string): boolean =>
+    foldedQuery.trim().length > 0 &&
+    clusterKey.split(' ').some((token) => token.length >= 4 && foldedQuery.includes(` ${token} `));
+
+  const exactNamed = clusters.filter(
+    (c) => c.key !== '' && (namedKeys.has(c.key) || rawExactNamed(c.key)),
+  );
   if (exactNamed.length > 0) {
     return record(
       'dominant',
@@ -302,7 +323,9 @@ export function decideAmbiguity(
       false,
     );
   }
-  const partialNamed = clusters.filter((c) => c.key !== '' && partiallyNamed(c.key));
+  const partialNamed = clusters.filter(
+    (c) => c.key !== '' && (partiallyNamed(c.key) || rawPartiallyNamed(c.key)),
+  );
   if (partialNamed.length === 1) {
     return record('dominant', [partialNamed[0]!.key], none, false);
   }

@@ -223,7 +223,7 @@ export class RetrievalService {
     // 6. The spec §7.5 ambiguity decision (V2.3 item 6.3): deterministic
     // arithmetic over the fused distribution, alias-aware clustering, no
     // model call. An unknown embedding model fails loudly here by design.
-    const ambiguity = await this.decideAmbiguity(principal, results, entityCandidates);
+    const ambiguity = await this.decideAmbiguity(principal, results, entityCandidates, query);
     return { memories: results, mode: 'default', ambiguity };
   }
 
@@ -232,6 +232,7 @@ export class RetrievalService {
     principal: Principal,
     results: RetrievedMemory[],
     queryEntities: string[],
+    queryText: string,
   ): Promise<AmbiguityDecisionDto> {
     const aliases = this.db
       ? await new EntityAliasStore(this.db).indexForOwner(principal.userId)
@@ -253,6 +254,10 @@ export class RetrievalService {
     return decideAmbiguity(clusters, queryEntities, keyOf, ambiguityThresholdsFor(embeddingModel), {
       configVersion: AMBIGUITY_CONFIG_VERSION,
       embeddingModel,
+      // The user's own words (issue #497): the rewrite's entity extraction
+      // fails on follow-up phrasings, and the decision must still see the
+      // subject the user just typed.
+      queryText,
     });
   }
 
