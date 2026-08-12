@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
+import { sql } from 'drizzle-orm';
+import { CITATION_STRIP_SQL_PATTERN, plainAnswerText } from '@cogeto/shared';
 import { chatMessage, conversation } from './persistence/tables';
 import { MATCH_CLOSE, MATCH_OPEN, searchConversations } from './conversation-search';
 
@@ -140,6 +142,57 @@ describe('conversation search (integration, real Postgres)', () => {
 
     const hits = await searchConversations(tdb.db, OWNER, 'quench tank');
     expect(hits.map((hit) => hit.conversationId)).toContain(id);
+  });
+
+  it('search_snippet_hides_citation_tokens: a cite token is never reading text', async () => {
+    // A stored assistant answer carries canonical `{{cite:<uuid>}}` tokens.
+    // They are renderer instruction; showing one in a snippet leaks internals.
+    const id = await newConversation(OWNER, 'Cited answer');
+    const cited = 'The flange ships on 12 March {{cite:3f1c2a9e-0000-4000-8000-000000000001}}.';
+    await tdb.db
+      .insert(chatMessage)
+      .values({ ownerId: OWNER, conversationId: id, role: 'assistant', content: cited });
+
+    const hits = await searchConversations(tdb.db, OWNER, 'flange ships');
+    const snippet = hits.find((hit) => hit.conversationId === id)!.snippet!;
+    expect(snippet).not.toContain('{{');
+    expect(snippet).not.toContain('cite:');
+    expect(snippet).toContain('flange');
+    // The sentence still reads. (Not compared to plainAnswerText directly:
+    // ts_headline WINDOWS the text and drops trailing punctuation, which is
+    // headline behaviour, not a disagreement about tokens.)
+    expect(snippet.replaceAll(MATCH_OPEN, '').replaceAll(MATCH_CLOSE, '')).toContain(
+      'flange ships on 12 March',
+    );
+  });
+
+  it('citation_strip_sql_agrees_with_the_shared_grammar: the two cannot drift', async () => {
+    // The SQL pattern is a COARSER rule than the canonical token grammar,
+    // justified only because the scribe guarantees stored answers carry
+    // nothing else `{{…}}`-shaped. This pins that agreement: if the grammar
+    // ever grows a token this pattern would not remove, or removes something
+    // it should keep, this fails rather than shipping a leak.
+    const samples = [
+      'Plain text with no tokens at all.',
+      'A claim {{cite:3f1c2a9e-0000-4000-8000-000000000001}} and another {{cite:3f1c2a9e-0000-4000-8000-000000000002}}.',
+      'Model knowledge {{unsourced}} stated plainly.',
+      '{{cite:3f1c2a9e-0000-4000-8000-000000000003}} leading token.',
+    ];
+    for (const sample of samples) {
+      const result = await tdb.db.execute(
+        sql`SELECT regexp_replace(${sample}, ${CITATION_STRIP_SQL_PATTERN}, '', 'g') AS stripped`,
+      );
+      const stripped = (result.rows[0] as { stripped: string }).stripped;
+      // Compared on words, because plainAnswerText also tidies the whitespace
+      // a removed token leaves behind, which SQL deliberately does not.
+      expect(
+        stripped
+          .split(/\s+/)
+          .filter(Boolean)
+          .join(' ')
+          .replace(/ ([,.;:!?])/g, '$1'),
+      ).toBe(plainAnswerText(sample));
+    }
   });
 
   it('search_empty_query_returns_nothing rather than everything', async () => {

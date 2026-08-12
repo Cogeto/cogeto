@@ -358,6 +358,11 @@ export function ConversationSidebar({
             onOpen={(conversationId, messageId) => {
               onSelect(conversationId);
               if (messageId) onFocusMessage?.(messageId);
+              // Opening a result ANSWERS the search, so it closes and the
+              // grouped rail returns with the chosen thread in place. Leaving
+              // the query in the box keeps the rail showing results for a
+              // question already answered.
+              setSearch('');
             }}
           />
         )}

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { plainAnswerText } from './citations';
 import { SEARCH_MATCH_CLOSE, SEARCH_MATCH_OPEN, splitSearchSnippet } from './chat';
 
 /**
@@ -12,6 +13,23 @@ import { SEARCH_MATCH_CLOSE, SEARCH_MATCH_OPEN, splitSearchSnippet } from './cha
 
 const open = SEARCH_MATCH_OPEN;
 const close = SEARCH_MATCH_CLOSE;
+
+describe('plainAnswerText', () => {
+  it('removes canonical tokens and leaves the sentence reading', () => {
+    expect(
+      plainAnswerText(
+        'The flange ships on 12 March {{cite:3f1c2a9e-0000-4000-8000-000000000001}}.',
+      ),
+    ).toBe('The flange ships on 12 March.');
+    expect(plainAnswerText('Model knowledge {{unsourced}} stated plainly.')).toBe(
+      'Model knowledge stated plainly.',
+    );
+  });
+
+  it('leaves text with no tokens untouched', () => {
+    expect(plainAnswerText('Nothing to strip here.')).toBe('Nothing to strip here.');
+  });
+});
 
 describe('splitSearchSnippet', () => {
   it('splits plain and matched runs in order', () => {

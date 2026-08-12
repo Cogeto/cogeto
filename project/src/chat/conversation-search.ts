@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import { CITATION_STRIP_SQL_PATTERN } from '@cogeto/shared';
 import type { Db } from '../infrastructure/index';
 
 /**
@@ -75,7 +76,17 @@ export async function searchConversations(
       ts_rank_cd(content_tsv, ${tsQuery}, 32) AS score,
       ts_headline(
         'simple',
-        replace(replace(content, chr(1), ''), chr(2), ''),
+        -- Citation tokens are renderer instruction, never reading text: a
+        -- snippet showing a cite token is leaking internals at the user
+        -- (issue #530 follow-up). Stripped BEFORE the headline so the window
+        -- spends its words on the sentence rather than on a uuid. The pattern
+        -- is a bound parameter, never interpolated SQL.
+        regexp_replace(
+          replace(replace(content, chr(1), ''), chr(2), ''),
+          ${CITATION_STRIP_SQL_PATTERN},
+          '',
+          'g'
+        ),
         ${tsQuery},
         'StartSel=' || chr(1) || ', StopSel=' || chr(2) ||
         ', MaxWords=28, MinWords=12, ShortWord=2, MaxFragments=1'
