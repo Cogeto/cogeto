@@ -1,0 +1,184 @@
+{
+  "schema_version": "1.2",
+  "generated_by": {
+    "release": "v1.6.0",
+    "commit": "ffa3e4b27b5b33050141f924960ad122694721ca",
+    "harness": "extraction/v0006 + verification/v0006 · reconcile_dedup/v0001 + reconcile_contradiction/v0002 · query_rewrite/v0006 · thresholds v1 + chat answer/v0009 · grader eval-coverage/v0001",
+    "generated_at": "2026-08-12T21:28:43.461Z",
+    "backfilled": false
+  },
+  "configurations": [
+    {
+      "id": "mistral-default",
+      "models": {
+        "pipeline": "mistral-small-latest",
+        "answer": "mistral-medium-latest",
+        "embedding": "mistral-embed"
+      },
+      "redaction": false,
+      "corpus": {
+        "golden_cases": 102,
+        "reconcile_pairs": 54,
+        "chat_cases": 35,
+        "rewrite_cases": 32,
+        "per_language": [
+          {
+            "language": "en",
+            "golden_cases": 50,
+            "reconcile_pairs": 28,
+            "rewrite_cases": 16
+          },
+          {
+            "language": "hr",
+            "golden_cases": 52,
+            "reconcile_pairs": 26,
+            "rewrite_cases": 16
+          }
+        ]
+      },
+      "metrics": {
+        "per_language": [
+          {
+            "language": "en",
+            "golden_cases": 50,
+            "extraction_precision": 0.8207547169811321,
+            "extraction_recall": 0.8928571428571429,
+            "verification_agreement": 0.9361702127659575,
+            "dedup_accuracy": 1,
+            "contradiction_recall": 1,
+            "contradiction_precision": 0.7777777777777778,
+            "supersedes_accuracy": 0.6,
+            "supersedes_pairs": 5,
+            "rewrite_accuracy": 0.9375
+          },
+          {
+            "language": "hr",
+            "golden_cases": 52,
+            "extraction_precision": 0.8252427184466019,
+            "extraction_recall": 0.9156626506024096,
+            "verification_agreement": 0.8979591836734694,
+            "dedup_accuracy": 0.875,
+            "contradiction_recall": 1,
+            "contradiction_precision": 0.875,
+            "supersedes_accuracy": 0.75,
+            "supersedes_pairs": 4,
+            "rewrite_accuracy": 0.75
+          }
+        ],
+        "aggregate": {
+          "extraction_precision": 0.8229665071770335,
+          "extraction_recall": 0.9041916167664671,
+          "verification_agreement": 0.9166666666666666,
+          "dedup_accuracy": 0.9444444444444444,
+          "contradiction_recall": 1,
+          "contradiction_precision": 0.8235294117647058,
+          "supersedes_accuracy": 0.6666666666666666,
+          "supersedes_pairs": 9,
+          "rewrite_accuracy": 0.84375
+        },
+        "chat": {
+          "cases": 35,
+          "passed": 31,
+          "failed": [
+            "ambiguity_fragment_hr",
+            "ambiguity_silent_en",
+            "ambiguity_silent_hr",
+            "previously_decided"
+          ]
+        }
+      },
+      "corpora": [
+        {
+          "id": "core",
+          "label": "Notes, emails, web pages and document excerpts",
+          "description": "The corpus the engine was built against: quick captures, email threads, fetched pages and short document excerpts, grown case by case since v0.8.0 and hardened five times with deliberately difficult negatives.",
+          "extraction_cases": 102,
+          "reconcile_pairs": 54,
+          "per_language": [
+            {
+              "language": "en",
+              "golden_cases": 50,
+              "reconcile_pairs": 28,
+              "extraction_precision": 0.8207547169811321,
+              "extraction_recall": 0.8928571428571429,
+              "verification_agreement": 0.9361702127659575,
+              "dedup_accuracy": 1,
+              "contradiction_recall": 1,
+              "contradiction_precision": 0.7777777777777778,
+              "supersedes_accuracy": 0.6,
+              "supersedes_pairs": 5
+            },
+            {
+              "language": "hr",
+              "golden_cases": 52,
+              "reconcile_pairs": 26,
+              "extraction_precision": 0.8252427184466019,
+              "extraction_recall": 0.9156626506024096,
+              "verification_agreement": 0.8979591836734694,
+              "dedup_accuracy": 0.875,
+              "contradiction_recall": 1,
+              "contradiction_precision": 0.875,
+              "supersedes_accuracy": 0.75,
+              "supersedes_pairs": 4
+            }
+          ],
+          "aggregate": {
+            "extraction_precision": 0.8229665071770335,
+            "extraction_recall": 0.9041916167664671,
+            "verification_agreement": 0.9166666666666666,
+            "dedup_accuracy": 0.9444444444444444,
+            "contradiction_recall": 1,
+            "contradiction_precision": 0.8235294117647058,
+            "supersedes_accuracy": 0.6666666666666666,
+            "supersedes_pairs": 9
+          }
+        },
+        {
+          "id": "vertical",
+          "label": "Documents: regulatory guidance, standards, device datasheets, public tenders",
+          "description": "Real public documents of the type Cogeto is sold into, sourced whole and excerpted verbatim: an EU regulation and its amending act, two revisions of a security standard, two microcontroller datasheets that share their boilerplate, two public tender notices and one 1987 scan. Harder than the core corpus by construction, because it carries page furniture, flattened tables, registry metadata and OCR noise that a written fixture would not.",
+          "extraction_cases": 20,
+          "reconcile_pairs": 24,
+          "per_language": [
+            {
+              "language": "en",
+              "golden_cases": 12,
+              "reconcile_pairs": 12,
+              "extraction_precision": 0.5333333333333333,
+              "extraction_recall": 0.9369369369369369,
+              "verification_agreement": 0.75,
+              "dedup_accuracy": 1,
+              "contradiction_recall": 1,
+              "contradiction_precision": 0,
+              "supersedes_accuracy": 0,
+              "supersedes_pairs": 2
+            },
+            {
+              "language": "hr",
+              "golden_cases": 8,
+              "reconcile_pairs": 7,
+              "extraction_precision": 0.5148514851485149,
+              "extraction_recall": 0.8387096774193549,
+              "verification_agreement": 0.7142857142857143,
+              "dedup_accuracy": 0.5,
+              "contradiction_recall": 1,
+              "contradiction_precision": 0,
+              "supersedes_accuracy": 0,
+              "supersedes_pairs": 2
+            }
+          ],
+          "aggregate": {
+            "extraction_precision": 0.527027027027027,
+            "extraction_recall": 0.9017341040462428,
+            "verification_agreement": 0.7368421052631579,
+            "dedup_accuracy": 0.8181818181818182,
+            "contradiction_recall": 0,
+            "contradiction_precision": 0,
+            "supersedes_accuracy": 0,
+            "supersedes_pairs": 5
+          }
+        }
+      ]
+    }
+  ]
+}
