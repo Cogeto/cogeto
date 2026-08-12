@@ -76,15 +76,22 @@ export class MistralModelGateway extends ModelGateway {
 
   async *completeStream(request: CompletionRequest): AsyncIterable<StreamDelta> {
     const stream = await callWithRetry('mistral', () =>
-      this.client.chat.stream({
-        model: this.models[request.tier ?? 'answer'],
-        maxTokens: request.maxTokens,
-        ...(this.temperature !== undefined ? { temperature: this.temperature } : {}),
-        messages: [
-          ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
-          { role: 'user' as const, content: request.input },
-        ],
-      }),
+      this.client.chat.stream(
+        {
+          model: this.models[request.tier ?? 'answer'],
+          maxTokens: request.maxTokens,
+          ...(this.temperature !== undefined ? { temperature: this.temperature } : {}),
+          messages: [
+            ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
+            { role: 'user' as const, content: request.input },
+          ],
+        },
+        {
+          // The SDK's RequestOptions extends RequestInit, so the caller's Stop
+          // reaches the underlying fetch and ends generation (issue #532).
+          signal: request.signal,
+        },
+      ),
     );
     for await (const event of stream) {
       const text = contentToText(event.data.choices?.[0]?.delta?.content);

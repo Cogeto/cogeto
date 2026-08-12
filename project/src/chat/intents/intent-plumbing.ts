@@ -22,6 +22,10 @@ export interface ChatTurnSink {
     /** What the project retrieval lens did on this turn (V2.5 item 8.3);
      * null when no lens applied, which is every unassigned conversation. */
     lens?: ChatLensDto | null,
+    /** The user stopped this answer (issue #532): stored by the SAME path as
+     * a complete one, because a second write path for partials is how the two
+     * drift apart. */
+    stopped?: boolean,
   ): Promise<{ id: string }>;
   getPrompt(): Promise<PromptArtifact>;
   /**

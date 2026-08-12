@@ -190,6 +190,7 @@ export class ChatService {
         thinking?: string | null,
         ambiguity?: AmbiguityDecisionDto | null,
         lens?: ChatLensDto | null,
+        stopped?: boolean,
       ) =>
         this.storeAssistant(
           principal,
@@ -198,6 +199,7 @@ export class ChatService {
           thinking ?? null,
           ambiguity ?? null,
           lens ?? null,
+          stopped ?? false,
         ),
       getPrompt: () => this.getPrompt(),
       readFocus: (conversationId: string) => this.readFocus(conversationId),
@@ -432,6 +434,7 @@ export class ChatService {
         thinking: row.thinking,
         ambiguity: row.ambiguity ?? null,
         lens: row.lens ?? null,
+        stopped: row.stopped,
         createdAt: row.createdAt.toISOString(),
       })),
       total: totalRows[0]?.count ?? 0,
@@ -595,6 +598,9 @@ export class ChatService {
        * lens-gap reply offers, so there is one widening path, not two.
        */
       widen?: boolean;
+      /** Fires when the user presses Stop (issue #532). Reaches the model
+       * call, so generation ENDS rather than merely going unread. */
+      stopSignal?: AbortSignal;
     } = {},
   ): AsyncGenerator<ChatStreamEvent> {
     // The chat path is always EXPLICIT about the mode (the paired sampler
@@ -754,6 +760,7 @@ export class ChatService {
             }
           : null,
         widenedFrom,
+        stopSignal: options.stopSignal,
       },
       thinkingMode,
     );
@@ -883,6 +890,7 @@ export class ChatService {
     thinking: string | null = null,
     ambiguity: AmbiguityDecisionDto | null = null,
     lens: ChatLensDto | null = null,
+    stopped = false,
   ): Promise<{ id: string }> {
     const [row] = await this.db
       .insert(chatMessage)
@@ -894,6 +902,7 @@ export class ChatService {
         thinking,
         ambiguity,
         lens,
+        stopped,
       })
       .returning();
     await this.touchConversation(conversationId, row!.createdAt);

@@ -8,7 +8,8 @@
   "answer": {
     "standsOn": "Basiert auf",
     "attribution": "Cogeto · aus Ihrem Wissensstand",
-    "askedByAt": "Sie · {{time}}"
+    "askedByAt": "Sie · {{time}}",
+    "stopped": "Stopped. This answer is what had been written when you stopped it."
   },
   "empty": {
     "title": "Fragen Sie Ihr Wissen.",
@@ -29,6 +30,8 @@
     "label": "Frage stellen",
     "placeholder": "Fragen Sie Ihr Wissen…",
     "send": "Senden",
+    "stop": "Stop generating",
+    "stopHint": "Stops the answer and keeps what has been written so far.",
     "hint": "Eingabetaste zum Senden · Umschalt+Eingabetaste für eine neue Zeile · jede Behauptung zeigt ihre Belege"
   },
   "remember": {

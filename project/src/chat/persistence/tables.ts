@@ -88,6 +88,13 @@ export const chatMessage = pgTable(
      * row deletion takes it implicitly.
      */
     lens: jsonb('lens').$type<ChatLensDto>(),
+    /**
+     * The user stopped this answer mid-generation (issue #532, migration
+     * 0058). What was written is kept; this is what stops a truncated reply
+     * from reading as a complete one. HOW the turn ended, never what was said,
+     * so it is outside the answer-redaction cascade.
+     */
+    stopped: boolean('stopped').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

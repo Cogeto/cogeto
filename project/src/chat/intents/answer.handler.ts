@@ -85,6 +85,10 @@ export class MemoryAnswerHandler {
        * conversation stays in its project and the next question is lensed
        * again. Recorded so the stored message says so honestly. */
       widenedFrom?: string | null;
+      /** Fires when the user presses Stop (issue #532). Passed to the model
+       * call so generation ends, and read here to tell a deliberate stop
+       * apart from a provider failure. */
+      stopSignal?: AbortSignal;
     },
     thinkingMode: 'on' | 'off' = 'on',
   ): AsyncGenerator<ChatStreamEvent> {
@@ -207,6 +211,11 @@ export class MemoryAnswerHandler {
 
     let answer: string;
     let thinking = '';
+    // STOP (issue #532). The signal reaches the provider, so the call ends
+    // rather than merely going unread; the abort surfaces as a throw from the
+    // stream. What was written is kept and stored by the ORDINARY path below,
+    // flagged, because a truncated answer that looks complete reads as a bug.
+    let stopped = false;
     if (retrieved.mode === 'open_loops' && (retrieved.openLoops?.length ?? 0) === 0) {
       // Zero open loops is an ANSWER (all clear), not a data gap. A
       // deterministic string cannot mirror; it follows the anchor (0052).
@@ -263,18 +272,33 @@ export class MemoryAnswerHandler {
         }),
         tier: 'answer',
         thinking: thinkingMode,
+        ...(context.stopSignal ? { signal: context.stopSignal } : {}),
       });
       // Two channels, two fates (Part C): thinking streams to the disclosure
       // and is stored BESIDE the answer; only the text channel becomes the
       // answer — it alone is sanitized, cited, capturable, and evaluated.
-      for await (const delta of stream) {
-        if (delta.channel === 'thinking') {
-          thinking += delta.text;
-          yield { type: 'thinking', text: delta.text };
-          continue;
+      try {
+        for await (const delta of stream) {
+          if (delta.channel === 'thinking') {
+            thinking += delta.text;
+            yield { type: 'thinking', text: delta.text };
+            continue;
+          }
+          buffer += delta.text;
+          yield { type: 'token', text: delta.text };
         }
-        buffer += delta.text;
-        yield { type: 'token', text: delta.text };
+      } catch (error) {
+        // Only OUR stop is swallowed. A real provider failure still throws,
+        // because presenting a failed generation as a stopped one would hide
+        // an error behind a user action.
+        if (!context.stopSignal?.aborted) throw error;
+        stopped = true;
+      }
+      // Nothing but thinking was produced: there is no answer to keep, so the
+      // turn is dropped rather than stored as an empty bubble.
+      if (stopped && buffer.trim().length === 0) {
+        yield { type: 'done', messageId: '', content: '', citationViolations: 0, stopped: true };
+        return;
       }
       answer = preamble ? `${preamble}\n\n${buffer}` : buffer;
     }
@@ -293,6 +317,7 @@ export class MemoryAnswerHandler {
       researchOffer,
       lensRecord,
       widenOffer,
+      stopped,
     );
   }
 
@@ -307,10 +332,14 @@ export class MemoryAnswerHandler {
     researchOffer: { topic: string } | null,
     lens: ChatLensDto | null = null,
     widenOffer: ChatWidenOffer | null = null,
+    stopped = false,
   ): AsyncGenerator<ChatStreamEvent> {
     const { text: stored, violations } = toStoredAnswer(answer, facts);
-    if (violations > 0) {
+    if (violations > 0 && !stopped) {
       // Metadata only — never the answer content or tokens (pino rule).
+      // A STOPPED answer is skipped: truncating mid-marker (`[F`) is a
+      // guaranteed "violation" that says nothing about the model, and
+      // counting it would make the metric meaningless the moment Stop is used.
       this.sink.logWarn(`citation_violation stripped=${violations}`);
     }
     const row = await this.sink.storeAssistant(
@@ -320,6 +349,7 @@ export class MemoryAnswerHandler {
       thinking.trim() ? thinking : null,
       decision,
       lens,
+      stopped,
     );
     yield {
       type: 'done',
@@ -330,6 +360,7 @@ export class MemoryAnswerHandler {
       ambiguity: decision,
       lens,
       widenOffer,
+      stopped,
     };
   }
 

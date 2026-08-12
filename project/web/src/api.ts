@@ -1049,6 +1049,17 @@ export const setConversationArchived = (
   archived: boolean,
 ): Promise<ConversationDto> =>
   apiPut(`/api/chat/conversations/${id}/archived`, { archived }, session);
+/**
+ * Stop a generation in flight (issue #532). Explicit, not a disconnect: the
+ * server keeps what was written and flags it, and an already-finished
+ * generation answers `false` rather than erroring.
+ */
+export const stopGeneration = (
+  session: Session,
+  generationId: string,
+): Promise<{ stopped: boolean }> =>
+  apiPost(`/api/chat/generations/${generationId}/stop`, {}, session);
+
 /** Find a conversation by what was said in it (issue #530). */
 export const searchConversations = (
   session: Session,

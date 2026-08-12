@@ -10,6 +10,7 @@ import { DocumentUploadInterceptor } from '../files/index';
 import { ChatController } from './chat.controller';
 import { ChatAttachmentsService } from './chat-attachments.service';
 import { CHAT_SERVICE_OPTIONS, ChatService } from './chat.service';
+import { GenerationRegistry } from './generation-registry';
 import type { ChatServiceOptions } from './chat.service';
 import { CHAT_REPLY_RESOLVER } from './chat-reply-resolver.port';
 import type { ChatReplyResolverPort } from './chat-reply-resolver.port';
@@ -42,6 +43,9 @@ export class ChatModule {
       controllers: [ChatController],
       providers: [
         ChatService,
+        // The live-generation registry Stop names (issue #532). One per app
+        // process, which is where the streams are.
+        GenerationRegistry,
         // The conversation-attachment surface (V2.2 item 5.1): the service
         // resolves FilesService / MemoryStore / UserSettingsService from the
         // family instances the root threads into `imports`; the interceptor

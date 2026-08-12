@@ -59,11 +59,20 @@ export class BudgetedModelGateway extends ModelGateway {
     // at the provider, and on a reasoning model it is most of them — leaving
     // it out would under-report spend several times over.
     let output = '';
-    for await (const delta of this.inner.completeStream(request)) {
-      output += delta.text;
-      yield delta;
+    try {
+      for await (const delta of this.inner.completeStream(request)) {
+        output += delta.text;
+        yield delta;
+      }
+    } finally {
+      // `finally`, not "after the loop" (issue #532). A stopped generation and
+      // an abandoned stream both leave the loop early, and the tokens were
+      // still produced and still billed by the provider: charging only on a
+      // clean finish would make Stop free, which is a hole in the daily budget
+      // rather than a feature. Mirrors `audited.gateway.ts`, which already
+      // records egress this way for exactly the same reason.
+      await this.charge(userId, request.input, output);
     }
-    await this.charge(userId, request.input, output);
   }
 
   async extractStructured<T>(

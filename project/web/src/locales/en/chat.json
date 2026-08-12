@@ -8,7 +8,8 @@
   "answer": {
     "standsOn": "Stands on",
     "attribution": "Cogeto · from your memory",
-    "askedByAt": "You · {{time}}"
+    "askedByAt": "You · {{time}}",
+    "stopped": "Stopped. This answer is what had been written when you stopped it."
   },
   "empty": {
     "title": "Ask your memory.",
@@ -29,6 +30,8 @@
     "label": "Ask a question",
     "placeholder": "Ask your memory…",
     "send": "Send",
+    "stop": "Stop generating",
+    "stopHint": "Stops the answer and keeps what has been written so far.",
     "hint": "Enter to send · Shift+Enter for a new line · every claim shows what it can prove"
   },
   "remember": {

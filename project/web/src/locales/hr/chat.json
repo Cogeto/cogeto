@@ -8,7 +8,8 @@
   "answer": {
     "standsOn": "Temelji se na",
     "attribution": "Cogeto · iz vašeg pamćenja",
-    "askedByAt": "Vi · {{time}}"
+    "askedByAt": "Vi · {{time}}",
+    "stopped": "Stopped. This answer is what had been written when you stopped it."
   },
   "empty": {
     "title": "Pitajte svoje pamćenje.",
@@ -29,6 +30,8 @@
     "label": "Postavite pitanje",
     "placeholder": "Pitajte svoje pamćenje…",
     "send": "Pošalji",
+    "stop": "Stop generating",
+    "stopHint": "Stops the answer and keeps what has been written so far.",
     "hint": "Enter za slanje · Shift+Enter za novi redak · svaka tvrdnja pokazuje što može dokazati"
   },
   "remember": {

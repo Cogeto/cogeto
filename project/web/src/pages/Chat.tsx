@@ -19,6 +19,7 @@ import {
 } from '@cogeto/shared';
 import {
   askChat,
+  stopGeneration,
   createConversation,
   fetchChatCaptureStatus,
   fetchChatMessages,
@@ -381,6 +382,16 @@ function ThinkingDots({ label }: { label: string }) {
 }
 
 /** Send glyph — inline SVG, no icon dependency. */
+/** A filled square: the universal "stop", and unmistakable next to the send
+ * arrow it replaces. */
+function StopIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
+      <rect x="5" y="5" width="10" height="10" rx="1.5" />
+    </svg>
+  );
+}
+
 function SendIcon() {
   return (
     <svg
@@ -427,6 +438,9 @@ type ChatMessage = {
   content: string;
   thinking?: string | null;
   ambiguity?: AmbiguityDecisionDto | null;
+  /** The user stopped this answer (issue #532): it is what had been written,
+   * and it says so rather than ending mid-sentence like a bug. */
+  stopped?: boolean;
 };
 type Turn = { key: string; question?: ChatMessage; answer?: ChatMessage };
 
@@ -636,6 +650,10 @@ export function Chat({ session }: { session: Session }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   /** The in-flight stream's abort handle: switching conversations detaches it. */
   const streamRef = useRef<AbortController | null>(null);
+  /** The generation Stop names (issue #532). Announced before any token, so
+   * the button is live from the first frame. Cleared when the turn settles. */
+  const generationRef = useRef<string | null>(null);
+  const [stopping, setStopping] = useState(false);
 
   // Pin the view to the latest message: scroll the message pane itself (never
   // the page — the composer stays docked) on history and stream updates.
@@ -758,13 +776,16 @@ export function Chat({ session }: { session: Session }) {
     setSkillRunId(null);
     const controller = new AbortController();
     streamRef.current = controller;
+    generationRef.current = null;
+    setStopping(false);
     try {
       await askChat(
         session,
         content,
         conversationId,
         (event) => {
-          if (event.type === 'sources') setLiveFacts(event.facts);
+          if (event.type === 'generation') generationRef.current = event.generationId;
+          else if (event.type === 'sources') setLiveFacts(event.facts);
           else if (event.type === 'thinking') setLiveThinking((prev) => prev + event.text);
           else if (event.type === 'token') setLiveText((prev) => prev + event.text);
           else if (event.type === 'done') {
@@ -814,6 +835,8 @@ export function Chat({ session }: { session: Session }) {
       }
     }
     if (streamRef.current === controller) streamRef.current = null;
+    generationRef.current = null;
+    setStopping(false);
     if (controller.signal.aborted) return;
     await queryClient.invalidateQueries({ queryKey: ['chat-messages', conversationId] });
     // The sidebar's preview + recency move; the auto-title lands moments later
@@ -828,6 +851,22 @@ export function Chat({ session }: { session: Session }) {
     setLiveThinking('');
     setLiveFacts([]);
     setBusy(false);
+  };
+
+  /**
+   * Stop the answer, keeping what was written (issue #532).
+   *
+   * The server is asked EXPLICITLY rather than by dropping the connection: it
+   * ends the provider call, stores what exists so far flagged as stopped, and
+   * finishes the stream normally. So the client does NOT abort its own fetch
+   * here: it waits for the `done` frame, which is what keeps the screen and
+   * the stored message identical.
+   */
+  const stopGenerating = () => {
+    const generationId = generationRef.current;
+    if (!generationId || stopping) return;
+    setStopping(true);
+    void stopGeneration(session, generationId).catch(() => setStopping(false));
   };
 
   const turns = history ? buildTurns(history as ChatMessage[]) : [];
@@ -961,6 +1000,11 @@ export function Chat({ session }: { session: Session }) {
                           ambiguity={turn.answer.ambiguity}
                           onOpenMemory={setOpenMemoryId}
                         />
+                        {turn.answer.stopped && (
+                          <p className="mt-2 font-mono text-[0.66rem] tracking-[0.04em] text-slate-400">
+                            {t('answer.stopped')}
+                          </p>
+                        )}
                       </AnswerBlock>
                     </div>
                   )}
@@ -1152,21 +1196,38 @@ export function Chat({ session }: { session: Session }) {
                   placeholder={t('composer.placeholder')}
                   className="max-h-40 flex-1 resize-none self-center bg-transparent py-1 text-[0.95rem] leading-relaxed text-slate-800 outline-none placeholder:text-slate-400"
                 />
-                <button
-                  type="submit"
-                  disabled={busy || (!draft.trim() && !pendingFile)}
-                  aria-label={t('composer.send')}
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-teal text-white transition-transform hover:-translate-y-px hover:brightness-105 disabled:opacity-40"
-                >
-                  {busy ? (
-                    <span
-                      className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <SendIcon />
-                  )}
-                </button>
+                {/* While an answer is streaming the same control becomes
+                    Stop (issue #532): one button, one place, and no second
+                    affordance to hunt for mid-answer. It reverts the moment
+                    the turn settles. */}
+                {busy && generationRef.current ? (
+                  <button
+                    type="button"
+                    onClick={stopGenerating}
+                    disabled={stopping}
+                    aria-label={t('composer.stop')}
+                    title={t('composer.stopHint')}
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-slate-300 text-slate-600 transition-colors hover:border-red-500 hover:text-red-600 disabled:opacity-40 dark:hover:text-red-300"
+                  >
+                    <StopIcon />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={busy || (!draft.trim() && !pendingFile)}
+                    aria-label={t('composer.send')}
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-teal text-white transition-transform hover:-translate-y-px hover:brightness-105 disabled:opacity-40"
+                  >
+                    {busy ? (
+                      <span
+                        className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <SendIcon />
+                    )}
+                  </button>
+                )}
               </div>
               {widenOffer && (
                 <p className="mt-2 flex flex-wrap items-center justify-center gap-2 text-center text-[0.72rem] leading-relaxed text-slate-500">
