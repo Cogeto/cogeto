@@ -1,8 +1,9 @@
 {
   "rail": {
+    "heading": "Projects",
     "noProject": "No project",
     "newHere": "New conversation in this project",
-    "newProject": "+ New project",
+    "newProject": "New project",
     "lensOn": "Answers in this project draw on its sources first.",
     "lensOff": "Answers in this project draw on all your memory.",
     "turnLensOn": "Use project sources",

@@ -8,7 +8,7 @@ import { MARKER_CLASSES, deleteProjectConfirm } from './projects-model';
 
 /**
  * The conversation rail's project SECTION HEADER (V2.5 item 8.3, interface
- * rework), and the one-line "new project" form under the sections.
+ * rework), and the `PROJECTS` heading that opens the section list.
  *
  * Membership is shown by GROUPING rather than by a filter dropdown, so the
  * header carries the project's identity (marker dot, name, count) and its
@@ -196,8 +196,16 @@ export function ProjectSectionHeader({
   );
 }
 
-/** The one-line create form under the sections. One action, always visible. */
-export function NewProjectRow({ session }: { session: Session }) {
+/**
+ * The `PROJECTS` heading that opens the section list, carrying the create
+ * button (V2.5 item 8.3 follow-up).
+ *
+ * It was a one-line control BELOW the sections, which put it at the bottom of
+ * a scrolling list: the one place nobody looks, and unreachable without
+ * scrolling past every conversation. On the heading the `+` is unambiguous,
+ * because it sits on the word it creates, and it never scrolls out of reach.
+ */
+export function ProjectsHeading({ session }: { session: Session }) {
   const { t } = useTranslation('projects');
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
@@ -214,18 +222,25 @@ export function NewProjectRow({ session }: { session: Session }) {
 
   if (!creating) {
     return (
-      <button
-        type="button"
-        onClick={() => setCreating(true)}
-        className="mt-2 w-full px-1.5 py-1 text-left font-mono text-[0.62rem] uppercase tracking-[0.08em] text-slate-400 transition-colors hover:text-brand-teal-ink dark:hover:text-brand-teal"
-      >
-        {t('rail.newProject')}
-      </button>
+      <div className="flex items-center gap-1.5 px-1.5 pt-3 pb-0.5">
+        <span className="min-w-0 flex-1 font-mono text-[0.66rem] uppercase tracking-[0.1em] text-slate-400">
+          {t('rail.heading')}
+        </span>
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          title={t('rail.newProject')}
+          aria-label={t('rail.newProject')}
+          className="shrink-0 px-1 font-mono text-[0.8rem] leading-none text-slate-400 transition-colors hover:text-brand-teal-ink dark:hover:text-brand-teal"
+        >
+          +
+        </button>
+      </div>
     );
   }
   return (
     <form
-      className="mt-2 flex items-center gap-1.5 px-1.5"
+      className="flex items-center gap-1.5 px-1.5 pt-3 pb-0.5"
       onSubmit={(event) => {
         event.preventDefault();
         const name = draft.trim();

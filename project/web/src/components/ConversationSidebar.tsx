@@ -20,7 +20,7 @@ import {
   deleteConversationConfirm,
   splitConversations,
 } from './conversations-model';
-import { NewProjectRow, ProjectSectionHeader } from './ProjectRail';
+import { ProjectSectionHeader, ProjectsHeading } from './ProjectRail';
 import { MARKER_CLASSES, railSections } from './projects-model';
 
 /**
@@ -309,6 +309,9 @@ export function ConversationSidebar({
             {t('conversation.emptyRail')}
           </p>
         )}
+        {/* The heading opens the section list and carries the create button,
+            so a new project is never below a scrolling list of chats. */}
+        {grouped && <ProjectsHeading session={session} />}
         {grouped
           ? sections.map((section) => {
               const key = section.project?.id ?? 'none';
@@ -330,7 +333,6 @@ export function ConversationSidebar({
               );
             })
           : rowsFor(sections[0]?.conversations ?? [], true)}
-        {grouped && <NewProjectRow session={session} />}
         {archived.length > 0 && (
           <div className="mt-3">
             <button
