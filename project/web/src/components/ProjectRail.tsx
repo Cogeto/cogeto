@@ -8,7 +8,7 @@ import { MARKER_CLASSES, deleteProjectConfirm } from './projects-model';
 
 /**
  * The conversation rail's project SECTION HEADER (V2.5 item 8.3, interface
- * rework), and the one-line "new project" form under the sections.
+ * rework), and the `PROJECTS` heading that opens the section list.
  *
  * Membership is shown by GROUPING rather than by a filter dropdown, so the
  * header carries the project's identity (marker dot, name, count) and its
@@ -26,7 +26,6 @@ export function ProjectSectionHeader({
   count,
   collapsed,
   onToggle,
-  onNewConversation,
 }: {
   session: Session;
   /** Null renders the trailing "no project" heading, which has no actions. */
@@ -34,7 +33,6 @@ export function ProjectSectionHeader({
   count: number;
   collapsed: boolean;
   onToggle: () => void;
-  onNewConversation: (projectId: string | null) => void;
 }) {
   const { t } = useTranslation('projects');
   const queryClient = useQueryClient();
@@ -142,15 +140,6 @@ export function ProjectSectionHeader({
           </span>
           <span className="shrink-0 font-mono text-[0.6rem] text-slate-400">{count}</span>
         </button>
-        <button
-          type="button"
-          onClick={() => onNewConversation(project?.id ?? null)}
-          title={t('rail.newHere')}
-          aria-label={t('rail.newHere')}
-          className="shrink-0 px-1 font-mono text-[0.72rem] text-slate-300 transition-colors hover:text-brand-teal-ink group-focus-within/section:text-slate-400 group-hover/section:text-slate-400 dark:hover:text-brand-teal"
-        >
-          +
-        </button>
       </div>
       {project && (
         <div className="mt-0.5 ml-4 hidden flex-wrap items-center gap-2 group-focus-within/section:flex group-hover/section:flex">
@@ -196,8 +185,51 @@ export function ProjectSectionHeader({
   );
 }
 
-/** The one-line create form under the sections. One action, always visible. */
-export function NewProjectRow({ session }: { session: Session }) {
+/**
+ * The list's create affordance: a full-width row in the same rhythm as the
+ * conversations above it, with WORDS (V2.5 item 8.3 follow-up).
+ *
+ * Both create controls used to be bare `+` glyphs, one of them at
+ * `text-slate-300` and revealed on hover, which made it invisible in practice
+ * and unexplained when found. A row is a big target, it says what it does, and
+ * it never depends on the pointer being in the right place.
+ */
+export function GhostRow({
+  label,
+  ariaLabel,
+  onClick,
+}: {
+  label: string;
+  /** The specific name, when the visible label has to stay short enough for
+   * a 256px column ("New conversation" reading as "…in this project"). */
+  ariaLabel?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      onClick={onClick}
+      className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-xs text-slate-400 transition-colors hover:bg-surface hover:text-brand-teal-ink dark:hover:text-brand-teal"
+    >
+      <span aria-hidden="true" className="font-mono text-[0.8rem] leading-none">
+        +
+      </span>
+      <span className="min-w-0 truncate">{label}</span>
+    </button>
+  );
+}
+
+/**
+ * The `PROJECTS` heading that opens the section list, carrying the create
+ * button (V2.5 item 8.3 follow-up).
+ *
+ * It was a one-line control BELOW the sections, which put it at the bottom of
+ * a scrolling list: the one place nobody looks, and unreachable without
+ * scrolling past every conversation. On the heading the `+` is unambiguous,
+ * because it sits on the word it creates, and it never scrolls out of reach.
+ */
+export function ProjectsHeading({ session }: { session: Session }) {
   const { t } = useTranslation('projects');
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
@@ -214,18 +246,19 @@ export function NewProjectRow({ session }: { session: Session }) {
 
   if (!creating) {
     return (
-      <button
-        type="button"
-        onClick={() => setCreating(true)}
-        className="mt-2 w-full px-1.5 py-1 text-left font-mono text-[0.62rem] uppercase tracking-[0.08em] text-slate-400 transition-colors hover:text-brand-teal-ink dark:hover:text-brand-teal"
-      >
-        {t('rail.newProject')}
-      </button>
+      <div className="pt-3">
+        <p className="px-1.5 font-mono text-[0.66rem] uppercase tracking-[0.1em] text-slate-400">
+          {t('rail.heading')}
+        </p>
+        {/* A labelled, full-width row rather than a bare `+`: the glyph alone
+            was both an unreadable target and an unexplained one. */}
+        <GhostRow label={t('rail.newProject')} onClick={() => setCreating(true)} />
+      </div>
     );
   }
   return (
     <form
-      className="mt-2 flex items-center gap-1.5 px-1.5"
+      className="flex items-center gap-1.5 px-1.5 pt-3 pb-0.5"
       onSubmit={(event) => {
         event.preventDefault();
         const name = draft.trim();

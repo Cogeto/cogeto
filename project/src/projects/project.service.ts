@@ -12,7 +12,7 @@ import type {
   ProjectWriteDto,
   Principal,
 } from '@cogeto/shared';
-import { CONVERSATION_REF_TYPE } from '@cogeto/shared';
+import { CONVERSATION_REF_TYPE, PROJECT_MARKERS } from '@cogeto/shared';
 import { DRIZZLE, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { ProjectStore } from './persistence/project.store';
@@ -82,8 +82,11 @@ export class ProjectService {
   async create(principal: Principal, write: ProjectWriteDto): Promise<ProjectDto> {
     const name = write.name.trim();
     if (!name) throw new BadRequestException('a project needs a name');
-    const active = await this.store.listForOwner(principal.userId, { archived: false });
-    if (active.length >= MAX_ACTIVE_PROJECTS) {
+    // Every project, archived included: the cap counts only active ones, but
+    // the colour must stay distinct across all of them, or unarchiving one
+    // would collide with a colour handed out while it was away.
+    const owned = await this.store.listForOwner(principal.userId);
+    if (owned.filter((project) => !project.archived).length >= MAX_ACTIVE_PROJECTS) {
       throw new BadRequestException(
         `you have ${MAX_ACTIVE_PROJECTS} active projects, archive some first`,
       );
@@ -92,7 +95,12 @@ export class ProjectService {
       .create(principal.userId, principal.orgId || null, {
         name,
         description: write.description?.trim() || null,
-        marker: write.marker ?? null,
+        // A project gets a colour WITHOUT being asked for one. The marker is
+        // what the rail groups by, so leaving it null (which every caller
+        // did) meant the colour identity existed in the schema and never
+        // once rendered. Creation is the moment to decide it, and the user
+        // has nothing useful to say at that moment.
+        marker: write.marker ?? nextMarker(owned),
         lensEnabled: write.lensEnabled ?? true,
         extractionEnabled: write.extraction?.enabled ?? null,
         extractionFactBudget: write.extraction?.factBudget ?? null,
@@ -312,4 +320,18 @@ export function toProjectDto(
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+/**
+ * The colour a new project takes: the first one none of the owner's projects
+ * is already using, so no two are confusable until there are more projects
+ * than colours, and only then does it cycle. Deterministic, so a test can
+ * assert it, and no picker exists to argue with.
+ */
+function nextMarker(existing: readonly { marker: string | null }[]) {
+  const taken = new Set(existing.map((project) => project.marker));
+  return (
+    PROJECT_MARKERS.find((marker) => !taken.has(marker)) ??
+    PROJECT_MARKERS[existing.length % PROJECT_MARKERS.length]!
+  );
 }

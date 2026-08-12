@@ -23,6 +23,22 @@ export const MARKER_CLASSES: Record<ProjectMarker, string> = {
   plum: 'bg-purple-400',
 };
 
+/**
+ * The same markers as LEFT-BORDER classes, for the rule that runs down a
+ * project's conversations in the rail. Written out rather than derived from
+ * MARKER_CLASSES by string surgery, because Tailwind scans source for whole
+ * class names and would generate nothing for a name assembled at runtime.
+ */
+export const MARKER_RULE_CLASSES: Record<ProjectMarker, string> = {
+  slate: 'border-slate-400',
+  indigo: 'border-indigo-400',
+  teal: 'border-brand-teal',
+  sage: 'border-emerald-400',
+  amber: 'border-amber-400',
+  rose: 'border-rose-400',
+  plum: 'border-purple-400',
+};
+
 /** Active first, archived collapsed: the conversation sidebar's own shape. */
 export function splitProjects(projects: ProjectDto[]): {
   active: ProjectDto[];

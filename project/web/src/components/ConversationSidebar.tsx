@@ -20,8 +20,8 @@ import {
   deleteConversationConfirm,
   splitConversations,
 } from './conversations-model';
-import { NewProjectRow, ProjectSectionHeader } from './ProjectRail';
-import { MARKER_CLASSES, railSections } from './projects-model';
+import { GhostRow, ProjectSectionHeader, ProjectsHeading } from './ProjectRail';
+import { MARKER_CLASSES, MARKER_RULE_CLASSES, railSections } from './projects-model';
 
 /**
  * The conversations sidebar: workspaces over one memory.
@@ -231,6 +231,7 @@ export function ConversationSidebar({
   onDeleted: (id: string) => void;
 }) {
   const { t } = useTranslation('chat');
+  const { t: tp } = useTranslation('projects');
   const { data: conversations } = useQuery({
     queryKey: ['conversations'],
     queryFn: () => fetchConversations(session),
@@ -309,28 +310,50 @@ export function ConversationSidebar({
             {t('conversation.emptyRail')}
           </p>
         )}
+        {/* The heading opens the section list and carries the create button,
+            so a new project is never below a scrolling list of chats. */}
+        {grouped && <ProjectsHeading session={session} />}
         {grouped
-          ? sections.map((section) => {
+          ? sections.map((section, index) => {
               const key = section.project?.id ?? 'none';
               const shut = collapsed[key] ?? false;
+              // The project's own colour, as a rule running the height of its
+              // group: the strongest "these belong together" signal a 256px
+              // column has, and the one that makes the marker do real work
+              // rather than be a 6px dot. The "no project" group keeps the
+              // same transparent gutter so every row stays aligned.
+              const rule = section.project?.marker
+                ? MARKER_RULE_CLASSES[section.project.marker]
+                : section.project
+                  ? 'border-slate-300'
+                  : 'border-transparent';
               return (
-                <div key={key}>
-                  <ProjectSectionHeader
-                    session={session}
-                    project={section.project}
-                    count={section.conversations.length}
-                    collapsed={shut}
-                    onToggle={() => setCollapsed((prev) => ({ ...prev, [key]: !shut }))}
-                    onNewConversation={(projectId) => create.mutate(projectId)}
-                  />
-                  {/* The dot is redundant under its own heading, so rows
-                      inside a section carry none. */}
-                  {!shut && rowsFor(section.conversations, false)}
+                <div key={key} className={index > 0 ? 'mt-1 border-t border-slate-200 pt-0.5' : ''}>
+                  <div className={`border-l-2 pl-1.5 ${rule}`}>
+                    <ProjectSectionHeader
+                      session={session}
+                      project={section.project}
+                      count={section.conversations.length}
+                      collapsed={shut}
+                      onToggle={() => setCollapsed((prev) => ({ ...prev, [key]: !shut }))}
+                    />
+                    {/* The dot is redundant under its own heading and beside
+                        the rule, so rows inside a section carry none. */}
+                    {!shut && rowsFor(section.conversations, false)}
+                    {/* Starting a conversation IN this project, labelled and
+                        always visible, inside the group it lands in. */}
+                    {!shut && section.project && (
+                      <GhostRow
+                        label={tp('rail.newConversation')}
+                        ariaLabel={tp('rail.newHere')}
+                        onClick={() => create.mutate(section.project!.id)}
+                      />
+                    )}
+                  </div>
                 </div>
               );
             })
           : rowsFor(sections[0]?.conversations ?? [], true)}
-        {grouped && <NewProjectRow session={session} />}
         {archived.length > 0 && (
           <div className="mt-3">
             <button
