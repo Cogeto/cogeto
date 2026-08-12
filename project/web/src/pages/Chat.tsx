@@ -843,6 +843,7 @@ export function Chat({ session }: { session: Session }) {
         session={session}
         activeId={activeId}
         onSelect={switchConversation}
+        onFocusMessage={setFocusMessageId}
         onCreated={(created) => switchConversation(created.id)}
         onDeleted={(deletedId) => {
           if (deletedId !== activeId) return;

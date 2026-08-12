@@ -27,6 +27,7 @@ import type {
   ChatRememberedDto,
   ChatStreamEvent,
   ConversationDto,
+  ConversationSearchHitDto,
   NoteStatusDto,
 } from '@cogeto/shared';
 import {
@@ -92,6 +93,10 @@ const renameSchema = z.object({
 
 const archiveSchema = z.object({ archived: z.boolean() });
 
+/** Search bounds: a query long enough to mean something, short enough to be a
+ * search rather than a paste. */
+const searchSchema = z.object({ q: z.string().min(1).max(200) });
+
 /** A new conversation may start inside a project (V2.5 item 8.3), optionally. */
 const createConversationSchema = z.object({ projectId: z.uuid().nullable().optional() });
 
@@ -153,6 +158,20 @@ export class ChatController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ChatAttachmentDto[]> {
     return this.attachments.listForConversation(request.principal, id);
+  }
+
+  /**
+   * Find a conversation by what was said in it (issue #530). Owner-scoped,
+   * bounded, and archived threads included: an archived one is exactly what
+   * scrolling cannot find.
+   */
+  @Get('search')
+  async search(
+    @Req() request: AuthenticatedRequest,
+    @Query() query: unknown,
+  ): Promise<ConversationSearchHitDto[]> {
+    const parsed = parseOrBadRequest(searchSchema, query ?? {});
+    return this.chat.searchConversations(request.principal, parsed.q);
   }
 
   /** The sidebar's conversation list: newest activity first. */

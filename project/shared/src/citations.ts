@@ -108,6 +108,37 @@ export function scanAnswer(text: string, validMemoryIds?: ReadonlySet<string>): 
   return { segments, violations };
 }
 
+/**
+ * The answer as PLAIN READING TEXT: every canonical token removed, nothing
+ * else changed. What a search snippet, a preview or any non-rendering consumer
+ * wants, because `{{cite:3f1c…}}` is renderer instruction, not something a
+ * person should ever read (issue #530 follow-up).
+ *
+ * Whitespace around a removed token collapses, so a claim followed by its
+ * chip does not leave a gap where the chip was.
+ */
+export function plainAnswerText(text: string): string {
+  return scanAnswer(text)
+    .segments.filter((segment) => segment.kind === 'text')
+    .map((segment) => segment.text)
+    .join('')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/ ([,.;:!?])/g, '$1')
+    .trim();
+}
+
+/**
+ * The SQL that strips those tokens before `ts_headline` builds a snippet.
+ *
+ * Stored answers are guaranteed to carry ONLY the canonical forms: the scribe
+ * strips every other `{{…}}` token at write time. So this coarser pattern
+ * removes exactly the canonical tokens and nothing else, which is what lets
+ * the snippet be windowed in Postgres rather than reassembled in TypeScript.
+ * `citations.spec.ts` asserts it agrees with `plainAnswerText` on canonical
+ * input, so the two cannot drift apart silently.
+ */
+export const CITATION_STRIP_SQL_PATTERN = '\\{\\{[^}]*\\}\\}';
+
 /** Re-serialize scanned segments to clean canonical text (for storage). */
 export function sanitizeAnswer(
   text: string,

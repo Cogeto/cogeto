@@ -6,7 +6,7 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type {
   AmbiguityDecisionDto,
   ChatLensDto,
@@ -15,6 +15,7 @@ import type {
   ChatRememberedDto,
   ChatStreamEvent,
   ConversationDto,
+  ConversationSearchHitDto,
   NoteProcessingState,
   Principal,
 } from '@cogeto/shared';
@@ -51,6 +52,7 @@ import type { ChatAttachmentsService } from './chat-attachments.service';
 import { chatMessage, conversation } from './persistence/tables';
 import type { ConversationRow } from './persistence/tables';
 import { CONVERSATION_TITLE_JOB_TYPE } from './conversation-titler';
+import { searchConversations as searchConversationRows } from './conversation-search';
 import { MemoryAnswerHandler } from './intents/answer.handler';
 import { ReplyIntentHandler } from './intents/reply.handler';
 import { ResearchIntentHandler } from './intents/research.handler';
@@ -276,6 +278,49 @@ export class ChatService {
         projectByConversation.get(row.id) ?? null,
       ),
     );
+  }
+
+  /**
+   * Find a conversation by what was SAID in it (issue #530), not only by the
+   * two-to-six words a model titled it with. Owner-scoped in the query; the
+   * hits are decorated here with the same title, recency and project the rail
+   * shows, so a result reads like the row it will become.
+   *
+   * Archived conversations are INCLUDED deliberately: an archived thread is
+   * exactly the one you cannot find by scrolling, which is the whole problem.
+   */
+  async searchConversations(
+    principal: Principal,
+    query: string,
+  ): Promise<ConversationSearchHitDto[]> {
+    const hits = await searchConversationRows(this.db, principal.userId, query);
+    if (hits.length === 0) return [];
+    const ids = hits.map((hit) => hit.conversationId);
+    const rows = await this.db
+      .select()
+      .from(conversation)
+      .where(and(eq(conversation.ownerId, principal.userId), inArray(conversation.id, ids)));
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    const projects =
+      (await this.projects?.projectIdsForRefs(principal.userId, CONVERSATION_REF_TYPE, ids)) ??
+      new Map<string, string>();
+    return hits.flatMap((hit) => {
+      const row = byId.get(hit.conversationId);
+      // A conversation deleted between the two reads simply drops out.
+      if (!row) return [];
+      return [
+        {
+          conversationId: row.id,
+          title: row.title,
+          archived: row.archived,
+          projectId: projects.get(row.id) ?? null,
+          updatedAt: row.updatedAt.toISOString(),
+          messageId: hit.messageId,
+          snippet: hit.snippet,
+          matchedTitle: hit.matchedTitle,
+        },
+      ];
+    });
   }
 
   /**

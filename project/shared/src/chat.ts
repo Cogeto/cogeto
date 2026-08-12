@@ -37,6 +37,28 @@ export interface ConversationDto {
   projectId: string | null;
 }
 
+/**
+ * One conversation matched by search (issue #530). The snippet carries the
+ * matched words wrapped in two control-character sentinels, so the client
+ * renders the highlight by SPLITTING rather than by being handed markup to
+ * inject.
+ */
+export interface ConversationSearchHitDto {
+  conversationId: string;
+  title: string | null;
+  archived: boolean;
+  /** The project it lives in, so a result still says where it belongs. */
+  projectId: string | null;
+  /** Last-message time, for the same recency label the rail shows. */
+  updatedAt: string;
+  /** The matching message, so the result can deep-link to that exact turn. */
+  messageId: string | null;
+  /** The matching line, sentinel-wrapped; null when only the title matched. */
+  snippet: string | null;
+  /** The title itself matched, which is worth saying when there is no line. */
+  matchedTitle: boolean;
+}
+
 /** GET /api/chat/conversations/:id/messages — the house { items, total } page. */
 export interface ChatMessagePage {
   items: ChatMessageDto[];
@@ -312,4 +334,37 @@ export interface ChatContextDto {
   conversationId: string;
   /** The conversation's display title; null while untitled. */
   conversationTitle: string | null;
+}
+
+/** The sentinels wrapping matched words in a search snippet. Control
+ * characters, so they cannot collide with anything a user typed and cannot be
+ * mistaken for markup. */
+export const SEARCH_MATCH_OPEN = '\u0001';
+export const SEARCH_MATCH_CLOSE = '\u0002';
+
+/**
+ * Splits a sentinel-wrapped snippet into plain and matched runs, so a renderer
+ * can emphasise the matches without ever interpreting the text as markup.
+ */
+export function splitSearchSnippet(snippet: string): { text: string; matched: boolean }[] {
+  const parts: { text: string; matched: boolean }[] = [];
+  const pattern = new RegExp(
+    `${SEARCH_MATCH_OPEN}([^${SEARCH_MATCH_CLOSE}]*)${SEARCH_MATCH_CLOSE}`,
+    'g',
+  );
+  let cursor = 0;
+  for (const match of snippet.matchAll(pattern)) {
+    const at = match.index ?? 0;
+    if (at > cursor) parts.push({ text: snippet.slice(cursor, at), matched: false });
+    if (match[1]) parts.push({ text: match[1], matched: true });
+    cursor = at + match[0].length;
+  }
+  if (cursor < snippet.length) parts.push({ text: snippet.slice(cursor), matched: false });
+  // Any stray sentinel that survived is stripped, never rendered.
+  return parts
+    .map((part) => ({
+      ...part,
+      text: part.text.replaceAll(SEARCH_MATCH_OPEN, '').replaceAll(SEARCH_MATCH_CLOSE, ''),
+    }))
+    .filter((part) => part.text.length > 0);
 }

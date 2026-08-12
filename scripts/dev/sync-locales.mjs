@@ -105,9 +105,17 @@ for (const root of existingRoots()) {
         const base = baseKey(key);
         if (seenPluralBase.has(base)) continue;
         seenPluralBase.add(base);
-        const seed = source.get(`${base}_other`) ?? value;
+        // Seed each category from English's OWN category when it has one, and
+        // fall back to `_other` only for categories English lacks (Croatian
+        // `_few`, French `_many`). Seeding everything from `_other` put the
+        // plural wording into `_one` in every locale, which the source-drift
+        // check surfaced the first time a plural key was added after it landed.
+        const fallback = source.get(`${base}_other`) ?? value;
         for (const wantedCategory of categories) {
-          wanted.push([`${base}_${wantedCategory}`, seed]);
+          wanted.push([
+            `${base}_${wantedCategory}`,
+            source.get(`${base}_${wantedCategory}`) ?? fallback,
+          ]);
         }
       }
 
