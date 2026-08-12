@@ -1,5 +1,6 @@
 import type { ConversationDto, ProjectDto, ProjectMarker } from '@cogeto/shared';
 import { i18next } from '../i18n';
+import type { ConfirmRequest } from './ui';
 
 /**
  * Pure presentation logic for projects (V2.5 item 8.3), React-free so the
@@ -118,16 +119,18 @@ export function assignmentTotal(project: ProjectDto): number {
  * with it. Here they do not: the project record goes, and its conversations,
  * sources, research runs and reports all remain, unassigned. The dialog says
  * exactly that, in those words, because the difference is the whole point.
+ *
+ * Structured rather than one joined string (issue #528): the consequence and
+ * the safer alternative are separate fields the dialog can typeset, instead of
+ * paragraphs glued with newlines for a browser dialog to cram together.
  */
-export function deleteProjectConfirm(project: ProjectDto): string {
+export function deleteProjectConfirm(project: ProjectDto): ConfirmRequest {
   const t = i18next.getFixedT(null, 'projects');
-  const lines = [
-    t('delete.question', { name: project.name }),
-    '',
-    t('delete.consequence', { count: assignmentTotal(project) }),
-    t('delete.keeps'),
-    '',
-    t('delete.alternative'),
-  ];
-  return lines.join('\n');
+  return {
+    title: t('delete.question', { name: project.name }),
+    consequence: `${t('delete.consequence', { count: assignmentTotal(project) })} ${t('delete.keeps')}`,
+    alternative: t('delete.alternative'),
+    confirmLabel: t('action.delete'),
+    destructive: true,
+  };
 }

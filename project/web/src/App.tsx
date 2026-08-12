@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { UNAUTHORIZED_EVENT } from './api';
 import { clearSession, getWebConfig, loadSession } from './auth/oidc';
 import type { Session } from './auth/oidc';
+import { ConfirmProvider } from './components/confirm';
 import { DemoBanner } from './components/DemoBanner';
 import { DemoIntro } from './components/DemoIntro';
 import { useInterfaceLanguage } from './i18n/use-language';
@@ -95,7 +96,10 @@ export function App() {
 
   const page = renderPage(session);
   return (
-    <>
+    // One confirmation dialog for the whole app (issue #528): call sites ask
+    // through `useConfirm()` and await a boolean, so none of them renders or
+    // owns a modal, and a confirmation raised inside a drawer layers above it.
+    <ConfirmProvider>
       {page}
       {demoMode && (
         <>
@@ -103,7 +107,7 @@ export function App() {
           <DemoBanner />
         </>
       )}
-    </>
+    </ConfirmProvider>
   );
 }
 

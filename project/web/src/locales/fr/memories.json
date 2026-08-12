@@ -129,7 +129,8 @@
     },
     "noRelations": "No contradictions involve this fact.",
     "untitledConversation": "Untitled conversation",
-    "noCitations": "No stored answer has cited this fact yet."
+    "noCitations": "No stored answer has cited this fact yet.",
+    "rejectAction": "Reject"
   },
   "capturePointer": {
     "body": "Capture lives in chat now: tell Cogeto something and use Remember this, or attach a file with the paperclip on <chatLink>the chat page</chatLink>. Deliberate document uploads live on <sourcesLink>the Sources page</sourcesLink>.",

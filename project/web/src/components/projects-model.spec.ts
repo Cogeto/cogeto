@@ -111,17 +111,23 @@ describe('projects model', () => {
   });
 
   it('delete_confirm_states_contents_survive: the dialog promises what actually happens', () => {
-    const text = deleteProjectConfirm(project());
-    expect(text).toContain('Client A');
-    // The whole lifecycle rule, in the dialog: the contents stay.
-    expect(text).toMatch(/stay exactly where they are/i);
-    expect(text).toMatch(/Nothing is erased/i);
-    // And the two other doors are named: source deletion for real erasure,
-    // archiving as the safe alternative.
-    expect(text).toMatch(/deletion saga|receipt/i);
-    expect(text).toMatch(/archiv/i);
+    const request = deleteProjectConfirm(project());
+    // The question names the project it is about.
+    expect(request.title).toContain('Client A');
+    // The whole lifecycle rule, in the consequence: the contents stay.
+    expect(request.consequence).toMatch(/stay exactly where they are/i);
+    expect(request.consequence).toMatch(/Nothing is erased/i);
     // The count comes from the REAL assignment totals, never a guess.
-    expect(text).toContain('5');
+    expect(request.consequence).toContain('5');
+    // The two other doors are named as the ALTERNATIVE, its own field now
+    // rather than a paragraph glued on with newlines (issue #528): source
+    // deletion for real erasure, archiving as the safe route.
+    expect(request.alternative).toMatch(/deletion saga|receipt/i);
+    expect(request.alternative).toMatch(/archiv/i);
+    // Deleting a project is destructive, so it gets the red button and opens
+    // focused on Cancel.
+    expect(request.destructive).toBe(true);
+    expect(request.confirmLabel).toBeTruthy();
   });
 
   it('marker_tokens_complete: every marker has a design-system class', () => {

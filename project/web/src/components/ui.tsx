@@ -344,3 +344,145 @@ export function Drawer({
     </div>
   );
 }
+
+// ── ConfirmDialog (the product's own confirmation, not the browser's) ────────
+
+/**
+ * What a confirmation says, as STRUCTURE rather than one string with `\n\n`
+ * in it (issue #528).
+ *
+ * Seven consequential actions used `window.confirm`, which meant the browser
+ * drew them, titled with the origin, with OK/Cancel in the BROWSER's language
+ * rather than the user's, and the four rich messages rendered as cramped plain
+ * text. The most important sentence in the product had the worst typography in
+ * the product, and none of it could be tested, because jsdom implements no
+ * `window.confirm`.
+ */
+export interface ConfirmRequest {
+  /** The question, as a question. Always present. */
+  title: string;
+  /** What will actually happen, plainly. */
+  consequence?: string;
+  /** A caution that deserves its own weight (user-approved memories going). */
+  note?: string;
+  /** The safer route, offered quietly rather than argued for. */
+  alternative?: string;
+  /** The verb on the confirm button. A specific verb beats "OK" every time. */
+  confirmLabel?: string;
+  /** Destructive actions get the red button AND open focused on Cancel. */
+  destructive?: boolean;
+}
+
+/**
+ * Existing confirmation copy was written as one blob for `window.confirm`,
+ * ending with a blank line and a restated question ("…\n\nDelete?"). The
+ * dialog asks that question in its title and answers it on its button, so the
+ * tail is dropped HERE rather than by rewording the source strings, which are
+ * genuinely translated into three languages: splitting on the blank line the
+ * translations all preserve loses nothing and needs no retranslation.
+ */
+export function consequenceOf(legacy: string): string {
+  return legacy.split(/\n\s*\n/)[0]!.trim();
+}
+
+export function ConfirmDialog({
+  request,
+  onResolve,
+}: {
+  request: ConfirmRequest;
+  onResolve: (confirmed: boolean) => void;
+}) {
+  const { t } = useTranslation('common');
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    // A destructive dialog opens on CANCEL: Enter is a reflex, and the reflex
+    // should not be the one that deletes. Native confirm() focuses OK.
+    (request.destructive ? cancelRef : confirmRef).current?.focus();
+    const close = () => onResolve(false);
+    // The SAME stack the drawers use, so a confirm raised from inside a drawer
+    // takes Escape first and the drawer stays open behind it.
+    drawerStack.push(close);
+    const onKey = (event: KeyboardEvent) => {
+      if (drawerStack[drawerStack.length - 1] !== close) return;
+      if (event.key === 'Escape') onResolve(false);
+      if (event.key !== 'Tab') return;
+      // Focus stays inside the dialog: it is a decision, and tabbing out to
+      // the page behind it would leave the question unanswered and unseen.
+      const focusable = panelRef.current?.querySelectorAll<HTMLElement>('button');
+      if (!focusable || focusable.length === 0) return;
+      const first = focusable[0]!;
+      const last = focusable[focusable.length - 1]!;
+      if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      const index = drawerStack.indexOf(close);
+      if (index >= 0) drawerStack.splice(index, 1);
+      previouslyFocused?.focus?.();
+    };
+  }, [onResolve, request.destructive]);
+
+  return (
+    <div className="fixed inset-0 z-30 grid place-items-center p-4">
+      <div
+        className="absolute inset-0 bg-black/50"
+        aria-hidden="true"
+        onClick={() => onResolve(false)}
+      />
+      <div
+        ref={panelRef}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+        aria-describedby={request.consequence ? 'confirm-consequence' : undefined}
+        className="relative w-full max-w-md rounded-lg border border-slate-200 bg-surface p-5 shadow-xl"
+      >
+        <h2 id="confirm-title" className="text-sm font-semibold text-slate-800">
+          {request.title}
+        </h2>
+        {request.consequence && (
+          <p id="confirm-consequence" className="mt-2 text-xs leading-relaxed text-slate-600">
+            {request.consequence}
+          </p>
+        )}
+        {request.note && (
+          <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-xs leading-relaxed text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+            {request.note}
+          </p>
+        )}
+        {request.alternative && (
+          <p className="mt-2 text-xs leading-relaxed text-slate-400">{request.alternative}</p>
+        )}
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            ref={cancelRef}
+            type="button"
+            className={btnSecondary}
+            onClick={() => onResolve(false)}
+          >
+            {t('action.cancel')}
+          </button>
+          <button
+            ref={confirmRef}
+            type="button"
+            className={request.destructive ? btnDanger : btnPrimary}
+            onClick={() => onResolve(true)}
+          >
+            {request.confirmLabel ?? t('action.confirm')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
