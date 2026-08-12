@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useConfirm } from '../components/confirm';
 import type { ChangeEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trans, useTranslation } from 'react-i18next';
@@ -65,6 +66,7 @@ import {
   SectionTitle,
   Skeleton,
   SkeletonRows,
+  consequenceOf,
 } from '../components/ui';
 import { timeAgo } from '../components/status';
 import type { Tone } from '../components/status';
@@ -1163,6 +1165,7 @@ const SYNCABLE_CONNECTOR_STATES: ConnectorState[] = [
  * token is handed over; the detail drawer holds scopes, backfill, runs.
  */
 function ConnectionsSection({ session }: { session: Session }) {
+  const confirm = useConfirm();
   const { t } = useTranslation('connections');
   const queryClient = useQueryClient();
   const connectors = useQuery({
@@ -1216,7 +1219,14 @@ function ConnectionsSection({ session }: { session: Session }) {
   // The consequence copy is explicit: ingested sources REMAIN (V2.5 item 8.1's
   // removal rule); only the credential and the sync state are destroyed.
   const confirmRemove = (row: ConnectorDto) => {
-    if (window.confirm(t('list.removeConfirm', { name: row.name }))) remove.mutate(row.id);
+    void confirm({
+      title: t('list.removeQuestion', { name: row.name }),
+      consequence: consequenceOf(t('list.removeConfirm', { name: row.name })),
+      confirmLabel: t('list.remove'),
+      destructive: true,
+    }).then((asked) => {
+      if (asked) remove.mutate(row.id);
+    });
   };
 
   const rows = (connectors.data ?? []).filter((row) => row.state !== 'removed');
@@ -1791,6 +1801,7 @@ function ErasedItemsBlock({
   syncable: boolean;
 }) {
   const { t } = useTranslation('connections');
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const erased = useQuery({
     queryKey: ['connector-erased', id],
@@ -1824,9 +1835,13 @@ function ErasedItemsBlock({
               className={btnSecondary}
               disabled={reingest.isPending || !syncable}
               onClick={() => {
-                if (window.confirm(t('detail.erased.confirm'))) {
-                  reingest.mutate(item.naturalKey);
-                }
+                void confirm({
+                  title: t('detail.erased.question'),
+                  consequence: t('detail.erased.confirm'),
+                  confirmLabel: t('detail.erased.action'),
+                }).then((asked) => {
+                  if (asked) reingest.mutate(item.naturalKey);
+                });
               }}
             >
               {t('detail.erased.action')}

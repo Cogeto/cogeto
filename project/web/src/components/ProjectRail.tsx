@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { ProjectDto } from '@cogeto/shared';
 import { createProject, deleteProject, setProjectArchived, updateProject } from '../api';
 import type { Session } from '../auth/oidc';
+import { useConfirm } from './confirm';
 import { MARKER_CLASSES, deleteProjectConfirm } from './projects-model';
 
 /**
@@ -35,6 +36,7 @@ export function ProjectSectionHeader({
   onToggle: () => void;
 }) {
   const { t } = useTranslation('projects');
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState('');
@@ -61,7 +63,7 @@ export function ProjectSectionHeader({
   });
   const remove = useMutation({
     mutationFn: async () => {
-      if (!window.confirm(deleteProjectConfirm(project!))) return null;
+      if (!(await confirm(deleteProjectConfirm(project!)))) return null;
       return deleteProject(session, project!.id);
     },
     onSuccess: async (result) => {

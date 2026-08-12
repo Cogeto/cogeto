@@ -6,6 +6,7 @@
   "action": {
     "add": "Dodaj",
     "cancel": "Odustani",
+    "confirm": "Confirm",
     "close": "Zatvori",
     "copy": "Kopiraj",
     "copied": "Kopirano",

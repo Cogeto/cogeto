@@ -80,6 +80,7 @@
     "fetched": "Abgerufen {{when}}. Die Fakten dieser Seite gelten für diesen Zeitpunkt."
   },
   "delete": {
+    "question": "Delete this {{subject}}?",
     "dangerZone": "Gefahrenbereich",
     "derivedMemories_one": "{{count}} abgeleitete Erinnerung",
     "derivedMemories_other": "{{count}} abgeleitete Erinnerungen",
@@ -87,6 +88,7 @@
     "storedFiles_other": "{{count}} gespeicherte Dateien",
     "confirm": "Dauerhaft entfernt werden: {{subject}}, {{memories}}. Als Nachweis wird ein signierter Löschbeleg ausgestellt. Dies kann nicht rückgängig gemacht werden.\n\nLöschen?",
     "confirmWithFiles": "Dauerhaft entfernt werden: {{subject}}, {{memories}} und {{files}}. Als Nachweis wird ein signierter Löschbeleg ausgestellt. Dies kann nicht rückgängig gemacht werden.\n\nLöschen?",
+    "action": "Delete",
     "impact": "Beim Löschen dieser Quelle werden sie und {{memories}} dauerhaft entfernt. Ein signierter Beleg dient als Nachweis.",
     "impactWithFiles": "Beim Löschen dieser Quelle werden sie, {{memories}} und {{files}} dauerhaft entfernt. Ein signierter Beleg dient als Nachweis.",
     "computingImpact": "Auswirkungen der Löschung werden berechnet…",

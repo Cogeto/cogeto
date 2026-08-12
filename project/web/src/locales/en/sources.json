@@ -80,6 +80,7 @@
     "fetched": "Fetched {{when}}. Facts from this page are “as of” that moment."
   },
   "delete": {
+    "question": "Delete this {{subject}}?",
     "dangerZone": "Danger zone",
     "derivedMemories_one": "{{count}} derived memory",
     "derivedMemories_other": "{{count}} derived memories",
@@ -87,6 +88,7 @@
     "storedFiles_other": "{{count}} stored files",
     "confirm": "This will PERMANENTLY remove this {{subject}}, {{memories}}. A signed deletion receipt will be issued as proof. This cannot be undone.\n\nDelete?",
     "confirmWithFiles": "This will PERMANENTLY remove this {{subject}}, {{memories}} and {{files}}. A signed deletion receipt will be issued as proof. This cannot be undone.\n\nDelete?",
+    "action": "Delete",
     "impact": "Deleting this source removes it, {{memories}}, permanently, with a signed receipt as proof.",
     "impactWithFiles": "Deleting this source removes it, {{memories}} and {{files}}, permanently, with a signed receipt as proof.",
     "computingImpact": "Computing what deletion would remove…",

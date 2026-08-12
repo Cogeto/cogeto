@@ -19,6 +19,7 @@ import {
   setSourceContext,
 } from '../api';
 import { isRegisteredSourceType } from '@cogeto/shared';
+import { useConfirm } from './confirm';
 import type { SourceTypeKey } from '@cogeto/shared';
 import type { SourceContextDto } from '@cogeto/shared';
 import type { Session } from '../auth/oidc';
@@ -33,6 +34,7 @@ import {
   Pill,
   SensitiveBadge,
   SkeletonRows,
+  consequenceOf,
 } from './ui';
 
 import { EMAIL_FRAME_SANDBOX, emailFrameDocument } from './email-body';
@@ -157,6 +159,7 @@ export function SourceDrawer({
 }) {
   const { t } = useTranslation('sources');
   const { t: tp } = useTranslation('projects');
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -259,19 +262,26 @@ export function SourceDrawer({
       setDeleteError(error instanceof Error ? error.message : String(error)),
   });
 
-  const confirmAndDelete = () => {
+  const confirmAndDelete = async () => {
     const impact = impactQuery.data;
     if (!impact) return;
     // The consequence sentence is ONE key with named counts, so a translator
     // controls word order and plural agreement instead of receiving fragments.
-    const message = t(impact.objectCount > 0 ? 'delete.confirmWithFiles' : 'delete.confirm', {
-      subject: isNote ? t('kind.note') : t('kind.source'),
-      memoryCount: impact.memoryCount,
-      objectCount: impact.objectCount,
-      memories: t('delete.derivedMemories', { count: impact.memoryCount }),
-      files: t('delete.storedFiles', { count: impact.objectCount }),
+    const asked = await confirm({
+      title: t('delete.question', { subject: isNote ? t('kind.note') : t('kind.source') }),
+      consequence: consequenceOf(
+        t(impact.objectCount > 0 ? 'delete.confirmWithFiles' : 'delete.confirm', {
+          subject: isNote ? t('kind.note') : t('kind.source'),
+          memoryCount: impact.memoryCount,
+          objectCount: impact.objectCount,
+          memories: t('delete.derivedMemories', { count: impact.memoryCount }),
+          files: t('delete.storedFiles', { count: impact.objectCount }),
+        }),
+      ),
+      confirmLabel: t('delete.action'),
+      destructive: true,
     });
-    if (window.confirm(message)) remove.mutate();
+    if (asked) remove.mutate();
   };
 
   const fileTone = (state: string): Tone =>
@@ -771,7 +781,7 @@ export function SourceDrawer({
         <button
           type="button"
           disabled={remove.isPending || !impactQuery.data}
-          onClick={confirmAndDelete}
+          onClick={() => void confirmAndDelete()}
           className={btnDanger}
         >
           {remove.isPending ? t('delete.deleting') : t('delete.deleteSource')}

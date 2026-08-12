@@ -80,6 +80,7 @@
     "fetched": "Dohvaćeno {{when}}. Činjenice s ove stranice vrijede za taj trenutak."
   },
   "delete": {
+    "question": "Delete this {{subject}}?",
     "dangerZone": "Opasna zona",
     "derivedMemories_one": "{{count}} izvedeno sjećanje",
     "derivedMemories_few": "{{count}} izvedena sjećanja",
@@ -89,6 +90,7 @@
     "storedFiles_other": "{{count}} spremljenih datoteka",
     "confirm": "Trajno će se ukloniti: {{subject}}, {{memories}}. Kao dokaz izdat će se potpisana potvrda brisanja. To se ne može poništiti.\n\nIzbrisati?",
     "confirmWithFiles": "Trajno će se ukloniti: {{subject}}, {{memories}} i {{files}}. Kao dokaz izdat će se potpisana potvrda brisanja. To se ne može poništiti.\n\nIzbrisati?",
+    "action": "Delete",
     "impact": "Brisanjem ovog izvora trajno se uklanjaju izvor i {{memories}}, uz potpisanu potvrdu kao dokaz.",
     "impactWithFiles": "Brisanjem ovog izvora trajno se uklanjaju izvor, {{memories}} i {{files}}, uz potpisanu potvrdu kao dokaz.",
     "computingImpact": "Izračun što bi brisanje uklonilo…",

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useConfirm } from './confirm';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trans, useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -86,6 +87,7 @@ export function MemoryDrawer({
   onNavigate: (memoryId: string) => void;
 }) {
   const { t } = useTranslation('memories');
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -291,7 +293,13 @@ export function MemoryDrawer({
                         type="button"
                         disabled={busy}
                         onClick={() => {
-                          if (window.confirm(t('drawer.rejectConfirm'))) reject.mutate();
+                          void confirm({
+                            title: t('drawer.rejectConfirm'),
+                            confirmLabel: t('drawer.rejectAction'),
+                            destructive: true,
+                          }).then((asked) => {
+                            if (asked) reject.mutate();
+                          });
                         }}
                         className={btnDanger}
                       >

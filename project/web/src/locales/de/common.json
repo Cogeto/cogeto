@@ -1,9 +1,12 @@
 {
   "productName": "Cogeto",
-  "document": { "title": "Cogeto: überprüfbares Gedächtnis" },
+  "document": {
+    "title": "Cogeto: überprüfbares Gedächtnis"
+  },
   "action": {
     "add": "Hinzufügen",
     "cancel": "Abbrechen",
+    "confirm": "Confirm",
     "close": "Schließen",
     "copy": "Kopieren",
     "copied": "Kopiert",
@@ -27,7 +30,10 @@
     "outdated": "veraltet",
     "replaced": "ersetzt"
   },
-  "memoryScope": { "private": "privat", "shared": "geteilt" },
+  "memoryScope": {
+    "private": "privat",
+    "shared": "geteilt"
+  },
   "verificationVerdict": {
     "supported": "belegt",
     "partial": "teilweise belegt",
@@ -38,11 +44,18 @@
       "label": "sensibel",
       "title": "Sensibel: nur für den Eigentümer, standardmäßig von der Abfrage ausgeschlossen"
     },
-    "shared": { "label": "geteilt", "title": "Für Ihre gesamte Organisation sichtbar" },
+    "shared": {
+      "label": "geteilt",
+      "title": "Für Ihre gesamte Organisation sichtbar"
+    },
     "private": "privat"
   },
-  "countBadge": { "label": "{{count}} {{noun}}" },
-  "entityChip": { "filterBy": "Nach {{name}} filtern" },
+  "countBadge": {
+    "label": "{{count}} {{noun}}"
+  },
+  "entityChip": {
+    "filterBy": "Nach {{name}} filtern"
+  },
   "relativeTime": {
     "justNow": "gerade eben",
     "minutes_one": "vor {{count}} Min.",

@@ -20,6 +20,7 @@ import {
   deleteConversationConfirm,
   splitConversations,
 } from './conversations-model';
+import { useConfirm } from './confirm';
 import { GhostRow, ProjectSectionHeader, ProjectsHeading } from './ProjectRail';
 import { MARKER_CLASSES, MARKER_RULE_CLASSES, railSections } from './projects-model';
 
@@ -70,6 +71,7 @@ function Row({
   onDeleted: (id: string) => void;
 }) {
   const { t } = useTranslation('chat');
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -89,8 +91,10 @@ function Row({
   const remove = useMutation({
     mutationFn: async () => {
       const preview = await fetchDeletionImpact(session, 'chat_conversation', conversation.id);
-      const message = deleteConversationConfirm(conversationLabel(conversation), preview);
-      if (!window.confirm(message)) return null;
+      const asked = await confirm(
+        deleteConversationConfirm(conversationLabel(conversation), preview),
+      );
+      if (!asked) return null;
       return deleteSource(session, 'chat_conversation', conversation.id);
     },
     onSuccess: (result) => {

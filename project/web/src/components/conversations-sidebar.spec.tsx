@@ -15,6 +15,7 @@ import {
   splitConversations,
 } from './conversations-model';
 import { ConversationSidebar } from './ConversationSidebar';
+import { ConfirmProvider } from './confirm';
 
 /**
  * The conversations sidebar
@@ -58,13 +59,17 @@ queryClient.setQueryData(['conversations'], FIXTURE);
 const noop = () => undefined;
 const html = renderToStaticMarkup(
   <QueryClientProvider client={queryClient}>
-    <ConversationSidebar
-      session={session}
-      activeId="c-active"
-      onSelect={noop}
-      onCreated={noop}
-      onDeleted={noop}
-    />
+    {/* The rail's delete asks through useConfirm() now (issue #528), so the
+        provider is part of rendering it at all. */}
+    <ConfirmProvider>
+      <ConversationSidebar
+        session={session}
+        activeId="c-active"
+        onSelect={noop}
+        onCreated={noop}
+        onDeleted={noop}
+      />
+    </ConfirmProvider>
   </QueryClientProvider>,
 );
 
@@ -126,27 +131,31 @@ describe('deep_links_open_conversation', () => {
 
 describe('delete_confirm_counts', () => {
   it('states the exact consequence with the preview numbers and the archive alternative', () => {
-    const text = deleteConversationConfirm('Adriatic proposal prep', {
+    const request = deleteConversationConfirm('Adriatic proposal prep', {
       memoryCount: 4,
       messageCount: 12,
       userApprovedCount: 1,
     });
-    expect(text).toContain('its 12 messages');
-    expect(text).toContain('the 4 memories derived from them');
-    expect(text).toContain('signed receipt');
-    expect(text).toContain('1 of those memories was approved by you');
-    expect(text).toContain('Archiving keeps everything instead');
+    expect(request.title).toContain('Adriatic proposal prep');
+    expect(request.consequence).toContain('its 12 messages');
+    expect(request.consequence).toContain('the 4 memories derived from them');
+    expect(request.consequence).toContain('signed receipt');
+    // The blessed memories are their OWN field now (issue #528), so the
+    // dialog gives them weight instead of burying them in a paragraph.
+    expect(request.note).toContain('1 of those memories was approved by you');
+    expect(request.alternative).toContain('Archiving keeps everything instead');
+    expect(request.destructive).toBe(true);
   });
 
   it('omits the knowing-deletion note when nothing approved is affected', () => {
-    const text = deleteConversationConfirm('Quick questions', {
+    const request = deleteConversationConfirm('Quick questions', {
       memoryCount: 0,
       messageCount: 2,
       userApprovedCount: 0,
     });
-    expect(text).toContain('its 2 messages');
-    expect(text).toContain('the 0 memories');
-    expect(text).not.toContain('Note:');
+    expect(request.consequence).toContain('its 2 messages');
+    expect(request.consequence).toContain('the 0 memories');
+    expect(request.note).toBeUndefined();
   });
 });
 

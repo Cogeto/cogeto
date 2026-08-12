@@ -1,5 +1,6 @@
 import type { ConversationDto, DeletionPreviewDto } from '@cogeto/shared';
 import { i18next } from '../i18n';
+import type { ConfirmRequest } from './ui';
 
 /**
  * Pure presentation logic for the conversations sidebar,
@@ -69,21 +70,22 @@ export function chatLink(conversationId: string, messageId?: string): string {
 export function deleteConversationConfirm(
   label: string,
   preview: Pick<DeletionPreviewDto, 'memoryCount' | 'messageCount' | 'userApprovedCount'>,
-): string {
+): ConfirmRequest {
   const t = i18next.getFixedT(null, 'chat');
-  const lines = [
-    t('conversation.delete.question', { label }),
-    '',
+  const approved = preview.userApprovedCount ?? 0;
+  return {
+    title: t('conversation.delete.question', { label }),
     // One sentence, one key: the counted nouns are named variables so a
     // translator controls agreement and order.
-    t('conversation.delete.consequence', {
+    consequence: t('conversation.delete.consequence', {
       messages: t('conversation.delete.messages', { count: preview.messageCount ?? 0 }),
       memories: t('conversation.delete.memories', { count: preview.memoryCount }),
     }),
-  ];
-  if ((preview.userApprovedCount ?? 0) > 0) {
-    lines.push(t('conversation.delete.approvedNote', { count: preview.userApprovedCount ?? 0 }));
-  }
-  lines.push('', t('conversation.delete.alternative'));
-  return lines.join('\n');
+    // The blessed memories get their own weight in the dialog rather than
+    // being one more line in a paragraph (issue #528).
+    ...(approved > 0 ? { note: t('conversation.delete.approvedNote', { count: approved }) } : {}),
+    alternative: t('conversation.delete.alternative'),
+    confirmLabel: t('conversation.delete.action'),
+    destructive: true,
+  };
 }

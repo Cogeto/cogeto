@@ -80,6 +80,7 @@
     "fetched": "Récupérée {{when}}. Les faits de cette page correspondent à ce moment."
   },
   "delete": {
+    "question": "Delete this {{subject}}?",
     "dangerZone": "Zone dangereuse",
     "derivedMemories_one": "{{count}} souvenir dérivé",
     "derivedMemories_many": "{{count}} souvenirs dérivés",
@@ -89,6 +90,7 @@
     "storedFiles_other": "{{count}} fichiers stockés",
     "confirm": "Seront supprimés DÉFINITIVEMENT : {{subject}}, {{memories}}. Un reçu de suppression signé sera délivré comme preuve. Cette action est irréversible.\n\nSupprimer ?",
     "confirmWithFiles": "Seront supprimés DÉFINITIVEMENT : {{subject}}, {{memories}} et {{files}}. Un reçu de suppression signé sera délivré comme preuve. Cette action est irréversible.\n\nSupprimer ?",
+    "action": "Delete",
     "impact": "La suppression de cette source la retire définitivement avec {{memories}}. Un reçu signé sert de preuve.",
     "impactWithFiles": "La suppression de cette source la retire définitivement avec {{memories}} et {{files}}. Un reçu signé sert de preuve.",
     "computingImpact": "Calcul des éléments que la suppression retirerait…",

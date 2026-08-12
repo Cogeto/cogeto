@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useConfirm } from '../components/confirm';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trans, useTranslation } from 'react-i18next';
 import type { ApprovalDto, ApprovalStatus } from '@cogeto/shared';
@@ -118,6 +119,7 @@ function EmailDraftPanel({ session, approvalId }: { session: Session; approvalId
 
 function PendingCard({ session, approval }: { session: Session; approval: ApprovalDto }) {
   const { t } = useTranslation('approvals');
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const decide = useMutation({
@@ -177,7 +179,12 @@ function PendingCard({ session, approval }: { session: Session; approval: Approv
           type="button"
           disabled={decide.isPending}
           onClick={() => {
-            if (window.confirm(t('pending.rejectConfirm'))) decide.mutate('reject');
+            void confirm({
+              title: t('pending.rejectConfirm'),
+              confirmLabel: t('pending.reject'),
+            }).then((asked) => {
+              if (asked) decide.mutate('reject');
+            });
           }}
           className={btnDanger}
         >

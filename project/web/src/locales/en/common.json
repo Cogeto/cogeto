@@ -6,6 +6,7 @@
   "action": {
     "add": "Add",
     "cancel": "Cancel",
+    "confirm": "Confirm",
     "close": "Close",
     "copy": "Copy",
     "copied": "Copied",

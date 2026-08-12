@@ -12,7 +12,8 @@
     "disable": "Pause",
     "enable": "Resume",
     "removeConfirm": "Remove {{name}}? Its stored credential is destroyed and syncing stops. Everything already ingested remains: the sources and their facts are NOT deleted, and each one can still be deleted individually from the Sources page.\n\nRemove?",
-    "actionFailed": "The action failed."
+    "actionFailed": "The action failed.",
+    "removeQuestion": "Remove {{name}}?"
   },
   "state": {
     "configured": "not authorised",
@@ -131,7 +132,8 @@
       "explainer": "Sources you deleted stay deleted: a sync never brings them back on its own. Ingesting one again is your explicit choice, and it returns as a brand-new source.",
       "when": "deleted {{when}}",
       "action": "Ingest again",
-      "confirm": "Your original deletion stays deleted. The next sync will bring this item back as a brand-new source with fresh extraction. Continue?"
+      "confirm": "Your original deletion stays deleted. The next sync will bring this item back as a brand-new source with fresh extraction. Continue?",
+      "question": "Ingest this item again?"
     }
   }
 }
