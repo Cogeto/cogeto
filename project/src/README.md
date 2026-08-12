@@ -3,7 +3,7 @@
 One directory per DDD bounded context (spec §15): `memory`, `ingestion`, `retrieval`,
 `chat`, `agents`, `notes`, `files`, `email`, `research`, `skills`, `settings`,
 `passport`, `attention`, `operations`, `sources`, `imports`, `reports`, `providers`,
-`connectors`, `confluence`, `identity`,
+`connectors`, `confluence`, `projects`, `identity`,
 `model-gateway`, plus the shared `infrastructure` leaf, `entrypoints` (app,
 worker), `migrations` and `testing`.
 
@@ -41,7 +41,17 @@ added `confluence`, the first real connector on that platform: strictly
 read-only by construction (a GET-only client with a build-failing
 architecture assertion), owning the `confluence_page` provenance table and
 the `confluence.estimate` job, with everything operational inherited from
-the platform.
+the platform. V2.5 item 8.3 added `projects` (projects as workspaces: the
+per-user folder over conversations, sources, research runs, connector
+sub-scopes and reports, owning `project` + `project_assignment`). It is a
+LEAF domain context on purpose, importing no other domain module, so
+everything that needs an assignment can import it with no cycle; and it
+decides nothing about visibility. The rule the module exists to keep is in
+[`docs/features/projects.md`](../../docs/features/projects.md): **projects
+are organisation and filtering, never authorisation**, so there is no
+project column on `memory` and no project in the vector payload, and the
+retrieval lens is an additive pre-filter over source refs on top of the
+unchanged gates.
 
 Module rules (binding, CI-enforced, spec §15):
 

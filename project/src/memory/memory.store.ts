@@ -27,7 +27,12 @@ import { UserDirectory } from '../identity/index';
 import { deletionReceipt, memory } from './persistence/tables';
 import type { MemoryRow, SourceType } from './persistence/tables';
 import type { ConfirmedReceipt } from './domain/receipt-chain';
-import { buildGateFilter, memoryPointFor, MemoryVectorStore } from './persistence/vector-store';
+import {
+  buildGateFilter,
+  LENS_VECTOR_FILTER_CAP,
+  memoryPointFor,
+  MemoryVectorStore,
+} from './persistence/vector-store';
 import type { MemoryPoint } from './persistence/vector-store';
 import { actorLabel, checkTransition } from './domain/transition';
 import type { MemoryActor } from './domain/transition';
@@ -107,6 +112,21 @@ export interface MemoryFilters {
   sourceId?: string;
   /** The admission taxonomy arm (V2.2 item 5.2, the filtered fact search). */
   uncertaintyReason?: UncertaintyReason;
+  /**
+   * The PROJECT RETRIEVAL LENS (V2.5 item 8.3): narrow to a bounded set of
+   * sources. A FILTER, never a gate — it is ANDed with `visibleTo` exactly
+   * like every other clause here, so it can only ever shrink a result the
+   * gates already permitted, and a fact it drops is still the caller's own
+   * fact, returned everywhere the lens is not applied.
+   *
+   * The refs arrive as a VALUE. This module never joins to a projects table,
+   * and no memory row carries a project: the association lives on the
+   * container, which is the whole design (docs/features/projects.md).
+   *
+   * An EMPTY array is a lens that matches nothing, deliberately: "this
+   * project holds no documents yet" is a true answer.  `undefined` is no lens.
+   */
+  sourceRefs?: readonly { sourceType: string; sourceId: string }[];
 }
 
 export interface ListOptions extends ReadOptions, MemoryFilters {
@@ -175,7 +195,7 @@ const CHANGE_STATUS_ACTIONS = [
 ] as const;
 const CHANGE_SUPERSEDE_ACTIONS = ['memory.superseded', 'memory.merged'] as const;
 
-export interface PointInTimeOptions extends ReadOptions {
+export interface PointInTimeOptions extends ReadOptions, Pick<MemoryFilters, 'sourceRefs'> {
   topK: number;
   /** Query embedding for relevance ranking within the temporal set. */
   embedding?: number[];
@@ -271,7 +291,8 @@ export class MemoryStore {
    */
   async openLoopsForPrincipal(
     principal: Principal,
-    opts: ReadOptions & { entity?: string; limit?: number } = {},
+    opts: ReadOptions &
+      Pick<MemoryFilters, 'sourceRefs'> & { entity?: string; limit?: number } = {},
   ): Promise<MemoryRow[]> {
     const rows = await this.db
       .select()
@@ -282,6 +303,7 @@ export class MemoryStore {
           inArray(memory.kind, OPEN_LOOP_KINDS as unknown as FactKind[]),
           inArray(memory.status, OPEN_LOOP_STATUSES as unknown as MemoryStatus[]),
           eq(memory.authoredByUser, true),
+          ...(opts.sourceRefs ? [sourceRefClause(opts.sourceRefs)] : []),
         ),
       )
       .orderBy(sql`${memory.validUntil} ASC NULLS LAST`, desc(memory.updatedAt), memory.id)
@@ -1069,11 +1091,23 @@ export class MemoryStore {
   async vectorSearch(
     principal: Principal,
     embedding: number[],
-    opts: SearchOptions,
+    opts: SearchOptions & Pick<MemoryFilters, 'sourceRefs'>,
   ): Promise<MemorySearchHit[]> {
     const filter = buildGateFilter(principal, opts);
     // Candidate narrowing (0010 ruling 6): extra must-conditions AND with the
     // gates — they can only shrink the result, never widen past a gate.
+    // The project lens (V2.5 item 8.3) joins that family: a `source_id`
+    // payload pre-filter INSIDE the vector query, so the top-k the fusion
+    // sees is a top-k OF THE PROJECT rather than a top-k trimmed afterwards.
+    // Above the cap the pre-filter is skipped and the Postgres row
+    // resolution filters exactly on the full (type, id) pair, which costs
+    // vector recall inside a very large project and never correctness.
+    if (opts.sourceRefs && opts.sourceRefs.length <= LENS_VECTOR_FILTER_CAP) {
+      filter.must.push({
+        key: 'source_id',
+        match: { any: opts.sourceRefs.map((ref) => ref.sourceId) },
+      });
+    }
     if (opts.scope) filter.must.push({ key: 'scope', match: { value: opts.scope } });
     if (opts.ownerOnly) filter.must.push({ key: 'owner_id', match: { value: principal.userId } });
     if (opts.statuses?.length) {
@@ -1199,13 +1233,19 @@ export class MemoryStore {
   async getManyForPrincipal(
     principal: Principal,
     memoryIds: string[],
-    opts: ReadOptions = {},
+    opts: ReadOptions & MemoryFilters = {},
   ): Promise<MemoryRow[]> {
     if (memoryIds.length === 0) return [];
     return this.db
       .select()
       .from(memory)
-      .where(and(inArray(memory.id, memoryIds), this.visibleTo(principal, opts)));
+      .where(
+        and(
+          inArray(memory.id, memoryIds),
+          this.visibleTo(principal, opts),
+          ...this.filterClauses(principal, opts),
+        ),
+      );
   }
 
   /**
@@ -1252,6 +1292,7 @@ export class MemoryStore {
     opts: PointInTimeOptions,
   ): Promise<PointInTimeHit[]> {
     const base: SQL[] = [this.visibleTo(principal, opts), intervalHoldsAtSql(t)];
+    if (opts.sourceRefs) base.push(sourceRefClause(opts.sourceRefs));
     const fetch = (clauses: SQL[]) =>
       this.db
         .select()
@@ -1287,6 +1328,7 @@ export class MemoryStore {
       const hits = await this.vectorSearch(principal, opts.embedding, {
         topK: TEMPORAL_CANDIDATE_CAP,
         includeSensitive: opts.includeSensitive,
+        sourceRefs: opts.sourceRefs,
       });
       scores = new Map(hits.map((h) => [h.memoryId, h.score]));
     }
@@ -1305,7 +1347,7 @@ export class MemoryStore {
   async changesSince(
     principal: Principal,
     since: Date,
-    opts: ReadOptions & { limit?: number } = {},
+    opts: ReadOptions & Pick<MemoryFilters, 'sourceRefs'> & { limit?: number } = {},
   ): Promise<MemoryChange[]> {
     const limit = Math.min(opts.limit ?? 50, 200);
     const events: MemoryChange[] = [];
@@ -1313,7 +1355,13 @@ export class MemoryStore {
     const learned = await this.db
       .select()
       .from(memory)
-      .where(and(this.visibleTo(principal, opts), gte(memory.createdAt, since)))
+      .where(
+        and(
+          this.visibleTo(principal, opts),
+          gte(memory.createdAt, since),
+          ...(opts.sourceRefs ? [sourceRefClause(opts.sourceRefs)] : []),
+        ),
+      )
       .orderBy(desc(memory.createdAt), memory.id)
       .limit(limit);
     for (const row of learned) {
@@ -1426,6 +1474,7 @@ export class MemoryStore {
     if (filters.uncertaintyReason) {
       clauses.push(eq(memory.uncertaintyReason, filters.uncertaintyReason));
     }
+    if (filters.sourceRefs) clauses.push(sourceRefClause(filters.sourceRefs));
     if (filters.entity?.trim()) {
       clauses.push(
         sql`EXISTS (
@@ -1539,4 +1588,17 @@ export class MemoryStore {
     }
     return row;
   }
+}
+
+/**
+ * The project retrieval lens as SQL (V2.5 item 8.3): an exact match on the
+ * full (source_type, source_id) pair, so a `source_id` that repeats across
+ * types cannot smuggle a row in. ANDed with the gates by every caller; an
+ * empty ref list yields FALSE, which is a lens over an empty project matching
+ * nothing, deliberately.
+ */
+function sourceRefClause(refs: readonly { sourceType: string; sourceId: string }[]): SQL {
+  if (refs.length === 0) return sql`false`;
+  const pairs = refs.map((ref) => sql`(${ref.sourceType}, ${ref.sourceId})`);
+  return sql`(${memory.sourceType}, ${memory.sourceId}) IN (${sql.join(pairs, sql`, `)})`;
 }

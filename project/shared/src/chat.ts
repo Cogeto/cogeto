@@ -1,5 +1,6 @@
 import type { FileProcessingState, FileReadOutcome } from './files';
 import type { MemoryScope, MemoryStatus } from './memory';
+import type { ChatLensDto } from './projects';
 import type { ChatSkillRunRef } from './skills';
 
 /** Chat DTOs: POST /api/chat (SSE) and the persisted conversation. */
@@ -28,6 +29,12 @@ export interface ConversationDto {
   updatedAt: string;
   /** First characters of the last message, for the sidebar preview. */
   lastMessagePreview: string | null;
+  /**
+   * The project this conversation is assigned to (V2.5 item 8.3), or null.
+   * Assignment is organisation, never authorisation: it decides which
+   * sources the retrieval lens narrows to, and nothing about visibility.
+   */
+  projectId: string | null;
 }
 
 /** GET /api/chat/conversations/:id/messages — the house { items, total } page. */
@@ -52,6 +59,13 @@ export interface ChatMessageDto {
    * older than the feature. Content-bearing (subject names), so the answer
    * redaction cascade clears it with the answer. */
   ambiguity: AmbiguityDecisionDto | null;
+  /**
+   * What the project retrieval lens did on this turn (V2.5 item 8.3), so
+   * re-opening a conversation renders the same honest labels it showed live.
+   * Identifiers and booleans, never a project name and never content. Null
+   * for user rows, unlensed turns and rows older than the feature.
+   */
+  lens: ChatLensDto | null;
   createdAt: string;
 }
 
@@ -162,6 +176,18 @@ export interface ChatResearchProposalRef {
   runId: string;
 }
 
+/**
+ * The widen offer (V2.5 item 8.3): the lens found nothing in this project and
+ * the answer said so. Tapping re-asks the SAME question with the lens off for
+ * that one turn; the conversation stays in its project and the next question
+ * is lensed again.
+ */
+export interface ChatWidenOffer {
+  projectId: string;
+  /** The question to re-ask, so the client never has to reconstruct it. */
+  question: string;
+}
+
 /** Server-sent events on POST /api/chat, in order: sources → token* → done. */
 export type ChatStreamEvent =
   /** A reasoning delta (Part C): displayed live in the collapsed Thinking
@@ -188,6 +214,14 @@ export type ChatStreamEvent =
       /** The ambiguity decision behind this answer (V2.3 item 6.3), when the
        * grounded path computed one. Mirrors the stored record. */
       ambiguity?: AmbiguityDecisionDto | null;
+      /** What the project retrieval lens did on this turn (V2.5 item 8.3).
+       * Mirrors the stored record. */
+      lens?: ChatLensDto | null;
+      /** Present when the lens was applied and the project's sources held
+       * nothing above the relevance floor: the one-tap widen offer. Cogeto
+       * never widens silently, so this offer IS the bridge (the research
+       * rule, applied to the lens). Ephemeral, like the research offer. */
+      widenOffer?: ChatWidenOffer | null;
     }
   | {
       type: 'error';

@@ -110,3 +110,12 @@ export {
   checksumsKnownForOwner,
 } from './file-store';
 export { toListItem } from './list-item';
+/**
+ * The two PURE constructions behind the vector index's gate and payload
+ * (V2.5 item 8.3). Exported so the projects module's structural guard can
+ * assert them directly: that the gate filter is still exactly the two
+ * scope/sensitive conditions, and that a point's payload carries no project.
+ * Functions and shapes, never a client and never a table.
+ */
+export { buildGateFilter, memoryPointFor } from './persistence/vector-store';
+export type { GateFilter, MemoryPointPayload } from './persistence/vector-store';

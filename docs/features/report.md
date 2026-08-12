@@ -125,3 +125,18 @@ click; run records are permanent.
 - No PDF byte-signing: the JSON is the signed record and the PDF a faithful
   rendering carrying the same values; signing rendered bytes would tie the
   signature to layout instead of content.
+
+## A report for a project (V2.5 item 8.3)
+
+`ReportScopeDto` gained a `project` kind: the run enumerates exactly that
+project's `source` assignments and walks nothing else, so a client-facing
+report contains that client's documents **structurally** rather than because
+the user remembered to filter. The scope is stated on the artifact as every
+scope is, listing what was examined.
+
+This changed the published artifact, so the format is now **1.1**, additive:
+the scope block gained `project_id` and `project_name`, and its `kind` gained
+`project`. Version 1.0 stays published at
+`docs/findings-report-schema/1.0/` and every 1.0 artifact keeps verifying,
+because the integrity block, the canonicalization and the signing procedure
+are untouched.

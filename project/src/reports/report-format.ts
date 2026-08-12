@@ -174,9 +174,17 @@ const trustMetricsSchema = z.object({
 export type ReportTrustMetrics = z.infer<typeof trustMetricsSchema>;
 
 const scopeSchema = z.object({
-  kind: z.enum(['corpus', 'import', 'sources', 'date_range']),
+  kind: z.enum(['corpus', 'import', 'sources', 'date_range', 'project']),
   import_run_id: z.string().nullable(),
   refs: z.array(z.object({ source_type: z.string(), source_id: z.string() })).nullable(),
+  /**
+   * The project a run was scoped to (V2.5 item 8.3, schema 1.1, additive):
+   * its id, and the name the user gave it, so a client-facing report says
+   * which client it is about. Both null for every other scope kind, and for
+   * every 1.0 artifact, which stays valid against its own published schema.
+   */
+  project_id: z.string().nullable(),
+  project_name: z.string().nullable(),
   from: isoDate.nullable(),
   to: isoDate.nullable(),
 });

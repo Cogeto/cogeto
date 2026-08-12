@@ -207,7 +207,14 @@ export const extractionGateRefusal = pgTable(
 );
 
 export type ExtractionRefusalReason =
-  'extraction_disabled' | 'source_disabled' | 'document_class_denied' | 'folder_denied';
+  | 'extraction_disabled'
+  | 'source_disabled'
+  | 'document_class_denied'
+  | 'folder_denied'
+  /** The project this source entered has extraction switched off (V2.5 item
+   * 8.3 issue C4). No column and no constraint changes: the reason column is
+   * free text by design, so a new named arm costs no migration. */
+  | 'project_disabled';
 
 export type ExtractionGateRow = typeof extractionGate.$inferSelect;
 export type ExtractionGateRuleRow = typeof extractionGateRule.$inferSelect;

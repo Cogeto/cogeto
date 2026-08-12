@@ -38,6 +38,7 @@ const conv = (over: Partial<ConversationDto> & Pick<ConversationDto, 'id'>): Con
   createdAt: new Date(Date.now() - 86_400_000).toISOString(),
   updatedAt: new Date(Date.now() - 3_600_000).toISOString(),
   lastMessagePreview: null,
+  projectId: null,
   ...over,
 });
 
@@ -60,6 +61,8 @@ const html = renderToStaticMarkup(
     <ConversationSidebar
       session={session}
       activeId="c-active"
+      projectId={null}
+      onProjectChange={noop}
       onSelect={noop}
       onCreated={noop}
       onDeleted={noop}

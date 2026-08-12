@@ -11,6 +11,8 @@ import type { CatalogQuery } from './source-catalog.service';
 const listSchema = z.object({
   type: z.enum(SOURCE_TYPE_KEYS).optional(),
   badge: z.enum(SOURCE_BADGE_FILTERS).optional(),
+  /** Only this project's sources (V2.5 item 8.3 issue C3). */
+  projectId: z.uuid().optional(),
   q: z.string().max(200).optional(),
   order: z.enum(['asc', 'desc']).optional(),
   cursor: z.iso.datetime({ offset: true }).optional(),
@@ -36,6 +38,7 @@ export class SourceCatalogController {
     const catalogQuery: CatalogQuery = {
       type: parsed.type as CatalogQuery['type'],
       badge: parsed.badge,
+      projectId: parsed.projectId,
       q: parsed.q,
       order: parsed.order,
       cursor: parsed.cursor ? new Date(parsed.cursor) : undefined,

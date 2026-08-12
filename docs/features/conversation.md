@@ -105,6 +105,28 @@ embedding model), erased by the answer redaction cascade with the answer.
 Thresholds are versioned per embedding model in
 `retrieval/ambiguity-config.ts` and an unknown model fails loudly.
 
+## The project retrieval lens (V2.5 item 8.3)
+
+A conversation assigned to a project whose lens is on answers from that
+project's sources by default. The lens is a **filter, not a gate**: the
+excluded facts are still the user's, still returned in every other
+conversation, still in one index and one pool. Chat resolves the project (one
+keyed read, null for every unassigned conversation) and hands retrieval a
+bounded list of source refs as a value.
+
+When the project holds nothing above the relevance floor, the answer **names
+the project and offers a one-tap widen**. Cogeto neither widens silently (that
+would make the lens meaningless, and would put another client's number in
+front of someone working in this one) nor refuses silently. That is the
+research rule applied to the lens: the offer is the bridge, the gate stays the
+gate. A knowledge-class question keeps its general-knowledge path, with a
+preamble that names the project rather than claiming the whole corpus is
+silent. Every answered turn records what the lens did on
+`chat_message.lens` (project id and two booleans; never a name, never
+content), so re-opening a conversation renders the same honest labels. The
+full design, including why the association never moves onto a memory row, is
+[`projects.md`](projects.md).
+
 ## Relative dates are resolved by code
 
 The extractor emits raw temporal expressions verbatim; a deterministic resolver

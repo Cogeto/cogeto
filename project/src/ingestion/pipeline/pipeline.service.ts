@@ -14,6 +14,8 @@ import type { ModelGateway } from '../../model-gateway/index';
 import { structurallyValid } from '../domain/uncertainty';
 import { UserDirectory } from '../../identity/index';
 import { ExtractionGateStore } from '../persistence/extraction-gate.store';
+import { PROJECT_POLICY } from '../project-policy.port';
+import type { ProjectPolicyPort } from '../project-policy.port';
 import { IngestionProgressStore } from '../persistence/ingestion-progress';
 import { AnchorStage } from './anchor.stage';
 import { SuppressedFactLog } from '../persistence/suppressed-fact-log';
@@ -124,6 +126,15 @@ export class IngestionPipeline {
      * say "verifying" instead of a bare spinner. Never a way to fail the run.
      */
     @Optional() private readonly progress?: IngestionProgressStore,
+    /**
+     * The per-project extraction policy (V2.5 item 8.3 issue C4). Appended
+     * LAST so no existing wiring shifts (the positional-optional hazard the
+     * boundary contract names). NOT a new gate dimension: at most three
+     * numbers folded into the same tightest-wins arithmetic, plus a disable
+     * flag refused through the existing ledger. Absent, or a source in no
+     * project, is the pre-feature path exactly.
+     */
+    @Optional() @Inject(PROJECT_POLICY) private readonly projectPolicy?: ProjectPolicyPort,
   ) {}
 
   async run(
@@ -218,6 +229,37 @@ export class IngestionPipeline {
       }
       gateBudget = decision.factBudget;
       gateRetentionDays = decision.retentionDays;
+    }
+
+    // Stage 1.5b — the project's own extraction policy (V2.5 item 8.3 issue
+    // C4), applied at the SAME chokepoint and folded into the SAME
+    // arithmetic. A project is not a settings hierarchy: three numbers, and
+    // a disable that refuses through the existing metadata-only ledger with
+    // its own named reason, so a project-gated source never looks
+    // processed-with-zero-facts either.
+    if (this.projectPolicy) {
+      const policy = await this.projectPolicy
+        .policyForSource(payload.source_type, payload.source_id)
+        .catch(() => null);
+      if (policy?.enabled === false) {
+        summary.skipped = 'gate_refused';
+        await this.gate?.recordRefusal(tx, {
+          ownerId: source.ownerId,
+          sourceType: payload.source_type,
+          sourceId: payload.source_id,
+          reason: 'project_disabled',
+          documentClass: source.documentClass ?? undefined,
+        });
+        log(
+          { stage: 'gate', ...ref, reason: 'project_disabled' },
+          'extraction refused by the project policy; recorded in the refusal ledger',
+        );
+        return summary;
+      }
+      if (policy) {
+        gateBudget = tightest(gateBudget, policy.factBudget);
+        gateRetentionDays = tightest(gateRetentionDays, policy.retentionDays);
+      }
     }
 
     // Stage 1.6 — anchor (V2.1 item 4.2, spec 1.5): one cheap call over the
@@ -480,4 +522,11 @@ export function createIngestionPipeline(options: CreatePipelineOptions): Ingesti
     options.anchor,
     options.progress,
   );
+}
+
+/** The tightest of two optional bounds; null means "no bound from here". */
+function tightest(a: number | null, b: number | null): number | null {
+  if (a === null) return b;
+  if (b === null) return a;
+  return Math.min(a, b);
 }

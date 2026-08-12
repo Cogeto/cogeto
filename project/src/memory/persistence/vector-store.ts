@@ -16,6 +16,16 @@ import type { MemoryScope, MemoryStatus, Principal } from '@cogeto/shared';
 export const MEMORY_COLLECTION = 'memories';
 
 /**
+ * How many source ids the project retrieval lens (V2.5 item 8.3) will push
+ * into the vector query as a `source_id` match-any pre-filter. Above it the
+ * pre-filter is skipped and the Postgres row resolution filters exactly on
+ * the full (source_type, source_id) pair instead: a recall cost inside a very
+ * large project, never a correctness one, and never a gate. Stated in
+ * docs/features/projects.md rather than hidden.
+ */
+export const LENS_VECTOR_FILTER_CAP = 512;
+
+/**
  * Vector size per embed model; reindex re-embeds when the model changes.
  * Every embeddings model a provider preset can select MUST have an explicit
  * entry (: a missing entry silently fell back to 1024 and OpenAI's
@@ -235,6 +245,10 @@ export class MemoryVectorStore {
       { field: 'scope', schema: 'keyword' },
       { field: 'status', schema: 'keyword' },
       { field: 'sensitive', schema: 'bool' },
+      // Not a gate field: the project retrieval lens's narrowing pre-filter
+      // (V2.5 item 8.3). Indexed for the same reason the others are — an
+      // unindexed match-any would scan the collection.
+      { field: 'source_id', schema: 'keyword' },
     ];
     for (const { field, schema } of indexes) {
       await this.client

@@ -18,6 +18,7 @@ inspectable artifact. EU hosted, self hosted, or fully offline.
 | [`docs/module-boundary-contract.md`](docs/module-boundary-contract.md) | **Before adding a table, a job type, a DI token, or a module, and before making one global. BINDING.** Which module owns what, the global-module policy, what enforces each rule, and every recorded exception with the part that closes it. |
 | [`docs/cogeto-verified-memory.md`](docs/cogeto-verified-memory.md) | What is stored, what is guaranteed, and how each guarantee is enforced. |
 | [`docs/features/`](docs/features/) | How a feature actually behaves and why. Start here before changing one. |
+| [`docs/features/projects.md`](docs/features/projects.md) | **Before touching the retrieval lens or anything named project. BINDING.** Why projects never gate memory, what may be assigned, and the lens fallback decision. |
 | [`docs/features/i18n.md`](docs/features/i18n.md) | **Before touching any user-visible string.** Where the locale files are, how a language is resolved, the CI key-sync guard, and the translator workflow. |
 | [`docs/security/`](docs/security/) | **Single entry point for security and safety**: how the protections work, how to verify them, and the co-located tests. |
 | [`docs/engineering-workflow.md`](docs/engineering-workflow.md) | **Before opening any issue, branch, or PR.** The delivery loop, Conventional Commits, required checks, tag-driven releases. |
@@ -81,8 +82,8 @@ the five deployment assets are checksum-verified by the installer, so editing on
 means regenerating `project/infra/deploy/deploy-assets.sha256` in the same change.
 
 V2.0 item 3.5 made the product translatable. Every user-visible string in the
-SPA is a key in `project/web/src/locales/<locale>/<namespace>.json` (21
-namespaces, one per surface), the copy Cogeto writes on its own lives in
+SPA is a key in `project/web/src/locales/<locale>/<namespace>.json` (one
+namespace per surface; the current list is `namespaces.ts`), the copy Cogeto writes on its own lives in
 `project/src/infrastructure/locales/`, and **English is the source of truth and
 the fallback for every missing key**. `hr`, `de` and `fr` exist as complete
 scaffolds carrying the English text: authoring the translations is a separate
@@ -466,6 +467,36 @@ permission-lost pages, never deleting; a partial listing never marks. The
 platform additions are recorded in
 [`docs/features/connectors.md`](docs/features/connectors.md); the decision
 record is [`docs/features/confluence.md`](docs/features/confluence.md).
+
+V2.5 item 8.3 delivered **projects as workspaces** (migration 0056, the new
+`projects` module), under one overriding constraint: **memory gating is
+untouched.** Projects are organisation and filtering, never authorisation, and
+that is machine-checked, not asserted: there is **no project column on
+`memory`**, no project field in the Qdrant payload, and `buildGateFilter` still
+carries exactly its two conditions (`projects-are-not-a-gate.spec.ts`). A
+project is a per-user record (team-shared projects are a **recorded non-goal**)
+grouping five kinds of CONTAINER through one `project_assignment` table whose
+unique index on `(ref_type, ref_id)` IS the "at most one project per thing"
+rule; a connector sub-scope or a research run stamps its project on each source
+it materializes, inside the same transaction that creates the source. The
+**retrieval lens** is a bounded list of source refs, resolved per turn by chat
+and handed to retrieval as a VALUE: an additive pre-filter on top of the
+unchanged gates in every SQL arm and inside the vector query, exact on the
+`(source_type, source_id)` pair in Postgres and narrowing on `source_id` in
+Qdrant up to a stated cap. When the project holds nothing above the relevance
+floor the answer **names the project and offers a one-tap widen**: never
+silently widening, never silently refusing, which is the frozen research rule
+(*the offer is the bridge*) applied to the lens. Projects are the scoping unit
+for connectors, for findings reports (**schema 1.1**, additive: `project_id`
+and `project_name` on the scope block, and a run enumerates exactly that
+project's sources), for the Sources catalog, and for exactly two defaults (the
+lens on or off, and an extraction policy folding into the existing
+tightest-wins arithmetic through a port `ingestion` defines). **Deleting a
+project never deletes its contents**: neither table is source-derived, so the
+deletion saga has nothing to erase and only an assignment to release, and the
+confirmation says so in those words. Read
+[`docs/features/projects.md`](docs/features/projects.md) before changing
+anything near the lens, and do not migrate the assignment onto memories.
 
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).

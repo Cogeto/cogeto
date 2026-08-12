@@ -72,6 +72,13 @@ import {
   confluenceConnector,
 } from '../confluence/index';
 import {
+  ProjectAssignmentCascade,
+  ProjectAssignmentCascadeModule,
+  ProjectPolicyModule,
+  ProjectPolicySource,
+  ProjectsModule,
+} from '../projects/index';
+import {
   FindingsReportCascade,
   FindingsReportCascadeModule,
   ReportsModule,
@@ -176,6 +183,7 @@ export function createWorkerRootModule(
         FindingsReportCascadeModule,
         ConnectorItemCascadeModule,
         ConfluencePageCascadeModule,
+        ProjectAssignmentCascadeModule,
       ],
       // Assistant answers citing erased memories are redacted; reply drafts
       // grounded on the source are too. A ready passport export is a signed
@@ -214,6 +222,9 @@ export function createWorkerRootModule(
         // Confluence provenance rows carry titles, the document's own words,
         // so they are ERASED with their source (V2.5 item 8.2).
         ConfluencePageCascade,
+        // A project assignment naming an erased source is stale state,
+        // released in the same enumeration transaction (V2.5 item 8.3).
+        ProjectAssignmentCascade,
       ],
     },
     // Delete-vs-ingestion serialization: the saga cancels a source's pending
@@ -225,6 +236,10 @@ export function createWorkerRootModule(
     // MemorySystemStore is not resolvable in the process that serves requests.
     systemReads: true,
   });
+  // Projects as workspaces (V2.5 item 8.3), worker slice: the sync engine
+  // stamps a sub-scope's project on every source it materializes, and the
+  // report assembler enumerates a project scope. No controller here.
+  const projectsModule = ProjectsModule.forWorker();
   const settingsModule = SettingsModule.register({ imports: [memoryModule] });
   const notesModule = NotesModule.register({ imports: [settingsModule] });
   const filesModule = FilesModule.register({
@@ -236,7 +251,7 @@ export function createWorkerRootModule(
     // only: reading a page with a model is slow-path ingestion work, and the
     // app process has no business making an image call on a request.
     modelProviders: config.modelProviders,
-    imports: [memoryModule, settingsModule],
+    imports: [memoryModule, settingsModule, projectsModule],
   });
   const emailModule = EmailModule.register({
     mail: mailOptions(config),
@@ -245,7 +260,7 @@ export function createWorkerRootModule(
   const researchModule = ResearchModule.register({
     research: researchOptions(config),
     skillAdvance: { skillAdvanceJobType: SKILL_ADVANCE_JOB_TYPE },
-    imports: [memoryModule],
+    imports: [memoryModule, projectsModule],
   });
   const skillsModule = SkillsModule.register({ imports: [memoryModule, researchModule] });
   // One imports instance, threaded to the root AND to reports (V2.3 item
@@ -262,7 +277,9 @@ export function createWorkerRootModule(
   const connectorsWorkerModule = ConnectorsModule.forWorker({
     options: { masterKey: config.masterKey },
     connectors: [confluenceConnector()],
-    imports: [filesModule],
+    // A sub-scope assigned to a project stamps its project on every source
+    // it materializes, inside the upload transaction (V2.5 item 8.3).
+    imports: [filesModule, projectsModule],
   });
   @Module({
     imports: [
@@ -305,6 +322,7 @@ export function createWorkerRootModule(
       }),
       providersModule,
       memoryModule,
+      projectsModule,
       // ChatSourceReader gives ingestion a stage-1 reader for source_type 'chat';
       // EmailSourceReader adds source_type 'email';
       // WebSourceReader adds 'web'.
@@ -318,6 +336,7 @@ export function createWorkerRootModule(
           filesModule,
           EmailSourcePortsModule,
           ResearchSourcePortsModule,
+          ProjectPolicyModule,
         ],
         readers: [
           NotesSourceReader,
@@ -326,6 +345,11 @@ export function createWorkerRootModule(
           EmailSourceReader,
           WebSourceReader,
         ],
+        // The per-project extraction policy (V2.5 item 8.3 issue C4): the
+        // port is ingestion's, projects implements it, this binding is what
+        // makes a project's numbers reach the one chokepoint. Its slim
+        // module is the port-family shape (table access only).
+        projectPolicy: ProjectPolicySource,
         // The generation binding the checked-pair ledger records beside every
         // verdict (V2.3 item 6.1): a model change re-opens judged pairs.
         // A GETTER, not a captured string (V2.4 item 7.1): the pipeline
@@ -391,7 +415,9 @@ export function createWorkerRootModule(
             return config.modelProviders.redacted;
           },
         },
-        imports: [memoryModule, importsModule],
+        // A project-scoped run enumerates the project's source assignments
+        // and nothing else (V2.5 item 8.3 issue C2).
+        imports: [memoryModule, importsModule, projectsModule],
       }),
       notesModule,
       settingsModule,

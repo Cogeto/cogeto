@@ -18,15 +18,25 @@ regenerates the schema from it and compares, so drift fails the build.
 
 | File | What it is |
 |---|---|
-| `1.0/findings-report.schema.json` | JSON Schema (draft 2020-12) for the whole artifact: `{ findings_report_version, payload, integrity }`. |
-| `1.0/sample/findings-report.json` | A complete, fictional, schema-valid example. |
+| `1.1/findings-report.schema.json` | **Current.** JSON Schema (draft 2020-12) for the whole artifact: `{ findings_report_version, payload, integrity }`. |
+| `1.1/sample/findings-report.json` | A complete, fictional, schema-valid example. |
+| `1.0/findings-report.schema.json` | The first published version. Still valid for every 1.0 artifact. |
+| `1.0/sample/findings-report.json` | Its sample. |
 
 ## Versioning
 
 `findings_report_version` inside the artifact names the format version. The
-version list published here only ever grows; a breaking change bumps the
-version and publishes a new directory, and old versions stay verifiable
-forever (the passport rule).
+version list published here only ever grows; a change bumps the version and
+publishes a new directory, and old versions stay verifiable forever (the
+passport rule).
+
+**1.1** (V2.5 item 8.3, projects as workspaces) is additive over 1.0: the
+`report.scope` block gained `project_id` and `project_name`, and its `kind`
+gained `project`, so a report generated for one client's project says which
+client it is about and lists exactly that project's sources. Nothing about the
+integrity block, the canonicalization or the signing procedure changed, so a
+1.0 artifact verifies today by exactly the same procedure, against the 1.0
+schema.
 
 ## Format invariants a verifier may rely on
 
@@ -51,7 +61,8 @@ forever (the passport rule).
 Given a downloaded `report.json`:
 
 ```sh
-# 1. Schema: validate report.json against 1.0/findings-report.schema.json.
+# 1. Schema: validate report.json against the schema directory whose name
+#    matches .findings_report_version (1.1 for reports generated today).
 
 # 2. Canonicalize the payload and hash it.
 jq -cjS .payload report.json | shasum -a 256

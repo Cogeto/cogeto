@@ -2,7 +2,13 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { FindingsReportDto, ImportRunDto, ReportScopeDto } from '@cogeto/shared';
-import { fetchImports, fetchReportDownload, fetchReports, triggerReport } from '../api';
+import {
+  fetchImports,
+  fetchProjects,
+  fetchReportDownload,
+  fetchReports,
+  triggerReport,
+} from '../api';
 import type { Session } from '../auth/oidc';
 import { formatDateTime, formatNumber } from '../i18n/format';
 import { Shell } from '../components/Shell';
@@ -24,7 +30,7 @@ import {
  * the short-lived download URLs. An expired run says why it is gone.
  */
 
-type ScopeKind = 'corpus' | 'import' | 'date_range';
+type ScopeKind = 'corpus' | 'import' | 'date_range' | 'project';
 
 function StatusPill({ report }: { report: FindingsReportDto }) {
   const { t } = useTranslation('reports');
@@ -141,6 +147,7 @@ function TriggerCard({ session }: { session: Session }) {
   const queryClient = useQueryClient();
   const [kind, setKind] = useState<ScopeKind>('corpus');
   const [importRunId, setImportRunId] = useState('');
+  const [projectId, setProjectId] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -148,6 +155,13 @@ function TriggerCard({ session }: { session: Session }) {
     queryKey: ['imports'],
     queryFn: () => fetchImports(session),
     enabled: kind === 'import',
+  });
+  // A report FOR a project (V2.5 item 8.3 issue C2): the run enumerates that
+  // project's sources and nothing else, so a client-facing report cannot
+  // carry another client's documents.
+  const projects = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => fetchProjects(session),
   });
   const trigger = useMutation({
     mutationFn: (scope: ReportScopeDto) => triggerReport(session, scope),
@@ -162,6 +176,11 @@ function TriggerCard({ session }: { session: Session }) {
     if (kind === 'import') {
       if (!importRunId) return;
       trigger.mutate({ kind: 'import', importRunId });
+      return;
+    }
+    if (kind === 'project') {
+      if (!projectId) return;
+      trigger.mutate({ kind: 'project', projectId });
       return;
     }
     if (kind === 'date_range') {
@@ -194,7 +213,25 @@ function TriggerCard({ session }: { session: Session }) {
           <option value="corpus">{t('scope.corpus')}</option>
           <option value="import">{t('scope.import')}</option>
           <option value="date_range">{t('scope.date_range')}</option>
+          {(projects.data ?? []).length > 0 && (
+            <option value="project">{t('scope.project')}</option>
+          )}
         </select>
+        {kind === 'project' ? (
+          <select
+            className={selectClass}
+            value={projectId}
+            onChange={(event) => setProjectId(event.target.value)}
+            aria-label={t('trigger.projectLabel')}
+          >
+            <option value="">{t('trigger.projectPlaceholder')}</option>
+            {(projects.data ?? []).map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+        ) : null}
         {kind === 'import' ? (
           <select
             className={selectClass}

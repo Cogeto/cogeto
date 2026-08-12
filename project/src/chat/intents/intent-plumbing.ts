@@ -1,4 +1,4 @@
-import type { AmbiguityDecisionDto, Principal } from '@cogeto/shared';
+import type { AmbiguityDecisionDto, ChatLensDto, Principal } from '@cogeto/shared';
 import type { PromptArtifact } from '../../model-gateway/index';
 
 /**
@@ -19,6 +19,9 @@ export interface ChatTurnSink {
     /** The ambiguity decision behind a grounded answer (V2.3 item 6.3);
      * null when the path computed none. */
     ambiguity?: AmbiguityDecisionDto | null,
+    /** What the project retrieval lens did on this turn (V2.5 item 8.3);
+     * null when no lens applied, which is every unassigned conversation. */
+    lens?: ChatLensDto | null,
   ): Promise<{ id: string }>;
   getPrompt(): Promise<PromptArtifact>;
   /**

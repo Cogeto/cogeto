@@ -270,6 +270,13 @@ function scopeLabel(payload: ReportPayload, t: T): string {
   if (scope.kind === 'corpus') return t('scope.corpus');
   if (scope.kind === 'import') return t('scope.import', { id: scope.import_run_id ?? '' });
   if (scope.kind === 'sources') return t('scope.sources', { count: scope.refs?.length ?? 0 });
+  // A client-facing report says which client it is about (V2.5 item 8.3).
+  if (scope.kind === 'project') {
+    return t('scope.project', {
+      name: scope.project_name ?? '',
+      count: scope.refs?.length ?? 0,
+    });
+  }
   return t('scope.dateRange');
 }
 

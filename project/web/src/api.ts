@@ -101,6 +101,9 @@ import type {
   ReportDownloadDto,
   ReportDownloadFormat,
   ReportScopeDto,
+  ProjectDto,
+  ProjectWriteDto,
+  ProjectAssignmentKind,
 } from '@cogeto/shared';
 import type { Session } from './auth/oidc';
 
@@ -253,11 +256,14 @@ export function fetchSourceCatalog(
     order?: 'asc' | 'desc';
     cursor?: string;
     limit?: number;
+    /** Only this project's sources (V2.5 item 8.3). */
+    projectId?: string;
   } = {},
 ): Promise<SourceCatalogPageDto> {
   const search = new URLSearchParams();
   if (params.type) search.set('type', params.type);
   if (params.badge) search.set('badge', params.badge);
+  if (params.projectId) search.set('projectId', params.projectId);
   if (params.q?.trim()) search.set('q', params.q.trim());
   if (params.order) search.set('order', params.order);
   if (params.cursor) search.set('cursor', params.cursor);
@@ -704,6 +710,10 @@ export interface ConnectorSubScopeStatsDto {
 }
 
 export interface ConnectorSubScopeDto {
+  id: string;
+  /** The project everything this scope ingests lands in (V2.5 item 8.3
+   * issue C1), or null. Applies to what it ingests NEXT. */
+  projectId: string | null;
   key: string;
   label: string;
   selected: boolean;
@@ -792,7 +802,12 @@ export const updateConnectorSubScope = (
   session: Session,
   id: string,
   key: string,
-  patch: { selected?: boolean; itemCap?: number | null; attachments?: boolean },
+  patch: {
+    selected?: boolean;
+    itemCap?: number | null;
+    attachments?: boolean;
+    projectId?: string | null;
+  },
 ): Promise<{ updated: boolean }> =>
   apiPut(`/api/connectors/${id}/sub-scopes/${encodeURIComponent(key)}`, patch, session);
 export const addConnectorSubScope = (
@@ -1017,8 +1032,11 @@ export const fetchReportDownload = (
 // (deleteSource with type 'chat_conversation'), never a chat route.
 export const fetchConversations = (session: Session): Promise<ConversationDto[]> =>
   apiGet('/api/chat/conversations', session);
-export const createConversation = (session: Session): Promise<ConversationDto> =>
-  apiPost('/api/chat/conversations', {}, session);
+export const createConversation = (
+  session: Session,
+  projectId?: string | null,
+): Promise<ConversationDto> =>
+  apiPost('/api/chat/conversations', projectId ? { projectId } : {}, session);
 export const renameConversation = (
   session: Session,
   id: string,
@@ -1085,7 +1103,7 @@ export async function askChat(
   conversationId: string,
   onEvent: (event: ChatStreamEvent) => void,
   signal?: AbortSignal,
-  options: { thinking?: boolean; attachmentIds?: string[] } = {},
+  options: { thinking?: boolean; attachmentIds?: string[]; widen?: boolean } = {},
 ): Promise<void> {
   const response = await fetch('/api/chat', {
     method: 'POST',
@@ -1098,6 +1116,8 @@ export async function askChat(
       conversationId,
       thinking: options.thinking,
       ...(options.attachmentIds?.length ? { attachmentIds: options.attachmentIds } : {}),
+      // Widen THIS question past the project retrieval lens (V2.5 item 8.3).
+      ...(options.widen ? { widen: true } : {}),
     }),
     // Switching conversations mid-stream detaches cleanly: the message
     // still lands server-side in the conversation it was sent to.
@@ -1124,3 +1144,48 @@ export async function askChat(
     }
   }
 }
+
+// Projects as workspaces (V2.5 item 8.3): the folder over conversations,
+// sources, research runs, connector sub-scopes and reports. Organisation and
+// filtering, never authorisation: what a user can see is decided exactly as
+// it was, by ownership, scope and sensitivity.
+export const fetchProjects = (
+  session: Session,
+  options: { archived?: boolean } = {},
+): Promise<ProjectDto[]> =>
+  apiGet(
+    options.archived === undefined
+      ? '/api/projects'
+      : `/api/projects?archived=${String(options.archived)}`,
+    session,
+  );
+export const fetchProject = (session: Session, id: string): Promise<ProjectDto> =>
+  apiGet(`/api/projects/${id}`, session);
+export const createProject = (session: Session, body: ProjectWriteDto): Promise<ProjectDto> =>
+  apiPost('/api/projects', body, session);
+export const updateProject = (
+  session: Session,
+  id: string,
+  body: Partial<ProjectWriteDto>,
+): Promise<ProjectDto> => apiPut(`/api/projects/${id}`, body, session);
+export const setProjectArchived = (
+  session: Session,
+  id: string,
+  archived: boolean,
+): Promise<ProjectDto> => apiPut(`/api/projects/${id}/archived`, { archived }, session);
+/** Deletes the FOLDER. Its contents survive and become unassigned. */
+export async function deleteProject(session: Session, id: string): Promise<{ released: number }> {
+  const path = `/api/projects/${id}`;
+  const response = await fetch(path, {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${session.accessToken}` },
+  });
+  if (!response.ok) throw await toError(path, response);
+  return (await response.json()) as { released: number };
+}
+export const assignToProject = (
+  session: Session,
+  ref: { kind: ProjectAssignmentKind; sourceType?: string; refId: string },
+  projectId: string | null,
+): Promise<{ projectId: string | null }> =>
+  apiPost('/api/projects/assignments', { ...ref, projectId }, session);

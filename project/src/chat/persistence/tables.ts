@@ -9,7 +9,7 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { AmbiguityDecisionDto } from '@cogeto/shared';
+import type { AmbiguityDecisionDto, ChatLensDto } from '@cogeto/shared';
 
 /**
  * Tables owned by the retrieval module's chat area (migrations 0005 + 0031).
@@ -80,6 +80,14 @@ export const chatMessage = pgTable(
      * with the content overwrite; row deletion takes it implicitly.
      */
     ambiguity: jsonb('ambiguity').$type<AmbiguityDecisionDto>(),
+    /**
+     * What the project retrieval lens did on this turn (V2.5 item 8.3,
+     * migration 0056): project id, applied, widened. Identifiers and
+     * booleans ONLY, never a project name and never content, so it is
+     * deliberately outside the answer-redaction cascade's content overwrite;
+     * row deletion takes it implicitly.
+     */
+    lens: jsonb('lens').$type<ChatLensDto>(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

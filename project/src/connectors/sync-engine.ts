@@ -19,6 +19,7 @@ import {
   BACKFILL_DEFAULT_ITEM_CAP,
   OBSERVED_DAILY_ITEM_CAP,
 } from './connectors.options';
+import { ProjectService } from '../projects/index';
 import { CONNECTOR_PIPELINE_PRIORITY, CONNECTOR_SYNC_JOB_TYPE } from './connector-jobs';
 import { ConnectorStore } from './persistence/connector-store';
 import { ConnectorItemLedger, contentHashOf } from './persistence/item-ledger';
@@ -70,6 +71,12 @@ export class ConnectorSyncEngine {
      * module. Their absence makes a pass refuse loudly, not silently skip. */
     @Optional() private readonly opener?: ConnectorCredentialOpener,
     @Optional() private readonly files?: FilesService,
+    /** Projects (V2.5 item 8.3): a sub-scope assigned to a project stamps
+     * its project on every source it materializes, inside the SAME upload
+     * transaction, so there is no window in which the source has no project
+     * and no repair pass to run. Absent → nothing is ever stamped, which is
+     * the pre-feature path. */
+    @Optional() private readonly projects?: ProjectService,
   ) {}
 
   async advance(connectorId: string): Promise<{ advanced: boolean }> {
@@ -459,6 +466,31 @@ export class ConnectorSyncEngine {
     }
   }
 
+  /**
+   * The project a sub-scope is assigned to (V2.5 item 8.3), by KEY, so the
+   * poll and the webhook path resolve it identically. One keyed read per
+   * materialized item, which is the one point past which an item already
+   * costs an upload and a pipeline run. Never fails a sync: an unresolvable
+   * project means the source lands unassigned, exactly as before projects
+   * existed.
+   */
+  private async projectForSubScope(
+    row: ConnectorRow,
+    subScopeKey: string | null,
+  ): Promise<string | undefined> {
+    if (!this.projects || !subScopeKey) return undefined;
+    try {
+      const scope = await this.store.subScopeByKey(row.id, subScopeKey);
+      if (!scope) return undefined;
+      const found = await this.projects.projectIdsForRefs(row.ownerId, 'connector_sub_scope', [
+        scope.id,
+      ]);
+      return found.get(scope.id);
+    } catch {
+      return undefined;
+    }
+  }
+
   /** Connector-owned provenance for a materialized source; metadata, so a
    * failure is logged and never fails the sync. */
   private async annotate(
@@ -583,6 +615,12 @@ export class ConnectorSyncEngine {
           // The sub-scope key, so the extraction gate's folder dimension
           // can express per-space policy (issue B3 of the first connector).
           gateFolder: subScopeKey ?? item.subScope ?? undefined,
+          // A sub-scope assigned to a project puts everything it ingests
+          // there (V2.5 item 8.3 issue C1). Stamped INSIDE the upload
+          // transaction, so no window exists where the source has no
+          // project; a later reassignment moves what the scope ingests
+          // NEXT and never rewrites what it already recorded.
+          projectId: await this.projectForSubScope(row, subScopeKey ?? item.subScope ?? null),
         },
       );
       return {

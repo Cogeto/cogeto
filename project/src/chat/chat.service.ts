@@ -9,6 +9,7 @@ import {
 import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import type {
   AmbiguityDecisionDto,
+  ChatLensDto,
   ChatContextDto,
   ChatMessagePage,
   ChatRememberedDto,
@@ -17,6 +18,7 @@ import type {
   NoteProcessingState,
   Principal,
 } from '@cogeto/shared';
+import { CONVERSATION_REF_TYPE } from '@cogeto/shared';
 import {
   buildContextBlock,
   DEFAULT_INSTANCE_TIMEZONE,
@@ -31,6 +33,7 @@ import { INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
 import { loadPrompt, ModelGateway } from '../model-gateway/index';
 import type { PromptArtifact } from '../model-gateway/index';
 import { UserDirectory } from '../identity/index';
+import type { ProjectService } from '../projects/index';
 import { RetrievalService } from '../retrieval/index';
 import type { ConversationTurn } from '../retrieval/index';
 import {
@@ -120,6 +123,13 @@ export interface ChatServiceOptions {
    * behaviour of every instance before this existed.
    */
   answerModelChoice?: { optionIdFor(userId: string): Promise<string | null> };
+  /**
+   * Projects (V2.5 item 8.3): resolves the conversation's project so the
+   * retrieval lens can narrow this turn to its sources. Absent → no
+   * conversation is ever lensed, which is the pre-feature path exactly, and
+   * every unassigned conversation takes that path anyway.
+   */
+  projects?: ProjectService;
 }
 
 export const CHAT_SERVICE_OPTIONS = Symbol('CHAT_SERVICE_OPTIONS');
@@ -145,6 +155,7 @@ export class ChatService {
   private readonly userContext?: UserContextService;
   private readonly attachments?: ChatAttachmentsService;
   private readonly answerModelChoice?: { optionIdFor(userId: string): Promise<string | null> };
+  private readonly projects?: ProjectService;
 
   private readonly smallTalkHandler: SmallTalkHandler;
 
@@ -163,6 +174,7 @@ export class ChatService {
     this.userContext = options?.userContext;
     this.attachments = options?.attachments;
     this.answerModelChoice = options?.answerModelChoice;
+    this.projects = options?.projects;
     this.smallTalkHandler = new SmallTalkHandler(this.gateway, this.sink());
   }
 
@@ -175,6 +187,7 @@ export class ChatService {
         content: string,
         thinking?: string | null,
         ambiguity?: AmbiguityDecisionDto | null,
+        lens?: ChatLensDto | null,
       ) =>
         this.storeAssistant(
           principal,
@@ -182,6 +195,7 @@ export class ChatService {
           content,
           thinking ?? null,
           ambiguity ?? null,
+          lens ?? null,
         ),
       getPrompt: () => this.getPrompt(),
       readFocus: (conversationId: string) => this.readFocus(conversationId),
@@ -209,6 +223,10 @@ export class ChatService {
       this.skillResolver ? null : 'skillResolver',
       this.userContext ? null : 'userContext',
       this.attachments ? null : 'attachments',
+      // The retrieval lens (V2.5 item 8.3): an absent projects service means
+      // no conversation is ever lensed, which would be a silent widening of
+      // every project conversation to the whole pool.
+      this.projects ? null : 'projects',
     ].filter((name): name is string => name !== null);
     if (missing.length > 0) {
       throw new Error(
@@ -243,11 +261,36 @@ export class ChatService {
         r.content,
       ]),
     );
-    return rows.map((row) => toConversationDto(row, previewByConversation.get(row.id) ?? null));
+    // Each conversation's project (V2.5 item 8.3), in ONE indexed read for
+    // the whole page rather than one per row.
+    const projectByConversation =
+      (await this.projects?.projectIdsForRefs(
+        principal.userId,
+        CONVERSATION_REF_TYPE,
+        rows.map((row) => row.id),
+      )) ?? new Map<string, string>();
+    return rows.map((row) =>
+      toConversationDto(
+        row,
+        previewByConversation.get(row.id) ?? null,
+        projectByConversation.get(row.id) ?? null,
+      ),
+    );
   }
 
-  /** A new, untitled conversation — the sidebar's "New conversation" action. */
-  async createConversation(principal: Principal): Promise<ConversationDto> {
+  /**
+   * A new, untitled conversation — the sidebar's "New conversation" action.
+   * `projectId` starts it inside a project (V2.5 item 8.3): optional
+   * everywhere, so the plain call is byte-identical to what it was.
+   */
+  async createConversation(
+    principal: Principal,
+    projectId?: string | null,
+  ): Promise<ConversationDto> {
+    // The project resolves FIRST when one was named: a foreign or unknown
+    // project is a 404 before any row exists, so a rejected create leaves no
+    // orphan conversation behind.
+    if (projectId && this.projects) await this.projects.get(principal, projectId);
     const active = await this.db
       .select({ count: sql<number>`count(*)::int` })
       .from(conversation)
@@ -261,7 +304,14 @@ export class ChatService {
       .insert(conversation)
       .values({ ownerId: principal.userId })
       .returning();
-    return toConversationDto(row!, null);
+    if (projectId && this.projects) {
+      await this.projects.assign(
+        principal,
+        { kind: 'conversation', refType: CONVERSATION_REF_TYPE, refId: row!.id },
+        projectId,
+      );
+    }
+    return toConversationDto(row!, null, projectId ?? null);
   }
 
   /** Manual rename — wins forever: the auto-titler never overwrites it. */
@@ -276,7 +326,7 @@ export class ChatService {
       .set({ title, titleSetByUser: true })
       .where(eq(conversation.id, conversationId))
       .returning();
-    return toConversationDto(row!, null);
+    return toConversationDto(row!, null, await this.projectIdOf(principal, conversationId));
   }
 
   /** Archive / unarchive — the safe alternative to deletion: everything kept,
@@ -292,7 +342,15 @@ export class ChatService {
       .set({ archived })
       .where(eq(conversation.id, conversationId))
       .returning();
-    return toConversationDto(row!, null);
+    return toConversationDto(row!, null, await this.projectIdOf(principal, conversationId));
+  }
+
+  /** The conversation's project id, or null — never fails a write path. */
+  private async projectIdOf(principal: Principal, conversationId: string): Promise<string | null> {
+    const project = await this.projects
+      ?.projectForConversation(principal, conversationId)
+      .catch(() => null);
+    return project?.id ?? null;
   }
 
   /**
@@ -328,6 +386,7 @@ export class ChatService {
         content: row.content,
         thinking: row.thinking,
         ambiguity: row.ambiguity ?? null,
+        lens: row.lens ?? null,
         createdAt: row.createdAt.toISOString(),
       })),
       total: totalRows[0]?.count ?? 0,
@@ -484,6 +543,13 @@ export class ChatService {
       /** Attachments sent with this message (V2.2 item 5.1) — linked to the
        * user row so the conversation renders them under it. */
       attachmentIds?: string[];
+      /**
+       * Widen THIS question past the project retrieval lens (V2.5 item 8.3).
+       * Per-turn and not persisted: the conversation stays in its project and
+       * the next question is lensed again. This is the same control the
+       * lens-gap reply offers, so there is one widening path, not two.
+       */
+      widen?: boolean;
     } = {},
   ): AsyncGenerator<ChatStreamEvent> {
     // The chat path is always EXPLICIT about the mode (the paired sampler
@@ -603,6 +669,23 @@ export class ChatService {
     // conversation attachments (V2.2 item 5.1) join as fenced provided
     // ground — this conversation's only, capped so a long file contributes
     // its opening rather than crowding out the facts.
+    // The project retrieval lens (V2.5 item 8.3), resolved HERE so retrieval
+    // stays pure search: one keyed read that returns null for every
+    // unassigned conversation, which is the pre-feature path exactly. A
+    // widened turn resolves the project anyway, so the stored message can say
+    // honestly that this answer came from outside it.
+    const project = await this.projects
+      ?.projectForConversation(principal, conversationId)
+      .catch(() => null);
+    const lens =
+      !options.widen && project
+        ? await this.projects!.lensForConversation(principal, conversationId).catch(() => null)
+        : null;
+    // "Widened" means the user stepped OUT of a lens that would otherwise
+    // have applied. A project whose lens is off narrows nothing, so its
+    // conversations are not widened turns; they are ordinary ones.
+    const widenedFrom = options.widen && project?.lensEnabled ? project.id : null;
+
     yield* new MemoryAnswerHandler(this.retrieval, this.gateway, this.directory, this.sink(), () =>
       Boolean(this.researchResolver),
     ).handle(
@@ -618,6 +701,14 @@ export class ChatService {
         // The previous assistant turn's stored decision (V2.3 item 6.3): how
         // a fan-out's "which did you mean?" reply resolves deterministically.
         priorAmbiguity: await this.lastAssistantAmbiguity(conversationId),
+        lens: lens
+          ? {
+              projectId: lens.projectId,
+              projectName: lens.projectName,
+              sourceRefs: lens.sourceRefs,
+            }
+          : null,
+        widenedFrom,
       },
       thinkingMode,
     );
@@ -746,6 +837,7 @@ export class ChatService {
     content: string,
     thinking: string | null = null,
     ambiguity: AmbiguityDecisionDto | null = null,
+    lens: ChatLensDto | null = null,
   ): Promise<{ id: string }> {
     const [row] = await this.db
       .insert(chatMessage)
@@ -756,6 +848,7 @@ export class ChatService {
         content,
         thinking,
         ambiguity,
+        lens,
       })
       .returning();
     await this.touchConversation(conversationId, row!.createdAt);
@@ -843,9 +936,14 @@ export class ChatService {
 }
 
 /** The wire form of a conversation row. */
-function toConversationDto(row: ConversationRow, lastMessage: string | null): ConversationDto {
+function toConversationDto(
+  row: ConversationRow,
+  lastMessage: string | null,
+  projectId: string | null = null,
+): ConversationDto {
   return {
     id: row.id,
+    projectId,
     title: row.title,
     titleSetByUser: row.titleSetByUser,
     archived: row.archived,

@@ -13,9 +13,25 @@ import { foldEntityName } from '../ingestion/index';
  * server-authored reply.
  */
 
-/** The silent-corpus preamble before a general-knowledge answer (§7.5.2). */
-export function silentPreamble(lang: PreferredLanguage): string {
-  return serverT(lang, 'chat', 'ambiguity.silentPreamble');
+/** The silent-corpus preamble before a general-knowledge answer (§7.5.2).
+ * Inside a project lens (V2.5 item 8.3) it names the PROJECT instead of "your
+ * sources", because claiming the whole corpus is silent when only a project
+ * was searched would be a false statement. */
+export function silentPreamble(lang: PreferredLanguage, projectName?: string | null): string {
+  return projectName
+    ? serverT(lang, 'chat', 'lens.silentPreamble', { project: projectName })
+    : serverT(lang, 'chat', 'ambiguity.silentPreamble');
+}
+
+/**
+ * The lens gap (V2.5 item 8.3): the conversation's project holds nothing
+ * above the relevance floor. Cogeto never widens silently and never refuses
+ * silently, so it says which project it looked in and the surface offers the
+ * one-tap widen beside it. Deterministic and server-authored, in the anchor
+ * language like every other zero-answer reply.
+ */
+export function nothingInProject(lang: PreferredLanguage, projectName: string): string {
+  return serverT(lang, 'chat', 'lens.nothingInProject', { project: projectName });
 }
 
 /**

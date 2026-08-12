@@ -41,6 +41,9 @@ const uploadFlagsSchema = z.object({
   scope: z.enum(MEMORY_SCOPES).optional(),
   sensitive: boolField.optional(),
   discard: boolField.optional(),
+  /** Upload straight into a project (V2.5 item 8.3). Optional like every
+   * other flag: an omitted project uploads exactly as before. */
+  projectId: z.uuid().optional(),
 });
 
 /**
@@ -83,6 +86,7 @@ export class FilesController {
         sensitive: parsed.sensitive ?? false,
         discard: parsed.discard ?? defaults.discardByDefault,
       },
+      { projectId: parsed.projectId },
     );
     return { objectKey };
   }

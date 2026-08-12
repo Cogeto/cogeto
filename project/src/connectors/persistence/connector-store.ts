@@ -265,6 +265,18 @@ export class ConnectorStore {
       .orderBy(connectorSubScope.key);
   }
 
+  /** One sub-scope by its key — how the sync engine resolves the project a
+   * container is assigned to (V2.5 item 8.3), identically on the poll and
+   * webhook paths, which know the key but not the row. */
+  async subScopeByKey(connectorId: string, key: string): Promise<ConnectorSubScopeRow | null> {
+    const rows = await this.db
+      .select()
+      .from(connectorSubScope)
+      .where(and(eq(connectorSubScope.connectorId, connectorId), eq(connectorSubScope.key, key)))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
   async selectedSubScopes(connectorId: string): Promise<ConnectorSubScopeRow[]> {
     return this.db
       .select()

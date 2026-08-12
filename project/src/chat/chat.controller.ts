@@ -62,6 +62,10 @@ const askSchema = z.object({
   /** Attachments sent with this message (V2.2 item 5.1) — already created via
    * POST /api/chat/attachments; the send links them to the message row. */
   attachmentIds: z.array(z.uuid()).max(MAX_ATTACHMENTS_PER_MESSAGE).optional(),
+  /** Widen THIS question past the project retrieval lens (V2.5 item 8.3):
+   * per-turn, never persisted, and the same control the lens-gap reply
+   * offers, so there is one widening path rather than two. */
+  widen: z.boolean().optional(),
 });
 
 /** Multipart text fields arrive as strings; accept the common truthy forms. */
@@ -87,6 +91,9 @@ const renameSchema = z.object({
 });
 
 const archiveSchema = z.object({ archived: z.boolean() });
+
+/** A new conversation may start inside a project (V2.5 item 8.3), optionally. */
+const createConversationSchema = z.object({ projectId: z.uuid().nullable().optional() });
 
 /** House pagination (limit/offset) for messages-by-conversation. */
 const pageSchema = z.object({
@@ -154,10 +161,14 @@ export class ChatController {
     return this.chat.listConversations(request.principal);
   }
 
-  /** A new, untitled conversation. */
+  /** A new, untitled conversation, optionally inside a project. */
   @Post('conversations')
-  async createConversation(@Req() request: AuthenticatedRequest): Promise<ConversationDto> {
-    return this.chat.createConversation(request.principal);
+  async createConversation(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: unknown,
+  ): Promise<ConversationDto> {
+    const parsed = parseOrBadRequest(createConversationSchema, body ?? {});
+    return this.chat.createConversation(request.principal, parsed.projectId ?? null);
   }
 
   /** Manual rename — wins forever over the auto-titler. */
@@ -312,6 +323,7 @@ export class ChatController {
     const stream = this.chat.ask(request.principal, parsed.content, parsed.conversationId, {
       thinking: parsed.thinking,
       attachmentIds: parsed.attachmentIds,
+      widen: parsed.widen,
     });
     const iterator = stream[Symbol.asyncIterator]();
     try {

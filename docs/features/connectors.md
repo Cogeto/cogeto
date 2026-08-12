@@ -384,3 +384,20 @@ Credential destruction is audited without the secret. The
 `extraction_gate_refusal` and `file_read_report` honesty rules carry over:
 a gated or failed connector item never looks processed-with-zero-facts, and
 a sync summary states what was skipped and why.
+
+## A sub-scope can feed a project (V2.5 item 8.3)
+
+A sub-scope may be assigned to a project, and then everything it ingests lands
+there automatically: the natural way a client's document space becomes a
+client's project. The sync engine resolves the sub-scope's project by KEY (so
+the poll and the webhook paths resolve it identically) and passes it to the
+upload, which records the assignment **inside the same transaction** that
+creates the source. There is therefore no window in which a materialized
+source exists without its project, and no repair pass to run.
+
+Propagation happens once, at materialization. Reassigning a sub-scope moves
+what it ingests NEXT and never rewrites what it already recorded, which is
+stated in the interface because silently rewriting history is the surprising
+behaviour. Removing a connector releases its sub-scope assignments; the
+sources it already produced keep theirs, because they are still that client's
+documents.

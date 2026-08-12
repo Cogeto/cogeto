@@ -65,6 +65,11 @@ import {
   FindingsReportCascadeModule,
   ReportsModule,
 } from '../reports/index';
+import {
+  ProjectAssignmentCascade,
+  ProjectAssignmentCascadeModule,
+  ProjectsModule,
+} from '../projects/index';
 import { CONNECTOR_HEALTH, OperationsModule } from '../operations/index';
 import {
   ConnectorHealthSource,
@@ -147,6 +152,7 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
         FindingsReportCascadeModule,
         ConnectorItemCascadeModule,
         ConfluencePageCascadeModule,
+        ProjectAssignmentCascadeModule,
       ],
       // Assistant answers citing erased memories are redacted; reply drafts
       // grounded on the source are too. A ready passport export is a signed
@@ -185,6 +191,12 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
         // Confluence provenance rows carry titles, the document's own words,
         // so they are ERASED with their source (V2.5 item 8.2).
         ConfluencePageCascade,
+        // A project assignment is identifiers only and holds nothing a
+        // receipt must promise erased; an assignment naming an erased source
+        // is stale state, RELEASED in the same enumeration transaction so
+        // deletion takes the source out of its project as one signed act
+        // (V2.5 item 8.3).
+        ProjectAssignmentCascade,
       ],
     },
     // Delete-vs-ingestion serialization: the saga cancels a source's pending
@@ -217,6 +229,11 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
     controllers: true,
     imports: [memoryModule],
   });
+  // Projects as workspaces (V2.5 item 8.3). A leaf domain context: it imports
+  // no other domain module, so everything that needs an assignment (chat,
+  // files, connectors, research, reports, sources) imports IT with no cycle.
+  // It decides nothing about visibility; the gates stay memory's.
+  const projectsModule = ProjectsModule.register();
   const retrievalModule = RetrievalModule.register({ imports: [memoryModule] });
   const agentsModule = AgentsModule.register({ imports: [memoryModule] });
   const settingsModule = SettingsModule.register({ imports: [memoryModule] });
@@ -226,7 +243,7 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
       uploadMaxBytes: config.uploadMaxBytes,
       downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
     },
-    imports: [memoryModule, settingsModule],
+    imports: [memoryModule, settingsModule, projectsModule],
   });
   const emailModule = EmailModule.register({
     mail: mailOptions(config),
@@ -235,7 +252,7 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
   const researchModule = ResearchModule.register({
     research: researchOptions(config),
     skillAdvance: { skillAdvanceJobType: SKILL_ADVANCE_JOB_TYPE },
-    imports: [memoryModule],
+    imports: [memoryModule, projectsModule],
   });
   const skillsModule = SkillsModule.register({ imports: [memoryModule, researchModule] });
   // One imports instance, threaded to the root AND to reports (V2.3 item
@@ -256,6 +273,9 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
   const connectorsModule = ConnectorsModule.register({
     options: { masterKey: config.masterKey },
     connectors: [confluenceConnector()],
+    // A sub-scope can be assigned to a project (V2.5 item 8.3 issue C1), so
+    // everything it ingests lands there automatically.
+    imports: [projectsModule],
   });
   // The Confluence connect surface (V2.5 item 8.2): validation with the
   // material in hand, then the platform owns everything operational.
@@ -287,6 +307,10 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
       settingsModule,
       // The user's own answer-model choice (V2.4 item 7.1).
       providersModule,
+      // The retrieval lens (V2.5 item 8.3): a conversation assigned to a
+      // project answers from that project's sources by default. A FILTER,
+      // resolved here and handed to retrieval as a value; never a gate.
+      projectsModule,
     ],
   });
   @Module({
@@ -386,10 +410,15 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
           chatModule,
           connectorsModule,
           confluenceModule,
+          // Filter the catalog by project, and carry each row's project
+          // (V2.5 item 8.3 issue C3).
+          projectsModule,
         ],
       }),
       // Bulk import (V2.2 item 5.3): manifest + confirm + record surface.
       importsModule,
+      // Projects as workspaces (V2.5 item 8.3): the folder surface.
+      projectsModule,
       // The connector platform (V2.5 item 8.1): owner API + webhook ingress.
       connectorsModule,
       // The first real connector (V2.5 item 8.2).
@@ -398,7 +427,9 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
       // Generation, signing and retention are the worker's.
       ReportsModule.register({
         downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
-        imports: [memoryModule, importsModule],
+        // A report can be generated FOR a project (V2.5 item 8.3 issue C2):
+        // the scope is validated here and enumerated in the worker.
+        imports: [memoryModule, importsModule, projectsModule],
       }),
       // The instance's own operational surface: /api/health and the capability
       // registry, /api/jobs, /api/audit. It owns no tables; every read goes

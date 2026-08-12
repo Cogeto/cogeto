@@ -4,6 +4,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import type {
@@ -22,6 +23,7 @@ import {
 import type { Db } from '../infrastructure/index';
 import { canonicalize, MemoryObjectStore } from '../memory/index';
 import { ImportService } from '../imports/index';
+import { ProjectService } from '../projects/index';
 import { ReportStore, toReportDto } from './report.store';
 import { REPORT_GENERATE_JOB_TYPE } from './report-jobs';
 import { REPORT_OPTIONS } from './report.options';
@@ -43,6 +45,9 @@ export class ReportService {
     private readonly userContext: UserContextService,
     private readonly imports: ImportService,
     @Inject(REPORT_OPTIONS) private readonly options: ReportOptions,
+    /** Projects (V2.5 item 8.3): validates a project scope before the worker
+     * could only fail it slowly. Optional so a bare harness is unchanged. */
+    @Optional() private readonly projects?: ProjectService,
   ) {}
 
   /**
@@ -168,6 +173,16 @@ export class ReportService {
     if (scope.kind === 'import') {
       // Throws NotFound for a foreign or unknown run — same signal as reads.
       await this.imports.get(principal, scope.importRunId);
+      return;
+    }
+    if (scope.kind === 'project') {
+      // Throws NotFound for a foreign or unknown project — the same signal
+      // every owner-gated read gives, so scope validation cannot become a
+      // probe for other users' projects.
+      if (!this.projects) {
+        throw new BadRequestException('projects are not available on this instance');
+      }
+      await this.projects.get(principal, scope.projectId);
       return;
     }
     if (scope.kind === 'sources') {

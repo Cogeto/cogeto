@@ -6,6 +6,7 @@ import {
   Get,
   Inject,
   NotFoundException,
+  Optional,
   Param,
   ParseUUIDPipe,
   Post,
@@ -23,6 +24,7 @@ import {
 import type { Db } from '../infrastructure/index';
 import { BearerAuthGuard, ConnectorCredentialStore } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
+import { ProjectService } from '../projects/index';
 import { ConnectorRegistry } from './connector-registry';
 import { ConnectorStore } from './persistence/connector-store';
 import { ConnectorItemLedger } from './persistence/item-ledger';
@@ -64,6 +66,9 @@ const subScopeSchema = z.object({
   itemCap: z.number().int().positive().max(100_000).nullable().optional(),
   /** Per-scope choices (V2.5 item 8.2): today the attachments toggle. */
   attachments: z.boolean().optional(),
+  /** The project everything this scope ingests lands in (V2.5 item 8.3);
+   * null unassigns. Omitted leaves the assignment untouched. */
+  projectId: z.uuid().nullable().optional(),
 });
 
 const reingestSchema = z.object({
@@ -84,6 +89,9 @@ export class ConnectorsController {
     private readonly registry: ConnectorRegistry,
     private readonly credentials: ConnectorCredentialStore,
     private readonly ledger: ConnectorItemLedger,
+    /** Projects (V2.5 item 8.3): a sub-scope can feed one. Optional so a
+     * root that registers no projects module serves connectors unchanged. */
+    @Optional() private readonly projects?: ProjectService,
   ) {}
 
   @Get('kinds')
@@ -120,6 +128,12 @@ export class ConnectorsController {
       this.store.subScopes(row.id),
       this.store.recentSyncRuns(row.id),
     ]);
+    const scopeProjects =
+      (await this.projects?.projectIdsForRefs(
+        request.principal.userId,
+        'connector_sub_scope',
+        subScopes.map((s) => s.id),
+      )) ?? new Map<string, string>();
     return {
       ...publicView(row),
       // What the user is entitled to see about the access they granted:
@@ -134,6 +148,10 @@ export class ConnectorsController {
           }
         : null,
       subScopes: subScopes.map((s) => ({
+        id: s.id,
+        // The project this container's items land in (V2.5 item 8.3 issue
+        // C1), or null. Organisation, never authorisation.
+        projectId: scopeProjects.get(s.id) ?? null,
         key: s.key,
         label: s.label,
         selected: s.selected,
@@ -229,6 +247,20 @@ export class ConnectorsController {
         ? {}
         : { settingsJson: { attachments: parsed.attachments } }),
     });
+    // The project this container feeds (V2.5 item 8.3 issue C1). Applies to
+    // what the scope ingests NEXT; what it already ingested keeps the project
+    // it was recorded under, because rewriting history silently is the
+    // surprising behaviour.
+    if (parsed.projectId !== undefined && this.projects) {
+      const scope = await this.store.subScopeByKey(row.id, key);
+      if (scope) {
+        await this.projects.assign(
+          request.principal,
+          { kind: 'connector_sub_scope', refType: 'connector_sub_scope', refId: scope.id },
+          parsed.projectId,
+        );
+      }
+    }
     return { updated: true };
   }
 
@@ -395,6 +427,11 @@ export class ConnectorsController {
   async remove(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
     const row = await this.store.byIdForOwner(id, request.principal.userId);
     const actor = `user:${request.principal.userId}`;
+    // Removal destroys credentials and sync state; the SOURCES it produced
+    // remain with their provenance intact (V2.5 item 8.1), and they keep
+    // their project, because they are still that client's documents. What
+    // goes is the SCOPE assignments, which now point at nothing (item 8.3).
+    const subScopeIds = (await this.store.subScopes(row.id)).map((scope) => scope.id);
     await this.db.transaction(async (tx) => {
       await this.credentials.destroy(tx, {
         connectorId: row.id,
@@ -404,6 +441,7 @@ export class ConnectorsController {
       });
       await this.store.remove(tx, row, actor);
     });
+    await this.projects?.releaseRefs(row.ownerId, 'connector_sub_scope', subScopeIds);
     const survivingCredential = await this.credentials.describe(row.id);
     return { removed: true, credentialDestroyed: survivingCredential === null };
   }

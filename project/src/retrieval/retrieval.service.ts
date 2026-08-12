@@ -42,6 +42,17 @@ export interface RetrieveOptions {
    * reply drafts, skills, research) neither need nor pay for it.
    */
   ambiguity?: boolean;
+  /**
+   * THE PROJECT RETRIEVAL LENS (V2.5 item 8.3): narrow this query to a
+   * bounded set of sources. A FILTER, not a gate. Retrieval does not resolve
+   * it and does not know what a project is: chat resolves the conversation's
+   * project and passes the refs as a value, so this module stays pure search
+   * and the memory module never joins to a projects table.
+   *
+   * Absent means no lens, which is the pre-feature path exactly. An EMPTY
+   * array is a lens over a project with no sources, and matches nothing.
+   */
+  lens?: readonly { sourceType: string; sourceId: string }[];
 }
 
 export interface RetrievedMemory {
@@ -276,6 +287,7 @@ export class RetrievalService {
     const rows = await this.memoryStore.openLoopsForPrincipal(principal, {
       entity: entity ?? undefined,
       includeSensitive: opts.includeSensitive,
+      sourceRefs: opts.lens,
     });
     if (rows.length === 0) return [];
     const dormant = this.db
@@ -311,6 +323,7 @@ export class RetrievalService {
         embedding,
         entities: entityCandidates,
         includeSensitive: opts.includeSensitive,
+        sourceRefs: opts.lens,
       });
       return {
         memories: hits.map((hit) => ({
@@ -327,6 +340,7 @@ export class RetrievalService {
     const changes = await this.memoryStore.changesSince(principal, temporal.since!, {
       includeSensitive: opts.includeSensitive,
       limit: Math.max(opts.topK, 20),
+      sourceRefs: opts.lens,
     });
     // The events' memories become the citable facts, deduplicated.
     const byId = new Map<string, MemoryRow>();
@@ -356,6 +370,10 @@ export class RetrievalService {
     const searchOpts = {
       topK: topK * SIGNAL_FETCH_FACTOR, // over-fetch before fusion (research §1)
       includeSensitive: opts.includeSensitive,
+      // The lens rides every signal (V2.5 item 8.3): narrowing one arm and
+      // not the others would let an out-of-project fact back in through the
+      // widest one.
+      sourceRefs: opts.lens,
     };
     const widenNames = extra?.widenEntity ? nameVariants(extra.widenEntity) : [];
     const [vectorHits, ftsHits, entityHits, widenHits] = await Promise.all([
@@ -376,7 +394,14 @@ export class RetrievalService {
     for (const { memory } of [...ftsHits, ...entityHits, ...widenHits])
       rowsById.set(memory.id, memory);
     const unresolved = vectorHits.map((h) => h.memoryId).filter((id) => !rowsById.has(id));
-    for (const row of await this.memoryStore.getManyForPrincipal(principal, unresolved, opts)) {
+    // The lens applies here too, and EXACTLY: the Qdrant pre-filter narrows on
+    // `source_id` alone and is skipped above its cap, so this resolution is
+    // the belt on the full (type, id) pair. An id it drops never resolves,
+    // and `fuseAndRank` already excludes what it cannot resolve.
+    for (const row of await this.memoryStore.getManyForPrincipal(principal, unresolved, {
+      ...opts,
+      sourceRefs: opts.lens,
+    })) {
       rowsById.set(row.id, row);
     }
 
@@ -412,7 +437,11 @@ export class RetrievalService {
     query: string,
     opts: RetrieveOptions,
   ): Promise<RetrievedMemory[]> {
-    const searchOpts = { topK: PROFILE_CEILING, includeSensitive: opts.includeSensitive };
+    const searchOpts = {
+      topK: PROFILE_CEILING,
+      includeSensitive: opts.includeSensitive,
+      sourceRefs: opts.lens,
+    };
     const [entityHits, vectorHits] = await Promise.all([
       this.memoryStore.entitySearch(principal, nameVariants(focus), searchOpts),
       this.gateway
@@ -432,7 +461,10 @@ export class RetrievalService {
     }
     // Vector supplements — only those that genuinely concern the entity.
     const vectorIds = vectorHits.map((h) => h.memoryId).filter((id) => !rowsById.has(id));
-    for (const row of await this.memoryStore.getManyForPrincipal(principal, vectorIds, opts)) {
+    for (const row of await this.memoryStore.getManyForPrincipal(principal, vectorIds, {
+      ...opts,
+      sourceRefs: opts.lens,
+    })) {
       if (mentionsEntity(row, focus)) {
         rowsById.set(row.id, row);
         note(row.id, 'vector');

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trans, useTranslation } from 'react-i18next';
 import {
+  assignToProject,
   deleteSource,
   draftEmailReply,
   fetchChatContext,
@@ -10,6 +11,7 @@ import {
   fetchFileDownload,
   fetchFileSource,
   fetchNote,
+  fetchProjects,
   fetchSourceInspection,
   fetchWebSource,
   reprocessSource,
@@ -154,6 +156,7 @@ export function SourceDrawer({
   onOpenMemory?: (memoryId: string) => void;
 }) {
   const { t } = useTranslation('sources');
+  const { t: tp } = useTranslation('projects');
   const queryClient = useQueryClient();
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -193,12 +196,27 @@ export function SourceDrawer({
   });
   // The same inspection InspectionPanels fetches (same key, so react-query
   // dedups the request); the drawer only reads the connector origin off it.
+  // Enabled for EVERY type since V2.5 item 8.3: the drawer reads the
+  // connector origin and the source's project off it, and InspectionPanels
+  // fetches the same key for every type anyway, so react-query dedups it.
   const inspectionQuery = useQuery({
     queryKey: ['source-inspection', sourceType, sourceId],
     queryFn: () => fetchSourceInspection(session, sourceType, sourceId),
-    enabled: isFile,
   });
   const origin = inspectionQuery.data?.origin ?? null;
+  const assignedProjectId = inspectionQuery.data?.projectId ?? null;
+  const { data: projects } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => fetchProjects(session, { archived: false }),
+  });
+  const assign = useMutation({
+    mutationFn: (projectId: string | null) =>
+      assignToProject(session, { kind: 'source', sourceType, refId: sourceId }, projectId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['source-inspection', sourceType, sourceId] });
+      void queryClient.invalidateQueries({ queryKey: ['sources'] });
+    },
+  });
   const draftReply = useMutation({
     mutationFn: () => draftEmailReply(session, sourceId),
     onSuccess: () => {
@@ -405,6 +423,34 @@ export function SourceDrawer({
                       )}
                     </div>
                   )}
+                </div>
+              )}
+              {/* Which project groups this source (V2.5 item 8.3 issue C3),
+                  and the reversible control to move it. Organisation, never
+                  authorisation: moving a source changes nothing about who
+                  can see its facts. */}
+              {(projects ?? []).length > 0 && (
+                <div className="space-y-1 rounded-md border border-slate-200 bg-surface p-2">
+                  <label
+                    className="text-xs font-medium text-slate-600"
+                    htmlFor={`source-project-${sourceId}`}
+                  >
+                    {tp('assign.label')}
+                  </label>
+                  <select
+                    id={`source-project-${sourceId}`}
+                    value={assignedProjectId ?? ''}
+                    disabled={assign.isPending}
+                    onChange={(event) => assign.mutate(event.target.value || null)}
+                    className="w-full rounded-md border border-slate-300 bg-surface px-2 py-1 text-xs text-slate-700"
+                  >
+                    <option value="">{tp('assign.none')}</option>
+                    {(projects ?? []).map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               )}
               {origin && (

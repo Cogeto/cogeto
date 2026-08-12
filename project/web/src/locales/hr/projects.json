@@ -1,0 +1,44 @@
+{
+  "rail": {
+    "label": "Project",
+    "all": "All conversations",
+    "archivedGroup": "Archived",
+    "new": "New project",
+    "newShort": "New",
+    "emptyProject": "No conversations in this project yet. Start one and it lands here.",
+    "lensOn": "Answers here draw on this project's sources first.",
+    "lensOff": "Answers here draw on all your memory.",
+    "turnLensOn": "Use project sources",
+    "turnLensOff": "Use all memory"
+  },
+  "field": {
+    "name": "Project name",
+    "namePlaceholder": "Client, matter, or topic"
+  },
+  "action": {
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "delete": "Delete"
+  },
+  "assign": {
+    "label": "Project",
+    "scopeLabel": "Into project",
+    "none": "No project"
+  },
+  "filter": {
+    "label": "Project",
+    "all": "All projects"
+  },
+  "lens": {
+    "gapHint": "Nothing in this project covers that.",
+    "widenAction": "Answer from all my memory"
+  },
+  "delete": {
+    "question": "Delete the project \"{{name}}\"?",
+    "consequence_one": "The project groups {{count}} things. Deleting removes the project only.",
+    "consequence_few": "The project groups {{count}} things. Deleting removes the project only.",
+    "consequence_other": "The project groups {{count}} things. Deleting removes the project only.",
+    "keeps": "Its conversations, sources, research runs and reports all stay exactly where they are and simply stop being in a project. Nothing is erased and no memory is deleted.",
+    "alternative": "To erase a document itself, delete that source on the Sources page, which runs the deletion saga and gives you a receipt. Archiving this project instead keeps everything and only hides it from the list."
+  }
+}

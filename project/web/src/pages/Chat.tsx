@@ -8,6 +8,7 @@ import type {
   ChatAttachmentDto,
   ChatFactDto,
   ChatResearchOffer,
+  ChatWidenOffer,
   ResearchRunDto,
 } from '@cogeto/shared';
 import {
@@ -449,6 +450,7 @@ function buildTurns(history: ChatMessage[]): Turn[] {
 
 export function Chat({ session }: { session: Session }) {
   const { t } = useTranslation('chat');
+  const { t: tp } = useTranslation('projects');
   const queryClient = useQueryClient();
 
   // The conversation containers: the deep link (?c=) wins, else the
@@ -524,6 +526,12 @@ export function Chat({ session }: { session: Session }) {
   };
   /** The paperclip's staged file (V2.2 item 5.1): picked but not yet sent,
    * with its "don't remember this file" choice. Uploaded on send. */
+  /** The selected project (V2.5 item 8.3): filters the sidebar and starts new
+   * conversations inside it. Null is "all", the unassigned default. */
+  const [projectId, setProjectId] = useState<string | null>(null);
+  /** The lens gap's one-tap widen (V2.5 item 8.3): Cogeto never widens
+   * silently, so the offer is the bridge, exactly as it is for research. */
+  const [widenOffer, setWidenOffer] = useState<ChatWidenOffer | null>(null);
   const [pendingFile, setPendingFile] = useState<{ file: File; transient: boolean } | null>(null);
   const [attachError, setAttachError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -624,7 +632,7 @@ export function Chat({ session }: { session: Session }) {
     inputRef.current?.focus();
   };
 
-  const send = async (text?: string, opts: { suppressOffer?: boolean } = {}) => {
+  const send = async (text?: string, opts: { suppressOffer?: boolean; widen?: boolean } = {}) => {
     const content = (text ?? draft).trim();
     const staged = pendingFile;
     if ((!content && !staged) || busy) return;
@@ -681,6 +689,7 @@ export function Chat({ session }: { session: Session }) {
     setLiveFacts([]);
     setLiveAmbiguity(null);
     setOffer(null);
+    setWidenOffer(null);
     setSkillRunId(null);
     const controller = new AbortController();
     streamRef.current = controller;
@@ -695,6 +704,9 @@ export function Chat({ session }: { session: Session }) {
           else if (event.type === 'token') setLiveText((prev) => prev + event.text);
           else if (event.type === 'done') {
             setLiveAmbiguity(event.ambiguity ?? null);
+            // The project's sources held nothing: the answer said so and this
+            // is the widen beside it (V2.5 item 8.3).
+            setWidenOffer(event.widenOffer ?? null);
             if (event.skillRun) setSkillRunId(event.skillRun.runId);
             if (event.researchProposal) {
               // A research-class question already proposed a run: open it inline.
@@ -725,7 +737,7 @@ export function Chat({ session }: { session: Session }) {
           }
         },
         controller.signal,
-        { thinking: thinkingOn, attachmentIds },
+        { thinking: thinkingOn, attachmentIds, widen: opts.widen },
       );
     } catch (error) {
       // A detached stream (conversation switch) is intentional — not a failure.
@@ -765,6 +777,8 @@ export function Chat({ session }: { session: Session }) {
       <ConversationSidebar
         session={session}
         activeId={activeId}
+        projectId={projectId}
+        onProjectChange={setProjectId}
         onSelect={switchConversation}
         onCreated={(created) => switchConversation(created.id)}
         onDeleted={(deletedId) => {
@@ -1083,6 +1097,19 @@ export function Chat({ session }: { session: Session }) {
                   )}
                 </button>
               </div>
+              {widenOffer && (
+                <p className="mt-2 flex flex-wrap items-center justify-center gap-2 text-center text-[0.72rem] leading-relaxed text-slate-500">
+                  <span>{tp('lens.gapHint')}</span>
+                  <button
+                    type="button"
+                    onClick={() => void send(widenOffer.question, { widen: true })}
+                    disabled={busy}
+                    className="rounded-full border border-brand-teal px-2 py-0.5 font-mono text-[0.66rem] tracking-[0.04em] text-brand-teal-ink transition-colors disabled:opacity-40 dark:text-brand-teal"
+                  >
+                    {tp('lens.widenAction')}
+                  </button>
+                </p>
+              )}
               <div className="mt-2 flex items-center justify-center gap-3">
                 <button
                   type="button"

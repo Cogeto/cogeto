@@ -127,3 +127,5 @@ export {
 } from './persistence/source-revision.store';
 export { revisionCountsForSuccessors } from './persistence/source-revision.store';
 export { SourceRevisionCascade, SourceRevisionCascadeModule } from './source-revision-cascade';
+export { PROJECT_POLICY } from './project-policy.port';
+export type { ProjectExtractionPolicy, ProjectPolicyPort } from './project-policy.port';

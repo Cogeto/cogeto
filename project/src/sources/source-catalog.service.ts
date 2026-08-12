@@ -39,6 +39,7 @@ import { listNoteSources, hydrateNoteSources } from '../notes/index';
 import { listEmailSources, hydrateEmailSources } from '../email/index';
 import { listWebSources, hydrateWebSources } from '../research/index';
 import { hydrateChatSources } from '../chat/index';
+import { ProjectService } from '../projects/index';
 
 /** Read outcomes that mean the source produced no text (the honesty rule). */
 const UNREAD_OUTCOMES = ['empty', 'unsupported_format', 'read_failed', 'needs_vision'] as const;
@@ -54,6 +55,10 @@ interface CatalogRef {
 export interface CatalogQuery {
   type?: SourceType;
   badge?: SourceBadgeFilter;
+  /** Only this project's sources (V2.5 item 8.3 issue C3). A filter over
+   * containers, never a permission: an unassigned or other-project source is
+   * still the caller's own and still listed everywhere else. */
+  projectId?: string;
   q?: string;
   order?: 'asc' | 'desc';
   cursor?: Date;
@@ -95,10 +100,39 @@ export class SourceCatalogService {
      * without connectors still serves the catalog, minus origins. */
     @Optional() private readonly confluencePages?: ConfluencePageStore,
     @Optional() private readonly connectorItems?: ConnectorItemLedger,
+    /** Projects (V2.5 item 8.3): the project filter's driving query and each
+     * row's project. Optional: without it the catalog is exactly what it
+     * was, and every row's project reads null. */
+    @Optional() private readonly projects?: ProjectService,
   ) {}
 
   async list(principal: Principal, query: CatalogQuery): Promise<SourceCatalogPageDto> {
     const limit = Math.min(query.limit ?? 50, 100);
+    // The project filter drives the list from the project's own assignments
+    // (V2.5 item 8.3): bounded and served whole, the badge-filter shape.
+    if (query.projectId) {
+      const assigned =
+        (await this.projects?.sourceRefsFor(query.projectId, BADGE_SCAN_LIMIT)) ?? [];
+      const refs = assigned
+        .filter((ref) => isRegisteredSourceType(ref.sourceType))
+        .filter((ref) => !query.type || ref.sourceType === query.type)
+        .map((ref) => ({
+          sourceType: ref.sourceType as SourceType,
+          sourceId: ref.sourceId,
+          name: null,
+          at: new Date(0),
+        }));
+      const hydrated = await this.hydrate(principal, refs);
+      hydrated.sort((a, b) =>
+        (query.order ?? 'desc') === 'desc'
+          ? b.at.getTime() - a.at.getTime()
+          : a.at.getTime() - b.at.getTime(),
+      );
+      return {
+        items: await this.badge(principal, hydrated.slice(0, BADGE_SCAN_LIMIT)),
+        nextCursor: null,
+      };
+    }
     if (query.badge) {
       const refs = await this.refsForBadge(principal, query.badge);
       const hydrated = await this.hydrate(principal, refs);
@@ -238,6 +272,11 @@ export class SourceCatalogService {
       origin:
         (await this.originsFor(principal.userId, [{ sourceType, sourceId }])).get(
           `${sourceType} ${sourceId}`,
+        ) ?? null,
+      // Which project groups this source (V2.5 item 8.3 issue C3).
+      projectId:
+        (await this.projects?.projectIdsForRefs(principal.userId, sourceType, [sourceId]))?.get(
+          sourceId,
         ) ?? null,
     };
   }
@@ -494,6 +533,9 @@ export class SourceCatalogService {
       ]);
     const names = await this.fileNames(refs, contextNames);
     const origins = await this.originsFor(principal.userId, keys);
+    // Each row's project (V2.5 item 8.3 issue C3), for the whole page in one
+    // indexed read per source type rather than one per row.
+    const projects = await this.projectsFor(principal.userId, keys);
 
     return refs.map((r) => {
       const key = `${r.sourceType} ${r.sourceId}`;
@@ -520,8 +562,29 @@ export class SourceCatalogService {
         factCount: stat?.facts ?? 0,
         badges,
         origin: origins.get(key) ?? null,
+        projectId: projects.get(key) ?? null,
       };
     });
+  }
+
+  /** The page's project assignments, one keyed read per source type. */
+  private async projectsFor(
+    ownerId: string,
+    keys: readonly { sourceType: string; sourceId: string }[],
+  ): Promise<Map<string, string>> {
+    const out = new Map<string, string>();
+    if (!this.projects || keys.length === 0) return out;
+    const byType = new Map<string, string[]>();
+    for (const key of keys) {
+      (byType.get(key.sourceType) ?? byType.set(key.sourceType, []).get(key.sourceType)!).push(
+        key.sourceId,
+      );
+    }
+    for (const [sourceType, ids] of byType) {
+      const found = await this.projects.projectIdsForRefs(ownerId, sourceType, ids);
+      for (const [sourceId, projectId] of found) out.set(`${sourceType} ${sourceId}`, projectId);
+    }
+    return out;
   }
 
   /**

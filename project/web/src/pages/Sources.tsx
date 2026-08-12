@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { SourceBadgeFilter, SourceCatalogItemDto, SourceTypeKey } from '@cogeto/shared';
 import { SOURCE_BADGE_FILTERS, SOURCE_TYPE_KEYS } from '@cogeto/shared';
-import { fetchSourceCatalog } from '../api';
+import { fetchProjects, fetchSourceCatalog } from '../api';
 import type { Session } from '../auth/oidc';
 import { ImportPanel } from '../components/ImportPanel';
 import { MemoryDrawer } from '../components/MemoryDrawer';
@@ -43,28 +43,41 @@ function openedFromUrl(): { sourceType: string; sourceId: string } | null {
 
 export function Sources({ session }: { session: Session }) {
   const { t } = useTranslation('sources');
+  const { t: tp } = useTranslation('projects');
   const queryClient = useQueryClient();
 
   const [type, setType] = useState<string>('');
   const [badge, setBadge] = useState<SourceBadgeFilter | ''>('');
   const [q, setQ] = useState('');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+  /** Only this project's sources (V2.5 item 8.3 issue C3). A filter over
+   * containers: nothing it hides stops being the caller's own source. */
+  const [projectId, setProjectId] = useState<string>('');
   const [cursors, setCursors] = useState<string[]>([]);
   const [uploads, setUploads] = useState<{ objectKey: string; filename: string }[]>([]);
   const [openSource, setOpenSource] = useState(openedFromUrl);
   const [openMemoryId, setOpenMemoryId] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
+  const { data: projects } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => fetchProjects(session),
+  });
+  const projectNames = useMemo(
+    () => new Map((projects ?? []).map((project) => [project.id, project.name])),
+    [projects],
+  );
 
   const cursor = cursors[cursors.length - 1];
   const params = useMemo(
     () => ({
       type: type || undefined,
       badge: badge || undefined,
+      projectId: projectId || undefined,
       q: q.trim() || undefined,
       order,
       cursor,
     }),
-    [type, badge, q, order, cursor],
+    [type, badge, projectId, q, order, cursor],
   );
   const page = useQuery({
     queryKey: ['sources', params],
@@ -149,6 +162,26 @@ export function Sources({ session }: { session: Session }) {
               ))}
             </select>
           </label>
+          {(projects ?? []).length > 0 && (
+            <label className="flex items-center gap-1.5 text-xs text-slate-600">
+              {tp('filter.label')}
+              <select
+                value={projectId}
+                onChange={(event) => {
+                  setProjectId(event.target.value);
+                  resetPaging();
+                }}
+                className="rounded-md border border-slate-300 px-2 py-1"
+              >
+                <option value="">{tp('filter.all')}</option>
+                {(projects ?? []).map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -201,6 +234,7 @@ export function Sources({ session }: { session: Session }) {
             <SourceRow
               key={`${item.sourceType}:${item.sourceId}`}
               item={item}
+              projectName={item.projectId ? projectNames.get(item.projectId) : undefined}
               onOpen={() => openDrawer({ sourceType: item.sourceType, sourceId: item.sourceId })}
             />
           ))}
@@ -270,7 +304,17 @@ const ORIGIN_GONE_KEY: Record<string, string> = {
 };
 
 /** One catalog row: name, date, fact count, and ONLY the badges that flag. */
-function SourceRow({ item, onOpen }: { item: SourceCatalogItemDto; onOpen: () => void }) {
+function SourceRow({
+  item,
+  projectName,
+  onOpen,
+}: {
+  item: SourceCatalogItemDto;
+  /** The project this source is grouped under (V2.5 item 8.3), when it has
+   * one and the name resolved. */
+  projectName?: string;
+  onOpen: () => void;
+}) {
   const { t } = useTranslation('sources');
   const badges = item.badges;
   const flag = (tone: Tone, label: string, key: string) => (
@@ -300,6 +344,11 @@ function SourceRow({ item, onOpen }: { item: SourceCatalogItemDto; onOpen: () =>
         <span className="font-mono text-[0.64rem] uppercase tracking-[0.08em] text-slate-400">
           {t(`kindLabel.${item.sourceType}`, { defaultValue: item.sourceType })}
         </span>
+        {projectName && (
+          <span className="rounded bg-brand-teal/10 px-1.5 py-0.5 font-mono text-[0.64rem] uppercase tracking-[0.08em] text-brand-teal-ink dark:text-brand-teal">
+            {projectName}
+          </span>
+        )}
         {item.origin && (
           <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.64rem] uppercase tracking-[0.08em] text-slate-500">
             {item.origin.spaceKey ??

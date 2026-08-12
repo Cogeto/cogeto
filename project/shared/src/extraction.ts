@@ -18,6 +18,10 @@ export const EXTRACTION_REFUSAL_REASONS = [
   'source_disabled',
   'document_class_denied',
   'folder_denied',
+  /** The project this source entered has extraction switched off (V2.5 item
+   * 8.3 issue C4). Recorded in the SAME metadata-only ledger, so a
+   * project-gated source never looks processed-with-zero-facts either. */
+  'project_disabled',
 ] as const;
 export type ExtractionRefusalReasonDto = (typeof EXTRACTION_REFUSAL_REASONS)[number];
 
