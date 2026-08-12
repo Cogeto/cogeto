@@ -21,6 +21,7 @@ import {
   splitConversations,
 } from './conversations-model';
 import { useConfirm } from './confirm';
+import { ConversationSearchResults, useDebounced } from './ConversationSearch';
 import { GhostRow, ProjectSectionHeader, ProjectsHeading } from './ProjectRail';
 import { MARKER_CLASSES, MARKER_RULE_CLASSES, railSections } from './projects-model';
 
@@ -225,12 +226,17 @@ export function ConversationSidebar({
   session,
   activeId,
   onSelect,
+  onFocusMessage,
   onCreated,
   onDeleted,
 }: {
   session: Session;
   activeId: string | null;
   onSelect: (id: string) => void;
+  /** A search result deep-links to the matching MESSAGE, not just the thread:
+   * in a long conversation, landing at the top leaves you hunting for the very
+   * line you searched for (issue #530). */
+  onFocusMessage?: (messageId: string) => void;
   onCreated: (conversation: ConversationDto) => void;
   onDeleted: (id: string) => void;
 }) {
@@ -249,6 +255,11 @@ export function ConversationSidebar({
   });
   const queryClient = useQueryClient();
   const [showArchived, setShowArchived] = useState(false);
+  /** Search is ranking, grouping is browsing: while this has text the sections
+   * give way to a flat ranked list, and clearing it brings them back. */
+  const [search, setSearch] = useState('');
+  const query = useDebounced(search.trim());
+  const searching = query.length > 0;
   /** Collapsed project sections, by id. Sections start open: a folder you
    * cannot see into is not a folder. */
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -308,16 +319,57 @@ export function ConversationSidebar({
           <PlusIcon />
         </button>
       </div>
+      <div className="px-3 pb-2">
+        <label className="sr-only" htmlFor="conversation-search">
+          {t('search.label')}
+        </label>
+        <div className="relative">
+          <input
+            id="conversation-search"
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') setSearch('');
+            }}
+            placeholder={t('search.placeholder')}
+            maxLength={200}
+            className="w-full rounded-md border border-slate-300 bg-surface py-1 pr-6 pl-2 text-sm text-slate-700 outline-none focus:border-brand-teal"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label={t('search.clear')}
+              className="absolute inset-y-0 right-1 grid w-5 place-items-center text-slate-400 hover:text-slate-600"
+            >
+              <span aria-hidden="true">✕</span>
+            </button>
+          )}
+        </div>
+      </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-        {all.length === 0 && (
+        {searching && (
+          <ConversationSearchResults
+            session={session}
+            query={query}
+            projects={projects ?? []}
+            activeId={activeId}
+            onOpen={(conversationId, messageId) => {
+              onSelect(conversationId);
+              if (messageId) onFocusMessage?.(messageId);
+            }}
+          />
+        )}
+        {!searching && all.length === 0 && (
           <p className="px-1.5 py-2 text-xs leading-relaxed text-slate-400">
             {t('conversation.emptyRail')}
           </p>
         )}
         {/* The heading opens the section list and carries the create button,
             so a new project is never below a scrolling list of chats. */}
-        {grouped && <ProjectsHeading session={session} />}
-        {grouped
+        {!searching && grouped && <ProjectsHeading session={session} />}
+        {!searching && grouped
           ? sections.map((section, index) => {
               const key = section.project?.id ?? 'none';
               const shut = collapsed[key] ?? false;
@@ -357,8 +409,8 @@ export function ConversationSidebar({
                 </div>
               );
             })
-          : rowsFor(sections[0]?.conversations ?? [], true)}
-        {archived.length > 0 && (
+          : !searching && rowsFor(sections[0]?.conversations ?? [], true)}
+        {!searching && archived.length > 0 && (
           <div className="mt-3">
             <button
               type="button"

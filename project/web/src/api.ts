@@ -50,6 +50,7 @@ import type {
   ChatContextDto,
   ChatMessagePage,
   ConversationDto,
+  ConversationSearchHitDto,
   ChatRememberedDto,
   ChatStreamEvent,
   ContradictionDto,
@@ -1048,6 +1049,12 @@ export const setConversationArchived = (
   archived: boolean,
 ): Promise<ConversationDto> =>
   apiPut(`/api/chat/conversations/${id}/archived`, { archived }, session);
+/** Find a conversation by what was said in it (issue #530). */
+export const searchConversations = (
+  session: Session,
+  q: string,
+): Promise<ConversationSearchHitDto[]> =>
+  apiGet(`/api/chat/search?q=${encodeURIComponent(q)}`, session);
 export const fetchChatMessages = (
   session: Session,
   conversationId: string,

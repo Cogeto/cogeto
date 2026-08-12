@@ -105,6 +105,38 @@ embedding model), erased by the answer redaction cascade with the answer.
 Thresholds are versioned per embedding model in
 `retrieval/ambiguity-config.ts` and an unknown model fails loudly.
 
+## Finding a conversation (issue #530)
+
+The rail carries a search box. While it has text the project sections give way
+to a flat ranked list, and clearing it brings them straight back: **search is
+ranking, grouping is browsing**, and one surface does both.
+
+It searches **the title AND what was said**. Title alone is the weak half:
+`title` is NULL until the first exchange is auto-titled, the titler can fail
+into the dead-letter queue, and when it succeeds it is two to six words chosen
+by a model. The threads hardest to find are exactly the untitled ones, and what
+a user remembers is what they said.
+
+The construction is deliberately the one `MemoryStore.ftsSearch` already uses,
+so conversation search behaves the way fact search does: a generated
+`content_tsv` column over `cogeto_unaccent` with a GIN index (migration 0057),
+`websearch_to_tsquery`, `ts_rank_cd`. Word-based and accent-insensitive; "arko"
+does not find "Arkona", the same accepted trade as everywhere else.
+
+Three properties worth stating:
+
+- **One result per conversation**, carrying its densest matching line. A thread
+  that says the word nine times is one hit, not nine.
+- **Archived conversations are included.** An archived thread is precisely the
+  one scrolling cannot find.
+- **A result deep-links to the matching MESSAGE**, through the existing
+  `/chat?c=…&m=…` contract, so you land on the line rather than at the top of a
+  long thread.
+
+The snippet's matched words are wrapped in two **control characters**, and the
+client renders emphasis by SPLITTING on them. Chat content is user-authored, so
+it is never handed to anything as markup to interpret.
+
 ## The project retrieval lens (V2.5 item 8.3)
 
 A conversation assigned to a project whose lens is on answers from that

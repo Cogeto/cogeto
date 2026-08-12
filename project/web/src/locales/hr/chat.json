@@ -137,5 +137,17 @@
     "truncatedNote": "The file was read in part; open the source for what was left out.",
     "viewInSources": "View in Sources",
     "sourceRemoved": "Attachment removed with its source"
+  },
+  "search": {
+    "label": "Search conversations",
+    "placeholder": "Search what was said",
+    "clear": "Clear search",
+    "searching": "Searching…",
+    "empty": "Nothing matched. Search covers titles and what was said, including archived conversations.",
+    "results_one": "{{count}} result",
+    "results_few": "{{count}} results",
+    "results_other": "{{count}} results",
+    "titleMatch": "Matched the title",
+    "archivedTag": "archived"
   }
 }
