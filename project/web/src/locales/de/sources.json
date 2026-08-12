@@ -26,6 +26,7 @@
     "discard": "Original nach Extraktion verwerfen",
     "discardTitle": "Original nach der Extraktion löschen. Nur die abgeleiteten Erinnerungen behalten.",
     "discardWarning": "Die hochgeladene Datei wird gelöscht, sobald ihre Fakten extrahiert wurden. Nur die überprüften Erinnerungen bleiben erhalten. Dies kann nicht rückgängig gemacht werden.",
+    "duplicate": "{{filename}} is already stored, so nothing was read or extracted again. Opening the document you already have.",
     "state": {
       "processing": "Extraktion und Überprüfung…",
       "done": "Fertig",

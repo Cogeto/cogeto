@@ -83,6 +83,31 @@ export interface UploadOptions {
    * organisation, never authorisation.
    */
   projectId?: string;
+  /**
+   * Resolve an upload of bytes this owner already stores to the EXISTING
+   * source instead of creating a second one (issue #536).
+   *
+   * Opt-in, and default-off, because it is a policy of the INTERACTIVE
+   * surfaces rather than a property of the mechanism. A person picking the
+   * same file twice means "make sure this is in there"; a connector or an
+   * importer materializing content means "this identified item's bytes",
+   * and for them identical content is not identity. Two Confluence pages can
+   * legitimately hold the same text, and collapsing them would repoint one
+   * page's ledger entry and revision link at the other page's source. So the
+   * controller and the chat paperclip pass true, and the connector and import
+   * call sites keep the pre-existing behaviour byte for byte.
+   */
+  deduplicate?: boolean;
+}
+
+/**
+ * The outcome of an upload. `duplicate` says the bytes were already stored
+ * and `objectKey` is the EXISTING source: nothing was written, nothing was
+ * enqueued, and no extraction was paid for a second time.
+ */
+export interface UploadResult {
+  objectKey: string;
+  duplicate?: boolean;
 }
 
 /** How long the staging object lingers before the backstop cleanup runs. */
@@ -166,13 +191,43 @@ export class FilesService {
      * stamps its sub-scope key as `gateFolder` so the extraction gate's
      * folder dimension can express per-container policy (V2.5 item 8.2). */
     options: UploadOptions = {},
-  ): Promise<{ objectKey: string }> {
+  ): Promise<UploadResult> {
     if (file.buffer.length === 0) throw new BadRequestException('the uploaded file is empty');
     if (file.buffer.length > this.options.uploadMaxBytes) {
       throw new BadRequestException(
         `file exceeds the ${this.options.uploadMaxBytes}-byte upload limit`,
       );
     }
+
+    // Bytes this owner already stores resolve to the source that holds them
+    // (issue #536), BEFORE the daily cap is charged and before anything is
+    // written: a duplicate consumes no quota because it consumes no pipeline.
+    // Discard mode is excluded by construction rather than by choice — it
+    // writes no `file_metadata` row, so it has no checksum to match on, in
+    // either direction. The request rate limit still applies, so this is not
+    // a free unbounded endpoint.
+    // Hashed once here rather than again inside `uploadStored`, because the
+    // stored path needs the same digest for the metadata row.
+    const checksum = flags.discard ? null : createHash('sha256').update(file.buffer).digest('hex');
+    const existing =
+      options.deduplicate && checksum ? await this.findDuplicate(principal, checksum, flags) : null;
+    if (existing) {
+      // A project is organisation, so filing the same document again under a
+      // project is a meaningful thing to have asked for, and the only part of
+      // the request a duplicate can still honour.
+      if (options.projectId && this.projects) {
+        await this.db.transaction(async (tx) => {
+          await this.projects!.assignInTx(
+            tx,
+            principal.userId,
+            { kind: 'source', refType: 'file', refId: existing },
+            options.projectId!,
+          );
+        });
+      }
+      return { objectKey: existing, duplicate: true };
+    }
+
     // Per-user daily upload cap: bounds the parse + pipeline work a
     // single user (or the shared demo principal) can drive in a day.
     if ((await this.counters.get(principal.userId, 'upload')) >= this.quota.uploadMax) {
@@ -196,7 +251,31 @@ export class FilesService {
 
     return flags.discard
       ? this.uploadDiscard(principal, file, flags, objectKey, contentType, options)
-      : this.uploadStored(principal, file, flags, objectKey, contentType, options);
+      : this.uploadStored(principal, file, flags, objectKey, contentType, checksum!, options);
+  }
+
+  /**
+   * The stored source already holding these bytes for this owner, or null
+   * (issue #536).
+   *
+   * A match on the hash alone is NOT enough. The existing source is only a
+   * duplicate when it would have been admitted the way this request asks for:
+   * a `private` original cannot answer an upload asking for `shared`, and a
+   * non-sensitive original cannot answer one marked sensitive. Reusing it
+   * anyway would silently ignore what the user asked; rewriting its scope
+   * would move already-extracted facts across the gate, which an upload is
+   * not the place to do. So a mismatch falls through and uploads normally,
+   * and the two rows differ in exactly the way the user asked them to.
+   */
+  private async findDuplicate(
+    principal: Principal,
+    checksum: string,
+    flags: UploadFlags,
+  ): Promise<string | null> {
+    const existing = await this.files.findDuplicate(principal.userId, checksum);
+    if (!existing) return null;
+    if (existing.scope !== flags.scope || existing.sensitive !== flags.sensitive) return null;
+    return existing.objectKey;
   }
 
   /**
@@ -266,10 +345,10 @@ export class FilesService {
     flags: UploadFlags,
     objectKey: string,
     contentType: string,
+    /** Computed by `upload`, which needs it for the duplicate lookup too. */
+    checksum: string,
     options: UploadOptions = {},
-  ): Promise<{ objectKey: string }> {
-    const checksum = createHash('sha256').update(file.buffer).digest('hex');
-
+  ): Promise<UploadResult> {
     // (1) object-first.
     await this.objects.putObject(objectKey, file.buffer, {
       contentType,
@@ -345,7 +424,7 @@ export class FilesService {
     objectKey: string,
     contentType: string,
     options: UploadOptions = {},
-  ): Promise<{ objectKey: string }> {
+  ): Promise<UploadResult> {
     const stagingKey = toStagingKey(objectKey);
 
     // (1) stage the bytes, carrying the context the pipeline needs (there is no

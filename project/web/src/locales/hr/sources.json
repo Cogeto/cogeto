@@ -26,6 +26,7 @@
     "discard": "Odbaci izvornik nakon izdvajanja",
     "discardTitle": "Izbrišite izvornik nakon izdvajanja. Zadržite samo izvedena sjećanja.",
     "discardWarning": "Prenesena datoteka izbrisat će se nakon izdvajanja činjenica. Zadržat će se samo provjerena sjećanja. To se ne može poništiti.",
+    "duplicate": "{{filename}} is already stored, so nothing was read or extracted again. Opening the document you already have.",
     "state": {
       "processing": "Izdvajanje i provjera…",
       "done": "Dovršeno",

@@ -74,7 +74,7 @@ export class FilesController {
     const parsed = parseOrBadRequest(uploadFlagsSchema, request.body ?? {});
     // Omitted flags fall back to the user's saved defaults.
     const defaults = await this.settings.get(request.principal);
-    const { objectKey } = await this.files.upload(
+    const { objectKey, duplicate } = await this.files.upload(
       request.principal,
       {
         buffer: file.buffer,
@@ -86,9 +86,11 @@ export class FilesController {
         sensitive: parsed.sensitive ?? false,
         discard: parsed.discard ?? defaults.discardByDefault,
       },
-      { projectId: parsed.projectId },
+      // A person picking the same file twice gets the document they already
+      // have, not a second copy of it (issue #536).
+      { projectId: parsed.projectId, deduplicate: true },
     );
-    return { objectKey };
+    return { objectKey, duplicate: duplicate ?? false };
   }
 
   /** Pipeline progress for the per-file processing indicator. */

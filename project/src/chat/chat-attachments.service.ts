@@ -78,11 +78,21 @@ export class ChatAttachmentsService {
     // private scope unless they changed it, and their discard-by-default
     // preference honoured exactly as a deliberate upload honours it.
     const defaults = await this.settings.get(principal);
-    const { objectKey } = await this.files.upload(principal, file, {
-      scope: defaults.defaultScope,
-      sensitive: false,
-      discard: defaults.discardByDefault,
-    });
+    const { objectKey } = await this.files.upload(
+      principal,
+      file,
+      {
+        scope: defaults.defaultScope,
+        sensitive: false,
+        discard: defaults.discardByDefault,
+      },
+      // Sending a file the conversation partner already has attaches THAT
+      // document (issue #536). The row is still written, because the file
+      // genuinely was sent in this conversation, and its card settles
+      // immediately with the existing source's real numbers instead of
+      // replaying an extraction that was already paid for.
+      { deduplicate: true },
+    );
     const [row] = await this.db
       .insert(chatAttachment)
       .values({

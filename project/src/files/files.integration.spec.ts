@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runOnce } from 'graphile-worker';
 import type { TaskList } from 'graphile-worker';
@@ -807,5 +808,147 @@ describe('file source + document pipeline (integration: real Postgres + Qdrant +
     expect(rows[0]!.scope).toBe('shared');
 
     await userSettings.update(userA, { discardByDefault: false, defaultScope: 'private' });
+  });
+
+  // ── Duplicate uploads (issue #536) ───────────────────────────────────────
+  //
+  // The same bytes uploaded twice used to produce two sources, two extractions
+  // and two parallel sets of facts. Measured on a real instance: 6 documents
+  // uploaded 17 times, whose redundant copies accounted for 127 of 715
+  // file-derived facts. These tests pin the fix and, just as importantly, its
+  // limits: dedup is owner-scoped, admission-equal, and opt-in per call site.
+
+  /** Re-selecting a file in the picker: the same bytes, a second time. */
+  const sameBytes = makePdf('The M557 flange tolerance is 3.2 mm.');
+  const uploadAs = async (
+    principal: Principal,
+    buffer: Buffer,
+    body: Record<string, unknown> = {},
+  ) => {
+    const controller = new FilesController(filesService, userSettings);
+    return controller.upload({
+      principal,
+      file: { buffer, originalname: 'flange.pdf', mimetype: PDF_CONTENT_TYPE },
+      body: { scope: 'private', sensitive: false, discard: false, ...body },
+    } as unknown as AuthenticatedRequest);
+  };
+
+  it('duplicate_upload_reuses_the_existing_source: no second source, no second extraction', async () => {
+    const before = await pipelineJobCount();
+    const first = await uploadAs(userA, sameBytes);
+    expect(first.duplicate).toBe(false);
+
+    const second = await uploadAs(userA, sameBytes);
+    // The SAME source, named as a duplicate rather than silently swallowed.
+    expect(second.objectKey).toBe(first.objectKey);
+    expect(second.duplicate).toBe(true);
+
+    // The expensive half: exactly one pipeline job, so the model is asked to
+    // extract these bytes once. That is the whole point of the issue.
+    expect(await pipelineJobCount()).toBe(before + 1);
+    const { rows } = await tdb.pool.query<{ n: string }>(
+      'SELECT count(*)::text AS n FROM file_metadata WHERE owner_id = $1 AND checksum = $2',
+      [userA.userId, createHash('sha256').update(sameBytes).digest('hex')],
+    );
+    expect(Number(rows[0]!.n)).toBe(1);
+  });
+
+  it('duplicate_upload_costs_no_quota: a duplicate is not an ingestion', async () => {
+    // A one-upload-per-day service makes the accounting visible: if a
+    // duplicate charged the cap, the second call would 429 instead of
+    // resolving to what is already stored.
+    const counters = new InMemoryDailyCounters();
+    const stingy = new FilesService(
+      tdb.db,
+      objects,
+      fileStore,
+      store,
+      uploadOpts,
+      counters,
+      { captureMax: 1_000_000, uploadMax: 1 },
+      new FileReadReportStore(tdb.db),
+    );
+    const bytes = makePdf('One upload of this document per day.');
+    const flags = { scope: 'private' as const, sensitive: false, discard: false };
+    const file = { buffer: bytes, originalName: 'once.pdf', mimeType: PDF_CONTENT_TYPE };
+
+    const first = await stingy.upload(userC, file, flags, { deduplicate: true });
+    const again = await stingy.upload(userC, file, flags, { deduplicate: true });
+    expect(again.objectKey).toBe(first.objectKey);
+    expect(again.duplicate).toBe(true);
+
+    // The cap is still a cap: different bytes hit it, because the ONE upload
+    // this user was allowed is spent.
+    await expect(
+      stingy.upload(userC, { ...file, buffer: makePdf('A genuinely different document.') }, flags, {
+        deduplicate: true,
+      }),
+    ).rejects.toThrow(/daily upload limit/);
+  });
+
+  it('duplicate_is_owner_scoped: the same document held by two users is two documents', async () => {
+    const first = await uploadAs(userA, sameBytes);
+    // userB is a different owner in the same org. Resolving their upload to
+    // userA's source would hand them a key for a source they cannot see, which
+    // would make dedup a gating decision. It is not one.
+    const theirs = await uploadAs(userB, sameBytes);
+    expect(theirs.objectKey).not.toBe(first.objectKey);
+    expect(theirs.duplicate).toBe(false);
+  });
+
+  it('scope_or_sensitive_difference_is_not_a_duplicate: the request is honoured', async () => {
+    const bytes = makePdf('This document is uploaded twice, filed differently.');
+    const priv = await uploadAs(userA, bytes, { scope: 'private' });
+    expect(priv.duplicate).toBe(false);
+
+    // Asking for `shared` cannot be answered with a `private` source: reusing
+    // it would ignore the request, and rewriting the stored row's scope would
+    // move already-extracted facts across the gate.
+    const shared = await uploadAs(userA, bytes, { scope: 'shared' });
+    expect(shared.duplicate).toBe(false);
+    expect(shared.objectKey).not.toBe(priv.objectKey);
+    expect(shared.objectKey).toContain('/shared/');
+
+    const marked = await uploadAs(userA, bytes, { scope: 'private', sensitive: true });
+    expect(marked.duplicate).toBe(false);
+    expect(marked.objectKey).not.toBe(priv.objectKey);
+  });
+
+  it('deduplication_is_opt_in: the connector and import call sites are unchanged', async () => {
+    // Both materialize content through this same service, and for them
+    // identical bytes are NOT identity: two Confluence pages may legitimately
+    // carry the same text, and collapsing them would repoint one page's
+    // ledger entry and revision link at the other page's source.
+    const bytes = makePdf('Two containers, one body of text.');
+    const flags = { scope: 'private' as const, sensitive: false, discard: false };
+    const file = { buffer: bytes, originalName: 'shared-text.pdf', mimeType: PDF_CONTENT_TYPE };
+
+    const first = await filesService.upload(userA, file, flags);
+    const second = await filesService.upload(userA, file, flags);
+    expect(second.objectKey).not.toBe(first.objectKey);
+    expect(second.duplicate).toBeFalsy();
+  });
+
+  it('discard_mode_never_deduplicates, in either direction', async () => {
+    // Discard mode writes no `file_metadata` row, so it has no checksum to
+    // match on and leaves none to be matched against. Nothing to decide.
+    const bytes = makePdf('Extracted and then discarded, twice.');
+    const first = await uploadAs(userA, bytes, { discard: true });
+    const second = await uploadAs(userA, bytes, { discard: true });
+    expect(first.duplicate).toBe(false);
+    expect(second.duplicate).toBe(false);
+    expect(second.objectKey).not.toBe(first.objectKey);
+  });
+
+  it('an_erased_source_can_be_uploaded_again: dedup never resurrects deleted bytes', async () => {
+    const bytes = makePdf('Uploaded, erased, and uploaded once more.');
+    const first = await uploadAs(userA, bytes);
+    // Deletion removes the metadata row (the saga's own path); the checksum
+    // goes with it, so the document is genuinely new again.
+    await tdb.pool.query('DELETE FROM file_metadata WHERE object_key = $1', [first.objectKey]);
+
+    const again = await uploadAs(userA, bytes);
+    expect(again.duplicate).toBe(false);
+    expect(again.objectKey).not.toBe(first.objectKey);
   });
 });
