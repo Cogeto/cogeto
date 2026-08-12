@@ -26,6 +26,7 @@
     "discard": "Discard original after extraction",
     "discardTitle": "Delete the original after extraction. Keep only the derived memories.",
     "discardWarning": "The uploaded file will be deleted once its facts are extracted. Only the verified memories are kept. This cannot be undone.",
+    "duplicate": "{{filename}} is already stored, so nothing was read or extracted again. Opening the document you already have.",
     "state": {
       "processing": "Extracting and verifying…",
       "done": "Done",

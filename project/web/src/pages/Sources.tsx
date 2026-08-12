@@ -115,6 +115,9 @@ export function Sources({ session }: { session: Session }) {
           onUploaded={(objectKey, filename) =>
             setUploads((list) => [...list, { objectKey, filename }])
           }
+          // Already stored (issue #536): open what they already have, rather
+          // than adding a row for an ingestion that correctly did not happen.
+          onDuplicate={(objectKey) => openDrawer({ sourceType: 'file', sourceId: objectKey })}
         />
       )}
       {/* Bulk import (5.3): manifest first, honest progress, durable summary. */}

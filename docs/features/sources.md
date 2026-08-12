@@ -120,6 +120,57 @@ Upload mints the object key, PUTs the bytes, then in **one transaction** inserts
 `file_metadata` through the memory port and enqueues the pipeline job. If that
 transaction aborts, a compensating delete removes the object.
 
+### The same file, twice (issue #536)
+
+Uploading bytes this owner already stores resolves to the **existing source**.
+Nothing is written, nothing is enqueued, and no extraction is paid for a second
+time; the response says `duplicate`, the Sources card names the file and opens
+the document already held, and a chat attachment settles immediately with that
+source's real numbers.
+
+This closes a real and measured hole. Bulk import has dedupped by content hash
+since V2.2 item 5.3, but only within a manifest, so the single upload and the
+paperclip had nothing: on one instance, **6 documents uploaded 17 times**
+accounted for **127 of 715 file-derived facts**, about 18% of that instance's
+document memory, each copy having been read, extracted, verified and embedded
+at full cost, and each entering reconciliation as a candidate against its own
+twin.
+
+The check reuses `file_metadata.checksum`, the sha256 stored with every upload
+since migration 0001, so the row shape stays frozen; migration 0059 adds only
+the `(owner_id, checksum)` index the per-upload lookup needs. Four properties
+bound it, and each is a test:
+
+- **Owner-scoped.** The same document held by two users is two documents.
+  Resolving one user's upload to another's source would hand back a key for a
+  source they cannot see, which would make deduplication a gating decision. It
+  is not one, any more than a project is.
+- **Admission-equal.** A `private` original cannot answer an upload asking for
+  `shared`, and a non-sensitive one cannot answer an upload marked sensitive.
+  Reusing it would ignore what was asked; rewriting the stored row's scope
+  would move already-extracted facts across the gate, which an upload is not
+  the place to do. A mismatch uploads normally.
+- **Opt-in per call site.** The controller and the paperclip ask for it. The
+  connector and import call sites do not, and are byte-identical to before: for
+  them identical content is not identity, and two Confluence pages may
+  legitimately carry the same text, so collapsing them would repoint one page's
+  ledger entry and revision link at the other page's source.
+- **Charged as what it is.** A duplicate consumes no daily upload quota,
+  because it consumes no pipeline. The request rate limit still applies.
+
+Discard mode is excluded by construction rather than by choice: it writes no
+`file_metadata` row, so it has neither a checksum to match on nor one to be
+matched against. Erasing a source takes its checksum with it, so the document
+can be uploaded again afterwards and is genuinely new. Two simultaneous
+identical uploads can still both pass the check; the index is deliberately
+**not** unique, because every instance that predates the migration already
+holds duplicates such a constraint would reject, and the race costs one
+redundant document rather than the eighteen percent above.
+
+Duplicates that already exist are left alone. Removing them means deleting
+facts other facts may contradict or cite, which is a deletion decision with a
+receipt, not a migration.
+
 Reading runs through the **reader seam**: PDF, DOCX, XLSX and CSV, selected by the
 magic bytes with the declared type and the extension as hints. A parse failure is
 permanent and **fabricates nothing**: the reader throws, the job dead-letters, and the

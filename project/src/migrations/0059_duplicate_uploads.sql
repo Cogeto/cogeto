@@ -1,0 +1,34 @@
+-- 0059: make the duplicate-upload lookup cheap (issue #536).
+--
+-- The same bytes uploaded twice produced two sources, two extractions and two
+-- parallel sets of facts. Measured on a real instance: 6 documents uploaded 17
+-- times, whose 11 redundant copies accounted for 127 of 715 file-derived facts,
+-- about 18% of that instance's document memory. Bulk import has dedupped by
+-- content hash since V2.2 item 5.3, but only within a manifest; the single
+-- upload and the chat paperclip had nothing.
+--
+-- No new column: `file_metadata.checksum` has carried the sha256 of every
+-- stored upload since migration 0001, and the row shape is frozen (F1
+-- handoff). All that was missing is an index, because the check now runs once
+-- per upload rather than once per import manifest. Without it the lookup is a
+-- sequential scan of every file row the instance holds.
+--
+-- Deliberately NOT unique. A unique index would be the stronger guarantee, and
+-- it is the wrong tool twice over: every instance that predates this migration
+-- already holds the duplicates it would reject, so the migration itself would
+-- fail on exactly the installs that need the fix; and cross-owner uniqueness
+-- would be a gating decision made by an index. The pair is owner-scoped and
+-- advisory, and two genuinely simultaneous identical uploads can still both
+-- pass the check. That race is bounded by the upload rate limit and costs one
+-- redundant document, which is the situation this migration improves rather
+-- than the one it must make impossible.
+--
+-- `checksum` is nullable (discard-mode and transient uploads never write a
+-- row at all), and a NULL never matches under `=`, so those paths keep their
+-- current behaviour by construction.
+--
+-- Reversal: DROP INDEX file_metadata_owner_checksum_idx. Nothing depends on
+-- the index for correctness, only for cost.
+
+CREATE INDEX IF NOT EXISTS file_metadata_owner_checksum_idx
+  ON file_metadata (owner_id, checksum);

@@ -35,6 +35,18 @@ export type FileMetadataRow = typeof fileMetadata.$inferSelect;
 export class MemoryFileStore {
   constructor(@Inject(DRIZZLE) private readonly db: Db) {}
 
+  /**
+   * The stored source already holding these exact bytes for this owner
+   * (issue #536), or null. The port form of `findStoredDuplicate` below, for
+   * the upload path — the files module reads no table itself (spec §15 rule 2).
+   */
+  async findDuplicate(
+    ownerId: string,
+    checksum: string,
+  ): Promise<{ objectKey: string; scope: MemoryScope; sensitive: boolean } | null> {
+    return findStoredDuplicate(this.db, ownerId, checksum);
+  }
+
   /** Insert the metadata row inside the caller's transaction (upload path). */
   async record(tx: Tx, row: FileMetadataInsert): Promise<void> {
     await tx.insert(fileMetadata).values({
@@ -133,6 +145,40 @@ export async function countFileSourceRefs(db: DbOrTx, ownerId: string): Promise<
     .from(fileMetadata)
     .where(eq(fileMetadata.ownerId, ownerId));
   return rows[0]?.n ?? 0;
+}
+
+/**
+ * The stored upload this owner ALREADY has for these exact bytes, if any
+ * (issue #536): the per-upload twin of the bulk manifest's batch check below.
+ *
+ * Owner-scoped, like every read here, and deliberately so: the same document
+ * held by two users is two documents, because deduplicating across owners
+ * would let one user's upload resolve to a source they cannot see. Dedup is a
+ * cost and clutter decision; it never touches the gate.
+ *
+ * Scope and sensitivity come back with the key because the caller must
+ * compare them: a duplicate is only a duplicate when it would have been
+ * admitted the same way (see FilesService.upload).
+ *
+ * Oldest first, so a repeated upload always resolves to the SAME original
+ * rather than drifting to whichever copy sorted first today.
+ */
+export async function findStoredDuplicate(
+  db: DbOrTx,
+  ownerId: string,
+  checksum: string,
+): Promise<{ objectKey: string; scope: MemoryScope; sensitive: boolean } | null> {
+  const rows = await db
+    .select({
+      objectKey: fileMetadata.objectKey,
+      scope: fileMetadata.scope,
+      sensitive: fileMetadata.sensitive,
+    })
+    .from(fileMetadata)
+    .where(and(eq(fileMetadata.ownerId, ownerId), eq(fileMetadata.checksum, checksum)))
+    .orderBy(asc(fileMetadata.uploadDate), asc(fileMetadata.objectKey))
+    .limit(1);
+  return rows[0] ?? null;
 }
 
 /** Which of these content hashes already exist as stored uploads for this

@@ -26,6 +26,7 @@
     "discard": "Supprimer l’original après l’extraction",
     "discardTitle": "Supprimez l’original après l’extraction. Conservez uniquement les souvenirs dérivés.",
     "discardWarning": "Le fichier importé sera supprimé dès que ses faits auront été extraits. Seuls les souvenirs vérifiés seront conservés. Cette action est irréversible.",
+    "duplicate": "{{filename}} is already stored, so nothing was read or extracted again. Opening the document you already have.",
     "state": {
       "processing": "Extraction et vérification…",
       "done": "Terminé",

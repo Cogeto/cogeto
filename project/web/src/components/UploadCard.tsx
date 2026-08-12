@@ -23,9 +23,16 @@ import { Card } from './ui';
 export function UploadCard({
   session,
   onUploaded,
+  onDuplicate,
 }: {
   session: Session;
   onUploaded: (objectKey: string, filename: string) => void;
+  /**
+   * These bytes were already stored, so there is nothing to watch and no new
+   * row (issue #536): the page opens the document the user already has
+   * instead of pretending an upload happened.
+   */
+  onDuplicate?: (objectKey: string, filename: string) => void;
 }) {
   const { t } = useTranslation('sources');
   // Prefill scope + discard from the user's saved defaults.
@@ -35,6 +42,7 @@ export function UploadCard({
   const [discard, setDiscard] = useState<boolean | null>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [duplicate, setDuplicate] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const effScope = scope ?? settings.data?.defaultScope ?? 'private';
@@ -43,13 +51,23 @@ export function UploadCard({
   const upload = useMutation({
     mutationFn: ({ file }: { file: File }) =>
       uploadFile(session, file, { scope: effScope, sensitive, discard: effDiscard }),
-    onSuccess: (result, { file }) => onUploaded(result.objectKey, file.name),
+    onSuccess: (result, { file }) => {
+      if (result.duplicate) {
+        // No pipeline ran, so there is nothing to poll: say so and show the
+        // document that already holds these bytes.
+        setDuplicate(file.name);
+        onDuplicate?.(result.objectKey, file.name);
+        return;
+      }
+      onUploaded(result.objectKey, file.name);
+    },
     onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
   });
 
   const submit = (file: File | undefined) => {
     if (!file) return;
     setError(null);
+    setDuplicate(null);
     const problem = validateUploadFile(file);
     if (problem) {
       setError(problem);
@@ -125,6 +143,11 @@ export function UploadCard({
       {effDiscard && (
         <p className="mt-2 text-xs text-amber-800 dark:text-amber-300">
           {t('upload.discardWarning')}
+        </p>
+      )}
+      {duplicate && (
+        <p className="mt-2 text-xs text-slate-600 dark:text-slate-300" role="status">
+          {t('upload.duplicate', { filename: duplicate })}
         </p>
       )}
       {error && (

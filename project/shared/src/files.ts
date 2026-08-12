@@ -14,6 +14,12 @@ export type FileProcessingState = 'processing' | 'done' | 'error';
 /** POST /api/files response — the object key IS the source id (1:1, F1 handoff). */
 export interface FileUploadedDto {
   objectKey: string;
+  /**
+   * The bytes were already stored, so `objectKey` is the EXISTING source and
+   * nothing was ingested a second time (issue #536). The surfaces say so
+   * rather than showing a new row that is not there.
+   */
+  duplicate: boolean;
 }
 
 export interface FileStatusDto {
