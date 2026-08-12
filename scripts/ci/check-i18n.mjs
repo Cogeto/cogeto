@@ -24,6 +24,15 @@
  *     `copy/no-typographic-dashes` enforces over the code, extended to the
  *     locale files, which ESLint does not parse).
  *
+ *  5. SOURCE DRIFT (V2.5 item 8.3 follow-up). Checks 1 to 3 compare KEY SETS
+ *     and placeholders; none of them looks at whether the words are current.
+ *     `i18n:sync` seeds a new key with the English text and then never
+ *     overwrites a value, so REWORDING an English string silently left every
+ *     other locale serving the previous wording, with a green build. This
+ *     catches it: an unregistered value must equal today's English, and a
+ *     registered translation must still name the English it was made from.
+ *     See `.translations.json` beside each locale root.
+ *
  * Plus HYGIENE, reported the same way:
  *
  *  5. UNUSED KEYS. A key present in `en` that no source file references.
@@ -36,6 +45,7 @@ import { join, relative } from 'node:path';
 import {
   SOURCE_LOCALE,
   baseKey,
+  englishFor,
   existingRoots,
   flatten,
   localesIn,
@@ -43,6 +53,8 @@ import {
   pluralCategoriesFor,
   pluralCategory,
   readNamespace,
+  readTranslations,
+  registeredSource,
 } from './i18n-keys.mjs';
 
 const problems = [];
@@ -65,6 +77,7 @@ const referencedKeys = new Set();
 
 for (const root of existingRoots()) {
   const locales = localesIn(root);
+  const register = readTranslations(root);
   if (!locales.includes(SOURCE_LOCALE)) {
     fail(`${root}: no "${SOURCE_LOCALE}" locale — English is the source of truth.`);
     continue;
@@ -147,6 +160,38 @@ for (const root of existingRoots()) {
                 `(${locale} has no "${category}" category)`,
             );
           }
+        }
+      }
+
+      // 5. Source drift: are these words still the English they came from?
+      for (const [key, value] of target) {
+        const english = englishFor(source, key);
+        if (typeof english !== 'string' || typeof value !== 'string') continue;
+        const registered = registeredSource(register, locale, namespace, key);
+        if (registered === undefined) {
+          // Unregistered means "not translated", and an untranslated value is
+          // the English text. Anything else is the previous wording, left
+          // behind by a reword that `i18n:sync` had no mandate to overwrite.
+          if (value !== english) {
+            fail(
+              `${root}/${locale}/${namespace}.json: STALE "${key}" holds text that is not the ` +
+                `current English and is not registered as a translation.\n` +
+                `      english now: ${JSON.stringify(english)}\n` +
+                `      this locale: ${JSON.stringify(value)}\n` +
+                '      Fix: `npm run i18n:sync -- --refresh` to take the new English, or ' +
+                '`npm run i18n:sync -- --register` if it is a real translation.',
+            );
+          }
+        } else if (registered !== english) {
+          // A genuine translation whose source moved: the words still read
+          // fine, and they now translate something English no longer says.
+          fail(
+            `${root}/${locale}/${namespace}.json: OUTDATED translation "${key}" — the English ` +
+              `it was made from has changed.\n` +
+              `      translated from: ${JSON.stringify(registered)}\n` +
+              `      english now:     ${JSON.stringify(english)}\n` +
+              '      Fix: retranslate, then `npm run i18n:sync -- --register`.',
+          );
         }
       }
 

@@ -2,8 +2,10 @@
 /**
  * sync-locales.mjs — backfill every locale from `en` (V2.0 item 3.5).
  *
- *     npm run i18n:sync           # fix the files
- *     npm run i18n:sync -- --dry  # show what would change, touch nothing
+ *     npm run i18n:sync                  # fill holes, prune orphans
+ *     npm run i18n:sync -- --dry         # show what would change, touch nothing
+ *     npm run i18n:sync -- --refresh     # take the new English into UNREGISTERED values
+ *     npm run i18n:sync -- --register    # record today's divergences as translations
  *
  * `npm run i18n:check` DETECTS locale drift and fails the build. This FIXES it,
  * so adding a string to a feature is one command instead of hand-editing the
@@ -29,7 +31,21 @@
  *  - **It never overwrites an existing value.** A translated string is left
  *    alone, always. That is what separates this from `i18n:add --force`, which
  *    resets a whole locale to English and would destroy the Croatian server
- *    catalogue.
+ *    catalogue. `--refresh` is the one narrow exception, and it touches only
+ *    values that are NOT registered as translations (see below).
+ *
+ * The two flags exist because that promise had a blind side (V2.5 item 8.3
+ * follow-up): rewording an English string leaves every other locale holding
+ * the PREVIOUS wording, and no check saw it, because key sets still matched.
+ *
+ *  - `--register` records, per locale, the English each diverging value was
+ *    made from, in `<root>/.translations.json`. That is what makes a
+ *    translation distinguishable from a stale placeholder at all.
+ *  - `--refresh` takes the current English into every UNREGISTERED value,
+ *    which by the invariant above is a placeholder holding old English.
+ *
+ * `npm run i18n:check` fails until one of the two has been used, so the drift
+ * cannot ride along in a green build the way it did once.
  *  - **It never translates.** Machine translation landing in product copy with
  *    nobody reviewing it is a person's decision, not a build script's.
  */
@@ -38,6 +54,7 @@ import { join, dirname } from 'node:path';
 import {
   SOURCE_LOCALE,
   baseKey,
+  englishFor,
   existingRoots,
   flatten,
   localesIn,
@@ -46,16 +63,26 @@ import {
   pluralCategoriesFor,
   pluralCategory,
   readNamespace,
+  readTranslations,
+  registeredSource,
+  translationsPath,
 } from '../ci/i18n-keys.mjs';
 
-const dry = process.argv.slice(2).includes('--dry');
+const flags = process.argv.slice(2);
+const dry = flags.includes('--dry');
+const refresh = flags.includes('--refresh');
+const register = flags.includes('--register');
 
 let added = 0;
 let removed = 0;
 let touched = 0;
+let refreshed = 0;
+let registered = 0;
 
 for (const root of existingRoots()) {
   const namespaces = namespacesIn(root, SOURCE_LOCALE);
+  const book = readTranslations(root);
+  let bookChanged = false;
   for (const locale of localesIn(root)) {
     if (locale === SOURCE_LOCALE) continue;
     const categories = pluralCategoriesFor(locale);
@@ -86,28 +113,62 @@ for (const root of existingRoots()) {
 
       const out = [];
       const localAdds = [];
+      const localRefreshed = [];
+      const localRegistered = [];
       for (const [key, english] of wanted) {
         // Keep the locale's own value whenever it has one: a translation is
         // never overwritten, only a hole is filled.
-        if (target.has(key)) {
-          out.push([key, target.get(key)]);
-        } else {
+        if (!target.has(key)) {
           out.push([key, english]);
           localAdds.push(key);
+          continue;
         }
+        const value = target.get(key);
+        const source = englishFor(flatten(readNamespace(root, SOURCE_LOCALE, namespace)), key);
+        const known = registeredSource(book, locale, namespace, key);
+        const diverges =
+          typeof value === 'string' && typeof source === 'string' && value !== source;
+
+        if (register && diverges) {
+          // A value that differs from English is a translation, and this
+          // records the English it was made from, so a later reword is
+          // reported as an outdated translation rather than passing silently.
+          ((book[locale] ??= {})[namespace] ??= {})[key] = source;
+          bookChanged = true;
+          localRegistered.push(key);
+          out.push([key, value]);
+          continue;
+        }
+        if (refresh && diverges && known === undefined) {
+          // Unregistered and diverging is, by the invariant, a placeholder
+          // holding the PREVIOUS English. Taking the new wording is a repair.
+          out.push([key, source]);
+          localRefreshed.push(key);
+          continue;
+        }
+        out.push([key, value]);
       }
       const wantedKeys = new Set(wanted.map(([k]) => k));
       const orphans = [...target.keys()].filter((k) => !wantedKeys.has(k));
 
-      if (localAdds.length === 0 && orphans.length === 0 && existsSync(path)) continue;
+      const changed =
+        localAdds.length + orphans.length + localRefreshed.length + localRegistered.length;
+      if (changed === 0 && existsSync(path)) continue;
 
       touched += 1;
       added += localAdds.length;
       removed += orphans.length;
+      refreshed += localRefreshed.length;
+      registered += localRegistered.length;
       const label = `${dry ? 'would update' : 'update'} ${path}`;
-      console.log(`${label}  +${localAdds.length} -${orphans.length}`);
+      console.log(
+        `${label}  +${localAdds.length} -${orphans.length}` +
+          `${localRefreshed.length ? ` ~${localRefreshed.length}` : ''}` +
+          `${localRegistered.length ? ` R${localRegistered.length}` : ''}`,
+      );
       for (const key of localAdds) console.log(`    + ${key}`);
       for (const key of orphans) console.log(`    - ${key}  (orphan, not in ${SOURCE_LOCALE})`);
+      for (const key of localRefreshed) console.log(`    ~ ${key}  (took the current English)`);
 
       if (!dry) {
         mkdirSync(dirname(path), { recursive: true });
@@ -115,6 +176,20 @@ for (const root of existingRoots()) {
       }
     }
   }
+  if (bookChanged && !dry) {
+    writeFileSync(translationsPath(root), `${JSON.stringify(sortDeep(book), null, 2)}\n`, 'utf8');
+    console.log(`update ${translationsPath(root)}`);
+  }
+}
+
+/** Stable key order, so the register diffs like a text file. */
+function sortDeep(value) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return value;
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort()
+      .map((k) => [k, sortDeep(value[k])]),
+  );
 }
 
 if (touched === 0) {
@@ -122,7 +197,9 @@ if (touched === 0) {
 } else {
   console.log(
     `\ni18n:sync: ${dry ? 'would touch' : 'touched'} ${touched} file(s), ` +
-      `${added} key(s) added, ${removed} orphan(s) removed.`,
+      `${added} key(s) added, ${removed} orphan(s) removed` +
+      `${refreshed ? `, ${refreshed} value(s) refreshed to the current English` : ''}` +
+      `${registered ? `, ${registered} translation(s) registered` : ''}.`,
   );
   if (!dry) {
     console.log('Run `npm run i18n:check` to confirm, then commit the locale files.');

@@ -114,6 +114,60 @@ export function readNamespace(root, locale, namespace) {
   }
 }
 
+/**
+ * The register of DELIBERATE translations, one file per locale root
+ * (V2.5 item 8.3 follow-up).
+ *
+ * The invariant it exists to make checkable: **an untranslated value equals
+ * the current English.** `i18n:sync` seeds every new key with the English
+ * text and, by design, never overwrites a value afterwards, so rewording an
+ * English string leaves every other locale holding the OLD English while the
+ * key-set check still passes. Nothing caught that.
+ *
+ * A value may legitimately differ from English for exactly one reason: it was
+ * translated. So a translated value is REGISTERED here, together with the
+ * English it was made from, which makes both failures visible:
+ *
+ *  - unregistered and different from English → stale placeholder;
+ *  - registered but the recorded English no longer matches → the source moved
+ *    under a real translation, so it needs retranslating.
+ *
+ * Shape: `{ "<locale>": { "<namespace>": { "<flat.key>": "<english then>" } } }`.
+ * It lives beside the locale directories rather than inside one, so a
+ * translator's folder still holds nothing but their own namespace files.
+ */
+export const TRANSLATIONS_FILE = '.translations.json';
+
+export function translationsPath(root) {
+  return join(root, TRANSLATIONS_FILE);
+}
+
+export function readTranslations(root) {
+  try {
+    return JSON.parse(readFileSync(translationsPath(root), 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+/** The English a key was translated from, or undefined when unregistered. */
+export function registeredSource(register, locale, namespace, key) {
+  return register?.[locale]?.[namespace]?.[key];
+}
+
+/**
+ * The English value a target key should be compared against. A plural
+ * category the source language does not have (Croatian `_few`, French
+ * `_many`) has no English twin, so it falls back to English `_other`, which
+ * is what `i18n:sync` seeded it from.
+ */
+export function englishFor(source, key) {
+  if (source.has(key)) return source.get(key);
+  const category = pluralCategory(key);
+  if (category === null) return undefined;
+  return source.get(`${baseKey(key)}_other`);
+}
+
 /** Every root that actually exists on disk (the server root is optional). */
 export function existingRoots() {
   return LOCALE_ROOTS.filter((root) => localesIn(root).length > 0);
