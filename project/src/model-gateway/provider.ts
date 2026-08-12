@@ -37,6 +37,26 @@ export function extractStatus(error: unknown): number | undefined {
 }
 
 /** 429/5xx/network are retryable; any other HTTP status is fatal (ruling 1). */
+/**
+ * The error a fetch raises when the CALLER's signal fires, as opposed to a
+ * timeout signal. Node names the two differently, which is exactly what lets
+ * a deliberate stop be told apart from a wedged socket.
+ */
+export function isCallerAbort(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
+/**
+ * A call the caller stopped. Not a provider failure: it is never retried, and
+ * consumers that record failures record it as its own thing (issue #532).
+ */
+export class ModelGatewayAbortedError extends ModelGatewayError {
+  constructor(provider: string, cause?: unknown) {
+    super(`${provider} call was stopped by the caller`, false, cause);
+    this.name = 'ModelGatewayAbortedError';
+  }
+}
+
 export const isRetryableStatus = (status: number | undefined): boolean =>
   status === undefined || status === 429 || status >= 500;
 
@@ -69,6 +89,13 @@ export async function callWithRetry<T>(
         }
         throw error;
       }
+      // A CALLER abort is fatal, never retried (issue #532). An abort carries
+      // no HTTP status, and a status-less failure is classified retryable, so
+      // without this a user pressing Stop would retry the very call they just
+      // stopped: generated again, billed again. The unsignalled ceiling and
+      // the per-tier timeouts raise `TimeoutError`, not `AbortError`, so they
+      // keep the retry behaviour issue #496 gave them.
+      if (isCallerAbort(error)) throw new ModelGatewayAbortedError(provider, error);
       const status = extractStatus(error);
       const retryable = isRetryableStatus(status);
       if (retryable && attempt < maxRetries) {
@@ -116,6 +143,17 @@ async function describeErrorBody(response: Response): Promise<string> {
  */
 export const UNSIGNALLED_CALL_CEILING_MS = 600_000;
 
+/**
+ * A caller's signal ANDed with the ceiling, never instead of it (issue #532).
+ * Chat's Stop passes a signal so the provider call actually ends; before this
+ * existed, passing one would have silently removed the wedged-socket guard
+ * that turns a dead connection into an ordinary retried failure.
+ */
+function withCeiling(signal?: AbortSignal): AbortSignal {
+  const ceiling = AbortSignal.timeout(UNSIGNALLED_CALL_CEILING_MS);
+  return signal ? AbortSignal.any([signal, ceiling]) : ceiling;
+}
+
 /** POST JSON and parse the JSON response; non-2xx throws a ProviderHttpError. */
 export async function postJson<T>(
   url: string,
@@ -127,7 +165,7 @@ export async function postJson<T>(
     method: 'POST',
     headers: { 'content-type': 'application/json', ...headers },
     body: JSON.stringify(body),
-    signal: signal ?? AbortSignal.timeout(UNSIGNALLED_CALL_CEILING_MS),
+    signal: withCeiling(signal),
   });
   if (!response.ok) {
     throw new ProviderHttpError(await describeErrorBody(response), response.status);
@@ -146,7 +184,7 @@ export async function postStream(
     method: 'POST',
     headers: { 'content-type': 'application/json', ...headers },
     body: JSON.stringify(body),
-    signal: signal ?? AbortSignal.timeout(UNSIGNALLED_CALL_CEILING_MS),
+    signal: withCeiling(signal),
   });
   if (!response.ok) {
     throw new ProviderHttpError(await describeErrorBody(response), response.status);

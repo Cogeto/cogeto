@@ -105,6 +105,46 @@ embedding model), erased by the answer redaction cascade with the answer.
 Thresholds are versioned per embedding model in
 `retrieval/ambiguity-config.ts` and an unknown model fails loudly.
 
+## Stopping an answer (issue #532)
+
+While an answer streams, the send control becomes **Stop**. What was written is
+**kept**: it is stored by the ordinary path, flagged, and the conversation
+carries on. A truncated reply says it was stopped, because one that looks
+complete reads as a bug.
+
+Three things make it honest rather than cosmetic:
+
+- **It ends generation, not just reading.** `CompletionRequest` carries an
+  `AbortSignal` down to the provider call, so the model stops and stops
+  billing. All four adapters support it: Mistral's `RequestOptions` extends
+  `RequestInit`, and OpenAI and Anthropic share a `postStream` helper that
+  already took a signal. The signal is ANDed with the unsignalled ceiling, so
+  passing one never removes the wedged-socket guard.
+- **Stop is EXPLICIT, never inferred from a disconnect.** The stream announces
+  a generation id before its first token and Stop names it. This matters
+  because the client already aborts its fetch when the user switches
+  conversations, and that deliberately keeps storing the full answer: if a
+  disconnect meant "stop", switching threads or closing a tab would start
+  truncating answers that were fine.
+- **A stopped stream is still charged.** The budget decorator charges in a
+  `finally`, so an interrupted answer bills the tokens the provider actually
+  produced. Charging only on a clean finish would make Stop free, which is a
+  hole in the daily budget rather than a feature.
+
+Two smaller decisions. A caller abort is **fatal, never retried**: an abort
+carries no HTTP status, and a status-less failure is classified retryable, so
+without that a Stop would retry the very call it just stopped. And a stop is
+recorded distinctly from a provider failure in the egress audit, so the failure
+rate stays meaningful.
+
+Stopped before any answer text (a reasoning model still thinking) stores
+nothing: an empty bubble is noise, not history.
+
+**The known limit**: the live-generation registry is in-process, so with more
+than one app replica a Stop can land on a replica that is not holding the
+stream and do nothing. The compose stack runs a single `app`, so this is
+correct today; scaling out needs sticky routing or a notify channel.
+
 ## Finding a conversation (issue #530)
 
 The rail carries a search box. While it has text the project sections give way

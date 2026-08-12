@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { ModelGatewayAbortedError } from './provider';
 import { ModelGateway } from './model-gateway.service';
 import type {
   CompletionRequest,
@@ -102,7 +103,11 @@ export class AuditedModelGateway extends ModelGateway {
       // `finally`, not "after the loop": an SSE consumer that disconnects
       // mid-answer abandons the generator, and the prompt had already egressed
       // by then. The entry is written with what actually moved.
-      if (failure)
+      // A user pressing Stop is not a provider failure (issue #532): counting
+      // it as one would make the egress failure rate meaningless the moment
+      // Stop got used. What egressed is still recorded, because the prompt
+      // left the box either way.
+      if (failure && !(failure instanceof ModelGatewayAbortedError))
         await this.recordFailure('completeStream', tier, started, failure, request.answerOption);
       else
         await this.record(

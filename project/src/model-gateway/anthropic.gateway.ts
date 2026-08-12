@@ -121,6 +121,8 @@ export class AnthropicModelGateway extends ModelGateway {
             stream: true,
           },
         ),
+        // Stop must end GENERATION, not merely reading (issue #532).
+        request.signal,
       ),
     );
     for await (const data of sseData(response)) {

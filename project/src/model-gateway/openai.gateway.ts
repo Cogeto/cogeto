@@ -254,13 +254,19 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
     tier: 'pipeline' | 'answer' | 'embedding' | 'vision',
     model: string,
     fn: (signal?: AbortSignal) => Promise<T>,
+    /** The chat stream's Stop (issue #532), ANDed with the tier timeout so
+     * neither guard removes the other. */
+    caller?: AbortSignal,
   ): Promise<T> {
     const timeoutMs = this.tierTimeoutsMs?.[tier];
     const suffix = tier === 'embedding' ? 'EMBEDDINGS' : tier.toUpperCase();
     try {
       return await callWithRetry(this.label, async () => {
         try {
-          return await fn(timeoutMs !== undefined ? AbortSignal.timeout(timeoutMs) : undefined);
+          const tierSignal = timeoutMs !== undefined ? AbortSignal.timeout(timeoutMs) : undefined;
+          const effective =
+            caller && tierSignal ? AbortSignal.any([caller, tierSignal]) : (caller ?? tierSignal);
+          return await fn(effective);
         } catch (error) {
           // Only an EXPLICIT per-tier timeout is the fatal local-inference
           // diagnosis below; the unsignalled hosted ceiling (issue #496)
@@ -409,13 +415,17 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
     // Adaptation happens while acquiring the stream, before the first yield,
     // so a retried request can never interleave with emitted deltas.
     const response = await this.adaptiveCall(model, () =>
-      this.call(tier, model, (signal) =>
-        postStream(
-          `${this.baseUrl}/chat/completions`,
-          this.headers,
-          this.chatBody(request, { stream: true }),
-          signal,
-        ),
+      this.call(
+        tier,
+        model,
+        (signal) =>
+          postStream(
+            `${this.baseUrl}/chat/completions`,
+            this.headers,
+            this.chatBody(request, { stream: true }),
+            signal,
+          ),
+        request.signal,
       ),
     );
     for await (const data of sseData(response)) {

@@ -39,6 +39,15 @@ export interface CompletionRequest {
    * an admin retiring a choice must not break the next question a user asks.
    */
   answerOption?: string;
+  /**
+   * Abort the call in flight (issue #532). Set only by the chat stream, whose
+   * Stop button must end GENERATION and not merely stop reading: without it
+   * the provider runs to completion and bills for an answer nobody sees.
+   *
+   * Combined with, never replacing, the seam's unsignalled ceiling: passing a
+   * caller signal must not silently remove the wedged-socket guard.
+   */
+  signal?: AbortSignal;
 }
 
 /**

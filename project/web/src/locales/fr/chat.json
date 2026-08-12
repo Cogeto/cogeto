@@ -8,7 +8,8 @@
   "answer": {
     "standsOn": "S’appuie sur",
     "attribution": "Cogeto · depuis votre mémoire",
-    "askedByAt": "Vous · {{time}}"
+    "askedByAt": "Vous · {{time}}",
+    "stopped": "Stopped. This answer is what had been written when you stopped it."
   },
   "empty": {
     "title": "Interrogez votre mémoire.",
@@ -29,6 +30,8 @@
     "label": "Poser une question",
     "placeholder": "Interrogez votre mémoire…",
     "send": "Envoyer",
+    "stop": "Stop generating",
+    "stopHint": "Stops the answer and keeps what has been written so far.",
     "hint": "Entrée pour envoyer · Maj+Entrée pour une nouvelle ligne · chaque affirmation montre ce qu’elle peut prouver"
   },
   "remember": {

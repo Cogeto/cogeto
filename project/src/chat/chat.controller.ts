@@ -16,6 +16,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import type { Response } from 'express';
 import { z } from 'zod';
 import type {
@@ -45,6 +46,7 @@ import { DocumentUploadInterceptor } from '../files/index';
 import { ChatAttachmentsService } from './chat-attachments.service';
 import { answersCiting } from './source-listing';
 import { ChatService } from './chat.service';
+import { GenerationRegistry } from './generation-registry';
 
 /** How many attachments one message can carry. */
 const MAX_ATTACHMENTS_PER_MESSAGE = 4;
@@ -117,6 +119,12 @@ export class ChatController {
     private readonly attachments: ChatAttachmentsService,
     @Inject(DRIZZLE) private readonly db: Db,
     @Inject(SSE_LIMITS) private readonly sse: SseLimits,
+    /** The live-generation registry Stop names (issue #532). Appended LAST so
+     * no existing wiring shifts: this constructor is built by hand in the SSE
+     * limits spec, and inserting a parameter in the middle silently moved
+     * every argument after it, which is the positional hazard the boundary
+     * contract names. */
+    private readonly generations: GenerationRegistry = new GenerationRegistry(),
   ) {}
 
   /**
@@ -158,6 +166,22 @@ export class ChatController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ChatAttachmentDto[]> {
     return this.attachments.listForConversation(request.principal, id);
+  }
+
+  /**
+   * Stop a generation in flight (issue #532), keeping what was written.
+   *
+   * Explicit by design: a disconnect must NOT mean stop, or switching
+   * conversations would start truncating answers that were fine. Idempotent,
+   * and a generation that already finished answers `false` rather than
+   * erroring, because losing that race is ordinary.
+   */
+  @Post('generations/:id/stop')
+  stop(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): { stopped: boolean } {
+    return { stopped: this.generations.stop(id, request.principal.userId) };
   }
 
   /**
@@ -339,10 +363,17 @@ export class ChatController {
       maxMs > 0 ? setTimeout(() => controller.abort(new Error('duration')), maxMs) : undefined;
     resetIdle();
 
+    // The generation id goes out BEFORE any token, so Stop is available from
+    // the first frame rather than only once something has been written.
+    const generationId = randomUUID();
+    const stopSignal = this.generations.open(generationId, userId);
+    write({ type: 'generation', generationId });
+
     const stream = this.chat.ask(request.principal, parsed.content, parsed.conversationId, {
       thinking: parsed.thinking,
       attachmentIds: parsed.attachmentIds,
       widen: parsed.widen,
+      stopSignal,
     });
     const iterator = stream[Symbol.asyncIterator]();
     try {
@@ -379,6 +410,7 @@ export class ChatController {
         write({ type: 'error', message: 'answer generation failed, try again' });
       }
     } finally {
+      this.generations.close(generationId);
       if (idleTimer) clearTimeout(idleTimer);
       if (maxTimer) clearTimeout(maxTimer);
       const remaining = (this.activeStreams.get(userId) ?? 1) - 1;

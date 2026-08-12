@@ -88,6 +88,9 @@ export interface ChatMessageDto {
    * for user rows, unlensed turns and rows older than the feature.
    */
   lens: ChatLensDto | null;
+  /** The user stopped this answer mid-generation (issue #532). What was
+   * written was kept; this is why it may end mid-sentence. */
+  stopped: boolean;
   createdAt: string;
 }
 
@@ -216,6 +219,9 @@ export type ChatStreamEvent =
    * disclosure. Interleaves with `token` events; absent entirely for a
    * non-reasoning model. */
   | { type: 'thinking'; text: string }
+  /** The handle Stop names (issue #532). Sent before any token, so the button
+   * is live from the first frame rather than only once text exists. */
+  | { type: 'generation'; generationId: string }
   | { type: 'sources'; facts: ChatFactDto[] }
   | { type: 'token'; text: string }
   | {
@@ -239,6 +245,9 @@ export type ChatStreamEvent =
       /** What the project retrieval lens did on this turn (V2.5 item 8.3).
        * Mirrors the stored record. */
       lens?: ChatLensDto | null;
+      /** The user stopped this answer; the content is what had been written
+       * by then and it is stored exactly as shown. */
+      stopped?: boolean;
       /** Present when the lens was applied and the project's sources held
        * nothing above the relevance floor: the one-tap widen offer. Cogeto
        * never widens silently, so this offer IS the bridge (the research
