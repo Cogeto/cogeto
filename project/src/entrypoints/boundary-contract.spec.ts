@@ -391,13 +391,14 @@ const RAW_SQL_EXCEPTIONS: Readonly<Record<string, string>> = {
   // documents it as the required step for an instance upgrading from the 1.x
   // line. It goes when the 2.0 release notes can declare that path closed.
   'entrypoints/erase-task-conclusions.ts': 'CLI: erases task_conclusion provenance before 0035',
-  // Issue #538: the one-shot that removes the duplicate file sources
-  // predating the upload deduplication of #536. It reads `file_metadata`,
-  // `memory` and `chat_message` to decide WHICH copy survives, then performs
-  // every deletion through the saga rather than by hand. A query is the only
-  // way to ask "which of these copies do stored answers cite", and asking it
-  // wrongly is what would cost an answer.
-  'entrypoints/dedupe-file-sources.ts': 'CLI: finds duplicate file sources, deletes via the saga',
+  // Issue #538: the evidence query behind `dedupe-file-sources`, the one-shot
+  // that removes the duplicate file sources predating #536. It reads
+  // `file_metadata`, `memory` and `chat_message` to decide WHICH copy
+  // survives; the command itself performs every deletion through the saga and
+  // names no table at all. A query is the only way to ask "which of these
+  // copies do stored answers cite", and asking it wrongly is what would cost
+  // an answer.
+  'entrypoints/dedupe-plan.ts': 'CLI: the duplicate-file query behind dedupe-file-sources',
 };
 
 // ---------------------------------------------------------------------------
