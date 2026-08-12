@@ -41,18 +41,15 @@ function sourceKind(sourceType: string): string {
   return key ? i18next.t(key) : sourceType.replace(/_/g, ' ');
 }
 
-export function CitationChip({
-  session,
-  memoryId,
-  fact,
-  onOpen,
-}: {
-  session: Session;
-  memoryId?: string;
-  fact?: ChatFactDto;
-  onOpen?: (memoryId: string) => void;
-}) {
-  const { t } = useTranslation('chat');
+/**
+ * The resolved fact behind a citation, however the caller got there: the SSE
+ * sources event on a live turn, or `GET /api/memories/:id` on stored history.
+ *
+ * Extracted (issue #534) so the inline superscript, the footnote row and the
+ * chip all read the SAME resolution. They share one react-query key per
+ * memory, so an answer citing one fact five times still makes one request.
+ */
+export function useCitationTarget(session: Session, memoryId?: string, fact?: ChatFactDto) {
   const lookupId = fact ? undefined : memoryId;
   const { data } = useQuery({
     queryKey: ['memory', lookupId],
@@ -62,7 +59,6 @@ export function CitationChip({
     // governance mutation; this stale window just bounds passive drift.
     staleTime: CITATION_STALE_MS,
   });
-  const { data: me } = useQuery({ queryKey: ['me'], queryFn: () => fetchMe(session) });
 
   const target = fact
     ? {
@@ -89,6 +85,24 @@ export function CitationChip({
           sourceId: data.sourceId,
         }
       : null;
+
+  return target;
+}
+
+export function CitationChip({
+  session,
+  memoryId,
+  fact,
+  onOpen,
+}: {
+  session: Session;
+  memoryId?: string;
+  fact?: ChatFactDto;
+  onOpen?: (memoryId: string) => void;
+}) {
+  const { t } = useTranslation('chat');
+  const target = useCitationTarget(session, memoryId, fact);
+  const { data: me } = useQuery({ queryKey: ['me'], queryFn: () => fetchMe(session) });
 
   // A web-sourced fact resolves its page for the URL + fetch-time treatment
   // (built in); the drawer still holds the full provenance.
@@ -176,5 +190,111 @@ export function CitationChip({
     <a href={`/memories?open=${target.memoryId}`} title={title || undefined} className={className}>
       {label}
     </a>
+  );
+}
+
+/**
+ * An inline citation, as a superscript number (issue #534).
+ *
+ * The chip below carries fifteen to twenty-five characters of mono text, and
+ * putting that INSIDE a sentence, once per claim, is what made a well-cited
+ * answer hard to read. The number keys into the numbered source list at the
+ * end of the answer: the same convention printed prose has used for
+ * centuries, for exactly this problem. Provenance stays per-claim; it stops
+ * shouting mid-sentence.
+ *
+ * A warning still catches the eye inline, because a contradicted or uncertain
+ * fact colours the number. That is the one thing a bare footnote marker would
+ * have cost, so it is bought back deliberately.
+ *
+ * `select-none` keeps the marker, and its screen-reader text, out of a manual
+ * selection: copying a paragraph should yield the sentences, not the
+ * apparatus.
+ */
+export function CitationRef({
+  session,
+  memoryId,
+  fact,
+  index,
+  onOpen,
+}: {
+  session: Session;
+  memoryId: string;
+  fact?: ChatFactDto;
+  /** 1-based, in first-cited order: the number shown and the footnote key. */
+  index: number;
+  onOpen?: (memoryId: string) => void;
+}) {
+  const { t } = useTranslation('chat');
+  const target = useCitationTarget(session, memoryId, fact);
+  const status = target?.status;
+  const tone =
+    status === 'contradicted'
+      ? 'text-red-600 dark:text-red-300'
+      : status === 'uncertain'
+        ? 'text-amber-700 dark:text-amber-300'
+        : target?.past
+          ? 'text-slate-400'
+          : 'text-brand-teal-ink dark:text-brand-teal';
+  const className =
+    `mx-px inline-block select-none align-super font-mono text-[0.62rem] font-semibold ` +
+    `leading-none transition-opacity hover:opacity-70 ${tone}`;
+  const label = (
+    <>
+      {index}
+      <span className="sr-only"> {t('citation.refScreenReader', { index })}</span>
+    </>
+  );
+  return onOpen && target ? (
+    <button
+      type="button"
+      onClick={() => onOpen(target.memoryId)}
+      title={target.claim ?? undefined}
+      className={className}
+    >
+      {label}
+    </button>
+  ) : (
+    <span className={className}>{label}</span>
+  );
+}
+
+/**
+ * One numbered entry in the answer's source list (issue #534).
+ *
+ * The footer used to repeat the inline chips, which made it a duplicate of
+ * information the prose already carried. Now it IS the detail: the number the
+ * superscript points at, the chip, and the first line of the fact itself, so
+ * three cited notes can be told apart without opening any of them.
+ */
+export function CitationFootnote({
+  session,
+  memoryId,
+  fact,
+  index,
+  onOpen,
+}: {
+  session: Session;
+  memoryId: string;
+  fact?: ChatFactDto;
+  index: number;
+  onOpen?: (memoryId: string) => void;
+}) {
+  const target = useCitationTarget(session, memoryId, fact);
+  const claim = target?.claim?.replace(/\s+/g, ' ').trim();
+  return (
+    <li className="flex items-baseline gap-2">
+      <span className="w-4 shrink-0 text-right font-mono text-[0.62rem] text-slate-400">
+        {index}
+      </span>
+      <span className="flex min-w-0 flex-wrap items-baseline gap-1.5">
+        <CitationChip session={session} memoryId={memoryId} fact={fact} onOpen={onOpen} />
+        {claim && (
+          <span className="min-w-0 text-xs leading-relaxed text-slate-500">
+            {claim.length > 120 ? `${claim.slice(0, 120)}…` : claim}
+          </span>
+        )}
+      </span>
+    </li>
   );
 }

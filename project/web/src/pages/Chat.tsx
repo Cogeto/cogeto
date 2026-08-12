@@ -15,6 +15,7 @@ import {
   ALLOWED_UPLOAD_EXTENSIONS,
   mapMarkersToCitations,
   mapUnsourcedMarkers,
+  plainAnswerText,
   scanAnswer,
 } from '@cogeto/shared';
 import {
@@ -35,7 +36,7 @@ import {
 import type { Session } from '../auth/oidc';
 import { AttachmentCard, TransientMeaningLine } from '../components/AttachmentCard';
 import { ChatMarkdown } from '../components/ChatMarkdown';
-import { CitationChip } from '../components/CitationChip';
+import { CitationFootnote, CitationRef } from '../components/CitationChip';
 import { ConversationSidebar } from '../components/ConversationSidebar';
 import { ProjectPickerDrawer } from '../components/ProjectPickerDrawer';
 import { MARKER_CLASSES } from '../components/projects-model';
@@ -64,6 +65,42 @@ import { validateUploadFile } from '../upload-validation';
  * canonicalized here from the model's `[F#]`/`[U]` markers via the SSE sources
  * map, and every non-conforming token is stripped — no raw marker reaches screen.
  */
+/**
+ * Copy the answer as READING TEXT (issue #534).
+ *
+ * The prose alone: no superscripts, no citation tokens, nothing the apparatus
+ * added. It reuses `plainAnswerText()`, the same helper the search snippets
+ * use, so there is one definition of "the answer without its plumbing" and a
+ * token can never leak into a paste through a second, drifting one.
+ *
+ * The live turn's text carries the model's short `[F#]` markers, so it is
+ * canonicalized first: copying mid-stream must not paste `[F2]`.
+ */
+function CopyAnswer({ text }: { text: string }) {
+  const { t } = useTranslation('chat');
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    void navigator.clipboard
+      .writeText(plainAnswerText(text))
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      })
+      .catch(() => undefined);
+  };
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      aria-label={t('answer.copy')}
+      title={t('answer.copy')}
+      className="shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[0.62rem] uppercase tracking-[0.08em] text-slate-400 transition-colors hover:bg-surface hover:text-brand-teal-ink dark:hover:text-brand-teal"
+    >
+      {copied ? t('answer.copied') : t('answer.copy')}
+    </button>
+  );
+}
+
 function MessageBody({
   session,
   content,
@@ -110,10 +147,11 @@ function MessageBody({
         segment.kind === 'unsourced' ? (
           <UnsourcedChip />
         ) : (
-          <CitationChip
+          <CitationRef
             session={session}
             memoryId={segment.memoryId}
             fact={factFor(segment.memoryId)}
+            index={citedIds.indexOf(segment.memoryId) + 1}
             onOpen={onOpenMemory}
           />
         )
@@ -137,21 +175,41 @@ function MessageBody({
       ) : (
         rendered
       )}
+      {citedIds.length === 0 && !hasUnsourced && (
+        // An answer with no sources still gets the control: copying is about
+        // the prose, not the provenance.
+        <div className="mt-2 flex justify-end">
+          <CopyAnswer text={canonical} />
+        </div>
+      )}
       {(citedIds.length > 0 || hasUnsourced) && (
-        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-dashed border-slate-200 pt-3">
-          <span className="font-mono text-[0.64rem] uppercase tracking-[0.12em] text-slate-400">
-            {t('answer.standsOn')}
-          </span>
-          {citedIds.map((id) => (
-            <CitationChip
-              key={id}
-              session={session}
-              memoryId={id}
-              fact={factFor(id)}
-              onOpen={onOpenMemory}
-            />
-          ))}
-          {hasUnsourced && <UnsourcedChip />}
+        <div className="mt-4 border-t border-dashed border-slate-200 pt-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="font-mono text-[0.64rem] uppercase tracking-[0.12em] text-slate-400">
+              {t('answer.sources')}
+            </span>
+            <CopyAnswer text={canonical} />
+          </div>
+          {/* The numbered key the superscripts point at (issue #534). Each
+              entry quotes its fact, so several cited notes are told apart
+              here rather than by opening each one. */}
+          <ol className="mt-1.5 space-y-1">
+            {citedIds.map((id, position) => (
+              <CitationFootnote
+                key={id}
+                session={session}
+                memoryId={id}
+                fact={factFor(id)}
+                index={position + 1}
+                onOpen={onOpenMemory}
+              />
+            ))}
+          </ol>
+          {hasUnsourced && (
+            <div className="mt-1.5">
+              <UnsourcedChip />
+            </div>
+          )}
         </div>
       )}
     </div>

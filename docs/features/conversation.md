@@ -79,6 +79,32 @@ The renderer treats unsourced spans with a calm affordance ("Model knowledge, no
 from your sources"), deliberately distinct from every citation chip. The marking is
 a feature, not a warning.
 
+### Where the provenance sits (issue #534)
+
+Inline, a citation is a **superscript number**. The chip carries fifteen to
+twenty-five characters of mono text, and putting that inside a sentence once
+per claim is what made a well-cited answer hard to read; the footer then
+repeated the same chips, so the prose was paying for information already
+collected below.
+
+The number keys into a **numbered source list** at the end of the answer, each
+entry showing the chip and the first line of the fact it stands on. The
+convention printed prose has used for centuries, for exactly this problem.
+Provenance stays per-claim and stops shouting mid-sentence, and the footer
+stops being a duplicate and becomes the key.
+
+The one thing a bare footnote marker would have cost is bought back: a
+**contradicted or uncertain fact colours its number**, so a warning still
+catches the eye inline.
+
+Two things follow from treating the marks as apparatus rather than text. They
+are `select-none`, so dragging a selection across a paragraph yields the
+sentences and not the machinery (the chips' screen-reader text used to be
+copied too, invisibly). And each answer carries a **copy** control that puts
+the prose alone on the clipboard, through the same `plainAnswerText()` helper
+the search snippets use, so there is one definition of "the answer without its
+plumbing" and a citation token cannot leak through a second, drifting one.
+
 ## Ambiguity: three behaviours, decided deterministically (V2.3 item 6.3)
 
 After fusion, the grounded answer path computes the spec §7.5 decision over

@@ -6,10 +6,12 @@
     "you": "Vi"
   },
   "answer": {
-    "standsOn": "Temelji se na",
     "attribution": "Cogeto · iz vašeg pamćenja",
     "askedByAt": "Vi · {{time}}",
-    "stopped": "Stopped. This answer is what had been written when you stopped it."
+    "stopped": "Stopped. This answer is what had been written when you stopped it.",
+    "sources": "Sources",
+    "copy": "Copy answer",
+    "copied": "Copied"
   },
   "empty": {
     "title": "Pitajte svoje pamćenje.",
@@ -73,7 +75,8 @@
       "label": "bez izvora",
       "title": "Znanje modela, nije iz vaših izvora. Cogeto to označava kako biste uvijek znali koje tvrdnje može dokazati.",
       "ariaLabel": "znanje modela, nije iz vaših izvora"
-    }
+    },
+    "refScreenReader": "source {{index}}"
   },
   "conversation": {
     "untitled": "Novi razgovor",

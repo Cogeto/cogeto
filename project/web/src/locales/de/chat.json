@@ -6,10 +6,12 @@
     "you": "Sie"
   },
   "answer": {
-    "standsOn": "Basiert auf",
     "attribution": "Cogeto · aus Ihrem Wissensstand",
     "askedByAt": "Sie · {{time}}",
-    "stopped": "Stopped. This answer is what had been written when you stopped it."
+    "stopped": "Stopped. This answer is what had been written when you stopped it.",
+    "sources": "Sources",
+    "copy": "Copy answer",
+    "copied": "Copied"
   },
   "empty": {
     "title": "Fragen Sie Ihr Wissen.",
@@ -73,7 +75,8 @@
       "label": "ohne Quelle",
       "title": "Modellwissen, nicht aus Ihren Quellen. Cogeto kennzeichnet es, damit Sie immer wissen, welche Behauptungen belegt werden können.",
       "ariaLabel": "Modellwissen, nicht aus Ihren Quellen"
-    }
+    },
+    "refScreenReader": "source {{index}}"
   },
   "conversation": {
     "untitled": "Neue Unterhaltung",
