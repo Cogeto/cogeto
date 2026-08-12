@@ -41,6 +41,8 @@ import {
   requestConfluenceEstimate,
   setExtractionGate,
   sweepConnectorPresence,
+  fetchConnectorErasedItems,
+  reingestConnectorItem,
   syncConnector,
   triggerPassportExport,
   updateAnswerModel,
@@ -1729,9 +1731,80 @@ function ConnectorDetailDrawer({
               </p>
             )}
           </div>
+
+          <ErasedItemsBlock session={session} id={id} syncable={syncable} />
         </>
       )}
     </Drawer>
+  );
+}
+
+/**
+ * The "deleted by you" list (issue #518): items whose sources the user
+ * erased, which a sync will never bring back on its own. The ledger stores
+ * identifiers and dates only, so that is what there honestly is to show;
+ * the per-item action is the one audited path back, and the item returns as
+ * a brand-new source through the normal pipeline.
+ */
+function ErasedItemsBlock({
+  session,
+  id,
+  syncable,
+}: {
+  session: Session;
+  id: string;
+  syncable: boolean;
+}) {
+  const { t } = useTranslation('connections');
+  const queryClient = useQueryClient();
+  const erased = useQuery({
+    queryKey: ['connector-erased', id],
+    queryFn: () => fetchConnectorErasedItems(session, id),
+  });
+  const reingest = useMutation({
+    mutationFn: (naturalKey: string) => reingestConnectorItem(session, id, naturalKey),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['connector-erased', id] });
+      await queryClient.invalidateQueries({ queryKey: ['connector', id] });
+    },
+  });
+
+  if (erased.isPending || erased.isError) return null;
+  if (erased.data.items.length === 0) return null;
+  return (
+    <div className="space-y-2 border-t border-slate-100 pt-3">
+      <p className="text-sm font-medium text-slate-800">{t('detail.erased.title')}</p>
+      <p className="text-xs text-slate-500">{t('detail.erased.explainer')}</p>
+      <ul className="space-y-1">
+        {erased.data.items.map((item) => (
+          <li key={item.naturalKey} className="flex items-center justify-between gap-2 text-xs">
+            <span className="truncate font-mono text-slate-600" title={item.naturalKey}>
+              {item.naturalKey}
+            </span>
+            <span className="shrink-0 text-slate-400">
+              {t('detail.erased.when', { when: timeAgo(item.erasedAt) })}
+            </span>
+            <button
+              type="button"
+              className={btnSecondary}
+              disabled={reingest.isPending || !syncable}
+              onClick={() => {
+                if (window.confirm(t('detail.erased.confirm'))) {
+                  reingest.mutate(item.naturalKey);
+                }
+              }}
+            >
+              {t('detail.erased.action')}
+            </button>
+          </li>
+        ))}
+      </ul>
+      {reingest.isError && (
+        <p className="text-xs text-red-700 dark:text-red-300">
+          {reingest.error instanceof Error ? reingest.error.message : t('list.actionFailed')}
+        </p>
+      )}
+    </div>
   );
 }
 

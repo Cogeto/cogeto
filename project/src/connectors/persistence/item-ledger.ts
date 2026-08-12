@@ -248,6 +248,47 @@ export class ConnectorItemLedger {
     return rows[0]?.n ?? 0;
   }
 
+  /** The erased items, for the "deleted by you" surface (V2.5 item 8.2
+   * follow-up, issue #518): identifiers and dates, never content, because
+   * the ledger holds nothing else. */
+  async erasedItems(
+    connectorId: string,
+  ): Promise<{ naturalKey: string; lastSeenAt: Date; updatedAt: Date }[]> {
+    const rows = await this.db
+      .select({
+        naturalKey: connectorItem.naturalKey,
+        lastSeenAt: connectorItem.lastSeenAt,
+        updatedAt: connectorItem.updatedAt,
+      })
+      .from(connectorItem)
+      .where(and(eq(connectorItem.connectorId, connectorId), eq(connectorItem.state, 'erased')))
+      .orderBy(connectorItem.updatedAt);
+    return rows;
+  }
+
+  /**
+   * The EXPLICIT user override of erased-stays-erased (issue #518): delete
+   * the one erased row so the next sync sees the natural key as new and
+   * materializes a brand-new source through the normal path. The original
+   * deletion stays deleted under its receipt; this is the only path back,
+   * it is per item, and the caller audits it as the user's own act. False
+   * when the row is absent or not erased: sync alone never comes through
+   * here.
+   */
+  async releaseErased(tx: DbOrTx, connectorId: string, naturalKey: string): Promise<boolean> {
+    const removed = await tx
+      .delete(connectorItem)
+      .where(
+        and(
+          eq(connectorItem.connectorId, connectorId),
+          eq(connectorItem.naturalKey, naturalKey),
+          eq(connectorItem.state, 'erased'),
+        ),
+      )
+      .returning({ id: connectorItem.id });
+    return removed.length > 0;
+  }
+
   /**
    * The deletion cascade's arm (invoked by ConnectorItemCascade): the
    * source was erased by the saga, so the reference is cleared (a dangling

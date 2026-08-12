@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Inject,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
@@ -13,12 +14,18 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { z } from 'zod';
-import { DRIZZLE, parseOrBadRequest, withTransactionalEnqueue } from '../infrastructure/index';
+import {
+  DRIZZLE,
+  parseOrBadRequest,
+  withTransactionalEnqueue,
+  writeAudit,
+} from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { BearerAuthGuard, ConnectorCredentialStore } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { ConnectorRegistry } from './connector-registry';
 import { ConnectorStore } from './persistence/connector-store';
+import { ConnectorItemLedger } from './persistence/item-ledger';
 import { CONNECTOR_PRESENCE_JOB_TYPE, CONNECTOR_SYNC_JOB_TYPE } from './connector-jobs';
 import { SYNCABLE_STATES } from './domain/lifecycle';
 import type { ConnectorRow } from './persistence/tables';
@@ -59,6 +66,10 @@ const subScopeSchema = z.object({
   attachments: z.boolean().optional(),
 });
 
+const reingestSchema = z.object({
+  naturalKey: z.string().min(1).max(1000),
+});
+
 const addSubScopeSchema = z.object({
   key: z.string().min(1).max(500),
   label: z.string().min(1).max(500),
@@ -72,6 +83,7 @@ export class ConnectorsController {
     private readonly store: ConnectorStore,
     private readonly registry: ConnectorRegistry,
     private readonly credentials: ConnectorCredentialStore,
+    private readonly ledger: ConnectorItemLedger,
   ) {}
 
   @Get('kinds')
@@ -244,6 +256,66 @@ export class ConnectorsController {
     }
     await this.store.addSubScope(row, parsed.key, parsed.label);
     return { added: true };
+  }
+
+  /** The "deleted by you" list (issue #518): items the user erased, which a
+   * sync will never bring back on its own. Identifiers and dates only. */
+  @Get(':id/erased-items')
+  async erasedItems(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
+    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const items = await this.ledger.erasedItems(row.id);
+    return {
+      items: items.map((item) => ({
+        naturalKey: item.naturalKey,
+        lastSeenAt: item.lastSeenAt.toISOString(),
+        erasedAt: item.updatedAt.toISOString(),
+      })),
+    };
+  }
+
+  /**
+   * The explicit override of erased-stays-erased (issue #518): the user, per
+   * item, chooses to ingest it again. The one ledger row is released inside
+   * the same transaction that audits the choice and enqueues the sync, so
+   * the item returns as a BRAND-NEW source through the normal path; the
+   * original deletion stays deleted under its receipt.
+   */
+  @Post(':id/erased-items/reingest')
+  async reingestErased(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: unknown,
+  ) {
+    const row = await this.store.byIdForOwner(id, request.principal.userId);
+    const parsed = parseOrBadRequest(reingestSchema, body);
+    if (!SYNCABLE_STATES.includes(row.state)) {
+      throw new BadRequestException(`a ${row.state} connector cannot sync`);
+    }
+    let released = false;
+    await this.db.transaction(async (tx) => {
+      released = await this.ledger.releaseErased(tx, row.id, parsed.naturalKey);
+      if (!released) return;
+      await writeAudit(tx, {
+        actor: `user:${request.principal.userId}`,
+        action: 'connector.item_reingest_allowed',
+        entityType: 'connector',
+        entityId: row.id,
+        detail: { naturalKey: parsed.naturalKey },
+        orgId: row.orgId,
+        ownerId: row.ownerId,
+      });
+      await withTransactionalEnqueue(
+        tx,
+        { type: 'connector.sync_requested', payload: { connector_id: row.id } },
+        {
+          type: CONNECTOR_SYNC_JOB_TYPE,
+          payload: { source_type: 'connector', source_id: row.id },
+          principalId: row.ownerId,
+        },
+      );
+    });
+    if (!released) throw new NotFoundException('no such erased item');
+    return { released: true };
   }
 
   /** Trigger a presence sweep (issue C5): reconcile the ledger against what

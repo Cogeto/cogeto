@@ -329,6 +329,26 @@ describe('connector_platform (reference connector harness)', () => {
     expect(runs[0]!.countsJson?.erasedSkipped).toBeGreaterThanOrEqual(1);
   });
 
+  it('the_explicit_reingest_override_brings_an_erased_item_back_as_a_new_source', async () => {
+    // Issue #518: erased-stays-erased holds against every sync, and the ONLY
+    // path back is the user's own per-item choice. The surface lists erased
+    // items (identifiers and dates, never content), the release removes the
+    // one ledger row, and the next sync materializes a brand-new source.
+    const listed = await ledger.erasedItems(row.id);
+    expect(listed.map((i) => i.naturalKey)).toContain('ref-bulk0');
+
+    // Sync alone never comes through here: only an ERASED row releases.
+    expect(await ledger.releaseErased(tdb.db, row.id, 'ref-a2')).toBe(false);
+    expect(await ledger.releaseErased(tdb.db, row.id, 'ref-bulk0')).toBe(true);
+
+    const uploadsBefore = files.uploads.length;
+    await advanceUntilSettled(engine, store, row.id);
+    expect(files.uploads.length).toBe(uploadsBefore + 1);
+    const back = await ledger.byNaturalKey(row.id, 'ref-bulk0');
+    expect(back?.state).toBe('active');
+    expect(back?.sourceId).toBeTruthy();
+  });
+
   it('rate_limit_with_retry_after_pauses_beyond_the_wall_instead_of_retrying_into_it', async () => {
     upstream.put({ id: 'rl1', subScope: 'inbox', content: 'rate', visibility: 'team' });
     upstream.rateLimitNext = 1;
