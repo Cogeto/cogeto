@@ -167,9 +167,17 @@ identical uploads can still both pass the check; the index is deliberately
 holds duplicates such a constraint would reject, and the race costs one
 redundant document rather than the eighteen percent above.
 
-Duplicates that already exist are left alone. Removing them means deleting
-facts other facts may contradict or cite, which is a deletion decision with a
-receipt, not a migration.
+Duplicates that already exist are left alone by the upload path, because
+removing them means deleting facts, which is a deletion decision with a
+receipt and not a migration. The optional one-shot `dedupe-file-sources`
+(issue #538) does it deliberately: dry run by default, every removal through
+the deletion saga, and the survivor chosen by what stored answers **cite**
+first, then fact count, then age. Age alone is wrong, because extraction is
+not bit-stable and a failed pipeline leaves a copy with nothing. A group whose
+tidying would break a stored answer is reported and **held back**, since
+deleting a cited memory redacts the answer citing it and when both copies are
+cited no survivor choice avoids that. See
+[`operator-runbook.md`](../operator-runbook.md) section 6b.
 
 Reading runs through the **reader seam**: PDF, DOCX, XLSX and CSV, selected by the
 magic bytes with the declared type and the extension as hints. A parse failure is

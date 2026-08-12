@@ -28,7 +28,9 @@ here, and the point of writing the list down is that the next one is refused.
  registry, which is the one place a job type is bound to a handler.
 3. **Operational and evaluation CLIs**: `dream`, `sweep`, `reindex`,
  `gateway-smoke`, `vector-smoke`, `seed-object`, `seed-orphan`,
- `erase-task-conclusions`, the `demo/` bootstrap, and the eval harnesses
+ `erase-task-conclusions`, `dedupe-file-sources` (with its pure decision
+ module `dedupe-plan`, the shape `eval-env` has next to the eval harnesses),
+ the `demo/` bootstrap, and the eval harnesses
  (`eval`, `eval-chat`, `eval-cache`, `trust-scores`).
 4. **Repo-invariant specs**: the checks whose subject is the repository rather
  than a module: the boundary contract, deployment hardening, environment
