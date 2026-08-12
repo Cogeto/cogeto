@@ -44,7 +44,7 @@ inspectable artifact. EU hosted, self hosted, or fully offline.
 
 ## Current state
 
-v1.4.1 is the current release line. The task subsystem and reminders were **removed**
+v1.6.0 is the current release line. The task subsystem and reminders were **removed**
 in V2.0 items 3.1 and 3.2: Cogeto has no tasks, no to-dos, and no reminders. What
 survives is **open loops**, `commitment` and `open_loop` memories read straight from
 the memory table, due-dated by `valid_until`, surfaced in chat and on the attention
