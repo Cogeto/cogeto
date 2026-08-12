@@ -6,10 +6,22 @@
     "you": "Vous"
   },
   "answer": {
-    "standsOn": "S’appuie sur",
     "attribution": "Cogeto · depuis votre mémoire",
     "askedByAt": "Vous · {{time}}",
-    "stopped": "Stopped. This answer is what had been written when you stopped it."
+    "stopped": "Stopped. This answer is what had been written when you stopped it.",
+    "sources": "Sources",
+    "copy": "Copy answer",
+    "copied": "Copied",
+    "sourcesSummary": "{{documents}}, {{facts}}",
+    "documentCount_one": "{{count}} document",
+    "documentCount_many": "{{count}} documents",
+    "documentCount_other": "{{count}} documents",
+    "factCount_one": "{{count}} fact",
+    "factCount_many": "{{count}} facts",
+    "factCount_other": "{{count}} facts",
+    "factsFrom_one": "{{count}} fact",
+    "factsFrom_many": "{{count}} facts",
+    "factsFrom_other": "{{count}} facts"
   },
   "empty": {
     "title": "Interrogez votre mémoire.",
@@ -73,7 +85,8 @@
       "label": "sans source",
       "title": "Connaissance du modèle, absente de vos sources. Cogeto la signale pour que vous sachiez toujours quelles affirmations il peut prouver.",
       "ariaLabel": "connaissance du modèle, absente de vos sources"
-    }
+    },
+    "refScreenReader": "source {{index}}"
   },
   "conversation": {
     "untitled": "Nouvelle discussion",

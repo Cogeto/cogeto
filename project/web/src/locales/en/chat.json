@@ -6,10 +6,19 @@
     "you": "You"
   },
   "answer": {
-    "standsOn": "Stands on",
     "attribution": "Cogeto · from your memory",
     "askedByAt": "You · {{time}}",
-    "stopped": "Stopped. This answer is what had been written when you stopped it."
+    "stopped": "Stopped. This answer is what had been written when you stopped it.",
+    "sources": "Sources",
+    "copy": "Copy answer",
+    "copied": "Copied",
+    "sourcesSummary": "{{documents}}, {{facts}}",
+    "documentCount_one": "{{count}} document",
+    "documentCount_other": "{{count}} documents",
+    "factCount_one": "{{count}} fact",
+    "factCount_other": "{{count}} facts",
+    "factsFrom_one": "{{count}} fact",
+    "factsFrom_other": "{{count}} facts"
   },
   "empty": {
     "title": "Ask your memory.",
@@ -73,7 +82,8 @@
       "label": "unsourced",
       "title": "Model knowledge, not from your sources. Cogeto marks these so you always know which claims it can prove.",
       "ariaLabel": "model knowledge, not from your sources"
-    }
+    },
+    "refScreenReader": "source {{index}}"
   },
   "conversation": {
     "untitled": "New conversation",
