@@ -24,6 +24,7 @@ import {
   fetchChatMessages,
   fetchConversationAttachments,
   fetchConversations,
+  fetchProjects,
   fetchResearchRun,
   fetchResearchRuns,
   proposeResearch,
@@ -35,6 +36,8 @@ import { AttachmentCard, TransientMeaningLine } from '../components/AttachmentCa
 import { ChatMarkdown } from '../components/ChatMarkdown';
 import { CitationChip } from '../components/CitationChip';
 import { ConversationSidebar } from '../components/ConversationSidebar';
+import { ProjectPickerDrawer } from '../components/ProjectPickerDrawer';
+import { MARKER_CLASSES } from '../components/projects-model';
 import {
   chatLink,
   conversationLabel,
@@ -448,6 +451,67 @@ function buildTurns(history: ChatMessage[]): Turn[] {
   return turns;
 }
 
+/**
+ * The conversation's project, above the thread (V2.5 item 8.3, interface
+ * rework). This is the ONE place a conversation's project is both shown and
+ * changed, and it is deliberately here rather than on the rail row: you act
+ * on the conversation you are reading, with the room to say what the lens is
+ * doing rather than a 7rem select crammed into a hover row.
+ *
+ * Renders nothing at all when no project exists, so an instance that ignores
+ * projects sees the thread exactly as it was.
+ */
+function ProjectChip({
+  session,
+  conversationId,
+  onPick,
+}: {
+  session: Session;
+  conversationId: string;
+  onPick: () => void;
+}) {
+  const { t } = useTranslation('projects');
+  const { data: projects } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => fetchProjects(session),
+  });
+  const { data: conversations } = useQuery({
+    queryKey: ['conversations'],
+    queryFn: () => fetchConversations(session),
+  });
+  if (!projects || projects.length === 0) return null;
+  const conversation = (conversations ?? []).find((c) => c.id === conversationId);
+  const project = projects.find((p) => p.id === conversation?.projectId) ?? null;
+
+  return (
+    <div className="flex shrink-0 items-center gap-2 px-4 pb-2">
+      <button
+        type="button"
+        onClick={onPick}
+        className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-mono text-[0.66rem] tracking-[0.04em] transition-colors ${
+          project
+            ? 'border-brand-teal/40 bg-brand-teal/10 text-brand-teal-ink dark:text-brand-teal'
+            : 'border-dashed border-slate-300 text-slate-400 hover:border-brand-teal hover:text-brand-teal-ink dark:hover:text-brand-teal'
+        }`}
+      >
+        {project?.marker && (
+          <span
+            aria-hidden="true"
+            className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${MARKER_CLASSES[project.marker]}`}
+          />
+        )}
+        <span className="max-w-[12rem] truncate">{project ? project.name : t('chip.add')}</span>
+        <span aria-hidden="true">▾</span>
+      </button>
+      {project && (
+        <span className="truncate text-[0.68rem] text-slate-400">
+          {project.lensEnabled ? t('chip.lensOn') : t('chip.lensOff')}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function Chat({ session }: { session: Session }) {
   const { t } = useTranslation('chat');
   const { t: tp } = useTranslation('projects');
@@ -526,9 +590,10 @@ export function Chat({ session }: { session: Session }) {
   };
   /** The paperclip's staged file (V2.2 item 5.1): picked but not yet sent,
    * with its "don't remember this file" choice. Uploaded on send. */
-  /** The selected project (V2.5 item 8.3): filters the sidebar and starts new
-   * conversations inside it. Null is "all", the unassigned default. */
-  const [projectId, setProjectId] = useState<string | null>(null);
+  /** The project picker drawer (V2.5 item 8.3, interface rework): opened from
+   * the chip above the thread, which is where a conversation's project is
+   * both SHOWN and CHANGED. The rail groups by project and never edits. */
+  const [pickingProject, setPickingProject] = useState(false);
   /** The lens gap's one-tap widen (V2.5 item 8.3): Cogeto never widens
    * silently, so the offer is the bridge, exactly as it is for research. */
   const [widenOffer, setWidenOffer] = useState<ChatWidenOffer | null>(null);
@@ -777,8 +842,6 @@ export function Chat({ session }: { session: Session }) {
       <ConversationSidebar
         session={session}
         activeId={activeId}
-        projectId={projectId}
-        onProjectChange={setProjectId}
         onSelect={switchConversation}
         onCreated={(created) => switchConversation(created.id)}
         onDeleted={(deletedId) => {
@@ -799,6 +862,13 @@ export function Chat({ session }: { session: Session }) {
       leftRail={conversationRail}
     >
       <section className="flex min-h-0 flex-1 flex-col">
+        {activeId && (
+          <ProjectChip
+            session={session}
+            conversationId={activeId}
+            onPick={() => setPickingProject(true)}
+          />
+        )}
         {/* Narrow screens: a compact picker in place of the sidebar column. */}
         <div className="flex shrink-0 items-center gap-2 px-4 pb-2 md:hidden">
           <label className="sr-only" htmlFor="conversation-picker">
@@ -1131,6 +1201,14 @@ export function Chat({ session }: { session: Session }) {
           </div>
         </div>
       </section>
+      {pickingProject && activeId && (
+        <ProjectPickerDrawer
+          session={session}
+          conversationId={activeId}
+          currentProjectId={(conversations ?? []).find((c) => c.id === activeId)?.projectId ?? null}
+          onClose={() => setPickingProject(false)}
+        />
+      )}
       {openMemoryId && (
         <MemoryDrawer
           session={session}

@@ -283,6 +283,46 @@ its own named reason, so a gated source never looks processed-with-zero-facts.
 Nothing else about a project is configurable, and adding a third knob is a
 change to this record first.
 
+## The interface: grouping, not filtering
+
+The first shape of this surface got two things wrong, and they are recorded
+here because they are easy to reintroduce:
+
+1. A project selector at the top of the conversation rail **filtered** the
+   list. A filter makes membership something you go looking for; nothing on
+   screen says which project a conversation is in until you narrow to it.
+2. Moving a conversation was a `<select>` inside the row's hover actions, in a
+   256px rail that already held Rename, Archive and Delete. It overflowed, it
+   was hard to notice, and it asked the user to act on a conversation they
+   were not reading.
+
+Both are replaced by one idea: **a project is a place, not a filter.**
+
+- **The rail groups.** Each active project is a section with its marker dot,
+  its name and its count; an archived project keeps a section only while it
+  still holds conversations, so nothing a user assigned can vanish. "No
+  project" comes last and is omitted when empty. **With no project at all
+  there are no sections**, and the rail is exactly the flat list it was before
+  this feature, which is the inert-by-default promise kept in the interface as
+  well as in retrieval.
+- **Rows read, they never edit.** A conversation row carries a marker dot and
+  nothing else new. The dot costs no horizontal space, and it is drawn only
+  where the heading does not already say the project: inside a section, rows
+  have none; in the flat and archived lists, where the colour is the only
+  remaining signal, they do.
+- **The thread chip acts.** Above the open conversation sits its project, the
+  lens state in words, and one click to the picker. This is the only place a
+  conversation's project changes, and it is the right one: you act on the
+  conversation in front of you, with room to say what the lens is doing.
+- **The picker is a radio group in the existing drawer**, not a dropdown: the
+  point is seeing every project, the "no project" option and the current
+  choice at once. Creating a project from it also assigns the conversation,
+  because that is why you are creating it.
+- **Project lifecycle lives on the section header**: rename, lens on or off,
+  archive, delete, revealed on hover or focus exactly as the conversation
+  row's own actions are. The header owns the full width and holds nothing
+  else, which is the space the row never had.
+
 ## Lifecycle
 
 **Archiving is the default action.** It sets one boolean. Everything stays

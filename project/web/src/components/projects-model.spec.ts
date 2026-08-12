@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { ProjectDto } from '@cogeto/shared';
 import { PROJECT_MARKERS } from '@cogeto/shared';
+import type { ConversationDto } from '@cogeto/shared';
 import {
   assignmentTotal,
   deleteProjectConfirm,
   MARKER_CLASSES,
+  railSections,
   splitProjects,
 } from './projects-model';
 
@@ -34,7 +36,80 @@ const project = (over: Partial<ProjectDto> = {}): ProjectDto => ({
   ...over,
 });
 
+const conversation = (id: string, projectId: string | null, archived = false): ConversationDto => ({
+  id,
+  title: id,
+  titleSetByUser: false,
+  archived,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  lastMessagePreview: null,
+  projectId,
+});
+
 describe('projects model', () => {
+  it('rail_flat_without_projects: a user who ignores projects sees the list they always saw', () => {
+    const { sections, grouped } = railSections(
+      [conversation('a', null), conversation('b', null)],
+      [],
+    );
+    expect(grouped).toBe(false);
+    expect(sections).toHaveLength(1);
+    expect(sections[0]!.project).toBe(null);
+    expect(sections[0]!.conversations.map((c) => c.id)).toEqual(['a', 'b']);
+  });
+
+  it('rail_groups_once_a_project_exists, empty sections included', () => {
+    const clientA = project({ id: 'p-a', name: 'Client A' });
+    const empty = project({ id: 'p-empty', name: 'Empty' });
+    const { sections, grouped } = railSections(
+      [conversation('a1', 'p-a'), conversation('loose', null)],
+      [clientA, empty],
+    );
+    expect(grouped).toBe(true);
+    expect(sections.map((s) => s.project?.name ?? 'none')).toEqual(['Client A', 'Empty', 'none']);
+    // An empty project still gets its section: that is how you start the
+    // first conversation in a project you just made.
+    expect(sections[1]!.conversations).toEqual([]);
+    expect(sections[2]!.conversations.map((c) => c.id)).toEqual(['loose']);
+  });
+
+  it('rail_no_project_section_is_omitted_when_empty', () => {
+    const { sections } = railSections(
+      [conversation('a1', 'p-a')],
+      [project({ id: 'p-a', name: 'Client A' })],
+    );
+    expect(sections.map((s) => s.project?.id ?? 'none')).toEqual(['p-a']);
+  });
+
+  it('rail_archived_project_keeps_its_section_while_it_holds_conversations', () => {
+    const live = project({ id: 'p-a', name: 'Client A' });
+    const old = project({ id: 'p-old', name: 'Old client', archived: true });
+    const withRows = railSections([conversation('x', 'p-old')], [live, old]);
+    // Nothing a user assigned may silently vanish from the rail.
+    expect(withRows.sections.map((s) => s.project?.id ?? 'none')).toEqual(['p-a', 'p-old']);
+    // Emptied, the archived project stops taking up room.
+    const without = railSections([conversation('y', 'p-a')], [live, old]);
+    expect(without.sections.map((s) => s.project?.id ?? 'none')).toEqual(['p-a']);
+  });
+
+  it('rail_archived_conversations_are_not_grouped: they stay in the flat collapsed section', () => {
+    const { sections } = railSections(
+      [conversation('live', 'p-a'), conversation('gone', 'p-a', true)],
+      [project({ id: 'p-a', name: 'Client A' })],
+    );
+    expect(sections[0]!.conversations.map((c) => c.id)).toEqual(['live']);
+  });
+
+  it('rail_unknown_project_falls_back_to_no_project: a stale id never hides a conversation', () => {
+    const { sections } = railSections(
+      [conversation('orphan', 'p-deleted')],
+      [project({ id: 'p-a', name: 'Client A' })],
+    );
+    const loose = sections.find((s) => s.project === null);
+    expect(loose?.conversations.map((c) => c.id)).toEqual(['orphan']);
+  });
+
   it('delete_confirm_states_contents_survive: the dialog promises what actually happens', () => {
     const text = deleteProjectConfirm(project());
     expect(text).toContain('Client A');

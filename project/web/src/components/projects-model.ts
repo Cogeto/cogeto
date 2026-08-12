@@ -1,11 +1,11 @@
-import type { ProjectDto, ProjectMarker } from '@cogeto/shared';
+import type { ConversationDto, ProjectDto, ProjectMarker } from '@cogeto/shared';
 import { i18next } from '../i18n';
 
 /**
  * Pure presentation logic for projects (V2.5 item 8.3), React-free so the
  * lifecycle rules are unit-testable: the marker to design-token map, the
- * active/archived split, and the two confirmations whose WORDING is the whole
- * point of the feature's lifecycle rule.
+ * active/archived split, the rail's GROUPING rule, and the confirmation whose
+ * WORDING is the whole point of the feature's lifecycle rule.
  */
 
 /**
@@ -32,6 +32,62 @@ export function splitProjects(projects: ProjectDto[]): {
     active: projects.filter((p) => !p.archived),
     archived: projects.filter((p) => p.archived),
   };
+}
+
+/** One section of the grouped conversation rail. `project` null is the trailing
+ * "no project" section, which is where an instance with no projects keeps
+ * every conversation it has. */
+export interface RailSection {
+  project: ProjectDto | null;
+  conversations: ConversationDto[];
+}
+
+/**
+ * THE RAIL'S GROUPING RULE (the V2.5 item 8.3 interface rework).
+ *
+ * Membership has to be visible while SCANNING, not something you go looking
+ * for behind a filter: the first shape of this feature hid it behind a
+ * dropdown and put the move control in a hover row that overflowed a 256px
+ * column, and both mistakes came from treating a project as a filter rather
+ * than as a place.
+ *
+ * - **No project exists → no sections at all.** A user who ignores projects
+ *   sees exactly the flat list they saw before this feature, which is the
+ *   inert-by-default promise, kept in the interface as well as in retrieval.
+ * - Every ACTIVE project gets a section, even an empty one, because an empty
+ *   section is how you start a conversation in a project you just made.
+ * - An ARCHIVED project keeps a section only while it still holds
+ *   conversations: nothing a user assigned may silently vanish from the rail.
+ * - "No project" comes last and is omitted when empty.
+ *
+ * Archived CONVERSATIONS are not grouped: they stay in the rail's existing
+ * collapsed section, because nesting one collapse inside another buys nothing.
+ */
+export function railSections(
+  conversations: ConversationDto[],
+  projects: ProjectDto[],
+): { sections: RailSection[]; grouped: boolean } {
+  const active = conversations.filter((conversation) => !conversation.archived);
+  const { active: activeProjects, archived: archivedProjects } = splitProjects(projects);
+  if (projects.length === 0) {
+    return { sections: [{ project: null, conversations: active }], grouped: false };
+  }
+  const held = (project: ProjectDto) =>
+    active.filter((conversation) => conversation.projectId === project.id);
+  const sections: RailSection[] = activeProjects.map((project) => ({
+    project,
+    conversations: held(project),
+  }));
+  for (const project of archivedProjects) {
+    const kept = held(project);
+    if (kept.length > 0) sections.push({ project, conversations: kept });
+  }
+  const known = new Set(projects.map((project) => project.id));
+  const loose = active.filter(
+    (conversation) => !conversation.projectId || !known.has(conversation.projectId),
+  );
+  if (loose.length > 0) sections.push({ project: null, conversations: loose });
+  return { sections, grouped: true };
 }
 
 /** How many things a project groups, across every kind. */

@@ -61,8 +61,6 @@ const html = renderToStaticMarkup(
     <ConversationSidebar
       session={session}
       activeId="c-active"
-      projectId={null}
-      onProjectChange={noop}
       onSelect={noop}
       onCreated={noop}
       onDeleted={noop}

@@ -1,21 +1,31 @@
 {
   "rail": {
-    "label": "Project",
-    "all": "All conversations",
-    "archivedGroup": "Archived",
-    "new": "New project",
-    "newShort": "New",
-    "emptyProject": "No conversations in this project yet. Start one and it lands here.",
-    "lensOn": "Answers here draw on this project's sources first.",
-    "lensOff": "Answers here draw on all your memory.",
+    "noProject": "No project",
+    "newHere": "New conversation in this project",
+    "newProject": "+ New project",
+    "lensOn": "Answers in this project draw on its sources first.",
+    "lensOff": "Answers in this project draw on all your memory.",
     "turnLensOn": "Use project sources",
     "turnLensOff": "Use all memory"
+  },
+  "chip": {
+    "add": "Add to project",
+    "lensOn": "Answers draw on this project's sources first.",
+    "lensOff": "Answers draw on all your memory."
+  },
+  "picker": {
+    "title": "Move this conversation",
+    "explainer": "A project groups your work. It never changes what you can see: every fact stays yours, and stays visible outside the project.",
+    "newProject": "+ New project for this conversation",
+    "lensOffTag": "lens off",
+    "archivedTag": "archived"
   },
   "field": {
     "name": "Project name",
     "namePlaceholder": "Client, matter, or topic"
   },
   "action": {
+    "rename": "Rename",
     "archive": "Archive",
     "unarchive": "Unarchive",
     "delete": "Delete"
@@ -35,7 +45,7 @@
   },
   "delete": {
     "question": "Delete the project \"{{name}}\"?",
-    "consequence_one": "The project groups {{count}} things. Deleting removes the project only.",
+    "consequence_one": "The project groups {{count}} thing. Deleting removes the project only.",
     "consequence_other": "The project groups {{count}} things. Deleting removes the project only.",
     "keeps": "Its conversations, sources, research runs and reports all stay exactly where they are and simply stop being in a project. Nothing is erased and no memory is deleted.",
     "alternative": "To erase a document itself, delete that source on the Sources page, which runs the deletion saga and gives you a receipt. Archiving this project instead keeps everything and only hides it from the list."
