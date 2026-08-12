@@ -806,6 +806,23 @@ export const sweepConnectorPresence = (
   session: Session,
   id: string,
 ): Promise<{ enqueued: boolean }> => apiPost(`/api/connectors/${id}/presence`, {}, session);
+export interface ConnectorErasedItemDto {
+  naturalKey: string;
+  lastSeenAt: string;
+  erasedAt: string;
+}
+export const fetchConnectorErasedItems = (
+  session: Session,
+  id: string,
+): Promise<{ items: ConnectorErasedItemDto[] }> =>
+  apiGet(`/api/connectors/${id}/erased-items`, session);
+/** The explicit override of erased-stays-erased: per item, audited. */
+export const reingestConnectorItem = (
+  session: Session,
+  id: string,
+  naturalKey: string,
+): Promise<{ released: boolean }> =>
+  apiPost(`/api/connectors/${id}/erased-items/reingest`, { naturalKey }, session);
 export const disableConnector = (session: Session, id: string): Promise<{ state: string }> =>
   apiPost(`/api/connectors/${id}/disable`, {}, session);
 export const enableConnector = (session: Session, id: string): Promise<{ state: string }> =>

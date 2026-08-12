@@ -125,6 +125,13 @@
       "explainer": "Compares the record against what Confluence still lists and marks pages that disappeared or were archived. A sync never deletes anything.",
       "action": "Check presence now",
       "queued": "Presence check queued."
+    },
+    "erased": {
+      "title": "Deleted by you",
+      "explainer": "Sources you deleted stay deleted: a sync never brings them back on its own. Ingesting one again is your explicit choice, and it returns as a brand-new source.",
+      "when": "deleted {{when}}",
+      "action": "Ingest again",
+      "confirm": "Your original deletion stays deleted. The next sync will bring this item back as a brand-new source with fresh extraction. Continue?"
     }
   }
 }
