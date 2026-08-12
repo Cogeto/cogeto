@@ -562,6 +562,43 @@ running it is always safe. If it is skipped, the migration **stops with a clear
 error** naming this command rather than proceeding: the ordering cannot be
 lost silently.
 
+### 6b. Clearing duplicate documents an older instance accumulated (optional)
+
+Uploading the same file twice used to create two sources, each separately
+read, extracted, verified and embedded, and each entering reconciliation as a
+candidate against its own twin. New uploads resolve to the document already
+held; instances that predate that still carry the copies. This command finds
+them and removes all but one, **through the deletion saga**, so each removal
+leaves a signed receipt like any other deletion.
+
+It is **optional and never required by a migration**. Nothing breaks if it is
+never run: the duplicates cost storage, some spend already paid, and a noisier
+Sources list.
+
+```sh
+docker compose run --rm worker \
+ node project/src/dist/entrypoints/dedupe-file-sources.js
+```
+
+**It changes nothing without `--apply`.** The default run prints the plan: each
+group of identical bytes, how many facts each copy carries, how many stored
+answers cite each copy, and which one it would keep. Read it before applying.
+
+Which copy survives is not obvious, so the command decides rather than
+assuming. The copy stored answers **cite** wins first, then the copy with the
+**most facts**, then the oldest. The oldest is deliberately not the rule:
+extraction is not bit-stable, so two copies of the same bytes can hold
+different numbers of facts, and a copy whose pipeline failed holds none at
+all.
+
+A group is **held back** when removing a copy would break a stored answer.
+Deleting a memory redacts every answer citing it, replacing that answer with a
+line saying its source is gone, and when both copies are cited no choice of
+survivor avoids it. Those groups are listed and left alone; including them is
+a deliberate `--allow-redaction`.
+
+Running it again after applying finds nothing and exits 0.
+
 ---
 
 ## 7. Troubleshooting
