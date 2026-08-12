@@ -11,7 +11,14 @@
     "stopped": "Stopped. This answer is what had been written when you stopped it.",
     "sources": "Sources",
     "copy": "Copy answer",
-    "copied": "Copied"
+    "copied": "Copied",
+    "sourcesSummary": "{{documents}}, {{facts}}",
+    "documentCount_one": "{{count}} document",
+    "documentCount_other": "{{count}} documents",
+    "factCount_one": "{{count}} fact",
+    "factCount_other": "{{count}} facts",
+    "factsFrom_one": "{{count}} fact",
+    "factsFrom_other": "{{count}} facts"
   },
   "empty": {
     "title": "Ask your memory.",

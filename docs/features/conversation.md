@@ -93,6 +93,15 @@ convention printed prose has used for centuries, for exactly this problem.
 Provenance stays per-claim and stops shouting mid-sentence, and the footer
 stops being a duplicate and becomes the key.
 
+The number identifies the **document**, not the individual fact, and the list
+is **closed by default**. Both come from the same real case: an answer over a
+dense datasheet cited 52 facts from ONE file, which numbered the prose up to
+fifty-two and rendered fifty-two near-identical rows underneath. Grouping makes
+that one number and one row; collapsing makes it one line until asked. No
+threshold decides it, so the layout never shifts between answers, and opening a
+document lists the facts it stands on, each to its own drawer. Clicking any
+superscript still opens THAT fact, so nothing is lost.
+
 The one thing a bare footnote marker would have cost is bought back: a
 **contradicted or uncertain fact colours its number**, so a warning still
 catches the eye inline.

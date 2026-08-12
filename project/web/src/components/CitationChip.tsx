@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { isRegisteredSourceType } from '@cogeto/shared';
@@ -295,6 +296,95 @@ export function CitationFootnote({
           </span>
         )}
       </span>
+    </li>
+  );
+}
+
+/**
+ * One DOCUMENT in an answer's collapsed source list (issue #534 follow-up).
+ *
+ * An answer over a dense document cited 52 facts from ONE file, which the
+ * per-fact list rendered as fifty-two near-identical rows. Grouping by
+ * document is what makes the list say something: one row per source, the
+ * number the superscripts point at, and the facts underneath for when the
+ * audit trail is what you came for.
+ */
+export function SourceFootnote({
+  session,
+  index,
+  memoryIds,
+  factFor,
+  onOpen,
+}: {
+  session: Session;
+  index: number;
+  /** Every cited fact from this one document, in first-cited order. */
+  memoryIds: string[];
+  factFor: (id: string) => ChatFactDto | undefined;
+  onOpen?: (memoryId: string) => void;
+}) {
+  const { t } = useTranslation('chat');
+  const [open, setOpen] = useState(false);
+  const head = memoryIds[0]!;
+
+  return (
+    <li>
+      <div className="flex items-baseline gap-2">
+        <span className="w-4 shrink-0 text-right font-mono text-[0.62rem] text-slate-400">
+          {index}
+        </span>
+        <span className="flex min-w-0 flex-wrap items-baseline gap-1.5">
+          <CitationChip session={session} memoryId={head} fact={factFor(head)} onOpen={onOpen} />
+          <button
+            type="button"
+            onClick={() => setOpen((was) => !was)}
+            aria-expanded={open}
+            className="font-mono text-[0.62rem] text-slate-400 transition-colors hover:text-brand-teal-ink dark:hover:text-brand-teal"
+          >
+            {open ? '▾' : '▸'} {t('answer.factsFrom', { count: memoryIds.length })}
+          </button>
+        </span>
+      </div>
+      {open && (
+        <ul className="mt-1 ml-6 space-y-1">
+          {memoryIds.map((id) => (
+            <FactLine key={id} session={session} memoryId={id} fact={factFor(id)} onOpen={onOpen} />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
+/** One cited fact under its document: the claim, opening its own drawer. */
+function FactLine({
+  session,
+  memoryId,
+  fact,
+  onOpen,
+}: {
+  session: Session;
+  memoryId: string;
+  fact?: ChatFactDto;
+  onOpen?: (memoryId: string) => void;
+}) {
+  const target = useCitationTarget(session, memoryId, fact);
+  const claim = target?.claim?.replace(/\s+/g, ' ').trim();
+  if (!claim) return null;
+  const text = claim.length > 140 ? `${claim.slice(0, 140)}…` : claim;
+  const warn = target && WARN_STATUSES.includes(target.status);
+  const className = `text-left text-xs leading-relaxed ${
+    warn ? 'text-amber-700 dark:text-amber-300' : 'text-slate-500'
+  } hover:text-brand-teal-ink dark:hover:text-brand-teal`;
+  return (
+    <li>
+      {onOpen ? (
+        <button type="button" onClick={() => onOpen(memoryId)} className={className}>
+          {text}
+        </button>
+      ) : (
+        <span className={className}>{text}</span>
+      )}
     </li>
   );
 }

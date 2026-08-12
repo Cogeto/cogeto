@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { ChatFactDto } from '@cogeto/shared';
 import { plainAnswerText, scanAnswer } from '@cogeto/shared';
 import type { Session } from '../auth/oidc';
-import { CitationFootnote, CitationRef } from './CitationChip';
+import { CitationRef, SourceFootnote } from './CitationChip';
 
 /**
  * Readable citations (issue #534).
@@ -109,34 +109,38 @@ describe('inline citation ref', () => {
   });
 });
 
-describe('source footnote', () => {
-  it('footnote_quotes_its_fact, so several notes are told apart without opening them', () => {
+describe('source grouping', () => {
+  it('groups_by_document: 52 facts from one file is ONE entry, not 52 rows', () => {
+    // The real case that prompted this: an answer over a dense document cited
+    // 52 facts from a single file, and the per-fact list rendered 52
+    // near-identical rows.
+    const ids = Array.from(
+      { length: 52 },
+      (_, i) => `${MEM.slice(0, -2)}${String(i).padStart(2, '0')}`,
+    );
+    const factsById = new Map(
+      ids.map((id) => [id, fact({ memoryId: id, sourceId: 'file-one', claim: `Fact ${id}` })]),
+    );
     const html = render(
-      <CitationFootnote
-        session={session}
-        memoryId={MEM}
-        fact={fact()}
-        index={3}
-        onOpen={() => {}}
-      />,
+      <ol>
+        <SourceFootnote
+          session={session}
+          index={1}
+          memoryIds={ids}
+          factFor={(id) => factsById.get(id)}
+        />
+      </ol>,
     );
-    expect(html).toContain('>3<');
-    expect(html).toContain('The frame ships on 12 March');
-    // The chip still carries the kind, so the entry says WHAT it is.
-    expect(html).toContain('note');
-  });
-
-  it('footnote_truncates_a_long_fact rather than pushing the answer down the page', () => {
-    const long = 'x'.repeat(400);
+    // One row, carrying the count rather than repeating the chip 52 times.
+    expect(html).toContain('52 facts');
+    expect((html.match(/◈/g) ?? []).length).toBe(1);
+    // Closed by default: the fact list is not rendered at all. (Checked on
+    // the DOM, because the head chip's tooltip legitimately carries its
+    // claim.)
     const host = document.createElement('div');
-    host.innerHTML = render(
-      <CitationFootnote session={session} memoryId={MEM} fact={fact({ claim: long })} index={1} />,
-    );
-    // The VISIBLE quote is bounded. (The chip's tooltip still carries the
-    // whole claim, which is where the full text belongs.)
-    const quote = host.querySelector('span.text-xs')?.textContent ?? '';
-    expect(quote.endsWith('…')).toBe(true);
-    expect(quote.length).toBeLessThan(130);
+    host.innerHTML = html;
+    expect(host.querySelector('ul')).toBe(null);
+    expect(html).toContain('aria-expanded="false"');
   });
 });
 

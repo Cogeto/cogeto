@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type {
   AmbiguityDecisionDto,
@@ -26,6 +26,7 @@ import {
   fetchChatMessages,
   fetchConversationAttachments,
   fetchConversations,
+  fetchMemory,
   fetchProjects,
   fetchResearchRun,
   fetchResearchRuns,
@@ -36,7 +37,8 @@ import {
 import type { Session } from '../auth/oidc';
 import { AttachmentCard, TransientMeaningLine } from '../components/AttachmentCard';
 import { ChatMarkdown } from '../components/ChatMarkdown';
-import { CitationFootnote, CitationRef } from '../components/CitationChip';
+import { CitationRef, SourceFootnote } from '../components/CitationChip';
+import { CITATION_STALE_MS } from '../query-invalidation';
 import { ConversationSidebar } from '../components/ConversationSidebar';
 import { ProjectPickerDrawer } from '../components/ProjectPickerDrawer';
 import { MARKER_CLASSES } from '../components/projects-model';
@@ -118,6 +120,9 @@ function MessageBody({
   onOpenMemory: (memoryId: string) => void;
 }) {
   const { t } = useTranslation('chat');
+  /** Closed for every answer, always (issue #534 follow-up): no stored
+   * preference, so scrolling back through a conversation stays readable. */
+  const [sourcesOpen, setSourcesOpen] = useState(false);
   // Live text carries `[F#]`/`[U]` markers + a facts map; canonicalize first,
   // then scan. Stored text has no facts map and is already canonical/sanitized.
   const markerMap = new Map((facts ?? []).map((f) => [f.marker, f.memoryId]));
@@ -140,6 +145,37 @@ function MessageBody({
   }
   const factFor = (id: string): ChatFactDto | undefined => facts?.find((f) => f.memoryId === id);
 
+  // Resolve every cited memory so the list can group by DOCUMENT (issue #534
+  // follow-up): an answer over a dense file cited 52 facts from ONE source,
+  // and fifty-two near-identical rows say less than one row does. These share
+  // the chips' react-query keys, so this hoists requests that already happen
+  // rather than adding any.
+  const resolved = useQueries({
+    queries: citedIds.map((id) => ({
+      queryKey: ['memory', id],
+      queryFn: () => fetchMemory(session, id),
+      enabled: !factFor(id),
+      staleTime: CITATION_STALE_MS,
+    })),
+  });
+  /** The document a cited fact came from, or the fact itself until it
+   * resolves: an unresolved memory is its own group and settles into the
+   * right one when the read lands, exactly as the chips already do. */
+  const documentOf = (id: string): string => {
+    const known = factFor(id) ?? resolved[citedIds.indexOf(id)]?.data;
+    return known ? `${known.sourceType} ${known.sourceId}` : `memory ${id}`;
+  };
+  const documents: { key: string; memoryIds: string[] }[] = [];
+  for (const id of citedIds) {
+    const key = documentOf(id);
+    const existing = documents.find((entry) => entry.key === key);
+    if (existing) existing.memoryIds.push(id);
+    else documents.push({ key, memoryIds: [id] });
+  }
+  /** The superscript number: the DOCUMENT, so one source cited fifty-two
+   * times reads as one number rather than climbing to fifty-two. */
+  const numberOf = (id: string) => documents.findIndex((d) => d.key === documentOf(id)) + 1;
+
   const rendered = (
     <ChatMarkdown
       segments={segments}
@@ -151,7 +187,7 @@ function MessageBody({
             session={session}
             memoryId={segment.memoryId}
             fact={factFor(segment.memoryId)}
-            index={citedIds.indexOf(segment.memoryId) + 1}
+            index={numberOf(segment.memoryId)}
             onOpen={onOpenMemory}
           />
         )
@@ -185,30 +221,48 @@ function MessageBody({
       {(citedIds.length > 0 || hasUnsourced) && (
         <div className="mt-4 border-t border-dashed border-slate-200 pt-3">
           <div className="flex items-baseline justify-between gap-2">
-            <span className="font-mono text-[0.64rem] uppercase tracking-[0.12em] text-slate-400">
-              {t('answer.sources')}
-            </span>
+            {/* CLOSED by default, whatever the answer cites (issue #534
+                follow-up): one line, then documents, then their facts. No
+                threshold decides it, so the layout never shifts between
+                answers. */}
+            <button
+              type="button"
+              onClick={() => setSourcesOpen((was) => !was)}
+              aria-expanded={sourcesOpen}
+              className="font-mono text-[0.64rem] uppercase tracking-[0.12em] text-slate-400 transition-colors hover:text-brand-teal-ink dark:hover:text-brand-teal"
+            >
+              {sourcesOpen ? '▾' : '▸'} {t('answer.sources')}
+              {documents.length > 0 && (
+                <span className="ml-1.5 normal-case tracking-normal">
+                  {t('answer.sourcesSummary', {
+                    documents: t('answer.documentCount', { count: documents.length }),
+                    facts: t('answer.factCount', { count: citedIds.length }),
+                  })}
+                </span>
+              )}
+            </button>
             <CopyAnswer text={canonical} />
           </div>
-          {/* The numbered key the superscripts point at (issue #534). Each
-              entry quotes its fact, so several cited notes are told apart
-              here rather than by opening each one. */}
-          <ol className="mt-1.5 space-y-1">
-            {citedIds.map((id, position) => (
-              <CitationFootnote
-                key={id}
-                session={session}
-                memoryId={id}
-                fact={factFor(id)}
-                index={position + 1}
-                onOpen={onOpenMemory}
-              />
-            ))}
-          </ol>
-          {hasUnsourced && (
-            <div className="mt-1.5">
-              <UnsourcedChip />
-            </div>
+          {sourcesOpen && (
+            <>
+              <ol className="mt-1.5 space-y-1.5">
+                {documents.map((entry, position) => (
+                  <SourceFootnote
+                    key={entry.key}
+                    session={session}
+                    index={position + 1}
+                    memoryIds={entry.memoryIds}
+                    factFor={factFor}
+                    onOpen={onOpenMemory}
+                  />
+                ))}
+              </ol>
+              {hasUnsourced && (
+                <div className="mt-1.5">
+                  <UnsourcedChip />
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
