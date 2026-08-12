@@ -279,6 +279,22 @@ describe('projects as workspaces (integration, real Postgres)', () => {
     expect(scoped.map((ref) => ref.sourceId)).not.toContain('note-report-b1');
   });
 
+  it('marker_auto_assigned: a project gets a colour without being asked for one', async () => {
+    // The rail GROUPS by project and draws its colour, so a null marker meant
+    // the identity existed in the schema and never rendered. Creation decides
+    // it, and distinct colours come first so no two are confusable.
+    const colours = new Set<string | null>();
+    for (let i = 0; i < 4; i += 1) {
+      const made = await projects.create(owner, { name: `Coloured ${i}` });
+      expect(made.marker).toBeTruthy();
+      colours.add(made.marker);
+    }
+    expect(colours.size).toBe(4);
+    // An explicit choice still wins over the automatic one.
+    const chosen = await projects.create(owner, { name: 'Chosen colour', marker: 'plum' });
+    expect(chosen.marker).toBe('plum');
+  });
+
   it('projects_are_per_user: another user cannot read, move or delete one', async () => {
     const folder = await projects.create(owner, { name: 'Private folder' });
     await expect(projects.get(other, folder.id)).rejects.toThrow(/not found/);
