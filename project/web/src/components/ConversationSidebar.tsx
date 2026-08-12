@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import type { ConversationDto } from '@cogeto/shared';
+import type { ConversationDto, ProjectDto } from '@cogeto/shared';
 import {
+  assignToProject,
   createConversation,
   deleteSource,
   fetchConversations,
   fetchDeletionImpact,
+  fetchProjects,
   renameConversation,
   setConversationArchived,
 } from '../api';
@@ -19,6 +21,7 @@ import {
   deleteConversationConfirm,
   splitConversations,
 } from './conversations-model';
+import { ProjectRail } from './ProjectRail';
 
 /**
  * The conversations sidebar: workspaces over one memory.
@@ -47,16 +50,21 @@ function Row({
   session,
   conversation,
   active,
+  projects,
   onSelect,
   onDeleted,
 }: {
   session: Session;
   conversation: ConversationDto;
   active: boolean;
+  /** Active projects, for the move control. Empty = the control is absent,
+   * which is what a user who never made a project sees (V2.5 item 8.3). */
+  projects: ProjectDto[];
   onSelect: (id: string) => void;
   onDeleted: (id: string) => void;
 }) {
   const { t } = useTranslation('chat');
+  const { t: tp } = useTranslation('projects');
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -71,6 +79,11 @@ function Row({
   });
   const archive = useMutation({
     mutationFn: (archived: boolean) => setConversationArchived(session, conversation.id, archived),
+    onSuccess: () => void refresh(),
+  });
+  const move = useMutation({
+    mutationFn: (projectId: string | null) =>
+      assignToProject(session, { kind: 'conversation', refId: conversation.id }, projectId),
     onSuccess: () => void refresh(),
   });
   const remove = useMutation({
@@ -189,6 +202,27 @@ function Row({
             >
               {t('conversation.delete.action')}
             </button>
+            {projects.length > 0 && (
+              <>
+                <label className="sr-only" htmlFor={`move-${conversation.id}`}>
+                  {tp('assign.label')}
+                </label>
+                <select
+                  id={`move-${conversation.id}`}
+                  value={conversation.projectId ?? ''}
+                  disabled={move.isPending}
+                  onChange={(event) => move.mutate(event.target.value || null)}
+                  className="max-w-[7.5rem] rounded border border-slate-300 bg-surface px-1 py-0.5 font-mono text-[0.62rem] text-slate-500 outline-none focus:border-brand-teal"
+                >
+                  <option value="">{tp('assign.none')}</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -199,17 +233,25 @@ function Row({
 export function ConversationSidebar({
   session,
   activeId,
+  projectId,
+  onProjectChange,
   onSelect,
   onCreated,
   onDeleted,
 }: {
   session: Session;
   activeId: string | null;
+  /** The selected project (V2.5 item 8.3): filters this list, and a new
+   * conversation starts inside it. Null is "all conversations", which is
+   * what a user who ignores projects always sees. */
+  projectId: string | null;
+  onProjectChange: (id: string | null) => void;
   onSelect: (id: string) => void;
   onCreated: (conversation: ConversationDto) => void;
   onDeleted: (id: string) => void;
 }) {
   const { t } = useTranslation('chat');
+  const { t: tp } = useTranslation('projects');
   const { data: conversations } = useQuery({
     queryKey: ['conversations'],
     queryFn: () => fetchConversations(session),
@@ -217,23 +259,33 @@ export function ConversationSidebar({
     // a light refetch picks them up without any push machinery.
     refetchInterval: 15_000,
   });
+  const { data: projects } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => fetchProjects(session, { archived: false }),
+  });
   const queryClient = useQueryClient();
   const [showArchived, setShowArchived] = useState(false);
   const create = useMutation({
-    mutationFn: () => createConversation(session),
+    mutationFn: () => createConversation(session, projectId),
     onSuccess: (conversation) => {
       void queryClient.invalidateQueries({ queryKey: ['conversations'] });
       onCreated(conversation);
     },
   });
 
-  const { active, archived } = splitConversations(conversations ?? []);
+  // The project selection FILTERS the list; it never hides a conversation
+  // from the user, who can see all of them again in one click.
+  const inProject = (conversations ?? []).filter(
+    (conversation) => !projectId || conversation.projectId === projectId,
+  );
+  const { active, archived } = splitConversations(inProject);
 
   return (
     <aside
       aria-label={t('conversation.listLabel')}
       className="flex w-64 shrink-0 flex-col border-r border-slate-200"
     >
+      <ProjectRail session={session} selectedId={projectId} onSelect={onProjectChange} />
       {/* Top padding mirrors the app bar's height so the rail heading sits on
           the breadcrumb's baseline, not above it. */}
       <div className="flex items-center justify-between px-3 pt-4.5 pb-2">
@@ -254,7 +306,7 @@ export function ConversationSidebar({
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
         {active.length === 0 && archived.length === 0 && (
           <p className="px-1.5 py-2 text-xs leading-relaxed text-slate-400">
-            {t('conversation.emptyRail')}
+            {projectId ? tp('rail.emptyProject') : t('conversation.emptyRail')}
           </p>
         )}
         <ul className="space-y-1">
@@ -264,6 +316,7 @@ export function ConversationSidebar({
               session={session}
               conversation={c}
               active={c.id === activeId}
+              projects={projects ?? []}
               onSelect={onSelect}
               onDeleted={onDeleted}
             />
@@ -287,6 +340,7 @@ export function ConversationSidebar({
                     session={session}
                     conversation={c}
                     active={c.id === activeId}
+                    projects={projects ?? []}
                     onSelect={onSelect}
                     onDeleted={onDeleted}
                   />

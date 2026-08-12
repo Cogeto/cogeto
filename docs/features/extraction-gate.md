@@ -113,3 +113,18 @@ true; 4.3 therefore changes no prompt. The defence, verifiable in the tree:
   facts without their own validity; parity with the gate wired and no rows.
 - `entrypoints/boundary-contract.spec.ts`: the three tables and the retention
   job type are pinned to `ingestion`.
+
+## The per-project extraction policy (V2.5 item 8.3)
+
+A project may carry three numbers applied to the sources entering it: whether
+to extract at all, a fact budget, and a retention in days. This is **not a new
+dimension of the gate.** The gate's decision model is untouched; the policy
+reaches the same chokepoint through a port `ingestion` declares and `projects`
+implements (`PROJECT_POLICY`, the `INGESTION_GUARD` shape), and its numbers
+fold into the same tightest-wins arithmetic every other bound already uses:
+parse cap, source-type registry budget, gate row, gate rule, project. A
+project that switches extraction off refuses through this same metadata-only
+ledger under the named reason `project_disabled`, so a project-gated source
+never looks processed-with-zero-facts either. A source in no project, or in a
+project with nothing configured, produces no policy at all and the pipeline
+runs byte-identically to one that never heard of projects.

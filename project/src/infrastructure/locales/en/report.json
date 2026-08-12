@@ -18,7 +18,8 @@
     "corpus": "Everything in this workspace",
     "import": "Import {{id}}",
     "sources": "A selected set of {{count}} sources",
-    "dateRange": "Sources from a date range"
+    "dateRange": "Sources from a date range",
+    "project": "Project {{name}}, {{count}} sources"
   },
   "source": {
     "unnamed": "unnamed {{type}} source",

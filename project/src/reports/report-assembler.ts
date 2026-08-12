@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { FindingsReportCountsDto, Principal } from '@cogeto/shared';
 import { FINDINGS_REPORT_VERSION, isRegisteredSourceType } from '@cogeto/shared';
 import { DRIZZLE } from '../infrastructure/index';
@@ -23,6 +23,7 @@ import {
   suppressedCountsForSources,
   verificationsForMemories,
 } from '../ingestion/index';
+import { ProjectService } from '../projects/index';
 import { FileReadReportStore, readOutcomesForKeys } from '../files/index';
 import type { ReadLocator } from '../files/index';
 import { listNoteSources, hydrateNoteSources } from '../notes/index';
@@ -96,6 +97,10 @@ export class ReportAssembler {
     private readonly readReports: FileReadReportStore,
     private readonly imports: ImportService,
     @Inject(REPORT_OPTIONS) private readonly options: ReportOptions,
+    /** Projects (V2.5 item 8.3): a project scope's source enumeration and
+     * the name the report states. Optional so a bare harness assembles the
+     * four pre-existing scope kinds unchanged. */
+    @Optional() private readonly projects?: ProjectService,
   ) {}
 
   async assemble(
@@ -133,8 +138,17 @@ export class ReportAssembler {
         excluded: counts?.excluded ?? 0,
         unsupported: counts?.unsupported ?? 0,
       };
-    } else if (scope.kind === 'sources') {
-      for (const ref of scope.refs) {
+    } else if (scope.kind === 'project' || scope.kind === 'sources') {
+      // A project scope enumerates EXACTLY that project's source
+      // assignments (V2.5 item 8.3 issue C2), which is what makes a
+      // client-facing report structurally free of another client's
+      // documents; from there it is the sources scope's own path, ownership
+      // check and skipped-ref reporting included.
+      const refs =
+        scope.kind === 'project'
+          ? ((await this.projects?.sourceRefsFor(scope.projectId, SCOPE_SOURCE_LIMIT)) ?? [])
+          : scope.refs;
+      for (const ref of refs) {
         if (!isRegisteredSourceType(ref.sourceType)) {
           skippedRefs.push({
             source_type: ref.sourceType,
@@ -175,6 +189,14 @@ export class ReportAssembler {
       sources = sources.slice(0, SCOPE_SOURCE_LIMIT);
       scopeTruncated = true;
     }
+    // The project's own name goes ON the report (V2.5 item 8.3): a
+    // client-facing artifact that does not say which client it is about is
+    // half an artifact. The user's own words, never source-derived, and
+    // sanitized like every other text that reaches the canonical bytes.
+    const projectName =
+      scope.kind === 'project'
+        ? ((await this.projects?.get(principal, scope.projectId).catch(() => null))?.name ?? null)
+        : null;
     await onProgress(0, sources.length);
 
     // ── Per-source grouped reads (one query per family per batch) ──────────
@@ -513,10 +535,17 @@ export class ReportAssembler {
         scope: {
           kind: scope.kind,
           import_run_id: scope.kind === 'import' ? scope.importRunId : null,
+          // A project scope lists what it actually examined, exactly as a
+          // sources scope does: the report states its scope, and a finding
+          // count means nothing without knowing what was looked at.
           refs:
             scope.kind === 'sources'
               ? scope.refs.map((r) => ({ source_type: r.sourceType, source_id: r.sourceId }))
-              : null,
+              : scope.kind === 'project'
+                ? sources.map((r) => ({ source_type: r.sourceType, source_id: r.sourceId }))
+                : null,
+          project_id: scope.kind === 'project' ? scope.projectId : null,
+          project_name: projectName,
           from: scope.kind === 'date_range' ? scope.from : null,
           to: scope.kind === 'date_range' ? scope.to : null,
         },

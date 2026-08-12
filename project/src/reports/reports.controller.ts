@@ -31,6 +31,10 @@ const scopeSchema = z.discriminatedUnion('kind', [
     from: z.iso.datetime({ offset: true }),
     to: z.iso.datetime({ offset: true }),
   }),
+  /** A project (V2.5 item 8.3): the run enumerates exactly that project's
+   * source assignments, so a client-facing report cannot contain another
+   * client's documents. */
+  z.object({ kind: z.literal('project'), projectId: z.uuid() }),
 ]);
 
 const triggerSchema = z.object({ scope: scopeSchema });

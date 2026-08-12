@@ -74,6 +74,10 @@ export interface SourceCatalogItemDto {
   factCount: number;
   badges: SourceBadgesDto;
   origin: SourceOriginDto | null;
+  /** The project this source is grouped under (V2.5 item 8.3), or null.
+   * Organisation, never authorisation: a source outside every project is as
+   * visible as one inside a project. */
+  projectId: string | null;
 }
 
 export interface SourceCatalogPageDto {
@@ -132,6 +136,8 @@ export interface SourceInspectionDto {
   revisions: import('./imports').SourceRevisionDto[];
   /** Connector provenance, when a connector produced this source. */
   origin: SourceOriginDto | null;
+  /** The project this source is grouped under (V2.5 item 8.3), or null. */
+  projectId: string | null;
 }
 
 /** One answer that cited a fact (V2.2 item 5.2, the fact detail view). */

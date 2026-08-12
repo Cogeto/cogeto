@@ -50,6 +50,7 @@ import {
   updateConnectorSubScope,
   updateSettings,
   updateUserContext,
+  fetchProjects,
 } from '../api';
 import type { ConnectorDto, ConnectorSettingsDto, ConnectorState } from '../api';
 import type { Session } from '../auth/oidc';
@@ -1478,8 +1479,13 @@ function ConnectorDetailDrawer({
   onClose: () => void;
 }) {
   const { t } = useTranslation('connections');
+  const { t: tp } = useTranslation('projects');
   const queryClient = useQueryClient();
   const [estimateAt, setEstimateAt] = useState<number | null>(null);
+  const projects = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => fetchProjects(session, { archived: false }),
+  });
   const detail = useQuery({
     queryKey: ['connector', id],
     queryFn: () => fetchConnectorDetail(session, id),
@@ -1506,8 +1512,10 @@ function ConnectorDetailDrawer({
     onSuccess: () => setEstimateAt(Date.now()),
   });
   const setScope = useMutation({
-    mutationFn: (input: { key: string; patch: { selected?: boolean; attachments?: boolean } }) =>
-      updateConnectorSubScope(session, id, input.key, input.patch),
+    mutationFn: (input: {
+      key: string;
+      patch: { selected?: boolean; attachments?: boolean; projectId?: string | null };
+    }) => updateConnectorSubScope(session, id, input.key, input.patch),
     onSuccess: invalidate,
   });
   const [presenceQueued, setPresenceQueued] = useState(false);
@@ -1624,6 +1632,33 @@ function ConnectorDetailDrawer({
                       />
                       {t('detail.spaces.attachments')}
                     </label>
+                    {/* A space assigned to a project puts everything it
+                        ingests there automatically (V2.5 item 8.3 issue C1).
+                        Applies to what it ingests NEXT; what it already
+                        ingested keeps the project it was recorded under. */}
+                    {(projects.data ?? []).length > 0 && (
+                      <label className="ml-6 flex items-center gap-2 text-xs text-slate-500">
+                        {tp('assign.scopeLabel')}
+                        <select
+                          value={scope.projectId ?? ''}
+                          disabled={setScope.isPending}
+                          onChange={(e) =>
+                            setScope.mutate({
+                              key: scope.key,
+                              patch: { projectId: e.target.value || null },
+                            })
+                          }
+                          className="rounded border border-slate-300 bg-surface px-1.5 py-0.5 text-xs"
+                        >
+                          <option value="">{tp('assign.none')}</option>
+                          {(projects.data ?? []).map((project) => (
+                            <option key={project.id} value={project.id}>
+                              {project.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
                     {scope.stats && (
                       <p className="ml-6 text-xs text-slate-400">
                         {t('detail.spaces.about', { count: scope.stats.estimatedItems })}

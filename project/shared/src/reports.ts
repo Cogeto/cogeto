@@ -6,8 +6,17 @@
  * format file, exactly as the passport does it.
  */
 
-/** Version stamped into every generated report and its published schema. */
-export const FINDINGS_REPORT_VERSION = '1.0';
+/**
+ * Version stamped into every generated report and its published schema.
+ *
+ * 1.1 (V2.5 item 8.3) is ADDITIVE over 1.0: the scope block gained
+ * `project_id` and `project_name`, and its `kind` gained `project`, so a
+ * client-facing report names the client it is about. Nothing about the
+ * integrity block, the canonicalization or the signing procedure moved, and
+ * every 1.0 artifact keeps verifying against the 1.0 schema, which stays
+ * published forever (the passport rule).
+ */
+export const FINDINGS_REPORT_VERSION = '1.1';
 
 export const FINDINGS_REPORT_STATUSES = [
   'pending',
@@ -26,9 +35,16 @@ export type ReportScopeDto =
   | { kind: 'corpus' }
   | { kind: 'import'; importRunId: string }
   | { kind: 'sources'; refs: { sourceType: string; sourceId: string }[] }
-  | { kind: 'date_range'; from: string; to: string };
+  | { kind: 'date_range'; from: string; to: string }
+  /**
+   * A project (V2.5 item 8.3): the run enumerates exactly that project's
+   * source assignments. This is how a client-facing report contains that
+   * client's documents STRUCTURALLY, rather than because the user
+   * remembered to tick the right boxes.
+   */
+  | { kind: 'project'; projectId: string };
 
-export const REPORT_SCOPE_KINDS = ['corpus', 'import', 'sources', 'date_range'] as const;
+export const REPORT_SCOPE_KINDS = ['corpus', 'import', 'sources', 'date_range', 'project'] as const;
 export type ReportScopeKind = (typeof REPORT_SCOPE_KINDS)[number];
 
 /** Stamped once at ready; every number computed from the owning stores. */

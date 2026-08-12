@@ -6,6 +6,7 @@ import { z } from 'zod';
 // Ajv 2020 draft build (the passport precedent): validates against the
 // PUBLISHED schema file, not the in-code zod.
 import Ajv2020 from 'ajv/dist/2020';
+import { FINDINGS_REPORT_VERSION } from '@cogeto/shared';
 import { canonicalize } from '../memory/index';
 import { buildReportFixturePayload } from '../testing/index';
 import {
@@ -28,6 +29,9 @@ import { readTrustScoresFor } from './report-assembler';
  */
 
 const SCHEMA_DIR = join(__dirname, '..', '..', '..', 'docs', 'findings-report-schema');
+/** The version this build publishes. Old versions stay published and stay
+ * verifiable; the drift guard tracks the current one. */
+const VERSION = FINDINGS_REPORT_VERSION;
 
 function fixtureArtifact(): ReportArtifact {
   const payload = reportPayloadSchema.parse(buildReportFixturePayload());
@@ -35,7 +39,7 @@ function fixtureArtifact(): ReportArtifact {
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
   const signature = edSign(null, Buffer.from(payloadSha256, 'utf8'), privateKey).toString('base64');
   return {
-    findings_report_version: '1.0',
+    findings_report_version: FINDINGS_REPORT_VERSION,
     payload,
     integrity: {
       algorithm: 'ed25519',
@@ -64,12 +68,13 @@ describe('report format', () => {
     const generated = z.toJSONSchema(reportArtifactSchema, {
       target: 'draft-2020-12',
     }) as Record<string, unknown>;
-    generated['$id'] = 'https://cogeto.eu/schemas/findings-report/1.0/findings-report.schema.json';
+    generated['$id'] =
+      `https://cogeto.eu/schemas/findings-report/${VERSION}/findings-report.schema.json`;
     generated['title'] = 'Cogeto findings report artifact';
     generated['description'] =
-      'The signed findings-report JSON artifact: the payload plus the integrity block a third party verifies. Version 1.0.';
+      `The signed findings-report JSON artifact: the payload plus the integrity block a third party verifies. Version ${VERSION}.`;
     const published = JSON.parse(
-      readFileSync(join(SCHEMA_DIR, '1.0', 'findings-report.schema.json'), 'utf8'),
+      readFileSync(join(SCHEMA_DIR, VERSION, 'findings-report.schema.json'), 'utf8'),
     ) as Record<string, unknown>;
     expect(generated).toEqual(published);
   });
@@ -77,7 +82,7 @@ describe('report format', () => {
   it('report_artifact_matches_published_schema: a generated artifact validates against the published file', () => {
     const artifact = fixtureArtifact();
     const schema = JSON.parse(
-      readFileSync(join(SCHEMA_DIR, '1.0', 'findings-report.schema.json'), 'utf8'),
+      readFileSync(join(SCHEMA_DIR, VERSION, 'findings-report.schema.json'), 'utf8'),
     ) as Record<string, unknown>;
     delete schema['$id'];
     const ajv = new Ajv2020({ strict: false, allErrors: true });
@@ -90,7 +95,7 @@ describe('report format', () => {
 
   it('report_sample_published: the fictional sample in the schema directory is a valid artifact', () => {
     const sample = JSON.parse(
-      readFileSync(join(SCHEMA_DIR, '1.0', 'sample', 'findings-report.json'), 'utf8'),
+      readFileSync(join(SCHEMA_DIR, VERSION, 'sample', 'findings-report.json'), 'utf8'),
     ) as unknown;
     expect(() => reportArtifactSchema.parse(sample)).not.toThrow();
   });

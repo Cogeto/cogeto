@@ -18,6 +18,7 @@ import type { ChatResearchResolverPort } from './chat-research-resolver.port';
 import { CHAT_SKILL_RESOLVER } from './chat-skill-resolver.port';
 import type { ChatSkillResolverPort } from './chat-skill-resolver.port';
 import { ProviderConfigService } from '../providers/index';
+import { ProjectService } from '../projects/index';
 
 /**
  * chat — the conversation surface, and a capture connector by structure
@@ -58,6 +59,7 @@ export class ChatModule {
             userContext?: UserContextService,
             attachments?: ChatAttachmentsService,
             answerModelChoice?: ProviderConfigService,
+            projects?: ProjectService,
           ): ChatServiceOptions => ({
             replyResolver,
             researchResolver,
@@ -69,6 +71,10 @@ export class ChatModule {
             // harness or a root that registers no providers module leaves
             // every answer on the assigned answer tier, unchanged.
             answerModelChoice,
+            // The project retrieval lens (V2.5 item 8.3). Optional: a bare
+            // harness resolves no projects service and no conversation is
+            // ever lensed, which is the pre-feature path exactly.
+            projects,
           }),
           inject: [
             { token: CHAT_REPLY_RESOLVER, optional: true },
@@ -78,6 +84,7 @@ export class ChatModule {
             { token: UserContextService, optional: true },
             { token: ChatAttachmentsService, optional: true },
             { token: ProviderConfigService, optional: true },
+            { token: ProjectService, optional: true },
           ],
         },
       ],

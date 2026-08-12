@@ -57,6 +57,9 @@ export const NAMESPACES = [
   'extraction',
   /** Connections: the connector fleet and the Confluence door (V2.5 item 8.2). */
   'connections',
+  /** Projects as workspaces (V2.5 item 8.3): the rail, assignment, the
+   * retrieval lens, and the lifecycle confirmations. */
+  'projects',
   /** Failure copy shown to a user. Never developer or log messages. */
   'errors',
   /** Field-level validation copy. */

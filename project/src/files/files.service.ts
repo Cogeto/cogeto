@@ -6,6 +6,7 @@ import {
   Inject,
   Injectable,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import type {
   AwaitingCapabilityDto,
@@ -35,6 +36,7 @@ import {
 import type { Db, IngestQuota } from '../infrastructure/index';
 import { FILE_DISCARD_CLEANUP_JOB_TYPE, INGESTION_PIPELINE_JOB_TYPE } from '../ingestion/index';
 import { MemoryFileStore, MemoryObjectStore, MemoryStore } from '../memory/index';
+import { ProjectStore } from '../projects/index';
 import { sniffContentType } from './document-extract';
 import { FileReadReportStore } from './persistence/file-read-report';
 import { FILE_UPLOAD_OPTIONS } from './file-upload-options';
@@ -73,6 +75,14 @@ export interface UploadOptions {
    * connector sub-scope key). Rides the object metadata to the pipeline;
    * absent for plain uploads. */
   gateFolder?: string;
+  /**
+   * The project this source belongs to (V2.5 item 8.3). Recorded in the SAME
+   * transaction as the file metadata and the pipeline enqueue, so a source
+   * never exists without the project it was uploaded into. Optional
+   * everywhere: absent is the pre-feature path exactly, and a project is
+   * organisation, never authorisation.
+   */
+  projectId?: string;
 }
 
 /** How long the staging object lingers before the backstop cleanup runs. */
@@ -115,6 +125,9 @@ export class FilesService {
     @Inject(INGEST_QUOTA) private readonly quota: IngestQuota,
     /** What the reading layer made of each file (V2.1 item 4.1). */
     private readonly readReports: FileReadReportStore,
+    /** Project assignment (V2.5 item 8.3), optional: a root that registers no
+     * projects module uploads exactly as it did before. */
+    @Optional() private readonly projects?: ProjectStore,
   ) {}
 
   /**
@@ -279,6 +292,16 @@ export class FilesService {
           checksum,
           sizeBytes: file.buffer.length,
         });
+        // The project, in the same transaction (V2.5 item 8.3): a source
+        // that exists is a source whose project is already recorded.
+        if (options.projectId && this.projects) {
+          await this.projects.assignInTx(
+            tx,
+            principal.userId,
+            { kind: 'source', refType: 'file', refId: objectKey },
+            options.projectId,
+          );
+        }
         await withTransactionalEnqueue(
           tx,
           {

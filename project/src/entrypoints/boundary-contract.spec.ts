@@ -125,6 +125,16 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   // or attachment. Content-bearing (titles), in the deletion cascade.
   confluence_page: 'confluence',
 
+  // Projects as workspaces (V2.5 item 8.3, migration 0056,
+  // docs/features/projects.md): the folder and what it groups. NEITHER table
+  // is source-derived — a name and a description are the user's own words,
+  // an assignment is identifiers and a kind — which is why the deletion saga
+  // RELEASES an assignment rather than erasing content, and why there is
+  // deliberately no project column on `memory` and no project in the vector
+  // payload: projects are organisation and filtering, never authorisation.
+  project: 'projects',
+  project_assignment: 'projects',
+
   app_user: 'identity',
   // Connector credential material, sealed under the instance master key
   // (V2.5 item 8.1): the plan places credential storage inside the identity
@@ -233,6 +243,10 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
   INSTANCE_TIMEZONE: 'infrastructure',
 
   PRINCIPAL: 'identity',
+  // The per-project extraction policy (V2.5 item 8.3 issue C4): ingestion
+  // defines it because the pipeline is the enforcement point, projects
+  // implements it, the worker root binds the two. NOT a new gate dimension.
+  PROJECT_POLICY: 'ingestion',
   IDENTITY_OPTIONS: 'identity',
   // The login bootstrap's options (V2.0 item 3.6 part 2): /api/config is what
   // the SPA must know before it can authenticate.

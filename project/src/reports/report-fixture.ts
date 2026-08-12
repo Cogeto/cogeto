@@ -1,3 +1,4 @@
+import { FINDINGS_REPORT_VERSION } from '@cogeto/shared';
 import type { ReportPayload } from './report-format';
 
 /**
@@ -34,10 +35,18 @@ export function buildReportFixturePayload(): ReportPayload {
   return {
     report: {
       id: '3f1c2a9e-0000-4000-8000-000000000001',
-      version: '1.0',
+      version: FINDINGS_REPORT_VERSION,
       generated_at: '2026-08-07T10:00:00.000Z',
       locale: 'en',
-      scope: { kind: 'corpus', import_run_id: null, refs: null, from: null, to: null },
+      scope: {
+        kind: 'corpus',
+        import_run_id: null,
+        refs: null,
+        project_id: null,
+        project_name: null,
+        from: null,
+        to: null,
+      },
       date_range: { from: '2026-06-01T08:00:00.000Z', to: '2026-08-01T09:30:00.000Z' },
       previous_report: {
         id: '3f1c2a9e-0000-4000-8000-000000000000',

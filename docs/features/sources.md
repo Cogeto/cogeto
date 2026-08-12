@@ -244,3 +244,15 @@ pipeline.
 Every source type is erased by the same saga, enumerated by provenance, with one signed
 receipt. Nothing about a source type changes the deletion contract. See
 [`../security/deletion-and-receipts.md`](../security/deletion-and-receipts.md).
+
+## Projects on the catalog (V2.5 item 8.3)
+
+The catalog filters by project and every row and drawer carries its project,
+so "what is in this client's folder" and "which client does this document
+belong to" are both one look. The project filter drives the list from the
+project's own assignments (bounded, served whole, the badge-filter shape); the
+per-row project is one indexed read per source type for the whole page, never
+one per row. Moving a source between projects is a select in the drawer and is
+reversible in the same place. None of this touches visibility: a source
+outside every project is exactly as visible as one inside a project
+([`projects.md`](projects.md)).

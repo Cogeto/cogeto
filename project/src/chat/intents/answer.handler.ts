@@ -1,4 +1,11 @@
-import type { AmbiguityDecisionDto, ChatFactDto, ChatStreamEvent, Principal } from '@cogeto/shared';
+import type {
+  AmbiguityDecisionDto,
+  ChatFactDto,
+  ChatLensDto,
+  ChatStreamEvent,
+  ChatWidenOffer,
+  Principal,
+} from '@cogeto/shared';
 import { hasProfileContext } from '../../infrastructure/index';
 import type { UserContextRecord } from '../../infrastructure/index';
 import { isPastBelief } from '../../memory/index';
@@ -12,7 +19,12 @@ import type {
 } from '../../retrieval/index';
 import { buildAnswerInput, nothingOnRecord, nothingOpen, toStoredAnswer } from '../answer-prompt';
 import type { AnswerAttachment } from '../answer-prompt';
-import { buildFanoutAnswer, matchOfferedSubjects, silentPreamble } from '../fanout-answer';
+import {
+  buildFanoutAnswer,
+  matchOfferedSubjects,
+  nothingInProject,
+  silentPreamble,
+} from '../fanout-answer';
 import { recentTurnsForAnswer, resolveAnswerSubject } from '../answer-subject';
 import type { ChatTurnSink } from './intent-plumbing';
 
@@ -58,6 +70,21 @@ export class MemoryAnswerHandler {
        * how a fan-out's "which did you mean?" reply resolves without
        * re-fanning (V2.3 item 6.3). */
       priorAmbiguity?: AmbiguityDecisionDto | null;
+      /**
+       * The project retrieval lens for this turn (V2.5 item 8.3), already
+       * resolved by the orchestrator, or null for an unassigned conversation
+       * (and for a turn the user widened). A FILTER over sources; nothing
+       * here decides visibility.
+       */
+      lens?: {
+        projectId: string;
+        projectName: string;
+        sourceRefs: readonly { sourceType: string; sourceId: string }[];
+      } | null;
+      /** Set when the user widened THIS question out of that project: the
+       * conversation stays in its project and the next question is lensed
+       * again. Recorded so the stored message says so honestly. */
+      widenedFrom?: string | null;
     },
     thinkingMode: 'on' | 'off' = 'on',
   ): AsyncGenerator<ChatStreamEvent> {
@@ -74,11 +101,23 @@ export class MemoryAnswerHandler {
         ? { ...rewrite, entities: [...new Set([...rewrite.entities, ...offered])] }
         : rewrite;
 
+    const lens = context.lens ?? null;
+    let lensRecord: ChatLensDto | null = lens
+      ? { projectId: lens.projectId, applied: true, widened: false }
+      : context.widenedFrom
+        ? { projectId: context.widenedFrom, applied: false, widened: true }
+        : null;
+    let widenOffer: ChatWidenOffer | null = null;
+
     const retrieved = await this.retrieval.retrieve(principal, content, {
       topK: ANSWER_FACTS_TOP_K,
       history,
       rewrite: effectiveRewrite,
       ambiguity: true,
+      // The lens narrows the CANDIDATE SET; the spec §7.5 decision rule and
+      // every threshold are unchanged (V2.5 item 8.3), so a fan-out inside a
+      // project fans only across subjects the project holds.
+      ...(lens ? { lens: lens.sourceRefs } : {}),
     });
     const decision = retrieved.ambiguity ?? null;
     const facts = retrieved.memories.map((hit, i) => toFactDto(hit, i));
@@ -97,11 +136,49 @@ export class MemoryAnswerHandler {
       yield { type: 'sources', facts: shown };
       const answer = buildFanoutAnswer(decision, factsById, lang);
       yield { type: 'token', text: answer };
-      yield* this.finish(principal, conversationId, answer, '', shown, decision, null);
+      yield* this.finish(principal, conversationId, answer, '', shown, decision, null, lensRecord);
       return;
     }
 
     const silent = decision?.branch === 'silent';
+    // THE LENS GAP (V2.5 item 8.3). The project's sources hold nothing above
+    // the relevance floor. Cogeto does not widen silently (the frozen
+    // research rule: the offer is the bridge, the gate stays the gate) and
+    // does not refuse silently either: it names the project it looked in and
+    // offers the one-tap widen beside the answer. A knowledge-class question
+    // keeps its general-knowledge path below, with a preamble that names the
+    // project rather than claiming the whole corpus is silent.
+    // The two extra guards make this a strict REFINEMENT of the
+    // nothing-on-record branch below rather than a new short-circuit in front
+    // of it: profile context and a transient attachment are provided ground
+    // that has nothing to do with a project's sources, and a lens must never
+    // take an answer away that the unlensed path would have given.
+    if (
+      lens &&
+      (facts.length === 0 || silent) &&
+      !knowledge &&
+      retrieved.mode !== 'open_loops' &&
+      !hasProfileContext(context.record) &&
+      attachments.length === 0
+    ) {
+      lensRecord = { ...lensRecord!, emptyInProject: true };
+      widenOffer = { projectId: lens.projectId, question: content };
+      yield { type: 'sources', facts: [] };
+      const answer = nothingInProject(lang, lens.projectName);
+      yield { type: 'token', text: answer };
+      yield* this.finish(
+        principal,
+        conversationId,
+        answer,
+        '',
+        [],
+        decision,
+        null,
+        lensRecord,
+        widenOffer,
+      );
+      return;
+    }
     // The corpus is silent and nothing else grounds an answer: the
     // deterministic honesty path, now reached over sub-floor noise too, not
     // only on zero rows.
@@ -115,7 +192,7 @@ export class MemoryAnswerHandler {
       yield { type: 'sources', facts: [] };
       const answer = nothingOnRecord(lang);
       yield { type: 'token', text: answer };
-      yield* this.finish(principal, conversationId, answer, '', [], decision, null);
+      yield* this.finish(principal, conversationId, answer, '', [], decision, null, lensRecord);
       return;
     }
 
@@ -138,7 +215,7 @@ export class MemoryAnswerHandler {
     } else {
       let preamble = '';
       if (silentKnowledge) {
-        preamble = silentPreamble(lang);
+        preamble = silentPreamble(lang, lens?.projectName ?? null);
         yield { type: 'token', text: `${preamble}\n\n` };
       }
       const prompt = await this.sink.getPrompt();
@@ -214,6 +291,8 @@ export class MemoryAnswerHandler {
       promptFacts,
       decision,
       researchOffer,
+      lensRecord,
+      widenOffer,
     );
   }
 
@@ -226,6 +305,8 @@ export class MemoryAnswerHandler {
     facts: ChatFactDto[],
     decision: AmbiguityDecisionDto | null,
     researchOffer: { topic: string } | null,
+    lens: ChatLensDto | null = null,
+    widenOffer: ChatWidenOffer | null = null,
   ): AsyncGenerator<ChatStreamEvent> {
     const { text: stored, violations } = toStoredAnswer(answer, facts);
     if (violations > 0) {
@@ -238,6 +319,7 @@ export class MemoryAnswerHandler {
       stored,
       thinking.trim() ? thinking : null,
       decision,
+      lens,
     );
     yield {
       type: 'done',
@@ -246,6 +328,8 @@ export class MemoryAnswerHandler {
       citationViolations: violations,
       researchOffer,
       ambiguity: decision,
+      lens,
+      widenOffer,
     };
   }
 

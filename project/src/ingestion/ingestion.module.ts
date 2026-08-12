@@ -19,6 +19,8 @@ import { CheckedPairStore } from './persistence/checked-pair.store';
 import { EntityAliasStore } from './persistence/entity-alias.store';
 import { EntityAliasesController } from './entity-aliases.controller';
 import { ExtractionGateStore } from './persistence/extraction-gate.store';
+import { PROJECT_POLICY } from './project-policy.port';
+import type { ProjectPolicyPort } from './project-policy.port';
 import { IngestionProgressStore } from './persistence/ingestion-progress';
 import { ReconcileRepair, ReconcileRepairEligibilityHook } from './reconcile-repair';
 import { RECONCILE_MODEL_CONFIG } from './pipeline/reconcile.stage';
@@ -33,6 +35,9 @@ export interface IngestionModuleOptions {
   imports?: ModuleMetadata['imports'];
   /** Source-reader implementations, one per connector source type. */
   readers: Type<SourceReader>[];
+  /** Implementation of ingestion's per-project extraction-policy port (V2.5
+   * item 8.3), bound by the composition root. */
+  projectPolicy?: Type<ProjectPolicyPort>;
   /**
    * The generation binding recorded beside every ledger verdict (V2.3 item
    * 6.1): `<provider>/<model>` for the pipeline tier. A model change makes
@@ -89,6 +94,13 @@ export class IngestionModule {
           useFactory: (...readers: SourceReader[]) => readers,
           inject: options.readers,
         },
+        // The per-project extraction policy (V2.5 item 8.3 issue C4): the
+        // port is ingestion's, the implementation is projects', the root
+        // supplies the class. Absent = no project has an opinion, which is
+        // the pre-feature path.
+        ...(options.projectPolicy
+          ? [{ provide: PROJECT_POLICY, useExisting: options.projectPolicy }]
+          : []),
       ],
       // SuppressedFactCascade is exported so the composition root can bind it
       // into memory's DERIVED_CASCADES: the port is memory's, the table is
