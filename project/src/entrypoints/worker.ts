@@ -61,7 +61,6 @@ import {
   ConversationTitler,
 } from '../chat/index';
 import {
-  assertLocalRuntimeReady,
   createModelGateway,
   loadPrompt,
   ModelGateway,
@@ -101,10 +100,6 @@ async function main(): Promise<void> {
   // Embedding-space guard: a changed embeddings
   // model refuses boot until reindex has re-embedded the stored vectors.
   await assertEmbeddingSpaceConsistent(config);
-  // Local-runtime probe: an unreachable Ollama
-  // runtime or a never-pulled model refuses boot, never fails at first request.
-  await assertLocalRuntimeReady(config.modelProviders);
-
   const context = await NestFactory.createApplicationContext(
     createWorkerRootModule(config, live) as never,
     { logger: new PinoNestLogger(logger) },

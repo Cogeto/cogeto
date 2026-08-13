@@ -11,7 +11,6 @@ import {
   DEFAULT_REASONING_PROBE_TIMEOUT_MS,
   DEFAULT_VISION_PROBE_TIMEOUT_MS,
   ModelGateway,
-  probeLocalRuntime,
   probeReasoning,
   probeVision,
 } from '../model-gateway/index';
@@ -30,7 +29,8 @@ import type { OperationsOptions } from './operations.options';
  * panel, a named degradation in /api/health, logged at warn on detection),
  * and `off`. Scheduled jobs join the same surface with `ok` / `overdue` /
  * `failing`. Nothing is inferred silently where it can be checked: redaction,
- * research and local-models are actively probed; demo and consoles are pure
+ * research, vision and reasoning are actively probed; demo, consoles and the
+ * model configuration are pure
  * configuration (nothing to probe — stated as such via `probed: false`).
  *
  * Snapshots are cached for CAPABILITY_CACHE_TTL_MS (probes are cheap but not
@@ -209,18 +209,39 @@ export class CapabilitiesService {
     // reasoning model. Probing them concurrently would report vision broken on
     // the one snapshot that matters, the boot banner's.
     const reasoning = await this.reasoning(checkedAt);
-    const [redaction, research, mail, demo, consoles, localModels, vision, connectors] =
-      await Promise.all([
-        this.redaction(checkedAt),
-        this.research(checkedAt),
-        this.mail(checkedAt),
-        this.demo(checkedAt),
-        this.consoles(checkedAt),
-        this.localModels(checkedAt),
-        this.vision(checkedAt),
-        this.connectors(checkedAt),
-      ]);
-    return [redaction, research, mail, demo, consoles, localModels, reasoning, vision, connectors];
+    const models = this.models(checkedAt);
+    const [redaction, research, mail, demo, consoles, vision, connectors] = await Promise.all([
+      this.redaction(checkedAt),
+      this.research(checkedAt),
+      this.mail(checkedAt),
+      this.demo(checkedAt),
+      this.consoles(checkedAt),
+      this.vision(checkedAt),
+      this.connectors(checkedAt),
+    ]);
+    return [models, redaction, research, mail, demo, consoles, reasoning, vision, connectors];
+  }
+
+  /**
+   * The model configuration itself. ON with the configuration id when the
+   * three core tiers are assigned; OFF with the pointer to the Providers page
+   * when nothing is configured, which is the normal first-run state and never
+   * a degradation. Deliberately never `unreachable` from here: this entry
+   * reports what is CONFIGURED, and whether a configured provider actually
+   * answers is the gateway health check's finding.
+   */
+  private models(checkedAt: string): CapabilitySummary {
+    const base = { id: 'models' as const, checkedAt, probed: false };
+    const providers = this.config.modelProviders;
+    return providers.configured
+      ? { ...base, state: 'on', detail: `configuration ${providers.id}` }
+      : {
+          ...base,
+          state: 'off',
+          detail:
+            'no model provider configured; capture, ingestion and chat are off until an ' +
+            'administrator adds one under Providers in the interface',
+        };
   }
 
   /**
@@ -497,15 +518,6 @@ export class CapabilitiesService {
     }
     this.reasoningCache = { at, summary };
     return summary;
-  }
-
-  private async localModels(checkedAt: string): Promise<CapabilitySummary> {
-    const base = { id: 'local-models' as const, checkedAt };
-    const probe = await probeLocalRuntime(this.config.modelProviders, { timeoutMs: 3000 });
-    if (probe === null) return { ...base, state: 'off', probed: false };
-    return probe.ok
-      ? { ...base, state: 'on', probed: true, detail: probe.detail }
-      : { ...base, state: 'unreachable', probed: true, error: probe.error };
   }
 
   private async assembleJobs(now: Date, checkedAt: string): Promise<ScheduledJobSummary[]> {

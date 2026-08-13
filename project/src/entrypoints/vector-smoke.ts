@@ -22,13 +22,14 @@ async function main(): Promise<void> {
   }
   const config = loadConfig();
   // The DATABASE's model configuration is what this instance runs (V2.4 item
-  // 7.1): seeded once from the environment, authoritative after that. A tool
-  // that resolved the environment instead could embed with a model the
+  // 7.1). A tool that resolved anything else could embed with a model the
   // instance replaced, which is precisely the mixed embedding space the boot
   // guard exists to refuse.
   await installModelConfiguration(config);
   if (!config.modelProviders.configured) {
-    console.error('vector:smoke needs COGETO_MISTRAL_API_KEY to embed the query');
+    console.error(
+      'vector:smoke needs a configured embeddings provider (Providers in the interface)',
+    );
     process.exit(2);
   }
 

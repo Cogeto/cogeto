@@ -18,7 +18,10 @@
     "explainer": "Expéditeurs externes dont les e-mails rejoignent <b>votre</b> mémoire, généralement les personnes dont vous transférez automatiquement les messages depuis votre fournisseur. Les autres utilisateurs conservent leurs propres listes.",
     "empty": "Aucun expéditeur externe n’est encore autorisé. En dehors de votre propre adresse ci-dessus, Cogeto est <b>fermé par défaut</b> et n’accepte aucun e-mail pour vous tant que vous n’ajoutez pas une adresse ou un domaine ici.",
     "kind": "Type",
-    "kindValue": { "address": "adresse", "domain": "domaine" },
+    "kindValue": {
+      "address": "adresse",
+      "domain": "domaine"
+    },
     "addressField": "Adresse e-mail",
     "domainField": "Domaine",
     "addressPlaceholder": "ana@adriatic-foods.hr",

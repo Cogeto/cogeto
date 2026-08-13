@@ -152,4 +152,60 @@ describe('outbox + queue contract (integration, real Postgres)', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ job_type: 'always-fails', attempts: 1 });
   });
+
+  it('awaiting_model_provider: work queued before a provider exists waits, never dead-letters, and drains once one is configured', async () => {
+    // The first-run state (deployment-readiness remediation): the gateway
+    // throws its not-configured error until "an administrator configures a
+    // provider", which this test flips with a boolean.
+    let configured = false;
+    const notConfigured = (): Error => {
+      const error = new Error('no model provider is configured');
+      error.name = 'ModelGatewayNotConfiguredError';
+      return error;
+    };
+    const tasks: TaskList = {
+      'needs-model': idempotentTask(tdb.db, 'needs-model', async (tx, payload) => {
+        if (!configured) throw notConfigured();
+        await writeAudit(tx, {
+          actor: 'worker:needs-model',
+          action: 'extracted',
+          entityType: payload.source_type,
+          entityId: payload.source_id,
+        });
+      }),
+    };
+    await tdb.db.transaction((tx) =>
+      withTransactionalEnqueue(
+        tx,
+        { type: 'test.event', payload: { source_type: 'test', source_id: 'waiting-1' } },
+        {
+          type: 'needs-model',
+          payload: { source_type: 'test', source_id: 'waiting-1' },
+          maxAttempts: 1,
+        },
+      ),
+    );
+    await runOnce({ pgPool: tdb.pool, taskList: tasks });
+
+    // Even at maxAttempts 1, nothing dead-letters: the delivery completed and
+    // the SAME job now sits scheduled in the future under the waiting key.
+    const dead = await tdb.pool.query(
+      "SELECT 1 FROM dead_letter WHERE payload->>'source_id' = 'waiting-1'",
+    );
+    expect(dead.rows).toHaveLength(0);
+    const scheduled = await tdb.pool.query<{ key: string | null }>(
+      `SELECT key FROM graphile_worker._private_jobs WHERE payload->>'source_id' = 'waiting-1'`,
+    );
+    expect(scheduled.rows).toHaveLength(1);
+    expect(scheduled.rows[0]!.key).toBe('awaiting-model-provider:needs-model:test:waiting-1');
+
+    // "A provider was configured": pull the scheduled job due and run it —
+    // the effect lands with no restart and no replay.
+    configured = true;
+    await tdb.pool.query(
+      `UPDATE graphile_worker._private_jobs SET run_at = now() WHERE payload->>'source_id' = 'waiting-1'`,
+    );
+    await runOnce({ pgPool: tdb.pool, taskList: tasks });
+    expect(await countEffects('waiting-1')).toBe(1);
+  });
 });

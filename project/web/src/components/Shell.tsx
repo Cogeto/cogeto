@@ -1,7 +1,13 @@
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { fetchAttention, fetchContradictions, fetchMe, fetchPendingApprovals } from '../api';
+import {
+  fetchAttention,
+  fetchContradictions,
+  fetchMe,
+  fetchModelConfig,
+  fetchPendingApprovals,
+} from '../api';
 import type { Session } from '../auth/oidc';
 import { Nav } from './Nav';
 import type { NavSection } from './Nav';
@@ -63,6 +69,15 @@ export function Shell({
     queryFn: () => fetchAttention(session),
     refetchInterval: 30_000,
   });
+  // The first-run state: no model provider configured. Shared cache key with
+  // the pages that disable their capture surfaces off the same answer; the
+  // interval is what makes configuring a provider lift the banner everywhere
+  // without a reload.
+  const { data: modelConfig } = useQuery({
+    queryKey: ['model-config'],
+    queryFn: () => fetchModelConfig(session),
+    refetchInterval: 30_000,
+  });
 
   return (
     // Full-height pages (chat) take the shell OUT of document flow entirely
@@ -105,6 +120,24 @@ export function Shell({
             </h1>
           </div>
         </header>
+        {modelConfig?.configured === false && (
+          <div className="shrink-0 border-b border-amber-200 bg-amber-50">
+            <div
+              className={`py-2 text-sm text-amber-900 ${
+                fullHeight ? 'mx-auto w-full max-w-3xl px-4' : `${COL} px-6`
+              }`}
+            >
+              <span>{t('modelRequired.banner')}</span>{' '}
+              {me?.isAdmin === true ? (
+                <a href="/providers" className="font-medium underline hover:text-amber-950">
+                  {t('modelRequired.configureCta')}
+                </a>
+              ) : (
+                <span>{t('modelRequired.askAdmin')}</span>
+              )}
+            </div>
+          </div>
+        )}
         <main
           className={
             fullHeight ? `${COL} flex min-h-0 flex-1 flex-col gap-6 p-6` : `${COL} grid gap-6 p-6`

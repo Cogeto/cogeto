@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { SourceBadgeFilter, SourceCatalogItemDto, SourceTypeKey } from '@cogeto/shared';
 import { SOURCE_BADGE_FILTERS, SOURCE_TYPE_KEYS } from '@cogeto/shared';
-import { fetchProjects, fetchSourceCatalog } from '../api';
+import { fetchModelConfig, fetchProjects, fetchSourceCatalog } from '../api';
 import type { Session } from '../auth/oidc';
 import { ImportPanel } from '../components/ImportPanel';
 import { MemoryDrawer } from '../components/MemoryDrawer';
@@ -79,6 +79,16 @@ export function Sources({ session }: { session: Session }) {
     }),
     [type, badge, projectId, q, order, cursor],
   );
+  // The first-run state: uploads and imports run the extraction pipeline, so
+  // both doors are disabled with the shared explanation until a model
+  // provider is configured (same cache key as the shell banner).
+  const modelConfigQuery = useQuery({
+    queryKey: ['model-config'],
+    queryFn: () => fetchModelConfig(session),
+    refetchInterval: 30_000,
+  });
+  const modelsOff = modelConfigQuery.data?.configured === false;
+
   const page = useQuery({
     queryKey: ['sources', params],
     queryFn: () => fetchSourceCatalog(session, params),
@@ -103,13 +113,17 @@ export function Sources({ session }: { session: Session }) {
         <button
           type="button"
           onClick={() => setShowUpload((value) => !value)}
-          className="rounded-lg border border-brand-teal/40 bg-brand-teal/10 px-3 py-1.5 text-sm font-medium text-brand-teal-ink transition-colors hover:bg-brand-teal/20 dark:text-brand-teal"
+          disabled={modelsOff}
+          title={modelsOff ? t('common:modelRequired.short') : undefined}
+          className="rounded-lg border border-brand-teal/40 bg-brand-teal/10 px-3 py-1.5 text-sm font-medium text-brand-teal-ink transition-colors hover:bg-brand-teal/20 disabled:opacity-40 dark:text-brand-teal"
         >
           {showUpload ? t('page.hideUpload') : t('page.uploadHeading')}
         </button>
-        <p className="text-sm text-slate-500">{t('page.uploadIntro')}</p>
+        <p className="text-sm text-slate-500">
+          {modelsOff ? t('common:modelRequired.short') : t('page.uploadIntro')}
+        </p>
       </div>
-      {showUpload && (
+      {showUpload && !modelsOff && (
         <UploadCard
           session={session}
           onUploaded={(objectKey, filename) =>
@@ -120,8 +134,10 @@ export function Sources({ session }: { session: Session }) {
           onDuplicate={(objectKey) => openDrawer({ sourceType: 'file', sourceId: objectKey })}
         />
       )}
-      {/* Bulk import (5.3): manifest first, honest progress, durable summary. */}
-      <ImportPanel session={session} />
+      {/* Bulk import (5.3): manifest first, honest progress, durable summary.
+          Hidden with the shared explanation above while no model provider is
+          configured — an import would only queue work that must wait. */}
+      {!modelsOff && <ImportPanel session={session} />}
       {uploads.map((upload) => (
         <PendingUpload
           key={upload.objectKey}

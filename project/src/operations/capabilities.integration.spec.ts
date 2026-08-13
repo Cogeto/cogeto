@@ -92,6 +92,10 @@ describe('capability registry (integration, real Postgres)', () => {
 
     // The additive capability/job surface.
     expect(report.capabilities.map((c) => c.id)).toEqual([
+      // The model configuration itself (deployment-readiness remediation):
+      // on with the configuration id, off with the pointer to Providers when
+      // nothing is configured — the normal first-run state, never a failure.
+      'models',
       'redaction',
       'research',
       // Inbound email capture joined the registry in audit 2.0 SEC-14: it is a
@@ -99,7 +103,6 @@ describe('capability registry (integration, real Postgres)', () => {
       'mail',
       'demo',
       'consoles',
-      'local-models',
       // The generation model thinks in a separate reasoning field (Part B of
       // reasoning support): probed with a real prompt BEFORE the vision probe,
       // because its side effect arms the maxTokens headroom vision needs.

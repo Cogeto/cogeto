@@ -89,9 +89,12 @@ export const modelConfigurationChange = pgTable(
 export type ModelConfigurationChangeRow = typeof modelConfigurationChange.$inferSelect;
 
 /**
- * The single-row marker. `seededAt` is what makes seeding happen exactly once;
- * `version` is what lets a process with no request to react to (the worker)
- * notice a change within one poll.
+ * The single-row marker. `version` is what lets a process with no request to
+ * react to (the worker) notice a change within one poll. The `seeded_at` and
+ * `seed_source` columns are the retired one-time environment seed's record;
+ * nothing writes or reads them any more (the environment holds no model
+ * configuration), and they stay in the schema only because dropping a column
+ * is a migration this change deliberately does not make.
  */
 export const modelConfigState = pgTable('model_config_state', {
   singleton: boolean('singleton').primaryKey().default(true),

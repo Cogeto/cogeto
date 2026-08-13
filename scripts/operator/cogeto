@@ -6,12 +6,18 @@
 # script-driven and manual-by-design: no Terraform, no cloud-provider API
 # automation, no self-serve provisioning, no automatic updates.
 #
-#   cogeto install    [--domain D] [--acme-email E] [--version X.Y.Z] [--mistral-key K]
-#   cogeto configure  [--domain D] [--mistral-key K] [--regenerate NAME]
+#   cogeto install    [--domain D] [--acme-email E] [--version X.Y.Z]
+#   cogeto configure  [--domain D] [--regenerate NAME]
 #   cogeto upgrade    [X.Y.Z|latest]
 #   cogeto status
-#   cogeto features   [enable <id> | disable <id>] [--base-url URL]
+#   cogeto features   [enable <id> | disable <id>]
+#   cogeto reindex    [--provider LABEL --model MODEL]
 #   cogeto backup-info
+#
+# This script installs and operates INFRASTRUCTURE. It knows nothing about
+# models: providers, models and their API keys are configured in the
+# interface (Providers in the left rail) and stored in the instance
+# database, encrypted under COGETO_MASTER_KEY.
 #
 # Global flags: --check (dry run: validate prerequisites, print the intended
 # actions and the checklist, mutate NOTHING), --help, --root DIR.
@@ -146,11 +152,11 @@ usage() {
 cogeto — install, configure, upgrade, and check a Cogeto customer instance.
 
 Usage:
-  cogeto install    [--domain D] [--acme-email E] [--version X.Y.Z] [--mistral-key K]
-  cogeto configure  [--domain D] [--mistral-key K] [--regenerate NAME]
+  cogeto install    [--domain D] [--acme-email E] [--version X.Y.Z]
+  cogeto configure  [--domain D] [--regenerate NAME]
   cogeto upgrade    [X.Y.Z|latest]
   cogeto status
-  cogeto features   [enable <id> | disable <id>] [--base-url URL]
+  cogeto features   [enable <id> | disable <id>]
   cogeto reindex    [--provider LABEL --model MODEL]
   cogeto backup-info
   cogeto --help
@@ -168,9 +174,10 @@ Subcommands:
                DNS/backup/verification checklist.
   configure    Show or change instance configuration idempotently: --domain
                moves the instance to a new domain (updates OIDC issuer, S3
-               origin, inbound address); --mistral-key sets the model API key;
-               --regenerate NAME rotates a rotatable secret (see notes —
-               data-bound secrets and the receipt-signing key are refused).
+               origin, inbound address); --regenerate NAME rotates a rotatable
+               secret (see notes — data-bound secrets and the receipt-signing
+               key are refused). Model providers are configured in the
+               interface (Providers), never here.
   upgrade      Move to a published release: shows current → target (and
                whether the target is the latest published release), requires
                a typed backup acknowledgment, pulls the prebuilt images
@@ -186,7 +193,7 @@ Subcommands:
                actually working.
   features Optional capabilities (P6.7). With no verb:
                list every capability (redaction, research, mail, demo,
-               consoles, local-models) with its configured state and, when the stack is
+               consoles) with its configured state and, when the stack is
                running, its live health from /api/health; with the stack down
                the configured state is shown and health is stated as unknown.
                'enable <id>' / 'disable <id>' edit the instance configuration
@@ -195,13 +202,15 @@ Subcommands:
                wait for health, and print any operator TODOs. Disabling
                redaction requires a typed confirmation (model calls would
                send plaintext). Enabling demo is REFUSED on a production
-               instance. 'enable local-models' needs --base-url (the Ollama
-               runtime URL) and states the reindex consequence. 'enable mail'
+               instance. 'enable mail'
                starts the receive-only inbound SMTP listener, opens 25/tcp in
                ufw and prints the MX/PTR steps; 'disable mail' stops it and
                closes the port again (audit 2.0 SEC-14: inbound SMTP is opt-in,
                so an instance that does not use email capture runs no
                internet-facing listener).
+               Models and local model runtimes are NOT features of this
+               script: they are configured in the interface (Providers and
+               Models in the left rail).
   reindex      Rebuild the vector index from Postgres (spec 4.2). With no
                flags: re-embed everything with the ACTIVE embeddings model —
                the repair for the mismatch the boot guard refuses (restored
@@ -260,14 +269,13 @@ derive_s3_origin() { printf 'https://s3.%s' "$1"; }
 
 # ── Capability helpers (P6.7) — pure, unit-tested ─────────────
 
-FEATURE_IDS="redaction research mail demo consoles local-models"
+FEATURE_IDS="redaction research mail demo consoles"
 
 feature_known() {
   case " ${FEATURE_IDS} " in *" $1 "*) return 0 ;; *) return 1 ;; esac
 }
 
-# The compose profile a capability rides on (local-models has none: it is an
-# external runtime reached over the network, not a container of this stack).
+# The compose profile a capability rides on.
 feature_profile() {
   case "$1" in
     redaction) echo "redaction" ;;
@@ -343,6 +351,11 @@ ensure_wave3_secrets() {
   [ -n "$(env_get COGETO_S3_ACCESS_KEY)" ]       || env_set COGETO_S3_ACCESS_KEY "cogeto-app"
   [ -n "$(env_get COGETO_S3_SECRET_KEY)" ]       || env_set COGETO_S3_SECRET_KEY "$(gen_password)"
   [ -n "$(env_get ZITADEL_BOOTSTRAP_PAT_EXPIRY)" ] || env_set ZITADEL_BOOTSTRAP_PAT_EXPIRY "$(gen_bootstrap_pat_expiry)"
+  # The instance master key: encrypts the provider API keys entered in the
+  # interface. Backfilled when missing (an instance installed before it
+  # existed), NEVER regenerated when set — rotating it would make every
+  # stored provider key unreadable.
+  [ -n "$(env_get COGETO_MASTER_KEY)" ]          || env_set COGETO_MASTER_KEY "$(gen_master_key)"
 }
 
 # SEC-14 upgrade continuity. Inbound mail moved behind the `mail` compose
@@ -872,6 +885,7 @@ add_install_checklist() {
 
   todo_dns "Open https://${domain} — a valid Let's Encrypt certificate is served and the login page loads (Caddy retries ACME automatically once DNS resolves; no restart needed)"
   todo_dns "Create the customer's user: open the Zitadel Console at https://${domain}/ui/console, sign in as admin@${domain} (password = ZITADEL_ADMIN_PASSWORD in ${ENV_FILE}), Users → + New — choose 'Set initial password' and hand it over out-of-band. NEVER 'Send an email invitation': the instance has no outbound SMTP, so invitations silently never arrive."
+  todo_dns "Configure a model provider: log in at https://${domain} as an administrator, open Providers (left rail), add the provider and its API key, then assign the pipeline, answer and embeddings models under Models. Capture, ingestion and chat are OFF until this is done — the interface says so on every page, and no restart is needed after."
   if mail_capability_enabled; then
     todo_dns "Email capture test (sender-routed): have the CUSTOMER forward any email FROM THEIR OWN ADDRESS (the one their user is registered with) to ${inbound} — it is captured for them with no configuration. External senders they auto-forward from are added to THEIR allowlist (Settings → Email capture); the operator admin account never captures."
   fi
@@ -887,13 +901,13 @@ add_install_checklist() {
 # ── install ───────────────────────────────────────────────────────────────────
 
 cmd_install() {
-  domain=""; acme_email=""; version=""; mistral_key=""
+  domain=""; acme_email=""; version=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --domain)      domain="$2"; shift 2 ;;
       --acme-email)  acme_email="$2"; shift 2 ;;
       --version)     version="$2"; shift 2 ;;
-      --mistral-key) mistral_key="$2"; shift 2 ;;
+      --mistral-key) die "install: --mistral-key is gone — model providers are configured in the interface after login (Providers in the left rail), never in the environment" ;;
       *) die "install: unknown argument '$1' (see --help)" ;;
     esac
   done
@@ -995,11 +1009,6 @@ cmd_install() {
   env_set COGETO_QDRANT_API_KEY "$(gen_token)"
   env_set COGETO_MAIL_INBOUND_ADDRESS "$inbound"
   env_set COGETO_MAIL_INTAKE_TOKEN "$(gen_token)"
-  env_set COGETO_MISTRAL_API_KEY "$mistral_key"
-  if [ -z "$mistral_key" ]; then
-    warn "no Mistral API key set — the stack runs (login, dashboard, capture) but model features fail with a typed error until 'cogeto configure --mistral-key ...' sets one"
-    todo_now "Set the model API key: cogeto configure --mistral-key <key from console.mistral.ai>"
-  fi
   if [ "$CHECK" -eq 0 ]; then
     chown -R "${SERVICE_USER}:${SERVICE_USER}" "$COGETO_ROOT" 2>/dev/null || true
     chmod 600 "$ENV_FILE"
@@ -1017,7 +1026,7 @@ cmd_install() {
 
   if [ "$CHECK" -eq 0 ]; then
     say "aggregate application health:"
-    fetch_health_report || warn "health is not fully green yet — re-check with 'cogeto status' (the model-gateway check needs the API key; TLS needs DNS)"
+    fetch_health_report || warn "health is not fully green yet — re-check with 'cogeto status' (TLS needs DNS; a fresh instance has no model provider yet, which is normal and does not degrade health)"
   fi
 
   say "TLS: Caddy requests the Let's Encrypt certificate automatically and keeps retrying until the DNS A record resolves to this host — no further action beyond the DNS records below"
@@ -1113,14 +1122,14 @@ cmd_upgrade() {
 # recorded on existing memories (migration 0004) — then the Qdrant index must
 # be rebuilt from Postgres (spec §4.2: reindex must always work).
 check_embedding_model() {
-  # The DATABASE is authoritative for the embeddings model since migration
-  # 0052; the environment variable is only what a not-yet-seeded v1-era
-  # instance still runs, so it is the fallback, never the answer.
+  # The DATABASE is the only source of the embeddings model. No assignment
+  # yet (a first-run instance with no provider configured) means no vectors
+  # were ever produced, so there is nothing to reindex and nothing to check.
   configured="$(compose exec -T postgres psql -U postgres -d cogeto -tA \
     -c "SELECT model FROM model_assignment WHERE tier = 'embeddings'" 2>/dev/null || echo "")"
   if [ -z "$configured" ]; then
-    configured="$(env_get COGETO_MISTRAL_EMBED_MODEL)"
-    [ -n "$configured" ] || configured="mistral-embed"
+    say "no embeddings model is assigned yet (models are configured in the interface) — nothing to reindex"
+    return 0
   fi
   stale="$(compose exec -T postgres psql -U postgres -d cogeto -tA \
     -c "SELECT count(*) FROM memory WHERE embedding_model IS NOT NULL AND embedding_model <> '${configured}'" 2>/dev/null || echo "")"
@@ -1230,6 +1239,26 @@ cmd_status() {
   echo " dead-letter count, deletion-sweep state, bucket encryption, mail):"
   if fetch_health_report; then :; else green=0; fi
 
+  # Model configuration, read from the RUNNING APP's capability registry —
+  # the authoritative source. This script never reads it from .env, because
+  # .env holds no model configuration: it is impossible for this line to
+  # report a working configuration that does not exist. "not configured" is a
+  # normal state (a fresh install before the admin adds a provider), stated
+  # plainly and never counted against the verdict.
+  echo
+  echo " model provider (from the running app; configured in the interface):"
+  if ! compose exec -T app node -e '
+    fetch("http://127.0.0.1:3000/api/health")
+      .then((r) => r.json())
+      .then((j) => {
+        const models = (j.capabilities ?? []).find((c) => c.id === "models");
+        if (!models) { console.log("   unknown — the registry did not report the models entry"); process.exit(1); }
+        console.log("   " + (models.state === "on" ? "configured" : "NOT CONFIGURED") + (models.detail ? " — " + models.detail : ""));
+        process.exit(0);
+      })
+      .catch((e) => { console.log("   unreachable: " + e.message); process.exit(1); });
+  ' 2>/dev/null; then green=0; fi
+
   echo
   echo " TLS certificate for ${domain}:"
   cert_end="$(echo | openssl s_client -connect 127.0.0.1:443 -servername "$domain" 2>/dev/null | openssl x509 -noout -enddate -issuer 2>/dev/null || true)"
@@ -1312,8 +1341,6 @@ feature_configured() {  # feature_configured ID → enabled|disabled
     consoles)
       { profiles_has "$profiles" consoles || [ "$(env_get COGETO_CONSOLES_ENABLED)" = "1" ]; } \
         && { echo enabled; return; } ;;
-    local-models)
-      [ -n "$(env_get COGETO_OLLAMA_BASE_URL)" ] && { echo enabled; return; } ;;
   esac
   echo disabled
 }
@@ -1397,7 +1424,7 @@ features_list() {
 }
 
 features_enable() {
-  fid="$1"; base_url="$2"
+  fid="$1"
   case "$fid" in
     research)
       require_feature_service research searxng research \
@@ -1481,17 +1508,6 @@ features_enable() {
       wait_service_healthy app 120 || true
       say "consoles are LOCALHOST-ONLY: https://minio.localhost:8443 and https://qdrant.localhost:8443 answer on 127.0.0.1 of this machine only"
       ;;
-    local-models)
-      [ -n "$base_url" ] || base_url="$(env_get COGETO_OLLAMA_BASE_URL)"
-      [ -n "$base_url" ] || die "enable local-models needs --base-url <ollama runtime URL>, e.g. cogeto features enable local-models --base-url http://10.0.0.1:11434"
-      confirm_typed "enable local-models" "this switches the model configuration to the ollama-local preset (pipeline, answer AND embeddings on the local runtime). CHANGING THE EMBEDDINGS MODEL means the app refuses to start until the vector index is rebuilt (reindex re-embeds every memory via the runtime)."
-      env_set COGETO_PROVIDER_PRESET "ollama-local"
-      env_set COGETO_OLLAMA_BASE_URL "$base_url"
-      apply_feature_change
-      wait_service_healthy app 180 || true
-      todo_now "Pull the preset models on the Ollama host: ollama pull gemma3:12b && ollama pull bge-m3"
-      todo_now "If the app refuses to start with 'embedding model changed': run docker compose exec worker npm run reindex, then start again"
-      ;;
   esac
 }
 
@@ -1539,25 +1555,16 @@ features_disable() {
       stop_profile_service consoles caddy-consoles
       say "consoles are disabled"
       ;;
-    local-models)
-      confirm_typed "disable local-models" "this returns the model configuration to the hosted default. CHANGING THE EMBEDDINGS MODEL BACK means the app refuses to start until reindex has re-embedded the vectors with the hosted model (costs API calls)."
-      env_set COGETO_PROVIDER_PRESET ""
-      env_set COGETO_OLLAMA_BASE_URL ""
-      apply_feature_change
-      wait_service_healthy app 180 || true
-      todo_now "If the app refuses to start with 'embedding model changed': run docker compose exec worker npm run reindex, then start again"
-      ;;
   esac
 }
 
 cmd_features() {
-  verb=""; fid=""; base_url=""
+  verb=""; fid=""
   while [ $# -gt 0 ]; do
     case "$1" in
       enable|disable)
         [ -z "$verb" ] || die "features: one verb per run (see --help)"
         verb="$1"; shift ;;
-      --base-url) base_url="$2"; shift 2 ;;
       *)
         if [ -z "$verb" ] || [ -n "$fid" ]; then
           die "features: unknown argument '$1' (see --help)"
@@ -1573,6 +1580,9 @@ cmd_features() {
   fi
 
   [ -n "$fid" ] || die "features ${verb}: which capability? Valid ids: ${FEATURE_IDS}"
+  if [ "$fid" = "local-models" ]; then
+    die "local-models is no longer a script feature: a local runtime is an ordinary model provider now. Configure it in the interface — Providers (add a Self-hosted provider pointing at the runtime's OpenAI-compatible endpoint), then Models (assign the tiers; an embeddings change runs the managed rebuild there)."
+  fi
   feature_known "$fid" || die "unknown capability '${fid}' — valid ids: ${FEATURE_IDS}"
   require_root
 
@@ -1587,7 +1597,7 @@ cmd_features() {
   fi
 
   if [ "$verb" = "enable" ]; then
-    features_enable "$fid" "$base_url"
+    features_enable "$fid"
   else
     features_disable "$fid"
   fi
@@ -1607,26 +1617,25 @@ cmd_configure() {
   require_installed
   # Self-heal the PATH install (issue #60) — same rationale as cmd_upgrade.
   install_self
-  new_domain=""; mistral_key=""; regen=""
+  new_domain=""; regen=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --domain)      new_domain="$2"; shift 2 ;;
-      --mistral-key) mistral_key="$2"; shift 2 ;;
+      --mistral-key) die "configure: --mistral-key is gone — model providers and their keys are configured in the interface (Providers in the left rail; the change applies without a restart), never in the environment" ;;
       --regenerate)  regen="$2"; shift 2 ;;
       *) die "configure: unknown argument '$1' (see --help)" ;;
     esac
   done
 
-  if [ -z "$new_domain" ] && [ -z "$mistral_key" ] && [ -z "$regen" ]; then
+  if [ -z "$new_domain" ] && [ -z "$regen" ]; then
     say "current configuration (secret VALUES are never printed):"
     echo "  domain             = $(env_get COGETO_EXTERNAL_DOMAIN)"
     echo "  version            = $(env_get COGETO_VERSION)"
     echo "  inbound address    = $(env_get COGETO_MAIL_INBOUND_ADDRESS)"
     echo "  s3 public origin   = $(env_get COGETO_S3_PUBLIC_URL)"
     echo "  admin username     = $(env_get ZITADEL_ADMIN_USERNAME)"
-    mk="$(env_get COGETO_MISTRAL_API_KEY)"
-    echo "  mistral api key    = $([ -n "$mk" ] && echo '<set>' || echo '<empty — model features off>')"
-    say "change with --domain, --mistral-key, or --regenerate NAME (see --help)"
+    echo "  model providers    = configured in the interface (Providers); this file holds none"
+    say "change with --domain or --regenerate NAME (see --help)"
     return 0
   fi
 
@@ -1649,12 +1658,6 @@ cmd_configure() {
     todo_now "The bootstrap PAT was revoked after install (SEC-16). Before the domain change completes: in the Zitadel console (as $(env_get ZITADEL_ADMIN_USERNAME)) create a new personal access token for the 'cogeto-bootstrap' machine user, write it into the zitadel-machinekey volume as pat.txt, delete bootstrap-state.json next to it, then re-run 'docker compose up -d' (runbook: 'Changing the domain after install')"
     restart_needed="caddy app worker mail zitadel zitadel-init"
     add_install_checklist "$new_domain" "$(derive_inbound_address "$new_domain")" "$(detect_public_ip)"
-  fi
-
-  if [ -n "$mistral_key" ]; then
-    env_set COGETO_MISTRAL_API_KEY "$mistral_key"
-    say "model API key updated in .env (value not logged)"
-    restart_needed="${restart_needed} app worker"
   fi
 
   if [ -n "$regen" ]; then

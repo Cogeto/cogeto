@@ -6,7 +6,7 @@ import { VisionUnavailableError } from './errors';
 import { probeImagePng, probeVision } from './vision-probe';
 import { classifyVisionFailure } from './vision-failure';
 import { ProviderHttpError } from './provider';
-import { resolveModelProviders } from './provider-config';
+import { resolveEvalProvidersFromEnv } from './provider-config';
 
 /**
  * The probe exists because a model's NAME cannot answer the question. These
@@ -51,9 +51,9 @@ const VISION_ENV = {
   COGETO_MODEL_VISION: 'llava:13b',
   COGETO_OLLAMA_BASE_URL: 'http://10.0.0.1:11434',
 };
-const providersWithVision = () => resolveModelProviders(VISION_ENV, { redacted: false });
+const providersWithVision = () => resolveEvalProvidersFromEnv(VISION_ENV, { redacted: false });
 const providersWithoutVision = () =>
-  resolveModelProviders({ COGETO_MISTRAL_API_KEY: 'k' }, { redacted: false });
+  resolveEvalProvidersFromEnv({ COGETO_MISTRAL_API_KEY: 'k' }, { redacted: false });
 
 describe('the probe image', () => {
   it('is a real PNG built in code, not a fixture on disk', () => {
@@ -83,7 +83,7 @@ describe('probeVision', () => {
 
     expect(result.ok).toBe(false);
     expect(result.reason).toBe('not_configured');
-    expect(result.error).toContain('COGETO_PROVIDER_VISION');
+    expect(result.error).toContain('Models in the interface');
     // The consequence is stated, not just the missing variable.
     expect(result.error).toContain('labelled');
   });
@@ -141,7 +141,7 @@ describe('failure classification', () => {
     // the image. This sends them to the Modelfile instead.
     expect(classified.error ?? classified.message).toMatch(/MULTIMODAL PROJECTOR/);
     expect(classified.message).toContain('mmproj');
-    expect(classified.message).toContain('COGETO_MODEL_VISION');
+    expect(classified.message).toContain('Models in the interface');
   });
 
   it('does not blame a projector on a hosted provider', () => {

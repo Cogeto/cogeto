@@ -189,9 +189,9 @@ jobs:
         id: secret
         if: github.event_name == 'push' && steps.paths.outputs.relevant == 'true'
         env:
-          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          COGETO_MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
         run: |
-          if [ -z "$MISTRAL_API_KEY" ]; then
+          if [ -z "$COGETO_MISTRAL_API_KEY" ]; then
             echo "present=false" >> "$GITHUB_OUTPUT"
             echo "::warning title=eval gate SKIPPED::MISTRAL_API_KEY is not available on main. The golden-set gate did NOT run — add the repository secret."
           else
@@ -201,14 +201,14 @@ jobs:
       - name: Golden-set gate (extraction + reconciliation, gates.json)
         if: github.event_name == 'push' && steps.paths.outputs.relevant == 'true' && steps.secret.outputs.present == 'true'
         env:
-          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          COGETO_MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           COGETO_EVAL_GATE: '1'
         run: npm run eval
 
       - name: Chat eval gate (rule checks + mean coverage)
         if: github.event_name == 'push' && steps.paths.outputs.relevant == 'true' && steps.secret.outputs.present == 'true'
         env:
-          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          COGETO_MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           COGETO_EVAL_GATE: '1'
         run: npm run eval:chat
 

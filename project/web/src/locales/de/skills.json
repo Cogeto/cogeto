@@ -63,7 +63,10 @@
     "queryRemoved": "entfernt",
     "querySent": "gesendet"
   },
-  "brief": { "heading": "Briefing", "copyWithSources": "Mit Quellen kopieren" },
+  "brief": {
+    "heading": "Briefing",
+    "copyWithSources": "Mit Quellen kopieren"
+  },
   "export": {
     "sources": "Quellen:",
     "webSource": "- {{marker}} {{title}} ({{url}}, abgerufen {{date}})",

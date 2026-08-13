@@ -249,9 +249,7 @@ describe('deployment hardening', () => {
       expect(operator).toContain('close_mail_firewall');
       expect(operator).toContain('ufw delete allow 25/tcp');
       // And it is a first-class capability of the features subcommand.
-      expect(operator).toContain(
-        'FEATURE_IDS="redaction research mail demo consoles local-models"',
-      );
+      expect(operator).toContain('FEATURE_IDS="redaction research mail demo consoles"');
     });
 
     it('SEC-17: every service in both compose files carries mem/cpu/pid ceilings', () => {

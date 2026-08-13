@@ -176,7 +176,7 @@ function ConfigurationSummary({ configuration }: { configuration: ModelConfigura
       ) : (
         <p className="text-xs text-slate-500">{t('trust.notEvaluatedHelp')}</p>
       )}
-      <p className="text-xs text-slate-400">{t(`summary.source.${configuration.source}`)}</p>
+      <p className="text-xs text-slate-400">{t('summary.managedHere')}</p>
     </div>
   );
 }

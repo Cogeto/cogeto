@@ -18,7 +18,10 @@
     "explainer": "Externe Absender, deren E-Mails Teil <b>Ihres</b> Wissensstands werden. Üblicherweise sind dies Personen, deren Nachrichten Sie bei Ihrem Anbieter automatisch weiterleiten. Andere Benutzer führen eigene Listen.",
     "empty": "Noch sind keine externen Absender zugelassen. Abgesehen von Ihrer eigenen Adresse oben ist Cogeto <b>standardmäßig geschlossen</b> und nimmt keine E-Mails für Sie an, bis Sie hier eine Adresse oder Domäne hinzufügen.",
     "kind": "Art",
-    "kindValue": { "address": "Adresse", "domain": "Domäne" },
+    "kindValue": {
+      "address": "Adresse",
+      "domain": "Domäne"
+    },
     "addressField": "E-Mail-Adresse",
     "domainField": "Domäne",
     "addressPlaceholder": "ana@adriatic-foods.hr",

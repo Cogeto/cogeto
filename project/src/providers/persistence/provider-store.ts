@@ -212,32 +212,10 @@ export class ProviderStore {
       .limit(limit);
   }
 
-  async readState(): Promise<{
-    seededAt: Date | null;
-    seedSource: string | null;
-    version: number;
-  }> {
-    const rows = await this.db
-      .select({
-        seededAt: modelConfigState.seededAt,
-        seedSource: modelConfigState.seedSource,
-        version: modelConfigState.version,
-      })
-      .from(modelConfigState)
-      .limit(1);
-    return rows[0] ?? { seededAt: null, seedSource: null, version: 0 };
-  }
-
   /** The version alone — the worker's poll, one column, no join. */
   async readVersion(): Promise<number> {
     const rows = await this.db.select({ version: modelConfigState.version }).from(modelConfigState);
     return rows[0]?.version ?? 0;
-  }
-
-  async markSeeded(source: string): Promise<void> {
-    await this.db
-      .update(modelConfigState)
-      .set({ seededAt: new Date(), seedSource: source, updatedAt: new Date() });
   }
 
   /** Bump the version so every process notices, at most one poll later. */
@@ -245,27 +223,6 @@ export class ProviderStore {
     await this.db
       .update(modelConfigState)
       .set({ version: sql`${modelConfigState.version} + 1`, updatedAt: new Date() });
-  }
-
-  /**
-   * Claim the right to seed, atomically. The UPDATE only matches while
-   * `seeded_at` is still null, so of two processes starting together exactly
-   * one gets a row back and the other finds the seeding already done.
-   */
-  async claimSeed(source: string): Promise<boolean> {
-    const rows = await this.db
-      .update(modelConfigState)
-      .set({ seededAt: new Date(), seedSource: source, updatedAt: new Date() })
-      .where(sql`${modelConfigState.seededAt} is null`)
-      .returning({ singleton: modelConfigState.singleton });
-    return rows.length > 0;
-  }
-
-  /** Undo a claim that could not be completed, so the next start retries it. */
-  async releaseSeed(): Promise<void> {
-    await this.db
-      .update(modelConfigState)
-      .set({ seededAt: null, seedSource: null, updatedAt: new Date() });
   }
 }
 

@@ -38,7 +38,7 @@ export interface OperationsOptions {
   composeProfiles: string[];
   /** Hours after which a scheduled job counts as overdue. */
   jobsOverdueHours: number;
-  /** The resolved provider configuration, for the local-runtime probe. */
+  /** The resolved provider configuration, for the models entry and probes. */
   modelProviders: ResolvedModelProviders;
   /** Deadline for the vision probe; the same one the reading ladder uses. */
   visionProbeTimeoutMs?: number;

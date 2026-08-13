@@ -1,13 +1,15 @@
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
-import { resolveModelProviders } from '../model-gateway/index';
+import { resolveEvalProvidersFromEnv } from '../model-gateway/index';
 import type { ResolvedModelProviders } from '../model-gateway/index';
 import { redactionFromEnv } from './config';
 
 /**
- * Eval-harness provider resolution: the SAME resolver
- * the instance boots with, over process.env plus a repo-root `.env` fallback
- * for the key/config variables (the historical convenience for local runs).
+ * Eval-harness provider resolution, over process.env plus a repo-root `.env`
+ * fallback for the key/config variables (the historical convenience for local
+ * runs). The harness runs in CI against no instance database, so it is the
+ * ONE consumer (with the dev smoke tools) of the environment resolver: a
+ * running instance reads its model configuration from the database alone.
  * Whatever configuration this returns is EXACTLY what `--emit-json` records.
  */
 export async function resolveEvalProviders(repoRoot: string): Promise<{
@@ -25,7 +27,7 @@ export async function resolveEvalProviders(repoRoot: string): Promise<{
     // No repo.env — process env alone decides.
   }
   const redaction = redactionFromEnv();
-  const providers = resolveModelProviders(env, { redacted: redaction !== undefined });
+  const providers = resolveEvalProvidersFromEnv(env, { redacted: redaction !== undefined });
   return { providers, redaction };
 }
 

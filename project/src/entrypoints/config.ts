@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { buildLimits } from './limits';
 import { demoRoot } from './demo/corpus';
 import type { LimitsConfig } from '../infrastructure/index';
-import { resolveModelProviders } from '../model-gateway/index';
+import { resolveRuntimeModelSettings, unconfiguredModelProviders } from '../model-gateway/index';
 import type { ResolvedModelProviders } from '../model-gateway/index';
 import { assertProductionSecrets } from './secret-preflight';
 import { readMasterKey } from '../infrastructure/index';
@@ -352,16 +352,17 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CogetoConfig {
   // whatever secret env vars are present (the app sees a subset; the dedicated
   // preflight container sees them all) — absent vars are skipped.
   assertProductionSecrets(env);
-  // Model provider configuration: the same resolver every
-  // process uses; an invalid combination refuses boot with the exact variable
-  // to fix, never failing at first request.
-  // The ENVIRONMENT's model configuration. On an instance that has been
-  // seeded (V2.4 item 7.1) this is not what runs: `installModelConfiguration`
-  // replaces it with the database's before anything is built, and after the
-  // one-time seed these variables are ignored entirely. It stays here because
-  // it is the seed source, and because the eval harness and the bare
-  // entrypoints that never open the instance database still resolve this way.
-  const modelProviders = resolveModelProviders(env, { redacted: parsed.data.redactionEnabled });
+  // Model configuration comes from the DATABASE alone: the interface writes
+  // it, `installModelConfiguration` reads it before anything model-facing is
+  // built. The environment contributes only the two deployment knobs below
+  // (self-hosted timeouts, reasoning headroom); a stale model or provider
+  // variable in `.env` has no effect whatsoever. This placeholder is what a
+  // bare entrypoint that never opens the instance database (migrate,
+  // preflight) keeps, and those processes make no model calls.
+  const modelProviders = unconfiguredModelProviders({
+    redacted: parsed.data.redactionEnabled,
+    ...resolveRuntimeModelSettings(env),
+  });
   return {
     ...parsed.data,
     limits: buildLimits(env, parsed.data.demoMode),

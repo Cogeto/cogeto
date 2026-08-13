@@ -8,9 +8,15 @@
   "chainVerified_many": "chaîne vérifiée · {{count}} reçus",
   "chainVerified_other": "chaîne vérifiée · {{count}} reçus",
   "chainFailed": "ÉCHEC de la vérification de la chaîne",
-  "sourceKind": { "conversation": "discussion" },
+  "sourceKind": {
+    "conversation": "discussion"
+  },
   "sourceLabel": "{{kind}} · {{id}}",
-  "receiptStatus": { "alerting": "alerte", "pending": "en attente…", "confirmed": "confirmé" },
+  "receiptStatus": {
+    "alerting": "alerte",
+    "pending": "en attente…",
+    "confirmed": "confirmé"
+  },
   "empty": {
     "title": "Aucune suppression",
     "body": "Un reçu de suppression est la preuve signée et résistante aux modifications que Cogeto délivre lorsqu’il retire définitivement une source et tout ce qui en dérive. Supprimez une note depuis son volet de source et le reçu apparaîtra ici de façon permanente."

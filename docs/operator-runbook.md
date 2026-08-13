@@ -20,8 +20,9 @@ Developer-facing notes on the script live in
  zone for the customer's domain, typically `cogeto.eu`).
 - [ ] The instance's **app domain** agreed with the customer, e.g.
  `acme.cogeto.eu`.
-- [ ] A **Mistral API key** for the instance (console.mistral.ai): the stack
- runs without one, but model features are off until it is set.
+- [ ] No model key is needed to install. After first login an administrator adds
+ a provider in the interface (a key from any supported provider, or a
+ self-hosted endpoint), and model features are off until then.
 - [ ] An entry prepared in the **trial tracker** (section 8) and your **vault**
  ready to receive the instance secrets.
 - [ ] The oldest installable release is **0.9.0**: earlier tags do not publish
@@ -77,10 +78,10 @@ Developer-facing notes on the script live in
  sudo ./cogeto install --check --domain acme.cogeto.eu --acme-email <your ops address>
  ```
 
-3. **Install** (add the model key now if you have it):
+3. **Install**:
 
  ```sh
- sudo ./cogeto install --domain acme.cogeto.eu --acme-email <your ops address> --mistral-key <key>
+ sudo ./cogeto install --domain acme.cogeto.eu --acme-email <your ops address>
  ```
 
  The script verifies OS/resources, installs Docker **and cosign** (all
@@ -321,52 +322,60 @@ onto a yellow instance.
  history, and all of it is exportable. They can leave anytime.
 6. Record onboarding date and trial dates in the tracker (section 8).
 
-### 4b. Model configuration and local models (Ollama)
+### 4b. Model configuration and local runtimes
 
-The default configuration is EU-hosted Mistral (`sudo ./cogeto configure
---mistral-key <key>` at install). Everything below is optional and per
-instance; the full reference is
-[`docs/features/models.md`](features/models.md) (bring-your-own-key)
-and [`docs/features/models.md`](features/models.md) (local runtime).
+Model configuration lives in the **interface**, not in `.env` and not in the
+script: **Providers** (left rail) is where an administrator adds a provider
+record and its API key (Mistral, OpenAI, Anthropic, or **Self-hosted** for any
+OpenAI-compatible endpoint), and **Models** is where the four tiers (pipeline,
+answer, embeddings, vision) are assigned. Changes apply **without a restart**,
+and the Models page shows the published trust score for the exact configuration
+in force, or says "not evaluated". A fresh instance with no provider is a
+normal state: the interface banner points at Providers, and queued work waits
+and drains once one is added. The full reference is
+[`docs/features/models.md`](features/models.md).
 
-To run tiers on a customer-owned **Ollama** host:
+To run tiers on a customer-owned local runtime (Ollama, llama.cpp, vLLM):
 
-1. **On the Ollama host**: install Ollama, then `ollama pull gemma3:12b` (or
- the chosen generation model) and `ollama pull bge-m3` (embeddings).
+1. **On the runtime host**: install the runtime, then pull the chosen models,
+ e.g. `ollama pull gemma3:12b` (generation) and `ollama pull bge-m3`
+ (embeddings).
 2. **Networking**: the compose containers must reach the runtime address. A
  LAN or same-host address usually just works; for a WireGuard address the
  VM (the Docker **host**) must hold the wg route and forward traffic from
- the Docker bridge subnet (or run Ollama bound to an address the bridge can
- reach). Verify **from inside a container** before changing configuration:
+ the Docker bridge subnet (or run the runtime bound to an address the bridge
+ can reach). Verify **from inside a container** before configuring:
  `sudo docker compose exec app node -e "fetch('http://<addr>:11434/api/tags').then(r=>r.text).then(console.log)"`.
-3. **Configure** in `/srv/cogeto/.env`: all-local:
- `COGETO_PROVIDER_PRESET=ollama-local` and
- `COGETO_OLLAMA_BASE_URL=http://<addr>:11434`, or the recommended mixed
- posture (hosted generation, local embeddings):
- `COGETO_PROVIDER_EMBEDDINGS=ollama`, `COGETO_MODEL_EMBEDDINGS=bge-m3`,
- plus the base URL. No API key is needed for Ollama.
+3. **Configure in the interface**: add a **Self-hosted** provider under
+ Providers with the runtime's OpenAI-compatible URL (Ollama serves one; so do
+ llama.cpp and vLLM), then assign the tiers under Models. No API key is
+ needed for a runtime with no auth; saving an assignment probes the tier's
+ real job, and a failed probe names the reason (unreachable, model not
+ served, and so on).
 4. **Changing the embeddings tier is a managed rebuild** (V2.4 item 7.1
- second half): do it from the Models page, which re-embeds everything into
- a new index while the old one keeps serving and switches at completion.
- From the shell the same operation is `sudo cogeto reindex --provider
- <label> --model <model>`; the flagless `sudo cogeto reindex` (or
+ second half): do it from the Models page, which plans (facts, token
+ estimate, duration, spend), asks for confirmation, re-embeds everything into
+ a new index while the old one keeps serving, and switches atomically at
+ completion. From the shell the same operation is `sudo cogeto reindex
+ --provider <label> --model <model>`; the flagless `sudo cogeto reindex` (or
  `sudo docker compose run --rm worker npm run reindex`) is the in-place
  repair for an index/configuration mismatch. Progress prints done/total;
  every mode is safe to re-run if interrupted.
-5. `sudo docker compose up -d` and check `sudo ./cogeto status`: boot probes
- the runtime and **fails loudly** if it is unreachable or a model is not
- pulled (the error names the exact `ollama pull` command). Settings → Model
- configuration shows the active configuration id.
+5. The per-tier request timeouts stay environment configuration
+ (`COGETO_MODEL_TIMEOUT_ANSWER_MS` / `_PIPELINE_MS` and friends in
+ `/srv/cogeto/.env`): local first-token latency is seconds and a large
+ structured extraction can run minutes, so the defaults for self-hosted
+ endpoints are already high.
 
-Before recommending a local preset, read the measured per-tier, per-language
-parity table in `docs/features/models.md`, where all-local misses parity
-the mixed posture stays the recommendation, and the gap is stated there.
+Before recommending a local configuration, read the measured per-tier,
+per-language parity table in `docs/features/models.md`, where all-local misses
+parity the mixed posture stays the recommendation, and the gap is stated there.
 
 ### 4c. Optional capabilities: `cogeto features`
 
 You never need to remember compose profiles: `sudo cogeto features` is the
 one command for optional capabilities. It lists every capability (redaction,
-research, demo, consoles, local-models) with its configured state and, when
+research, demo, consoles) with its configured state and, when
 the stack is running, its live health: the same registry the product shows
 in **System → Capabilities**, `/api/health` reports, and every app boot logs
 as one `Capabilities: ...` banner line.
@@ -375,8 +384,10 @@ as one `Capabilities: ...` banner line.
 sudo cogeto features # list + live health
 sudo cogeto features enable research # SearXNG on this instance; nothing external
 sudo cogeto features disable research
-sudo cogeto features enable local-models --base-url http://<addr>:11434
 ```
+
+Models are not a script feature: providers, keys and tier assignments live in
+the interface (section 4b), and the script knows nothing about them.
 
 What enable/disable does: edits `/srv/cogeto/.env` idempotently (the
 `COMPOSE_PROFILES` line plus the capability's own flags), re-applies the
@@ -392,10 +403,6 @@ any operator TODOs. Notes per capability:
 - **demo**: REFUSED on a production instance, loudly. Never
  enable it beside real data.
 - **consoles**: dev-only profile; localhost-bound when present.
-- **local-models**: wraps section 4b: sets the `ollama-local` preset and the
- base URL, and states the reindex consequence (typed confirmation both
- ways). The model pulls and the reindex remain your steps; the TODO list
- prints them.
 
 Health is honest: an enabled capability whose service is down shows
 **UNREACHABLE** here, in System, and degrades `/api/health` within ~30
@@ -647,10 +654,10 @@ sudo docker compose logs --tail 200 app # or: worker, mail, caddy, zitadel
 | TLS still not issued though DNS resolves | Port 80 or 443 blocked (OVH Network Firewall), or a stale old A record | Allow 80+443 on the IP's firewall; `sudo docker compose logs caddy` shows the ACME errors verbatim. |
 | Forwarded mail never arrives | In order of frequency: sent from an address that is neither the user's **registered address** nor on their **allowlist**; MX record wrong/missing; TCP 25 blocked; wrong recipient address | Check **Settings → Email capture → Recently refused** first (a refusal row = SMTP and Haraka are fine: the reason is shown; forward from the registered address, or claim the external sender in one click). Note the **admin account never captures**. Then `dig +short MX in.<domain>`; then confirm port 25 open (firewall) and `sudo docker compose logs mail`. Recipient must be exactly `capture@in.<domain>`. |
 | Mail accepted at SMTP but no memories appear | Pipeline/dead-letter problem | `sudo ./cogeto status` queue line; dashboard System → dead-letter for the failed job and its error; `sudo docker compose logs worker`. |
-| Chat/extraction fail with a model error | No or invalid Mistral key | `sudo ./cogeto configure --mistral-key <key>` (the script restarts what's needed). |
-| Boot fails with "Ollama runtime unreachable" | Runtime down, or the container cannot route to the address (WireGuard/bridge) | Check the runtime is up (`curl http://<addr>:11434/api/tags` from the VM), then from inside a container (section 4b step 2); fix `COGETO_OLLAMA_BASE_URL` or the host route. |
-| Boot fails with "model ... is not available on the Ollama runtime" | Model never pulled on the Ollama host | Run the exact `ollama pull <model>` command from the error on the Ollama host, then `sudo docker compose up -d`. |
-| Local chat/extraction times out | Model too large for the hardware, or first-load latency | Raise `COGETO_OLLAMA_TIMEOUT_ANSWER_MS` / `_PIPELINE_MS` (defaults 300000) or use a smaller model; the first call after idle loads the model into memory. |
+| Chat/extraction fail with a model error | No provider configured yet (the designed first-run state), or an invalid provider key | Add or fix the provider key under **Providers** in the interface (no restart needed). |
+| A local runtime shows unreachable (Providers page, gateway health) | Runtime down, or the container cannot route to the address (WireGuard/bridge) | Check the runtime is up (`curl http://<addr>:11434/api/tags` from the VM), then from inside a container (section 4b step 2); fix the runtime URL on the provider record (Providers page, probe it there) or the host route. |
+| A local model probe fails with "model not served" | Model never pulled on the runtime host | Run the exact `ollama pull <model>` command the probe error names on the runtime host, then re-probe on the Providers page. |
+| Local chat/extraction times out | Model too large for the hardware, or first-load latency | Raise `COGETO_MODEL_TIMEOUT_ANSWER_MS` / `_PIPELINE_MS` (defaults 300000) or use a smaller model; the first call after idle loads the model into memory. |
 | Status: "running image differs from configured" | An upgrade or restart did not complete | `cd /srv/cogeto && sudo docker compose up -d`, re-run status; if it persists, re-run `sudo ./cogeto upgrade <configured version>`. |
 | A container is `unhealthy`/restarting | Varies: read its logs | `sudo docker compose logs --tail 200 <service>`. Disk-full is the classic silent killer: status prints `df`; volumes live under `/var/lib/docker`. |
 | Deletion-sweep alert / receipt chain not green | Integrity finding: the product's core promise | Do not improvise. Read the alert in System, capture logs, and escalate to the owner before touching data. |

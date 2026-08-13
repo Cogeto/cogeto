@@ -1,0 +1,685 @@
+# Deployment readiness audit
+
+Scope: could a customer instance be deployed and operated today, securely and
+correctly, by someone following only what is in this repository? Read-only
+audit against the working tree at `42dc6ff` (v1.6.0), 2026-08-13. Evidence is
+file:line, command output, or observed behaviour on the running dev stack.
+Nothing was changed; this report is the only file written.
+
+---
+
+## Executive summary
+
+**A fresh customer instance can be deployed today. An existing one cannot be
+upgraded**, and that is the blocker: `cogeto upgrade` never backfills
+`COGETO_MASTER_KEY`, while v1.6.0's provider seed throws at boot when the
+environment holds a provider key and no master key. Every pre-v1.6.0 instance
+has `COGETO_MISTRAL_API_KEY` in `.env` by construction, so every one of them
+crash-loops on upgrade; `upgrade-notes.md:68` claims the opposite. The second
+theme is that the operator script and runbook still speak the pre-v1.6.0
+language of environment-configured models, so the documented recovery for
+"model features are off" silently does nothing.
+
+Counts: **1 BLOCKER, 6 HIGH, 9 MEDIUM, 6 LOW** (22 findings). Top three: F1
+(upgrade takes an instance down), F2 (the documented model-key recovery is a
+no-op), F4 (the mail STARTTLS procedure needs a certificate that is never issued
+and a compose file that does not exist on the instance).
+
+### Remediation status (2026-08-13, `fix/model-config-ui-only`)
+
+The environment-based model configuration path was removed entirely: the
+interface is the only place models are configured, the one-time seeding bridge
+is deleted (the owner ruled no pre-v1.6.0 instance exists or ever will, so it
+had nothing to migrate), and an instance with no provider configured is a
+normal, honest first-run state.
+
+| Finding | Status |
+|---|---|
+| F1 | **Resolved.** The seed that threw `MASTER_KEY_MISSING` at boot no longer exists, so the crash-loop precondition is unreachable; independently, `ensure_wave3_secrets` now backfills `COGETO_MASTER_KEY` on upgrade (guarded, never regenerated when set), and the operator spec asserts it. |
+| F2 | **Resolved.** `cogeto configure --mistral-key` and `cogeto install --mistral-key` are refused with the pointer at the Providers page; the install checklist's dead model-key step is replaced by the real one (log in, configure a provider in the interface); `cogeto status` reads the model state from the running app's capability registry and can never report a configuration that does not exist. The runbook's troubleshooting row now names the Providers page. |
+| F3 | **Resolved.** `cogeto features enable local-models` is gone; the verb is refused with the explanation that a local runtime is an ordinary provider record configured in the interface. The `local-models` capability entry (which keyed off a deleted variable) is removed from the registry; a new `models` entry reports the configuration honestly. |
+| F8 | **Resolved.** The runbook's Ollama section describes the interface as the only mechanism (provider record + managed rebuild); no `.env` model edit survives anywhere in the runbook. |
+| F20 | **Resolved.** The unprefixed `MISTRAL_*` fallbacks are removed everywhere, including the eval harness's resolver; a structural spec (`model-config-env.spec.ts`) forbids their reappearance. The CI/release workflows now map the `MISTRAL_API_KEY` repo secret into `COGETO_MISTRAL_API_KEY` for the eval jobs. |
+| F7 | **Partially resolved.** The seed-only halves of the variable families are deleted from both composes, and `COGETO_OLLAMA_TIMEOUT_*_MS` stays wired as the live legacy alias the code still honours. What remains for the deploy-channel prompt: wiring `COGETO_MODEL_TIMEOUT_*` and `COGETO_REASONING_HEADROOM` into the deploy compose (the `.env.example` duplicate documentation of the headroom is already removed). |
+| F6 | **Open by design.** The environment-consistency check's structural blind spots are scheduled for the deploy-channel prompt; noted so it is not forgotten. |
+
+Not examined: cosign verification and Docker Hub tag resolution (need published
+release artifacts); a real Ubuntu install run; OVHcloud panel steps; live evals.
+
+---
+
+## Part 1 - Configuration truth
+
+### Is there an environment-consistency check?
+
+Yes: `project/src/entrypoints/env-consistency.spec.ts`, inside the required
+`test` CI job. It asserts four things and genuinely checks both directions
+(code -> docs, docs -> compose, including the deploy compose). **Its coverage is
+narrower than it reads**, three ways, all provable:
+
+| Limit | Evidence |
+|---|---|
+| Only `COGETO_*` | regex `/(?:process\.)?env\.(COGETO_[A-Z0-9_]+)/g`, line 40. `REDACTION_*`, `ZITADEL_*`, `POSTGRES_*`, `MINIO_*`, `SEARXNG_SECRET` are invisible. |
+| Only `env.NAME` syntax | `provider-config.ts` reads through `read(env, 'NAME')` / `readTimeoutMs(env, 'NAME', …)` (lines 276, 403-406, 481). The whole model-gateway variable family is unseen. |
+| Only `project/src/**/*.ts` | `SRC = process.cwd()`, line 13. The mail service (`project/services/mail/haraka/plugins/*.js`, `docker-entrypoint.sh`), the redaction service, `project/web`, `scripts/`, and `project/infra/docker/zitadel-init/init.mjs` are all outside the walk. |
+
+Both consequences below (F6, F7) exist precisely inside those blind spots.
+
+### Variable table
+
+`code` = read by any shipped code or entrypoint script; `.env.ex` = present in
+`.env.example` (active or commented); `dev` / `deploy` = named in
+`docker-compose.yml` / `project/infra/deploy/docker-compose.deploy.yml`; `op` =
+handled by `scripts/operator/cogeto`. 166 variables.
+
+| Variable | code | .env.ex | dev | deploy | op | Verdict |
+|---|:-:|:-:|:-:|:-:|:-:|---|
+| COGETO_ADMIN_ROLE | Y | Y | Y | Y | n | ok |
+| COGETO_ADMIN_USER_EMAIL | Y | Y | Y | Y | n | ok |
+| COGETO_ANTHROPIC_API_KEY | Y | n | Y | Y | n | legacy seed-only; deliberately removed from .env.example, correct |
+| COGETO_ANTHROPIC_BASE_URL | Y | n | Y | Y | n | legacy seed-only; correct by design |
+| COGETO_APP_DB_PASSWORD | Y | Y | Y | Y | Y | ok |
+| COGETO_ASSERT_NO_PRIVATE_KEY | Y | n | Y | Y | n | internal assertion knob; compose-only |
+| COGETO_COMPOSE_PROFILES | Y | n | Y | Y | n | compose-derived; not operator config |
+| COGETO_CONSOLES_ENABLED | Y | Y | Y | Y | Y | ok (no consoles service in deploy; flag inert there) |
+| COGETO_DAILY_CAPTURE_MAX | Y | Y | Y | Y | n | ok |
+| COGETO_DAILY_RESEARCH_PAGES | Y | Y | Y | Y | n | ok |
+| COGETO_DAILY_RESEARCH_SEARCHES | Y | Y | Y | Y | n | ok |
+| COGETO_DAILY_UPLOAD_MAX | Y | Y | Y | Y | n | ok |
+| COGETO_DATABASE_URL | Y | n | Y | Y | n | composed in compose; correct to omit from .env.example |
+| COGETO_DEMO_APP_URL | Y | n | Y | n | n | demo-only, correctly absent from deploy |
+| COGETO_DEMO_DAILY_CAPTURE_MAX | Y | Y | Y | n | n | demo-only |
+| COGETO_DEMO_DAILY_RESEARCH_PAGES | Y | Y | Y | n | n | demo-only |
+| COGETO_DEMO_DAILY_RESEARCH_SEARCHES | Y | Y | Y | n | n | demo-only |
+| COGETO_DEMO_DAILY_UPLOAD_MAX | Y | Y | Y | Y | n | **demo knob leaked into the deploy compose** (F21) |
+| COGETO_DEMO_DIR | Y | n | n | n | n | test-only, allowlisted |
+| COGETO_DEMO_MODE | Y | Y | Y | n | Y | ok |
+| COGETO_DEMO_MODEL_DAILY_CALLS | Y | Y | Y | n | n | demo-only |
+| COGETO_DEMO_MODEL_DAILY_TOKENS | Y | Y | Y | n | n | demo-only |
+| COGETO_DEMO_RATELIMIT_* (4) | Y | Y | Y | n | n | demo-only |
+| COGETO_DEMO_RESET_CRON | Y | Y | Y | n | n | demo-only |
+| COGETO_DEMO_SESSION_FILE | Y | Y | Y | n | n | demo-only |
+| COGETO_DEMO_SSE_MAX_CONCURRENT | Y | Y | Y | n | n | demo-only |
+| COGETO_DOWNLOAD_URL_TTL_SECONDS | Y | Y | Y | Y | n | ok |
+| COGETO_ENV | Y | Y | Y | Y | n | ok |
+| COGETO_EVAL_CACHE / _GATE | Y | n | n | n | n | CI-only, allowlisted |
+| COGETO_EXTERNAL_DOMAIN | Y | Y | Y | Y | Y | ok |
+| COGETO_EXTRACT_MAX_FACTS | Y | Y | Y | Y | n | ok |
+| COGETO_HTTP_PORT | Y | n | Y | Y | n | compose-fixed; ok |
+| COGETO_IMPORT_IN_FLIGHT | Y | Y | Y | Y | n | ok |
+| COGETO_INSTANCE_KEY_DIR | Y | Y | Y | Y | n | ok |
+| COGETO_INSTANCE_PUBKEY_DIR | Y | n | Y | Y | n | compose-only; ok |
+| COGETO_INTAKE_URL | Y | n | Y | Y | n | compose-fixed (mail service); ok |
+| COGETO_ISSUER / _REDIRECT_URI / _POST_LOGOUT_URI | Y | n | Y | Y | n | compose-derived; ok |
+| COGETO_JOBS_OVERDUE_HOURS | Y | Y | Y | Y | n | ok |
+| COGETO_LOG_LEVEL | Y | Y | Y | Y | n | ok |
+| COGETO_MAIL_ATTACHMENTS_MAX_BYTES | Y | Y | Y | Y | n | ok |
+| COGETO_MAIL_ENABLED | Y | Y | Y | Y | Y | ok |
+| COGETO_MAIL_HOST / _PORT | Y | n | n | n | n | `scripts/dev/send-test-email.mjs:44` only; dev tool |
+| COGETO_MAIL_HOST_PORT | n | Y | Y | Y | n | compose-only by design; ok |
+| COGETO_MAIL_INBOUND_ADDRESS | Y | Y | Y | Y | Y | ok |
+| COGETO_MAIL_INTAKE_MAX_PER_SENDER | Y | Y | Y | Y | n | ok |
+| COGETO_MAIL_INTAKE_RATE_WINDOW_SECONDS | Y | Y | Y | Y | n | ok |
+| COGETO_MAIL_INTAKE_TOKEN | Y | Y | Y | Y | Y | ok (`:?` in deploy) |
+| COGETO_MAIL_MAX_BYTES | Y | Y | Y | Y | n | ok |
+| COGETO_MAIL_REQUIRE_SPF | Y | Y | Y | Y | n | ok |
+| COGETO_MAIL_SMTP_ADDRESS | Y | Y | Y | Y | n | ok |
+| COGETO_MAIL_TLS_CERT / _KEY | Y | Y | Y | Y | n | wired, but the cert is never issued (F4) |
+| COGETO_MASTER_KEY | Y | Y | Y | Y | Y | **install generates it; upgrade does not** (F1) |
+| COGETO_MIGRATE_DB_PASSWORD | Y | Y | Y | Y | Y | ok |
+| COGETO_MIGRATIONS_DIR | Y | Y | Y | Y | n | ok |
+| COGETO_MISTRAL_API_KEY | Y | n | Y | Y | Y | **operator script writes it post-seed where it is ignored** (F2) |
+| COGETO_MISTRAL_EMBED_MODEL | Y | n | Y | Y | Y | legacy seed-only; read by `check_embedding_model` fallback |
+| COGETO_MISTRAL_MODEL_ANSWER / _PIPELINE | Y | n | Y | Y | n | legacy seed-only; correct by design |
+| COGETO_MODEL_ANSWER / _PIPELINE / _EMBEDDINGS | Y | n | Y | Y | n | legacy seed-only; correct by design |
+| COGETO_MODEL_DAILY_CALLS / _TOKENS | Y | Y | Y | Y | n | ok |
+| COGETO_MODEL_GRADER / COGETO_PROVIDER_GRADER | Y | Y | n | n | n | eval-only, allowlisted |
+| COGETO_MODEL_TIMEOUT_ANSWER_MS | Y | Y | Y | **n** | n | **documented live knob dropped by the deploy compose** (F7) |
+| COGETO_MODEL_TIMEOUT_EMBEDDINGS_MS | Y | Y | Y | **n** | n | same (F7) |
+| COGETO_MODEL_TIMEOUT_PIPELINE_MS | Y | Y | Y | **n** | n | same (F7) |
+| COGETO_MODEL_TIMEOUT_VISION_MS | Y | Y | Y | **n** | n | same (F7) |
+| COGETO_MODEL_VISION / COGETO_PROVIDER_VISION | Y | n | Y | n | n | legacy seed-only; dev-only leftover |
+| COGETO_OIDC_EXTERNAL_DOMAIN / _INTERNAL_URL / _ISSUER | Y | n | Y | Y | n | compose-derived; ok |
+| COGETO_OLLAMA_API_KEY / _BASE_URL | Y | n | Y | Y | Y | legacy seed-only; `features enable local-models` writes it uselessly (F3) |
+| COGETO_OLLAMA_TIMEOUT_*_MS (4) | Y | n | Y | Y | n | **legacy alias is wired in deploy while the current name is not** (F7) |
+| COGETO_OPENAI_API_KEY / _BASE_URL | Y | n | Y | Y | n | legacy seed-only; correct by design |
+| COGETO_PARSE_* (6) | Y | Y | Y | Y | n | ok |
+| COGETO_PG_POOL_MAX | Y | Y | Y | Y | n | ok |
+| COGETO_PRODUCTION | Y | Y | Y | Y | Y | ok (hardcoded `1` in deploy) |
+| COGETO_PROMPTS_DIR | Y | Y | Y | Y | n | ok |
+| COGETO_PROVIDER_ANSWER / _EMBEDDINGS / _PIPELINE | Y | n | Y | Y | n | legacy seed-only; correct by design |
+| COGETO_PROVIDER_PRESET | Y | n | Y | Y | Y | legacy seed-only; written by `features enable local-models` (F3) |
+| COGETO_QDRANT_API_KEY | Y | Y | Y | Y | Y | ok (`:?` in deploy) |
+| COGETO_QDRANT_URL | Y | n | Y | Y | n | compose-fixed; ok |
+| COGETO_RATELIMIT_* (5) | Y | Y | Y | Y | n | ok |
+| COGETO_REASONING_HEADROOM | Y | Y | Y | **n** | n | **documented live knob dropped by the deploy compose** (F7) |
+| COGETO_REASONING_PROBE_TIMEOUT_MS | Y | Y | Y | Y | n | ok |
+| COGETO_REPORT_BRAND_DIR / _FONTS_DIR | Y | Y | Y | Y | n | ok |
+| COGETO_RESEARCH_* (6) | Y | Y | Y | Y | n | ok |
+| COGETO_ROOT / COGETO_SKIP_RESOURCE_CHECK | n | n | n | n | Y | operator-script-only; undocumented but harmless |
+| COGETO_S3_ACCESS_KEY | Y | Y | Y | Y | Y | ok |
+| COGETO_S3_BUCKET / _URL | Y | n | Y | Y | n | compose-fixed; ok |
+| COGETO_S3_PUBLIC_URL | Y | Y | Y | Y | Y | ok |
+| COGETO_S3_SECRET_KEY | Y | Y | Y | Y | Y | ok (`:?` in deploy) |
+| COGETO_SEARXNG_URL | Y | Y | Y | Y | n | ok |
+| COGETO_SEED_ORG / _OWNER | Y | n | n | n | n | dev seed tool, allowlisted; entrypoint stripped from the image |
+| COGETO_SKILL_MAX_QUERIES / _PAGES_PER_QUERY | Y | Y | Y | Y | n | ok |
+| COGETO_SSE_* (3) | Y | Y | Y | Y | n | ok |
+| COGETO_TIMEZONE | Y | Y | Y | Y | n | ok |
+| COGETO_TRUST_SCORES_DIR | Y | Y | Y | Y | n | ok |
+| COGETO_UPLOAD_MAX_BYTES | Y | Y | Y | Y | n | ok |
+| COGETO_VISION_PAGES_PER_DOCUMENT / _PER_USER_DAILY / _PROBE_TIMEOUT_MS | Y | Y | Y | Y | n | ok |
+| COGETO_WEB_CONFIG_FILE | Y | n | Y | Y | n | compose-fixed; ok |
+| COGETO_ZITADEL_PAT_FILE | Y | n | Y | n | n | demo-only path; correctly absent from deploy |
+| COMPOSE_PROFILES | Y | Y | Y | Y | Y | ok |
+| MINIO_BROWSER_REDIRECT_URL | n | Y | Y | n | n | dev console only; ok |
+| MINIO_KMS_SECRET_KEY | Y | Y | Y | Y | Y | ok (`:?` in deploy, in the dev-secret refusal list) |
+| MINIO_ROOT_PASSWORD / _USER | Y | Y | Y | Y | Y | ok |
+| MISTRAL_API_KEY / MISTRAL_MODEL_* / MISTRAL_EMBED_MODEL | Y | n | n | n | n | unprefixed pre-1.0 fallbacks, documented nowhere (F20) |
+| POSTGRES_PASSWORD | Y | Y | Y | Y | Y | ok |
+| REDACTION_ENABLED | Y | Y | Y | **n** | Y | **profile absent from deploy** (F5) |
+| REDACTION_REQUIRED | Y | Y | Y | **n** | Y | same (F5) |
+| REDACTION_URL | Y | Y | Y | **n** | n | same (F5) |
+| REDACTION_SPACY_MODEL | n | Y | Y | n | n | mapped to the sidecar's `SPACY_MODEL`; dev-only |
+| SEARXNG_SECRET | Y | Y | Y | Y | Y | **defaults to empty in deploy; preflight skips empty** (F12) |
+| ZITADEL_ADMIN_PASSWORD / _USERNAME | Y | Y | Y | Y | Y | ok |
+| ZITADEL_BOOTSTRAP_MACHINE_USERNAME | Y | n | n | n | n | `init.mjs:39`; always falls to its default (F19) |
+| ZITADEL_BOOTSTRAP_PAT_EXPIRY | Y | Y | Y | Y | Y | ok |
+| ZITADEL_BOOTSTRAP_STATE_FILE | Y | n | n | n | n | `init.mjs:40`; always falls to its default (F19) |
+| ZITADEL_DB_ADMIN_PASSWORD / _DB_PASSWORD | Y | Y | Y | Y | Y | ok |
+| ZITADEL_EXTERNAL_DOMAIN / _INTERNAL_URL / _PAT_FILE | Y | n | Y | Y | n | compose-fixed; ok |
+| ZITADEL_MASTERKEY | Y | Y | Y | Y | Y | ok |
+| ZITADEL_ORG_NAME | n | Y | Y | Y | Y | ok |
+
+**Nothing that migration 0052 should have removed is still authoritative**: the
+model variables remain in both composes and are read only as the one-time seed
+source, exactly as `docs/features/models.md:148-152` describes. `.env.example`
+already deletes them. The residue is that the *operator tooling* still writes
+them (F2, F3).
+
+---
+
+## Part 2 - Internationalisation completeness
+
+### Locale completeness
+
+`project/web/src/locales`: 26 namespaces, **1553 English keys**.
+`project/src/infrastructure/locales`: 4 namespaces, **223 English keys**.
+Missing keys: **0** in every locale (the CI guard is real). "Extra" keys in
+`hr`/`fr` are the correct locale-specific CLDR plural categories (`_few` for
+Croatian, `_many` for French), not orphans.
+
+| Root | Locale | Keys | Missing | Still literal English | % English |
+|---|---|---:|---:|---:|---:|
+| web | de | 1553 | 0 | 695 | 44.8% |
+| web | fr | 1627 | 0 | 710 | 43.6% |
+| web | hr | 1627 | 0 | 693 | 42.6% |
+| server | de | 223 | 0 | 186 | 83.4% |
+| server | fr | 227 | 0 | 186 | 81.9% |
+| server | hr | 227 | 0 | 186 | 81.9% |
+
+Per-namespace English residue (SPA), the surfaces that are effectively untranslated:
+
+| Namespace | en keys | hr=en | de=en | fr=en |
+|---|---:|---:|---:|---:|
+| sources | 315 | 233 | 232 | 237 |
+| providers | 115 | 113 | 113 | 113 |
+| connections | 103 | 101 | 101 | 101 |
+| projects | 35 | 35 | 35 | 35 |
+| reports | 32 | 32 | 32 | 32 |
+| extraction | 31 | 31 | 31 | 31 |
+| chat | 121 | 50 | 49 | 54 |
+| memories | 116 | 39 | 39 | 44 |
+| system | 81 | 14 | 14 | 14 |
+| capabilities | 56 | 13 | 13 | 13 |
+| dashboard | 56 | 6 | 6 | 7 |
+| settings | 57 | 9 | 9 | 10 |
+| all other namespaces (14) | 335 | 27 | 29 | 32 |
+
+Remaining translation effort: **~693 hr / 695 de / 710 fr SPA strings plus 186
+server strings each**. Six namespaces (631 keys, 41% of the SPA) are 100% or
+near-100% English in all three locales.
+
+### What the key-sync check does and does not catch
+
+`scripts/ci/check-i18n.mjs` runs inside `lint` and **does** catch: missing keys,
+namespace drift, missing CLDR plural categories per locale's own rules, dropped
+`{{placeholder}}`/`<tag>`, em/en dashes in English values, unused keys, source
+drift when English is reworded (via `.translations.json`), and the common
+hardcoded-JSX-text shape.
+
+It **does not** catch, verified:
+
+- **Server-side user-visible text.** Its literal scan is fenced to
+  `project/web/src` (line 344). There are **197** `BadRequest/NotFound/
+  Forbidden/ConflictException('…')` sites in `project/src` with hardcoded
+  English (e.g. `'a source cannot be a revision of itself'`), and the SPA
+  renders a raw `error.message` verbatim at 35 sites (`Settings.tsx:1470`,
+  `Reports.tsx:80`, `Chat.tsx:871`, `SourceDrawer.tsx:248`, …). `serverT` is
+  used at only 20 call sites. See F13.
+- **Single-word literals** ("Save", "Cancel") and text built from variables,
+  both stated honestly in the file's own comment.
+- **Anything outside the SPA and the two locale roots.**
+
+Checked and clean, so not findings: date/number/byte formatting is centralised
+in `project/web/src/i18n/format.ts` and always passes the active locale to
+`Intl` (no bare `toLocaleDateString()` remains anywhere); no site sends a
+translated label to an API or compares one as a value (all `t()` results found
+flow to display props); plurals are per-locale CLDR, not a two-form assumption.
+
+---
+
+## Part 3 - Deployment path, end to end
+
+Judged against the current stack, not the script's comments.
+
+**What the script gets right**: every secret the deploy compose marks `:?` is
+generated by `cmd_install` (lines 968-1000), including the wave-3 least-privilege
+DB roles, the scoped S3 credential, the KMS key, the Qdrant API key, the mail
+intake token and `COGETO_MASTER_KEY`. Deploy assets are pinned to the commit a
+tag resolves to and every file is checksum-verified before it is moved into place
+(`fetch_one`, lines 682-708); `node scripts/ci/deploy-assets-manifest.mjs`
+confirms the manifest matches all 5 assets today. The install checklist prints
+both required A records (`add_install_checklist:852-853`) and adds the mail
+A/MX/PTR/SPF items only when the mail capability is on, which matches the
+compose reality. `features enable redaction/demo/consoles` correctly *refuse* on
+a deploy stack because those services do not exist there. `cogeto reindex` uses
+`compose run --rm`, so it works while the services crash-loop.
+
+**What it gets wrong**: `ensure_wave3_secrets` (lines 339-346) omits
+`COGETO_MASTER_KEY` (F1). `configure --mistral-key` and `features enable
+local-models` write variables the seeded instance ignores (F2, F3). Its
+`FEATURE_IDS` list predates `vision`, `reasoning` and `connectors`, which the
+live registry reports (F15). Two of its own TODOs name the superseded
+`docker compose exec worker npm run reindex` (lines 1493, 1548).
+
+**Documentation an operator would follow**: the runbook is otherwise strong and
+checklist-driven, but four instructions are wrong as written: the STARTTLS
+procedure (F4), the Ollama `.env` configuration (F8), the model-key
+troubleshooting row (F2), and the restore DNS count (F10).
+`docs/operations/upgrade-notes.md` contradicts itself about the reindex command
+and the embeddings model within one file (F9). `docs/deployment.md` omits
+`features` and `reindex` from its command list (F16).
+
+**Verdict**: a customer instance **can** be brought up, verified, backed up and
+restored using only this repository. It **cannot** be upgraded from an earlier
+release without an undocumented manual `.env` edit (F1), and inbound-mail
+STARTTLS cannot be completed as documented (F4).
+
+---
+
+## Findings
+
+### BLOCKER
+
+**F1 - `cogeto upgrade` does not generate `COGETO_MASTER_KEY`; every existing
+instance fails to boot after upgrading to v1.6.0.**
+*Evidence*: `scripts/operator/cogeto:339-346` (`ensure_wave3_secrets` backfills
+six variables, not this one) called at line 1088; `project/infra/deploy/
+docker-compose.deploy.yml:185` passes `${COGETO_MASTER_KEY:-}` so compose does
+not enforce it either; `project/src/providers/domain/seed.ts:76-81` throws
+`MASTER_KEY_MISSING` when the environment holds a real provider key and no
+master key; `project/src/entrypoints/model-boot.ts:31-38` calls that on every app
+and worker boot with no catch. `git tag --contains` confirms migration 0052 first
+shipped in **v1.6.0**, and `cmd_install:1000` writes `COGETO_MISTRAL_API_KEY`
+into `.env` on every install, so the precondition holds for every real instance.
+`docs/operations/upgrade-notes.md:68` states "`cogeto upgrade` generates one for
+you if it is missing."
+*Consequence*: upgrading any v1.0-v1.5 customer instance to v1.6.0 takes app and
+worker into a crash loop; the instance is offline until an operator hand-edits
+`.env`, and `configure --regenerate COGETO_MASTER_KEY` is refused as data-bound.
+*Fix scope*: code - add `COGETO_MASTER_KEY` to `ensure_wave3_secrets` (guarded so
+it is never regenerated when already set), and correct the upgrade note.
+
+### HIGH
+
+**F2 - `cogeto configure --mistral-key` is a no-op on any instance that has
+booted once, and it is the documented recovery.**
+*Evidence*: `seed.ts:51-53` returns `already_seeded` on the state row, after which
+`load-configuration.ts:19-22` ignores the environment entirely;
+`scripts/operator/cogeto:1655` writes the variable anyway and line 1628 reports it
+as the instance's model key. `cmd_install:1001` prints
+`todo_now "Set the model API key: cogeto configure --mistral-key …"` **after**
+`compose up -d` at line 1015 has already claimed the seed with no key, and
+`docs/operator-runbook.md:650` gives the same command as the fix for "Chat/
+extraction fail with a model error".
+*Consequence*: an operator who installs without `--mistral-key` follows the
+printed checklist, sees the script report the key as `<set>`, and model features
+stay off with no indication why. The only working path (Providers in the left
+rail) is never mentioned by the script or the runbook.
+*Fix scope*: code - make `configure --mistral-key` either refuse post-seed with a
+pointer to the Providers page, or write through the providers API; update the
+checklist and runbook row.
+
+**F3 - `cogeto features enable local-models` changes nothing and warns about a
+consequence that will not happen.**
+*Evidence*: `scripts/operator/cogeto:1485-1493` sets `COGETO_PROVIDER_PRESET` and
+`COGETO_OLLAMA_BASE_URL` in `.env` after a typed confirmation stating the
+embeddings model will change; both are seed-only per `seed.ts` and
+`docs/features/models.md:148-152`. Line 1493 then names the superseded
+`docker compose exec worker npm run reindex`.
+*Consequence*: the operator believes the instance moved to local models; it did
+not. `features` also reports it as `enabled` (line 1316 keys off the same
+variable), so the state display agrees with the wrong belief.
+*Fix scope*: code - route the capability through the providers API, or refuse and
+point at Models.
+
+**F4 - The documented inbound-mail STARTTLS procedure cannot work.**
+*Evidence*: `docs/operator-runbook.md:214-219` tells the operator to copy "the
+Let's Encrypt certificate Caddy already obtained for the mail host" from
+`caddy-data/.../certificates/.../mail.<domain>`. `project/infra/deploy/Caddyfile`
+declares exactly two vhosts, `{$COGETO_EXTERNAL_DOMAIN}` and
+`s3.{$COGETO_EXTERNAL_DOMAIN}`; there is no `mail.<domain>` site and no
+on-demand TLS, so that certificate is never issued and the directory does not
+exist. The same block's line 219 runs `docker compose -f docker-compose.deploy.yml
+restart mail`, but `scripts/operator/cogeto:660` installs the file as
+`$COGETO_ROOT/docker-compose.yml`.
+*Consequence*: an operator enabling email capture cannot enable STARTTLS by
+following the runbook; inbound mail stays cleartext on port 25 and the command
+fails with "no such file".
+*Fix scope*: code + docs - add a `mail.{$COGETO_EXTERNAL_DOMAIN}` vhost (or an
+explicit ACME-only site block) to the deploy Caddyfile, and fix the compose
+filename in the runbook.
+
+**F5 - Redaction is presented as a deployment posture but does not exist in the
+deploy channel.**
+*Evidence*: `docs/security/data-sovereignty-and-redaction.md:28-38` describes it
+as the answer "for deployments that must not send raw personal data to any
+external API", with no availability caveat. `project/infra/deploy/
+docker-compose.deploy.yml:15-18` says the redaction profile is absent, and the
+file contains no `redaction` service and no `REDACTION_ENABLED` / `REDACTION_URL`
+/ `REDACTION_REQUIRED` on app or worker (grep: 0 hits, versus 4/1/1 in the dev
+compose). `.env.example:333-341` documents `REDACTION_*` without saying so either.
+*Consequence*: a customer or security reviewer reading the security
+documentation concludes the instance can be run fail-closed against PII egress.
+On the supported deployment path it cannot, and even setting the variables by
+hand would do nothing because the app never receives them.
+*Fix scope*: docs (owner action) - state the deploy-channel limitation in the
+security doc and `.env.example`; or code, to publish the sidecar image and add
+the profile.
+
+**F6 - The environment-consistency check has three structural blind spots and
+both live configuration bugs sit inside them.**
+*Evidence*: `env-consistency.spec.ts:13` (`SRC = process.cwd()`, i.e.
+`project/src` only), `:40` (`COGETO_` prefix only, `env.NAME` syntax only). The
+mail service's three variables, the redaction sidecar's, the operator script's,
+the SPA's and `zitadel-init/init.mjs`'s are all outside the walk;
+`provider-config.ts` reads via `read(env, 'NAME')` so its entire family is
+unseen.
+*Consequence*: the check reports "in sync" while F7 and F5 are true. It is
+credited in CI as covering both directions and all services; it covers neither
+fully.
+*Fix scope*: code - widen the walk to the shipped services and scripts, match the
+`read(env, '…')`/`readTimeoutMs(env, '…')` forms, and extend the prefix set.
+
+**F7 - Documented live environment knobs are dropped by the deploy compose while
+their legacy aliases are wired.**
+*Evidence*: `.env.example:90-102` explicitly lists `COGETO_MODEL_TIMEOUT_*` and
+`COGETO_REASONING_HEADROOM` as "what is still environment configuration";
+`docs/operations/upgrade-notes.md:99` repeats it. `docker-compose.yml:224-227,241`
+passes all five. `project/infra/deploy/docker-compose.deploy.yml` passes **none**
+of them, but does pass `COGETO_OLLAMA_TIMEOUT_*` (lines 248-250), the legacy
+alias `readTimeoutMs` still honours (`provider-config.ts:530`).
+`.env.example` also documents `COGETO_REASONING_HEADROOM` twice, at lines 102
+and 212.
+*Consequence*: exactly the class that breaks a customer install and not a
+developer install. An operator running a self-hosted endpoint raises the
+documented timeout, restarts, and the value never reaches the process; local
+inference keeps timing out at the default.
+*Fix scope*: code - add the five variables to the deploy compose.
+
+### MEDIUM
+
+**F8 - The runbook's Ollama configuration steps edit `.env` variables the
+instance ignores.**
+*Evidence*: `docs/operator-runbook.md:340-347` instructs setting
+`COGETO_PROVIDER_PRESET=ollama-local`, `COGETO_PROVIDER_EMBEDDINGS=ollama`,
+`COGETO_MODEL_EMBEDDINGS=bge-m3` and `COGETO_OLLAMA_BASE_URL` in
+`/srv/cogeto/.env`; `docs/features/models.md:148-152` states these are ignored
+after the one-time seed. Line 348-355 of the runbook then correctly describes the
+Models page, so the section contradicts itself.
+*Consequence*: an operator following step 3 changes nothing and then cannot
+explain why step 5's status output shows the old configuration.
+*Fix scope*: docs.
+
+**F9 - `upgrade-notes.md` contradicts itself about the reindex command and the
+embeddings model.**
+*Evidence*: lines 25-35 state `cogeto reindex` is first-class and that the
+command changed from `docker compose exec worker npm run reindex` to
+`docker compose run --rm worker npm run reindex`; lines 101-109 of the same file
+state "The embeddings model still cannot be changed from the interface … interim
+path: `docker compose exec worker npm run reindex`". The operator script repeats
+the stale `exec` form at lines 1493 and 1548.
+*Consequence*: an operator reading the file top to bottom gets the correct
+answer, then the superseded one; `exec` fails in exactly the crash-loop case the
+command exists for.
+*Fix scope*: docs + one-line script edit.
+
+**F10 - The restore procedure's DNS step names records that may not exist.**
+*Evidence*: `docs/operator-runbook.md:471` says to update "the **four records**
+from section 2a (three A records + the MX target's A record)". Section 2a
+(lines 156-160) defines two always-present A records and two mail-only records,
+and the mail records are omitted entirely on a mail-less instance.
+*Consequence*: during a restore, the highest-stress operation in the runbook, the
+operator looks for records that do not exist.
+*Fix scope*: docs.
+
+**F11 - No container-level privilege hardening in either compose.**
+*Evidence*: grep across both files: `cap_drop` 0, `security_opt` 0
+(`no-new-privileges` 0), `read_only` 0, `user:` 0, `tmpfs` 0. Only `mem_limit`/
+`cpus`/`pids_limit` are set (SEC-17). The application image sets `USER node`, but
+postgres, minio, qdrant, zitadel, searxng, caddy and the init one-shots run with
+their image defaults and full default capabilities.
+*Consequence*: a container escape or a privileged-helper exploit has more surface
+than it needs, on an internet-facing single-tenant box.
+*Fix scope*: code - add `security_opt: [no-new-privileges:true]` and `cap_drop:
+[ALL]` (plus targeted `cap_add`) per service in both composes.
+
+**F12 - `SEARXNG_SECRET` can be empty on a deployed research profile and nothing
+refuses it.**
+*Evidence*: `project/infra/deploy/docker-compose.deploy.yml:715` and `:365` use
+`${SEARXNG_SECRET:-}` (deliberately, so profile-down `compose up` works);
+`secret-preflight.ts:86` skips any variable whose value is `''`. Only
+`features enable research` generates one (`scripts/operator/cogeto:1407`).
+*Consequence*: an operator who adds `research` to `COMPOSE_PROFILES` by hand runs
+SearXNG with no session/image-proxy secret. Internal-network only, so the blast
+radius is small, but it defeats the stated rule that no known-bad secret state
+survives onto a reachable deployment.
+*Fix scope*: code - have preflight (or the searxng service healthcheck) fail when
+the profile is active and the secret is empty.
+
+**F13 - User-visible server text is not translatable.**
+*Evidence*: 197 Nest exception sites in `project/src` carry hardcoded English
+messages (`grep -c` over `BadRequest|NotFound|Forbidden|Conflict Exception('…')`);
+`serverT` appears at only 20 call sites across 4 namespaces / 223 keys; the SPA
+renders a raw `error.message` at 35 sites (`Settings.tsx:1042,1470,1599,
+1775,1854,1961,2030,2141,2295,2418`, `Reports.tsx:80,172,294`, `Chat.tsx:844,871,
+946`, `SourceDrawer.tsx:241,248,262,949`, `MemoryDrawer.tsx:164`,
+`ProjectPickerDrawer.tsx:58,74`, `GovernedMemories.tsx:202`).
+*Consequence*: a Croatian, German or French user sees English error text in the
+middle of a translated page, and no CI check can see it.
+*Fix scope*: code - route user-facing API errors through the server catalogue, or
+map error codes to SPA keys.
+
+**F14 - hr/de/fr are described as scaffolds but are partially translated, which
+is worse than either extreme.**
+*Evidence*: table in Part 2. 42-45% of SPA values are still literal English, but
+six whole namespaces (sources, providers, connections, projects, reports,
+extraction: 631 keys) are ~100% English while chat, memories and dashboard are
+mostly translated. `CLAUDE.md` and `docs/cogeto-v2-plan.md:70` describe every
+scaffold as "carrying the English text as its value".
+*Consequence*: a Croatian user's Sources page is entirely English while their
+Chat page is Croatian. Shipping this as a supported interface language is a
+customer-visible quality claim the repository does not support.
+*Fix scope*: owner action - either finish the six namespaces or gate the locale
+picker to English until a locale crosses a stated threshold.
+
+**F15 - `cogeto features` does not know about three capabilities the registry
+reports.**
+*Evidence*: `scripts/operator/cogeto:263` `FEATURE_IDS="redaction research mail
+demo consoles local-models"`; the live `/api/health` on the running stack returns
+`vision`, `reasoning` and `connectors` in addition (observed). The runbook's own
+list (`docs/operator-runbook.md:368-369`) omits `mail`, which the script does have.
+*Consequence*: the configured-state list an operator reads is silently
+incomplete; two docs and the script disagree on the capability set.
+*Fix scope*: code + docs.
+
+**F16 - `docs/deployment.md` omits two subcommands.**
+*Evidence*: `docs/deployment.md:27-29` lists "`install` / `configure` /
+`upgrade` / `status` / `backup-info`, plus a `--check` dry run"; `main()` at
+`scripts/operator/cogeto:1755` also dispatches `features` and `reindex`.
+*Consequence*: the deployment overview understates the tooling; an operator may
+not discover `reindex`, which is the documented repair for a restored backup.
+*Fix scope*: docs.
+
+### LOW
+
+**F17 - A zero-byte file named `file` is committed and ships in the production
+image.** `eval/trust-scores/file` (0 bytes, tracked; `git ls-files` confirms),
+and `.dockerignore` allowlists `!eval/trust-scores`, so it is copied into the
+runtime image by `project/infra/docker/Dockerfile:81`. Harmless, and exactly the
+kind of artifact a customer or reviewer notices. *Fix scope*: owner action -
+delete it.
+
+**F18 - The SearXNG image digest carries no tag comment.**
+`docker-compose.yml:973` and `docker-compose.deploy.yml:709` pin
+`searxng/searxng@sha256:b8ca38…` with no `# searxng/searxng:<tag>` line, while
+`docs/operations/image-pins.md:23-27` states "Recording the real tag matters: a
+digest pinned against `# minio/minio:latest` is unauditable". The guard in
+`deployment-hardening.spec.ts:78-91` only rejects `:latest` comments, not missing
+ones, so this passes CI. *Fix scope*: code - add the comment and tighten the
+spec.
+
+**F19 - Two Zitadel bootstrap variables are read but documented nowhere.**
+`project/infra/docker/zitadel-init/init.mjs:39-40` reads
+`ZITADEL_BOOTSTRAP_MACHINE_USERNAME` and `ZITADEL_BOOTSTRAP_STATE_FILE`; neither
+appears in `.env.example` or either compose, so both always take their defaults.
+The runbook's domain-change procedure (line 143) depends on the state file's path
+being `/machinekey/bootstrap-state.json`, which is only knowable from the source.
+*Fix scope*: docs.
+
+**F20 - Unprefixed `MISTRAL_*` fallbacks survive with no documentation.**
+`provider-config.ts:316-318,410` still reads `MISTRAL_MODEL_PIPELINE`,
+`MISTRAL_MODEL_ANSWER`, `MISTRAL_EMBED_MODEL` and `MISTRAL_API_KEY` as
+pre-1.0 fallbacks. They are in no compose, no `.env.example` and no doc, and the
+env-consistency check cannot see them. Dead weight at best; a surprising seed
+source at worst. *Fix scope*: code - remove.
+
+**F21 - A demo-only limit knob leaked into the customer compose.**
+`COGETO_DEMO_DAILY_UPLOAD_MAX` is present in the deploy compose while its eight
+sibling `COGETO_DEMO_*` limit variables are correctly absent (grep matrix, Part
+1). The env-consistency spec explicitly excepts `COGETO_DEMO*` from the deploy
+check, so nothing catches it. *Fix scope*: code - remove the line.
+
+**F22 - Stale version language and a missing subcommand in the script header.**
+`docs/operator-runbook.md:547` is titled "Upgrading past 2.0" and refers to
+"instances created at 2.0 or later" (line 549); there is no 2.0 release line (tags run
+v1.0.5 to v1.6.0, and "V2.0" is a plan version). The operator script's own header
+comment (lines 9-15) lists six subcommands and omits `reindex`, which `usage()`
+and `main()` both have. *Fix scope*: docs.
+
+---
+
+## Part 4 - Security posture of a fresh deployment (summary)
+
+Confirmed good, with evidence:
+
+- Every secret in the deploy compose is `${VAR:?}`: `POSTGRES_PASSWORD`,
+  `COGETO_APP_DB_PASSWORD`, `COGETO_MIGRATE_DB_PASSWORD`,
+  `ZITADEL_DB_ADMIN_PASSWORD`, `COGETO_S3_SECRET_KEY`, `MINIO_ROOT_*`,
+  `MINIO_KMS_SECRET_KEY`, `ZITADEL_MASTERKEY`, `ZITADEL_DB_PASSWORD`,
+  `ZITADEL_ADMIN_*`, `COGETO_QDRANT_API_KEY`, `COGETO_MAIL_INTAKE_TOKEN`.
+- The `preflight` one-shot is the only process handed every secret and refuses
+  every committed dev value on a non-localhost domain
+  (`secret-preflight.ts:30-70`, `preflight.ts`), and `loadConfig` repeats the
+  check per process.
+- Published surface is minimal and intentional: `80`, `443`, `443/udp`, plus
+  `25` only under the `mail` profile. The consoles edge is dev-only and bound to
+  `127.0.0.1`. The `s3.<domain>` vhost answers only `GET|HEAD /cogeto/*` and 403s
+  everything else; `/api/email/intake*` is 404'd at the edge.
+- Least-privilege is wired in the **deploy** compose, not only in dev: migrations
+  run as `cogeto_migrate`, the runtime as `cogeto_app`, the superuser only in
+  `db-init`, and MinIO's scoped `cogeto-app` credential in app/worker.
+- Profile-gated services are genuinely off: the deploy compose defines only
+  `research` and `mail` profiles, and `COGETO_PRODUCTION=1` is hardcoded.
+- No secret in logs, health or endpoint output: `/api/config` returns only
+  `{issuer, clientId}`; `/api/health` carries no credential; the boot banner logs
+  the configuration id and tier bindings only; `key-confinement.spec.ts` asserts
+  the sealed column is selected in exactly one function.
+
+Drift and asymmetry found: **F5** (redaction documented but absent from deploy),
+**F7** (timeout/headroom knobs present in dev, absent in deploy), **F11**
+(no privilege hardening in either), **F12** (empty SearXNG secret),
+**F21** (demo knob in the customer compose).
+
+---
+
+## Part 5 - Operational reality (summary)
+
+| Question | Answer |
+|---|---|
+| Honest capability reporting, including newer capabilities | **Yes.** Observed `/api/health` returns `redaction, research, mail, demo, consoles, local-models, reasoning, vision, connectors`, each with `probed` and a `detail`/`error`, plus job states with `overdueAfterHours`. The boot banner prints the same. Gap is the operator script's list (F15). |
+| Backup/restore matches the data stores, rehearsed | **Yes.** `docs/operator-runbook.md:423-433` and `:438-491` names `pg-data`, `minio-data`, `instance-keys`, `zitadel-machinekey`, `qdrant-data` (correctly marked rebuildable), `caddy-data`, plus `/srv/cogeto/.env`, and mandates a per-customer rehearsal. Only defect is the DNS record count (F10). |
+| Reindex reachable from UI and shell, including an unstartable instance | **Yes.** Models page for the managed switch; `cogeto reindex` and `docker compose run --rm worker npm run reindex` from the shell; the boot guard's message names both (`model-boot.ts:115-119`). Two stale `exec` references remain (F9). |
+| Migrations safe fresh and on upgrade | **Yes.** 59 migrations applied in order by a one-shot `migrate` container as the schema owner; the running stack reports `59 applied, latest 0059_duplicate_uploads.sql`. Migration 0035 (task removal) is ordered behind the `erase-task-conclusions` guard the runbook documents; 0052/0053 are additive. |
+| Image pinning, update mechanism, version comments current | **Mostly.** Every `image:` in both composes is digest-pinned and CI enforces it; the update procedure is documented. One digest carries no tag comment (F18). |
+| Anything dev-only, demo-only or one-shot in the production image or as a recurring job | **No recurring job.** The demo reset crontab line is added only when `config.demoMode` is set (`worker.ts:243-276`), and the demo profile is absent from the deploy compose. The Dockerfile strips `seed-object`, `seed-orphan`, `demo-seed`, `demo-reset` (line 61). Still shipped: `project/demo` (32 KB corpus, imported by the worker's reset library), `eval.js`/`eval-chat.js`/`gateway-smoke.js`/`vector-smoke.js`, and the two documented one-shots `erase-task-conclusions.js` and `dedupe-file-sources.js`. The one-shots are documented operator tools; the demo corpus and eval entrypoints are dead weight. Plus F17. |
+
+---
+
+## Part 6 - Other observations, and what is genuinely well done
+
+Checked and clean, worth recording so the report is calibrated:
+
+- **Repo health is green.** All five required checks pass locally: `npm run lint`
+  (ESLint + Prettier + dash guard over 110 markdown files + `i18n:check`) exit 0;
+  `npm run boundaries` exit 0 ("no dependency violations found, 840 modules, 4355
+  dependencies cruised"); `npm run build` exit 0; `npm run test` exit 0 with
+  **1671 tests passing** (shared 15, server 1527 passed / 2 skipped over 187
+  files including the Testcontainers integration suites, web 129).
+  Worth stating plainly for calibration: **every required check is green and the
+  upgrade path still takes an instance down** (F1). The invariant suites cover
+  the application; nothing exercises `cogeto upgrade` against a pre-0052
+  database, which is why F1, F2 and F3 all survived CI.
+- **Documentation links hold.** 1 broken relative link across every markdown file
+  in the repo (`project/eval/vertical/cases/hr/hr-v004-.../notes.md`, one `../`
+  too many). No stale references to tasks, reminders or an approval queue in any
+  operator-facing document.
+- **The deploy asset chain is genuinely verified**, not decorative: commit-pinned
+  fetch, a checksum manifest fetched at the same commit, a missing manifest entry
+  is a hard failure rather than a skip, and the manifest is current today.
+- **The deploy compose is the hardened one.** Least-privilege DB roles, the
+  scoped S3 credential, required-secret syntax, `COGETO_PRODUCTION=1`, and the
+  strict CSP/HSTS headers on both the API and SPA handlers are all in the
+  customer file, not only in dev. The usual asymmetry runs the other way here.
+- **Secrets discipline is real and structural**: the dev-secret refusal list, the
+  data-bound rotation refusal in `configure --regenerate`, the loud refusal to
+  ever rotate the receipt-signing keypair, and `key-confinement.spec.ts`.
+- **i18n plural handling is correct per locale** (Croatian one/few/other, French
+  one/many/other), and every date, time, number and byte size goes through one
+  locale-aware helper. Both are the kind of thing that is normally wrong.
+- **Health output is honest**, including reporting the local stack as `degraded`
+  with named causes rather than green-washing.
+- **The install checklist is the strongest artifact in the deployment path**:
+  instance-specific DNS records with real values, conditional on the mail
+  capability, with the vault and backup items separated from the DNS-dependent
+  ones.
+
+---
+
+## Proposed fix clustering
+
+Ordered so blockers clear first. Sizes are relative effort, not calendar.
+
+| # | Cluster | Findings | Size | Kind |
+|---|---|---|---|---|
+| 1 | **Unblock the upgrade path**: backfill `COGETO_MASTER_KEY` in `ensure_wave3_secrets`, correct `upgrade-notes.md:68`. | F1 | S | code |
+| 2 | **Stop the operator tooling writing ignored model variables**: refuse or route `configure --mistral-key` and `features enable local-models` through the providers API; fix the install checklist TODO and the runbook troubleshooting row. | F2, F3 | M | code |
+| 3 | **Make the deploy compose deliver what is documented**: add `COGETO_MODEL_TIMEOUT_*` and `COGETO_REASONING_HEADROOM`, drop `COGETO_DEMO_DAILY_UPLOAD_MAX`, and widen the env-consistency spec so this class cannot recur. | F7, F21, F6 | M | code |
+| 4 | **Fix the mail STARTTLS path**: add a `mail.<domain>` vhost to the deploy Caddyfile (regenerating `deploy-assets.sha256` in the same change) and correct the runbook's compose filename. | F4 | M | code + docs |
+| 5 | **Tell the truth about redaction and capabilities**: state the deploy-channel limitation in the security doc and `.env.example`; align `FEATURE_IDS`, the runbook list and `deployment.md`. | F5, F15, F16 | S | docs (owner) |
+| 6 | **Runbook and upgrade-note corrections**: Ollama section, the self-contradiction about reindex, the restore DNS count, the "past 2.0" section title, the script header, the Zitadel bootstrap variables. | F8, F9, F10, F19, F22 | S | docs |
+| 7 | **Container privilege hardening** in both composes, plus the empty-SearXNG-secret refusal. | F11, F12 | M | code |
+| 8 | **Server-side copy**: route user-facing API errors through the server catalogue and extend the i18n guard to cover them. | F13 | L | code |
+| 9 | **Finish or gate the translations** for the six English-only namespaces (631 keys x 3 locales). | F14 | L | owner |
+| 10 | **Housekeeping**: delete `eval/trust-scores/file`, add the SearXNG tag comment and tighten the pin spec, remove the unprefixed `MISTRAL_*` fallbacks, fix the one broken doc link. | F17, F18, F20 | S | code + owner |

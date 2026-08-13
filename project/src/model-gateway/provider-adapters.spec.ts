@@ -14,7 +14,7 @@ import { TierRoutedModelGateway } from './routed.gateway';
 import { BudgetedModelGateway } from './budgeted.gateway';
 import { RedactingModelGateway } from './redacting.gateway';
 import { createModelGateway } from './factory';
-import { resolveModelProviders } from './provider-config';
+import { resolveEvalProvidersFromEnv } from './provider-config';
 import { isRetryableStatus, stripJsonFence } from './provider';
 import type { ModelUsageMeter } from '../infrastructure/index';
 
@@ -486,7 +486,7 @@ const CONFIGS: Record<string, Record<string, string>> = {
 describe('redaction_applies_all_providers / budget_applies_all_providers', () => {
   for (const [name, vars] of Object.entries(CONFIGS)) {
     it(`${name}: the factory chain is budget → redaction → provider (no bypass)`, () => {
-      const providers = resolveModelProviders(vars as NodeJS.ProcessEnv, { redacted: true });
+      const providers = resolveEvalProvidersFromEnv(vars as NodeJS.ProcessEnv, { redacted: true });
       const gateway = createModelGateway({
         providers,
         redaction: { enabled: true, url: 'http://redaction:8080' },

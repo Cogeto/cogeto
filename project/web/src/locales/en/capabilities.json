@@ -26,6 +26,12 @@
     "failing": "failing"
   },
   "capability": {
+    "models": {
+      "name": "Models",
+      "description": "The model providers and per-tier assignments this instance runs, managed under Providers and stored in the database.",
+      "consequence": "The model configuration is reported as broken; check the Providers page.",
+      "enable": "Add a provider and assign the tiers under Providers in the left rail."
+    },
     "redaction": {
       "name": "Redaction",
       "description": "Pseudonymizes names and other sensitive entities on this machine before any text reaches the model provider.",
@@ -51,25 +57,23 @@
       "description": "Operator-only MinIO and Qdrant consoles, served on this machine at localhost port 8443.",
       "consequence": "The consoles are enabled but not answering."
     },
-    "local-models": {
-      "name": "Local models",
-      "description": "Runs model work on a local Ollama runtime instead of a hosted provider, so content stays on your hardware.",
-      "consequence": "The local model runtime is unreachable: model features on local tiers fail until it is back."
-    },
     "reasoning": {
       "name": "Reasoning model",
       "description": "Detects, by probing with a real prompt, whether the model thinks in a separate reasoning channel before answering. When it does, token caps are enlarged so the thinking cannot silently consume the answer's budget. Off simply means the model answers directly.",
-      "consequence": "Reasoning could not be determined: token caps stay unenlarged, and a reasoning model may return empty answers until a probe succeeds."
+      "consequence": "Reasoning could not be determined: token caps stay unenlarged, and a reasoning model may return empty answers until a probe succeeds.",
+      "enable": "Comes on by itself when the assigned answer model returns separate reasoning; there is nothing to enable by hand."
     },
     "vision": {
       "name": "Reading pictures",
       "description": "Reads pages that are images: scans, photographs, drawings and schematics. Cheapest first, so a page with real text is never sent to a model. Off means those pages are labelled unreadable instead of silently empty.",
-      "consequence": "Vision is configured but not answering: pages that are pictures cannot be read, and they are labelled as needing it rather than shown as processed. If the message mentions a timeout, the endpoint may simply be warming up rather than broken."
+      "consequence": "Vision is configured but not answering: pages that are pictures cannot be read, and they are labelled as needing it rather than shown as processed. If the message mentions a timeout, the endpoint may simply be warming up rather than broken.",
+      "enable": "Assign a vision provider and model under Models in the interface."
     },
     "connectors": {
       "name": "Connectors",
       "description": "Syncs content from connected external systems into sources, so what changes outside this instance is captured and verified here.",
-      "consequence": "A connector needs attention: syncing for it is degraded or stopped until it is reconnected."
+      "consequence": "A connector needs attention: syncing for it is degraded or stopped until it is reconnected.",
+      "enable": "Add a connector under Connections in the interface."
     }
   },
   "job": {

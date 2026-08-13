@@ -205,6 +205,13 @@ describe('operator script — install --check dry run', () => {
     expect(out).toContain('cogeto features enable mail');
     expect(out).toContain('allow inbound TCP 80 and 443');
     expect(out).toContain('Automated Backup');
+    // The step that now matters: models are configured in the interface after
+    // login. The checklist names it, with the surface and the consequence.
+    expect(out).toContain('Configure a model provider');
+    expect(out).toContain('Providers (left rail)');
+    // And the dead instruction is gone: nothing anywhere in an install run may
+    // mention a model key in the environment.
+    expect(out.toLowerCase()).not.toContain('mistral');
     // Grouped by immediacy, checkbox-style.
     expect(out).toContain('Do now:');
     expect(out).toContain('Verify after DNS propagates:');
@@ -305,13 +312,89 @@ describe('operator script — pure helpers', () => {
       'COGETO_S3_ACCESS_KEY',
       'COGETO_S3_SECRET_KEY',
       'ZITADEL_BOOTSTRAP_PAT_EXPIRY',
+      'COGETO_MASTER_KEY',
     ]) {
       expect(script).toContain(`env_set ${name} `);
     }
     // ...and the upgrade path backfills any the fetched compose now requires.
+    // COGETO_MASTER_KEY is in the backfill set (audit F1): an instance
+    // installed before it existed must get one on upgrade, and an existing
+    // value is never touched.
     expect(script).toContain('ensure_wave3_secrets');
+    const backfill = script.slice(
+      script.indexOf('ensure_wave3_secrets() {'),
+      script.indexOf('# SEC-14 upgrade continuity'),
+    );
+    expect(backfill).toContain('COGETO_MASTER_KEY');
+    expect(backfill).toMatch(
+      /\[ -n "\$\(env_get COGETO_MASTER_KEY\)" \]\s+\|\| env_set COGETO_MASTER_KEY/,
+    );
     // The db-init asset ships with the other pinned deploy files.
     expect(script).toContain('project/infra/docker/postgres-init/db-init.sql');
+  });
+});
+
+describe('operator script — the script knows nothing about models', () => {
+  it('install and configure refuse --mistral-key with the pointer at the interface', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'cogeto-operator-nomodel-'));
+    writeFileSync(path.join(root, '.env'), 'COGETO_VERSION=9.9.9\n', { mode: 0o600 });
+    const install = runScript(['install', '--check', '--root', GHOST_ROOT, '--mistral-key', 'k']);
+    expect(install.status).toBe(1);
+    expect(install.out).toContain('configured in the interface');
+    const configure = runScript(['configure', '--check', '--root', root, '--mistral-key', 'k']);
+    rmSync(root, { recursive: true, force: true });
+    expect(configure.status).toBe(1);
+    expect(configure.out).toContain('configured in the interface');
+  });
+
+  it('the script never writes a model or provider variable', () => {
+    const script = readFileSync(SCRIPT, 'utf8');
+    for (const name of [
+      'COGETO_MISTRAL_API_KEY',
+      'COGETO_PROVIDER_PRESET',
+      'COGETO_OLLAMA_BASE_URL',
+      'COGETO_MODEL_',
+      'COGETO_PROVIDER_PIPELINE',
+      'COGETO_PROVIDER_ANSWER',
+      'COGETO_PROVIDER_EMBEDDINGS',
+    ]) {
+      expect(script, `${name} must not appear in the operator script`).not.toContain(name);
+    }
+  });
+
+  it('status reads the model state from the running app, never from .env', () => {
+    const script = readFileSync(SCRIPT, 'utf8');
+    const status = script.slice(script.indexOf('cmd_status() {'), script.indexOf('# ── features'));
+    expect(status).toContain('model provider');
+    expect(status).toContain('/api/health');
+    // No env_get of any model variable inside status.
+    expect(status).not.toMatch(/env_get [A-Z_]*(MISTRAL|MODEL|PROVIDER|OLLAMA)/);
+  });
+
+  it('every secret the deploy compose REQUIRES is generated or written by install', () => {
+    // The audit found the whole-set check missing (the master key was the one
+    // omission): assert the set itself, so a future required secret cannot
+    // ship without its generator.
+    const deploy = read('project/infra/deploy/docker-compose.deploy.yml');
+    const script = readFileSync(SCRIPT, 'utf8');
+    const install = script.slice(script.indexOf('cmd_install() {'), script.indexOf('# ── upgrade'));
+    const required = [
+      ...new Set([...deploy.matchAll(/\$\{([A-Z0-9_]+):\?/g)].map((m) => m[1]!)),
+      // A documentation comment in the compose spells the ${VAR:?} form.
+    ].filter((name) => name !== 'VAR');
+    expect(required.length).toBeGreaterThan(10);
+    for (const name of required) {
+      // COGETO_VERSION and COGETO_EXTERNAL_DOMAIN are written too; ZITADEL_
+      // ADMIN_USERNAME is derived from the domain. Everything required must be
+      // env_set somewhere in the install path.
+      expect(install, `install does not write required secret ${name}`).toContain(
+        `env_set ${name} `,
+      );
+    }
+    // The master key is required-by-function (it encrypts provider keys the
+    // admin enters), even though compose leaves it optional so a keyless
+    // self-hosted-only instance still boots.
+    expect(install).toContain('env_set COGETO_MASTER_KEY ');
   });
 });
 
@@ -325,9 +408,12 @@ describe('operator script — features', () => {
   it('--help documents the features subcommand and the capability set', () => {
     const { out } = runScript(['--help']);
     expect(out).toContain('cogeto features');
-    for (const id of ['redaction', 'research', 'demo', 'consoles', 'local-models']) {
+    for (const id of ['redaction', 'research', 'demo', 'consoles']) {
       expect(out).toContain(id);
     }
+    // Models are configured in the interface: the script says so and offers
+    // no model toggle of its own.
+    expect(out).toContain('configured in the interface');
   });
 
   it('refuses to run against a machine with no instance', () => {
@@ -345,7 +431,6 @@ describe('operator script — features', () => {
     expect(out).toMatch(/research\s+enabled/);
     expect(out).toMatch(/demo\s+disabled/);
     expect(out).toMatch(/consoles\s+disabled/);
-    expect(out).toMatch(/local-models\s+disabled/);
     expect(out).toContain('health unknown');
   });
 
@@ -362,11 +447,11 @@ describe('operator script — features', () => {
     const root = withEnv('COGETO_VERSION=9.9.9\n');
     const unknown = runScript(['features', 'enable', 'frobnicate', '--check', '--root', root]);
     expect(unknown.status).toBe(1);
-    expect(unknown.out).toContain('redaction research mail demo consoles local-models');
+    expect(unknown.out).toContain('redaction research mail demo consoles');
     const missing = runScript(['features', 'enable', '--check', '--root', root]);
     rmSync(root, { recursive: true, force: true });
     expect(missing.status).toBe(1);
-    expect(missing.out).toContain('redaction research mail demo consoles local-models');
+    expect(missing.out).toContain('redaction research mail demo consoles');
   });
 
   it('--check enable research prints the intended edits and mutates nothing', () => {
@@ -405,19 +490,22 @@ describe('operator script — features', () => {
     expect(out).toContain('PLAINTEXT');
   });
 
-  it('enable local-models without a runtime URL refuses and names --base-url', () => {
+  it('local-models is refused with the pointer at the interface — never a toggle that lies', () => {
     const root = withEnv('COGETO_VERSION=9.9.9\n');
-    const { status, out } = runScript([
-      'features',
-      'enable',
-      'local-models',
-      '--check',
-      '--root',
-      root,
-    ]);
+    for (const verb of ['enable', 'disable']) {
+      const { status, out } = runScript([
+        'features',
+        verb,
+        'local-models',
+        '--check',
+        '--root',
+        root,
+      ]);
+      expect(status).toBe(1);
+      expect(out).toContain('no longer a script feature');
+      expect(out).toContain('Providers');
+    }
     rmSync(root, { recursive: true, force: true });
-    expect(status).toBe(1);
-    expect(out).toContain('--base-url');
   });
 
   it('disable is idempotent: an already-disabled capability is a stated no-op', () => {

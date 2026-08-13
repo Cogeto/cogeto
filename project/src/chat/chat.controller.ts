@@ -41,7 +41,7 @@ import {
 import type { Db, SseLimits } from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
-import { ModelBudgetExceededError } from '../model-gateway/index';
+import { ModelBudgetExceededError, ModelGatewayNotConfiguredError } from '../model-gateway/index';
 import { DocumentUploadInterceptor } from '../files/index';
 import { ChatAttachmentsService } from './chat-attachments.service';
 import { answersCiting } from './source-listing';
@@ -406,6 +406,11 @@ export class ChatController {
       // to streams too). A spent daily budget gets a specific code.
       if (error instanceof ModelBudgetExceededError) {
         write({ type: 'error', message: error.message, code: 'model_budget_exceeded' });
+      } else if (error instanceof ModelGatewayNotConfiguredError) {
+        // The first-run state, not a failure: the client renders its own
+        // localized explanation off the code, so "try again" never appears
+        // for something trying again cannot fix.
+        write({ type: 'error', message: error.message, code: 'not_configured' });
       } else {
         write({ type: 'error', message: 'answer generation failed, try again' });
       }

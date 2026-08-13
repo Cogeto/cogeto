@@ -26,6 +26,12 @@
     "failing": "fehlerhaft"
   },
   "capability": {
+    "models": {
+      "name": "Models",
+      "description": "The model providers and per-tier assignments this instance runs, managed under Providers and stored in the database.",
+      "consequence": "The model configuration is reported as broken; check the Providers page.",
+      "enable": "Add a provider and assign the tiers under Providers in the left rail."
+    },
     "redaction": {
       "name": "Redaktion",
       "description": "Pseudonymisiert Namen und andere sensible Entitäten auf diesem Rechner, bevor Text den Modellanbieter erreicht.",
@@ -51,25 +57,23 @@
       "description": "MinIO- und Qdrant-Konsolen nur für Betreiber, auf diesem Rechner über Port 8443 von localhost bereitgestellt.",
       "consequence": "Die Konsolen sind aktiviert, antworten aber nicht."
     },
-    "local-models": {
-      "name": "Lokale Modelle",
-      "description": "Führt Modellaufgaben in einer lokalen Ollama-Laufzeit statt bei einem gehosteten Anbieter aus, damit Inhalte auf Ihrer Hardware bleiben.",
-      "consequence": "Die lokale Modelllaufzeit ist nicht erreichbar: Modellfunktionen auf lokalen Stufen schlagen fehl, bis sie wieder verfügbar ist."
-    },
     "reasoning": {
       "name": "Reasoning model",
       "description": "Detects, by probing with a real prompt, whether the model thinks in a separate reasoning channel before answering. When it does, token caps are enlarged so the thinking cannot silently consume the answer's budget. Off simply means the model answers directly.",
-      "consequence": "Reasoning could not be determined: token caps stay unenlarged, and a reasoning model may return empty answers until a probe succeeds."
+      "consequence": "Reasoning could not be determined: token caps stay unenlarged, and a reasoning model may return empty answers until a probe succeeds.",
+      "enable": "Comes on by itself when the assigned answer model returns separate reasoning; there is nothing to enable by hand."
     },
     "vision": {
       "name": "Reading pictures",
       "description": "Reads pages that are images: scans, photographs, drawings and schematics. Cheapest first, so a page with real text is never sent to a model. Off means those pages are labelled unreadable instead of silently empty.",
-      "consequence": "Vision is configured but not working: pages that are pictures cannot be read, and they are labelled as needing it rather than shown as processed."
+      "consequence": "Vision is configured but not working: pages that are pictures cannot be read, and they are labelled as needing it rather than shown as processed.",
+      "enable": "Assign a vision provider and model under Models in the interface."
     },
     "connectors": {
       "name": "Connectors",
       "description": "Syncs content from connected external systems into sources, so what changes outside this instance is captured and verified here.",
-      "consequence": "A connector needs attention: syncing for it is degraded or stopped until it is reconnected."
+      "consequence": "A connector needs attention: syncing for it is degraded or stopped until it is reconnected.",
+      "enable": "Add a connector under Connections in the interface."
     }
   },
   "job": {

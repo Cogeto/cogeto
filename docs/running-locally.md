@@ -11,9 +11,11 @@ around that one command.
  comfortable.
 - **Node 22 + npm** only if you develop (tests, lint, builds): not needed to
  just run the stack.
-- Optional: a **Mistral API key** ([console.mistral.ai](https://console.mistral.ai))
- for model features. Without it the stack runs, login, capture, dashboard,
- queue, and model calls fail with a typed error instead of pretending.
+- Optional, for model features: an API key from a supported provider (e.g.
+ Mistral, [console.mistral.ai](https://console.mistral.ai)), added **in the
+ interface** after login (Providers in the left rail). Without one the stack
+ runs, login, capture, dashboard, queue, and model calls fail with a typed
+ error instead of pretending.
 
 ## Up
 
@@ -30,10 +32,12 @@ and sign in as the dev bootstrap admin:
 
 > **admin@cogeto.localhost** / **DevPassword1!**
 
-To set the model key (or override any default), copy
-[`.env.example`](../.env.example) to `.env`, edit, and `docker compose up -d`
-again. The dev defaults are safe for localhost only; a preflight container
-refuses known dev secrets on any non-localhost domain.
+Model providers are not configured in `.env`: after login, add one in the
+interface (**Providers** in the left rail, then assign the tiers under
+**Models**; keys are stored encrypted in the instance database). To override
+any other default, copy [`.env.example`](../.env.example) to `.env`, edit, and
+`docker compose up -d` again. The dev defaults are safe for localhost only; a
+preflight container refuses known dev secrets on any non-localhost domain.
 
 ## Where things are
 
@@ -61,7 +65,8 @@ npm run test # Vitest; integration suites start real containers (needs Docker)
 
 Run Vitest from `project/src` (or via `npm run test` at the root), not with a
 bare `vitest` from the repo root, which breaks the prompt-artifact paths. The
-eval harness needs a model key: `MISTRAL_API_KEY=... npm run eval`.
+eval harness needs a model key: `COGETO_MISTRAL_API_KEY=... npm run eval`
+(harness-only: it runs against no instance database).
 
 ## Common issues
 
@@ -72,8 +77,9 @@ eval harness needs a model key: `MISTRAL_API_KEY=... npm run eval`.
 - **File downloads don't resolve**: presigned URLs use the
  `https://s3.localhost:8443` origin, which needs the `consoles` profile up
  and the `*.localhost` hosts entries.
-- **Chat/extraction returns a model-gateway error**: no `COGETO_MISTRAL_API_KEY`
- set. That's the designed behavior, not a crash.
+- **Chat/extraction returns a model-gateway error**: no model provider is
+ configured yet. Add one in the interface (Providers in the left rail); that
+ is the designed first-run state, not a crash.
 - **A one-shot init container "exited (0)"**: normal: `preflight`, `db-init`,
  `migrate`, `minio-init`, `zitadel-init`, and the volume-permission jobs run
  once per `up` and exit.

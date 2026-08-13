@@ -171,50 +171,19 @@ services:
       # a key that guards a database cannot live inside it. Optional until
       # something needs encrypting, and then the failure names it.
       COGETO_MASTER_KEY: ${COGETO_MASTER_KEY:-}
-      # ── The model variables below are SEED INPUT ONLY (V2.4 item 7.1) ──────
-      # They are read once, on the first start after upgrading, and carried
-      # into the database as the equivalent providers and assignments. After
-      # that the database is authoritative and these are IGNORED: not merged,
-      # not a fallback. They pass through here so an existing instance comes
-      # across unchanged, and they can be removed from .env after the first
-      # successful start.
+      # Model providers, models and their keys are configured IN THE INTERFACE
+      # (Providers in the left rail) and stored in the database. The
+      # environment carries no model configuration: only the deployment knobs
+      # below (vision page caps, per-tier self-hosted timeouts).
       #
-      # Optional: without it the model gateway boots unconfigured and fails on use
-      # with a typed error. Model calls start with the Notes pipeline (Session 2).
-      COGETO_MISTRAL_API_KEY: ${COGETO_MISTRAL_API_KEY:-}
-      # Per-task model tiers and the embedding model —
-      # each falls back to the config default when unset.
-      COGETO_MISTRAL_MODEL_PIPELINE: ${COGETO_MISTRAL_MODEL_PIPELINE:-}
-      COGETO_MISTRAL_MODEL_ANSWER: ${COGETO_MISTRAL_MODEL_ANSWER:-}
-      COGETO_MISTRAL_EMBED_MODEL: ${COGETO_MISTRAL_EMBED_MODEL:-}
-      # Bring-your-own-key providers: preset + per-tier
-      # provider/model selection and the OpenAI-compatible/Anthropic keys.
-      # Validated at boot; invalid combinations refuse to start.
-      COGETO_PROVIDER_PRESET: ${COGETO_PROVIDER_PRESET:-}
-      COGETO_PROVIDER_PIPELINE: ${COGETO_PROVIDER_PIPELINE:-}
-      COGETO_MODEL_PIPELINE: ${COGETO_MODEL_PIPELINE:-}
-      COGETO_PROVIDER_ANSWER: ${COGETO_PROVIDER_ANSWER:-}
-      COGETO_MODEL_ANSWER: ${COGETO_MODEL_ANSWER:-}
-      COGETO_PROVIDER_EMBEDDINGS: ${COGETO_PROVIDER_EMBEDDINGS:-}
-      COGETO_MODEL_EMBEDDINGS: ${COGETO_MODEL_EMBEDDINGS:-}
-      # Reading pages that are pictures (V2.1 item 4.1). Opt-in, no default
-      # model: both must be set together, and without them the reading ladder
-      # stops at local OCR and labels what it could not read.
-      COGETO_PROVIDER_VISION: ${COGETO_PROVIDER_VISION:-}
-      COGETO_MODEL_VISION: ${COGETO_MODEL_VISION:-}
       # How many pages one document, and one user per day, may escalate to the
       # vision tier. Image inference is the most expensive call the pipeline
       # makes, so it is bounded by construction.
       COGETO_VISION_PAGES_PER_DOCUMENT: ${COGETO_VISION_PAGES_PER_DOCUMENT:-}
       COGETO_VISION_PAGES_PER_USER_DAILY: ${COGETO_VISION_PAGES_PER_USER_DAILY:-}
-      COGETO_OPENAI_API_KEY: ${COGETO_OPENAI_API_KEY:-}
-      COGETO_OPENAI_BASE_URL: ${COGETO_OPENAI_BASE_URL:-}
-      COGETO_ANTHROPIC_API_KEY: ${COGETO_ANTHROPIC_API_KEY:-}
-      COGETO_ANTHROPIC_BASE_URL: ${COGETO_ANTHROPIC_BASE_URL:-}
-      # Local Ollama runtime: runtime root URL (no /v1), the
-      # optional reverse-proxy key, and per-tier timeouts for local inference.
-      COGETO_OLLAMA_BASE_URL: ${COGETO_OLLAMA_BASE_URL:-}
-      COGETO_OLLAMA_API_KEY: ${COGETO_OLLAMA_API_KEY:-}
+      # Per-tier timeouts for SELF-HOSTED endpoints, legacy Ollama-era names
+      # (still honoured; the provider-neutral names below are the documented
+      # ones).
       COGETO_OLLAMA_TIMEOUT_PIPELINE_MS: ${COGETO_OLLAMA_TIMEOUT_PIPELINE_MS:-}
       COGETO_OLLAMA_TIMEOUT_ANSWER_MS: ${COGETO_OLLAMA_TIMEOUT_ANSWER_MS:-}
       COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS: ${COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS:-}

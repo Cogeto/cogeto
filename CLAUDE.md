@@ -369,11 +369,18 @@ evaluated"**. The **answer** tier is user-switchable among admin-enabled options
 (an opaque option id, so call sites still name a tier); pipeline, embeddings and
 vision stay admin-only. Changes apply **without a restart**: one live
 configuration object per process, mutated in place, with the worker polling a
-version column. **Seeding is atomic and once**: after it, the environment's
-model variables are IGNORED, not merged, and `.env` is bootstrap only.
-The legacy
-environment expansion stays for exactly one release, because it is what a v1-era
-instance's seed depends on. Read
+version column. **The interface is the only place models are configured**
+(deployment-readiness remediation, 2026-08): the one-time environment seed and
+the legacy environment expansion are DELETED, both composes carry no model
+variables, the operator script knows nothing about models, and a stale model
+variable in `.env` has no effect whatsoever (machine-checked by
+`model-config-env.spec.ts`). The eval harness alone still resolves from the
+environment, confined to its entrypoints, because it runs in CI against no
+instance database. An instance with no provider configured is a NORMAL state:
+it boots, serves, health stays ok with a distinct not-configured wording, the
+shell shows a first-run banner pointing at Providers, and queued pipeline work
+waits under a job key and drains without a restart once a provider is added.
+Read
 [`docs/features/models.md`](docs/features/models.md) and
 [`docs/operations/upgrade-notes.md`](docs/operations/upgrade-notes.md) before
 touching anything in the model-configuration path.

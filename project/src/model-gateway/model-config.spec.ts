@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveModelProviders } from '../model-gateway/index';
+import { resolveEvalProvidersFromEnv } from '../model-gateway/index';
 import { buildModelConfigDto } from './model-config.controller';
 
 /**
@@ -9,7 +9,7 @@ import { buildModelConfigDto } from './model-config.controller';
  */
 describe('settings_display_accurate', () => {
   it('mirrors a configured mixed configuration exactly', () => {
-    const modelProviders = resolveModelProviders(
+    const modelProviders = resolveEvalProvidersFromEnv(
       {
         COGETO_PROVIDER_PRESET: 'anthropic-answer',
         COGETO_ANTHROPIC_API_KEY: 'anthropic-secret-key',
@@ -39,7 +39,7 @@ describe('settings_display_accurate', () => {
   });
 
   it('states the redaction posture in the external-calls sentence', () => {
-    const modelProviders = resolveModelProviders(
+    const modelProviders = resolveEvalProvidersFromEnv(
       { COGETO_MISTRAL_API_KEY: 'k' } as NodeJS.ProcessEnv,
       { redacted: true },
     );
@@ -51,7 +51,7 @@ describe('settings_display_accurate', () => {
   });
 
   it('an all-local configuration states that nothing goes to a hosted provider (0041)', () => {
-    const modelProviders = resolveModelProviders(
+    const modelProviders = resolveEvalProvidersFromEnv(
       {
         COGETO_PROVIDER_PRESET: 'ollama-local',
         COGETO_OLLAMA_BASE_URL: 'http://10.0.0.1:11434',
@@ -67,7 +67,9 @@ describe('settings_display_accurate', () => {
   });
 
   it('an unconfigured instance says so honestly', () => {
-    const modelProviders = resolveModelProviders({} as NodeJS.ProcessEnv, { redacted: false });
+    const modelProviders = resolveEvalProvidersFromEnv({} as NodeJS.ProcessEnv, {
+      redacted: false,
+    });
     const dto = buildModelConfigDto({ modelProviders, redactionEnabled: false });
     expect(dto.configured).toBe(false);
     expect(dto.configurationId).toBe('unconfigured');

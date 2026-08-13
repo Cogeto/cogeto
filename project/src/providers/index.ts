@@ -8,7 +8,6 @@ export type { ProvidersOptions } from './providers.options';
 // bare entrypoints that talk to models, so no process can disagree about which
 // configuration is active.
 export { loadModelConfiguration } from './load-configuration';
-export type { LoadedModelConfiguration } from './load-configuration';
 // The sealed-secret mechanism moved to infrastructure in V2.5 item 8.1 (one
 // mechanism for provider keys and connector credentials); consumers import
 // readMasterKey / MasterKeyError from the infrastructure barrel now.

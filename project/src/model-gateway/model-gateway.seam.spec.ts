@@ -46,6 +46,15 @@ describe('model-gateway seam — error classification', () => {
     ).rejects.toBeInstanceOf(ModelGatewayNotConfiguredError);
   });
 
+  it('an unconfigured gateway reports health OK with the plain first-run explanation, never a failure', async () => {
+    // The normal first-run state (deployment-readiness remediation): distinct
+    // from misconfigured or unreachable, and it must not degrade /api/health.
+    const health = await new UnconfiguredModelGateway().reachable();
+    expect(health.ok).toBe(true);
+    expect(health.detail).toContain('no model provider configured');
+    expect(health.detail).toContain('Providers');
+  });
+
   it('classifies a provider 4xx as fatal (retryable=false), no retry', async () => {
     const g = new MistralModelGateway({ apiKey: 'test' });
     const spy = vi

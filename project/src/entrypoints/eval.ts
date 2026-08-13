@@ -28,8 +28,7 @@ import { TRUST_SCORES_SCHEMA_VERSION } from './trust-scores';
  * appends them, with prompt versions, to docs/eval/history.md. No CI gates yet
  * (Session 4 turns them on).
  *
- * Needs only an API key: MISTRAL_API_KEY / COGETO_MISTRAL_API_KEY in the env,
- * or in the repo-root.env.
+ * Needs only an API key: COGETO_MISTRAL_API_KEY in the env, or in the repo-root .env.
  */
 
 // dist layout: project/src/dist/entrypoints → repo root is four levels up.

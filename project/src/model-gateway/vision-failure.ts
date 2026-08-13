@@ -85,7 +85,7 @@ export function classifyVisionFailure(
             `it: the same weights serve happily as a text-only model, and neither the model name ` +
             `nor \`ollama list\` shows the difference. Check that the model was pulled or built ` +
             `with its mmproj file (a vision build of the same model, or a Modelfile naming it), ` +
-            `or point COGETO_MODEL_VISION at a model that has one. Upstream said: ${message.trim()}`
+            `or assign a vision model that has one (Models in the interface). Upstream said: ${message.trim()}`
         : `the model "${context.model}" on ${context.label} refused image input: it is probably ` +
             `not a vision model, or this endpoint does not accept image content parts. Upstream ` +
             `said: ${message.trim()}`,

@@ -286,7 +286,7 @@ jobs:
       - name: Emit trust scores (measure-only — NOT gated)
         if: steps.guard.outputs.already == 'false'
         env:
-          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          COGETO_MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           # DELIBERATELY no COGETO_EVAL_GATE here. The trust scores are the
           # MEASURED metrics for the released code, and are published as-is
           # (honest numbers, incl. any run-to-run coverage-grader variance) — a

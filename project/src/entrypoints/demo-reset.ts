@@ -26,7 +26,7 @@ async function main(): Promise<void> {
   assertDemoAllowed(config);
   if (!config.modelProviders.configured) {
     console.error(
-      'demo:reset needs MISTRAL_API_KEY (re-seeding runs the real extraction pipeline)',
+      'demo:reset needs a configured model provider (re-seeding runs the real extraction pipeline)',
     );
     process.exit(2);
   }
