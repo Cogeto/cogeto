@@ -609,16 +609,236 @@ describe('deploy channel — hardening assertions', () => {
   it('a customer instance is production: demo hard-refused, no dev profiles', () => {
     expect(deploy).toContain("COGETO_PRODUCTION: '1'");
     expect(deploy).not.toContain('COGETO_DEMO_MODE');
-    // TWO optional profiles in the deploy channel: `research` (SearXNG, a
-    // digest-pinned upstream image, still pull-only) and `mail` (SEC-14:
-    // inbound SMTP is opt-in). The dev-only profiles (demo, dev-seed,
-    // consoles) and the unpublished redaction sidecar stay absent.
-    const profiles = [...deploy.matchAll(/profiles:\s*\[([^\]]*)\]/g)].map((m) => m[1]!.trim());
-    expect(profiles).toEqual(["'research'", "'mail'"]);
+    // THREE optional profiles in the deploy channel: `research` (SearXNG, a
+    // digest-pinned upstream image, still pull-only), `mail` (SEC-14: inbound
+    // SMTP is opt-in) and `redaction` (issue #565). The dev-only profiles
+    // (demo, dev-seed, consoles), whose images are never published, stay
+    // absent. Asserted as a SET because more than one service may ride one
+    // profile: mail-tls-sync rides `mail`.
+    const profiles = new Set(
+      [...deploy.matchAll(/profiles:\s*\[([^\]]*)\]/g)].map((m) => m[1]!.trim()),
+    );
+    expect(profiles).toEqual(new Set(["'research'", "'mail'", "'redaction'"]));
     expect(deploy).not.toContain('demo-seed');
     expect(deploy).not.toContain('seed-object');
     expect(deploy).not.toContain('caddy-consoles');
-    expect(deploy).not.toMatch(/^\s*redaction:/m);
+  });
+
+  /**
+   * Redaction on the deployed path (issue #565).
+   *
+   * This block REPLACES the assertions that pinned the opposite decision: that
+   * the deploy compose's profile list was exactly two entries and that no
+   * `redaction:` service block might appear. That decision was deliberate
+   * while the sidecar's image was unpublished — a pull-only instance cannot
+   * build one — and it is now reversed, so the invariants are rewritten to
+   * encode the new intent rather than deleted. What must stay true is that the
+   * capability is really reachable and really contained.
+   */
+  /** One service's YAML block: its key line up to the following blank line. */
+  const block = (compose: string, name: string): string => {
+    const start = compose.indexOf(`\n  ${name}:\n`);
+    if (start < 0) return '';
+    const end = compose.indexOf('\n\n', start + 1);
+    return end < 0 ? compose.slice(start) : compose.slice(start, end);
+  };
+
+  describe('redaction is reachable on a customer instance, and contained', () => {
+    const redactionBlock = block(deploy, 'redaction');
+
+    it('the profile exists and carries a pull-only, digest-versioned sidecar', () => {
+      expect(redactionBlock, 'no redaction service in the deploy compose').not.toBe('');
+      expect(redactionBlock).toMatch(/profiles:\s*\['redaction'\]/);
+      expect(redactionBlock).toMatch(/image: cogeto\/cogeto-redaction:\$\{COGETO_VERSION/);
+      // Pull-only is the whole reason this was blocked before: no build key.
+      expect(redactionBlock).not.toMatch(/build:/);
+    });
+
+    it('the sidecar is internal-only — no published port, and the edge never proxies it', () => {
+      // It holds the plaintext of everything on its way to a model. Nothing
+      // outside the compose network may reach it.
+      expect(redactionBlock).not.toContain('ports:');
+      expect(deployCaddy).not.toContain('redaction');
+    });
+
+    it('it carries the healthcheck the dev definition uses, so `unreachable` is real', () => {
+      // Fail-closed only means something if the gateway can tell. The dev
+      // healthcheck loads the model, so a sidecar that cannot load it reports
+      // unhealthy rather than accepting requests it will fail.
+      expect(redactionBlock).toContain("urlopen('http://127.0.0.1:8080/health')");
+      expect(redactionBlock).toContain('start_period: 90s');
+    });
+
+    it('the three REDACTION_* variables reach BOTH the app and the worker', () => {
+      // The defect this closes: neither root received them, so setting them by
+      // hand in a customer's .env had no effect whatsoever. They live in the
+      // shared `&cogeto-env` anchor, which the worker merges with `<<:`.
+      const anchor = deploy.slice(deploy.indexOf('environment: &cogeto-env'));
+      for (const name of ['REDACTION_ENABLED', 'REDACTION_URL', 'REDACTION_REQUIRED']) {
+        expect(anchor, `${name} is not in the shared environment anchor`).toContain(`${name}:`);
+      }
+      expect(deploy).toMatch(/worker:[\s\S]*?<<: \*cogeto-env/);
+    });
+
+    it('the release pipeline publishes, signs and attests the sidecar image', () => {
+      // A profile pointing at an image nobody publishes is the previous bug
+      // with extra steps.
+      expect(release).toContain('cogeto/cogeto-redaction');
+      expect(release).toContain('context: project/services/redaction');
+      expect(release).toContain('cosign sign --yes "${IMAGE_REDACTION}@${DIGEST_REDACTION}"');
+      expect(release).toContain('"${IMAGE_REDACTION}@${DIGEST_REDACTION}"');
+      expect(release).toMatch(/cosign attest[\s\S]*?IMAGE_REDACTION/);
+      expect(release.match(/cosign sign --yes/g)?.length).toBeGreaterThanOrEqual(4);
+    });
+
+    it('the operator script no longer refuses the capability with the obsolete reason', () => {
+      const script = readFileSync(SCRIPT, 'utf8');
+      expect(script).not.toContain('its image is built from source, never published');
+      expect(script).toContain('IMAGE_REDACTION="cogeto/cogeto-redaction"');
+      // Enabling pulls and VERIFIES the image like every other release image.
+      const enable = script.slice(
+        script.indexOf('    redaction)'),
+        script.indexOf('    demo)\n      # The production guard'),
+      );
+      expect(enable).toContain('compose --profile redaction pull');
+      expect(enable).toContain('verify_images');
+      // The operator is told the footprint before it lands on their instance.
+      expect(enable).toMatch(/0\.7-1 GB RSS/);
+    });
+  });
+
+  /**
+   * Automatic inbound-mail TLS (issue #566). The consuming half always worked;
+   * the producing half did not exist, so the certificate the runbook told
+   * operators to copy was never issued.
+   */
+  describe('inbound mail TLS is obtained and propagated without an operator', () => {
+    it('the edge has an ACME-only vhost for the mail hostname, inert when mail is off', () => {
+      expect(deployCaddy).toContain('{$COGETO_MAIL_TLS_SITE:');
+      // Nothing is served there: the mail host runs SMTP, not a web surface.
+      const vhost = deployCaddy.slice(deployCaddy.indexOf('{$COGETO_MAIL_TLS_SITE:'));
+      expect(vhost).toContain('respond 404');
+      expect(vhost).not.toContain('reverse_proxy');
+      // The fallback must disable automatic HTTPS (explicit http:// scheme)
+      // and name a hostname that can never resolve, or an instance without
+      // email capture would order a certificate it can never obtain.
+      //
+      // It is substituted BY COMPOSE, not by Caddy: Caddy applies a
+      // `{$VAR:default}` only when the variable is UNSET, and compose always
+      // sets this one, so an empty value reaches Caddy as an empty site
+      // address and crash-loops the edge (observed, then fixed). The Caddyfile
+      // keeps the same literal as a defensive default for a run without
+      // compose; the two must not drift apart.
+      const composeFallback = deploy.match(
+        /COGETO_MAIL_TLS_SITE: \$\{COGETO_MAIL_TLS_SITE:-(http:\/\/[\w.-]+\.invalid)\}/,
+      )?.[1];
+      expect(composeFallback, 'the deploy compose has no inert fallback site address').toBeTruthy();
+      const caddyFallback = deployCaddy.match(
+        /\{\$COGETO_MAIL_TLS_SITE:(http:\/\/[\w.-]+\.invalid)\}/,
+      )?.[1];
+      expect(caddyFallback, 'the Caddyfile has no defensive fallback site address').toBe(
+        composeFallback,
+      );
+    });
+
+    it('the site variable is derived by the script, from the SAME derivation as the DNS record', () => {
+      const script = readFileSync(SCRIPT, 'utf8');
+      expect(script).toContain('sync_mail_tls_site');
+      const sync = script.slice(
+        script.indexOf('sync_mail_tls_site() {'),
+        script.indexOf('# ── Health wait'),
+      );
+      expect(sync).toContain('derive_mx_host');
+      expect(sync).toContain('env_set COGETO_MAIL_TLS_SITE');
+      // Enabling and disabling mail, and moving the domain, all converge it.
+      expect(script.match(/sync_mail_tls_site$/gm)?.length).toBeGreaterThanOrEqual(4);
+      expect(deploy).toContain('COGETO_MAIL_TLS_SITE: ${COGETO_MAIL_TLS_SITE:-}');
+    });
+
+    it('propagation is automatic, profile-gated, and keeps the dedicated-volume boundary', () => {
+      const sync = block(deploy, 'mail-tls-sync');
+      expect(sync, 'no mail-tls-sync service in the deploy compose').not.toBe('');
+      expect(sync).toMatch(/profiles:\s*\['mail'\]/);
+      // It reads the certificate store READ-ONLY and publishes two files on.
+      expect(sync).toContain('caddy-data:/data:ro');
+      expect(sync).toContain('mail-tls:/mail-tls');
+      // The boundary that made this a sidecar rather than a mount: the
+      // internet-facing mail container must never see caddy-data.
+      const mail = block(deploy, 'mail');
+      expect(mail).toContain('mail-tls:/app/tls:ro');
+      // The volumes list only — the ports list has the same list shape.
+      const mailVolumes = mail.slice(mail.indexOf('\n    volumes:'), mail.indexOf('\n    ports:'));
+      const mailMounts = mailVolumes.split('\n').filter((l) => /^\s+- \S+:/.test(l));
+      expect(mailMounts, 'the mail container mounts more than its own TLS volume').toEqual([
+        '      - mail-tls:/app/tls:ro',
+      ]);
+      // No Docker socket anywhere: restarting the mail service is the mail
+      // service's own job, and a socket here would be root on the host.
+      expect(deploy).not.toContain('/var/run/docker.sock');
+    });
+
+    it('the propagated material is readable by the mail container’s non-root user', () => {
+      // The silent trap: a root-only mode is indistinguishable, to the
+      // entrypoint's readability test, from no certificate at all.
+      const script = read('project/infra/docker/caddy/mail-tls-sync.sh');
+      expect(script).toContain('chown "$MAIL_UID:$MAIL_GID"');
+      expect(script).toContain('MAIL_UID="${COGETO_MAIL_UID:-1000}"');
+      // And it copies only when the material CHANGED, so a steady state
+      // restarts nothing.
+      expect(script).toContain('if [ "$src_hash" != "$dst_hash" ]; then');
+      // Baked into the published edge image, so it survives an upgrade the
+      // same way the compose file does.
+      expect(read('project/infra/docker/Dockerfile')).toContain(
+        'COPY project/infra/docker/caddy/mail-tls-sync.sh /usr/local/bin/cogeto-mail-tls-sync',
+      );
+    });
+
+    it('the mail image can actually serve TLS: Haraka needs openssl for dhparams', () => {
+      // Found by bringing the deploy stack up with a real certificate for the
+      // first time. Haraka's `tls` plugin generates a Diffie-Hellman parameter
+      // file by spawning `openssl dhparam`, and the base image has none, so the
+      // plugin died at load with `spawn openssl ENOENT` and the mail container
+      // crash-looped the moment a certificate appeared. It was invisible for as
+      // long as no certificate ever did: the consuming half of inbound TLS was
+      // never exercised end to end. Both halves of the fix are pinned here.
+      const mailDockerfile = read('project/services/mail/Dockerfile');
+      expect(mailDockerfile).toMatch(/apk add --no-cache openssl/);
+      const entrypoint = read('project/services/mail/docker-entrypoint.sh');
+      // Generated by the entrypoint, not by Haraka: bounded and logged rather
+      // than racing the plugin's 30-second spawn timeout, and named in tls.ini
+      // so the plugin's own generator never runs.
+      expect(entrypoint).toContain('openssl dhparam -out');
+      expect(entrypoint).toContain('dhparam=dhparams.pem');
+      // Per instance, not baked into the image: a shared DH group across every
+      // deployment is exactly what makes precomputation worthwhile.
+      expect(mailDockerfile).not.toContain('dhparam -out');
+    });
+
+    it('a renewal reaches the running listener without a human', () => {
+      // Haraka reads the PEMs once at startup, so the entrypoint watches them
+      // and exits on change; `restart: unless-stopped` brings it straight back
+      // with the new certificate.
+      const entrypoint = read('project/services/mail/docker-entrypoint.sh');
+      expect(entrypoint).toContain('tls_fingerprint');
+      expect(entrypoint).toContain('the TLS material changed');
+      expect(entrypoint).toMatch(/trap '.*kill -TERM/);
+      expect(block(deploy, 'mail')).toContain('restart: unless-stopped');
+    });
+
+    it('status reports whether STARTTLS is actually advertised and when the cert expires', () => {
+      // The highest-value part: a cleartext downgrade used to be completely
+      // silent. The check is the OBSERVABLE fact (an SMTP handshake), not the
+      // presence of a file.
+      const script = readFileSync(SCRIPT, 'utf8');
+      const status = script.slice(
+        script.indexOf('cmd_status() {'),
+        script.indexOf('# ── features'),
+      );
+      expect(status).toContain('inbound mail TLS');
+      expect(status).toContain('-starttls smtp');
+      expect(status).toContain('-enddate');
+      expect(status).toContain('CLEARTEXT');
+    });
   });
 
   it('SEC-13: cosign is verified against a pinned sha256 before it becomes executable', () => {

@@ -6,19 +6,23 @@
 #
 #   • NO `build:` keys anywhere — the instance pulls the prebuilt, cosign-signed
 #     release images and never builds:
-#       cogeto/cogeto:${COGETO_VERSION}        app / worker / migrate / preflight
-#       cogeto/cogeto-edge:${COGETO_VERSION}   Caddy edge with the built SPA
-#       cogeto/cogeto-mail:${COGETO_VERSION}   receive-only Haraka inbound SMTP
+#       cogeto/cogeto:${COGETO_VERSION}           app / worker / migrate / preflight
+#       cogeto/cogeto-edge:${COGETO_VERSION}      Caddy edge with the built SPA
+#       cogeto/cogeto-mail:${COGETO_VERSION}      receive-only Haraka inbound SMTP
+#       cogeto/cogeto-redaction:${COGETO_VERSION} local PII redaction sidecar
 #   • Secrets are REQUIRED (`${VAR:?...}`) — a missing .env fails loudly instead
 # of falling back to a DEV default (preflight, is the backstop).
 #   • COGETO_PRODUCTION=1 is hardcoded — the demo seed/reset hard-refuse.
-#   • The demo / dev-seed / consoles / redaction profiles are absent: the first
-#     three are dev-only (their images are never published), and redaction is
-# not part of the v1 deploy channel. TWO optional profiles
-#     remain here: `research` (SearXNG, a digest-pinned upstream image, so it
-#     deploys pull-only like everything else) and `mail` (audit 2.0 SEC-14 —
-#     inbound SMTP is opt-in, so an instance that does not use email capture
-#     runs no internet-facing listener). Enable either with
+#   • The demo / dev-seed / consoles profiles are absent: they are dev-only and
+#     their images are never published. THREE optional profiles are here:
+#     `research` (SearXNG, a digest-pinned upstream image, so it deploys
+#     pull-only like everything else), `mail` (audit 2.0 SEC-14 — inbound SMTP
+#     is opt-in, so an instance that does not use email capture runs no
+#     internet-facing listener) and `redaction` (issue #565 — the sidecar is a
+#     published, signed release image since this change, so a pull-only
+#     instance has something to pull; it used to be absent here, which made the
+#     posture the security documentation described unreachable on the only
+#     supported deployment path). Enable any with
 #     `cogeto features enable <id>`, which maintains COMPOSE_PROFILES in .env,
 #     mirrors it into COGETO_COMPOSE_PROFILES for the app, and (for mail) opens
 #     25/tcp in ufw and prints the DNS/MX steps.
@@ -73,6 +77,21 @@ services:
     environment:
       COGETO_EXTERNAL_DOMAIN: ${COGETO_EXTERNAL_DOMAIN:?}
       COGETO_ACME_EMAIL: ${COGETO_ACME_EMAIL:?}
+      # Inbound-mail TLS (issue #566): `mail.<domain>` when email capture is
+      # enabled. `cogeto features enable/disable mail` and `cogeto configure
+      # --domain` maintain it from the SAME derivation the DNS checklist prints
+      # (derive_mx_host).
+      #
+      # The fallback is an INERT SITE ADDRESS, not an empty string, and it is
+      # substituted here rather than left to the Caddyfile because Caddy's
+      # `{$VAR:default}` applies its default only when the variable is UNSET:
+      # compose always sets it, so an empty value would reach Caddy as an empty
+      # site address and crash-loop the edge. (Observed on the deploy stack, not
+      # reasoned about.) The explicit `http://` scheme turns automatic HTTPS off
+      # for that site and `.invalid` is reserved by RFC 2606, so an instance
+      # without email capture orders nothing and serves what it served before.
+      # It must stay identical to the Caddyfile's own defensive default.
+      COGETO_MAIL_TLS_SITE: ${COGETO_MAIL_TLS_SITE:-http://mail-tls-disabled.invalid}
     volumes:
       # The production vhost (real domain + ACME) replaces the baked-in dev
       # Caddyfile (localhost + local_certs).
@@ -193,7 +212,6 @@ services:
       # bypasses (documented in .env.example; plumbed here with 5.3 so the
       # knob is reachable on a compose deployment).
       COGETO_DAILY_UPLOAD_MAX: ${COGETO_DAILY_UPLOAD_MAX:-}
-      COGETO_DEMO_DAILY_UPLOAD_MAX: ${COGETO_DEMO_DAILY_UPLOAD_MAX:-}
       COGETO_LOG_LEVEL: ${COGETO_LOG_LEVEL:-info}
       # A customer instance is NEVER a sandbox: the demo
       # seed/reset hard-refuse when this is set.
@@ -224,12 +242,27 @@ services:
       COGETO_RESEARCH_RETAIN_HTML: ${COGETO_RESEARCH_RETAIN_HTML:-}
       COGETO_DAILY_RESEARCH_SEARCHES: ${COGETO_DAILY_RESEARCH_SEARCHES:-40}
       COGETO_DAILY_RESEARCH_PAGES: ${COGETO_DAILY_RESEARCH_PAGES:-100}
-      # Per-tier timeouts for SELF-HOSTED endpoints, legacy Ollama-era names
-      # (still honoured by the code; a local runtime itself is configured in
-      # the interface, never here).
-      COGETO_OLLAMA_TIMEOUT_PIPELINE_MS: ${COGETO_OLLAMA_TIMEOUT_PIPELINE_MS:-}
-      COGETO_OLLAMA_TIMEOUT_ANSWER_MS: ${COGETO_OLLAMA_TIMEOUT_ANSWER_MS:-}
-      COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS: ${COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS:-}
+      # Per-tier timeouts for any SELF-HOSTED endpoint, and the reasoning
+      # headroom multiplier (issue #567). These are the documented live knobs:
+      # this file used to wire only the retired COGETO_OLLAMA_TIMEOUT_* alias
+      # and drop all five of these, so an operator running a self-hosted
+      # endpoint raised the documented timeout, restarted, and the value never
+      # reached the process. A local runtime itself is configured in the
+      # interface, never here.
+      COGETO_MODEL_TIMEOUT_PIPELINE_MS: ${COGETO_MODEL_TIMEOUT_PIPELINE_MS:-}
+      COGETO_MODEL_TIMEOUT_ANSWER_MS: ${COGETO_MODEL_TIMEOUT_ANSWER_MS:-}
+      COGETO_MODEL_TIMEOUT_EMBEDDINGS_MS: ${COGETO_MODEL_TIMEOUT_EMBEDDINGS_MS:-}
+      COGETO_MODEL_TIMEOUT_VISION_MS: ${COGETO_MODEL_TIMEOUT_VISION_MS:-}
+      COGETO_REASONING_HEADROOM: ${COGETO_REASONING_HEADROOM:-}
+      # Redaction mode (spec §12.2, profile redaction; issue #565). Off by
+      # default. `cogeto features enable redaction` sets all three and adds the
+      # profile: the sidecar below pseudonymizes every outbound model call, and
+      # the gateway FAILS CLOSED if it is unreachable. Both the app and the
+      # worker receive them because both make model calls; wiring only one is
+      # the shape of bug that made hand-editing .env here do nothing at all.
+      REDACTION_ENABLED: ${REDACTION_ENABLED:-}
+      REDACTION_URL: ${REDACTION_URL:-http://redaction:8080}
+      REDACTION_REQUIRED: ${REDACTION_REQUIRED:-}
       # Capability visibility (P6.7): the active profile list,
       # mirrored from COMPOSE_PROFILES in .env (maintained by the operator
       # script's `features` command), plus the jobs' overdue threshold.
@@ -519,6 +552,14 @@ services:
       COGETO_POST_LOGOUT_URI: https://${COGETO_EXTERNAL_DOMAIN}/
       ZITADEL_PAT_FILE: /machinekey/pat.txt
       COGETO_WEB_CONFIG_FILE: /web-config/config.json
+      # The bootstrap machine identity and the file that records "provisioning
+      # already succeeded" (issue #568: both were read by init.mjs and named in
+      # no compose and no document, so their paths were only knowable from the
+      # source — and the runbook's domain-change procedure depends on the state
+      # file's path). Passed with the defaults init.mjs already used: this
+      # changes no behaviour, it makes the values visible.
+      ZITADEL_BOOTSTRAP_MACHINE_USERNAME: ${ZITADEL_BOOTSTRAP_MACHINE_USERNAME:-cogeto-bootstrap}
+      ZITADEL_BOOTSTRAP_STATE_FILE: ${ZITADEL_BOOTSTRAP_STATE_FILE:-/machinekey/bootstrap-state.json}
       #: grant the FirstInstance admin the operator role so the System
       # view works out of the box (must match the app's COGETO_ADMIN_ROLE).
       ZITADEL_ADMIN_USERNAME: ${ZITADEL_ADMIN_USERNAME:?}
@@ -688,6 +729,11 @@ services:
     cpus: 1.0
     pids_limit: 256
     profiles: ['research']
+    # searxng/searxng:2026.7.19-6da6eee26
+    # (SEC-35 / issue #568: this digest carried NO tag comment at all, so the
+    # running version could not be recovered and no advisory could be matched
+    # to it. Resolved from the digest itself via the Docker Hub tag API. The
+    # digest is unchanged: this is a label, not a bump.)
     image: searxng/searxng@sha256:b8ca38ba06eea544d7555e88321e212ddc0d5c3c7de055419cfb2e5c6bf30812
     environment:
       SEARXNG_BASE_URL: http://searxng:8080/
@@ -708,6 +754,48 @@ services:
       timeout: 5s
       retries: 12
       start_period: 20s
+    restart: unless-stopped
+
+  # ── Redaction sidecar (profile redaction; spec §12.2, issue #565) ───────────
+  #
+  # Local CPU NER (Presidio) that pseudonymizes sensitive entities before any
+  # external model call and re-identifies the response: "PII never leaves your
+  # box, even though a frontier model answers you." Stateless: no database, no
+  # volumes. Internal-network only (no published ports); reachable at
+  # http://redaction:8080, and the edge never proxies it.
+  #
+  #   cogeto features enable redaction
+  #
+  # The profile brings the sidecar up; REDACTION_ENABLED (set by the same
+  # command) flips the gateway decorator on and REDACTION_REQUIRED makes the
+  # boot refuse to run without it. Enabled and unreachable means model calls
+  # FAIL CLOSED, never plaintext.
+  #
+  # This service was deliberately absent from the deploy channel while its
+  # image was unpublished; the release pipeline now builds, pushes, signs and
+  # attests cogeto/cogeto-redaction beside the other three, so a pull-only
+  # instance has something to pull.
+  redaction:
+    # Resource ceiling (audit 2.0 SEC-17) — the note above `services:` already
+    # budgets 2g for this sidecar (~0.7-1 GB RSS for spaCy en_core_web_lg,
+    # doubled); it is the single largest addition to the instance's footprint.
+    mem_limit: 2g
+    cpus: 1.5
+    pids_limit: 256
+    profiles: ['redaction']
+    image: cogeto/cogeto-redaction:${COGETO_VERSION:?}
+    environment:
+      SPACY_MODEL: ${REDACTION_SPACY_MODEL:-en_core_web_lg}
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health').status==200 else 1)"
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 90s
     restart: unless-stopped
 
   # ── Inbound mail (roadmap D2) ────────────────────
@@ -731,12 +819,12 @@ services:
       COGETO_MAIL_MAX_BYTES: ${COGETO_MAIL_MAX_BYTES:-26214400}
       COGETO_INTAKE_URL: http://app:3000/api/email/intake
       COGETO_MAIL_INTAKE_TOKEN: ${COGETO_MAIL_INTAKE_TOKEN:?}
-      # Inbound STARTTLS (GAP-2): the entrypoint enables STARTTLS only when a
-      # readable cert/key is present at these paths in the mail-tls volume. The
-      # OPERATOR populates that volume with the instance's cert (OWNER ACTION —
-      # the operator runbook documents copying the Caddy-obtained cert for the
-      # mail hostname there; a dedicated volume, NOT the whole caddy-data store,
-      # so the internet-facing mail container never holds Caddy's other keys).
+      # Inbound STARTTLS: the entrypoint enables Haraka's tls plugin only when
+      # a readable cert/key is present at these paths in the mail-tls volume,
+      # and it watches them, so a renewal is picked up without anyone doing
+      # anything. The mail-tls-sync sidecar below is what puts them there
+      # (issue #566). A DEDICATED volume, NOT the whole caddy-data store: the
+      # internet-facing mail container must never hold the edge's other keys.
       COGETO_MAIL_TLS_CERT: ${COGETO_MAIL_TLS_CERT:-/app/tls/cert.pem}
       COGETO_MAIL_TLS_KEY: ${COGETO_MAIL_TLS_KEY:-/app/tls/key.pem}
     volumes:
@@ -759,6 +847,42 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # ── Inbound-mail TLS propagation (profile mail; issue #566) ─────────────────
+  #
+  # The producing half of inbound-mail TLS. The edge obtains and renews the
+  # certificate for `mail.<domain>` (the ACME-only vhost in ./Caddyfile); this
+  # container copies it into the mail service's own volume with the ownership
+  # the non-root Haraka user needs, and only when the material actually
+  # changed. The mail entrypoint watches its own copy and restarts itself to
+  # load a renewal, which is why nothing here holds the Docker socket.
+  #
+  # It runs the EDGE image (already published and signed, and the image that
+  # owns the certificate store) with a different entrypoint, rather than adding
+  # a fifth release image for twenty lines of shell.
+  #
+  # The boundary that made this a sidecar rather than a mount: `mail` gets
+  # `mail-tls` only, never `caddy-data`. This container reads caddy-data
+  # READ-ONLY and publishes exactly two files onward.
+  mail-tls-sync:
+    # Resource ceiling (audit 2.0 SEC-17) — a sleeping shell loop that hashes
+    # two PEM files every five minutes.
+    mem_limit: 64m
+    cpus: 1.0
+    pids_limit: 64
+    profiles: ['mail']
+    image: cogeto/cogeto-edge:${COGETO_VERSION:?}
+    entrypoint: ['/usr/local/bin/cogeto-mail-tls-sync']
+    environment:
+      # Same value, same derivation as the edge's ACME vhost above.
+      COGETO_MAIL_TLS_SITE: ${COGETO_MAIL_TLS_SITE:-}
+    volumes:
+      - caddy-data:/data:ro
+      - mail-tls:/mail-tls
+    depends_on:
+      caddy:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   pg-data:
   qdrant-data:
@@ -771,6 +895,10 @@ volumes:
   web-config:
   caddy-data:
   caddy-config:
-  # Instance TLS cert/key for inbound STARTTLS (GAP-2). The operator populates it
-  # with the mail hostname's certificate (operator runbook); empty → no STARTTLS.
+  # Instance TLS cert/key for inbound STARTTLS. Populated automatically by
+  # mail-tls-sync from the certificate the edge obtains for the mail hostname
+  # (issue #566); empty → no STARTTLS, and status says so. An operator with
+  # their own CA may place cert.pem + key.pem here by hand instead
+  # (docs/operations/email-inbound.md documents the override and its
+  # ownership requirement).
   mail-tls:

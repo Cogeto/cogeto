@@ -4,7 +4,7 @@ import { TierRoutedModelGateway } from './routed.gateway';
 import { ModelGateway } from './model-gateway.service';
 import type { CompletionRequest, CompletionResult, StreamDelta } from './model-gateway.service';
 import { createModelGateway } from './factory';
-import { OLLAMA_TIMEOUT_DEFAULTS_MS } from './provider-config';
+import { SELF_HOSTED_TIMEOUT_DEFAULTS_MS } from './provider-config';
 import type { ResolvedModelProviders, TierBinding } from './provider-config';
 
 /**
@@ -43,7 +43,7 @@ function configuration(over: Partial<ResolvedModelProviders> = {}): ResolvedMode
     keys: {},
     endpoints: { openaiBaseUrl: '', anthropicBaseUrl: '' },
     ollama: null,
-    timeoutsMs: OLLAMA_TIMEOUT_DEFAULTS_MS,
+    timeoutsMs: SELF_HOSTED_TIMEOUT_DEFAULTS_MS,
     reasoningHeadroom: 4,
     openaiSelfHosted: true,
     redacted: false,

@@ -34,6 +34,33 @@ import type { OperationsOptions } from './operations.options';
 const NOW = new Date('2026-07-24T12:00:00Z');
 const HOUR = 3_600_000;
 
+/**
+ * A minimal SMTP listener: greets with 220 and answers EHLO, optionally
+ * advertising STARTTLS. The mail probe reads the EHLO reply rather than merely
+ * connecting (issue #566), so a bare `createServer()` no longer stands in for
+ * a mail server — and that is the point: a socket that accepts a connection
+ * says nothing about whether forwarded mail crosses the internet encrypted.
+ */
+async function fakeSmtp(options: { startTls: boolean }): Promise<{
+  address: string;
+  close: () => Promise<void>;
+}> {
+  const server = createServer((socket) => {
+    socket.write('220 cogeto-test ESMTP\r\n');
+    socket.on('data', () => {
+      socket.write('250-cogeto-test\r\n');
+      if (options.startTls) socket.write('250-STARTTLS\r\n');
+      socket.write('250 SIZE 26214400\r\n');
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = (server.address() as AddressInfo).port;
+  return {
+    address: `127.0.0.1:${port}`,
+    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+  };
+}
+
 const unconfiguredProviders = {
   configured: false,
   ollama: null,
@@ -191,21 +218,32 @@ describe('registry_states', () => {
       probed: false,
     });
 
-    // Enabled and the listener answers → on, probed for real (a TCP connect,
+    // Enabled and the listener answers → on, probed for real (an SMTP EHLO,
     // not an HTTP probe: Haraka speaks SMTP).
-    const server = createServer();
-    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-    const port = (server.address() as AddressInfo).port;
+    const secure = await fakeSmtp({ startTls: true });
     const live = await service(
-      config({ composeProfiles: ['mail'], mailSmtpAddress: `127.0.0.1:${port}` }),
+      config({ composeProfiles: ['mail'], mailSmtpAddress: secure.address }),
     ).snapshot(NOW);
     expect(byId(live, 'mail')).toMatchObject({ state: 'on', probed: true });
-    await new Promise<void>((resolve) => server.close(() => resolve()));
+    // Inbound TLS is part of what the capability reports (issue #566).
+    expect(byId(live, 'mail').detail).toContain('STARTTLS advertised');
+    await secure.close();
+
+    // A listener with no certificate still WORKS, so it stays `on` rather than
+    // degrading instance health — but the cleartext posture is named, because
+    // being invisible is exactly what made a silent downgrade possible.
+    const cleartext = await fakeSmtp({ startTls: false });
+    const plain = await service(
+      config({ mailEnabled: true, mailSmtpAddress: cleartext.address }),
+    ).snapshot(NOW);
+    expect(byId(plain, 'mail').state).toBe('on');
+    expect(byId(plain, 'mail').detail).toContain('CLEARTEXT');
+    await cleartext.close();
 
     // Enabled but nothing listening → LOUD, not silently off: forwarded mail
     // would be dropped on the floor.
     const dead = await service(
-      config({ mailEnabled: true, mailSmtpAddress: `127.0.0.1:${port}` }),
+      config({ mailEnabled: true, mailSmtpAddress: cleartext.address }),
     ).snapshot(NOW);
     expect(byId(dead, 'mail').state).toBe('unreachable');
     expect(byId(dead, 'mail').error).toMatch(/not being received/);

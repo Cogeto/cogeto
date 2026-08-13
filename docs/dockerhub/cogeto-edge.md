@@ -13,8 +13,8 @@ Security Policy. A customer instance is pull-only and never builds this locally.
 - `X.Y.Z`: an immutable release (for example `1.0.3`). Pin to this in production.
 - `latest`: the most recent release.
 
-Use the same version across the three stack images: `cogeto/cogeto`,
-`cogeto/cogeto-edge`, and `cogeto/cogeto-mail`.
+Use the same version across the four stack images: `cogeto/cogeto`,
+`cogeto/cogeto-edge`, `cogeto/cogeto-mail`, and `cogeto/cogeto-redaction`.
 
 ## Running it
 

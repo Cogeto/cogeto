@@ -181,15 +181,11 @@ services:
       # makes, so it is bounded by construction.
       COGETO_VISION_PAGES_PER_DOCUMENT: ${COGETO_VISION_PAGES_PER_DOCUMENT:-}
       COGETO_VISION_PAGES_PER_USER_DAILY: ${COGETO_VISION_PAGES_PER_USER_DAILY:-}
-      # Per-tier timeouts for SELF-HOSTED endpoints, legacy Ollama-era names
-      # (still honoured; the provider-neutral names below are the documented
-      # ones).
-      COGETO_OLLAMA_TIMEOUT_PIPELINE_MS: ${COGETO_OLLAMA_TIMEOUT_PIPELINE_MS:-}
-      COGETO_OLLAMA_TIMEOUT_ANSWER_MS: ${COGETO_OLLAMA_TIMEOUT_ANSWER_MS:-}
-      COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS: ${COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS:-}
-      COGETO_OLLAMA_TIMEOUT_VISION_MS: ${COGETO_OLLAMA_TIMEOUT_VISION_MS:-}
-      # Provider-neutral per-tier timeouts: any self-hosted endpoint, not just
-      # Ollama (V2.1 item 4.1).
+      # Per-tier timeouts for any SELF-HOSTED endpoint (V2.1 item 4.1). ONE
+      # NAME PER SETTING (issue #567): the Ollama-era
+      # COGETO_OLLAMA_TIMEOUT_*_MS alias is retired, because carrying two names
+      # for one value is how the deploy compose came to wire the alias while
+      # dropping these, so raising a documented timeout did nothing there.
       COGETO_MODEL_TIMEOUT_PIPELINE_MS: ${COGETO_MODEL_TIMEOUT_PIPELINE_MS:-}
       COGETO_MODEL_TIMEOUT_ANSWER_MS: ${COGETO_MODEL_TIMEOUT_ANSWER_MS:-}
       COGETO_MODEL_TIMEOUT_EMBEDDINGS_MS: ${COGETO_MODEL_TIMEOUT_EMBEDDINGS_MS:-}
@@ -580,6 +576,14 @@ services:
       COGETO_POST_LOGOUT_URI: https://${COGETO_EXTERNAL_DOMAIN:-localhost}/
       ZITADEL_PAT_FILE: /machinekey/pat.txt
       COGETO_WEB_CONFIG_FILE: /web-config/config.json
+      # The bootstrap machine identity and the file that records "provisioning
+      # already succeeded" (issue #568: both were read by init.mjs and named in
+      # no compose and no document, so their paths were only knowable from the
+      # source — and the runbook's domain-change procedure depends on the state
+      # file's path). Passed with the defaults init.mjs already used: this
+      # changes no behaviour, it makes the values visible.
+      ZITADEL_BOOTSTRAP_MACHINE_USERNAME: ${ZITADEL_BOOTSTRAP_MACHINE_USERNAME:-cogeto-bootstrap}
+      ZITADEL_BOOTSTRAP_STATE_FILE: ${ZITADEL_BOOTSTRAP_STATE_FILE:-/machinekey/bootstrap-state.json}
       #: grant the FirstInstance admin the operator role so the System view
       # works out of the box (must match the app's COGETO_ADMIN_ROLE).
       ZITADEL_ADMIN_USERNAME: ${ZITADEL_ADMIN_USERNAME:-admin@cogeto.localhost}
@@ -939,6 +943,11 @@ services:
     cpus: 1.0
     pids_limit: 256
     profiles: ['research']
+    # searxng/searxng:2026.7.19-6da6eee26
+    # (SEC-35 / issue #568: this digest carried NO tag comment at all, so the
+    # running version could not be recovered and no advisory could be matched
+    # to it. Resolved from the digest itself via the Docker Hub tag API. The
+    # digest is unchanged: this is a label, not a bump.)
     image: searxng/searxng@sha256:b8ca38ba06eea544d7555e88321e212ddc0d5c3c7de055419cfb2e5c6bf30812
     environment:
       SEARXNG_BASE_URL: http://searxng:8080/

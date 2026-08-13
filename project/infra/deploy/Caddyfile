@@ -9,8 +9,8 @@
 # in the background — the stack still comes up.
 #
 # {$VAR} placeholders are resolved by Caddy from the container environment
-# (COGETO_EXTERNAL_DOMAIN, COGETO_ACME_EMAIL — set in .env by the operator
-# script).
+# (COGETO_EXTERNAL_DOMAIN, COGETO_ACME_EMAIL, COGETO_MAIL_TLS_SITE — set in
+# .env by the operator script).
 
 {
 	email {$COGETO_ACME_EMAIL}
@@ -62,9 +62,10 @@
 			Referrer-Policy "no-referrer"
 			X-Frame-Options "DENY"
 			# HSTS (audit 2.0 SEC-15). One year, and includeSubDomains is safe
-			# here because the ONLY subdomain this instance serves is
-			# s3.<domain>, which Caddy terminates with a real ACME certificate
-			# (see the vhost below). NO `preload`: preload is submitted to a
+			# here because the only subdomains this instance answers on are
+			# s3.<domain> and (with email capture enabled) mail.<domain>, both
+			# of which Caddy terminates with a real ACME certificate (see the
+			# vhosts below). NO `preload`: preload is submitted to a
 			# browser-vendor list and is effectively irreversible, so it stays
 			# an explicit owner decision, never a default.
 			Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -96,4 +97,36 @@ s3.{$COGETO_EXTERNAL_DOMAIN} {
 	handle {
 		respond 403
 	}
+}
+
+# Inbound-mail TLS (issue #566): the ONLY reason this vhost exists is to make
+# the edge obtain and renew a Let's Encrypt certificate for the mail hostname,
+# which the mail-tls-sync sidecar then copies into the mail service's own
+# volume so Haraka can advertise STARTTLS. Nothing is served here: an HTTPS
+# request answers 404, deliberately, because the mail host runs SMTP and no web
+# surface at all.
+#
+# This is the producing half of the original inbound-TLS design. The consuming
+# half (the dedicated mail-tls volume, the read-only mount, the entrypoint that
+# enables Haraka's tls plugin when a readable certificate is present) shipped
+# with the first mail commit and worked; this half was never built, so no
+# certificate for the mail hostname was ever issued and inbound mail stayed
+# cleartext with nothing saying so.
+#
+# COGETO_MAIL_TLS_SITE is `mail.<domain>` (the operator script's derive_mx_host,
+# the same derivation the DNS checklist prints) when email capture is enabled.
+# When it is not, the compose file substitutes the inert address below: an
+# explicit `http://` scheme turns Caddy's automatic HTTPS off for that site, and
+# `.invalid` is reserved by RFC 2606 and can never resolve, so an instance
+# without email capture attempts no ACME order, obtains no certificate,
+# provisions no internal CA, and serves exactly what it served before.
+#
+# The same literal appears here as Caddy's own default, for a caddy run without
+# the compose file's substitution. It is NOT the mechanism: Caddy applies a
+# `{$VAR:default}` only when the variable is UNSET, and compose always sets
+# this one, so an empty value would land here as an empty site address and
+# crash-loop the edge. The compose default is what prevents that; a spec keeps
+# the two literals identical.
+{$COGETO_MAIL_TLS_SITE:http://mail-tls-disabled.invalid} {
+	respond 404
 }

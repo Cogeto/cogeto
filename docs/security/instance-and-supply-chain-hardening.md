@@ -89,9 +89,15 @@ a demo password or the compose file's clearly-marked dev-only defaults.
 - **The web edge** (Caddy) obtains and renews a real Let's Encrypt certificate
  automatically once DNS points at the host, and serves the app under a strict
  Content-Security-Policy (`script-src 'self'`).
-- **Inbound mail** offers opportunistic STARTTLS when a certificate is mounted in
- the mail volume; enabling it is an optional operator step covered in the
- [anti-spoofing doc](inbound-email-anti-spoofing.md) and the operator runbook.
+- **Inbound mail** offers opportunistic STARTTLS, and obtaining the certificate
+ is **automatic**: the edge orders and renews one for the mail hostname, a
+ sidecar propagates it into the mail service's own volume, and the listener
+ reloads it. No operator step beyond the DNS record the mail capability
+ already prints. Whether it is actually advertised, and when the certificate
+ expires, are reported by `cogeto status` and by the `mail` capability, so a
+ cleartext posture is visible rather than silent. The mechanism, and the
+ operator-supplied-certificate override, are documented once in
+ [`../operations/email-inbound.md`](../operations/email-inbound.md).
 - **The internal mail-intake endpoint** is reachable only from the mail container
  on the private Docker network and is refused at the public edge, so an internet
  caller cannot reach it.

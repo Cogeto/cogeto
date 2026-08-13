@@ -9,6 +9,47 @@ note, it has none.
 
 ---
 
+## The deploy channel gains redaction and automatic mail TLS (issues #565-#568)
+
+Three things the documentation promised and the deployment path did not deliver.
+None of them changes an instance that does not use the capability, and none
+needs a manual step on upgrade beyond running `cogeto upgrade`, which fetches
+the new compose file and Caddyfile and converges the configuration itself.
+
+**Local PII redaction now works on a customer instance.** The sidecar is a
+published, cosign-signed, SBOM-attested release image
+(`cogeto/cogeto-redaction`), the `redaction` profile is in the customer compose,
+and the three `REDACTION_*` variables reach both the app and the worker. Before
+this, the security documentation described a fail-closed posture that the only
+supported deployment path could not run at all: the image was never published,
+the profile was absent, and setting the variables by hand had no effect because
+neither process received them. Turn it on with
+`sudo cogeto features enable redaction`; it pulls and verifies the image, sets
+the fail-closed posture, and prints the two things to decide first (roughly
+0.7 to 1 GB of memory, and a measurable retrieval cost that makes it an
+instance-lifetime choice).
+
+**Inbound-mail STARTTLS is automatic.** The edge now obtains and renews the
+certificate for `mail.<domain>` and a sidecar propagates it into the mail
+service's own volume with the ownership the non-root user needs; the mail
+service reloads it on change. On an instance already running email capture,
+`cogeto upgrade` sets `COGETO_MAIL_TLS_SITE` for you, so a listener that was
+running in cleartext stops being cleartext once the `mail.<domain>` A record
+resolves, with no operator step. The previous runbook procedure (copy the
+certificate out of `caddy-data` by hand) could never work and has been replaced;
+if you built your own cron around it, delete it. `cogeto status` now reports
+whether STARTTLS is actually advertised and when the certificate expires.
+Operator-supplied certificates remain supported as a documented override
+([`email-inbound.md`](email-inbound.md#operator-supplied-certificates-an-override)).
+
+**One name per timeout.** The Ollama-era `COGETO_OLLAMA_TIMEOUT_*_MS` alias is
+retired and inert; use `COGETO_MODEL_TIMEOUT_*_MS`, which the customer compose
+now passes (it previously wired only the alias and dropped the documented
+names, so raising a documented timeout there did nothing). If your `.env` sets
+the old names, move the values across during the upgrade; nothing else changes.
+
+---
+
 ## The embeddings model changes from the interface (V2.4 item 7.1, second half)
 
 **What changes.** Changing the embeddings model is now a managed operation on the
@@ -86,8 +127,9 @@ without a restart.
    predating this scheme was ever deployed.
 
    What stays in `.env`, because it is a deployment fact rather than a model choice:
-   the per-tier request timeouts (`COGETO_MODEL_TIMEOUT_*_MS`, with the legacy
-   `COGETO_OLLAMA_TIMEOUT_*_MS` alias still honoured), the reasoning headroom
+   the per-tier request timeouts (`COGETO_MODEL_TIMEOUT_*_MS`; the Ollama-era
+   `COGETO_OLLAMA_TIMEOUT_*_MS` alias is retired and inert, issue #567), the
+   reasoning headroom
    (`COGETO_REASONING_HEADROOM`), the probe timeouts, the vision page caps, and the
    eval-harness-only grader override (`COGETO_PROVIDER_GRADER` /
    `COGETO_MODEL_GRADER`). The harness also reads its own `COGETO_MISTRAL_API_KEY`

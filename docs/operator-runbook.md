@@ -202,30 +202,44 @@ TTL is the upper bound.
 (`cogeto features enable mail`). With it off there is no mail container and no
 listening port to harden.
 
-Two hardening steps for the internet-facing mail server. Both are safe to do
-after the instance is up.
+Two hardening topics for the internet-facing mail server. Neither needs an
+action from you any more; both are here so you can verify them.
 
-- **STARTTLS for inbound mail (GAP-2).** The mail container advertises STARTTLS
- only when a certificate is present in its `mail-tls` volume. Copy the
- Let's Encrypt certificate Caddy already obtained for the **mail host**
- (`mail.<domain>`) into that volume as `cert.pem` + `key.pem`, then restart the
- mail container. On the instance:
+- **STARTTLS for inbound mail: nothing to do.** The certificate is obtained,
+ propagated and renewed automatically. Add the `mail.<domain>` A record
+ (record 3 above), which `cogeto features enable mail` already printed, and
+ the rest happens on its own: the edge orders the Let's Encrypt certificate
+ for the mail host as soon as that record resolves, a sidecar copies it into
+ the mail service's own volume with the ownership the non-root Haraka user
+ needs, and the mail service reloads it. The same path runs on every renewal,
+ so there is no recurring chore and no expiry to diarise.
+
+ **Verify** from your own machine, not the instance:
 
  ```sh
- DOMAIN=mail.acme.cogeto.eu # the mail host (record 3 above)
- CERTDIR=$(sudo docker volume inspect --format '{{ .Mountpoint }}' cogeto_caddy-data)/caddy/certificates/acme-v02.api.letsencrypt.org-directory/$DOMAIN
- TLSDIR=$(sudo docker volume inspect --format '{{ .Mountpoint }}' cogeto_mail-tls)
- sudo cp "$CERTDIR/$DOMAIN.crt" "$TLSDIR/cert.pem"
- sudo cp "$CERTDIR/$DOMAIN.key" "$TLSDIR/key.pem"
- sudo docker compose -f docker-compose.deploy.yml restart mail
- # Verify: the mail log prints "STARTTLS enabled", and from your own machine:
- # openssl s_client -starttls smtp -connect mail.acme.cogeto.eu:25 -crlf
- # should show the certificate and a 250-STARTTLS in EHLO.
+ openssl s_client -starttls smtp -connect mail.acme.cogeto.eu:25 -crlf </dev/null
+ # → the certificate chain, and a 250-STARTTLS line in the EHLO response.
  ```
 
- Renewals: Caddy renews the cert; re-run the two `cp` lines + `restart mail`
- (or add them to a monthly cron) so the mail server picks up the new cert. If
- you prefer a dedicated cert, point `COGETO_MAIL_TLS_CERT`/`_KEY` at it instead.
+ Or on the instance, `sudo cogeto status` prints an "inbound mail TLS"
+ section: whether STARTTLS is actually advertised and when the certificate
+ expires. If it reports CLEARTEXT, the usual cause is that the
+ `mail.<domain>` A record does not resolve here yet; check with
+ `dig +short A mail.acme.cogeto.eu` and, if that is fine, read
+ `sudo docker compose logs --tail 50 mail-tls-sync` in `/srv/cogeto`.
+
+ **Using your own certificate instead** (an internal CA, or a wildcard you
+ already hold) is supported as an override, with renewal then being your
+ responsibility. The requirements are exact and one of them is a silent trap;
+ they are documented once, in
+ [`operations/email-inbound.md`](operations/email-inbound.md#operator-supplied-certificates-an-override).
+
+ This procedure previously told you to copy a certificate out of
+ `caddy-data`. It could not work: nothing ever asked for a certificate for
+ the mail hostname, so the directory it named did not exist, and the restart
+ command it gave named a compose file that is not on the instance (the
+ installer writes `docker-compose.deploy.yml` to `/srv/cogeto` as
+ `docker-compose.yml`).
 
 - **Sender SPF authentication (SEC-1).** Cogeto now captures a message for the
  registered user it claims to be from **only if the sending server passes SPF**
@@ -395,11 +409,21 @@ stack (`docker compose up -d --remove-orphans`), waits for health, and prints
 any operator TODOs. Notes per capability:
 
 - **research**: fully local discovery (SearXNG, ~100-200 MB RAM, internal
- network only). The one optional profile in the deploy channel; nothing
- external to configure.
-- **redaction**: source-checkout instances only (its image is not published;): the script says so if asked. Disabling it requires typing
- `disable redaction`: with it off, model calls send plaintext to the
- provider.
+ network only); nothing external to configure.
+- **mail**: the receive-only inbound SMTP listener. Enabling it opens 25/tcp,
+ prints the DNS records, and starts obtaining the inbound-TLS certificate
+ automatically (section 2c).
+- **redaction**: local PII pseudonymization in front of every model call, and
+ **available on a customer instance** since the `cogeto/cogeto-redaction`
+ image became part of the release. Enabling pulls and cosign-verifies it,
+ then sets the fail-closed posture: if the sidecar is unreachable, model
+ calls FAIL rather than sending plaintext. Two things to decide first: it
+ holds 0.7-1 GB of RAM, and because vectors are then built from
+ pseudonymized text it is an instance-lifetime choice (switching later means
+ a reindex). Disabling requires typing `disable redaction`: with it off,
+ model calls send plaintext to the provider. Background and the measured
+ trade-off:
+ [`security/data-sovereignty-and-redaction.md`](security/data-sovereignty-and-redaction.md).
 - **demo**: REFUSED on a production instance, loudly. Never
  enable it beside real data.
 - **consoles**: dev-only profile; localhost-bound when present.

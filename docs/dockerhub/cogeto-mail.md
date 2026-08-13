@@ -7,16 +7,18 @@ stack (see `cogeto/cogeto`). AGPLv3.
 
 It never sends mail (outbound is disabled). It authenticates the sender (SPF),
 accepts only the instance's configured recipient address, applies size and
-per-host connection limits, and offers STARTTLS when a certificate is mounted. A
-customer instance is pull-only and never builds this locally.
+per-host connection limits, and offers STARTTLS. On a Cogeto instance the
+certificate is obtained and renewed automatically by the edge and propagated
+into this container's own volume, so inbound TLS needs no operator step beyond
+one DNS record. A customer instance is pull-only and never builds this locally.
 
 ## Supported tags
 
 - `X.Y.Z`: an immutable release (for example `1.0.3`). Pin to this in production.
 - `latest`: the most recent release.
 
-Use the same version across the three stack images: `cogeto/cogeto`,
-`cogeto/cogeto-edge`, and `cogeto/cogeto-mail`.
+Use the same version across the four stack images: `cogeto/cogeto`,
+`cogeto/cogeto-edge`, `cogeto/cogeto-mail`, and `cogeto/cogeto-redaction`.
 
 ## Running it
 

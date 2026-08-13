@@ -1,5 +1,5 @@
 # Sync the Docker Hub repository overviews from version-controlled markdown
-# (docs/dockerhub/*.md) so the three published images show what they are, which
+# (docs/dockerhub/*.md) so the four published images show what they are, which
 # tags to use, and how to verify their cosign signatures (PA-16).
 #
 # MANUAL DISPATCH ONLY, and DORMANT until the owner adds a DOCKERHUB_PASSWORD
@@ -32,6 +32,9 @@ jobs:
           - repo: cogeto/cogeto-mail
             file: ./docs/dockerhub/cogeto-mail.md
             short: 'Receive-only inbound SMTP (Haraka) for a Cogeto instance. AGPLv3.'
+          - repo: cogeto/cogeto-redaction
+            file: ./docs/dockerhub/cogeto-redaction.md
+            short: 'Local, fail-closed PII redaction sidecar for a Cogeto instance. AGPLv3.'
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 

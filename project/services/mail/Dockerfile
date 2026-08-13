@@ -12,6 +12,17 @@ FROM node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e
 
 ENV NODE_ENV=production
 
+# openssl, for one thing only: Haraka's `tls` plugin needs a Diffie-Hellman
+# parameter file and generates one by shelling out to `openssl dhparam`. The
+# base image has no openssl, so the plugin died at load with `spawn openssl
+# ENOENT` and the container crash-looped the moment a certificate appeared.
+# That was invisible for as long as no certificate ever did (issue #566): the
+# consuming half of inbound TLS had never actually been exercised end to end.
+# The entrypoint generates the file itself rather than letting Haraka do it,
+# so the cost is bounded and logged instead of racing the plugin's 30s spawn
+# timeout.
+RUN apk add --no-cache openssl
+
 WORKDIR /app
 
 # Deps first (cache-friendly): install from the committed lockfile with `npm ci`

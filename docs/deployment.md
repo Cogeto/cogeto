@@ -9,14 +9,15 @@ and the commands you'll want at hand.
 ## The model: pull-only, signed, single-tenant
 
 - **One instance = one customer.** Isolation is a deployment boundary, not a row filter. There is no multi-tenant mode.
-- **A production instance never builds.** It pulls three prebuilt images per
- release, each **cosign-signed** by the release pipeline:
+- **A production instance never builds.** It pulls prebuilt images per release,
+ each **cosign-signed** by the release pipeline:
 
- | Image | Contents |
- | --- | --- |
- | `cogeto/cogeto:<version>` | app / worker / migrate / preflight |
- | `cogeto/cogeto-edge:<version>` | Caddy edge with the built SPA |
- | `cogeto/cogeto-mail:<version>` | the receive-only inbound SMTP service |
+ | Image | Contents | When |
+ | --- | --- | --- |
+ | `cogeto/cogeto:<version>` | app / worker / migrate / preflight | always |
+ | `cogeto/cogeto-edge:<version>` | Caddy edge with the built SPA | always |
+ | `cogeto/cogeto-mail:<version>` | the receive-only inbound SMTP service | with the `mail` capability |
+ | `cogeto/cogeto-redaction:<version>` | the local PII redaction sidecar | with the `redaction` capability |
 
 - The deployment compose + production Caddyfile live in
  [`project/infra/deploy/`](../project/infra/deploy/) and are fetched at the
@@ -47,7 +48,7 @@ one-to-one to any provider's DNS/PTR/firewall equivalents.
 ## Verifying a release image
 
 Every release image is signed with keyless cosign (Sigstore, GitHub OIDC, no
-long-lived keys). Verify any of the three at any time:
+long-lived keys). Verify any of them at any time:
 
 ```sh
 cosign verify cogeto/cogeto:<version> \
@@ -55,7 +56,8 @@ cosign verify cogeto/cogeto:<version> \
  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
 ```
 
-(Substitute `cogeto/cogeto-edge` / `cogeto/cogeto-mail` for the other two.)
+(Substitute `cogeto/cogeto-edge`, `cogeto/cogeto-mail` or
+`cogeto/cogeto-redaction` for the others.)
 The operator script runs these checks automatically during `install` and
 `upgrade`; each GitHub Release also carries the image's SBOM and the exact
 verify command. How releases are produced:

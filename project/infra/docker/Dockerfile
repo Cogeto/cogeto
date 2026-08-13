@@ -89,6 +89,13 @@ CMD ["node", "project/src/dist/entrypoints/app.js"]
 FROM caddy@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648 AS caddy
 COPY project/infra/docker/caddy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /repo/project/web/dist /srv
+# Inbound-mail TLS propagation (issue #566). Not part of the edge's own job:
+# the deploy stack runs a SECOND container from this image, under the `mail`
+# profile, with this as its entrypoint. It lives here because this image is the
+# one that owns the certificate store, and because reusing a published, signed
+# release image beats publishing a fifth one for twenty lines of shell.
+COPY project/infra/docker/caddy/mail-tls-sync.sh /usr/local/bin/cogeto-mail-tls-sync
+RUN chmod 0755 /usr/local/bin/cogeto-mail-tls-sync
 
 # ── Consoles edge (profile `consoles`): the infra dashboards (MinIO,
 # Qdrant) + the S3 presign origin, served ONLY here so they never answer on the

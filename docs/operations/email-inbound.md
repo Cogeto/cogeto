@@ -148,14 +148,53 @@ real mail at a tenant's box, O6 must configure, per instance:
  apex domain publishes a strict SPF, ensure it does not interfere. (Cogeto
  never sends, so no outbound SPF/DKIM/DMARC is needed for this address.)
 
-4. **Inbound TLS (STARTTLS).** The Haraka container speaks plain SMTP on `2525`;
- the deployment terminates/permits TLS. Two supported patterns:
- - Provide the instance's Let's Encrypt cert/key to Haraka (mount + enable the
- `tls` plugin) so it offers STARTTLS on port 25 directly; **or**
- - Front port 25 with a TLS-terminating TCP proxy that forwards cleartext to
- `2525`.
- The website already obtains a Let's Encrypt cert for the app; O6 reuses that
- ACME setup to cover `mail.<instance>` / `in.<instance>`.
+4. **Inbound TLS (STARTTLS). Automatic; nothing to source, copy or renew.**
+ This is the one description of how inbound-mail TLS works; every other
+ document points here.
+
+ The mechanism, end to end:
+
+ - `cogeto features enable mail` writes `COGETO_MAIL_TLS_SITE=mail.<domain>`
+ (the same `derive_mx_host` value it prints as the required A record) and
+ prints that record.
+ - The edge's Caddyfile carries an **ACME-only vhost** for that hostname: it
+ exists purely so a certificate is ordered and renewed, and answers `404`
+ to anything that reaches it, because the mail host serves SMTP and no web
+ surface. With `COGETO_MAIL_TLS_SITE` empty the vhost falls back to an
+ inert `http://mail-tls-disabled.invalid` placeholder, so an instance without email
+ capture orders nothing.
+ - The **`mail-tls-sync` sidecar** (the edge image, its own container under
+ the `mail` profile) reads `caddy-data` read-only, and whenever the
+ material for that hostname changes, writes `cert.pem` + `key.pem` into the
+ `mail-tls` volume owned by `1000:1000` with mode `0644`/`0640`.
+ - The **mail container mounts `mail-tls` only**, never `caddy-data`. It is
+ internet-facing, so it must never hold the edge's other keys; that
+ boundary is why propagation is a sidecar rather than a second mount.
+ - The **mail entrypoint watches its own copy** and, when it changes, exits
+ so compose restarts it with the new certificate. Haraka reads the PEM
+ files once at startup, so a restart is how a renewal takes effect; it is
+ conditional on the material actually changing, so a steady state restarts
+ nothing.
+
+ **Verifying it**, from outside the instance:
+
+ ```sh
+ openssl s_client -starttls smtp -connect mail.acme.cogeto.eu:25 -crlf </dev/null
+ ```
+
+ and on the instance `sudo cogeto status`, which prints whether STARTTLS is
+ advertised and when the certificate expires. The `mail` capability in
+ `/api/health` and the System panel names the same fact. A cleartext
+ downgrade used to be invisible; it is not any more.
+
+ **Why it is built rather than documented.** The consuming half (the
+ dedicated volume, the mount, the entrypoint that enables Haraka's `tls`
+ plugin) shipped with the first mail commit and worked. The producing half
+ was never built, so no certificate for the mail hostname was ever issued
+ and the runbook's copy-it-yourself procedure pointed at a directory that
+ did not exist. A manual copy would also have inherited exactly the failure
+ this removes: the certificate renews every 60 days, silently, and a
+ forgotten copy downgrades the listener with nothing saying so.
 
 5. **Firewall.** Open inbound TCP **25** to the instance. `cogeto features
  enable mail` does this in `ufw` for you, but a cloud-provider network
@@ -174,6 +213,41 @@ real mail at a tenant's box, O6 must configure, per instance:
  capture. There is no capture-owner pin: recipients are resolved from the
  **sender** (a registered user's own address routes to them; other senders route by
  each user's personal allowlist).
+
+### Operator-supplied certificates: an override
+
+If your organisation has its own CA, or a wildcard you already manage, you can
+supply the material yourself instead. This is an **override, not the default**,
+and renewal then becomes **your responsibility**: nothing will warn you before
+it expires except `cogeto status`.
+
+Requirements, exactly:
+
+| What | Requirement |
+| --- | --- |
+| Files | `cert.pem` and `key.pem` in the `cogeto_mail-tls` volume (or wherever `COGETO_MAIL_TLS_CERT` / `COGETO_MAIL_TLS_KEY` point inside the container) |
+| Format | PEM. `cert.pem` is the leaf followed by any intermediates; `key.pem` is the unencrypted private key (Haraka cannot prompt for a passphrase) |
+| Ownership | readable by **uid 1000** (`chown 1000:1000`), mode `0644` for the certificate and `0640` for the key |
+| Hostname | must match the MX target, `mail.<domain>` |
+
+The ownership line is the silent trap and the reason it is spelled out: the
+entrypoint's readability test runs as the container's non-root user, so
+root-only material is indistinguishable from no material at all, and the
+result is a cleartext listener that looks healthy.
+
+To use the override, leave `COGETO_MAIL_TLS_SITE` empty (so the edge orders
+nothing and `mail-tls-sync` idles rather than overwriting your files) and place
+the two files in the volume:
+
+```sh
+TLSDIR=$(sudo docker volume inspect --format '{{ .Mountpoint }}' cogeto_mail-tls)
+sudo install -o 1000 -g 1000 -m 0644 your-cert.pem "$TLSDIR/cert.pem"
+sudo install -o 1000 -g 1000 -m 0640 your-key.pem "$TLSDIR/key.pem"
+# The mail service notices within seconds and restarts to load them.
+```
+
+Renewals are the same two commands; the watcher picks them up with no restart
+command of your own.
 
 ### Verification after provisioning
 
