@@ -36,6 +36,9 @@ export async function installModelConfiguration(
       redacted: config.redactionEnabled,
       reasoningHeadroom: config.modelProviders.reasoningHeadroom,
       timeoutsMs: config.modelProviders.timeoutsMs,
+      // An unreadable provider key is reported here, at boot, so the reason
+      // model features are off is in the log and never a silent mystery.
+      logger: logger ? { error: (message: string) => logger.error(message) } : undefined,
     });
     const live = new LiveModelConfiguration(providers);
     // The config object now CARRIES the live object rather than a copy of it,
@@ -59,9 +62,9 @@ export function logModelConfiguration(logger: Logger, config: CogetoConfig): voi
   if (!p.configured) {
     logger.warn(
       { configuration: 'unconfigured' },
-      'no model provider is configured — the instance serves and captures nothing model-side ' +
-        'until an administrator adds a provider and assigns the tiers under Providers in the ' +
-        'interface. This is the normal first-run state, not an error.',
+      'no model provider is configured. The instance runs, but capture, ingestion and chat ' +
+        'are off until an administrator adds a provider and assigns the tiers under Providers ' +
+        'in the interface. This is the normal first-run state, not an error.',
     );
     return;
   }

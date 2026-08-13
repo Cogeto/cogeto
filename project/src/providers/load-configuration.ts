@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { ProviderStore } from './persistence/provider-store';
 import { resolveFromRecords } from './domain/resolve';
 import type { Db } from '../infrastructure/index';
@@ -25,7 +24,8 @@ export async function loadModelConfiguration(
     redacted: boolean;
     reasoningHeadroom: number;
     timeoutsMs: ResolvedModelProviders['timeoutsMs'];
-    logger?: Logger;
+    /** Structural, so pino (the entrypoints) and Nest loggers both fit. */
+    logger?: { error(message: string): void };
   },
 ): Promise<ResolvedModelProviders> {
   const store = new ProviderStore(db);

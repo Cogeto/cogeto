@@ -27,7 +27,9 @@ async function main(): Promise<void> {
   // guard exists to refuse.
   await installModelConfiguration(config);
   if (!config.modelProviders.configured) {
-    console.error('vector:smoke needs a configured embeddings provider (Providers in the interface)');
+    console.error(
+      'vector:smoke needs a configured embeddings provider (Providers in the interface)',
+    );
     process.exit(2);
   }
 

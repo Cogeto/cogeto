@@ -1332,7 +1332,9 @@ export function Chat({ session }: { session: Session }) {
                     }
                   }}
                   disabled={modelsOff}
-                  placeholder={modelsOff ? t('common:modelRequired.short') : t('composer.placeholder')}
+                  placeholder={
+                    modelsOff ? t('common:modelRequired.short') : t('composer.placeholder')
+                  }
                   title={modelsOff ? t('common:modelRequired.short') : undefined}
                   className="max-h-40 flex-1 resize-none self-center bg-transparent py-1 text-[0.95rem] leading-relaxed text-slate-800 outline-none placeholder:text-slate-400 disabled:opacity-60"
                 />

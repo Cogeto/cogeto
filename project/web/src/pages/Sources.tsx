@@ -3,8 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { SourceBadgeFilter, SourceCatalogItemDto, SourceTypeKey } from '@cogeto/shared';
 import { SOURCE_BADGE_FILTERS, SOURCE_TYPE_KEYS } from '@cogeto/shared';
-import {
-  fetchModelConfig, fetchProjects, fetchSourceCatalog } from '../api';
+import { fetchModelConfig, fetchProjects, fetchSourceCatalog } from '../api';
 import type { Session } from '../auth/oidc';
 import { ImportPanel } from '../components/ImportPanel';
 import { MemoryDrawer } from '../components/MemoryDrawer';

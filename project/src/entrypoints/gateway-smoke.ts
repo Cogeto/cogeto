@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { createModelGateway, loadPrompt, resolveEvalProvidersFromEnv } from '../model-gateway/index';
+import {
+  createModelGateway,
+  loadPrompt,
+  resolveEvalProvidersFromEnv,
+} from '../model-gateway/index';
 import { redactionFromEnv } from './config';
 
 /**

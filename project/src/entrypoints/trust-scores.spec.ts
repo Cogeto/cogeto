@@ -172,9 +172,12 @@ describe('trust scores — emission and merge', () => {
  */
 describe('eval_emission_config_correct', () => {
   it('emits the default configuration exactly as resolved', () => {
-    const providers = resolveEvalProvidersFromEnv({ COGETO_MISTRAL_API_KEY: 'k' } as NodeJS.ProcessEnv, {
-      redacted: false,
-    });
+    const providers = resolveEvalProvidersFromEnv(
+      { COGETO_MISTRAL_API_KEY: 'k' } as NodeJS.ProcessEnv,
+      {
+        redacted: false,
+      },
+    );
     expect(configurationForEmission(providers)).toEqual({
       id: 'mistral-default',
       models: {

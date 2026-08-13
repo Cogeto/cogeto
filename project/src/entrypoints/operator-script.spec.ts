@@ -326,7 +326,9 @@ describe('operator script — pure helpers', () => {
       script.indexOf('# SEC-14 upgrade continuity'),
     );
     expect(backfill).toContain('COGETO_MASTER_KEY');
-    expect(backfill).toMatch(/\[ -n "\$\(env_get COGETO_MASTER_KEY\)" \]\s+\|\| env_set COGETO_MASTER_KEY/);
+    expect(backfill).toMatch(
+      /\[ -n "\$\(env_get COGETO_MASTER_KEY\)" \]\s+\|\| env_set COGETO_MASTER_KEY/,
+    );
     // The db-init asset ships with the other pinned deploy files.
     expect(script).toContain('project/infra/docker/postgres-init/db-init.sql');
   });

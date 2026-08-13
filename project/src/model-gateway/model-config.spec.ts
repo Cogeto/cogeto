@@ -67,7 +67,9 @@ describe('settings_display_accurate', () => {
   });
 
   it('an unconfigured instance says so honestly', () => {
-    const modelProviders = resolveEvalProvidersFromEnv({} as NodeJS.ProcessEnv, { redacted: false });
+    const modelProviders = resolveEvalProvidersFromEnv({} as NodeJS.ProcessEnv, {
+      redacted: false,
+    });
     const dto = buildModelConfigDto({ modelProviders, redactionEnabled: false });
     expect(dto.configured).toBe(false);
     expect(dto.configurationId).toBe('unconfigured');

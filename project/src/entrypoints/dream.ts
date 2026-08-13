@@ -25,7 +25,9 @@ async function main(): Promise<void> {
   // guard exists to refuse.
   await installModelConfiguration(config);
   if (!config.modelProviders.configured) {
-    console.error('dream needs a configured model provider: the reconcile passes are model confirmations');
+    console.error(
+      'dream needs a configured model provider: the reconcile passes are model confirmations',
+    );
     process.exit(2);
   }
   const pool = new Pool({ connectionString: config.databaseUrl });

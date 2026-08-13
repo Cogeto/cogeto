@@ -182,9 +182,12 @@ describe('redaction_fail_closed', () => {
 });
 
 describe('redaction_off_noop', () => {
-  const providers = resolveEvalProvidersFromEnv({ COGETO_MISTRAL_API_KEY: 'k' } as NodeJS.ProcessEnv, {
-    redacted: false,
-  });
+  const providers = resolveEvalProvidersFromEnv(
+    { COGETO_MISTRAL_API_KEY: 'k' } as NodeJS.ProcessEnv,
+    {
+      redacted: false,
+    },
+  );
 
   it('the factory returns the bare gateway (not wrapped) when redaction is off', () => {
     const off = createModelGateway({ providers });
