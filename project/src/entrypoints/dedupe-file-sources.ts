@@ -4,7 +4,7 @@ import { DRIZZLE } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { DeletionExecutor, DeletionSaga } from '../memory/index';
 import { loadConfig } from './config';
-import { loadDuplicateGroups, partitionPlans, planFor } from './dedupe-plan';
+import { KeepHintError, loadDuplicateGroups, partitionPlans, planFor } from './dedupe-plan';
 import type { DuplicateCopy } from './dedupe-plan';
 import { installModelConfiguration } from './model-boot';
 import { createWorkerRootModule } from './worker-root.module';
@@ -54,14 +54,25 @@ function principalFor(copy: DuplicateCopy): Principal {
 /** Short enough to read in a terminal, long enough to identify the row. */
 const short = (key: string): string => key.slice(-12);
 
-function parseArgs(argv: string[]): { apply: boolean; allowRedaction: boolean } {
-  const out = { apply: false, allowRedaction: false };
-  for (const arg of argv) {
+function parseArgs(argv: string[]): {
+  apply: boolean;
+  allowRedaction: boolean;
+  keep: string[];
+} {
+  const out = { apply: false, allowRedaction: false, keep: [] as string[] };
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i]!;
     if (arg === '--apply') out.apply = true;
     else if (arg === '--allow-redaction') out.allowRedaction = true;
+    // Repeatable, one per group whose survivor the operator is naming. The
+    // value is the tail of an object key, so the twelve characters the report
+    // prints can be pasted straight back in.
+    else if (arg === '--keep' && argv[i + 1]) out.keep.push(argv[++i]!);
     else {
       console.error(`unknown argument: ${arg}`);
-      console.error('usage: dedupe-file-sources [--apply] [--allow-redaction]');
+      console.error(
+        'usage: dedupe-file-sources [--apply] [--allow-redaction] [--keep <object-key-suffix>]...',
+      );
       process.exit(2);
     }
   }
@@ -69,7 +80,7 @@ function parseArgs(argv: string[]): { apply: boolean; allowRedaction: boolean } 
 }
 
 async function main(): Promise<void> {
-  const { apply, allowRedaction } = parseArgs(process.argv.slice(2));
+  const { apply, allowRedaction, keep } = parseArgs(process.argv.slice(2));
   const config = loadConfig();
   // The DATABASE's model configuration is what this instance runs (V2.4 item
   // 7.1). The saga touches the vector store, so the embedding space this
@@ -85,7 +96,7 @@ async function main(): Promise<void> {
   const executor = context.get(DeletionExecutor);
 
   try {
-    const plans = (await loadDuplicateGroups(db)).map(planFor);
+    const plans = (await loadDuplicateGroups(db)).map((group) => planFor(group, keep));
     if (plans.length === 0) {
       console.log(
         'nothing to do: no file source has a duplicate under (owner, checksum, scope, sensitive)',
@@ -105,7 +116,7 @@ async function main(): Promise<void> {
       console.log(
         `  ${plan.group.checksum.slice(0, 8)}  ${plan.group.scope}` +
           `${plan.group.sensitive ? ' sensitive' : ''}` +
-          `${heldBack ? '   HELD BACK' : ''}`,
+          `${heldBack ? '   HELD BACK' : ''}${plan.chosenByOperator ? '   SURVIVOR NAMED BY --keep' : ''}`,
       );
       for (const copy of plan.group.copies) {
         const keeping = copy.objectKey === plan.keep.objectKey;
@@ -119,7 +130,15 @@ async function main(): Promise<void> {
       if (heldBack) {
         console.log(
           `    → removing these would redact ${plan.answersRedacted} stored answer(s), ` +
-            'so this group is left alone. Pass --allow-redaction to include it.',
+            'so this group is left alone. Name the survivor with --keep, or pass ' +
+            '--allow-redaction to accept the cost everywhere.',
+        );
+      } else if (plan.answersRedacted > 0) {
+        // No longer held back, but the cost has not gone away: state it, so an
+        // operator reads the price of the decision they just made.
+        console.log(
+          `    → this WILL redact ${plan.answersRedacted} stored answer(s), replacing each with ` +
+            'a line saying its source was deleted.',
         );
       }
       console.log('');
@@ -169,6 +188,12 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
+  // An ambiguous --keep is operator error, not a crash: say what to type.
+  if (error instanceof KeepHintError) {
+    console.error(error.message);
+    process.exitCode = 2;
+    return;
+  }
   // `process.exit` immediately after a write can truncate it when stdout is a
   // pipe (docker exec, CI): set the code and let the process end on its own.
   console.error(

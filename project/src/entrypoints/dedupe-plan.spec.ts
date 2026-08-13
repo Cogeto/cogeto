@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chooseSurvivor, partitionPlans, planFor } from './dedupe-plan';
+import { chooseSurvivor, KeepHintError, partitionPlans, planFor } from './dedupe-plan';
 import type { DuplicateCopy } from './dedupe-plan';
 
 /**
@@ -112,6 +112,43 @@ describe('choosing which duplicate survives', () => {
     // Fully tied on every signal, so the key breaks it rather than the order
     // the database happened to return.
     expect(first).toBe('k/aaa');
+  });
+
+  it('keep_names_the_survivor, overriding the rule and releasing the hold', () => {
+    // The real case the flag exists for: both copies cited, so the tool holds
+    // the group back and its own choice (most-cited, 3 beats 2) is the one it
+    // just admitted it could not make well. The operator names the other.
+    const cited = copy({ objectKey: 'k/927a6f1422df', facts: 88, citedByAnswers: 3 });
+    const rich = copy({ objectKey: 'k/1656081e76a8', facts: 109, citedByAnswers: 2 });
+
+    expect(planFor(group([cited, rich])).keep.objectKey).toBe('k/927a6f1422df');
+
+    const named = planFor(group([cited, rich]), ['1656081e76a8']);
+    expect(named.keep.objectKey).toBe('k/1656081e76a8');
+    expect(named.remove.map((c) => c.objectKey)).toEqual(['k/927a6f1422df']);
+    expect(named.chosenByOperator).toBe(true);
+    // The cost does not disappear, it is accepted: three answers still go.
+    expect(named.answersRedacted).toBe(3);
+    // And the group runs WITHOUT the blanket flag, because naming a survivor
+    // is the per-group form of the same decision.
+    expect(partitionPlans([named], false).safe).toEqual([named]);
+  });
+
+  it('keep_that_matches_nothing_here leaves the rule in charge', () => {
+    const a = copy({ objectKey: 'k/aaa', facts: 9 });
+    const b = copy({ objectKey: 'k/bbb', facts: 2 });
+    // A hint for a DIFFERENT group must not silently alter this one.
+    const plan = planFor(group([a, b]), ['zzz']);
+    expect(plan.keep.objectKey).toBe('k/aaa');
+    expect(plan.chosenByOperator).toBe(false);
+  });
+
+  it('keep_that_matches_two_copies is refused, never guessed', () => {
+    // Choosing between two things the operator did not distinguish is exactly
+    // how the wrong document gets deleted.
+    const a = copy({ objectKey: 'k/one-tail' });
+    const b = copy({ objectKey: 'k/two-tail' });
+    expect(() => planFor(group([a, b]), ['tail'])).toThrow(KeepHintError);
   });
 
   it('never_removes_the_survivor: remove is exactly the rest of the group', () => {

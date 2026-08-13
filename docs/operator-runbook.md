@@ -594,8 +594,23 @@ all.
 A group is **held back** when removing a copy would break a stored answer.
 Deleting a memory redacts every answer citing it, replacing that answer with a
 line saying its source is gone, and when both copies are cited no choice of
-survivor avoids it. Those groups are listed and left alone; including them is
-a deliberate `--allow-redaction`.
+survivor avoids it. Those groups are listed and left alone.
+
+To act on a held-back group, **name the copy to keep**, using the twelve
+characters the report prints:
+
+```sh
+docker compose run --rm worker \
+ node project/src/dist/entrypoints/dedupe-file-sources.js \
+ --keep 1656081e76a8 --apply
+```
+
+That is the decision the hold-back was asking for, so the group runs without
+any blanket flag, and the report still states how many answers it will cost.
+Repeat `--keep` once per group. A value matching two copies is refused rather
+than guessed. `--allow-redaction` remains the blunt alternative: it accepts the
+tool's own choice of survivor everywhere, which is rarely what you want for a
+group it just said it could not decide well.
 
 Running it again after applying finds nothing and exits 0.
 
