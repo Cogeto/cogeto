@@ -44,13 +44,23 @@ per-sender state.
 | `COGETO_INTAKE_URL` | the app intake, e.g. `http://app:3000/api/email/intake` |
 | `COGETO_MAIL_INTAKE_TOKEN` | shared secret presented to the intake (must match the app) |
 
-## TLS / MX (operator, O6)
+## TLS / MX (operator)
 
 The container speaks plain SMTP on 2525; the deployment maps the standard
-inbound port `25 → 2525`. Inbound STARTTLS with the instance certificate and the
-`in.<instance>` **MX** record are provisioning concerns handed to O6. See
-[`docs/operations/email-inbound.md`](../../../docs/operations/email-inbound.md) for the
-exact DNS/MX/SPF/PTR requirements and the local test-send steps.
+inbound port `25 → 2525`. STARTTLS is enabled by the entrypoint whenever a
+**readable** cert/key pair is present in the mounted `mail-tls` volume, and the
+entrypoint watches that pair so a renewal is loaded without anyone doing
+anything (it exits and compose restarts it; Haraka reads the PEMs once at
+startup). Readable means readable by uid 1000, the non-root user this container
+runs as: root-only material is indistinguishable here from no material, and the
+result is a silent cleartext listener.
+
+Putting the certificate there is not this image's job. On a deployed instance
+the edge obtains it for `mail.<domain>` and the `mail-tls-sync` sidecar copies
+it in; a dev box mounts nothing and simply does not advertise STARTTLS. See
+[`docs/operations/email-inbound.md`](../../../docs/operations/email-inbound.md)
+for the whole mechanism, the operator-supplied-certificate override, and the
+DNS/MX/SPF/PTR requirements.
 
 Local development uses `scripts/dev/send-test-email.mjs` to submit fixtures over
 SMTP without real DNS.

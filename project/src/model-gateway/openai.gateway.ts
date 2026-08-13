@@ -275,7 +275,7 @@ export class OpenAiCompatibleModelGateway extends ModelGateway {
           if (timeoutMs !== undefined && isTimeoutError(error)) {
             throw new ModelGatewayError(
               `${this.label} ${tier} call timed out after ${timeoutMs} ms, raise ` +
-                `COGETO_OLLAMA_TIMEOUT_${suffix}_MS or use a smaller/faster model`,
+                `COGETO_MODEL_TIMEOUT_${suffix}_MS or use a smaller/faster model`,
               false,
               error,
             );

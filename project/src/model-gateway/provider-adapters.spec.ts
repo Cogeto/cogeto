@@ -333,7 +333,7 @@ describe('ollama_adapter_contract — the local flavor of the OpenAI-compatible 
     await expect(slow.complete({ input: 'q' })).rejects.toMatchObject({
       retryable: false,
       message: expect.stringMatching(
-        /timed out after 10 ms.*COGETO_OLLAMA_TIMEOUT_ANSWER_MS/,
+        /timed out after 10 ms.*COGETO_MODEL_TIMEOUT_ANSWER_MS/,
       ) as string,
     });
     expect(fetch).toHaveBeenCalledTimes(1);

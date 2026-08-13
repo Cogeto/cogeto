@@ -44,10 +44,14 @@ jobs:
         run: npm ci
       - name: Lint (ESLint + Prettier)
         run: npm run lint
-      # Host-level scripting is linted too: the operator script (session O6)
-      # must stay shellcheck-clean. ubuntu-latest ships shellcheck.
-      - name: Shellcheck (operator script)
-        run: shellcheck scripts/operator/cogeto
+      # Host-level scripting is linted too: the operator script (session O6),
+      # the mail service's entrypoint and the mail-TLS propagation loop
+      # (issue #566) must stay shellcheck-clean. ubuntu-latest ships shellcheck.
+      - name: Shellcheck (operator script and shipped service scripts)
+        run: |
+          shellcheck scripts/operator/cogeto
+          shellcheck project/services/mail/docker-entrypoint.sh
+          shellcheck project/infra/docker/caddy/mail-tls-sync.sh
 
   boundaries:
     name: boundaries
@@ -346,9 +350,10 @@ jobs:
   # ── docker-build (not required to merge) ────────────────────────────────────
   # Builds the production amd64 images WITHOUT pushing, so the Dockerfiles stay
   # green on every PR. Docker layers are cached via the GitHub Actions cache.
-  # All three pull-only images a customer instance needs are covered (decision
-  # 0030): runtime (cogeto/cogeto), the Caddy edge (cogeto/cogeto-edge), and
-  # the Haraka mail service (cogeto/cogeto-mail).
+  # All four pull-only images a customer instance needs are covered (decision
+  # 0030): runtime (cogeto/cogeto), the Caddy edge (cogeto/cogeto-edge), the
+  # Haraka mail service (cogeto/cogeto-mail), and the redaction sidecar
+  # (cogeto/cogeto-redaction).
   docker-build:
     name: docker-build
     runs-on: ubuntu-latest
@@ -389,9 +394,10 @@ jobs:
           cache-to: type=gha,mode=max
       # SEC-19: the redaction sidecar was never built in CI, so a broken
       # Dockerfile or an unresolvable hash-locked wheel only surfaced when an
-      # operator brought the profile up. It is not a released image (the
-      # redaction profile is not part of the deploy channel), but it must stay
-      # buildable.
+      # operator brought the profile up. Since issue #565 it is also a RELEASED
+      # image (the redaction profile is part of the deploy channel), so this
+      # build keeps the release path green on every change rather than only
+      # protecting a source checkout.
       - name: Build amd64 redaction sidecar image (no push)
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:

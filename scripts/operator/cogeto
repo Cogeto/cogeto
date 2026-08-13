@@ -49,6 +49,10 @@ set -euo pipefail
 IMAGE="cogeto/cogeto"
 IMAGE_EDGE="cogeto/cogeto-edge"
 IMAGE_MAIL="cogeto/cogeto-mail"
+# The redaction sidecar (issue #565). Published, signed and attested like the
+# other three since that change; pulled and verified only when the capability
+# is on, because an instance that does not redact never runs it.
+IMAGE_REDACTION="cogeto/cogeto-redaction"
 # cosign is installed by `install` (o6-dry-run: an optional verifier gets
 # skipped in practice). Pinned release; single static binary, not in apt.
 COSIGN_VERSION="2.4.1"
@@ -526,10 +530,19 @@ require_supported_version() {
   say "release v${rsv_v} is published and supported"
 }
 
+# The images THIS instance runs: the three always-present ones, plus the
+# redaction sidecar when the capability is on. One list, so pull, verify and
+# the printed verify commands can never disagree about what is installed.
+instance_images() {
+  printf '%s %s %s' "$IMAGE" "$IMAGE_EDGE" "$IMAGE_MAIL"
+  [ "$(feature_configured redaction)" = "enabled" ] && printf ' %s' "$IMAGE_REDACTION"
+  printf '\n'
+}
+
 print_cosign_commands() {
   version="$1"
   say "verify the pulled images (keyless cosign; run any time):"
-  for img in "$IMAGE" "$IMAGE_EDGE" "$IMAGE_MAIL"; do
+  for img in $(instance_images); do
     cat <<EOF
   cosign verify ${img}:${version} \\
     --certificate-identity-regexp '^https://github.com/${GITHUB_REPO}/\\.github/workflows/release\\.yml@refs/tags/' \\
@@ -604,16 +617,18 @@ install_self() {
 
 verify_images() {
   version="$1"
+  vi_images="$(instance_images)"
+  vi_count="$(printf '%s' "$vi_images" | wc -w | tr -d ' ')"
   if command -v cosign >/dev/null 2>&1; then
     say "cosign found — verifying image signatures"
-    for img in "$IMAGE" "$IMAGE_EDGE" "$IMAGE_MAIL"; do
+    for img in $vi_images; do
       run cosign verify "${img}:${version}" \
         --certificate-identity-regexp "^https://github.com/${GITHUB_REPO}/\\.github/workflows/release\\.yml@refs/tags/" \
         --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' >/dev/null
     done
-    [ "$CHECK" -eq 1 ] || say "all three image signatures verified"
+    [ "$CHECK" -eq 1 ] || say "all ${vi_count} image signatures verified"
   elif [ "$CHECK" -eq 1 ]; then
-    say "[dry-run] would verify all three image signatures with cosign"
+    say "[dry-run] would verify all ${vi_count} image signatures with cosign"
   else
     die "cosign is not installed — refusing to start unverified images. Re-run: install/upgrade installs cosign automatically."
   fi
@@ -779,6 +794,25 @@ open_firewall() {
 # and the install checklist so they can never disagree.
 mail_capability_enabled() {
   [ "$(feature_configured mail)" = "enabled" ]
+}
+
+# Inbound-mail TLS (issue #566). COGETO_MAIL_TLS_SITE is what makes the edge
+# obtain and renew the certificate for the mail hostname: set it and the deploy
+# Caddyfile's ACME-only vhost becomes real; leave it empty and that vhost falls
+# back to an inert http-only placeholder, so an instance without email capture
+# attempts no ACME order at all.
+#
+# The value is derive_mx_host — the SAME derivation the DNS checklist prints,
+# not a second convention — and it is maintained by the script rather than the
+# operator, because the whole point is that enabling mail and adding one DNS
+# record is the entire procedure.
+sync_mail_tls_site() {
+  smt_domain="$(env_get COGETO_EXTERNAL_DOMAIN)"
+  if mail_capability_enabled && [ -n "$smt_domain" ]; then
+    env_set COGETO_MAIL_TLS_SITE "$(derive_mx_host "$smt_domain")"
+  else
+    env_set COGETO_MAIL_TLS_SITE ""
+  fi
 }
 
 # Close the inbound SMTP port again. Tolerant: ufw absent/inactive, or the rule
@@ -1097,6 +1131,11 @@ cmd_upgrade() {
   ensure_wave3_secrets
   # SEC-14: keep an instance that was already receiving email receiving it.
   carry_forward_mail_capability
+  # Inbound-mail TLS (issue #566): converge COGETO_MAIL_TLS_SITE with whatever
+  # the mail capability now is. This is also the backfill for an instance that
+  # was receiving email before the certificate was obtained automatically —
+  # after this upgrade it stops being cleartext with no operator step.
+  sync_mail_tls_site
 
   say "pulling v${target} images (never building)"
   run compose pull --quiet
@@ -1273,6 +1312,28 @@ cmd_status() {
   else
     warn "could not read a certificate on :443 — is the caddy container running?"
     green=0
+  fi
+
+  # Inbound-mail TLS (issue #566). Before this, a cleartext downgrade was
+  # completely silent: the container logged one line at boot, the health check
+  # was a bare TCP connect, and neither status nor the capability surface
+  # mentioned TLS at all. What is checked here is the OBSERVABLE fact, an SMTP
+  # EHLO against the running listener, not whether a file exists somewhere.
+  if mail_capability_enabled; then
+    echo
+    echo " inbound mail TLS (STARTTLS on port 25):"
+    mail_host="$(derive_mx_host "$domain")"
+    mail_tls="$(echo | openssl s_client -starttls smtp -connect 127.0.0.1:25 -servername "$mail_host" 2>/dev/null \
+      | openssl x509 -noout -enddate -issuer 2>/dev/null || true)"
+    if [ -n "$mail_tls" ]; then
+      echo "   STARTTLS is advertised and the handshake completes"
+      printf '%s\n' "$mail_tls" | while IFS= read -r line; do printf '   %s\n' "$line"; done
+      echo "   Renewal is automatic: the edge renews the ${mail_host} certificate,"
+      echo "   mail-tls-sync copies it in, and the mail service reloads it. No action."
+    else
+      warn "inbound mail is running in CLEARTEXT: STARTTLS is not advertised on port 25. Senders that require TLS will refuse, and everything else arrives unencrypted. Usual cause: the ${mail_host} A record does not resolve to this host yet, so the edge has not obtained the certificate (check: dig +short A ${mail_host}); Caddy keeps retrying and the mail service picks it up within minutes of issuance, with no restart needed. Inspect with: cd ${COGETO_ROOT} && docker compose logs --tail 50 mail-tls-sync"
+      green=0
+    fi
   fi
 
   echo
@@ -1453,6 +1514,10 @@ features_enable() {
         "On a deployed instance, upgrade first: inbound mail moved behind the 'mail' profile in the audit 2.0 SEC-14 release."
       env_set COMPOSE_PROFILES "$(profiles_add "$(env_get COMPOSE_PROFILES)" mail)"
       env_set COGETO_MAIL_ENABLED "1"
+      # The edge starts obtaining the mail hostname's certificate the moment
+      # the A record below resolves; mail-tls-sync then hands it to the mail
+      # service and Haraka advertises STARTTLS. No operator step (issue #566).
+      sync_mail_tls_site
       apply_feature_change
       # The listener is only reachable once the host firewall lets 25 in.
       if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
@@ -1465,6 +1530,7 @@ features_enable() {
       fe_inbound="$(env_get COGETO_MAIL_INBOUND_ADDRESS)"
       fe_ip="$(detect_public_ip)"
       say "inbound email capture is enabled: a RECEIVE-ONLY SMTP listener now answers on port 25. It never sends. The allowlist (the real acceptance gate) lives in the app, per user."
+      say "inbound TLS is AUTOMATIC: once the mail host A record below resolves, the edge obtains the Let's Encrypt certificate for $(derive_mx_host "$fe_domain"), it is copied into the mail service's own volume, and STARTTLS is advertised. Nothing to source, copy or renew — 'cogeto status' reports whether it is actually active and when it expires."
       todo_now "OVHcloud DNS → mail host A record:      $(derive_mx_host "$fe_domain").  IN A  ${fe_ip}"
       todo_now "OVHcloud DNS → inbound MX record:       $(derive_inbound_subdomain "$fe_domain").  IN MX 10  $(derive_mx_host "$fe_domain")."
       todo_now "OVHcloud panel → set the PTR for ${fe_ip} to $(derive_mx_host "$fe_domain") once that A record resolves — senders soft-reject hosts without matching forward/reverse DNS"
@@ -1473,17 +1539,26 @@ features_enable() {
       ;;
     redaction)
       require_feature_service redaction redaction redaction \
-        "The redaction sidecar is not part of the v1 deploy channel: its image is built from source, never published. It is available on a source checkout."
+        "On a deployed instance, upgrade first: the redaction sidecar became a published, signed release image and joined the deploy channel in the issue #565 release."
       env_set REDACTION_ENABLED "1"
       # posture: with redaction on, also refuse to boot without it — the
       # enable cannot silently regress to plaintext later.
       env_set REDACTION_REQUIRED "1"
       env_set COMPOSE_PROFILES "$(profiles_add "$(env_get COMPOSE_PROFILES)" redaction)"
+      # The sidecar is a pull-only release image like the rest: pull it and
+      # VERIFY its signature before it runs, exactly as install/upgrade do for
+      # the other three. It is skipped there while the capability is off, so
+      # this is the first time this instance sees it.
+      say "pulling and verifying the redaction sidecar image (${IMAGE_REDACTION} @ $(env_get COGETO_VERSION))"
+      run compose --profile redaction pull --quiet redaction
+      verify_images "$(env_get COGETO_VERSION)"
       apply_feature_change
       wait_service_healthy redaction 300 || true
       wait_service_healthy app 120 || true
-      say "redaction is enabled and FAIL-CLOSED: if the sidecar dies, model calls fail rather than send unredacted content"
-      todo_now "Memory: the redaction sidecar holds ~0.7-1 GB RSS (spaCy NER model) — confirm the instance has headroom ('free -m')"
+      say "redaction is enabled and FAIL-CLOSED: every outbound model call is pseudonymized locally first, and if the sidecar is unreachable the call FAILS rather than sending unredacted content"
+      say "the sidecar loads a spaCy NER model on first boot, so the first health pass takes up to 90 seconds"
+      todo_now "Memory: the redaction sidecar holds ~0.7-1 GB RSS (spaCy en_core_web_lg) and is capped at 2 GB — it is the single largest addition to this instance's footprint. Confirm headroom with 'free -m' (the stack's 8 GB minimum already budgets it)."
+      todo_now "Retrieval quality: pseudonymized text embeds less precisely than named text, so entity-anchored retrieval is measurably weaker. This is an INSTANCE-LIFETIME setting — vectors built under one mode are inconsistent with the other, so switching later means a reindex. See docs/security/data-sovereignty-and-redaction.md."
       ;;
     demo)
       # The production guard is respected LOUDLY.
@@ -1524,8 +1599,12 @@ features_disable() {
     mail)
       env_set COMPOSE_PROFILES "$(profiles_remove "$(env_get COMPOSE_PROFILES)" mail)"
       env_set COGETO_MAIL_ENABLED ""
+      # Stop renewing (and stop attempting) the mail hostname's certificate:
+      # with the site empty the edge's ACME-only vhost goes inert again.
+      sync_mail_tls_site
       apply_feature_change
       stop_profile_service mail mail
+      stop_profile_service mail mail-tls-sync
       close_mail_firewall
       say "inbound email capture is disabled: the SMTP listener is stopped and 25/tcp is closed. Mail sent to the inbound address will bounce at the sender; already-captured email is untouched."
       todo_now "Remove the inbound MX record for $(derive_inbound_subdomain "$(env_get COGETO_EXTERNAL_DOMAIN)") so senders fail fast instead of timing out"
@@ -1650,6 +1729,9 @@ cmd_configure() {
     env_set COGETO_EXTERNAL_DOMAIN "$new_domain"
     env_set COGETO_S3_PUBLIC_URL "$(derive_s3_origin "$new_domain")"
     env_set COGETO_MAIL_INBOUND_ADDRESS "$(derive_inbound_address "$new_domain")"
+    # The mail hostname moves with the domain, so the certificate the edge
+    # obtains must too (issue #566).
+    sync_mail_tls_site
     say "note: the Zitadel admin username stays admin@${old_domain} — Zitadel does not rename existing users on a domain change"
     # SEC-16: re-provisioning the OIDC redirect URIs needs a live bootstrap
     # PAT, and zitadel-init revoked it after install. The re-run fails loudly

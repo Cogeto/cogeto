@@ -251,7 +251,7 @@ describe('local_timeouts_config — per-tier local timeouts', () => {
   });
 
   it('each tier timeout is INDEPENDENTLY settable', () => {
-    const providers = resolve({ ...OLLAMA, COGETO_OLLAMA_TIMEOUT_ANSWER_MS: '600000' });
+    const providers = resolve({ ...OLLAMA, COGETO_MODEL_TIMEOUT_ANSWER_MS: '600000' });
     expect(providers.timeoutsMs).toEqual({
       pipeline: 300_000,
       answer: 600_000,
@@ -260,10 +260,10 @@ describe('local_timeouts_config — per-tier local timeouts', () => {
     });
     const all = resolve({
       ...OLLAMA,
-      COGETO_OLLAMA_TIMEOUT_PIPELINE_MS: '10000',
-      COGETO_OLLAMA_TIMEOUT_ANSWER_MS: '20000',
-      COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS: '30000',
-      COGETO_OLLAMA_TIMEOUT_VISION_MS: '40000',
+      COGETO_MODEL_TIMEOUT_PIPELINE_MS: '10000',
+      COGETO_MODEL_TIMEOUT_ANSWER_MS: '20000',
+      COGETO_MODEL_TIMEOUT_EMBEDDINGS_MS: '30000',
+      COGETO_MODEL_TIMEOUT_VISION_MS: '40000',
     });
     expect(all.timeoutsMs).toEqual({
       pipeline: 10_000,
@@ -274,8 +274,8 @@ describe('local_timeouts_config — per-tier local timeouts', () => {
   });
 
   it('a non-numeric timeout refuses boot naming the variable', () => {
-    expect(() => resolve({ ...OLLAMA, COGETO_OLLAMA_TIMEOUT_PIPELINE_MS: 'fast' })).toThrowError(
-      /COGETO_OLLAMA_TIMEOUT_PIPELINE_MS="fast" is not a positive integer/,
+    expect(() => resolve({ ...OLLAMA, COGETO_MODEL_TIMEOUT_PIPELINE_MS: 'fast' })).toThrowError(
+      /COGETO_MODEL_TIMEOUT_PIPELINE_MS="fast" is not a positive integer/,
     );
   });
 });
@@ -343,14 +343,16 @@ describe('self-hosted OpenAI-compatible endpoints', () => {
     expect(resolve({ COGETO_MISTRAL_API_KEY: 'k' }).openaiSelfHosted).toBe(false);
   });
 
-  it('honours the provider-neutral timeout vars and the legacy Ollama ones', () => {
+  it('honours the provider-neutral timeout vars, and ONLY those (issue #567)', () => {
     expect(
       resolve({ ...SELF_HOSTED, COGETO_MODEL_TIMEOUT_VISION_MS: '900000' }).timeoutsMs.vision,
     ).toBe(900_000);
-    // The COGETO_OLLAMA_* names are documented and in use; they stopped being
-    // about Ollama, they did not stop working.
+    // The retired COGETO_OLLAMA_TIMEOUT_* alias is inert: two names for one
+    // setting is how the deploy compose came to wire the alias while dropping
+    // the documented name. A stale entry now changes nothing rather than
+    // silently taking effect under a name no document mentions.
     expect(
       resolve({ ...SELF_HOSTED, COGETO_OLLAMA_TIMEOUT_VISION_MS: '800000' }).timeoutsMs.vision,
-    ).toBe(800_000);
+    ).toBe(600_000);
   });
 });

@@ -83,12 +83,10 @@ describe('model_config_env: a stale model variable has no effect', () => {
     const config = loadConfig({
       ...validEnv,
       COGETO_MODEL_TIMEOUT_ANSWER_MS: '450000',
-      COGETO_OLLAMA_TIMEOUT_PIPELINE_MS: '360000',
+      COGETO_MODEL_TIMEOUT_PIPELINE_MS: '360000',
       COGETO_REASONING_HEADROOM: '8',
     });
     expect(config.modelProviders.timeoutsMs.answer).toBe(450_000);
-    // The legacy Ollama-era timeout name is still honoured: it is the only
-    // form the deploy compose wires today.
     expect(config.modelProviders.timeoutsMs.pipeline).toBe(360_000);
     expect(config.modelProviders.reasoningHeadroom).toBe(8);
   });

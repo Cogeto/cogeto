@@ -5,13 +5,15 @@
 #      of truth, one number). A mismatch fails before anything is published.
 #   2. Build the production amd64 images once each — the full pull-only set a
 # customer instance needs (: the instance NEVER builds):
-#        cogeto/cogeto        app/worker/migrate/preflight (target `runtime`)
-#        cogeto/cogeto-edge   Caddy edge with the built SPA (target `caddy`)
+#        cogeto/cogeto           app/worker/migrate/preflight (target `runtime`)
+#        cogeto/cogeto-edge      Caddy edge with the built SPA (target `caddy`)
 # cogeto/cogeto-mail receive-only Haraka inbound SMTP
+#        cogeto/cogeto-redaction local PII redaction sidecar (profile redaction)
 #   3. Push each as :X.Y.Z and :latest to Docker Hub.
 #   4. Sign every pushed image with keyless cosign (Sigstore, GitHub OIDC — no
-#      long-lived keys) and generate an SBOM for the main image, attached to
-#      the GitHub Release.
+#      long-lived keys) and generate an SBOM for the main image and for the
+#      redaction sidecar, each attested to its digest and attached to the
+#      GitHub Release.
 #   5. Create the GitHub Release with notes auto-generated from the merged
 #      Conventional-Commit pull requests (grouped by .github/release.yml), plus
 #      a footer showing the exact `cosign verify` commands for these images.
@@ -44,6 +46,11 @@ env:
   IMAGE: cogeto/cogeto
   IMAGE_EDGE: cogeto/cogeto-edge
   IMAGE_MAIL: cogeto/cogeto-mail
+  # The redaction sidecar (issue #565). It was built in CI but never published,
+  # which made the fail-closed PII posture the security documentation describes
+  # unreachable on the pull-only deployment path: the deploy compose forbids
+  # building from source by design, so an instance had nothing to pull.
+  IMAGE_REDACTION: cogeto/cogeto-redaction
 
 # Least privilege (PA-2): permissions are scoped PER JOB, not workflow-wide.
 # Only the `release` job mints an OIDC id-token (keyless cosign); the
@@ -148,6 +155,23 @@ jobs:
           provenance: false
           sbom: false
 
+      # The local PII redaction sidecar — Python/Presidio, hash-locked wheel
+      # tree, its own base image. Same treatment as the other three.
+      - name: Build and push cogeto/cogeto-redaction (amd64)
+        id: build-redaction
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: project/services/redaction
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_REDACTION }}:${{ steps.v.outputs.version }}
+            ${{ env.IMAGE_REDACTION }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
+          sbom: false
+
       # ── Sign the pushed images (keyless, by digest) ──────────────────────
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
@@ -164,12 +188,14 @@ jobs:
           DIGEST: ${{ steps.build.outputs.digest }}
           DIGEST_EDGE: ${{ steps.build-edge.outputs.digest }}
           DIGEST_MAIL: ${{ steps.build-mail.outputs.digest }}
+          DIGEST_REDACTION: ${{ steps.build-redaction.outputs.digest }}
         run: |
           cosign sign --yes "${IMAGE}@${DIGEST}"
           cosign sign --yes "${IMAGE_EDGE}@${DIGEST_EDGE}"
           cosign sign --yes "${IMAGE_MAIL}@${DIGEST_MAIL}"
+          cosign sign --yes "${IMAGE_REDACTION}@${DIGEST_REDACTION}"
 
-      # ── SBOM (SPDX JSON) for the pushed image ────────────────────────────
+      # ── SBOM (SPDX JSON) for the pushed images ───────────────────────────
       - name: Generate SBOM (Syft, SPDX JSON)
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
@@ -178,15 +204,32 @@ jobs:
           output-file: cogeto-${{ steps.v.outputs.version }}.sbom.spdx.json
           upload-artifact: false
 
-      - name: Attach SBOM as a cosign attestation
+      # The sidecar's dependency tree is the one a reviewer is most likely to
+      # ask about (a hash-locked Python wheel set plus a pinned spaCy model), so
+      # it gets its own SBOM rather than riding on the main image's.
+      - name: Generate SBOM for the redaction sidecar (Syft, SPDX JSON)
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: ${{ env.IMAGE_REDACTION }}:${{ steps.v.outputs.version }}
+          format: spdx-json
+          output-file: cogeto-redaction-${{ steps.v.outputs.version }}.sbom.spdx.json
+          upload-artifact: false
+
+      - name: Attach the SBOMs as cosign attestations
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
+          DIGEST_REDACTION: ${{ steps.build-redaction.outputs.digest }}
           SBOM: cogeto-${{ steps.v.outputs.version }}.sbom.spdx.json
+          SBOM_REDACTION: cogeto-redaction-${{ steps.v.outputs.version }}.sbom.spdx.json
         run: |
           cosign attest --yes \
             --predicate "$SBOM" \
             --type spdxjson \
             "${IMAGE}@${DIGEST}"
+          cosign attest --yes \
+            --predicate "$SBOM_REDACTION" \
+            --type spdxjson \
+            "${IMAGE_REDACTION}@${DIGEST_REDACTION}"
 
       # ── GitHub Release with grouped, auto-generated notes ────────────────
       - name: Compose release notes
@@ -209,7 +252,7 @@ jobs:
             echo "**Verify these images** (keyless cosign signatures):"
             echo
             echo '```sh'
-            for IMG in "${IMAGE}" "${IMAGE_EDGE}" "${IMAGE_MAIL}"; do
+            for IMG in "${IMAGE}" "${IMAGE_EDGE}" "${IMAGE_MAIL}" "${IMAGE_REDACTION}"; do
               echo "cosign verify ${IMG}:${VERSION} \\"
               echo "  --certificate-identity-regexp '^https://github.com/${GITHUB_REPOSITORY}/\\.github/workflows/release\\.yml@refs/tags/' \\"
               echo "  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'"
@@ -223,11 +266,12 @@ jobs:
           TAG: ${{ steps.v.outputs.tag }}
           VERSION: ${{ steps.v.outputs.version }}
           SBOM: cogeto-${{ steps.v.outputs.version }}.sbom.spdx.json
+          SBOM_REDACTION: cogeto-redaction-${{ steps.v.outputs.version }}.sbom.spdx.json
         run: |
           gh release create "$TAG" \
             --title "$VERSION" \
             --notes-file release-notes.md \
-            "$SBOM"
+            "$SBOM" "$SBOM_REDACTION"
 
   # ── Trust scores (O7) — NEVER blocks the release ──────────
   # A separate job so (a) job-level continue-on-error keeps the release run

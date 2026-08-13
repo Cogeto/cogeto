@@ -359,9 +359,18 @@ export class CapabilitiesService {
    * the DEFAULT and the safe state: with the profile down, no internet-facing
    * SMTP listener runs at all, which is the whole point of the finding.
    *
-   * Enabled and reachable is probed for real — a TCP connect to the Haraka
+   * Enabled and reachable is probed for real — an SMTP EHLO against the Haraka
    * listener, the same signal /api/health uses — so "enabled but the container
    * is down" is loud rather than silently swallowing forwarded mail.
+   *
+   * The EHLO reply also answers whether STARTTLS is ADVERTISED (issue #566).
+   * That is reported in the detail rather than as `unreachable`, deliberately:
+   * a cleartext listener still receives mail, so degrading instance health for
+   * it would be dishonest, and it would turn every instance red for the
+   * minutes between enabling email capture and the mail hostname's certificate
+   * being issued. What must never happen again is the posture being INVISIBLE,
+   * and it no longer is: it is named here, in `cogeto status`, and in the boot
+   * log of the mail container itself.
    */
   private async mail(checkedAt: string): Promise<CapabilitySummary> {
     const base = { id: 'mail' as const, checkedAt };
@@ -377,22 +386,26 @@ export class CapabilitiesService {
           'forwarded mail cannot be received',
       };
     }
-    const probe = await probeTcp(address);
-    return probe.ok
-      ? {
-          ...base,
-          state: 'on',
-          probed: true,
-          detail: `inbound SMTP reachable at ${address}; capture routes by sender`,
-        }
-      : {
-          ...base,
-          state: 'unreachable',
-          probed: true,
-          error:
-            `inbound SMTP unreachable at ${address} (${probe.error}): ` +
-            `forwarded mail is not being received`,
-        };
+    const probe = await probeSmtpStartTls(address);
+    if (!probe.ok) {
+      return {
+        ...base,
+        state: 'unreachable',
+        probed: true,
+        error:
+          `inbound SMTP unreachable at ${address} (${probe.error}): ` +
+          `forwarded mail is not being received`,
+      };
+    }
+    const tls = probe.startTls
+      ? 'STARTTLS advertised'
+      : 'STARTTLS NOT advertised, forwarded mail arrives in CLEARTEXT';
+    return {
+      ...base,
+      state: 'on',
+      probed: true,
+      detail: `inbound SMTP reachable at ${address}; capture routes by sender; ${tls}`,
+    };
   }
 
   /** The one authority on whether this instance runs inbound mail (SEC-14). */
@@ -660,6 +673,64 @@ export async function probeTcp(
     };
     socket.on('timeout', () => fail('connect timeout'));
     socket.on('error', (error) => fail(error instanceof Error ? error.message : String(error)));
+  });
+}
+
+/**
+ * The inbound SMTP probe (issue #566): connect, read the greeting, send EHLO,
+ * and report whether the listener ADVERTISES STARTTLS.
+ *
+ * A bare TCP connect was the old signal, and it is what made a cleartext
+ * downgrade silent: the mail container boots identically with and without a
+ * readable certificate, so "the port answers" said nothing about whether
+ * forwarded mail crosses the internet encrypted. Advertisement is the
+ * observable fact a sender actually reacts to, so that is what is probed;
+ * the certificate's expiry is `cogeto status`'s job, which has openssl.
+ *
+ * The probe speaks no further SMTP: it never issues MAIL FROM, so it cannot
+ * be mistaken for a delivery and leaves nothing behind.
+ */
+export async function probeSmtpStartTls(
+  address: string,
+  timeoutMs = 3000,
+): Promise<{ ok: boolean; startTls?: boolean; error?: string }> {
+  const [host, portRaw] = address.split(':');
+  const port = Number(portRaw ?? 25);
+  if (!Number.isFinite(port) || port <= 0) {
+    return { ok: false, error: `malformed address '${address}'` };
+  }
+  return new Promise((resolve) => {
+    let buffer = '';
+    let greeted = false;
+    let settled = false;
+    const socket = connect({ host: host || '127.0.0.1', port });
+    const done = (result: { ok: boolean; startTls?: boolean; error?: string }): void => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve(result);
+    };
+    socket.setTimeout(timeoutMs);
+    socket.on('connect', () => socket.write('EHLO cogeto-health\r\n'));
+    socket.on('data', (chunk) => {
+      buffer += chunk.toString('utf8');
+      if (!greeted) {
+        // The 220 greeting arrives first; the EHLO reply follows it.
+        if (!/^220[ -]/m.test(buffer)) return;
+        greeted = true;
+        buffer = buffer.replace(/^220[\s\S]*?\r?\n/, '');
+      }
+      // A multiline EHLO reply ends with a space (not a hyphen) after the code.
+      if (!/^\d{3} /m.test(buffer)) return;
+      done({ ok: true, startTls: /^250[ -]STARTTLS\r?$/im.test(buffer) });
+    });
+    socket.on('timeout', () =>
+      done({ ok: false, error: greeted ? 'no EHLO reply' : 'connect timeout' }),
+    );
+    socket.on('error', (error) =>
+      done({ ok: false, error: error instanceof Error ? error.message : String(error) }),
+    );
+    socket.on('close', () => done({ ok: false, error: 'closed before the EHLO reply' }));
   });
 }
 

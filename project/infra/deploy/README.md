@@ -8,8 +8,8 @@ never builds**: this stack has no `build:` keys.
 
 | File | Purpose |
 | --- | --- |
-| `docker-compose.deploy.yml` | The customer stack: `cogeto/cogeto`, `cogeto/cogeto-edge`, `cogeto/cogeto-mail` at `${COGETO_VERSION}`, digest-pinned infra, secrets **required** (`${VAR:?}`), `COGETO_PRODUCTION=1`, Qdrant API-key auth always on. No demo / dev-seed / consoles / redaction profiles. |
-| `Caddyfile` | Production edge: real-domain vhost + `s3.<domain>` presign origin, Let's Encrypt ACME, same routing and CSP as the dev Caddyfile. Mounted over the baked-in dev one. |
+| `docker-compose.deploy.yml` | The customer stack: `cogeto/cogeto`, `cogeto/cogeto-edge`, `cogeto/cogeto-mail`, `cogeto/cogeto-redaction` at `${COGETO_VERSION}`, digest-pinned infra, secrets **required** (`${VAR:?}`), `COGETO_PRODUCTION=1`, Qdrant API-key auth always on. Three optional profiles: `research`, `mail` (with its `mail-tls-sync` companion) and `redaction`. No demo / dev-seed / consoles profiles: those images are never published. |
+| `Caddyfile` | Production edge: real-domain vhost + `s3.<domain>` presign origin + an ACME-only vhost for `mail.<domain>` (inert unless email capture is on), Let's Encrypt ACME, same routing and CSP as the dev Caddyfile. Mounted over the baked-in dev one. |
 
 The operator script fetches these files (plus
 `project/infra/docker/zitadel-init/init.mjs`) from the release tag that matches

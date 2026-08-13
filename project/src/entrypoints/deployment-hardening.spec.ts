@@ -75,20 +75,60 @@ describe('deployment hardening', () => {
     expect(redactionDockerfile).toMatch(/FROM python@sha256:[0-9a-f]{64}/);
   });
 
-  it('no image comment claims a tag that names no release (SEC-35)', () => {
-    // A digest pinned against `# something:latest` is unauditable: the running
-    // version cannot be recovered, so no advisory can be matched to it.
-    for (const [name, text] of [
+  it('every digest pin records the real tag it resolves to (SEC-35, tightened by issue #568)', () => {
+    // A digest is unauditable on its own: without the tag it resolves to, the
+    // running version cannot be recovered, so no advisory can be matched to
+    // it. This check used to reject exactly one bad shape — a
+    // `# something:latest` comment, which names no release — and let the WORSE
+    // case through: no comment at all. The SearXNG pin had none in either
+    // compose file and passed CI for its whole life. Both now fail.
+    const pinFiles = [
       ['docker-compose.yml', compose],
       ['docker-compose.deploy.yml', deployCompose],
       ['Dockerfile', dockerfile],
       ['services/mail/Dockerfile', mailDockerfile],
       ['services/redaction/Dockerfile', redactionDockerfile],
-    ] as const) {
+    ] as const;
+
+    for (const [name, text] of pinFiles) {
       const floating = text
         .split('\n')
         .filter((l) => l.trim().startsWith('#') && /\b[\w./-]+:latest\b/.test(l));
       expect(floating, `${name} pins a digest against a :latest comment`).toEqual([]);
+    }
+
+    // A `name:tag` token in the contiguous comment block directly above the
+    // pin. Every digest in this repository is introduced by such a block, so
+    // that is both where the tag belongs and where a reader looks. `:latest`
+    // is already rejected above, so any token found here names a real release.
+    const TAG_TOKEN = /(?:^|\s)[\w][\w./-]*:[\w][\w.+-]*(?:\s|$)/;
+    for (const [name, text] of pinFiles) {
+      const lines = text.split('\n');
+      let checked = 0;
+      for (const [index, line] of lines.entries()) {
+        const trimmed = line.trim();
+        const isPin =
+          /@sha256:[0-9a-f]{64}/.test(trimmed) &&
+          (trimmed.startsWith('image:') || trimmed.startsWith('FROM '));
+        if (!isPin) continue;
+        checked += 1;
+        let tagged = false;
+        for (let above = index - 1; above >= 0; above -= 1) {
+          const candidate = lines[above]!.trim();
+          if (!candidate.startsWith('#')) break;
+          if (TAG_TOKEN.test(candidate.replace(/^#+/, ''))) {
+            tagged = true;
+            break;
+          }
+        }
+        expect(
+          tagged,
+          `${name}:${index + 1} pins a digest with no recorded tag comment above it: ${trimmed}. ` +
+            `Add a '# <image>:<tag>' line naming the release the digest resolves to ` +
+            `(docs/operations/image-pins.md).`,
+        ).toBe(true);
+      }
+      expect(checked, `${name} declares no digest pins — did the walk break?`).toBeGreaterThan(0);
     }
   });
 
@@ -276,8 +316,13 @@ describe('deployment hardening', () => {
         expect(serviceBlock(text, 'worker')).toMatch(/mem_limit: 3g/);
         expect(serviceBlock(text, 'postgres')).toMatch(/mem_limit: 2g/);
         expect(serviceBlock(text, 'qdrant')).toMatch(/mem_limit: 2g/);
+        // The redaction sidecar is in BOTH files since issue #565, and the
+        // ceiling the SEC-17 note budgets for it must be the one it gets: the
+        // sidecar is the single largest addition to a customer instance's
+        // footprint, so an under-budgeted cap here OOM-kills the capability
+        // that is supposed to keep PII on the box.
+        expect(serviceBlock(text, 'redaction')).toMatch(/mem_limit: 2g/);
       }
-      expect(serviceBlock(compose, 'redaction')).toMatch(/mem_limit: 2g/);
     });
 
     it('SEC-28: security headers are applied to /api/* as well as the SPA', () => {

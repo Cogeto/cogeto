@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { createModelGateway, OLLAMA_TIMEOUT_DEFAULTS_MS } from '../../model-gateway/index';
+import { createModelGateway, SELF_HOSTED_TIMEOUT_DEFAULTS_MS } from '../../model-gateway/index';
 import { resolveFromRecords } from './resolve';
 import { sealSecret } from '../../infrastructure/index';
 import type { ProviderRecordWithSecret } from '../persistence/provider-store';
@@ -35,7 +35,7 @@ const base = {
   masterKey: null as Buffer | null,
   redacted: false,
   reasoningHeadroom: 4,
-  timeoutsMs: OLLAMA_TIMEOUT_DEFAULTS_MS,
+  timeoutsMs: SELF_HOSTED_TIMEOUT_DEFAULTS_MS,
   answerOptions: [] as ModelAnswerOptionRow[],
 };
 

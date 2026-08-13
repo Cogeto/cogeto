@@ -28,14 +28,54 @@ the project.
 ## The optional redaction layer
 
 For deployments that must not send raw personal data to any external API, the
-redaction profile (`--profile redaction`) inserts a **local, CPU-only NER
-sidecar** in front of the model seam. When it is on, a decorator around the gateway:
+redaction profile inserts a **local, CPU-only NER sidecar** in front of the
+model seam. When it is on, a decorator around the gateway:
 
 - **Pseudonymizes** recognized entities in every outbound request: completion,
  extraction, **and embeddings**: before the request reaches the provider, and
  **re-identifies** the response on the way back.
 - **Fails closed.** If the sidecar is unreachable, the call fails rather than
  sending plaintext. Real text is never sent as a fallback.
+
+### How to turn it on, and where it runs
+
+**On a customer instance** (the supported deployment path):
+
+```sh
+sudo cogeto features enable redaction
+```
+
+That adds the `redaction` profile, sets `REDACTION_ENABLED=1` and
+`REDACTION_REQUIRED=1` (so the instance refuses to boot without the sidecar
+rather than quietly regressing to plaintext), pulls the signed
+`cogeto/cogeto-redaction` image and verifies its cosign signature, and waits
+for the sidecar to report healthy. On a source checkout the equivalent is
+`REDACTION_ENABLED=1 docker compose --profile redaction up --build`.
+
+Once it is on, `/api/health` and the System panel report the `redaction`
+capability, and an unreachable sidecar is a **loud** state there, not a silent
+one, because that is precisely when model calls start failing.
+
+**Availability, stated plainly, because it used to be stated wrongly.** Until
+issue #565 this section described the posture with no caveat while the sidecar
+was reachable only on a source checkout: its image was never published, and the
+deploy compose (which forbids building from source by design) carried no
+`redaction` profile and did not even pass `REDACTION_ENABLED` to the
+application, so setting it by hand on a customer box did nothing. The image is
+now built, pushed, cosign-signed and SBOM-attested by the release pipeline
+beside the other three, and the profile is in the customer compose. A customer
+instance can run this.
+
+### What it costs to run
+
+Two costs an operator should decide about before enabling it, not after:
+
+- **Memory.** Roughly 0.7 to 1 GB resident for the spaCy `en_core_web_lg`
+ model, capped at 2 GB. It is the single largest addition to an instance's
+ footprint; the 8 GB minimum already budgets for it.
+- **Retrieval quality**, quantified in the next section. Because vectors are
+ built from pseudonymized text, this is an **instance-lifetime** setting:
+ switching later means a reindex.
 
 Embeddings are deliberately redacted too. The tempting shortcut:
 "the vector store is local, so skip embeddings", is wrong: Qdrant is local, but

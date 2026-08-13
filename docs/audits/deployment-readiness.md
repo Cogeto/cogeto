@@ -23,7 +23,28 @@ language of environment-configured models, so the documented recovery for
 Counts: **1 BLOCKER, 6 HIGH, 9 MEDIUM, 6 LOW** (22 findings). Top three: F1
 (upgrade takes an instance down), F2 (the documented model-key recovery is a
 no-op), F4 (the mail STARTTLS procedure needs a certificate that is never issued
-and a compose file that does not exist on the instance).
+and a compose file that does not exist on the instance). **Twelve are resolved
+across two remediation waves; see the two status sections below.**
+
+### Remediation status, wave 2 (2026-08-13, `fix/deploy-channel-parity`)
+
+The deployment path now delivers what the documentation promises. Three
+capabilities were documented as available and were not: local PII redaction,
+inbound-mail STARTTLS, and several live configuration knobs.
+
+| Finding | Status |
+|---|---|
+| F4 | **Resolved.** The producing half of the original inbound-TLS design is built. The deploy Caddyfile carries an ACME-only vhost for `{$COGETO_MAIL_TLS_SITE}` (`mail.<domain>`, from the operator script's existing `derive_mx_host`), which falls back to an inert `http://mail-tls-disabled.invalid` placeholder when email capture is off, so an instance without mail orders nothing. A `mail-tls-sync` sidecar (the edge image, `mail` profile, `caddy-data` read-only) copies the certificate into the `mail-tls` volume owned `1000:1000`, only when it changed; the mail entrypoint watches its own copy and exits so compose restarts it with the new material. No Docker socket, no host cron, and it survives an upgrade because it ships in the re-fetched compose file. The dedicated-volume boundary is unchanged and asserted. `cogeto status` reports whether STARTTLS is actually advertised and when the certificate expires; the `mail` capability probe now does an SMTP EHLO instead of a bare TCP connect and names a cleartext posture. The runbook procedure (including its wrong compose filename) is replaced, and the five documents that disagreed now point at one description in `operations/email-inbound.md`, which also documents the operator-supplied-certificate override and the ownership requirement that was the silent trap. |
+| F5 | **Resolved.** `cogeto/cogeto-redaction` is built, pushed, cosign-signed and SBOM-attested by the release pipeline exactly like the other three images; the `redaction` profile is in the deploy compose (internal-only, no published port, the dev healthcheck, the 2g ceiling the file's own comment budgets); and `REDACTION_ENABLED` / `REDACTION_URL` / `REDACTION_REQUIRED` are in the shared environment anchor, so both the app and the worker receive them. The operator script's refusal is gone: `features enable redaction` pulls and verifies the image and prints the memory footprint and the retrieval trade-off. The security document and `.env.example` say what is now true. The test fixtures that asserted the opposite (a two-entry profile list, no `redaction:` block) are replaced by assertions encoding the new intent. |
+| F6 | **Resolved.** The environment-consistency check is widened on all three axes: it walks `project/src`, `project/web/src`, `project/services/mail`, `project/services/redaction`, `project/infra/docker/zitadel-init` and `scripts/`; it recognises the accessor forms (`read(env, 'NAME')`, the indexed form, the declarative `{ env: 'NAME' }` list, Python `os.environ`, and shell `${NAME}`); and it tracks every prefix in use, not `COGETO_` alone. A new rule catches the class rather than the instances: a variable read by code and passed by the dev compose must be passed by the deploy compose too, unless excepted with a recorded reason. A guard test asserts the widened walk still sees each formerly invisible tree. |
+| F7 | **Resolved.** The deploy compose passes `COGETO_MODEL_TIMEOUT_{PIPELINE,ANSWER,EMBEDDINGS,VISION}_MS` and `COGETO_REASONING_HEADROOM`. The duplicate-name situation is resolved by REMOVING the alias: `COGETO_OLLAMA_TIMEOUT_*_MS` is no longer read by `readTimeoutMs`, is gone from both composes, and is inert (asserted). Two names for one setting is how this drift began, and the retired name is the one that describes a runtime the setting stopped being about. |
+| F21 | **Resolved.** `COGETO_DEMO_DAILY_UPLOAD_MAX` is removed from the deploy compose, and the absence of the whole `COGETO_DEMO*` family from it is now asserted rather than merely excused by the blanket exception that let this through. |
+| F18 | **Resolved incidentally.** The image-pinning guard now fails a digest with NO tag comment, not only one pinned against `:latest`, and the SearXNG digest carries its real tag (`searxng/searxng:2026.7.19-6da6eee26`, resolved from the digest via the Docker Hub tag API; the digest is unchanged). |
+| F19 | **Resolved incidentally.** `ZITADEL_BOOTSTRAP_MACHINE_USERNAME` and `ZITADEL_BOOTSTRAP_STATE_FILE` are passed by both composes with the defaults `init.mjs` already used, so the state file's path is knowable without reading the source. Behaviour is unchanged; the widened check surfaced them. |
+
+Not addressed here, and still open: F11 (container privilege hardening), F12
+(empty SearXNG secret), F13/F14 (server-side copy and translation coverage),
+F15/F16/F22 and the remaining documentation items, F17, F20.
 
 ### Remediation status (2026-08-13, `fix/model-config-ui-only`)
 
@@ -40,8 +61,8 @@ normal, honest first-run state.
 | F3 | **Resolved.** `cogeto features enable local-models` is gone; the verb is refused with the explanation that a local runtime is an ordinary provider record configured in the interface. The `local-models` capability entry (which keyed off a deleted variable) is removed from the registry; a new `models` entry reports the configuration honestly. |
 | F8 | **Resolved.** The runbook's Ollama section describes the interface as the only mechanism (provider record + managed rebuild); no `.env` model edit survives anywhere in the runbook. |
 | F20 | **Resolved.** The unprefixed `MISTRAL_*` fallbacks are removed everywhere, including the eval harness's resolver; a structural spec (`model-config-env.spec.ts`) forbids their reappearance. The CI/release workflows now map the `MISTRAL_API_KEY` repo secret into `COGETO_MISTRAL_API_KEY` for the eval jobs. |
-| F7 | **Partially resolved.** The seed-only halves of the variable families are deleted from both composes, and `COGETO_OLLAMA_TIMEOUT_*_MS` stays wired as the live legacy alias the code still honours. What remains for the deploy-channel prompt: wiring `COGETO_MODEL_TIMEOUT_*` and `COGETO_REASONING_HEADROOM` into the deploy compose (the `.env.example` duplicate documentation of the headroom is already removed). |
-| F6 | **Open by design.** The environment-consistency check's structural blind spots are scheduled for the deploy-channel prompt; noted so it is not forgotten. |
+| F7 | **Partially resolved here; fully resolved in wave 2 above.** The seed-only halves of the variable families were deleted from both composes, leaving `COGETO_OLLAMA_TIMEOUT_*_MS` as the wired alias. |
+| F6 | **Deferred here; resolved in wave 2 above.** The environment-consistency check's structural blind spots were scheduled for the deploy-channel work; noted so they were not forgotten. |
 
 Not examined: cosign verification and Docker Hub tag resolution (need published
 release artifacts); a real Ubuntu install run; OVHcloud panel steps; live evals.
@@ -91,7 +112,7 @@ handled by `scripts/operator/cogeto`. 166 variables.
 | COGETO_DEMO_DAILY_CAPTURE_MAX | Y | Y | Y | n | n | demo-only |
 | COGETO_DEMO_DAILY_RESEARCH_PAGES | Y | Y | Y | n | n | demo-only |
 | COGETO_DEMO_DAILY_RESEARCH_SEARCHES | Y | Y | Y | n | n | demo-only |
-| COGETO_DEMO_DAILY_UPLOAD_MAX | Y | Y | Y | Y | n | **demo knob leaked into the deploy compose** (F21) |
+| COGETO_DEMO_DAILY_UPLOAD_MAX | Y | Y | Y | n | n | demo-only (F21 resolved: removed from the deploy compose) |
 | COGETO_DEMO_DIR | Y | n | n | n | n | test-only, allowlisted |
 | COGETO_DEMO_MODE | Y | Y | Y | n | Y | ok |
 | COGETO_DEMO_MODEL_DAILY_CALLS | Y | Y | Y | n | n | demo-only |
@@ -124,7 +145,8 @@ handled by `scripts/operator/cogeto`. 166 variables.
 | COGETO_MAIL_MAX_BYTES | Y | Y | Y | Y | n | ok |
 | COGETO_MAIL_REQUIRE_SPF | Y | Y | Y | Y | n | ok |
 | COGETO_MAIL_SMTP_ADDRESS | Y | Y | Y | Y | n | ok |
-| COGETO_MAIL_TLS_CERT / _KEY | Y | Y | Y | Y | n | wired, but the cert is never issued (F4) |
+| COGETO_MAIL_TLS_CERT / _KEY | Y | Y | Y | Y | n | ok (F4 resolved: the cert is issued and propagated automatically) |
+| COGETO_MAIL_TLS_SITE | n | Y | n | Y | Y | edge-only; set by `features enable mail` from `derive_mx_host` (F4) |
 | COGETO_MASTER_KEY | Y | Y | Y | Y | Y | **install generates it; upgrade does not** (F1) |
 | COGETO_MIGRATE_DB_PASSWORD | Y | Y | Y | Y | Y | ok |
 | COGETO_MIGRATIONS_DIR | Y | Y | Y | Y | n | ok |
@@ -134,14 +156,14 @@ handled by `scripts/operator/cogeto`. 166 variables.
 | COGETO_MODEL_ANSWER / _PIPELINE / _EMBEDDINGS | Y | n | Y | Y | n | legacy seed-only; correct by design |
 | COGETO_MODEL_DAILY_CALLS / _TOKENS | Y | Y | Y | Y | n | ok |
 | COGETO_MODEL_GRADER / COGETO_PROVIDER_GRADER | Y | Y | n | n | n | eval-only, allowlisted |
-| COGETO_MODEL_TIMEOUT_ANSWER_MS | Y | Y | Y | **n** | n | **documented live knob dropped by the deploy compose** (F7) |
+| COGETO_MODEL_TIMEOUT_ANSWER_MS | Y | Y | Y | Y | n | ok (F7 resolved) |
 | COGETO_MODEL_TIMEOUT_EMBEDDINGS_MS | Y | Y | Y | **n** | n | same (F7) |
 | COGETO_MODEL_TIMEOUT_PIPELINE_MS | Y | Y | Y | **n** | n | same (F7) |
 | COGETO_MODEL_TIMEOUT_VISION_MS | Y | Y | Y | **n** | n | same (F7) |
 | COGETO_MODEL_VISION / COGETO_PROVIDER_VISION | Y | n | Y | n | n | legacy seed-only; dev-only leftover |
 | COGETO_OIDC_EXTERNAL_DOMAIN / _INTERNAL_URL / _ISSUER | Y | n | Y | Y | n | compose-derived; ok |
 | COGETO_OLLAMA_API_KEY / _BASE_URL | Y | n | Y | Y | Y | legacy seed-only; `features enable local-models` writes it uselessly (F3) |
-| COGETO_OLLAMA_TIMEOUT_*_MS (4) | Y | n | Y | Y | n | **legacy alias is wired in deploy while the current name is not** (F7) |
+| COGETO_OLLAMA_TIMEOUT_*_MS (4) | n | n | n | n | n | RETIRED (F7): the alias is removed from the code and both composes |
 | COGETO_OPENAI_API_KEY / _BASE_URL | Y | n | Y | Y | n | legacy seed-only; correct by design |
 | COGETO_PARSE_* (6) | Y | Y | Y | Y | n | ok |
 | COGETO_PG_POOL_MAX | Y | Y | Y | Y | n | ok |
@@ -152,7 +174,7 @@ handled by `scripts/operator/cogeto`. 166 variables.
 | COGETO_QDRANT_API_KEY | Y | Y | Y | Y | Y | ok (`:?` in deploy) |
 | COGETO_QDRANT_URL | Y | n | Y | Y | n | compose-fixed; ok |
 | COGETO_RATELIMIT_* (5) | Y | Y | Y | Y | n | ok |
-| COGETO_REASONING_HEADROOM | Y | Y | Y | **n** | n | **documented live knob dropped by the deploy compose** (F7) |
+| COGETO_REASONING_HEADROOM | Y | Y | Y | Y | n | ok (F7 resolved) |
 | COGETO_REASONING_PROBE_TIMEOUT_MS | Y | Y | Y | Y | n | ok |
 | COGETO_REPORT_BRAND_DIR / _FONTS_DIR | Y | Y | Y | Y | n | ok |
 | COGETO_RESEARCH_* (6) | Y | Y | Y | Y | n | ok |
@@ -177,15 +199,15 @@ handled by `scripts/operator/cogeto`. 166 variables.
 | MINIO_ROOT_PASSWORD / _USER | Y | Y | Y | Y | Y | ok |
 | MISTRAL_API_KEY / MISTRAL_MODEL_* / MISTRAL_EMBED_MODEL | Y | n | n | n | n | unprefixed pre-1.0 fallbacks, documented nowhere (F20) |
 | POSTGRES_PASSWORD | Y | Y | Y | Y | Y | ok |
-| REDACTION_ENABLED | Y | Y | Y | **n** | Y | **profile absent from deploy** (F5) |
-| REDACTION_REQUIRED | Y | Y | Y | **n** | Y | same (F5) |
-| REDACTION_URL | Y | Y | Y | **n** | n | same (F5) |
-| REDACTION_SPACY_MODEL | n | Y | Y | n | n | mapped to the sidecar's `SPACY_MODEL`; dev-only |
+| REDACTION_ENABLED | Y | Y | Y | Y | Y | ok (F5 resolved: the profile and the variable are in the deploy channel) |
+| REDACTION_REQUIRED | Y | Y | Y | Y | Y | ok (F5 resolved) |
+| REDACTION_URL | Y | Y | Y | Y | n | ok (F5 resolved) |
+| REDACTION_SPACY_MODEL | n | Y | Y | Y | n | mapped to the sidecar's `SPACY_MODEL`, on both stacks (F5) |
 | SEARXNG_SECRET | Y | Y | Y | Y | Y | **defaults to empty in deploy; preflight skips empty** (F12) |
 | ZITADEL_ADMIN_PASSWORD / _USERNAME | Y | Y | Y | Y | Y | ok |
-| ZITADEL_BOOTSTRAP_MACHINE_USERNAME | Y | n | n | n | n | `init.mjs:39`; always falls to its default (F19) |
+| ZITADEL_BOOTSTRAP_MACHINE_USERNAME | Y | n | Y | Y | n | ok (F19 resolved: wired in both composes at its default) |
 | ZITADEL_BOOTSTRAP_PAT_EXPIRY | Y | Y | Y | Y | Y | ok |
-| ZITADEL_BOOTSTRAP_STATE_FILE | Y | n | n | n | n | `init.mjs:40`; always falls to its default (F19) |
+| ZITADEL_BOOTSTRAP_STATE_FILE | Y | n | Y | Y | n | ok (F19 resolved: wired in both composes at its default) |
 | ZITADEL_DB_ADMIN_PASSWORD / _DB_PASSWORD | Y | Y | Y | Y | Y | ok |
 | ZITADEL_EXTERNAL_DOMAIN / _INTERNAL_URL / _PAT_FILE | Y | n | Y | Y | n | compose-fixed; ok |
 | ZITADEL_MASTERKEY | Y | Y | Y | Y | Y | ok |
@@ -675,11 +697,11 @@ Ordered so blockers clear first. Sizes are relative effort, not calendar.
 |---|---|---|---|---|
 | 1 | **Unblock the upgrade path**: backfill `COGETO_MASTER_KEY` in `ensure_wave3_secrets`, correct `upgrade-notes.md:68`. | F1 | S | code |
 | 2 | **Stop the operator tooling writing ignored model variables**: refuse or route `configure --mistral-key` and `features enable local-models` through the providers API; fix the install checklist TODO and the runbook troubleshooting row. | F2, F3 | M | code |
-| 3 | **Make the deploy compose deliver what is documented**: add `COGETO_MODEL_TIMEOUT_*` and `COGETO_REASONING_HEADROOM`, drop `COGETO_DEMO_DAILY_UPLOAD_MAX`, and widen the env-consistency spec so this class cannot recur. | F7, F21, F6 | M | code |
-| 4 | **Fix the mail STARTTLS path**: add a `mail.<domain>` vhost to the deploy Caddyfile (regenerating `deploy-assets.sha256` in the same change) and correct the runbook's compose filename. | F4 | M | code + docs |
-| 5 | **Tell the truth about redaction and capabilities**: state the deploy-channel limitation in the security doc and `.env.example`; align `FEATURE_IDS`, the runbook list and `deployment.md`. | F5, F15, F16 | S | docs (owner) |
+| 3 | ~~**Make the deploy compose deliver what is documented**~~ **DONE** (wave 2). | F7, F21, F6 | M | code |
+| 4 | ~~**Fix the mail STARTTLS path**~~ **DONE** (wave 2), by building the producing half rather than documenting a copy. | F4 | M | code + docs |
+| 5 | **Tell the truth about redaction and capabilities.** F5 is **DONE** (wave 2), and the owner's ruling was to remove the limitation rather than document it: redaction is published and available on a customer instance. F15/F16 remain. | F5, F15, F16 | S | docs (owner) |
 | 6 | **Runbook and upgrade-note corrections**: Ollama section, the self-contradiction about reindex, the restore DNS count, the "past 2.0" section title, the script header, the Zitadel bootstrap variables. | F8, F9, F10, F19, F22 | S | docs |
 | 7 | **Container privilege hardening** in both composes, plus the empty-SearXNG-secret refusal. | F11, F12 | M | code |
 | 8 | **Server-side copy**: route user-facing API errors through the server catalogue and extend the i18n guard to cover them. | F13 | L | code |
 | 9 | **Finish or gate the translations** for the six English-only namespaces (631 keys x 3 locales). | F14 | L | owner |
-| 10 | **Housekeeping**: delete `eval/trust-scores/file`, add the SearXNG tag comment and tighten the pin spec, remove the unprefixed `MISTRAL_*` fallbacks, fix the one broken doc link. | F17, F18, F20 | S | code + owner |
+| 10 | **Housekeeping**: delete `eval/trust-scores/file` (F17, open), ~~add the SearXNG tag comment and tighten the pin spec~~ **DONE** (wave 2, F18), remove the unprefixed `MISTRAL_*` fallbacks (F20, done in wave 1), fix the one broken doc link. | F17, F18, F20 | S | code + owner |

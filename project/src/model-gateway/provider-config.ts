@@ -205,8 +205,12 @@ export const PROVIDER_PRESETS: Record<string, PresetTiers> = {
   },
 };
 
-/** Ruling 2 defaults: generation tiers 5 min, embeddings 2 min. */
-export const OLLAMA_TIMEOUT_DEFAULTS_MS = {
+/**
+ * Ruling 2 defaults for a SELF-HOSTED endpoint: generation tiers 5 min,
+ * embeddings 2 min. Named for what they are rather than for Ollama, which is
+ * one such endpoint among several (issue #567).
+ */
+export const SELF_HOSTED_TIMEOUT_DEFAULTS_MS = {
   pipeline: 300_000,
   answer: 300_000,
   embedding: 120_000,
@@ -568,29 +572,29 @@ export function resolveEvalProvidersFromEnv(
   };
 }
 
-/** Per-tier local timeout, independently settable. */
 /**
- * A tier's timeout, from the provider-neutral variable, the legacy Ollama one,
- * or the default.
+ * A tier's timeout, from its provider-neutral variable or the default.
  *
- * The `COGETO_OLLAMA_TIMEOUT_*` names are still honoured because they are
- * documented and in use; they simply stopped being about Ollama when a
- * self-hosted OpenAI-compatible server turned out to need exactly the same
- * treatment.
+ * ONE NAME PER SETTING (issue #567). The `COGETO_OLLAMA_TIMEOUT_*` alias was
+ * honoured here alongside `COGETO_MODEL_TIMEOUT_*` for the same four values,
+ * and that duplication is exactly how the deploy channel drifted: the deploy
+ * compose wired the alias while omitting the documented name, so an operator
+ * raising the documented timeout changed nothing. The alias is removed rather
+ * than kept, because it names a runtime the setting stopped being about and
+ * because no instance carries it (the timeout applies to any self-hosted
+ * endpoint, never only to Ollama).
  */
 function readTimeoutMs(
   env: NodeJS.ProcessEnv,
   name: string,
-  tier: keyof typeof OLLAMA_TIMEOUT_DEFAULTS_MS,
+  tier: keyof typeof SELF_HOSTED_TIMEOUT_DEFAULTS_MS,
 ): number {
-  const legacyName = name.replace('COGETO_MODEL_TIMEOUT_', 'COGETO_OLLAMA_TIMEOUT_');
-  const raw = read(env, name) ?? read(env, legacyName);
-  if (raw === undefined) return OLLAMA_TIMEOUT_DEFAULTS_MS[tier];
+  const raw = read(env, name);
+  if (raw === undefined) return SELF_HOSTED_TIMEOUT_DEFAULTS_MS[tier];
   const value = Number(raw);
   if (!Number.isInteger(value) || value <= 0) {
     throw new ModelProviderConfigError(
-      `${read(env, name) !== undefined ? name : legacyName}="${raw}" is not a positive ` +
-        `integer number of milliseconds`,
+      `${name}="${raw}" is not a positive integer number of milliseconds`,
     );
   }
   return value;
