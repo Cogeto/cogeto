@@ -65,7 +65,7 @@ export async function probeLocalRuntime(
       error:
         `Ollama runtime unreachable at ${baseUrl} ` +
         `(${error instanceof Error ? error.message : String(error)}), check that the runtime is ` +
-        `up and that this container can reach the address in COGETO_OLLAMA_BASE_URL, ` +
+        `up and that this container can reach the runtime address on the provider record, ` +
         `then start again.`,
     };
   }

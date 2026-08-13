@@ -195,11 +195,17 @@ export class UnconfiguredModelGateway extends ModelGateway {
   embeddingModelId(): string {
     throw new ModelGatewayNotConfiguredError();
   }
-  // Not an error state for health: an instance may deliberately run
-  // without a model key; report "not configured" but stay ok so it doesn't
-  // degrade the whole instance.
+  // Not an error state for health: no provider configured is the normal
+  // first-run state, distinct from a misconfigured or unreachable provider
+  // (those come from a real gateway's probe and fail). Report it plainly and
+  // stay ok so it does not degrade the whole instance.
   override async reachable(): Promise<GatewayReachability> {
-    return { ok: true, detail: 'model gateway not configured, model features disabled' };
+    return {
+      ok: true,
+      detail:
+        'no model provider configured; model features are off until an administrator ' +
+        'adds one under Providers',
+    };
   }
 }
 

@@ -4,10 +4,15 @@ export { ModelGateway } from './model-gateway.service';
 export { MistralModelGateway } from './mistral.gateway';
 // Provider adapters — exported for tests; production always
 // composes them through createModelGateway + the configuration resolver.
-// Per-instance provider configuration: ONE resolver
-// for app, worker, bare entrypoints and the eval harness.
+// Model configuration surface. The DATABASE is the only source on a running
+// instance; `resolveEvalProvidersFromEnv` belongs to the eval harness and the
+// dev smoke tools alone, and `resolveRuntimeModelSettings` reads the two
+// deployment knobs (self-hosted timeouts, reasoning headroom) that remain
+// environment configuration.
 export {
-  resolveModelProviders,
+  resolveEvalProvidersFromEnv,
+  resolveRuntimeModelSettings,
+  unconfiguredModelProviders,
   PROVIDER_PRESETS,
   MODEL_PROVIDER_IDS,
   EMBEDDING_CAPABLE,

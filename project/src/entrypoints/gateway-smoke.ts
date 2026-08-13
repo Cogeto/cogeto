@@ -1,10 +1,10 @@
 import { z } from 'zod';
-import { createModelGateway, loadPrompt, resolveModelProviders } from '../model-gateway/index';
+import { createModelGateway, loadPrompt, resolveEvalProvidersFromEnv } from '../model-gateway/index';
 import { redactionFromEnv } from './config';
 
 /**
  * gateway:smoke — proves the model-gateway round trip (§5).
- * With COGETO_MISTRAL_API_KEY (or MISTRAL_API_KEY) set: runs a trivial structured
+ * With COGETO_MISTRAL_API_KEY set: runs a trivial structured
  * extraction through the versioned smoke prompt and prints the validated result.
  * Without a key: prints a clear skip message and exits 0.
  */
@@ -17,7 +17,7 @@ const INPUT = 'Ana will send the revised proposal to Marko after he confirms the
 
 async function main(): Promise<void> {
   const redaction = redactionFromEnv();
-  const providers = resolveModelProviders(process.env, { redacted: redaction !== undefined });
+  const providers = resolveEvalProvidersFromEnv(process.env, { redacted: redaction !== undefined });
   if (!providers.configured) {
     console.log(
       'gateway:smoke SKIPPED, set COGETO_MISTRAL_API_KEY (or a COGETO_PROVIDER_* ' +

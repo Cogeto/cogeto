@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { assertLocalRuntimeReady, modelAvailable } from './local-runtime';
-import { resolveModelProviders } from './provider-config';
+import { resolveEvalProvidersFromEnv } from './provider-config';
 
 /**
  * boot_probe: an unreachable local runtime or a
@@ -9,7 +9,7 @@ import { resolveModelProviders } from './provider-config';
  */
 
 const providers = (vars: Record<string, string>) =>
-  resolveModelProviders(vars as NodeJS.ProcessEnv, { redacted: false });
+  resolveEvalProvidersFromEnv(vars as NodeJS.ProcessEnv, { redacted: false });
 
 const OLLAMA_ENV = {
   COGETO_PROVIDER_PRESET: 'ollama-local',
@@ -27,7 +27,7 @@ afterEach(() => {
 });
 
 describe('boot_probe', () => {
-  it('an unreachable runtime fails startup naming the URL and the variable', async () => {
+  it('an unreachable runtime fails startup naming the URL and where it is configured', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(() => {
@@ -35,7 +35,7 @@ describe('boot_probe', () => {
       }),
     );
     await expect(assertLocalRuntimeReady(providers(OLLAMA_ENV))).rejects.toThrow(
-      /Ollama runtime unreachable at http:\/\/10\.0\.0\.1:11434 .*COGETO_OLLAMA_BASE_URL/,
+      /Ollama runtime unreachable at http:\/\/10\.0\.0\.1:11434 .*runtime address on the provider record/,
     );
   });
 

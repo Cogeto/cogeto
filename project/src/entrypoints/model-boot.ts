@@ -11,8 +11,8 @@ import type { CogetoConfig } from './config';
  * Put the DATABASE's model configuration in force (V2.4 item 7.1).
  *
  * Called by every process that talks to a model, before anything is built. It
- * seeds the environment in once (the first start after the upgrade), then
- * replaces `config.modelProviders` with what the instance actually runs, so
+ * replaces `config.modelProviders` (the boot placeholder, which carries only
+ * the environment's runtime knobs) with what the instance actually runs, so
  * every consumer downstream — the gateway, the embedding guard, the capability
  * registry, the reports, the boot log — reads one object and cannot disagree.
  *
@@ -21,8 +21,9 @@ import type { CogetoConfig } from './config';
  *
  * A process that cannot reach the database does not start, which is already
  * true of every process here for other reasons; there is deliberately no
- * "fall back to the environment" path, because falling back would mean an
- * instance quietly running a configuration its admin replaced.
+ * "fall back to the environment" path, because the environment holds no model
+ * configuration at all: providers are configured in the interface, and an
+ * instance with none boots cleanly with model features off.
  */
 export async function installModelConfiguration(
   config: CogetoConfig,
@@ -30,24 +31,13 @@ export async function installModelConfiguration(
 ): Promise<LiveModelConfiguration> {
   const pool = new Pool({ connectionString: config.databaseUrl, max: 1 });
   try {
-    const loaded = await loadModelConfiguration(createDb(pool), {
-      environment: config.modelProviders,
+    const providers = await loadModelConfiguration(createDb(pool), {
       masterKey: config.masterKey,
       redacted: config.redactionEnabled,
       reasoningHeadroom: config.modelProviders.reasoningHeadroom,
       timeoutsMs: config.modelProviders.timeoutsMs,
     });
-    if (loaded.seeded) {
-      logger?.info(
-        { providers: loaded.seededProviders, configuration: loaded.providers.id },
-        loaded.seededProviders > 0
-          ? `model configuration seeded from the environment into the database ` +
-              `(${loaded.seededProviders} provider(s)); the COGETO_MODEL_* and ` +
-              `COGETO_PROVIDER_* variables are ignored from now on and may be removed`
-          : 'no model configuration in the environment to seed; configure providers in Settings',
-      );
-    }
-    const live = new LiveModelConfiguration(loaded.providers);
+    const live = new LiveModelConfiguration(providers);
     // The config object now CARRIES the live object rather than a copy of it,
     // which is what makes every consumer that was handed `config.modelProviders`
     // current for the life of the process.
@@ -69,7 +59,9 @@ export function logModelConfiguration(logger: Logger, config: CogetoConfig): voi
   if (!p.configured) {
     logger.warn(
       { configuration: 'unconfigured' },
-      'model gateway not configured, model features disabled until a provider key is set',
+      'no model provider is configured — the instance serves and captures nothing model-side ' +
+        'until an administrator adds a provider and assigns the tiers under Providers in the ' +
+        'interface. This is the normal first-run state, not an error.',
     );
     return;
   }

@@ -1,8 +1,11 @@
 # providers: the instance's model and provider configuration (bounded context)
 
-V2.4 item 7.1. Providers, models and their API keys were environment variables until
-this module existed; they are now records an administrator manages in the interface,
-and the environment keeps bootstrap only.
+V2.4 item 7.1. Providers, models and their API keys are records an administrator
+manages in the interface, stored in the database with the keys encrypted under
+`COGETO_MASTER_KEY`. The interface is the ONLY place models are configured: the
+environment carries no model configuration at all, and an instance with no provider
+configured boots cleanly with model features off, which is the normal first-run
+state.
 
 Owns six tables (migration 0052): `model_provider`, `model_assignment`,
 `model_answer_option`, `user_answer_model`, `model_configuration_change`,
@@ -47,8 +50,7 @@ changes another process made.
 
 | File | What it is |
 |---|---|
-| `load-configuration.ts` | The boot path: seed once, then resolve. Called by every composition root and by the CLIs that talk to models. |
-| `domain/seed.ts` | The environment into the database, exactly once, atomically claimed. |
+| `load-configuration.ts` | The boot path: resolve from the database. Called by every composition root and by the CLIs that talk to models. |
 | `domain/resolve.ts` | Stored rows into the seam's `ResolvedModelProviders`. The one place keys are decrypted. |
 | `../infrastructure/secret-box.ts` | AES-256-GCM under the instance master key. Moved to infrastructure in V2.5 item 8.1 so provider keys and connector credentials share ONE mechanism; this module keeps consuming it unchanged. |
 | `domain/provider-types.ts` | What each provider family is: adapter, endpoint, key and embeddings capability. |

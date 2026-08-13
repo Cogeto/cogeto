@@ -113,10 +113,7 @@
     "configuration": "Configuration",
     "configured": "Complete",
     "notConfigured": "Incomplete",
-    "source": {
-      "database": "Managed here. The model variables in the environment file are ignored and can be removed.",
-      "environment": "Read from the environment file. It will be carried into the database on the next start."
-    }
+    "managedHere": "Managed here, in this instance's database. The environment file carries no model configuration."
   },
   "trust": {
     "evaluated": "Measured in {{release}}",

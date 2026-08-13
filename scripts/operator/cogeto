@@ -1113,14 +1113,14 @@ cmd_upgrade() {
 # recorded on existing memories (migration 0004) — then the Qdrant index must
 # be rebuilt from Postgres (spec §4.2: reindex must always work).
 check_embedding_model() {
-  # The DATABASE is authoritative for the embeddings model since migration
-  # 0052; the environment variable is only what a not-yet-seeded v1-era
-  # instance still runs, so it is the fallback, never the answer.
+  # The DATABASE is the only source of the embeddings model. No assignment
+  # yet (a first-run instance with no provider configured) means no vectors
+  # were ever produced, so there is nothing to reindex and nothing to check.
   configured="$(compose exec -T postgres psql -U postgres -d cogeto -tA \
     -c "SELECT model FROM model_assignment WHERE tier = 'embeddings'" 2>/dev/null || echo "")"
   if [ -z "$configured" ]; then
-    configured="$(env_get COGETO_MISTRAL_EMBED_MODEL)"
-    [ -n "$configured" ] || configured="mistral-embed"
+    say "no embeddings model is assigned yet (models are configured in the interface) — nothing to reindex"
+    return 0
   fi
   stale="$(compose exec -T postgres psql -U postgres -d cogeto -tA \
     -c "SELECT count(*) FROM memory WHERE embedding_model IS NOT NULL AND embedding_model <> '${configured}'" 2>/dev/null || echo "")"

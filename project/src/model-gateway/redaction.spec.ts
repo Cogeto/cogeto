@@ -12,7 +12,7 @@ import { RedactingModelGateway } from './redacting.gateway';
 import { RedactionClient } from './redaction-client';
 import type { RedactionPort, RedactionResult } from './redaction-client';
 import { createModelGateway } from './factory';
-import { resolveModelProviders } from './provider-config';
+import { resolveEvalProvidersFromEnv } from './provider-config';
 import { MistralModelGateway } from './mistral.gateway';
 import { ModelGatewayError } from './errors';
 import { reidentifyDeep, reidentifyStream, reidentifyText } from './redaction-utils';
@@ -182,7 +182,7 @@ describe('redaction_fail_closed', () => {
 });
 
 describe('redaction_off_noop', () => {
-  const providers = resolveModelProviders({ COGETO_MISTRAL_API_KEY: 'k' } as NodeJS.ProcessEnv, {
+  const providers = resolveEvalProvidersFromEnv({ COGETO_MISTRAL_API_KEY: 'k' } as NodeJS.ProcessEnv, {
     redacted: false,
   });
 

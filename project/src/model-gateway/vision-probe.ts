@@ -132,8 +132,8 @@ export async function probeVision(
       ok: false,
       reason: 'not_configured',
       error:
-        'no vision tier is configured: set COGETO_PROVIDER_VISION and COGETO_MODEL_VISION to ' +
-        'read scanned pages, images and diagrams. Without it the reading ladder stops at OCR ' +
+        'no vision tier is configured: assign a vision provider and model (Models in the ' +
+        'interface) to read scanned pages, images and diagrams. Without it the reading ladder stops at OCR ' +
         'and pages that need vision are labelled as such rather than silently empty.',
     };
   }

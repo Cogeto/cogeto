@@ -13,7 +13,7 @@ export class ModelGatewayError extends Error {
 export class ModelGatewayNotConfiguredError extends ModelGatewayError {
   constructor() {
     super(
-      'model gateway is not configured (set COGETO_MISTRAL_API_KEY, or a COGETO_PROVIDER_* configuration)',
+      'no model provider is configured; an administrator adds one under Providers in the interface',
       false,
     );
     this.name = 'ModelGatewayNotConfiguredError';

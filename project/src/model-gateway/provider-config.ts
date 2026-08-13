@@ -1,10 +1,17 @@
 /**
- * Per-instance model provider configuration. One pure
- * resolver turns the environment into a validated, per-tier provider binding —
- * the SAME resolver for app, worker, bare entrypoints and the eval harness, so
- * the boot log, Settings and the trust-score emission can never disagree about
- * which configuration is active. Invalid configuration throws HERE, at boot,
- * never at first request.
+ * Model provider configuration: the shared types, the preset table, the
+ * configuration-id derivation, and the two environment readers that remain.
+ *
+ * On a running instance the DATABASE is the only source of model
+ * configuration (the interface writes it, `resolveFromRecords` reads it).
+ * The environment contributes exactly two things, and both are deployment
+ * facts rather than model choices: the per-tier timeouts for self-hosted
+ * endpoints and the reasoning headroom (`resolveRuntimeModelSettings`).
+ *
+ * The one environment resolver left, `resolveEvalProvidersFromEnv`, belongs
+ * to the EVAL HARNESS and the dev smoke tools alone: they run in CI against
+ * no instance database, and pinning the configuration a measurement ran
+ * against is the point. No instance boot path may call it.
  */
 
 export type ModelProviderId = 'mistral' | 'openai' | 'anthropic' | 'ollama';
@@ -139,13 +146,11 @@ export interface ResolvedModelProviders {
   openaiSelfHosted: boolean;
   redacted: boolean;
   /**
-   * Where this configuration came from (V2.4 item 7.1). `environment` is the
-   * v1 shape and the eval harness's; `database` is what a running instance
-   * uses once seeding has happened, and after that the environment's model
-   * variables are IGNORED — two sources of truth for one setting is an outage
-   * waiting to be filed.
+   * Where this configuration came from. `database` is the only source on a
+   * running instance; `environment` is the eval harness's and the dev smoke
+   * tools'; `none` is the boot placeholder before the database has been read.
    */
-  source: 'environment' | 'database';
+  source: 'environment' | 'database' | 'none';
   /**
    * Bumped every time the live configuration is replaced (V2.4 item 7.1). The
    * gateway caches its adapters against this number, so a saved assignment
@@ -285,13 +290,86 @@ function parseProvider(name: string, value: string): ModelProviderId {
 }
 
 /**
- * Resolve the instance's model provider configuration from the environment.
+ * The environment configuration a running instance still reads: the per-tier
+ * self-hosted timeouts and the reasoning headroom. Deployment facts, not model
+ * choices — which model runs is the database's answer alone.
+ */
+export function resolveRuntimeModelSettings(env: NodeJS.ProcessEnv): {
+  timeoutsMs: TierTimeoutsMs;
+  reasoningHeadroom: number;
+} {
+  const timeoutsMs: TierTimeoutsMs = {
+    pipeline: readTimeoutMs(env, 'COGETO_MODEL_TIMEOUT_PIPELINE_MS', 'pipeline'),
+    answer: readTimeoutMs(env, 'COGETO_MODEL_TIMEOUT_ANSWER_MS', 'answer'),
+    embedding: readTimeoutMs(env, 'COGETO_MODEL_TIMEOUT_EMBEDDINGS_MS', 'embedding'),
+    vision: readTimeoutMs(env, 'COGETO_MODEL_TIMEOUT_VISION_MS', 'vision'),
+  };
+  // Reasoning headroom (Part B). Deliberately NOT part of the configuration id:
+  // the id fingerprints what a measurement ran against, and whether a binding
+  // reasons is a PROBED runtime fact, not configuration — the id is derived
+  // before any probe can run. The fingerprint marker is appended at trust
+  // EMISSION time from the probe (Part C, configurationForEmission), never here.
+  const headroomRaw = read(env, 'COGETO_REASONING_HEADROOM');
+  let reasoningHeadroom = 4;
+  if (headroomRaw !== undefined) {
+    const value = Number(headroomRaw);
+    if (!Number.isInteger(value) || value < 1) {
+      throw new ModelProviderConfigError(
+        `COGETO_REASONING_HEADROOM="${headroomRaw}" is not a positive integer multiplier`,
+      );
+    }
+    reasoningHeadroom = value;
+  }
+  return { timeoutsMs, reasoningHeadroom };
+}
+
+/**
+ * The boot placeholder: what `loadConfig` hands every process BEFORE the
+ * database has been read. Nothing is resolved from the environment — a stale
+ * model variable in `.env` cannot reach this shape by construction.
+ * `installModelConfiguration` replaces it with the database's resolution
+ * before anything model-facing is built; a bare entrypoint that never opens
+ * the instance database (migrate, preflight) simply keeps it, which is
+ * honest: those processes make no model calls.
+ */
+export function unconfiguredModelProviders(input: {
+  redacted: boolean;
+  timeoutsMs: TierTimeoutsMs;
+  reasoningHeadroom: number;
+}): ResolvedModelProviders {
+  const unassigned: TierBinding = { provider: 'mistral', model: 'unassigned' };
+  return {
+    configured: false,
+    id: 'unconfigured',
+    preset: null,
+    tiers: { pipeline: { ...unassigned }, answer: { ...unassigned }, embedding: { ...unassigned } },
+    vision: null,
+    keys: {},
+    endpoints: { openaiBaseUrl: '', anthropicBaseUrl: '' },
+    ollama: null,
+    timeoutsMs: input.timeoutsMs,
+    reasoningHeadroom: input.reasoningHeadroom,
+    openaiSelfHosted: false,
+    redacted: input.redacted,
+    source: 'none',
+    version: 0,
+    answerOptions: [],
+  };
+}
+
+/**
+ * Resolve a model provider configuration from the environment — FOR THE EVAL
+ * HARNESS and the dev smoke tools only. They run against no instance
+ * database, and pinning the configuration a measurement ran against is the
+ * point (docs/eval-golden-set.md). No instance boot path may call this: on a
+ * running instance the database is the only source of model configuration,
+ * and `model-config-env.spec.ts` asserts the confinement structurally.
  * Precedence per tier: explicit COGETO_PROVIDER_x + COGETO_MODEL_x vars >
  * COGETO_PROVIDER_PRESET expansion > legacy COGETO_MISTRAL_MODEL_x vars >
  * the mistral-default preset. Throws ModelProviderConfigError with the exact
- * variable to fix on any invalid combination (boot-time, ruling 3).
+ * variable to fix on any invalid combination.
  */
-export function resolveModelProviders(
+export function resolveEvalProvidersFromEnv(
   env: NodeJS.ProcessEnv,
   options: { redacted: boolean },
 ): ResolvedModelProviders {
@@ -313,9 +391,9 @@ export function resolveModelProviders(
     embedding: { ...base.embedding },
   };
   const legacyModels: Record<TierName, string | undefined> = {
-    pipeline: read(env, 'COGETO_MISTRAL_MODEL_PIPELINE') ?? read(env, 'MISTRAL_MODEL_PIPELINE'),
-    answer: read(env, 'COGETO_MISTRAL_MODEL_ANSWER') ?? read(env, 'MISTRAL_MODEL_ANSWER'),
-    embedding: read(env, 'COGETO_MISTRAL_EMBED_MODEL') ?? read(env, 'MISTRAL_EMBED_MODEL'),
+    pipeline: read(env, 'COGETO_MISTRAL_MODEL_PIPELINE'),
+    answer: read(env, 'COGETO_MISTRAL_MODEL_ANSWER'),
+    embedding: read(env, 'COGETO_MISTRAL_EMBED_MODEL'),
   };
   for (const tier of TIERS) {
     const legacy = legacyModels[tier];
@@ -399,15 +477,10 @@ export function resolveModelProviders(
   const openaiBaseUrl = read(env, 'COGETO_OPENAI_BASE_URL') ?? DEFAULT_OPENAI_BASE_URL;
   const openaiSelfHosted = openaiBaseUrl !== DEFAULT_OPENAI_BASE_URL;
 
-  const timeoutsMs: TierTimeoutsMs = {
-    pipeline: readTimeoutMs(env, 'COGETO_MODEL_TIMEOUT_PIPELINE_MS', 'pipeline'),
-    answer: readTimeoutMs(env, 'COGETO_MODEL_TIMEOUT_ANSWER_MS', 'answer'),
-    embedding: readTimeoutMs(env, 'COGETO_MODEL_TIMEOUT_EMBEDDINGS_MS', 'embedding'),
-    vision: readTimeoutMs(env, 'COGETO_MODEL_TIMEOUT_VISION_MS', 'vision'),
-  };
+  const { timeoutsMs, reasoningHeadroom } = resolveRuntimeModelSettings(env);
 
   const keys: Partial<Record<ModelProviderId, string>> = {};
-  const mistralKey = read(env, 'COGETO_MISTRAL_API_KEY') ?? read(env, 'MISTRAL_API_KEY');
+  const mistralKey = read(env, 'COGETO_MISTRAL_API_KEY');
   if (mistralKey) keys.mistral = mistralKey;
   const openaiKey = read(env, 'COGETO_OPENAI_API_KEY');
   if (openaiKey) keys.openai = openaiKey;
@@ -471,23 +544,6 @@ export function resolveModelProviders(
         .join('; ');
       throw new ModelProviderConfigError(details);
     }
-  }
-
-  // Reasoning headroom (Part B). Deliberately NOT part of the configuration id:
-  // the id fingerprints what a measurement ran against, and whether a binding
-  // reasons is a PROBED runtime fact, not configuration — the id is derived
-  // before any probe can run. The fingerprint marker is appended at trust
-  // EMISSION time from the probe (Part C, configurationForEmission), never here.
-  const headroomRaw = read(env, 'COGETO_REASONING_HEADROOM');
-  let reasoningHeadroom = 4;
-  if (headroomRaw !== undefined) {
-    const value = Number(headroomRaw);
-    if (!Number.isInteger(value) || value < 1) {
-      throw new ModelProviderConfigError(
-        `COGETO_REASONING_HEADROOM="${headroomRaw}" is not a positive integer multiplier`,
-      );
-    }
-    reasoningHeadroom = value;
   }
 
   return {

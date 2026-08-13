@@ -98,8 +98,6 @@ export interface ModelConfigurationDto {
   /** The stable configuration id, the trust artifacts' join key. */
   configurationId: string;
   configured: boolean;
-  /** Where the running configuration came from. `database` after seeding. */
-  source: 'environment' | 'database';
   assignments: ProviderAssignmentDto[];
   trust: TrustScoreSummaryDto;
   /** Newest first, capped. */

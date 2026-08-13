@@ -183,25 +183,10 @@ services:
       # because an instance whose only endpoint needs no credential never needs
       # one; the moment a key must be stored, the failure names this variable.
       COGETO_MASTER_KEY: ${COGETO_MASTER_KEY:-}
-      # ── The model variables below are SEED INPUT ONLY (V2.4 item 7.1) ──────
-      # Read once on the first start after upgrading and carried into the
-      # database; after that the database is authoritative and these are
-      # ignored. They stay here so an existing instance comes across unchanged,
-      # and may be removed from .env after the first successful start.
-      COGETO_MISTRAL_API_KEY: ${COGETO_MISTRAL_API_KEY:-}
-      COGETO_MISTRAL_MODEL_PIPELINE: ${COGETO_MISTRAL_MODEL_PIPELINE:-}
-      COGETO_MISTRAL_MODEL_ANSWER: ${COGETO_MISTRAL_MODEL_ANSWER:-}
-      COGETO_MISTRAL_EMBED_MODEL: ${COGETO_MISTRAL_EMBED_MODEL:-}
-      # Bring-your-own-key providers — validated at boot.
-      COGETO_PROVIDER_PRESET: ${COGETO_PROVIDER_PRESET:-}
-      COGETO_PROVIDER_PIPELINE: ${COGETO_PROVIDER_PIPELINE:-}
-      COGETO_MODEL_PIPELINE: ${COGETO_MODEL_PIPELINE:-}
-      COGETO_PROVIDER_ANSWER: ${COGETO_PROVIDER_ANSWER:-}
-      COGETO_MODEL_ANSWER: ${COGETO_MODEL_ANSWER:-}
-      COGETO_PROVIDER_EMBEDDINGS: ${COGETO_PROVIDER_EMBEDDINGS:-}
-      COGETO_MODEL_EMBEDDINGS: ${COGETO_MODEL_EMBEDDINGS:-}
-      COGETO_OPENAI_API_KEY: ${COGETO_OPENAI_API_KEY:-}
-      COGETO_OPENAI_BASE_URL: ${COGETO_OPENAI_BASE_URL:-}
+      # Model providers, models and their keys are configured IN THE INTERFACE
+      # (Providers in the left rail) and stored in the database, encrypted
+      # under the master key above. The environment carries no model
+      # configuration.
       # Bulk import in-flight cap (V2.2 item 5.3): default 1, max 8.
       COGETO_IMPORT_IN_FLIGHT: ${COGETO_IMPORT_IN_FLIGHT:-}
       # The per-user daily upload quota an import PAUSES on rather than
@@ -209,8 +194,6 @@ services:
       # knob is reachable on a compose deployment).
       COGETO_DAILY_UPLOAD_MAX: ${COGETO_DAILY_UPLOAD_MAX:-}
       COGETO_DEMO_DAILY_UPLOAD_MAX: ${COGETO_DEMO_DAILY_UPLOAD_MAX:-}
-      COGETO_ANTHROPIC_API_KEY: ${COGETO_ANTHROPIC_API_KEY:-}
-      COGETO_ANTHROPIC_BASE_URL: ${COGETO_ANTHROPIC_BASE_URL:-}
       COGETO_LOG_LEVEL: ${COGETO_LOG_LEVEL:-info}
       # A customer instance is NEVER a sandbox: the demo
       # seed/reset hard-refuse when this is set.
@@ -241,10 +224,9 @@ services:
       COGETO_RESEARCH_RETAIN_HTML: ${COGETO_RESEARCH_RETAIN_HTML:-}
       COGETO_DAILY_RESEARCH_SEARCHES: ${COGETO_DAILY_RESEARCH_SEARCHES:-40}
       COGETO_DAILY_RESEARCH_PAGES: ${COGETO_DAILY_RESEARCH_PAGES:-100}
-      # Ollama local runtime — set by `cogeto features enable
-      # local-models`; unset on the default hosted configuration.
-      COGETO_OLLAMA_BASE_URL: ${COGETO_OLLAMA_BASE_URL:-}
-      COGETO_OLLAMA_API_KEY: ${COGETO_OLLAMA_API_KEY:-}
+      # Per-tier timeouts for SELF-HOSTED endpoints, legacy Ollama-era names
+      # (still honoured by the code; a local runtime itself is configured in
+      # the interface, never here).
       COGETO_OLLAMA_TIMEOUT_PIPELINE_MS: ${COGETO_OLLAMA_TIMEOUT_PIPELINE_MS:-}
       COGETO_OLLAMA_TIMEOUT_ANSWER_MS: ${COGETO_OLLAMA_TIMEOUT_ANSWER_MS:-}
       COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS: ${COGETO_OLLAMA_TIMEOUT_EMBEDDINGS_MS:-}

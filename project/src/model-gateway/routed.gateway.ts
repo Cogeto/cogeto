@@ -73,7 +73,7 @@ export class TierRoutedModelGateway extends ModelGateway {
     if (!this.routes.vision) {
       throw new VisionUnavailableError(
         'not_configured',
-        'no vision tier is configured: set COGETO_PROVIDER_VISION and COGETO_MODEL_VISION',
+        'no vision tier is configured: assign a vision provider and model (Models in the interface)',
       );
     }
     return this.routes.vision.describeImage(request);

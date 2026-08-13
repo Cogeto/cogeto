@@ -3,14 +3,14 @@ import {
   deriveProvidersId,
   ModelProviderConfigError,
   PROVIDER_PRESETS,
-  resolveModelProviders,
+  resolveEvalProvidersFromEnv,
 } from './provider-config';
 
 /** Provider configuration resolution. */
 
 const env = (vars: Record<string, string>): NodeJS.ProcessEnv => vars as NodeJS.ProcessEnv;
 const resolve = (vars: Record<string, string>, redacted = false) =>
-  resolveModelProviders(env(vars), { redacted });
+  resolveEvalProvidersFromEnv(env(vars), { redacted });
 
 describe('config_validation_matrix — every invalid combination fails boot with the right message', () => {
   it('unknown provider name names the variable and the valid set', () => {

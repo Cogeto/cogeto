@@ -162,11 +162,11 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
   }
 
   private async resolveCurrent(): Promise<ResolvedModelProviders> {
-    const [providers, assignments, answerOptions, state] = await Promise.all([
+    const [providers, assignments, answerOptions, version] = await Promise.all([
       this.store.listProvidersWithSecrets(),
       this.store.listAssignments(),
       this.store.listAnswerOptions(),
-      this.store.readState(),
+      this.store.readVersion(),
     ]);
     return resolveFromRecords({
       // Same posture as the boot path: an unreadable key disqualifies that
@@ -179,7 +179,7 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
       providers,
       assignments,
       answerOptions,
-      version: state.version,
+      version,
       masterKey: this.options.masterKey,
       redacted: this.options.redacted,
       reasoningHeadroom: this.options.reasoningHeadroom,
@@ -351,7 +351,6 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
     return {
       configurationId: live.id,
       configured: live.configured,
-      source: live.source,
       assignments: [
         assignmentFor('pipeline'),
         assignmentFor('answer'),

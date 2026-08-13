@@ -2,7 +2,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { resolveModelProviders } from '../model-gateway/index';
+import { resolveEvalProvidersFromEnv } from '../model-gateway/index';
 import {
   compareSemverDesc,
   configurationForEmission,
@@ -172,7 +172,7 @@ describe('trust scores — emission and merge', () => {
  */
 describe('eval_emission_config_correct', () => {
   it('emits the default configuration exactly as resolved', () => {
-    const providers = resolveModelProviders({ COGETO_MISTRAL_API_KEY: 'k' } as NodeJS.ProcessEnv, {
+    const providers = resolveEvalProvidersFromEnv({ COGETO_MISTRAL_API_KEY: 'k' } as NodeJS.ProcessEnv, {
       redacted: false,
     });
     expect(configurationForEmission(providers)).toEqual({
@@ -186,7 +186,7 @@ describe('eval_emission_config_correct', () => {
   });
 
   it('emits a mixed configuration with the exact per-tier models and derived id', () => {
-    const providers = resolveModelProviders(
+    const providers = resolveEvalProvidersFromEnv(
       {
         COGETO_PROVIDER_ANSWER: 'anthropic',
         COGETO_MODEL_ANSWER: 'claude-sonnet-4-6',
@@ -220,7 +220,7 @@ describe('eval_emission_config_correct', () => {
   it('emits the local configurations with correct ids', () => {
     // All-local: the ollama-local preset id.
     const allLocal = configurationForEmission(
-      resolveModelProviders(
+      resolveEvalProvidersFromEnv(
         {
           COGETO_PROVIDER_PRESET: 'ollama-local',
           COGETO_OLLAMA_BASE_URL: 'http://10.0.0.1:11434',
@@ -236,7 +236,7 @@ describe('eval_emission_config_correct', () => {
 
     // Embeddings-only local (hosted generation + bge-m3): the honest mixed id.
     const mixed = configurationForEmission(
-      resolveModelProviders(
+      resolveEvalProvidersFromEnv(
         {
           COGETO_MISTRAL_API_KEY: 'k',
           COGETO_PROVIDER_EMBEDDINGS: 'ollama',

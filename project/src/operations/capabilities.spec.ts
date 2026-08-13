@@ -241,7 +241,7 @@ describe('registry_states', () => {
     const down = await service(config({ modelProviders: ollamaProviders })).snapshot(NOW);
     const local = byId(down, 'local-models');
     expect(local.state).toBe('unreachable');
-    expect(local.error).toContain('COGETO_OLLAMA_BASE_URL');
+    expect(local.error).toContain('runtime address on the provider record');
   });
 
   it('loudness: unreachable capabilities and non-ok jobs are the named degradations', async () => {
