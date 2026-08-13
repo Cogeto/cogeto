@@ -24,8 +24,8 @@ and the commands you'll want at hand.
  required by the compose file (`${VAR:?}`), and never committed.
 - Everything is orchestrated by **one operator script**,
  [`scripts/operator/cogeto`](../scripts/operator/cogeto)
- (`install` / `configure` / `upgrade` / `status` / `backup-info`, plus a
- `--check` dry run). It installs cosign and verifies the signatures itself,
+ (`install` / `configure` / `upgrade` / `status` / `features` / `reindex` /
+ `backup-info`, plus a `--check` dry run). It installs cosign and verifies the signatures itself,
  and ends every run with an instance-specific checklist of what it cannot do
  for you (DNS records, backup settings, verification steps).
 
@@ -34,8 +34,11 @@ and the commands you'll want at hand.
 curl -fsSL https://raw.githubusercontent.com/Cogeto/cogeto/main/scripts/operator/cogeto -o cogeto
 chmod +x cogeto
 sudo ./cogeto install --check --domain <your.domain> --acme-email <you> # dry run first
-sudo ./cogeto install --domain <your.domain> --acme-email <you> --mistral-key <key>
+sudo ./cogeto install --domain <your.domain> --acme-email <you>
 ```
+
+After first login, configure a model provider in the interface (Providers in the
+left rail); the printed checklist says so.
 
 TLS is automatic (Let's Encrypt via Caddy) as soon as the printed DNS records
 resolve. Self-hosters not on OVHcloud: the runbook's OVH panel steps map

@@ -65,8 +65,11 @@ Add under **Settings → Secrets and variables → Actions**:
 - [ ] `DOCKERHUB_USERNAME`: Docker Hub account/org that owns `cogeto/cogeto`.
 - [ ] `DOCKERHUB_TOKEN`: Docker Hub access token with **Read/Write** to
  `cogeto/cogeto`.
-- [ ] `MISTRAL_API_KEY`: already required by the eval gate; confirm it is
- present (the live golden-set gate on `main` skips loudly without it).
+- [ ] `MISTRAL_API_KEY`: the repository secret the eval gate uses. The workflows
+ map it into the `COGETO_MISTRAL_API_KEY` variable the harness reads (the
+ harness runs in CI against no instance database; that reading is
+ harness-only). Confirm it is present: the live golden-set gate on `main`
+ skips loudly without it.
 - [ ] `PROJECTS_TOKEN`: a **fine-grained PAT** for board automation:
  Organization permissions → **Projects: Read and write** (and Repository →
  Issues/Pull requests: Read). Without it, `project-automation.yml` no-ops.

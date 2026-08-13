@@ -28,7 +28,8 @@ root); this directory holds only the authored data.
 
 ```bash
 # Bring up the full stack in demo mode (seeds on a healthy app; ~a few minutes).
-# Needs a Mistral key (COGETO_MISTRAL_API_KEY): the seed runs the real pipeline.
+# Needs a model provider configured in the interface: the seed runs the real
+# pipeline, so add one (Providers in the left rail) before seeding.
 docker compose --profile demo up --build
 
 # Same, but also enable the worker's scheduled reset:

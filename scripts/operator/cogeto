@@ -1581,7 +1581,7 @@ cmd_features() {
 
   [ -n "$fid" ] || die "features ${verb}: which capability? Valid ids: ${FEATURE_IDS}"
   if [ "$fid" = "local-models" ]; then
-    die "local-models is no longer a script feature: a local runtime is an ordinary model provider now. Configure it in the interface — Providers (add a self-hosted or Ollama provider), then Models (assign the tiers; an embeddings change runs the managed rebuild there)."
+    die "local-models is no longer a script feature: a local runtime is an ordinary model provider now. Configure it in the interface — Providers (add a Self-hosted provider pointing at the runtime's OpenAI-compatible endpoint), then Models (assign the tiers; an embeddings change runs the managed rebuild there)."
   fi
   feature_known "$fid" || die "unknown capability '${fid}' — valid ids: ${FEATURE_IDS}"
   require_root

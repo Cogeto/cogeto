@@ -47,72 +47,62 @@ the error shown, waiting for resume or cancel.
 
 ---
 
-## Model and provider configuration moves into the database (V2.4 item 7.1)
+## Model and provider configuration lives in the database (V2.4 item 7.1)
 
-**What changes.** Providers, models and their API keys stop being environment
-variables and become records an administrator manages in the interface, under
-**Providers** and **Models** in the left rail. `.env` keeps bootstrap only: database
-credentials, the instance master key, and instance configuration.
+**What changes.** Providers, models and their API keys are records an administrator
+manages in the interface, under **Providers** and **Models** in the left rail. The
+database is the only source of model configuration and the interface is the only
+way to change it; there is no environment seed and no fallback. `.env` keeps
+bootstrap only: database credentials, the instance master key, and instance
+configuration.
 
-**What you have to do: nothing, on the first start.** The existing environment values
-are read once and written as the equivalent providers and assignments. The instance
-runs the configuration it was running before: same providers, same models, same
-endpoint, same configuration id, no tier reassigned. Log in and check
-**Models** to see the four rows; the boot log states `source: database` once the seed
-has happened.
+An instance with **no provider configured is the normal first-run state**, not an
+error: it boots, serves, health stays ok, the interface shows a banner pointing at
+the Providers page, and queued work waits and drains once a provider is added,
+without a restart.
 
-**What you should do afterwards.**
+**What you have to do.**
 
-1. **Set `COGETO_MASTER_KEY` if the instance has any provider API key.** It is what
-   encrypts the keys stored in the database, and it stays in `.env` because a key that
-   guards a database cannot live inside it. `cogeto upgrade` generates one for you if
-   it is missing. By hand:
+1. **Have `COGETO_MASTER_KEY` in `.env` before storing any provider API key.** It is
+   what encrypts the keys stored in the database, and it stays in `.env` because a
+   key that guards a database cannot live inside it. `cogeto install` generates one
+   and `cogeto upgrade` backfills one if it is missing. By hand:
 
    ```sh
    openssl rand -base64 32
    ```
 
    An instance whose only endpoint is a self-hosted server with no authentication
-   needs none, and the first start will tell you plainly if one is required.
+   needs none, and the interface will tell you plainly if one is required.
 
-   **It is data-bound, like `MINIO_KMS_SECRET_KEY`.** Rotating it makes every stored
-   provider key unreadable, and the only recovery is re-entering them in the
-   interface. Re-vault `.env` after the upgrade.
+   **It is data-bound, like `MINIO_KMS_SECRET_KEY`.** Never rotate it: rotating it
+   makes every stored provider key unreadable, and the only recovery is re-entering
+   them in the interface. Re-vault `.env` after the upgrade.
 
-2. **Delete the model variables from `.env` after the first successful start.** They
-   are ignored from that point: not merged, not a lower-priority fallback, ignored.
-   Leaving them costs nothing but invites the belief that editing one does something.
-   The variables that are now managed in the interface:
-
-   ```
-   COGETO_MISTRAL_API_KEY          COGETO_OPENAI_API_KEY      COGETO_ANTHROPIC_API_KEY
-   COGETO_MISTRAL_MODEL_PIPELINE   COGETO_OPENAI_BASE_URL     COGETO_ANTHROPIC_BASE_URL
-   COGETO_MISTRAL_MODEL_ANSWER     COGETO_OLLAMA_BASE_URL     COGETO_OLLAMA_API_KEY
-   COGETO_MISTRAL_EMBED_MODEL      COGETO_PROVIDER_PRESET
-   COGETO_PROVIDER_PIPELINE        COGETO_MODEL_PIPELINE
-   COGETO_PROVIDER_ANSWER          COGETO_MODEL_ANSWER
-   COGETO_PROVIDER_EMBEDDINGS      COGETO_MODEL_EMBEDDINGS
-   COGETO_PROVIDER_VISION          COGETO_MODEL_VISION
-   ```
+2. **Nothing else.** The old model variables (`COGETO_PROVIDER_*`,
+   `COGETO_MODEL_PIPELINE` and its siblings, the per-provider key and base-URL
+   variables, `COGETO_PROVIDER_PRESET`) no longer exist, and a stale one left in
+   `.env` has no effect at all. There is no migration story to tell: no instance
+   predating this scheme was ever deployed.
 
    What stays in `.env`, because it is a deployment fact rather than a model choice:
-   the per-tier request timeouts (`COGETO_MODEL_TIMEOUT_*`), the reasoning headroom
-   and probe deadline, the vision page caps, and the eval-harness-only grader
-   override.
+   the per-tier request timeouts (`COGETO_MODEL_TIMEOUT_*_MS`, with the legacy
+   `COGETO_OLLAMA_TIMEOUT_*_MS` alias still honoured), the reasoning headroom
+   (`COGETO_REASONING_HEADROOM`), the probe timeouts, the vision page caps, and the
+   eval-harness-only grader override (`COGETO_PROVIDER_GRADER` /
+   `COGETO_MODEL_GRADER`). The harness also reads its own `COGETO_MISTRAL_API_KEY`
+   and `COGETO_PROVIDER_*` / `COGETO_MODEL_*` variables, because it runs in CI
+   against no instance database; those readings are harness-only and touch nothing
+   in a running instance.
 
-**The embeddings model still cannot be changed from the interface.** V2.4 item 7.1 is
-the configuration half; the managed rebuild of the vector index is the second half and
-ships in the next release. Until then the embeddings row explains this and names the
-interim path:
+**Changing the embeddings model is the managed rebuild** described in the previous
+section: plan and confirm on the **Models** page, or from the shell with
+`cogeto reindex --provider LABEL --model MODEL` (equivalently
+`docker compose run --rm worker npm run reindex`). The boot guard that refuses to
+serve a mixed embedding space stays, as a net for states manufactured outside the
+interface.
 
-```sh
-docker compose exec worker npm run reindex
-```
-
-That is unchanged from before this release, and the boot guard that refuses to serve a
-mixed embedding space is unchanged too.
-
-**Rolling back.** The provider tables are additive (migration 0052) and the previous
-release ignores them, so rolling the images back leaves an instance reading its `.env`
-again, which is why deleting the model variables is step 2 and not step 1. Delete
-them once you are satisfied the upgrade holds.
+**Rolling back.** The provider tables are additive (migration 0052), and the
+database keeps the configuration across an image rollback: no release reads model
+configuration from `.env`, so rolling images back changes nothing about which
+models the instance runs.

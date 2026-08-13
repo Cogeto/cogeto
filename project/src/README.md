@@ -29,7 +29,8 @@ through the owners' gated reads). V2.4 added `providers` (item 7.1: the
 instance's model and provider configuration, moved out of the environment into
 six tables with the API keys encrypted at rest under the instance master key,
 which stays in the environment because a key that guards a database cannot live
-inside it). V2.5 added `connectors` (item 8.1: the connector platform, what
+inside it; the interface is the only writer, and the environment carries no
+model configuration and no fallback). V2.5 added `connectors` (item 8.1: the connector platform, what
 every external connector inherits: lifecycle, sync and cursor state, the
 natural-key deduplication ledger, bounded backfill, the webhook ingress
 framework, outbound rate limiting and admission defaults; credential storage

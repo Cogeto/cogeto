@@ -328,25 +328,28 @@ sidecar does.
 
 ## Running the model yourself
 
-`openai` names a **protocol**, not a company. A model you run through llama.cpp,
-vLLM or LM Studio speaks it, so `COGETO_PROVIDER_VISION=openai` with
-`COGETO_OPENAI_BASE_URL` pointing at your own server is expected configuration.
-Two things follow from the endpoint being yours rather than hosted:
+A vision model you run through llama.cpp, vLLM, LM Studio or Ollama is added the
+same way as any other: a provider record in the interface (**Self-hosted**, which
+is any OpenAI-compatible server) and a vision assignment under **Models**.
+Validation probes with a real image on save, because nothing short of an image
+answers whether the served weights have their projector loaded. Two things follow
+from the endpoint being yours rather than hosted:
 
 - **Per-tier timeouts apply.** They used to be attached only when the provider
-  was `ollama`, so a self-hosted OpenAI-compatible endpoint had no client-side
-  deadline at all and one slow page could hang a pipeline job indefinitely. They
-  now apply to any self-hosted endpoint under the provider-neutral
-  `COGETO_MODEL_TIMEOUT_*_MS` names; hosted providers keep no explicit timeout,
-  exactly as before.
-- **No API key is required.** Your own server often runs with no auth, and
-  demanding a meaningless placeholder is friction with no safety in it. The key
-  stays required for the hosted `api.openai.com`, where a missing one is a real
-  misconfiguration worth refusing at boot.
+  was the local Ollama runtime, so a self-hosted OpenAI-compatible endpoint had
+  no client-side deadline at all and one slow page could hang a pipeline job
+  indefinitely. They now apply to any self-hosted endpoint under the
+  provider-neutral `COGETO_MODEL_TIMEOUT_*_MS` names, which stay environment
+  configuration because a deadline is a deployment fact; hosted providers keep no
+  explicit timeout, exactly as before.
+- **No API key is required.** A Self-hosted provider record needs no key: your
+  own server often runs with no auth, and demanding a meaningless placeholder is
+  friction with no safety in it. A key is accepted for deployments behind an
+  authenticating proxy, and the hosted provider types still require theirs.
 
-One constraint: `COGETO_OPENAI_BASE_URL` is a single global for the provider, so
-every tier bound to `openai` reaches the same endpoint. Pointing it at your own
-server means no tier can use the hosted API at the same time.
+The old single-global-endpoint constraint is gone: several providers of one type
+are ordinary records told apart by their labels, so a self-hosted vision endpoint
+and a hosted API on the other tiers coexist without contortion.
 
 This also changes the boundary, and the change is worth stating rather than
 leaving to inference. Tiers one and two run in the instance and pages they read

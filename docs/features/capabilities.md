@@ -18,7 +18,7 @@ enablement is determined, how health is checked, and its failure semantics.
 | `mail` | the `mail` profile, or an explicit flag | TCP connect to the inbound SMTP listener | **loud when enabled and dead**: forwarded mail is not being received. Off is the default, and a mail-less instance is not degraded |
 | `demo` | the demo-mode flag | passive: the production-guard state | demo plus production makes the guard refuse the seed, loudly |
 | `consoles` | the `consoles` profile, or an explicit flag | none | the console edge binds to host loopback; the app has nothing it can probe, and says so |
-| `local-models` | any tier resolved to the local provider | runtime reachability plus required models pulled | **external dependency**: boot refuses, and a runtime that dies later goes loud here |
+| `models` | a provider and the three core tier assignments (pipeline, answer, embeddings) exist in the database, interface-managed | none: never probed; the gateway health check owns reachability | `on` carries the configuration id; `off` points at the Providers page. Off is the normal first-run state, never a degradation |
 | `vision` | Reading pages that are pictures (V2.1 item 4.1). PROBED by sending a real image: the same weights are served with and without a multimodal projector, so nothing short of an image can answer the question. `off` means the reading ladder stops at local OCR, which is a supported state; `unreachable` names which of the failures happened. |
 | `reasoning` | The generation model returns its thinking in a separate reasoning field (Part B of reasoning support). PROBED by sending a real prompt, for the same reason vision is probed: the identical weights are served both ways, and only a response says which way this instance got them. `on` arms a maxTokens headroom multiplier (COGETO_REASONING_HEADROOM, default 4) on the bindings that reasoned, so thinking cannot silently consume an answer's token budget; `off` is a complete, healthy answer and changes nothing. Never `unreachable`: a dead endpoint is the gateway health check's finding. |
 
@@ -119,9 +119,9 @@ telling an operator to point real mail at nothing.
 ## Control stays in the operator script
 
 `cogeto features [enable|disable <id>]` edits `.env` idempotently, applies, waits for
-health, and prints operator to-dos. Disabling redaction and toggling local models (an
-embeddings change, so a reindex) require typed confirmations, and enabling demo on a
-production instance is refused loudly.
+health, and prints operator to-dos. Disabling redaction requires a typed
+confirmation, and enabling demo on a production instance is refused loudly. Models
+are not a script feature: providers and tier assignments live in the interface.
 
 **The web application never gains docker-level privilege.** The panel shows the enable
 command; it is not a toggle.

@@ -60,9 +60,9 @@ Wait for the stack to become healthy, then open **https://localhost** (the dev e
 uses a self-signed certificate, so accept the warning) and sign in with the dev
 bootstrap admin, `admin@cogeto.localhost` / `DevPassword1!`. Zero configuration
 required; every default can be overridden via `.env` (see
-[`.env.example`](.env.example)). Model features need an API key in the environment.
-Without one the stack still runs, and model calls fail with a typed error instead of
-pretending.
+[`.env.example`](.env.example)). Model providers are configured in the interface
+after login and stored encrypted in the instance database; without one the stack
+still runs, and the interface says plainly what to do.
 
 Details, layout, and common issues: [`docs/running-locally.md`](docs/running-locally.md).
 

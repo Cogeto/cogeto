@@ -84,10 +84,11 @@ its last probe reported. Four types: **Mistral**, **OpenAI**, **Anthropic**, and
 or a proxy in front of several). Several providers of the same type are ordinary, so
 the **label** is what tells them apart and is unique.
 
-A fifth stored value, `ollama`, exists but cannot be created: it is what the seed
-writes for an instance already bound to the local Ollama runtime, so that instance
-keeps its adapter, its per-tier timeouts and its configuration id exactly. It renders
-as Self-hosted with the runtime named in its subtitle.
+A fifth stored value, `ollama`, exists as a legacy type and cannot be created: a
+local Ollama runtime is added as a **Self-hosted** provider pointed at its
+OpenAI-compatible surface. A row carrying the legacy value keeps the dedicated
+Ollama adapter, its per-tier timeouts and its configuration id, and renders as
+Self-hosted with the runtime named in its subtitle.
 
 **Four independent assignments** name a provider and a model: pipeline, answer,
 embeddings, vision. Mixed configurations are ordinary rather than exceptional.
@@ -137,22 +138,21 @@ sites still request a tier and the seam still owns the mapping. A retired option
 back to the assigned tier rather than failing the next question, and the egress trail
 names the model that actually received the bytes.
 
-### Seeding, and the one source of truth
+### One source of truth
 
-On the **first start after upgrading**, the environment's model configuration is read
-once and written as the equivalent providers and assignments. The claim is atomic on a
-single state row, so of two processes starting together exactly one seeds. An instance
-with no model configuration at all is marked seeded with nothing, which is the honest
-translation.
+**The database is the only source of model configuration, and the interface the only
+writer.** The environment carries none of it: there is no seed, no fallback, and a
+stale model variable left in `.env` has no effect at all. Two sources of truth for
+one setting is how an instance ends up running a model nobody selected; this design
+leaves exactly one.
 
-**After that, the database is authoritative.** The environment's model variables are
-**ignored**: not merged, not a lower-priority fallback. They may sit in `.env` forever
-and change nothing, which is why the upgrade note says to delete them. Two sources of
-truth for one setting is how an instance ends up running a model nobody selected. The
-boot log states the source in one word for exactly this reason.
+An instance with **no provider configured is the normal first-run state**, not an
+error: it boots clean, health stays ok, the interface shows a banner pointing at the
+Providers page, and queued work waits and drains once a provider is added, without a
+restart.
 
-The eval harness deliberately still resolves from the environment: it runs in CI
-against no instance database, and pinning the configuration it measures is the point.
+The eval harness deliberately resolves from the environment: it runs in CI against no
+instance database, and pinning the configuration it measures is the point.
 
 ### Boot validation, and what still refuses
 
@@ -242,7 +242,7 @@ interface. The assignment page shows the **published trust score for the exact
 configuration in force**, and states **"not evaluated"** in words where none matches:
 accuracy is never borrowed from a different configuration.
 
-## Local inference## Local inference
+## Local inference
 
 A local runtime is a **provider flavor over the OpenAI-compatible adapter**, not a new
 HTTP client and not a plain OpenAI configuration with knobs. Three reasons:
@@ -250,29 +250,29 @@ HTTP client and not a plain OpenAI configuration with knobs. Three reasons:
 - **The configuration id must tell the truth.** A local model behind the hosted
   provider name would be indistinguishable from the hosted API in every published id,
   boot log, and Settings display.
-- **Key semantics differ and must not leak.** The hosted provider refuses boot without
-  its key, and that guard stays exactly as strict. Making the key optional to admit a
-  local runtime would weaken validation for everyone.
+- **Key semantics differ and must not leak.** The hosted provider types require a
+  key (the interface refuses to save one without it), and that guard stays exactly
+  as strict. Making the key optional to admit a local runtime would weaken
+  validation for everyone.
 - **Local defaults attach to the provider**, not the shared code: higher timeouts, the
   boot probe, the model-not-found hint. The adapter class stays one implementation with
   options, and the hosted paths stay byte-identical.
 
 The base URL names the runtime root and has **no default**. No key is required, though
 one is accepted for deployments behind an authenticating proxy. Since V2.4 item 7.1
-the runtime is a provider RECORD like any other: an existing Ollama-bound instance is
-seeded to the reserved `ollama` type so nothing about its adapter or its configuration
-id changes, and a new local runtime is added as a **Self-hosted** provider pointed at
-its OpenAI-compatible surface.
+the runtime is a provider RECORD like any other, added in the interface as a
+**Self-hosted** provider pointed at its OpenAI-compatible surface; the reserved
+legacy `ollama` type carries any row already on the dedicated adapter with its
+per-tier timeouts and its configuration id unchanged.
 
 **Local-inference realities.** First-token latency on consumer hardware is seconds,
 and a 12B structured extraction can run minutes, so per-tier timeouts default far
 higher and are independently configurable. Connection failures stay retryable, because
 the runtime may be restarting or loading a model. A "model not found" is **fatal and
 actionable**, naming the missing model and the `ollama pull` that fixes it, so no
-retry loop ever hammers a runtime that cannot serve the model. At boot, every
-local-bound model must appear in the runtime's tag list or the process refuses to
-start; the reindex entrypoint probes too, since it is about to issue thousands of
-embedding calls.
+retry loop ever hammers a runtime that cannot serve the model. The save-time probe
+catches a missing model when the assignment is made, and the reindex entrypoint
+probes too, since it is about to issue thousands of embedding calls.
 
 **Parity-gated migration.** Nothing migrates to local wholesale. A task family is
 recommended local only where it reaches eval parity **per task and per language**

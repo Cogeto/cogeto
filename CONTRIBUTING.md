@@ -59,8 +59,8 @@ golden corpus, and regressions **fail the build** (thresholds in
 key:
 
 ```sh
-MISTRAL_API_KEY=... npm run eval        # extraction + verification + reconciliation + query rewriting
-MISTRAL_API_KEY=... npm run eval:chat   # scripted conversations, end to end
+COGETO_MISTRAL_API_KEY=... npm run eval        # extraction + verification + reconciliation + query rewriting
+COGETO_MISTRAL_API_KEY=... npm run eval:chat   # scripted conversations, end to end
 npm run eval:cached                     # golden set against committed fixtures, no key
 ```
 
