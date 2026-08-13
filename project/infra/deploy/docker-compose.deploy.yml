@@ -717,7 +717,7 @@ services:
     restart: unless-stopped
 
   # ── Web discovery (profile research;/0055) ───────────────────
-  # Self-hosted SearXNG, the one optional profile in the deploy channel: a
+  # Self-hosted SearXNG, one of the three optional profiles in the deploy channel: a
   # digest-pinned upstream image (same digest as the dev stack —), so it
   # stays pull-only. Internal-network only (no published ports; the edge never
   # proxies it); reachable at http://searxng:8080. Enable/disable with
