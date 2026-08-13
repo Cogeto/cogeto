@@ -5,7 +5,9 @@
     "cancelled": "abgebrochen",
     "concluded": "abgeschlossen"
   },
-  "citation": { "webTitle": "{{title}} · abgerufen {{when}}" },
+  "citation": {
+    "webTitle": "{{title}} · abgerufen {{when}}"
+  },
   "page": {
     "heading": "Fragen Sie das Web zu Ihren Bedingungen",
     "explainer": "Die Recherche wird ausdrücklich aufgerufen und zeigt offen, was die Instanz verlässt: Cogeto minimiert die Abfrage, zeigt Ihnen genau, was gesendet würde, und sendet erst nach Ihrer Genehmigung. Abgerufene Seiten werden zu überprüfbaren und löschbaren Web-Erinnerungen.",

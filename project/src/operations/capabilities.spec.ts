@@ -39,16 +39,14 @@ const unconfiguredProviders = {
   ollama: null,
 } as unknown as ResolvedModelProviders;
 
-const ollamaProviders = {
+const configuredProviders = {
   configured: true,
-  ollama: {
-    baseUrl: 'http://10.0.0.1:11434',
-    timeoutsMs: { pipeline: 1, answer: 1, embedding: 1 },
-  },
+  id: 'mistral-default',
+  ollama: null,
   tiers: {
-    pipeline: { provider: 'ollama', model: 'gemma3:12b' },
-    answer: { provider: 'ollama', model: 'gemma3:12b' },
-    embedding: { provider: 'ollama', model: 'bge-m3' },
+    pipeline: { provider: 'mistral', model: 'mistral-small-latest' },
+    answer: { provider: 'mistral', model: 'mistral-medium-latest' },
+    embedding: { provider: 'mistral', model: 'mistral-embed' },
   },
 } as unknown as ResolvedModelProviders;
 
@@ -138,7 +136,7 @@ describe('registry_states', () => {
   it('everything off on a bare default configuration — and nothing is probed', async () => {
     const calls = stubFetch(() => ({ status: 200 }));
     const snapshot = await service(config()).snapshot(NOW);
-    for (const id of ['redaction', 'research', 'mail', 'demo', 'consoles', 'local-models']) {
+    for (const id of ['models', 'redaction', 'research', 'mail', 'demo', 'consoles']) {
       expect(byId(snapshot, id).state).toBe('off');
     }
     expect(calls).toEqual([]); // disabled capabilities are never probed
@@ -231,17 +229,20 @@ describe('registry_states', () => {
     expect(calls).toEqual([]);
   });
 
-  it('local-models: reachable runtime with the models pulled → on; dead runtime → unreachable', async () => {
-    stubFetch(() => ({ status: 200 }));
-    const on = await service(config({ modelProviders: ollamaProviders })).snapshot(NOW);
-    expect(byId(on, 'local-models')).toMatchObject({ state: 'on', probed: true });
+  it('models: configured → on with the configuration id; unconfigured → off pointing at Providers, never probed, never loud', async () => {
+    const calls = stubFetch(() => ({ status: 200 }));
+    const on = await service(config({ modelProviders: configuredProviders })).snapshot(NOW);
+    expect(byId(on, 'models')).toMatchObject({ state: 'on', probed: false });
+    expect(byId(on, 'models').detail).toContain('mistral-default');
 
-    vi.unstubAllGlobals();
-    stubFetch(() => 'refuse');
-    const down = await service(config({ modelProviders: ollamaProviders })).snapshot(NOW);
-    const local = byId(down, 'local-models');
-    expect(local.state).toBe('unreachable');
-    expect(local.error).toContain('runtime address on the provider record');
+    const off = await service(config()).snapshot(NOW);
+    const models = byId(off, 'models');
+    expect(models.state).toBe('off');
+    expect(models.probed).toBe(false);
+    expect(models.detail).toContain('Providers');
+    // The first-run state is never a degradation.
+    expect(CapabilitiesService.loudness(off)).toEqual([]);
+    expect(calls).toEqual([]);
   });
 
   it('loudness: unreachable capabilities and non-ok jobs are the named degradations', async () => {
@@ -479,7 +480,7 @@ describe('banner_accurate', () => {
       config({
         redactionEnabled: true,
         composeProfiles: ['research'],
-        modelProviders: ollamaProviders,
+        modelProviders: configuredProviders,
       }),
     ).snapshot(NOW);
     const banner = formatCapabilitiesBanner(snapshot, NOW);
@@ -487,7 +488,7 @@ describe('banner_accurate', () => {
     expect(banner).toContain('research ON (UNREACHABLE)');
     expect(banner).toContain('demo OFF');
     expect(banner).toContain('consoles OFF');
-    expect(banner).toContain('local-models ON (healthy)');
+    expect(banner).toContain('models ON (configured)');
     expect(banner).toContain('dreaming last ran 6h ago');
     expect(banner).toContain('sweep last ran 7h ago');
   });

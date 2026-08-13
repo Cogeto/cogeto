@@ -24,6 +24,7 @@ import {
   createConversation,
   fetchChatCaptureStatus,
   fetchChatMessages,
+  fetchModelConfig,
   fetchConversationAttachments,
   fetchConversations,
   fetchMemory,
@@ -331,6 +332,14 @@ function RememberAction({ session, messageId }: { session: Session; messageId: s
   const { t } = useTranslation('chat');
   const queryClient = useQueryClient();
   const [captured, setCaptured] = useState(false);
+  // Capture is a pipeline run, so it needs a configured model provider; the
+  // shared ['model-config'] cache keeps this in step with the shell banner.
+  const { data: modelConfig } = useQuery({
+    queryKey: ['model-config'],
+    queryFn: () => fetchModelConfig(session),
+    refetchInterval: 30_000,
+  });
+  const modelsOff = modelConfig?.configured === false;
   const remember = useMutation({
     mutationFn: () => rememberChatMessage(session, messageId),
     onSuccess: () => setCaptured(true),
@@ -353,9 +362,9 @@ function RememberAction({ session, messageId }: { session: Session; messageId: s
       <button
         type="button"
         onClick={() => remember.mutate()}
-        disabled={remember.isPending}
+        disabled={remember.isPending || modelsOff}
         className="mt-1.5 font-mono text-[0.68rem] uppercase tracking-[0.08em] text-slate-400 underline decoration-slate-300 underline-offset-2 transition-colors hover:text-brand-teal-ink disabled:opacity-40 dark:hover:text-brand-teal"
-        title={t('remember.title')}
+        title={modelsOff ? t('common:modelRequired.short') : t('remember.title')}
       >
         {remember.isPending ? t('remember.pending') : t('remember.action')}
       </button>
@@ -659,6 +668,17 @@ export function Chat({ session }: { session: Session }) {
     if (initial) setActiveId(initial);
   }, [activeId, conversations, link.conversationId]);
 
+  // The first-run state: no model provider configured. Shares the shell
+  // banner's cache key; sending, attaching and capture are disabled with the
+  // same short explanation instead of erroring on use, and come back on their
+  // own once an administrator configures a provider.
+  const { data: modelConfig } = useQuery({
+    queryKey: ['model-config'],
+    queryFn: () => fetchModelConfig(session),
+    refetchInterval: 30_000,
+  });
+  const modelsOff = modelConfig?.configured === false;
+
   const { data: page, isPending } = useQuery({
     queryKey: ['chat-messages', activeId],
     queryFn: () => fetchChatMessages(session, activeId!),
@@ -830,7 +850,7 @@ export function Chat({ session }: { session: Session }) {
   const send = async (text?: string, opts: { suppressOffer?: boolean; widen?: boolean } = {}) => {
     const content = (text ?? draft).trim();
     const staged = pendingFile;
-    if ((!content && !staged) || busy) return;
+    if ((!content && !staged) || busy || modelsOff) return;
     // The first send on an empty instance creates the conversation it lands in.
     let conversationId = activeId;
     if (!conversationId) {
@@ -928,9 +948,12 @@ export function Chat({ session }: { session: Session }) {
             }
           } else if (event.type === 'error') {
             setFailed(true);
-            // Specific copy for the daily budget / stream-timeout aborts.
+            // Specific copy for the daily budget / stream-timeout aborts, and
+            // the localized first-run explanation for an unconfigured instance.
             if (event.code === 'model_budget_exceeded' || event.code === 'timeout') {
               setFailMessage(event.message);
+            } else if (event.code === 'not_configured') {
+              setFailMessage(t('common:modelRequired.short'));
             }
           }
         },
@@ -1078,7 +1101,9 @@ export function Chat({ session }: { session: Session }) {
                         key={id}
                         type="button"
                         onClick={() => prefill(prompt)}
-                        className="rounded-full border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:border-brand-teal hover:text-brand-teal-ink dark:hover:text-brand-teal"
+                        disabled={modelsOff}
+                        title={modelsOff ? t('common:modelRequired.short') : undefined}
+                        className="rounded-full border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:border-brand-teal hover:text-brand-teal-ink disabled:opacity-40 dark:hover:text-brand-teal"
                       >
                         {prompt}
                       </button>
@@ -1278,9 +1303,10 @@ export function Chat({ session }: { session: Session }) {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
+                  disabled={modelsOff}
                   aria-label={t('attachment.attachLabel')}
-                  title={t('attachment.attachLabel')}
-                  className="grid h-8 w-8 shrink-0 select-none place-items-center self-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700/40"
+                  title={modelsOff ? t('common:modelRequired.short') : t('attachment.attachLabel')}
+                  className="grid h-8 w-8 shrink-0 select-none place-items-center self-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 disabled:opacity-40 dark:hover:bg-slate-700/40"
                 >
                   <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden="true">
                     <path
@@ -1305,8 +1331,10 @@ export function Chat({ session }: { session: Session }) {
                       void send();
                     }
                   }}
-                  placeholder={t('composer.placeholder')}
-                  className="max-h-40 flex-1 resize-none self-center bg-transparent py-1 text-[0.95rem] leading-relaxed text-slate-800 outline-none placeholder:text-slate-400"
+                  disabled={modelsOff}
+                  placeholder={modelsOff ? t('common:modelRequired.short') : t('composer.placeholder')}
+                  title={modelsOff ? t('common:modelRequired.short') : undefined}
+                  className="max-h-40 flex-1 resize-none self-center bg-transparent py-1 text-[0.95rem] leading-relaxed text-slate-800 outline-none placeholder:text-slate-400 disabled:opacity-60"
                 />
                 {/* While an answer is streaming the same control becomes
                     Stop (issue #532): one button, one place, and no second
@@ -1326,7 +1354,8 @@ export function Chat({ session }: { session: Session }) {
                 ) : (
                   <button
                     type="submit"
-                    disabled={busy || (!draft.trim() && !pendingFile)}
+                    disabled={busy || modelsOff || (!draft.trim() && !pendingFile)}
+                    title={modelsOff ? t('common:modelRequired.short') : undefined}
                     aria-label={t('composer.send')}
                     className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-teal text-white transition-transform hover:-translate-y-px hover:brightness-105 disabled:opacity-40"
                   >

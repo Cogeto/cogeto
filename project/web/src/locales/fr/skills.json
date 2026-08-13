@@ -65,7 +65,10 @@
     "queryRemoved": "retirée",
     "querySent": "envoyée"
   },
-  "brief": { "heading": "Synthèse", "copyWithSources": "Copier avec les sources" },
+  "brief": {
+    "heading": "Synthèse",
+    "copyWithSources": "Copier avec les sources"
+  },
   "export": {
     "sources": "Sources :",
     "webSource": "- {{marker}} {{title}} ({{url}}, récupéré {{date}})",

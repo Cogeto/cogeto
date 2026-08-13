@@ -26,6 +26,12 @@ export interface QueueHealthCheck extends HealthCheck {
  * LOUD state (enabled but not actually working) and degrades /api/health.
  */
 export type CapabilityId =
+  // The model configuration itself: on with the configuration id when the
+  // three core tiers are assigned, off with the pointer to the Providers page
+  // when no provider is configured. Off is the normal first-run state and
+  // never a degradation; whether a configured provider actually answers is
+  // the gateway health check's finding, not this entry's.
+  | 'models'
   | 'redaction'
   | 'research'
   | 'mail'
@@ -33,7 +39,6 @@ export type CapabilityId =
   // profile, so an instance that does not use it runs no SMTP listener.
   | 'demo'
   | 'consoles'
-  | 'local-models'
   // Reading pages that are pictures (V2.1 item 4.1). Probed by sending a real
   // image: the same weights are served with and without a multimodal
   // projector, so nothing short of an image can answer the question.

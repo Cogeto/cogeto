@@ -55,7 +55,7 @@
     "heading": "Model configuration",
     "explainer": "Read-only. Which providers and models this instance uses, and what leaves it. API keys are never shown here.",
     "configuration": "Configuration",
-    "notConfigured": "no provider key set, model features are disabled",
+    "notConfigured": "no model provider is configured, model features are off until one is added under Providers",
     "redaction": "Redaction",
     "error": "Couldn't load the model configuration.",
     "tier": {

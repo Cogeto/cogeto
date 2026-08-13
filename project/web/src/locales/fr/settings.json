@@ -55,7 +55,7 @@
     "heading": "Configuration des modèles",
     "explainer": "Lecture seule. Les fournisseurs et modèles utilisés par cette instance, et ce qui en sort. Les clés API ne sont jamais affichées ici.",
     "configuration": "Configuration",
-    "notConfigured": "aucune clé de fournisseur définie, les fonctions des modèles sont désactivées",
+    "notConfigured": "aucun fournisseur de modèles n'est configuré ; les fonctions des modèles sont désactivées jusqu'à l'ajout d'un fournisseur dans Fournisseurs",
     "redaction": "Masquage",
     "error": "Impossible de charger la configuration des modèles.",
     "tier": {

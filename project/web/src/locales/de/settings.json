@@ -55,7 +55,7 @@
     "heading": "Modellkonfiguration",
     "explainer": "Schreibgeschützt. Welche Anbieter und Modelle diese Instanz verwendet und was sie verlässt. API-Schlüssel werden hier nie angezeigt.",
     "configuration": "Konfiguration",
-    "notConfigured": "kein Anbieterschlüssel festgelegt, Modellfunktionen sind deaktiviert",
+    "notConfigured": "kein Modellanbieter ist konfiguriert; Modellfunktionen sind deaktiviert, bis unter Anbieter einer hinzugefügt wird",
     "redaction": "Redaktion",
     "error": "Die Modellkonfiguration konnte nicht geladen werden.",
     "tier": {

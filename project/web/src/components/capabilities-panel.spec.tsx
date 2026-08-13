@@ -43,7 +43,7 @@ const FIXTURE: { capabilities: CapabilitySummary[]; jobs: ScheduledJobSummary[] 
     cap({ id: 'mail', state: 'off', probed: false }),
     cap({ id: 'demo', state: 'off', probed: false }),
     cap({ id: 'consoles', state: 'on', probed: false, detail: 'localhost-only edge' }),
-    cap({ id: 'local-models', state: 'on', detail: 'runtime reachable' }),
+    cap({ id: 'models', state: 'on', detail: 'configuration mistral-default' }),
   ],
   jobs: [
     job({ id: 'dreaming', state: 'overdue', error: 'no successful run since yesterday' }),
@@ -74,8 +74,8 @@ describe('panel_renders_states', () => {
   });
 
   it('healthy capabilities show on with their description and last-check time', () => {
-    expect(html).toContain('Local models');
-    expect(html).toContain('local Ollama runtime');
+    expect(html).toContain('Models');
+    expect(html).toContain('managed under Providers');
     expect(html).toContain('checked ');
   });
 

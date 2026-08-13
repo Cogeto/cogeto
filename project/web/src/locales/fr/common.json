@@ -74,5 +74,11 @@
     "bytes_other": "{{value}} o",
     "kilobytes": "{{value}} Ko",
     "megabytes": "{{value}} Mo"
+  },
+  "modelRequired": {
+    "banner": "No model provider is configured. Capture, ingestion and chat are off until one is added.",
+    "configureCta": "Configure a provider",
+    "askAdmin": "Ask your administrator to configure one.",
+    "short": "A model provider must be configured first. An administrator adds one under Providers."
   }
 }

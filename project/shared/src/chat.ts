@@ -259,8 +259,9 @@ export type ChatStreamEvent =
       message: string;
       /** Machine-readable cause when the client should surface a specific
        * message: `model_budget_exceeded` (daily cap), `timeout` (idle/max
-       * duration abort). Absent for a generic failure. */
-      code?: 'model_budget_exceeded' | 'timeout';
+       * duration abort), `not_configured` (no model provider configured, the
+       * first-run state). Absent for a generic failure. */
+      code?: 'model_budget_exceeded' | 'timeout' | 'not_configured';
     };
 
 /**

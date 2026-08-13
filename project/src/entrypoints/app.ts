@@ -9,7 +9,6 @@ import {
   installModelConfiguration,
   logModelConfiguration,
 } from './model-boot';
-import { assertLocalRuntimeReady } from '../model-gateway/index';
 import { CapabilitiesService, formatCapabilitiesBanner } from '../operations/index';
 import { loadConfig } from './config';
 import { createLogger, PinoNestLogger } from './logger';
@@ -36,10 +35,6 @@ async function main(): Promise<void> {
   // Embedding-space guard: a changed embeddings
   // model refuses boot until reindex has re-embedded the stored vectors.
   await assertEmbeddingSpaceConsistent(config);
-  // Local-runtime probe: an unreachable Ollama
-  // runtime or a never-pulled model refuses boot, never fails at first request.
-  await assertLocalRuntimeReady(config.modelProviders);
-
   const app = await NestFactory.create(createAppRootModule(config, live) as never, {
     logger: new PinoNestLogger(logger),
   });

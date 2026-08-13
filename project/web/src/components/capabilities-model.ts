@@ -36,16 +36,23 @@ export interface CapabilityView {
  * the raw id and the generic consequence, exactly as before.
  */
 const KNOWN_CAPABILITIES = [
+  'models',
   'redaction',
   'research',
   'mail',
   'demo',
   'consoles',
-  'local-models',
   'reasoning',
   'vision',
   'connectors',
 ] as const;
+
+/**
+ * Capabilities configured IN THE INTERFACE: their off state points at the
+ * page that turns them on, never at an operator command. The rest are
+ * genuine `cogeto features` toggles and keep the script hint.
+ */
+const INTERFACE_CONFIGURED = new Set(['models', 'reasoning', 'vision', 'connectors']);
 
 const KNOWN_JOBS = ['dreaming', 'sweep'] as const;
 
@@ -95,7 +102,9 @@ export function capabilityView(summary: CapabilitySummary): CapabilityView {
       icon: '○',
       tone: 'neutral',
       consequence: null,
-      enableHint: i18next.t('capabilities:enableHint', { id: summary.id }),
+      enableHint: INTERFACE_CONFIGURED.has(summary.id)
+        ? i18next.t(`capabilities:capability.${summary.id}.enable`)
+        : i18next.t('capabilities:enableHint', { id: summary.id }),
     };
   }
   return {

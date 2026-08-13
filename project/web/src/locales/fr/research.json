@@ -5,7 +5,9 @@
     "cancelled": "annulé",
     "concluded": "terminé"
   },
-  "citation": { "webTitle": "{{title}} · récupéré {{when}}" },
+  "citation": {
+    "webTitle": "{{title}} · récupéré {{when}}"
+  },
   "page": {
     "heading": "Interrogez le web selon vos conditions",
     "explainer": "La recherche est lancée explicitement et indique clairement ce qui quitte l’instance : Cogeto réduit la requête au minimum, vous montre exactement ce qui serait envoyé et n’envoie rien avant votre approbation. Les pages récupérées deviennent des souvenirs web que vous pouvez examiner et supprimer.",

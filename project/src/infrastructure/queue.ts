@@ -8,6 +8,26 @@ import { describeErrorLine } from './error-scrub';
 
 const DEAD_LETTER_WRITE_ATTEMPTS = 3;
 const DEAD_LETTER_RETRY_MS = 200;
+
+/** How long a job waits before re-checking for a model provider. */
+export const AWAITING_MODEL_PROVIDER_RETRY_MS = 60_000;
+
+/**
+ * Work queued before a model provider exists WAITS instead of failing: no
+ * provider configured is the normal first-run state, and burning a job's
+ * retries against a state only an administrator can change would dead-letter
+ * every capture and degrade health over something that is not broken. Matched
+ * by name (walking the cause chain) rather than by class, because the seam's
+ * error class must not be imported beneath the seam.
+ */
+export function isAwaitingModelProvider(error: unknown): boolean {
+  let current: unknown = error;
+  for (let depth = 0; depth < 5 && current instanceof Error; depth++) {
+    if (current.name === 'ModelGatewayNotConfiguredError') return true;
+    current = current.cause;
+  }
+  return false;
+}
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /** The spec §15.4 idempotency key: one row in job_execution = the job ran (or was cancelled). */
@@ -427,6 +447,25 @@ export function idempotentTask(
         }
       }
     } catch (error) {
+      // No model provider configured: the transaction rolled back (no partial
+      // effect, the idempotency claim released), so the SAME job is re-added
+      // a minute out and this delivery completes. The job key collapses
+      // repeated waits into one scheduled row, attempts never burn, nothing
+      // dead-letters, and the chain drains by itself once an administrator
+      // configures a provider — no restart, no replay.
+      if (isAwaitingModelProvider(error)) {
+        await helpers.addJob(jobType, payload, {
+          runAt: new Date(Date.now() + AWAITING_MODEL_PROVIDER_RETRY_MS),
+          jobKey: `awaiting-model-provider:${jobType}:${payload.source_type}:${payload.source_id}`,
+          jobKeyMode: 'replace',
+        });
+        helpers.logger.warn(
+          `job ${jobType}(${payload.source_type}, ${payload.source_id}) is waiting: no model ` +
+            `provider is configured. It retries every ${AWAITING_MODEL_PROVIDER_RETRY_MS / 1000}s ` +
+            `and completes once an administrator adds one under Providers.`,
+        );
+        return;
+      }
       const { attempts, max_attempts: maxAttempts } = helpers.job;
       if (attempts >= maxAttempts) {
         // Final attempt: park in dead_letter (own transaction — the failed one

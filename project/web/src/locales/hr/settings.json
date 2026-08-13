@@ -55,7 +55,7 @@
     "heading": "Konfiguracija modela",
     "explainer": "Samo za čitanje. Koje pružatelje i modele ova instanca koristi i što je napušta. API ključevi ovdje se nikad ne prikazuju.",
     "configuration": "Konfiguracija",
-    "notConfigured": "nije postavljen ključ pružatelja, značajke modela su onemogućene",
+    "notConfigured": "nijedan pružatelj modela nije konfiguriran; značajke modela su onemogućene dok se pružatelj ne doda u odjeljku Pružatelji",
     "redaction": "Redakcija",
     "error": "Nismo mogli učitati konfiguraciju modela.",
     "tier": {

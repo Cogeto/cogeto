@@ -7,9 +7,15 @@
   "chainVerified_one": "Kette geprüft · {{count}} Beleg",
   "chainVerified_other": "Kette geprüft · {{count}} Belege",
   "chainFailed": "Kettenprüfung FEHLGESCHLAGEN",
-  "sourceKind": { "conversation": "Unterhaltung" },
+  "sourceKind": {
+    "conversation": "Unterhaltung"
+  },
   "sourceLabel": "{{kind}} · {{id}}",
-  "receiptStatus": { "alerting": "Warnung", "pending": "ausstehend…", "confirmed": "bestätigt" },
+  "receiptStatus": {
+    "alerting": "Warnung",
+    "pending": "ausstehend…",
+    "confirmed": "bestätigt"
+  },
   "empty": {
     "title": "Noch keine Löschungen",
     "body": "Ein Löschbeleg ist der signierte, manipulationssichtbare Nachweis, den Cogeto ausstellt, wenn eine Quelle und alles daraus Abgeleitete dauerhaft entfernt werden. Löschen Sie eine Notiz in ihrer Quellenansicht. Der Beleg erscheint dann dauerhaft hier."
