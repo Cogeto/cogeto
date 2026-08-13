@@ -427,7 +427,7 @@ services:
     cpus: 1.0
     pids_limit: 128
     # postgres:17-alpine (same digest as the postgres service — used for psql)
-    image: postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    image: postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
     environment:
       PGHOST: postgres
       PGUSER: postgres
@@ -587,7 +587,7 @@ services:
     cpus: 1.5
     pids_limit: 512
     # postgres:17-alpine
-    image: postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    image: postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
     environment:
       POSTGRES_DB: cogeto
       POSTGRES_USER: postgres
