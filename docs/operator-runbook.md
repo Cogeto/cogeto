@@ -5,7 +5,8 @@ state. **Audience: the operator.** Operations are script-driven and
 manual-by-design: the script does what it can, this runbook covers
 everything around it. One instance = one customer = one VM (single-tenant).
 
-The tool is [`scripts/operator/cogeto`](../scripts/operator/cogeto) (Unit A). Run `cogeto --help` for the full command reference. Where the
+The tool is [`scripts/operator/cogeto`](../scripts/operator/cogeto). Run
+`cogeto --help` for the full command reference. Where the
 script prints a value (DNS records, secrets, checklists), **copy from its
 output**: this runbook tells you where those values go, not what they are.
 
@@ -25,8 +26,9 @@ Developer-facing notes on the script live in
  self-hosted endpoint), and model features are off until then.
 - [ ] An entry prepared in the **trial tracker** (section 8) and your **vault**
  ready to receive the instance secrets.
-- [ ] The oldest installable release is **0.9.0**: earlier tags do not publish
- the edge/mail images.
+- [ ] Install the **latest published release**. The script resolves it itself
+ (the newest GitHub release not flagged pre-release) and asks you to confirm
+ it; `--version X.Y.Z` pins an older one, and retired releases are refused.
 
 ---
 
@@ -84,12 +86,13 @@ Developer-facing notes on the script live in
  sudo ./cogeto install --domain acme.cogeto.eu --acme-email <your ops address>
  ```
 
- The script verifies OS/resources, installs Docker **and cosign** (all
- three image signatures are verified), installs **itself to
+ The script verifies OS/resources, installs Docker **and cosign** (every
+ image this instance runs is signature-verified before it starts),
+ installs **itself to
  `/usr/local/bin/cogeto`** (so `sudo cogeto status` works from anywhere
  afterwards), generates all secrets into `/srv/cogeto/.env` (mode 600),
- derives the inbound address (`capture@in.<domain>`), pulls the three
- signed images, brings the stack up, and waits for health. It ends with
+ derives the inbound address (`capture@in.<domain>`), pulls the signed
+ images, brings the stack up, and waits for health. It ends with
  the **WHAT YOU MUST DO NOW** checklist, everything below is that
  checklist, expanded with the OVH panel locations.
 
@@ -97,7 +100,7 @@ Developer-facing notes on the script live in
  login (`admin@<domain>` + `ZITADEL_ADMIN_PASSWORD` from `.env`) in your
  vault, and record the instance in the trial tracker (section 8).
 
-### The provisioning shape since audit wave 3 (least-privilege data plane)
+### What the install provisions: the least-privilege data plane
 
 This is the provisioning shape for every fresh install; nothing here needs
 operator action beyond vaulting `.env`, but you should know what exists:
@@ -205,14 +208,14 @@ listening port to harden.
 Two hardening topics for the internet-facing mail server. Neither needs an
 action from you any more; both are here so you can verify them.
 
-- **STARTTLS for inbound mail: nothing to do.** The certificate is obtained,
- propagated and renewed automatically. Add the `mail.<domain>` A record
- (record 3 above), which `cogeto features enable mail` already printed, and
- the rest happens on its own: the edge orders the Let's Encrypt certificate
- for the mail host as soon as that record resolves, a sidecar copies it into
- the mail service's own volume with the ownership the non-root Haraka user
- needs, and the mail service reloads it. The same path runs on every renewal,
- so there is no recurring chore and no expiry to diarise.
+- **STARTTLS for inbound mail: nothing to do.** Your one action is the
+ `mail.<domain>` A record (record 3 above), which
+ `cogeto features enable mail` already printed. From there the certificate is
+ obtained, propagated and renewed automatically, on every renewal, so there
+ is no recurring chore and no expiry to diarise. How that works, end to end,
+ is described once in
+ [`operations/email-inbound.md`](operations/email-inbound.md#inbound-tls-starttls);
+ you do not need it to operate the instance, only to debug it.
 
  **Verify** from your own machine, not the instance:
 
@@ -229,17 +232,9 @@ action from you any more; both are here so you can verify them.
  `sudo docker compose logs --tail 50 mail-tls-sync` in `/srv/cogeto`.
 
  **Using your own certificate instead** (an internal CA, or a wildcard you
- already hold) is supported as an override, with renewal then being your
- responsibility. The requirements are exact and one of them is a silent trap;
- they are documented once, in
+ already hold) is supported as an override, with renewal then becoming your
+ responsibility. The requirements are exact and one of them is a silent trap:
  [`operations/email-inbound.md`](operations/email-inbound.md#operator-supplied-certificates-an-override).
-
- This procedure previously told you to copy a certificate out of
- `caddy-data`. It could not work: nothing ever asked for a certificate for
- the mail hostname, so the directory it named did not exist, and the restart
- command it gave named a compose file that is not on the instance (the
- installer writes `docker-compose.deploy.yml` to `/srv/cogeto` as
- `docker-compose.yml`).
 
 - **Sender SPF authentication (SEC-1).** Cogeto now captures a message for the
  registered user it claims to be from **only if the sending server passes SPF**
@@ -258,8 +253,11 @@ action from you any more; both are here so you can verify them.
 ## 3. Verifying a new instance (acceptance checklist)
 
 Run through **all** of this before handing the instance to the customer. Do it
-as the admin user (`admin@<domain>`), with one sender address you control
-allowlisted for the test.
+as the admin user (`admin@<domain>`). For the email test you need one address
+you control that is **registered on a user of this instance**, because capture
+routes by sender: the registered address is captured for its own user with
+nothing to configure, and an allowlist entry is only for mail arriving from
+somewhere else.
 
 - [ ] **HTTPS login**: `https://<domain>` serves a valid Let's Encrypt
  certificate and the login page; the admin can sign in and reach the
@@ -326,8 +324,9 @@ onto a yellow instance.
  - **Capture** a few real notes (meeting outcomes, commitments, decisions).
  - **Ask in chat** about something just captured: answers cite sources;
  click a citation to open the memory and its provenance.
- - **Review**: where uncertain or contradicted facts wait for their
- judgement; nothing is silently believed.
+ - **Review**: where facts that **disagree with each other** wait for their
+ judgement, and only those: everything else Cogeto settles on its own, and
+ an uncertain fact says so on the fact itself rather than queueing.
  - **Dashboard**: commitments and follow-ups that still stand surface as
  open loops, due, overdue, or gone quiet, each opening the fact behind it.
  - **Forgotten**: delete something and show the signed receipt: deletion
@@ -354,12 +353,24 @@ To run tiers on a customer-owned local runtime (Ollama, llama.cpp, vLLM):
 1. **On the runtime host**: install the runtime, then pull the chosen models,
  e.g. `ollama pull gemma3:12b` (generation) and `ollama pull bge-m3`
  (embeddings).
-2. **Networking**: the compose containers must reach the runtime address. A
- LAN or same-host address usually just works; for a WireGuard address the
- VM (the Docker **host**) must hold the wg route and forward traffic from
- the Docker bridge subnet (or run the runtime bound to an address the bridge
- can reach). Verify **from inside a container** before configuring:
- `sudo docker compose exec app node -e "fetch('http://<addr>:11434/api/tags').then(r=>r.text).then(console.log)"`.
+2. **Networking**: the compose containers must reach the runtime address, and
+ this is where a local setup usually stumbles. `localhost` inside the app
+ container is the container, never the VM, so a runtime on the VM itself is
+ reached at the host's LAN address (or `host.docker.internal` where the
+ platform provides it), never at `127.0.0.1`. For a WireGuard address the VM
+ (the Docker **host**) must hold the wg route and forward traffic from the
+ Docker bridge subnet, or the runtime must bind an address the bridge can
+ reach. Verify **from inside a container** before configuring anything, from
+ `/srv/cogeto`:
+
+ ```sh
+ sudo docker compose exec -T app \
+ node -e "fetch('http://<addr>:11434/api/tags').then(r=>r.text()).then(console.log)"
+ ```
+
+ A list of models is the answer you want. A connection error here means the
+ interface will fail the same way, and no provider record can fix it: repair
+ the route first.
 3. **Configure in the interface**: add a **Self-hosted** provider under
  Providers with the runtime's OpenAI-compatible URL (Ollama serves one; so do
  llama.cpp and vLLM), then assign the tiers under Models. No API key is
@@ -381,18 +392,18 @@ To run tiers on a customer-owned local runtime (Ollama, llama.cpp, vLLM):
  structured extraction can run minutes, so the defaults for self-hosted
  endpoints are already high.
 
-Before recommending a local configuration, read the measured per-tier,
-per-language parity table in `docs/features/models.md`, where all-local misses
-parity the mixed posture stays the recommendation, and the gap is stated there.
+Before recommending a local configuration, know the rule it is held to
+([`docs/features/models.md`](features/models.md), "Parity-gated migration"): a
+tier is recommended local only where it reaches eval parity per task and per
+language against the hosted baseline. Where all-local misses parity, the mixed
+posture (hosted generation over local embeddings) stays the recommendation.
+The measurements are published per configuration in the trust scores, and the
+Models page states plainly when the configuration in force has none.
 
 ### 4c. Optional capabilities: `cogeto features`
 
 You never need to remember compose profiles: `sudo cogeto features` is the
-one command for optional capabilities. It lists every capability (redaction,
-research, demo, consoles) with its configured state and, when
-the stack is running, its live health: the same registry the product shows
-in **System → Capabilities**, `/api/health` reports, and every app boot logs
-as one `Capabilities: ...` banner line.
+one command for optional capabilities.
 
 ```
 sudo cogeto features # list + live health
@@ -400,8 +411,25 @@ sudo cogeto features enable research # SearXNG on this instance; nothing externa
 sudo cogeto features disable research
 ```
 
-Models are not a script feature: providers, keys and tier assignments live in
-the interface (section 4b), and the script knows nothing about them.
+**Five capabilities are switched here**: `redaction`, `research`, `mail`,
+`demo` and `consoles`. **Four more are reported and not switched here**:
+`models`, `reasoning`, `vision` and `connectors`. The script prints both
+groups, because the list an operator reads has to match the list the instance
+reports: seeing a capability in health and not in the script is how an
+operator concludes something is broken when nothing is.
+
+Where those four are decided:
+
+| Capability | Decided by |
+| --- | --- |
+| `models` | the interface: Providers, then Models (section 4b) |
+| `vision` | the interface: assign a vision model under Models. Unassigned is a complete answer, and the reading ladder stops at OCR |
+| `reasoning` | nothing: it is a probed fact about the assigned answer model, on when that model returns its thinking in a separate field |
+| `connectors` | the interface: Connections. Off until one is added |
+
+Do not take the capability list from this page. Take it from
+`sudo cogeto features`, which reads the live registry: this table names where
+each capability comes from, and the instance names its state.
 
 What enable/disable does: edits `/srv/cogeto/.env` idempotently (the
 `COMPOSE_PROFILES` line plus the capability's own flags), re-applies the
@@ -413,20 +441,21 @@ any operator TODOs. Notes per capability:
 - **mail**: the receive-only inbound SMTP listener. Enabling it opens 25/tcp,
  prints the DNS records, and starts obtaining the inbound-TLS certificate
  automatically (section 2c).
-- **redaction**: local PII pseudonymization in front of every model call, and
- **available on a customer instance** since the `cogeto/cogeto-redaction`
- image became part of the release. Enabling pulls and cosign-verifies it,
- then sets the fail-closed posture: if the sidecar is unreachable, model
- calls FAIL rather than sending plaintext. Two things to decide first: it
- holds 0.7-1 GB of RAM, and because vectors are then built from
- pseudonymized text it is an instance-lifetime choice (switching later means
- a reindex). Disabling requires typing `disable redaction`: with it off,
- model calls send plaintext to the provider. Background and the measured
- trade-off:
+- **redaction**: local PII pseudonymization in front of every model call.
+ Enabling pulls and cosign-verifies the sidecar image, then sets the
+ fail-closed posture: if the sidecar is unreachable, model calls FAIL rather
+ than sending plaintext. Two things to decide first: it holds 0.7-1 GB of
+ RAM, and because vectors are then built from pseudonymized text it is an
+ instance-lifetime choice (switching later means a reindex). Disabling
+ requires typing `disable redaction`: with it off, model calls send plaintext
+ to the provider. Everything else about it, including what it does not cover,
+ is stated once in
  [`security/data-sovereignty-and-redaction.md`](security/data-sovereignty-and-redaction.md).
-- **demo**: REFUSED on a production instance, loudly. Never
- enable it beside real data.
-- **consoles**: dev-only profile; localhost-bound when present.
+- **demo**: REFUSED on a production instance, loudly, and its seed image is
+ never published, so the deploy channel refuses it twice over. Never enable
+ it beside real data.
+- **consoles**: dev-only; its edge image is never published, so `enable
+ consoles` on a customer instance is refused with that reason.
 
 Health is honest: an enabled capability whose service is down shows
 **UNREACHABLE** here, in System, and degrades `/api/health` within ~30
@@ -499,9 +528,17 @@ a backup.
  on the mismatch). It exits nonzero if the rebuilt index does not match
  the database, treat that as a failed restore.
 
-4. **Repoint DNS**: update the **four records** from section 2a (three A
- records + the MX target's A record) to the new IPv4, and set the **PTR**
- of the new IP to `mail.<domain>`. Delete/retire the old instance's PTR.
+4. **Repoint DNS**: point **every record you created in section 2a** at the
+ new IPv4. Which records exist depends on this instance:
+ - **Always**: the app domain's A record, and the `s3.<domain>` A record.
+ - **Only if email capture is enabled** (`sudo cogeto features` says whether
+ it is): the `mail.<domain>` A record. The MX record itself names a
+ hostname, not an address, so it does not change; the A record it points at
+ does. Also set the **PTR** of the new IP to `mail.<domain>` and retire the
+ old instance's PTR.
+
+ There is no fixed record count: an instance without email capture has two
+ records here, one with it has three plus the PTR.
 5. **Verify like a new instance**: run the section 3 acceptance checklist
  (login, forwarded email lands, a **new** deletion produces a receipt and
  the chain still verifies: this proves the signing keypair survived,
@@ -542,7 +579,7 @@ then delete the rehearsal instance.
 
  ```sh
  sudo ./cogeto upgrade # → latest published release (shown + confirmed)
- sudo ./cogeto upgrade 1.0.5 # → a specific supported release
+ sudo ./cogeto upgrade 1.7.2 # → a specific published release
  ```
 
  The script shows current → target, asks for a **typed confirmation**,
@@ -552,19 +589,17 @@ then delete the rehearsal instance.
  offers **reindex** (typed `REINDEX` confirmation; it re-embeds via the
  model API, so it costs API calls). Say yes when it asks; there is no
  separate bookkeeping to do. An upgrade also **backfills any secrets a
- newer compose requires** (the wave-3 least-privilege credentials are
- generated on first upgrade past them, and the database roles converge
- automatically on the next start): re-vault `.env` after an upgrade that
- prints new secret names. **Check
+ newer compose requires**, generating what is missing and never touching
+ what is set, and the database roles converge on the next start: re-vault
+ `.env` after an upgrade that prints new secret names. **Check
  [`operations/upgrade-notes.md`](operations/upgrade-notes.md) for the target
- release**: some upgrades change what `.env` is for, and the release that
- moved model and provider configuration into the database is one of them.
+ release**: it carries only what one particular release changes about this
+ procedure, and a release with nothing to say has no entry.
 
 5. **Verify after**: `sudo ./cogeto status` is GREEN and prints the running
  `version`, which is the authoritative check. Log in as well and confirm the
- version at the bottom of the sidebar agrees (v1.4.0 and later; releases
- v1.1.0 through v1.3.0 do not show it, the line was lost in a sidebar
- redesign). Expect a short app/worker restart blip during the upgrade,
+ version at the bottom of the sidebar agrees. Expect a short app/worker
+ restart blip during the upgrade,
  nothing more. Image signatures were already verified during the upgrade
  (cosign, mandatory).
 6. **Rollback** (the script prints this too): `sudo ./cogeto upgrade
@@ -575,32 +610,13 @@ then delete the rehearsal instance.
  rehearsal matters.
 7. Record the upgrade (version, date, reindex yes/no) in the tracker.
 
-### 6a. Upgrading past 2.0: one pre-migration step, only if the instance ever ran tasks
+### 6a. Clearing duplicate documents (optional maintenance)
 
-2.0 removes the task subsystem. Instances created at 2.0 or
-later need nothing here. An instance that ran an earlier version and holds
-memories with `task_conclusion` provenance must erase them **through the
-deletion saga** (signed receipts, exactly like any other deletion) before the
-schema migration drops the table their provenance points at:
-
-```sh
-docker compose run --rm worker \
- node project/src/dist/entrypoints/erase-task-conclusions.js
-```
-
-It prints `nothing to erase` and exits 0 when there is nothing to do, so
-running it is always safe. If it is skipped, the migration **stops with a clear
-error** naming this command rather than proceeding: the ordering cannot be
-lost silently.
-
-### 6b. Clearing duplicate documents an older instance accumulated (optional)
-
-Uploading the same file twice used to create two sources, each separately
-read, extracted, verified and embedded, and each entering reconciliation as a
-candidate against its own twin. New uploads resolve to the document already
-held; instances that predate that still carry the copies. This command finds
-them and removes all but one, **through the deletion saga**, so each removal
-leaves a signed receipt like any other deletion.
+Uploading the same file twice resolves to the document already held, so an
+instance does not accumulate duplicates by ordinary use. If one somehow holds
+copies of the same bytes as separate sources, this command finds them and
+removes all but one **through the deletion saga**, so each removal leaves a
+signed receipt like any other deletion.
 
 It is **optional and never required by a migration**. Nothing breaks if it is
 never run: the duplicates cost storage, some spend already paid, and a noisier
@@ -682,6 +698,7 @@ sudo docker compose logs --tail 200 app # or: worker, mail, caddy, zitadel
 | A local runtime shows unreachable (Providers page, gateway health) | Runtime down, or the container cannot route to the address (WireGuard/bridge) | Check the runtime is up (`curl http://<addr>:11434/api/tags` from the VM), then from inside a container (section 4b step 2); fix the runtime URL on the provider record (Providers page, probe it there) or the host route. |
 | A local model probe fails with "model not served" | Model never pulled on the runtime host | Run the exact `ollama pull <model>` command the probe error names on the runtime host, then re-probe on the Providers page. |
 | Local chat/extraction times out | Model too large for the hardware, or first-load latency | Raise `COGETO_MODEL_TIMEOUT_ANSWER_MS` / `_PIPELINE_MS` (defaults 300000) or use a smaller model; the first call after idle loads the model into memory. |
+| App and worker refuse to start, naming an embedding-space mismatch | Stored vectors were made with a different model than the one configured (a restored backup, a direct database edit) | `sudo cogeto reindex` re-embeds from Postgres and repairs it; it works while the services crash-loop, because it runs a fresh container rather than attaching to one. The error names the same command. |
 | Status: "running image differs from configured" | An upgrade or restart did not complete | `cd /srv/cogeto && sudo docker compose up -d`, re-run status; if it persists, re-run `sudo ./cogeto upgrade <configured version>`. |
 | A container is `unhealthy`/restarting | Varies: read its logs | `sudo docker compose logs --tail 200 <service>`. Disk-full is the classic silent killer: status prints `df`; volumes live under `/var/lib/docker`. |
 | Deletion-sweep alert / receipt chain not green | Integrity finding: the product's core promise | Do not improvise. Read the alert in System, capture logs, and escalate to the owner before touching data. |
@@ -702,7 +719,7 @@ is fine). Fields: this exact set, so nothing lives only in your head:
 | Inbound address | `capture@in.acme.cogeto.eu` |
 | OVH instance name / region / flavor | `cogeto-acme` / GRA / b3-8 |
 | Public IPv4 | … |
-| Installed (date, by whom) / current version | 2026-07-20, IG / 0.9.0 |
+| Installed (date, by whom) / current version | 2026-07-20, IG / 1.7.2 |
 | Trial start / trial end / decision | 2026-07-21 / 2026-08-18 /: |
 | Backup enabled (date, schedule hour) | 2026-07-20, 22:00 UTC |
 | **Restore rehearsed (date)** | 2026-07-22 |
@@ -722,5 +739,3 @@ provision VM (§1) → install + DNS + vault (§2) → acceptance checklist (§3
 → onboard customer (§4) → enable backup + rehearse restore (§5)
 → steady state: upgrades (§6), status checks (§7), tracker reviews (§8)
 ```
-
-O6 complete. Next: O7, the launch gate.

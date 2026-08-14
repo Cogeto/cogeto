@@ -4,17 +4,17 @@
 fresh OVHcloud Ubuntu instance. These are the developer-facing
 notes; the operator-facing lifecycle documentation (per-customer onboarding,
 manual trial tracking, OVH backup configuration, rehearsed restore, upgrade
-procedure) is the **[operator runbook](../operator-runbook.md)** (Unit B).
+procedure) is the **[operator runbook](../operator-runbook.md)**.
 
 ## What it does
 
 | Subcommand | Effect |
 | --- | --- |
-| `install` | Fresh Ubuntu 22.04/24.04 → running instance: OS/resource preflight, Docker Engine + compose plugin (official apt repo), **cosign** (pinned release binary; signature verification of all three images: a failed download degrades to a loud warning + printed verify commands), **the script itself to `/usr/local/bin/cogeto`**, `cogeto` system user, `/srv/cogeto` layout, deploy assets fetched at the pinned release tag, per-instance secrets into `.env` (600), the derived inbound address (`capture@in.<domain>`), signed-image pull, `docker compose up -d`, health wait, checklist. |
-| `configure` | Show config (secret values never printed) or change it: `--domain` (re-derives OIDC issuer, S3 origin, inbound address; typed confirmation), `--regenerate NAME` (only `COGETO_MAIL_INTAKE_TOKEN` and `COGETO_QDRANT_API_KEY`; data-bound secrets and the receipt-signing key are refused). Model providers are configured in the interface, never here; the flag that once set a model key dies with a message saying so. |
+| `install` | Fresh Ubuntu 22.04/24.04 → running instance: OS/resource preflight, Docker Engine + compose plugin (official apt repo), **cosign** (pinned release binary; signature verification of every image this instance runs, which is three plus the redaction sidecar when that capability is on), **the script itself to `/usr/local/bin/cogeto`**, `cogeto` system user, `/srv/cogeto` layout, deploy assets fetched at the pinned release tag, per-instance secrets into `.env` (600), the derived inbound address (`capture@in.<domain>`), signed-image pull, `docker compose up -d`, health wait, checklist. |
+| `configure` | Show config (secret values never printed) or change it: `--domain` (re-derives OIDC issuer, S3 origin, inbound address; typed confirmation), `--regenerate NAME` (six rotatable secrets: `COGETO_MAIL_INTAKE_TOKEN`, `COGETO_QDRANT_API_KEY`, `COGETO_APP_DB_PASSWORD`, `COGETO_MIGRATE_DB_PASSWORD`, `ZITADEL_DB_ADMIN_PASSWORD`, `COGETO_S3_SECRET_KEY`; data-bound secrets and the receipt-signing key are refused by name). Model providers are configured in the interface, never here; the flag that once set a model key dies with a message saying so. |
 | `upgrade [X.Y.Z\|latest]` | Self-heals the `/usr/local/bin/cogeto` install first (issue #60: a freshly downloaded script run via `upgrade` must leave `sudo cogeto` working). Published-tag check (Docker Hub), typed confirmation, fetch matching deploy assets, pull, `compose up -d` (the dependency graph re-runs preflight → migrate before app/worker restart), health check, embedding-model drift check → `reindex` (typed confirmation, it re-embeds via the model API), rollback instructions. Rollback = `upgrade <older>` with a ROLLBACK confirmation; schema stays forward, data rollback is the OVH-backup restore. |
 | `status` | Honest report: configured vs actually-running version, per-container health, the app's aggregate `/api/health` (migrations, queue depth, dead-letter count, deletion-sweep state, bucket encryption, mail listener), served TLS certificate + renewal note, **inbound-mail STARTTLS** (probed with a real SMTP handshake, with the certificate's expiry, only when email capture is on), disk usage, `.env` permissions. Green only when green. |
-| `features` | Optional capabilities . No verb: list every capability's configured state from `.env` plus, with the stack up, the live registry from `/api/health` (stack down → configured state + "health unknown", honestly). `enable <id>` / `disable <id>`: idempotent `.env` edits (`COMPOSE_PROFILES` + the capability's flags), `compose up -d --remove-orphans`, per-service health wait, operator TODOs. Typed confirmation: `disable redaction` (plaintext consequence). Models are not a capability and not a script concern: providers, keys and tier assignments live in the interface, and the script knows nothing about them (asking for `local-models` dies with a message pointing at the Providers page). `enable demo` is refused loudly on a production instance; capabilities whose services are not in the instance's compose file (demo/consoles on the deploy channel) are refused with the reason. `enable redaction` pulls and cosign-verifies `cogeto/cogeto-redaction` before starting it, and prints the memory footprint and the retrieval trade-off as TODOs. `enable research` also generates `SEARXNG_SECRET` and fetches `searxng/settings.yml` (pinned to the installed version) when missing. |
+| `features` | Optional capabilities (P6.7). No verb: list the five capabilities the script switches (`redaction`, `research`, `mail`, `demo`, `consoles`) with their configured state from `.env`, then the four the registry reports and the script does NOT switch (`models`, `reasoning`, `vision`, `connectors`) with where each is decided, then, with the stack up, the live registry from `/api/health` (stack down → configured state + "health unknown", honestly). `FEATURE_IDS_REPORTED_ONLY` is the second list and must stay equal to `CapabilityId` minus `FEATURE_IDS`: an operator who sees a capability in health and not here concludes something is broken. Asking to enable one of the four dies with where it IS decided. `enable <id>` / `disable <id>`: idempotent `.env` edits (`COMPOSE_PROFILES` + the capability's flags), `compose up -d --remove-orphans`, per-service health wait, operator TODOs. Typed confirmation: `disable redaction` (plaintext consequence). Models are not a capability and not a script concern: providers, keys and tier assignments live in the interface, and the script knows nothing about them (asking for `local-models` dies with a message pointing at the Providers page). `enable demo` is refused loudly on a production instance; capabilities whose services are not in the instance's compose file (demo/consoles on the deploy channel) are refused with the reason. `enable redaction` pulls and cosign-verifies `cogeto/cogeto-redaction` before starting it, and prints the memory footprint and the retrieval trade-off as TODOs. `enable research` also generates `SEARXNG_SECRET` and fetches `searxng/settings.yml` (pinned to the installed version) when missing. |
 | `reindex [--provider LABEL --model MODEL]` | The vector index from the shell (V2.4 item 7.1 second half). Flagless: rebuild the ACTIVE collection in place from Postgres with the active embeddings model, the repair for the mismatch the boot guard refuses (restored backup, direct database edit). With `--provider` and `--model`: move the instance to a different embeddings model via the same managed rebuild the interface runs (new collection beside the serving one, switch only on verified completion, interruption resumes). Typed `REINDEX` confirmation both ways (re-embedding costs model API calls). Uses `compose run --rm worker`, so it works while app and worker crash-loop; shares the application's own engine rather than duplicating it. |
 | `backup-info` | The exact OVHcloud panel settings to enable(the script performs no backups). |
 
@@ -27,8 +27,9 @@ public IP, derived MX records): never placeholders.
 
 ## The deploy channel
 
-The instance pulls three cosign-signed images per release:
-`cogeto/cogeto`, `cogeto/cogeto-edge`, `cogeto/cogeto-mail`, and fetches
+The instance pulls three cosign-signed images per release
+(`cogeto/cogeto`, `cogeto/cogeto-edge`, `cogeto/cogeto-mail`), plus
+`cogeto/cogeto-redaction` when that capability is on, and fetches
 `project/infra/deploy/{docker-compose.deploy.yml,Caddyfile}` plus
 `project/infra/docker/zitadel-init/init.mjs` from the matching `vX.Y.Z` tag.
 See the deploy [README](../../project/infra/deploy/README.md) for the hardening rules. The script carries **no version
@@ -48,7 +49,7 @@ edit, nothing to bump in release PRs.
  printing the checklist with real values), the pure helpers (sourcing the
  script executes nothing), and the deploy-channel hardening assertions
  (no `build:` keys, required secrets, digest/CSP consistency with the dev
- stack, all three images published and signed by `release.yml`).
+ stack, all four images published and signed by `release.yml`).
 - Secrets must never appear in output: the spec asserts no 64-hex-char token
  leaks from a dry run; keep `env_set` the only place values flow.
 
@@ -61,8 +62,9 @@ developer pass on a fresh OVHcloud Ubuntu 24.04 instance is:
 2. `sudo ./cogeto install --check`: read the plan; nothing changes.
 3. `sudo ./cogeto install --domain <instance domain> --acme-email <you>`:
  should reach "stack healthy" in well under an hour end to end (D5 launch
- definition), then follow the printed checklist: add the four DNS records,
- set the PTR, enable the OVH backup.
+ definition), then follow the printed checklist: add the DNS records it
+ prints (two, plus the mail host's A record and the PTR only with email
+ capture on), enable the OVH backup.
 4. After DNS propagates: HTTPS login works, allowlist a sender, send a test
  email, confirm it lands; export a Passport; delete the test source and
  check Forgotten's receipt; `sudo ./cogeto status` is green.

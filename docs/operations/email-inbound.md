@@ -1,69 +1,59 @@
 # Inbound email: operator notes
 
-Cogeto receives email by **forwarding** into a per-tenant, **receive-only**
-Haraka SMTP server. Cogeto never holds mailbox
-credentials and never reads a whole inbox: the user forwards, BCCs, or sets a
-provider rule to send relevant mail to the instance's unique inbound address.
-The **sender allowlist** decides whose mail is remembered; a fresh instance is
-**closed by default**. Sending is out of scope.
+Cogeto receives email by **forwarding** into a per-instance, **receive-only**
+Haraka SMTP server. Cogeto never holds mailbox credentials and never reads a
+whole inbox: the user forwards, BCCs, or sets a provider rule to send relevant
+mail to the instance's unique inbound address. Sending is out of scope.
 
-This note covers: local test-send, the owner verification checklist, and the
-DNS/MX requirements to hand to O6 provisioning.
+This note is the authority on three things: **how capture routes**, the
+**DNS, TLS and firewall requirements**, and the **local test-send**. Where
+another document mentions any of them it points here rather than restating.
+The lifecycle around it (when to turn it on, what to tell a customer) is the
+[operator runbook](../operator-runbook.md) sections 2c and 4.
 
 ---
 
-## What ships in this unit (Unit A)
+## What it is
 
-- A `mail` container (Haraka) in `docker compose`: receive-only, listens on
- container port `2525`, host port `25` mapped to it. **Behind the `mail`
- compose profile since security audit 2.0 (SEC-14): it is OFF by default**, so
- an instance that does not use email capture runs no internet-facing SMTP
- listener at all. See "Turning it on" below.
+- A `mail` container (Haraka) in `docker compose`: receive-only, listening on
+  container port `2525`, host port `25` mapped to it. **Behind the `mail`
+  compose profile since security audit 2.0 (SEC-14): it is OFF by default**, so
+  an instance that does not use email capture runs no internet-facing SMTP
+  listener at all.
 - An internal authenticated intake endpoint `POST /api/email/intake` (shared
- secret; never public).
-- Full retention: the raw RFC822 + parsed headers + text/HTML bodies + all
- attachments are stored; supported document attachments (PDF/DOCX) are routed
- into the document pipeline as linked file sources.
-- The sender allowlist (address + whole-domain entries), managed in
- **Settings → Email capture**, audited, closed by default.
-- A mail health check surfaced in the dashboard System panel.
+  secret; never public, and 404'd at the edge).
+- Full retention: the raw RFC822 plus parsed headers, text and HTML bodies and
+  all attachments are stored; supported document attachments are routed into
+  the document pipeline as linked file sources.
+- The per-user sender allowlist, managed in **Settings → Email capture**,
+  audited.
+- A mail health check surfaced in `/api/health`, the dashboard System panel and
+  `cogeto status`.
 
-**Deferred to Unit B:** the deletion-saga coverage of email sources + receipts,
-reply drafts through the approval machine, and the in-app forwarding-setup
-guidance shown next to the address.
+## How capture routes: by sender
 
----
+This is the part most often misremembered. There is no capture owner and no
+per-instance recipient rule; the **sender** decides where a message lands.
 
-## Turning it on
+1. **A registered user's own address routes to that user.** Nothing to
+   configure: whatever they forward or BCC from the address their account is
+   registered with becomes their memory, under their default scope.
+2. **Any other sender routes by allowlist.** Each user keeps their own list of
+   external addresses and whole domains; a message from a sender on someone's
+   list is captured for that user. A sender on nobody's list is refused, and
+   the refusal shows under "Recently refused" with its reason and a one-click
+   claim.
+3. **The bootstrap admin account never captures.** The operator login is
+   excluded outright, so an operator's own forwarded mail cannot become the
+   instance's memory.
+4. **Sender authentication gates rule 1** (SEC-1, `COGETO_MAIL_REQUIRE_SPF`,
+   on by default): the self-route needs an SPF `pass`, so a spoofed `MAIL FROM`
+   cannot inject memory into a user's account. A hard SPF `fail` or `softfail`
+   is refused outright, whatever the routing would have been.
 
-Inbound mail is an opt-in capability, like `research` and `redaction`. Nothing
-about the feature changed; what changed is that a stack without it started runs
-no listener and opens no port.
-
-**Dev / source checkout**: activate the profile.
-
-```sh
-COMPOSE_PROFILES=mail docker compose up --build
-```
-
-(Or put `COMPOSE_PROFILES=mail` in `.env`. A one-off `--profile mail` run works
-too, but CLI profile flags are invisible to the container, so also set
-`COGETO_MAIL_ENABLED=1` if you want the capability panel to report it honestly.)
-
-**Customer instance**: the operator script.
-
-```sh
-sudo cogeto features enable mail    # starts the listener, opens 25/tcp, prints the MX/PTR steps
-sudo cogeto features disable mail   # stops it and closes the port again
-```
-
-With the capability off, **System → Capabilities** shows `Email capture: off`
-and the `mail` health check reports "inbound mail capability is off" and stays
-green. A mail-less instance is not a degraded one.
-
-An upgrade carries an instance that was **already** receiving email forward as
-enabled: the script detects the existing mail container and sets the profile
-itself, saying so. Nothing changes for that customer.
+An empty allowlist therefore means "no external senders", not "nothing is
+captured": a registered user forwarding from their own address is captured on
+day one.
 
 ---
 
@@ -75,12 +65,16 @@ Bring the stack up with the mail profile active:
 COMPOSE_PROFILES=mail docker compose up --build
 ```
 
-Wait until the app is healthy and you can log in at `https://localhost`. Then,
-in **Settings → Email capture**, add an allowlisted sender or domain, e.g. the
-domain `adriatic-foods.hr`. Until you do, everything is refused (closed by
-default).
+(Or put `COMPOSE_PROFILES=mail` in `.env`. A one-off `--profile mail` run works
+too, but CLI profile flags are invisible to the container, so also set
+`COGETO_MAIL_ENABLED=1` if you want the capability panel to report it
+honestly.)
 
-Submit fixture messages over SMTP with the dev script (raw SMTP, no dependency):
+Wait until the app is healthy and you can log in at `https://localhost`. The
+dev fixtures send from `adriatic-foods.hr`, which is nobody's registered
+address, so in **Settings → Email capture** add that domain to a user's
+allowlist first; without it both fixtures are refused, which is also a valid
+thing to observe.
 
 ```sh
 # Sends BOTH demo messages: one from the allowlisted domain (accepted) and one
@@ -90,129 +84,133 @@ node scripts/dev/send-test-email.mjs
 # Or send a single message from a specific sender:
 node scripts/dev/send-test-email.mjs --from ana@adriatic-foods.hr
 
-# Attach a document (routed into the document pipeline if it's a PDF/DOCX):
+# Attach a document (routed into the document pipeline if the reader supports it):
 node scripts/dev/send-test-email.mjs --from ana@adriatic-foods.hr --attach ./some.pdf
 ```
 
-Expected: `250 queued` (⛔→ `550`) for the allowlisted sender, `550` for the
-stranger. An accepted message appears as a new source; its facts flow through
-the normal ingestion pipeline and show up in the dashboard with provenance to
-the email.
+Expected: `250 queued` for the routed sender, `550` for the stranger. An
+accepted message appears as a new source; its facts flow through the normal
+ingestion pipeline with provenance to the email.
 
 If host port 25 is taken locally, set `COGETO_MAIL_HOST_PORT=2525` before
 `docker compose up` and pass `--port 2525` to the script.
 
 ---
 
-## Owner verification checklist
+## Turning it on
+
+**Dev / source checkout**: activate the profile, as above.
+
+**Customer instance**: the operator script.
+
+```sh
+sudo cogeto features enable mail    # starts the listener, opens 25/tcp, prints the MX/PTR steps
+sudo cogeto features disable mail   # stops it and closes the port again
+```
+
+With the capability off, **System → Capabilities** shows `mail: off` and the
+`mail` health check reports "inbound mail capability is off" and stays green.
+A mail-less instance is not a degraded one.
+
+---
+
+## Verification checklist
 
 - [ ] `docker compose up` reaches the login page on a fresh clone (email
- capture needs `COMPOSE_PROFILES=mail`).
+      capture needs `COMPOSE_PROFILES=mail`).
 - [ ] The dashboard **System** panel shows the **mail** check green (the Haraka
- SMTP listener is reachable).
-- [ ] **Settings → Email capture** shows the inbound address and an empty
- allowlist with the "closed by default" notice.
+      SMTP listener is reachable).
+- [ ] **Settings → Email capture** shows the inbound address and the user's own
+      always-trusted address.
 - [ ] Adding an address and a domain entry works and is reflected immediately;
- each add/remove appears in the audit trail.
-- [ ] `node scripts/dev/send-test-email.mjs` → the allowlisted sender is
- **accepted** (`250`) and the stranger is **refused** (`550`).
+      each add/remove appears in the audit trail.
+- [ ] `node scripts/dev/send-test-email.mjs` → the routed sender is
+      **accepted** (`250`) and the stranger is **refused** (`550`).
 - [ ] An accepted message produces memories with provenance to the email; a PDF
- attachment produces a linked file source; a `.txt` attachment is recorded
- but not processed.
-- [ ] A refused message leaves **no** stored source/object: only a metadata-only
- refusal row (visible as "Recently refused" in Settings, ready for one-click
- allowlisting).
+      attachment produces a linked file source; a `.txt` attachment is recorded
+      but not processed.
+- [ ] A refused message leaves **no** stored source or object: only a
+      metadata-only refusal row (visible as "Recently refused" in Settings,
+      ready for one-click allowlisting).
 - [ ] Oversize mail and mail to a wrong recipient are refused at SMTP.
 
 ---
 
-## DNS / MX / TLS requirements for O6 provisioning
+## DNS, TLS and firewall
 
-The per-instance inbound address is `capture@in.<instance>.cogeto.eu` (the local
-part is the fixed literal `capture`; the tenant is the **subdomain**). To point
-real mail at a tenant's box, O6 must configure, per instance:
+The per-instance inbound address is `capture@in.<domain>` (the local part is
+the fixed literal `capture`; the instance is the **subdomain**).
+`cogeto features enable mail` prints every record below with the instance's
+real values; these are the requirements behind that output.
 
-1. **MX record** for the inbound subdomain, pointing at the instance host:
+### 1. MX and A records
 
- ```
- in.<instance>.cogeto.eu. IN MX 10 mail.<instance>.cogeto.eu.
- mail.<instance>.cogeto.eu. IN A <instance public IPv4>
- ; (add an AAAA record if the instance has a public IPv6)
- ```
+```
+in.<domain>.    IN MX 10 mail.<domain>.
+mail.<domain>.  IN A     <instance public IPv4>
+; (add an AAAA record if the instance has a public IPv6)
+```
 
-2. **PTR (reverse DNS)** for the instance IP → `mail.<instance>.cogeto.eu`, set
- in the OVHcloud panel. Many senders soft-reject hosts without matching
- forward/reverse DNS.
+### 2. PTR (reverse DNS)
 
-3. **SPF** for the inbound subdomain is not required for *receiving*, but if the
- apex domain publishes a strict SPF, ensure it does not interfere. (Cogeto
- never sends, so no outbound SPF/DKIM/DMARC is needed for this address.)
+Set the reverse of the instance IP to `mail.<domain>`, in the hosting
+provider's panel. Many senders soft-reject hosts without matching
+forward/reverse DNS.
 
-4. **Inbound TLS (STARTTLS). Automatic; nothing to source, copy or renew.**
- This is the one description of how inbound-mail TLS works; every other
- document points here.
+### 3. SPF
 
- The mechanism, end to end:
+Not required for *receiving*. If the apex domain publishes a strict SPF, check
+that it does not claim the `in.<domain>` subdomain. Cogeto never sends, so no
+outbound SPF, DKIM or DMARC is needed for this address. What DOES matter is the
+**sending** side: a user's own domain should publish SPF so their self-captured
+mail authenticates (see routing rule 4 above).
 
- - `cogeto features enable mail` writes `COGETO_MAIL_TLS_SITE=mail.<domain>`
- (the same `derive_mx_host` value it prints as the required A record) and
- prints that record.
- - The edge's Caddyfile carries an **ACME-only vhost** for that hostname: it
- exists purely so a certificate is ordered and renewed, and answers `404`
- to anything that reaches it, because the mail host serves SMTP and no web
- surface. With `COGETO_MAIL_TLS_SITE` empty the vhost falls back to an
- inert `http://mail-tls-disabled.invalid` placeholder, so an instance without email
- capture orders nothing.
- - The **`mail-tls-sync` sidecar** (the edge image, its own container under
- the `mail` profile) reads `caddy-data` read-only, and whenever the
- material for that hostname changes, writes `cert.pem` + `key.pem` into the
- `mail-tls` volume owned by `1000:1000` with mode `0644`/`0640`.
- - The **mail container mounts `mail-tls` only**, never `caddy-data`. It is
- internet-facing, so it must never hold the edge's other keys; that
- boundary is why propagation is a sidecar rather than a second mount.
- - The **mail entrypoint watches its own copy** and, when it changes, exits
- so compose restarts it with the new certificate. Haraka reads the PEM
- files once at startup, so a restart is how a renewal takes effect; it is
- conditional on the material actually changing, so a steady state restarts
- nothing.
+### Inbound TLS (STARTTLS)
 
- **Verifying it**, from outside the instance:
+**Automatic. Nothing to source, copy or renew.** This is the one description of
+the mechanism; every other document points here.
 
- ```sh
- openssl s_client -starttls smtp -connect mail.acme.cogeto.eu:25 -crlf </dev/null
- ```
+It belongs to the **customer stack**: the certificate is a real one for a real
+hostname, so a source checkout has neither the sidecar nor the volume and its
+listener is deliberately cleartext (`cogeto status` and the `mail` capability
+say so rather than implying otherwise).
 
- and on the instance `sudo cogeto status`, which prints whether STARTTLS is
- advertised and when the certificate expires. The `mail` capability in
- `/api/health` and the System panel names the same fact. A cleartext
- downgrade used to be invisible; it is not any more.
+End to end, on a customer instance:
 
- **Why it is built rather than documented.** The consuming half (the
- dedicated volume, the mount, the entrypoint that enables Haraka's `tls`
- plugin) shipped with the first mail commit and worked. The producing half
- was never built, so no certificate for the mail hostname was ever issued
- and the runbook's copy-it-yourself procedure pointed at a directory that
- did not exist. A manual copy would also have inherited exactly the failure
- this removes: the certificate renews every 60 days, silently, and a
- forgotten copy downgrades the listener with nothing saying so.
+- `cogeto features enable mail` writes `COGETO_MAIL_TLS_SITE=mail.<domain>`
+  (the same `derive_mx_host` value it prints as the required A record).
+- The edge's Caddyfile carries an **ACME-only vhost** for that hostname: it
+  exists purely so a certificate is ordered and renewed, and answers `404` to
+  anything that reaches it, because the mail host serves SMTP and no web
+  surface. With `COGETO_MAIL_TLS_SITE` empty the vhost falls back to an inert
+  `http://mail-tls-disabled.invalid` placeholder, so an instance without email
+  capture orders nothing.
+- The **`mail-tls-sync` sidecar** (the edge image, its own container under the
+  `mail` profile) reads `caddy-data` read-only and, whenever the material for
+  that hostname changes, writes `cert.pem` and `key.pem` into the `mail-tls`
+  volume owned by `1000:1000` with mode `0644`/`0640`.
+- The **mail container mounts `mail-tls` only**, never `caddy-data`. It is
+  internet-facing, so it must never hold the edge's other keys; that boundary
+  is why propagation is a sidecar rather than a second mount.
+- The **mail entrypoint watches its own copy** and, when it changes, exits so
+  compose restarts it with the new certificate. Haraka reads the PEM files once
+  at startup, so a restart is how a renewal takes effect; it is conditional on
+  the material actually changing, so a steady state restarts nothing.
 
-5. **Firewall.** Open inbound TCP **25** to the instance. `cogeto features
- enable mail` does this in `ufw` for you, but a cloud-provider network
- firewall is a separate, manual step. Note some cloud providers block
- outbound 25 by default, irrelevant here (receive-only), but inbound 25 must
- be reachable.
+**Verifying it**, from outside the instance:
 
-6. **Per-instance secrets** the provisioning step must generate and set on
- **both** the app and the `mail` service so they agree:
- - `COGETO_MAIL_INBOUND_ADDRESS`: the exact accepted recipient.
- - `COGETO_MAIL_INTAKE_TOKEN`: the shared secret for the internal intake
- (fail-closed: an empty token disables the endpoint).
- The app additionally reads `COGETO_MAIL_SMTP_ADDRESS` (default `mail:2525`)
- for its health probe, and `COGETO_ADMIN_USER_EMAIL` (compose wires it from
- `ZITADEL_ADMIN_USERNAME`): the operator admin account is excluded from
- capture. There is no capture-owner pin: recipients are resolved from the
- **sender** (a registered user's own address routes to them; other senders route by
- each user's personal allowlist).
+```sh
+openssl s_client -starttls smtp -connect mail.<domain>:25 -crlf </dev/null
+```
+
+and on the instance `sudo cogeto status`, which prints whether STARTTLS is
+advertised and when the certificate expires. The `mail` capability in
+`/api/health` and the System panel names the same fact, so a cleartext
+downgrade is visible rather than silent.
+
+If it reports CLEARTEXT, the usual cause is that the `mail.<domain>` A record
+does not resolve yet. Check `dig +short A mail.<domain>` and, if that is fine,
+read `sudo docker compose logs --tail 50 mail-tls-sync` in `/srv/cogeto`.
 
 ### Operator-supplied certificates: an override
 
@@ -232,8 +230,8 @@ Requirements, exactly:
 
 The ownership line is the silent trap and the reason it is spelled out: the
 entrypoint's readability test runs as the container's non-root user, so
-root-only material is indistinguishable from no material at all, and the
-result is a cleartext listener that looks healthy.
+root-only material is indistinguishable from no material at all, and the result
+is a cleartext listener that looks healthy.
 
 To use the override, leave `COGETO_MAIL_TLS_SITE` empty (so the edge orders
 nothing and `mail-tls-sync` idles rather than overwriting your files) and place
@@ -249,13 +247,35 @@ sudo install -o 1000 -g 1000 -m 0640 your-key.pem "$TLSDIR/key.pem"
 Renewals are the same two commands; the watcher picks them up with no restart
 command of your own.
 
-### Verification after provisioning
+### Firewall
+
+Open inbound TCP **25** to the instance. `cogeto features enable mail` does
+this in `ufw` for you, but a cloud-provider network firewall is a separate,
+manual step. Some cloud providers block *outbound* 25 by default, which is
+irrelevant here (receive-only), but inbound 25 must be reachable.
+
+### The per-instance secrets behind it
+
+Generated by `cogeto install` and set on **both** the app and the `mail`
+service so they agree:
+
+- `COGETO_MAIL_INBOUND_ADDRESS`: the exact accepted recipient.
+- `COGETO_MAIL_INTAKE_TOKEN`: the shared secret for the internal intake
+  (fail-closed: an empty token disables the endpoint).
+
+The app additionally reads `COGETO_MAIL_SMTP_ADDRESS` (default `mail:2525`) for
+its health probe, and `COGETO_ADMIN_USER_EMAIL` (compose wires it from
+`ZITADEL_ADMIN_USERNAME`), which is how the operator admin account is excluded
+from capture.
+
+### Verification after the records resolve
 
 ```sh
 # From an external host, confirm the MX resolves and the port answers:
-dig +short MX in.<instance>.cogeto.eu
-swaks --to capture@in.<instance>.cogeto.eu --from you@yourdomain.com --server in.<instance>.cogeto.eu
+dig +short MX in.<domain>
+swaks --to capture@in.<domain> --from you@yourdomain.com --server in.<domain>
 ```
 
-An allowlisted `--from` should be accepted (`250`); anything else refused
-(`550`). Then confirm the message lands in the tenant's dashboard.
+A `--from` that routes (a registered user's own address, or an allowlisted
+sender) should be accepted (`250`); anything else refused (`550`). Then confirm
+the message lands in that user's dashboard.

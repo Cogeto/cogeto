@@ -11,8 +11,8 @@ a fresh clone must reach a usable login, or the build is broken.
  compose file + production Caddyfile the operator script
  (`scripts/operator/cogeto`) installs on a fresh OVHcloud instance. No
  `build:` keys, customer instances pull the cosign-signed release images
- (`cogeto/cogeto`, `cogeto/cogeto-edge`, `cogeto/cogeto-mail`) and never
- build. Mirror root-compose changes here (the operator spec enforces it).
+ (`cogeto/cogeto`, `cogeto/cogeto-edge`, `cogeto/cogeto-mail`, and
+ `cogeto/cogeto-redaction` when that capability is on) and never build. Mirror root-compose changes here (the operator spec enforces it).
 
 Requirements: healthchecks + `service_healthy` ordering; migrations as a
 one-shot init container (never on app boot); Zitadel bootstrapped by provisioning

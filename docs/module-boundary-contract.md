@@ -528,13 +528,14 @@ ones from the image entirely.
 
 **B12 belongs here too, and part 1 was wrong about it.** The record said
 `erase-task-conclusions.ts` would be *deleted* in part 2 because it is "dead
-once no instance predates 2.0". That condition is not met: migration 0035
-refuses to drop `task_conclusion` while memories still carry that provenance and
-names this command in its error, and
-[`operator-runbook.md`](operator-runbook.md) §6a documents it as the required
-step for an instance upgrading from the 1.x line. Deleting a load-bearing
-upgrade tool to satisfy a checklist entry would be the wrong trade. It stays,
-as a CLI, until the 2.0 release notes can declare that upgrade path closed.
+once no instance predates 2.0". It stays anyway: migration 0035 refuses to drop
+`task_conclusion` while memories still carry that provenance and names this
+command in its error, so deleting the CLI would leave a guard pointing at
+nothing. What did change (issue #587) is that the operator runbook no longer
+documents the procedure: no deployed instance carries such memories, and a
+step for a migration path that cannot fire is noise in the one document an
+operator reads front to back. The guard and its CLI are the developer-facing
+safety net they always were.
 
 ### What the two parts cost, measured
 

@@ -195,11 +195,14 @@ Subcommands:
                certificate state and renewal, last migration, queue depth and
                dead-letter count, deletion-sweep state. Green only when
                actually working.
-  features Optional capabilities (P6.7). With no verb:
-               list every capability (redaction, research, mail, demo,
-               consoles) with its configured state and, when the stack is
-               running, its live health from /api/health; with the stack down
-               the configured state is shown and health is stated as unknown.
+  features     Optional capabilities (P6.7). With no verb: list the five
+               capabilities this script switches (redaction, research, mail,
+               demo, consoles) with their configured state, then the four the
+               registry also reports and this script does NOT switch (models,
+               reasoning, vision, connectors) with where each is decided; and,
+               when the stack is running, the live health of all nine from
+               /api/health. With the stack down the configured state is shown
+               and health is stated as unknown.
                'enable <id>' / 'disable <id>' edit the instance configuration
                idempotently (COMPOSE_PROFILES + the capability's flags in
                .env), bring the affected services up or down via compose,
@@ -214,7 +217,9 @@ Subcommands:
                internet-facing listener).
                Models and local model runtimes are NOT features of this
                script: they are configured in the interface (Providers and
-               Models in the left rail).
+               Models in the left rail), and so are connectors (Connections).
+               Reasoning and vision are PROBED facts about the assigned
+               models, not switches at all.
   reindex      Rebuild the vector index from Postgres (spec 4.2). With no
                flags: re-embed everything with the ACTIVE embeddings model —
                the repair for the mismatch the boot guard refuses (restored
@@ -275,8 +280,30 @@ derive_s3_origin() { printf 'https://s3.%s' "$1"; }
 
 FEATURE_IDS="redaction research mail demo consoles"
 
+# The capabilities the registry reports that this script does NOT switch. They
+# are listed by `features` on purpose: an operator who sees a capability in
+# /api/health and not here concludes something is broken, and the honest answer
+# is "it is real, it is decided somewhere else". Keep this list equal to
+# CapabilityId (project/shared/src/health.ts) minus FEATURE_IDS above.
+FEATURE_IDS_REPORTED_ONLY="models reasoning vision connectors"
+
 feature_known() {
   case " ${FEATURE_IDS} " in *" $1 "*) return 0 ;; *) return 1 ;; esac
+}
+
+feature_reported_only() {
+  case " ${FEATURE_IDS_REPORTED_ONLY} " in *" $1 "*) return 0 ;; *) return 1 ;; esac
+}
+
+# Where a registry-reported, non-switchable capability is actually decided.
+feature_decided_by() {
+  case "$1" in
+    models)     echo "interface: Providers, then Models (never .env, never here)" ;;
+    reasoning)  echo "probed: whether the assigned answer model returns a thinking field" ;;
+    vision)     echo "interface: assign a vision model under Models (unassigned is a complete answer)" ;;
+    connectors) echo "interface: Connections (off until one is added)" ;;
+    *)          echo "" ;;
+  esac
 }
 
 # The compose profile a capability rides on.
@@ -1469,9 +1496,14 @@ stop_profile_service() {  # stop_profile_service PROFILE SERVICE
 }
 
 features_list() {
-  say "optional capabilities of this instance (configured state from ${ENV_FILE}):"
+  say "capabilities this script switches (configured state from ${ENV_FILE}):"
   for fid in $FEATURE_IDS; do
     printf '  %-13s %s\n' "$fid" "$(feature_configured "$fid")"
+  done
+  echo
+  say "also reported by the registry, decided elsewhere (nothing to switch here):"
+  for fid in $FEATURE_IDS_REPORTED_ONLY; do
+    printf '  %-13s %s\n' "$fid" "$(feature_decided_by "$fid")"
   done
   app_state="$(service_health app 2>/dev/null || echo missing)"
   if [ "$app_state" = "healthy" ]; then
@@ -1661,6 +1693,9 @@ cmd_features() {
   [ -n "$fid" ] || die "features ${verb}: which capability? Valid ids: ${FEATURE_IDS}"
   if [ "$fid" = "local-models" ]; then
     die "local-models is no longer a script feature: a local runtime is an ordinary model provider now. Configure it in the interface — Providers (add a Self-hosted provider pointing at the runtime's OpenAI-compatible endpoint), then Models (assign the tiers; an embeddings change runs the managed rebuild there)."
+  fi
+  if feature_reported_only "$fid"; then
+    die "'${fid}' is a real capability and the registry reports it, but it is not switched from here — $(feature_decided_by "$fid"). Run 'cogeto features' with no verb to see all nine."
   fi
   feature_known "$fid" || die "unknown capability '${fid}' — valid ids: ${FEATURE_IDS}"
   require_root

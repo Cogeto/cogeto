@@ -13,14 +13,24 @@ enablement is determined, how health is checked, and its failure semantics.
 
 | id | Enablement | Health probe | Failure semantics |
 | --- | --- | --- | --- |
+| `models` | a provider and the three core tier assignments (pipeline, answer, embeddings) exist in the database, interface-managed | none: never probed, because the gateway health check owns reachability | `on` carries the configuration id; `off` points at the Providers page. Off is the normal first-run state, never a degradation |
 | `redaction` | the same flag the gateway obeys | sidecar health endpoint | **fail-closed**: unreachable means model calls fail, never plaintext |
 | `research` | the `research` profile, or an explicit flag | SearXNG health endpoint | **degrade with message**: the feature answers "search unavailable" |
-| `mail` | the `mail` profile, or an explicit flag | TCP connect to the inbound SMTP listener | **loud when enabled and dead**: forwarded mail is not being received. Off is the default, and a mail-less instance is not degraded |
+| `mail` | the `mail` profile, or an explicit flag | an SMTP handshake with the inbound listener, which also reports whether STARTTLS is advertised | **loud when enabled and dead**: forwarded mail is not being received. Off is the default, and a mail-less instance is not degraded |
 | `demo` | the demo-mode flag | passive: the production-guard state | demo plus production makes the guard refuse the seed, loudly |
 | `consoles` | the `consoles` profile, or an explicit flag | none | the console edge binds to host loopback; the app has nothing it can probe, and says so |
-| `models` | a provider and the three core tier assignments (pipeline, answer, embeddings) exist in the database, interface-managed | none: never probed; the gateway health check owns reachability | `on` carries the configuration id; `off` points at the Providers page. Off is the normal first-run state, never a degradation |
-| `vision` | Reading pages that are pictures (V2.1 item 4.1). PROBED by sending a real image: the same weights are served with and without a multimodal projector, so nothing short of an image can answer the question. `off` means the reading ladder stops at local OCR, which is a supported state; `unreachable` names which of the failures happened. |
-| `reasoning` | The generation model returns its thinking in a separate reasoning field (Part B of reasoning support). PROBED by sending a real prompt, for the same reason vision is probed: the identical weights are served both ways, and only a response says which way this instance got them. `on` arms a maxTokens headroom multiplier (COGETO_REASONING_HEADROOM, default 4) on the bindings that reasoned, so thinking cannot silently consume an answer's token budget; `off` is a complete, healthy answer and changes nothing. Never `unreachable`: a dead endpoint is the gateway health check's finding. |
+| `reasoning` | probed: the assigned generation model returns its thinking in a separate field | a real completion (the identical weights are served both ways, so only a response says which way this instance got them) | never `unreachable`: a dead endpoint is the gateway health check's finding. `on` arms the maxTokens headroom so thinking cannot consume an answer's budget; `off` is a complete, healthy answer |
+| `vision` | a vision model is assigned, and probed | a real image (a GGUF model is multimodal only when its projector is loaded) | `off` means the reading ladder stops at local OCR, which is a supported state; `unreachable` names which failure happened |
+| `connectors` | at least one connector is configured | none: state comes from the sync rows, which are what measured the upstream | **loud** when any connector is degraded or needs reauthorisation, naming the connector and the fix. Zero configured is `off`, not a degradation |
+
+**This table explains the entries; it is not the source of the list.** The list
+is `CapabilityId` in the shared health contract, and what an instance actually
+reports is what `/api/health`, **System → Capabilities**, the boot banner and
+`sudo cogeto features` print, all from the one registry. Five of the nine are
+switched by `cogeto features` (`redaction`, `research`, `mail`, `demo`,
+`consoles`); the other four are decided in the interface or by a probe, and the
+script lists them too rather than leaving an operator to wonder why health
+shows a capability the script has never heard of.
 
 Scheduled jobs join the same surface as a second category: `dreaming` and `sweep`, each
 with last-run time, last result, and an overdue state.
