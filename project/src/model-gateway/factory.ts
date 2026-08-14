@@ -194,6 +194,10 @@ function buildProviderGateway(
           pipelineModel: modelIf('pipeline'),
           answerModel: modelIf('answer'),
           embedModel: modelIf('embedding'),
+          // Issue #570: this was computed above and handed to the OpenAI and
+          // Ollama cases only, so a Mistral vision binding built an adapter
+          // that could not see and reported itself unconfigured.
+          visionModel,
           temperature,
         });
         break;

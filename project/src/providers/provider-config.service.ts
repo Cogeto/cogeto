@@ -31,6 +31,7 @@ import {
   isCreatableProviderType,
   NO_AUTH_PLACEHOLDER,
   PROVIDER_TYPE_SPECS,
+  tierCapabilityRefusal,
 } from './domain/provider-types';
 import { resolveFromRecords } from './domain/resolve';
 import { summariseTrustFor } from './domain/trust-lookup';
@@ -614,6 +615,16 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
     if (!provider) throw new NotFoundException('no such provider');
     const spec = PROVIDER_TYPE_SPECS[provider.type as StoredProviderType];
     if (!spec) throw new BadRequestException('this provider has an unknown type');
+    // The capability gate, BEFORE the probe (issue #571). Probing a provider
+    // whose adapter has no image path spends a call to learn something the
+    // type table already knows, and reports it as the base gateway's "no
+    // vision tier is configured for this instance" — true of the adapter,
+    // false of the instance, and unactionable either way.
+    const refusal = tierCapabilityRefusal(tier, spec, {
+      label: provider.label,
+      type: provider.type as StoredProviderType,
+    });
+    if (refusal) throw new BadRequestException(refusal);
 
     const probe = await probeProviderModel(await this.targetFor(provider.id), {
       tier: probeTierFor(tier),
@@ -770,6 +781,7 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
       hasApiKey: row.hasApiKey,
       requiresApiKey: spec?.needsApiKey ?? false,
       supportsEmbeddings: spec?.supportsEmbeddings ?? false,
+      supportsVision: spec?.supportsVision ?? false,
       health: {
         state: health?.state ?? 'unknown',
         detail: health?.detail ?? null,

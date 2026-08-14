@@ -1,7 +1,7 @@
 import { DEFAULT_ANTHROPIC_BASE_URL, DEFAULT_OPENAI_BASE_URL } from '../../model-gateway/index';
 import type { ModelProviderId } from '../../model-gateway/index';
 import { LEGACY_PROVIDER_TYPE, PROVIDER_TYPES } from '@cogeto/shared';
-import type { StoredProviderType } from '@cogeto/shared';
+import type { ModelTierName, StoredProviderType } from '@cogeto/shared';
 
 /**
  * What each provider family is, in one table (V2.4 item 7.1).
@@ -22,6 +22,17 @@ export interface ProviderTypeSpec {
   needsApiKey: boolean;
   /** Does it have an embeddings API at all (Anthropic has none)? */
   supportsEmbeddings: boolean;
+  /**
+   * Can a call through this type's adapter READ AN IMAGE (issue #571)?
+   *
+   * This is a fact about the adapter, not a claim about the vendor: it is true
+   * exactly when the adapter this type routes through implements
+   * `describeImage`. Anthropic's models are multimodal and its entry here is
+   * still false, because `AnthropicModelGateway` has no image path, and a
+   * capability table that describes what a vendor could do rather than what
+   * this instance will do is the thing that produced the bug this closes.
+   */
+  supportsVision: boolean;
   /** Is it somebody's own server rather than a vendor's hosted API? */
   selfHosted: boolean;
   /** The hosted base URL, for the types that have one. */
@@ -36,6 +47,7 @@ export const PROVIDER_TYPE_SPECS: Readonly<Record<StoredProviderType, ProviderTy
     needsBaseUrl: false,
     needsApiKey: true,
     supportsEmbeddings: true,
+    supportsVision: true,
     selfHosted: false,
     defaultBaseUrl: null,
     creatable: true,
@@ -45,6 +57,7 @@ export const PROVIDER_TYPE_SPECS: Readonly<Record<StoredProviderType, ProviderTy
     needsBaseUrl: false,
     needsApiKey: true,
     supportsEmbeddings: true,
+    supportsVision: true,
     selfHosted: false,
     defaultBaseUrl: DEFAULT_OPENAI_BASE_URL,
     creatable: true,
@@ -57,6 +70,9 @@ export const PROVIDER_TYPE_SPECS: Readonly<Record<StoredProviderType, ProviderTy
     // capability gate the embeddings tier is validated against, and the reason
     // it is a fact in a table rather than a check somewhere in a controller.
     supportsEmbeddings: false,
+    // No image path in AnthropicModelGateway. The models can see; this
+    // adapter cannot, and the interface must say the second thing.
+    supportsVision: false,
     selfHosted: false,
     defaultBaseUrl: DEFAULT_ANTHROPIC_BASE_URL,
     creatable: true,
@@ -70,6 +86,11 @@ export const PROVIDER_TYPE_SPECS: Readonly<Record<StoredProviderType, ProviderTy
     // not required.
     needsApiKey: false,
     supportsEmbeddings: true,
+    // Whether the SERVER behind it has a multimodal model loaded is a
+    // different question, and a probed one: the vision probe sends a real
+    // image precisely because a GGUF model is multimodal only when its
+    // projector is loaded and nothing in its name says so.
+    supportsVision: true,
     selfHosted: true,
     defaultBaseUrl: null,
     creatable: true,
@@ -79,6 +100,7 @@ export const PROVIDER_TYPE_SPECS: Readonly<Record<StoredProviderType, ProviderTy
     needsBaseUrl: true,
     needsApiKey: false,
     supportsEmbeddings: true,
+    supportsVision: true,
     selfHosted: true,
     defaultBaseUrl: null,
     creatable: false,
@@ -87,6 +109,34 @@ export const PROVIDER_TYPE_SPECS: Readonly<Record<StoredProviderType, ProviderTy
 
 export const isCreatableProviderType = (value: string): boolean =>
   (PROVIDER_TYPES as readonly string[]).includes(value);
+
+/**
+ * Why this provider cannot serve this tier, or null when it can (issue #571).
+ *
+ * A function beside the table rather than a check inside a controller, for the
+ * reason the `supportsEmbeddings` comment already gives: the capability is a
+ * fact about the type, and a rule that lives next to the fact cannot drift
+ * away from it. The message names the provider and the remedy, because the
+ * failure this replaces named neither.
+ */
+export function tierCapabilityRefusal(
+  tier: ModelTierName,
+  spec: ProviderTypeSpec,
+  provider: { label: string; type: StoredProviderType },
+): string | null {
+  if (tier === 'vision' && !spec.supportsVision) {
+    return (
+      `provider "${provider.label}" cannot serve the vision tier: reading an image is not ` +
+      `implemented for ${provider.type} providers on this instance. Assign a provider whose ` +
+      `type can read images, or leave the vision tier unassigned and the reading ladder stops ` +
+      `at OCR.`
+    );
+  }
+  if (tier === 'embeddings' && !spec.supportsEmbeddings) {
+    return `provider "${provider.label}" has no embeddings API (${provider.type})`;
+  }
+  return null;
+}
 
 /**
  * The adapter-ready base URL for a stored row.

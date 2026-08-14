@@ -95,6 +95,29 @@ embeddings, vision. Mixed configurations are ordinary rather than exceptional.
 **Vision may be unassigned**, in which case the vision capability reports unavailable
 exactly as it did before, and the reading ladder stops at OCR and says so.
 
+**Two of the four tiers are capability-gated** (issue #571). Embeddings and vision
+each need something the provider's adapter actually implements, so a provider that
+cannot serve the tier is filtered out of the candidate list and refused by the API
+before any probe runs:
+
+| Tier | Served by | Not served by |
+| --- | --- | --- |
+| embeddings | Mistral, OpenAI, Self-hosted | Anthropic (it publishes no embeddings API) |
+| vision | Mistral, OpenAI, Self-hosted | Anthropic |
+
+The vision row is about **this code, not the vendors**: Anthropic's models are
+multimodal, and `AnthropicModelGateway` has no image path, so the interface must
+offer what the instance can do rather than what the vendor could. Both facts live in
+one table (`ProviderTypeSpec`) with an environment-side twin (`VISION_CAPABLE`,
+`EMBEDDING_CAPABLE`) that a spec holds to agreement, because when they drifted the
+interface accepted a vision assignment the gateway could not honour and the failure
+surfaced three layers away as the base gateway reporting the whole INSTANCE
+unconfigured.
+
+Being served by a type is necessary, not sufficient: whether the named model can see
+is a **probed** question, which is why validating a vision assignment sends a real
+image.
+
 **Model discovery OFFERS; it never decides.** The provider's models endpoint is
 queried and its answers are offered, and **manual entry is always allowed**, because a
 proxied deployment can legitimately serve models its `/models` route does not
