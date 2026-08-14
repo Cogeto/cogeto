@@ -23,8 +23,35 @@ language of environment-configured models, so the documented recovery for
 Counts: **1 BLOCKER, 6 HIGH, 9 MEDIUM, 6 LOW** (22 findings). Top three: F1
 (upgrade takes an instance down), F2 (the documented model-key recovery is a
 no-op), F4 (the mail STARTTLS procedure needs a certificate that is never issued
-and a compose file that does not exist on the instance). **Twelve are resolved
-across two remediation waves; see the two status sections below.**
+and a compose file that does not exist on the instance). **Eighteen are resolved
+across three remediation waves; see the status sections below. Still open: F11,
+F12, F13, F14, F17.**
+
+### Remediation status, wave 3 (2026-08-14, `fix/documentation-truth`)
+
+The documentation findings, closed against the code as it stands after waves 1
+and 2 rather than against this report: several of the instructions the audit
+quoted had already been overtaken, and a few documents had become wrong in ways
+this report could not have seen. **Documentation only**, plus `.env.example` and
+the operator script's own printed text; no behaviour changed.
+
+| Finding | Status |
+|---|---|
+| F8 | **Resolved.** The runbook's local-runtime section was already interface-first after wave 1; what remained wrong was its verification command, which called `r.text` instead of `r.text()` and could never run. It is now a runnable block (verified live against the dev stack), preceded by the container-networking fact that actually trips people up: `localhost` inside the app container is the container, not the VM. |
+| F9 | **Resolved.** `upgrade-notes.md` no longer contains the superseded `docker compose exec worker npm run reindex` anywhere; every mention across the repository is the `run --rm` form, matching the boot guard's own message. The operator script's two stale `exec` TODOs went with the code that printed them in wave 1. The file's cross-reference to the runbook's upgrade procedure was also wrong (section 5, which is backups); it now says section 6. |
+| F10 | **Resolved.** The restore step no longer names a record count. It states which records always exist (the app domain and `s3.<domain>`) and which exist only with email capture on (the `mail.<domain>` A record and the PTR), and points out that the MX record names a hostname rather than an address, so it does not change at all. |
+| F15 | **Resolved.** `cogeto features` prints all nine capabilities the registry reports: the five it switches with their configured state, then `models`, `reasoning`, `vision` and `connectors` with where each IS decided, so a capability visible in health is never invisible in the script. `features enable <one of the four>` dies naming the interface page or the probe instead of "unknown capability". `FEATURE_IDS_REPORTED_ONLY` carries the second list and is documented as having to equal `CapabilityId` minus `FEATURE_IDS`. The runbook's list is replaced by the same two groups plus a table of where the four come from, and `features/capabilities.md`'s registry table gained the missing `connectors` row and now states that it explains the entries rather than being the source of the list. |
+| F16 | **Resolved.** `docs/deployment.md` carries the complete subcommand table (all seven plus the global flags), matching the script's header comment and `usage()` exactly, and gained a **Rebuilding the vector index** section, since `reindex` is the documented repair for a restored backup and an operator had no reason to discover it there. |
+| F19 | **Resolved.** Both variables are documented in `.env.example` with their defaults and, more usefully, with what those defaults mean: the machine user is the one an operator opens in the Zitadel console to mint a replacement token, and the state file sits beside `pat.txt` in the `zitadel-machinekey` volume, which is exactly what the runbook's domain-change procedure manipulates. That procedure's command shape was verified live. |
+| F22 | **Resolved.** The "Upgrading past 2.0" section is deleted rather than renamed: there is no such release line, and migration 0035's guard cannot fire on any instance that will ever exist (a fresh database has no `task_conclusion` provenance to strand). The CLI and the guard stay, and `module-boundary-contract.md` records why. The script header, `usage()` and `main()` already agreed on all seven subcommands after wave 2; `docs/deployment.md` is now the third list that matches. |
+| F5, F7 | **Documentation halves closed.** Both were resolved in code in wave 2; what remained was that the security document still described redaction's availability as a correction of an earlier error, and the environment example documented the reasoning headroom twice. Availability is now stated once, plainly, in `security/data-sovereignty-and-redaction.md`, with the runbook and `.env.example` pointing at it; the headroom is documented once. |
+
+Beyond the findings, `.env.example` was rewritten as an operator's reference
+(what each variable does, its default, whether it is required, and whether the
+installer generates it, the operator sets it, or it is a knob to leave alone),
+with an explicit list of what is deliberately NOT in it: model configuration,
+connector credentials, the compose-fixed addresses, and the developer and CI
+tooling.
 
 ### Remediation status, wave 2 (2026-08-13, `fix/deploy-channel-parity`)
 
@@ -42,9 +69,9 @@ inbound-mail STARTTLS, and several live configuration knobs.
 | F18 | **Resolved incidentally.** The image-pinning guard now fails a digest with NO tag comment, not only one pinned against `:latest`, and the SearXNG digest carries its real tag (`searxng/searxng:2026.7.19-6da6eee26`, resolved from the digest via the Docker Hub tag API; the digest is unchanged). |
 | F19 | **Resolved incidentally.** `ZITADEL_BOOTSTRAP_MACHINE_USERNAME` and `ZITADEL_BOOTSTRAP_STATE_FILE` are passed by both composes with the defaults `init.mjs` already used, so the state file's path is knowable without reading the source. Behaviour is unchanged; the widened check surfaced them. |
 
-Not addressed here, and still open: F11 (container privilege hardening), F12
-(empty SearXNG secret), F13/F14 (server-side copy and translation coverage),
-F15/F16/F22 and the remaining documentation items, F17, F20.
+Not addressed in wave 2: F11 (container privilege hardening), F12 (empty
+SearXNG secret), F13/F14 (server-side copy and translation coverage), F17, and
+the documentation items, which wave 3 above closes.
 
 ### Remediation status (2026-08-13, `fix/model-config-ui-only`)
 

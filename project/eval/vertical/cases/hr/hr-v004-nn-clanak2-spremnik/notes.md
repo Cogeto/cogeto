@@ -48,7 +48,7 @@ bypass it. Keeping them would have made `main` red on a defect this unit does
 not fix.
 
 **Nothing is hidden by the removal.** The behaviour is published as finding 3 of
-[`../../../../../docs/eval/vertical-corpus-diagnostic.md`](../../../../../docs/eval/vertical-corpus-diagnostic.md),
+[`../../../../../../docs/eval/vertical-corpus-diagnostic.md`](../../../../../../docs/eval/vertical-corpus-diagnostic.md),
 and the pair cases `hr-vr01` and `hr-vr05` still depend on the subject being
 right, so a regression still shows up in the reconciliation rates. Turning the
 declarations back on is the first thing to do in the change that ships

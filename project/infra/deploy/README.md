@@ -2,7 +2,7 @@
 
 The deployment files the operator script
 ([`scripts/operator/cogeto`](../../../scripts/operator/cogeto)) installs at
-`/srv/cogeto` on a fresh OVHcloud Ubuntu instance .
+`/srv/cogeto` on a fresh OVHcloud Ubuntu instance.
 A customer instance **pulls the prebuilt, cosign-signed release images and
 never builds**: this stack has no `build:` keys.
 
@@ -17,8 +17,8 @@ the image version, generates `.env` with per-instance secrets, and brings the
 stack up. Never `docker compose up` this file by hand without a populated
 `.env`: every secret is required and missing values fail loudly by design.
 
-Dev/local work keeps using the repo-root `docker-compose.yml` (:
-`docker compose up` on a fresh clone is the contract). When you change the
+Dev/local work keeps using the repo-root `docker-compose.yml`:
+`docker compose up` on a fresh clone is the contract. When you change the
 root compose or the dev Caddyfile, mirror the change here: the operator spec
 (`project/src/entrypoints/operator-script.spec.ts`) asserts the two stacks
 stay structurally consistent.

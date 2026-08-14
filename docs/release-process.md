@@ -22,12 +22,14 @@ tag and `package.json` `version` are the two sources of truth and must agree
  the tag push:
  - re-verifies tag ↔ `package.json` (a mismatch fails before anything is
  published);
- - builds the three production amd64 images and pushes each as `:X.Y.Z` and
+ - builds the four production amd64 images and pushes each as `:X.Y.Z` and
  `:latest` to Docker Hub, `cogeto/cogeto` (runtime),
- `cogeto/cogeto-edge` (Caddy + SPA), `cogeto/cogeto-mail` (inbound SMTP);
+ `cogeto/cogeto-edge` (Caddy + SPA), `cogeto/cogeto-mail` (inbound SMTP)
+ and `cogeto/cogeto-redaction` (the PII redaction sidecar);
  - **signs every image with keyless cosign** (Sigstore, GitHub OIDC);
- - generates an **SBOM** (SPDX JSON) for the main image and attaches it as a
- cosign attestation and a release asset;
+ - generates an **SBOM** (SPDX JSON) for the main image and a second one
+ for the redaction sidecar, each attached as a cosign attestation and a
+ release asset;
  - creates the **GitHub Release** with notes auto-generated from the merged
  Conventional-Commit PRs (grouped by type via
  [`.github/release.yml`](../.github/release.yml)) and a footer showing the
@@ -42,7 +44,8 @@ tag and `package.json` `version` are the two sources of truth and must agree
 | `cogeto/cogeto:X.Y.Z` (+ `:latest`) | Docker Hub, cosign-signed |
 | `cogeto/cogeto-edge:X.Y.Z` (+ `:latest`) | Docker Hub, cosign-signed |
 | `cogeto/cogeto-mail:X.Y.Z` (+ `:latest`) | Docker Hub, cosign-signed |
-| SBOM (`cogeto-X.Y.Z.sbom.spdx.json`) | cosign attestation + GitHub Release asset |
+| `cogeto/cogeto-redaction:X.Y.Z` (+ `:latest`) | Docker Hub, cosign-signed |
+| SBOMs (`cogeto-X.Y.Z.sbom.spdx.json`, `cogeto-redaction-X.Y.Z.sbom.spdx.json`) | cosign attestations + GitHub Release assets |
 | Release notes (grouped by feat/fix/docs/chore) | GitHub Release |
 | **Trust scores** (`eval/trust-scores/vX.Y.Z.json` + rebuilt `index.json`) | committed to `main` via an auto-merged PR |
 | Deploy assets consumed at the tag (`project/infra/deploy/`, the zitadel-init script) | the tagged source tree |

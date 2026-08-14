@@ -24,11 +24,23 @@ and the commands you'll want at hand.
  release tag matching the image version. Secrets are generated per instance,
  required by the compose file (`${VAR:?}`), and never committed.
 - Everything is orchestrated by **one operator script**,
- [`scripts/operator/cogeto`](../scripts/operator/cogeto)
- (`install` / `configure` / `upgrade` / `status` / `features` / `reindex` /
- `backup-info`, plus a `--check` dry run). It installs cosign and verifies the signatures itself,
- and ends every run with an instance-specific checklist of what it cannot do
- for you (DNS records, backup settings, verification steps).
+ [`scripts/operator/cogeto`](../scripts/operator/cogeto). It installs cosign
+ and verifies the signatures itself, and ends every run with an
+ instance-specific checklist of what it cannot do for you (DNS records, backup
+ settings, verification steps). The complete subcommand set, which is what
+ `cogeto --help` prints:
+
+ | Subcommand | What it is for |
+ | --- | --- |
+ | `install` | First-time setup on a fresh Ubuntu 22.04/24.04 host |
+ | `configure` | Show or change instance configuration: `--domain`, `--regenerate NAME` |
+ | `upgrade` | Move to a published release, or roll images back |
+ | `status` | The honest health report; the first command in any investigation |
+ | `features` | Optional capabilities: list, enable, disable |
+ | `reindex` | Rebuild the vector index from Postgres, or move the embeddings model |
+ | `backup-info` | The exact hosting-panel settings to enable |
+
+ Global flags: `--check` (dry run, mutates nothing), `--root DIR`, `--help`.
 
 ```sh
 # On a fresh Ubuntu 22.04/24.04 instance:
@@ -71,13 +83,29 @@ verify command. How releases are produced:
 curl -fsSL https://raw.githubusercontent.com/Cogeto/cogeto/main/scripts/operator/cogeto -o cogeto
 chmod +x cogeto
 sudo ./cogeto upgrade # latest published release
-sudo ./cogeto upgrade 0.9.1 # a specific one
+sudo ./cogeto upgrade 1.7.2 # a specific published release
 ```
 
 The script refuses unpublished tags, re-runs migrations, health-checks, and
 detects itself when a release changed the embedding model (offering the
 reindex). Rollback rolls images back, **migrations are forward-only**; full
 data rollback is the runbook's rehearsed backup restore. Details: runbook §6.
+
+## Rebuilding the vector index
+
+Postgres is the source of truth and Qdrant is a rebuildable index, so a
+restored backup whose index and configuration disagree is repaired rather than
+lost:
+
+```sh
+sudo cogeto reindex                                   # rebuild in place, active model
+sudo cogeto reindex --provider <label> --model <model> # move the embeddings model
+```
+
+Both run a fresh container (`docker compose run --rm worker`, never `exec`), so
+they work while app and worker refuse to start, which is when the first form is
+usually needed. The interface runs the same managed rebuild from the Models
+page. Details: runbook §5c and [`features/models.md`](features/models.md).
 
 ## What deployment is *not*
 

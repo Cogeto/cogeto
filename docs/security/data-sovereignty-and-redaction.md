@@ -19,11 +19,17 @@ themselves, and those all pass through the seam.
 
 ## The EU-hosted default
 
-v1 routes model and embedding calls to the **Mistral API** under EU-hosted,
-zero-retention DPA terms. Per-tier models keep cost and exposure proportionate: a
-cheaper model for high-volume ingestion, a stronger one for the answers you read.
-Nothing about the architecture phones home. There is no telemetry channel back to
-the project.
+Which models an instance calls is **its own choice, made in the interface**
+(Providers, then Models) and stored in its own database; the environment
+carries no model configuration at all. The recommended default is the
+**Mistral API** under EU-hosted, zero-retention DPA terms, and an instance can
+equally run every tier against a self-hosted endpoint, in which case no model
+call leaves the box at all. Per-tier assignment keeps cost and exposure
+proportionate: a cheaper model for high-volume ingestion, a stronger one for
+the answers you read. Whatever the choice,
+**nothing about the architecture phones home**: there is no telemetry channel
+back to the project. How configuration works:
+[`../features/models.md`](../features/models.md).
 
 ## The optional redaction layer
 
@@ -56,15 +62,11 @@ Once it is on, `/api/health` and the System panel report the `redaction`
 capability, and an unreachable sidecar is a **loud** state there, not a silent
 one, because that is precisely when model calls start failing.
 
-**Availability, stated plainly, because it used to be stated wrongly.** Until
-issue #565 this section described the posture with no caveat while the sidecar
-was reachable only on a source checkout: its image was never published, and the
-deploy compose (which forbids building from source by design) carried no
-`redaction` profile and did not even pass `REDACTION_ENABLED` to the
-application, so setting it by hand on a customer box did nothing. The image is
-now built, pushed, cosign-signed and SBOM-attested by the release pipeline
-beside the other three, and the profile is in the customer compose. A customer
-instance can run this.
+**Availability: both stacks, no caveat.** `cogeto/cogeto-redaction` is built,
+pushed, cosign-signed and SBOM-attested by the release pipeline beside the
+other three images, and the `redaction` profile is in the customer compose, so
+a customer instance runs this exactly as a source checkout does. This is the
+one place that statement is made; the runbook and `.env.example` point here.
 
 ### What it costs to run
 
@@ -104,9 +106,11 @@ with and without `REDACTION_ENABLED`), recorded in `docs/eval/history.md`.
 Because vectors under redaction are made from pseudonymized text, toggling
 redaction between builds would produce an inconsistent index, so it is an
 **instance-lifetime setting**, not a per-run flag, and a reindex re-embeds
-consistently with the current mode. Local embeddings (which remove the trade-off
-entirely by keeping the embed call inside the trust boundary) are the planned v1.x
-path.
+consistently with the current mode. Local embeddings remove the trade-off
+entirely by keeping the embed call inside the trust boundary, and they are
+available today: assign the embeddings tier to a self-hosted provider, which
+runs as the managed rebuild described in
+[`../features/models.md`](../features/models.md).
 
 ## The residual limitation (must be stated to users)
 
