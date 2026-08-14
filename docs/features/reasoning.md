@@ -47,9 +47,22 @@ masquerading as "returned no text". Details:
 surfaces `reasoning_content` (llama.cpp, DeepSeek), `reasoning` (OpenAI-style)
 and `thinking` (Ollama) deltas on the thinking channel, and a thinking delta
 also arms the Part B headroom, so live chat traffic teaches the adapter too.
-Mistral yields text only; Anthropic maps `thinking_delta` blocks although
-Cogeto never requests extended thinking. A non-reasoning model yields the
-same bytes it always did, one field deeper.
+Mistral surfaces its `thinking` content chunks the same way (issue #573):
+a Magistral turn arrives as `{type: 'thinking', thinking: [...]}` inside the
+message content, and that chunk is routed to the thinking channel and
+deliberately kept OUT of the answer text, which is what the storage,
+citation and redaction paths assume. Anthropic maps `thinking_delta` blocks
+although Cogeto never requests extended thinking. A non-reasoning model
+yields the same bytes it always did, one field deeper.
+
+Until #573 the Mistral adapter yielded text only, and dropped the thinking
+chunk on the floor: a Magistral model answered with no visible deliberation,
+and because `probeReasoning` reads the `reasoned` flag off a non-streaming
+`complete()` result that the adapter never set, the `reasoning` capability
+probed **off for every Mistral binding whatever the model was**. Whether an
+adapter accounts for the channel is now a structural check
+(`model-gateway/adapter-parity.spec.ts`), because this was the third
+capability in a row to land in one adapter and go missing from another.
 
 The four decorators keep their contracts, two by explicit ruling:
 

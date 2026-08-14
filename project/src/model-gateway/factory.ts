@@ -198,6 +198,10 @@ function buildProviderGateway(
           // Ollama cases only, so a Mistral vision binding built an adapter
           // that could not see and reported itself unconfigured.
           visionModel,
+          // Issue #573: a Magistral binding spends part of its cap thinking,
+          // so the same headroom the OpenAI-compatible adapter applies is
+          // applied here rather than truncating the answer away.
+          reasoningHeadroom: providers.reasoningHeadroom,
           temperature,
         });
         break;

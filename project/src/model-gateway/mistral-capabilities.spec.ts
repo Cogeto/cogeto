@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
+ * The Mistral adapter's optional capabilities: vision (issue #570) and
+ * reasoning (issue #573). Both had the same shape of defect, which is why they
+ * are pinned in one file.
+ *
  * Vision on the Mistral adapter (issue #570).
  *
  * The defect: `describeImage` was implemented in the OpenAI-compatible adapter
@@ -17,10 +21,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  */
 
 const chatComplete = vi.hoisted(() => vi.fn());
+const chatStream = vi.hoisted(() => vi.fn());
 
 vi.mock('@mistralai/mistralai', () => ({
   Mistral: class {
-    chat = { complete: chatComplete, stream: vi.fn() };
+    chat = { complete: chatComplete, stream: chatStream };
     embeddings = { create: vi.fn() };
     models = { list: vi.fn() };
   },
@@ -196,5 +201,125 @@ describe('mistral vision', () => {
         { redacted: false },
       ),
     ).toThrowError(/cannot read images.*COGETO_PROVIDER_VISION/s);
+  });
+});
+
+/**
+ * Reasoning on the Mistral adapter (issue #573).
+ *
+ * Thinking is a CHANNEL. The adapter yielded only `{ channel: 'text' }`, and
+ * `complete` never set `reasoned`, so `probeReasoning` (which reads that flag)
+ * reported the `reasoning` capability off for every Mistral binding whatever
+ * the model, and the chat toggle had nothing to show. Mistral carries a
+ * reasoning turn as a `ThinkChunk` in the message content, which the adapter's
+ * text extractor dropped on the floor.
+ */
+describe('mistral reasoning', () => {
+  beforeEach(() => {
+    chatComplete.mockReset();
+    chatStream.mockReset();
+  });
+
+  /** A Magistral-shaped reply: a thinking chunk, then the answer. */
+  const deliberated = (thinking: string, answer: string): unknown => ({
+    choices: [
+      {
+        finishReason: 'stop',
+        message: {
+          content: [
+            { type: 'thinking', thinking: [{ type: 'text', text: thinking }] },
+            { type: 'text', text: answer },
+          ],
+        },
+      },
+    ],
+    usage: { promptTokens: 20, completionTokens: 40 },
+  });
+
+  it('reports that the model reasoned, which is what the capability probe reads', async () => {
+    chatComplete.mockResolvedValue(deliberated('weighing the options', 'Zagreb.'));
+    const gateway = new MistralModelGateway({
+      apiKey: 'k',
+      answerModel: 'magistral-medium-latest',
+    });
+    const result = await gateway.complete({ input: 'where?' });
+    expect(result.reasoned).toBe(true);
+    // And the deliberation is NOT in the answer: it is a channel, never
+    // content, so it must not reach storage, citations or redaction.
+    expect(result.text).toBe('Zagreb.');
+    expect(result.text).not.toContain('weighing');
+  });
+
+  it('a model that does not deliberate is unchanged: no reasoned flag, same text', async () => {
+    chatComplete.mockResolvedValue(answered('Zagreb.'));
+    const gateway = new MistralModelGateway({ apiKey: 'k', answerModel: 'mistral-medium-latest' });
+    const result = await gateway.complete({ input: 'where?' });
+    expect(result.reasoned).toBeUndefined();
+    expect(result.text).toBe('Zagreb.');
+  });
+
+  it('streams thinking on its own channel, ahead of the answer', async () => {
+    chatStream.mockResolvedValue(
+      (async function* () {
+        yield {
+          data: {
+            choices: [
+              {
+                delta: {
+                  content: [{ type: 'thinking', thinking: [{ type: 'text', text: 'hmm' }] }],
+                },
+              },
+            ],
+          },
+        };
+        yield { data: { choices: [{ delta: { content: 'Zag' } }] } };
+        yield { data: { choices: [{ delta: { content: 'reb.' } }] } };
+      })(),
+    );
+    const gateway = new MistralModelGateway({
+      apiKey: 'k',
+      answerModel: 'magistral-medium-latest',
+    });
+    const deltas = [];
+    for await (const delta of gateway.completeStream({ input: 'where?' })) deltas.push(delta);
+    expect(deltas).toEqual([
+      { channel: 'thinking', text: 'hmm' },
+      { channel: 'text', text: 'Zag' },
+      { channel: 'text', text: 'reb.' },
+    ]);
+  });
+
+  it('applies the reasoning headroom only after a model has SHOWN it reasons', async () => {
+    // Learned from the answer, never from the name: mistral-medium and
+    // magistral-medium are one call apart and only the reply says which.
+    chatComplete.mockResolvedValue(deliberated('thinking', 'answer'));
+    const gateway = new MistralModelGateway({
+      apiKey: 'k',
+      answerModel: 'magistral-medium-latest',
+      reasoningHeadroom: 4,
+    });
+    await gateway.complete({ input: 'first', maxTokens: 500 });
+    expect((chatComplete.mock.calls[0]![0] as { maxTokens: number }).maxTokens).toBe(500);
+    await gateway.complete({ input: 'second', maxTokens: 500 });
+    expect((chatComplete.mock.calls[1]![0] as { maxTokens: number }).maxTokens).toBe(2000);
+  });
+
+  it('a budget spent entirely on thinking is named, not reported as an empty answer', async () => {
+    chatComplete.mockResolvedValue({
+      choices: [
+        {
+          finishReason: 'length',
+          message: {
+            content: [{ type: 'thinking', thinking: [{ type: 'text', text: 'still thinking' }] }],
+          },
+        },
+      ],
+    });
+    const gateway = new MistralModelGateway({
+      apiKey: 'k',
+      answerModel: 'magistral-medium-latest',
+    });
+    const error = await rejection(gateway.complete({ input: 'where?', maxTokens: 32 }));
+    expect(error.message).toMatch(/reasoning/i);
   });
 });
