@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 /**
  * The Mistral adapter's optional capabilities: vision (issue #570) and
@@ -321,5 +322,86 @@ describe('mistral reasoning', () => {
     });
     const error = await rejection(gateway.complete({ input: 'where?', maxTokens: 32 }));
     expect(error.message).toMatch(/reasoning/i);
+  });
+});
+
+/**
+ * ASKING for thinking (issue #577). Measured against the live API before this
+ * was written: `magistral-small-latest` with no parameter returns a plain
+ * string and 14 completion tokens, and `mistral-small-latest` with
+ * `reasoning_effort: "high"` returns the think chunk and 445. #573 built the
+ * receiving half; the chat toggle reached the adapter and was dropped.
+ */
+describe('mistral reasoning_effort', () => {
+  beforeEach(() => {
+    chatComplete.mockReset();
+    chatStream.mockReset();
+  });
+
+  const body = (call: number): Record<string, unknown> =>
+    chatComplete.mock.calls[call]![0] as Record<string, unknown>;
+
+  it('asks for thinking when the caller wants it, and asks it off when not', async () => {
+    chatComplete.mockResolvedValue(answered('Zagreb.'));
+    const gateway = new MistralModelGateway({ apiKey: 'k', answerModel: 'mistral-small-latest' });
+    await gateway.complete({ input: 'where?', thinking: 'on' });
+    expect(body(0).reasoningEffort).toBe('high');
+    await gateway.complete({ input: 'where?', thinking: 'off' });
+    expect(body(1).reasoningEffort).toBe('none');
+  });
+
+  it('a caller with NO thinking mode pays for nothing: the field is absent', async () => {
+    // Research synthesis, skills, email drafts and the provider probe all call
+    // the answer tier without a mode. Thinking tokens are charged, so an
+    // absent mode must stay absent rather than default to on.
+    chatComplete.mockResolvedValue(answered('Zagreb.'));
+    const gateway = new MistralModelGateway({ apiKey: 'k', answerModel: 'mistral-small-latest' });
+    await gateway.complete({ input: 'where?' });
+    expect(body(0)).not.toHaveProperty('reasoningEffort');
+  });
+
+  it('never asks structured extraction to think: it is temperature 0 in JSON mode', async () => {
+    chatComplete.mockResolvedValue({ choices: [{ message: { content: '{"ok":true}' } }] });
+    const gateway = new MistralModelGateway({ apiKey: 'k', pipelineModel: 'mistral-small-latest' });
+    await gateway.extractStructured(z.object({ ok: z.boolean() }), {
+      system: 'extract',
+      input: 'anything',
+    });
+    expect(body(0)).not.toHaveProperty('reasoningEffort');
+    expect(body(0).temperature).toBe(0);
+  });
+
+  it('a model that refuses the field answers anyway, and is not asked twice', async () => {
+    // Losing every chat reply to a rejected optional parameter would be a far
+    // worse failure than not thinking.
+    let seen = 0;
+    chatComplete.mockImplementation((request: Record<string, unknown>) => {
+      seen += 1;
+      if ('reasoningEffort' in request) {
+        return Promise.reject(
+          Object.assign(new Error('unsupported parameter: reasoning_effort'), { statusCode: 400 }),
+        );
+      }
+      return Promise.resolve(answered('Zagreb.'));
+    });
+    const gateway = new MistralModelGateway({ apiKey: 'k', answerModel: 'mistral-tiny' });
+    await expect(gateway.complete({ input: 'where?', thinking: 'on' })).resolves.toMatchObject({
+      text: 'Zagreb.',
+    });
+    expect(seen).toBe(2); // asked, refused, retried without it
+    // Learned: the next call does not spend a round trip rediscovering it.
+    await gateway.complete({ input: 'again?', thinking: 'on' });
+    expect(seen).toBe(3);
+  });
+
+  it('the stream asks too, so live chat is where thinking actually shows', async () => {
+    chatStream.mockResolvedValue(
+      (async function* () {
+        yield { data: { choices: [{ delta: { content: 'Zagreb.' } }] } };
+      })(),
+    );
+    const gateway = new MistralModelGateway({ apiKey: 'k', answerModel: 'mistral-small-latest' });
+    for await (const _ of gateway.completeStream({ input: 'where?', thinking: 'on' })) void _;
+    expect((chatStream.mock.calls[0]![0] as Record<string, unknown>).reasoningEffort).toBe('high');
   });
 });
