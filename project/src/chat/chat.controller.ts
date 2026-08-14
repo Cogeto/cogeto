@@ -31,6 +31,7 @@ import type {
   ConversationSearchHitDto,
   NoteStatusDto,
 } from '@cogeto/shared';
+import { MAX_CHAT_ATTACHMENTS } from '@cogeto/shared';
 import {
   DRIZZLE,
   RateLimit,
@@ -48,8 +49,9 @@ import { answersCiting } from './source-listing';
 import { ChatService } from './chat.service';
 import { GenerationRegistry } from './generation-registry';
 
-/** How many attachments one message can carry. */
-const MAX_ATTACHMENTS_PER_MESSAGE = 4;
+/** How many attachments one message can carry — shared with the composer,
+ * which has to say the number out loud when a drop exceeds it (issue #584). */
+const MAX_ATTACHMENTS_PER_MESSAGE = MAX_CHAT_ATTACHMENTS;
 
 /** Zod at the boundary — same bounds as note capture. */
 const askSchema = z.object({

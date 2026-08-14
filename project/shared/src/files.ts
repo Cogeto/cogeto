@@ -179,6 +179,13 @@ export const ALLOWED_UPLOAD_CONTENT_TYPES: readonly string[] = [
   ...IMAGE_CONTENT_TYPES,
 ];
 
+/**
+ * How many files one chat message may carry (issue #584). Shared because the
+ * ask endpoint enforces it and the composer must state it: a cap the interface
+ * does not know is a silent truncation the moment someone drops five files.
+ */
+export const MAX_CHAT_ATTACHMENTS = 4;
+
 /** Accept-friendly extensions for the file picker + client-side validation. */
 export const ALLOWED_UPLOAD_EXTENSIONS: readonly string[] = [
   '.pdf',

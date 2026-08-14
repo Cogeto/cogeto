@@ -13,6 +13,7 @@ import type {
 } from '@cogeto/shared';
 import {
   ALLOWED_UPLOAD_EXTENSIONS,
+  MAX_CHAT_ATTACHMENTS,
   mapMarkersToCitations,
   mapUnsourcedMarkers,
   plainAnswerText,
@@ -53,6 +54,9 @@ import { MemoryDrawer } from '../components/MemoryDrawer';
 import { ResearchInline } from '../components/ResearchInline';
 import { pickResumeRun } from '../components/research-resume';
 import { Shell } from '../components/Shell';
+import { formatFileSize } from '../i18n/format';
+import { dragHasFiles, stageAttachments } from '../components/attachments-model';
+import type { PendingFile } from '../components/attachments-model';
 import { UnsourcedChip } from '../components/UnsourcedChip';
 import { getAutoResearch, setAutoResearch } from '../research-pref';
 import { validateUploadFile } from '../upload-validation';
@@ -650,6 +654,9 @@ function ProjectChip({
   );
 }
 
+/** Size beside a staged file, through the locale-aware helper. */
+const formatBytes = (bytes: number): string => formatFileSize(bytes) ?? '';
+
 export function Chat({ session }: { session: Session }) {
   const { t } = useTranslation('chat');
   const { t: tp } = useTranslation('projects');
@@ -746,9 +753,42 @@ export function Chat({ session }: { session: Session }) {
   /** The lens gap's one-tap widen (V2.5 item 8.3): Cogeto never widens
    * silently, so the offer is the bridge, exactly as it is for research. */
   const [widenOffer, setWidenOffer] = useState<ChatWidenOffer | null>(null);
-  const [pendingFile, setPendingFile] = useState<{ file: File; transient: boolean } | null>(null);
+  /**
+   * Files staged for the next send (issue #584). A LIST, capped at the number
+   * the ask endpoint already accepts: the server has taken up to
+   * MAX_CHAT_ATTACHMENTS per message since V2.2 item 5.1, and only the
+   * composer was single-file. Each carries its own `transient` choice, because
+   * mixing "remember this" and "just for this conversation" in one message is
+   * already legal server-side.
+   */
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
+  /** True while a drag carrying FILES is over the composer. */
+  const [dragging, setDragging] = useState(false);
+  const dragDepth = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Stage a batch, validating each file on its own. A rejected file never
+   * takes a good one down with it: the valid ones stage, the rest are named
+   * with their reason, so a folder or a stray screenshot in a multi-select
+   * does not clear what you already had.
+   */
+  const stageFiles = (incoming: File[]) => {
+    if (incoming.length === 0) return;
+    const { accepted, refused, capReached } = stageAttachments(
+      pendingFiles,
+      incoming,
+      validateUploadFile,
+    );
+    if (accepted.length > 0) setPendingFiles((was) => [...was, ...accepted]);
+    // The cap is STATED, never a silent truncation.
+    const problems = [
+      ...refused,
+      ...(capReached ? [t('attachment.capReached', { count: MAX_CHAT_ATTACHMENTS })] : []),
+    ];
+    setAttachError(problems.length > 0 ? problems.join(' · ') : null);
+  };
   const [liveQuestion, setLiveQuestion] = useState<string | null>(null);
   const [liveText, setLiveText] = useState('');
   /** The reasoning channel, streamed live (Part C): shown collapsed above the
@@ -852,8 +892,8 @@ export function Chat({ session }: { session: Session }) {
 
   const send = async (text?: string, opts: { suppressOffer?: boolean; widen?: boolean } = {}) => {
     const content = (text ?? draft).trim();
-    const staged = pendingFile;
-    if ((!content && !staged) || busy || modelsOff) return;
+    const staged = pendingFiles;
+    if ((!content && staged.length === 0) || busy || modelsOff) return;
     // The first send on an empty instance creates the conversation it lands in.
     let conversationId = activeId;
     if (!conversationId) {
@@ -874,26 +914,43 @@ export function Chat({ session }: { session: Session }) {
     // The staged attachment uploads first (V2.2 item 5.1), so its id can ride
     // the ask and land under the message. The conversation is never blocked:
     // ingestion runs in the worker and the card reports the honest progress.
-    let attachmentIds: string[] = [];
-    if (staged) {
-      try {
-        const created = await uploadChatAttachment(
-          session,
-          staged.file,
-          conversationId,
-          staged.transient,
-        );
-        attachmentIds = [created.attachment.id];
-        setPendingFile(null);
-        setAttachError(null);
-        void queryClient.invalidateQueries({ queryKey: ['chat-attachments', conversationId] });
-      } catch (error) {
-        // The message is NOT sent over a failed upload: the user decides
-        // whether to retry, drop the file, or send the text alone.
-        setBusy(false);
-        setAttachError(error instanceof Error ? error.message : String(error));
-        return;
+    const attachmentIds: string[] = [];
+    if (staged.length > 0) {
+      // One request per file: the endpoint takes a single file, so a batch is
+      // a sequence. Sequential rather than parallel on purpose — it shares the
+      // upload rate bucket and the daily quota with every other upload path,
+      // and four at once would trip a limit that four in a row will not.
+      for (const [index, item] of staged.entries()) {
+        try {
+          const created = await uploadChatAttachment(
+            session,
+            item.file,
+            conversationId,
+            item.transient,
+          );
+          attachmentIds.push(created.attachment.id);
+        } catch (error) {
+          // The message is NOT sent over a failed upload, and the failure NAMES
+          // the file: with several staged, "upload failed" leaves the user
+          // guessing which one. Everything that has not uploaded stays staged,
+          // so retrying does not re-send what already landed.
+          setBusy(false);
+          setPendingFiles(staged.slice(index));
+          setAttachError(
+            t('attachment.uploadFailed', {
+              name: item.file.name,
+              reason: error instanceof Error ? error.message : String(error),
+            }),
+          );
+          if (attachmentIds.length > 0) {
+            void queryClient.invalidateQueries({ queryKey: ['chat-attachments', conversationId] });
+          }
+          return;
+        }
       }
+      setPendingFiles([]);
+      setAttachError(null);
+      void queryClient.invalidateQueries({ queryKey: ['chat-attachments', conversationId] });
     }
     if (!content) {
       // An attachment-only send: nothing to ask, the card carries the rest.
@@ -1240,67 +1297,127 @@ export function Chat({ session }: { session: Session }) {
               <label className="sr-only" htmlFor="chat-input">
                 {t('composer.label')}
               </label>
-              {pendingFile && (
-                <div className="mb-2 space-y-1 rounded-xl border border-slate-200 bg-surface px-3 py-2">
-                  <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="truncate font-medium text-slate-700">
-                      {pendingFile.file.name}
-                    </span>
-                    <label className="flex items-center gap-1.5 text-xs text-slate-600">
-                      <input
-                        type="checkbox"
-                        checked={pendingFile.transient}
-                        onChange={(e) =>
-                          setPendingFile({ file: pendingFile.file, transient: e.target.checked })
-                        }
-                      />
-                      {t('attachment.transientToggle')}
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPendingFile(null);
-                        setAttachError(null);
-                      }}
-                      className="ml-auto text-xs text-slate-400 underline underline-offset-2 hover:text-slate-600"
+              {pendingFiles.length > 0 && (
+                <ul className="mb-2 space-y-1.5">
+                  {pendingFiles.map((item, index) => (
+                    <li
+                      key={item.key}
+                      className="space-y-1 rounded-xl border border-slate-200 bg-surface px-3 py-2"
                     >
-                      {t('attachment.removeStaged')}
-                    </button>
-                  </div>
-                  {pendingFile.transient ? (
-                    <TransientMeaningLine />
-                  ) : (
-                    <p className="text-xs leading-relaxed text-slate-400">
-                      {t('attachment.durableHint')}
-                    </p>
-                  )}
-                </div>
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                        <span className="truncate font-medium text-slate-700">
+                          {item.file.name}
+                        </span>
+                        <span className="shrink-0 font-mono text-[0.66rem] text-slate-400">
+                          {formatBytes(item.file.size)}
+                        </span>
+                        {/* Per file: one message may mix remembered and
+                            conversation-only attachments. */}
+                        <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                          <input
+                            type="checkbox"
+                            checked={item.transient}
+                            onChange={(e) =>
+                              setPendingFiles((was) =>
+                                was.map((other, i) =>
+                                  i === index ? { ...other, transient: e.target.checked } : other,
+                                ),
+                              )
+                            }
+                          />
+                          {t('attachment.transientToggle')}
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPendingFiles((was) => was.filter((_, i) => i !== index));
+                            setAttachError(null);
+                          }}
+                          aria-label={t('attachment.removeOne', { name: item.file.name })}
+                          className="ml-auto text-xs text-slate-400 underline underline-offset-2 hover:text-slate-600"
+                        >
+                          {t('attachment.removeStaged')}
+                        </button>
+                      </div>
+                      {item.transient ? (
+                        <TransientMeaningLine />
+                      ) : (
+                        <p className="text-xs leading-relaxed text-slate-400">
+                          {t('attachment.durableHint')}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               )}
               {attachError && (
                 <p role="alert" className="mb-2 text-xs text-red-700 dark:text-red-300">
                   {attachError}
                 </p>
               )}
-              <div className="flex items-end gap-2.5 rounded-2xl border border-slate-300 bg-surface px-4 py-2.5 shadow-sm transition-shadow focus-within:border-brand-teal focus-within:shadow-glow">
+              {/*
+                The drop target is the COMPOSER, not the window (issue #584).
+                A full-page overlay swallows drops meant for the browser (a
+                link onto a tab, a file onto a download) and fires on drags
+                that were never aimed here. `dragDepth` counts enter/leave
+                because they fire for every child element, so a naive
+                dragleave clears the state the moment the cursor crosses the
+                textarea's edge.
+              */}
+              <div
+                onDragEnter={(e) => {
+                  if (!dragHasFiles(e.dataTransfer)) return;
+                  e.preventDefault();
+                  dragDepth.current += 1;
+                  setDragging(true);
+                }}
+                onDragOver={(e) => {
+                  // Only claim a drag that carries FILES: dragging selected
+                  // TEXT into the box must still drop as text.
+                  if (!dragHasFiles(e.dataTransfer)) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'copy';
+                }}
+                onDragLeave={(e) => {
+                  if (!dragHasFiles(e.dataTransfer)) return;
+                  dragDepth.current = Math.max(0, dragDepth.current - 1);
+                  if (dragDepth.current === 0) setDragging(false);
+                }}
+                onDrop={(e) => {
+                  if (!dragHasFiles(e.dataTransfer)) return;
+                  e.preventDefault();
+                  dragDepth.current = 0;
+                  setDragging(false);
+                  if (modelsOff) return;
+                  stageFiles([...e.dataTransfer.files]);
+                }}
+                className={`relative flex items-end gap-2.5 rounded-2xl border bg-surface px-4 py-2.5 shadow-sm transition-shadow focus-within:border-brand-teal focus-within:shadow-glow ${
+                  dragging
+                    ? 'border-brand-teal border-dashed bg-brand-teal/5 shadow-glow'
+                    : 'border-slate-300'
+                }`}
+              >
+                {dragging && (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 grid select-none place-items-center rounded-2xl bg-surface/80 font-mono text-[0.7rem] uppercase tracking-[0.12em] text-brand-teal-ink dark:text-brand-teal"
+                  >
+                    {t('attachment.dropHere', { count: MAX_CHAT_ATTACHMENTS })}
+                  </div>
+                )}
                 <span className="self-center text-brand-teal" aria-hidden="true">
                   <CogetoMark />
                 </span>
                 <input
                   ref={fileInputRef}
                   type="file"
+                  multiple
                   accept={ALLOWED_UPLOAD_EXTENSIONS.join(',')}
                   className="hidden"
                   onChange={(e) => {
-                    const file = e.target.files?.[0];
+                    const files = [...(e.target.files ?? [])];
                     e.target.value = ''; // allow re-selecting the same file
-                    if (!file) return;
-                    const problem = validateUploadFile(file);
-                    if (problem) {
-                      setAttachError(problem);
-                      return;
-                    }
-                    setAttachError(null);
-                    setPendingFile({ file, transient: false });
+                    stageFiles(files);
                   }}
                 />
                 <button
@@ -1359,7 +1476,7 @@ export function Chat({ session }: { session: Session }) {
                 ) : (
                   <button
                     type="submit"
-                    disabled={busy || modelsOff || (!draft.trim() && !pendingFile)}
+                    disabled={busy || modelsOff || (!draft.trim() && pendingFiles.length === 0)}
                     title={modelsOff ? t('common:modelRequired.short') : undefined}
                     aria-label={t('composer.send')}
                     className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-teal text-white transition-transform hover:-translate-y-px hover:brightness-105 disabled:opacity-40"

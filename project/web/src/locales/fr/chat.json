@@ -153,7 +153,11 @@
     "contradictionsCount_other": "{{count}} contradictions",
     "truncatedNote": "The file was read in part; open the source for what was left out.",
     "viewInSources": "View in Sources",
-    "sourceRemoved": "Attachment removed with its source"
+    "sourceRemoved": "Attachment removed with its source",
+    "dropHere": "Drop to attach (up to {{count}})",
+    "capReached": "Up to {{count}} files per message. The rest were not attached.",
+    "removeOne": "Remove {{name}}",
+    "uploadFailed": "{{name}} could not be attached: {{reason}}"
   },
   "search": {
     "label": "Search conversations",
