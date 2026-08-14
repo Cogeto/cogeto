@@ -372,8 +372,14 @@ export function ConversationSidebar({
           </p>
         )}
         {/* The heading opens the section list and carries the create button,
-            so a new project is never below a scrolling list of chats. */}
-        {!searching && grouped && <ProjectsHeading session={session} />}
+            so a new project is never below a scrolling list of chats.
+            NOT gated on `grouped` (issue #579): the create row is the only way
+            to make a project, and gating it on a project already existing made
+            the feature unreachable from a fresh instance. The SECTIONS stay
+            gated, so a user who ignores projects still sees the flat list they
+            saw before the feature: what appears here is one heading and one
+            create row, which is the empty state, not a workspace. */}
+        {!searching && <ProjectsHeading session={session} />}
         {!searching && grouped
           ? sections.map((section, index) => {
               const key = section.project?.id ?? 'none';

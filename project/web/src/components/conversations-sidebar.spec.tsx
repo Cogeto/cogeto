@@ -175,3 +175,47 @@ describe('sidebar_a11y', () => {
     }
   });
 });
+
+/**
+ * projects_reachable_from_zero (issue #579).
+ *
+ * The create row was rendered only when the rail was already GROUPED, and the
+ * rail groups only once a project exists. The one affordance that makes a
+ * project was therefore hidden until you had one, so on a fresh instance the
+ * feature could not be reached from the interface at all. Reported from a
+ * deployed v1.7.2 instance, where there was no button to find.
+ *
+ * The empty state is the whole test: with no projects the rail must still be
+ * the flat list it was before the feature (no sections), AND it must offer the
+ * way in.
+ */
+describe('projects_reachable_from_zero', () => {
+  const zeroProjects = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
+  zeroProjects.setQueryData(['conversations'], FIXTURE);
+  zeroProjects.setQueryData(['projects'], []);
+  const emptyHtml = renderToStaticMarkup(
+    <QueryClientProvider client={zeroProjects}>
+      <ConfirmProvider>
+        <ConversationSidebar
+          session={session}
+          activeId="c-active"
+          onSelect={noop}
+          onCreated={noop}
+          onDeleted={noop}
+        />
+      </ConfirmProvider>
+    </QueryClientProvider>,
+  );
+
+  it('offers the way in when no project exists yet', () => {
+    expect(emptyHtml).toContain('New project');
+    expect(emptyHtml).toContain('Projects');
+  });
+
+  it('still shows the flat list: an instance that ignores projects sees no sections', () => {
+    // Inert by default, kept in the interface as well as in retrieval: the
+    // heading and its create row are the empty state, not a workspace.
+    expect(emptyHtml).not.toContain('No project');
+    expect(emptyHtml).toContain('Adriatic proposal prep');
+  });
+});
