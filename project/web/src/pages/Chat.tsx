@@ -259,8 +259,11 @@ function MessageBody({
                 ))}
               </ol>
               {hasUnsourced && (
+                // Listed beside the cited documents (issue #581): the inline
+                // badge is a REFERENCE, and this is the entry it refers to, so
+                // the badge can stay one glyph and one word.
                 <div className="mt-1.5">
-                  <UnsourcedChip />
+                  <UnsourcedChip variant="entry" />
                 </div>
               )}
             </>
