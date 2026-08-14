@@ -47,6 +47,18 @@ masquerading as "returned no text". Details:
 surfaces `reasoning_content` (llama.cpp, DeepSeek), `reasoning` (OpenAI-style)
 and `thinking` (Ollama) deltas on the thinking channel, and a thinking delta
 also arms the Part B headroom, so live chat traffic teaches the adapter too.
+Mistral must be ASKED (issue #577): a reasoning model with no parameter
+returns a plain string and no thinking at all, and the same question with
+`reasoning_effort: "high"` returns the think chunk. The adapter maps the
+caller's thinking mode onto it, `on` to `high` and `off` to `none`, and an
+ABSENT mode sends nothing: research synthesis, skills, email drafts and the
+provider probe never set one, so they never pay for thinking they do not
+display. Structured extraction never asks either, because it runs at
+temperature 0 in JSON mode. A model that refuses the field is retried once
+without it and remembered, the way the OpenAI-compatible adapter learns its
+parameter dialect, because losing every answer to a rejected optional
+parameter is worse than not thinking.
+
 Mistral surfaces its `thinking` content chunks the same way (issue #573):
 a Magistral turn arrives as `{type: 'thinking', thinking: [...]}` inside the
 message content, and that chunk is routed to the thinking channel and

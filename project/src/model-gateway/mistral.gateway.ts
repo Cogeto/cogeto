@@ -16,7 +16,12 @@ import {
   VisionUnavailableError,
 } from './errors';
 import type { ModelTier, VisionRequest } from './model-gateway.service';
-import { callWithRetry, REACHABILITY_TTL_MS, structuredWithRepair } from './provider';
+import {
+  callWithRetry,
+  extractStatus,
+  REACHABILITY_TTL_MS,
+  structuredWithRepair,
+} from './provider';
 import { classifyVisionFailure } from './vision-failure';
 
 export interface MistralGatewayOptions {
@@ -74,6 +79,14 @@ export class MistralModelGateway extends ModelGateway {
    * what came back, exactly as it is in the OpenAI-compatible adapter.
    */
   private readonly reasoningModels = new Set<string>();
+  /**
+   * Models that answered a `reasoning_effort` request with a 400 (issue #577).
+   * Which parameters a model accepts is a server-side fact, learned from its
+   * own refusal exactly as the OpenAI-compatible adapter learns its dialect,
+   * because guessing from a model name is what this whole area keeps
+   * getting wrong.
+   */
+  private readonly reasoningEffortRefused = new Set<string>();
   private readonly temperature?: number;
   private reachabilityCache?: { at: number; value: GatewayReachability };
 
@@ -92,16 +105,19 @@ export class MistralModelGateway extends ModelGateway {
 
   async complete(request: CompletionRequest): Promise<CompletionResult> {
     const model = this.models[request.tier ?? 'answer'];
-    const response = await callWithRetry('mistral', () =>
-      this.client.chat.complete({
-        model,
-        maxTokens: this.capFor(model, request.maxTokens),
-        ...(this.temperature !== undefined ? { temperature: this.temperature } : {}),
-        messages: [
-          ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
-          { role: 'user' as const, content: request.input },
-        ],
-      }),
+    const response = await this.withReasoningEffort(model, () =>
+      callWithRetry('mistral', () =>
+        this.client.chat.complete({
+          model,
+          maxTokens: this.capFor(model, request.maxTokens),
+          ...this.reasoningEffortField(model, request.thinking),
+          ...(this.temperature !== undefined ? { temperature: this.temperature } : {}),
+          messages: [
+            ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
+            { role: 'user' as const, content: request.input },
+          ],
+        }),
+      ),
     );
     const content = response.choices?.[0]?.message?.content;
     const reasoned = this.noteReasoning(model, content);
@@ -117,25 +133,29 @@ export class MistralModelGateway extends ModelGateway {
   }
 
   async *completeStream(request: CompletionRequest): AsyncIterable<StreamDelta> {
-    const stream = await callWithRetry('mistral', () =>
-      this.client.chat.stream(
-        {
-          model: this.models[request.tier ?? 'answer'],
-          maxTokens: this.capFor(this.models[request.tier ?? 'answer'], request.maxTokens),
-          ...(this.temperature !== undefined ? { temperature: this.temperature } : {}),
-          messages: [
-            ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
-            { role: 'user' as const, content: request.input },
-          ],
-        },
-        {
-          // The SDK's RequestOptions extends RequestInit, so the caller's Stop
-          // reaches the underlying fetch and ends generation (issue #532).
-          signal: request.signal,
-        },
+    const streamModel = this.models[request.tier ?? 'answer'];
+    const stream = await this.withReasoningEffort(streamModel, () =>
+      callWithRetry('mistral', () =>
+        this.client.chat.stream(
+          {
+            model: streamModel,
+            maxTokens: this.capFor(streamModel, request.maxTokens),
+            ...this.reasoningEffortField(streamModel, request.thinking),
+            ...(this.temperature !== undefined ? { temperature: this.temperature } : {}),
+            messages: [
+              ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
+              { role: 'user' as const, content: request.input },
+            ],
+          },
+          {
+            // The SDK's RequestOptions extends RequestInit, so the caller's Stop
+            // reaches the underlying fetch and ends generation (issue #532).
+            signal: request.signal,
+          },
+        ),
       ),
     );
-    const model = this.models[request.tier ?? 'answer'];
+    const model = streamModel;
     for await (const event of stream) {
       const content = event.data.choices?.[0]?.delta?.content;
       // Thinking is a CHANNEL, not content: it is shown as a live disclosure,
@@ -248,6 +268,51 @@ export class MistralModelGateway extends ModelGateway {
       );
     }
     return { text, ...(reasoned ? { reasoned: true } : {}), ...usageOf(response) };
+  }
+
+  /**
+   * ASK for thinking (issue #577). Mistral surfaces a reasoning trace only
+   * when the request says so: measured against the live API, a reasoning model
+   * with no parameter returns a plain string and no thinking at all, and the
+   * same question with `reasoning_effort: "high"` returns the think chunk this
+   * adapter parses. Issue #573 built the receiving half and never this one, so
+   * the chat toggle reached the adapter and was dropped.
+   *
+   * An ABSENT mode sends nothing. That is what keeps every non-chat caller
+   * (research synthesis, skills, email drafts, the provider probe) byte-
+   * identical: they never set a thinking mode, so they never pay for one.
+   */
+  private reasoningEffortField(
+    model: string,
+    mode: 'on' | 'off' | undefined,
+  ): Record<string, unknown> {
+    if (mode === undefined || this.reasoningEffortRefused.has(model)) return {};
+    return { reasoningEffort: mode === 'on' ? 'high' : 'none' };
+  }
+
+  /**
+   * One retry, once ever per model, when the endpoint refuses the parameter.
+   * A model that does not take `reasoning_effort` must still answer: losing
+   * every chat reply to a rejected optional field would be a far worse failure
+   * than not thinking.
+   */
+  private async withReasoningEffort<T>(model: string, call: () => Promise<T>): Promise<T> {
+    try {
+      return await call();
+    } catch (error) {
+      const status =
+        extractStatus(error) ?? extractStatus((error as { cause?: unknown } | undefined)?.cause);
+      const message = error instanceof Error ? error.message : String(error);
+      if (
+        status === 400 &&
+        /reasoning_effort|reasoningEffort/i.test(message) &&
+        !this.reasoningEffortRefused.has(model)
+      ) {
+        this.reasoningEffortRefused.add(model);
+        return call();
+      }
+      throw error;
+    }
   }
 
   /**
