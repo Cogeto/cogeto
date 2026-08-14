@@ -224,9 +224,16 @@ function TierRow({
     staleTime: 60_000,
   });
 
-  const eligible = providers.filter(
-    (provider) => assignment.tier !== 'embeddings' || provider.supportsEmbeddings,
-  );
+  // Only providers that can actually serve THIS tier (issue #571). Vision
+  // joined embeddings here because offering a provider whose adapter has no
+  // image path produced a saved-looking attempt that failed at the probe with
+  // "no vision tier is configured for this instance" — a message about the
+  // adapter, read as a message about the instance.
+  const eligible = providers.filter((provider) => {
+    if (assignment.tier === 'embeddings') return provider.supportsEmbeddings;
+    if (assignment.tier === 'vision') return provider.supportsVision;
+    return true;
+  });
   const dirty =
     providerId !== (assignment.providerId ?? '') || model.trim() !== (assignment.model ?? '');
 

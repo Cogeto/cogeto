@@ -27,6 +27,16 @@ export const MODEL_PROVIDER_IDS: readonly ModelProviderId[] = [
 export const EMBEDDING_CAPABLE: readonly ModelProviderId[] = ['mistral', 'openai', 'ollama'];
 
 /**
+ * Adapters that can read an image (issue #571). The twin of the line above,
+ * and a fact about THIS CODE rather than about the vendors: an adapter belongs
+ * here exactly when it implements `describeImage`. Anthropic's models are
+ * multimodal and it is absent, because `AnthropicModelGateway` has no image
+ * path. The database path gates the same question through
+ * `ProviderTypeSpec.supportsVision`; both must agree, and a spec asserts it.
+ */
+export const VISION_CAPABLE: readonly ModelProviderId[] = ['mistral', 'openai', 'ollama'];
+
+/**
  * The concrete endpoint and credential ONE tier talks to (V2.4 item 7.1).
  *
  * The environment shape had exactly one endpoint and one key per provider id,
@@ -468,10 +478,16 @@ export function resolveEvalProvidersFromEnv(
           'no provider has a default image model, and a guessed one would fail on the first page',
       );
     }
-    vision = {
-      provider: parseProvider('COGETO_PROVIDER_VISION', visionProviderVar),
-      model: visionModelVar,
-    };
+    const visionProvider = parseProvider('COGETO_PROVIDER_VISION', visionProviderVar);
+    // Fail at resolution, never at the first page: an unreadable image three
+    // hours into an ingestion run is the same defect this catches here.
+    if (!VISION_CAPABLE.includes(visionProvider)) {
+      throw new ModelProviderConfigError(
+        `provider "${visionProvider}" cannot read images: the vision tier must use one of: ` +
+          `${VISION_CAPABLE.join(' | ')} (set COGETO_PROVIDER_VISION)`,
+      );
+    }
+    vision = { provider: visionProvider, model: visionModelVar };
   }
 
   // Is the OpenAI-compatible endpoint somebody's own server rather than

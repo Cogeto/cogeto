@@ -326,6 +326,24 @@ pseudonymized, so with redaction enabled a vision call would be the one path
 that sends unredacted content to a model. It fails closed, as an unreachable
 sidecar does.
 
+## Which providers can be the vision tier
+
+Mistral, OpenAI and Self-hosted (any OpenAI-compatible endpoint). Anthropic
+cannot, and the interface no longer offers it: its models are multimodal, but
+`AnthropicModelGateway` has no image path, so the choice would be a control that
+cannot be satisfied. The capability is a fact in `ProviderTypeSpec`, checked
+before the probe runs, and `docs/features/models.md` carries the table.
+
+Mistral joined that list in issue #570. Before it, `describeImage` existed only
+in the OpenAI-compatible adapter and the factory handed the vision model only to
+that adapter, so a Mistral vision assignment resolved, stored, and then reported
+"no vision tier is configured for this instance" on every page: true of the
+adapter it had landed in, false of the instance, and no help to the admin who
+had just configured it.
+
+Being on the list is necessary and not sufficient. Whether the NAMED model can
+see is probed with a real image, for the reason the next section gives.
+
 ## Running the model yourself
 
 A vision model you run through llama.cpp, vLLM, LM Studio or Ollama is added the

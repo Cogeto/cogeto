@@ -54,6 +54,13 @@ export interface ProviderDto {
   requiresApiKey: boolean;
   /** True when this type can serve the embeddings tier. */
   supportsEmbeddings: boolean;
+  /**
+   * True when this type's adapter can read an image, so it may serve the
+   * vision tier (issue #571). A vendor whose models are multimodal but whose
+   * adapter here has no image path is false: the interface must offer what
+   * this instance can do, not what the vendor could.
+   */
+  supportsVision: boolean;
   health: ProviderHealthDto;
   /** Tiers currently assigned to this provider — why it cannot be deleted. */
   assignedTiers: ModelTierName[];

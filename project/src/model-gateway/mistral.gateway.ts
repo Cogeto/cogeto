@@ -9,9 +9,14 @@ import type {
   TokenUsage,
   StreamDelta,
 } from './model-gateway.service';
-import { ModelGatewayError, ModelGatewayNotConfiguredError } from './errors';
-import type { ModelTier } from './model-gateway.service';
+import {
+  ModelGatewayError,
+  ModelGatewayNotConfiguredError,
+  VisionUnavailableError,
+} from './errors';
+import type { ModelTier, VisionRequest } from './model-gateway.service';
 import { callWithRetry, REACHABILITY_TTL_MS, structuredWithRepair } from './provider';
+import { classifyVisionFailure } from './vision-failure';
 
 export interface MistralGatewayOptions {
   apiKey: string;
@@ -20,6 +25,12 @@ export interface MistralGatewayOptions {
   /** Model for the `answer` tier (chat synthesis, eval grader). */
   answerModel?: string;
   embedModel?: string;
+  /**
+   * Model for the `vision` tier (reading a page that is a picture). No
+   * default and no preset: unset means this adapter has no vision, which is a
+   * complete answer, and the reading ladder stops at OCR and says so.
+   */
+  visionModel?: string;
   /**
    * Sampling temperature for free-text completions. The eval
    * harness pins 0 so runs are comparable; production chat leaves it unset
@@ -33,6 +44,8 @@ const DEFAULT_PIPELINE_MODEL = 'mistral-small-latest';
 const DEFAULT_ANSWER_MODEL = 'mistral-medium-latest';
 const DEFAULT_EMBED_MODEL = 'mistral-embed';
 const EMBED_BATCH_SIZE = 128;
+/** For failure messages only: the SDK owns the real base URL. */
+const MISTRAL_API_LABEL = 'https://api.mistral.ai';
 
 /**
  * The only place in the system that touches the Mistral client (spec §12.1) —
@@ -45,6 +58,7 @@ export class MistralModelGateway extends ModelGateway {
   private readonly client: Mistral;
   private readonly models: Record<ModelTier, string>;
   private readonly embedModel: string;
+  private readonly visionModel?: string;
   private readonly temperature?: number;
   private reachabilityCache?: { at: number; value: GatewayReachability };
 
@@ -56,6 +70,7 @@ export class MistralModelGateway extends ModelGateway {
       answer: options.answerModel ?? DEFAULT_ANSWER_MODEL,
     };
     this.embedModel = options.embedModel ?? DEFAULT_EMBED_MODEL;
+    this.visionModel = options.visionModel;
     this.temperature = options.temperature;
   }
 
@@ -123,6 +138,71 @@ export class MistralModelGateway extends ModelGateway {
       );
       return contentToText(response.choices?.[0]?.message?.content);
     });
+  }
+
+  /**
+   * Reads an image (issue #570).
+   *
+   * Vision was implemented in the OpenAI-compatible adapter only, and the
+   * factory passed `visionModel` to that adapter alone, so a Mistral vision
+   * assignment resolved and stored and then routed into an adapter with no
+   * image path: every call fell through to the base class and reported "no
+   * vision tier is configured for this instance", which is true of the adapter
+   * and false of the instance, and sends an admin to the page they just used.
+   *
+   * A separate capability, not a parameter, for the same reason it is on the
+   * OpenAI adapter: an unset vision model is a complete answer, and the reading
+   * ladder stops at OCR and says so rather than failing inside a text call.
+   */
+  override async describeImage(request: VisionRequest): Promise<CompletionResult> {
+    const model = this.visionModel;
+    if (!model) {
+      throw new VisionUnavailableError(
+        'not_configured',
+        'no vision model configured for provider "mistral"',
+      );
+    }
+    const dataUrl = `data:${request.image.mediaType};base64,${request.image.bytes.toString('base64')}`;
+    let response;
+    try {
+      response = await callWithRetry('mistral', () =>
+        this.client.chat.complete({
+          model,
+          maxTokens: request.maxTokens,
+          // Reading a page is transcription, not generation: deterministic,
+          // like structured extraction and unlike chat.
+          temperature: 0,
+          messages: [
+            ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
+            {
+              role: 'user' as const,
+              content: [
+                { type: 'text' as const, text: request.input },
+                { type: 'image_url' as const, imageUrl: dataUrl },
+              ],
+            },
+          ],
+        }),
+      );
+    } catch (error) {
+      // The same classification the OpenAI-compatible adapter uses, so an
+      // admin gets the actionable reason (model refused the image, endpoint
+      // unreachable, credentials rejected) rather than "vision failed".
+      throw classifyVisionFailure(error, {
+        label: 'mistral',
+        model,
+        endpoint: MISTRAL_API_LABEL,
+        localRuntime: false,
+      });
+    }
+    const text = contentToText(response.choices?.[0]?.message?.content);
+    if (text.trim().length === 0) {
+      throw new VisionUnavailableError(
+        'unusable_response',
+        `the vision model "${model}" on mistral accepted the image and returned no text`,
+      );
+    }
+    return { text, ...usageOf(response) };
   }
 
   async embed(texts: string[]): Promise<number[][]> {
