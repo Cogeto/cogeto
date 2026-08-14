@@ -79,3 +79,77 @@ describe('parseChatBlocks (chat markdown-lite)', () => {
     expect(blocks[0]!.kind === 'paragraph' && blocks[0]!.lines).toHaveLength(2);
   });
 });
+
+/**
+ * Fenced code blocks (issue #581).
+ *
+ * Reported from a deployed instance: a ```python block rendered as literal
+ * backticks. The worse half was invisible in that report — the code was not
+ * merely unstyled, it was CORRUPTED, because every line still went through the
+ * inline formatter and the line classifier. `**kwargs` came out bold, `#`
+ * comments became headings, `- x` became bullets.
+ */
+describe('fenced code blocks', () => {
+  const codeBlock = (blocks: ReturnType<typeof parseChatBlocks>, i = 0) => {
+    const block = blocks[i]!;
+    if (block.kind !== 'code') throw new Error(`expected code at ${i}, got ${block.kind}`);
+    return block;
+  };
+
+  it('captures the language and the body verbatim', () => {
+    const blocks = parseChatBlocks([text('```python\nprint("hi")\n```')]);
+    expect(blocks).toHaveLength(1);
+    expect(codeBlock(blocks)).toEqual({ kind: 'code', lang: 'python', code: 'print("hi")' });
+  });
+
+  it('THE BUG: nothing inside a fence is styled or classified', () => {
+    const source = [
+      '```python',
+      '# a comment, not a heading',
+      'def f(*args, **kwargs):',
+      '    return 1',
+      '- not a bullet',
+      '1. not a list',
+      '```',
+    ].join('\n');
+    const block = codeBlock(parseChatBlocks([text(source)]));
+    // Byte-for-byte, including the indentation and every asterisk.
+    expect(block.code).toBe(
+      '# a comment, not a heading\ndef f(*args, **kwargs):\n    return 1\n- not a bullet\n1. not a list',
+    );
+  });
+
+  it('an untagged fence is a code block with no language', () => {
+    expect(codeBlock(parseChatBlocks([text('```\nplain\n```')])).lang).toBeNull();
+  });
+
+  it('accepts ~~~ fences, and a ``` inside one stays literal', () => {
+    const block = codeBlock(parseChatBlocks([text('~~~md\n```js\nx\n```\n~~~')]));
+    expect(block.lang).toBe('md');
+    expect(block.code).toBe('```js\nx\n```');
+  });
+
+  it('an unterminated fence runs to the end rather than eating the answer as prose', () => {
+    // A streaming answer shows the code it has so far.
+    const block = codeBlock(parseChatBlocks([text('Here:\n```ts\nconst a = 1;')]), 1);
+    expect(block.code).toBe('const a = 1;');
+  });
+
+  it('prose before and after a fence is still prose', () => {
+    const blocks = parseChatBlocks([text('Try this:\n```sh\nls -la\n```\nThat lists **files**.')]);
+    expect(blocks.map((b) => b.kind)).toEqual(['paragraph', 'code', 'paragraph']);
+    const after = blocks[2]!;
+    if (after.kind !== 'paragraph') throw new Error('expected paragraph');
+    expect(after.lines[0]!.some((piece) => piece.kind === 'bold')).toBe(true);
+  });
+
+  it('the info string is lowercased and trimmed to the language', () => {
+    expect(codeBlock(parseChatBlocks([text('```PYTHON title=x\ny\n```')])).lang).toBe('python');
+  });
+
+  it('a fence opened by a chip is not a fence', () => {
+    // Same rule as headings and dividers: a marker has to be real text.
+    const blocks = parseChatBlocks([cite(ID), text('```\nnot code\n')]);
+    expect(blocks[0]!.kind).toBe('paragraph');
+  });
+});

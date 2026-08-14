@@ -79,9 +79,10 @@
       "chat": "Unterhaltung"
     },
     "unsourced": {
-      "label": "ohne Quelle",
+      "label": "Modell",
       "title": "Modellwissen, nicht aus Ihren Quellen. Cogeto kennzeichnet es, damit Sie immer wissen, welche Behauptungen belegt werden können.",
-      "ariaLabel": "Modellwissen, nicht aus Ihren Quellen"
+      "ariaLabel": "Modellwissen, nicht aus Ihren Quellen",
+      "entry": "Model knowledge: part of this answer comes from the model's general knowledge, not from your memory."
     },
     "refScreenReader": "source {{index}}"
   },
@@ -155,5 +156,11 @@
     "results_other": "{{count}} results",
     "titleMatch": "Matched the title",
     "archivedTag": "archived"
+  },
+  "code": {
+    "plain": "code",
+    "copy": "copy",
+    "copied": "copied",
+    "copyAria": "Copy this code block"
   }
 }

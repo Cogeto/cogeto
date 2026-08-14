@@ -82,9 +82,10 @@
       "chat": "discussion"
     },
     "unsourced": {
-      "label": "sans source",
+      "label": "modèle",
       "title": "Connaissance du modèle, absente de vos sources. Cogeto la signale pour que vous sachiez toujours quelles affirmations il peut prouver.",
-      "ariaLabel": "connaissance du modèle, absente de vos sources"
+      "ariaLabel": "connaissance du modèle, absente de vos sources",
+      "entry": "Model knowledge: part of this answer comes from the model's general knowledge, not from your memory."
     },
     "refScreenReader": "source {{index}}"
   },
@@ -165,5 +166,11 @@
     "results_other": "{{count}} results",
     "titleMatch": "Matched the title",
     "archivedTag": "archived"
+  },
+  "code": {
+    "plain": "code",
+    "copy": "copy",
+    "copied": "copied",
+    "copyAria": "Copy this code block"
   }
 }

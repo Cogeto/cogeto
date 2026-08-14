@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { AnswerSegment } from '@cogeto/shared';
 import { parseChatBlocks } from './chat-markdown';
 import type { ChatInline } from './chat-markdown';
+import { CodeBlock } from './CodeBlock';
 
 /**
  * Render a chat message's sanitized segments with markdown-lite formatting
@@ -50,6 +51,8 @@ export function ChatMarkdown({
   return (
     <div className="space-y-2.5 text-[1.05rem] leading-[1.7]">
       {blocks.map((block, i) => {
+        // Code first: it is the one block whose content is never styled.
+        if (block.kind === 'code') return <CodeBlock key={i} code={block.code} lang={block.lang} />;
         if (block.kind === 'divider')
           return <hr key={i} className="my-1 border-t border-current opacity-20" />;
         if (block.kind === 'heading')
