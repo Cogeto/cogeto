@@ -5,10 +5,18 @@
 #
 #     lint · boundaries · test · build · eval-gate
 #
-# Two further jobs are NOT required to merge: `scan` (dependency + image
-# vulnerability scanning, audit 2.0 SEC-19) and `docker-build`, which keeps every
-# production Dockerfile green on each PR (amd64, no push). Promoting `scan` to a
-# required check is a branch-protection change in the repository settings.
+# Four further jobs are NOT required to merge: `scan` (dependency + image
+# vulnerability scanning, audit 2.0 SEC-19), `docker-build`, which keeps every
+# production Dockerfile green on each PR (amd64, no push), and the two operator
+# smoke jobs, `operator-smoke-fast` (pull requests) and `operator-smoke-full`
+# (merges to main, and on demand). Promoting any of them to a required check is
+# a branch-protection change in the repository settings.
+#
+# The operator jobs exist because the deployment-readiness audit found three
+# operator-tooling defects that survived every green check: the invariant suites
+# cover the application, and nothing exercised scripts/operator/cogeto against a
+# real database and a real stack. What each covers, and the several things
+# neither can, is documented in scripts/ci/operator-smoke.sh itself.
 #
 # "install" is per-job: each job checks out, restores the shared npm download
 # cache via setup-node (cache: npm), and runs `npm ci`. Sharing a single
@@ -21,6 +29,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  # So the full operator smoke can be run against a branch before it merges,
+  # which is the only way to see the post-merge job green in advance.
+  workflow_dispatch:
 
 # One in-flight run per ref; a new push cancels the previous run on that ref.
 concurrency:
@@ -407,3 +418,78 @@ jobs:
           load: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # ── operator smoke (not required to merge) ──────────────────────────────────
+  # The audit's Part 6 observation, closed: "every required check is green and
+  # the upgrade path still takes an instance down. The invariant suites cover
+  # the application; nothing exercises `cogeto upgrade` against a pre-0052
+  # database, which is why F1, F2 and F3 all survived CI."
+  #
+  # Split by cost, deliberately:
+  #   fast (every pull request, seconds)  the dry-run install, the printed
+  #        checklist, the no-retired-mechanism scan, and the secret backfill.
+  #        No Docker, no stack. This is the half that catches tooling which
+  #        LIES, which is the half the audit found.
+  #   full (merges to main, and workflow_dispatch on a branch, minutes)
+  #        the same plus a real stack from empty volumes: install, status
+  #        against running containers, the capability list against the live
+  #        health surface, enable/disable of an optional capability, and the
+  #        empty-secret refusal.
+  #
+  # scripts/ci/operator-smoke.sh documents what neither can cover: DNS,
+  # certificate issuance, real mail delivery, the release supply chain, and a
+  # cloud provider's console.
+  operator-smoke-fast:
+    name: operator-smoke-fast
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Operator script, dry run and assertions
+        run: sudo -E scripts/ci/operator-smoke.sh --fast
+
+  operator-smoke-full:
+    name: operator-smoke-full
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      # Not a published release: the harness never asks a registry about it.
+      COGETO_VERSION: 0.0.0
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      # The deploy compose is pull-only by design, so the two images the smoke
+      # stack needs are built here and tagged with the version the harness
+      # installs. Nothing is pushed. The mail and redaction images are NOT
+      # built: their profiles are not exercised (the optional capability the
+      # harness switches is `research`, whose image is an upstream digest pin).
+      - name: Build the runtime image as cogeto/cogeto:${{ env.COGETO_VERSION }}
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: project/infra/docker/Dockerfile
+          target: runtime
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: cogeto/cogeto:${{ env.COGETO_VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build the edge image as cogeto/cogeto-edge:${{ env.COGETO_VERSION }}
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: project/infra/docker/Dockerfile
+          target: caddy
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: cogeto/cogeto-edge:${{ env.COGETO_VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Operator script against a real stack
+        run: sudo -E scripts/ci/operator-smoke.sh --full
+      - name: Stack logs on failure
+        if: failure()
+        run: sudo docker ps -a && sudo docker compose ls

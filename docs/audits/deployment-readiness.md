@@ -23,9 +23,38 @@ language of environment-configured models, so the documented recovery for
 Counts: **1 BLOCKER, 6 HIGH, 9 MEDIUM, 6 LOW** (22 findings). Top three: F1
 (upgrade takes an instance down), F2 (the documented model-key recovery is a
 no-op), F4 (the mail STARTTLS procedure needs a certificate that is never issued
-and a compose file that does not exist on the instance). **Eighteen are resolved
-across three remediation waves; see the status sections below. Still open: F11,
-F12, F13, F14, F17.**
+and a compose file that does not exist on the instance). **Twenty are resolved
+across four remediation waves; see the status sections below. Still open: F13
+and F14 (server-side copy, and the partially translated locales), both of which
+need an owner decision rather than a fix.** The coverage gap recorded in Part 6,
+that nothing exercised the operator script, is closed in wave 5.
+
+### Remediation status, wave 5 (2026-08-15, `fix/hardening-and-coverage`)
+
+The infrastructure and process remainder: container privilege, the last abuse
+limit, the housekeeping, and the coverage gap Part 6 recorded. **Every finding
+below was closed against the code as it stands after waves 1 to 4, not against
+this report.**
+
+| Finding | Status |
+|---|---|
+| F11 | **Resolved.** Every service in both compose files drops ALL capabilities and sets `no-new-privileges`. What each service gets back is per service and verified by running real work through the stack rather than by watching it start: `NET_BIND_SERVICE` for the two edges, `CHOWN` for the three volume-ownership one-shots, `DAC_OVERRIDE` for `zitadel-init` (root does not bypass directory permissions on a volume owned by uid 1000), the five the Postgres entrypoint needs to drop privileges, and four for SearXNG's entrypoint. **The mail service, the internet-facing one, needs none**: the privileged port is on the host side of the port mapping and Haraka binds 2525 as a non-root user inside. Eleven services also run on a **read-only root** with an explicit tmpfs, including the app and the worker. Two exceptions are recorded with their reason in the file itself: Qdrant **panics** under a read-only root (measured, not assumed), and the mail service writes its own config directory at start, where a read-only root would break STARTTLS specifically. The full table, and what "verified" meant, is in [`../security/instance-and-supply-chain-hardening.md`](../security/instance-and-supply-chain-hardening.md); `deployment-hardening.spec.ts` asserts the drop on every service and pins the exact grant list, so a new capability has to be argued for in review. |
+| F12 | **Resolved, in both places the report offered.** The preflight now refuses an ACTIVE profile whose required secret is EMPTY, which the known-dev-secret pass structurally cannot see (it skips empty values by design). The active profile list is passed into the preflight container for exactly this, since a container cannot read its own profiles. It applies on localhost too: the dev compose supplies a working default, so an empty value is deliberate. The SearXNG healthcheck carries the same refusal, which also covers a `docker compose up searxng` that never runs the preflight. The profile-inactive case the empty default exists to serve is unchanged and asserted. Verified live: with the research profile active and the secret blanked, `compose up` fails at the preflight naming `SEARXNG_SECRET`. |
+| F17 | **Resolved.** `eval/trust-scores/file` is deleted. Nothing referenced it. |
+| F18 | **Confirmed and tightened further.** The tag-comment guard was already closed in wave 2. It read a hardcoded list of files, which covers the files that existed when it was written; it now DISCOVERS every Dockerfile in the repository. Verified negatively by removing a tag comment and watching the check fail. |
+| F20 | **Confirmed dead.** The unprefixed `MISTRAL_*` names appear nowhere in the tree outside the structural guard that forbids them (`model-config-env.spec.ts`), which asserts both the behaviour (a stale variable changes nothing) and the confinement (only the eval harness's own resolver may name the `COGETO_`-prefixed forms, because it runs in CI against no instance database). Nothing survived deliberately. |
+| Part 6 coverage gap | **Closed.** `scripts/ci/operator-smoke.sh` runs the operator script against a real stack in CI: `operator-smoke-fast` on every pull request (the dry-run install, the printed checklist, a no-retired-mechanism scan over everything the script prints, and the secret backfill that F1 was), and `operator-smoke-full` on merges to main and on demand (a real install from empty volumes onto the deploy compose, every required secret asserted present, `status` asserted against the running containers rather than the environment file, the capability list asserted equal to what `/api/health` reports, enable and disable of an optional capability, and the F12 refusal). What it cannot cover is stated in the file: DNS, certificate issuance, real mail delivery, the release supply chain, and a cloud provider's console. |
+
+Beyond the findings: the production image no longer carries the evaluation
+harness (`eval`, `eval-chat` and their two support modules) or the two smoke
+tools. They are npm-script and CI tools whose corpora are not in the image, so
+on a customer instance they were a tool that reads as supported and is not. The
+demonstration corpus (32 KB) **stays**, with the reason recorded in the
+Dockerfile: the worker's scheduled sandbox reset reads it, and the sandbox runs
+the worker from this stage. The two documented one-shot repair tools stay,
+because the runbook tells an operator to run them. A documentation **link**
+guard joined `lint` beside the dash guard: the one broken link this report found
+by hand was already fixed, and nothing was watching for the next one.
 
 ### Remediation status, wave 3 (2026-08-14, `fix/documentation-truth`)
 
@@ -513,7 +542,8 @@ and the mail records are omitted entirely on a mail-less instance.
 operator looks for records that do not exist.
 *Fix scope*: docs.
 
-**F11 - No container-level privilege hardening in either compose.**
+**F11 - No container-level privilege hardening in either compose.** **RESOLVED
+(wave 5).**
 *Evidence*: grep across both files: `cap_drop` 0, `security_opt` 0
 (`no-new-privileges` 0), `read_only` 0, `user:` 0, `tmpfs` 0. Only `mem_limit`/
 `cpus`/`pids_limit` are set (SEC-17). The application image sets `USER node`, but
@@ -525,7 +555,7 @@ than it needs, on an internet-facing single-tenant box.
 [ALL]` (plus targeted `cap_add`) per service in both composes.
 
 **F12 - `SEARXNG_SECRET` can be empty on a deployed research profile and nothing
-refuses it.**
+refuses it.** **RESOLVED (wave 5), in the preflight and in the healthcheck.**
 *Evidence*: `project/infra/deploy/docker-compose.deploy.yml:715` and `:365` use
 `${SEARXNG_SECRET:-}` (deliberately, so profile-down `compose up` works);
 `secret-preflight.ts:86` skips any variable whose value is `''`. Only
@@ -584,7 +614,8 @@ not discover `reindex`, which is the documented repair for a restored backup.
 ### LOW
 
 **F17 - A zero-byte file named `file` is committed and ships in the production
-image.** `eval/trust-scores/file` (0 bytes, tracked; `git ls-files` confirms),
+image.** **RESOLVED (wave 5): deleted, and the evaluation entrypoints went with
+it.** `eval/trust-scores/file` (0 bytes, tracked; `git ls-files` confirms),
 and `.dockerignore` allowlists `!eval/trust-scores`, so it is copied into the
 runtime image by `project/infra/docker/Dockerfile:81`. Harmless, and exactly the
 kind of artifact a customer or reviewer notices. *Fix scope*: owner action -
@@ -690,6 +721,12 @@ Checked and clean, worth recording so the report is calibrated:
   upgrade path still takes an instance down** (F1). The invariant suites cover
   the application; nothing exercises `cogeto upgrade` against a pre-0052
   database, which is why F1, F2 and F3 all survived CI.
+  **Closed in wave 5**: `scripts/ci/operator-smoke.sh` runs the operator script
+  against a real stack in CI (a cheap subset on every pull request, the full
+  install on merges to main and on demand), and asserts the two things that made
+  the tooling misleading rather than merely incomplete: nothing it prints may
+  reference a mechanism the system no longer has, and `status` may never report a
+  configuration that does not exist.
 - **Documentation links hold.** 1 broken relative link across every markdown file
   in the repo (`project/eval/vertical/cases/hr/hr-v004-.../notes.md`, one `../`
   too many). No stale references to tasks, reminders or an approval queue in any
@@ -728,7 +765,7 @@ Ordered so blockers clear first. Sizes are relative effort, not calendar.
 | 4 | ~~**Fix the mail STARTTLS path**~~ **DONE** (wave 2), by building the producing half rather than documenting a copy. | F4 | M | code + docs |
 | 5 | **Tell the truth about redaction and capabilities.** F5 is **DONE** (wave 2), and the owner's ruling was to remove the limitation rather than document it: redaction is published and available on a customer instance. F15/F16 remain. | F5, F15, F16 | S | docs (owner) |
 | 6 | **Runbook and upgrade-note corrections**: Ollama section, the self-contradiction about reindex, the restore DNS count, the "past 2.0" section title, the script header, the Zitadel bootstrap variables. | F8, F9, F10, F19, F22 | S | docs |
-| 7 | **Container privilege hardening** in both composes, plus the empty-SearXNG-secret refusal. | F11, F12 | M | code |
+| 7 | ~~**Container privilege hardening** in both composes, plus the empty-SearXNG-secret refusal.~~ **DONE** (wave 5), verified by running real work through the hardened stack. | F11, F12 | M | code |
 | 8 | **Server-side copy**: route user-facing API errors through the server catalogue and extend the i18n guard to cover them. | F13 | L | code |
 | 9 | **Finish or gate the translations** for the six English-only namespaces (631 keys x 3 locales). | F14 | L | owner |
-| 10 | **Housekeeping**: delete `eval/trust-scores/file` (F17, open), ~~add the SearXNG tag comment and tighten the pin spec~~ **DONE** (wave 2, F18), remove the unprefixed `MISTRAL_*` fallbacks (F20, done in wave 1), fix the one broken doc link. | F17, F18, F20 | S | code + owner |
+| 10 | ~~**Housekeeping**: delete `eval/trust-scores/file`, add the SearXNG tag comment and tighten the pin spec, remove the unprefixed `MISTRAL_*` fallbacks, fix the one broken doc link.~~ **DONE** (F18 in wave 2, F20 in wave 1, F17 and the link guard in wave 5). | F17, F18, F20 | S | code + owner |
