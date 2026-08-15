@@ -567,6 +567,71 @@ require_supported_version() {
   say "release v${rsv_v} is published and supported"
 }
 
+# Which Cogeto image tags on this host are safe to delete, given the two
+# versions worth keeping. Pure and unit-tested: reads "repo:tag" lines on stdin
+# and prints the ones to remove.
+#
+# The rule, and why it is this one:
+#
+#   • ONLY cogeto/cogeto[-edge|-mail|-redaction]. The infra images (postgres,
+#     qdrant, minio, zitadel, searxng) are digest-pinned upstream images shared
+#     with nothing else on this box; deleting them buys a few hundred megabytes
+#     and costs a re-pull of things that are not ours, against a Docker Hub
+#     rate limit. Never worth it.
+#   • KEEP THE PREVIOUS VERSION, not just the current one. `cogeto upgrade
+#     <older>` is the documented rollback, and it is only instant, and only
+#     possible at all with a dead or rate-limiting registry, while the previous
+#     images are still on disk. One release back is the whole point; two is
+#     hoarding, since a release is ~1 GB across the four images.
+#   • Anything else Cogeto-published goes, including `latest` (this instance
+#     always runs an explicit version, so a floating tag here is a leftover).
+prunable_image_tags() {  # prunable_image_tags KEEP_CURRENT KEEP_PREVIOUS  < refs
+  pit_keep_a="$1"; pit_keep_b="$2"
+  while IFS= read -r pit_ref; do
+    [ -n "$pit_ref" ] || continue
+    case "$pit_ref" in
+      cogeto/cogeto:* | cogeto/cogeto-edge:* | cogeto/cogeto-mail:* | cogeto/cogeto-redaction:*) : ;;
+      *) continue ;;
+    esac
+    pit_tag="${pit_ref##*:}"
+    if [ "$pit_tag" = "$pit_keep_a" ] || [ "$pit_tag" = "$pit_keep_b" ]; then
+      continue
+    fi
+    printf '%s\n' "$pit_ref"
+  done
+}
+
+# Delete them. Deliberately NOT forced: `docker rmi` refuses an image any
+# container still references, running or stopped, and that refusal is a feature
+# here — the one thing this must never do is pull the floor out from under a
+# container. A refusal is reported, not worked around, and never fails the run:
+# an upgrade that succeeded must not end in an error because a cleanup could
+# not delete something.
+prune_old_images() {  # prune_old_images KEEP_CURRENT KEEP_PREVIOUS
+  command -v docker >/dev/null 2>&1 || return 0
+  poi_refs="$(docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null \
+    | prunable_image_tags "$1" "$2" | sort -u)"
+  if [ -z "$poi_refs" ]; then
+    say "image cleanup: nothing to remove (keeping v${1} and v${2})"
+    return 0
+  fi
+  say "image cleanup: keeping v${1} (current) and v${2} (rollback target); removing $(printf '%s\n' "$poi_refs" | wc -l | tr -d ' ') older Cogeto image(s). Infra images are digest-pinned and are never touched."
+  for poi_ref in $poi_refs; do
+    # The dry run must say "would", not "removed": `run` swallows its own
+    # announcement here because the rmi output is discarded, so the report is
+    # written explicitly rather than inferred from an exit code that is 0 in
+    # check mode by construction.
+    if [ "$CHECK" -eq 1 ]; then
+      say "  [dry-run] would remove ${poi_ref}"
+    elif docker rmi "$poi_ref" >/dev/null 2>&1; then
+      say "  removed ${poi_ref}"
+    else
+      say "  kept ${poi_ref} (still referenced by a container)"
+    fi
+  done
+  [ "$CHECK" -eq 1 ] || say "disk now: $(docker system df --format '{{.Type}} {{.Size}}' 2>/dev/null | tr '\n' ' ' || echo 'see docker system df')"
+}
+
 # The images THIS instance runs: the three always-present ones, plus the
 # redaction sidecar when the capability is on. One list, so pull, verify and
 # the printed verify commands can never disagree about what is installed.
@@ -1295,7 +1360,13 @@ cmd_upgrade() {
     check_embedding_model
   fi
 
-  say "rollback, if this upgrade misbehaves: 'cogeto upgrade ${current}' (typed ROLLBACK confirmation; schema stays at v${target} — full data rollback is the rehearsed OVHcloud-backup restore)"
+  # Disk hygiene, last, and only after the new version is actually up: every
+  # release is roughly a gigabyte across the four images, and an instance that
+  # never cleans up accumulates every version it has ever run. The version we
+  # came FROM is kept, because it is the rollback named on the next line.
+  prune_old_images "$target" "$current"
+
+  say "rollback, if this upgrade misbehaves: 'cogeto upgrade ${current}' (typed ROLLBACK confirmation; the v${current} images are still on this host, so it needs no network; schema stays at v${target} — full data rollback is the rehearsed OVHcloud-backup restore)"
   todo_dns "Log in at https://$(env_get COGETO_EXTERNAL_DOMAIN) and confirm the release works (version shows v${target} in the nav footer)"
   todo_now "Run 'sudo cogeto status' and confirm everything is green"
   print_checklist

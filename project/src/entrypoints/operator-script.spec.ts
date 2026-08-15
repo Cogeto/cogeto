@@ -686,6 +686,50 @@ describe('operator script — a failed upgrade is resumable and never lies about
     expect(upgrade).toContain("re-run 'sudo cogeto upgrade ${target}'");
   });
 
+  it('image cleanup keeps the current and the previous version, and nothing else Cogeto-published', () => {
+    const host = [
+      'cogeto/cogeto:1.7.3',
+      'cogeto/cogeto-edge:1.7.3',
+      'cogeto/cogeto-mail:1.7.3',
+      'cogeto/cogeto:1.7.2',
+      'cogeto/cogeto-edge:1.7.2',
+      'cogeto/cogeto:1.7.1',
+      'cogeto/cogeto-redaction:1.6.0',
+      'cogeto/cogeto:latest',
+      // Infra: digest-pinned, shared, and a re-pull is exactly the Docker Hub
+      // budget an upgrade cannot afford. Never a candidate.
+      'postgres:17',
+      'qdrant/qdrant:v1.12.4',
+      'minio/minio:latest',
+      'ghcr.io/zitadel/zitadel:v2',
+      'searxng/searxng:2026.7.19',
+      '<none>:<none>',
+    ].join('\\n');
+    const { out } = helper(`printf '${host}\\n' | prunable_image_tags 1.7.3 1.7.2`);
+    expect(out.split('\n').filter(Boolean).sort()).toEqual([
+      'cogeto/cogeto-redaction:1.6.0',
+      'cogeto/cogeto:1.7.1',
+      'cogeto/cogeto:latest',
+    ]);
+  });
+
+  it('the cleanup never forces a removal, and runs only after the new version is up', () => {
+    // Not forced: `docker rmi` refuses an image a container still references,
+    // and that refusal is the safety property. A `-f` here could pull the floor
+    // out from under a running container.
+    expect(script).toContain('docker rmi "$poi_ref"');
+    expect(script).toContain('[dry-run] would remove');
+    expect(script).not.toMatch(/docker rmi\s+-f/);
+    expect(script).not.toContain('docker system prune');
+    expect(script).not.toContain('docker image prune');
+    const up = upgrade.indexOf('compose up -d --remove-orphans');
+    const prune = upgrade.indexOf('prune_old_images "$target" "$current"');
+    expect(prune).toBeGreaterThan(up);
+    // And it keeps the version the rollback line offers, so that rollback needs
+    // no network.
+    expect(upgrade).toContain("'cogeto upgrade ${current}'");
+  });
+
   it('an instance with no app container is reported as such, not as healthy', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'cogeto-operator-resume-'));
     writeFileSync(path.join(root, '.env'), 'COGETO_VERSION=9.9.9\n', { mode: 0o600 });
