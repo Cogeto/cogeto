@@ -25,6 +25,7 @@ import {
 } from '../components/ui';
 import type { Tone } from '../components/status';
 import { fetchMe } from '../api';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 /**
  * The providers page (V2.4 item 7.1): every endpoint this instance can reach,
@@ -120,6 +121,7 @@ function HealthChip({ provider }: { provider: ProviderDto }) {
 
 function ProviderRow({ session, provider }: { session: Session; provider: ProviderDto }) {
   const { t } = useTranslation('providers');
+  const apiError = useApiErrorMessage(t);
   const queryClient = useQueryClient();
   const [replacingKey, setReplacingKey] = useState(false);
   const [newKey, setNewKey] = useState('');
@@ -141,12 +143,12 @@ function ProviderRow({ session, provider }: { session: Session; provider: Provid
       setNewKey('');
       await invalidate();
     },
-    onError: (error: Error) => setFailure(error.message),
+    onError: (error: Error) => setFailure(apiError(error)),
   });
   const remove = useMutation({
     mutationFn: () => deleteProvider(session, provider.id),
     onSuccess: invalidate,
-    onError: (error: Error) => setFailure(error.message),
+    onError: (error: Error) => setFailure(apiError(error)),
   });
 
   return (
@@ -261,6 +263,7 @@ function AddProviderForm({
   onCancel: () => void;
 }) {
   const { t } = useTranslation('providers');
+  const apiError = useApiErrorMessage(t);
   const queryClient = useQueryClient();
   const [type, setType] = useState<ProviderType>('self_hosted');
   const [label, setLabel] = useState('');
@@ -284,7 +287,7 @@ function AddProviderForm({
       await queryClient.invalidateQueries({ queryKey: ['model-configuration'] });
       onDone();
     },
-    onError: (error: Error) => setFailure(error.message),
+    onError: (error: Error) => setFailure(apiError(error)),
   });
 
   return (

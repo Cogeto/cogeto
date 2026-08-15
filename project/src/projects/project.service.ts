@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import type {
   ProjectAssignmentDto,
@@ -13,7 +8,7 @@ import type {
   Principal,
 } from '@cogeto/shared';
 import { CONVERSATION_REF_TYPE, PROJECT_MARKERS } from '@cogeto/shared';
-import { DRIZZLE, writeAudit } from '../infrastructure/index';
+import { DRIZZLE, userError, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { ProjectStore } from './persistence/project.store';
 import type { AssignmentRef, SourceRef } from './persistence/project.store';
@@ -81,14 +76,19 @@ export class ProjectService {
 
   async create(principal: Principal, write: ProjectWriteDto): Promise<ProjectDto> {
     const name = write.name.trim();
-    if (!name) throw new BadRequestException('a project needs a name');
+    if (!name) throw userError.badRequest('project.nameRequired', 'a project needs a name');
     // Every project, archived included: the cap counts only active ones, but
     // the colour must stay distinct across all of them, or unarchiving one
     // would collide with a colour handed out while it was away.
     const owned = await this.store.listForOwner(principal.userId);
     if (owned.filter((project) => !project.archived).length >= MAX_ACTIVE_PROJECTS) {
-      throw new BadRequestException(
-        `you have ${MAX_ACTIVE_PROJECTS} active projects, archive some first`,
+      throw userError.badRequest(
+        'project.tooMany',
+        {
+          one: 'you have {{count}} active project, archive some first',
+          other: 'you have {{count}} active projects, archive some first',
+        },
+        { count: MAX_ACTIVE_PROJECTS },
       );
     }
     const row = await this.store
@@ -118,7 +118,8 @@ export class ProjectService {
   ): Promise<ProjectDto> {
     await this.require(principal, id);
     const name = write.name?.trim();
-    if (write.name !== undefined && !name) throw new BadRequestException('a project needs a name');
+    if (write.name !== undefined && !name)
+      throw userError.badRequest('project.nameRequired', 'a project needs a name');
     const row = await this.store
       .update(id, {
         ...(name !== undefined ? { name } : {}),
@@ -259,7 +260,7 @@ export class ProjectService {
 
   private async require(principal: Principal, id: string): Promise<ProjectRow> {
     const row = await this.store.getForOwner(principal.userId, id);
-    if (!row) throw new NotFoundException(`project ${id} not found`);
+    if (!row) throw userError.notFound('project.notFound', 'project {{id}} not found', { id });
     return row;
   }
 
@@ -293,7 +294,7 @@ function rethrowDuplicateName(error: unknown): never {
       detail.constraint === 'project_owner_name_idx' ||
       /project_owner_name_idx/.test(String(detail.message ?? ''))
     ) {
-      throw new ConflictException('you already have a project with that name');
+      throw userError.conflict('project.nameTaken', 'you already have a project with that name');
     }
     current = detail.cause;
   }

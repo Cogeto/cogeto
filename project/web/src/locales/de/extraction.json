@@ -1,47 +1,47 @@
 {
-  "heading": "Extraction gate",
-  "explainer": "Controls what Cogeto extracts facts from, per source kind. A blocked source is still stored; <b>only its extraction is refused</b>, and every refusal is listed below rather than silently dropped.",
+  "heading": "Extraktionsfilter",
+  "explainer": "Steuert, woraus Cogeto Fakten extrahiert, je Quellenart. Eine gesperrte Quelle wird weiterhin gespeichert; <b>nur ihre Extraktion wird abgelehnt</b>, und jede Ablehnung erscheint unten, statt stillschweigend zu verschwinden.",
   "connectors": {
-    "heading": "Source kinds",
-    "explainer": "Untouched rows keep the defaults: extraction on, the built-in budget, facts kept until something supersedes them.",
-    "factBudget": "Fact budget",
-    "factBudgetPlaceholder": "default",
-    "retention": "Retention (days)",
-    "retentionPlaceholder": "keep",
-    "saveFailed": "Saving the gate failed."
+    "heading": "Quellenarten",
+    "explainer": "Unveränderte Zeilen behalten die Voreinstellungen: Extraktion an, das eingebaute Budget, Fakten bleiben erhalten, bis etwas sie ablöst.",
+    "factBudget": "Faktenbudget",
+    "factBudgetPlaceholder": "Standard",
+    "retention": "Aufbewahrung (Tage)",
+    "retentionPlaceholder": "behalten",
+    "saveFailed": "Der Filter konnte nicht gespeichert werden."
   },
   "sourceType": {
-    "user_note": "Notes",
-    "chat": "Chat captures",
-    "email": "Email",
-    "file": "Files",
-    "web": "Web research"
+    "user_note": "Notizen",
+    "chat": "Chat-Erfassungen",
+    "email": "E-Mail",
+    "file": "Dateien",
+    "web": "Web-Recherche"
   },
   "rules": {
-    "heading": "File format rules",
-    "explainer": "Allow or block extraction by detected file format. The format comes from the file's bytes, never its name. \"Allow\" rules make the list exclusive: only the allowed formats extract.",
-    "effect": "Effect",
+    "heading": "Regeln für Dateiformate",
+    "explainer": "Erlauben oder sperren Sie die Extraktion nach erkanntem Dateiformat. Das Format ergibt sich aus dem Dateiinhalt, nie aus dem Namen. \"Erlauben\"-Regeln machen die Liste ausschließlich: Nur die erlaubten Formate werden extrahiert.",
+    "effect": "Wirkung",
     "effectValue": {
-      "allow": "allow",
-      "deny": "block"
+      "allow": "erlauben",
+      "deny": "sperren"
     },
     "documentClass": "Format",
     "class": {
       "pdf": "PDF",
       "docx": "Word (DOCX)",
-      "xlsx": "Spreadsheet (XLSX)",
+      "xlsx": "Tabelle (XLSX)",
       "csv": "CSV",
-      "image": "Image"
+      "image": "Bild"
     },
-    "addFailed": "Adding the rule failed."
+    "addFailed": "Die Regel konnte nicht hinzugefügt werden."
   },
   "refusals": {
-    "heading": "Recently refused",
-    "explainer": "Sources the gate refused to extract from. The source itself is kept; change the settings above and reprocess it to extract after all."
+    "heading": "Kürzlich abgelehnt",
+    "explainer": "Quellen, aus denen der Filter nicht extrahiert hat. Die Quelle selbst bleibt erhalten; ändern Sie die Einstellungen oben und verarbeiten Sie sie erneut, damit doch extrahiert wird."
   },
   "refusalReason": {
-    "extraction_disabled": "extraction is off for this source kind",
-    "source_disabled": "this source was switched off individually",
-    "document_class_denied": "its file format is blocked by a rule"
+    "extraction_disabled": "Extraktion ist für diese Quellenart aus",
+    "source_disabled": "diese Quelle wurde einzeln abgeschaltet",
+    "document_class_denied": "ihr Dateiformat ist durch eine Regel gesperrt"
   }
 }

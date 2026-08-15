@@ -1,13 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import {
-  BadRequestException,
-  HttpException,
-  HttpStatus,
-  Inject,
-  Injectable,
-  Logger,
-  Optional,
-} from '@nestjs/common';
+import { HttpException, Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type {
   AwaitingCapabilityDto,
   FileProcessingState,
@@ -30,6 +22,8 @@ import {
   enqueueDelayedJob,
   INGEST_QUOTA,
   jobRunState,
+  untranslatedError,
+  userError,
   withTransactionalEnqueue,
   writeAudit,
 } from '../infrastructure/index';
@@ -192,10 +186,13 @@ export class FilesService {
      * folder dimension can express per-container policy (V2.5 item 8.2). */
     options: UploadOptions = {},
   ): Promise<UploadResult> {
-    if (file.buffer.length === 0) throw new BadRequestException('the uploaded file is empty');
+    if (file.buffer.length === 0)
+      throw userError.badRequest('file.empty', 'the uploaded file is empty');
     if (file.buffer.length > this.options.uploadMaxBytes) {
-      throw new BadRequestException(
-        `file exceeds the ${this.options.uploadMaxBytes}-byte upload limit`,
+      throw userError.badRequest(
+        'file.exceedsUploadLimit',
+        'file exceeds the {{bytes}}-byte upload limit',
+        { bytes: this.options.uploadMaxBytes },
       );
     }
 
@@ -231,14 +228,10 @@ export class FilesService {
     // Per-user daily upload cap: bounds the parse + pipeline work a
     // single user (or the shared demo principal) can drive in a day.
     if ((await this.counters.get(principal.userId, 'upload')) >= this.quota.uploadMax) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.TOO_MANY_REQUESTS,
-          error: 'Too Many Requests',
-          code: 'daily_upload_limit',
-          message: `daily upload limit reached (${this.quota.uploadMax}), try again tomorrow`,
-        },
-        HttpStatus.TOO_MANY_REQUESTS,
+      throw userError.tooManyRequests(
+        'daily_upload_limit',
+        'daily upload limit reached ({{max}}), try again tomorrow',
+        { max: this.quota.uploadMax },
       );
     }
     const contentType = this.resolveContentType(file);
@@ -291,23 +284,22 @@ export class FilesService {
     principal: Principal,
     file: UploadedFile,
   ): Promise<{ stagingKey: string; contentType: string; sizeBytes: number }> {
-    if (file.buffer.length === 0) throw new BadRequestException('the uploaded file is empty');
+    if (file.buffer.length === 0)
+      throw userError.badRequest('file.empty', 'the uploaded file is empty');
     if (file.buffer.length > this.options.uploadMaxBytes) {
-      throw new BadRequestException(
-        `file exceeds the ${this.options.uploadMaxBytes}-byte upload limit`,
+      throw userError.badRequest(
+        'file.exceedsUploadLimit',
+        'file exceeds the {{bytes}}-byte upload limit',
+        { bytes: this.options.uploadMaxBytes },
       );
     }
     // The same per-user daily cap as a durable upload: a transient file skips
     // extraction, but its read (OCR, vision) is the same bounded work.
     if ((await this.counters.get(principal.userId, 'upload')) >= this.quota.uploadMax) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.TOO_MANY_REQUESTS,
-          error: 'Too Many Requests',
-          code: 'daily_upload_limit',
-          message: `daily upload limit reached (${this.quota.uploadMax}), try again tomorrow`,
-        },
-        HttpStatus.TOO_MANY_REQUESTS,
+      throw userError.tooManyRequests(
+        'daily_upload_limit',
+        'daily upload limit reached ({{max}}), try again tomorrow',
+        { max: this.quota.uploadMax },
       );
     }
     const contentType = this.resolveContentType(file);
@@ -333,7 +325,7 @@ export class FilesService {
    */
   async deleteStagedTransient(stagingKey: string): Promise<void> {
     if (stagingKey.split('/')[2] !== 'staging') {
-      throw new BadRequestException('not a staging key');
+      throw untranslatedError.badRequest('not a staging key');
     }
     await this.cleanupOrphanObject(stagingKey);
   }
@@ -708,7 +700,7 @@ export class FilesService {
       // The bytes named a format. If the label disagrees, the bytes win; if the
       // label is one we accept and matches, nothing changes.
       if (!ALLOWED_UPLOAD_CONTENT_TYPES.includes(sniffed)) {
-        throw new BadRequestException(unsupportedTypeMessage(file.mimeType));
+        throw unsupportedType(file.mimeType);
       }
       return sniffed;
     }
@@ -730,13 +722,17 @@ export class FilesService {
     if (isTextName && (declared === '' || declared === 'application/octet-stream')) {
       return MARKDOWN_CONTENT_TYPE;
     }
-    throw new BadRequestException(unsupportedTypeMessage(file.mimeType));
+    throw unsupportedType(file.mimeType);
   }
 }
 
-/** One refusal message for every rejected type, naming what IS accepted. */
-function unsupportedTypeMessage(declaredType: string): string {
-  return `unsupported file type '${declaredType}': only PDF, DOCX, XLSX, CSV, Markdown, plain text and images are accepted`;
+/** One refusal for every rejected type, naming what IS accepted. */
+function unsupportedType(declaredType: string): HttpException {
+  return userError.badRequest(
+    'file.unsupportedType',
+    "unsupported file type '{{type}}': only PDF, DOCX, XLSX, CSV, Markdown, plain text and images are accepted",
+    { type: declaredType },
+  );
 }
 
 function safeDecode(value: string): string {

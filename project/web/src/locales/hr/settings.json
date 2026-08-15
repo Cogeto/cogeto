@@ -64,18 +64,30 @@
       "embeddings": "Ugradnje"
     },
     "managedIn": "Ondje se postavljaju pružatelji, dodjele i modeli koje korisnici smiju birati.",
-    "manage": "Upravljaj modelima"
+    "manage": "Upravljaj modelima",
+    "externalCalls": {
+      "unconfigured": "Nije konfiguriran nijedan pružatelj modela, pa za pozive modela ništa ne napušta ovu instancu; značajke modela su onemogućene.",
+      "allLocal": "Pozivi modela (uključujući ugrađivanja) idu lokalnom Ollama okruženju na vašoj mreži; ništa se ne šalje pružatelju modela u oblaku.",
+      "redacted": "Pozivi modela (uključujući ugrađivanja) idu prema {{providers}}; redakcija pseudonimizira tekst prije nego što napusti ovu instancu i zaustavlja se ako pomoćna usluga ne radi.",
+      "external": "Pozivi modela (uključujući ugrađivanja) šalju tekst prema {{providers}}; sve ostalo ostaje unutar ove instance."
+    },
+    "providerLabel": {
+      "mistral": "Mistral",
+      "openai": "konfiguriranoj krajnjoj točki kompatibilnoj s OpenAI-jem",
+      "anthropic": "Anthropic",
+      "ollama": "lokalnom Ollama okruženju"
+    }
   },
   "aliases": {
-    "heading": "Entity aliases",
-    "explainer": "Two names for the same thing pair for contradiction checks, including a Croatian and an English name for one company.",
-    "pair": "\"{{alias}}\" counts as \"{{canonical}}\"",
-    "canonical": "Canonical name",
-    "canonicalPlaceholder": "The name your documents use most",
+    "heading": "Aliasi entiteta",
+    "explainer": "Dva naziva za istu stvar povezuju se pri provjeri proturječnosti, uključujući hrvatski i engleski naziv iste tvrtke.",
+    "pair": "\"{{alias}}\" vrijedi kao \"{{canonical}}\"",
+    "canonical": "Kanonski naziv",
+    "canonicalPlaceholder": "Naziv koji vaši dokumenti najčešće koriste",
     "alias": "Alias",
-    "aliasPlaceholder": "Another name for the same thing",
-    "empty": "No aliases recorded yet.",
-    "error": "Couldn't load your aliases."
+    "aliasPlaceholder": "Drugi naziv za istu stvar",
+    "empty": "Još nije zabilježen nijedan alias.",
+    "error": "Nismo mogli učitati vaše aliase."
   },
   "signingKey": {
     "heading": "Ključ za potpisivanje instance",

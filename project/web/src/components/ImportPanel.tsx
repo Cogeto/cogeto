@@ -24,6 +24,7 @@ import type { Session } from '../auth/oidc';
 import { Card, ErrorState, Pill } from './ui';
 import type { Tone } from './status';
 import { timeAgo } from './status';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 /**
  * Bulk import (V2.2 item 5.3): the wizard (ZIP, folder, S3-style path), the
@@ -59,6 +60,7 @@ async function sha256Hex(file: File): Promise<string> {
 
 export function ImportPanel({ session }: { session: Session }) {
   const { t } = useTranslation('sources');
+  const apiError = useApiErrorMessage(t);
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<WizardTab | null>(null);
   const [manifest, setManifest] = useState<ImportRunDetailDto | null>(null);
@@ -91,8 +93,7 @@ export function ImportPanel({ session }: { session: Session }) {
     setError(null);
     void queryClient.invalidateQueries({ queryKey: ['imports'] });
   };
-  const fail = (cause: unknown) =>
-    setError(cause instanceof Error ? cause.message : t('imports.error'));
+  const fail = (cause: unknown) => setError(apiError(cause, 'imports.error'));
 
   const visibleRuns = (runs.data ?? []).filter((run) => run.id !== manifest?.id);
 
@@ -382,6 +383,7 @@ function ManifestReview({
   onDone: () => void;
 }) {
   const { t } = useTranslation('sources');
+  const apiError = useApiErrorMessage(t);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [staging, setStaging] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -402,7 +404,7 @@ function ManifestReview({
       onUpdate(next);
       setSelected(new Set());
     },
-    onError: (cause) => setError(cause.message),
+    onError: (cause) => setError(apiError(cause)),
   });
 
   const confirm = useMutation({
@@ -424,14 +426,14 @@ function ManifestReview({
       });
     },
     onSuccess: onDone,
-    onError: (cause) => setError(cause.message),
+    onError: (cause) => setError(apiError(cause)),
     onSettled: () => setStaging(null),
   });
 
   const discard = useMutation({
     mutationFn: () => cancelImport(session, detail.id),
     onSuccess: onDone,
-    onError: (cause) => setError(cause.message),
+    onError: (cause) => setError(apiError(cause)),
   });
 
   const toggle = (id: string) =>

@@ -1,174 +1,174 @@
 {
   "page": {
-    "title": "Providers"
+    "title": "Pružatelji"
   },
   "adminOnly": {
-    "title": "Administrators only",
-    "body": "Model providers decide what this instance remembers and where its content is sent, so only an administrator can change them."
+    "title": "Samo za administratore",
+    "body": "Pružatelji modela određuju što ova instanca pamti i kamo se šalje njezin sadržaj, pa ih može mijenjati samo administrator."
   },
   "list": {
-    "heading": "Model providers",
-    "explainer": "Every endpoint this instance can reach. Several of the same kind are normal, so the name is what tells them apart.",
-    "add": "Add a provider",
-    "error": "The providers could not be loaded.",
+    "heading": "Pružatelji modela",
+    "explainer": "Svaka krajnja točka do koje ova instanca može doći. Više njih iste vrste je uobičajeno, pa ih razlikuje naziv.",
+    "add": "Dodaj pružatelja",
+    "error": "Pružatelje nije bilo moguće učitati.",
     "empty": {
-      "title": "No providers yet",
-      "body": "Add the endpoint that serves your models. Nothing is sent anywhere until a tier is assigned to it."
+      "title": "Još nema pružatelja",
+      "body": "Dodajte krajnju točku koja poslužuje vaše modele. Ništa se nikamo ne šalje dok joj se ne dodijeli razina."
     },
-    "servingTiers": "Currently serving: {{tiers}}",
-    "cannotDelete": "Reassign the tiers this provider serves before removing it."
+    "servingTiers": "Trenutačno poslužuje: {{tiers}}",
+    "cannotDelete": "Prije uklanjanja premjestite razine koje ovaj pružatelj poslužuje."
   },
   "type": {
     "mistral": {
       "name": "Mistral",
-      "subtitle": "The hosted Mistral API"
+      "subtitle": "Mistralov API u oblaku"
     },
     "openai": {
       "name": "OpenAI",
-      "subtitle": "The hosted OpenAI API"
+      "subtitle": "OpenAI API u oblaku"
     },
     "anthropic": {
       "name": "Anthropic",
-      "subtitle": "The hosted Anthropic API. No embeddings."
+      "subtitle": "Anthropicov API u oblaku. Bez ugrađivanja."
     },
     "self_hosted": {
-      "name": "Self-hosted",
-      "subtitle": "llama.cpp, Ollama, vLLM, or any OpenAI-compatible endpoint"
+      "name": "Vlastiti poslužitelj",
+      "subtitle": "llama.cpp, Ollama, vLLM ili bilo koja krajnja točka kompatibilna s OpenAI-jem"
     },
     "ollama": {
-      "name": "Self-hosted",
-      "subtitle": "A local Ollama runtime, carried over from this instance's earlier configuration"
+      "name": "Vlastiti poslužitelj",
+      "subtitle": "Lokalno Ollama okruženje, preneseno iz ranije konfiguracije ove instance"
     }
   },
   "health": {
-    "ok": "Answered",
-    "unreachable": "Not reachable",
-    "auth_failed": "Key rejected",
-    "unknown": "Not tested yet"
+    "ok": "Odgovorio",
+    "unreachable": "Nedostupan",
+    "auth_failed": "Ključ odbijen",
+    "unknown": "Još nije testiran"
   },
   "key": {
-    "present": "Key stored",
-    "absent": "No key",
-    "add": "Add a key",
-    "replace": "Replace the key"
+    "present": "Ključ pohranjen",
+    "absent": "Bez ključa",
+    "add": "Dodaj ključ",
+    "replace": "Zamijeni ključ"
   },
   "action": {
-    "test": "Test",
-    "testing": "Testing",
-    "save": "Save",
-    "saving": "Saving",
-    "cancel": "Cancel",
-    "remove": "Remove"
+    "test": "Testiraj",
+    "testing": "Testiranje",
+    "save": "Spremi",
+    "saving": "Spremanje",
+    "cancel": "Odustani",
+    "remove": "Ukloni"
   },
   "form": {
     "type": {
-      "legend": "What kind of endpoint is this?"
+      "legend": "Koja je ovo vrsta krajnje točke?"
     },
     "label": {
-      "label": "Name",
-      "placeholder": "Workshop GPU",
-      "help": "Your own name for this endpoint. It has to be unique, because two of the same kind are ordinary."
+      "label": "Naziv",
+      "placeholder": "Radionički GPU",
+      "help": "Vaš vlastiti naziv za ovu krajnju točku. Mora biti jedinstven jer su dvije iste vrste sasvim uobičajene."
     },
     "baseUrl": {
-      "label": "Endpoint",
+      "label": "Krajnja točka",
       "placeholder": "http://host.docker.internal:9000/v1",
-      "hint": "Reached from inside the containers, so localhost means the container itself. A server running on this host is at host.docker.internal or the bridge gateway address; another service in this stack is at its service name."
+      "hint": "Pristupa joj se iz kontejnera, pa localhost znači sam kontejner. Poslužitelj koji radi na ovom računalu nalazi se na host.docker.internal ili na adresi mrežnog prolaza; druga usluga u ovom skupu nalazi se na nazivu svoje usluge."
     },
     "apiKey": {
-      "label": "API key",
-      "optionalLabel": "API key (optional)",
-      "placeholder": "Paste the key",
-      "help": "Encrypted before it is stored and never shown again. A self-hosted endpoint with no authentication needs none."
+      "label": "API ključ",
+      "optionalLabel": "API ključ (neobavezno)",
+      "placeholder": "Zalijepite ključ",
+      "help": "Šifrira se prije pohrane i više se nikada ne prikazuje. Krajnja točka na vlastitom poslužitelju bez autentifikacije ga ne treba."
     },
-    "submit": "Add and test"
+    "submit": "Dodaj i testiraj"
   },
   "assignment": {
-    "title": "Model assignment",
-    "heading": "What each tier runs on",
-    "explainer": "Four independent choices. A mixed configuration is ordinary: extraction on one endpoint, answers on another.",
-    "error": "The configuration could not be loaded.",
-    "provider": "Provider",
+    "title": "Dodjela modela",
+    "heading": "Na čemu radi svaka razina",
+    "explainer": "Četiri neovisna izbora. Mješovita je konfiguracija uobičajena: izdvajanje na jednoj krajnjoj točki, odgovori na drugoj.",
+    "error": "Konfiguraciju nije bilo moguće učitati.",
+    "provider": "Pružatelj",
     "model": "Model",
-    "modelPlaceholder": "Type or pick a model",
-    "none": "None",
-    "unassigned": "Not assigned",
-    "apply": "Test and apply",
-    "partialList": "This endpoint may serve models it does not advertise, so type the name if it is not in the list.",
-    "listUnavailable": "The model list could not be read ({{reason}}), so type the name instead.",
-    "visionOptional": "Leave this unassigned if this instance reads no images. Pages that need vision are then labelled as such rather than arriving empty."
+    "modelPlaceholder": "Upišite ili odaberite model",
+    "none": "Nijedan",
+    "unassigned": "Nije dodijeljeno",
+    "apply": "Testiraj i primijeni",
+    "partialList": "Ova krajnja točka može poslužiti i modele koje ne navodi, pa upišite naziv ako ga nema na popisu.",
+    "listUnavailable": "Popis modela nije bilo moguće pročitati ({{reason}}), pa umjesto toga upišite naziv.",
+    "visionOptional": "Ostavite nedodijeljeno ako ova instanca ne čita slike. Stranice kojima treba vid tada se tako i označe umjesto da stignu prazne."
   },
   "tier": {
-    "pipeline": "Extraction",
-    "answer": "Answers",
-    "embeddings": "Embeddings",
-    "vision": "Vision"
+    "pipeline": "Izdvajanje",
+    "answer": "Odgovori",
+    "embeddings": "Ugrađivanja",
+    "vision": "Vid"
   },
   "tierHelp": {
-    "pipeline": "Reads documents and verifies every fact",
-    "answer": "Writes what people read in chat",
-    "embeddings": "Turns facts into the search index",
-    "vision": "Reads pages that are pictures"
+    "pipeline": "Čita dokumente i provjerava svaku činjenicu",
+    "answer": "Piše ono što ljudi čitaju u razgovoru",
+    "embeddings": "Pretvara činjenice u indeks za pretraživanje",
+    "vision": "Čita stranice koje su slike"
   },
   "summary": {
-    "configuration": "Configuration",
-    "configured": "Complete",
-    "notConfigured": "Incomplete",
-    "managedHere": "Managed here, in this instance's database. The environment file carries no model configuration."
+    "configuration": "Konfiguracija",
+    "configured": "Potpuna",
+    "notConfigured": "Nepotpuna",
+    "managedHere": "Uređuje se ovdje, u bazi podataka ove instance. Datoteka okruženja ne sadrži konfiguraciju modela."
   },
   "trust": {
-    "evaluated": "Measured in {{release}}",
-    "notEvaluated": "Not evaluated",
-    "notEvaluatedHelp": "No published measurement matches this exact combination, so nothing is known about how accurately it extracts. Accuracy is never borrowed from a different configuration.",
-    "numbers": "Extraction precision {{precision}}, recall {{recall}}, verification agreement {{agreement}}."
+    "evaluated": "Izmjereno u izdanju {{release}}",
+    "notEvaluated": "Nije ocijenjeno",
+    "notEvaluatedHelp": "Nijedno objavljeno mjerenje ne odgovara točno ovoj kombinaciji, pa se ne zna koliko točno izdvaja. Točnost se nikada ne preuzima iz druge konfiguracije.",
+    "numbers": "Preciznost izdvajanja {{precision}}, odziv {{recall}}, podudarnost provjere {{agreement}}."
   },
   "embeddings": {
-    "locked": "The embeddings model cannot be assigned directly. Every stored fact was turned into a vector by the current one, and searching a mix of two would quietly return the wrong results.",
-    "interim": "The managed rebuild is unavailable in this process. Change the model with the operator command <code>{{command}}</code>, which re-embeds everything from the database."
+    "locked": "Model ugrađivanja ne može se dodijeliti izravno. Svaka je pohranjena činjenica pretvorena u vektor trenutačnim modelom, a pretraživanje mješavine dvaju modela tiho bi vraćalo pogrešne rezultate.",
+    "interim": "Vođena ponovna izgradnja nije dostupna u ovom procesu. Promijenite model operaterskom naredbom <code>{{command}}</code>, koja sve ponovno ugrađuje iz baze podataka."
   },
   "answerOptions": {
-    "heading": "Answer models people may choose",
-    "explainer": "The answer model is the one anybody may pick for themselves, from this list. Extraction, embeddings and vision stay administrator decisions.",
-    "empty": "Nobody can choose their own answer model yet. Add one here and it appears in everyone's settings.",
-    "label": "Shown as",
-    "add": "Enable"
+    "heading": "Modeli za odgovore koje korisnici mogu birati",
+    "explainer": "Model za odgovore jedini je koji svatko može odabrati za sebe, s ovog popisa. Izdvajanje, ugrađivanja i vid ostaju administratorske odluke.",
+    "empty": "Nitko još ne može odabrati vlastiti model za odgovore. Dodajte ga ovdje i pojavit će se u svačijim postavkama.",
+    "label": "Prikazuje se kao",
+    "add": "Omogući"
   },
   "history": {
-    "heading": "Configuration history",
-    "explainer": "Every change, and the configuration identifier it produced. This is the identifier a published measurement is matched by.",
-    "entry": "{{tier}} moved to {{provider}} · {{model}}"
+    "heading": "Povijest konfiguracije",
+    "explainer": "Svaka promjena i identifikator konfiguracije koji je proizvela. To je identifikator prema kojem se pridružuje objavljeno mjerenje.",
+    "entry": "{{tier}} premješteno na {{provider}} · {{model}}"
   },
   "userChoice": {
-    "heading": "Your answer model",
-    "explainer": "Which model writes the answers you read. It changes nothing about what is remembered or how it is found.",
-    "instanceDefault": "The instance default",
-    "current": "Currently answering with {{label}}.",
-    "none": "Your administrator has not offered a choice here yet."
+    "heading": "Vaš model za odgovore",
+    "explainer": "Koji model piše odgovore koje čitate. Ne mijenja ništa u tome što se pamti ni kako se pronalazi.",
+    "instanceDefault": "Zadano za instancu",
+    "current": "Trenutačno odgovara model {{label}}.",
+    "none": "Vaš administrator ovdje još nije ponudio izbor."
   },
   "rebuild": {
-    "review": "Review the change",
-    "planTitle": "Changing the embeddings model rebuilds the whole index",
-    "planWhat": "Embeddings move to {{model}} on {{provider}}, producing {{dimensions}}-dimension vectors. The probe just confirmed the model works.",
-    "planCost": "{{facts}} memories will be re-embedded: an estimated {{tokens}} tokens, taking roughly {{duration}}.",
-    "planSpend": "This is real model spend, metered against the daily model budget. If the budget runs out mid-rebuild, the rebuild pauses and resumes by itself.",
-    "planServing": "Search keeps answering from the current index for the whole rebuild. The switch happens only when the new index is verified complete, and it is instant.",
-    "planEvaluated": "The resulting configuration {{configuration}} has published trust scores.",
-    "planNotEvaluated": "The resulting configuration {{configuration}} is not evaluated: no published trust scores match it.",
-    "confirm": "Start the rebuild",
-    "back": "Back",
-    "runningTitle": "Rebuilding the vector index for {{model}}",
-    "finalizingTitle": "Finalizing the switch to {{model}}",
-    "failedTitle": "The rebuild to {{model}} stopped",
-    "progress": "{{done}} of {{total}} memories re-embedded, about {{tokens}} tokens spent.",
-    "remaining": "About {{duration}} remaining.",
-    "servingNote": "Search keeps answering from the current index; nothing changes until the rebuild completes.",
-    "resume": "Resume the rebuild",
-    "cancel": "Cancel the rebuild",
-    "cancelling": "Cancelling",
-    "durationSeconds_one": "{{count}} seconds",
-    "durationSeconds_few": "{{count}} seconds",
-    "durationSeconds_other": "{{count}} seconds",
-    "durationMinutes_one": "{{count}} minutes",
-    "durationMinutes_few": "{{count}} minutes",
-    "durationMinutes_other": "{{count}} minutes"
+    "review": "Pregledaj promjenu",
+    "planTitle": "Promjena modela ugrađivanja ponovno gradi cijeli indeks",
+    "planWhat": "Ugrađivanja prelaze na {{model}} kod pružatelja {{provider}} i daju vektore s {{dimensions}} dimenzija. Provjera je upravo potvrdila da model radi.",
+    "planCost": "Ponovno će se ugraditi {{facts}} sjećanja: procijenjeno {{tokens}} tokena, otprilike {{duration}}.",
+    "planSpend": "Ovo je stvarna potrošnja modela, mjerena prema dnevnom proračunu. Ako proračun ponestane usred izgradnje, izgradnja se pauzira i sama nastavlja.",
+    "planServing": "Pretraživanje cijelo vrijeme odgovara iz postojećeg indeksa. Prebacivanje se događa tek kada se potvrdi da je novi indeks potpun, i trenutačno je.",
+    "planEvaluated": "Nastala konfiguracija {{configuration}} ima objavljene ocjene pouzdanosti.",
+    "planNotEvaluated": "Nastala konfiguracija {{configuration}} nije ocijenjena: nijedna objavljena ocjena pouzdanosti joj ne odgovara.",
+    "confirm": "Pokreni ponovnu izgradnju",
+    "back": "Natrag",
+    "runningTitle": "Ponovna izgradnja vektorskog indeksa za {{model}}",
+    "finalizingTitle": "Dovršavanje prijelaza na {{model}}",
+    "failedTitle": "Ponovna izgradnja na {{model}} je zaustavljena",
+    "progress": "Ponovno ugrađeno {{done}} od {{total}} sjećanja, potrošeno oko {{tokens}} tokena.",
+    "remaining": "Preostalo otprilike {{duration}}.",
+    "servingNote": "Pretraživanje i dalje odgovara iz postojećeg indeksa; ništa se ne mijenja dok se izgradnja ne dovrši.",
+    "resume": "Nastavi ponovnu izgradnju",
+    "cancel": "Otkaži ponovnu izgradnju",
+    "cancelling": "Otkazivanje",
+    "durationSeconds_one": "{{count}} sekundu",
+    "durationSeconds_few": "{{count}} sekunde",
+    "durationSeconds_other": "{{count}} sekundi",
+    "durationMinutes_one": "{{count}} minutu",
+    "durationMinutes_few": "{{count}} minute",
+    "durationMinutes_other": "{{count}} minuta"
   }
 }

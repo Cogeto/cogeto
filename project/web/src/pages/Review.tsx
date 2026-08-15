@@ -8,6 +8,7 @@ import { invalidateAfterContradiction } from '../query-invalidation';
 import { Shell } from '../components/Shell';
 import { timeAgo } from '../components/status';
 import { btnPrimary, btnSecondary, EmptyState, ErrorState, SkeletonRows } from '../components/ui';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 /** Highlights the cited span inside the source text when it is present. */
 function SourceWithSpan({ source, span }: { source: string; span: string | null }) {
@@ -96,6 +97,7 @@ function ContradictionItem({
   contradiction: ContradictionDto;
 }) {
   const { t } = useTranslation('review');
+  const apiError = useApiErrorMessage(t);
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [correcting, setCorrecting] = useState(false);
@@ -111,7 +113,7 @@ function ContradictionItem({
       // Chat chips, lists, badges — the contradiction-affected queries.
       await invalidateAfterContradiction(queryClient);
     },
-    onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => setError(apiError(e)),
   });
   const busy = resolve.isPending;
 

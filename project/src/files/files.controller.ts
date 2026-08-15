@@ -1,14 +1,4 @@
-import {
-  BadRequestException,
-  Controller,
-  Get,
-  NotFoundException,
-  Param,
-  Post,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
+import { Controller, Get, Param, Post, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { z } from 'zod';
 import type {
   AwaitingCapabilityDto,
@@ -18,7 +8,13 @@ import type {
   FileUploadedDto,
 } from '@cogeto/shared';
 import { MEMORY_SCOPES } from '@cogeto/shared';
-import { RateLimit, RateLimitGuard, parseOrBadRequest } from '../infrastructure/index';
+import {
+  parseOrBadRequest,
+  RateLimit,
+  RateLimitGuard,
+  untranslatedError,
+  userError,
+} from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { DocumentUploadInterceptor } from './document-upload.interceptor';
@@ -69,7 +65,7 @@ export class FilesController {
   @UseInterceptors(DocumentUploadInterceptor)
   async upload(@Req() request: AuthenticatedRequest): Promise<FileUploadedDto> {
     const file = request.file;
-    if (!file) throw new BadRequestException('no file provided (field name must be "file")');
+    if (!file) throw untranslatedError.badRequest('no file provided (field name must be "file")');
 
     const parsed = parseOrBadRequest(uploadFlagsSchema, request.body ?? {});
     // Omitted flags fall back to the user's saved defaults.
@@ -102,7 +98,7 @@ export class FilesController {
     // Owner-scoped by the object key — available even before any memory or
     // file_metadata exists (a discard upload still processing).
     const state = await this.files.getUploadState(request.principal, key);
-    if (!state) throw new NotFoundException(`file ${key} not found`);
+    if (!state) throw userError.notFound('file.notFound', 'file {{key}} not found', { key });
     return { state };
   }
 
@@ -128,7 +124,7 @@ export class FilesController {
     @Param('key') key: string,
   ): Promise<{ queued: boolean }> {
     const result = await this.files.reprocess(request.principal, key);
-    if (!result) throw new NotFoundException(`file ${key} not found`);
+    if (!result) throw userError.notFound('file.notFound', 'file {{key}} not found', { key });
     return result;
   }
 
@@ -139,7 +135,7 @@ export class FilesController {
     @Param('key') key: string,
   ): Promise<FileSourceDto> {
     const source = await this.files.getSourceForOwner(request.principal, key);
-    if (!source) throw new NotFoundException(`file ${key} not found`);
+    if (!source) throw userError.notFound('file.notFound', 'file {{key}} not found', { key });
     return source;
   }
 
@@ -150,7 +146,7 @@ export class FilesController {
     @Param('key') key: string,
   ): Promise<FileDownloadDto> {
     const link = await this.files.getDownloadUrl(request.principal, key);
-    if (!link) throw new NotFoundException(`file ${key} not found`);
+    if (!link) throw userError.notFound('file.notFound', 'file {{key}} not found', { key });
     return link;
   }
 }

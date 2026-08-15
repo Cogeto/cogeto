@@ -41,7 +41,7 @@
     "failed": "Die Antwort konnte gerade nicht entworfen werden. Öffnen Sie die E-Mail und wählen Sie \"Antwort entwerfen\"."
   },
   "lens": {
-    "nothingInProject": "I have nothing about that in {{project}}. This conversation answers from that project's sources only, and your memory outside it may hold the answer.",
-    "silentPreamble": "I have nothing about this in {{project}}'s sources. What follows is general knowledge, not from your sources."
+    "nothingInProject": "Dazu liegt mir in {{project}} nichts vor. Diese Unterhaltung antwortet nur aus den Quellen dieses Projekts; Ihr Gedächtnis außerhalb davon enthält die Antwort möglicherweise.",
+    "silentPreamble": "Dazu liegt mir in den Quellen von {{project}} nichts vor. Das Folgende ist Allgemeinwissen und stammt nicht aus Ihren Quellen."
   }
 }

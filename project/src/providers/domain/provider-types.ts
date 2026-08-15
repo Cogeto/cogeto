@@ -110,31 +110,28 @@ export const PROVIDER_TYPE_SPECS: Readonly<Record<StoredProviderType, ProviderTy
 export const isCreatableProviderType = (value: string): boolean =>
   (PROVIDER_TYPES as readonly string[]).includes(value);
 
+/** Which capability this provider type is missing for a tier. */
+export type TierCapabilityRefusal = 'vision_unsupported' | 'embeddings_unsupported';
+
 /**
  * Why this provider cannot serve this tier, or null when it can (issue #571).
  *
  * A function beside the table rather than a check inside a controller, for the
  * reason the `supportsEmbeddings` comment already gives: the capability is a
  * fact about the type, and a rule that lives next to the fact cannot drift
- * away from it. The message names the provider and the remedy, because the
- * failure this replaces named neither.
+ * away from it.
+ *
+ * It returns the REASON, not a sentence (F13). The words a user reads are
+ * written where every other user-facing failure is written, at the throw site
+ * with an error code the interface translates; a domain table has no business
+ * holding English prose that only one language can render.
  */
 export function tierCapabilityRefusal(
   tier: ModelTierName,
   spec: ProviderTypeSpec,
-  provider: { label: string; type: StoredProviderType },
-): string | null {
-  if (tier === 'vision' && !spec.supportsVision) {
-    return (
-      `provider "${provider.label}" cannot serve the vision tier: reading an image is not ` +
-      `implemented for ${provider.type} providers on this instance. Assign a provider whose ` +
-      `type can read images, or leave the vision tier unassigned and the reading ladder stops ` +
-      `at OCR.`
-    );
-  }
-  if (tier === 'embeddings' && !spec.supportsEmbeddings) {
-    return `provider "${provider.label}" has no embeddings API (${provider.type})`;
-  }
+): TierCapabilityRefusal | null {
+  if (tier === 'vision' && !spec.supportsVision) return 'vision_unsupported';
+  if (tier === 'embeddings' && !spec.supportsEmbeddings) return 'embeddings_unsupported';
   return null;
 }
 

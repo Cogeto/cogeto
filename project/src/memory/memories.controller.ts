@@ -1,10 +1,8 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
   Inject,
-  NotFoundException,
   Optional,
   Param,
   ParseUUIDPipe,
@@ -23,7 +21,7 @@ import type { MemoryEligibilityHook } from './eligibility-hook';
 import { MemoryStore } from './memory.store';
 import type { MemoryFilters } from './memory.store';
 import { toListItem } from './list-item';
-import { parseOrBadRequest } from '../infrastructure/index';
+import { parseOrBadRequest, untranslatedError, userError } from '../infrastructure/index';
 
 /** Zod at the boundary: the list's query surface and the two action bodies. */
 const listQuerySchema = z.object({
@@ -155,7 +153,7 @@ export class MemoriesController {
     const row = await this.store.getForPrincipal(request.principal, id, {
       includeSensitive: true,
     });
-    if (!row) throw new NotFoundException(`memory ${id} not found`);
+    if (!row) throw userError.notFound('memory.notFound', 'memory {{id}} not found', { id });
     return (await this.withOwnerNames([toListItem(row)]))[0]!;
   }
 
@@ -166,7 +164,8 @@ export class MemoriesController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<MemoryListItem[]> {
     const rows = await this.store.getChain(request.principal, id, { includeSensitive: true });
-    if (rows.length === 0) throw new NotFoundException(`memory ${id} not found`);
+    if (rows.length === 0)
+      throw userError.notFound('memory.notFound', 'memory {{id}} not found', { id });
     return this.withOwnerNames(rows.map(toListItem));
   }
 
@@ -216,7 +215,7 @@ export class MemoriesController {
     @Body() body: unknown,
   ): Promise<MemoryListItem> {
     const parsed = sensitiveSchema.safeParse(body);
-    if (!parsed.success) throw new BadRequestException('body must be { sensitive: boolean }');
+    if (!parsed.success) throw untranslatedError.badRequest('body must be { sensitive: boolean }');
     const row = await this.store.toggleSensitive(request.principal, id, parsed.data.sensitive);
     return toListItem(row);
   }
@@ -229,7 +228,8 @@ export class MemoriesController {
     @Body() body: unknown,
   ): Promise<MemoryListItem> {
     const parsed = scopeSchema.safeParse(body);
-    if (!parsed.success) throw new BadRequestException('body must be { scope: private|shared }');
+    if (!parsed.success)
+      throw untranslatedError.badRequest('body must be { scope: private|shared }');
     const row = await this.store.setScope(request.principal, id, parsed.data.scope);
     return toListItem(row);
   }
@@ -257,7 +257,7 @@ export class MemoriesController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<{ rejected: boolean }> {
     const removed = await this.store.rejectUncertain(request.principal, id);
-    if (!removed) throw new NotFoundException(`memory ${id} not found`);
+    if (!removed) throw userError.notFound('memory.notFound', 'memory {{id}} not found', { id });
     return { rejected: true };
   }
 }

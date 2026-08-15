@@ -1,11 +1,4 @@
-import {
-  ConflictException,
-  HttpException,
-  Inject,
-  Injectable,
-  NotFoundException,
-  Optional,
-} from '@nestjs/common';
+import { HttpException, Inject, Injectable, Optional } from '@nestjs/common';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { Principal, ResearchCitationDto, SkillStepLinks } from '@cogeto/shared';
 import {
@@ -15,6 +8,7 @@ import {
   EMPTY_USER_CONTEXT,
   RESEARCH_QUOTA,
   UserContextService,
+  userError,
   withTransactionalEnqueue,
   writeAudit,
 } from '../infrastructure/index';
@@ -126,24 +120,35 @@ export class SkillEngine {
     decisions: { researchRunId: string; query: string }[],
   ): Promise<SkillRunRow> {
     const run = await this.runs.getRun(principal, runId);
-    if (!run) throw new NotFoundException();
+    if (!run) throw userError.notFound('skill.runNotFound', 'no such skill run');
     if (run.status === 'running') return run; // an approve retry after a crash
     if (run.status !== 'awaiting_approval') {
-      throw new ConflictException('this skill run is not awaiting plan approval');
+      throw userError.conflict(
+        'skill.notAwaitingApproval',
+        'this skill run is not awaiting plan approval',
+      );
     }
     if (decisions.length === 0) {
-      throw new ConflictException('approve at least one query, or cancel the run');
+      throw userError.conflict(
+        'skill.noApprovedQueries',
+        'approve at least one query, or cancel the run',
+      );
     }
     if (decisions.length > this.quota.skillQueriesMax) {
-      throw new ConflictException(
-        `a skill plan approves at most ${this.quota.skillQueriesMax} queries`,
+      throw userError.conflict(
+        'skill.planQueryCap',
+        'a skill plan approves at most {{max}} queries',
+        { max: this.quota.skillQueriesMax },
       );
     }
     const planRuns = await this.research.runsForSkill(runId);
     const byId = new Map(planRuns.map((r) => [r.id, r]));
     for (const decision of decisions) {
       if (!byId.has(decision.researchRunId)) {
-        throw new NotFoundException('a decision references a query outside this plan');
+        throw userError.notFound(
+          'skill.decisionOutsidePlan',
+          'a decision references a query outside this plan',
+        );
       }
     }
     const keptIds = new Set(decisions.map((d) => d.researchRunId));

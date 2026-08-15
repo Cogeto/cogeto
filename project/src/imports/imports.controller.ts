@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -13,7 +12,12 @@ import {
 import { z } from 'zod';
 import { MEMORY_SCOPES } from '@cogeto/shared';
 import type { ImportItemDto, ImportRunDetailDto, ImportRunDto } from '@cogeto/shared';
-import { parseOrBadRequest, RateLimit, RateLimitGuard } from '../infrastructure/index';
+import {
+  parseOrBadRequest,
+  RateLimit,
+  RateLimitGuard,
+  untranslatedError,
+} from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { DocumentUploadInterceptor } from '../files/index';
@@ -68,7 +72,8 @@ export class ImportsController {
   @UseInterceptors(ZipUploadInterceptor)
   async zip(@Req() request: AuthenticatedRequest): Promise<ImportRunDetailDto> {
     const file = request.file;
-    if (!file) throw new BadRequestException('no archive provided (field name must be "file")');
+    if (!file)
+      throw untranslatedError.badRequest('no archive provided (field name must be "file")');
     return this.imports.createZipManifest(request.principal, {
       buffer: file.buffer,
       originalName: file.originalname,
@@ -103,7 +108,7 @@ export class ImportsController {
     @Param('itemId', ParseUUIDPipe) itemId: string,
   ): Promise<ImportItemDto> {
     const file = request.file;
-    if (!file) throw new BadRequestException('no file provided (field name must be "file")');
+    if (!file) throw untranslatedError.badRequest('no file provided (field name must be "file")');
     return this.imports.stageFolderItem(request.principal, id, itemId, {
       buffer: file.buffer,
       originalName: file.originalname,

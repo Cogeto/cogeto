@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, isNull, lt, or } from 'drizzle-orm';
 import type {
   AddEmailAllowlistEntryRequest,
@@ -6,7 +6,7 @@ import type {
   EmailRefusalDto,
   Principal,
 } from '@cogeto/shared';
-import { DRIZZLE, writeAudit } from '../infrastructure/index';
+import { DRIZZLE, userError, writeAudit } from '../infrastructure/index';
 import type { Db, DbOrTx } from '../infrastructure/index';
 import { emailAllowlist, emailRefusal } from './persistence/tables';
 import type { EmailAllowlistRow } from './persistence/tables';
@@ -86,11 +86,12 @@ export class EmailAllowlistService {
   ): Promise<EmailAllowlistEntryDto> {
     const value = normalizeAllowlistValue(request.kind, request.value);
     if (!value) {
-      throw new BadRequestException(
-        request.kind === 'address'
-          ? 'not a valid email address'
-          : 'not a valid domain (e.g. adriatic-foods.hr)',
-      );
+      throw request.kind === 'address'
+        ? userError.badRequest('email.invalidAddress', 'not a valid email address')
+        : userError.badRequest(
+            'email.invalidDomain',
+            'not a valid domain (e.g. adriatic-foods.hr)',
+          );
     }
     const note = request.note?.trim() || null;
 

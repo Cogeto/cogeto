@@ -1,0 +1,130 @@
+{
+  "//": "Values that are identical to their English source BY DESIGN, so check-i18n's completeness count (F14) does not read them as untranslated. Every entry is a claim that the English text is also the correct text in that language: a product or brand name, a format or unit, an international term a professional in that language actually uses, example data, or a value made only of placeholders and markup. A sentence is never an entry here. Keys are BASE keys (no plural suffix), grouped by the locale root that holds them ('web' or 'server') and their namespace; `perLocale` narrows an entry to one language, which is the usual case because 'Source' is French but not German.",
+  "web": {
+    "auth": ["tagline"],
+    "chat": ["answer.sourcesSummary", "citation.screenReaderStatus"],
+    "common": [
+      "productName",
+      "countBadge.label",
+      "fileSize.bytes",
+      "fileSize.kilobytes",
+      "fileSize.megabytes"
+    ],
+    "connections": ["connect.siteUrlPlaceholder", "detail.runs.kind.webhook"],
+    "dashboard": ["stats.donut.segment", "stats.sources.familyTotal", "charts.seriesTotal"],
+    "email": ["allowlist.addressPlaceholder", "allowlist.domainPlaceholder"],
+    "extraction": ["rules.class.pdf", "rules.class.csv", "rules.documentClass"],
+    "forgotten": ["sourceLabel"],
+    "memories": ["drawer.chainEntry"],
+    "providers": [
+      "type.mistral.name",
+      "type.openai.name",
+      "type.anthropic.name",
+      "form.baseUrl.placeholder"
+    ],
+    "research": ["inline.webLabel"],
+    "settings": ["aliases.alias", "models.providerLabel.anthropic", "models.providerLabel.mistral"],
+    "sources": [
+      "anchor.subjectsPlaceholder",
+      "locator.sheetRange",
+      "origin.connectorLabel.confluence"
+    ],
+    "system": ["health.latency", "worker.sourceWithId"],
+    "timeline": ["spans.period"]
+  },
+  "server": {
+    "chat": ["reply.candidateLine", "ambiguity.line"]
+  },
+  "perLocale": {
+    "de": {
+      "web": {
+        "connections": ["list.open", "connect.name"],
+        "extraction": ["rules.class.docx"],
+        "forgotten": ["column.status", "receipt.field.status", "receipt.field.hash"],
+        "navigation": ["section.chat", "section.audit", "section.system"],
+        "providers": ["form.label.label", "tier.embeddings", "tier.vision"],
+        "sources": ["imports.s3.bucket", "imports.run.title", "origin.panel.version"],
+        "system": ["job.echo"]
+      },
+      "server": {
+        "report": ["scope.import", "coverage.column.detail"]
+      }
+    },
+    "fr": {
+      "web": {
+        "chat": [
+          "answer.sources",
+          "answer.documentCount",
+          "attachment.contradictionsCount",
+          "citation.refScreenReader",
+          "citation.unresolved",
+          "citation.kind.note",
+          "citation.kind.web",
+          "code.plain",
+          "conversation.delete.messages"
+        ],
+        "dashboard": ["stats.kpi.contradictions", "stats.sources.family.notes"],
+        "extraction": ["sourceType.user_note", "rules.class.docx", "rules.class.image"],
+        "forgotten": [
+          "column.source",
+          "receipt.field.source",
+          "receipt.field.signature",
+          "removed.messages"
+        ],
+        "memories": [
+          "drawer.panel.actions",
+          "drawer.panel.contradiction",
+          "drawer.panel.provenance",
+          "drawer.panel.relations",
+          "drawer.original",
+          "drawer.correction"
+        ],
+        "navigation": ["section.audit", "section.review", "section.sources"],
+        "providers": [
+          "tier.embeddings",
+          "tier.pipeline",
+          "tier.vision",
+          "summary.configuration",
+          "rebuild.durationMinutes"
+        ],
+        "settings": ["models.configuration"],
+        "sources": [
+          "kind.note",
+          "kind.source",
+          "kindLabel.user_note",
+          "kindLabel.web",
+          "drawer.title",
+          "list.typeLabel",
+          "list.badge.contradictions",
+          "imports.summary.contradictions",
+          "locator.page",
+          "origin.panel.version"
+        ],
+        "system": ["health.check.migrations"],
+        "audit": ["filter.action"]
+      },
+      "server": {
+        "report": [
+          "scope.import",
+          "locator.page",
+          "provenance.configurationId",
+          "coverage.column.document",
+          "suppressed.column.document",
+          "suppressed.column.date",
+          "verify.signature"
+        ]
+      }
+    },
+    "hr": {
+      "web": {
+        "chat": ["citation.kind.web", "citation.unsourced.label"],
+        "connections": ["connect.apiToken"],
+        "extraction": ["rules.class.docx"],
+        "forgotten": ["column.status", "receipt.field.status"],
+        "providers": ["assignment.model"],
+        "sources": ["kindLabel.web"],
+        "system": ["job.echo"]
+      }
+    }
+  }
+}

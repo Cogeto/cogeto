@@ -1,9 +1,9 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import type { Principal } from '@cogeto/shared';
-import { setUsageUser } from '../infrastructure/index';
+import { setUsageUser, untranslatedError } from '../infrastructure/index';
 import { IdentityService } from './identity.service';
 import { IS_PUBLIC_KEY } from './public.decorator';
 
@@ -34,7 +34,7 @@ export class BearerAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const header = request.headers.authorization;
     if (!header?.startsWith('Bearer ')) {
-      throw new UnauthorizedException('missing bearer token');
+      throw untranslatedError.unauthorized('missing bearer token');
     }
     request.principal = await this.identity.resolvePrincipal(header.slice('Bearer '.length));
     // Attribute this request's model calls to the principal: fills

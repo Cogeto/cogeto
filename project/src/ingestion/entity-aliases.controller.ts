@@ -1,10 +1,8 @@
 import {
-  BadRequestException,
   Controller,
   Body,
   Delete,
   Get,
-  NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
@@ -15,7 +13,7 @@ import { z } from 'zod';
 import type { EntityAliasDto } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
-import { parseOrBadRequest } from '../infrastructure/index';
+import { parseOrBadRequest, userError } from '../infrastructure/index';
 import { foldEntityName } from './domain/entity-match';
 import { EntityAliasStore } from './persistence/entity-alias.store';
 import type { EntityAliasRow } from './persistence/tables';
@@ -57,13 +55,14 @@ export class EntityAliasesController {
   async add(@Req() request: AuthenticatedRequest, @Body() body: unknown): Promise<EntityAliasDto> {
     const input = parseOrBadRequest(addAliasSchema, body);
     if (foldEntityName(input.canonical) === foldEntityName(input.alias)) {
-      throw new BadRequestException(
+      throw userError.badRequest(
+        'alias.notNeeded',
         'these names already match after normalization; no alias is needed',
       );
     }
     const row = await this.store.add(request.principal.userId, input.canonical, input.alias);
     if (!row) {
-      throw new BadRequestException('this alias pair is already recorded');
+      throw userError.badRequest('alias.duplicate', 'this alias pair is already recorded');
     }
     return toDto(row);
   }
@@ -74,7 +73,7 @@ export class EntityAliasesController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<{ removed: boolean }> {
     const removed = await this.store.remove(request.principal.userId, id);
-    if (!removed) throw new NotFoundException(`alias ${id} not found`);
+    if (!removed) throw userError.notFound('alias.notFound', 'alias {{id}} not found', { id });
     return { removed };
   }
 }

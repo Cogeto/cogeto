@@ -64,7 +64,19 @@
       "embeddings": "Embeddings"
     },
     "managedIn": "Providers, assignments and the models people may choose are all set there.",
-    "manage": "Manage models"
+    "manage": "Manage models",
+    "externalCalls": {
+      "unconfigured": "No model provider is configured, so nothing leaves this instance for model calls; model features are disabled.",
+      "allLocal": "Model calls (including embeddings) go to the local Ollama runtime on your own network; nothing is sent to a hosted model provider.",
+      "redacted": "Model calls (including embeddings) go to {{providers}}; redaction pseudonymizes the text before it leaves this instance and fails closed if the sidecar is down.",
+      "external": "Model calls (including embeddings) send text to {{providers}}; everything else stays inside this instance."
+    },
+    "providerLabel": {
+      "mistral": "Mistral",
+      "openai": "the configured OpenAI-compatible endpoint",
+      "anthropic": "Anthropic",
+      "ollama": "the local Ollama runtime"
+    }
   },
   "aliases": {
     "heading": "Entity aliases",

@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -15,7 +14,7 @@ import {
 import { z } from 'zod';
 import type { ProjectAssignmentDto, ProjectDto } from '@cogeto/shared';
 import { PROJECT_ASSIGNMENT_KINDS, PROJECT_MARKERS, projectRefTypeFor } from '@cogeto/shared';
-import { parseOrBadRequest } from '../infrastructure/index';
+import { parseOrBadRequest, userError } from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { ProjectService } from './project.service';
@@ -132,7 +131,10 @@ export class ProjectsController {
   ): Promise<{ projectId: string | null }> {
     const parsed = parseOrBadRequest(assignSchema, body);
     if (parsed.kind === 'source' && !parsed.sourceType) {
-      throw new BadRequestException('a source assignment needs its source type');
+      throw userError.badRequest(
+        'project.assignmentNeedsSourceType',
+        'a source assignment needs its source type',
+      );
     }
     return this.projects.assign(
       request.principal,

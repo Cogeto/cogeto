@@ -1,14 +1,13 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
-  Optional,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
-import { DRIZZLE, openSecret, sealSecret, writeAudit } from '../infrastructure/index';
+import {
+  DRIZZLE,
+  openSecret,
+  sealSecret,
+  untranslatedError,
+  userError,
+  writeAudit,
+} from '../infrastructure/index';
 import type { Db, Tx } from '../infrastructure/index';
 import {
   deriveProvidersId,
@@ -200,18 +199,34 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
 
   async createProvider(principal: Principal, request: CreateProviderRequest): Promise<ProviderDto> {
     if (!isCreatableProviderType(request.type)) {
-      throw new BadRequestException(`"${request.type}" is not a provider type that can be created`);
+      throw userError.badRequest(
+        'provider.typeNotCreatable',
+        '"{{type}}" is not a provider type that can be created',
+        { type: request.type },
+      );
     }
     const type = request.type as StoredProviderType;
     const spec = PROVIDER_TYPE_SPECS[type];
     const label = request.label.trim();
-    if (!label) throw new BadRequestException('a provider needs a label');
+    if (!label) throw userError.badRequest('provider.labelRequired', 'a provider needs a label');
     if (await this.store.findProviderByLabel(label)) {
-      throw new ConflictException(`a provider called "${label}" already exists`);
+      throw userError.conflict(
+        'provider.labelTaken',
+        'a provider called "{{label}}" already exists',
+        {
+          label,
+        },
+      );
     }
     const baseUrl = this.validateBaseUrl(type, request.baseUrl);
     if (spec.needsApiKey && !request.apiKey) {
-      throw new BadRequestException(`a ${type} provider needs an API key`);
+      throw userError.badRequest(
+        'provider.apiKeyRequired',
+        'a {{type}} provider needs an API key',
+        {
+          type,
+        },
+      );
     }
     const record = await this.store.createProvider({
       label,
@@ -239,15 +254,21 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
     request: UpdateProviderRequest,
   ): Promise<ProviderDto> {
     const existing = await this.store.findProvider(id);
-    if (!existing) throw new NotFoundException('no such provider');
+    if (!existing) throw userError.notFound('provider.notFound', 'no such provider');
     const type = existing.type as StoredProviderType;
     const patch: { label?: string; baseUrl?: string | null; apiKeySecret?: string | null } = {};
     if (request.label !== undefined) {
       const label = request.label.trim();
-      if (!label) throw new BadRequestException('a provider needs a label');
+      if (!label) throw userError.badRequest('provider.labelRequired', 'a provider needs a label');
       const clash = await this.store.findProviderByLabel(label);
       if (clash && clash.id !== id) {
-        throw new ConflictException(`a provider called "${label}" already exists`);
+        throw userError.conflict(
+          'provider.labelTaken',
+          'a provider called "{{label}}" already exists',
+          {
+            label,
+          },
+        );
       }
       patch.label = label;
     }
@@ -258,7 +279,7 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
         : null;
     }
     const updated = await this.store.updateProvider(id, patch);
-    if (!updated) throw new NotFoundException('no such provider');
+    if (!updated) throw userError.notFound('provider.notFound', 'no such provider');
     await writeAudit(this.db, {
       actor: `user:${principal.userId}`,
       action: 'model_provider.updated',
@@ -276,8 +297,10 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
     const assignments = await this.store.listAssignments();
     const bound = assignments.filter((row) => row.providerId === id).map((row) => row.tier);
     if (bound.length > 0) {
-      throw new ConflictException(
-        `this provider still serves the ${bound.join(', ')} tier(s): reassign them first`,
+      throw userError.conflict(
+        'provider.stillBound',
+        'this provider still serves the {{tiers}} tier(s): reassign them first',
+        { tiers: bound.join(', ') },
       );
     }
     await this.store.deleteProvider(id);
@@ -316,7 +339,7 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
    */
   async listModels(id: string): Promise<ProviderModelsDto> {
     const provider = await this.store.findProvider(id);
-    if (!provider) throw new NotFoundException('no such provider');
+    if (!provider) throw userError.notFound('provider.notFound', 'no such provider');
     const target = await this.targetFor(id);
     const result = await listProviderModels(target);
     return {
@@ -391,7 +414,10 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
   async planEmbeddingsRebuild(request: EmbeddingRebuildRequest): Promise<EmbeddingRebuildPlanDto> {
     const rebuild = this.requireRebuild();
     if (await rebuild.status()) {
-      throw new ConflictException('an embeddings rebuild already exists; cancel or resume it');
+      throw userError.conflict(
+        'provider.rebuildExists',
+        'an embeddings rebuild already exists; cancel or resume it',
+      );
     }
     const { provider, spec } = await this.embeddingsCandidate(request);
     const probe = await probeProviderModel(await this.targetFor(provider.id), {
@@ -399,10 +425,16 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
       model: request.model,
     });
     if (!probe.ok || !probe.dimensions) {
-      throw new BadRequestException({
-        message: probe.error ?? 'the model did not answer the embedding probe',
-        reason: probe.reason ?? 'unusable_response',
-      });
+      const reason = probe.reason ?? 'unusable_response';
+      // The provider's own sentence when it gave one (text we did not write, so
+      // uncoded and passed through); ours, coded, when it said nothing at all.
+      if (probe.error) throw untranslatedError.badRequest(probe.error, { reason });
+      throw userError.badRequest(
+        'provider.embeddingProbeSilent',
+        'the model did not answer the embedding probe',
+        {},
+        { reason },
+      );
     }
     const corpus = await rebuild.corpus();
     // One request per batch of 64, extrapolated from the probe's measured
@@ -541,11 +573,15 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
     spec: (typeof PROVIDER_TYPE_SPECS)[StoredProviderType];
   }> {
     const provider = await this.store.findProvider(request.providerId);
-    if (!provider) throw new NotFoundException('no such provider');
+    if (!provider) throw userError.notFound('provider.notFound', 'no such provider');
     const spec = PROVIDER_TYPE_SPECS[provider.type as StoredProviderType];
-    if (!spec) throw new BadRequestException('this provider has an unknown type');
+    if (!spec)
+      throw userError.badRequest('provider.unknownType', 'this provider has an unknown type');
     if (!spec.supportsEmbeddings) {
-      throw new BadRequestException('this provider type has no embeddings API');
+      throw userError.badRequest(
+        'provider.noEmbeddingsApi',
+        'this provider type has no embeddings API',
+      );
     }
     const active = this.options.live.current.tiers.embedding;
     if (
@@ -553,16 +589,20 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
       active.endpoint?.id === provider.id &&
       active.model === request.model
     ) {
-      throw new BadRequestException('that is already the active embeddings model');
+      throw userError.badRequest(
+        'provider.embeddingsUnchanged',
+        'that is already the active embeddings model',
+      );
     }
     return { provider, spec };
   }
 
   private requireRebuild(): EmbeddingRebuildService {
     if (!this.embeddingRebuild) {
-      throw new ConflictException(
-        `the managed rebuild is unavailable in this process; the operator path is ` +
-          `\`${REINDEX_COMMAND}\``,
+      throw userError.conflict(
+        'provider.rebuildUnavailable',
+        'the managed rebuild is unavailable in this process; the operator path is `{{command}}`',
+        { command: REINDEX_COMMAND },
       );
     }
     return this.embeddingRebuild;
@@ -574,7 +614,7 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
       await verb();
     } catch (error) {
       if (error instanceof EmbeddingRebuildConflictError) {
-        throw new ConflictException(error.message);
+        throw untranslatedError.conflict(error.message);
       }
       throw error;
     }
@@ -591,7 +631,8 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
     request: { providerId: string | null; model: string | null },
   ): Promise<ModelConfigurationDto> {
     if (tier === 'embeddings') {
-      throw new ConflictException(
+      throw userError.conflict(
+        'provider.embeddingsNotDirectlyAssignable',
         'the embeddings model cannot be assigned directly: every stored vector was produced ' +
           'by the current model, and serving a mixed embedding space would silently corrupt ' +
           'every search result. Use the embeddings rebuild flow, which re-embeds the corpus ' +
@@ -602,7 +643,13 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
 
     if (!request.providerId || !request.model) {
       if (tier !== 'vision') {
-        throw new BadRequestException(`the ${tier} tier cannot be left unassigned`);
+        throw userError.badRequest(
+          'provider.tierRequired',
+          'the {{tier}} tier cannot be left unassigned',
+          {
+            tier,
+          },
+        );
       }
       // Vision alone may be cleared: no vision binding is a complete answer,
       // and the reading ladder stops at OCR and says so (V2.1 item 4.1).
@@ -612,29 +659,47 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
     }
 
     const provider = await this.store.findProvider(request.providerId);
-    if (!provider) throw new NotFoundException('no such provider');
+    if (!provider) throw userError.notFound('provider.notFound', 'no such provider');
     const spec = PROVIDER_TYPE_SPECS[provider.type as StoredProviderType];
-    if (!spec) throw new BadRequestException('this provider has an unknown type');
+    if (!spec)
+      throw userError.badRequest('provider.unknownType', 'this provider has an unknown type');
     // The capability gate, BEFORE the probe (issue #571). Probing a provider
     // whose adapter has no image path spends a call to learn something the
     // type table already knows, and reports it as the base gateway's "no
     // vision tier is configured for this instance" — true of the adapter,
     // false of the instance, and unactionable either way.
-    const refusal = tierCapabilityRefusal(tier, spec, {
-      label: provider.label,
-      type: provider.type as StoredProviderType,
-    });
-    if (refusal) throw new BadRequestException(refusal);
+    const refusal = tierCapabilityRefusal(tier, spec);
+    if (refusal === 'vision_unsupported') {
+      throw userError.badRequest(
+        'provider.visionUnsupported',
+        'provider "{{label}}" cannot serve the vision tier: reading an image is not ' +
+          'implemented for {{type}} providers on this instance. Assign a provider whose ' +
+          'type can read images, or leave the vision tier unassigned and the reading ladder ' +
+          'stops at OCR.',
+        { label: provider.label, type: provider.type },
+      );
+    }
+    if (refusal === 'embeddings_unsupported') {
+      throw userError.badRequest(
+        'provider.embeddingsUnsupported',
+        'provider "{{label}}" has no embeddings API ({{type}})',
+        { label: provider.label, type: provider.type },
+      );
+    }
 
     const probe = await probeProviderModel(await this.targetFor(provider.id), {
       tier: probeTierFor(tier),
       model: request.model,
     });
     if (!probe.ok) {
-      throw new BadRequestException({
-        message: probe.error ?? 'the model did not answer the probe',
-        reason: probe.reason ?? 'unusable_response',
-      });
+      const reason = probe.reason ?? 'unusable_response';
+      if (probe.error) throw untranslatedError.badRequest(probe.error, { reason });
+      throw userError.badRequest(
+        'provider.probeSilent',
+        'the model did not answer the probe',
+        {},
+        { reason },
+      );
     }
 
     await this.store.putAssignment({
@@ -654,16 +719,20 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
     request: { providerId: string; model: string; label: string },
   ): Promise<ModelConfigurationDto> {
     const provider = await this.store.findProvider(request.providerId);
-    if (!provider) throw new NotFoundException('no such provider');
+    if (!provider) throw userError.notFound('provider.notFound', 'no such provider');
     const probe = await probeProviderModel(await this.targetFor(provider.id), {
       tier: 'generation',
       model: request.model,
     });
     if (!probe.ok) {
-      throw new BadRequestException({
-        message: probe.error ?? 'the model did not answer the probe',
-        reason: probe.reason ?? 'unusable_response',
-      });
+      const reason = probe.reason ?? 'unusable_response';
+      if (probe.error) throw untranslatedError.badRequest(probe.error, { reason });
+      throw userError.badRequest(
+        'provider.probeSilent',
+        'the model did not answer the probe',
+        {},
+        { reason },
+      );
     }
     await this.store.addAnswerOption({
       providerId: provider.id,
@@ -721,7 +790,10 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
     }
     const options = await this.store.listAnswerOptions();
     if (!options.some((option) => option.id === optionId)) {
-      throw new BadRequestException('that answer model is not one this instance offers');
+      throw userError.badRequest(
+        'provider.answerModelNotOffered',
+        'that answer model is not one this instance offers',
+      );
     }
     await this.store.setAnswerOptionFor(principal.userId, principal.orgId, optionId);
     return this.answerModelFor(principal);
@@ -751,10 +823,11 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
   private async targetFor(id: string): Promise<ProbeTarget> {
     const rows = await this.store.listProvidersWithSecrets();
     const row = rows.find((candidate) => candidate.id === id);
-    if (!row) throw new NotFoundException('no such provider');
+    if (!row) throw userError.notFound('provider.notFound', 'no such provider');
     const type = row.type as StoredProviderType;
     const spec = PROVIDER_TYPE_SPECS[type];
-    if (!spec) throw new BadRequestException('this provider has an unknown type');
+    if (!spec)
+      throw userError.badRequest('provider.unknownType', 'this provider has an unknown type');
     const baseUrl = adapterBaseUrl(type, row.baseUrl);
     return {
       provider: spec.providerId,
@@ -813,17 +886,24 @@ export class ProviderConfigService implements OnApplicationBootstrap, OnModuleDe
     const spec = PROVIDER_TYPE_SPECS[type];
     const trimmed = baseUrl?.trim();
     if (!trimmed) {
-      if (spec.needsBaseUrl) throw new BadRequestException('this provider type needs an endpoint');
+      if (spec.needsBaseUrl)
+        throw userError.badRequest(
+          'provider.endpointRequired',
+          'this provider type needs an endpoint',
+        );
       return null;
     }
     let parsed: URL;
     try {
       parsed = new URL(trimmed);
     } catch {
-      throw new BadRequestException('the endpoint is not a valid URL');
+      throw userError.badRequest('provider.endpointInvalid', 'the endpoint is not a valid URL');
     }
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      throw new BadRequestException('the endpoint must be an http or https URL');
+      throw userError.badRequest(
+        'provider.endpointScheme',
+        'the endpoint must be an http or https URL',
+      );
     }
     return trimmed.replace(/\/+$/, '');
   }

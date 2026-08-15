@@ -1,12 +1,5 @@
 import { createHash } from 'node:crypto';
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
-  Optional,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type {
   ConfirmImportRequest,
@@ -18,7 +11,7 @@ import type {
   Principal,
   S3ManifestRequest,
 } from '@cogeto/shared';
-import { DRIZZLE, withTransactionalEnqueue } from '../infrastructure/index';
+import { DRIZZLE, userError, withTransactionalEnqueue } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { checksumsKnownForOwner, listFileSourceRefs, MemoryObjectStore } from '../memory/index';
 import { sniffContentType } from '../files/index';
@@ -72,10 +65,15 @@ export class ImportService {
     zip: { buffer: Buffer; originalName: string },
   ): Promise<ImportRunDetailDto> {
     const entries = zipEntries(zip.buffer);
-    if (!entries) throw new BadRequestException('not a readable ZIP archive');
-    if (entries.length === 0) throw new BadRequestException('the archive contains no files');
+    if (!entries) throw userError.badRequest('import.notReadableZip', 'not a readable ZIP archive');
+    if (entries.length === 0)
+      throw userError.badRequest('import.archiveEmpty', 'the archive contains no files');
     if (entries.length > MAX_MANIFEST_ITEMS) {
-      throw new BadRequestException(`too many files (max ${MAX_MANIFEST_ITEMS}); split the import`);
+      throw userError.badRequest(
+        'import.tooManyFiles',
+        'too many files (max {{max}}); split the import',
+        { max: MAX_MANIFEST_ITEMS },
+      );
     }
     const run = await this.insertRun(principal, 'zip', zip.originalName);
     // The archive itself is staged once; entries extract from it at confirm.
@@ -101,9 +99,14 @@ export class ImportService {
     principal: Principal,
     request: FolderManifestRequest,
   ): Promise<ImportRunDetailDto> {
-    if (request.items.length === 0) throw new BadRequestException('the folder contains no files');
+    if (request.items.length === 0)
+      throw userError.badRequest('import.folderEmpty', 'the folder contains no files');
     if (request.items.length > MAX_MANIFEST_ITEMS) {
-      throw new BadRequestException(`too many files (max ${MAX_MANIFEST_ITEMS}); split the import`);
+      throw userError.badRequest(
+        'import.tooManyFiles',
+        'too many files (max {{max}}); split the import',
+        { max: MAX_MANIFEST_ITEMS },
+      );
     }
     const run = await this.insertRun(principal, 'folder', request.sourceLabel ?? null);
     await this.db.insert(importItem).values(
@@ -133,9 +136,14 @@ export class ImportService {
       bucket: request.bucket,
     });
     const objects = await external.listObjects(request.prefix);
-    if (objects.length === 0) throw new BadRequestException('nothing under that prefix');
+    if (objects.length === 0)
+      throw userError.badRequest('import.prefixEmpty', 'nothing under that prefix');
     if (objects.length > MAX_MANIFEST_ITEMS) {
-      throw new BadRequestException(`too many files (max ${MAX_MANIFEST_ITEMS}); split the import`);
+      throw userError.badRequest(
+        'import.tooManyFiles',
+        'too many files (max {{max}}); split the import',
+        { max: MAX_MANIFEST_ITEMS },
+      );
     }
     const run = await this.insertRun(
       principal,
@@ -165,14 +173,22 @@ export class ImportService {
     file: { buffer: Buffer; originalName: string; mimeType: string },
   ): Promise<ImportItemDto> {
     const run = await this.requireRun(principal, runId);
-    if (run.state !== 'manifest') throw new BadRequestException('this import already started');
+    if (run.state !== 'manifest')
+      throw userError.badRequest('import.alreadyStarted', 'this import already started');
     const item = await this.requireItem(principal, runId, itemId);
     if (item.state !== 'listed') {
-      throw new BadRequestException(`item is ${item.state}; only listed items take bytes`);
+      throw userError.badRequest(
+        'import.itemNotListed',
+        'item is {{state}}; only listed items take bytes',
+        { state: item.state },
+      );
     }
     const hash = createHash('sha256').update(file.buffer).digest('hex');
     if (item.contentHash && hash !== item.contentHash) {
-      throw new BadRequestException('uploaded bytes do not match the manifest hash');
+      throw userError.badRequest(
+        'import.hashMismatch',
+        'uploaded bytes do not match the manifest hash',
+      );
     }
     const stagingKey = stagingKeyFor(principal, runId, itemId);
     await this.objects.putObject(stagingKey, file.buffer, {
@@ -197,7 +213,8 @@ export class ImportService {
 
   async exclude(principal: Principal, runId: string, itemIds: string[]): Promise<void> {
     const run = await this.requireRun(principal, runId);
-    if (run.state !== 'manifest') throw new BadRequestException('this import already started');
+    if (run.state !== 'manifest')
+      throw userError.badRequest('import.alreadyStarted', 'this import already started');
     if (itemIds.length === 0) return;
     await this.db
       .update(importItem)
@@ -223,7 +240,8 @@ export class ImportService {
     options: ConfirmImportRequest = {},
   ): Promise<ImportRunDto> {
     const run = await this.requireRun(principal, runId);
-    if (run.state !== 'manifest') throw new BadRequestException('this import already started');
+    if (run.state !== 'manifest')
+      throw userError.badRequest('import.alreadyStarted', 'this import already started');
     // The whole run's scope, decided HERE (issue #490): one deliberate choice
     // at the deliberate nothing-ingests-until-confirmed step. Omitted falls
     // back to the user's saved default scope, the single-upload contract; a
@@ -234,18 +252,30 @@ export class ImportService {
     const sensitive = options.sensitive ?? false;
     const items = await this.itemsOf(runId);
     const pending = items.filter((item) => item.state === 'listed');
-    if (pending.length === 0) throw new BadRequestException('nothing to import after exclusions');
+    if (pending.length === 0)
+      throw userError.badRequest('import.nothingToImport', 'nothing to import after exclusions');
 
     if (run.kind === 'zip') await this.stageZipEntries(principal, run, pending);
     if (run.kind === 's3') {
-      if (!options.s3) throw new BadRequestException('S3 credentials are required to confirm');
+      if (!options.s3)
+        throw userError.badRequest(
+          'import.s3CredentialsRequired',
+          'S3 credentials are required to confirm',
+        );
       await this.stageS3Objects(principal, run, pending, options.s3);
       await this.classify(principal, runId); // hashes exist only now
     }
     if (run.kind === 'folder') {
       const unstaged = pending.filter((item) => !item.stagingKey);
       if (unstaged.length > 0) {
-        throw new BadRequestException(`${unstaged.length} files have not finished uploading`);
+        throw userError.badRequest(
+          'import.uploadsUnfinished',
+          {
+            one: '{{count}} file has not finished uploading',
+            other: '{{count}} files have not finished uploading',
+          },
+          { count: unstaged.length },
+        );
       }
     }
 
@@ -384,7 +414,11 @@ export class ImportService {
   ): Promise<void> {
     const archive = await this.objects.getObject(this.zipStagingKey(principal, run.id));
     const entries = zipEntries(archive.body);
-    if (!entries) throw new BadRequestException('the staged archive is no longer readable');
+    if (!entries)
+      throw userError.badRequest(
+        'import.stagedArchiveUnreadable',
+        'the staged archive is no longer readable',
+      );
     const byName = new Map(entries.map((entry) => [entry.name, entry]));
     for (const item of pending) {
       const entry = item.name ? byName.get(item.name) : undefined;
@@ -472,7 +506,8 @@ export class ImportService {
       .from(importRun)
       .where(and(eq(importRun.id, runId), eq(importRun.ownerId, principal.userId)))
       .limit(1);
-    if (!rows[0]) throw new NotFoundException(`import ${runId} not found`);
+    if (!rows[0])
+      throw userError.notFound('import.runNotFound', 'import {{id}} not found', { id: runId });
     return rows[0];
   }
 
@@ -492,7 +527,10 @@ export class ImportService {
         ),
       )
       .limit(1);
-    if (!rows[0]) throw new NotFoundException(`import item ${itemId} not found`);
+    if (!rows[0])
+      throw userError.notFound('import.itemNotFound', 'import item {{id}} not found', {
+        id: itemId,
+      });
     return rows[0];
   }
 

@@ -1,18 +1,10 @@
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  Get,
-  Param,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import type { ApprovalDto, EmailReplyDraftView } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { ApprovalService } from './approval.service';
+import { untranslatedError } from '../infrastructure/index';
 
 const createSchema = z.object({
   actionType: z.string().min(1),
@@ -38,7 +30,7 @@ export class ApprovalsController {
   @Post()
   async create(@Req() request: AuthenticatedRequest, @Body() body: unknown): Promise<ApprovalDto> {
     const parsed = createSchema.safeParse(body);
-    if (!parsed.success) throw new BadRequestException('body must be { actionType, payload }');
+    if (!parsed.success) throw untranslatedError.badRequest('body must be { actionType, payload }');
     return this.approvals.create(request.principal, parsed.data.actionType, parsed.data.payload);
   }
 
@@ -80,7 +72,8 @@ export class ApprovalsController {
     @Body() body: unknown,
   ): Promise<ApprovalDto> {
     const parsed = confirmSchema.safeParse(body);
-    if (!parsed.success) throw new BadRequestException('body must be { decision: approve|reject }');
+    if (!parsed.success)
+      throw untranslatedError.badRequest('body must be { decision: approve|reject }');
     return this.approvals.confirm(request.principal, id, parsed.data.decision);
   }
 }

@@ -1,244 +1,244 @@
 {
-  "title": "Findings report",
+  "title": "Befundbericht",
   "toc": {
-    "heading": "Contents"
+    "heading": "Inhalt"
   },
   "footer": {
-    "reportId": "Report {{id}}",
-    "page": "Page {{page}} of {{total}}"
+    "reportId": "Bericht {{id}}",
+    "page": "Seite {{page}} von {{total}}"
   },
   "value": {
-    "unknown": "not recorded",
-    "empty": "none",
-    "none": "none",
-    "notMeasured": "not measured",
-    "range": "{{from}} to {{to}}"
+    "unknown": "nicht erfasst",
+    "empty": "keine",
+    "none": "keine",
+    "notMeasured": "nicht gemessen",
+    "range": "{{from}} bis {{to}}"
   },
   "scope": {
-    "corpus": "Everything in this workspace",
+    "corpus": "Alles in diesem Arbeitsbereich",
     "import": "Import {{id}}",
-    "sources": "A selected set of {{count}} sources",
-    "dateRange": "Sources from a date range",
-    "project": "Project {{name}}, {{count}} sources"
+    "sources": "Eine ausgewählte Menge von {{count}} Quellen",
+    "dateRange": "Quellen aus einem Zeitraum",
+    "project": "Projekt {{name}}, {{count}} Quellen"
   },
   "source": {
-    "unnamed": "unnamed {{type}} source",
-    "revision": "(revision {{revision}})"
+    "unnamed": "unbenannte Quelle vom Typ {{type}}",
+    "revision": "(Version {{revision}})"
   },
   "locator": {
-    "none": "no location recorded",
-    "page": "page {{page}}",
-    "tierOcr": "(read by OCR)",
-    "tierVision": "(read by a vision model)",
-    "paragraph": "paragraph {{paragraph}}",
-    "sheetRow": "sheet {{sheet}}, cells {{range}}",
-    "document": "whole document"
+    "none": "keine Fundstelle erfasst",
+    "page": "Seite {{page}}",
+    "tierOcr": "(per OCR gelesen)",
+    "tierVision": "(von einem Vision-Modell gelesen)",
+    "paragraph": "Absatz {{paragraph}}",
+    "sheetRow": "Blatt {{sheet}}, Zellen {{range}}",
+    "document": "gesamtes Dokument"
   },
   "cover": {
-    "generatedAt": "Generated",
-    "reportId": "Report identifier",
-    "configuration": "Model configuration",
-    "dateRange": "Material examined",
-    "instanceKey": "Instance key",
-    "atAGlance": "At a glance",
-    "verifyHint": "This document is signed by the instance that produced it. The verification values and the step-by-step procedure are on the last page."
+    "generatedAt": "Erstellt",
+    "reportId": "Berichtskennung",
+    "configuration": "Modellkonfiguration",
+    "dateRange": "Geprüftes Material",
+    "instanceKey": "Instanzschlüssel",
+    "atAGlance": "Auf einen Blick",
+    "verifyHint": "Dieses Dokument ist von der Instanz signiert, die es erstellt hat. Die Prüfwerte und das schrittweise Verfahren stehen auf der letzten Seite."
   },
   "summary": {
-    "sourcesExamined": "Documents and sources examined",
-    "factsExtracted": "Facts extracted and verified",
-    "findingsOpen": "Open findings (unresolved contradictions)",
-    "findingsResolved": "Findings resolved",
-    "sourcesNotFullyRead": "Sources not fully read",
-    "factsWithheld": "Statements withheld from the record"
+    "sourcesExamined": "Geprüfte Dokumente und Quellen",
+    "factsExtracted": "Extrahierte und überprüfte Fakten",
+    "findingsOpen": "Offene Befunde (ungeklärte Widersprüche)",
+    "findingsResolved": "Geklärte Befunde",
+    "sourcesNotFullyRead": "Nicht vollständig gelesene Quellen",
+    "factsWithheld": "Vom Bestand zurückgehaltene Aussagen"
   },
   "provenance": {
-    "heading": "About this report",
-    "intro": "This report was produced automatically from the documents listed in the coverage section. Every claim in it traces to a stored, verifiable record: each quoted passage names its document and its location, and the counts are computed from the same records the quoted passages come from.",
-    "reportId": "Report identifier",
-    "generatedAt": "Generated",
-    "scope": "Scope",
-    "previousRun": "Compared against",
-    "previousRunValue": "Report {{id}} of {{date}}",
-    "noPreviousRun": "No earlier report exists for this scope, so no comparison is shown. Changes over time appear from the second report onward.",
-    "configurationId": "Configuration",
-    "pipelineModel": "Extraction model",
-    "embeddingModel": "Embedding model",
-    "visionModel": "Vision model",
-    "prompts": "Prompt versions",
-    "reconcileConfig": "Reconciliation rules"
+    "heading": "Über diesen Bericht",
+    "intro": "Dieser Bericht wurde automatisch aus den im Abschnitt zum Umfang aufgeführten Dokumenten erstellt. Jede Aussage darin führt auf einen gespeicherten, überprüfbaren Datensatz zurück: Jede zitierte Passage nennt ihr Dokument und ihre Fundstelle, und die Zahlen sind aus denselben Datensätzen berechnet, aus denen die Zitate stammen.",
+    "reportId": "Berichtskennung",
+    "generatedAt": "Erstellt",
+    "scope": "Umfang",
+    "previousRun": "Verglichen mit",
+    "previousRunValue": "Bericht {{id}} vom {{date}}",
+    "noPreviousRun": "Für diesen Umfang gibt es keinen früheren Bericht, daher wird kein Vergleich gezeigt. Veränderungen im Zeitverlauf erscheinen ab dem zweiten Bericht.",
+    "configurationId": "Konfiguration",
+    "pipelineModel": "Extraktionsmodell",
+    "embeddingModel": "Embedding-Modell",
+    "visionModel": "Vision-Modell",
+    "prompts": "Prompt-Versionen",
+    "reconcileConfig": "Abgleichsregeln"
   },
   "trust": {
-    "heading": "Measured accuracy of this configuration",
-    "published": "The model configuration that produced this report was measured against a labelled evaluation corpus before release {{release}} (configuration {{configuration}}). The scores below are published and are reproduced here so findings can be weighed against measured accuracy rather than assumed accuracy.",
-    "notPublished": "No published accuracy measurement exists for the model configuration that produced this report ({{configuration}}). The findings below are computed by the same verified process, but its error rate on this configuration has not been measured. Treat each finding as a pointer to the quoted passages, which can be checked by hand.",
-    "aggregate": "All languages",
-    "readingNote": "Values are fractions between 0 and 1. A rate is always published with its denominator; the full metric set, including the unflattering ones, is in the machine-readable artifact.",
+    "heading": "Gemessene Genauigkeit dieser Konfiguration",
+    "published": "Die Modellkonfiguration, die diesen Bericht erzeugt hat, wurde vor Release {{release}} an einem gelabelten Evaluationskorpus gemessen (Konfiguration {{configuration}}). Die folgenden Werte sind veröffentlicht und werden hier wiedergegeben, damit Befunde an gemessener statt an unterstellter Genauigkeit gemessen werden.",
+    "notPublished": "Für die Modellkonfiguration, die diesen Bericht erzeugt hat ({{configuration}}), liegt keine veröffentlichte Genauigkeitsmessung vor. Die folgenden Befunde entstehen im selben überprüften Verfahren, dessen Fehlerrate auf dieser Konfiguration jedoch nicht gemessen wurde. Behandeln Sie jeden Befund als Verweis auf die zitierten Passagen, die sich von Hand prüfen lassen.",
+    "aggregate": "Alle Sprachen",
+    "readingNote": "Die Werte sind Brüche zwischen 0 und 1. Eine Rate wird stets mit ihrem Nenner veröffentlicht; der vollständige Satz an Kennzahlen, auch die unvorteilhaften, steht im maschinenlesbaren Artefakt.",
     "column": {
-      "set": "Language",
-      "extractionPrecision": "Extraction precision",
-      "extractionRecall": "Extraction recall",
-      "contradictionRecall": "Contradiction recall",
-      "contradictionPrecision": "Contradiction precision",
-      "supersedes": "Supersedes accuracy"
+      "set": "Sprache",
+      "extractionPrecision": "Extraktionspräzision",
+      "extractionRecall": "Extraktionstrefferquote",
+      "contradictionRecall": "Widerspruchstrefferquote",
+      "contradictionPrecision": "Widerspruchspräzision",
+      "supersedes": "Genauigkeit der Ablösung"
     }
   },
   "executive": {
-    "heading": "Executive summary",
-    "examined": "Documents and sources examined: {{sources}}. Individual factual statements extracted from them and verified against their own wording: {{facts}}.",
-    "findings": "Contradictions between documents currently open: {{open}}. Findings resolved earlier: {{resolved}}.",
-    "delta": "Since the previous report over this same scope: {{resolved}} resolved, {{appeared}} newly appeared, {{reopened}} previously resolved and now returned.",
-    "noDelta": "This is the first report over this scope, so no comparison with an earlier run is possible. Nothing here should be read as a trend.",
-    "limits": "Sources not fully read: {{notFullyRead}}. Sources excluded from extraction by policy: {{gated}}. Statements withheld because they could not be verified against their source: {{withheld}}. The details are in the coverage section, before the findings, because they bound what this report can claim.",
-    "sensitiveExcluded": "Items omitted from this document because they are marked sensitive: {{count}}. They remain in the workspace, visible to their owner.",
-    "superseded": "Facts replaced by newer information during the period covered: {{count}}. Their full history is in the superseded facts section."
+    "heading": "Zusammenfassung für die Leitung",
+    "examined": "Geprüfte Dokumente und Quellen: {{sources}}. Daraus extrahierte und am eigenen Wortlaut überprüfte Einzelaussagen: {{facts}}.",
+    "findings": "Derzeit offene Widersprüche zwischen Dokumenten: {{open}}. Zuvor geklärte Befunde: {{resolved}}.",
+    "delta": "Seit dem vorherigen Bericht über denselben Umfang: {{resolved}} geklärt, {{appeared}} neu aufgetreten, {{reopened}} zuvor geklärt und nun zurückgekehrt.",
+    "noDelta": "Dies ist der erste Bericht über diesen Umfang, ein Vergleich mit einem früheren Lauf ist daher nicht möglich. Nichts hierin ist als Trend zu lesen.",
+    "limits": "Nicht vollständig gelesene Quellen: {{notFullyRead}}. Durch Richtlinie von der Extraktion ausgeschlossene Quellen: {{gated}}. Aussagen, die zurückgehalten wurden, weil sie sich nicht an ihrer Quelle überprüfen ließen: {{withheld}}. Die Einzelheiten stehen im Abschnitt zum Umfang, vor den Befunden, weil sie begrenzen, was dieser Bericht behaupten kann.",
+    "sensitiveExcluded": "In diesem Dokument ausgelassene Einträge, weil sie als vertraulich markiert sind: {{count}}. Sie verbleiben im Arbeitsbereich und sind für ihre Eigentümer sichtbar.",
+    "superseded": "Im abgedeckten Zeitraum durch neuere Angaben ersetzte Fakten: {{count}}. Ihre vollständige Historie steht im Abschnitt zu abgelösten Fakten."
   },
   "coverage": {
-    "heading": "Coverage and limits",
-    "intro": "This section states what was examined and what was not, before any finding is presented. A finding count is only meaningful against the material that was actually read.",
-    "scopeTruncated": "The scope exceeded the {{limit}} sources this report can carry, and was cut at that bound. The counts below describe the included sources only.",
-    "allClean": "Every source in scope was read in full and admitted to extraction.",
-    "problemsIntro": "Sources not fully read or excluded by policy: {{total}}.",
-    "ocrIntro": "Sources with pages recovered by OCR or a vision model rather than read from a text layer: {{total}}. Statements taken from those pages depend on the quality of that transcription, and each affected finding says so.",
-    "skippedIntro": "Requested sources that could not be included: {{total}}.",
-    "spanLanguageNote": "Quoted passages are reproduced verbatim in the language of their source document, whatever language this report is written in. Altering evidence, even to translate it, would make it something other than evidence.",
+    "heading": "Umfang und Grenzen",
+    "intro": "Dieser Abschnitt hält fest, was geprüft wurde und was nicht, bevor ein Befund dargestellt wird. Eine Befundzahl ist nur im Verhältnis zum tatsächlich gelesenen Material aussagekräftig.",
+    "scopeTruncated": "Der Umfang überschritt die {{limit}} Quellen, die dieser Bericht tragen kann, und wurde an dieser Grenze abgeschnitten. Die folgenden Zahlen beschreiben nur die einbezogenen Quellen.",
+    "allClean": "Jede Quelle im Umfang wurde vollständig gelesen und zur Extraktion zugelassen.",
+    "problemsIntro": "Nicht vollständig gelesene oder durch Richtlinie ausgeschlossene Quellen: {{total}}.",
+    "ocrIntro": "Quellen mit Seiten, die per OCR oder Vision-Modell gewonnen statt aus einer Textebene gelesen wurden: {{total}}. Aussagen von diesen Seiten hängen von der Qualität dieser Transkription ab, und jeder betroffene Befund weist darauf hin.",
+    "skippedIntro": "Angeforderte Quellen, die nicht einbezogen werden konnten: {{total}}.",
+    "spanLanguageNote": "Zitierte Passagen werden wörtlich in der Sprache ihres Quelldokuments wiedergegeben, gleich in welcher Sprache dieser Bericht verfasst ist. Belege zu verändern, selbst durch Übersetzung, machte sie zu etwas anderem als Belegen.",
     "column": {
-      "document": "Document",
-      "state": "State",
+      "document": "Dokument",
+      "state": "Zustand",
       "detail": "Detail",
-      "pagesOcr": "Pages via OCR",
-      "pagesVision": "Pages via vision model"
+      "pagesOcr": "Seiten per OCR",
+      "pagesVision": "Seiten per Vision-Modell"
     },
     "state": {
-      "gated": "excluded by policy"
+      "gated": "durch Richtlinie ausgeschlossen"
     },
     "gateReason": {
-      "extraction_disabled": "Extraction is disabled for this source kind (refused {{date}}).",
-      "source_disabled": "Extraction is disabled for this specific source (refused {{date}}).",
-      "document_class_denied": "This document class is excluded by an extraction rule (refused {{date}})."
+      "extraction_disabled": "Die Extraktion ist für diese Quellenart deaktiviert (abgelehnt {{date}}).",
+      "source_disabled": "Die Extraktion ist für genau diese Quelle deaktiviert (abgelehnt {{date}}).",
+      "document_class_denied": "Diese Dokumentart ist durch eine Extraktionsregel ausgeschlossen (abgelehnt {{date}})."
     },
     "readOutcome": {
-      "read": "read in full",
-      "truncated": "partially read",
-      "empty": "no text found",
-      "unsupported_format": "format not supported",
-      "read_failed": "could not be read",
-      "needs_vision": "needs a vision model"
+      "read": "vollständig gelesen",
+      "truncated": "teilweise gelesen",
+      "empty": "kein Text gefunden",
+      "unsupported_format": "Format nicht unterstützt",
+      "read_failed": "konnte nicht gelesen werden",
+      "needs_vision": "benötigt ein Vision-Modell"
     },
     "readReason": {
-      "row_cap_sheet": "A sheet exceeded the per-sheet row cap; rows beyond it were not read.",
-      "row_cap_file": "The file exceeded the total row cap; rows beyond it were not read.",
-      "no_text": "The file contains no extractable text.",
-      "unsupported_type": "The file format is not one Cogeto can read.",
-      "legacy_office_format": "A legacy office format that cannot be read; convert and re-upload.",
-      "vision_unavailable": "Pages are images and no vision capability is available on this instance.",
-      "vision_cap_reached": "The per-file image budget was reached before every page was read.",
-      "vision_failed": "The vision model could not read the page.",
-      "no_readable_text": "Neither the text layer nor OCR produced readable text.",
-      "parse_failed": "The file could not be parsed.",
-      "parse_timeout": "Reading the file took longer than the allowed time.",
-      "text_over_cap": "The text exceeds the size cap; content beyond it was not read.",
-      "undecodable_text": "The text encoding could not be decoded."
+      "row_cap_sheet": "Ein Blatt überschritt das Zeilenlimit je Blatt; Zeilen darüber hinaus wurden nicht gelesen.",
+      "row_cap_file": "Die Datei überschritt das Gesamtzeilenlimit; Zeilen darüber hinaus wurden nicht gelesen.",
+      "no_text": "Die Datei enthält keinen extrahierbaren Text.",
+      "unsupported_type": "Das Dateiformat gehört nicht zu denen, die Cogeto lesen kann.",
+      "legacy_office_format": "Ein veraltetes Office-Format, das nicht gelesen werden kann; konvertieren und erneut hochladen.",
+      "vision_unavailable": "Die Seiten sind Bilder, und auf dieser Instanz ist keine Vision-Fähigkeit verfügbar.",
+      "vision_cap_reached": "Das Bildbudget je Datei war erschöpft, bevor jede Seite gelesen war.",
+      "vision_failed": "Das Vision-Modell konnte die Seite nicht lesen.",
+      "no_readable_text": "Weder die Textebene noch OCR ergaben lesbaren Text.",
+      "parse_failed": "Die Datei konnte nicht ausgewertet werden.",
+      "parse_timeout": "Das Lesen der Datei dauerte länger als die zulässige Zeit.",
+      "text_over_cap": "Der Text überschreitet die Größenbeschränkung; Inhalt darüber hinaus wurde nicht gelesen.",
+      "undecodable_text": "Die Textkodierung ließ sich nicht dekodieren."
     },
     "skipReason": {
-      "unknown_source_type": "not a known source type",
-      "not_found_or_not_owned": "not found in this workspace"
+      "unknown_source_type": "keine bekannte Quellenart",
+      "not_found_or_not_owned": "in diesem Arbeitsbereich nicht gefunden"
     },
     "import": {
-      "documents": "Documents ingested from the import",
-      "duplicates": "Skipped as exact duplicates",
-      "unreadable": "Not readable",
-      "failed": "Failed to ingest",
-      "excluded": "Excluded before ingestion",
-      "unsupported": "Unsupported formats"
+      "documents": "Aus dem Import übernommene Dokumente",
+      "duplicates": "Als exakte Duplikate übersprungen",
+      "unreadable": "Nicht lesbar",
+      "failed": "Übernahme fehlgeschlagen",
+      "excluded": "Vor der Übernahme ausgeschlossen",
+      "unsupported": "Nicht unterstützte Formate"
     },
-    "truncatedDetail": "Read {{read}} of {{total}} rows; sheets truncated: {{sheets}}."
+    "truncatedDetail": "{{read}} von {{total}} Zeilen gelesen; gekürzte Blätter: {{sheets}}."
   },
   "findings": {
-    "heading": "Findings",
-    "none": "No contradictions between documents are on record for this scope.",
-    "intro": "Findings that follow: {{total}}. Each presents two statements that cannot both hold, quoted verbatim from their source documents. To check any finding without trusting this report: open the two named documents, go to the stated locations, and read the two passages.",
-    "groupingNote": "Findings are grouped by the subject they are about, because a conflict belongs to a question, not to either document. Within a group, findings appear in the order they were detected.",
-    "unattributed": "No named subject"
+    "heading": "Befunde",
+    "none": "Für diesen Umfang sind keine Widersprüche zwischen Dokumenten erfasst.",
+    "intro": "Nachfolgende Befunde: {{total}}. Jeder stellt zwei Aussagen gegenüber, die nicht beide gelten können, wörtlich aus ihren Quelldokumenten zitiert. Um einen Befund zu prüfen, ohne diesem Bericht zu vertrauen: Öffnen Sie die beiden genannten Dokumente, gehen Sie zu den angegebenen Fundstellen und lesen Sie die beiden Passagen.",
+    "groupingNote": "Befunde sind nach dem Gegenstand gruppiert, um den es geht, denn ein Konflikt gehört zu einer Frage, nicht zu einem der Dokumente. Innerhalb einer Gruppe erscheinen die Befunde in der Reihenfolge ihrer Erkennung.",
+    "unattributed": "Kein benannter Gegenstand"
   },
   "finding": {
-    "title": "Finding {{index}}",
-    "state": "State",
-    "detectedAt": "Detected",
-    "resolvedAt": "Resolved",
-    "stateOpen": "open",
-    "stateReopened": "open (previously resolved, the conflict returned)",
+    "title": "Befund {{index}}",
+    "state": "Zustand",
+    "detectedAt": "Erkannt",
+    "resolvedAt": "Geklärt",
+    "stateOpen": "offen",
+    "stateReopened": "offen (zuvor geklärt, der Konflikt kam zurück)",
     "resolutionLabel": {
-      "confirmed_a": "resolved: the first statement was confirmed",
-      "confirmed_b": "resolved: the second statement was confirmed",
-      "corrected": "resolved: both statements were corrected",
-      "dismissed": "resolved: dismissed as not a real conflict",
-      "revision": "resolved by a newer revision of a document"
+      "confirmed_a": "geklärt: die erste Aussage wurde bestätigt",
+      "confirmed_b": "geklärt: die zweite Aussage wurde bestätigt",
+      "corrected": "geklärt: beide Aussagen wurden korrigiert",
+      "dismissed": "geklärt: als kein echter Konflikt verworfen",
+      "revision": "durch eine neuere Dokumentversion geklärt"
     },
-    "resolvedByRevision": "Resolved by a newer document: {{source}}.",
-    "claimA": "Statement A: {{claim}}",
-    "claimB": "Statement B: {{claim}}",
-    "recordedAt": "valid from {{date}}",
+    "resolvedByRevision": "Durch ein neueres Dokument geklärt: {{source}}.",
+    "claimA": "Aussage A: {{claim}}",
+    "claimB": "Aussage B: {{claim}}",
+    "recordedAt": "gültig ab {{date}}",
     "recovered": {
-      "ocr": "The passage below was recovered by OCR, not read from a text layer. The transcription itself is part of the evidence to check.",
-      "vision": "The passage below was read by a vision model, not from a text layer. The transcription itself is part of the evidence to check."
+      "ocr": "Die folgende Passage wurde per OCR gewonnen, nicht aus einer Textebene gelesen. Die Transkription selbst gehört zu den zu prüfenden Belegen.",
+      "vision": "Die folgende Passage wurde von einem Vision-Modell gelesen, nicht aus einer Textebene. Die Transkription selbst gehört zu den zu prüfenden Belegen."
     },
-    "spanTruncated": "The quotation was shortened to fit this page. The machine-readable artifact carries the full passage.",
-    "hedge": "The source itself hedges this statement (\"{{phrase}}\").",
-    "noSpan": "No verbatim source passage is on record for this statement.",
-    "historyHeading": "History",
+    "spanTruncated": "Das Zitat wurde gekürzt, damit es auf diese Seite passt. Das maschinenlesbare Artefakt enthält die vollständige Passage.",
+    "hedge": "Die Quelle selbst formuliert diese Aussage unter Vorbehalt (\"{{phrase}}\").",
+    "noSpan": "Für diese Aussage ist keine wörtliche Quellenpassage erfasst.",
+    "historyHeading": "Historie",
     "event": {
-      "party_superseded": "one side was replaced by a newer statement and the conflict persisted",
-      "resolved_by_user": "resolved by the owner",
-      "resolved_by_revision": "resolved by a newer document revision",
-      "kept_open": "a side changed but the conflict could not be safely closed",
-      "reopened": "the conflict returned after having been resolved"
+      "party_superseded": "eine Seite wurde durch eine neuere Aussage ersetzt und der Konflikt blieb bestehen",
+      "resolved_by_user": "vom Eigentümer geklärt",
+      "resolved_by_revision": "durch eine neuere Dokumentversion geklärt",
+      "kept_open": "eine Seite änderte sich, der Konflikt ließ sich aber nicht sicher schließen",
+      "reopened": "der Konflikt kehrte zurück, nachdem er geklärt war"
     }
   },
   "superseded": {
-    "heading": "Superseded facts",
-    "none": "No facts were replaced by newer information in this scope.",
-    "intro": "Chains recorded here: {{total}}. Each shows what was on record, what replaced it, when, and which document caused the change. This is the history a reviewer needs in order to understand why the current state is current.",
-    "truncated": "Only the {{limit}} most recent chains are shown here; the machine-readable artifact is bounded the same way and states it.",
-    "chainTitle": "Chain {{index}}",
-    "currentBelief": "Current",
-    "replacedBelief": "Previously on record",
-    "recorded": "recorded {{date}}",
-    "validUntil": "held until {{date}}"
+    "heading": "Abgelöste Fakten",
+    "none": "In diesem Umfang wurden keine Fakten durch neuere Angaben ersetzt.",
+    "intro": "Hier erfasste Ketten: {{total}}. Jede zeigt, was erfasst war, was es ersetzt hat, wann und welches Dokument die Änderung ausgelöst hat. Das ist die Historie, die eine prüfende Person braucht, um zu verstehen, warum der aktuelle Stand der aktuelle ist.",
+    "truncated": "Hier werden nur die {{limit}} jüngsten Ketten gezeigt; das maschinenlesbare Artefakt ist genauso begrenzt und sagt es.",
+    "chainTitle": "Kette {{index}}",
+    "currentBelief": "Aktuell",
+    "replacedBelief": "Zuvor erfasst",
+    "recorded": "erfasst {{date}}",
+    "validUntil": "galt bis {{date}}"
   },
   "suppressed": {
-    "heading": "What was withheld",
-    "intro": "Statements Cogeto declined to admit to the record because they could not be verified against their own source wording: {{total}}. They are listed here because a reader deserves to know what was set aside, not only what was accepted.",
-    "entriesIntro": "The withheld statements:",
-    "entriesTruncated": "The first {{shown}} withheld statements are shown (bounded at {{limit}}); the by-reason totals above cover all of them.",
+    "heading": "Was zurückgehalten wurde",
+    "intro": "Aussagen, die Cogeto nicht in den Bestand aufgenommen hat, weil sie sich nicht am Wortlaut ihrer eigenen Quelle überprüfen ließen: {{total}}. Sie sind hier aufgeführt, weil Leserinnen und Leser wissen dürfen, was beiseitegelegt wurde, und nicht nur, was angenommen wurde.",
+    "entriesIntro": "Die zurückgehaltenen Aussagen:",
+    "entriesTruncated": "Es werden die ersten {{shown}} zurückgehaltenen Aussagen gezeigt (begrenzt auf {{limit}}); die Summen nach Grund weiter oben umfassen alle.",
     "column": {
-      "reason": "Reason",
-      "count": "Count",
-      "fact": "Withheld statement",
-      "document": "Document",
-      "date": "Date"
+      "reason": "Grund",
+      "count": "Anzahl",
+      "fact": "Zurückgehaltene Aussage",
+      "document": "Dokument",
+      "date": "Datum"
     },
     "reason": {
-      "hedged_in_source": "hedged in the source itself",
-      "partially_supported": "only partially supported by the source",
-      "unsupported": "not supported by the source wording",
-      "unjudgeable": "could not be judged against the source",
-      "structurally_invalid": "structurally invalid extraction",
-      "legacy_unspecified": "recorded before reasons were tracked"
+      "hedged_in_source": "in der Quelle selbst unter Vorbehalt",
+      "partially_supported": "von der Quelle nur teilweise belegt",
+      "unsupported": "vom Wortlaut der Quelle nicht belegt",
+      "unjudgeable": "konnte anhand der Quelle nicht beurteilt werden",
+      "structurally_invalid": "strukturell ungültige Extraktion",
+      "legacy_unspecified": "erfasst, bevor Gründe verfolgt wurden"
     }
   },
   "verify": {
-    "heading": "Verifying this report",
-    "intro": "This report is signed by the private key of the instance that produced it. Anyone holding the machine-readable artifact (the JSON download of this same report) can verify that it is genuine and unaltered, using only standard tools and the published schema. This printed document is a rendering of that signed record and carries the same identifier, hash and signature.",
-    "reportId": "Report identifier",
-    "hash": "Payload SHA-256",
-    "signature": "Signature (ed25519, base64)",
-    "keyFingerprint": "Public key fingerprint",
-    "keyEndpoint": "Public key endpoint",
-    "step1": "1. Canonicalize the payload: serialize the JSON artifact's \"payload\" object with keys sorted at every depth and no whitespace, UTF-8.",
-    "step2": "2. Hash it with SHA-256 and compare the result with the payload hash above and with the one inside the artifact.",
-    "step3": "3. Verify the ed25519 signature over the ASCII hex hash string, using the public key embedded in the artifact.",
-    "step4": "4. Confirm the public key against the instance itself at the endpoint above, or against a copy obtained earlier.",
-    "commands": "With standard command-line tools:",
-    "pdfNote": "The full procedure, the schema, and a worked example are published in the repository under docs/findings-report-schema/."
+    "heading": "Diesen Bericht prüfen",
+    "intro": "Dieser Bericht ist mit dem privaten Schlüssel der Instanz signiert, die ihn erzeugt hat. Wer das maschinenlesbare Artefakt besitzt (den JSON-Download desselben Berichts), kann allein mit Standardwerkzeugen und dem veröffentlichten Schema prüfen, dass er echt und unverändert ist. Dieses gedruckte Dokument ist eine Darstellung dieses signierten Datensatzes und trägt dieselbe Kennung, denselben Hash und dieselbe Signatur.",
+    "reportId": "Berichtskennung",
+    "hash": "SHA-256 der Nutzdaten",
+    "signature": "Signatur (ed25519, base64)",
+    "keyFingerprint": "Fingerabdruck des öffentlichen Schlüssels",
+    "keyEndpoint": "Endpunkt des öffentlichen Schlüssels",
+    "step1": "1. Kanonisieren Sie die Nutzdaten: Serialisieren Sie das Objekt \"payload\" des JSON-Artefakts mit auf jeder Ebene sortierten Schlüsseln und ohne Leerraum, in UTF-8.",
+    "step2": "2. Bilden Sie den SHA-256-Hash und vergleichen Sie das Ergebnis mit dem Hash der Nutzdaten oben und mit dem im Artefakt.",
+    "step3": "3. Prüfen Sie die ed25519-Signatur über der ASCII-Hex-Zeichenkette des Hashs mit dem im Artefakt eingebetteten öffentlichen Schlüssel.",
+    "step4": "4. Bestätigen Sie den öffentlichen Schlüssel bei der Instanz selbst am obigen Endpunkt oder gegen eine früher bezogene Kopie.",
+    "commands": "Mit gängigen Kommandozeilenwerkzeugen:",
+    "pdfNote": "Das vollständige Verfahren, das Schema und ein durchgerechnetes Beispiel sind im Repository unter docs/findings-report-schema/ veröffentlicht."
   }
 }

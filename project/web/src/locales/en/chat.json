@@ -166,5 +166,9 @@
     "copy": "copy",
     "copied": "copied",
     "copyAria": "Copy this code block"
+  },
+  "stream": {
+    "budgetExceeded": "daily usage limit reached, please try again tomorrow",
+    "timedOut": "response timed out"
   }
 }

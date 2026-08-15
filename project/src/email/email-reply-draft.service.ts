@@ -1,9 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import type { ApprovalDto, Principal } from '@cogeto/shared';
 import { EMAIL_REPLY_DRAFT_ACTION } from '@cogeto/shared';
 import type { EmailReplyDraftPayload } from '@cogeto/shared';
-import { DRIZZLE } from '../infrastructure/index';
+import { DRIZZLE, userError } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { isolateEmailContent } from '../ingestion/index';
 import { ModelGateway } from '../model-gateway/index';
@@ -78,7 +78,8 @@ export class EmailReplyDraftService {
       .where(and(eq(emailMessage.id, emailId), eq(emailMessage.ownerId, principal.userId)))
       .limit(1);
     const email = rows[0];
-    if (!email) throw new NotFoundException(`email ${emailId} not found`);
+    if (!email)
+      throw userError.notFound('email.notFound', 'email {{id}} not found', { id: emailId });
 
     // Recover WHO to reply to (the forwarded-addressing rule): the original
     // correspondent, not the forwarder. Both triggers call this, so both address

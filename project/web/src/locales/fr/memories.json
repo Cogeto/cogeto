@@ -35,7 +35,7 @@
       "anyStatus": "tout statut",
       "anyScope": "toute portée",
       "sensitiveOnly": "sensibles uniquement",
-      "anyReason": "Any reason"
+      "anyReason": "Tout motif"
     },
     "empty": {
       "none": {
@@ -70,7 +70,7 @@
       "provenance": "Provenance",
       "history": "Historique",
       "relations": "Contradictions",
-      "citedBy": "Cited by answers"
+      "citedBy": "Cité par des réponses"
     },
     "confirm": "Confirmer ce fait",
     "confirmTitle": "Votre confirmation prévaut désormais sur le jugement de la machine",
@@ -103,54 +103,54 @@
     "correction": "correction",
     "viewing": "affiché",
     "noCorrections": "Aucune correction. Ceci est l’original.",
-    "hedgePhrase": "Stated tentatively in the source: \"{{phrase}}\"",
-    "relationCounterpart": "(counterpart unavailable)",
-    "relationOpen": "Open, detected {{when}}.",
-    "relationResolved": "Detected {{when}}, resolved: {{resolution}}.",
+    "hedgePhrase": "Formulé avec réserve dans la source : \"{{phrase}}\"",
+    "relationCounterpart": "(contrepartie indisponible)",
+    "relationOpen": "Ouvert, détecté {{when}}.",
+    "relationResolved": "Détecté {{when}}, résolu : {{resolution}}.",
     "resolutionLabel": {
-      "confirmedA": "kept the newer fact",
-      "confirmedB": "kept the earlier fact",
-      "corrected": "corrected by you",
-      "dismissed": "dismissed as not a conflict",
-      "revision": "resolved by a document revision"
+      "confirmedA": "le fait le plus récent a été conservé",
+      "confirmedB": "le fait le plus ancien a été conservé",
+      "corrected": "corrigé par vous",
+      "dismissed": "écarté, ce n'est pas un conflit",
+      "revision": "résolu par une révision du document"
     },
     "detectedBy": {
-      "pipeline": "found at ingestion",
-      "dreaming": "found by the nightly pass",
-      "repair": "found by the repair pass"
+      "pipeline": "trouvé lors du traitement",
+      "dreaming": "trouvé par le passage nocturne",
+      "repair": "trouvé par le passage de réparation"
     },
     "event": {
-      "detected": "detected",
-      "party_superseded": "a fact was superseded, the finding follows its successor",
-      "resolved_by_user": "resolved by you",
-      "resolved_by_revision": "resolved by a document revision",
-      "kept_open": "kept open, could not be safely closed",
-      "reopened": "reopened, the conflict came back"
+      "detected": "détecté",
+      "party_superseded": "un fait a été remplacé, le constat suit son successeur",
+      "resolved_by_user": "résolu par vous",
+      "resolved_by_revision": "résolu par une révision du document",
+      "kept_open": "laissé ouvert, impossible de le clore sans risque",
+      "reopened": "rouvert, le conflit est réapparu"
     },
-    "noRelations": "No contradictions involve this fact.",
-    "untitledConversation": "Untitled conversation",
-    "noCitations": "No stored answer has cited this fact yet.",
-    "rejectAction": "Reject"
+    "noRelations": "Aucune contradiction ne concerne ce fait.",
+    "untitledConversation": "Discussion sans titre",
+    "noCitations": "Aucune réponse enregistrée n'a encore cité ce fait.",
+    "rejectAction": "Refuser"
   },
   "capturePointer": {
-    "body": "Capture lives in chat now: tell Cogeto something and use Remember this, or attach a file with the paperclip on <chatLink>the chat page</chatLink>. Deliberate document uploads live on <sourcesLink>the Sources page</sourcesLink>.",
-    "dismiss": "Got it"
+    "body": "La capture se fait désormais dans la discussion : dites quelque chose à Cogeto et utilisez Retenir ceci, ou joignez un fichier avec le trombone sur <chatLink>la page de discussion</chatLink>. Les dépôts délibérés de documents se font sur <sourcesLink>la page Sources</sourcesLink>.",
+    "dismiss": "Compris"
   },
   "search": {
-    "title": "Fact search",
-    "explainer": "A filtered search across every fact Cogeto holds. For the source-first view of what the system knows, use <sourcesLink>Sources</sourcesLink>."
+    "title": "Recherche de faits",
+    "explainer": "Une recherche filtrée sur chaque fait que Cogeto conserve. Pour la vue par source de ce que le système sait, utilisez <sourcesLink>Sources</sourcesLink>."
   },
   "changes": {
-    "sinceLabel": "Changed since",
-    "clear": "Clear",
-    "loading": "Loading changes...",
-    "error": "We couldn't load the changes just now.",
-    "empty": "Nothing changed since that date.",
+    "sinceLabel": "Modifié depuis",
+    "clear": "Effacer",
+    "loading": "Chargement des modifications...",
+    "error": "Impossible de charger les modifications pour le moment.",
+    "empty": "Rien n'a changé depuis cette date.",
     "kind": {
-      "learned": "Learned",
-      "status_changed": "Status changed",
-      "superseded": "Superseded"
+      "learned": "Appris",
+      "status_changed": "Statut modifié",
+      "superseded": "Remplacé"
     },
-    "transition": "{{from}} to {{to}}"
+    "transition": "{{from}} vers {{to}}"
   }
 }

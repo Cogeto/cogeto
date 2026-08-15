@@ -6,7 +6,7 @@
   "action": {
     "add": "Hinzufügen",
     "cancel": "Abbrechen",
-    "confirm": "Confirm",
+    "confirm": "Bestätigen",
     "close": "Schließen",
     "copy": "Kopieren",
     "copied": "Kopiert",
@@ -72,9 +72,9 @@
     "megabytes": "{{value}} MB"
   },
   "modelRequired": {
-    "banner": "No model provider is configured. Capture, ingestion and chat are off until one is added.",
-    "configureCta": "Configure a provider",
-    "askAdmin": "Ask your administrator to configure one.",
-    "short": "A model provider must be configured first. An administrator adds one under Providers."
+    "banner": "Es ist kein Modellanbieter konfiguriert. Erfassung, Verarbeitung und Chat sind deaktiviert, bis einer hinzugefügt wird.",
+    "configureCta": "Anbieter konfigurieren",
+    "askAdmin": "Bitten Sie Ihre Administration, einen zu konfigurieren.",
+    "short": "Zuerst muss ein Modellanbieter konfiguriert werden. Die Administration fügt ihn unter Anbieter hinzu."
   }
 }

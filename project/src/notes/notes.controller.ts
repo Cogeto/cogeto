@@ -1,18 +1,8 @@
-import {
-  Body,
-  Controller,
-  Get,
-  NotFoundException,
-  Param,
-  ParseUUIDPipe,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import type { NoteCaptured, NoteDto, NoteStatusDto } from '@cogeto/shared';
 import { MEMORY_SCOPES } from '@cogeto/shared';
-import { RateLimit, RateLimitGuard, parseOrBadRequest } from '../infrastructure/index';
+import { parseOrBadRequest, RateLimit, RateLimitGuard, userError } from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { NotesService } from './notes.service';
@@ -58,7 +48,7 @@ export class NotesController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<NoteDto> {
     const row = await this.notes.getNoteForOwner(request.principal, id);
-    if (!row) throw new NotFoundException(`note ${id} not found`);
+    if (!row) throw userError.notFound('note.notFound', 'note {{id}} not found', { id });
     return { id: row.id, content: row.content, createdAt: row.createdAt.toISOString() };
   }
 
@@ -69,7 +59,7 @@ export class NotesController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<NoteStatusDto> {
     const row = await this.notes.getNoteForOwner(request.principal, id);
-    if (!row) throw new NotFoundException(`note ${id} not found`);
+    if (!row) throw userError.notFound('note.notFound', 'note {{id}} not found', { id });
     return { state: await this.notes.getProcessingState(id) };
   }
 }

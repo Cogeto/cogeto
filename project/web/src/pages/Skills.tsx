@@ -27,6 +27,7 @@ import {
   SectionTitle,
   SkeletonRows,
 } from '../components/ui';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 const STATUS_TONE: Record<SkillRunDto['status'], Tone> = {
   planning: 'info',
@@ -68,6 +69,7 @@ function StatusPill({ status }: { status: SkillRunDto['status'] }) {
 
 function SkillsHome({ session }: { session: Session }) {
   const { t } = useTranslation('skills');
+  const apiError = useApiErrorMessage(t);
   const [subject, setSubject] = useState('');
   const [candidates, setCandidates] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +86,7 @@ function SkillsHome({ session }: { session: Session }) {
       }
       window.location.assign(runLink(outcome.run.id));
     },
-    onError: (e: Error) => setError(e.message),
+    onError: (e: Error) => setError(apiError(e)),
   });
 
   const start = (event: FormEvent) => {
@@ -181,6 +183,7 @@ function SkillsHome({ session }: { session: Session }) {
 /** The live run view — the step log is the inspectability showcase. */
 function SkillRunView({ session, runId }: { session: Session; runId: string }) {
   const { t } = useTranslation('skills');
+  const apiError = useApiErrorMessage(t);
   const queryClient = useQueryClient();
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [removed, setRemoved] = useState<Set<string>>(new Set());
@@ -201,12 +204,12 @@ function SkillRunView({ session, runId }: { session: Session; runId: string }) {
     mutationFn: (queries: { researchRunId: string; query: string }[]) =>
       approveSkillPlan(session, runId, queries),
     onSuccess: refresh,
-    onError: (e: Error) => setError(e.message),
+    onError: (e: Error) => setError(apiError(e)),
   });
   const cancel = useMutation({
     mutationFn: () => cancelSkillRun(session, runId),
     onSuccess: refresh,
-    onError: (e: Error) => setError(e.message),
+    onError: (e: Error) => setError(apiError(e)),
   });
   if (runQuery.isPending) {
     return (

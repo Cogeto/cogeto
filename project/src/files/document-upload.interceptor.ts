@@ -1,10 +1,11 @@
-import { Inject, Injectable, PayloadTooLargeException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import multer from 'multer';
 import type { Observable } from 'rxjs';
 import { FILE_UPLOAD_OPTIONS } from './file-upload-options';
 import type { FileUploadOptions } from './file-upload-options';
+import { userError } from '../infrastructure/index';
 
 /**
  * Streams the single multipart `file` field into memory, with the configured
@@ -33,7 +34,9 @@ export class DocumentUploadInterceptor implements NestInterceptor {
       this.middleware(request, response, (error: unknown) => {
         if (!error) return resolve();
         if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
-          return reject(new PayloadTooLargeException('the uploaded file exceeds the size limit'));
+          return reject(
+            userError.tooLarge('file.tooLarge', 'the uploaded file exceeds the size limit'),
+          );
         }
         return reject(error);
       });

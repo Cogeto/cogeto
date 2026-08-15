@@ -30,6 +30,10 @@ describe('settings_display_accurate', () => {
       },
       redactionEnabled: false,
       externalCalls: expect.stringMatching(/Mistral and Anthropic/) as unknown,
+      // The interface writes that same sentence in the reader's language
+      // from the case and the ids, and joins them with its own list rules.
+      externalCallsKind: 'external',
+      externalCallsProviders: ['mistral', 'anthropic'],
     });
     // No key input, no key output: the DTO carries no secret material.
     const serialized = JSON.stringify(dto);
@@ -48,6 +52,8 @@ describe('settings_display_accurate', () => {
     expect(dto.redactionEnabled).toBe(true);
     expect(dto.externalCalls).toMatch(/redaction pseudonymizes/);
     expect(dto.externalCalls).toMatch(/Mistral/);
+    expect(dto.externalCallsKind).toBe('redacted');
+    expect(dto.externalCallsProviders).toEqual(['mistral']);
   });
 
   it('an all-local configuration states that nothing goes to a hosted provider (0041)', () => {
@@ -64,6 +70,7 @@ describe('settings_display_accurate', () => {
     expect(dto.tiers.embeddings).toEqual({ provider: 'ollama', model: 'bge-m3' });
     expect(dto.externalCalls).toMatch(/local Ollama runtime/);
     expect(dto.externalCalls).toMatch(/nothing is sent to a hosted model provider/);
+    expect(dto.externalCallsKind).toBe('all_local');
   });
 
   it('an unconfigured instance says so honestly', () => {
@@ -74,5 +81,6 @@ describe('settings_display_accurate', () => {
     expect(dto.configured).toBe(false);
     expect(dto.configurationId).toBe('unconfigured');
     expect(dto.externalCalls).toMatch(/No model provider is configured/);
+    expect(dto.externalCallsKind).toBe('unconfigured');
   });
 });

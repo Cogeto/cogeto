@@ -7,8 +7,10 @@ import type {
   ContextSuggestionDto,
   EmailAllowlistKind,
   MemoryScope,
+  ModelConfigDto,
   PreferredLanguage,
 } from '@cogeto/shared';
+import type { TFunction } from 'i18next';
 import { LANGUAGE_ENDONYMS, MEASURED_LANGUAGES, SUPPORTED_LANGUAGES } from '@cogeto/shared';
 import {
   acceptContextSuggestion,
@@ -55,7 +57,7 @@ import {
 } from '../api';
 import type { ConnectorDto, ConnectorSettingsDto, ConnectorState } from '../api';
 import type { Session } from '../auth/oidc';
-import { formatDate, formatLongDayMonth } from '../i18n/format';
+import { formatDate, formatLongDayMonth, localeTag } from '../i18n/format';
 import { Shell } from '../components/Shell';
 import {
   btnPrimary,
@@ -73,6 +75,7 @@ import type { Tone } from '../components/status';
 import { useTheme } from '../theme';
 import type { Theme } from '../theme';
 import { useAutoResearch } from '../research-pref';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 /** Settings: only real, wired toggles — every control does something today. */
 export function Settings({ session }: { session: Session }) {
@@ -614,6 +617,28 @@ function AnswerModelSection({ session }: { session: Session }) {
  * model per tier, redaction posture, and what leaves the instance. No key
  * input, no editing: keys are operator-set in the instance environment.
  */
+/**
+ * What leaves the instance, in the reader's language (F13).
+ *
+ * The server names the case and the providers; the sentence is written here,
+ * and the providers are joined by the reader's own language rules rather than
+ * by an English "and". `externalCalls` stays the fallback for a case a newer
+ * server knows and this interface does not.
+ */
+function externalCallsSentence(t: TFunction, config: ModelConfigDto): string {
+  const key = {
+    unconfigured: 'models.externalCalls.unconfigured',
+    all_local: 'models.externalCalls.allLocal',
+    redacted: 'models.externalCalls.redacted',
+    external: 'models.externalCalls.external',
+  }[config.externalCallsKind] as string | undefined;
+  if (key === undefined) return config.externalCalls;
+  const providers = new Intl.ListFormat(localeTag(), { type: 'conjunction' }).format(
+    config.externalCallsProviders.map((id) => t(`models.providerLabel.${id}`)),
+  );
+  return t(key, { providers });
+}
+
 function ModelConfigSection({ session }: { session: Session }) {
   const { t } = useTranslation('settings');
   const config = useQuery({
@@ -670,7 +695,7 @@ function ModelConfigSection({ session }: { session: Session }) {
               </dd>
             </div>
           </dl>
-          <p className="text-xs text-slate-500">{config.data.externalCalls}</p>
+          <p className="text-xs text-slate-500">{externalCallsSentence(t, config.data)}</p>
           {me.data?.isAdmin === true && (
             <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-3">
               <a href="/models" className={btnSecondary}>
@@ -831,6 +856,7 @@ const CLAIMABLE_REASONS = new Set(['sender_not_recognized', 'sender_not_allowlis
  */
 function EmailCaptureSection({ session }: { session: Session }) {
   const { t } = useTranslation('email');
+  const apiError = useApiErrorMessage(t);
   const queryClient = useQueryClient();
   const config = useQuery({ queryKey: ['email-config'], queryFn: () => fetchEmailConfig(session) });
 
@@ -1039,7 +1065,7 @@ function EmailCaptureSection({ session }: { session: Session }) {
           </div>
           {add.isError && (
             <p className="text-xs text-red-700 dark:text-red-300">
-              {add.error instanceof Error ? add.error.message : t('allowlist.addFailed')}
+              {apiError(add.error, 'allowlist.addFailed')}
             </p>
           )}
 
@@ -1167,6 +1193,7 @@ const SYNCABLE_CONNECTOR_STATES: ConnectorState[] = [
 function ConnectionsSection({ session }: { session: Session }) {
   const confirm = useConfirm();
   const { t } = useTranslation('connections');
+  const apiError = useApiErrorMessage(t);
   const queryClient = useQueryClient();
   const connectors = useQuery({
     queryKey: ['connectors'],
@@ -1179,8 +1206,7 @@ function ConnectionsSection({ session }: { session: Session }) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [syncQueuedId, setSyncQueuedId] = useState<string | null>(null);
 
-  const onActionError = (error: unknown) =>
-    setActionError(error instanceof Error ? error.message : t('list.actionFailed'));
+  const onActionError = (error: unknown) => setActionError(apiError(error, 'list.actionFailed'));
   const sync = useMutation({
     mutationFn: (id: string) => syncConnector(session, id),
     onSuccess: async (_result, id) => {
@@ -1359,6 +1385,7 @@ function ConfluenceConnectForm({
   onConnected: () => Promise<unknown>;
 }) {
   const { t } = useTranslation('connections');
+  const apiError = useApiErrorMessage(t);
   const [name, setName] = useState('');
   const [siteUrl, setSiteUrl] = useState('');
   const [email, setEmail] = useState('');
@@ -1467,7 +1494,7 @@ function ConfluenceConnectForm({
       )}
       {connect.isError && (
         <p className="text-xs text-red-700 dark:text-red-300">
-          {connect.error instanceof Error ? connect.error.message : t('connect.failed')}
+          {apiError(connect.error, 'connect.failed')}
         </p>
       )}
     </div>
@@ -1489,6 +1516,7 @@ function ConnectorDetailDrawer({
   onClose: () => void;
 }) {
   const { t } = useTranslation('connections');
+  const apiError = useApiErrorMessage(t);
   const { t: tp } = useTranslation('projects');
   const queryClient = useQueryClient();
   const [estimateAt, setEstimateAt] = useState<number | null>(null);
@@ -1596,7 +1624,7 @@ function ConnectorDetailDrawer({
             <p className="text-xs text-slate-400">{t('detail.spaces.explainer')}</p>
             {estimate.isError && (
               <p className="text-xs text-red-700 dark:text-red-300">
-                {estimate.error instanceof Error ? estimate.error.message : t('list.actionFailed')}
+                {apiError(estimate.error, 'list.actionFailed')}
               </p>
             )}
             {data.subScopes.length === 0 ? (
@@ -1772,7 +1800,7 @@ function ConnectorDetailDrawer({
             )}
             {presence.isError && (
               <p className="text-xs text-red-700 dark:text-red-300">
-                {presence.error instanceof Error ? presence.error.message : t('list.actionFailed')}
+                {apiError(presence.error, 'list.actionFailed')}
               </p>
             )}
           </div>
@@ -1801,6 +1829,7 @@ function ErasedItemsBlock({
   syncable: boolean;
 }) {
   const { t } = useTranslation('connections');
+  const apiError = useApiErrorMessage(t);
   const confirm = useConfirm();
   const queryClient = useQueryClient();
   const erased = useQuery({
@@ -1851,7 +1880,7 @@ function ErasedItemsBlock({
       </ul>
       {reingest.isError && (
         <p className="text-xs text-red-700 dark:text-red-300">
-          {reingest.error instanceof Error ? reingest.error.message : t('list.actionFailed')}
+          {apiError(reingest.error, 'list.actionFailed')}
         </p>
       )}
     </div>
@@ -1869,6 +1898,7 @@ function ConfluenceReconnectForm({
   onReconnected: () => Promise<unknown>;
 }) {
   const { t } = useTranslation('connections');
+  const apiError = useApiErrorMessage(t);
   const [siteUrl, setSiteUrl] = useState('');
   const [email, setEmail] = useState('');
   const [apiToken, setApiToken] = useState('');
@@ -1958,7 +1988,7 @@ function ConfluenceReconnectForm({
       )}
       {reconnect.isError && (
         <p className="text-xs text-red-700 dark:text-red-300">
-          {reconnect.error instanceof Error ? reconnect.error.message : t('connect.failed')}
+          {apiError(reconnect.error, 'connect.failed')}
         </p>
       )}
     </div>
@@ -1976,6 +2006,7 @@ function ConfluenceSubtreeForm({
   onAdded: () => Promise<unknown>;
 }) {
   const { t } = useTranslation('connections');
+  const apiError = useApiErrorMessage(t);
   const [pageId, setPageId] = useState('');
   const [label, setLabel] = useState('');
   const [added, setAdded] = useState(false);
@@ -2027,7 +2058,7 @@ function ConfluenceSubtreeForm({
       {added && <p className="mt-1 text-xs text-slate-500">{t('detail.subtree.added')}</p>}
       {add.isError && (
         <p className="mt-1 text-xs text-red-700 dark:text-red-300">
-          {add.error instanceof Error ? add.error.message : t('detail.subtree.failed')}
+          {apiError(add.error, 'detail.subtree.failed')}
         </p>
       )}
     </div>
@@ -2048,6 +2079,7 @@ function ConnectorBackfillSettings({
   onSaved: () => Promise<unknown>;
 }) {
   const { t } = useTranslation('connections');
+  const apiError = useApiErrorMessage(t);
   const [days, setDays] = useState(settings.backfillDays?.toString() ?? '');
   const [itemCap, setItemCap] = useState(settings.backfillItemCap?.toString() ?? '');
   const [all, setAll] = useState(settings.backfillAll ?? false);
@@ -2138,7 +2170,7 @@ function ConnectorBackfillSettings({
       </label>
       {save.isError && (
         <p className="mt-1 text-xs text-red-700 dark:text-red-300">
-          {save.error instanceof Error ? save.error.message : t('detail.backfill.saveFailed')}
+          {apiError(save.error, 'detail.backfill.saveFailed')}
         </p>
       )}
     </div>
@@ -2163,6 +2195,7 @@ const EXTRACTION_REFUSAL_REASONS = [
  */
 function ExtractionGateSection({ session }: { session: Session }) {
   const { t } = useTranslation('extraction');
+  const apiError = useApiErrorMessage(t);
   const queryClient = useQueryClient();
   const config = useQuery({
     queryKey: ['extraction-gate'],
@@ -2292,7 +2325,7 @@ function ExtractionGateSection({ session }: { session: Session }) {
             </div>
             {addRule.isError && (
               <p className="mt-1 text-xs text-red-700 dark:text-red-300">
-                {addRule.error instanceof Error ? addRule.error.message : t('rules.addFailed')}
+                {apiError(addRule.error, 'rules.addFailed')}
               </p>
             )}
           </div>
@@ -2351,6 +2384,7 @@ function ExtractionGateRow({
   onSaved: () => void;
 }) {
   const { t } = useTranslation('extraction');
+  const apiError = useApiErrorMessage(t);
   const [enabled, setEnabled] = useState(gate?.enabled ?? true);
   const [budget, setBudget] = useState(gate?.factBudget?.toString() ?? '');
   const [retention, setRetention] = useState(gate?.retentionDays?.toString() ?? '');
@@ -2415,7 +2449,7 @@ function ExtractionGateRow({
       </button>
       {save.isError && (
         <span className="text-xs text-red-700 dark:text-red-300">
-          {save.error instanceof Error ? save.error.message : t('connectors.saveFailed')}
+          {apiError(save.error, 'connectors.saveFailed')}
         </span>
       )}
     </li>
@@ -2430,6 +2464,7 @@ function ExtractionGateRow({
  */
 function EntityAliasesSection({ session }: { session: Session }) {
   const { t } = useTranslation('settings');
+  const apiError = useApiErrorMessage(t);
   const queryClient = useQueryClient();
   const aliases = useQuery({
     queryKey: ['reconcile-aliases'],
@@ -2519,7 +2554,7 @@ function EntityAliasesSection({ session }: { session: Session }) {
           </div>
           {add.isError && (
             <p className="text-xs text-red-700 dark:text-red-300">
-              {add.error instanceof Error ? add.error.message : t('saveFailed')}
+              {apiError(add.error, 'saveFailed')}
             </p>
           )}
         </>

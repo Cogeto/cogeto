@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import type {
   Principal,
   SourceBadgeFilter,
@@ -9,7 +9,7 @@ import type {
   SourceOriginDto,
 } from '@cogeto/shared';
 import { isRegisteredSourceType, sourceTypeDescriptor } from '@cogeto/shared';
-import { DRIZZLE, jobRunStates } from '../infrastructure/index';
+import { DRIZZLE, jobRunStates, userError } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import {
   MemoryObjectStore,
@@ -169,7 +169,9 @@ export class SourceCatalogService {
     sourceId: string,
   ): Promise<SourceInspectionDto> {
     if (!isRegisteredSourceType(sourceType)) {
-      throw new NotFoundException(`unknown source type '${sourceType}'`);
+      throw userError.notFound('source.unknownType', "unknown source type '{{type}}'", {
+        type: sourceType,
+      });
     }
     // The audit surface is the OWNER's: a peer reads shared facts in search
     // and chat, never a source's full inspection (the drawer's existing rule).
@@ -177,7 +179,10 @@ export class SourceCatalogService {
     // prefix, or the derived facts' provenance); a foreign or absent source is
     // the same NotFound, so existence never leaks.
     if (!(await this.ownsSource(principal, sourceType as SourceType, sourceId))) {
-      throw new NotFoundException(`source ${sourceType}/${sourceId} not found`);
+      throw userError.notFound('source.notFound', 'source {{sourceType}}/{{sourceId}} not found', {
+        sourceType,
+        sourceId,
+      });
     }
     const facts = await this.memory.listForPrincipal(principal, {
       includeSensitive: true,

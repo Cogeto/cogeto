@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { demoLogin } from '../auth/oidc';
 import type { Session } from '../auth/oidc';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 /**
  * The Ana sandbox password gate. The demo is no longer auto-open
@@ -11,6 +12,7 @@ import type { Session } from '../auth/oidc';
  */
 export function DemoLogin({ onSession }: { onSession: (session: Session) => void }) {
   const { t } = useTranslation('auth');
+  const apiError = useApiErrorMessage(t);
   const [username, setUsername] = useState('ana@cogeto.localhost');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +26,7 @@ export function DemoLogin({ onSession }: { onSession: (session: Session) => void
       onSession(await demoLogin(username.trim(), password));
     } catch (e) {
       setBusy(false);
-      setError(e instanceof Error ? e.message : String(e));
+      setError(apiError(e));
     }
   };
 

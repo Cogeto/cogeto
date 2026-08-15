@@ -13,6 +13,7 @@ import {
 import type { Session } from '../auth/oidc';
 import { validateUploadFile } from '../upload-validation';
 import { Card } from './ui';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 /**
  * The deliberate upload on Sources (V2.2 item 5.1, moved from Memories): the
@@ -35,6 +36,7 @@ export function UploadCard({
   onDuplicate?: (objectKey: string, filename: string) => void;
 }) {
   const { t } = useTranslation('sources');
+  const apiError = useApiErrorMessage(t);
   // Prefill scope + discard from the user's saved defaults.
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => fetchSettings(session) });
   const [scope, setScope] = useState<MemoryScope | null>(null);
@@ -61,7 +63,7 @@ export function UploadCard({
       }
       onUploaded(result.objectKey, file.name);
     },
-    onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => setError(apiError(e)),
   });
 
   const submit = (file: File | undefined) => {

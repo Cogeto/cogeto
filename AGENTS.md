@@ -179,6 +179,23 @@ before adding any of them, or before making a module global.
       through the shared locale-aware helper, so a user's interface language, not
       their browser, decides. Full rules and the translator workflow:
       [`docs/features/i18n.md`](docs/features/i18n.md).
+- [ ] **A server failure a PERSON reads carries a code, never a sentence the
+      interface renders raw** (F13). Every HTTP failure is built by
+      `infrastructure/api-error.ts`: `userError.<kind>(code, english, params)`
+      when someone using the interface can cause it and would act on the answer,
+      `untranslatedError.<kind>(message)` for the three cases nothing can
+      translate (a developer error, a machine client, or text we did not write).
+      Constructing a Nest exception anywhere else fails `lint`. A value inside
+      the message is `{{named}}`, never a template literal, because word order
+      differs by language. After adding one, run
+      **`npm run i18n:server-errors`** then `npm run i18n:sync`.
+- [ ] **A locale Cogeto ships as supported is translated, or it is not
+      supported** (F14). `hr`, `de` and `fr` are complete, and a value that
+      reverts to its English source fails the build. A value that is identical
+      by design is an explicit entry in `scripts/ci/i18n-identical.json`, and an
+      entry that excuses nothing is also a build error. Follow the per-locale
+      glossary in [`docs/features/i18n.md`](docs/features/i18n.md#terminology):
+      the core vocabulary is translated once and used identically everywhere.
 
 ## Prompts and evaluation (spec §12.3, §14)
 

@@ -1,0 +1,194 @@
+{
+  "alias": {
+    "duplicate": "dieses Aliaspaar ist bereits erfasst",
+    "notFound": "Alias {{id}} nicht gefunden",
+    "notNeeded": "diese Namen stimmen nach der Normalisierung bereits überein; ein Alias ist nicht nötig"
+  },
+  "approval": {
+    "emailDraftNotFound": "E-Mail-Entwurf {{id}} nicht gefunden",
+    "notFound": "Genehmigung {{id}} nicht gefunden"
+  },
+  "attention": {
+    "notDismissible": "nur Digest-Einträge lassen sich verwerfen"
+  },
+  "auth": {
+    "demoInitializing": "die Demo-Umgebung startet noch",
+    "demoUnavailable": "die Demo-Anmeldung ist nicht verfügbar",
+    "identityBootstrapping": "die Identitätseinrichtung ist noch nicht abgeschlossen (Web-Konfiguration nicht verfügbar)",
+    "invalidCredentials": "ungültiger Benutzername oder ungültiges Kennwort",
+    "roleRequired": "dieser Endpunkt erfordert die Rolle '{{role}}'"
+  },
+  "chat": {
+    "attachmentNotFound": "Anhang {{id}} nicht gefunden",
+    "conversationNotFound": "Unterhaltung {{id}} nicht gefunden",
+    "messageNotFound": "Nachricht {{id}} nicht gefunden",
+    "onlyOwnMessages": "nur Ihre eigenen Nachrichten können gemerkt werden: Antworten des Assistenten werden nie erfasst",
+    "tooManyConversations_one": "Sie haben {{count}} aktive Unterhaltung, archivieren oder löschen Sie zuerst einige",
+    "tooManyConversations_other": "Sie haben {{count}} aktive Unterhaltungen, archivieren oder löschen Sie zuerst einige"
+  },
+  "confluence": {
+    "notConfluenceConnector": "kein Confluence-Konnektor"
+  },
+  "connector": {
+    "cannotSweep": "ein Konnektor im Zustand {{state}} kann keine Bestandsprüfung ausführen",
+    "cannotSync": "ein Konnektor im Zustand {{state}} kann nicht synchronisieren",
+    "erasedItemNotFound": "kein solches gelöschtes Element",
+    "illegalTransition": "ein Konnektor im Zustand {{from}} kann nicht in {{to}} wechseln",
+    "noCustomSubScopes": "diese Konnektorart nimmt keine eigenen Teilbereiche an",
+    "noPresenceListing": "diese Konnektorart kann den Bestand an der Quelle nicht auflisten",
+    "noWebhook": "diese Konnektorart bietet keinen Webhook",
+    "notAuthorised": "autorisieren Sie den Konnektor zuerst",
+    "notFound": "kein solcher Konnektor",
+    "subScopeKeyMismatch": "der Schlüssel passt nicht zur Teilbereichsform dieses Konnektors",
+    "subScopeNotFound": "kein solcher Teilbereich",
+    "unknownKind": "unbekannte Konnektorart '{{kind}}'"
+  },
+  "daily_capture_limit": "das tägliche Erfassungslimit ist erreicht ({{max}}), versuchen Sie es morgen erneut",
+  "daily_research_limit": "das tägliche Limit für Recherchesuchen ist erreicht ({{max}}), versuchen Sie es morgen erneut",
+  "daily_upload_limit": "das tägliche Upload-Limit ist erreicht ({{max}}), versuchen Sie es morgen erneut",
+  "email": {
+    "allowlistEntryNotFound": "Eintrag in der Positivliste nicht gefunden",
+    "invalidAddress": "keine gültige E-Mail-Adresse",
+    "invalidDomain": "keine gültige Domain (z. B. adriatic-foods.hr)",
+    "notFound": "E-Mail {{id}} nicht gefunden"
+  },
+  "extractionGate": {
+    "notGateable": "'{{sourceType}}' ist keine extrahierbare Quellenart; der Filter steuert: {{gateable}}",
+    "ruleNotFound": "keine solche Regel"
+  },
+  "file": {
+    "empty": "die hochgeladene Datei ist leer",
+    "exceedsUploadLimit": "die Datei überschreitet das Upload-Limit von {{bytes}} Byte",
+    "notFound": "Datei {{key}} nicht gefunden",
+    "tooLarge": "die hochgeladene Datei überschreitet die Größenbeschränkung",
+    "unsupportedType": "nicht unterstützter Dateityp '{{type}}': akzeptiert werden nur PDF, DOCX, XLSX, CSV, Markdown, reiner Text und Bilder"
+  },
+  "import": {
+    "alreadyStarted": "dieser Import hat bereits begonnen",
+    "archiveEmpty": "das Archiv enthält keine Dateien",
+    "archiveTooLarge": "das Archiv überschreitet die Größenbeschränkung",
+    "folderEmpty": "der Ordner enthält keine Dateien",
+    "hashMismatch": "die hochgeladenen Bytes stimmen nicht mit der Prüfsumme der Liste überein",
+    "itemNotFound": "Importelement {{id}} nicht gefunden",
+    "itemNotListed": "das Element ist {{state}}; nur aufgelistete Elemente nehmen Bytes an",
+    "notReadableZip": "kein lesbares ZIP-Archiv",
+    "nothingToImport": "nach den Ausschlüssen ist nichts mehr zu importieren",
+    "prefixEmpty": "unter diesem Präfix liegt nichts",
+    "runNotFound": "Import {{id}} nicht gefunden",
+    "s3CredentialsRequired": "zum Bestätigen sind S3-Zugangsdaten erforderlich",
+    "stagedArchiveUnreadable": "das bereitgestellte Archiv ist nicht mehr lesbar",
+    "tooManyFiles": "zu viele Dateien (höchstens {{max}}); teilen Sie den Import auf",
+    "uploadsUnfinished_one": "{{count}} Datei hat den Upload nicht abgeschlossen",
+    "uploadsUnfinished_other": "{{count}} Dateien haben den Upload nicht abgeschlossen"
+  },
+  "job": {
+    "deadLetterNotFound": "abgestellter Auftrag {{id}} nicht gefunden"
+  },
+  "limit": {
+    "rateLimited": "Ratenlimit für {{bucket}} erreicht, versuchen Sie es in {{seconds}} s erneut"
+  },
+  "memory": {
+    "alreadyReplacedEdit": "die Erinnerung ist bereits abgelöst; bearbeiten Sie stattdessen ihren Nachfolger",
+    "alreadyReplacedSupersede": "die Erinnerung ist bereits abgelöst; lösen Sie ihren Nachfolger ab",
+    "bulkOutdate": {
+      "notYours_one": "{{count}} betroffene Erinnerung gehört nicht Ihnen und lässt sich nicht ändern",
+      "notYours_other": "{{count}} betroffene Erinnerungen gehören nicht Ihnen und lassen sich nicht ändern"
+    },
+    "noVerification": "Erinnerung {{id}} hat kein Prüfergebnis",
+    "notFound": "Erinnerung {{id}} nicht gefunden"
+  },
+  "note": {
+    "notFound": "Notiz {{id}} nicht gefunden"
+  },
+  "passport": {
+    "expired": "Export {{id}} ist nicht mehr verfügbar: Er ist abgelaufen, weil eine möglicherweise enthaltene Quelle gelöscht wurde. Fordern Sie einen neuen Export an.",
+    "notFound": "Export {{id}} nicht gefunden",
+    "notReady": "Export {{id}} ist nicht zum Herunterladen bereit"
+  },
+  "project": {
+    "assignmentNeedsSourceType": "eine Quellenzuordnung braucht ihre Quellenart",
+    "nameRequired": "ein Projekt braucht einen Namen",
+    "nameTaken": "Sie haben bereits ein Projekt mit diesem Namen",
+    "notFound": "Projekt {{id}} nicht gefunden",
+    "tooMany_one": "Sie haben {{count}} aktives Projekt, archivieren Sie zuerst einige",
+    "tooMany_other": "Sie haben {{count}} aktive Projekte, archivieren Sie zuerst einige"
+  },
+  "provider": {
+    "answerModelNotOffered": "dieses Antwortmodell gehört nicht zu denen, die diese Instanz anbietet",
+    "apiKeyRequired": "ein Anbieter vom Typ {{type}} braucht einen API-Schlüssel",
+    "embeddingProbeSilent": "das Modell hat auf die Embedding-Prüfung nicht geantwortet",
+    "embeddingsNotDirectlyAssignable": "das Embedding-Modell lässt sich nicht direkt zuweisen: Jeder gespeicherte Vektor stammt vom aktuellen Modell, und ein gemischter Embedding-Raum würde jedes Suchergebnis stillschweigend verfälschen. Verwenden Sie den Embedding-Neuaufbau, der den Korpus in einen neuen Index einbettet und am Ende in einem Schritt umschaltet.",
+    "embeddingsUnchanged": "das ist bereits das aktive Embedding-Modell",
+    "embeddingsUnsupported": "Anbieter \"{{label}}\" hat keine Embeddings-API ({{type}})",
+    "endpointInvalid": "der Endpunkt ist keine gültige URL",
+    "endpointRequired": "dieser Anbietertyp braucht einen Endpunkt",
+    "endpointScheme": "der Endpunkt muss eine http- oder https-URL sein",
+    "labelRequired": "ein Anbieter braucht einen Namen",
+    "labelTaken": "ein Anbieter namens \"{{label}}\" existiert bereits",
+    "noEmbeddingsApi": "dieser Anbietertyp hat keine Embeddings-API",
+    "notFound": "kein solcher Anbieter",
+    "probeSilent": "das Modell hat auf die Prüfung nicht geantwortet",
+    "rebuildExists": "ein Embedding-Neuaufbau besteht bereits; brechen Sie ihn ab oder setzen Sie ihn fort",
+    "rebuildUnavailable": "der verwaltete Neuaufbau steht in diesem Prozess nicht zur Verfügung; der Betriebsweg ist `{{command}}`",
+    "stillBound": "dieser Anbieter bedient noch die Stufen {{tiers}}: weisen Sie sie zuerst neu zu",
+    "tierRequired": "die Stufe {{tier}} darf nicht unzugewiesen bleiben",
+    "typeNotCreatable": "\"{{type}}\" ist kein Anbietertyp, der angelegt werden kann",
+    "unknownType": "dieser Anbieter hat einen unbekannten Typ",
+    "visionUnsupported": "Anbieter \"{{label}}\" kann die Vision-Stufe nicht bedienen: Das Lesen eines Bildes ist für Anbieter vom Typ {{type}} auf dieser Instanz nicht umgesetzt. Weisen Sie einen Anbieter zu, dessen Typ Bilder lesen kann, oder lassen Sie die Vision-Stufe unzugewiesen; dann endet das Lesen bei OCR."
+  },
+  "receipt": {
+    "notFound": "Beleg {{id}} nicht gefunden"
+  },
+  "relation": {
+    "changedSinceDetection": "eine Erinnerung in diesem Widerspruch hat sich seit der Erkennung geändert, prüfen Sie sie unter Erinnerungen und verwerfen oder korrigieren Sie sie danach",
+    "memoryGone": "eine Erinnerung dieses Paares existiert nicht mehr",
+    "notFound": "Beziehung {{id}} nicht gefunden",
+    "selfPair": "eine Erinnerung kann nicht mit sich selbst gepaart werden"
+  },
+  "report": {
+    "alreadyGenerating": "ein Bericht über einen anderen Bereich wird bereits erstellt; warten Sie, bis er fertig ist",
+    "dateRangeReversed": "Zeitraum: der Beginn liegt nach dem Ende",
+    "expired": "Bericht {{id}} ist nicht mehr verfügbar: Er ist abgelaufen, weil eine möglicherweise zitierte Quelle gelöscht wurde oder die Aufbewahrungsfrist verstrichen ist. Erstellen Sie einen neuen Bericht.",
+    "notFound": "Bericht {{id}} nicht gefunden",
+    "notReady": "Bericht {{id}} ist nicht zum Herunterladen bereit",
+    "projectsUnavailable": "Projekte sind auf dieser Instanz nicht verfügbar",
+    "sourcesScopeCapped": "ein Quellenbereich ist auf 200 Quellen begrenzt",
+    "sourcesScopeEmpty": "ein Quellenbereich braucht mindestens eine Quelle"
+  },
+  "research": {
+    "alreadyRan": "diese Recherche lief bereits: Ihre Suchanfrage wird nicht mehr vorgehalten",
+    "alreadyRanDifferentQuery": "diese Recherche lief bereits mit einer anderen genehmigten Suchanfrage, schlagen Sie eine neue vor",
+    "blankQuery": "die genehmigte Suchanfrage darf nicht leer sein",
+    "cancelled": "diese Recherche wurde abgebrochen, schlagen Sie sie erneut vor",
+    "captureNeedsApproval": "das Erfassen erfordert eine genehmigte Recherche",
+    "discoveryNeedsApproval": "die Suche erfordert eine genehmigte Recherche",
+    "runNotFound": "keine solche Recherche",
+    "synthesisNeedsApproval": "die Zusammenfassung erfordert eine genehmigte Recherche",
+    "synthesisNeedsPages": "erfassen Sie vor der Zusammenfassung mindestens eine Seite"
+  },
+  "research_page_cap": "eine einzelne Recherche ruft höchstens {{max}} Seiten ab",
+  "revision": {
+    "notFound": "Versionsverknüpfung {{id}} nicht gefunden",
+    "selfLink": "eine Quelle kann keine Version ihrer selbst sein"
+  },
+  "search_unavailable": "die Suchmaschine ist nicht verfügbar: {{detail}}",
+  "skill": {
+    "alreadyFinished": "dieser Fähigkeitslauf ist bereits beendet",
+    "decisionOutsidePlan": "eine Entscheidung verweist auf eine Suchanfrage außerhalb dieses Plans",
+    "noApprovedQueries": "genehmigen Sie mindestens eine Suchanfrage oder brechen Sie den Lauf ab",
+    "notAwaitingApproval": "dieser Fähigkeitslauf wartet nicht auf die Genehmigung des Plans",
+    "planQueryCap": "ein Fähigkeitsplan genehmigt höchstens {{max}} Suchanfragen",
+    "runNotFound": "kein solcher Fähigkeitslauf",
+    "unknownSkill": "unbekannte Fähigkeit '{{id}}'"
+  },
+  "source": {
+    "fileNotFound": "Quelle file/{{key}} nicht gefunden",
+    "notFound": "Quelle {{sourceType}}/{{sourceId}} nicht gefunden",
+    "unknownType": "unbekannte Quellenart '{{type}}'"
+  },
+  "sourceContext": {
+    "notExtractable": "'{{sourceType}}' ist keine extrahierbare Quellenart",
+    "notFound": "für diese Quelle gibt es keinen Kontext"
+  },
+  "too_many_streams": "zu viele gleichzeitige Chat-Streams (höchstens {{max}})"
+}

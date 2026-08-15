@@ -59,7 +59,12 @@
       "ingested_one": "{{count}} aufgenommen →",
       "ingested_other": "{{count}} aufgenommen →",
       "familyTotal_one": "<n>{{count}}</n> {{family}}",
-      "familyTotal_other": "<n>{{count}}</n> {{family}}"
+      "familyTotal_other": "<n>{{count}}</n> {{family}}",
+      "family": {
+        "notes": "Notizen",
+        "email": "E-Mail",
+        "files": "Dateien"
+      }
     },
     "dreaming": {
       "heading": "Träumen · letzte {{days}} Tage",

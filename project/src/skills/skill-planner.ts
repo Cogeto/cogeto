@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
 import type { Principal } from '@cogeto/shared';
 import { loadPrompt, ModelGateway } from '../model-gateway/index';
@@ -10,6 +10,7 @@ import { ResearchService } from '../research/index';
 import { SkillRunService } from './skill-run.service';
 import { getSkill } from './skill-registry';
 import type { SkillRunRow } from './persistence/tables';
+import { userError } from '../infrastructure/index';
 
 export const SKILL_PLAN_PROMPT = { family: 'skill_plan', version: 'v0001' };
 
@@ -90,7 +91,8 @@ export class SkillPlanner {
     subject: string,
   ): Promise<SkillProposal | SkillAmbiguity> {
     const skill = getSkill(skillId);
-    if (!skill) throw new NotFoundException(`unknown skill '${skillId}'`);
+    if (!skill)
+      throw userError.notFound('skill.unknownSkill', "unknown skill '{{id}}'", { id: skillId });
     const cleanSubject = subject.trim();
 
     // 1. Gather what memory knows (entity-profile mode, scope-gated as

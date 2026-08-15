@@ -1,21 +1,11 @@
-import {
-  Body,
-  Controller,
-  Get,
-  NotFoundException,
-  Param,
-  ParseUUIDPipe,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import type { ResearchCaptureResponse, WebSourceDto } from '@cogeto/shared';
 import { MEMORY_SCOPES } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { ResearchService } from './research.service';
-import { parseOrBadRequest } from '../infrastructure/index';
+import { parseOrBadRequest, userError } from '../infrastructure/index';
 
 /** Zod at the boundary: a bounded URL selection. */
 const captureSchema = z.object({
@@ -60,7 +50,7 @@ export class ResearchController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<WebSourceDto> {
     const row = await this.research.getForOwner(request.principal, id);
-    if (!row) throw new NotFoundException();
+    if (!row) throw userError.notFound('research.runNotFound', 'no such research run');
     return {
       id: row.id,
       requestedUrl: row.requestedUrl,

@@ -1,141 +1,141 @@
 {
-  "heading": "Connections",
-  "explainer": "External systems Cogeto reads from. A connection only ever reads; every synced page becomes an ordinary source you can inspect, audit and delete.",
+  "heading": "Veze",
+  "explainer": "Vanjski sustavi iz kojih Cogeto čita. Veza uvijek samo čita; svaka sinkronizirana stranica postaje običan izvor koji možete pregledati, revidirati i izbrisati.",
   "list": {
-    "error": "We couldn't load your connections just now.",
-    "empty": "Nothing is connected yet.",
-    "lastSync": "last sync {{when}}",
-    "neverSynced": "not synced yet",
-    "open": "Details",
-    "sync": "Sync now",
-    "syncQueued": "Sync queued.",
-    "disable": "Pause",
-    "enable": "Resume",
-    "removeConfirm": "Remove {{name}}? Its stored credential is destroyed and syncing stops. Everything already ingested remains: the sources and their facts are NOT deleted, and each one can still be deleted individually from the Sources page.\n\nRemove?",
-    "actionFailed": "The action failed.",
-    "removeQuestion": "Remove {{name}}?"
+    "error": "Trenutačno nismo mogli učitati vaše veze.",
+    "empty": "Još ništa nije povezano.",
+    "lastSync": "posljednja sinkronizacija {{when}}",
+    "neverSynced": "još nije sinkronizirano",
+    "open": "Pojedinosti",
+    "sync": "Sinkroniziraj sada",
+    "syncQueued": "Sinkronizacija je u redu čekanja.",
+    "disable": "Pauziraj",
+    "enable": "Nastavi",
+    "removeConfirm": "Ukloniti {{name}}? Pohranjeni pristupni podaci se uništavaju i sinkronizacija prestaje. Sve što je već preuzeto ostaje: izvori i njihove činjenice NE brišu se, a svaki se i dalje može pojedinačno izbrisati na stranici Izvori.\n\nUkloniti?",
+    "actionFailed": "Radnja nije uspjela.",
+    "removeQuestion": "Ukloniti {{name}}?"
   },
   "state": {
-    "configured": "not authorised",
-    "authorised": "authorised",
-    "syncing": "syncing",
-    "healthy": "healthy",
-    "degraded": "degraded",
-    "needs_reauth": "needs reauthorisation",
-    "disabled": "paused",
-    "removed": "removed"
+    "configured": "nije ovlašteno",
+    "authorised": "ovlašteno",
+    "syncing": "sinkronizira se",
+    "healthy": "ispravno",
+    "degraded": "otežano",
+    "needs_reauth": "treba ponovnu ovlast",
+    "disabled": "pauzirano",
+    "removed": "uklonjeno"
   },
   "pausedReason": {
-    "rate_limited": "Waiting: the upstream rate limit was reached. Syncing resumes on its own.",
-    "daily_item_cap": "Waiting: the daily item cap is reached. Syncing continues when the cap resets.",
-    "daily_upload_limit": "Waiting: the daily upload limit is reached. Syncing continues when the limit resets."
+    "rate_limited": "Čekanje: dosegnuto je ograničenje brzine na drugoj strani. Sinkronizacija se nastavlja sama.",
+    "daily_item_cap": "Čekanje: dosegnuto je dnevno ograničenje stavki. Sinkronizacija se nastavlja kada se ograničenje obnovi.",
+    "daily_upload_limit": "Čekanje: dosegnuto je dnevno ograničenje učitavanja. Sinkronizacija se nastavlja kada se ograničenje obnovi."
   },
   "connect": {
-    "open": "Connect Confluence",
-    "name": "Name",
-    "namePlaceholder": "Team wiki",
-    "siteUrl": "Site URL",
+    "open": "Poveži Confluence",
+    "name": "Naziv",
+    "namePlaceholder": "Timski wiki",
+    "siteUrl": "URL stranice",
     "siteUrlPlaceholder": "https://your-team.atlassian.net/wiki",
-    "email": "Atlassian account email",
+    "email": "E-adresa Atlassian računa",
     "apiToken": "API token",
-    "apiTokenHelp": "An Atlassian API token for this account. Cogeto validates it with one read call before storing it, sealed.",
+    "apiTokenHelp": "Atlassian API token za ovaj račun. Cogeto ga provjerava jednim pozivom za čitanje prije nego što ga pohrani, zapečaćenog.",
     "readOnly": {
-      "statement": "Cogeto only reads from Confluence. It never creates, edits or deletes anything there.",
-      "recommendation": "For stricter setups we recommend a dedicated Atlassian account with read-only permission on the chosen spaces, so Confluence itself enforces the restriction."
+      "statement": "Cogeto iz Confluencea samo čita. Nikada ondje ništa ne stvara, ne mijenja niti briše.",
+      "recommendation": "Za stroža okruženja preporučujemo namjenski Atlassian račun s dopuštenjem samo za čitanje odabranih prostora, kako bi ograničenje provodio sam Confluence."
     },
-    "action": "Connect",
-    "connecting": "Connecting…",
-    "success_one": "Connected. This account can see {{count}} spaces. Open the connection to choose what to sync.",
-    "success_few": "Connected. This account can see {{count}} spaces. Open the connection to choose what to sync.",
-    "success_other": "Connected. This account can see {{count}} spaces. Open the connection to choose what to sync.",
-    "failed": "Connecting failed.",
+    "action": "Poveži",
+    "connecting": "Povezivanje…",
+    "success_one": "Povezano. Ovaj račun vidi {{count}} prostor. Otvorite vezu da odaberete što se sinkronizira.",
+    "success_few": "Povezano. Ovaj račun vidi {{count}} prostora. Otvorite vezu da odaberete što se sinkronizira.",
+    "success_other": "Povezano. Ovaj račun vidi {{count}} prostora. Otvorite vezu da odaberete što se sinkronizira.",
+    "failed": "Povezivanje nije uspjelo.",
     "failure": {
-      "wrong_site": "The address answered, but it is not a Confluence Cloud site. Check the site URL.",
-      "bad_credentials": "Confluence did not accept this email and API token pair.",
-      "no_permission": "The credentials work, but this account cannot see any spaces.",
-      "unreachable": "The site could not be reached. Check the address and your network."
+      "wrong_site": "Adresa je odgovorila, ali nije Confluence Cloud stranica. Provjerite URL stranice.",
+      "bad_credentials": "Confluence nije prihvatio ovaj par e-adrese i API tokena.",
+      "no_permission": "Pristupni podaci rade, ali ovaj račun ne vidi nijedan prostor.",
+      "unreachable": "Stranica nije dostupna. Provjerite adresu i svoju mrežu."
     }
   },
   "detail": {
-    "title": "Connection",
-    "loading": "Loading the connection…",
-    "error": "We couldn't load this connection just now.",
-    "account": "Account:",
+    "title": "Veza",
+    "loading": "Veza se učitava…",
+    "error": "Trenutačno nismo mogli učitati ovu vezu.",
+    "account": "Račun:",
     "reconnect": {
-      "explainer": "The stored credential no longer works. Enter the site URL, the account email and a fresh API token; the new credential replaces the old one.",
-      "action": "Reconnect",
-      "connecting": "Reconnecting…",
-      "success": "Reconnected."
+      "explainer": "Pohranjeni pristupni podaci više ne rade. Unesite URL stranice, e-adresu računa i novi API token; novi podaci zamjenjuju stare.",
+      "action": "Ponovno poveži",
+      "connecting": "Ponovno povezivanje…",
+      "success": "Ponovno povezano."
     },
     "spaces": {
-      "heading": "Spaces",
-      "explainer": "Nothing outside the spaces you select is ever fetched. Attachments are off by default because they multiply volume.",
-      "empty": "No spaces discovered yet. Run a sync to refresh the list.",
-      "attachments": "Pull attached files from this space's pages (PDF, Word, spreadsheets, images)",
-      "backfillDone": "backfill complete",
-      "estimateAction": "Estimate",
-      "estimating": "Estimating…",
-      "about_one": "about {{count}} pages",
-      "about_few": "about {{count}} pages",
-      "about_other": "about {{count}} pages",
-      "windowAll": "counting everything",
-      "windowSince": "modified since {{date}}"
+      "heading": "Prostori",
+      "explainer": "Ništa izvan prostora koje odaberete nikada se ne dohvaća. Privici su prema zadanome isključeni jer višestruko povećavaju količinu.",
+      "empty": "Još nije otkriven nijedan prostor. Pokrenite sinkronizaciju da osvježite popis.",
+      "attachments": "Preuzmi datoteke priložene stranicama ovog prostora (PDF, Word, tablice, slike)",
+      "backfillDone": "početno preuzimanje dovršeno",
+      "estimateAction": "Procijeni",
+      "estimating": "Procjena…",
+      "about_one": "otprilike {{count}} stranica",
+      "about_few": "otprilike {{count}} stranice",
+      "about_other": "otprilike {{count}} stranica",
+      "windowAll": "broji se sve",
+      "windowSince": "promijenjeno od {{date}}"
     },
     "subtree": {
-      "heading": "Add a page subtree",
-      "explainer": "Sync one page and everything under it. The page id is the number in the page's URL.",
-      "pageId": "Page id",
-      "label": "Label",
-      "labelPlaceholder": "What to call this scope",
-      "added": "Added. It is fetched on the next sync.",
-      "failed": "Adding the subtree failed."
+      "heading": "Dodaj podstablo stranica",
+      "explainer": "Sinkronizirajte jednu stranicu i sve ispod nje. Identifikator stranice je broj u njezinu URL-u.",
+      "pageId": "Identifikator stranice",
+      "label": "Oznaka",
+      "labelPlaceholder": "Kako nazvati ovaj opseg",
+      "added": "Dodano. Dohvaća se pri sljedećoj sinkronizaciji.",
+      "failed": "Dodavanje podstabla nije uspjelo."
     },
     "backfill": {
-      "heading": "Backfill and caps",
-      "explainer": "How far back the first sync of a scope reaches. The default is 30 days and 500 items per space.",
-      "days": "Days back",
-      "itemCap": "Item cap per space",
-      "everything": "Everything: the full history, unbounded",
-      "everythingHelp": "No date or item bound. Every page of every selected space is fetched.",
-      "dailyItemCap": "Daily item cap",
-      "saveFailed": "Saving the settings failed."
+      "heading": "Početno preuzimanje i ograničenja",
+      "explainer": "Koliko unatrag seže prva sinkronizacija opsega. Zadano je 30 dana i 500 stavki po prostoru.",
+      "days": "Dana unatrag",
+      "itemCap": "Ograničenje stavki po prostoru",
+      "everything": "Sve: potpuna povijest, bez ograničenja",
+      "everythingHelp": "Bez vremenskog ograničenja i ograničenja broja stavki. Dohvaća se svaka stranica svakog odabranog prostora.",
+      "dailyItemCap": "Dnevno ograničenje stavki",
+      "saveFailed": "Spremanje postavki nije uspjelo."
     },
     "runs": {
-      "heading": "Recent syncs",
-      "empty": "No syncs have run yet.",
+      "heading": "Nedavne sinkronizacije",
+      "empty": "Nijedna sinkronizacija još nije pokrenuta.",
       "kind": {
-        "backfill": "backfill",
-        "incremental": "incremental",
+        "backfill": "početno preuzimanje",
+        "incremental": "postupna",
         "webhook": "webhook",
-        "presence": "presence check"
+        "presence": "provjera prisutnosti"
       },
       "state": {
-        "running": "running",
-        "completed": "completed",
-        "failed": "failed",
-        "cancelled": "cancelled"
+        "running": "u tijeku",
+        "completed": "dovršeno",
+        "failed": "neuspješno",
+        "cancelled": "otkazano"
       },
       "count": {
-        "materialized": "{{value}} ingested",
-        "unchangedSkipped": "{{value}} unchanged",
-        "revisions": "{{value}} revisions",
-        "deletedUpstream": "{{value}} gone upstream",
-        "skippedRestricted": "{{value}} restricted",
-        "failed": "{{value}} failed"
+        "materialized": "{{value}} preuzeto",
+        "unchangedSkipped": "{{value}} nepromijenjeno",
+        "revisions": "{{value}} novih verzija",
+        "deletedUpstream": "{{value}} nestalo na izvoru",
+        "skippedRestricted": "{{value}} ograničeno",
+        "failed": "{{value}} neuspješno"
       }
     },
     "presence": {
-      "explainer": "Compares the record against what Confluence still lists and marks pages that disappeared or were archived. A sync never deletes anything.",
-      "action": "Check presence now",
-      "queued": "Presence check queued."
+      "explainer": "Uspoređuje zapis s onim što Confluence i dalje navodi i označava stranice koje su nestale ili su arhivirane. Sinkronizacija nikada ništa ne briše.",
+      "action": "Provjeri prisutnost sada",
+      "queued": "Provjera prisutnosti je u redu čekanja."
     },
     "erased": {
-      "title": "Deleted by you",
-      "explainer": "Sources you deleted stay deleted: a sync never brings them back on its own. Ingesting one again is your explicit choice, and it returns as a brand-new source.",
-      "when": "deleted {{when}}",
-      "action": "Ingest again",
-      "confirm": "Your original deletion stays deleted. The next sync will bring this item back as a brand-new source with fresh extraction. Continue?",
-      "question": "Ingest this item again?"
+      "title": "Vi ste izbrisali",
+      "explainer": "Izvori koje ste izbrisali ostaju izbrisani: sinkronizacija ih nikada sama ne vraća. Ponovno preuzimanje vaš je izričit izbor i vraća se kao potpuno novi izvor.",
+      "when": "izbrisano {{when}}",
+      "action": "Preuzmi ponovno",
+      "confirm": "Vaše izvorno brisanje ostaje na snazi. Sljedeća će sinkronizacija ovu stavku vratiti kao potpuno novi izvor s novim izdvajanjem. Nastaviti?",
+      "question": "Ponovno preuzeti ovu stavku?"
     }
   }
 }

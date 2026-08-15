@@ -23,11 +23,31 @@ language of environment-configured models, so the documented recovery for
 Counts: **1 BLOCKER, 6 HIGH, 9 MEDIUM, 6 LOW** (22 findings). Top three: F1
 (upgrade takes an instance down), F2 (the documented model-key recovery is a
 no-op), F4 (the mail STARTTLS procedure needs a certificate that is never issued
-and a compose file that does not exist on the instance). **Twenty are resolved
-across four remediation waves; see the status sections below. Still open: F13
-and F14 (server-side copy, and the partially translated locales), both of which
-need an owner decision rather than a fix.** The coverage gap recorded in Part 6,
-that nothing exercised the operator script, is closed in wave 5.
+and a compose file that does not exist on the instance). **All twenty-two are
+resolved across six remediation waves; see the status sections below.** F13 and
+F14, the last two, were the owner-decision pair: the owner's ruling was that the
+translations must be there and must work, so wave 6 finished them rather than
+gating the language picker. The coverage gap recorded in Part 6, that nothing
+exercised the operator script, is closed in wave 5.
+
+### Remediation status, wave 6 (2026-08-15, `fix/i18n-completion`)
+
+The internationalisation pair, F13 and F14, and the guard gap that let both
+survive. The owner's ruling on F14 was explicit: **the translations must be
+there and must work properly; gating the language picker is not the answer.**
+
+| Finding | Status |
+|---|---|
+| F13 | **Resolved, by codes rather than by server-side translation.** Every HTTP failure the server raises now goes through one of two factories in `infrastructure/api-error.ts`. `userError` carries a stable `code` and its interpolation `params` alongside the unchanged English `message`, and the interface renders its own translation of that code; `untranslatedError` declares the opposite, for the three cases where nothing can be translated (a developer error, a machine client, or text we did not write). 134 codes across 218 sites; 40 sites are declared untranslatable with the reason. The rationale for codes over the server catalogue is in [`../features/i18n.md`](../features/i18n.md#server-errors-are-codes-not-sentences), and the deciding evidence was in this codebase already: most of these throws have no `Principal` in scope, and the quota failures had reached for a `code` field years before this. The interface stopped rendering raw server text at all 35 sites the report named, and degrades to the server's own sentence for a code it has no key for, never to a bare code and never to an empty string. |
+| F14 | **Resolved by finishing the work.** All three locales are complete: 1933 values in `de`, 2015 in `fr` and `hr` (the extra are the CLDR plural categories those languages need and English does not), with 112 values identical to English by design and each one listed. Terminology is fixed in a per-locale glossary in [`../features/i18n.md`](../features/i18n.md#terminology) so a future translator inherits the decisions. 57 plural `_one` forms that `i18n:add` had seeded from the English `_other` were also wrong and are fixed; nothing had been watching them. |
+| Guard gap (Part 2) | **Closed.** The literal scan is no longer fenced to `project/web/src`. On the server it is now EXACT rather than heuristic: constructing a Nest exception outside `api-error.ts` fails the build, and the `serverErrors` namespace is held to the throw sites in three directions (no code without a key, no key without a code, no English drift). A completeness check fails the build on any value that is still its English source, with the count printed per locale on success. The SPA literal detector dropped from three words to two. Every category is proved by breaking it: `i18n-guard.spec.ts` copies the repository, introduces one deliberate regression per category, and asserts the real script fails naming the offence. |
+
+**No behaviour changed and no English source string was reworded.** Three
+sentences gained a `_one` plural form English never had (a count-bearing message
+reads wrongly at 1 in every language, and Croatian needs three forms to be
+grammatical at all); nine bare `NotFoundException()` sites that answered "Not
+Found" gained a real sentence, because F13's whole point is that a person must
+not read English error text. Both are listed in the pull request.
 
 ### Remediation status, wave 5 (2026-08-15, `fix/hardening-and-coverage`)
 
@@ -278,6 +298,11 @@ them (F2, F3).
 ---
 
 ## Part 2 - Internationalisation completeness
+
+**This section records what the audit measured on 2026-08-12 and is left as
+written.** F13, F14 and the guard gap it describes are all closed in
+[wave 6](#remediation-status-wave-6-2026-08-15-fixi18n-completion); the numbers
+below are the before half of that comparison, not the current state.
 
 ### Locale completeness
 
@@ -567,7 +592,9 @@ survives onto a reachable deployment.
 *Fix scope*: code - have preflight (or the searxng service healthcheck) fail when
 the profile is active and the secret is empty.
 
-**F13 - User-visible server text is not translatable.**
+**F13 - User-visible server text is not translatable.** **RESOLVED (wave 6):
+every user-facing failure carries a stable error code the interface
+translates, and the guard now sees the server.**
 *Evidence*: 197 Nest exception sites in `project/src` carry hardcoded English
 messages (`grep -c` over `BadRequest|NotFound|Forbidden|Conflict Exception('…')`);
 `serverT` appears at only 20 call sites across 4 namespaces / 223 keys; the SPA
@@ -581,7 +608,9 @@ middle of a translated page, and no CI check can see it.
 map error codes to SPA keys.
 
 **F14 - hr/de/fr are described as scaffolds but are partially translated, which
-is worse than either extreme.**
+is worse than either extreme.** **RESOLVED (wave 6): all three locales are
+complete, and a value that reverts to its English source now fails the
+build.**
 *Evidence*: table in Part 2. 42-45% of SPA values are still literal English, but
 six whole namespaces (sources, providers, connections, projects, reports,
 extraction: 631 keys) are ~100% English while chat, memories and dashboard are
@@ -766,6 +795,6 @@ Ordered so blockers clear first. Sizes are relative effort, not calendar.
 | 5 | **Tell the truth about redaction and capabilities.** F5 is **DONE** (wave 2), and the owner's ruling was to remove the limitation rather than document it: redaction is published and available on a customer instance. F15/F16 remain. | F5, F15, F16 | S | docs (owner) |
 | 6 | **Runbook and upgrade-note corrections**: Ollama section, the self-contradiction about reindex, the restore DNS count, the "past 2.0" section title, the script header, the Zitadel bootstrap variables. | F8, F9, F10, F19, F22 | S | docs |
 | 7 | ~~**Container privilege hardening** in both composes, plus the empty-SearXNG-secret refusal.~~ **DONE** (wave 5), verified by running real work through the hardened stack. | F11, F12 | M | code |
-| 8 | **Server-side copy**: route user-facing API errors through the server catalogue and extend the i18n guard to cover them. | F13 | L | code |
-| 9 | **Finish or gate the translations** for the six English-only namespaces (631 keys x 3 locales). | F14 | L | owner |
+| 8 | ~~**Server-side copy**: route user-facing API errors through the server catalogue and extend the i18n guard to cover them.~~ **DONE** (wave 6), by error codes rather than the catalogue; the rationale is recorded. | F13 | L | code |
+| 9 | ~~**Finish or gate the translations** for the six English-only namespaces (631 keys x 3 locales).~~ **DONE** (wave 6): the owner ruled finish, not gate, and all three locales are complete and guarded. | F14 | L | owner |
 | 10 | ~~**Housekeeping**: delete `eval/trust-scores/file`, add the SearXNG tag comment and tighten the pin spec, remove the unprefixed `MISTRAL_*` fallbacks, fix the one broken doc link.~~ **DONE** (F18 in wave 2, F20 in wave 1, F17 and the link guard in wave 5). | F17, F18, F20 | S | code + owner |

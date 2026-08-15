@@ -8,17 +8,17 @@
   "answer": {
     "attribution": "Cogeto · aus Ihrem Wissensstand",
     "askedByAt": "Sie · {{time}}",
-    "stopped": "Stopped. This answer is what had been written when you stopped it.",
-    "sources": "Sources",
-    "copy": "Copy answer",
-    "copied": "Copied",
+    "stopped": "Gestoppt. Diese Antwort ist das, was beim Stoppen geschrieben war.",
+    "sources": "Quellen",
+    "copy": "Antwort kopieren",
+    "copied": "Kopiert",
     "sourcesSummary": "{{documents}}, {{facts}}",
-    "documentCount_one": "{{count}} document",
-    "documentCount_other": "{{count}} documents",
-    "factCount_one": "{{count}} fact",
-    "factCount_other": "{{count}} facts",
-    "factsFrom_one": "{{count}} fact",
-    "factsFrom_other": "{{count}} facts"
+    "documentCount_one": "{{count}} Dokument",
+    "documentCount_other": "{{count}} Dokumente",
+    "factCount_one": "{{count}} Fakt",
+    "factCount_other": "{{count}} Fakten",
+    "factsFrom_one": "{{count}} Fakt",
+    "factsFrom_other": "{{count}} Fakten"
   },
   "empty": {
     "title": "Fragen Sie Ihr Wissen.",
@@ -39,8 +39,8 @@
     "label": "Frage stellen",
     "placeholder": "Fragen Sie Ihr Wissen…",
     "send": "Senden",
-    "stop": "Stop generating",
-    "stopHint": "Stops the answer and keeps what has been written so far.",
+    "stop": "Erzeugung stoppen",
+    "stopHint": "Stoppt die Antwort und behält, was bisher geschrieben wurde.",
     "hint": "Eingabetaste zum Senden · Umschalt+Eingabetaste für eine neue Zeile · jede Behauptung zeigt ihre Belege"
   },
   "remember": {
@@ -59,7 +59,7 @@
     "alwaysTitle": "Cogeto prüft das Web ab jetzt automatisch. Sie können dies in den Einstellungen deaktivieren."
   },
   "ambiguity": {
-    "alternatives": "Multiple matches in your sources"
+    "alternatives": "Mehrere Treffer in Ihren Quellen"
   },
   "citation": {
     "unresolved": "Quelle",
@@ -82,9 +82,9 @@
       "label": "Modell",
       "title": "Modellwissen, nicht aus Ihren Quellen. Cogeto kennzeichnet es, damit Sie immer wissen, welche Behauptungen belegt werden können.",
       "ariaLabel": "Modellwissen, nicht aus Ihren Quellen",
-      "entry": "Model knowledge: part of this answer comes from the model's general knowledge, not from your memory."
+      "entry": "Modellwissen: Ein Teil dieser Antwort stammt aus dem Allgemeinwissen des Modells, nicht aus Ihrem Gedächtnis."
     },
-    "refScreenReader": "source {{index}}"
+    "refScreenReader": "Quelle {{index}}"
   },
   "conversation": {
     "untitled": "Neue Unterhaltung",
@@ -115,56 +115,60 @@
     }
   },
   "reasoning": {
-    "heading": "Thinking",
-    "streaming": "Thinking, streaming live",
-    "toggleOn": "Thinking on",
-    "toggleOff": "Thinking off"
+    "heading": "Denken",
+    "streaming": "Denkt, live übertragen",
+    "toggleOn": "Denken an",
+    "toggleOff": "Denken aus"
   },
   "attachment": {
-    "attachLabel": "Attach a file",
-    "transientToggle": "Don't remember this file",
-    "transientChip": "this conversation only",
-    "transientMeaning": "Used only in this conversation: the file is read once, its bytes are discarded right after, and the extracted text stays with this conversation until you delete the conversation. It never becomes a source or a memory, and no other conversation can see it.",
-    "durableHint": "This file will be added to your sources: read, its facts extracted and verified, kept with full provenance.",
-    "removeStaged": "Remove",
+    "attachLabel": "Datei anhängen",
+    "transientToggle": "Diese Datei nicht merken",
+    "transientChip": "nur diese Unterhaltung",
+    "transientMeaning": "Wird nur in dieser Unterhaltung verwendet: Die Datei wird einmal gelesen, ihre Bytes werden direkt danach verworfen, und der extrahierte Text bleibt bei dieser Unterhaltung, bis Sie sie löschen. Sie wird nie zu einer Quelle oder Erinnerung, und keine andere Unterhaltung kann sie sehen.",
+    "durableHint": "Diese Datei wird Ihren Quellen hinzugefügt: gelesen, ihre Fakten extrahiert und überprüft, mit vollständiger Herkunft aufbewahrt.",
+    "removeStaged": "Entfernen",
     "stage": {
-      "queued": "Queued",
-      "reading": "Reading",
-      "extracting": "Extracting facts",
-      "verifying": "Verifying",
-      "storing": "Storing"
+      "queued": "In der Warteschlange",
+      "reading": "Wird gelesen",
+      "extracting": "Fakten werden extrahiert",
+      "verifying": "Wird überprüft",
+      "storing": "Wird gespeichert"
     },
-    "failed": "This file could not be processed.",
-    "transientReady": "Read for this conversation. Ask about it here; it was not remembered.",
-    "gateRefused": "Stored, but not extracted: {{reason}}.",
-    "addedToSources": "Added to sources: {{facts}}, {{contradictions}}.",
-    "factsCount_one": "{{count}} facts",
-    "factsCount_other": "{{count}} facts",
-    "contradictionsCount_one": "{{count}} contradictions",
-    "contradictionsCount_other": "{{count}} contradictions",
-    "truncatedNote": "The file was read in part; open the source for what was left out.",
-    "viewInSources": "View in Sources",
-    "sourceRemoved": "Attachment removed with its source",
-    "dropHere": "Drop to attach (up to {{count}})",
-    "capReached": "Up to {{count}} files per message. The rest were not attached.",
-    "removeOne": "Remove {{name}}",
-    "uploadFailed": "{{name}} could not be attached: {{reason}}"
+    "failed": "Diese Datei konnte nicht verarbeitet werden.",
+    "transientReady": "Für diese Unterhaltung gelesen. Fragen Sie hier danach; sie wurde nicht gemerkt.",
+    "gateRefused": "Gespeichert, aber nicht extrahiert: {{reason}}.",
+    "addedToSources": "Zu den Quellen hinzugefügt: {{facts}}, {{contradictions}}.",
+    "factsCount_one": "{{count}} Fakt",
+    "factsCount_other": "{{count}} Fakten",
+    "contradictionsCount_one": "{{count}} Widerspruch",
+    "contradictionsCount_other": "{{count}} Widersprüche",
+    "truncatedNote": "Die Datei wurde nur teilweise gelesen; öffnen Sie die Quelle, um zu sehen, was fehlt.",
+    "viewInSources": "In Quellen ansehen",
+    "sourceRemoved": "Anhang mit seiner Quelle entfernt",
+    "dropHere": "Zum Anhängen ablegen (bis zu {{count}})",
+    "capReached": "Höchstens {{count}} Dateien pro Nachricht. Der Rest wurde nicht angehängt.",
+    "removeOne": "{{name}} entfernen",
+    "uploadFailed": "{{name}} konnte nicht angehängt werden: {{reason}}"
   },
   "search": {
-    "label": "Search conversations",
-    "placeholder": "Search what was said",
-    "clear": "Clear search",
-    "searching": "Searching…",
-    "empty": "Nothing matched. Search covers titles and what was said, including archived conversations.",
-    "results_one": "{{count}} result",
-    "results_other": "{{count}} results",
-    "titleMatch": "Matched the title",
-    "archivedTag": "archived"
+    "label": "Unterhaltungen durchsuchen",
+    "placeholder": "Im Gesagten suchen",
+    "clear": "Suche zurücksetzen",
+    "searching": "Wird gesucht…",
+    "empty": "Kein Treffer. Die Suche umfasst Titel und Gesagtes, auch in archivierten Unterhaltungen.",
+    "results_one": "{{count}} Treffer",
+    "results_other": "{{count}} Treffer",
+    "titleMatch": "Titel stimmt überein",
+    "archivedTag": "archiviert"
   },
   "code": {
-    "plain": "code",
-    "copy": "copy",
-    "copied": "copied",
-    "copyAria": "Copy this code block"
+    "plain": "Code",
+    "copy": "kopieren",
+    "copied": "kopiert",
+    "copyAria": "Diesen Codeblock kopieren"
+  },
+  "stream": {
+    "budgetExceeded": "Tageslimit erreicht, bitte versuchen Sie es morgen erneut",
+    "timedOut": "Zeitüberschreitung der Antwort"
   }
 }

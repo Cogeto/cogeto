@@ -2,7 +2,7 @@
   "landmark": "Hauptnavigation",
   "section": {
     "dashboard": "Übersicht",
-    "sources": "Sources",
+    "sources": "Quellen",
     "chat": "Chat",
     "research": "Recherche",
     "skills": "Fähigkeiten",
@@ -15,7 +15,7 @@
     "models": "Modelle",
     "system": "System",
     "settings": "Einstellungen",
-    "reports": "Reports"
+    "reports": "Berichte"
   },
   "badge": {
     "items": "Elemente",

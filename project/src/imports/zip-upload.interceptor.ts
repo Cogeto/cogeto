@@ -1,9 +1,10 @@
-import { Inject, Injectable, Optional, PayloadTooLargeException } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import type { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import multer from 'multer';
 import type { Observable } from 'rxjs';
 import { IMPORT_ZIP_MAX_BYTES_DEFAULT } from './import.service';
+import { userError } from '../infrastructure/index';
 
 export const IMPORT_ZIP_MAX_BYTES = Symbol('IMPORT_ZIP_MAX_BYTES');
 
@@ -34,7 +35,9 @@ export class ZipUploadInterceptor implements NestInterceptor {
       this.middleware(request, response, (error: unknown) => {
         if (!error) return resolve();
         if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
-          return reject(new PayloadTooLargeException('the archive exceeds the size limit'));
+          return reject(
+            userError.tooLarge('import.archiveTooLarge', 'the archive exceeds the size limit'),
+          );
         }
         return reject(error);
       });

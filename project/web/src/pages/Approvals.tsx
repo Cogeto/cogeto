@@ -27,6 +27,7 @@ import {
   SkeletonRows,
   Tabs,
 } from '../components/ui';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 const STATUS_TONE: Record<ApprovalStatus, Tone> = {
   draft: 'neutral',
@@ -119,6 +120,7 @@ function EmailDraftPanel({ session, approvalId }: { session: Session; approvalId
 
 function PendingCard({ session, approval }: { session: Session; approval: ApprovalDto }) {
   const { t } = useTranslation('approvals');
+  const apiError = useApiErrorMessage(t);
   const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
@@ -128,7 +130,7 @@ function PendingCard({ session, approval }: { session: Session; approval: Approv
       setError(null);
       await invalidateAfterApproval(queryClient); //
     },
-    onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => setError(apiError(e)),
   });
 
   return (

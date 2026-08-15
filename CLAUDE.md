@@ -102,18 +102,32 @@ V2.0 item 3.5 made the product translatable. Every user-visible string in the
 SPA is a key in `project/web/src/locales/<locale>/<namespace>.json` (one
 namespace per surface; the current list is `namespaces.ts`), the copy Cogeto writes on its own lives in
 `project/src/infrastructure/locales/`, and **English is the source of truth and
-the fallback for every missing key**. `hr`, `de` and `fr` exist as complete
-scaffolds carrying the English text: authoring the translations is a separate
-task. `npm run i18n:check` runs inside `lint` and fails the build on a missing,
-orphaned or unused key, a missing plural category, a dropped `{{placeholder}}`,
-an em dash in English copy, or a reintroduced hardcoded literal. Add a language
-with `npm run i18n:add -- <locale>`; add a KEY to an existing feature with
+the fallback for every missing key**. `npm run i18n:check` runs inside `lint`
+and fails the build on a missing, orphaned or unused key, a missing plural
+category, a dropped `{{placeholder}}`, an em dash in English copy, or a
+reintroduced hardcoded literal. Add a language with
+`npm run i18n:add -- <locale>`; add a KEY to an existing feature with
 `npm run i18n:sync`, which backfills the other locales from `en` without ever
 overwriting a translation. **The rules that bind every change touching
 user-visible copy are in [`AGENTS.md`](AGENTS.md) under "User-visible copy", and
 a feature is not done until its keys exist in every locale.** Interface language
 is not extraction quality: only English and Croatian have corpora and gates, and
 nothing in the product may imply otherwise.
+
+The deployment-readiness pair F13 and F14 closed that item out (2026-08-15).
+`hr`, `de` and `fr` are no longer scaffolds but **complete translations**, and
+the guard makes that keepable: a value identical to its English source fails
+the build unless it is one of 112 listed as identical BY DESIGN, and an
+allowlist entry that excuses nothing fails too. Terminology is fixed in a
+per-locale glossary in [`docs/features/i18n.md`](docs/features/i18n.md).
+Separately, **a server failure a person reads is now a CODE, not a sentence**:
+every HTTP failure is built by `infrastructure/api-error.ts` through
+`userError` (coded, translated by the interface) or `untranslatedError`
+(declared untranslatable: a developer error, a machine client, or text we did
+not write), constructing a Nest exception anywhere else fails `lint`, and the
+`serverErrors` namespace is held to the throw sites in three directions. The
+interface renders no raw server text where it holds a translation. Every guard
+category is proved by breaking it in `entrypoints/i18n-guard.spec.ts`.
 
 V2.0 item 3.6 made the module boundary real and then moved the code behind it, in
 four pull requests. **Read [`docs/module-boundary-contract.md`](docs/module-boundary-contract.md)

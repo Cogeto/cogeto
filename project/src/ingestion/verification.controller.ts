@@ -1,16 +1,7 @@
-import {
-  Controller,
-  Get,
-  Inject,
-  NotFoundException,
-  Param,
-  ParseUUIDPipe,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Inject, Param, ParseUUIDPipe, Req, UseGuards } from '@nestjs/common';
 import { desc, eq, inArray } from 'drizzle-orm';
 import type { VerificationDto } from '@cogeto/shared';
-import { DRIZZLE } from '../infrastructure/index';
+import { DRIZZLE, userError } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
@@ -39,7 +30,7 @@ export class VerificationController {
     const memory = await this.memoryStore.getForPrincipal(request.principal, id, {
       includeSensitive: true,
     });
-    if (!memory) throw new NotFoundException(`memory ${id} not found`);
+    if (!memory) throw userError.notFound('memory.notFound', 'memory {{id}} not found', { id });
 
     const rows = await this.db
       .select()
@@ -50,7 +41,12 @@ export class VerificationController {
     const row = rows[0];
     // User-authored rows (edit successors, future manual facts) have no
     // verification pass — that is a fact about them, not an error.
-    if (!row) throw new NotFoundException(`memory ${id} has no verification result`);
+    if (!row)
+      throw userError.notFound(
+        'memory.noVerification',
+        'memory {{id}} has no verification result',
+        { id },
+      );
     return {
       verdict: row.verdict,
       reason: row.reason,

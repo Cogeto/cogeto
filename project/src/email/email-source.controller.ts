@@ -1,8 +1,9 @@
-import { Controller, Get, NotFoundException, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
 import type { EmailSourceDto } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { EmailSourceService } from './email-source.service';
+import { userError } from '../infrastructure/index';
 
 /**
  * GET /api/email/:id/source: the email
@@ -21,7 +22,7 @@ export class EmailSourceController {
     @Param('id') id: string,
   ): Promise<EmailSourceDto> {
     const view = await this.emails.getSourceForOwner(request.principal, id);
-    if (!view) throw new NotFoundException(`email ${id} not found`);
+    if (!view) throw userError.notFound('email.notFound', 'email {{id}} not found', { id });
     return view;
   }
 }

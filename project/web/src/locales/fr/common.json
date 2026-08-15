@@ -6,7 +6,7 @@
   "action": {
     "add": "Ajouter",
     "cancel": "Annuler",
-    "confirm": "Confirm",
+    "confirm": "Confirmer",
     "close": "Fermer",
     "copy": "Copier",
     "copied": "Copié",
@@ -76,9 +76,9 @@
     "megabytes": "{{value}} Mo"
   },
   "modelRequired": {
-    "banner": "No model provider is configured. Capture, ingestion and chat are off until one is added.",
-    "configureCta": "Configure a provider",
-    "askAdmin": "Ask your administrator to configure one.",
-    "short": "A model provider must be configured first. An administrator adds one under Providers."
+    "banner": "Aucun fournisseur de modèles n'est configuré. La capture, le traitement et la discussion sont désactivés tant qu'il n'y en a pas.",
+    "configureCta": "Configurer un fournisseur",
+    "askAdmin": "Demandez à votre administrateur d'en configurer un.",
+    "short": "Un fournisseur de modèles doit d'abord être configuré. Un administrateur en ajoute un sous Fournisseurs."
   }
 }

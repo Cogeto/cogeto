@@ -1,7 +1,7 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Principal, SkillRunStatus, SkillStepLinks, SkillStepStatus } from '@cogeto/shared';
-import { DRIZZLE, writeAudit } from '../infrastructure/index';
+import { DRIZZLE, userError, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { skillRun, skillRunStep } from './persistence/tables';
 import type { SkillRunRow, SkillRunStepRow } from './persistence/tables';
@@ -228,10 +228,10 @@ export class SkillRunService {
    */
   async cancel(principal: Principal, runId: string): Promise<SkillRunRow> {
     const run = await this.getRun(principal, runId);
-    if (!run) throw new NotFoundException();
+    if (!run) throw userError.notFound('skill.runNotFound', 'no such skill run');
     if (run.status === 'cancelled') return run;
     if (TERMINAL_STATUSES.includes(run.status)) {
-      throw new ConflictException('this skill run already finished');
+      throw userError.conflict('skill.alreadyFinished', 'this skill run already finished');
     }
     const updated = await this.transition(
       runId,

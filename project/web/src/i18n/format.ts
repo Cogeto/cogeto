@@ -24,6 +24,15 @@ function tag(locale?: PreferredLanguage): string {
   return LOCALE_TAGS[locale ?? activeLocale()];
 }
 
+/**
+ * The BCP-47 tag for the active interface locale, for the `Intl` formatters
+ * this module does not wrap (`ListFormat`, so a list of providers is joined by
+ * the reader's own language rules rather than an English "and").
+ */
+export function localeTag(locale?: PreferredLanguage): string {
+  return tag(locale);
+}
+
 /** `12 May 2026` — a date with no time. */
 export function formatDate(iso: string | Date, locale?: PreferredLanguage): string {
   return new Intl.DateTimeFormat(tag(locale), {

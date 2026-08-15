@@ -1,15 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  NotFoundException,
-  Param,
-  Post,
-  Put,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { EXTRACTION_GATE_DIMENSIONS, SOURCE_TYPES, sourceTypeDescriptor } from '@cogeto/shared';
 import type {
@@ -18,10 +7,9 @@ import type {
   ExtractionGateRuleDto,
   ExtractionRefusalDto,
 } from '@cogeto/shared';
-import { BadRequestException } from '@nestjs/common';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
-import { parseOrBadRequest } from '../infrastructure/index';
+import { parseOrBadRequest, userError } from '../infrastructure/index';
 import { ExtractionGateStore } from './persistence/extraction-gate.store';
 import type {
   ExtractionGateRefusalRow,
@@ -116,7 +104,7 @@ export class ExtractionGateController {
     @Param('id') id: string,
   ): Promise<{ removed: boolean }> {
     const removed = await this.store.removeRule(request.principal, parseOrBadRequest(z.uuid(), id));
-    if (!removed) throw new NotFoundException('no such rule');
+    if (!removed) throw userError.notFound('extractionGate.ruleNotFound', 'no such rule');
     return { removed };
   }
 }
@@ -124,8 +112,10 @@ export class ExtractionGateController {
 function assertGateable(sourceType: string): void {
   const descriptor = sourceTypeDescriptor(sourceType);
   if (!descriptor || descriptor.defunct || !descriptor.extraction) {
-    throw new BadRequestException(
-      `'${sourceType}' is not an extraction-capable source type; the gate controls: ${GATEABLE_SOURCE_TYPES.join(', ')}`,
+    throw userError.badRequest(
+      'extractionGate.notGateable',
+      "'{{sourceType}}' is not an extraction-capable source type; the gate controls: {{gateable}}",
+      { sourceType, gateable: GATEABLE_SOURCE_TYPES.join(', ') },
     );
   }
 }

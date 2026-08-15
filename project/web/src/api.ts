@@ -105,13 +105,39 @@ import type {
   ProjectDto,
   ProjectWriteDto,
   ProjectAssignmentKind,
+  ApiErrorParams,
+  ApiErrorPayload,
 } from '@cogeto/shared';
+import { readApiErrorPayload } from '@cogeto/shared';
 import type { Session } from './auth/oidc';
 
 /** Fired on any 401 so the shell can drop the dead session and re-fetch config. */
 export const UNAUTHORIZED_EVENT = 'cogeto:unauthorized';
 
-/** Typed API errors: the server's message (e.g. an illegal transition) is the UI copy. */
+/**
+ * A failure the server described (F13).
+ *
+ * `message` is the server's English sentence, unchanged: it stays the value of
+ * `Error.message`, so logging, `String(error)` and any call site that has not
+ * been given a translated equivalent behave exactly as before. `code` and
+ * `params` are what `apiErrorMessage` needs to render the same failure in the
+ * user's own language.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code?: string;
+  readonly params?: ApiErrorParams;
+
+  constructor(message: string, status: number, payload: ApiErrorPayload = {}) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = payload.code;
+    this.params = payload.params;
+  }
+}
+
+/** Typed API errors: the code selects the copy, the message is the fallback. */
 async function toError(path: string, response: Response): Promise<Error> {
   // A 401 means the bearer token expired or was revoked (10s Principal-cache
   // bound). Signal the shell exactly once, from the single place
@@ -121,13 +147,18 @@ async function toError(path: string, response: Response): Promise<Error> {
     window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
   }
   try {
-    const body = (await response.json()) as { message?: string | string[] };
-    const message = Array.isArray(body.message) ? body.message.join('; ') : body.message;
-    if (message) return new Error(message);
+    const payload = readApiErrorPayload(await response.json());
+    if (payload.message ?? payload.code) {
+      return new ApiError(
+        payload.message ?? `${path} -> HTTP ${response.status}`,
+        response.status,
+        payload,
+      );
+    }
   } catch {
     // fall through to the generic error
   }
-  return new Error(`${path} -> HTTP ${response.status}`);
+  return new ApiError(`${path} -> HTTP ${response.status}`, response.status);
 }
 
 async function apiGet<T>(path: string, session?: Session): Promise<T> {

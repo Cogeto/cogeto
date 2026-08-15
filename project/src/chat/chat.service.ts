@@ -1,11 +1,4 @@
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
-  Optional,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { and, asc, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type {
   AmbiguityDecisionDto,
@@ -27,6 +20,7 @@ import {
   EMPTY_USER_CONTEXT,
   jobRunState,
   UserContextService,
+  userError,
   withTransactionalEnqueue,
 } from '../infrastructure/index';
 import type { Db, UserContextRecord } from '../infrastructure/index';
@@ -343,8 +337,13 @@ export class ChatService {
       .from(conversation)
       .where(and(eq(conversation.ownerId, principal.userId), eq(conversation.archived, false)));
     if ((active[0]?.count ?? 0) >= MAX_ACTIVE_CONVERSATIONS) {
-      throw new BadRequestException(
-        `you have ${MAX_ACTIVE_CONVERSATIONS} active conversations, archive or delete some first`,
+      throw userError.badRequest(
+        'chat.tooManyConversations',
+        {
+          one: 'you have {{count}} active conversation, archive or delete some first',
+          other: 'you have {{count}} active conversations, archive or delete some first',
+        },
+        { count: MAX_ACTIVE_CONVERSATIONS },
       );
     }
     const [row] = await this.db
@@ -454,9 +453,13 @@ export class ChatService {
       .where(and(eq(chatMessage.id, messageId), eq(chatMessage.ownerId, principal.userId)))
       .limit(1);
     const message = rows[0];
-    if (!message) throw new NotFoundException(`message ${messageId} not found`);
+    if (!message)
+      throw userError.notFound('chat.messageNotFound', 'message {{id}} not found', {
+        id: messageId,
+      });
     if (message.role !== 'user') {
-      throw new BadRequestException(
+      throw userError.badRequest(
+        'chat.onlyOwnMessages',
         'only your own messages can be remembered: the assistant’s replies are never captured',
       );
     }
@@ -484,7 +487,10 @@ export class ChatService {
       .from(chatMessage)
       .where(and(eq(chatMessage.id, messageId), eq(chatMessage.ownerId, principal.userId)))
       .limit(1);
-    if (owned.length === 0) throw new NotFoundException(`message ${messageId} not found`);
+    if (owned.length === 0)
+      throw userError.notFound('chat.messageNotFound', 'message {{id}} not found', {
+        id: messageId,
+      });
 
     return jobRunState(this.db, {
       sourceType: 'chat',
@@ -505,7 +511,10 @@ export class ChatService {
       .where(and(eq(chatMessage.id, messageId), eq(chatMessage.ownerId, principal.userId)))
       .limit(1);
     const target = rows[0];
-    if (!target) throw new NotFoundException(`message ${messageId} not found`);
+    if (!target)
+      throw userError.notFound('chat.messageNotFound', 'message {{id}} not found', {
+        id: messageId,
+      });
 
     // Surrounding turns come from the SAME conversation only — the
     // drawer's framing must never blend another thread's turns in.
@@ -872,7 +881,10 @@ export class ChatService {
       .where(and(eq(conversation.id, conversationId), eq(conversation.ownerId, principal.userId)))
       .limit(1);
     const row = rows[0];
-    if (!row) throw new NotFoundException(`conversation ${conversationId} not found`);
+    if (!row)
+      throw userError.notFound('chat.conversationNotFound', 'conversation {{id}} not found', {
+        id: conversationId,
+      });
     return row;
   }
 

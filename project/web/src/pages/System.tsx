@@ -24,6 +24,7 @@ import {
   SectionTitle,
   SkeletonRows,
 } from '../components/ui';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 /** The sweep's face (spec §11.1 step 4): last run, chain status, open alert list. */
 function IntegrityPanel({ session }: { session: Session }) {
@@ -123,6 +124,7 @@ function IntegrityPanel({ session }: { session: Session }) {
 
 function DeadLetterTable({ session }: { session: Session }) {
   const { t } = useTranslation('system');
+  const apiError = useApiErrorMessage(t);
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const { data, isPending, isError } = useQuery({
@@ -136,7 +138,7 @@ function DeadLetterTable({ session }: { session: Session }) {
       setError(null);
       await invalidateAfterJobRetry(queryClient); //
     },
-    onError: (e) => setError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => setError(apiError(e)),
   });
 
   return (

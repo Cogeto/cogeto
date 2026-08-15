@@ -66,7 +66,12 @@
       "ingested_other": "{{count}} uvezeno →",
       "familyTotal_one": "<n>{{count}}</n> {{family}}",
       "familyTotal_few": "<n>{{count}}</n> {{family}}",
-      "familyTotal_other": "<n>{{count}}</n> {{family}}"
+      "familyTotal_other": "<n>{{count}}</n> {{family}}",
+      "family": {
+        "notes": "bilješke",
+        "email": "e-pošta",
+        "files": "datoteke"
+      }
     },
     "dreaming": {
       "heading": "Sanjanje · posljednjih {{days}} dana",

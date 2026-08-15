@@ -1,50 +1,50 @@
 {
-  "title": "Reports",
+  "title": "Berichte",
   "trigger": {
-    "title": "Generate a findings report",
-    "explainer": "A findings run examines a stated scope and produces a signed, printable report: every finding with both verbatim passages and their exact locations, what could not be read, and what was withheld. The PDF is for people; the JSON is the signed record a third party can verify.",
-    "scopeLabel": "Scope",
-    "importLabel": "Import to report on",
-    "importPlaceholder": "Choose an import",
-    "fromLabel": "From date",
-    "toLabel": "To date",
-    "button": "Generate report"
+    "title": "Befundbericht erstellen",
+    "explainer": "Ein Befundlauf untersucht einen festgelegten Bereich und erzeugt einen signierten, druckbaren Bericht: jeden Befund mit beiden wörtlichen Passagen und ihren genauen Fundstellen, was nicht gelesen werden konnte und was zurückgehalten wurde. Das PDF ist für Menschen, das JSON ist der signierte Nachweis, den Dritte prüfen können.",
+    "scopeLabel": "Bereich",
+    "importLabel": "Import für den Bericht",
+    "importPlaceholder": "Import wählen",
+    "fromLabel": "Von Datum",
+    "toLabel": "Bis Datum",
+    "button": "Bericht erstellen"
   },
   "scope": {
-    "corpus": "Everything in this workspace",
-    "import": "One import",
-    "sources": "Selected sources",
-    "date_range": "A date range"
+    "corpus": "Alles in diesem Arbeitsbereich",
+    "import": "Ein Import",
+    "sources": "Ausgewählte Quellen",
+    "date_range": "Ein Zeitraum"
   },
   "status": {
-    "pending": "Queued",
-    "ready": "Ready",
-    "failed": "Failed",
-    "expired": "Expired",
+    "pending": "In der Warteschlange",
+    "ready": "Fertig",
+    "failed": "Fehlgeschlagen",
+    "expired": "Abgelaufen",
     "stage": {
-      "enumerating": "Listing sources",
-      "assembling": "Assembling",
-      "rendering": "Rendering",
-      "signing": "Signing",
-      "uploading": "Storing"
+      "enumerating": "Quellen werden aufgelistet",
+      "assembling": "Wird zusammengestellt",
+      "rendering": "Wird gesetzt",
+      "signing": "Wird signiert",
+      "uploading": "Wird gespeichert"
     }
   },
   "progress": {
-    "assembling": "Examined {{done}} of {{total}} sources"
+    "assembling": "{{done}} von {{total}} Quellen untersucht"
   },
-  "countsLine": "Sources examined: {{sources}} · facts: {{facts}} · open findings: {{open}} · withheld: {{withheld}} · not fully read: {{notFullyRead}}",
+  "countsLine": "Untersuchte Quellen: {{sources}} · Fakten: {{facts}} · offene Befunde: {{open}} · zurückgehalten: {{withheld}} · nicht vollständig gelesen: {{notFullyRead}}",
   "delta": {
-    "firstRun": "First report over this scope; changes will show from the next run.",
-    "sincePrevious": "Since the previous run: {{resolved}} resolved, {{appeared}} new, {{reopened}} reopened."
+    "firstRun": "Erster Bericht über diesen Bereich; Änderungen erscheinen ab dem nächsten Lauf.",
+    "sincePrevious": "Seit dem vorherigen Lauf: {{resolved}} geklärt, {{appeared}} neu, {{reopened}} wieder geöffnet."
   },
   "download": {
-    "pdf": "Download PDF",
-    "json": "Download JSON"
+    "pdf": "PDF herunterladen",
+    "json": "JSON herunterladen"
   },
-  "expiredNote": "This report is no longer downloadable: a source it may have quoted was deleted, or its retention window passed. The run record stays for comparison; generate a new report for current findings.",
+  "expiredNote": "Dieser Bericht ist nicht mehr herunterladbar: Eine möglicherweise zitierte Quelle wurde gelöscht, oder die Aufbewahrungsfrist ist abgelaufen. Der Laufdatensatz bleibt zum Vergleich erhalten; erstellen Sie für aktuelle Befunde einen neuen Bericht.",
   "list": {
-    "title": "Past runs",
-    "emptyTitle": "No reports yet",
-    "emptyHint": "Generate a report to get a signed, forwardable record of the contradictions in your documents, with the evidence quoted and located."
+    "title": "Frühere Läufe",
+    "emptyTitle": "Noch keine Berichte",
+    "emptyHint": "Erstellen Sie einen Bericht und Sie erhalten einen signierten, weiterleitbaren Nachweis der Widersprüche in Ihren Dokumenten, mit zitierten und genau verorteten Belegen."
   }
 }

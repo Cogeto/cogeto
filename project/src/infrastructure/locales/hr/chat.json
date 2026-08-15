@@ -43,7 +43,7 @@
     "failed": "Trenutačno nisam mogao napisati skicu odgovora. Otvori e-poruku i upotrijebi \"Napiši skicu odgovora\"."
   },
   "lens": {
-    "nothingInProject": "I have nothing about that in {{project}}. This conversation answers from that project's sources only, and your memory outside it may hold the answer.",
-    "silentPreamble": "I have nothing about this in {{project}}'s sources. What follows is general knowledge, not from your sources."
+    "nothingInProject": "O tome nemam ništa u projektu {{project}}. Ovaj razgovor odgovara samo iz izvora tog projekta, a odgovor se možda nalazi u vašem sjećanju izvan njega.",
+    "silentPreamble": "O ovome nemam ništa u izvorima projekta {{project}}. Ono što slijedi opće je znanje, a ne podatak iz vaših izvora."
   }
 }

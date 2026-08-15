@@ -66,7 +66,12 @@
       "ingested_other": "{{count}} ingérées →",
       "familyTotal_one": "<n>{{count}}</n> {{family}}",
       "familyTotal_many": "<n>{{count}}</n> {{family}}",
-      "familyTotal_other": "<n>{{count}}</n> {{family}}"
+      "familyTotal_other": "<n>{{count}}</n> {{family}}",
+      "family": {
+        "notes": "notes",
+        "email": "courriel",
+        "files": "fichiers"
+      }
     },
     "dreaming": {
       "heading": "Rêve · {{days}} derniers jours",

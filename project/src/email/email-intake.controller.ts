@@ -12,6 +12,7 @@ import type { Request } from 'express';
 import { Public } from '../identity/index';
 import { EmailIntakeService } from './email-intake.service';
 import { MailIntakeGuard } from './mail-intake.guard';
+import { untranslatedError } from '../infrastructure/index';
 
 /**
  * The internal email-intake endpoint
@@ -38,7 +39,7 @@ export class EmailIntakeController {
   async receive(@Req() request: Request): Promise<{ status: string; emailIds?: string[] }> {
     const raw = Buffer.isBuffer(request.body) ? request.body : Buffer.alloc(0);
     if (raw.length === 0) {
-      throw new HttpException('empty message', HttpStatus.BAD_REQUEST);
+      throw untranslatedError.badRequest('empty message');
     }
     const envelope = {
       mailFrom: headerValue(request, 'x-cogeto-mail-from'),
@@ -56,6 +57,9 @@ export class EmailIntakeController {
         : result.status === 'rate_limited'
           ? HttpStatus.TOO_MANY_REQUESTS
           : HttpStatus.FORBIDDEN;
+    // i18n-exempt: the body is a machine verdict for Haraka, not a sentence.
+    // There is no `message` and no person: the SMTP relay reads `status` and
+    // `reason` and turns them into an SMTP code.
     throw new HttpException({ status: 'refused', reason: result.reason }, status);
   }
 }

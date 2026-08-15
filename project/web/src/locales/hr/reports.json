@@ -1,50 +1,50 @@
 {
-  "title": "Reports",
+  "title": "Izvještaji",
   "trigger": {
-    "title": "Generate a findings report",
-    "explainer": "A findings run examines a stated scope and produces a signed, printable report: every finding with both verbatim passages and their exact locations, what could not be read, and what was withheld. The PDF is for people; the JSON is the signed record a third party can verify.",
-    "scopeLabel": "Scope",
-    "importLabel": "Import to report on",
-    "importPlaceholder": "Choose an import",
-    "fromLabel": "From date",
-    "toLabel": "To date",
-    "button": "Generate report"
+    "title": "Izradi izvještaj o nalazima",
+    "explainer": "Prolaz nalaza pregledava zadani opseg i izrađuje potpisan izvještaj spreman za ispis: svaki nalaz s doslovnim odlomcima i njihovim točnim mjestima, ono što se nije moglo pročitati i ono što je izostavljeno. PDF je za ljude; JSON je potpisani zapis koji treća strana može provjeriti.",
+    "scopeLabel": "Opseg",
+    "importLabel": "Uvoz za izvještaj",
+    "importPlaceholder": "Odaberite uvoz",
+    "fromLabel": "Od datuma",
+    "toLabel": "Do datuma",
+    "button": "Izradi izvještaj"
   },
   "scope": {
-    "corpus": "Everything in this workspace",
-    "import": "One import",
-    "sources": "Selected sources",
-    "date_range": "A date range"
+    "corpus": "Sve u ovom radnom prostoru",
+    "import": "Jedan uvoz",
+    "sources": "Odabrani izvori",
+    "date_range": "Razdoblje"
   },
   "status": {
-    "pending": "Queued",
-    "ready": "Ready",
-    "failed": "Failed",
-    "expired": "Expired",
+    "pending": "U redu čekanja",
+    "ready": "Spremno",
+    "failed": "Neuspješno",
+    "expired": "Isteklo",
     "stage": {
-      "enumerating": "Listing sources",
-      "assembling": "Assembling",
-      "rendering": "Rendering",
-      "signing": "Signing",
-      "uploading": "Storing"
+      "enumerating": "Popisivanje izvora",
+      "assembling": "Sastavljanje",
+      "rendering": "Iscrtavanje",
+      "signing": "Potpisivanje",
+      "uploading": "Pohranjivanje"
     }
   },
   "progress": {
-    "assembling": "Examined {{done}} of {{total}} sources"
+    "assembling": "Pregledano {{done}} od {{total}} izvora"
   },
-  "countsLine": "Sources examined: {{sources}} · facts: {{facts}} · open findings: {{open}} · withheld: {{withheld}} · not fully read: {{notFullyRead}}",
+  "countsLine": "Pregledanih izvora: {{sources}} · činjenica: {{facts}} · otvorenih nalaza: {{open}} · izostavljeno: {{withheld}} · nije pročitano u cijelosti: {{notFullyRead}}",
   "delta": {
-    "firstRun": "First report over this scope; changes will show from the next run.",
-    "sincePrevious": "Since the previous run: {{resolved}} resolved, {{appeared}} new, {{reopened}} reopened."
+    "firstRun": "Prvi izvještaj za ovaj opseg; promjene će se prikazati od sljedećeg prolaza.",
+    "sincePrevious": "Od prethodnog prolaza: razriješeno {{resolved}}, novih {{appeared}}, ponovno otvorenih {{reopened}}."
   },
   "download": {
-    "pdf": "Download PDF",
-    "json": "Download JSON"
+    "pdf": "Preuzmi PDF",
+    "json": "Preuzmi JSON"
   },
-  "expiredNote": "This report is no longer downloadable: a source it may have quoted was deleted, or its retention window passed. The run record stays for comparison; generate a new report for current findings.",
+  "expiredNote": "Ovaj se izvještaj više ne može preuzeti: izvor koji je možda citirao izbrisan je ili je isteklo razdoblje čuvanja. Zapis o prolazu ostaje radi usporedbe; za aktualne nalaze izradite novi izvještaj.",
   "list": {
-    "title": "Past runs",
-    "emptyTitle": "No reports yet",
-    "emptyHint": "Generate a report to get a signed, forwardable record of the contradictions in your documents, with the evidence quoted and located."
+    "title": "Prijašnji prolazi",
+    "emptyTitle": "Još nema izvještaja",
+    "emptyHint": "Izradite izvještaj i dobit ćete potpisan zapis o proturječnostima u vašim dokumentima koji možete proslijediti, s citiranim i točno lociranim dokazima."
   }
 }

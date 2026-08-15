@@ -1,10 +1,11 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import type { ChatAttachmentDto, FileProcessingState, Principal } from '@cogeto/shared';
 import {
   DRIZZLE,
   enqueueDelayedJob,
   jobRunState,
+  userError,
   withTransactionalEnqueue,
 } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
@@ -213,7 +214,10 @@ export class ChatAttachmentsService {
       .where(and(eq(chatAttachment.id, attachmentId), eq(chatAttachment.ownerId, principal.userId)))
       .limit(1);
     const row = rows[0];
-    if (!row) throw new NotFoundException(`attachment ${attachmentId} not found`);
+    if (!row)
+      throw userError.notFound('chat.attachmentNotFound', 'attachment {{id}} not found', {
+        id: attachmentId,
+      });
     return this.resolve(row);
   }
 
@@ -367,7 +371,9 @@ export class ChatAttachmentsService {
       .where(and(eq(conversation.id, conversationId), eq(conversation.ownerId, principal.userId)))
       .limit(1);
     if (rows.length === 0) {
-      throw new NotFoundException(`conversation ${conversationId} not found`);
+      throw userError.notFound('chat.conversationNotFound', 'conversation {{id}} not found', {
+        id: conversationId,
+      });
     }
   }
 }

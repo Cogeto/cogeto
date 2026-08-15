@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  NotFoundException,
-  Param,
-  ParseUUIDPipe,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import type {
   Principal,
@@ -30,7 +20,7 @@ import { getSkill } from './skill-registry';
 import { SkillEngine } from './skill-engine';
 import { SkillPlanner } from './skill-planner';
 import { SkillRunService } from './skill-run.service';
-import { parseOrBadRequest } from '../infrastructure/index';
+import { parseOrBadRequest, userError } from '../infrastructure/index';
 
 const proposeSchema = z.object({
   skillId: z.string().min(1).max(100),
@@ -147,7 +137,7 @@ export class SkillsController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<SkillRunDetailDto> {
     const run = await this.runs.getRun(request.principal, id);
-    if (!run) throw new NotFoundException();
+    if (!run) throw userError.notFound('skill.runNotFound', 'no such skill run');
     return this.detail(request.principal, run);
   }
 

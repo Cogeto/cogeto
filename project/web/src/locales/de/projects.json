@@ -1,55 +1,55 @@
 {
   "rail": {
-    "heading": "Projects",
-    "noProject": "No project",
-    "newHere": "New conversation in this project",
-    "newConversation": "New conversation",
-    "newProject": "New project",
-    "lensOn": "Answers in this project draw on its sources first.",
-    "lensOff": "Answers in this project draw on all your memory.",
-    "turnLensOn": "Use project sources",
-    "turnLensOff": "Use all memory"
+    "heading": "Projekte",
+    "noProject": "Kein Projekt",
+    "newHere": "Neue Unterhaltung in diesem Projekt",
+    "newConversation": "Neue Unterhaltung",
+    "newProject": "Neues Projekt",
+    "lensOn": "Antworten in diesem Projekt greifen zuerst auf seine Quellen zu.",
+    "lensOff": "Antworten in diesem Projekt greifen auf Ihr gesamtes Gedächtnis zu.",
+    "turnLensOn": "Projektquellen verwenden",
+    "turnLensOff": "Gesamtes Gedächtnis verwenden"
   },
   "chip": {
-    "add": "Add to project",
-    "lensOn": "Answers draw on this project's sources first.",
-    "lensOff": "Answers draw on all your memory."
+    "add": "Zum Projekt hinzufügen",
+    "lensOn": "Antworten greifen zuerst auf die Quellen dieses Projekts zu.",
+    "lensOff": "Antworten greifen auf Ihr gesamtes Gedächtnis zu."
   },
   "picker": {
-    "title": "Move this conversation",
-    "explainer": "A project groups your work. It never changes what you can see: every fact stays yours, and stays visible outside the project.",
-    "newProject": "+ New project for this conversation",
-    "lensOffTag": "lens off",
-    "archivedTag": "archived"
+    "title": "Diese Unterhaltung verschieben",
+    "explainer": "Ein Projekt bündelt Ihre Arbeit. Es ändert nie, was Sie sehen können: Jeder Fakt bleibt Ihrer und bleibt auch außerhalb des Projekts sichtbar.",
+    "newProject": "+ Neues Projekt für diese Unterhaltung",
+    "lensOffTag": "Linse aus",
+    "archivedTag": "archiviert"
   },
   "field": {
-    "name": "Project name",
-    "namePlaceholder": "Client, matter, or topic"
+    "name": "Projektname",
+    "namePlaceholder": "Mandant, Sache oder Thema"
   },
   "action": {
-    "rename": "Rename",
-    "archive": "Archive",
-    "unarchive": "Unarchive",
-    "delete": "Delete"
+    "rename": "Umbenennen",
+    "archive": "Archivieren",
+    "unarchive": "Aus dem Archiv holen",
+    "delete": "Löschen"
   },
   "assign": {
-    "label": "Project",
-    "scopeLabel": "Into project",
-    "none": "No project"
+    "label": "Projekt",
+    "scopeLabel": "In Projekt",
+    "none": "Kein Projekt"
   },
   "filter": {
-    "label": "Project",
-    "all": "All projects"
+    "label": "Projekt",
+    "all": "Alle Projekte"
   },
   "lens": {
-    "gapHint": "Nothing in this project covers that.",
-    "widenAction": "Answer from all my memory"
+    "gapHint": "Nichts in diesem Projekt deckt das ab.",
+    "widenAction": "Aus meinem gesamten Gedächtnis antworten"
   },
   "delete": {
-    "question": "Delete the project \"{{name}}\"?",
-    "consequence_one": "The project groups {{count}} thing. Deleting removes the project only.",
-    "consequence_other": "The project groups {{count}} things. Deleting removes the project only.",
-    "keeps": "Its conversations, sources, research runs and reports all stay exactly where they are and simply stop being in a project. Nothing is erased and no memory is deleted.",
-    "alternative": "To erase a document itself, delete that source on the Sources page, which runs the deletion saga and gives you a receipt. Archiving this project instead keeps everything and only hides it from the list."
+    "question": "Das Projekt \"{{name}}\" löschen?",
+    "consequence_one": "Das Projekt bündelt {{count}} Element. Das Löschen entfernt nur das Projekt.",
+    "consequence_other": "Das Projekt bündelt {{count}} Elemente. Das Löschen entfernt nur das Projekt.",
+    "keeps": "Seine Unterhaltungen, Quellen, Recherchen und Berichte bleiben genau dort, wo sie sind, und gehören einfach zu keinem Projekt mehr. Nichts wird gelöscht und keine Erinnerung entfernt.",
+    "alternative": "Um ein Dokument selbst zu löschen, löschen Sie die betreffende Quelle auf der Seite Quellen. Das startet die Löschsaga und liefert Ihnen einen Beleg. Dieses Projekt zu archivieren behält dagegen alles und blendet es nur aus der Liste aus."
   }
 }

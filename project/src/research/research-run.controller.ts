@@ -1,16 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpException,
-  HttpStatus,
-  NotFoundException,
-  Param,
-  ParseUUIDPipe,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import type {
   ApproveResearchResponse,
@@ -24,7 +12,7 @@ import type { AuthenticatedRequest } from '../identity/index';
 import { ResearchService } from './research.service';
 import { ResearchSynthesisService } from './research-synthesis.service';
 import type { ResearchRunRow } from './persistence/tables';
-import { parseOrBadRequest } from '../infrastructure/index';
+import { parseOrBadRequest, userError } from '../infrastructure/index';
 
 const proposeSchema = z.object({
   intent: z
@@ -108,7 +96,7 @@ export class ResearchRunController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ResearchRunDto> {
     const row = await this.research.getRun(request.principal, id);
-    if (!row) throw new NotFoundException();
+    if (!row) throw userError.notFound('research.runNotFound', 'no such research run');
     return toDto(row);
   }
 
@@ -128,14 +116,12 @@ export class ResearchRunController {
     if (search.status === 'unavailable') {
       // The approval is recorded; the engine is not reachable. 503 keeps the
       // typed retryable semantics — approving again with the SAME query retries.
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.SERVICE_UNAVAILABLE,
-          error: 'Service Unavailable',
-          code: 'search_unavailable',
-          message: search.reason,
-        },
-        HttpStatus.SERVICE_UNAVAILABLE,
+      // The engine's own words for why it is unreachable: text we did not
+      // write, so it travels as the detail of a sentence we did.
+      throw userError.unavailable(
+        'search_unavailable',
+        'the search engine is unavailable: {{detail}}',
+        { detail: search.reason },
       );
     }
     return { run: toDto(run), search };

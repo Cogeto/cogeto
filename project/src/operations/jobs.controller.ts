@@ -2,7 +2,6 @@ import {
   Controller,
   Get,
   Inject,
-  NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
@@ -17,6 +16,7 @@ import {
   queueTotals,
   recentJobExecutions,
   retryDeadLetter,
+  userError,
   writeAudit,
 } from '../infrastructure/index';
 import type { Db, QueuedJobRow } from '../infrastructure/index';
@@ -129,7 +129,10 @@ export class JobsController {
   ): Promise<{ retried: boolean }> {
     await this.db.transaction(async (tx) => {
       const row = await retryDeadLetter(tx, id);
-      if (!row) throw new NotFoundException(`dead-letter job ${id} not found`);
+      if (!row)
+        throw userError.notFound('job.deadLetterNotFound', 'dead-letter job {{id}} not found', {
+          id,
+        });
       await writeAudit(tx, {
         actor: `user:${request.principal.userId}`,
         action: 'job.retried',

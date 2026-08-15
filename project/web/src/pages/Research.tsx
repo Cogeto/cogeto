@@ -31,6 +31,7 @@ import {
   SkeletonRows,
 } from '../components/ui';
 import type { Tone } from '../components/status';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 const STATUS_TONE: Record<ResearchRunDto['status'], Tone> = {
   proposed: 'warning',
@@ -48,6 +49,7 @@ const STATUS_TONE: Record<ResearchRunDto['status'], Tone> = {
  */
 export function Research({ session }: { session: Session }) {
   const { t } = useTranslation('research');
+  const apiError = useApiErrorMessage(t);
   const queryClient = useQueryClient();
   const [intent, setIntent] = useState('');
   const [run, setRun] = useState<ResearchRunDto | null>(null);
@@ -100,7 +102,7 @@ export function Research({ session }: { session: Session }) {
       setEditedQuery(dto.minimisedQuery);
       await refreshRuns();
     },
-    onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => setError(apiError(e)),
   });
 
   const approve = useMutation({
@@ -111,7 +113,7 @@ export function Research({ session }: { session: Session }) {
       setResults(search.status === 'ok' ? search.results : []);
       await refreshRuns();
     },
-    onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => setError(apiError(e)),
   });
 
   const cancel = useMutation({
@@ -120,7 +122,7 @@ export function Research({ session }: { session: Session }) {
       reset();
       await refreshRuns();
     },
-    onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => setError(apiError(e)),
   });
 
   const capture = useMutation({
@@ -129,7 +131,7 @@ export function Research({ session }: { session: Session }) {
       setError(null);
       setCaptured(response);
     },
-    onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => setError(apiError(e)),
   });
 
   const synthesise = useMutation({
@@ -139,7 +141,7 @@ export function Research({ session }: { session: Session }) {
       setAnswer(dto);
       await refreshRuns();
     },
-    onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => setError(apiError(e)),
   });
 
   const capturedCount = useMemo(

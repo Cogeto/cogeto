@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { sourceTypeDescriptor } from '@cogeto/shared';
 import type {
@@ -10,7 +10,7 @@ import type {
   DashboardStatsDto,
   Principal,
 } from '@cogeto/shared';
-import { DRIZZLE, UserContextService } from '../infrastructure/index';
+import { DRIZZLE, UserContextService, userError } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { attentionDismissal, attentionState } from './persistence/tables';
 import { MemoryReconciliation, MemoryStore } from '../memory/index';
@@ -212,7 +212,7 @@ export class AttentionService {
     // Only digest lines are dismissible; a live count ("3 items in review") is
     // never dismissed — it clears when the work is done, not when hidden.
     if (!key.startsWith('digest:')) {
-      throw new BadRequestException('only digest items can be dismissed');
+      throw userError.badRequest('attention.notDismissible', 'only digest items can be dismissed');
     }
     await this.db
       .insert(attentionDismissal)

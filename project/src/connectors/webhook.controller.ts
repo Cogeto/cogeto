@@ -2,7 +2,6 @@ import {
   Controller,
   Header,
   HttpCode,
-  HttpException,
   HttpStatus,
   Inject,
   Logger,
@@ -12,7 +11,12 @@ import {
   Req,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { DRIZZLE, RateLimitStore, withTransactionalEnqueue } from '../infrastructure/index';
+import {
+  DRIZZLE,
+  RateLimitStore,
+  untranslatedError,
+  withTransactionalEnqueue,
+} from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { Public } from '../identity/index';
 import { ConnectorRegistry } from './connector-registry';
@@ -71,20 +75,20 @@ export class ConnectorWebhookController {
     const raw = Buffer.isBuffer(request.body) ? request.body : Buffer.alloc(0);
     const maxBytes = this.options.webhookMaxBytes ?? WEBHOOK_MAX_BYTES_DEFAULT;
     if (raw.length === 0 || raw.length > maxBytes) {
-      throw new HttpException('refused', HttpStatus.PAYLOAD_TOO_LARGE);
+      throw untranslatedError.tooLarge('refused');
     }
 
     // Cheap refusals first: unknown connector ids and inactive connectors
     // answer 404 before any crypto or rate bookkeeping.
     if (!/^[0-9a-f-]{36}$/i.test(connectorId)) {
-      throw new HttpException('unknown', HttpStatus.NOT_FOUND);
+      throw untranslatedError.notFound('unknown');
     }
     const connector = await this.store.byId(connectorId);
     if (!connector || !SYNCABLE_STATES.includes(connector.state)) {
-      throw new HttpException('unknown', HttpStatus.NOT_FOUND);
+      throw untranslatedError.notFound('unknown');
     }
     const descriptor = this.registry.get(connector.kind);
-    if (!descriptor?.webhook) throw new HttpException('unknown', HttpStatus.NOT_FOUND);
+    if (!descriptor?.webhook) throw untranslatedError.notFound('unknown');
 
     // Durable per-connector rate limit (the email-intake precedent).
     if (this.limiter) {
@@ -97,18 +101,18 @@ export class ConnectorWebhookController {
         windowMs,
         Date.now(),
       );
-      if (count > max) throw new HttpException('slow down', HttpStatus.TOO_MANY_REQUESTS);
+      if (count > max) throw untranslatedError.tooManyRequests('slow down');
     }
 
     // Signature over the raw bytes, before anything is parsed.
     const secret = await this.store.openWebhookSecret(connectorId);
-    if (!secret) throw new HttpException('refused', HttpStatus.FORBIDDEN);
+    if (!secret) throw untranslatedError.forbidden('refused');
     const headers = lowercaseHeaders(request);
     const verdict = verifyWebhookSignature(descriptor.webhook, secret, raw, headers, new Date());
     if (!verdict.ok) {
       // Refusal detail goes to the log (identifiers only), never the caller.
       this.logger.warn(`webhook refused (${verdict.refusal}) for connector ${connectorId}`);
-      throw new HttpException('refused', HttpStatus.FORBIDDEN);
+      throw untranslatedError.forbidden('refused');
     }
 
     // Only now is the body parsed, and only identifiers leave the parse.
@@ -116,10 +120,10 @@ export class ConnectorWebhookController {
     try {
       payload = JSON.parse(raw.toString('utf8'));
     } catch {
-      throw new HttpException('unparseable', HttpStatus.BAD_REQUEST);
+      throw untranslatedError.badRequest('unparseable');
     }
     const event = descriptor.webhook.parseEvent(payload, headers);
-    if (!event) throw new HttpException('unparseable', HttpStatus.BAD_REQUEST);
+    if (!event) throw untranslatedError.badRequest('unparseable');
 
     // Dedup by event id; a duplicate delivery is a harmless 200.
     const enqueued = await this.db.transaction(async (tx) => {
