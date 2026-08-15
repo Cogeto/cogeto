@@ -120,16 +120,19 @@ describe('operator script — CLI contract', () => {
   });
 
   it('upgrade self-heals the PATH install (a re-downloaded script run via `upgrade` must still yield a working `sudo cogeto`)', () => {
-    // A fake installed instance pinned to the target version: upgrade takes
-    // the "already on" early exit — no network, no confirmation — but the
-    // self-install intent must already have been announced.
+    // A fake installed instance pinned to the target version, with no stack:
+    // upgrade stops early — no network, no confirmation — but the self-install
+    // intent must already have been announced.
     const root = mkdtempSync(path.join(tmpdir(), 'cogeto-operator-upgrade-'));
     writeFileSync(path.join(root, '.env'), 'COGETO_VERSION=9.9.9\n', { mode: 0o600 });
     const { status, out } = runScript(['upgrade', '9.9.9', '--check', '--root', root]);
     rmSync(root, { recursive: true, force: true });
     expect(status).toBe(0);
     expect(out).toContain('/usr/local/bin/cogeto');
-    expect(out).toContain('already on v9.9.9');
+    expect(out).toContain('the recorded version is already v9.9.9');
+    // ...and it does NOT report that as a healthy no-op: an instance with no
+    // app container is not fine, and the report says which is which.
+    expect(out).toContain('NOTHING IS RUNNING');
   });
 
   it('backup-info prints the OVHcloud settings (D4) and performs nothing', () => {
@@ -613,6 +616,84 @@ describe('operator script — features', () => {
     rmSync(root, { recursive: true, force: true });
     const lines = r.stdout.trim().split('\n');
     expect(lines).toEqual(['COMPOSE_PROFILES=research', '600']);
+  });
+});
+
+/**
+ * A half-finished upgrade must be RESUMABLE, and the recorded version must
+ * never run ahead of the work it records.
+ *
+ * Observed on a customer instance at v1.7.3: `compose pull` failed, and because
+ * `env_set COGETO_VERSION "$target"` ran BEFORE the pull, `.env` claimed the new
+ * version while 1.7.2 containers kept serving. The next `cogeto upgrade 1.7.3`
+ * compared the target against that claim and answered "already on v1.7.3 —
+ * nothing to do", so the retry path was closed by the failure itself. A failed
+ * upgrade was indistinguishable from a finished one, which is the F1/F2
+ * "tooling that lies" class, in the one subcommand the smoke harness states it
+ * cannot exercise.
+ */
+describe('operator script — a failed upgrade is resumable and never lies about the version', () => {
+  const script = readFileSync(SCRIPT, 'utf8');
+  const upgrade = script.slice(
+    script.indexOf('cmd_upgrade() {'),
+    script.indexOf('# After an upgrade the configured embedding model'),
+  );
+
+  it('the version is recorded only after the containers actually run it', () => {
+    const pull = upgrade.indexOf('compose pull --quiet');
+    const up = upgrade.indexOf('compose up -d --remove-orphans');
+    // The one write before the pull is the correction inside the "already on"
+    // branch, which mutates nothing but the file and only to make it agree with
+    // the containers; it is identified by the early return that follows it.
+    const earlyReturn = upgrade.indexOf('    print_checklist\n    return 0');
+    const writes = [...upgrade.matchAll(/env_set COGETO_VERSION "\$target"/g)].map((m) => m.index!);
+    expect(pull).toBeGreaterThan(-1);
+    expect(up).toBeGreaterThan(-1);
+    expect(writes.length, 'the upgrade path does not record the version at all').toBeGreaterThan(0);
+    // The whole defect in one assertion: no write happens between deciding to
+    // upgrade and the containers actually running the target.
+    const premature = writes.filter((at) => at > earlyReturn && at < up);
+    expect(
+      premature,
+      'the upgrade records the new version before the containers run it, which is what made a failed upgrade look finished',
+    ).toEqual([]);
+    expect(writes.some((at) => at > pull && at > up)).toBe(true);
+    // The pull and the up still see the target, through the exported value
+    // rather than through a premature write to .env.
+    expect(upgrade).toContain('export COGETO_VERSION');
+  });
+
+  it('"nothing to do" is decided by the RUNNING image, not by the file', () => {
+    expect(upgrade).toContain('running="$(running_app_version)"');
+    expect(upgrade).toMatch(/if \[ "\$running" = "\$target" \]; then/);
+    expect(script).toContain("docker inspect -f '{{.Config.Image}}'");
+  });
+
+  it('a recorded version that disagrees with the running one is announced and resumed', () => {
+    expect(upgrade).toContain('INCONSISTENT');
+    expect(upgrade).toContain('Going by what is RUNNING');
+    expect(upgrade).toContain('resume upgrade to ${target}');
+  });
+
+  it('a failed pull, a failed signature check and a failed start each say what happened', () => {
+    // `set -e` used to abort each of these with no message of its own, which
+    // reads to an operator as "it just died".
+    expect(upgrade).toContain('PULLING THE v${target} IMAGES FAILED');
+    expect(upgrade).toContain('sudo docker login');
+    expect(upgrade).toContain('STARTING THE v${target} STACK FAILED');
+    expect(script).toContain('SIGNATURE VERIFICATION FAILED');
+    // And each names the way back, which is the same command they just ran.
+    expect(upgrade).toContain("re-run 'sudo cogeto upgrade ${target}'");
+  });
+
+  it('an instance with no app container is reported as such, not as healthy', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'cogeto-operator-resume-'));
+    writeFileSync(path.join(root, '.env'), 'COGETO_VERSION=9.9.9\n', { mode: 0o600 });
+    const { status, out } = runScript(['upgrade', '9.9.9', '--check', '--root', root]);
+    rmSync(root, { recursive: true, force: true });
+    expect(status).toBe(0);
+    expect(out).toContain('NOTHING IS RUNNING');
+    expect(out).toContain('docker compose up -d');
   });
 });
 
