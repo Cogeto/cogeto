@@ -1,0 +1,198 @@
+{
+  "alias": {
+    "duplicate": "cette paire d'alias est déjà enregistrée",
+    "notFound": "alias {{id}} introuvable",
+    "notNeeded": "ces noms correspondent déjà après normalisation ; aucun alias n'est nécessaire"
+  },
+  "approval": {
+    "emailDraftNotFound": "brouillon de courriel {{id}} introuvable",
+    "notFound": "approbation {{id}} introuvable"
+  },
+  "attention": {
+    "notDismissible": "seuls les éléments du résumé peuvent être ignorés"
+  },
+  "auth": {
+    "demoInitializing": "l'environnement de démonstration démarre encore",
+    "demoUnavailable": "la connexion de démonstration n'est pas disponible",
+    "identityBootstrapping": "l'initialisation de l'identité n'est pas terminée (configuration web indisponible)",
+    "invalidCredentials": "nom d'utilisateur ou mot de passe invalide",
+    "roleRequired": "ce point de terminaison exige le rôle '{{role}}'"
+  },
+  "chat": {
+    "attachmentNotFound": "pièce jointe {{id}} introuvable",
+    "conversationNotFound": "discussion {{id}} introuvable",
+    "messageNotFound": "message {{id}} introuvable",
+    "onlyOwnMessages": "seuls vos propres messages peuvent être retenus : les réponses de l'assistant ne sont jamais capturées",
+    "tooManyConversations_one": "vous avez {{count}} discussion active, archivez-en ou supprimez-en d'abord",
+    "tooManyConversations_many": "vous avez {{count}} discussions actives, archivez-en ou supprimez-en d'abord",
+    "tooManyConversations_other": "vous avez {{count}} discussions actives, archivez-en ou supprimez-en d'abord"
+  },
+  "confluence": {
+    "notConfluenceConnector": "ce n'est pas un connecteur Confluence"
+  },
+  "connector": {
+    "cannotSweep": "un connecteur à l'état {{state}} ne peut pas effectuer de contrôle de présence",
+    "cannotSync": "un connecteur à l'état {{state}} ne peut pas se synchroniser",
+    "erasedItemNotFound": "aucun élément supprimé de ce type",
+    "illegalTransition": "un connecteur à l'état {{from}} ne peut pas passer à l'état {{to}}",
+    "noCustomSubScopes": "ce type de connecteur n'accepte aucun sous-périmètre personnalisé",
+    "noPresenceListing": "ce type de connecteur ne peut pas répertorier la présence à la source",
+    "noWebhook": "ce type de connecteur ne déclare aucun webhook",
+    "notAuthorised": "autorisez d'abord le connecteur",
+    "notFound": "aucun connecteur de ce type",
+    "subScopeKeyMismatch": "la clé ne correspond pas à la forme de sous-périmètre de ce connecteur",
+    "subScopeNotFound": "aucun sous-périmètre de ce type",
+    "unknownKind": "type de connecteur inconnu '{{kind}}'"
+  },
+  "daily_capture_limit": "limite quotidienne de capture atteinte ({{max}}), réessayez demain",
+  "daily_research_limit": "limite quotidienne de recherches atteinte ({{max}}), réessayez demain",
+  "daily_upload_limit": "limite quotidienne de dépôts atteinte ({{max}}), réessayez demain",
+  "email": {
+    "allowlistEntryNotFound": "entrée de liste d'autorisation introuvable",
+    "invalidAddress": "adresse de courriel invalide",
+    "invalidDomain": "domaine invalide (par exemple adriatic-foods.hr)",
+    "notFound": "courriel {{id}} introuvable"
+  },
+  "extractionGate": {
+    "notGateable": "'{{sourceType}}' n'est pas un type de source dont on extrait ; le filtre contrôle : {{gateable}}",
+    "ruleNotFound": "aucune règle de ce type"
+  },
+  "file": {
+    "empty": "le fichier déposé est vide",
+    "exceedsUploadLimit": "le fichier dépasse la limite de dépôt de {{bytes}} octets",
+    "notFound": "fichier {{key}} introuvable",
+    "tooLarge": "le fichier déposé dépasse la limite de taille",
+    "unsupportedType": "type de fichier non pris en charge '{{type}}' : seuls PDF, DOCX, XLSX, CSV, Markdown, texte brut et images sont acceptés"
+  },
+  "import": {
+    "alreadyStarted": "cet import a déjà commencé",
+    "archiveEmpty": "l'archive ne contient aucun fichier",
+    "archiveTooLarge": "l'archive dépasse la limite de taille",
+    "folderEmpty": "le dossier ne contient aucun fichier",
+    "hashMismatch": "les octets déposés ne correspondent pas à l'empreinte du manifeste",
+    "itemNotFound": "élément d'import {{id}} introuvable",
+    "itemNotListed": "l'élément est à l'état {{state}} ; seuls les éléments recensés acceptent des octets",
+    "notReadableZip": "archive ZIP illisible",
+    "nothingToImport": "plus rien à importer après les exclusions",
+    "prefixEmpty": "rien sous ce préfixe",
+    "runNotFound": "import {{id}} introuvable",
+    "s3CredentialsRequired": "des identifiants S3 sont requis pour confirmer",
+    "stagedArchiveUnreadable": "l'archive préparée n'est plus lisible",
+    "tooManyFiles": "trop de fichiers (maximum {{max}}) ; scindez l'import",
+    "uploadsUnfinished_one": "{{count}} fichier n'a pas terminé son envoi",
+    "uploadsUnfinished_many": "{{count}} fichiers n'ont pas terminé leur envoi",
+    "uploadsUnfinished_other": "{{count}} fichiers n'ont pas terminé leur envoi"
+  },
+  "job": {
+    "deadLetterNotFound": "tâche en échec {{id}} introuvable"
+  },
+  "limit": {
+    "rateLimited": "limite de débit atteinte pour {{bucket}}, réessayez dans {{seconds}} s"
+  },
+  "memory": {
+    "alreadyReplacedEdit": "ce souvenir est déjà remplacé ; modifiez plutôt son successeur",
+    "alreadyReplacedSupersede": "ce souvenir est déjà remplacé ; remplacez son successeur",
+    "bulkOutdate": {
+      "notYours_one": "{{count}} souvenir visé ne vous appartient pas et ne peut être modifié",
+      "notYours_many": "{{count}} souvenirs visés ne vous appartiennent pas et ne peuvent être modifiés",
+      "notYours_other": "{{count}} souvenirs visés ne vous appartiennent pas et ne peuvent être modifiés"
+    },
+    "noVerification": "le souvenir {{id}} n'a aucun résultat de vérification",
+    "notFound": "souvenir {{id}} introuvable"
+  },
+  "note": {
+    "notFound": "note {{id}} introuvable"
+  },
+  "passport": {
+    "expired": "l'export {{id}} n'est plus disponible : il a expiré parce qu'une source qu'il pouvait contenir a été supprimée. Demandez un nouvel export.",
+    "notFound": "export {{id}} introuvable",
+    "notReady": "l'export {{id}} n'est pas prêt au téléchargement"
+  },
+  "project": {
+    "assignmentNeedsSourceType": "une affectation de source exige son type de source",
+    "nameRequired": "un projet a besoin d'un nom",
+    "nameTaken": "vous avez déjà un projet portant ce nom",
+    "notFound": "projet {{id}} introuvable",
+    "tooMany_one": "vous avez {{count}} projet actif, archivez-en d'abord",
+    "tooMany_many": "vous avez {{count}} projets actifs, archivez-en d'abord",
+    "tooMany_other": "vous avez {{count}} projets actifs, archivez-en d'abord"
+  },
+  "provider": {
+    "answerModelNotOffered": "ce modèle de réponse ne fait pas partie de ceux que cette instance propose",
+    "apiKeyRequired": "un fournisseur de type {{type}} a besoin d'une clé d'API",
+    "embeddingProbeSilent": "le modèle n'a pas répondu à la sonde d'embedding",
+    "embeddingsNotDirectlyAssignable": "le modèle d'embeddings ne peut pas être affecté directement : chaque vecteur enregistré a été produit par le modèle actuel, et servir un espace d'embeddings mixte fausserait discrètement tous les résultats de recherche. Utilisez la reconstruction des embeddings, qui ré-encode le corpus dans un nouvel index et bascule en une seule fois à la fin.",
+    "embeddingsUnchanged": "c'est déjà le modèle d'embeddings actif",
+    "embeddingsUnsupported": "le fournisseur \"{{label}}\" n'a pas d'API d'embeddings ({{type}})",
+    "endpointInvalid": "le point de terminaison n'est pas une URL valide",
+    "endpointRequired": "ce type de fournisseur exige un point de terminaison",
+    "endpointScheme": "le point de terminaison doit être une URL http ou https",
+    "labelRequired": "un fournisseur a besoin d'un nom",
+    "labelTaken": "un fournisseur nommé \"{{label}}\" existe déjà",
+    "noEmbeddingsApi": "ce type de fournisseur n'a pas d'API d'embeddings",
+    "notFound": "aucun fournisseur de ce type",
+    "probeSilent": "le modèle n'a pas répondu à la sonde",
+    "rebuildExists": "une reconstruction des embeddings existe déjà ; annulez-la ou reprenez-la",
+    "rebuildUnavailable": "la reconstruction gérée n'est pas disponible dans ce processus ; la voie d'exploitation est `{{command}}`",
+    "stillBound": "ce fournisseur assure encore les niveaux {{tiers}} : réaffectez-les d'abord",
+    "tierRequired": "le niveau {{tier}} ne peut pas rester non affecté",
+    "typeNotCreatable": "\"{{type}}\" n'est pas un type de fournisseur que l'on peut créer",
+    "unknownType": "ce fournisseur a un type inconnu",
+    "visionUnsupported": "le fournisseur \"{{label}}\" ne peut pas assurer le niveau vision : la lecture d'images n'est pas implémentée pour les fournisseurs de type {{type}} sur cette instance. Affectez un fournisseur dont le type sait lire les images, ou laissez le niveau vision non affecté et la lecture s'arrêtera à l'OCR."
+  },
+  "receipt": {
+    "notFound": "reçu {{id}} introuvable"
+  },
+  "relation": {
+    "changedSinceDetection": "un souvenir de cette contradiction a changé depuis sa détection ; examinez-le dans Souvenirs, puis écartez-le ou corrigez-le",
+    "memoryGone": "un souvenir de cette paire n'existe plus",
+    "notFound": "relation {{id}} introuvable",
+    "selfPair": "un souvenir ne peut pas être apparié avec lui-même"
+  },
+  "report": {
+    "alreadyGenerating": "un rapport portant sur un autre périmètre est déjà en cours de génération ; attendez qu'il se termine",
+    "dateRangeReversed": "période : la date de début est postérieure à la date de fin",
+    "expired": "le rapport {{id}} n'est plus disponible : il a expiré parce qu'une source qu'il pouvait citer a été supprimée, ou parce que sa durée de conservation est écoulée. Générez un nouveau rapport.",
+    "notFound": "rapport {{id}} introuvable",
+    "notReady": "le rapport {{id}} n'est pas prêt au téléchargement",
+    "projectsUnavailable": "les projets ne sont pas disponibles sur cette instance",
+    "sourcesScopeCapped": "un périmètre de sources est plafonné à 200 sources",
+    "sourcesScopeEmpty": "un périmètre de sources exige au moins une source"
+  },
+  "research": {
+    "alreadyRan": "cette recherche a déjà été menée : sa requête n'est plus conservée",
+    "alreadyRanDifferentQuery": "cette recherche a déjà été menée avec une autre requête approuvée, proposez-en une nouvelle",
+    "blankQuery": "la requête approuvée ne doit pas être vide",
+    "cancelled": "cette recherche a été annulée, proposez-la de nouveau",
+    "captureNeedsApproval": "la capture exige une recherche approuvée",
+    "discoveryNeedsApproval": "l'exploration exige une recherche approuvée",
+    "runNotFound": "aucune recherche de ce type",
+    "synthesisNeedsApproval": "la synthèse exige une recherche approuvée",
+    "synthesisNeedsPages": "capturez au moins une page avant la synthèse"
+  },
+  "research_page_cap": "une seule recherche récupère au plus {{max}} pages",
+  "revision": {
+    "notFound": "lien de révision {{id}} introuvable",
+    "selfLink": "une source ne peut pas être une révision d'elle-même"
+  },
+  "search_unavailable": "le moteur de recherche est indisponible : {{detail}}",
+  "skill": {
+    "alreadyFinished": "cette exécution de compétence est déjà terminée",
+    "decisionOutsidePlan": "une décision renvoie à une requête extérieure à ce plan",
+    "noApprovedQueries": "approuvez au moins une requête, ou annulez l'exécution",
+    "notAwaitingApproval": "cette exécution de compétence n'attend pas l'approbation du plan",
+    "planQueryCap": "un plan de compétence approuve au plus {{max}} requêtes",
+    "runNotFound": "aucune exécution de compétence de ce type",
+    "unknownSkill": "compétence inconnue '{{id}}'"
+  },
+  "source": {
+    "fileNotFound": "source file/{{key}} introuvable",
+    "notFound": "source {{sourceType}}/{{sourceId}} introuvable",
+    "unknownType": "type de source inconnu '{{type}}'"
+  },
+  "sourceContext": {
+    "notExtractable": "'{{sourceType}}' n'est pas un type de source dont on extrait",
+    "notFound": "aucun contexte pour cette source"
+  },
+  "too_many_streams": "trop de flux de discussion simultanés (maximum {{max}})"
+}

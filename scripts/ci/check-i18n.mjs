@@ -33,12 +33,26 @@
  *     registered translation must still name the English it was made from.
  *     See `.translations.json` beside each locale root.
  *
+ *  6. COMPLETENESS (F14). A locale Cogeto ships as supported must actually be
+ *     translated. A value identical to its English source is either an
+ *     untranslated placeholder or one of a small, explicit set of terms that
+ *     are identical BY DESIGN (`i18n-identical.json`). The count is printed
+ *     per locale on success, so a locale cannot drift back to scaffold state
+ *     one merged pull request at a time.
+ *
+ *  7. SERVER ERROR CODES (F13). Every user-facing failure the server raises
+ *     carries a code, and the interface holds one key per code. This reads the
+ *     throw sites (`server-error-codes.mjs`) and holds the `serverErrors`
+ *     namespace to them: no code without a key, no key without a code, and no
+ *     English that has drifted from the sentence at the throw site.
+ *
  * Plus HYGIENE, reported the same way:
  *
  *  5. UNUSED KEYS. A key present in `en` that no source file references.
- *  6. HARDCODED LITERALS. User-visible text in the SPA that never went through
- *     `t()`. See `literalFindings` for exactly what this does and does not
- *     catch; it is a heuristic and says so.
+ *  8. HARDCODED LITERALS. User-visible text that never went through `t()`:
+ *     a heuristic in the SPA, and an exact rule on the server, where the only
+ *     legal way to raise a failure is through `userError`/`untranslatedError`.
+ *     See `literalFindings` for what the SPA half does and does not catch.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -56,9 +70,45 @@ import {
   readTranslations,
   registeredSource,
 } from './i18n-keys.mjs';
+import {
+  API_ERROR_FILE,
+  NEST_EXCEPTION_RE,
+  SERVER_ERROR_NAMESPACE,
+  readServerErrorCodes,
+  serverSourceFiles,
+} from './server-error-codes.mjs';
 
 const problems = [];
 const fail = (message) => problems.push(message);
+
+/** Terms that are the same word in every language. Deliberately small. */
+const IDENTICAL = JSON.parse(readFileSync('scripts/ci/i18n-identical.json', 'utf8'));
+const ROOT_TAG = {
+  'project/web/src/locales': 'web',
+  'project/src/infrastructure/locales': 'server',
+};
+
+/** Every allowlist entry that actually justified an identical value. */
+const identicalUsed = new Set();
+
+function identicalByDesign(root, locale, namespace, key) {
+  const tag = ROOT_TAG[root];
+  const base = baseKey(key);
+  if ((IDENTICAL[tag]?.[namespace] ?? []).includes(base)) {
+    identicalUsed.add(`${tag}/${namespace}/${base}`);
+    return true;
+  }
+  if ((IDENTICAL.perLocale?.[locale]?.[tag]?.[namespace] ?? []).includes(base)) {
+    identicalUsed.add(`${locale}/${tag}/${namespace}/${base}`);
+    return true;
+  }
+  return false;
+}
+
+/** locale -> the values that are still their English source. */
+const untranslated = new Map();
+/** locale -> how many values that locale carries, for the coverage line. */
+const localeTotals = new Map();
 
 // ── 1-4: per-root locale checks ──────────────────────────────────────────────
 
@@ -164,9 +214,17 @@ for (const root of existingRoots()) {
       }
 
       // 5. Source drift: are these words still the English they came from?
+      // 6. Completeness: is this value translated at all?
       for (const [key, value] of target) {
         const english = englishFor(source, key);
         if (typeof english !== 'string' || typeof value !== 'string') continue;
+        localeTotals.set(locale, (localeTotals.get(locale) ?? 0) + 1);
+        if (value === english && !identicalByDesign(root, locale, namespace, key)) {
+          untranslated.set(locale, [
+            ...(untranslated.get(locale) ?? []),
+            `${root}/${locale}/${namespace}.json: "${key}"`,
+          ]);
+        }
         const registered = registeredSource(register, locale, namespace, key);
         if (registered === undefined) {
           // Unregistered means "not translated", and an untranslated value is
@@ -284,6 +342,11 @@ function isReferenced(namespace, key) {
 
 for (const root of existingRoots()) {
   for (const namespace of namespacesIn(root, SOURCE_LOCALE)) {
+    // `serverErrors` is resolved at runtime from a code the server sends
+    // (`t(`serverErrors:${error.code}`)`), so no static scan can see a
+    // reference. Check 7 below proves every one of its keys is live by
+    // matching it against an actual throw site, which is stronger.
+    if (namespace === SERVER_ERROR_NAMESPACE) continue;
     for (const key of flatten(readNamespace(root, SOURCE_LOCALE, namespace)).keys()) {
       if (!isReferenced(namespace, baseKey(key))) {
         fail(
@@ -295,30 +358,130 @@ for (const root of existingRoots()) {
   }
 }
 
-// ── 6: hardcoded literals in the SPA (heuristic, honestly scoped) ────────────
+// ── 7: server error codes (F13) ──────────────────────────────────────────────
 
 /**
- * WHAT THIS CATCHES: multi-word English JSX text between tags, and multi-word
- * English strings assigned to the attributes that render text
- * (`placeholder`, `title`, `aria-label`, `alt`, `label`), in
- * project/web/src, outside specs.
+ * The server's half of the same rule, and the one place this guard is EXACT
+ * rather than heuristic.
+ *
+ * Every user-facing failure is raised through `userError`, which pairs a stable
+ * code with the English sentence. The interface carries one `serverErrors` key
+ * per code. Three ways that can go wrong, all fatal here:
+ *
+ *  - a code with no key: the interface would fall back to English;
+ *  - a key with no code: dead copy a translator would waste time on;
+ *  - a key whose English no longer matches the throw site: the translations
+ *    were made from a sentence the server no longer sends.
+ *
+ * The English lives in two places on purpose (see `infrastructure/api-error.ts`
+ * for why). This is what makes that safe.
+ */
+{
+  const { codes, problems: readProblems } = readServerErrorCodes();
+  for (const problem of readProblems) fail(problem);
+
+  const root = 'project/web/src/locales';
+  const expected = new Map();
+  for (const [code, entry] of codes) {
+    if (entry.forms.one === undefined) expected.set(code, entry.forms.other);
+    else {
+      expected.set(`${code}_one`, entry.forms.one);
+      expected.set(`${code}_other`, entry.forms.other);
+    }
+  }
+  const actual = flatten(readNamespace(root, SOURCE_LOCALE, SERVER_ERROR_NAMESPACE));
+  const remedy = 'Run `npm run i18n:server-errors`, then `npm run i18n:sync`.';
+  for (const [key, english] of expected) {
+    if (!actual.has(key)) {
+      fail(
+        `${root}/${SOURCE_LOCALE}/${SERVER_ERROR_NAMESPACE}.json: MISSING key "${key}" for a ` +
+          `code the server raises (${codes.get(baseKey(key)).file}:${codes.get(baseKey(key)).line}). ` +
+          remedy,
+      );
+    } else if (actual.get(key) !== english) {
+      fail(
+        `${root}/${SOURCE_LOCALE}/${SERVER_ERROR_NAMESPACE}.json: "${key}" has drifted from the ` +
+          `sentence at the throw site.\n` +
+          `      throw site: ${JSON.stringify(english)}\n` +
+          `      locale file: ${JSON.stringify(actual.get(key))}\n` +
+          `      ${remedy}`,
+      );
+    }
+  }
+  for (const key of actual.keys()) {
+    if (!expected.has(key)) {
+      fail(
+        `${root}/${SOURCE_LOCALE}/${SERVER_ERROR_NAMESPACE}.json: ORPHANED key "${key}" ` +
+          `(no throw site raises that code). ${remedy}`,
+      );
+    }
+  }
+}
+
+// ── 8a: no uncoded failure on the server (exact) ─────────────────────────────
+
+/**
+ * The literal scan used to stop at the SPA boundary, which is how 197 English
+ * server sentences stayed invisible to it (F13). On the server the rule can be
+ * exact rather than heuristic, because there is exactly one legal way to raise
+ * an HTTP failure: `userError` (coded, translated) or `untranslatedError`
+ * (declared not to be translated, for a developer error, a machine client, or
+ * text we did not write). Constructing a Nest exception directly bypasses both,
+ * so it is a build error.
+ *
+ * A single deliberate exception is allowed, on a line preceded by
+ * `// i18n-exempt: <reason>`, which makes the decision reviewable in the diff.
+ */
+for (const file of serverSourceFiles()) {
+  if (file === API_ERROR_FILE) continue;
+  const lines = readFileSync(file, 'utf8').split('\n');
+  for (const [index, line] of lines.entries()) {
+    if (!NEST_EXCEPTION_RE.test(line)) continue;
+    if (/^\s*\*/.test(line)) continue; // a doc comment showing the old shape
+    const exempt = lines
+      .slice(Math.max(0, index - 4), index)
+      .some((previous) => previous.includes('i18n-exempt:'));
+    if (exempt) continue;
+    fail(
+      `${file}:${index + 1}: raises an HTTP failure directly. Use ` +
+        '`userError.<kind>(code, english, params)` when a person reads it, or ' +
+        '`untranslatedError.<kind>(message)` when it is a developer error, a machine ' +
+        'client, or text we did not write. See project/src/infrastructure/api-error.ts.',
+    );
+  }
+}
+
+// ── 8b: hardcoded literals in the SPA (heuristic, honestly scoped) ───────────
+
+/**
+ * WHAT THIS CATCHES: English JSX text of two words or more between tags, and
+ * English strings of two words or more assigned to the attributes that render
+ * text (`placeholder`, `title`, `aria-label`, `aria-description`, `alt`,
+ * `label`), in project/web/src, outside specs. The threshold was three words
+ * until F14; two catches "Save changes" and "No results yet", which three
+ * missed, and it produced no false positive on the current tree.
  *
  * WHAT THIS DOES NOT CATCH, stated plainly rather than papered over:
  *
  *  - single words ("Save", "Cancel"): indistinguishable from identifiers,
  *    class names, enum values and CSS tokens at this level of analysis;
- *  - text built at runtime from variables;
- *  - strings passed as ordinary function arguments or object values;
- *  - anything outside the SPA.
+ *  - text built at runtime from variables, including a template literal;
+ *  - strings passed as ordinary function arguments or object values, which is
+ *    where a reintroduced literal is most likely to hide today;
+ *  - text inside a `<Trans>` child element;
+ *  - the server's non-HTTP output: log lines, prompt assembly, the receipt and
+ *    report payloads, and the CLI. Those are not copy, and treating them as
+ *    copy would bury the real findings.
  *
- * It is a regression net for the common shape of a reintroduced literal, not a
- * proof of coverage. Key sync (check 1) and the missing-key reporter are the
- * checks that carry weight; this one raises the floor.
+ * The server side (8a) is exact; this one is a regression net for the common
+ * shape of a reintroduced literal, not a proof of coverage. Key sync (check 1),
+ * the completeness count (check 6) and the code parity (check 7) are the checks
+ * that carry weight; this one raises the floor.
  */
-const TEXT_ATTRIBUTES = ['placeholder', 'title', 'aria-label', 'alt', 'label'];
-const jsxTextRe = />\s*([A-Z][A-Za-z'’,.!?:;-]*(?:\s+[A-Za-z'’,.!?:;-]+){2,})\s*</g;
+const TEXT_ATTRIBUTES = ['placeholder', 'title', 'aria-label', 'aria-description', 'alt', 'label'];
+const jsxTextRe = />\s*([A-Z][A-Za-z'’,.!?:;-]*(?:\s+[A-Za-z'’,.!?:;-]+){1,})\s*</g;
 const attrRe = new RegExp(
-  `\\b(${TEXT_ATTRIBUTES.join('|')})=["']([A-Za-z][^"']*\\s+[^"']*\\s+[^"']*)["']`,
+  `\\b(${TEXT_ATTRIBUTES.join('|')})=["']([A-Za-z][^"']*\\s+[^"']*)["']`,
   'g',
 );
 
@@ -337,6 +500,54 @@ for (const [path, text] of sources) {
 
 // ── Report ───────────────────────────────────────────────────────────────────
 
+// The allowlist stays small because a dead entry is a build error. An entry
+// that no longer excuses anything is either a key that has since been
+// translated, or a typo that was silently doing nothing.
+for (const [tag, namespaces] of Object.entries(IDENTICAL)) {
+  if (tag === '//' || tag === 'perLocale') continue;
+  for (const [namespace, keys] of Object.entries(namespaces)) {
+    for (const key of keys) {
+      if (!identicalUsed.has(`${tag}/${namespace}/${key}`)) {
+        fail(
+          `scripts/ci/i18n-identical.json: "${tag}.${namespace}.${key}" excuses nothing. ` +
+            'Every locale has translated it, or it does not exist. Remove the entry.',
+        );
+      }
+    }
+  }
+}
+for (const [locale, tags] of Object.entries(IDENTICAL.perLocale ?? {})) {
+  for (const [tag, namespaces] of Object.entries(tags)) {
+    for (const [namespace, keys] of Object.entries(namespaces)) {
+      for (const key of keys) {
+        if (!identicalUsed.has(`${locale}/${tag}/${namespace}/${key}`)) {
+          fail(
+            `scripts/ci/i18n-identical.json: "perLocale.${locale}.${tag}.${namespace}.${key}" ` +
+              'excuses nothing. Remove the entry.',
+          );
+        }
+      }
+    }
+  }
+}
+
+// A locale Cogeto ships as supported is translated, or it is not supported.
+// Reported last and in full: the count is the number that matters, and the
+// first twenty keys are enough to start on.
+for (const [locale, keys] of [...untranslated].sort()) {
+  fail(
+    `${locale}: ${keys.length} value(s) are still their English source, so this locale is ` +
+      'not translated.\n' +
+      keys
+        .slice(0, 20)
+        .map((key) => `        ${key}`)
+        .join('\n') +
+      (keys.length > 20 ? `\n        … and ${keys.length - 20} more` : '') +
+      '\n      Translate them, or add a term that is identical BY DESIGN to ' +
+      'scripts/ci/i18n-identical.json.',
+  );
+}
+
 if (problems.length > 0) {
   console.error(`check-i18n: ${problems.length} problem(s).\n`);
   for (const problem of problems) console.error(`  ${problem}`);
@@ -344,7 +555,15 @@ if (problems.length > 0) {
   process.exit(1);
 }
 
-const summary = existingRoots()
-  .map((root) => `${root}: ${localesIn(root).join(', ')}`)
+// The coverage line is printed on SUCCESS, deliberately: the number is what a
+// reader of the build log can compare against last week's, and a locale that
+// starts sliding back toward scaffold state shows up here before it shows up
+// on a screen.
+const coverage = [...localeTotals]
+  .sort()
+  .map(([locale, total]) => `${locale} ${total - (untranslated.get(locale)?.length ?? 0)}/${total}`)
   .join(' · ');
-console.log(`check-i18n: locales in sync (${summary}).`);
+console.log(
+  `check-i18n: ${localeTotals.size} locales in sync and fully translated (${coverage} values ` +
+    `translated, ${identicalUsed.size} identical by design).`,
+);

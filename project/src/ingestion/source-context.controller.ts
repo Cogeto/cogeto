@@ -1,20 +1,10 @@
-import {
-  Body,
-  Controller,
-  Get,
-  NotFoundException,
-  Param,
-  Put,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Put, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { sourceTypeDescriptor } from '@cogeto/shared';
 import type { SourceContextDto } from '@cogeto/shared';
-import { BadRequestException } from '@nestjs/common';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
-import { parseOrBadRequest } from '../infrastructure/index';
+import { parseOrBadRequest, userError } from '../infrastructure/index';
 import { SourceContextStore } from './persistence/source-context.store';
 import type { SourceContextRow } from './persistence/tables';
 
@@ -55,7 +45,8 @@ export class SourceContextController {
   ): Promise<SourceContextDto> {
     assertRegistered(sourceType);
     const row = await this.store.getForOwner(request.principal, sourceType, sourceId);
-    if (!row) throw new NotFoundException('no source context for this source');
+    if (!row)
+      throw userError.notFound('sourceContext.notFound', 'no source context for this source');
     return toDto(row);
   }
 
@@ -86,7 +77,11 @@ export class SourceContextController {
 function assertRegistered(sourceType: string): void {
   const descriptor = sourceTypeDescriptor(sourceType);
   if (!descriptor || descriptor.defunct || !descriptor.extraction) {
-    throw new BadRequestException(`'${sourceType}' is not an extraction-capable source type`);
+    throw userError.badRequest(
+      'sourceContext.notExtractable',
+      "'{{sourceType}}' is not an extraction-capable source type",
+      { sourceType },
+    );
   }
 }
 

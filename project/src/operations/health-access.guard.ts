@@ -1,4 +1,4 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
 import type { HealthCheck, HealthReport } from '@cogeto/shared';
@@ -6,6 +6,7 @@ import { IdentityService } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { OPERATIONS_OPTIONS } from './operations.options';
 import type { OperationsOptions } from './operations.options';
+import { untranslatedError } from '../infrastructure/index';
 
 /**
  * The request as this guard leaves it: the principal when one authenticated,
@@ -61,7 +62,7 @@ export class HealthAccessGuard implements CanActivate {
 
     const header = request.headers.authorization;
     if (!header?.startsWith('Bearer ')) {
-      throw new UnauthorizedException('missing bearer token');
+      throw untranslatedError.unauthorized('missing bearer token');
     }
     request.principal = await this.identity.resolvePrincipal(header.slice('Bearer '.length));
     request.healthDetail = request.principal.roles.includes(this.config.adminRole);

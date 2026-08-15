@@ -27,10 +27,10 @@
   },
   "capability": {
     "models": {
-      "name": "Models",
-      "description": "The model providers and per-tier assignments this instance runs, managed under Providers and stored in the database.",
-      "consequence": "The model configuration is reported as broken; check the Providers page.",
-      "enable": "Add a provider and assign the tiers under Providers in the left rail."
+      "name": "Modeli",
+      "description": "Pružatelji modela i dodjele po razinama koje ova instanca koristi, uređuju se pod Pružatelji i pohranjeni su u bazi podataka.",
+      "consequence": "Konfiguracija modela prijavljena je kao neispravna; provjerite stranicu Pružatelji.",
+      "enable": "Dodajte pružatelja i dodijelite razine pod Pružatelji u lijevoj traci."
     },
     "redaction": {
       "name": "Redakcija",
@@ -58,22 +58,22 @@
       "consequence": "Konzole su omogućene, ali ne odgovaraju."
     },
     "reasoning": {
-      "name": "Reasoning model",
-      "description": "Detects, by probing with a real prompt, whether the model thinks in a separate reasoning channel before answering. When it does, token caps are enlarged so the thinking cannot silently consume the answer's budget. Off simply means the model answers directly.",
-      "consequence": "Reasoning could not be determined: token caps stay unenlarged, and a reasoning model may return empty answers until a probe succeeds.",
-      "enable": "Comes on by itself when the assigned answer model returns separate reasoning; there is nothing to enable by hand."
+      "name": "Model s rasuđivanjem",
+      "description": "Stvarnim upitom provjerava rasuđuje li model u zasebnom kanalu prije odgovora. Ako rasuđuje, ograničenja tokena se povećavaju kako rasuđivanje ne bi neprimjetno potrošilo proračun odgovora. Isključeno jednostavno znači da model odgovara izravno.",
+      "consequence": "Rasuđivanje nije bilo moguće utvrditi: ograničenja tokena ostaju nepovećana i model s rasuđivanjem može vraćati prazne odgovore dok provjera ne uspije.",
+      "enable": "Uključuje se samo kada dodijeljeni model za odgovore vrati zasebno rasuđivanje; nema se što ručno uključiti."
     },
     "vision": {
-      "name": "Reading pictures",
-      "description": "Reads pages that are images: scans, photographs, drawings and schematics. Cheapest first, so a page with real text is never sent to a model. Off means those pages are labelled unreadable instead of silently empty.",
+      "name": "Čitanje slika",
+      "description": "Čita stranice koje su slike: skenove, fotografije, crteže i sheme. Najprije najjeftinijim putem, pa se stranica sa stvarnim tekstom nikada ne šalje modelu. Isključeno znači da se takve stranice označavaju kao nečitljive umjesto da tiho ostanu prazne.",
       "consequence": "Vision is configured but not working: pages that are pictures cannot be read, and they are labelled as needing it rather than shown as processed.",
-      "enable": "Assign a vision provider and model under Models in the interface."
+      "enable": "Dodijelite pružatelja i model za vid pod Modeli u sučelju."
     },
     "connectors": {
-      "name": "Connectors",
-      "description": "Syncs content from connected external systems into sources, so what changes outside this instance is captured and verified here.",
-      "consequence": "A connector needs attention: syncing for it is degraded or stopped until it is reconnected.",
-      "enable": "Add a connector under Connections in the interface."
+      "name": "Konektori",
+      "description": "Sinkronizira sadržaj iz povezanih vanjskih sustava u izvore, pa se ono što se promijeni izvan ove instance ovdje spremi i provjeri.",
+      "consequence": "Konektor traži pozornost: sinkronizacija za njega je otežana ili zaustavljena dok se ponovno ne poveže.",
+      "enable": "Dodajte konektor pod Veze u sučelju."
     }
   },
   "job": {
@@ -87,10 +87,10 @@
     }
   },
   "reindex": {
-    "name": "Embedding rebuild",
-    "running": "In progress",
-    "finalizing": "Finalizing",
-    "failed": "Stopped",
-    "progress": "Re-embedding the corpus to {{model}}: {{done}} of {{total}} memories."
+    "name": "Ponovna izgradnja ugrađivanja",
+    "running": "U tijeku",
+    "finalizing": "Dovršavanje",
+    "failed": "Zaustavljeno",
+    "progress": "Ponovno ugrađivanje korpusa u {{model}}: {{done}} od {{total}} sjećanja."
   }
 }

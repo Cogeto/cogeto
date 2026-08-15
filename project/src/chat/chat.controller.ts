@@ -1,10 +1,7 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
-  HttpException,
-  HttpStatus,
   Inject,
   Param,
   ParseUUIDPipe,
@@ -34,10 +31,12 @@ import type {
 import { MAX_CHAT_ATTACHMENTS } from '@cogeto/shared';
 import {
   DRIZZLE,
+  parseOrBadRequest,
   RateLimit,
   RateLimitGuard,
   SSE_LIMITS,
-  parseOrBadRequest,
+  untranslatedError,
+  userError,
 } from '../infrastructure/index';
 import type { Db, SseLimits } from '../infrastructure/index';
 import { BearerAuthGuard } from '../identity/index';
@@ -141,7 +140,7 @@ export class ChatController {
   @UseInterceptors(DocumentUploadInterceptor)
   async attach(@Req() request: AuthenticatedRequest): Promise<ChatAttachmentCreatedDto> {
     const file = request.file;
-    if (!file) throw new BadRequestException('no file provided (field name must be "file")');
+    if (!file) throw untranslatedError.badRequest('no file provided (field name must be "file")');
     const parsed = parseOrBadRequest(attachSchema, request.body ?? {});
     const attachment = await this.attachments.attach(
       request.principal,
@@ -328,14 +327,10 @@ export class ChatController {
     const userId = request.principal.userId;
     const active = this.activeStreams.get(userId) ?? 0;
     if (this.sse.maxConcurrentPerPrincipal > 0 && active >= this.sse.maxConcurrentPerPrincipal) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.TOO_MANY_REQUESTS,
-          error: 'Too Many Requests',
-          code: 'too_many_streams',
-          message: `too many concurrent chat streams (max ${this.sse.maxConcurrentPerPrincipal})`,
-        },
-        HttpStatus.TOO_MANY_REQUESTS,
+      throw userError.tooManyRequests(
+        'too_many_streams',
+        'too many concurrent chat streams (max {{max}})',
+        { max: this.sse.maxConcurrentPerPrincipal },
       );
     }
     this.activeStreams.set(userId, active + 1);

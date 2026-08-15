@@ -1,50 +1,50 @@
 {
-  "title": "Reports",
+  "title": "Rapports",
   "trigger": {
-    "title": "Generate a findings report",
-    "explainer": "A findings run examines a stated scope and produces a signed, printable report: every finding with both verbatim passages and their exact locations, what could not be read, and what was withheld. The PDF is for people; the JSON is the signed record a third party can verify.",
-    "scopeLabel": "Scope",
-    "importLabel": "Import to report on",
-    "importPlaceholder": "Choose an import",
-    "fromLabel": "From date",
-    "toLabel": "To date",
-    "button": "Generate report"
+    "title": "Générer un rapport de constats",
+    "explainer": "Une analyse de constats examine un périmètre défini et produit un rapport signé et imprimable : chaque constat avec les deux passages littéraux et leur emplacement exact, ce qui n'a pas pu être lu et ce qui a été écarté. Le PDF s'adresse aux personnes ; le JSON est l'enregistrement signé qu'un tiers peut vérifier.",
+    "scopeLabel": "Périmètre",
+    "importLabel": "Import à analyser",
+    "importPlaceholder": "Choisir un import",
+    "fromLabel": "Date de début",
+    "toLabel": "Date de fin",
+    "button": "Générer le rapport"
   },
   "scope": {
-    "corpus": "Everything in this workspace",
-    "import": "One import",
-    "sources": "Selected sources",
-    "date_range": "A date range"
+    "corpus": "Tout cet espace de travail",
+    "import": "Un import",
+    "sources": "Sources sélectionnées",
+    "date_range": "Une période"
   },
   "status": {
-    "pending": "Queued",
-    "ready": "Ready",
-    "failed": "Failed",
-    "expired": "Expired",
+    "pending": "En file d'attente",
+    "ready": "Prêt",
+    "failed": "Échec",
+    "expired": "Expiré",
     "stage": {
-      "enumerating": "Listing sources",
-      "assembling": "Assembling",
-      "rendering": "Rendering",
-      "signing": "Signing",
-      "uploading": "Storing"
+      "enumerating": "Recensement des sources",
+      "assembling": "Assemblage",
+      "rendering": "Mise en page",
+      "signing": "Signature",
+      "uploading": "Enregistrement"
     }
   },
   "progress": {
-    "assembling": "Examined {{done}} of {{total}} sources"
+    "assembling": "{{done}} sources examinées sur {{total}}"
   },
-  "countsLine": "Sources examined: {{sources}} · facts: {{facts}} · open findings: {{open}} · withheld: {{withheld}} · not fully read: {{notFullyRead}}",
+  "countsLine": "Sources examinées : {{sources}} · faits : {{facts}} · constats ouverts : {{open}} · écartés : {{withheld}} · non lus intégralement : {{notFullyRead}}",
   "delta": {
-    "firstRun": "First report over this scope; changes will show from the next run.",
-    "sincePrevious": "Since the previous run: {{resolved}} resolved, {{appeared}} new, {{reopened}} reopened."
+    "firstRun": "Premier rapport sur ce périmètre ; les évolutions apparaîtront dès la prochaine analyse.",
+    "sincePrevious": "Depuis l'analyse précédente : {{resolved}} résolus, {{appeared}} nouveaux, {{reopened}} rouverts."
   },
   "download": {
-    "pdf": "Download PDF",
-    "json": "Download JSON"
+    "pdf": "Télécharger le PDF",
+    "json": "Télécharger le JSON"
   },
-  "expiredNote": "This report is no longer downloadable: a source it may have quoted was deleted, or its retention window passed. The run record stays for comparison; generate a new report for current findings.",
+  "expiredNote": "Ce rapport n'est plus téléchargeable : une source qu'il a pu citer a été supprimée, ou sa durée de conservation est écoulée. L'enregistrement de l'analyse reste disponible pour comparaison ; générez un nouveau rapport pour les constats actuels.",
   "list": {
-    "title": "Past runs",
-    "emptyTitle": "No reports yet",
-    "emptyHint": "Generate a report to get a signed, forwardable record of the contradictions in your documents, with the evidence quoted and located."
+    "title": "Analyses passées",
+    "emptyTitle": "Aucun rapport",
+    "emptyHint": "Générez un rapport pour obtenir un enregistrement signé et transmissible des contradictions présentes dans vos documents, avec les preuves citées et localisées."
   }
 }

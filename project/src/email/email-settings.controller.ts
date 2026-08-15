@@ -5,7 +5,6 @@ import {
   Get,
   HttpCode,
   Inject,
-  NotFoundException,
   Param,
   Post,
   Req,
@@ -18,7 +17,7 @@ import type { AuthenticatedRequest } from '../identity/index';
 import { EmailAllowlistService } from './email-allowlist.service';
 import { MAIL_OPTIONS } from './mail-options';
 import type { MailOptions } from './mail-options';
-import { parseOrBadRequest } from '../infrastructure/index';
+import { parseOrBadRequest, userError } from '../infrastructure/index';
 
 const addEntrySchema = z.object({
   kind: z.enum(['address', 'domain']),
@@ -68,6 +67,7 @@ export class EmailSettingsController {
   @HttpCode(204)
   async removeEntry(@Req() request: AuthenticatedRequest, @Param('id') id: string): Promise<void> {
     const removed = await this.allowlist.removeEntry(request.principal, id);
-    if (!removed) throw new NotFoundException('allowlist entry not found');
+    if (!removed)
+      throw userError.notFound('email.allowlistEntryNotFound', 'allowlist entry not found');
   }
 }

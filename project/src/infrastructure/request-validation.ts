@@ -1,5 +1,5 @@
-import { BadRequestException } from '@nestjs/common';
 import type { ZodType } from 'zod';
+import { untranslatedError } from './api-error';
 
 /**
  * Validate a request body or query at the boundary, or 400 with the schema's
@@ -30,7 +30,9 @@ import type { ZodType } from 'zod';
 export function parseOrBadRequest<T>(schema: ZodType<T, unknown>, value: unknown): T {
   const parsed = schema.safeParse(value);
   if (!parsed.success) {
-    throw new BadRequestException(parsed.error.issues.map((issue) => issue.message).join('; '));
+    throw untranslatedError.badRequest(
+      parsed.error.issues.map((issue) => issue.message).join('; '),
+    );
   }
   return parsed.data;
 }

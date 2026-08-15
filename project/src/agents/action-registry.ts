@@ -1,8 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { MemoryStore } from '../memory/index';
 import type { ActionDefinition } from './action-types';
 import { buildBulkOutdateAction } from './actions/bulk-outdate.action';
 import { buildEmailReplyDraftAction } from './actions/email-reply-draft.action';
+import { untranslatedError } from '../infrastructure/index';
 
 @Injectable()
 export class ActionRegistry {
@@ -20,7 +21,7 @@ export class ActionRegistry {
 
   get(actionType: string): ActionDefinition {
     const def = this.byType.get(actionType);
-    if (!def) throw new BadRequestException(`unknown action type '${actionType}'`);
+    if (!def) throw untranslatedError.badRequest(`unknown action type '${actionType}'`);
     return def;
   }
 
@@ -29,7 +30,7 @@ export class ActionRegistry {
     const def = this.get(actionType);
     const parsed = def.schema.safeParse(raw);
     if (!parsed.success) {
-      throw new BadRequestException(
+      throw untranslatedError.badRequest(
         `invalid payload for '${actionType}': ${parsed.error.issues.map((i) => i.message).join('; ')}`,
       );
     }

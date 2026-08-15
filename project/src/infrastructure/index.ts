@@ -72,6 +72,10 @@ export { buildContextBlock, formatNow } from './context-block';
 // The server-side copy catalogue (V2.0 item 3.5): the words Cogeto writes on
 // its own, keyed and per-locale. Not prompt assembly, not log lines.
 export { serverT, serverTranslator } from './i18n';
+// Every HTTP failure this server raises (F13). `userError` carries a code the
+// interface translates; `untranslatedError` is the declared opposite.
+export { userError, untranslatedError } from './api-error';
+export type { ApiErrorKind, UserErrorFactory, UntranslatedErrorFactory } from './api-error';
 // Abuse/DoS limits (:). Types + tokens live here so the
 // guards enforce them inside domain modules without importing an entrypoint.
 export {

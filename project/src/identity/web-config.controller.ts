@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Inject,
-  Post,
-  ServiceUnavailableException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Body, Controller, Get, Inject, Post } from '@nestjs/common';
 import { readFile } from 'node:fs/promises';
 import { timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
@@ -15,6 +7,7 @@ import { Public } from './public.decorator';
 import { WEB_CONFIG_OPTIONS } from './identity-options';
 import type { WebConfigOptions } from './identity-options';
 import { readDemoLogin } from './demo-login';
+import { userError } from '../infrastructure/index';
 
 const demoLoginSchema = z.object({
   username: z.string().min(1),
@@ -57,22 +50,27 @@ export class WebConfigController {
     // session — mirror the GET fail-closed gate so a customer/production
     // instance exposes nothing (existence is not leaked: same 401 either way).
     if (this.config.production || !this.config.demoMode) {
-      throw new UnauthorizedException('demo login is not available');
+      throw userError.unauthorized('auth.demoUnavailable', 'demo login is not available');
     }
     const parsed = demoLoginSchema.safeParse(body);
-    if (!parsed.success) throw new UnauthorizedException('invalid username or password');
+    if (!parsed.success)
+      throw userError.unauthorized('auth.invalidCredentials', 'invalid username or password');
 
     const creds = await readDemoLogin(this.config.demoSessionFile);
     const token = await this.readDemoToken();
     if (!creds || !token) {
-      throw new UnauthorizedException('the demo sandbox is still initializing');
+      throw userError.unauthorized(
+        'auth.demoInitializing',
+        'the demo sandbox is still initializing',
+      );
     }
     // Constant-time comparison so a wrong password cannot be timed out char by
     // char. The generated password is long/random, so this is belt-and-braces.
     const ok =
       safeEqual(parsed.data.username, creds.username) &&
       safeEqual(parsed.data.password, creds.password);
-    if (!ok) throw new UnauthorizedException('invalid username or password');
+    if (!ok)
+      throw userError.unauthorized('auth.invalidCredentials', 'invalid username or password');
     return { accessToken: token };
   }
 
@@ -85,7 +83,8 @@ export class WebConfigController {
       }
       return { issuer: parsed.issuer, clientId: parsed.clientId };
     } catch {
-      throw new ServiceUnavailableException(
+      throw userError.unavailable(
+        'auth.identityBootstrapping',
         'identity bootstrap has not completed yet (web config unavailable)',
       );
     }

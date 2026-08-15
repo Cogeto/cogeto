@@ -34,6 +34,7 @@ import {
   SkeletonRows,
 } from '../components/ui';
 import { formatPercent } from '../i18n/format';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 /**
  * The model assignment page (V2.4 item 7.1): four rows, one per tier.
@@ -199,6 +200,7 @@ function TierRow({
   rebuild: EmbeddingRebuildStatusDto | null;
 }) {
   const { t } = useTranslation('providers');
+  const apiError = useApiErrorMessage(t);
   const queryClient = useQueryClient();
   const [providerId, setProviderId] = useState(assignment.providerId ?? '');
   const [model, setModel] = useState(assignment.model ?? '');
@@ -251,7 +253,7 @@ function TierRow({
       setFailure(null);
       await invalidate();
     },
-    onError: (error: Error) => setFailure(error.message),
+    onError: (error: Error) => setFailure(apiError(error)),
   });
   const reviewRebuild = useMutation({
     mutationFn: () => planEmbeddingsRebuild(session, { providerId, model: model.trim() }),
@@ -259,7 +261,7 @@ function TierRow({
       setFailure(null);
       setPlan(result);
     },
-    onError: (error: Error) => setFailure(error.message),
+    onError: (error: Error) => setFailure(apiError(error)),
   });
   const confirmRebuild = useMutation({
     mutationFn: () => beginEmbeddingsRebuild(session, { providerId, model: model.trim() }),
@@ -268,7 +270,7 @@ function TierRow({
       setPlan(null);
       await invalidate();
     },
-    onError: (error: Error) => setFailure(error.message),
+    onError: (error: Error) => setFailure(apiError(error)),
   });
 
   const provider = providers.find((candidate) => candidate.id === assignment.providerId);
@@ -469,6 +471,7 @@ function EmbeddingRebuildPanel({
   onChanged: () => Promise<void>;
 }) {
   const { t } = useTranslation('providers');
+  const apiError = useApiErrorMessage(t);
   const [failure, setFailure] = useState<string | null>(null);
   const cancel = useMutation({
     mutationFn: () => cancelEmbeddingsRebuild(session),
@@ -476,7 +479,7 @@ function EmbeddingRebuildPanel({
       setFailure(null);
       await onChanged();
     },
-    onError: (error: Error) => setFailure(error.message),
+    onError: (error: Error) => setFailure(apiError(error)),
   });
   const resume = useMutation({
     mutationFn: () => resumeEmbeddingsRebuild(session),
@@ -484,7 +487,7 @@ function EmbeddingRebuildPanel({
       setFailure(null);
       await onChanged();
     },
-    onError: (error: Error) => setFailure(error.message),
+    onError: (error: Error) => setFailure(apiError(error)),
   });
 
   const total = Math.max(rebuild.factsTotal, 1);
@@ -579,6 +582,7 @@ function AnswerOptionsSection({
   providers: ProviderDto[];
 }) {
   const { t } = useTranslation('providers');
+  const apiError = useApiErrorMessage(t);
   const queryClient = useQueryClient();
   const [providerId, setProviderId] = useState('');
   const [model, setModel] = useState('');
@@ -595,7 +599,7 @@ function AnswerOptionsSection({
       setFailure(null);
       await invalidate();
     },
-    onError: (error: Error) => setFailure(error.message),
+    onError: (error: Error) => setFailure(apiError(error)),
   });
   const remove = useMutation({
     mutationFn: (id: string) => removeAnswerOption(session, id),

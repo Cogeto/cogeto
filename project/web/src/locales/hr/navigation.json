@@ -2,7 +2,7 @@
   "landmark": "Glavno",
   "section": {
     "dashboard": "Nadzorna ploča",
-    "sources": "Sources",
+    "sources": "Izvori",
     "chat": "Razgovor",
     "research": "Istraživanje",
     "skills": "Vještine",
@@ -15,7 +15,7 @@
     "models": "Modeli",
     "system": "Sustav",
     "settings": "Postavke",
-    "reports": "Reports"
+    "reports": "Izvještaji"
   },
   "badge": {
     "items": "stavke",

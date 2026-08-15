@@ -8,20 +8,20 @@
   "answer": {
     "attribution": "Cogeto · iz vašeg pamćenja",
     "askedByAt": "Vi · {{time}}",
-    "stopped": "Stopped. This answer is what had been written when you stopped it.",
-    "sources": "Sources",
-    "copy": "Copy answer",
-    "copied": "Copied",
+    "stopped": "Zaustavljeno. Ovaj je odgovor ono što je bilo napisano kada ste ga zaustavili.",
+    "sources": "Izvori",
+    "copy": "Kopiraj odgovor",
+    "copied": "Kopirano",
     "sourcesSummary": "{{documents}}, {{facts}}",
-    "documentCount_one": "{{count}} document",
-    "documentCount_few": "{{count}} documents",
-    "documentCount_other": "{{count}} documents",
-    "factCount_one": "{{count}} fact",
-    "factCount_few": "{{count}} facts",
-    "factCount_other": "{{count}} facts",
-    "factsFrom_one": "{{count}} fact",
-    "factsFrom_few": "{{count}} facts",
-    "factsFrom_other": "{{count}} facts"
+    "documentCount_one": "{{count}} dokument",
+    "documentCount_few": "{{count}} dokumenta",
+    "documentCount_other": "{{count}} dokumenata",
+    "factCount_one": "{{count}} činjenica",
+    "factCount_few": "{{count}} činjenice",
+    "factCount_other": "{{count}} činjenica",
+    "factsFrom_one": "{{count}} činjenica",
+    "factsFrom_few": "{{count}} činjenice",
+    "factsFrom_other": "{{count}} činjenica"
   },
   "empty": {
     "title": "Pitajte svoje pamćenje.",
@@ -42,8 +42,8 @@
     "label": "Postavite pitanje",
     "placeholder": "Pitajte svoje pamćenje…",
     "send": "Pošalji",
-    "stop": "Stop generating",
-    "stopHint": "Stops the answer and keeps what has been written so far.",
+    "stop": "Zaustavi generiranje",
+    "stopHint": "Zaustavlja odgovor i zadržava ono što je dosad napisano.",
     "hint": "Enter za slanje · Shift+Enter za novi redak · svaka tvrdnja pokazuje što može dokazati"
   },
   "remember": {
@@ -62,7 +62,7 @@
     "alwaysTitle": "Cogeto će odsad automatski provjeravati web. To možete isključiti u Postavkama."
   },
   "ambiguity": {
-    "alternatives": "Multiple matches in your sources"
+    "alternatives": "Više podudaranja u vašim izvorima"
   },
   "citation": {
     "unresolved": "izvor",
@@ -85,9 +85,9 @@
       "label": "model",
       "title": "Znanje modela, nije iz vaših izvora. Cogeto to označava kako biste uvijek znali koje tvrdnje može dokazati.",
       "ariaLabel": "znanje modela, nije iz vaših izvora",
-      "entry": "Model knowledge: part of this answer comes from the model's general knowledge, not from your memory."
+      "entry": "Znanje modela: dio ovog odgovora dolazi iz općeg znanja modela, a ne iz vašeg sjećanja."
     },
-    "refScreenReader": "source {{index}}"
+    "refScreenReader": "izvor {{index}}"
   },
   "conversation": {
     "untitled": "Novi razgovor",
@@ -122,59 +122,63 @@
     }
   },
   "reasoning": {
-    "heading": "Thinking",
-    "streaming": "Thinking, streaming live",
-    "toggleOn": "Thinking on",
-    "toggleOff": "Thinking off"
+    "heading": "Razmišljanje",
+    "streaming": "Razmišlja, prikaz uživo",
+    "toggleOn": "Razmišljanje uključeno",
+    "toggleOff": "Razmišljanje isključeno"
   },
   "attachment": {
-    "attachLabel": "Attach a file",
-    "transientToggle": "Don't remember this file",
-    "transientChip": "this conversation only",
-    "transientMeaning": "Used only in this conversation: the file is read once, its bytes are discarded right after, and the extracted text stays with this conversation until you delete the conversation. It never becomes a source or a memory, and no other conversation can see it.",
-    "durableHint": "This file will be added to your sources: read, its facts extracted and verified, kept with full provenance.",
-    "removeStaged": "Remove",
+    "attachLabel": "Priloži datoteku",
+    "transientToggle": "Ne pamti ovu datoteku",
+    "transientChip": "samo ovaj razgovor",
+    "transientMeaning": "Koristi se samo u ovom razgovoru: datoteka se pročita jednom, njezin se sadržaj odmah zatim odbacuje, a izdvojeni tekst ostaje uz ovaj razgovor dok ga ne izbrišete. Nikada ne postaje izvor ni sjećanje i nijedan je drugi razgovor ne vidi.",
+    "durableHint": "Ova će datoteka biti dodana vašim izvorima: pročitana, njezine činjenice izdvojene i provjerene, sačuvana s potpunim podrijetlom.",
+    "removeStaged": "Ukloni",
     "stage": {
-      "queued": "Queued",
-      "reading": "Reading",
-      "extracting": "Extracting facts",
-      "verifying": "Verifying",
-      "storing": "Storing"
+      "queued": "U redu čekanja",
+      "reading": "Čitanje",
+      "extracting": "Izdvajanje činjenica",
+      "verifying": "Provjera",
+      "storing": "Pohranjivanje"
     },
-    "failed": "This file could not be processed.",
-    "transientReady": "Read for this conversation. Ask about it here; it was not remembered.",
-    "gateRefused": "Stored, but not extracted: {{reason}}.",
-    "addedToSources": "Added to sources: {{facts}}, {{contradictions}}.",
-    "factsCount_one": "{{count}} facts",
-    "factsCount_few": "{{count}} facts",
-    "factsCount_other": "{{count}} facts",
-    "contradictionsCount_one": "{{count}} contradictions",
-    "contradictionsCount_few": "{{count}} contradictions",
-    "contradictionsCount_other": "{{count}} contradictions",
-    "truncatedNote": "The file was read in part; open the source for what was left out.",
-    "viewInSources": "View in Sources",
-    "sourceRemoved": "Attachment removed with its source",
-    "dropHere": "Drop to attach (up to {{count}})",
-    "capReached": "Up to {{count}} files per message. The rest were not attached.",
-    "removeOne": "Remove {{name}}",
-    "uploadFailed": "{{name}} could not be attached: {{reason}}"
+    "failed": "Ovu datoteku nije bilo moguće obraditi.",
+    "transientReady": "Pročitano za ovaj razgovor. Pitajte o tome ovdje; nije zapamćeno.",
+    "gateRefused": "Pohranjeno, ali bez izdvajanja: {{reason}}.",
+    "addedToSources": "Dodano u izvore: {{facts}}, {{contradictions}}.",
+    "factsCount_one": "{{count}} činjenica",
+    "factsCount_few": "{{count}} činjenice",
+    "factsCount_other": "{{count}} činjenica",
+    "contradictionsCount_one": "{{count}} proturječnost",
+    "contradictionsCount_few": "{{count}} proturječnosti",
+    "contradictionsCount_other": "{{count}} proturječnosti",
+    "truncatedNote": "Datoteka je pročitana djelomično; otvorite izvor da vidite što je izostavljeno.",
+    "viewInSources": "Prikaži u Izvorima",
+    "sourceRemoved": "Privitak uklonjen zajedno sa svojim izvorom",
+    "dropHere": "Ispustite za prilaganje (do {{count}})",
+    "capReached": "Najviše {{count}} datoteka po poruci. Ostale nisu priložene.",
+    "removeOne": "Ukloni {{name}}",
+    "uploadFailed": "{{name}} nije bilo moguće priložiti: {{reason}}"
   },
   "search": {
-    "label": "Search conversations",
-    "placeholder": "Search what was said",
-    "clear": "Clear search",
-    "searching": "Searching…",
-    "empty": "Nothing matched. Search covers titles and what was said, including archived conversations.",
-    "results_one": "{{count}} result",
-    "results_few": "{{count}} results",
-    "results_other": "{{count}} results",
-    "titleMatch": "Matched the title",
-    "archivedTag": "archived"
+    "label": "Pretraži razgovore",
+    "placeholder": "Pretražite izrečeno",
+    "clear": "Očisti pretragu",
+    "searching": "Pretraživanje…",
+    "empty": "Nema podudaranja. Pretraga obuhvaća naslove i izrečeno, uključujući arhivirane razgovore.",
+    "results_one": "{{count}} rezultat",
+    "results_few": "{{count}} rezultata",
+    "results_other": "{{count}} rezultata",
+    "titleMatch": "Podudara se s naslovom",
+    "archivedTag": "arhivirano"
   },
   "code": {
-    "plain": "code",
-    "copy": "copy",
-    "copied": "copied",
-    "copyAria": "Copy this code block"
+    "plain": "kod",
+    "copy": "kopiraj",
+    "copied": "kopirano",
+    "copyAria": "Kopiraj ovaj blok koda"
+  },
+  "stream": {
+    "budgetExceeded": "dosegnuto je dnevno ograničenje uporabe, pokušajte ponovno sutra",
+    "timedOut": "odgovor je istekao"
   }
 }

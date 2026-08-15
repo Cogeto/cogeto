@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import type {
   AttentionDismissDto,
@@ -9,6 +9,7 @@ import type {
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 import { AttentionService } from './attention.service';
+import { untranslatedError } from '../infrastructure/index';
 
 const dismissSchema = z.object({ key: z.string().min(1).max(200) });
 
@@ -40,7 +41,7 @@ export class AttentionController {
     @Body() body: unknown,
   ): Promise<AttentionDismissDto> {
     const parsed = dismissSchema.safeParse(body);
-    if (!parsed.success) throw new BadRequestException('body must be { key }');
+    if (!parsed.success) throw untranslatedError.badRequest('body must be { key }');
     await this.attention.dismiss(request.principal, parsed.data.key);
     return { dismissed: true };
   }

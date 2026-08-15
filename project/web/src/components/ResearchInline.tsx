@@ -13,6 +13,7 @@ import {
 } from '../api';
 import type { Session } from '../auth/oidc';
 import { btnSecondary } from './ui';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 /** How many of the most-relevant sources to read automatically. */
 const TOP_K = 3;
@@ -37,6 +38,7 @@ export function ResearchInline({
   onClose: () => void;
 }) {
   const { t } = useTranslation('research');
+  const apiError = useApiErrorMessage(t);
   const queryClient = useQueryClient();
   const [run, setRun] = useState(initialRun);
   const [results, setResults] = useState<DiscoveredPageDto[] | null>(null);
@@ -53,7 +55,7 @@ export function ResearchInline({
       setError(null);
       setCaptured(response);
     },
-    onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => setError(apiError(e)),
   });
 
   const approve = useMutation({
@@ -70,7 +72,7 @@ export function ResearchInline({
         capture.mutate(top);
       }
     },
-    onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => setError(apiError(e)),
   });
 
   const cancel = useMutation({
@@ -79,7 +81,7 @@ export function ResearchInline({
       setError(null);
       setCancelled(true);
     },
-    onError: (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => setError(apiError(e)),
   });
 
   // The tap was the approval: a fresh proposal auto-runs once, on mount.

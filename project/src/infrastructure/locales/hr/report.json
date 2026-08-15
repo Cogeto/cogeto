@@ -1,244 +1,244 @@
 {
-  "title": "Findings report",
+  "title": "Izvještaj o nalazima",
   "toc": {
-    "heading": "Contents"
+    "heading": "Sadržaj"
   },
   "footer": {
-    "reportId": "Report {{id}}",
-    "page": "Page {{page}} of {{total}}"
+    "reportId": "Izvještaj {{id}}",
+    "page": "Stranica {{page}} od {{total}}"
   },
   "value": {
-    "unknown": "not recorded",
-    "empty": "none",
-    "none": "none",
-    "notMeasured": "not measured",
-    "range": "{{from}} to {{to}}"
+    "unknown": "nije zabilježeno",
+    "empty": "ništa",
+    "none": "ništa",
+    "notMeasured": "nije mjereno",
+    "range": "{{from}} do {{to}}"
   },
   "scope": {
-    "corpus": "Everything in this workspace",
-    "import": "Import {{id}}",
-    "sources": "A selected set of {{count}} sources",
-    "dateRange": "Sources from a date range",
-    "project": "Project {{name}}, {{count}} sources"
+    "corpus": "Sve u ovom radnom prostoru",
+    "import": "Uvoz {{id}}",
+    "sources": "Odabrani skup od {{count}} izvora",
+    "dateRange": "Izvori iz zadanog razdoblja",
+    "project": "Projekt {{name}}, izvora: {{count}}"
   },
   "source": {
-    "unnamed": "unnamed {{type}} source",
-    "revision": "(revision {{revision}})"
+    "unnamed": "neimenovan izvor vrste {{type}}",
+    "revision": "(verzija {{revision}})"
   },
   "locator": {
-    "none": "no location recorded",
-    "page": "page {{page}}",
-    "tierOcr": "(read by OCR)",
-    "tierVision": "(read by a vision model)",
-    "paragraph": "paragraph {{paragraph}}",
-    "sheetRow": "sheet {{sheet}}, cells {{range}}",
-    "document": "whole document"
+    "none": "mjesto nije zabilježeno",
+    "page": "stranica {{page}}",
+    "tierOcr": "(pročitano OCR-om)",
+    "tierVision": "(pročitao model za vid)",
+    "paragraph": "odlomak {{paragraph}}",
+    "sheetRow": "list {{sheet}}, ćelije {{range}}",
+    "document": "cijeli dokument"
   },
   "cover": {
-    "generatedAt": "Generated",
-    "reportId": "Report identifier",
-    "configuration": "Model configuration",
-    "dateRange": "Material examined",
-    "instanceKey": "Instance key",
-    "atAGlance": "At a glance",
-    "verifyHint": "This document is signed by the instance that produced it. The verification values and the step-by-step procedure are on the last page."
+    "generatedAt": "Izrađeno",
+    "reportId": "Identifikator izvještaja",
+    "configuration": "Konfiguracija modela",
+    "dateRange": "Pregledana građa",
+    "instanceKey": "Ključ instance",
+    "atAGlance": "Na prvi pogled",
+    "verifyHint": "Ovaj je dokument potpisala instanca koja ga je izradila. Vrijednosti za provjeru i postupak korak po korak nalaze se na posljednjoj stranici."
   },
   "summary": {
-    "sourcesExamined": "Documents and sources examined",
-    "factsExtracted": "Facts extracted and verified",
-    "findingsOpen": "Open findings (unresolved contradictions)",
-    "findingsResolved": "Findings resolved",
-    "sourcesNotFullyRead": "Sources not fully read",
-    "factsWithheld": "Statements withheld from the record"
+    "sourcesExamined": "Pregledanih dokumenata i izvora",
+    "factsExtracted": "Izdvojenih i provjerenih činjenica",
+    "findingsOpen": "Otvorenih nalaza (nerazriješenih proturječnosti)",
+    "findingsResolved": "Razriješenih nalaza",
+    "sourcesNotFullyRead": "Izvora koji nisu pročitani u cijelosti",
+    "factsWithheld": "Tvrdnji izostavljenih iz zapisa"
   },
   "provenance": {
-    "heading": "About this report",
-    "intro": "This report was produced automatically from the documents listed in the coverage section. Every claim in it traces to a stored, verifiable record: each quoted passage names its document and its location, and the counts are computed from the same records the quoted passages come from.",
-    "reportId": "Report identifier",
-    "generatedAt": "Generated",
-    "scope": "Scope",
-    "previousRun": "Compared against",
-    "previousRunValue": "Report {{id}} of {{date}}",
-    "noPreviousRun": "No earlier report exists for this scope, so no comparison is shown. Changes over time appear from the second report onward.",
-    "configurationId": "Configuration",
-    "pipelineModel": "Extraction model",
-    "embeddingModel": "Embedding model",
-    "visionModel": "Vision model",
-    "prompts": "Prompt versions",
-    "reconcileConfig": "Reconciliation rules"
+    "heading": "O ovom izvještaju",
+    "intro": "Ovaj je izvještaj izrađen automatski iz dokumenata navedenih u odjeljku o obuhvatu. Svaka tvrdnja u njemu vodi do pohranjenog, provjerljivog zapisa: svaki citirani odlomak imenuje svoj dokument i svoje mjesto, a brojke se računaju iz istih zapisa iz kojih dolaze citirani odlomci.",
+    "reportId": "Identifikator izvještaja",
+    "generatedAt": "Izrađeno",
+    "scope": "Opseg",
+    "previousRun": "Uspoređeno s",
+    "previousRunValue": "Izvještaj {{id}} od {{date}}",
+    "noPreviousRun": "Za ovaj opseg ne postoji raniji izvještaj, pa usporedba nije prikazana. Promjene kroz vrijeme prikazuju se od drugog izvještaja nadalje.",
+    "configurationId": "Konfiguracija",
+    "pipelineModel": "Model za izdvajanje",
+    "embeddingModel": "Model za ugrađivanja",
+    "visionModel": "Model za vid",
+    "prompts": "Verzije uputa",
+    "reconcileConfig": "Pravila usklađivanja"
   },
   "trust": {
-    "heading": "Measured accuracy of this configuration",
-    "published": "The model configuration that produced this report was measured against a labelled evaluation corpus before release {{release}} (configuration {{configuration}}). The scores below are published and are reproduced here so findings can be weighed against measured accuracy rather than assumed accuracy.",
-    "notPublished": "No published accuracy measurement exists for the model configuration that produced this report ({{configuration}}). The findings below are computed by the same verified process, but its error rate on this configuration has not been measured. Treat each finding as a pointer to the quoted passages, which can be checked by hand.",
-    "aggregate": "All languages",
-    "readingNote": "Values are fractions between 0 and 1. A rate is always published with its denominator; the full metric set, including the unflattering ones, is in the machine-readable artifact.",
+    "heading": "Izmjerena točnost ove konfiguracije",
+    "published": "Konfiguracija modela koja je izradila ovaj izvještaj izmjerena je na označenom evaluacijskom korpusu prije izdanja {{release}} (konfiguracija {{configuration}}). Ocjene u nastavku su objavljene i ovdje se navode kako bi se nalazi vagali prema izmjerenoj, a ne pretpostavljenoj točnosti.",
+    "notPublished": "Za konfiguraciju modela koja je izradila ovaj izvještaj ({{configuration}}) ne postoji objavljeno mjerenje točnosti. Nalazi u nastavku izračunati su istim provjerenim postupkom, ali njegova stopa pogreške na ovoj konfiguraciji nije mjerena. Svaki nalaz shvatite kao putokaz do citiranih odlomaka, koje je moguće provjeriti ručno.",
+    "aggregate": "Svi jezici",
+    "readingNote": "Vrijednosti su razlomci između 0 i 1. Stopa se uvijek objavljuje sa svojim nazivnikom; potpuni skup mjera, uključujući one nepovoljne, nalazi se u strojno čitljivom zapisu.",
     "column": {
-      "set": "Language",
-      "extractionPrecision": "Extraction precision",
-      "extractionRecall": "Extraction recall",
-      "contradictionRecall": "Contradiction recall",
-      "contradictionPrecision": "Contradiction precision",
-      "supersedes": "Supersedes accuracy"
+      "set": "Jezik",
+      "extractionPrecision": "Preciznost izdvajanja",
+      "extractionRecall": "Odziv izdvajanja",
+      "contradictionRecall": "Odziv proturječnosti",
+      "contradictionPrecision": "Preciznost proturječnosti",
+      "supersedes": "Točnost zamjene"
     }
   },
   "executive": {
-    "heading": "Executive summary",
-    "examined": "Documents and sources examined: {{sources}}. Individual factual statements extracted from them and verified against their own wording: {{facts}}.",
-    "findings": "Contradictions between documents currently open: {{open}}. Findings resolved earlier: {{resolved}}.",
-    "delta": "Since the previous report over this same scope: {{resolved}} resolved, {{appeared}} newly appeared, {{reopened}} previously resolved and now returned.",
-    "noDelta": "This is the first report over this scope, so no comparison with an earlier run is possible. Nothing here should be read as a trend.",
-    "limits": "Sources not fully read: {{notFullyRead}}. Sources excluded from extraction by policy: {{gated}}. Statements withheld because they could not be verified against their source: {{withheld}}. The details are in the coverage section, before the findings, because they bound what this report can claim.",
-    "sensitiveExcluded": "Items omitted from this document because they are marked sensitive: {{count}}. They remain in the workspace, visible to their owner.",
-    "superseded": "Facts replaced by newer information during the period covered: {{count}}. Their full history is in the superseded facts section."
+    "heading": "Sažetak za upravu",
+    "examined": "Pregledanih dokumenata i izvora: {{sources}}. Pojedinačnih činjeničnih tvrdnji izdvojenih iz njih i provjerenih prema njihovu vlastitom tekstu: {{facts}}.",
+    "findings": "Trenutačno otvorenih proturječnosti među dokumentima: {{open}}. Ranije razriješenih nalaza: {{resolved}}.",
+    "delta": "Od prethodnog izvještaja za isti opseg: razriješeno {{resolved}}, novih {{appeared}}, prije razriješenih pa vraćenih {{reopened}}.",
+    "noDelta": "Ovo je prvi izvještaj za ovaj opseg, pa usporedba s ranijim prolazom nije moguća. Ništa se ovdje ne smije čitati kao trend.",
+    "limits": "Izvora koji nisu pročitani u cijelosti: {{notFullyRead}}. Izvora isključenih iz izdvajanja pravilom: {{gated}}. Tvrdnji izostavljenih jer se nisu mogle provjeriti prema svom izvoru: {{withheld}}. Pojedinosti su u odjeljku o obuhvatu, prije nalaza, jer određuju granice onoga što ovaj izvještaj može tvrditi.",
+    "sensitiveExcluded": "Stavki izostavljenih iz ovog dokumenta jer su označene kao osjetljive: {{count}}. One ostaju u radnom prostoru, vidljive svom vlasniku.",
+    "superseded": "Činjenica zamijenjenih novijim podacima u obuhvaćenom razdoblju: {{count}}. Njihova je potpuna povijest u odjeljku o zamijenjenim činjenicama."
   },
   "coverage": {
-    "heading": "Coverage and limits",
-    "intro": "This section states what was examined and what was not, before any finding is presented. A finding count is only meaningful against the material that was actually read.",
-    "scopeTruncated": "The scope exceeded the {{limit}} sources this report can carry, and was cut at that bound. The counts below describe the included sources only.",
-    "allClean": "Every source in scope was read in full and admitted to extraction.",
-    "problemsIntro": "Sources not fully read or excluded by policy: {{total}}.",
-    "ocrIntro": "Sources with pages recovered by OCR or a vision model rather than read from a text layer: {{total}}. Statements taken from those pages depend on the quality of that transcription, and each affected finding says so.",
-    "skippedIntro": "Requested sources that could not be included: {{total}}.",
-    "spanLanguageNote": "Quoted passages are reproduced verbatim in the language of their source document, whatever language this report is written in. Altering evidence, even to translate it, would make it something other than evidence.",
+    "heading": "Obuhvat i granice",
+    "intro": "Ovaj odjeljak navodi što je pregledano, a što nije, prije nego što se iznese ijedan nalaz. Broj nalaza ima smisla samo u odnosu na građu koja je doista pročitana.",
+    "scopeTruncated": "Opseg je premašio {{limit}} izvora koliko ovaj izvještaj može obuhvatiti i skraćen je na tu granicu. Brojke u nastavku opisuju samo uključene izvore.",
+    "allClean": "Svaki je izvor u opsegu pročitan u cijelosti i pripušten izdvajanju.",
+    "problemsIntro": "Izvora koji nisu pročitani u cijelosti ili su isključeni pravilom: {{total}}.",
+    "ocrIntro": "Izvora sa stranicama obnovljenima OCR-om ili modelom za vid umjesto čitanjem tekstualnog sloja: {{total}}. Tvrdnje s tih stranica ovise o kvaliteti te transkripcije, i svaki to pogođeni nalaz navodi.",
+    "skippedIntro": "Zatraženih izvora koje nije bilo moguće uključiti: {{total}}.",
+    "spanLanguageNote": "Citirani se odlomci prenose doslovno na jeziku svog izvornog dokumenta, bez obzira na jezik ovog izvještaja. Mijenjanje dokaza, čak i zbog prijevoda, učinilo bi ih nečim drugim, a ne dokazom.",
     "column": {
-      "document": "Document",
-      "state": "State",
-      "detail": "Detail",
-      "pagesOcr": "Pages via OCR",
-      "pagesVision": "Pages via vision model"
+      "document": "Dokument",
+      "state": "Stanje",
+      "detail": "Pojedinost",
+      "pagesOcr": "Stranica preko OCR-a",
+      "pagesVision": "Stranica preko modela za vid"
     },
     "state": {
-      "gated": "excluded by policy"
+      "gated": "isključeno pravilom"
     },
     "gateReason": {
-      "extraction_disabled": "Extraction is disabled for this source kind (refused {{date}}).",
-      "source_disabled": "Extraction is disabled for this specific source (refused {{date}}).",
-      "document_class_denied": "This document class is excluded by an extraction rule (refused {{date}})."
+      "extraction_disabled": "Izdvajanje je isključeno za ovu vrstu izvora (odbijeno {{date}}).",
+      "source_disabled": "Izdvajanje je isključeno za ovaj određeni izvor (odbijeno {{date}}).",
+      "document_class_denied": "Ova je vrsta dokumenta isključena pravilom izdvajanja (odbijeno {{date}})."
     },
     "readOutcome": {
-      "read": "read in full",
-      "truncated": "partially read",
-      "empty": "no text found",
-      "unsupported_format": "format not supported",
-      "read_failed": "could not be read",
-      "needs_vision": "needs a vision model"
+      "read": "pročitano u cijelosti",
+      "truncated": "djelomično pročitano",
+      "empty": "tekst nije pronađen",
+      "unsupported_format": "format nije podržan",
+      "read_failed": "nije bilo moguće pročitati",
+      "needs_vision": "treba model za vid"
     },
     "readReason": {
-      "row_cap_sheet": "A sheet exceeded the per-sheet row cap; rows beyond it were not read.",
-      "row_cap_file": "The file exceeded the total row cap; rows beyond it were not read.",
-      "no_text": "The file contains no extractable text.",
-      "unsupported_type": "The file format is not one Cogeto can read.",
-      "legacy_office_format": "A legacy office format that cannot be read; convert and re-upload.",
-      "vision_unavailable": "Pages are images and no vision capability is available on this instance.",
-      "vision_cap_reached": "The per-file image budget was reached before every page was read.",
-      "vision_failed": "The vision model could not read the page.",
-      "no_readable_text": "Neither the text layer nor OCR produced readable text.",
-      "parse_failed": "The file could not be parsed.",
-      "parse_timeout": "Reading the file took longer than the allowed time.",
-      "text_over_cap": "The text exceeds the size cap; content beyond it was not read.",
-      "undecodable_text": "The text encoding could not be decoded."
+      "row_cap_sheet": "List je premašio ograničenje redaka po listu; redci iznad toga nisu pročitani.",
+      "row_cap_file": "Datoteka je premašila ukupno ograničenje redaka; redci iznad toga nisu pročitani.",
+      "no_text": "Datoteka ne sadrži tekst koji se može izdvojiti.",
+      "unsupported_type": "Format datoteke nije od onih koje Cogeto može čitati.",
+      "legacy_office_format": "Zastarjeli uredski format koji nije moguće pročitati; pretvorite ga i učitajte ponovno.",
+      "vision_unavailable": "Stranice su slike, a na ovoj instanci nije dostupna mogućnost vida.",
+      "vision_cap_reached": "Proračun za slike po datoteci potrošen je prije nego što je svaka stranica pročitana.",
+      "vision_failed": "Model za vid nije mogao pročitati stranicu.",
+      "no_readable_text": "Ni tekstualni sloj ni OCR nisu dali čitljiv tekst.",
+      "parse_failed": "Datoteku nije bilo moguće raščlaniti.",
+      "parse_timeout": "Čitanje datoteke trajalo je dulje od dopuštenog vremena.",
+      "text_over_cap": "Tekst premašuje ograničenje veličine; sadržaj iznad toga nije pročitan.",
+      "undecodable_text": "Kodiranje teksta nije bilo moguće dekodirati."
     },
     "skipReason": {
-      "unknown_source_type": "not a known source type",
-      "not_found_or_not_owned": "not found in this workspace"
+      "unknown_source_type": "nije poznata vrsta izvora",
+      "not_found_or_not_owned": "nije pronađeno u ovom radnom prostoru"
     },
     "import": {
-      "documents": "Documents ingested from the import",
-      "duplicates": "Skipped as exact duplicates",
-      "unreadable": "Not readable",
-      "failed": "Failed to ingest",
-      "excluded": "Excluded before ingestion",
-      "unsupported": "Unsupported formats"
+      "documents": "Dokumenata preuzetih iz uvoza",
+      "duplicates": "Preskočeno kao istovjetni duplikati",
+      "unreadable": "Nečitljivo",
+      "failed": "Preuzimanje nije uspjelo",
+      "excluded": "Izuzeto prije preuzimanja",
+      "unsupported": "Nepodržani formati"
     },
-    "truncatedDetail": "Read {{read}} of {{total}} rows; sheets truncated: {{sheets}}."
+    "truncatedDetail": "Pročitano {{read}} od {{total}} redaka; skraćenih listova: {{sheets}}."
   },
   "findings": {
-    "heading": "Findings",
-    "none": "No contradictions between documents are on record for this scope.",
-    "intro": "Findings that follow: {{total}}. Each presents two statements that cannot both hold, quoted verbatim from their source documents. To check any finding without trusting this report: open the two named documents, go to the stated locations, and read the two passages.",
-    "groupingNote": "Findings are grouped by the subject they are about, because a conflict belongs to a question, not to either document. Within a group, findings appear in the order they were detected.",
-    "unattributed": "No named subject"
+    "heading": "Nalazi",
+    "none": "Za ovaj opseg nije zabilježena nijedna proturječnost među dokumentima.",
+    "intro": "Nalaza koji slijede: {{total}}. Svaki iznosi dvije tvrdnje koje ne mogu obje vrijediti, citirane doslovno iz njihovih izvornih dokumenata. Da biste provjerili bilo koji nalaz bez oslanjanja na ovaj izvještaj: otvorite dva imenovana dokumenta, pronađite navedena mjesta i pročitajte oba odlomka.",
+    "groupingNote": "Nalazi su grupirani prema predmetu na koji se odnose, jer sukob pripada pitanju, a ne nekom od dokumenata. Unutar grupe nalazi se navode redoslijedom otkrivanja.",
+    "unattributed": "Bez imenovanog predmeta"
   },
   "finding": {
-    "title": "Finding {{index}}",
-    "state": "State",
-    "detectedAt": "Detected",
-    "resolvedAt": "Resolved",
-    "stateOpen": "open",
-    "stateReopened": "open (previously resolved, the conflict returned)",
+    "title": "Nalaz {{index}}",
+    "state": "Stanje",
+    "detectedAt": "Otkriveno",
+    "resolvedAt": "Razriješeno",
+    "stateOpen": "otvoreno",
+    "stateReopened": "otvoreno (ranije razriješeno, sukob se vratio)",
     "resolutionLabel": {
-      "confirmed_a": "resolved: the first statement was confirmed",
-      "confirmed_b": "resolved: the second statement was confirmed",
-      "corrected": "resolved: both statements were corrected",
-      "dismissed": "resolved: dismissed as not a real conflict",
-      "revision": "resolved by a newer revision of a document"
+      "confirmed_a": "razriješeno: potvrđena je prva tvrdnja",
+      "confirmed_b": "razriješeno: potvrđena je druga tvrdnja",
+      "corrected": "razriješeno: obje su tvrdnje ispravljene",
+      "dismissed": "razriješeno: odbačeno jer nije stvarni sukob",
+      "revision": "razriješeno novijom verzijom dokumenta"
     },
-    "resolvedByRevision": "Resolved by a newer document: {{source}}.",
-    "claimA": "Statement A: {{claim}}",
-    "claimB": "Statement B: {{claim}}",
-    "recordedAt": "valid from {{date}}",
+    "resolvedByRevision": "Razriješeno novijim dokumentom: {{source}}.",
+    "claimA": "Tvrdnja A: {{claim}}",
+    "claimB": "Tvrdnja B: {{claim}}",
+    "recordedAt": "vrijedi od {{date}}",
     "recovered": {
-      "ocr": "The passage below was recovered by OCR, not read from a text layer. The transcription itself is part of the evidence to check.",
-      "vision": "The passage below was read by a vision model, not from a text layer. The transcription itself is part of the evidence to check."
+      "ocr": "Odlomak u nastavku obnovljen je OCR-om, a nije pročitan iz tekstualnog sloja. Sama je transkripcija dio dokaza koji treba provjeriti.",
+      "vision": "Odlomak u nastavku pročitao je model za vid, a nije preuzet iz tekstualnog sloja. Sama je transkripcija dio dokaza koji treba provjeriti."
     },
-    "spanTruncated": "The quotation was shortened to fit this page. The machine-readable artifact carries the full passage.",
-    "hedge": "The source itself hedges this statement (\"{{phrase}}\").",
-    "noSpan": "No verbatim source passage is on record for this statement.",
-    "historyHeading": "History",
+    "spanTruncated": "Citat je skraćen kako bi stao na ovu stranicu. Strojno čitljivi zapis sadrži cijeli odlomak.",
+    "hedge": "Sam izvor ovu tvrdnju iznosi s ogradom (\"{{phrase}}\").",
+    "noSpan": "Za ovu tvrdnju nije zabilježen doslovan odlomak iz izvora.",
+    "historyHeading": "Povijest",
     "event": {
-      "party_superseded": "one side was replaced by a newer statement and the conflict persisted",
-      "resolved_by_user": "resolved by the owner",
-      "resolved_by_revision": "resolved by a newer document revision",
-      "kept_open": "a side changed but the conflict could not be safely closed",
-      "reopened": "the conflict returned after having been resolved"
+      "party_superseded": "jedna je strana zamijenjena novijom tvrdnjom i sukob je ostao",
+      "resolved_by_user": "razriješio vlasnik",
+      "resolved_by_revision": "razriješeno novijom verzijom dokumenta",
+      "kept_open": "jedna se strana promijenila, ali sukob se nije mogao sigurno zatvoriti",
+      "reopened": "sukob se vratio nakon što je bio razriješen"
     }
   },
   "superseded": {
-    "heading": "Superseded facts",
-    "none": "No facts were replaced by newer information in this scope.",
-    "intro": "Chains recorded here: {{total}}. Each shows what was on record, what replaced it, when, and which document caused the change. This is the history a reviewer needs in order to understand why the current state is current.",
-    "truncated": "Only the {{limit}} most recent chains are shown here; the machine-readable artifact is bounded the same way and states it.",
-    "chainTitle": "Chain {{index}}",
-    "currentBelief": "Current",
-    "replacedBelief": "Previously on record",
-    "recorded": "recorded {{date}}",
-    "validUntil": "held until {{date}}"
+    "heading": "Zamijenjene činjenice",
+    "none": "U ovom opsegu nijedna činjenica nije zamijenjena novijim podacima.",
+    "intro": "Ovdje zabilježenih lanaca: {{total}}. Svaki pokazuje što je bilo zabilježeno, što ga je zamijenilo, kada i koji je dokument izazvao promjenu. To je povijest koja je recenzentu potrebna da razumije zašto je sadašnje stanje sadašnje.",
+    "truncated": "Ovdje je prikazano samo {{limit}} najnovijih lanaca; strojno čitljivi zapis ograničen je jednako i to navodi.",
+    "chainTitle": "Lanac {{index}}",
+    "currentBelief": "Trenutačno",
+    "replacedBelief": "Prije zabilježeno",
+    "recorded": "zabilježeno {{date}}",
+    "validUntil": "vrijedilo do {{date}}"
   },
   "suppressed": {
-    "heading": "What was withheld",
-    "intro": "Statements Cogeto declined to admit to the record because they could not be verified against their own source wording: {{total}}. They are listed here because a reader deserves to know what was set aside, not only what was accepted.",
-    "entriesIntro": "The withheld statements:",
-    "entriesTruncated": "The first {{shown}} withheld statements are shown (bounded at {{limit}}); the by-reason totals above cover all of them.",
+    "heading": "Što je izostavljeno",
+    "intro": "Tvrdnji koje Cogeto nije pripustio u zapis jer se nisu mogle provjeriti prema tekstu vlastitog izvora: {{total}}. Navedene su ovdje jer čitatelj zaslužuje znati što je odloženo, a ne samo što je prihvaćeno.",
+    "entriesIntro": "Izostavljene tvrdnje:",
+    "entriesTruncated": "Prikazano je prvih {{shown}} izostavljenih tvrdnji (ograničeno na {{limit}}); zbrojevi po razlozima iznad obuhvaćaju sve.",
     "column": {
-      "reason": "Reason",
-      "count": "Count",
-      "fact": "Withheld statement",
-      "document": "Document",
-      "date": "Date"
+      "reason": "Razlog",
+      "count": "Broj",
+      "fact": "Izostavljena tvrdnja",
+      "document": "Dokument",
+      "date": "Datum"
     },
     "reason": {
-      "hedged_in_source": "hedged in the source itself",
-      "partially_supported": "only partially supported by the source",
-      "unsupported": "not supported by the source wording",
-      "unjudgeable": "could not be judged against the source",
-      "structurally_invalid": "structurally invalid extraction",
-      "legacy_unspecified": "recorded before reasons were tracked"
+      "hedged_in_source": "u izvoru navedeno s ogradom",
+      "partially_supported": "izvor to samo djelomično podržava",
+      "unsupported": "tekst izvora to ne podržava",
+      "unjudgeable": "nije se moglo procijeniti prema izvoru",
+      "structurally_invalid": "strukturno neispravno izdvajanje",
+      "legacy_unspecified": "zabilježeno prije praćenja razloga"
     }
   },
   "verify": {
-    "heading": "Verifying this report",
-    "intro": "This report is signed by the private key of the instance that produced it. Anyone holding the machine-readable artifact (the JSON download of this same report) can verify that it is genuine and unaltered, using only standard tools and the published schema. This printed document is a rendering of that signed record and carries the same identifier, hash and signature.",
-    "reportId": "Report identifier",
-    "hash": "Payload SHA-256",
-    "signature": "Signature (ed25519, base64)",
-    "keyFingerprint": "Public key fingerprint",
-    "keyEndpoint": "Public key endpoint",
-    "step1": "1. Canonicalize the payload: serialize the JSON artifact's \"payload\" object with keys sorted at every depth and no whitespace, UTF-8.",
-    "step2": "2. Hash it with SHA-256 and compare the result with the payload hash above and with the one inside the artifact.",
-    "step3": "3. Verify the ed25519 signature over the ASCII hex hash string, using the public key embedded in the artifact.",
-    "step4": "4. Confirm the public key against the instance itself at the endpoint above, or against a copy obtained earlier.",
-    "commands": "With standard command-line tools:",
-    "pdfNote": "The full procedure, the schema, and a worked example are published in the repository under docs/findings-report-schema/."
+    "heading": "Provjera ovog izvještaja",
+    "intro": "Ovaj je izvještaj potpisan privatnim ključem instance koja ga je izradila. Svatko tko ima strojno čitljivi zapis (JSON preuzimanje istog ovog izvještaja) može uobičajenim alatima i objavljenom shemom provjeriti da je izvoran i neizmijenjen. Ovaj je ispisani dokument prikaz tog potpisanog zapisa i nosi isti identifikator, sažetak i potpis.",
+    "reportId": "Identifikator izvještaja",
+    "hash": "SHA-256 sadržaja",
+    "signature": "Potpis (ed25519, base64)",
+    "keyFingerprint": "Otisak javnog ključa",
+    "keyEndpoint": "Krajnja točka javnog ključa",
+    "step1": "1. Kanonizirajte sadržaj: serijalizirajte objekt \"payload\" iz JSON zapisa s ključevima poredanima na svakoj razini i bez razmaka, u UTF-8.",
+    "step2": "2. Izračunajte SHA-256 sažetak i usporedite rezultat sa sažetkom sadržaja iznad i s onim unutar zapisa.",
+    "step3": "3. Provjerite ed25519 potpis nad ASCII heksadecimalnim nizom sažetka, koristeći javni ključ ugrađen u zapis.",
+    "step4": "4. Potvrdite javni ključ kod same instance na krajnjoj točki iznad ili prema ranije preuzetom primjerku.",
+    "commands": "Uobičajenim alatima naredbenog retka:",
+    "pdfNote": "Potpuni postupak, shema i razrađeni primjer objavljeni su u repozitoriju pod docs/findings-report-schema/."
   }
 }

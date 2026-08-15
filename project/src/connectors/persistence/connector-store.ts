@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, inArray, lt, sql } from 'drizzle-orm';
-import { DRIZZLE, openSecret, sealSecret, writeAudit } from '../../infrastructure/index';
+import { DRIZZLE, openSecret, sealSecret, userError, writeAudit } from '../../infrastructure/index';
 import type { Db, DbOrTx } from '../../infrastructure/index';
 import { transition } from '../domain/lifecycle';
 import type { ConnectorState } from '../domain/lifecycle';
@@ -82,7 +82,7 @@ export class ConnectorStore {
       .where(and(eq(connector.id, id), eq(connector.ownerId, ownerId)))
       .limit(1);
     const row = rows[0];
-    if (!row) throw new NotFoundException('no such connector');
+    if (!row) throw userError.notFound('connector.notFound', 'no such connector');
     return row;
   }
 
@@ -110,7 +110,13 @@ export class ConnectorStore {
     opts: { actor: string; reason?: string | null } = { actor: 'connector_platform' },
   ): Promise<void> {
     const decision = transition(row.state, to);
-    if (!decision.ok) throw new ConflictException(decision.reason);
+    if (!decision.ok) {
+      throw userError.conflict(
+        'connector.illegalTransition',
+        'a {{from}} connector cannot become {{to}}',
+        { from: row.state, to },
+      );
+    }
     if (row.state === to && opts.reason === undefined) return;
     await executor
       .update(connector)
@@ -162,7 +168,13 @@ export class ConnectorStore {
     actor: string,
   ): Promise<void> {
     const decision = transition(row.state, 'removed');
-    if (!decision.ok) throw new ConflictException(decision.reason);
+    if (!decision.ok) {
+      throw userError.conflict(
+        'connector.illegalTransition',
+        'a {{from}} connector cannot become {{to}}',
+        { from: row.state, to: 'removed' },
+      );
+    }
     await tx.delete(connectorSubScope).where(eq(connectorSubScope.connectorId, row.id));
     await tx
       .delete(connectorWebhookDelivery)
@@ -342,7 +354,8 @@ export class ConnectorStore {
       .set({ ...patch, updatedAt: new Date() })
       .where(and(eq(connectorSubScope.connectorId, row.id), eq(connectorSubScope.key, key)))
       .returning({ id: connectorSubScope.id });
-    if (updated.length === 0) throw new NotFoundException('no such sub-scope');
+    if (updated.length === 0)
+      throw userError.notFound('connector.subScopeNotFound', 'no such sub-scope');
     await writeAudit(this.db, {
       actor: `user:${row.ownerId}`,
       action: 'connector.sub_scope_changed',

@@ -6,6 +6,7 @@ import { assignToProject, createProject, fetchProjects } from '../api';
 import type { Session } from '../auth/oidc';
 import { Drawer } from './ui';
 import { MARKER_CLASSES, splitProjects } from './projects-model';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 /**
  * Moving a conversation into a project (V2.5 item 8.3, interface rework).
@@ -32,6 +33,7 @@ export function ProjectPickerDrawer({
   onClose: () => void;
 }) {
   const { t } = useTranslation('projects');
+  const apiError = useApiErrorMessage(t);
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState('');
@@ -55,7 +57,7 @@ export function ProjectPickerDrawer({
       await settle();
       onClose();
     },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => setError(apiError(err)),
   });
 
   // Creating from here lands the conversation in the new project in one go:
@@ -71,7 +73,7 @@ export function ProjectPickerDrawer({
       await settle();
       onClose();
     },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => setError(apiError(err)),
   });
 
   const { active, archived } = splitProjects(projects ?? []);

@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  NotFoundException,
-  Optional,
-} from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { and, asc, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type {
@@ -13,7 +7,7 @@ import type {
   RelationEvent,
   RelationResolution,
 } from '@cogeto/shared';
-import { DRIZZLE, writeAudit } from '../infrastructure/index';
+import { DRIZZLE, userError, writeAudit } from '../infrastructure/index';
 import { UserDirectory } from '../identity/index';
 import type { Db, Tx } from '../infrastructure/index';
 import { memory, memoryRelation, memoryRelationEvent } from './persistence/tables';
@@ -802,7 +796,10 @@ export class MemoryReconciliation {
         .where(eq(memoryRelation.id, relationId))
         .for('update');
       const relation = relations[0];
-      if (!relation) throw new NotFoundException(`relation ${relationId} not found`);
+      if (!relation)
+        throw userError.notFound('relation.notFound', 'relation {{id}} not found', {
+          id: relationId,
+        });
       if (relation.resolvedAt) return { relation, alreadyResolved: true };
 
       const [first, second] = await this.lockPair(tx, relation.aMemoryId, relation.bMemoryId);
@@ -810,7 +807,9 @@ export class MemoryReconciliation {
       const rowB = first.id === relation.bMemoryId ? first : second;
       if (rowA.ownerId !== principal.userId || rowB.ownerId !== principal.userId) {
         // Existence must not leak — mirror of the store's owner checks.
-        throw new NotFoundException(`relation ${relationId} not found`);
+        throw userError.notFound('relation.notFound', 'relation {{id}} not found', {
+          id: relationId,
+        });
       }
       const user: MemoryActor = { kind: 'user', userId: principal.userId };
 
@@ -975,7 +974,8 @@ export class MemoryReconciliation {
 
   /** Locks both rows in id order (deadlock-free) and returns them. */
   private async lockPair(tx: Tx, idOne: string, idTwo: string): Promise<[MemoryRow, MemoryRow]> {
-    if (idOne === idTwo) throw new BadRequestException('a memory cannot be paired with itself');
+    if (idOne === idTwo)
+      throw userError.badRequest('relation.selfPair', 'a memory cannot be paired with itself');
     const rows = await tx
       .select()
       .from(memory)
@@ -983,7 +983,7 @@ export class MemoryReconciliation {
       .orderBy(memory.id)
       .for('update');
     if (rows.length !== 2) {
-      throw new NotFoundException('a memory in this pair no longer exists');
+      throw userError.notFound('relation.memoryGone', 'a memory in this pair no longer exists');
     }
     return [rows[0]!, rows[1]!];
   }
@@ -1002,7 +1002,8 @@ export class MemoryReconciliation {
     const winner = winnerSide === 'a' ? rowA : rowB;
     const loser = winnerSide === 'a' ? rowB : rowA;
     if (winner.status !== 'contradicted' || loser.status !== 'contradicted') {
-      throw new BadRequestException(
+      throw userError.badRequest(
+        'relation.changedSinceDetection',
         'a memory in this contradiction changed since detection, review it in Memories, then dismiss or correct instead',
       );
     }

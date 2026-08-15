@@ -1,8 +1,9 @@
-import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { IDENTITY_OPTIONS } from './identity-options';
 import type { IdentityOptions } from './identity-options';
 import type { AuthenticatedRequest } from './bearer-auth.guard';
+import { userError } from '../infrastructure/index';
 
 /**
  * Requires the operator/admin project role. Runs AFTER the global
@@ -19,7 +20,9 @@ export class AdminGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const role = this.options.adminRole ?? 'admin';
     if (!request.principal?.roles?.includes(role)) {
-      throw new ForbiddenException(`this endpoint requires the '${role}' role`);
+      throw userError.forbidden('auth.roleRequired', "this endpoint requires the '{{role}}' role", {
+        role,
+      });
     }
     return true;
   }

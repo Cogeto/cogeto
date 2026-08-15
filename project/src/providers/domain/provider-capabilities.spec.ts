@@ -41,32 +41,26 @@ describe('provider capabilities', () => {
   });
 
   describe('tierCapabilityRefusal', () => {
-    const provider = { label: 'Claude', type: 'anthropic' as StoredProviderType };
     const anthropic = PROVIDER_TYPE_SPECS.anthropic;
     const mistral = PROVIDER_TYPE_SPECS.mistral;
 
-    it('refuses the vision tier on an adapter with no image path, naming the remedy', () => {
-      const refusal = tierCapabilityRefusal('vision', anthropic, provider);
-      expect(refusal).toBeTruthy();
-      // The message the admin reads has to contain the three things the old
-      // one lacked: which provider, why, and what to do instead.
-      expect(refusal).toContain('Claude');
-      expect(refusal).toContain('anthropic');
-      expect(refusal).toMatch(/leave the vision tier unassigned/);
+    // The function reports WHICH capability is missing; the sentence an admin
+    // reads (which provider, why, what to do instead) is written at the throw
+    // site under an error code, so every interface language can render it.
+    it('refuses the vision tier on an adapter with no image path', () => {
+      expect(tierCapabilityRefusal('vision', anthropic)).toBe('vision_unsupported');
     });
 
     it('refuses the embeddings tier on a provider with no embeddings API', () => {
-      expect(tierCapabilityRefusal('embeddings', anthropic, provider)).toMatch(/no embeddings API/);
+      expect(tierCapabilityRefusal('embeddings', anthropic)).toBe('embeddings_unsupported');
     });
 
     it('permits every tier a provider can actually serve', () => {
-      expect(tierCapabilityRefusal('vision', mistral, { label: 'M', type: 'mistral' })).toBeNull();
-      expect(
-        tierCapabilityRefusal('embeddings', mistral, { label: 'M', type: 'mistral' }),
-      ).toBeNull();
+      expect(tierCapabilityRefusal('vision', mistral)).toBeNull();
+      expect(tierCapabilityRefusal('embeddings', mistral)).toBeNull();
       // Generation tiers are never gated: every adapter completes text.
-      expect(tierCapabilityRefusal('answer', anthropic, provider)).toBeNull();
-      expect(tierCapabilityRefusal('pipeline', anthropic, provider)).toBeNull();
+      expect(tierCapabilityRefusal('answer', anthropic)).toBeNull();
+      expect(tierCapabilityRefusal('pipeline', anthropic)).toBeNull();
     });
   });
 });

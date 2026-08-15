@@ -259,7 +259,13 @@ function SourcesSpark({ data }: { data: DashboardStatsDto }) {
               i18nKey="stats.sources.familyTotal"
               ns="dashboard"
               count={seriesTotal(data.sources, k)}
-              values={{ count: seriesTotal(data.sources, k), family: k }}
+              values={{
+                count: seriesTotal(data.sources, k),
+                // The series key is the API's word, never the label: an
+                // untranslated `notes` beside a translated count is exactly the
+                // mixed-language screen F14 is about.
+                family: t(`stats.sources.family.${k}`, { defaultValue: k }),
+              }}
               components={{ n: <span className="font-semibold text-slate-700" /> }}
             />
           </li>

@@ -59,7 +59,12 @@
       "ingested_one": "{{count}} ingested →",
       "ingested_other": "{{count}} ingested →",
       "familyTotal_one": "<n>{{count}}</n> {{family}}",
-      "familyTotal_other": "<n>{{count}}</n> {{family}}"
+      "familyTotal_other": "<n>{{count}}</n> {{family}}",
+      "family": {
+        "notes": "notes",
+        "email": "email",
+        "files": "files"
+      }
     },
     "dreaming": {
       "heading": "Dreaming · last {{days}} days",

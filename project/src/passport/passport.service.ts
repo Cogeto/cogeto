@@ -1,6 +1,6 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { PassportDownloadDto, PassportExportDto, Principal } from '@cogeto/shared';
-import { DRIZZLE, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
+import { DRIZZLE, userError, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { MemoryObjectStore } from '../memory/index';
 import { PassportExportStore, PASSPORT_EXPORT_JOB_TYPE, toExportDto } from './passport.store';
@@ -76,25 +76,29 @@ export class PassportService {
 
   async get(principal: Principal, id: string): Promise<PassportExportDto> {
     const row = await this.store.getForOwner(principal.userId, id);
-    if (!row) throw new NotFoundException(`export ${id} not found`);
+    if (!row) throw userError.notFound('passport.notFound', 'export {{id}} not found', { id });
     return toExportDto(row);
   }
 
   /** A short-lived signed download URL — owner-gated, only for a ready export. */
   async download(principal: Principal, id: string): Promise<PassportDownloadDto> {
     const row = await this.store.getForOwner(principal.userId, id);
-    if (!row) throw new NotFoundException(`export ${id} not found`);
+    if (!row) throw userError.notFound('passport.notFound', 'export {{id}} not found', { id });
     // SEC-8: an export expired by a source deletion must never mint another
     // URL. Its bytes are erased by the same receipt that erased the source, so
     // say plainly why rather than reporting a generic "not ready".
     if (row.status === 'expired') {
-      throw new BadRequestException(
-        `export ${id} is no longer available: it was expired because a source it may have ` +
-          `contained was deleted. Request a new export.`,
+      throw userError.badRequest(
+        'passport.expired',
+        'export {{id}} is no longer available: it was expired because a source it may have ' +
+          'contained was deleted. Request a new export.',
+        { id },
       );
     }
     if (row.status !== 'ready' || !row.objectKey) {
-      throw new BadRequestException(`export ${id} is not ready to download`);
+      throw userError.badRequest('passport.notReady', 'export {{id}} is not ready to download', {
+        id,
+      });
     }
     const ttl = this.options.downloadUrlTtlSeconds;
     const url = this.objects.presignGetUrl(row.objectKey, ttl, {

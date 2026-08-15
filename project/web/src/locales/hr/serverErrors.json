@@ -1,0 +1,198 @@
+{
+  "alias": {
+    "duplicate": "ovaj je par aliasa već zabilježen",
+    "notFound": "alias {{id}} nije pronađen",
+    "notNeeded": "ovi se nazivi već podudaraju nakon normalizacije; alias nije potreban"
+  },
+  "approval": {
+    "emailDraftNotFound": "nacrt e-poruke {{id}} nije pronađen",
+    "notFound": "odobrenje {{id}} nije pronađeno"
+  },
+  "attention": {
+    "notDismissible": "odbaciti se mogu samo stavke sažetka"
+  },
+  "auth": {
+    "demoInitializing": "demonstracijsko okruženje još se pokreće",
+    "demoUnavailable": "demonstracijska prijava nije dostupna",
+    "identityBootstrapping": "pokretanje identiteta još nije dovršeno (konfiguracija sučelja nije dostupna)",
+    "invalidCredentials": "neispravno korisničko ime ili lozinka",
+    "roleRequired": "ova krajnja točka zahtijeva ulogu '{{role}}'"
+  },
+  "chat": {
+    "attachmentNotFound": "privitak {{id}} nije pronađen",
+    "conversationNotFound": "razgovor {{id}} nije pronađen",
+    "messageNotFound": "poruka {{id}} nije pronađena",
+    "onlyOwnMessages": "zapamtiti se mogu samo vaše vlastite poruke: odgovori asistenta nikada se ne spremaju",
+    "tooManyConversations_one": "imate {{count}} aktivan razgovor, najprije neke arhivirajte ili izbrišite",
+    "tooManyConversations_few": "imate {{count}} aktivna razgovora, najprije neke arhivirajte ili izbrišite",
+    "tooManyConversations_other": "imate {{count}} aktivnih razgovora, najprije neke arhivirajte ili izbrišite"
+  },
+  "confluence": {
+    "notConfluenceConnector": "nije Confluence konektor"
+  },
+  "connector": {
+    "cannotSweep": "konektor u stanju {{state}} ne može provesti provjeru",
+    "cannotSync": "konektor u stanju {{state}} ne može sinkronizirati",
+    "erasedItemNotFound": "nema takve izbrisane stavke",
+    "illegalTransition": "konektor u stanju {{from}} ne može prijeći u stanje {{to}}",
+    "noCustomSubScopes": "ova vrsta konektora ne prihvaća prilagođene podopsege",
+    "noPresenceListing": "ova vrsta konektora ne može popisati prisutnost na izvoru",
+    "noWebhook": "ova vrsta konektora ne objavljuje webhook",
+    "notAuthorised": "najprije ovlastite konektor",
+    "notFound": "nema takvog konektora",
+    "subScopeKeyMismatch": "ključ ne odgovara obliku podopsega ovog konektora",
+    "subScopeNotFound": "nema takvog podopsega",
+    "unknownKind": "nepoznata vrsta konektora '{{kind}}'"
+  },
+  "daily_capture_limit": "dosegnuto je dnevno ograničenje spremanja ({{max}}), pokušajte ponovno sutra",
+  "daily_research_limit": "dosegnuto je dnevno ograničenje pretraga za istraživanje ({{max}}), pokušajte ponovno sutra",
+  "daily_upload_limit": "dosegnuto je dnevno ograničenje učitavanja ({{max}}), pokušajte ponovno sutra",
+  "email": {
+    "allowlistEntryNotFound": "unos na popisu dopuštenih nije pronađen",
+    "invalidAddress": "nije valjana e-adresa",
+    "invalidDomain": "nije valjana domena (npr. adriatic-foods.hr)",
+    "notFound": "e-poruka {{id}} nije pronađena"
+  },
+  "extractionGate": {
+    "notGateable": "'{{sourceType}}' nije vrsta izvora iz koje se izdvaja; filtar upravlja ovima: {{gateable}}",
+    "ruleNotFound": "nema takvog pravila"
+  },
+  "file": {
+    "empty": "učitana datoteka je prazna",
+    "exceedsUploadLimit": "datoteka premašuje ograničenje učitavanja od {{bytes}} bajtova",
+    "notFound": "datoteka {{key}} nije pronađena",
+    "tooLarge": "učitana datoteka premašuje ograničenje veličine",
+    "unsupportedType": "nepodržana vrsta datoteke '{{type}}': prihvaćaju se samo PDF, DOCX, XLSX, CSV, Markdown, obični tekst i slike"
+  },
+  "import": {
+    "alreadyStarted": "ovaj je uvoz već započeo",
+    "archiveEmpty": "arhiva ne sadrži nijednu datoteku",
+    "archiveTooLarge": "arhiva premašuje ograničenje veličine",
+    "folderEmpty": "mapa ne sadrži nijednu datoteku",
+    "hashMismatch": "učitani sadržaj ne odgovara sažetku iz popisa",
+    "itemNotFound": "stavka uvoza {{id}} nije pronađena",
+    "itemNotListed": "stavka je u stanju {{state}}; sadržaj primaju samo popisane stavke",
+    "notReadableZip": "nije čitljiva ZIP arhiva",
+    "nothingToImport": "nakon izuzimanja nema što uvesti",
+    "prefixEmpty": "pod tim prefiksom nema ničega",
+    "runNotFound": "uvoz {{id}} nije pronađen",
+    "s3CredentialsRequired": "za potvrdu su potrebni S3 pristupni podaci",
+    "stagedArchiveUnreadable": "pripremljena arhiva više nije čitljiva",
+    "tooManyFiles": "previše datoteka (najviše {{max}}); podijelite uvoz",
+    "uploadsUnfinished_one": "{{count}} datoteka nije dovršila učitavanje",
+    "uploadsUnfinished_few": "{{count}} datoteke nisu dovršile učitavanje",
+    "uploadsUnfinished_other": "{{count}} datoteka nije dovršilo učitavanje"
+  },
+  "job": {
+    "deadLetterNotFound": "zaustavljeni posao {{id}} nije pronađen"
+  },
+  "limit": {
+    "rateLimited": "dosegnuto je ograničenje brzine za {{bucket}}, pokušajte ponovno za {{seconds}} s"
+  },
+  "memory": {
+    "alreadyReplacedEdit": "sjećanje je već zamijenjeno; uredite njegovu zamjenu",
+    "alreadyReplacedSupersede": "sjećanje je već zamijenjeno; zamijenite njegovu zamjenu",
+    "bulkOutdate": {
+      "notYours_one": "nemate pravo mijenjati {{count}} ciljano sjećanje",
+      "notYours_few": "nemate pravo mijenjati {{count}} ciljana sjećanja",
+      "notYours_other": "nemate pravo mijenjati {{count}} ciljanih sjećanja"
+    },
+    "noVerification": "sjećanje {{id}} nema rezultat provjere",
+    "notFound": "sjećanje {{id}} nije pronađeno"
+  },
+  "note": {
+    "notFound": "bilješka {{id}} nije pronađena"
+  },
+  "passport": {
+    "expired": "izvoz {{id}} više nije dostupan: istekao je jer je izbrisan izvor koji je možda sadržavao. Zatražite novi izvoz.",
+    "notFound": "izvoz {{id}} nije pronađen",
+    "notReady": "izvoz {{id}} nije spreman za preuzimanje"
+  },
+  "project": {
+    "assignmentNeedsSourceType": "dodjela izvora treba svoju vrstu izvora",
+    "nameRequired": "projekt treba naziv",
+    "nameTaken": "već imate projekt s tim nazivom",
+    "notFound": "projekt {{id}} nije pronađen",
+    "tooMany_one": "imate {{count}} aktivan projekt, najprije neke arhivirajte",
+    "tooMany_few": "imate {{count}} aktivna projekta, najprije neke arhivirajte",
+    "tooMany_other": "imate {{count}} aktivnih projekata, najprije neke arhivirajte"
+  },
+  "provider": {
+    "answerModelNotOffered": "taj model za odgovore nije među onima koje ova instanca nudi",
+    "apiKeyRequired": "pružatelj vrste {{type}} treba API ključ",
+    "embeddingProbeSilent": "model nije odgovorio na provjeru ugrađivanja",
+    "embeddingsNotDirectlyAssignable": "model ugrađivanja ne može se dodijeliti izravno: svaki je pohranjeni vektor proizveo trenutačni model, a posluživanje mješovitog prostora ugrađivanja tiho bi pokvarilo svaki rezultat pretrage. Upotrijebite postupak ponovne izgradnje ugrađivanja, koji korpus ponovno ugrađuje u novi indeks i po dovršetku prebacuje u jednom koraku.",
+    "embeddingsUnchanged": "to je već aktivni model ugrađivanja",
+    "embeddingsUnsupported": "pružatelj \"{{label}}\" nema API za ugrađivanja ({{type}})",
+    "endpointInvalid": "krajnja točka nije valjan URL",
+    "endpointRequired": "ova vrsta pružatelja treba krajnju točku",
+    "endpointScheme": "krajnja točka mora biti http ili https URL",
+    "labelRequired": "pružatelj treba naziv",
+    "labelTaken": "pružatelj pod nazivom \"{{label}}\" već postoji",
+    "noEmbeddingsApi": "ova vrsta pružatelja nema API za ugrađivanja",
+    "notFound": "nema takvog pružatelja",
+    "probeSilent": "model nije odgovorio na provjeru",
+    "rebuildExists": "ponovna izgradnja ugrađivanja već postoji; otkažite je ili nastavite",
+    "rebuildUnavailable": "vođena ponovna izgradnja nije dostupna u ovom procesu; operaterski put je `{{command}}`",
+    "stillBound": "ovaj pružatelj još poslužuje razine {{tiers}}: najprije ih premjestite",
+    "tierRequired": "razina {{tier}} ne može ostati nedodijeljena",
+    "typeNotCreatable": "\"{{type}}\" nije vrsta pružatelja koja se može stvoriti",
+    "unknownType": "ovaj pružatelj ima nepoznatu vrstu",
+    "visionUnsupported": "pružatelj \"{{label}}\" ne može poslužiti razinu vida: čitanje slika nije izvedeno za pružatelje vrste {{type}} na ovoj instanci. Dodijelite pružatelja čija vrsta može čitati slike ili ostavite razinu vida nedodijeljenom, čime se čitanje zaustavlja na OCR-u."
+  },
+  "receipt": {
+    "notFound": "potvrda {{id}} nije pronađena"
+  },
+  "relation": {
+    "changedSinceDetection": "sjećanje u ovoj se proturječnosti promijenilo od otkrivanja, pregledajte ga u Sjećanjima, a zatim ga odbacite ili ispravite",
+    "memoryGone": "sjećanje iz ovog para više ne postoji",
+    "notFound": "odnos {{id}} nije pronađen",
+    "selfPair": "sjećanje se ne može upariti sa samim sobom"
+  },
+  "report": {
+    "alreadyGenerating": "izvještaj za drugi opseg već se izrađuje; pričekajte da završi",
+    "dateRangeReversed": "raspon datuma: početak je nakon kraja",
+    "expired": "izvještaj {{id}} više nije dostupan: istekao je jer je izbrisan izvor koji je možda citirao ili je isteklo razdoblje čuvanja. Izradite novi izvještaj.",
+    "notFound": "izvještaj {{id}} nije pronađen",
+    "notReady": "izvještaj {{id}} nije spreman za preuzimanje",
+    "projectsUnavailable": "projekti nisu dostupni na ovoj instanci",
+    "sourcesScopeCapped": "opseg izvora ograničen je na 200 izvora",
+    "sourcesScopeEmpty": "opseg izvora treba barem jedan izvor"
+  },
+  "research": {
+    "alreadyRan": "ovo je istraživanje već provedeno: njegov upit više nije zadržan",
+    "alreadyRanDifferentQuery": "ovo je istraživanje već provedeno s drugim odobrenim upitom, predložite novo",
+    "blankQuery": "odobreni upit ne smije biti prazan",
+    "cancelled": "ovo je istraživanje otkazano, predložite ga ponovno",
+    "captureNeedsApproval": "spremanje zahtijeva odobreno istraživanje",
+    "discoveryNeedsApproval": "pretraživanje zahtijeva odobreno istraživanje",
+    "runNotFound": "nema takvog istraživanja",
+    "synthesisNeedsApproval": "sinteza zahtijeva odobreno istraživanje",
+    "synthesisNeedsPages": "prije sinteze spremite barem jednu stranicu"
+  },
+  "research_page_cap": "jedno istraživanje dohvaća najviše {{max}} stranica",
+  "revision": {
+    "notFound": "poveznica verzije {{id}} nije pronađena",
+    "selfLink": "izvor ne može biti verzija samoga sebe"
+  },
+  "search_unavailable": "tražilica nije dostupna: {{detail}}",
+  "skill": {
+    "alreadyFinished": "ovo je izvođenje vještine već završilo",
+    "decisionOutsidePlan": "odluka se poziva na upit izvan ovog plana",
+    "noApprovedQueries": "odobrite barem jedan upit ili otkažite izvođenje",
+    "notAwaitingApproval": "ovo izvođenje vještine ne čeka odobrenje plana",
+    "planQueryCap": "plan vještine odobrava najviše {{max}} upita",
+    "runNotFound": "nema takvog izvođenja vještine",
+    "unknownSkill": "nepoznata vještina '{{id}}'"
+  },
+  "source": {
+    "fileNotFound": "izvor file/{{key}} nije pronađen",
+    "notFound": "izvor {{sourceType}}/{{sourceId}} nije pronađen",
+    "unknownType": "nepoznata vrsta izvora '{{type}}'"
+  },
+  "sourceContext": {
+    "notExtractable": "'{{sourceType}}' nije vrsta izvora iz koje se izdvaja",
+    "notFound": "za ovaj izvor nema konteksta"
+  },
+  "too_many_streams": "previše istodobnih tokova razgovora (najviše {{max}})"
+}

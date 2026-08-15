@@ -40,6 +40,7 @@ import {
 import { EMAIL_FRAME_SANDBOX, emailFrameDocument } from './email-body';
 import { InspectionPanels } from './InspectionPanels';
 import type { Tone } from './status';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 /**
  * File STATE is an API value; only its display name is translated, through an
@@ -158,6 +159,7 @@ export function SourceDrawer({
   onOpenMemory?: (memoryId: string) => void;
 }) {
   const { t } = useTranslation('sources');
+  const apiError = useApiErrorMessage(t);
   const { t: tp } = useTranslation('projects');
   const confirm = useConfirm();
   const queryClient = useQueryClient();
@@ -226,7 +228,7 @@ export function SourceDrawer({
       setDraftError(null);
       setDrafted(true);
     },
-    onError: (e: unknown) => setDraftError(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => setDraftError(apiError(e)),
   });
 
   const [reprocessed, setReprocessed] = useState(false);
@@ -237,15 +239,13 @@ export function SourceDrawer({
       setReprocessError(queued ? null : t('read.reprocess.noBytes'));
       setReprocessed(queued);
     },
-    onError: (error: unknown) =>
-      setReprocessError(error instanceof Error ? error.message : t('read.reprocess.failed')),
+    onError: (error: unknown) => setReprocessError(apiError(error, 'read.reprocess.failed')),
   });
 
   const download = useMutation({
     mutationFn: () => fetchFileDownload(session, sourceId),
     onSuccess: ({ url }) => window.open(url, '_blank', 'noopener'),
-    onError: (error: unknown) =>
-      setDownloadError(error instanceof Error ? error.message : String(error)),
+    onError: (error: unknown) => setDownloadError(apiError(error)),
   });
   const impactQuery = useQuery({
     queryKey: ['deletion-impact', sourceType, sourceId],
@@ -258,8 +258,7 @@ export function SourceDrawer({
       await invalidateAfterSourceDeletion(queryClient); //: the deletion cascade only.
       onDeleted(receiptId);
     },
-    onError: (error: unknown) =>
-      setDeleteError(error instanceof Error ? error.message : String(error)),
+    onError: (error: unknown) => setDeleteError(apiError(error)),
   });
 
   const confirmAndDelete = async () => {
@@ -798,6 +797,7 @@ export function SourceDrawer({
  */
 function AnchorContextPanel({ session, sourceId }: { session: Session; sourceId: string }) {
   const { t } = useTranslation('sources');
+  const apiError = useApiErrorMessage(t);
   const queryClient = useQueryClient();
   const context = useQuery<SourceContextDto | null>({
     queryKey: ['source-context', sourceId],
@@ -946,7 +946,7 @@ function AnchorContextPanel({ session, sourceId }: { session: Session; sourceId:
           </div>
           {save.isError && (
             <p className="text-xs text-red-600 dark:text-red-300">
-              {save.error instanceof Error ? save.error.message : t('anchor.saveFailed')}
+              {apiError(save.error, 'anchor.saveFailed')}
             </p>
           )}
         </div>

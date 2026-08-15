@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { startLogin } from '../auth/oidc';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 export function Login() {
   const { t } = useTranslation('auth');
+  const apiError = useApiErrorMessage(t);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -14,7 +16,7 @@ export function Login() {
       await startLogin();
     } catch (e) {
       setBusy(false);
-      setError(e instanceof Error ? e.message : String(e));
+      setError(apiError(e));
     }
   };
 

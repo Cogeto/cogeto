@@ -1,0 +1,194 @@
+{
+  "alias": {
+    "duplicate": "this alias pair is already recorded",
+    "notFound": "alias {{id}} not found",
+    "notNeeded": "these names already match after normalization; no alias is needed"
+  },
+  "approval": {
+    "emailDraftNotFound": "email draft {{id}} not found",
+    "notFound": "approval {{id}} not found"
+  },
+  "attention": {
+    "notDismissible": "only digest items can be dismissed"
+  },
+  "auth": {
+    "demoInitializing": "the demo sandbox is still initializing",
+    "demoUnavailable": "demo login is not available",
+    "identityBootstrapping": "identity bootstrap has not completed yet (web config unavailable)",
+    "invalidCredentials": "invalid username or password",
+    "roleRequired": "this endpoint requires the '{{role}}' role"
+  },
+  "chat": {
+    "attachmentNotFound": "attachment {{id}} not found",
+    "conversationNotFound": "conversation {{id}} not found",
+    "messageNotFound": "message {{id}} not found",
+    "onlyOwnMessages": "only your own messages can be remembered: the assistant’s replies are never captured",
+    "tooManyConversations_one": "you have {{count}} active conversation, archive or delete some first",
+    "tooManyConversations_other": "you have {{count}} active conversations, archive or delete some first"
+  },
+  "confluence": {
+    "notConfluenceConnector": "not a Confluence connector"
+  },
+  "connector": {
+    "cannotSweep": "a {{state}} connector cannot sweep",
+    "cannotSync": "a {{state}} connector cannot sync",
+    "erasedItemNotFound": "no such erased item",
+    "illegalTransition": "a {{from}} connector cannot become {{to}}",
+    "noCustomSubScopes": "this connector kind accepts no custom sub-scopes",
+    "noPresenceListing": "this connector kind cannot list upstream presence",
+    "noWebhook": "this connector kind declares no webhook",
+    "notAuthorised": "authorise the connector first",
+    "notFound": "no such connector",
+    "subScopeKeyMismatch": "the key does not match this connector sub-scope form",
+    "subScopeNotFound": "no such sub-scope",
+    "unknownKind": "unknown connector kind '{{kind}}'"
+  },
+  "daily_capture_limit": "daily capture limit reached ({{max}}), try again tomorrow",
+  "daily_research_limit": "daily research search limit reached ({{max}}), try again tomorrow",
+  "daily_upload_limit": "daily upload limit reached ({{max}}), try again tomorrow",
+  "email": {
+    "allowlistEntryNotFound": "allowlist entry not found",
+    "invalidAddress": "not a valid email address",
+    "invalidDomain": "not a valid domain (e.g. adriatic-foods.hr)",
+    "notFound": "email {{id}} not found"
+  },
+  "extractionGate": {
+    "notGateable": "'{{sourceType}}' is not an extraction-capable source type; the gate controls: {{gateable}}",
+    "ruleNotFound": "no such rule"
+  },
+  "file": {
+    "empty": "the uploaded file is empty",
+    "exceedsUploadLimit": "file exceeds the {{bytes}}-byte upload limit",
+    "notFound": "file {{key}} not found",
+    "tooLarge": "the uploaded file exceeds the size limit",
+    "unsupportedType": "unsupported file type '{{type}}': only PDF, DOCX, XLSX, CSV, Markdown, plain text and images are accepted"
+  },
+  "import": {
+    "alreadyStarted": "this import already started",
+    "archiveEmpty": "the archive contains no files",
+    "archiveTooLarge": "the archive exceeds the size limit",
+    "folderEmpty": "the folder contains no files",
+    "hashMismatch": "uploaded bytes do not match the manifest hash",
+    "itemNotFound": "import item {{id}} not found",
+    "itemNotListed": "item is {{state}}; only listed items take bytes",
+    "notReadableZip": "not a readable ZIP archive",
+    "nothingToImport": "nothing to import after exclusions",
+    "prefixEmpty": "nothing under that prefix",
+    "runNotFound": "import {{id}} not found",
+    "s3CredentialsRequired": "S3 credentials are required to confirm",
+    "stagedArchiveUnreadable": "the staged archive is no longer readable",
+    "tooManyFiles": "too many files (max {{max}}); split the import",
+    "uploadsUnfinished_one": "{{count}} file has not finished uploading",
+    "uploadsUnfinished_other": "{{count}} files have not finished uploading"
+  },
+  "job": {
+    "deadLetterNotFound": "dead-letter job {{id}} not found"
+  },
+  "limit": {
+    "rateLimited": "rate limit reached for {{bucket}}, retry in {{seconds}}s"
+  },
+  "memory": {
+    "alreadyReplacedEdit": "memory is already replaced; edit its successor instead",
+    "alreadyReplacedSupersede": "memory is already replaced; supersede its successor",
+    "bulkOutdate": {
+      "notYours_one": "{{count}} target memory is not yours to change",
+      "notYours_other": "{{count}} target memories are not yours to change"
+    },
+    "noVerification": "memory {{id}} has no verification result",
+    "notFound": "memory {{id}} not found"
+  },
+  "note": {
+    "notFound": "note {{id}} not found"
+  },
+  "passport": {
+    "expired": "export {{id}} is no longer available: it was expired because a source it may have contained was deleted. Request a new export.",
+    "notFound": "export {{id}} not found",
+    "notReady": "export {{id}} is not ready to download"
+  },
+  "project": {
+    "assignmentNeedsSourceType": "a source assignment needs its source type",
+    "nameRequired": "a project needs a name",
+    "nameTaken": "you already have a project with that name",
+    "notFound": "project {{id}} not found",
+    "tooMany_one": "you have {{count}} active project, archive some first",
+    "tooMany_other": "you have {{count}} active projects, archive some first"
+  },
+  "provider": {
+    "answerModelNotOffered": "that answer model is not one this instance offers",
+    "apiKeyRequired": "a {{type}} provider needs an API key",
+    "embeddingProbeSilent": "the model did not answer the embedding probe",
+    "embeddingsNotDirectlyAssignable": "the embeddings model cannot be assigned directly: every stored vector was produced by the current model, and serving a mixed embedding space would silently corrupt every search result. Use the embeddings rebuild flow, which re-embeds the corpus into a new index and switches atomically at completion.",
+    "embeddingsUnchanged": "that is already the active embeddings model",
+    "embeddingsUnsupported": "provider \"{{label}}\" has no embeddings API ({{type}})",
+    "endpointInvalid": "the endpoint is not a valid URL",
+    "endpointRequired": "this provider type needs an endpoint",
+    "endpointScheme": "the endpoint must be an http or https URL",
+    "labelRequired": "a provider needs a label",
+    "labelTaken": "a provider called \"{{label}}\" already exists",
+    "noEmbeddingsApi": "this provider type has no embeddings API",
+    "notFound": "no such provider",
+    "probeSilent": "the model did not answer the probe",
+    "rebuildExists": "an embeddings rebuild already exists; cancel or resume it",
+    "rebuildUnavailable": "the managed rebuild is unavailable in this process; the operator path is `{{command}}`",
+    "stillBound": "this provider still serves the {{tiers}} tier(s): reassign them first",
+    "tierRequired": "the {{tier}} tier cannot be left unassigned",
+    "typeNotCreatable": "\"{{type}}\" is not a provider type that can be created",
+    "unknownType": "this provider has an unknown type",
+    "visionUnsupported": "provider \"{{label}}\" cannot serve the vision tier: reading an image is not implemented for {{type}} providers on this instance. Assign a provider whose type can read images, or leave the vision tier unassigned and the reading ladder stops at OCR."
+  },
+  "receipt": {
+    "notFound": "receipt {{id}} not found"
+  },
+  "relation": {
+    "changedSinceDetection": "a memory in this contradiction changed since detection, review it in Memories, then dismiss or correct instead",
+    "memoryGone": "a memory in this pair no longer exists",
+    "notFound": "relation {{id}} not found",
+    "selfPair": "a memory cannot be paired with itself"
+  },
+  "report": {
+    "alreadyGenerating": "a report over a different scope is already being generated; wait for it to finish",
+    "dateRangeReversed": "date range: from is after to",
+    "expired": "report {{id}} is no longer available: it was expired because a source it may have quoted was deleted, or its retention window passed. Generate a new report.",
+    "notFound": "report {{id}} not found",
+    "notReady": "report {{id}} is not ready to download",
+    "projectsUnavailable": "projects are not available on this instance",
+    "sourcesScopeCapped": "a sources scope is capped at 200 sources",
+    "sourcesScopeEmpty": "a sources scope needs at least one source"
+  },
+  "research": {
+    "alreadyRan": "this research already ran: its query has left",
+    "alreadyRanDifferentQuery": "this research already ran with a different approved query, propose a new one",
+    "blankQuery": "the approved query must not be blank",
+    "cancelled": "this research was cancelled, propose it again",
+    "captureNeedsApproval": "capture requires an approved research run",
+    "discoveryNeedsApproval": "discovery requires an approved research run",
+    "runNotFound": "no such research run",
+    "synthesisNeedsApproval": "synthesis needs an approved research run",
+    "synthesisNeedsPages": "capture at least one page before synthesising"
+  },
+  "research_page_cap": "a single research fetches at most {{max}} pages",
+  "revision": {
+    "notFound": "revision link {{id}} not found",
+    "selfLink": "a source cannot be a revision of itself"
+  },
+  "search_unavailable": "the search engine is unavailable: {{detail}}",
+  "skill": {
+    "alreadyFinished": "this skill run already finished",
+    "decisionOutsidePlan": "a decision references a query outside this plan",
+    "noApprovedQueries": "approve at least one query, or cancel the run",
+    "notAwaitingApproval": "this skill run is not awaiting plan approval",
+    "planQueryCap": "a skill plan approves at most {{max}} queries",
+    "runNotFound": "no such skill run",
+    "unknownSkill": "unknown skill '{{id}}'"
+  },
+  "source": {
+    "fileNotFound": "source file/{{key}} not found",
+    "notFound": "source {{sourceType}}/{{sourceId}} not found",
+    "unknownType": "unknown source type '{{type}}'"
+  },
+  "sourceContext": {
+    "notExtractable": "'{{sourceType}}' is not an extraction-capable source type",
+    "notFound": "no source context for this source"
+  },
+  "too_many_streams": "too many concurrent chat streams (max {{max}})"
+}

@@ -47,15 +47,17 @@ export function buildModelConfigDto(config: ModelConfigView): ModelConfigDto {
       redactionEnabled: config.redactionEnabled,
       externalCalls:
         'No model provider is configured, so nothing leaves this instance for model calls; model features are disabled.',
+      externalCallsKind: 'unconfigured',
+      externalCallsProviders: [],
     };
   }
-  const providers = [
-    ...new Set(
-      [p.tiers.pipeline.provider, p.tiers.answer.provider, p.tiers.embedding.provider].map(
-        (id) => PROVIDER_LABEL[id] ?? id,
-      ),
-    ),
+  // The ids, deduplicated in tier order, and the English labels beside them.
+  // The interface labels the ids itself and joins them with its own language's
+  // list rules; `externalCalls` below stays the English sentence it always was.
+  const named = [
+    ...new Set([p.tiers.pipeline.provider, p.tiers.answer.provider, p.tiers.embedding.provider]),
   ];
+  const providers = named.map((id) => PROVIDER_LABEL[id] ?? id);
   const providerList =
     providers.length === 1
       ? providers[0]!
@@ -78,6 +80,8 @@ export function buildModelConfigDto(config: ModelConfigView): ModelConfigDto {
       redactionEnabled: config.redactionEnabled,
       externalCalls:
         'Model calls (including embeddings) go to the local Ollama runtime on your own network; nothing is sent to a hosted model provider.',
+      externalCallsKind: 'all_local',
+      externalCallsProviders: [],
     };
   }
   const externalCalls = config.redactionEnabled
@@ -94,5 +98,7 @@ export function buildModelConfigDto(config: ModelConfigView): ModelConfigDto {
     },
     redactionEnabled: config.redactionEnabled,
     externalCalls,
+    externalCallsKind: config.redactionEnabled ? 'redacted' : 'external',
+    externalCallsProviders: named,
   };
 }

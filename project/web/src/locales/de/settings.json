@@ -64,18 +64,30 @@
       "embeddings": "Einbettungen"
     },
     "managedIn": "Anbieter, Zuordnungen und die Modelle, die Nutzer wählen dürfen, werden dort festgelegt.",
-    "manage": "Modelle verwalten"
+    "manage": "Modelle verwalten",
+    "externalCalls": {
+      "unconfigured": "Es ist kein Modellanbieter konfiguriert, daher verlässt für Modellaufrufe nichts diese Instanz; die Modellfunktionen sind deaktiviert.",
+      "allLocal": "Modellaufrufe (einschließlich Embeddings) gehen an die lokale Ollama-Laufzeit in Ihrem eigenen Netzwerk; an einen gehosteten Modellanbieter wird nichts gesendet.",
+      "redacted": "Modellaufrufe (einschließlich Embeddings) gehen an {{providers}}; die Redaktion pseudonymisiert den Text, bevor er diese Instanz verlässt, und bricht ab, wenn der Sidecar nicht läuft.",
+      "external": "Modellaufrufe (einschließlich Embeddings) senden Text an {{providers}}; alles Übrige bleibt in dieser Instanz."
+    },
+    "providerLabel": {
+      "mistral": "Mistral",
+      "openai": "den konfigurierten OpenAI-kompatiblen Endpunkt",
+      "anthropic": "Anthropic",
+      "ollama": "die lokale Ollama-Laufzeit"
+    }
   },
   "aliases": {
-    "heading": "Entity aliases",
-    "explainer": "Two names for the same thing pair for contradiction checks, including a Croatian and an English name for one company.",
-    "pair": "\"{{alias}}\" counts as \"{{canonical}}\"",
-    "canonical": "Canonical name",
-    "canonicalPlaceholder": "The name your documents use most",
+    "heading": "Entitätsaliase",
+    "explainer": "Zwei Namen für dieselbe Sache werden bei der Widerspruchsprüfung zusammengeführt, etwa ein kroatischer und ein englischer Name desselben Unternehmens.",
+    "pair": "\"{{alias}}\" gilt als \"{{canonical}}\"",
+    "canonical": "Kanonischer Name",
+    "canonicalPlaceholder": "Der Name, den Ihre Dokumente am häufigsten verwenden",
     "alias": "Alias",
-    "aliasPlaceholder": "Another name for the same thing",
-    "empty": "No aliases recorded yet.",
-    "error": "Couldn't load your aliases."
+    "aliasPlaceholder": "Ein anderer Name für dieselbe Sache",
+    "empty": "Noch keine Aliase erfasst.",
+    "error": "Ihre Aliase konnten nicht geladen werden."
   },
   "signingKey": {
     "heading": "Signierschlüssel der Instanz",

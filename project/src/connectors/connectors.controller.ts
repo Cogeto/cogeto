@@ -1,11 +1,9 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
   Inject,
-  NotFoundException,
   Optional,
   Param,
   ParseUUIDPipe,
@@ -18,6 +16,7 @@ import { z } from 'zod';
 import {
   DRIZZLE,
   parseOrBadRequest,
+  userError,
   withTransactionalEnqueue,
   writeAudit,
 } from '../infrastructure/index';
@@ -109,7 +108,9 @@ export class ConnectorsController {
   async create(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
     const parsed = parseOrBadRequest(createSchema, body);
     if (!this.registry.get(parsed.kind)) {
-      throw new BadRequestException(`unknown connector kind '${parsed.kind}'`);
+      throw userError.badRequest('connector.unknownKind', "unknown connector kind '{{kind}}'", {
+        kind: parsed.kind,
+      });
     }
     const row = await this.store.create({
       ownerId: request.principal.userId,
@@ -213,7 +214,7 @@ export class ConnectorsController {
     const row = await this.store.byIdForOwner(id, request.principal.userId);
     const descriptor = this.registry.get(row.kind);
     if (!descriptor?.webhook) {
-      throw new BadRequestException('this connector kind declares no webhook');
+      throw userError.badRequest('connector.noWebhook', 'this connector kind declares no webhook');
     }
     const secret = await this.store.rotateWebhookSecret(row);
     return { secret };
@@ -281,10 +282,16 @@ export class ConnectorsController {
     const parsed = parseOrBadRequest(addSubScopeSchema, body);
     const descriptor = this.registry.get(row.kind);
     if (!descriptor?.acceptSubScopeKey) {
-      throw new BadRequestException('this connector kind accepts no custom sub-scopes');
+      throw userError.badRequest(
+        'connector.noCustomSubScopes',
+        'this connector kind accepts no custom sub-scopes',
+      );
     }
     if (!descriptor.acceptSubScopeKey(parsed.key)) {
-      throw new BadRequestException('the key does not match this connector sub-scope form');
+      throw userError.badRequest(
+        'connector.subScopeKeyMismatch',
+        'the key does not match this connector sub-scope form',
+      );
     }
     await this.store.addSubScope(row, parsed.key, parsed.label);
     return { added: true };
@@ -321,7 +328,9 @@ export class ConnectorsController {
     const row = await this.store.byIdForOwner(id, request.principal.userId);
     const parsed = parseOrBadRequest(reingestSchema, body);
     if (!SYNCABLE_STATES.includes(row.state)) {
-      throw new BadRequestException(`a ${row.state} connector cannot sync`);
+      throw userError.badRequest('connector.cannotSync', 'a {{state}} connector cannot sync', {
+        state: row.state,
+      });
     }
     let released = false;
     await this.db.transaction(async (tx) => {
@@ -346,7 +355,7 @@ export class ConnectorsController {
         },
       );
     });
-    if (!released) throw new NotFoundException('no such erased item');
+    if (!released) throw userError.notFound('connector.erasedItemNotFound', 'no such erased item');
     return { released: true };
   }
 
@@ -357,10 +366,15 @@ export class ConnectorsController {
     const row = await this.store.byIdForOwner(id, request.principal.userId);
     const descriptor = this.registry.get(row.kind);
     if (!descriptor?.listKeys) {
-      throw new BadRequestException('this connector kind cannot list upstream presence');
+      throw userError.badRequest(
+        'connector.noPresenceListing',
+        'this connector kind cannot list upstream presence',
+      );
     }
     if (!SYNCABLE_STATES.includes(row.state)) {
-      throw new BadRequestException(`a ${row.state} connector cannot sweep`);
+      throw userError.badRequest('connector.cannotSweep', 'a {{state}} connector cannot sweep', {
+        state: row.state,
+      });
     }
     await this.db.transaction(async (tx) => {
       await withTransactionalEnqueue(
@@ -381,7 +395,9 @@ export class ConnectorsController {
   async sync(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
     const row = await this.store.byIdForOwner(id, request.principal.userId);
     if (!SYNCABLE_STATES.includes(row.state)) {
-      throw new BadRequestException(`a ${row.state} connector cannot sync`);
+      throw userError.badRequest('connector.cannotSync', 'a {{state}} connector cannot sync', {
+        state: row.state,
+      });
     }
     await this.db.transaction(async (tx) => {
       await withTransactionalEnqueue(
@@ -410,7 +426,8 @@ export class ConnectorsController {
   async enable(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
     const row = await this.store.byIdForOwner(id, request.principal.userId);
     const credential = await this.credentials.describe(row.id);
-    if (!credential) throw new BadRequestException('authorise the connector first');
+    if (!credential)
+      throw userError.badRequest('connector.notAuthorised', 'authorise the connector first');
     await this.store.transition(this.db, row, 'authorised', {
       actor: `user:${request.principal.userId}`,
     });

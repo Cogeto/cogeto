@@ -1,10 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-  Optional,
-  UnprocessableEntityException,
-} from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import type {
   PreferredLanguage,
   Principal,
@@ -18,6 +12,7 @@ import {
   EMPTY_USER_CONTEXT,
   serverTranslator,
   UserContextService,
+  userError,
 } from '../infrastructure/index';
 import {
   fenceUntrusted,
@@ -95,7 +90,7 @@ export class ResearchSynthesisService {
 
   async synthesise(principal: Principal, runId: string): Promise<ResearchAnswerDto> {
     const run = await this.research.getRun(principal, runId);
-    if (!run) throw new NotFoundException();
+    if (!run) throw userError.notFound('research.runNotFound', 'no such research run');
     const pages = (await this.research.pagesForRun(principal, runId)).slice(0, MAX_PAGES);
     // A concluded run replays its STORED answer — the worker
     // may have finished while nobody was watching; asking again re-resolves
@@ -106,10 +101,16 @@ export class ResearchSynthesisService {
       return { runId, answer, citations };
     }
     if (run.status !== 'approved') {
-      throw new UnprocessableEntityException('synthesis needs an approved research run');
+      throw userError.unprocessable(
+        'research.synthesisNeedsApproval',
+        'synthesis needs an approved research run',
+      );
     }
     if (pages.length === 0) {
-      throw new UnprocessableEntityException('capture at least one page before synthesising');
+      throw userError.unprocessable(
+        'research.synthesisNeedsPages',
+        'capture at least one page before synthesising',
+      );
     }
     const result = await this.synthesiseCore(principal, runId, run.intent, pages);
     // Interactive path: the user is watching the answer render — seen now.

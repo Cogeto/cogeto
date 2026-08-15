@@ -5,5 +5,8 @@
     "stateMismatch": "l’état du rappel de connexion ne correspond pas",
     "demoCredentials": "Nom d’utilisateur ou mot de passe de démonstration incorrect.",
     "demoNoSession": "La connexion à la démonstration n’a renvoyé aucune session."
+  },
+  "server": {
+    "unexpected": "Une erreur est survenue. Veuillez réessayer."
   }
 }

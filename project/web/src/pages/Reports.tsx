@@ -22,6 +22,7 @@ import {
   SectionTitle,
   SkeletonRows,
 } from '../components/ui';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 /**
  * Reports (V2.3 item 6.2): the findings-run surface. A run examines a stated
@@ -71,13 +72,14 @@ function DeltaLine({ report }: { report: FindingsReportDto }) {
 
 function ReportRow({ session, report }: { session: Session; report: FindingsReportDto }) {
   const { t } = useTranslation('reports');
+  const apiError = useApiErrorMessage(t);
   const [error, setError] = useState<string | null>(null);
   const download = useMutation({
     mutationFn: async (format: 'pdf' | 'json') => {
       const { url } = await fetchReportDownload(session, report.id, format);
       window.location.href = url;
     },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => setError(apiError(err)),
   });
   const counts = report.counts;
   return (
@@ -144,6 +146,7 @@ function ReportRow({ session, report }: { session: Session; report: FindingsRepo
 
 function TriggerCard({ session }: { session: Session }) {
   const { t } = useTranslation('reports');
+  const apiError = useApiErrorMessage(t);
   const queryClient = useQueryClient();
   const [kind, setKind] = useState<ScopeKind>('corpus');
   const [importRunId, setImportRunId] = useState('');
@@ -169,7 +172,7 @@ function TriggerCard({ session }: { session: Session }) {
       setError(null);
       void queryClient.invalidateQueries({ queryKey: ['reports'] });
     },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => setError(apiError(err)),
   });
 
   const submit = () => {
@@ -276,6 +279,7 @@ function TriggerCard({ session }: { session: Session }) {
 
 export function Reports({ session }: { session: Session }) {
   const { t } = useTranslation('reports');
+  const apiError = useApiErrorMessage(t);
   const reports = useQuery({
     queryKey: ['reports'],
     queryFn: () => fetchReports(session),
@@ -291,7 +295,7 @@ export function Reports({ session }: { session: Session }) {
         <TriggerCard session={session} />
         <SectionTitle>{t('list.title')}</SectionTitle>
         {reports.isLoading ? <SkeletonRows rows={3} /> : null}
-        {reports.isError ? <ErrorState>{(reports.error as Error).message}</ErrorState> : null}
+        {reports.isError ? <ErrorState>{apiError(reports.error)}</ErrorState> : null}
         {reports.data && reports.data.length === 0 ? (
           <EmptyState title={t('list.emptyTitle')}>{t('list.emptyHint')}</EmptyState>
         ) : null}

@@ -27,10 +27,10 @@
   },
   "capability": {
     "models": {
-      "name": "Models",
-      "description": "The model providers and per-tier assignments this instance runs, managed under Providers and stored in the database.",
-      "consequence": "The model configuration is reported as broken; check the Providers page.",
-      "enable": "Add a provider and assign the tiers under Providers in the left rail."
+      "name": "Modèles",
+      "description": "Les fournisseurs de modèles et les affectations par niveau utilisés par cette instance, gérés sous Fournisseurs et enregistrés dans la base de données.",
+      "consequence": "La configuration des modèles est signalée comme défaillante ; consultez la page Fournisseurs.",
+      "enable": "Ajoutez un fournisseur et affectez les niveaux sous Fournisseurs dans le rail de gauche."
     },
     "redaction": {
       "name": "Masquage",
@@ -58,22 +58,22 @@
       "consequence": "Les consoles sont activées, mais ne répondent pas."
     },
     "reasoning": {
-      "name": "Reasoning model",
-      "description": "Detects, by probing with a real prompt, whether the model thinks in a separate reasoning channel before answering. When it does, token caps are enlarged so the thinking cannot silently consume the answer's budget. Off simply means the model answers directly.",
-      "consequence": "Reasoning could not be determined: token caps stay unenlarged, and a reasoning model may return empty answers until a probe succeeds.",
-      "enable": "Comes on by itself when the assigned answer model returns separate reasoning; there is nothing to enable by hand."
+      "name": "Modèle de raisonnement",
+      "description": "Détecte, au moyen d'une invite réelle, si le modèle raisonne dans un canal distinct avant de répondre. Si c'est le cas, les plafonds de jetons sont relevés afin que le raisonnement ne consomme pas discrètement le budget de la réponse. Désactivé signifie simplement que le modèle répond directement.",
+      "consequence": "Le raisonnement n'a pas pu être déterminé : les plafonds de jetons restent inchangés et un modèle de raisonnement peut renvoyer des réponses vides jusqu'à ce qu'une sonde aboutisse.",
+      "enable": "S'active de lui-même lorsque le modèle de réponse affecté renvoie un raisonnement distinct ; il n'y a rien à activer manuellement."
     },
     "vision": {
-      "name": "Reading pictures",
-      "description": "Reads pages that are images: scans, photographs, drawings and schematics. Cheapest first, so a page with real text is never sent to a model. Off means those pages are labelled unreadable instead of silently empty.",
+      "name": "Lecture des images",
+      "description": "Lit les pages qui sont des images : numérisations, photographies, dessins et schémas. Au moindre coût d'abord, de sorte qu'une page contenant du texte réel n'est jamais envoyée à un modèle. Désactivé signifie que ces pages sont marquées illisibles plutôt que discrètement vides.",
       "consequence": "Vision is configured but not working: pages that are pictures cannot be read, and they are labelled as needing it rather than shown as processed.",
-      "enable": "Assign a vision provider and model under Models in the interface."
+      "enable": "Affectez un fournisseur et un modèle de vision sous Modèles dans l'interface."
     },
     "connectors": {
-      "name": "Connectors",
-      "description": "Syncs content from connected external systems into sources, so what changes outside this instance is captured and verified here.",
-      "consequence": "A connector needs attention: syncing for it is degraded or stopped until it is reconnected.",
-      "enable": "Add a connector under Connections in the interface."
+      "name": "Connecteurs",
+      "description": "Synchronise le contenu des systèmes externes connectés vers des sources, afin que ce qui change hors de cette instance y soit capturé et vérifié.",
+      "consequence": "Un connecteur demande votre attention : sa synchronisation est dégradée ou arrêtée jusqu'à sa reconnexion.",
+      "enable": "Ajoutez un connecteur sous Connexions dans l'interface."
     }
   },
   "job": {
@@ -87,10 +87,10 @@
     }
   },
   "reindex": {
-    "name": "Embedding rebuild",
-    "running": "In progress",
-    "finalizing": "Finalizing",
-    "failed": "Stopped",
-    "progress": "Re-embedding the corpus to {{model}}: {{done}} of {{total}} memories."
+    "name": "Reconstruction des embeddings",
+    "running": "En cours",
+    "finalizing": "Finalisation",
+    "failed": "Arrêtée",
+    "progress": "Ré-encodage du corpus vers {{model}} : {{done}} sur {{total}} souvenirs."
   }
 }

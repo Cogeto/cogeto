@@ -1,7 +1,7 @@
-import { Inject, Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { Principal } from '@cogeto/shared';
-import { DRIZZLE, writeAudit } from '../../infrastructure/index';
+import { DRIZZLE, userError, writeAudit } from '../../infrastructure/index';
 import type { Db, DbOrTx, Tx } from '../../infrastructure/index';
 import { sourceRevision } from './tables';
 import type { RevisionBasis, SourceRevisionRow } from './tables';
@@ -73,7 +73,10 @@ export class SourceRevisionStore {
         .where(and(eq(sourceRevision.id, revisionId), eq(sourceRevision.ownerId, principal.userId)))
         .for('update');
       const row = rows[0];
-      if (!row) throw new NotFoundException(`revision link ${revisionId} not found`);
+      if (!row)
+        throw userError.notFound('revision.notFound', 'revision link {{id}} not found', {
+          id: revisionId,
+        });
       const [updated] = await tx
         .update(sourceRevision)
         .set({ status: decision, decidedAt: new Date() })
@@ -106,7 +109,7 @@ export class SourceRevisionStore {
       successor.sourceType === predecessor.sourceType &&
       successor.sourceId === predecessor.sourceId
     ) {
-      throw new BadRequestException('a source cannot be a revision of itself');
+      throw userError.badRequest('revision.selfLink', 'a source cannot be a revision of itself');
     }
     return this.db.transaction(async (tx) => {
       const inserted = await tx

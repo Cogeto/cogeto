@@ -1,11 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-  Optional,
-} from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import type {
   FindingsReportDto,
@@ -17,6 +10,7 @@ import type {
 import {
   DRIZZLE,
   UserContextService,
+  userError,
   withTransactionalEnqueue,
   writeAudit,
 } from '../infrastructure/index';
@@ -73,7 +67,8 @@ export class ReportService {
       const existing = await this.store.unfinishedForOwner(tx, principal.userId, new Date());
       if (existing) {
         if (existing.scopeKey === canonicalize(scope)) return existing;
-        throw new ConflictException(
+        throw userError.conflict(
+          'report.alreadyGenerating',
           'a report over a different scope is already being generated; wait for it to finish',
         );
       }
@@ -119,7 +114,7 @@ export class ReportService {
 
   async get(principal: Principal, id: string): Promise<FindingsReportDto> {
     const row = await this.store.getForOwner(principal.userId, id);
-    if (!row) throw new NotFoundException(`report ${id} not found`);
+    if (!row) throw userError.notFound('report.notFound', 'report {{id}} not found', { id });
     return toReportDto(row);
   }
 
@@ -130,19 +125,23 @@ export class ReportService {
     format: ReportDownloadFormat,
   ): Promise<ReportDownloadDto> {
     const row = await this.store.getForOwner(principal.userId, id);
-    if (!row) throw new NotFoundException(`report ${id} not found`);
+    if (!row) throw userError.notFound('report.notFound', 'report {{id}} not found', { id });
     // A report expired by a source deletion must never mint another URL: its
     // bytes are erased by the same receipt that erased the source (the
     // passport SEC-8 rule, applied to the second content-bearing artifact).
     if (row.status === 'expired') {
-      throw new BadRequestException(
-        `report ${id} is no longer available: it was expired because a source it may have ` +
-          `quoted was deleted, or its retention window passed. Generate a new report.`,
+      throw userError.badRequest(
+        'report.expired',
+        'report {{id}} is no longer available: it was expired because a source it may have ' +
+          'quoted was deleted, or its retention window passed. Generate a new report.',
+        { id },
       );
     }
     const objectKey = format === 'pdf' ? row.pdfObjectKey : row.jsonObjectKey;
     if (row.status !== 'ready' || !objectKey) {
-      throw new BadRequestException(`report ${id} is not ready to download`);
+      throw userError.badRequest('report.notReady', 'report {{id}} is not ready to download', {
+        id,
+      });
     }
     const dto = toReportDto(row);
     const ttl = this.options.downloadUrlTtlSeconds;
@@ -180,23 +179,32 @@ export class ReportService {
       // every owner-gated read gives, so scope validation cannot become a
       // probe for other users' projects.
       if (!this.projects) {
-        throw new BadRequestException('projects are not available on this instance');
+        throw userError.badRequest(
+          'report.projectsUnavailable',
+          'projects are not available on this instance',
+        );
       }
       await this.projects.get(principal, scope.projectId);
       return;
     }
     if (scope.kind === 'sources') {
       if (scope.refs.length === 0) {
-        throw new BadRequestException('a sources scope needs at least one source');
+        throw userError.badRequest(
+          'report.sourcesScopeEmpty',
+          'a sources scope needs at least one source',
+        );
       }
       if (scope.refs.length > 200) {
-        throw new BadRequestException('a sources scope is capped at 200 sources');
+        throw userError.badRequest(
+          'report.sourcesScopeCapped',
+          'a sources scope is capped at 200 sources',
+        );
       }
       return;
     }
     if (scope.kind === 'date_range') {
       if (new Date(scope.from).getTime() > new Date(scope.to).getTime()) {
-        throw new BadRequestException('date range: from is after to');
+        throw userError.badRequest('report.dateRangeReversed', 'date range: from is after to');
       }
     }
   }

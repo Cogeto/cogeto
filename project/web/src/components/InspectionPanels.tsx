@@ -14,6 +14,7 @@ import { LocatorChips } from './LocatorChips';
 import { RESOLUTION_KEY_SUFFIX } from './relation-labels';
 import { ErrorState, Pill, SkeletonRows, StatusChip } from './ui';
 import { timeAgo } from './status';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 /**
  * Level two of the Sources surface (V2.2 item 5.2): every fact with its
@@ -305,6 +306,7 @@ function ManualLinkPicker({
   onCancel: () => void;
 }) {
   const { t } = useTranslation('sources');
+  const apiError = useApiErrorMessage(t);
   const [q, setQ] = useState('');
   const candidates = useQuery({
     queryKey: ['revision-candidates', q],
@@ -347,7 +349,7 @@ function ManualLinkPicker({
           <li className="px-1 py-1 text-xs text-slate-400">{t('revisions.pickerEmpty')}</li>
         )}
       </ul>
-      {link.isError && <ErrorState>{link.error.message}</ErrorState>}
+      {link.isError && <ErrorState>{apiError(link.error)}</ErrorState>}
       <button
         type="button"
         onClick={onCancel}

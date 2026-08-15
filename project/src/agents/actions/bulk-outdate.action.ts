@@ -1,8 +1,8 @@
-import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
 import { BULK_OUTDATE_ACTION } from '@cogeto/shared';
 import type { MemoryStore } from '../../memory/index';
 import type { ActionDefinition } from '../action-types';
+import { userError } from '../../infrastructure/index';
 
 /**
  * The one wired consequential action (§3): mark N of the owner's filtered
@@ -40,8 +40,13 @@ export function buildBulkOutdateAction(memory: MemoryStore): ActionDefinition<Bu
       const owned = new Set(visible.filter((r) => r.ownerId === principal.userId).map((r) => r.id));
       const missing = p.memoryIds.filter((id) => !owned.has(id));
       if (missing.length > 0) {
-        throw new BadRequestException(
-          `${missing.length} target memor${missing.length === 1 ? 'y is' : 'ies are'} not yours to change`,
+        throw userError.badRequest(
+          'memory.bulkOutdate.notYours',
+          {
+            one: '{{count}} target memory is not yours to change',
+            other: '{{count}} target memories are not yours to change',
+          },
+          { count: missing.length },
         );
       }
     },

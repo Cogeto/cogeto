@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import type { MemoryScope, NoteProcessingState, Principal } from '@cogeto/shared';
 import {
@@ -6,6 +6,7 @@ import {
   DRIZZLE,
   INGEST_QUOTA,
   jobRunState,
+  userError,
   withTransactionalEnqueue,
 } from '../infrastructure/index';
 import type { Db, IngestQuota } from '../infrastructure/index';
@@ -35,14 +36,10 @@ export class NotesService {
     // single user (or the shared demo principal) can drive in a day. Reserved
     // BEFORE the write so a burst cannot slip past the check.
     if ((await this.counters.get(principal.userId, 'capture')) >= this.quota.captureMax) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.TOO_MANY_REQUESTS,
-          error: 'Too Many Requests',
-          code: 'daily_capture_limit',
-          message: `daily capture limit reached (${this.quota.captureMax}), try again tomorrow`,
-        },
-        HttpStatus.TOO_MANY_REQUESTS,
+      throw userError.tooManyRequests(
+        'daily_capture_limit',
+        'daily capture limit reached ({{max}}), try again tomorrow',
+        { max: this.quota.captureMax },
       );
     }
     const created = await this.db.transaction(async (tx) => {

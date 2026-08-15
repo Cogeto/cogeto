@@ -24,6 +24,7 @@ import {
   SkeletonRows,
   StatusChip,
 } from './ui';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 const PAGE_SIZE = 25;
 
@@ -102,6 +103,7 @@ export function GovernedMemories({
   onOpen: (memoryId: string) => void;
 }) {
   const { t } = useTranslation('memories');
+  const apiError = useApiErrorMessage(t);
   const [q, setQ] = useState('');
   // ?status=outdated — dreaming digest lines deep-link into a filtered view.
   const [status, setStatus] = useState<MemoryStatus | ''>(() => {
@@ -199,7 +201,7 @@ export function GovernedMemories({
           {requestBulkOutdate.isError && (
             <span className="text-xs text-red-600 dark:text-red-300">
               {requestBulkOutdate.error instanceof Error
-                ? requestBulkOutdate.error.message
+                ? apiError(requestBulkOutdate.error)
                 : t('list.bulk.requestFailed')}
             </span>
           )}

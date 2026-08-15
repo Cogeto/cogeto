@@ -1,14 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import {
-  ConflictException,
-  HttpException,
-  HttpStatus,
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
-  Optional,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { and, desc, eq } from 'drizzle-orm';
 import type { MemoryScope, Principal, WebProcessingState } from '@cogeto/shared';
 import {
@@ -16,6 +7,7 @@ import {
   DRIZZLE,
   jobRunState,
   RESEARCH_QUOTA,
+  userError,
   withTransactionalEnqueue,
   writeAudit,
 } from '../infrastructure/index';
@@ -195,7 +187,8 @@ export class ResearchService {
    */
   async approveQuery(principal: Principal, runId: string, query: string): Promise<ResearchRunRow> {
     const sentQuery = query.trim();
-    if (!sentQuery) throw new ConflictException('the approved query must not be blank');
+    if (!sentQuery)
+      throw userError.conflict('research.blankQuery', 'the approved query must not be blank');
     return this.db.transaction(async (tx) => {
       const rows = await tx
         .select()
@@ -203,13 +196,17 @@ export class ResearchService {
         .where(and(eq(researchRun.id, runId), eq(researchRun.ownerId, principal.userId)))
         .for('update');
       const row = rows[0];
-      if (!row) throw new NotFoundException();
+      if (!row) throw userError.notFound('research.runNotFound', 'no such research run');
       if (row.status === 'cancelled') {
-        throw new ConflictException('this research was cancelled, propose it again');
+        throw userError.conflict(
+          'research.cancelled',
+          'this research was cancelled, propose it again',
+        );
       }
       if (row.status === 'approved') {
         if (row.sentQuery !== sentQuery) {
-          throw new ConflictException(
+          throw userError.conflict(
+            'research.alreadyRanDifferentQuery',
             'this research already ran with a different approved query, propose a new one',
           );
         }
@@ -243,9 +240,12 @@ export class ResearchService {
     runId: string,
   ): Promise<{ run: ResearchRunRow; search: DiscoveryOutcome }> {
     const run = await this.getRun(principal, runId);
-    if (!run) throw new NotFoundException();
+    if (!run) throw userError.notFound('research.runNotFound', 'no such research run');
     if (run.status !== 'approved' || !run.sentQuery) {
-      throw new ConflictException('discovery requires an approved research run');
+      throw userError.conflict(
+        'research.discoveryNeedsApproval',
+        'discovery requires an approved research run',
+      );
     }
     const search = await this.search(principal, run.sentQuery);
     return { run, search };
@@ -260,10 +260,13 @@ export class ResearchService {
         .where(and(eq(researchRun.id, runId), eq(researchRun.ownerId, principal.userId)))
         .for('update');
       const row = rows[0];
-      if (!row) throw new NotFoundException();
+      if (!row) throw userError.notFound('research.runNotFound', 'no such research run');
       if (row.status === 'cancelled') return row;
       if (row.status === 'approved') {
-        throw new ConflictException('this research already ran: its query has left');
+        throw userError.conflict(
+          'research.alreadyRan',
+          'this research already ran: its query has left',
+        );
       }
       const [updated] = await tx
         .update(researchRun)
@@ -335,7 +338,7 @@ export class ResearchService {
     }[]
   > {
     const run = await this.getRun(principal, runId);
-    if (!run) throw new NotFoundException();
+    if (!run) throw userError.notFound('research.runNotFound', 'no such research run');
     const pages = await this.pagesForRun(principal, runId);
     return Promise.all(
       pages.map(async (page) => ({
@@ -368,14 +371,10 @@ export class ResearchService {
   /** One discovery query, budget-gated. Reserved BEFORE the search runs. */
   async search(principal: Principal, query: string): Promise<DiscoveryOutcome> {
     if ((await this.counters.get(principal.userId, 'research_search')) >= this.quota.searchesMax) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.TOO_MANY_REQUESTS,
-          error: 'Too Many Requests',
-          code: 'daily_research_limit',
-          message: `daily research search limit reached (${this.quota.searchesMax}), try again tomorrow`,
-        },
-        HttpStatus.TOO_MANY_REQUESTS,
+      throw userError.tooManyRequests(
+        'daily_research_limit',
+        'daily research search limit reached ({{max}}), try again tomorrow',
+        { max: this.quota.searchesMax },
       );
     }
     await this.counters.add(principal.userId, 'research_search', 1);
@@ -396,20 +395,19 @@ export class ResearchService {
     let run: ResearchRunRow | null = null;
     if (researchRunId) {
       run = await this.getRun(principal, researchRunId);
-      if (!run) throw new NotFoundException();
+      if (!run) throw userError.notFound('research.runNotFound', 'no such research run');
       if (run.status !== 'approved') {
-        throw new ConflictException('capture requires an approved research run');
+        throw userError.conflict(
+          'research.captureNeedsApproval',
+          'capture requires an approved research run',
+        );
       }
     }
     if (urls.length > this.quota.pagesPerRunMax) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.BAD_REQUEST,
-          error: 'Bad Request',
-          code: 'research_page_cap',
-          message: `a single research fetches at most ${this.quota.pagesPerRunMax} pages`,
-        },
-        HttpStatus.BAD_REQUEST,
+      throw userError.badRequest(
+        'research_page_cap',
+        'a single research fetches at most {{max}} pages',
+        { max: this.quota.pagesPerRunMax },
       );
     }
     const results: CaptureResult[] = [];
@@ -541,7 +539,7 @@ export class ResearchService {
    * this run. Idempotent. */
   async markAnswerSeen(principal: Principal, runId: string): Promise<void> {
     const run = await this.getRun(principal, runId);
-    if (!run) throw new NotFoundException();
+    if (!run) throw userError.notFound('research.runNotFound', 'no such research run');
     if (run.answerSeenAt) return;
     await this.db
       .update(researchRun)

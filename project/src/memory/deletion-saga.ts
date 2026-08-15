@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  NotFoundException,
-  Optional,
-} from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { and, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { isRegisteredSourceType, SOURCE_TYPES } from '@cogeto/shared';
@@ -12,6 +6,8 @@ import type { Principal } from '@cogeto/shared';
 import {
   DRIZZLE,
   loadInstanceSigner,
+  untranslatedError,
+  userError,
   withTransactionalEnqueue,
   writeAudit,
 } from '../infrastructure/index';
@@ -327,7 +323,7 @@ export interface DeletionPreview {
  */
 function assertSourceType(value: string): SourceType {
   if (!isRegisteredSourceType(value)) {
-    throw new BadRequestException(`unknown source type '${value}'`);
+    throw untranslatedError.badRequest(`unknown source type '${value}'`);
   }
   return value;
 }
@@ -448,7 +444,7 @@ export class DeletionSaga {
     sourceId: string,
   ): Promise<{ receiptId: string | null }> {
     const sourceType = assertSourceType(rawSourceType);
-    if (!sourceId.trim()) throw new BadRequestException('source id must not be blank');
+    if (!sourceId.trim()) throw untranslatedError.badRequest('source id must not be blank');
 
     return this.db.transaction(async (tx) => {
       // Lock order: source row FIRST, then the ingestion
@@ -458,7 +454,14 @@ export class DeletionSaga {
         lock: true,
       });
       if (sourceOwner !== null && sourceOwner !== principal.userId) {
-        throw new NotFoundException(`source ${sourceType}/${sourceId} not found`);
+        throw userError.notFound(
+          'source.notFound',
+          'source {{sourceType}}/{{sourceId}} not found',
+          {
+            sourceType,
+            sourceId,
+          },
+        );
       }
 
       // Cancel pending ingestion BEFORE enumerating: a queued pipeline
@@ -513,7 +516,14 @@ export class DeletionSaga {
           )
           .for('update');
         if (subRows.some((r) => r.ownerId !== principal.userId)) {
-          throw new NotFoundException(`source ${sourceType}/${sourceId} not found`);
+          throw userError.notFound(
+            'source.notFound',
+            'source {{sourceType}}/{{sourceId}} not found',
+            {
+              sourceType,
+              sourceId,
+            },
+          );
         }
         rows.push(...subRows);
       }
@@ -756,7 +766,10 @@ export class DeletionSaga {
       lock: opts.lock,
     });
     if (sourceOwner !== null && sourceOwner !== principal.userId) {
-      throw new NotFoundException(`source ${sourceType}/${sourceId} not found`);
+      throw userError.notFound('source.notFound', 'source {{sourceType}}/{{sourceId}} not found', {
+        sourceType,
+        sourceId,
+      });
     }
     const rows = await this.enumerateAndAuthorize(tx, principal, sourceType, sourceId, {
       lock: opts.lock,
@@ -790,7 +803,7 @@ export class DeletionSaga {
     } else {
       adapter = this.adapters.get(sourceType);
       if (!adapter) {
-        throw new BadRequestException(
+        throw untranslatedError.badRequest(
           `no deletion adapter registered for source type '${sourceType}'`,
         );
       }
@@ -827,7 +840,9 @@ export class DeletionSaga {
       .where(and(eq(memory.sourceType, 'file'), eq(memory.sourceId, fileKey)))
       .for('update');
     if (subRows.some((r) => r.ownerId !== principal.userId)) {
-      throw new NotFoundException(`source file/${fileKey} not found`);
+      throw userError.notFound('source.fileNotFound', 'source file/{{key}} not found', {
+        key: fileKey,
+      });
     }
     rows.push(...subRows);
 
@@ -840,7 +855,9 @@ export class DeletionSaga {
     const fileRow = fileRows[0];
     if (!fileRow) return null; // already deleted — nothing to remove
     if (fileRow.ownerId !== principal.userId) {
-      throw new NotFoundException(`source file/${fileKey} not found`);
+      throw userError.notFound('source.fileNotFound', 'source file/{{key}} not found', {
+        key: fileKey,
+      });
     }
     await tx.delete(fileMetadata).where(eq(fileMetadata.objectKey, fileKey));
     return fileKey;
@@ -860,7 +877,11 @@ export class DeletionSaga {
       .where(and(eq(memory.sourceType, sourceType), eq(memory.sourceId, sourceId)));
     const rows = opts.lock ? await baseQuery.for('update') : await baseQuery;
 
-    const notFound = () => new NotFoundException(`source ${sourceType}/${sourceId} not found`);
+    const notFound = () =>
+      userError.notFound('source.notFound', 'source {{sourceType}}/{{sourceId}} not found', {
+        sourceType,
+        sourceId,
+      });
     if (opts.sourceOwner === null && rows.length === 0) throw notFound();
     // Defense in depth: provenance says these derive from the caller's source —
     // any foreign-owned row means corrupted state, and we refuse to touch it.

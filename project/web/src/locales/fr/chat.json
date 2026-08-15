@@ -8,20 +8,20 @@
   "answer": {
     "attribution": "Cogeto · depuis votre mémoire",
     "askedByAt": "Vous · {{time}}",
-    "stopped": "Stopped. This answer is what had been written when you stopped it.",
+    "stopped": "Arrêté. Cette réponse correspond à ce qui était écrit au moment où vous l'avez arrêtée.",
     "sources": "Sources",
-    "copy": "Copy answer",
-    "copied": "Copied",
+    "copy": "Copier la réponse",
+    "copied": "Copié",
     "sourcesSummary": "{{documents}}, {{facts}}",
     "documentCount_one": "{{count}} document",
     "documentCount_many": "{{count}} documents",
     "documentCount_other": "{{count}} documents",
-    "factCount_one": "{{count}} fact",
-    "factCount_many": "{{count}} facts",
-    "factCount_other": "{{count}} facts",
-    "factsFrom_one": "{{count}} fact",
-    "factsFrom_many": "{{count}} facts",
-    "factsFrom_other": "{{count}} facts"
+    "factCount_one": "{{count}} fait",
+    "factCount_many": "{{count}} faits",
+    "factCount_other": "{{count}} faits",
+    "factsFrom_one": "{{count}} fait",
+    "factsFrom_many": "{{count}} faits",
+    "factsFrom_other": "{{count}} faits"
   },
   "empty": {
     "title": "Interrogez votre mémoire.",
@@ -42,8 +42,8 @@
     "label": "Poser une question",
     "placeholder": "Interrogez votre mémoire…",
     "send": "Envoyer",
-    "stop": "Stop generating",
-    "stopHint": "Stops the answer and keeps what has been written so far.",
+    "stop": "Arrêter la génération",
+    "stopHint": "Arrête la réponse et conserve ce qui a été écrit jusque-là.",
     "hint": "Entrée pour envoyer · Maj+Entrée pour une nouvelle ligne · chaque affirmation montre ce qu’elle peut prouver"
   },
   "remember": {
@@ -62,7 +62,7 @@
     "alwaysTitle": "Cogeto consultera désormais le web automatiquement. Vous pouvez désactiver cette option dans Paramètres."
   },
   "ambiguity": {
-    "alternatives": "Multiple matches in your sources"
+    "alternatives": "Plusieurs correspondances dans vos sources"
   },
   "citation": {
     "unresolved": "source",
@@ -85,7 +85,7 @@
       "label": "modèle",
       "title": "Connaissance du modèle, absente de vos sources. Cogeto la signale pour que vous sachiez toujours quelles affirmations il peut prouver.",
       "ariaLabel": "connaissance du modèle, absente de vos sources",
-      "entry": "Model knowledge: part of this answer comes from the model's general knowledge, not from your memory."
+      "entry": "Connaissance du modèle : une partie de cette réponse provient des connaissances générales du modèle, et non de votre mémoire."
     },
     "refScreenReader": "source {{index}}"
   },
@@ -122,59 +122,63 @@
     }
   },
   "reasoning": {
-    "heading": "Thinking",
-    "streaming": "Thinking, streaming live",
-    "toggleOn": "Thinking on",
-    "toggleOff": "Thinking off"
+    "heading": "Raisonnement",
+    "streaming": "Raisonnement en cours, diffusion en direct",
+    "toggleOn": "Raisonnement activé",
+    "toggleOff": "Raisonnement désactivé"
   },
   "attachment": {
-    "attachLabel": "Attach a file",
-    "transientToggle": "Don't remember this file",
-    "transientChip": "this conversation only",
-    "transientMeaning": "Used only in this conversation: the file is read once, its bytes are discarded right after, and the extracted text stays with this conversation until you delete the conversation. It never becomes a source or a memory, and no other conversation can see it.",
-    "durableHint": "This file will be added to your sources: read, its facts extracted and verified, kept with full provenance.",
-    "removeStaged": "Remove",
+    "attachLabel": "Joindre un fichier",
+    "transientToggle": "Ne pas retenir ce fichier",
+    "transientChip": "cette discussion uniquement",
+    "transientMeaning": "Utilisé uniquement dans cette discussion : le fichier est lu une fois, ses octets sont écartés juste après, et le texte extrait reste attaché à cette discussion jusqu'à ce que vous la supprimiez. Il ne devient jamais une source ni un souvenir, et aucune autre discussion ne peut le voir.",
+    "durableHint": "Ce fichier sera ajouté à vos sources : lu, ses faits extraits et vérifiés, conservé avec toute sa provenance.",
+    "removeStaged": "Retirer",
     "stage": {
-      "queued": "Queued",
-      "reading": "Reading",
-      "extracting": "Extracting facts",
-      "verifying": "Verifying",
-      "storing": "Storing"
+      "queued": "En file d'attente",
+      "reading": "Lecture",
+      "extracting": "Extraction des faits",
+      "verifying": "Vérification",
+      "storing": "Enregistrement"
     },
-    "failed": "This file could not be processed.",
-    "transientReady": "Read for this conversation. Ask about it here; it was not remembered.",
-    "gateRefused": "Stored, but not extracted: {{reason}}.",
-    "addedToSources": "Added to sources: {{facts}}, {{contradictions}}.",
-    "factsCount_one": "{{count}} facts",
-    "factsCount_many": "{{count}} facts",
-    "factsCount_other": "{{count}} facts",
-    "contradictionsCount_one": "{{count}} contradictions",
+    "failed": "Ce fichier n'a pas pu être traité.",
+    "transientReady": "Lu pour cette discussion. Posez vos questions ici ; il n'a pas été retenu.",
+    "gateRefused": "Enregistré, mais non extrait : {{reason}}.",
+    "addedToSources": "Ajouté aux sources : {{facts}}, {{contradictions}}.",
+    "factsCount_one": "{{count}} fait",
+    "factsCount_many": "{{count}} faits",
+    "factsCount_other": "{{count}} faits",
+    "contradictionsCount_one": "{{count}} contradiction",
     "contradictionsCount_many": "{{count}} contradictions",
     "contradictionsCount_other": "{{count}} contradictions",
-    "truncatedNote": "The file was read in part; open the source for what was left out.",
-    "viewInSources": "View in Sources",
-    "sourceRemoved": "Attachment removed with its source",
-    "dropHere": "Drop to attach (up to {{count}})",
-    "capReached": "Up to {{count}} files per message. The rest were not attached.",
-    "removeOne": "Remove {{name}}",
-    "uploadFailed": "{{name}} could not be attached: {{reason}}"
+    "truncatedNote": "Le fichier n'a été lu qu'en partie ; ouvrez la source pour voir ce qui a été laissé de côté.",
+    "viewInSources": "Voir dans Sources",
+    "sourceRemoved": "Pièce jointe retirée avec sa source",
+    "dropHere": "Déposez pour joindre (jusqu'à {{count}})",
+    "capReached": "Jusqu'à {{count}} fichiers par message. Les autres n'ont pas été joints.",
+    "removeOne": "Retirer {{name}}",
+    "uploadFailed": "{{name}} n'a pas pu être joint : {{reason}}"
   },
   "search": {
-    "label": "Search conversations",
-    "placeholder": "Search what was said",
-    "clear": "Clear search",
-    "searching": "Searching…",
-    "empty": "Nothing matched. Search covers titles and what was said, including archived conversations.",
-    "results_one": "{{count}} result",
-    "results_many": "{{count}} results",
-    "results_other": "{{count}} results",
-    "titleMatch": "Matched the title",
-    "archivedTag": "archived"
+    "label": "Rechercher dans les discussions",
+    "placeholder": "Rechercher dans ce qui a été dit",
+    "clear": "Effacer la recherche",
+    "searching": "Recherche…",
+    "empty": "Aucune correspondance. La recherche couvre les titres et les propos, y compris les discussions archivées.",
+    "results_one": "{{count}} résultat",
+    "results_many": "{{count}} résultats",
+    "results_other": "{{count}} résultats",
+    "titleMatch": "Correspond au titre",
+    "archivedTag": "archivé"
   },
   "code": {
     "plain": "code",
-    "copy": "copy",
-    "copied": "copied",
-    "copyAria": "Copy this code block"
+    "copy": "copier",
+    "copied": "copié",
+    "copyAria": "Copier ce bloc de code"
+  },
+  "stream": {
+    "budgetExceeded": "limite d'utilisation quotidienne atteinte, veuillez réessayer demain",
+    "timedOut": "délai de réponse dépassé"
   }
 }

@@ -5,5 +5,8 @@
     "stateMismatch": "login callback state mismatch",
     "demoCredentials": "Invalid demo username or password.",
     "demoNoSession": "Demo login did not return a session."
+  },
+  "server": {
+    "unexpected": "Something went wrong. Please try again."
   }
 }

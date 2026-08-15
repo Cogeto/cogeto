@@ -27,10 +27,10 @@
   },
   "capability": {
     "models": {
-      "name": "Models",
-      "description": "The model providers and per-tier assignments this instance runs, managed under Providers and stored in the database.",
-      "consequence": "The model configuration is reported as broken; check the Providers page.",
-      "enable": "Add a provider and assign the tiers under Providers in the left rail."
+      "name": "Modelle",
+      "description": "Die Modellanbieter und Zuweisungen je Stufe, die diese Instanz verwendet. Sie werden unter Anbieter verwaltet und in der Datenbank gespeichert.",
+      "consequence": "Die Modellkonfiguration wird als fehlerhaft gemeldet; prüfen Sie die Seite Anbieter.",
+      "enable": "Fügen Sie unter Anbieter in der linken Leiste einen Anbieter hinzu und weisen Sie die Stufen zu."
     },
     "redaction": {
       "name": "Redaktion",
@@ -58,22 +58,22 @@
       "consequence": "Die Konsolen sind aktiviert, antworten aber nicht."
     },
     "reasoning": {
-      "name": "Reasoning model",
-      "description": "Detects, by probing with a real prompt, whether the model thinks in a separate reasoning channel before answering. When it does, token caps are enlarged so the thinking cannot silently consume the answer's budget. Off simply means the model answers directly.",
-      "consequence": "Reasoning could not be determined: token caps stay unenlarged, and a reasoning model may return empty answers until a probe succeeds.",
-      "enable": "Comes on by itself when the assigned answer model returns separate reasoning; there is nothing to enable by hand."
+      "name": "Reasoning-Modell",
+      "description": "Prüft mit einem echten Prompt, ob das Modell vor der Antwort in einem eigenen Reasoning-Kanal denkt. Ist das der Fall, werden die Token-Grenzen erhöht, damit das Denken das Budget der Antwort nicht unbemerkt aufbraucht. Aus bedeutet lediglich, dass das Modell direkt antwortet.",
+      "consequence": "Reasoning konnte nicht bestimmt werden: Die Token-Grenzen bleiben unverändert, und ein Reasoning-Modell kann leere Antworten liefern, bis eine Prüfung gelingt.",
+      "enable": "Wird von selbst aktiv, sobald das zugewiesene Antwortmodell eigenes Reasoning zurückgibt; es gibt nichts von Hand einzuschalten."
     },
     "vision": {
-      "name": "Reading pictures",
-      "description": "Reads pages that are images: scans, photographs, drawings and schematics. Cheapest first, so a page with real text is never sent to a model. Off means those pages are labelled unreadable instead of silently empty.",
+      "name": "Bilder lesen",
+      "description": "Liest Seiten, die Bilder sind: Scans, Fotografien, Zeichnungen und Schemata. Zuerst der günstigste Weg, sodass eine Seite mit echtem Text nie an ein Modell geht. Aus bedeutet, dass solche Seiten als unlesbar gekennzeichnet werden, statt still leer zu bleiben.",
       "consequence": "Vision is configured but not working: pages that are pictures cannot be read, and they are labelled as needing it rather than shown as processed.",
-      "enable": "Assign a vision provider and model under Models in the interface."
+      "enable": "Weisen Sie unter Modelle in der Oberfläche einen Vision-Anbieter und ein Modell zu."
     },
     "connectors": {
-      "name": "Connectors",
-      "description": "Syncs content from connected external systems into sources, so what changes outside this instance is captured and verified here.",
-      "consequence": "A connector needs attention: syncing for it is degraded or stopped until it is reconnected.",
-      "enable": "Add a connector under Connections in the interface."
+      "name": "Konnektoren",
+      "description": "Synchronisiert Inhalte aus angebundenen externen Systemen in Quellen, sodass Änderungen außerhalb dieser Instanz hier erfasst und überprüft werden.",
+      "consequence": "Ein Konnektor braucht Aufmerksamkeit: Seine Synchronisierung ist eingeschränkt oder gestoppt, bis er neu verbunden wird.",
+      "enable": "Fügen Sie unter Verbindungen in der Oberfläche einen Konnektor hinzu."
     }
   },
   "job": {
@@ -87,10 +87,10 @@
     }
   },
   "reindex": {
-    "name": "Embedding rebuild",
-    "running": "In progress",
-    "finalizing": "Finalizing",
-    "failed": "Stopped",
-    "progress": "Re-embedding the corpus to {{model}}: {{done}} of {{total}} memories."
+    "name": "Neuaufbau der Embeddings",
+    "running": "Läuft",
+    "finalizing": "Wird abgeschlossen",
+    "failed": "Gestoppt",
+    "progress": "Der Korpus wird neu auf {{model}} eingebettet: {{done}} von {{total}} Erinnerungen."
   }
 }

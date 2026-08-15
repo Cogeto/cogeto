@@ -1,9 +1,10 @@
 import { timingSafeEqual } from 'node:crypto';
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
 import { MAIL_OPTIONS } from './mail-options';
 import type { MailOptions } from './mail-options';
+import { untranslatedError } from '../infrastructure/index';
 
 /**
  * Authenticates the internal email-intake endpoint to the mail service ONLY
@@ -19,18 +20,19 @@ export class MailIntakeGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const expected = this.options.intakeToken;
-    if (!expected) throw new UnauthorizedException('email intake is not configured');
+    if (!expected) throw untranslatedError.unauthorized('email intake is not configured');
 
     const request = context.switchToHttp().getRequest<Request>();
     const header = request.headers.authorization;
-    if (!header?.startsWith('Bearer ')) throw new UnauthorizedException('missing intake token');
+    if (!header?.startsWith('Bearer '))
+      throw untranslatedError.unauthorized('missing intake token');
     const presented = header.slice('Bearer '.length);
 
     // Constant-time compare (length-guarded so timingSafeEqual never throws).
     const a = Buffer.from(presented);
     const b = Buffer.from(expected);
     if (a.length !== b.length || !timingSafeEqual(a, b)) {
-      throw new UnauthorizedException('invalid intake token');
+      throw untranslatedError.unauthorized('invalid intake token');
     }
     return true;
   }

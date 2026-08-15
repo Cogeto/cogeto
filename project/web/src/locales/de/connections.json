@@ -1,139 +1,139 @@
 {
-  "heading": "Connections",
-  "explainer": "External systems Cogeto reads from. A connection only ever reads; every synced page becomes an ordinary source you can inspect, audit and delete.",
+  "heading": "Verbindungen",
+  "explainer": "Externe Systeme, aus denen Cogeto liest. Eine Verbindung liest ausschließlich; jede synchronisierte Seite wird eine gewöhnliche Quelle, die Sie einsehen, prüfen und löschen können.",
   "list": {
-    "error": "We couldn't load your connections just now.",
-    "empty": "Nothing is connected yet.",
-    "lastSync": "last sync {{when}}",
-    "neverSynced": "not synced yet",
+    "error": "Ihre Verbindungen konnten gerade nicht geladen werden.",
+    "empty": "Es ist noch nichts verbunden.",
+    "lastSync": "letzte Synchronisierung {{when}}",
+    "neverSynced": "noch nicht synchronisiert",
     "open": "Details",
-    "sync": "Sync now",
-    "syncQueued": "Sync queued.",
-    "disable": "Pause",
-    "enable": "Resume",
-    "removeConfirm": "Remove {{name}}? Its stored credential is destroyed and syncing stops. Everything already ingested remains: the sources and their facts are NOT deleted, and each one can still be deleted individually from the Sources page.\n\nRemove?",
-    "actionFailed": "The action failed.",
-    "removeQuestion": "Remove {{name}}?"
+    "sync": "Jetzt synchronisieren",
+    "syncQueued": "Synchronisierung eingereiht.",
+    "disable": "Pausieren",
+    "enable": "Fortsetzen",
+    "removeConfirm": "{{name}} entfernen? Die gespeicherten Zugangsdaten werden vernichtet und die Synchronisierung endet. Alles bereits Übernommene bleibt: Die Quellen und ihre Fakten werden NICHT gelöscht, und jede lässt sich weiterhin einzeln auf der Seite Quellen löschen.\n\nEntfernen?",
+    "actionFailed": "Die Aktion ist fehlgeschlagen.",
+    "removeQuestion": "{{name}} entfernen?"
   },
   "state": {
-    "configured": "not authorised",
-    "authorised": "authorised",
-    "syncing": "syncing",
-    "healthy": "healthy",
-    "degraded": "degraded",
-    "needs_reauth": "needs reauthorisation",
-    "disabled": "paused",
-    "removed": "removed"
+    "configured": "nicht autorisiert",
+    "authorised": "autorisiert",
+    "syncing": "synchronisiert",
+    "healthy": "in Ordnung",
+    "degraded": "eingeschränkt",
+    "needs_reauth": "braucht neue Autorisierung",
+    "disabled": "pausiert",
+    "removed": "entfernt"
   },
   "pausedReason": {
-    "rate_limited": "Waiting: the upstream rate limit was reached. Syncing resumes on its own.",
-    "daily_item_cap": "Waiting: the daily item cap is reached. Syncing continues when the cap resets.",
-    "daily_upload_limit": "Waiting: the daily upload limit is reached. Syncing continues when the limit resets."
+    "rate_limited": "Wartet: Das Ratenlimit der Gegenstelle ist erreicht. Die Synchronisierung läuft von selbst weiter.",
+    "daily_item_cap": "Wartet: Das Tageslimit für Elemente ist erreicht. Die Synchronisierung läuft weiter, sobald das Limit zurückgesetzt ist.",
+    "daily_upload_limit": "Wartet: Das tägliche Upload-Limit ist erreicht. Die Synchronisierung läuft weiter, sobald das Limit zurückgesetzt ist."
   },
   "connect": {
-    "open": "Connect Confluence",
+    "open": "Confluence verbinden",
     "name": "Name",
-    "namePlaceholder": "Team wiki",
-    "siteUrl": "Site URL",
+    "namePlaceholder": "Team-Wiki",
+    "siteUrl": "Site-URL",
     "siteUrlPlaceholder": "https://your-team.atlassian.net/wiki",
-    "email": "Atlassian account email",
-    "apiToken": "API token",
-    "apiTokenHelp": "An Atlassian API token for this account. Cogeto validates it with one read call before storing it, sealed.",
+    "email": "E-Mail des Atlassian-Kontos",
+    "apiToken": "API-Token",
+    "apiTokenHelp": "Ein Atlassian-API-Token für dieses Konto. Cogeto prüft es mit einem einzigen Leseaufruf, bevor es versiegelt gespeichert wird.",
     "readOnly": {
-      "statement": "Cogeto only reads from Confluence. It never creates, edits or deletes anything there.",
-      "recommendation": "For stricter setups we recommend a dedicated Atlassian account with read-only permission on the chosen spaces, so Confluence itself enforces the restriction."
+      "statement": "Cogeto liest aus Confluence nur. Es legt dort nie etwas an, ändert nichts und löscht nichts.",
+      "recommendation": "Für strengere Umgebungen empfehlen wir ein eigenes Atlassian-Konto mit Leserecht auf den gewählten Bereichen, damit Confluence selbst die Beschränkung durchsetzt."
     },
-    "action": "Connect",
-    "connecting": "Connecting…",
-    "success_one": "Connected. This account can see {{count}} spaces. Open the connection to choose what to sync.",
-    "success_other": "Connected. This account can see {{count}} spaces. Open the connection to choose what to sync.",
-    "failed": "Connecting failed.",
+    "action": "Verbinden",
+    "connecting": "Wird verbunden…",
+    "success_one": "Verbunden. Dieses Konto sieht {{count}} Bereich. Öffnen Sie die Verbindung, um zu wählen, was synchronisiert wird.",
+    "success_other": "Verbunden. Dieses Konto sieht {{count}} Bereiche. Öffnen Sie die Verbindung, um zu wählen, was synchronisiert wird.",
+    "failed": "Das Verbinden ist fehlgeschlagen.",
     "failure": {
-      "wrong_site": "The address answered, but it is not a Confluence Cloud site. Check the site URL.",
-      "bad_credentials": "Confluence did not accept this email and API token pair.",
-      "no_permission": "The credentials work, but this account cannot see any spaces.",
-      "unreachable": "The site could not be reached. Check the address and your network."
+      "wrong_site": "Die Adresse hat geantwortet, ist aber keine Confluence-Cloud-Site. Prüfen Sie die Site-URL.",
+      "bad_credentials": "Confluence hat dieses Paar aus E-Mail und API-Token nicht akzeptiert.",
+      "no_permission": "Die Zugangsdaten funktionieren, aber dieses Konto sieht keinen einzigen Bereich.",
+      "unreachable": "Die Site war nicht erreichbar. Prüfen Sie die Adresse und Ihr Netzwerk."
     }
   },
   "detail": {
-    "title": "Connection",
-    "loading": "Loading the connection…",
-    "error": "We couldn't load this connection just now.",
-    "account": "Account:",
+    "title": "Verbindung",
+    "loading": "Die Verbindung wird geladen…",
+    "error": "Diese Verbindung konnte gerade nicht geladen werden.",
+    "account": "Konto:",
     "reconnect": {
-      "explainer": "The stored credential no longer works. Enter the site URL, the account email and a fresh API token; the new credential replaces the old one.",
-      "action": "Reconnect",
-      "connecting": "Reconnecting…",
-      "success": "Reconnected."
+      "explainer": "Die gespeicherten Zugangsdaten funktionieren nicht mehr. Geben Sie die Site-URL, die Konto-E-Mail und ein frisches API-Token ein; die neuen Daten ersetzen die alten.",
+      "action": "Neu verbinden",
+      "connecting": "Wird neu verbunden…",
+      "success": "Neu verbunden."
     },
     "spaces": {
-      "heading": "Spaces",
-      "explainer": "Nothing outside the spaces you select is ever fetched. Attachments are off by default because they multiply volume.",
-      "empty": "No spaces discovered yet. Run a sync to refresh the list.",
-      "attachments": "Pull attached files from this space's pages (PDF, Word, spreadsheets, images)",
-      "backfillDone": "backfill complete",
-      "estimateAction": "Estimate",
-      "estimating": "Estimating…",
-      "about_one": "about {{count}} pages",
-      "about_other": "about {{count}} pages",
-      "windowAll": "counting everything",
-      "windowSince": "modified since {{date}}"
+      "heading": "Bereiche",
+      "explainer": "Außerhalb der gewählten Bereiche wird nie etwas abgerufen. Anhänge sind standardmäßig aus, weil sie das Volumen vervielfachen.",
+      "empty": "Noch keine Bereiche entdeckt. Starten Sie eine Synchronisierung, um die Liste zu aktualisieren.",
+      "attachments": "Angehängte Dateien der Seiten dieses Bereichs holen (PDF, Word, Tabellen, Bilder)",
+      "backfillDone": "Erstbefüllung abgeschlossen",
+      "estimateAction": "Schätzen",
+      "estimating": "Wird geschätzt…",
+      "about_one": "etwa {{count}} Seite",
+      "about_other": "etwa {{count}} Seiten",
+      "windowAll": "alles wird gezählt",
+      "windowSince": "geändert seit {{date}}"
     },
     "subtree": {
-      "heading": "Add a page subtree",
-      "explainer": "Sync one page and everything under it. The page id is the number in the page's URL.",
-      "pageId": "Page id",
-      "label": "Label",
-      "labelPlaceholder": "What to call this scope",
-      "added": "Added. It is fetched on the next sync.",
-      "failed": "Adding the subtree failed."
+      "heading": "Seitenteilbaum hinzufügen",
+      "explainer": "Eine Seite und alles darunter synchronisieren. Die Seiten-ID ist die Zahl in der URL der Seite.",
+      "pageId": "Seiten-ID",
+      "label": "Bezeichnung",
+      "labelPlaceholder": "Wie dieser Bereich heißen soll",
+      "added": "Hinzugefügt. Er wird bei der nächsten Synchronisierung abgerufen.",
+      "failed": "Der Teilbaum konnte nicht hinzugefügt werden."
     },
     "backfill": {
-      "heading": "Backfill and caps",
-      "explainer": "How far back the first sync of a scope reaches. The default is 30 days and 500 items per space.",
-      "days": "Days back",
-      "itemCap": "Item cap per space",
-      "everything": "Everything: the full history, unbounded",
-      "everythingHelp": "No date or item bound. Every page of every selected space is fetched.",
-      "dailyItemCap": "Daily item cap",
-      "saveFailed": "Saving the settings failed."
+      "heading": "Erstbefüllung und Limits",
+      "explainer": "Wie weit die erste Synchronisierung eines Bereichs zurückreicht. Standard sind 30 Tage und 500 Elemente je Bereich.",
+      "days": "Tage zurück",
+      "itemCap": "Elementlimit je Bereich",
+      "everything": "Alles: die vollständige Historie, unbegrenzt",
+      "everythingHelp": "Keine Datums- oder Mengengrenze. Jede Seite jedes gewählten Bereichs wird abgerufen.",
+      "dailyItemCap": "Tageslimit für Elemente",
+      "saveFailed": "Die Einstellungen konnten nicht gespeichert werden."
     },
     "runs": {
-      "heading": "Recent syncs",
-      "empty": "No syncs have run yet.",
+      "heading": "Letzte Synchronisierungen",
+      "empty": "Es wurde noch nicht synchronisiert.",
       "kind": {
-        "backfill": "backfill",
-        "incremental": "incremental",
+        "backfill": "Erstbefüllung",
+        "incremental": "inkrementell",
         "webhook": "webhook",
-        "presence": "presence check"
+        "presence": "Bestandsprüfung"
       },
       "state": {
-        "running": "running",
-        "completed": "completed",
-        "failed": "failed",
-        "cancelled": "cancelled"
+        "running": "läuft",
+        "completed": "abgeschlossen",
+        "failed": "fehlgeschlagen",
+        "cancelled": "abgebrochen"
       },
       "count": {
-        "materialized": "{{value}} ingested",
-        "unchangedSkipped": "{{value}} unchanged",
-        "revisions": "{{value}} revisions",
-        "deletedUpstream": "{{value}} gone upstream",
-        "skippedRestricted": "{{value}} restricted",
-        "failed": "{{value}} failed"
+        "materialized": "{{value}} übernommen",
+        "unchangedSkipped": "{{value}} unverändert",
+        "revisions": "{{value}} Versionen",
+        "deletedUpstream": "{{value}} entfernt an der Quelle",
+        "skippedRestricted": "{{value}} gesperrt",
+        "failed": "{{value}} fehlgeschlagen"
       }
     },
     "presence": {
-      "explainer": "Compares the record against what Confluence still lists and marks pages that disappeared or were archived. A sync never deletes anything.",
-      "action": "Check presence now",
-      "queued": "Presence check queued."
+      "explainer": "Vergleicht den Bestand mit dem, was Confluence noch führt, und markiert verschwundene oder archivierte Seiten. Eine Synchronisierung löscht nie etwas.",
+      "action": "Bestand jetzt prüfen",
+      "queued": "Bestandsprüfung eingereiht."
     },
     "erased": {
-      "title": "Deleted by you",
-      "explainer": "Sources you deleted stay deleted: a sync never brings them back on its own. Ingesting one again is your explicit choice, and it returns as a brand-new source.",
-      "when": "deleted {{when}}",
-      "action": "Ingest again",
-      "confirm": "Your original deletion stays deleted. The next sync will bring this item back as a brand-new source with fresh extraction. Continue?",
-      "question": "Ingest this item again?"
+      "title": "Von Ihnen gelöscht",
+      "explainer": "Von Ihnen gelöschte Quellen bleiben gelöscht: Eine Synchronisierung holt sie nie von selbst zurück. Eine erneute Übernahme ist Ihre ausdrückliche Entscheidung, und sie kehrt als völlig neue Quelle zurück.",
+      "when": "gelöscht {{when}}",
+      "action": "Erneut übernehmen",
+      "confirm": "Ihre ursprüngliche Löschung bleibt bestehen. Die nächste Synchronisierung holt dieses Element als völlig neue Quelle mit frischer Extraktion zurück. Fortfahren?",
+      "question": "Dieses Element erneut übernehmen?"
     }
   }
 }

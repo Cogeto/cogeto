@@ -60,6 +60,7 @@ import type { PendingFile } from '../components/attachments-model';
 import { UnsourcedChip } from '../components/UnsourcedChip';
 import { getAutoResearch, setAutoResearch } from '../research-pref';
 import { validateUploadFile } from '../upload-validation';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 /**
  * Chat, reimagined as "Ask → Briefing": the question is a
@@ -659,6 +660,7 @@ const formatBytes = (bytes: number): string => formatFileSize(bytes) ?? '';
 
 export function Chat({ session }: { session: Session }) {
   const { t } = useTranslation('chat');
+  const apiError = useApiErrorMessage(t);
   const { t: tp } = useTranslation('projects');
   const queryClient = useQueryClient();
 
@@ -904,7 +906,7 @@ export function Chat({ session }: { session: Session }) {
         void queryClient.invalidateQueries({ queryKey: ['conversations'] });
       } catch (error) {
         setFailed(true);
-        setFailMessage(error instanceof Error ? error.message : null);
+        setFailMessage(error instanceof Error ? apiError(error) : null);
         return;
       }
     }
@@ -939,7 +941,7 @@ export function Chat({ session }: { session: Session }) {
           setAttachError(
             t('attachment.uploadFailed', {
               name: item.file.name,
-              reason: error instanceof Error ? error.message : String(error),
+              reason: apiError(error),
             }),
           );
           if (attachmentIds.length > 0) {
@@ -1010,8 +1012,13 @@ export function Chat({ session }: { session: Session }) {
             setFailed(true);
             // Specific copy for the daily budget / stream-timeout aborts, and
             // the localized first-run explanation for an unconfigured instance.
-            if (event.code === 'model_budget_exceeded' || event.code === 'timeout') {
-              setFailMessage(event.message);
+            // The stream carries a code, not a sentence: mid-stream failures
+            // are worded HERE, in the reader's language, exactly as an ordinary
+            // request failure is (F13).
+            if (event.code === 'model_budget_exceeded') {
+              setFailMessage(t('stream.budgetExceeded'));
+            } else if (event.code === 'timeout') {
+              setFailMessage(t('stream.timedOut'));
             } else if (event.code === 'not_configured') {
               setFailMessage(t('common:modelRequired.short'));
             }
@@ -1026,7 +1033,7 @@ export function Chat({ session }: { session: Session }) {
         // A pre-stream 429 (rate limit / too many streams) throws with the
         // server's message; show it verbatim.
         setFailed(true);
-        setFailMessage(error instanceof Error ? error.message : null);
+        setFailMessage(error instanceof Error ? apiError(error) : null);
       }
     }
     if (streamRef.current === controller) streamRef.current = null;

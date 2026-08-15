@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { completeLogin } from '../auth/oidc';
 import type { Session } from '../auth/oidc';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 export function Callback({ onSession }: { onSession: (session: Session) => void }) {
   const { t } = useTranslation('auth');
+  const apiError = useApiErrorMessage(t);
   const [error, setError] = useState<string | null>(null);
   const exchanged = useRef(false);
 
@@ -16,7 +18,7 @@ export function Callback({ onSession }: { onSession: (session: Session) => void 
         window.history.replaceState(null, '', '/');
         onSession(session);
       })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+      .catch((e: unknown) => setError(apiError(e)));
   }, [onSession]);
 
   return (

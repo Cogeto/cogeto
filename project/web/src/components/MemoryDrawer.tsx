@@ -40,6 +40,7 @@ import {
   StatusChip,
   VerdictChip,
 } from './ui';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 const EDIT_EXPLAINED_KEY = 'cogeto-supersession-explained';
 
@@ -87,6 +88,7 @@ export function MemoryDrawer({
   onNavigate: (memoryId: string) => void;
 }) {
   const { t } = useTranslation('memories');
+  const apiError = useApiErrorMessage(t);
   const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
@@ -160,8 +162,7 @@ export function MemoryDrawer({
     // Chat chips, lists, badges — the governance-affected queries only.
     await invalidateAfterGovernance(queryClient);
   };
-  const onError = (error: unknown) =>
-    setActionError(error instanceof Error ? error.message : String(error));
+  const onError = (error: unknown) => setActionError(apiError(error));
 
   const approve = useMutation({
     mutationFn: () => approveMemory(session, memoryId),

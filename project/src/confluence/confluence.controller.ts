@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Inject,
@@ -10,7 +9,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { z } from 'zod';
-import { DRIZZLE, parseOrBadRequest, withTransactionalEnqueue } from '../infrastructure/index';
+import {
+  DRIZZLE,
+  parseOrBadRequest,
+  userError,
+  withTransactionalEnqueue,
+} from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { BearerAuthGuard, ConnectorCredentialStore } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
@@ -130,7 +134,7 @@ export class ConfluenceController {
   ) {
     const row = await this.connectors.byIdForOwner(id, request.principal.userId);
     if (row.kind !== CONFLUENCE_KIND) {
-      throw new BadRequestException('not a Confluence connector');
+      throw userError.badRequest('confluence.notConfluenceConnector', 'not a Confluence connector');
     }
     const parsed = parseOrBadRequest(reconnectSchema, body);
     const validated = await this.validate(parsed);
@@ -163,7 +167,7 @@ export class ConfluenceController {
   async estimate(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
     const row = await this.connectors.byIdForOwner(id, request.principal.userId);
     if (row.kind !== CONFLUENCE_KIND) {
-      throw new BadRequestException('not a Confluence connector');
+      throw userError.badRequest('confluence.notConfluenceConnector', 'not a Confluence connector');
     }
     await this.db.transaction(async (tx) => {
       await withTransactionalEnqueue(

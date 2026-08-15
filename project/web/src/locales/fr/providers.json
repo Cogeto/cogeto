@@ -1,173 +1,173 @@
 {
   "page": {
-    "title": "Providers"
+    "title": "Fournisseurs"
   },
   "adminOnly": {
-    "title": "Administrators only",
-    "body": "Model providers decide what this instance remembers and where its content is sent, so only an administrator can change them."
+    "title": "Administrateurs uniquement",
+    "body": "Les fournisseurs de modèles déterminent ce que cette instance retient et où son contenu est envoyé ; seul un administrateur peut donc les modifier."
   },
   "list": {
-    "heading": "Model providers",
-    "explainer": "Every endpoint this instance can reach. Several of the same kind are normal, so the name is what tells them apart.",
-    "add": "Add a provider",
-    "error": "The providers could not be loaded.",
+    "heading": "Fournisseurs de modèles",
+    "explainer": "Chaque point de terminaison que cette instance peut atteindre. En avoir plusieurs du même type est normal, c'est donc le nom qui les distingue.",
+    "add": "Ajouter un fournisseur",
+    "error": "Impossible de charger les fournisseurs.",
     "empty": {
-      "title": "No providers yet",
-      "body": "Add the endpoint that serves your models. Nothing is sent anywhere until a tier is assigned to it."
+      "title": "Aucun fournisseur",
+      "body": "Ajoutez le point de terminaison qui sert vos modèles. Rien n'est envoyé nulle part tant qu'aucun niveau ne lui est affecté."
     },
-    "servingTiers": "Currently serving: {{tiers}}",
-    "cannotDelete": "Reassign the tiers this provider serves before removing it."
+    "servingTiers": "Assure actuellement : {{tiers}}",
+    "cannotDelete": "Réaffectez les niveaux servis par ce fournisseur avant de le retirer."
   },
   "type": {
     "mistral": {
       "name": "Mistral",
-      "subtitle": "The hosted Mistral API"
+      "subtitle": "L'API Mistral hébergée"
     },
     "openai": {
       "name": "OpenAI",
-      "subtitle": "The hosted OpenAI API"
+      "subtitle": "L'API OpenAI hébergée"
     },
     "anthropic": {
       "name": "Anthropic",
-      "subtitle": "The hosted Anthropic API. No embeddings."
+      "subtitle": "L'API Anthropic hébergée. Pas d'embeddings."
     },
     "self_hosted": {
-      "name": "Self-hosted",
-      "subtitle": "llama.cpp, Ollama, vLLM, or any OpenAI-compatible endpoint"
+      "name": "Auto-hébergé",
+      "subtitle": "llama.cpp, Ollama, vLLM ou tout point de terminaison compatible OpenAI"
     },
     "ollama": {
-      "name": "Self-hosted",
-      "subtitle": "A local Ollama runtime, carried over from this instance's earlier configuration"
+      "name": "Auto-hébergé",
+      "subtitle": "Un environnement Ollama local, repris de la configuration antérieure de cette instance"
     }
   },
   "health": {
-    "ok": "Answered",
-    "unreachable": "Not reachable",
-    "auth_failed": "Key rejected",
-    "unknown": "Not tested yet"
+    "ok": "A répondu",
+    "unreachable": "Injoignable",
+    "auth_failed": "Clé refusée",
+    "unknown": "Pas encore testé"
   },
   "key": {
-    "present": "Key stored",
-    "absent": "No key",
-    "add": "Add a key",
-    "replace": "Replace the key"
+    "present": "Clé enregistrée",
+    "absent": "Aucune clé",
+    "add": "Ajouter une clé",
+    "replace": "Remplacer la clé"
   },
   "action": {
-    "test": "Test",
-    "testing": "Testing",
-    "save": "Save",
-    "saving": "Saving",
-    "cancel": "Cancel",
-    "remove": "Remove"
+    "test": "Tester",
+    "testing": "Test en cours",
+    "save": "Enregistrer",
+    "saving": "Enregistrement",
+    "cancel": "Annuler",
+    "remove": "Retirer"
   },
   "form": {
     "type": {
-      "legend": "What kind of endpoint is this?"
+      "legend": "De quel type de point de terminaison s'agit-il ?"
     },
     "label": {
-      "label": "Name",
-      "placeholder": "Workshop GPU",
-      "help": "Your own name for this endpoint. It has to be unique, because two of the same kind are ordinary."
+      "label": "Nom",
+      "placeholder": "GPU de l'atelier",
+      "help": "Votre propre nom pour ce point de terminaison. Il doit être unique, car deux points du même type sont chose courante."
     },
     "baseUrl": {
-      "label": "Endpoint",
+      "label": "Point de terminaison",
       "placeholder": "http://host.docker.internal:9000/v1",
-      "hint": "Reached from inside the containers, so localhost means the container itself. A server running on this host is at host.docker.internal or the bridge gateway address; another service in this stack is at its service name."
+      "hint": "Il est joint depuis l'intérieur des conteneurs, donc localhost désigne le conteneur lui-même. Un serveur exécuté sur cet hôte se trouve à host.docker.internal ou à l'adresse de la passerelle ; un autre service de cette pile se trouve à son nom de service."
     },
     "apiKey": {
-      "label": "API key",
-      "optionalLabel": "API key (optional)",
-      "placeholder": "Paste the key",
-      "help": "Encrypted before it is stored and never shown again. A self-hosted endpoint with no authentication needs none."
+      "label": "Clé d'API",
+      "optionalLabel": "Clé d'API (facultative)",
+      "placeholder": "Collez la clé",
+      "help": "Chiffrée avant l'enregistrement et jamais affichée de nouveau. Un point de terminaison auto-hébergé sans authentification n'en a pas besoin."
     },
-    "submit": "Add and test"
+    "submit": "Ajouter et tester"
   },
   "assignment": {
-    "title": "Model assignment",
-    "heading": "What each tier runs on",
-    "explainer": "Four independent choices. A mixed configuration is ordinary: extraction on one endpoint, answers on another.",
-    "error": "The configuration could not be loaded.",
-    "provider": "Provider",
-    "model": "Model",
-    "modelPlaceholder": "Type or pick a model",
-    "none": "None",
-    "unassigned": "Not assigned",
-    "apply": "Test and apply",
-    "partialList": "This endpoint may serve models it does not advertise, so type the name if it is not in the list.",
-    "listUnavailable": "The model list could not be read ({{reason}}), so type the name instead.",
-    "visionOptional": "Leave this unassigned if this instance reads no images. Pages that need vision are then labelled as such rather than arriving empty."
+    "title": "Affectation des modèles",
+    "heading": "Ce sur quoi tourne chaque niveau",
+    "explainer": "Quatre choix indépendants. Une configuration mixte est courante : l'extraction sur un point de terminaison, les réponses sur un autre.",
+    "error": "Impossible de charger la configuration.",
+    "provider": "Fournisseur",
+    "model": "Modèle",
+    "modelPlaceholder": "Saisissez ou choisissez un modèle",
+    "none": "Aucun",
+    "unassigned": "Non affecté",
+    "apply": "Tester et appliquer",
+    "partialList": "Ce point de terminaison peut servir des modèles qu'il n'annonce pas ; saisissez le nom s'il n'apparaît pas dans la liste.",
+    "listUnavailable": "Impossible de lire la liste des modèles ({{reason}}) ; saisissez plutôt le nom.",
+    "visionOptional": "Laissez ce niveau non affecté si cette instance ne lit pas d'images. Les pages nécessitant la vision sont alors signalées comme telles au lieu d'arriver vides."
   },
   "tier": {
     "pipeline": "Extraction",
-    "answer": "Answers",
+    "answer": "Réponses",
     "embeddings": "Embeddings",
     "vision": "Vision"
   },
   "tierHelp": {
-    "pipeline": "Reads documents and verifies every fact",
-    "answer": "Writes what people read in chat",
-    "embeddings": "Turns facts into the search index",
-    "vision": "Reads pages that are pictures"
+    "pipeline": "Lit les documents et vérifie chaque fait",
+    "answer": "Rédige ce que les personnes lisent dans la discussion",
+    "embeddings": "Transforme les faits en index de recherche",
+    "vision": "Lit les pages qui sont des images"
   },
   "summary": {
     "configuration": "Configuration",
-    "configured": "Complete",
-    "notConfigured": "Incomplete",
-    "managedHere": "Managed here, in this instance's database. The environment file carries no model configuration."
+    "configured": "Complète",
+    "notConfigured": "Incomplète",
+    "managedHere": "Gérée ici, dans la base de données de cette instance. Le fichier d'environnement ne contient aucune configuration de modèle."
   },
   "trust": {
-    "evaluated": "Measured in {{release}}",
-    "notEvaluated": "Not evaluated",
-    "notEvaluatedHelp": "No published measurement matches this exact combination, so nothing is known about how accurately it extracts. Accuracy is never borrowed from a different configuration.",
-    "numbers": "Extraction precision {{precision}}, recall {{recall}}, verification agreement {{agreement}}."
+    "evaluated": "Mesuré dans {{release}}",
+    "notEvaluated": "Non évaluée",
+    "notEvaluatedHelp": "Aucune mesure publiée ne correspond exactement à cette combinaison ; sa précision d'extraction est donc inconnue. La précision n'est jamais empruntée à une autre configuration.",
+    "numbers": "Précision d'extraction {{precision}}, rappel {{recall}}, concordance de vérification {{agreement}}."
   },
   "embeddings": {
-    "locked": "The embeddings model cannot be assigned directly. Every stored fact was turned into a vector by the current one, and searching a mix of two would quietly return the wrong results.",
-    "interim": "The managed rebuild is unavailable in this process. Change the model with the operator command <code>{{command}}</code>, which re-embeds everything from the database."
+    "locked": "Le modèle d'embeddings ne peut pas être affecté directement. Chaque fait enregistré a été transformé en vecteur par le modèle actuel, et interroger un mélange des deux renverrait discrètement de mauvais résultats.",
+    "interim": "La reconstruction gérée n'est pas disponible dans ce processus. Changez de modèle avec la commande d'exploitation <code>{{command}}</code>, qui ré-encode tout à partir de la base de données."
   },
   "answerOptions": {
-    "heading": "Answer models people may choose",
-    "explainer": "The answer model is the one anybody may pick for themselves, from this list. Extraction, embeddings and vision stay administrator decisions.",
-    "empty": "Nobody can choose their own answer model yet. Add one here and it appears in everyone's settings.",
-    "label": "Shown as",
-    "add": "Enable"
+    "heading": "Modèles de réponse proposés",
+    "explainer": "Le modèle de réponse est le seul que chacun peut choisir pour soi, dans cette liste. L'extraction, les embeddings et la vision restent des décisions d'administrateur.",
+    "empty": "Personne ne peut encore choisir son modèle de réponse. Ajoutez-en un ici et il apparaîtra dans les paramètres de chacun.",
+    "label": "Affiché comme",
+    "add": "Activer"
   },
   "history": {
-    "heading": "Configuration history",
-    "explainer": "Every change, and the configuration identifier it produced. This is the identifier a published measurement is matched by.",
-    "entry": "{{tier}} moved to {{provider}} · {{model}}"
+    "heading": "Historique de configuration",
+    "explainer": "Chaque changement et l'identifiant de configuration qu'il a produit. C'est cet identifiant qui rattache une mesure publiée.",
+    "entry": "{{tier}} déplacé vers {{provider}} · {{model}}"
   },
   "userChoice": {
-    "heading": "Your answer model",
-    "explainer": "Which model writes the answers you read. It changes nothing about what is remembered or how it is found.",
-    "instanceDefault": "The instance default",
-    "current": "Currently answering with {{label}}.",
-    "none": "Your administrator has not offered a choice here yet."
+    "heading": "Votre modèle de réponse",
+    "explainer": "Le modèle qui rédige les réponses que vous lisez. Il ne change rien à ce qui est retenu ni à la façon dont c'est retrouvé.",
+    "instanceDefault": "La valeur par défaut de l'instance",
+    "current": "Répond actuellement avec {{label}}.",
+    "none": "Votre administrateur n'a pas encore proposé de choix ici."
   },
   "rebuild": {
-    "review": "Review the change",
-    "planTitle": "Changing the embeddings model rebuilds the whole index",
-    "planWhat": "Embeddings move to {{model}} on {{provider}}, producing {{dimensions}}-dimension vectors. The probe just confirmed the model works.",
-    "planCost": "{{facts}} memories will be re-embedded: an estimated {{tokens}} tokens, taking roughly {{duration}}.",
-    "planSpend": "This is real model spend, metered against the daily model budget. If the budget runs out mid-rebuild, the rebuild pauses and resumes by itself.",
-    "planServing": "Search keeps answering from the current index for the whole rebuild. The switch happens only when the new index is verified complete, and it is instant.",
-    "planEvaluated": "The resulting configuration {{configuration}} has published trust scores.",
-    "planNotEvaluated": "The resulting configuration {{configuration}} is not evaluated: no published trust scores match it.",
-    "confirm": "Start the rebuild",
-    "back": "Back",
-    "runningTitle": "Rebuilding the vector index for {{model}}",
-    "finalizingTitle": "Finalizing the switch to {{model}}",
-    "failedTitle": "The rebuild to {{model}} stopped",
-    "progress": "{{done}} of {{total}} memories re-embedded, about {{tokens}} tokens spent.",
-    "remaining": "About {{duration}} remaining.",
-    "servingNote": "Search keeps answering from the current index; nothing changes until the rebuild completes.",
-    "resume": "Resume the rebuild",
-    "cancel": "Cancel the rebuild",
-    "cancelling": "Cancelling",
-    "durationSeconds_one": "{{count}} seconds",
-    "durationSeconds_many": "{{count}} seconds",
-    "durationSeconds_other": "{{count}} seconds",
-    "durationMinutes_one": "{{count}} minutes",
+    "review": "Examiner le changement",
+    "planTitle": "Changer de modèle d'embeddings reconstruit tout l'index",
+    "planWhat": "Les embeddings passent à {{model}} chez {{provider}} et produisent des vecteurs à {{dimensions}} dimensions. La sonde vient de confirmer que le modèle fonctionne.",
+    "planCost": "{{facts}} souvenirs seront ré-encodés : environ {{tokens}} jetons, soit à peu près {{duration}}.",
+    "planSpend": "Il s'agit d'une dépense réelle de modèle, décomptée du budget quotidien. Si le budget s'épuise en cours de reconstruction, celle-ci se met en pause et reprend d'elle-même.",
+    "planServing": "La recherche continue de répondre depuis l'index actuel pendant toute la reconstruction. Le basculement n'a lieu qu'une fois le nouvel index vérifié complet, et il est immédiat.",
+    "planEvaluated": "La configuration résultante {{configuration}} dispose de scores de confiance publiés.",
+    "planNotEvaluated": "La configuration résultante {{configuration}} n'est pas évaluée : aucun score de confiance publié ne lui correspond.",
+    "confirm": "Lancer la reconstruction",
+    "back": "Retour",
+    "runningTitle": "Reconstruction de l'index vectoriel pour {{model}}",
+    "finalizingTitle": "Finalisation du basculement vers {{model}}",
+    "failedTitle": "La reconstruction vers {{model}} s'est arrêtée",
+    "progress": "{{done}} souvenirs ré-encodés sur {{total}}, environ {{tokens}} jetons dépensés.",
+    "remaining": "Environ {{duration}} restantes.",
+    "servingNote": "La recherche continue de répondre depuis l'index actuel ; rien ne change tant que la reconstruction n'est pas terminée.",
+    "resume": "Reprendre la reconstruction",
+    "cancel": "Annuler la reconstruction",
+    "cancelling": "Annulation",
+    "durationSeconds_one": "{{count}} seconde",
+    "durationSeconds_many": "{{count}} secondes",
+    "durationSeconds_other": "{{count}} secondes",
+    "durationMinutes_one": "{{count}} minute",
     "durationMinutes_many": "{{count}} minutes",
     "durationMinutes_other": "{{count}} minutes"
   }

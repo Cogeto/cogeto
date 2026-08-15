@@ -5,5 +5,8 @@
     "stateMismatch": "stanje povratnog poziva za prijavu ne odgovara",
     "demoCredentials": "Korisničko ime ili lozinka za pokazno okruženje nisu valjani.",
     "demoNoSession": "Prijava u pokazno okruženje nije vratila sesiju."
+  },
+  "server": {
+    "unexpected": "Došlo je do pogreške. Pokušajte ponovno."
   }
 }

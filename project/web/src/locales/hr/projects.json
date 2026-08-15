@@ -1,56 +1,56 @@
 {
   "rail": {
-    "heading": "Projects",
-    "noProject": "No project",
-    "newHere": "New conversation in this project",
-    "newConversation": "New conversation",
-    "newProject": "New project",
-    "lensOn": "Answers in this project draw on its sources first.",
-    "lensOff": "Answers in this project draw on all your memory.",
-    "turnLensOn": "Use project sources",
-    "turnLensOff": "Use all memory"
+    "heading": "Projekti",
+    "noProject": "Bez projekta",
+    "newHere": "Novi razgovor u ovom projektu",
+    "newConversation": "Novi razgovor",
+    "newProject": "Novi projekt",
+    "lensOn": "Odgovori u ovom projektu prvo koriste njegove izvore.",
+    "lensOff": "Odgovori u ovom projektu koriste cijelo vaše sjećanje.",
+    "turnLensOn": "Koristi izvore projekta",
+    "turnLensOff": "Koristi cijelo sjećanje"
   },
   "chip": {
-    "add": "Add to project",
-    "lensOn": "Answers draw on this project's sources first.",
-    "lensOff": "Answers draw on all your memory."
+    "add": "Dodaj u projekt",
+    "lensOn": "Odgovori prvo koriste izvore ovog projekta.",
+    "lensOff": "Odgovori koriste cijelo vaše sjećanje."
   },
   "picker": {
-    "title": "Move this conversation",
-    "explainer": "A project groups your work. It never changes what you can see: every fact stays yours, and stays visible outside the project.",
-    "newProject": "+ New project for this conversation",
-    "lensOffTag": "lens off",
-    "archivedTag": "archived"
+    "title": "Premjesti ovaj razgovor",
+    "explainer": "Projekt grupira vaš rad. Nikada ne mijenja što možete vidjeti: svaka činjenica ostaje vaša i ostaje vidljiva izvan projekta.",
+    "newProject": "+ Novi projekt za ovaj razgovor",
+    "lensOffTag": "leća isključena",
+    "archivedTag": "arhivirano"
   },
   "field": {
-    "name": "Project name",
-    "namePlaceholder": "Client, matter, or topic"
+    "name": "Naziv projekta",
+    "namePlaceholder": "Klijent, predmet ili tema"
   },
   "action": {
-    "rename": "Rename",
-    "archive": "Archive",
-    "unarchive": "Unarchive",
-    "delete": "Delete"
+    "rename": "Preimenuj",
+    "archive": "Arhiviraj",
+    "unarchive": "Vrati iz arhive",
+    "delete": "Izbriši"
   },
   "assign": {
-    "label": "Project",
-    "scopeLabel": "Into project",
-    "none": "No project"
+    "label": "Projekt",
+    "scopeLabel": "U projekt",
+    "none": "Bez projekta"
   },
   "filter": {
-    "label": "Project",
-    "all": "All projects"
+    "label": "Projekt",
+    "all": "Svi projekti"
   },
   "lens": {
-    "gapHint": "Nothing in this project covers that.",
-    "widenAction": "Answer from all my memory"
+    "gapHint": "Ništa u ovom projektu ne obuhvaća to.",
+    "widenAction": "Odgovori iz cijelog mog sjećanja"
   },
   "delete": {
-    "question": "Delete the project \"{{name}}\"?",
-    "consequence_one": "The project groups {{count}} thing. Deleting removes the project only.",
-    "consequence_few": "The project groups {{count}} things. Deleting removes the project only.",
-    "consequence_other": "The project groups {{count}} things. Deleting removes the project only.",
-    "keeps": "Its conversations, sources, research runs and reports all stay exactly where they are and simply stop being in a project. Nothing is erased and no memory is deleted.",
-    "alternative": "To erase a document itself, delete that source on the Sources page, which runs the deletion saga and gives you a receipt. Archiving this project instead keeps everything and only hides it from the list."
+    "question": "Izbrisati projekt \"{{name}}\"?",
+    "consequence_one": "Projekt grupira {{count}} stavku. Brisanjem se uklanja samo projekt.",
+    "consequence_few": "Projekt grupira {{count}} stavke. Brisanjem se uklanja samo projekt.",
+    "consequence_other": "Projekt grupira {{count}} stavki. Brisanjem se uklanja samo projekt.",
+    "keeps": "Njegovi razgovori, izvori, istraživanja i izvještaji ostaju točno gdje jesu i jednostavno prestaju pripadati projektu. Ništa se ne briše i nijedno sjećanje ne nestaje.",
+    "alternative": "Da biste izbrisali sam dokument, izbrišite taj izvor na stranici Izvori, čime se pokreće postupak brisanja i dobivate potvrdu. Arhiviranje ovog projekta umjesto toga zadržava sve i samo ga skriva s popisa."
   }
 }

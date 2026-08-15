@@ -5,13 +5,12 @@ import {
   Injectable,
   Optional,
   SetMetadata,
-  HttpException,
-  HttpStatus,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { RATE_LIMIT_OPTIONS } from './limits';
 import type { RateLimitBuckets } from './limits';
 import { InMemoryRateLimitStore, RateLimitStore } from './rate-limit-store';
+import { userError } from './api-error';
 
 /**
  * Per-principal request rate limiting. A fixed-window limiter over
@@ -70,14 +69,11 @@ export class RateLimitGuard implements CanActivate {
     const { count, resetAt } = await this.store.hit(userId, bucket, windowMs, now);
     if (count > limit) {
       const retryAfter = Math.max(1, Math.ceil((resetAt - now) / 1000));
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.TOO_MANY_REQUESTS,
-          error: 'Too Many Requests',
-          message: `rate limit reached for ${bucket}, retry in ${retryAfter}s`,
-          retryAfterSeconds: retryAfter,
-        },
-        HttpStatus.TOO_MANY_REQUESTS,
+      throw userError.tooManyRequests(
+        'limit.rateLimited',
+        'rate limit reached for {{bucket}}, retry in {{seconds}}s',
+        { bucket, seconds: retryAfter },
+        { retryAfterSeconds: retryAfter },
       );
     }
     return true;

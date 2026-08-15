@@ -2,7 +2,6 @@ import {
   Controller,
   Get,
   Inject,
-  NotFoundException,
   Optional,
   Param,
   ParseUUIDPipe,
@@ -16,7 +15,7 @@ import type {
   ReceiptDetailDto,
   ReceiptListItem,
 } from '@cogeto/shared';
-import { DRIZZLE, loadInstancePublicKey } from '../infrastructure/index';
+import { DRIZZLE, loadInstancePublicKey, userError } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { AdminGuard, BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
@@ -146,7 +145,7 @@ export class ReceiptsController {
     const row = rows[0];
     const counts = row ? parseReceiptCounts(row.countsJson) : null;
     if (!row || counts?.requested_by !== request.principal.userId) {
-      throw new NotFoundException(`receipt ${id} not found`);
+      throw userError.notFound('receipt.notFound', 'receipt {{id}} not found', { id });
     }
     const [alerting, chainTip] = await Promise.all([this.alertingReceiptIds(), this.chainTip()]);
     return {

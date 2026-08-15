@@ -25,6 +25,7 @@
     "lint": "eslint . && prettier --check . && npm run lint:docs && npm run i18n:check",
     "lint:docs": "node scripts/ci/check-doc-dashes.mjs && node scripts/ci/check-doc-links.mjs",
     "i18n:check": "node scripts/ci/check-i18n.mjs",
+    "i18n:server-errors": "node scripts/dev/sync-server-errors.mjs",
     "i18n:add": "node scripts/dev/add-locale.mjs",
     "i18n:sync": "node scripts/dev/sync-locales.mjs",
     "format": "prettier --write .",

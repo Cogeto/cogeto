@@ -1,11 +1,4 @@
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  NotFoundException,
-  NotImplementedException,
-  Optional,
-} from '@nestjs/common';
+import { Inject, Injectable, NotImplementedException, Optional } from '@nestjs/common';
 import { and, desc, eq, gte, inArray, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { isRegisteredSourceType, MEMORY_STATUSES } from '@cogeto/shared';
@@ -19,6 +12,8 @@ import type {
 import {
   DRIZZLE,
   readAuditEntries,
+  untranslatedError,
+  userError,
   withTransactionalEnqueue,
   writeAudit,
 } from '../infrastructure/index';
@@ -721,7 +716,9 @@ export class MemoryStore {
     const row = await this.lockRow(tx, memoryId, actor);
     const check = checkTransition(row.status, to, actor);
     if (!check.allowed) {
-      throw new BadRequestException(`illegal transition ${row.status} -> ${to}: ${check.reason}`);
+      throw untranslatedError.badRequest(
+        `illegal transition ${row.status} -> ${to}: ${check.reason}`,
+      );
     }
     const [updated] = await tx
       .update(memory)
@@ -926,7 +923,10 @@ export class MemoryStore {
     const actor: MemoryActor = { kind: 'user', userId: principal.userId };
     const old = await this.lockRow(tx, memoryId, actor);
     if (old.status === 'replaced') {
-      throw new BadRequestException('memory is already replaced; edit its successor instead');
+      throw userError.badRequest(
+        'memory.alreadyReplacedEdit',
+        'memory is already replaced; edit its successor instead',
+      );
     }
     const result = await this.supersedeCore(tx, actor, old, {
       content: newContent,
@@ -982,10 +982,10 @@ export class MemoryStore {
       const row = rows[0];
       if (!row) return null;
       if (actor.kind === 'user' && row.ownerId !== actor.userId) {
-        throw new NotFoundException(`memory ${memoryId} not found`);
+        throw userError.notFound('memory.notFound', 'memory {{id}} not found', { id: memoryId });
       }
       if (row.status !== 'uncertain') {
-        throw new BadRequestException(
+        throw untranslatedError.badRequest(
           `only an uncertain memory can be rejected in review (this one is ${row.status}); ` +
             'source-level deletion goes through the deletion saga (spec §11.1)',
         );
@@ -1032,11 +1032,14 @@ export class MemoryStore {
     successorFact: NewFact,
   ): Promise<{ predecessor: MemoryRow; successor: MemoryRow }> {
     if (actor.kind !== 'user' && actor.kind !== 'reconciliation') {
-      throw new BadRequestException('only the user or reconciliation may supersede a memory');
+      throw untranslatedError.badRequest('only the user or reconciliation may supersede a memory');
     }
     const old = await this.lockRow(tx, predecessorId, actor);
     if (old.status === 'replaced') {
-      throw new BadRequestException('memory is already replaced; supersede its successor');
+      throw userError.badRequest(
+        'memory.alreadyReplacedSupersede',
+        'memory is already replaced; supersede its successor',
+      );
     }
     return this.supersedeCore(tx, actor, old, successorFact);
   }
@@ -1441,7 +1444,7 @@ export class MemoryStore {
    */
   async upsertVectors(rows: MemoryRow[], embeddings: number[][]): Promise<void> {
     if (rows.length !== embeddings.length) {
-      throw new BadRequestException(
+      throw untranslatedError.badRequest(
         `got ${embeddings.length} embeddings for ${rows.length} memories`,
       );
     }
@@ -1506,7 +1509,7 @@ export class MemoryStore {
     // Provenance is NOT NULL, always: the aggregate rejects orphans even
     // where the database could not (an empty string satisfies a NOT NULL column).
     if (!ownerId.trim() || !fact.sourceType || !fact.sourceId.trim()) {
-      throw new BadRequestException(
+      throw untranslatedError.badRequest(
         'a memory requires owner_id, source_type and source_id: no orphans, ever',
       );
     }
@@ -1521,16 +1524,16 @@ export class MemoryStore {
     // cannot see. Defunct values pass validation (a defunct value is a KNOWN
     // value) but have no live producer.
     if (!isRegisteredSourceType(fact.sourceType)) {
-      throw new BadRequestException(`unknown source type '${String(fact.sourceType)}'`);
+      throw untranslatedError.badRequest(`unknown source type '${String(fact.sourceType)}'`);
     }
     const status = fact.initialStatus ?? 'active';
     if (status === 'uncertain' && !fact.uncertaintyReason) {
-      throw new BadRequestException(
+      throw untranslatedError.badRequest(
         'an uncertain memory requires its uncertainty reason: the admission taxonomy has no default arm',
       );
     }
     if (status !== 'uncertain' && fact.uncertaintyReason) {
-      throw new BadRequestException(
+      throw untranslatedError.badRequest(
         `uncertaintyReason is only meaningful on an uncertain admission (got status '${status}')`,
       );
     }
@@ -1584,7 +1587,7 @@ export class MemoryStore {
     const rows = await tx.select().from(memory).where(eq(memory.id, memoryId)).for('update');
     const row = rows[0];
     if (!row || (actor.kind === 'user' && row.ownerId !== actor.userId)) {
-      throw new NotFoundException(`memory ${memoryId} not found`);
+      throw userError.notFound('memory.notFound', 'memory {{id}} not found', { id: memoryId });
     }
     return row;
   }

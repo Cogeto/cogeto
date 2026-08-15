@@ -1,9 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-  UnprocessableEntityException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, inArray, lt, sql } from 'drizzle-orm';
 import type {
   ApprovalDto,
@@ -15,6 +10,8 @@ import { EMAIL_REPLY_DRAFT_ACTION } from '@cogeto/shared';
 import {
   DRIZZLE,
   readAuditEntries,
+  untranslatedError,
+  userError,
   withTransactionalEnqueue,
   writeAudit,
 } from '../infrastructure/index';
@@ -110,10 +107,10 @@ export class ApprovalService {
       const definition = this.registry.get(current.actionType);
       const ownerOnly = definition.contentBearing === true || definition.orgScoped !== true;
       if (ownerOnly && current.requestedBy !== principal.userId) {
-        throw new NotFoundException(`approval ${id} not found`);
+        throw userError.notFound('approval.notFound', 'approval {{id}} not found', { id });
       }
       const check = checkApprovalTransition(current.status, to);
-      if (!check.allowed) throw new UnprocessableEntityException(check.reason);
+      if (!check.allowed) throw untranslatedError.unprocessable(check.reason);
 
       const now = new Date();
       const [updated] = await tx
@@ -210,7 +207,7 @@ export class ApprovalService {
     const rows = await this.db.select().from(approval).where(eq(approval.id, id)).limit(1);
     const row = rows[0];
     if (!row || row.orgId !== principal.orgId)
-      throw new NotFoundException(`approval ${id} not found`);
+      throw userError.notFound('approval.notFound', 'approval {{id}} not found', { id });
     return (await this.toDtos([row as ApprovalRow], principal.userId))[0]!;
   }
 
@@ -230,7 +227,9 @@ export class ApprovalService {
       row.requestedBy !== principal.userId ||
       row.actionType !== EMAIL_REPLY_DRAFT_ACTION
     ) {
-      throw new NotFoundException(`email draft ${id} not found`);
+      throw userError.notFound('approval.emailDraftNotFound', 'email draft {{id}} not found', {
+        id,
+      });
     }
     const payload = this.registry.parse(
       EMAIL_REPLY_DRAFT_ACTION,
@@ -260,7 +259,7 @@ export class ApprovalService {
     const row = rows[0];
     // Existence must not leak across orgs — a foreign approval is "not found".
     if (!row || row.orgId !== principal.orgId) {
-      throw new NotFoundException(`approval ${id} not found`);
+      throw userError.notFound('approval.notFound', 'approval {{id}} not found', { id });
     }
     return row as ApprovalRow;
   }

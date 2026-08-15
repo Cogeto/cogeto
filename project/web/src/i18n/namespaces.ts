@@ -62,6 +62,9 @@ export const NAMESPACES = [
   'projects',
   /** Failure copy shown to a user. Never developer or log messages. */
   'errors',
+  /** One key per server error code (F13). Generated from the throw sites by
+   * `npm run i18n:server-errors`; never edited by hand in `en`. */
+  'serverErrors',
   /** Field-level validation copy. */
   'validation',
 ] as const;

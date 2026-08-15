@@ -26,6 +26,21 @@ export interface ModelConfigDto {
     embeddings: ModelTierBindingDto;
   };
   redactionEnabled: boolean;
-  /** One plain sentence on what leaves the instance under this configuration. */
+  /**
+   * One plain sentence on what leaves the instance under this configuration,
+   * in English. It stays because it is the DTO's long-standing contract and
+   * the fallback the interface renders for a `kind` it does not know.
+   */
   externalCalls: string;
+  /**
+   * WHICH sentence, so the interface can write it in the reader's language
+   * (F13). The same rule as a coded error: the server names the case and
+   * supplies the values; the words are the interface's.
+   */
+  externalCallsKind: ExternalCallsKind;
+  /** The providers named in that sentence, as ids the interface labels itself. */
+  externalCallsProviders: ModelProviderIdDto[];
 }
+
+/** The four things there are to say about what leaves the instance. */
+export type ExternalCallsKind = 'unconfigured' | 'all_local' | 'redacted' | 'external';

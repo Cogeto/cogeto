@@ -6,7 +6,7 @@
   "action": {
     "add": "Dodaj",
     "cancel": "Odustani",
-    "confirm": "Confirm",
+    "confirm": "Potvrdi",
     "close": "Zatvori",
     "copy": "Kopiraj",
     "copied": "Kopirano",
@@ -76,9 +76,9 @@
     "megabytes": "{{value}} MB"
   },
   "modelRequired": {
-    "banner": "No model provider is configured. Capture, ingestion and chat are off until one is added.",
-    "configureCta": "Configure a provider",
-    "askAdmin": "Ask your administrator to configure one.",
-    "short": "A model provider must be configured first. An administrator adds one under Providers."
+    "banner": "Nije konfiguriran nijedan pružatelj modela. Spremanje, obrada i razgovor ne rade dok se ne doda.",
+    "configureCta": "Konfiguriraj pružatelja",
+    "askAdmin": "Zatražite od administratora da ga konfigurira.",
+    "short": "Najprije treba konfigurirati pružatelja modela. Administrator ga dodaje pod Pružatelji."
   }
 }

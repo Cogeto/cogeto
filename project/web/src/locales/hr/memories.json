@@ -35,7 +35,7 @@
       "anyStatus": "bilo koji status",
       "anyScope": "bilo koji opseg",
       "sensitiveOnly": "samo osjetljivo",
-      "anyReason": "Any reason"
+      "anyReason": "Bilo koji razlog"
     },
     "empty": {
       "none": {
@@ -69,8 +69,8 @@
       "verification": "Provjera",
       "provenance": "Podrijetlo",
       "history": "Povijest",
-      "relations": "Contradictions",
-      "citedBy": "Cited by answers"
+      "relations": "Proturječnosti",
+      "citedBy": "Navedeno u odgovorima"
     },
     "confirm": "Potvrdi ovu činjenicu",
     "confirmTitle": "Od ovog trenutka vaša potvrda ima prednost pred strojnom procjenom",
@@ -103,54 +103,54 @@
     "correction": "ispravak",
     "viewing": "prikazano",
     "noCorrections": "Nema ispravaka. Ovo je izvornik.",
-    "hedgePhrase": "Stated tentatively in the source: \"{{phrase}}\"",
-    "relationCounterpart": "(counterpart unavailable)",
-    "relationOpen": "Open, detected {{when}}.",
-    "relationResolved": "Detected {{when}}, resolved: {{resolution}}.",
+    "hedgePhrase": "U izvoru navedeno s ogradom: \"{{phrase}}\"",
+    "relationCounterpart": "(druga strana nije dostupna)",
+    "relationOpen": "Otvoreno, otkriveno {{when}}.",
+    "relationResolved": "Otkriveno {{when}}, razriješeno: {{resolution}}.",
     "resolutionLabel": {
-      "confirmedA": "kept the newer fact",
-      "confirmedB": "kept the earlier fact",
-      "corrected": "corrected by you",
-      "dismissed": "dismissed as not a conflict",
-      "revision": "resolved by a document revision"
+      "confirmedA": "zadržana je novija činjenica",
+      "confirmedB": "zadržana je ranija činjenica",
+      "corrected": "ispravili ste sami",
+      "dismissed": "odbačeno jer nije sukob",
+      "revision": "razriješeno novom verzijom dokumenta"
     },
     "detectedBy": {
-      "pipeline": "found at ingestion",
-      "dreaming": "found by the nightly pass",
-      "repair": "found by the repair pass"
+      "pipeline": "pronađeno pri obradi",
+      "dreaming": "pronađeno noćnim prolazom",
+      "repair": "pronađeno popravnim prolazom"
     },
     "event": {
-      "detected": "detected",
-      "party_superseded": "a fact was superseded, the finding follows its successor",
-      "resolved_by_user": "resolved by you",
-      "resolved_by_revision": "resolved by a document revision",
-      "kept_open": "kept open, could not be safely closed",
-      "reopened": "reopened, the conflict came back"
+      "detected": "otkriveno",
+      "party_superseded": "činjenica je zamijenjena, nalaz prati njezinu zamjenu",
+      "resolved_by_user": "razriješili ste sami",
+      "resolved_by_revision": "razriješeno novom verzijom dokumenta",
+      "kept_open": "ostavljeno otvoreno, nije se moglo sigurno zatvoriti",
+      "reopened": "ponovno otvoreno, sukob se vratio"
     },
-    "noRelations": "No contradictions involve this fact.",
-    "untitledConversation": "Untitled conversation",
-    "noCitations": "No stored answer has cited this fact yet.",
-    "rejectAction": "Reject"
+    "noRelations": "Nijedna proturječnost ne obuhvaća ovu činjenicu.",
+    "untitledConversation": "Razgovor bez naslova",
+    "noCitations": "Nijedan spremljeni odgovor još nije naveo ovu činjenicu.",
+    "rejectAction": "Odbij"
   },
   "capturePointer": {
-    "body": "Capture lives in chat now: tell Cogeto something and use Remember this, or attach a file with the paperclip on <chatLink>the chat page</chatLink>. Deliberate document uploads live on <sourcesLink>the Sources page</sourcesLink>.",
-    "dismiss": "Got it"
+    "body": "Spremanje sada živi u razgovoru: recite Cogetu nešto i upotrijebite Zapamti ovo ili priložite datoteku spajalicom na <chatLink>stranici razgovora</chatLink>. Namjerno učitavanje dokumenata nalazi se na <sourcesLink>stranici Izvori</sourcesLink>.",
+    "dismiss": "Razumijem"
   },
   "search": {
-    "title": "Fact search",
-    "explainer": "A filtered search across every fact Cogeto holds. For the source-first view of what the system knows, use <sourcesLink>Sources</sourcesLink>."
+    "title": "Pretraga činjenica",
+    "explainer": "Filtrirana pretraga svih činjenica koje Cogeto čuva. Za pregled po izvorima onoga što sustav zna upotrijebite <sourcesLink>Izvore</sourcesLink>."
   },
   "changes": {
-    "sinceLabel": "Changed since",
-    "clear": "Clear",
-    "loading": "Loading changes...",
-    "error": "We couldn't load the changes just now.",
-    "empty": "Nothing changed since that date.",
+    "sinceLabel": "Promijenjeno od",
+    "clear": "Očisti",
+    "loading": "Promjene se učitavaju...",
+    "error": "Trenutačno nismo mogli učitati promjene.",
+    "empty": "Od tog datuma ništa se nije promijenilo.",
     "kind": {
-      "learned": "Learned",
-      "status_changed": "Status changed",
-      "superseded": "Superseded"
+      "learned": "Naučeno",
+      "status_changed": "Status promijenjen",
+      "superseded": "Zamijenjeno"
     },
-    "transition": "{{from}} to {{to}}"
+    "transition": "{{from}} u {{to}}"
   }
 }
