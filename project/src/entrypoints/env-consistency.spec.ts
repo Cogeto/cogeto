@@ -107,6 +107,11 @@ const DEV_ONLY = new Set([
   // never by the stack: the instance directory and the resource-check escape.
   'COGETO_ROOT',
   'COGETO_SKIP_RESOURCE_CHECK',
+  // scripts/ci/operator-smoke.sh only (issue #593): a compose override staged
+  // beside the smoke stack's deployment files so a developer can run the full
+  // smoke on a machine where 80/443 are already taken. CI never sets it, no
+  // shipped process reads it, and the harness says so when it is used.
+  'COGETO_SMOKE_COMPOSE_OVERRIDE',
   // Read by the operator script when it inspects the instance's compose file
   // rather than configuring anything (the value comes from .env, which the
   // script itself wrote).

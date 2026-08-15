@@ -42,6 +42,18 @@ services:
     mem_limit: 256m
     cpus: 1.0
     pids_limit: 256
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # The edge binds 80 and 443 INSIDE the container, which is exactly what
+    # NET_BIND_SERVICE buys and the only capability it keeps. Not read-only:
+    # Caddy writes its certificate store (/data), its autosave config
+    # (/config) and its own scratch files, and an edge that cannot persist an
+    # ACME account re-registers on every restart.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
     build:
       context: .
       dockerfile: project/infra/docker/Dockerfile
@@ -70,6 +82,19 @@ services:
     mem_limit: 2g
     cpus: 1.5
     pids_limit: 512
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # Node as uid 1000 (USER node in the image), binding 3000: it needs no
+    # capability whatsoever. Read-only root, because everything it writes is
+    # a mount and every mount it has is :ro — uploads are held in memory
+    # (multer.memoryStorage) and go straight to MinIO. /tmp is a small tmpfs
+    # so a temp file cannot outlive the container.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
     build:
       context: .
       dockerfile: project/infra/docker/Dockerfile
@@ -315,6 +340,20 @@ services:
     mem_limit: 3g
     cpus: 1.5
     pids_limit: 512
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # Same image and user as app, and the same empty capability set. /tmp
+    # holds the heartbeat file the healthcheck stats, and is the working room
+    # for the reading ladder: pdftoppm and tesseract are driven through
+    # stdin/stdout (files/reading/rasterize.ts, ocr.ts), so a 25 MB document
+    # never lands there. Sized rather than unbounded because tmpfs pages
+    # count against mem_limit above.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
     build:
       context: .
       dockerfile: project/infra/docker/Dockerfile
@@ -372,6 +411,16 @@ services:
     mem_limit: 512m
     cpus: 1.0
     pids_limit: 256
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # Reads the environment, prints a verdict, exits. No capability, no
+    # writable path.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
     build:
       context: .
       dockerfile: project/infra/docker/Dockerfile
@@ -394,6 +443,14 @@ services:
       # skips any variable that is absent. Empty/unset here is fine (research
       # off) — the check simply does not apply.
       SEARXNG_SECRET: ${SEARXNG_SECRET:-}
+      # …which is exactly why the ACTIVE PROFILE LIST is passed in too (audit
+      # F12): an empty secret is invisible to the dev-secret pass, so the
+      # preflight needs to know whether the profile that needs it is running.
+      # A container cannot read its own profiles; this is the same mirror the
+      # app gets. CLI `--profile` flags stay invisible, so the explicit
+      # capability flag is passed beside it.
+      COGETO_COMPOSE_PROFILES: ${COMPOSE_PROFILES:-}
+      COGETO_RESEARCH_ENABLED: ${COGETO_RESEARCH_ENABLED:-}
     restart: 'no'
 
   migrate:
@@ -401,6 +458,16 @@ services:
     mem_limit: 1g
     cpus: 1.0
     pids_limit: 256
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # Applies SQL and generates the instance keypair; both go to mounted
+    # volumes, which stay writable under a read-only root.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
     build:
       context: .
       dockerfile: project/infra/docker/Dockerfile
@@ -444,6 +511,16 @@ services:
     mem_limit: 256m
     cpus: 1.0
     pids_limit: 128
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # psql against the postgres service and nothing else: no capability, and
+    # the only writable path it needs is a temp directory.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
     # postgres:17-alpine (same digest as the postgres service — used for psql)
     image: postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     environment:
@@ -481,6 +558,17 @@ services:
     mem_limit: 128m
     cpus: 1.0
     pids_limit: 64
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # Its whole job is `chown -R 1000:1000` on two fresh, root-owned volumes,
+    # so CHOWN is granted and nothing else. It writes only through those
+    # volume mounts.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    read_only: true
     # busybox:stable
     image: busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
     command: ['chown', '-R', '1000:1000', '/instance-keys', '/instance-pubkey']
@@ -505,6 +593,19 @@ services:
     mem_limit: 256m
     cpus: 1.0
     pids_limit: 128
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # mc talks to MinIO over the network and needs no capability. Two writable
+    # paths: /tmp for the generated policy document, and $HOME for mc's own
+    # alias config — both tmpfs, so the root credential mc caches in
+    # ~/.mc/config.json never touches a disk that outlives the container.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /root:size=16m,mode=0700
     # minio/mc:RELEASE.2025-08-13T08-35-41Z
     # (SEC-35: the comment used to read `latest`, which names no release, so no
     # advisory could ever be matched to what actually runs. Resolved from the
@@ -553,6 +654,15 @@ services:
     mem_limit: 128m
     cpus: 1.0
     pids_limit: 64
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # Same one job as instance-keys-init, on the Zitadel machinekey volume.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    read_only: true
     # busybox:stable (pinned by digest —)
     image: busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
     command: ['chown', '-R', '1000:1000', '/machinekey']
@@ -565,6 +675,22 @@ services:
     mem_limit: 512m
     cpus: 1.0
     pids_limit: 256
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # Runs as root but writes into /machinekey, which machinekey-init handed
+    # to uid 1000 so Zitadel could write pat.txt: root without DAC_OVERRIDE
+    # does NOT bypass directory permissions, so revoking the PAT and writing
+    # bootstrap-state.json needs precisely that one capability. Running it as
+    # 1000 instead is not the trade: it would then be unable to write
+    # /web-config, a fresh root-owned volume.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - DAC_OVERRIDE
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
     # node:22-alpine (pinned by digest —)
     image: node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
     command: ['node', '/init/init.mjs']
@@ -614,6 +740,23 @@ services:
     mem_limit: 2g
     cpus: 1.5
     pids_limit: 512
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # The official entrypoint starts as root, prepares and chowns PGDATA and
+    # then drops to the postgres user, which is what CHOWN + DAC_OVERRIDE +
+    # FOWNER + SETGID + SETUID are for; the server itself runs unprivileged
+    # after that. Not read-only: it writes its socket directory, its stats
+    # and its temp files outside the data volume, and a database that fails
+    # on an uncommon write path is worse than an unhardened one.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
     # postgres:17-alpine
     image: postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     environment:
@@ -634,6 +777,18 @@ services:
     mem_limit: 2g
     cpus: 1.5
     pids_limit: 512
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # No capability: it serves the index from its volume and binds 6333.
+    # NOT read-only, and this one was measured rather than assumed: with a
+    # read-only root it logs `Failed to create init file indicator:
+    # .qdrant-initialized: Read-only file system` and then panics at startup.
+    # Its working directory is inside the image root, so the marker and the
+    # snapshot directory cannot be moved onto a tmpfs without shadowing the
+    # config directory that lives beside them.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     # qdrant/qdrant:v1.18.3
     image: qdrant/qdrant@sha256:0bd98fa7977f1e75694779359ca4e212822e5a71334e28421182f72f209d5286
     # API key auth. Qdrant enables auth whenever QDRANT__SERVICE__API_KEY
@@ -658,6 +813,16 @@ services:
     mem_limit: 1g
     cpus: 1.5
     pids_limit: 512
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # Object storage writes its data and its .minio.sys metadata inside the
+    # volume; nothing else on the root filesystem. No capability needed.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
     # minio/minio:RELEASE.2025-09-07T16-13-09Z
     # (SEC-35: was `latest`, which names no release. Resolved from the pinned
     # digest with `docker run --rm --entrypoint sh <digest> -c 'minio --version'`.
@@ -697,6 +862,16 @@ services:
     mem_limit: 1g
     cpus: 1.5
     pids_limit: 512
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # Already runs as uid 1000 and binds 8080; state lives in Postgres and
+    # the machinekey volume, so the root filesystem can be read-only.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
     # ghcr.io/zitadel/zitadel:v2.65.1 (pinned by digest —)
     image: ghcr.io/zitadel/zitadel@sha256:013d23b69aa681f03d36a7fd61e4837a7b049a7e22bd7215eb3e98e9dbf5543c
     #: masterkey via env (--masterkeyFromEnv reads ZITADEL_MASTERKEY below),
@@ -773,6 +948,16 @@ services:
     mem_limit: 256m
     cpus: 1.0
     pids_limit: 256
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # Same as the edge: it binds 443/80 inside the container, on 127.0.0.1
+    # only. Dev-only profile, hardened the same way so the two edges cannot
+    # drift apart.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
     profiles: ['consoles']
     build:
       context: .
@@ -801,6 +986,12 @@ services:
     mem_limit: 1g
     cpus: 1.0
     pids_limit: 256
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # Dev-only fixture tool; hardened like everything else so the file has no exceptions.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     profiles: ['dev-seed']
     build:
       context: .
@@ -823,6 +1014,12 @@ services:
     mem_limit: 1g
     cpus: 1.0
     pids_limit: 256
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # Dev-only fixture tool; hardened like everything else so the file has no exceptions.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     profiles: ['dev-seed']
     build:
       context: .
@@ -865,6 +1062,16 @@ services:
     mem_limit: 2g
     cpus: 1.0
     pids_limit: 256
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # Dev/sandbox only: it drives the real public API over HTTP and writes the
+    # demo session into a mounted volume.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
     profiles: ['demo']
     build:
       context: .
@@ -908,6 +1115,18 @@ services:
     mem_limit: 2g
     cpus: 1.5
     pids_limit: 256
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # The sidecar is stateless by design (its own Dockerfile says so): non-root
+    # uid 1000, no capability, no writable path but a temp directory. It is
+    # also the service handling the most sensitive text on the box, so it gets
+    # the strictest posture of the three optional profiles.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
     profiles: ['redaction']
     build:
       context: project/services/redaction
@@ -942,6 +1161,20 @@ services:
     mem_limit: 1g
     cpus: 1.0
     pids_limit: 256
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # The image's entrypoint starts as root, fixes ownership under
+    # /etc/searxng and drops to the searxng user before serving, which is what
+    # these four are for. Not read-only: that entrypoint writes a settings
+    # file beside the one mounted here.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
     profiles: ['research']
     # searxng/searxng:2026.7.19-6da6eee26
     # (SEC-35 / issue #568: this digest carried NO tag comment at all, so the
@@ -954,13 +1187,14 @@ services:
       SEARXNG_SECRET: ${SEARXNG_SECRET:-cogeto-dev-searxng-secret}
     volumes:
       - ./project/infra/docker/searxng/settings.yml:/etc/searxng/settings.yml:ro
+    # The second half of the F12 refusal, inside the service itself: an empty
+    # secret makes this container UNHEALTHY rather than quietly serving with
+    # unsigned sessions. The preflight is the instance-wide gate; this one also
+    # catches a `docker compose up searxng` that never runs it.
     healthcheck:
       test:
-        - CMD
-        - wget
-        - -q
-        - --spider
-        - http://127.0.0.1:8080/healthz
+        - CMD-SHELL
+        - '[ -n "$$SEARXNG_SECRET" ] || { echo "SEARXNG_SECRET is empty — refusing to report healthy"; exit 1; }; wget -q --spider http://127.0.0.1:8080/healthz'
       interval: 10s
       timeout: 5s
       retries: 12
@@ -984,6 +1218,19 @@ services:
     mem_limit: 512m
     cpus: 1.0
     pids_limit: 256
+    # ── Privilege hardening (issue #591) ────────────────────────────────────
+    # The one to think hardest about: internet-facing, and the host publishes
+    # port 25 at it. It still needs NO capability, because the privileged port
+    # is on the HOST side of the port mapping — inside the container Haraka
+    # binds 2525 as the image's non-root `node` user. Not read-only: the
+    # entrypoint writes host_list, me, databytes, tls.ini and the DH
+    # parameters into its config directory at start, and Haraka writes its
+    # queue; a read-only root would break STARTTLS specifically, which is the
+    # path that fails quietly.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     # SEC-14: OFF by default. Inbound SMTP used to be published on 0.0.0.0:25 on
     # every instance, so a deployment that never uses email capture still ran an
     # internet-facing Haraka listener parsing hostile SMTP, with no supported way

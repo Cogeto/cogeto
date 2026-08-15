@@ -58,10 +58,29 @@ COPY --from=build /repo/project/src/dist project/src/dist
 #; demo-seed/demo-reset run the Ana sandbox from the BUILD image
 #. The sweep entrypoint stays — it is an ops tool, not a
 # fixture. The demo/ LIBRARY stays — the worker's scheduled reset imports it.
+#
+# The EVALUATION harness joins them (issue #594): eval / eval-chat and their
+# two support modules, plus the two smoke tools, are run by npm scripts from a
+# source checkout (`npm run eval`, `npm run eval:chat`, `npm run gateway:smoke`,
+# `npm run vector:smoke`) and by CI. No compose file, no documented operator
+# procedure and no runtime code path names them, and their corpora are not in
+# this image at all — so on a customer instance they are dead weight that reads
+# like a supported tool. The two documented one-shot repair tools
+# (erase-task-conclusions, dedupe-file-sources) stay: the runbook tells an
+# operator to run them.
+#
+# deployment-hardening.spec.ts derives this list from the source tree, so a new
+# seed-/demo-/eval-/-smoke entrypoint fails the build until it is named here.
 RUN rm -f project/src/dist/entrypoints/seed-object.js project/src/dist/entrypoints/seed-object.d.ts project/src/dist/entrypoints/seed-object.js.map \
     project/src/dist/entrypoints/seed-orphan.js project/src/dist/entrypoints/seed-orphan.d.ts project/src/dist/entrypoints/seed-orphan.js.map \
     project/src/dist/entrypoints/demo-seed.js project/src/dist/entrypoints/demo-seed.d.ts project/src/dist/entrypoints/demo-seed.js.map \
-    project/src/dist/entrypoints/demo-reset.js project/src/dist/entrypoints/demo-reset.d.ts project/src/dist/entrypoints/demo-reset.js.map
+    project/src/dist/entrypoints/demo-reset.js project/src/dist/entrypoints/demo-reset.d.ts project/src/dist/entrypoints/demo-reset.js.map \
+    project/src/dist/entrypoints/eval.js project/src/dist/entrypoints/eval.d.ts project/src/dist/entrypoints/eval.js.map \
+    project/src/dist/entrypoints/eval-chat.js project/src/dist/entrypoints/eval-chat.d.ts project/src/dist/entrypoints/eval-chat.js.map \
+    project/src/dist/entrypoints/eval-cache.js project/src/dist/entrypoints/eval-cache.d.ts project/src/dist/entrypoints/eval-cache.js.map \
+    project/src/dist/entrypoints/eval-env.js project/src/dist/entrypoints/eval-env.d.ts project/src/dist/entrypoints/eval-env.js.map \
+    project/src/dist/entrypoints/gateway-smoke.js project/src/dist/entrypoints/gateway-smoke.d.ts project/src/dist/entrypoints/gateway-smoke.js.map \
+    project/src/dist/entrypoints/vector-smoke.js project/src/dist/entrypoints/vector-smoke.d.ts project/src/dist/entrypoints/vector-smoke.js.map
 # Reviewable SQL migrations (read by the migrate entrypoint), versioned prompt
 # artifacts (read by the model-gateway prompt loader, spec §12.3), and the Ana sandbox
 # corpus + document (read by the worker's scheduled reset —).

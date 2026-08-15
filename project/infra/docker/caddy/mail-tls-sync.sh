@@ -68,6 +68,28 @@ fingerprint() {  # fingerprint FILE... → one hash over the whole set
   cat "$@" 2>/dev/null | sha256sum | cut -d' ' -f1
 }
 
+# What this container last installed, recorded on ITS OWN side of the copy.
+#
+# The obvious implementation is to fingerprint the destination files and compare
+# — and that is what this did until the capability drop (issue #591). It cannot
+# work any more, and the way it failed is worth keeping in mind: the key is
+# written 0640 owned by the MAIL user, and this container is root with no
+# CAP_DAC_OVERRIDE, so root does not bypass the permission bits. `cat` on the
+# key silently produced nothing, the destination hash was therefore over the
+# certificate alone, it never matched, and the loop reinstalled the same bytes
+# every cycle — which the mail service reads as a renewal and RESTARTS for, on
+# every cycle, forever. A marker this container owns is both cheaper and
+# immune to that: it never reads back what it deliberately made unreadable.
+INSTALLED_MARKER="$DEST_DIR/.installed"
+
+installed_fingerprint() {
+  # A marker with no certificate beside it is stale (a volume was emptied):
+  # report nothing so the material is installed again.
+  if [ -r "$INSTALLED_MARKER" ] && [ -e "$DEST_DIR/cert.pem" ] && [ -e "$DEST_DIR/key.pem" ]; then
+    cat "$INSTALLED_MARKER"
+  fi
+}
+
 say "watching ${CERT_ROOT}/*/${HOST} → ${DEST_DIR} every ${SYNC_INTERVAL_SECONDS}s"
 
 announced_missing=0
@@ -78,20 +100,28 @@ while :; do
   if [ -n "$src_cert" ] && [ -n "$src_key" ]; then
     announced_missing=0
     src_hash="$(fingerprint "$src_cert" "$src_key")"
-    dst_hash=""
-    if [ -r "$DEST_DIR/cert.pem" ] && [ -r "$DEST_DIR/key.pem" ]; then
-      dst_hash="$(fingerprint "$DEST_DIR/cert.pem" "$DEST_DIR/key.pem")"
-    fi
+    dst_hash="$(installed_fingerprint)"
     if [ "$src_hash" != "$dst_hash" ]; then
       # Write to a temp name and rename, so the mail container never reads a
       # half-written PEM and restarts on garbage.
       cp "$src_cert" "$DEST_DIR/cert.pem.tmp"
       cp "$src_key" "$DEST_DIR/key.pem.tmp"
-      chown "$MAIL_UID:$MAIL_GID" "$DEST_DIR/cert.pem.tmp" "$DEST_DIR/key.pem.tmp"
+      # ORDER MATTERS: mode first, owner second. This container drops every
+      # capability but CHOWN (issue #591), and root without CAP_FOWNER cannot
+      # chmod a file it does not own — so chowning first made the chmod fail,
+      # `set -e` killed the loop mid-copy, and the mail service saw two orphan
+      # .tmp files and no certificate. Which is to say: inbound mail silently
+      # stayed cleartext. Observed, not reasoned about.
       chmod 0644 "$DEST_DIR/cert.pem.tmp"
       chmod 0640 "$DEST_DIR/key.pem.tmp"
+      chown "$MAIL_UID:$MAIL_GID" "$DEST_DIR/cert.pem.tmp" "$DEST_DIR/key.pem.tmp"
       mv "$DEST_DIR/cert.pem.tmp" "$DEST_DIR/cert.pem"
       mv "$DEST_DIR/key.pem.tmp" "$DEST_DIR/key.pem"
+      # Recorded only after both renames, so an interrupted copy reinstalls
+      # rather than being remembered as done. Stays root-owned and 0600: the
+      # mail user has no reason to read it.
+      printf '%s\n' "$src_hash" > "$INSTALLED_MARKER"
+      chmod 0600 "$INSTALLED_MARKER"
       if [ -z "$dst_hash" ]; then
         say "installed the certificate for ${HOST} — the mail service picks it up and advertises STARTTLS"
       else

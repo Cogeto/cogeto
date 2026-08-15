@@ -23,6 +23,20 @@ const serviceBlock = (compose: string, name: string): string => {
   return next < 0 ? rest : rest.slice(0, next + 1);
 };
 
+/**
+ * Every Dockerfile in the repository, repo-relative. Walked rather than listed
+ * so a new one is covered by the pin invariant the day it appears.
+ */
+const everyDockerfile = (dir = REPO, acc: string[] = []): string[] => {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (['node_modules', '.git', 'dist', 'cache'].includes(entry.name)) continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) everyDockerfile(full, acc);
+    else if (/^Dockerfile(\..+)?$/.test(entry.name)) acc.push(path.relative(REPO, full));
+  }
+  return acc;
+};
+
 /** Every service key declared under `services:` (not under `volumes:`). */
 const serviceNames = (compose: string): string[] => {
   const body = compose.slice(compose.indexOf('\nservices:\n'));
@@ -82,13 +96,18 @@ describe('deployment hardening', () => {
     // `# something:latest` comment, which names no release — and let the WORSE
     // case through: no comment at all. The SearXNG pin had none in either
     // compose file and passed CI for its whole life. Both now fail.
+    // Both composes plus EVERY Dockerfile in the repository, DISCOVERED rather
+    // than listed (issue #592): a hardcoded list covers the files that existed
+    // when it was written, and the finding this check exists for was an image
+    // nobody remembered to add.
     const pinFiles = [
       ['docker-compose.yml', compose],
       ['docker-compose.deploy.yml', deployCompose],
-      ['Dockerfile', dockerfile],
-      ['services/mail/Dockerfile', mailDockerfile],
-      ['services/redaction/Dockerfile', redactionDockerfile],
+      ...everyDockerfile().map((rel) => [rel, read(rel)] as const),
     ] as const;
+    // The three shipped Dockerfiles are the floor; discovery must not silently
+    // find fewer than the files this repository is known to have.
+    expect(pinFiles.length).toBeGreaterThanOrEqual(5);
 
     for (const [name, text] of pinFiles) {
       const floating = text
@@ -140,9 +159,17 @@ describe('deployment hardening', () => {
     //
     // The rule is derived from the source tree, not from a second list to keep
     // in sync: any `entrypoints/{seed,demo}-*.ts` must be named in the `rm`.
+    //
+    // Issue #594 widens it to the EVALUATION harness — `eval*.ts` and the two
+    // `*-smoke.ts` tools. They are npm-script and CI tools whose corpora are
+    // not in the image; nothing on an instance runs them, so shipping them puts
+    // a tool on a customer box that reads as supported and is not. The two
+    // documented one-shot repair tools are deliberately NOT matched here: an
+    // operator is told to run them.
     const runtimeStage = dockerfile.slice(dockerfile.indexOf('AS runtime'));
     const devEntrypoints = readdirSync(path.join(REPO, 'project/src/entrypoints'))
-      .filter((name) => /^(seed|demo)-[a-z-]+\.ts$/.test(name))
+      .filter((name) => !name.endsWith('.spec.ts'))
+      .filter((name) => /^(seed|demo)-[a-z-]+\.ts$|^eval(-[a-z-]+)?\.ts$|-smoke\.ts$/.test(name))
       .map((name) => name.replace(/\.ts$/, ''));
     expect(devEntrypoints.length).toBeGreaterThan(0);
     for (const name of devEntrypoints) {
@@ -305,6 +332,87 @@ describe('deployment hardening', () => {
           expect(block, `${name}: ${service} has no cpus`).toMatch(/\n {4}cpus: /);
           expect(block, `${name}: ${service} has no pids_limit`).toMatch(/\n {4}pids_limit: /);
         }
+      }
+    });
+
+    it('F11: every service in both compose files drops all capabilities and no-new-privileges', () => {
+      // The audit's finding was total: `cap_drop` 0, `security_opt` 0,
+      // `read_only` 0, `user:` 0 across both files. The rule is per service and
+      // has no exceptions, so it is asserted per service; what a service adds
+      // BACK is the interesting part, and that is asserted below.
+      for (const [name, text] of [
+        ['docker-compose.yml', compose],
+        ['docker-compose.deploy.yml', deployCompose],
+      ] as const) {
+        const names = serviceNames(text);
+        expect(names.length, `${name} declares no services`).toBeGreaterThan(5);
+        for (const service of names) {
+          const block = serviceBlock(text, service);
+          expect(block, `${name}: ${service} does not drop capabilities`).toMatch(
+            /\n {4}cap_drop:\n {6}- ALL\n/,
+          );
+          expect(block, `${name}: ${service} does not set no-new-privileges`).toMatch(
+            /\n {4}security_opt:\n {6}- no-new-privileges:true\n/,
+          );
+        }
+      }
+    });
+
+    it('F11: a granted capability is the exception, and the mail service grants none', () => {
+      // Every cap_add in either file, so a new grant has to be argued for in
+      // review rather than appearing quietly. Verified by running real work
+      // through the stack, not by watching containers start
+      // (docs/security/instance-and-supply-chain-hardening.md).
+      const GRANTS: Record<string, string[]> = {
+        caddy: ['NET_BIND_SERVICE'],
+        'caddy-consoles': ['NET_BIND_SERVICE'],
+        'instance-keys-init': ['CHOWN'],
+        'machinekey-init': ['CHOWN'],
+        'mail-tls-sync': ['CHOWN'],
+        'zitadel-init': ['DAC_OVERRIDE'],
+        postgres: ['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'SETGID', 'SETUID'],
+        searxng: ['CHOWN', 'DAC_OVERRIDE', 'SETGID', 'SETUID'],
+      };
+      for (const [name, text] of [
+        ['docker-compose.yml', compose],
+        ['docker-compose.deploy.yml', deployCompose],
+      ] as const) {
+        for (const service of serviceNames(text)) {
+          const block = serviceBlock(text, service);
+          const added = [...block.matchAll(/\n {4}cap_add:\n((?: {6}- [A-Z_]+\n)+)/g)]
+            .flatMap((m) => m[1]!.split('\n'))
+            .map((line) => line.replace(/^\s*-\s*/, '').trim())
+            .filter(Boolean);
+          expect(added.sort(), `${name}: ${service} grants an unexpected capability`).toEqual(
+            (GRANTS[service] ?? []).slice().sort(),
+          );
+        }
+      }
+      // Stated as its own assertion because it is the counter-intuitive one:
+      // the internet-facing mail service publishes port 25 on the HOST and
+      // binds 2525 inside as a non-root user, so it needs nothing.
+      for (const text of [compose, deployCompose]) {
+        expect(serviceBlock(text, 'mail')).not.toContain('cap_add');
+      }
+    });
+
+    it('F11: the processes that hold the corpus run on a read-only root', () => {
+      // app and worker are the two long-running processes that touch memory
+      // content. Both write nothing outside a mount, so a writable root buys an
+      // attacker a place to stage; /tmp is a tmpfs that dies with the container.
+      for (const text of [compose, deployCompose]) {
+        for (const service of ['app', 'worker'] as const) {
+          const block = serviceBlock(text, service);
+          expect(block, `${service} has no read-only root`).toMatch(/\n {4}read_only: true\n/);
+          expect(block, `${service} has no tmpfs for /tmp`).toMatch(/\n {6}- \/tmp:size=/);
+        }
+      }
+      // Qdrant is the recorded exception, with its reason in the file: it
+      // panics at startup under a read-only root.
+      for (const text of [compose, deployCompose]) {
+        const block = serviceBlock(text, 'qdrant');
+        expect(block).not.toMatch(/\n {4}read_only: true\n/);
+        expect(block).toContain('.qdrant-initialized');
       }
     });
 

@@ -1,5 +1,6 @@
 import {
   assertProductionSecrets,
+  assertProfileSecrets,
   findKnownDevSecrets,
   isLocalhostDeployment,
 } from './secret-preflight';
@@ -15,6 +16,12 @@ import {
  * On a localhost dev box (the default) it is a no-op and exits 0.
  */
 function main(): void {
+  // An ACTIVE profile whose required secret is EMPTY is refused everywhere,
+  // localhost included (audit F12): the dev compose supplies a working default,
+  // so reaching this means the value was deliberately blanked, and the
+  // known-dev-secret pass below cannot see it — it skips empty variables by
+  // design. Checked before the localhost exit for exactly that reason.
+  assertProfileSecrets(process.env);
   if (isLocalhostDeployment(process.env)) {
     console.log('preflight: localhost dev instance, dev secret defaults permitted');
     return;
