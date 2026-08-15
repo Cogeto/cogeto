@@ -7,7 +7,7 @@
 # automation, no self-serve provisioning, no automatic updates.
 #
 #   cogeto install    [--domain D] [--acme-email E] [--version X.Y.Z]
-#   cogeto configure  [--domain D] [--regenerate NAME]
+#   cogeto configure  [--domain D] [--regenerate NAME] [--mail-tls-mode MODE]
 #   cogeto upgrade    [X.Y.Z|latest]
 #   cogeto status
 #   cogeto features   [enable <id> | disable <id>]
@@ -23,8 +23,10 @@
 # actions and the checklist, mutate NOTHING), --help, --root DIR.
 #
 # Design rules:
-#   • The instance PULLS the prebuilt, cosign-signed release images
-#     (cogeto/cogeto, cogeto/cogeto-edge, cogeto/cogeto-mail) and NEVER builds.
+#   • The instance PULLS the prebuilt, cosign-signed release images and NEVER
+#     builds: cogeto/cogeto, cogeto/cogeto-edge and cogeto/cogeto-mail always,
+#     plus cogeto/cogeto-redaction when the redaction capability is on — this
+#     script pulls and cosign-verifies that fourth image too (instance_images).
 #   • Idempotent where possible — safe to re-run; every destructive or
 #     irreversible action requires an explicit typed confirmation.
 #   • Secrets are generated locally into a 600-permission .env and are never
@@ -157,7 +159,7 @@ cogeto — install, configure, upgrade, and check a Cogeto customer instance.
 
 Usage:
   cogeto install    [--domain D] [--acme-email E] [--version X.Y.Z]
-  cogeto configure  [--domain D] [--regenerate NAME]
+  cogeto configure  [--domain D] [--regenerate NAME] [--mail-tls-mode MODE]
   cogeto upgrade    [X.Y.Z|latest]
   cogeto status
   cogeto features   [enable <id> | disable <id>]
@@ -180,7 +182,15 @@ Subcommands:
                moves the instance to a new domain (updates OIDC issuer, S3
                origin, inbound address); --regenerate NAME rotates a rotatable
                secret (see notes — data-bound secrets and the receipt-signing
-               key are refused). Model providers are configured in the
+               key are refused); --mail-tls-mode automatic|operator records who
+               owns the inbound-mail certificate. 'automatic' (the default) is
+               this script's own convergence: the edge obtains and renews it
+               and a sidecar installs it. 'operator' means YOU supply cert.pem
+               and key.pem in the mail-tls volume: nothing is ordered, nothing
+               is copied, your files are never overwritten, and renewal is
+               yours (docs/operations/email-inbound.md). Switching back to
+               automatic takes a typed confirmation, because it hands the
+               material back to the edge. Model providers are configured in the
                interface (Providers), never here.
   upgrade      Move to a published release: shows current → target (and
                whether the target is the latest published release), requires
@@ -833,7 +843,35 @@ mail_capability_enabled() {
 # not a second convention — and it is maintained by the script rather than the
 # operator, because the whole point is that enabling mail and adding one DNS
 # record is the entire procedure.
+#
+# WHO OWNS THE CERTIFICATE is recorded, not inferred. An operator with their
+# own CA supplies cert.pem and key.pem themselves, and the documented way to say
+# so used to be "leave COGETO_MAIL_TLS_SITE empty" — which this convergence then
+# silently undid on the next upgrade, ordered a certificate the moment
+# mail.<domain> resolved, and let the sidecar overwrite their material. An empty
+# value cannot carry an intention: it is indistinguishable from an unset one,
+# and the next operator cannot tell the difference either. So the intention is a
+# value of its own, COGETO_MAIL_TLS_MODE, and this function is the single
+# chokepoint every convergence path goes through (upgrade, features
+# enable/disable mail, configure --domain).
+mail_tls_mode() {  # → automatic | operator
+  case "$(env_get COGETO_MAIL_TLS_MODE)" in
+    operator) echo operator ;;
+    automatic | '') echo automatic ;;
+    *)
+      warn "COGETO_MAIL_TLS_MODE is '$(env_get COGETO_MAIL_TLS_MODE)', which is not a mode (valid: automatic, operator) — treating it as automatic. Set it with 'cogeto configure --mail-tls-mode MODE'."
+      echo automatic ;;
+  esac
+}
+
 sync_mail_tls_site() {
+  if [ "$(mail_tls_mode)" = "operator" ]; then
+    # Operator-supplied: touch NOTHING. With the site left as the operator set
+    # it (empty), the edge orders no certificate and mail-tls-sync idles, so
+    # the material in the mail-tls volume is theirs and stays theirs.
+    say "inbound-mail TLS is operator-supplied (COGETO_MAIL_TLS_MODE=operator) — leaving COGETO_MAIL_TLS_SITE and your certificate material untouched. 'cogeto configure --mail-tls-mode automatic' hands it back to the edge."
+    return 0
+  fi
   smt_domain="$(env_get COGETO_EXTERNAL_DOMAIN)"
   if mail_capability_enabled && [ -n "$smt_domain" ]; then
     env_set COGETO_MAIL_TLS_SITE "$(derive_mx_host "$smt_domain")"
@@ -1355,8 +1393,17 @@ cmd_status() {
     if [ -n "$mail_tls" ]; then
       echo "   STARTTLS is advertised and the handshake completes"
       printf '%s\n' "$mail_tls" | while IFS= read -r line; do printf '   %s\n' "$line"; done
-      echo "   Renewal is automatic: the edge renews the ${mail_host} certificate,"
-      echo "   mail-tls-sync copies it in, and the mail service reloads it. No action."
+      if [ "$(mail_tls_mode)" = "operator" ]; then
+        echo "   This certificate is OPERATOR-SUPPLIED (COGETO_MAIL_TLS_MODE=operator):"
+        echo "   nothing here renews it, and nothing here overwrites it. Renew it"
+        echo "   yourself before the date above (docs/operations/email-inbound.md)."
+      else
+        echo "   Renewal is automatic: the edge renews the ${mail_host} certificate,"
+        echo "   mail-tls-sync copies it in, and the mail service reloads it. No action."
+      fi
+    elif [ "$(mail_tls_mode)" = "operator" ]; then
+      warn "inbound mail is running in CLEARTEXT and this instance is in OPERATOR-SUPPLIED certificate mode, so nothing will fix it by itself: place cert.pem and key.pem for ${mail_host} in the mail-tls volume, owned by uid 1000 with mode 0644 and 0640 (root-only material reads to the mail service as no material at all). The exact procedure is in docs/operations/email-inbound.md. To hand the certificate back to the edge instead: 'sudo cogeto configure --mail-tls-mode automatic'."
+      green=0
     else
       warn "inbound mail is running in CLEARTEXT: STARTTLS is not advertised on port 25. Senders that require TLS will refuse, and everything else arrives unencrypted. Usual cause: the ${mail_host} A record does not resolve to this host yet, so the edge has not obtained the certificate (check: dig +short A ${mail_host}); Caddy keeps retrying and the mail service picks it up within minutes of issuance, with no restart needed. Inspect with: cd ${COGETO_ROOT} && docker compose logs --tail 50 mail-tls-sync"
       green=0
@@ -1562,7 +1609,11 @@ features_enable() {
       fe_inbound="$(env_get COGETO_MAIL_INBOUND_ADDRESS)"
       fe_ip="$(detect_public_ip)"
       say "inbound email capture is enabled: a RECEIVE-ONLY SMTP listener now answers on port 25. It never sends. The allowlist (the real acceptance gate) lives in the app, per user."
-      say "inbound TLS is AUTOMATIC: once the mail host A record below resolves, the edge obtains the Let's Encrypt certificate for $(derive_mx_host "$fe_domain"), it is copied into the mail service's own volume, and STARTTLS is advertised. Nothing to source, copy or renew — 'cogeto status' reports whether it is actually active and when it expires."
+      if [ "$(mail_tls_mode)" = "operator" ]; then
+        say "inbound TLS is OPERATOR-SUPPLIED on this instance (COGETO_MAIL_TLS_MODE=operator): the edge orders nothing, the sidecar copies nothing, and cert.pem/key.pem in the mail-tls volume stay exactly as you placed them. Renewal is yours — 'cogeto status' reports whether STARTTLS is actually advertised and when your certificate expires. See docs/operations/email-inbound.md."
+      else
+        say "inbound TLS is AUTOMATIC: once the mail host A record below resolves, the edge obtains the Let's Encrypt certificate for $(derive_mx_host "$fe_domain"), it is copied into the mail service's own volume, and STARTTLS is advertised. Nothing to source, copy or renew — 'cogeto status' reports whether it is actually active and when it expires."
+      fi
       todo_now "OVHcloud DNS → mail host A record:      $(derive_mx_host "$fe_domain").  IN A  ${fe_ip}"
       todo_now "OVHcloud DNS → inbound MX record:       $(derive_inbound_subdomain "$fe_domain").  IN MX 10  $(derive_mx_host "$fe_domain")."
       todo_now "OVHcloud panel → set the PTR for ${fe_ip} to $(derive_mx_host "$fe_domain") once that A record resolves — senders soft-reject hosts without matching forward/reverse DNS"
@@ -1731,17 +1782,18 @@ cmd_configure() {
   require_installed
   # Self-heal the PATH install (issue #60) — same rationale as cmd_upgrade.
   install_self
-  new_domain=""; regen=""
+  new_domain=""; regen=""; tls_mode=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --domain)      new_domain="$2"; shift 2 ;;
       --mistral-key) die "configure: --mistral-key is gone — model providers and their keys are configured in the interface (Providers in the left rail; the change applies without a restart), never in the environment" ;;
       --regenerate)  regen="$2"; shift 2 ;;
+      --mail-tls-mode) tls_mode="$2"; shift 2 ;;
       *) die "configure: unknown argument '$1' (see --help)" ;;
     esac
   done
 
-  if [ -z "$new_domain" ] && [ -z "$regen" ]; then
+  if [ -z "$new_domain" ] && [ -z "$regen" ] && [ -z "$tls_mode" ]; then
     say "current configuration (secret VALUES are never printed):"
     echo "  domain             = $(env_get COGETO_EXTERNAL_DOMAIN)"
     echo "  version            = $(env_get COGETO_VERSION)"
@@ -1749,7 +1801,12 @@ cmd_configure() {
     echo "  s3 public origin   = $(env_get COGETO_S3_PUBLIC_URL)"
     echo "  admin username     = $(env_get ZITADEL_ADMIN_USERNAME)"
     echo "  model providers    = configured in the interface (Providers); this file holds none"
-    say "change with --domain or --regenerate NAME (see --help)"
+    if [ "$(mail_tls_mode)" = "operator" ]; then
+      echo "  inbound mail TLS   = operator-supplied (you own cert.pem/key.pem in the mail-tls volume; nothing here orders, copies or overwrites them, and renewal is yours)"
+    else
+      echo "  inbound mail TLS   = automatic (the edge obtains and renews it; a sidecar installs it)"
+    fi
+    say "change with --domain, --regenerate NAME or --mail-tls-mode MODE (see --help)"
     return 0
   fi
 
@@ -1775,6 +1832,36 @@ cmd_configure() {
     todo_now "The bootstrap PAT was revoked after install (SEC-16). Before the domain change completes: in the Zitadel console (as $(env_get ZITADEL_ADMIN_USERNAME)) create a new personal access token for the 'cogeto-bootstrap' machine user, write it into the zitadel-machinekey volume as pat.txt, delete bootstrap-state.json next to it, then re-run 'docker compose up -d' (runbook: 'Changing the domain after install')"
     restart_needed="caddy app worker mail zitadel zitadel-init"
     add_install_checklist "$new_domain" "$(derive_inbound_address "$new_domain")" "$(detect_public_ip)"
+  fi
+
+  # Who owns the inbound-mail certificate. RECORDED, so every convergence path
+  # can honour it and the next operator can read the decision instead of
+  # guessing at an empty value.
+  if [ -n "$tls_mode" ]; then
+    case "$tls_mode" in
+      operator)
+        env_set COGETO_MAIL_TLS_MODE "operator"
+        # The site must be empty for the override to hold: it is what makes the
+        # edge's ACME-only vhost inert and mail-tls-sync idle. Blanked HERE,
+        # deliberately, and then never touched again by any convergence path.
+        env_set COGETO_MAIL_TLS_SITE ""
+        say "inbound-mail TLS is now OPERATOR-SUPPLIED. The edge orders no certificate for $(derive_mx_host "$(env_get COGETO_EXTERNAL_DOMAIN)"), the sidecar copies nothing, and cert.pem/key.pem in the mail-tls volume are yours: upgrades, 'features enable/disable mail' and a domain change all leave them alone."
+        warn "RENEWAL IS NOW YOURS. Nothing will warn you before your certificate expires except 'cogeto status', which reports whether STARTTLS is advertised and when the certificate ends."
+        todo_now "Place your certificate and key in the mail-tls volume with the exact ownership the mail container needs (uid 1000, 0644 for cert.pem and 0640 for key.pem) — the procedure and the reason are in docs/operations/email-inbound.md. Root-only material is indistinguishable from no material at all: the listener stays cleartext and looks healthy."
+        todo_now "Diary your certificate's expiry, and re-run 'sudo cogeto status' after each renewal to confirm STARTTLS is still advertised"
+        ;;
+      automatic)
+        if [ "$(mail_tls_mode)" = "operator" ]; then
+          confirm_typed "hand mail TLS back to the edge" "switching to automatic means the edge orders a certificate for $(derive_mx_host "$(env_get COGETO_EXTERNAL_DOMAIN)") as soon as that name resolves here, and the sidecar OVERWRITES cert.pem and key.pem in the mail-tls volume with it. Your own certificate stops being used."
+        fi
+        env_set COGETO_MAIL_TLS_MODE "automatic"
+        sync_mail_tls_site
+        say "inbound-mail TLS is now AUTOMATIC: the edge obtains and renews it, the sidecar installs it, and nothing needs an operator again."
+        ;;
+      *)
+        die "unknown mail TLS mode '${tls_mode}' — valid: automatic (the edge obtains and renews the certificate) or operator (you supply and renew it; see docs/operations/email-inbound.md)" ;;
+    esac
+    restart_needed="${restart_needed} caddy mail mail-tls-sync"
   fi
 
   if [ -n "$regen" ]; then
@@ -1811,9 +1898,10 @@ cmd_configure() {
   fi
 
   # SEC-14: `mail` is behind a profile now — naming a profile-disabled service
-  # on `compose up` is an error, so drop it when the capability is off.
+  # on `compose up` is an error, so drop it (and its TLS sidecar, which rides
+  # the same profile) when the capability is off.
   if ! mail_capability_enabled; then
-    restart_needed="$(printf '%s' "$restart_needed" | tr ' ' '\n' | grep -v '^mail$' | tr '\n' ' ')"
+    restart_needed="$(printf '%s' "$restart_needed" | tr ' ' '\n' | grep -v -e '^mail$' -e '^mail-tls-sync$' | tr '\n' ' ')"
   fi
   restart_needed="$(printf '%s' "$restart_needed" | tr -s ' ' | sed 's/^ *//; s/ *$//')"
 

@@ -556,8 +556,10 @@ Full details in [`docs/engineering-workflow.md`](docs/engineering-workflow.md).
 3. **Implement.**
 4. **Open a pull request** authored as the owner, with `Closes #N` for each issue.
    The title is a Conventional Commit.
-5. **Required checks green**: `lint`, `boundaries`, `test`, `build`, `eval-gate`.
-   Nothing merges without them.
+5. **Required checks green**: `lint`, `boundaries`, `test`, `build`, `eval-gate`,
+   `operator-smoke-fast`. Nothing merges without them. `scan`, `docker-build`
+   and `operator-smoke-full` run but do not block, each for a reason written
+   down in the job table in `docs/engineering-workflow.md`.
 6. **Squash-and-merge.** The PR title becomes the single commit on `main`.
 7. **Releases are cut by the owner** tagging `vX.Y.Z`.
 

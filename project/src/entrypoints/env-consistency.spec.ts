@@ -155,13 +155,53 @@ function varsReadInCode(): Set<string> {
   return found;
 }
 
-function varsIn(file: string): Set<string> {
-  const text = readFileSync(path.join(REPO, file), 'utf8');
+/**
+ * The variable names a file NAMES.
+ *
+ * `stripComments` is the difference between the two kinds of file this is used
+ * on, and it is not cosmetic (issue #603). In a compose file a `#` line is
+ * prose, so counting it made a variable that was DELETED from an `environment:`
+ * block but still mentioned in the comment beside it satisfy the deploy-parity
+ * rule while never reaching the process: F7's exact failure mode surviving the
+ * check written to catch it. In `.env.example` a `#` line IS the entry (every
+ * documented variable is commented out so the file is a reference, not a
+ * configuration), so stripping there would erase the documentation itself.
+ */
+function varsIn(file: string, stripComments = false): Set<string> {
+  const raw = readFileSync(path.join(REPO, file), 'utf8');
+  const text = stripComments
+    ? raw
+        .split('\n')
+        .filter((line) => !/^\s*#/.test(line))
+        .join('\n')
+    : raw;
   const found = new Set<string>();
   const re = /\b([A-Z][A-Z0-9_]*)\b/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
     if (isTracked(m[1]!)) found.add(m[1]!);
+  }
+  return found;
+}
+
+/**
+ * The variables `.env.example` actually OFFERS: names on an entry line
+ * (`NAME=`, commented out or not), as opposed to names its prose mentions.
+ *
+ * The distinction only started to matter once the compose files stopped
+ * counting their own comments (issue #603). Two of the names this file mentions
+ * are deliberately NOT settings — "do NOT set `MINIO_SERVER_URL`" and a note
+ * that the `COGETO_OLLAMA_TIMEOUT_*_MS` alias was retired — and they were
+ * passing the no-dead-entries rule by matching a comment in a compose file,
+ * which is the same accident the strip removes. A sentence about a variable is
+ * not an entry, and requiring it to be wired would mean deleting the warning.
+ */
+function entriesIn(file: string): Set<string> {
+  const text = readFileSync(path.join(REPO, file), 'utf8');
+  const found = new Set<string>();
+  for (const line of text.split('\n')) {
+    const m = /^\s*#?\s*([A-Z][A-Z0-9_]*)=/.exec(line);
+    if (m && isTracked(m[1]!)) found.add(m[1]!);
   }
   return found;
 }
@@ -243,8 +283,10 @@ const hasDeployParityException = (name: string): boolean =>
 describe('env_consistency: .env.example, both compose files and code agree', () => {
   const read = varsReadInCode();
   const example = varsIn('.env.example');
-  const compose = varsIn('docker-compose.yml');
-  const deploy = varsIn('project/infra/deploy/docker-compose.deploy.yml');
+  // Comments stripped: a compose file must actually PASS the variable, not
+  // mention it (issue #603).
+  const compose = varsIn('docker-compose.yml', true);
+  const deploy = varsIn('project/infra/deploy/docker-compose.deploy.yml', true);
 
   it('the widened walk actually sees the trees that were invisible', () => {
     // A guard on the guard: if a refactor moves one of these, the check must
@@ -270,7 +312,9 @@ describe('env_consistency: .env.example, both compose files and code agree', () 
   });
 
   it('every tracked variable in .env.example is used by code or wired in compose (no dead entries)', () => {
-    const dead = [...example].filter((v) => !read.has(v) && !compose.has(v) && !deploy.has(v));
+    const dead = [...entriesIn('.env.example')].filter(
+      (v) => !read.has(v) && !compose.has(v) && !deploy.has(v),
+    );
     expect(dead, `dead .env.example entries: ${dead.join(', ')}`).toEqual([]);
   });
 

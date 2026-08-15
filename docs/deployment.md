@@ -33,7 +33,7 @@ and the commands you'll want at hand.
  | Subcommand | What it is for |
  | --- | --- |
  | `install` | First-time setup on a fresh Ubuntu 22.04/24.04 host |
- | `configure` | Show or change instance configuration: `--domain`, `--regenerate NAME` |
+ | `configure` | Show or change instance configuration: `--domain`, `--regenerate NAME`, `--mail-tls-mode automatic\|operator` |
  | `upgrade` | Move to a published release, or roll images back |
  | `status` | The honest health report; the first command in any investigation |
  | `features` | Optional capabilities: list, enable, disable |
