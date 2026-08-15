@@ -873,7 +873,7 @@ services:
     tmpfs:
       - /tmp:size=64m,mode=1777
     # ghcr.io/zitadel/zitadel:v2.65.1 (pinned by digest —)
-    image: ghcr.io/zitadel/zitadel:v2.65.1@sha256:013d23b69aa681f03d36a7fd61e4837a7b049a7e22bd7215eb3e98e9dbf5543c
+    image: ghcr.io/zitadel/zitadel:v4.17.0@sha256:d0f387f8f82483c2c6cfbc6531c8bf02b7dddff70f032d7e02569ca057517fba
     #: masterkey via env (--masterkeyFromEnv reads ZITADEL_MASTERKEY below),
     # not on the command line — it is no longer visible in `docker inspect` / `ps`.
     command: 'start-from-init --masterkeyFromEnv --tlsMode external'
