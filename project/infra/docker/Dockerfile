@@ -105,7 +105,7 @@ CMD ["node", "project/src/dist/entrypoints/app.js"]
 
 # ── Edge: Caddy with the built SPA baked in ──────────────────────────────────
 # caddy:2-alpine
-FROM caddy@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648 AS caddy
+FROM caddy@sha256:df7f1c2fb114453b951de51a98efc010db1655a92c2e86be6706714e2417a78d AS caddy
 COPY project/infra/docker/caddy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /repo/project/web/dist /srv
 # Inbound-mail TLS propagation (issue #566). Not part of the edge's own job:
@@ -120,5 +120,5 @@ RUN chmod 0755 /usr/local/bin/cogeto-mail-tls-sync
 # Qdrant) + the S3 presign origin, served ONLY here so they never answer on the
 # public 443 listener by Host header. Compose binds this to 127.0.0.1 only.
 # caddy:2-alpine
-FROM caddy@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648 AS caddy-consoles
+FROM caddy@sha256:df7f1c2fb114453b951de51a98efc010db1655a92c2e86be6706714e2417a78d AS caddy-consoles
 COPY project/infra/docker/caddy/Caddyfile.consoles /etc/caddy/Caddyfile
