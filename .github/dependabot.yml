@@ -80,40 +80,31 @@ updates:
   # updates the digest in place and refreshes the trailing `# image:tag` comment
   # — pinning is preserved, nothing starts floating.
   #
-  # One entry per directory containing a Dockerfile or a compose file, because
-  # the docker ecosystem is directory-scoped.
+  # One multi-directory entry per ecosystem (2026-08 triage): a per-directory
+  # split meant a node bump arrived as four PRs that could never pass the
+  # dev/deploy digest-parity test individually. `directories` makes one PR
+  # cover every file the same image is pinned in. The pins carry their tag in
+  # the reference (`node:22-alpine@sha256:…`) so Dependabot proposes new
+  # digests of the INTENDED tag, never of `latest`.
   - package-ecosystem: docker
-    directory: /project/infra/docker
+    directories:
+      - /project/infra/docker
+      - /project/services/mail
+      - /project/services/redaction
     schedule:
       interval: weekly
     labels:
       - chore
       - dependencies
-  - package-ecosystem: docker
-    directory: /project/services/mail
-    schedule:
-      interval: weekly
-    labels:
-      - chore
-      - dependencies
-  - package-ecosystem: docker
-    directory: /project/services/redaction
-    schedule:
-      interval: weekly
-    labels:
-      - chore
-      - dependencies
-  # The dev compose contract at the repo root.
+  # The dev compose contract at the repo root plus the pull-only customer
+  # stack; the parity test requires their shared images to move together.
+  # NOTE: a deploy-compose change still needs `deploy-assets.sha256`
+  # regenerated (scripts/ci/deploy-assets-manifest.mjs --write) before merge,
+  # which Dependabot cannot do; its compose PRs are taken over manually.
   - package-ecosystem: docker-compose
-    directory: /
-    schedule:
-      interval: weekly
-    labels:
-      - chore
-      - dependencies
-  # The pull-only customer stack.
-  - package-ecosystem: docker-compose
-    directory: /project/infra/deploy
+    directories:
+      - /
+      - /project/infra/deploy
     schedule:
       interval: weekly
     labels:
