@@ -24,24 +24,24 @@
     "graphile-worker": "^0.17.3",
     "iconv-lite": "^0.7.3",
     "jsdom": "30.0.1",
-    "mailparser": "^3.9.14",
+    "mailparser": "^3.9.15",
     "mammoth": "^1.12.0",
     "multer": "^2.2.0",
     "pdf-parse": "^2.4.5",
-    "pg": "^8.16.0",
+    "pg": "^8.23.0",
     "pino": "^10.3.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@testcontainers/postgresql": "^12.0.4",
+    "@testcontainers/postgresql": "^12.1.0",
     "@types/express": "^5.0.0",
-    "@types/jsdom": "27.0.0",
+    "@types/jsdom": "30.0.0",
     "@types/mailparser": "^3.4.6",
     "@types/multer": "^2.2.0",
     "@types/node": "^22.15.0",
-    "@types/pg": "^8.15.0",
+    "@types/pg": "^8.21.0",
     "ajv": "^8.20.0"
   }
 }
