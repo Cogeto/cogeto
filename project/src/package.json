@@ -13,7 +13,7 @@
     "@mistralai/mistralai": "^2.5.0",
     "@nestjs/common": "^11.1.0",
     "@nestjs/core": "^11.1.0",
-    "@nestjs/platform-express": "^11.1.0",
+    "@nestjs/platform-express": "^11.1.29",
     "@qdrant/js-client-rest": "1.18.0",
     "chrono-node": "^2.10.1",
     "csv-parse": "^7.0.2",
