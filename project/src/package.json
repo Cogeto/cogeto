@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@cogeto/shared": "*",
-    "@mistralai/mistralai": "^2.5.0",
+    "@mistralai/mistralai": "^2.6.1",
     "@nestjs/common": "^11.1.29",
     "@nestjs/core": "^11.1.29",
     "@nestjs/platform-express": "^11.1.29",
