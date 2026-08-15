@@ -75,18 +75,21 @@ describe('deployment hardening', () => {
         expect(line, `unpinned image in ${name}: ${line}`).toMatch(/@sha256:[0-9a-f]{64}/);
       }
     }
-    // The build stages are pinned too — in every Dockerfile we ship.
-    expect(dockerfile).not.toMatch(/^FROM node:22-alpine/m);
-    expect(dockerfile).toMatch(/FROM node@sha256:[0-9a-f]{64}/);
-    expect(dockerfile).toMatch(/FROM caddy@sha256:[0-9a-f]{64}/);
+    // The build stages are pinned too — in every Dockerfile we ship. The pin
+    // carries the tag IN the reference (`node:22-alpine@sha256:…`) so
+    // Dependabot tracks the intended tag instead of `latest`; a tag without a
+    // digest is still a floating pull and stays forbidden.
+    expect(dockerfile).not.toMatch(/^FROM node:22-alpine(?!@sha256:)/m);
+    expect(dockerfile).toMatch(/FROM node:22-alpine@sha256:[0-9a-f]{64}/);
+    expect(dockerfile).toMatch(/FROM caddy:2-alpine@sha256:[0-9a-f]{64}/);
     // SEC-22: the mail service parses hostile internet input and was not
     // covered by this invariant at all.
-    expect(mailDockerfile).not.toMatch(/^FROM node:22-alpine/m);
-    expect(mailDockerfile).toMatch(/FROM node@sha256:[0-9a-f]{64}/);
+    expect(mailDockerfile).not.toMatch(/^FROM node:22-alpine(?!@sha256:)/m);
+    expect(mailDockerfile).toMatch(/FROM node:22-alpine@sha256:[0-9a-f]{64}/);
     // The spaCy model is pinned to an exact version (not `spacy download`).
     expect(redactionDockerfile).toMatch(/en_core_web_lg-3\.8\.0-py3-none-any\.whl/);
     expect(redactionDockerfile).not.toMatch(/spacy download/);
-    expect(redactionDockerfile).toMatch(/FROM python@sha256:[0-9a-f]{64}/);
+    expect(redactionDockerfile).toMatch(/FROM python:3\.12-slim@sha256:[0-9a-f]{64}/);
   });
 
   it('every digest pin records the real tag it resolves to (SEC-35, tightened by issue #568)', () => {

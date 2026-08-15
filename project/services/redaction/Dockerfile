@@ -7,7 +7,7 @@
 # latest compatible model, a silent supply-chain drift. Update procedure:
 # docs/operations/image-pins.md.
 # python:3.12-slim
-FROM python@sha256:423ed6ab25b1921a477529254bfeeabf5855151dc2c3141699a1bfc852199fbf
+FROM python:3.12-slim@sha256:423ed6ab25b1921a477529254bfeeabf5855151dc2c3141699a1bfc852199fbf
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
