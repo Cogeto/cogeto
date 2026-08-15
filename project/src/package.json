@@ -11,7 +11,7 @@
   "dependencies": {
     "@cogeto/shared": "*",
     "@mistralai/mistralai": "^2.5.0",
-    "@nestjs/common": "^11.1.0",
+    "@nestjs/common": "^11.1.29",
     "@nestjs/core": "^11.1.0",
     "@nestjs/platform-express": "^11.1.0",
     "@qdrant/js-client-rest": "1.18.0",
