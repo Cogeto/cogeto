@@ -17,7 +17,7 @@
     "@qdrant/js-client-rest": "1.18.0",
     "chrono-node": "^2.10.1",
     "csv-parse": "^7.0.2",
-    "dompurify": "3.4.12",
+    "dompurify": "3.4.13",
     "drizzle-orm": "^0.45.2",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
