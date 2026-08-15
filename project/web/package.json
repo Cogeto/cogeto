@@ -14,13 +14,13 @@
     "@cogeto/shared": "*",
     "@tanstack/react-query": "^5.101.3",
     "i18next": "^25.10.10",
-    "react": "^19.1.0",
+    "react": "^19.2.8",
     "react-dom": "^19.1.0",
     "react-i18next": "^16.6.6"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
-    "@types/react": "^19.1.0",
+    "@types/react": "^19.2.18",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^6.0.3",
     "axe-core": "^4.12.1",
