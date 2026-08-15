@@ -43,7 +43,24 @@ SYNC_INTERVAL_SECONDS="${COGETO_MAIL_TLS_SYNC_INTERVAL_SECONDS:-300}"
 # checklist use. One derivation, carried in one variable.
 HOST="${COGETO_MAIL_TLS_SITE:-}"
 
+# Who owns the certificate. `operator` means the material in DEST_DIR was placed
+# there by the operator (their own CA, or a wildcard they manage), and this loop
+# must never touch it. The site variable being empty already produces that
+# outcome, but "empty" is a side effect and this is the intention: if anything
+# ever sets the site while the mode says operator, the operator's files still
+# win, because overwriting them moves an instance off its own CA silently.
+TLS_MODE="${COGETO_MAIL_TLS_MODE:-automatic}"
+
 say() { printf 'cogeto-mail-tls-sync: %s\n' "$*"; }
+
+if [ "$TLS_MODE" = "operator" ]; then
+  say "COGETO_MAIL_TLS_MODE=operator — the certificate material in ${DEST_DIR} is"
+  say "yours. Nothing is ordered, copied or overwritten here, and renewal is your"
+  say "own procedure (docs/operations/email-inbound.md). Hand it back to the edge"
+  say "with 'cogeto configure --mail-tls-mode automatic'."
+  # Idle rather than exit, for the same reason as the empty-site case below.
+  while :; do sleep 3600; done
+fi
 
 if [ -z "$HOST" ]; then
   say "COGETO_MAIL_TLS_SITE is not set — nothing to propagate. Enable email"

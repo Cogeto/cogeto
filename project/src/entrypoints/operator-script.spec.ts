@@ -176,10 +176,14 @@ describe('operator script — install --check dry run', () => {
     expect(out).toContain('project/infra/docker/searxng/settings.yml');
   });
 
-  it('prints the cosign verify commands for all three published images', () => {
+  it('prints the cosign verify commands for every image THIS instance runs (three here; the redaction sidecar joins them when that capability is on)', () => {
+    // A dry-run install has redaction off, so the fourth published image is
+    // correctly absent from this list: `instance_images` is one list, and pull,
+    // verify and the printed commands all read it, so they cannot disagree.
     for (const img of ['cogeto/cogeto:', 'cogeto/cogeto-edge:', 'cogeto/cogeto-mail:']) {
       expect(out).toContain(`cosign verify ${img}`);
     }
+    expect(out).not.toContain('cosign verify cogeto/cogeto-redaction:');
   });
 
   it('installs cosign and itself (o6-dry-run: an optional verifier gets skipped; "cogeto status" must exist on PATH)', () => {
@@ -535,6 +539,64 @@ describe('operator script — features', () => {
     expect(helper('feature_known frobnicate || echo no').out).toBe('no');
   });
 
+  /**
+   * The capability lists are the registry's, or they lie (F15, and issue #602).
+   *
+   * `FEATURE_IDS` (what this script switches) plus `FEATURE_IDS_REPORTED_ONLY`
+   * (what the registry reports and the script explains rather than switches)
+   * must together be EXACTLY the `CapabilityId` set. That rule was checked only
+   * by the full smoke harness, which needs a running stack, runs on merges to
+   * main and does not block, so adding a tenth capability reproduced F15 inside
+   * a pull request where every required check was green. This is the same
+   * comparison, against the type instead of a live /api/health, inside `test`.
+   */
+  it('the two capability lists together are exactly the registry set', () => {
+    const script = readFileSync(SCRIPT, 'utf8');
+    const listOf = (name: string): string[] => {
+      const m = script.match(new RegExp(`^${name}="([^"]*)"$`, 'm'));
+      expect(m, `${name} is not a plain quoted list in the operator script`).toBeTruthy();
+      return m![1]!.split(/\s+/).filter(Boolean);
+    };
+    const switched = listOf('FEATURE_IDS');
+    const reportedOnly = listOf('FEATURE_IDS_REPORTED_ONLY');
+    expect(switched.length).toBeGreaterThan(0);
+    expect(reportedOnly.length).toBeGreaterThan(0);
+
+    // The registry: the CapabilityId union in the shared health contract.
+    const health = read('project/shared/src/health.ts');
+    const union = health.slice(
+      health.indexOf('export type CapabilityId ='),
+      health.indexOf('export type CapabilityState'),
+    );
+    const registry = [...union.matchAll(/^\s*\|\s*'([a-z-]+)'/gm)].map((m) => m[1]!);
+    expect(registry.length).toBeGreaterThan(5);
+
+    const scriptSet = [...switched, ...reportedOnly].sort();
+    // A capability in neither list is F15 exactly: an operator sees it in
+    // health, does not see it here, and concludes something is broken.
+    const missing = registry.filter((id) => !scriptSet.includes(id));
+    expect(
+      missing,
+      `capabilities the operator script does not know: ${missing.join(', ')}. ` +
+        `Add each to FEATURE_IDS (this script switches it) or to ` +
+        `FEATURE_IDS_REPORTED_ONLY plus feature_decided_by (it is decided elsewhere).`,
+    ).toEqual([]);
+    // And the other direction: a list entry the registry no longer reports is a
+    // toggle for something that is not there.
+    const stale = scriptSet.filter((id) => !registry.includes(id));
+    expect(
+      stale,
+      `the operator script lists capabilities the registry does not report: ${stale.join(', ')}`,
+    ).toEqual([]);
+    // No id may be in both lists: switched and decided-elsewhere are exclusive.
+    expect(new Set(scriptSet).size, 'a capability id appears in both lists').toBe(scriptSet.length);
+    // Every reported-only id says where it IS decided, or it reads as broken.
+    for (const id of reportedOnly) {
+      const decided = helper(`feature_decided_by ${id}`).out;
+      expect(decided, `feature_decided_by says nothing for ${id}`).not.toBe('');
+    }
+  });
+
   it('config editing (env_set) is idempotent and keeps the file at mode 600', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'cogeto-operator-envset-'));
     const envFile = path.join(root, '.env');
@@ -551,6 +613,238 @@ describe('operator script — features', () => {
     rmSync(root, { recursive: true, force: true });
     const lines = r.stdout.trim().split('\n');
     expect(lines).toEqual(['COMPOSE_PROFILES=research', '600']);
+  });
+});
+
+/**
+ * The operator-supplied certificate override (issue #600, verification N2).
+ *
+ * `docs/operations/email-inbound.md` tells an operator with their own CA to
+ * supply `cert.pem` and `key.pem` themselves. The recorded way to say so used
+ * to be "leave COGETO_MAIL_TLS_SITE empty", which `sync_mail_tls_site` then
+ * undid on the next upgrade, on both mail transitions and on a domain change:
+ * the instance silently went back to ordering a certificate, and the sidecar
+ * overwrote the operator's material with it. The intention is now a recorded
+ * value, and these are the four paths that used to lose it.
+ */
+describe('operator script — inbound-mail TLS: the operator-supplied override survives', () => {
+  const OPERATOR_ENV =
+    'COGETO_VERSION=9.9.9\n' +
+    'COGETO_EXTERNAL_DOMAIN=acme.cogeto.eu\n' +
+    'COMPOSE_PROFILES=mail\n' +
+    'COGETO_MAIL_ENABLED=1\n' +
+    'COGETO_MAIL_TLS_MODE=operator\n' +
+    'COGETO_MAIL_TLS_SITE=\n';
+
+  const AUTOMATIC_ENV =
+    'COGETO_VERSION=9.9.9\n' +
+    'COGETO_EXTERNAL_DOMAIN=acme.cogeto.eu\n' +
+    'COMPOSE_PROFILES=mail\n' +
+    'COGETO_MAIL_ENABLED=1\n';
+
+  const withEnv = (env: string): string => {
+    const root = mkdtempSync(path.join(tmpdir(), 'cogeto-operator-mailtls-'));
+    writeFileSync(path.join(root, '.env'), env, { mode: 0o600 });
+    return root;
+  };
+
+  /** Run the real convergence function against a real .env, as upgrade does. */
+  const converge = (env: string): string => {
+    const root = withEnv(env);
+    const envFile = path.join(root, '.env');
+    spawnSync(
+      'bash',
+      ['-c', `source '${SCRIPT}'; CHECK=0; ENV_FILE='${envFile}'; sync_mail_tls_site`],
+      { encoding: 'utf8', timeout: 30_000 },
+    );
+    const after = readFileSync(envFile, 'utf8');
+    rmSync(root, { recursive: true, force: true });
+    return after;
+  };
+
+  it('the upgrade path (the convergence itself) leaves an operator-supplied configuration alone', () => {
+    // What `cogeto upgrade` does to this configuration is exactly this call.
+    expect(converge(OPERATOR_ENV)).toBe(OPERATOR_ENV);
+    // Even if a site value is somehow present (a hand-edited file, an older
+    // instance), the recorded mode wins: an upgrade must never be the thing
+    // that puts an instance back on the edge's certificate authority.
+    const handEdited =
+      'COGETO_VERSION=9.9.9\n' +
+      'COGETO_EXTERNAL_DOMAIN=acme.cogeto.eu\n' +
+      'COMPOSE_PROFILES=mail\n' +
+      'COGETO_MAIL_ENABLED=1\n' +
+      'COGETO_MAIL_TLS_MODE=operator\n' +
+      'COGETO_MAIL_TLS_SITE=mail.legacy.cogeto.eu\n';
+    expect(converge(handEdited)).toBe(handEdited);
+  });
+
+  it('an automatic configuration still converges exactly as it did', () => {
+    expect(converge(AUTOMATIC_ENV)).toContain('COGETO_MAIL_TLS_SITE=mail.acme.cogeto.eu');
+    // Mail off: the site is blanked, so the edge's ACME vhost goes inert.
+    const off = 'COGETO_VERSION=9.9.9\nCOGETO_EXTERNAL_DOMAIN=acme.cogeto.eu\n';
+    expect(converge(off)).toContain('COGETO_MAIL_TLS_SITE=\n');
+  });
+
+  it('enabling and disabling mail leave an operator-supplied configuration alone', () => {
+    for (const verb of ['enable', 'disable']) {
+      const root = withEnv(OPERATOR_ENV);
+      const { out } = runScript(['features', verb, 'mail', '--check', '--root', root]);
+      const after = readFileSync(path.join(root, '.env'), 'utf8');
+      rmSync(root, { recursive: true, force: true });
+      expect(out, `features ${verb} mail rewrites the site`).not.toContain(
+        'would set COGETO_MAIL_TLS_SITE',
+      );
+      expect(out).toContain('operator-supplied');
+      expect(after).toBe(OPERATOR_ENV); // --check mutates nothing either way
+    }
+  });
+
+  it('a domain change leaves an operator-supplied configuration alone', () => {
+    const root = withEnv(OPERATOR_ENV);
+    const { out } = runScript([
+      'configure',
+      '--domain',
+      'newname.cogeto.eu',
+      '--check',
+      '--root',
+      root,
+    ]);
+    rmSync(root, { recursive: true, force: true });
+    // The domain itself still moves...
+    expect(out).toContain('would set COGETO_EXTERNAL_DOMAIN');
+    // ...and the certificate the operator owns does not follow it.
+    expect(out).not.toContain('would set COGETO_MAIL_TLS_SITE');
+    expect(out).toContain('operator-supplied');
+  });
+
+  it('an automatic instance still has all four paths converge it', () => {
+    // The other direction of the same guard: the fix must not have turned the
+    // convergence off for everyone. Every call site is enumerated here, so a
+    // fifth path that skips the chokepoint is visible in review.
+    const script = readFileSync(SCRIPT, 'utf8');
+    const callers = ['cmd_upgrade', 'features_enable', 'features_disable', 'cmd_configure'];
+    for (const caller of callers) {
+      const start = script.indexOf(`${caller}() {`);
+      expect(start, `${caller} is gone`).toBeGreaterThan(-1);
+      const body = script.slice(start, start + 12_000);
+      expect(body, `${caller} no longer converges the mail TLS site`).toContain(
+        'sync_mail_tls_site',
+      );
+    }
+    // ...and the chokepoint is the ONLY writer of the site variable outside the
+    // deliberate override, so honouring the mode in one place is enough.
+    const writers = [...script.matchAll(/env_set COGETO_MAIL_TLS_SITE/g)].length;
+    expect(
+      writers,
+      'COGETO_MAIL_TLS_SITE is written outside sync_mail_tls_site and the override',
+    ).toBe(3);
+  });
+
+  it('configure records the intent, states the consequence, and asks before undoing it', () => {
+    const root = withEnv(AUTOMATIC_ENV);
+    const toOperator = runScript([
+      'configure',
+      '--mail-tls-mode',
+      'operator',
+      '--check',
+      '--root',
+      root,
+    ]);
+    expect(toOperator.status).toBe(0);
+    expect(toOperator.out).toContain('would set COGETO_MAIL_TLS_MODE');
+    expect(toOperator.out).toContain('would set COGETO_MAIL_TLS_SITE');
+    expect(toOperator.out).toContain('RENEWAL IS NOW YOURS');
+    rmSync(root, { recursive: true, force: true });
+
+    // Going back is deliberate: a typed confirmation naming what it overwrites.
+    const back = withEnv(OPERATOR_ENV);
+    const toAutomatic = runScript([
+      'configure',
+      '--mail-tls-mode',
+      'automatic',
+      '--check',
+      '--root',
+      back,
+    ]);
+    rmSync(back, { recursive: true, force: true });
+    expect(toAutomatic.status).toBe(0);
+    expect(toAutomatic.out).toContain("would ask you to type 'hand mail TLS back to the edge'");
+    expect(toAutomatic.out).toContain('OVERWRITES');
+
+    const bad = withEnv(AUTOMATIC_ENV);
+    const rejected = runScript([
+      'configure',
+      '--mail-tls-mode',
+      'sometimes',
+      '--check',
+      '--root',
+      bad,
+    ]);
+    rmSync(bad, { recursive: true, force: true });
+    expect(rejected.status).toBe(1);
+    expect(rejected.out).toContain('valid: automatic');
+  });
+
+  it('configure with no arguments prints which mode the instance is in', () => {
+    const operatorRoot = withEnv(OPERATOR_ENV);
+    const operatorOut = runScript(['configure', '--check', '--root', operatorRoot]).out;
+    rmSync(operatorRoot, { recursive: true, force: true });
+    expect(operatorOut).toContain('inbound mail TLS   = operator-supplied');
+
+    const autoRoot = withEnv(AUTOMATIC_ENV);
+    const autoOut = runScript(['configure', '--check', '--root', autoRoot]).out;
+    rmSync(autoRoot, { recursive: true, force: true });
+    expect(autoOut).toContain('inbound mail TLS   = automatic');
+  });
+
+  it('the synchroniser refuses to touch the volume in operator-supplied mode', () => {
+    // The sidecar honours the recorded mode itself, not merely the empty site:
+    // overwriting an operator's certificate moves their instance off their own
+    // CA, so the mode is checked before anything is read or copied.
+    const sync = read('project/infra/docker/caddy/mail-tls-sync.sh');
+    const guard = sync.indexOf('if [ "$TLS_MODE" = "operator" ]; then');
+    expect(guard, 'the sync loop does not check the mode').toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(sync.indexOf('while :; do\n  src_cert='));
+    expect(sync).toContain('COGETO_MAIL_TLS_MODE:-automatic');
+    // Proved by running it: with the mode set, the loop announces and idles,
+    // and the destination directory stays empty.
+    const dest = mkdtempSync(path.join(tmpdir(), 'cogeto-mail-tls-dest-'));
+    const store = mkdtempSync(path.join(tmpdir(), 'cogeto-caddy-data-'));
+    const certDir = path.join(store, 'caddy', 'certificates', 'issuer', 'mail.acme.cogeto.eu');
+    spawnSync('mkdir', ['-p', certDir]);
+    writeFileSync(path.join(certDir, 'mail.acme.cogeto.eu.crt'), 'EDGE CERT\n');
+    writeFileSync(path.join(certDir, 'mail.acme.cogeto.eu.key'), 'EDGE KEY\n');
+    writeFileSync(path.join(dest, 'cert.pem'), 'OPERATOR CERT\n');
+    writeFileSync(path.join(dest, 'key.pem'), 'OPERATOR KEY\n');
+    const r = spawnSync(
+      'bash',
+      [
+        '-c',
+        `COGETO_MAIL_TLS_MODE=operator COGETO_MAIL_TLS_SITE=mail.acme.cogeto.eu ` +
+          `COGETO_CADDY_DATA_DIR='${store}' COGETO_MAIL_TLS_DIR='${dest}' ` +
+          `COGETO_MAIL_TLS_SYNC_INTERVAL_SECONDS=1 ` +
+          // The loop idles forever by design, so it is backgrounded and killed
+          // rather than timed out (`timeout` is not on a macOS box).
+          `sh '${path.join(REPO, 'project/infra/docker/caddy/mail-tls-sync.sh')}' & ` +
+          `pid=$!; sleep 3; kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null; true`,
+      ],
+      { encoding: 'utf8', timeout: 30_000 },
+    );
+    const cert = readFileSync(path.join(dest, 'cert.pem'), 'utf8');
+    const key = readFileSync(path.join(dest, 'key.pem'), 'utf8');
+    rmSync(dest, { recursive: true, force: true });
+    rmSync(store, { recursive: true, force: true });
+    expect(r.stdout).toContain('COGETO_MAIL_TLS_MODE=operator');
+    expect(cert, "the sidecar overwrote the operator's certificate").toBe('OPERATOR CERT\n');
+    expect(key, "the sidecar overwrote the operator's key").toBe('OPERATOR KEY\n');
+  });
+
+  it('the mode reaches the sidecar on the stack customers run', () => {
+    const deploy = read('project/infra/deploy/docker-compose.deploy.yml');
+    const sidecar = deploy.slice(deploy.indexOf('\n  mail-tls-sync:\n'));
+    expect(sidecar.slice(0, sidecar.indexOf('\n\n'))).toContain(
+      'COGETO_MAIL_TLS_MODE: ${COGETO_MAIL_TLS_MODE:-automatic}',
+    );
   });
 });
 

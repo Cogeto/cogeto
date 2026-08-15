@@ -231,6 +231,27 @@ assert_no_retired_mechanism() {  # assert_no_retired_mechanism FILE LABEL
   [ "$found" -eq 0 ] && pass "$label references no retired mechanism"
 }
 
+# EVERY captured log, in one loop (issue #601). This scan used to be called
+# against four named logs while being described as covering everything the
+# script prints, and the gap was not hypothetical: two of the original stale
+# references lived in the upgrade path. Whatever this run captured is scanned,
+# so a subcommand added to the harness is covered the day it is added rather
+# than the day someone remembers to add a call.
+#
+# It still cannot cover what the harness does not RUN — `upgrade`, `configure`,
+# `backup-info` and `reindex` are not invoked here, for the reasons in the
+# "does not cover" block above — so this is coverage of every captured log, not
+# of every line the script can print. The whole-script grep that would cover
+# the rest is a source check, and lives in the unit spec.
+check_retired_mechanisms_in_every_log() {
+  note "no retired mechanism in anything this run printed"
+  local log
+  for log in "$LOGS"/*.txt; do
+    [ -e "$log" ] || continue
+    assert_no_retired_mechanism "$log" "$(basename "$log" .txt)"
+  done
+}
+
 check_dry_run_install() {
   note "dry-run install: the printed checklist"
   operator dry-install --check install --domain "$SMOKE_DOMAIN" --acme-email ops@cogeto.invalid \
@@ -252,7 +273,6 @@ check_dry_run_install() {
   assert_contains "$log" 'Email capture is OFF on this instance' 'the checklist says email capture is off'
   assert_absent "$log" 'IN MX 10' 'no MX step is printed while inbound mail is off'
   assert_absent "$log" 'set the PTR' 'no PTR step is printed while inbound mail is off'
-  assert_no_retired_mechanism "$log" 'the install checklist'
 }
 
 check_secret_backfill() {
@@ -342,7 +362,6 @@ check_status_is_observed() {
   # And it must not green-wash: no certificate can be issued for the smoke
   # domain, so the honest verdict is NOT GREEN.
   assert_contains "$log" 'VERDICT: NOT GREEN' 'status refuses to report green while TLS is not working'
-  assert_no_retired_mechanism "$log" 'the status report'
 
   note "status reflects a container that is actually down"
   smoke_compose stop worker >/dev/null 2>&1
@@ -384,7 +403,6 @@ check_features_match_health() {
     [ -z "$id" ] && continue
     assert_contains "$LOGS/features.txt" "$id" "features lists the ${id} capability"
   done <<<"$live"
-  assert_no_retired_mechanism "$LOGS/features.txt" 'the features listing'
 }
 
 check_optional_capability() {
@@ -452,12 +470,14 @@ if [ "$MODE" = "full" ]; then
   note "install onto a real stack from empty volumes"
   operator_install || fail 'install exited non-zero'
   assert_contains "$LOGS/install.txt" 'stack healthy' 'the stack reached health during install'
-  assert_no_retired_mechanism "$LOGS/install.txt" 'the install run'
   check_generated_secrets
   check_status_is_observed
   check_features_match_health
   check_optional_capability
 fi
+
+# Last, so it sees every log this run produced, whichever mode it ran in.
+check_retired_mechanisms_in_every_log
 
 note "result"
 if [ "$FAILURES" -eq 0 ]; then

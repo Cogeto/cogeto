@@ -1100,6 +1100,11 @@ services:
     environment:
       # Same value, same derivation as the edge's ACME vhost above.
       COGETO_MAIL_TLS_SITE: ${COGETO_MAIL_TLS_SITE:-}
+      # Who owns the certificate: `automatic` (this sidecar installs the one the
+      # edge obtained) or `operator` (the material in the volume is the
+      # operator's own, and this sidecar idles and overwrites nothing). Written
+      # by `cogeto configure --mail-tls-mode MODE`.
+      COGETO_MAIL_TLS_MODE: ${COGETO_MAIL_TLS_MODE:-automatic}
     volumes:
       - caddy-data:/data:ro
       - mail-tls:/mail-tls

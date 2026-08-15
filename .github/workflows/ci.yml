@@ -1,16 +1,41 @@
 # Continuous integration for Cogeto.
 #
-# Runs on every pull request and on push to main. Five jobs are the REQUIRED
+# Runs on every pull request and on push to main. Six jobs are the REQUIRED
 # status checks for branch protection on main:
 #
-#     lint · boundaries · test · build · eval-gate
+#     lint · boundaries · test · build · eval-gate · operator-smoke-fast
 #
-# Four further jobs are NOT required to merge: `scan` (dependency + image
-# vulnerability scanning, audit 2.0 SEC-19), `docker-build`, which keeps every
-# production Dockerfile green on each PR (amd64, no push), and the two operator
-# smoke jobs, `operator-smoke-fast` (pull requests) and `operator-smoke-full`
-# (merges to main, and on demand). Promoting any of them to a required check is
-# a branch-protection change in the repository settings.
+# `operator-smoke-fast` is required as of issue #601. It ran on every pull
+# request without blocking one, which is the same shape as the gap it was
+# written to close: the invariant suites were green while `cogeto upgrade` took
+# an instance down, and a red operator smoke could equally be merged past. It is
+# seconds long, needs no Docker and no secret, and runs on every pull request,
+# so requiring it costs nothing and closes the loop.
+#
+# Three jobs are DELIBERATELY NOT required, each for a stated reason:
+#
+#   scan          Dependency and image vulnerability scanning (SEC-19). It is
+#                 advisory BY DESIGN, because its verdict depends on the outside
+#                 world rather than on the diff: a newly published upstream
+#                 advisory turns it red with no commit in between (observed on
+#                 2026-08-03, see the allowlist below), and blocking every open
+#                 pull request on someone else's disclosure would make the
+#                 honest fix — read it, judge it, allowlist it with the reason —
+#                 an emergency instead of a decision. It runs on every pull
+#                 request and on main, and a red run is triaged, not ignored.
+#   docker-build  Keeps every production Dockerfile green on each PR (amd64, no
+#                 push). Advisory: it duplicates no correctness property, and
+#                 the release pipeline builds the same images with the same
+#                 files, so a broken Dockerfile cannot reach a published image.
+#   operator-smoke-full
+#                 Needs a real stack, runs minutes, and by construction does NOT
+#                 run on pull requests (it is a merge-to-main and on-demand job),
+#                 so it cannot be a required context: a required check that never
+#                 reports on a pull request blocks every merge forever.
+#
+# Promoting or demoting any of these is a repository ruleset change in the
+# settings console; the table in docs/engineering-workflow.md is the readable
+# version of this list and must move with it.
 #
 # The operator jobs exist because the deployment-readiness audit found three
 # operator-tooling defects that survived every green check: the invariant suites
@@ -227,9 +252,13 @@ jobs:
           COGETO_EVAL_GATE: '1'
         run: npm run eval:chat
 
-  # ── scan (not required to merge — see the note below) ───────────────────────
+  # ── scan (advisory, deliberately — see the header) ──────────────────────────
   # Dependency vulnerability scanning (audit 2.0 SEC-19). CI had none: a
   # vulnerable dependency could reach main and be released with nothing failing.
+  # It is NOT a required check: its verdict tracks upstream disclosures rather
+  # than the diff, and the entry below dated 2026-08-04 is the proof — this job
+  # went from green to red with no commit in between. Red here is triaged the
+  # same day; it does not wall unrelated work.
   #
   # Every gate below was run locally on 2026-07-30 before being wired in, so
   # this job is green on day one rather than red-walling every open PR:
@@ -419,7 +448,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ── operator smoke (not required to merge) ──────────────────────────────────
+  # ── operator smoke (fast: REQUIRED; full: merge-to-main only) ───────────────
   # The audit's Part 6 observation, closed: "every required check is green and
   # the upgrade path still takes an instance down. The invariant suites cover
   # the application; nothing exercises `cogeto upgrade` against a pre-0052
@@ -439,6 +468,10 @@ jobs:
   # scripts/ci/operator-smoke.sh documents what neither can cover: DNS,
   # certificate issuance, real mail delivery, the release supply chain, and a
   # cloud provider's console.
+  # REQUIRED status check (issue #601). It runs on every pull request, takes
+  # seconds, needs neither Docker nor a secret, and is the half that catches
+  # tooling which LIES — so there is no cost to blocking on it, and the audit's
+  # finding was precisely that this coverage could go red without blocking.
   operator-smoke-fast:
     name: operator-smoke-fast
     if: github.event_name == 'pull_request'

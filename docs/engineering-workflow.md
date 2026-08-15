@@ -64,25 +64,33 @@ Label each PR with the label matching its type (`feat`, `fix`, `docs`,
  issue.
 - Keep PRs scoped to their unit of work.
 
-## Required checks
+## CI jobs and which of them block
 
-These five checks must be green before a PR can merge (branch protection on
-`main`):
+Every job [`ci.yml`](../.github/workflows/ci.yml) defines, whether it blocks a
+merge, and what it covers. **Blocking** means the job is a required status
+context in the repository ruleset for `main`; a job that does not block is still
+run and still triaged, it just does not wall the queue.
 
-| Check | What it enforces |
-| ------------ | ------------------------------------------------------------------- |
-| `lint` | ESLint + Prettier |
-| `boundaries` | dependency-cruiser module map (spec §15): barrel-only imports, no cross-module `persistence/`, no live table in a barrel |
-| `test` | Vitest (unit) + Testcontainers (integration), including the boundary contract's table, job-type, token and global-module ownership checks (spec §15.1) |
-| `build` | backend compile (`tsc`) + Vite frontend build |
-| `eval-gate` | golden-set gate (spec §14): prompt/model/pipeline regressions fail |
+| Job | Blocks | What it covers |
+| --- | --- | --- |
+| `lint` | **yes** | ESLint + Prettier, the product-copy dash guard, `npm run i18n:check`, and `shellcheck` over the operator script and the shipped service scripts |
+| `boundaries` | **yes** | dependency-cruiser module map (spec §15): barrel-only imports, no cross-module `persistence/`, no live table in a barrel |
+| `test` | **yes** | Vitest (unit) + Testcontainers (integration), including the boundary contract's table, job-type, token and global-module ownership checks (spec §15.1), the deployment-hardening and env-consistency invariants, and the operator script's own unit spec |
+| `build` | **yes** | backend compile (`tsc`) + Vite frontend build |
+| `eval-gate` | **yes** | golden-set gate (spec §14): prompt/model/pipeline regressions fail |
+| `operator-smoke-fast` | **yes** | `scripts/ci/operator-smoke.sh --fast`: the dry-run install and its printed checklist, the no-retired-mechanism scan over every log the run captured, and the upgrade secret backfill. No Docker, no stack, no secret, seconds |
+| `scan` | no, by design | dependency + image vulnerability scanning (SEC-19): `npm audit` on both production trees, `pip-audit` on the redaction lock, Trivy on the built runtime image. Advisory because its verdict tracks upstream disclosures rather than the diff: a newly published advisory turns it red with no commit in between, and blocking every open PR on someone else's disclosure would make triage an emergency instead of a decision |
+| `docker-build` | no | builds all four production amd64 images without pushing, so a Dockerfile cannot rot unnoticed between releases |
+| `operator-smoke-full` | no, cannot | `--full`: a real stack from empty volumes, `status` against running containers, the capability list against live `/api/health`, enable/disable of a capability, the empty-secret refusal. Runs on merges to `main` and on `workflow_dispatch`, **never on a pull request**, so it cannot be a required context |
 
-A sixth CI job, `docker-build`, builds the production amd64 image without
-pushing so the Dockerfile stays green; it is **not** required to merge.
-
-The `eval-gate` is secret-gated: pull requests run the mocked
-build-only path (no API key, fork PRs run cleanly); the live golden-set gate
+The `eval-gate` is secret-gated: pull requests run the cached path against
+committed fixtures (no API key, fork PRs run cleanly); the live golden-set gate
 runs on push to `main` after merge.
+
+Changing which jobs block is a **repository ruleset change in the settings
+console**, which only the owner can make: a pull request can prepare it and name
+the contexts, but cannot enforce it. Keep this table and the header of
+`ci.yml` in step with the ruleset.
 
 ### Product-copy dash guard
 

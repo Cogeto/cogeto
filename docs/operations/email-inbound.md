@@ -178,7 +178,9 @@ say so rather than implying otherwise).
 End to end, on a customer instance:
 
 - `cogeto features enable mail` writes `COGETO_MAIL_TLS_SITE=mail.<domain>`
-  (the same `derive_mx_host` value it prints as the required A record).
+  (the same `derive_mx_host` value it prints as the required A record), unless
+  the instance is in operator-supplied mode, which is the override below and is
+  left alone by every path that would otherwise converge this.
 - The edge's Caddyfile carries an **ACME-only vhost** for that hostname: it
   exists purely so a certificate is ordered and renewed, and answers `404` to
   anything that reaches it, because the mail host serves SMTP and no web
@@ -233,19 +235,41 @@ entrypoint's readability test runs as the container's non-root user, so
 root-only material is indistinguishable from no material at all, and the result
 is a cleartext listener that looks healthy.
 
-To use the override, leave `COGETO_MAIL_TLS_SITE` empty (so the edge orders
-nothing and `mail-tls-sync` idles rather than overwriting your files) and place
-the two files in the volume:
+To use the override, **record the decision first** and then place the files:
 
 ```sh
+sudo cogeto configure --mail-tls-mode operator
+
 TLSDIR=$(sudo docker volume inspect --format '{{ .Mountpoint }}' cogeto_mail-tls)
 sudo install -o 1000 -g 1000 -m 0644 your-cert.pem "$TLSDIR/cert.pem"
 sudo install -o 1000 -g 1000 -m 0640 your-key.pem "$TLSDIR/key.pem"
 # The mail service notices within seconds and restarts to load them.
 ```
 
-Renewals are the same two commands; the watcher picks them up with no restart
-command of your own.
+Renewals are the same two `install` commands; the watcher picks them up with no
+restart command of your own.
+
+`--mail-tls-mode operator` writes `COGETO_MAIL_TLS_MODE=operator` into the
+instance `.env` and blanks `COGETO_MAIL_TLS_SITE`, and **that recorded mode is
+what makes the override survive**. Blanking the site alone is not enough and
+used to be the whole instruction here: every convergence path in the operator
+script (`upgrade`, `features enable mail`, `features disable mail`,
+`configure --domain`) set the site back from the domain, so the next upgrade
+silently returned the instance to automatic, and once `mail.<domain>` resolved
+the edge ordered a certificate and the sidecar overwrote `cert.pem` and
+`key.pem`. With the mode recorded:
+
+- **Every one of those paths leaves the configuration alone**, and says so when
+  it runs. Nothing orders a certificate for the mail hostname, and
+  `mail-tls-sync` idles instead of copying, so your material is never
+  overwritten. The sidecar honours the mode itself, not only the empty site.
+- `cogeto configure` with no arguments prints which mode the instance is in, and
+  `cogeto status` says the certificate is operator-supplied and that **nothing
+  renews it for you**.
+- **Going back is deliberate, never a side effect**: `sudo cogeto configure
+  --mail-tls-mode automatic` asks you to type a confirmation, because from that
+  moment the edge orders its own certificate for `mail.<domain>` and the sidecar
+  overwrites the two files in the volume with it.
 
 ### Firewall
 
