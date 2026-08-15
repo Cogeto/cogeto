@@ -567,6 +567,71 @@ require_supported_version() {
   say "release v${rsv_v} is published and supported"
 }
 
+# Which Cogeto image tags on this host are safe to delete, given the two
+# versions worth keeping. Pure and unit-tested: reads "repo:tag" lines on stdin
+# and prints the ones to remove.
+#
+# The rule, and why it is this one:
+#
+#   • ONLY cogeto/cogeto[-edge|-mail|-redaction]. The infra images (postgres,
+#     qdrant, minio, zitadel, searxng) are digest-pinned upstream images shared
+#     with nothing else on this box; deleting them buys a few hundred megabytes
+#     and costs a re-pull of things that are not ours, against a Docker Hub
+#     rate limit. Never worth it.
+#   • KEEP THE PREVIOUS VERSION, not just the current one. `cogeto upgrade
+#     <older>` is the documented rollback, and it is only instant, and only
+#     possible at all with a dead or rate-limiting registry, while the previous
+#     images are still on disk. One release back is the whole point; two is
+#     hoarding, since a release is ~1 GB across the four images.
+#   • Anything else Cogeto-published goes, including `latest` (this instance
+#     always runs an explicit version, so a floating tag here is a leftover).
+prunable_image_tags() {  # prunable_image_tags KEEP_CURRENT KEEP_PREVIOUS  < refs
+  pit_keep_a="$1"; pit_keep_b="$2"
+  while IFS= read -r pit_ref; do
+    [ -n "$pit_ref" ] || continue
+    case "$pit_ref" in
+      cogeto/cogeto:* | cogeto/cogeto-edge:* | cogeto/cogeto-mail:* | cogeto/cogeto-redaction:*) : ;;
+      *) continue ;;
+    esac
+    pit_tag="${pit_ref##*:}"
+    if [ "$pit_tag" = "$pit_keep_a" ] || [ "$pit_tag" = "$pit_keep_b" ]; then
+      continue
+    fi
+    printf '%s\n' "$pit_ref"
+  done
+}
+
+# Delete them. Deliberately NOT forced: `docker rmi` refuses an image any
+# container still references, running or stopped, and that refusal is a feature
+# here — the one thing this must never do is pull the floor out from under a
+# container. A refusal is reported, not worked around, and never fails the run:
+# an upgrade that succeeded must not end in an error because a cleanup could
+# not delete something.
+prune_old_images() {  # prune_old_images KEEP_CURRENT KEEP_PREVIOUS
+  command -v docker >/dev/null 2>&1 || return 0
+  poi_refs="$(docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null \
+    | prunable_image_tags "$1" "$2" | sort -u)"
+  if [ -z "$poi_refs" ]; then
+    say "image cleanup: nothing to remove (keeping v${1} and v${2})"
+    return 0
+  fi
+  say "image cleanup: keeping v${1} (current) and v${2} (rollback target); removing $(printf '%s\n' "$poi_refs" | wc -l | tr -d ' ') older Cogeto image(s). Infra images are digest-pinned and are never touched."
+  for poi_ref in $poi_refs; do
+    # The dry run must say "would", not "removed": `run` swallows its own
+    # announcement here because the rmi output is discarded, so the report is
+    # written explicitly rather than inferred from an exit code that is 0 in
+    # check mode by construction.
+    if [ "$CHECK" -eq 1 ]; then
+      say "  [dry-run] would remove ${poi_ref}"
+    elif docker rmi "$poi_ref" >/dev/null 2>&1; then
+      say "  removed ${poi_ref}"
+    else
+      say "  kept ${poi_ref} (still referenced by a container)"
+    fi
+  done
+  [ "$CHECK" -eq 1 ] || say "disk now: $(docker system df --format '{{.Type}} {{.Size}}' 2>/dev/null | tr '\n' ' ' || echo 'see docker system df')"
+}
+
 # The images THIS instance runs: the three always-present ones, plus the
 # redaction sidecar when the capability is on. One list, so pull, verify and
 # the printed verify commands can never disagree about what is installed.
@@ -659,9 +724,16 @@ verify_images() {
   if command -v cosign >/dev/null 2>&1; then
     say "cosign found — verifying image signatures"
     for img in $vi_images; do
-      run cosign verify "${img}:${version}" \
+      # Named, not silent: a bare `set -e` abort here reads to an operator as
+      # "the pull failed", which sends them to the network instead of to the
+      # signature. Keyless verification also reaches Sigstore over the network,
+      # so a transient failure is not the same thing as a bad signature and the
+      # message must not pretend to know which it was.
+      if ! run cosign verify "${img}:${version}" \
         --certificate-identity-regexp "^https://github.com/${GITHUB_REPO}/\\.github/workflows/release\\.yml@refs/tags/" \
-        --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' >/dev/null
+        --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' >/dev/null; then
+        die "SIGNATURE VERIFICATION FAILED for ${img}:${version} — refusing to start it, and nothing was changed. Either that image is not signed by this project's release workflow (do NOT work around this: it is exactly what the check exists to catch), or cosign could not reach Sigstore's transparency log. Re-run the command above by hand to see which: cosign verify ${img}:${version} --certificate-identity-regexp '^https://github.com/${GITHUB_REPO}/\\.github/workflows/release\\.yml@refs/tags/' --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'"
+      fi
     done
     [ "$CHECK" -eq 1 ] || say "all ${vi_count} image signatures verified"
   elif [ "$CHECK" -eq 1 ]; then
@@ -1139,6 +1211,29 @@ require_installed() {
   [ -f "$ENV_FILE" ] || die "no instance found at ${COGETO_ROOT} (missing .env) — run 'cogeto install' first, or pass --root"
 }
 
+# The version the app container is ACTUALLY running, or empty when no app
+# container exists (a stack that never came up, or one that is stopped).
+#
+# WHY THIS EXISTS. `upgrade` used to take "which version is this instance on?"
+# from COGETO_VERSION in .env, which the same function wrote BEFORE pulling
+# anything. So an upgrade that failed at the pull left a file claiming the new
+# version while the old containers kept serving, and the next run compared the
+# target against that claim and refused: "already on vX, nothing to do". A
+# failed upgrade was indistinguishable from a finished one AND it closed its own
+# retry path. Observed on a customer instance at v1.7.3.
+#
+# `cogeto status` already reads the running image and reports the mismatch
+# honestly; this is that same reading, used by the code that has to decide.
+running_app_version() {
+  riv_cid="$(compose ps -q app 2>/dev/null | head -n 1)"
+  [ -n "$riv_cid" ] || return 0
+  riv_image="$(docker inspect -f '{{.Config.Image}}' "$riv_cid" 2>/dev/null || true)"
+  case "$riv_image" in
+    "${IMAGE}:"*) printf '%s' "${riv_image#"${IMAGE}":}" ;;
+    *) : ;;
+  esac
+}
+
 cmd_upgrade() {
   target="${1:-latest}"
   require_root
@@ -1147,8 +1242,12 @@ cmd_upgrade() {
   # copy of this script and ran `upgrade` must still end up with a working
   # `sudo cogeto <cmd>` — install-time-only self-install proved insufficient.
   install_self
-  current="$(env_get COGETO_VERSION)"
-  [ -n "$current" ] || die "COGETO_VERSION missing from ${ENV_FILE} — the instance is misconfigured"
+  configured="$(env_get COGETO_VERSION)"
+  [ -n "$configured" ] || die "COGETO_VERSION missing from ${ENV_FILE} — the instance is misconfigured"
+  # What is RUNNING outranks what is recorded, always. They differ exactly when
+  # a previous upgrade did not finish, which is the case that must be resumable.
+  running="$(running_app_version)"
+  current="${running:-$configured}"
 
   target_label="explicitly requested"
   if [ "$target" = "latest" ]; then
@@ -1160,10 +1259,31 @@ cmd_upgrade() {
   semver_valid "$target" || die "target version must be X.Y.Z or 'latest' (got '${target}')"
   require_supported_version "$target"
 
+  if [ -n "$running" ] && [ "$running" != "$configured" ]; then
+    warn "this instance is INCONSISTENT: ${ENV_FILE} records v${configured}, but the app container is running v${running}. That is what a previous upgrade looks like when it stopped partway (a failed image pull or signature check). Going by what is RUNNING."
+  fi
   say "upgrade: current v${current} → target v${target} (${target_label})"
+
+  # The only "nothing to do": the containers already run the target. A .env that
+  # merely CLAIMS the target is not evidence, and treating it as evidence is
+  # what made a half-finished upgrade unrepeatable.
+  if [ "$running" = "$target" ]; then
+    say "already on v${target} — the app container is running ${IMAGE}:${target}, nothing to do (re-run 'cogeto status' to verify health)"
+    if [ "$configured" != "$target" ]; then
+      env_set COGETO_VERSION "$target"
+      say "corrected ${ENV_FILE}: it recorded v${configured} while v${target} was running"
+    fi
+    print_checklist
+    return 0
+  fi
+
   cmp="$(version_cmp "$target" "$current")"
-  if [ "$cmp" = "0" ]; then
-    say "already on v${current} — nothing to do (re-run 'cogeto status' to verify health)"
+  if [ -z "$running" ] && [ "$cmp" = "0" ]; then
+    # No app container at all, so there is nothing to compare against and the
+    # recorded version is all there is. Say what is missing rather than
+    # reporting a healthy no-op: an instance with no app container is not fine.
+    say "the recorded version is already v${target}, and no app container is running, so there is nothing to compare it against."
+    warn "NOTHING IS RUNNING. If a previous upgrade or install stopped partway, bring the stack up with: cd ${COGETO_ROOT} && sudo docker compose up -d — then 'sudo cogeto status'."
     print_checklist
     return 0
   fi
@@ -1180,6 +1300,10 @@ cmd_upgrade() {
   if [ "$cmp" = "-1" ]; then
     warn "v${target} is OLDER than the running v${current} — this is a ROLLBACK. Database migrations are forward-only: rolling back the image does NOT roll back the schema. Roll back data by restoring the OVHcloud backup (see the runbook)."
     confirm_typed "ROLLBACK to ${target}" "rolling the image back while keeping the newer schema can break the instance."
+  elif [ "$cmp" = "0" ]; then
+    # Reached only as a RESUME: the recorded version already says the target,
+    # and the running one does not.
+    confirm_typed "resume upgrade to ${target}" "this finishes an upgrade that did not complete: it pulls ${IMAGE}[-edge|-mail]:${target} again, re-runs the migration job, and restarts app and worker (short downtime)."
   else
     confirm_typed "upgrade to ${target}" "this pulls ${IMAGE}[-edge|-mail]:${target}, re-runs the migration job, and restarts app and worker (short downtime)."
   fi
@@ -1191,7 +1315,15 @@ cmd_upgrade() {
 
   # Deployment files are versioned with the images — fetch the matching set.
   fetch_deploy_assets "$target"
-  env_set COGETO_VERSION "$target"
+  # The compose file interpolates ${COGETO_VERSION}, so the pull and the up
+  # below need the target — but it is EXPORTED for those child processes, not
+  # written into .env. A shell value beats the .env file in compose's own
+  # precedence, so the two commands see the target while the recorded version
+  # keeps telling the truth until the containers actually run it. It is written
+  # to .env after `compose up` succeeds, and not before: a version recorded ahead
+  # of the work it describes is the defect this whole ordering exists to remove.
+  COGETO_VERSION="$target"
+  export COGETO_VERSION
   # New-in-this-release secrets the fetched compose requires (idempotent).
   ensure_wave3_secrets
   # SEC-14: keep an instance that was already receiving email receiving it.
@@ -1203,11 +1335,23 @@ cmd_upgrade() {
   sync_mail_tls_site
 
   say "pulling v${target} images (never building)"
-  run compose pull --quiet
+  # Every failure below says WHAT failed and that nothing changed. Before this,
+  # `set -e` killed the run with no message of its own, leaving an operator with
+  # a dead terminal, no stated cause, and (until the ordering above) a .env that
+  # lied about the version.
+  if ! run compose pull --quiet; then
+    die "PULLING THE v${target} IMAGES FAILED — the instance was NOT changed and is still running v${current}. Common causes, in order: a Docker Hub pull-rate limit on anonymous pulls (fix: 'sudo docker login' on this host, then re-run — authenticated pulls get a far higher allowance), a network or DNS problem, or an image that is not published yet if you tagged the release moments ago. Diagnose with: sudo docker pull ${IMAGE}:${target}. Then re-run 'sudo cogeto upgrade ${target}' — it resumes."
+  fi
   verify_images "$target"
 
   say "applying: init jobs re-run (preflight → migrate) and changed services restart"
-  run compose up -d --remove-orphans
+  if ! run compose up -d --remove-orphans; then
+    die "STARTING THE v${target} STACK FAILED — the images are pulled and verified, but compose could not bring the services up. The recorded version is still v${configured}; inspect with: cd ${COGETO_ROOT} && sudo docker compose ps && sudo docker compose logs --tail 100 app. Re-running 'sudo cogeto upgrade ${target}' resumes from here."
+  fi
+  # From here the containers ARE the target, so this is the first moment the
+  # instance is honestly on it. Recorded before the health wait deliberately:
+  # health can lag or fail, and the version would still be the running one.
+  env_set COGETO_VERSION "$target"
   wait_healthy || true
 
   if [ "$CHECK" -eq 0 ]; then
@@ -1216,7 +1360,13 @@ cmd_upgrade() {
     check_embedding_model
   fi
 
-  say "rollback, if this upgrade misbehaves: 'cogeto upgrade ${current}' (typed ROLLBACK confirmation; schema stays at v${target} — full data rollback is the rehearsed OVHcloud-backup restore)"
+  # Disk hygiene, last, and only after the new version is actually up: every
+  # release is roughly a gigabyte across the four images, and an instance that
+  # never cleans up accumulates every version it has ever run. The version we
+  # came FROM is kept, because it is the rollback named on the next line.
+  prune_old_images "$target" "$current"
+
+  say "rollback, if this upgrade misbehaves: 'cogeto upgrade ${current}' (typed ROLLBACK confirmation; the v${current} images are still on this host, so it needs no network; schema stays at v${target} — full data rollback is the rehearsed OVHcloud-backup restore)"
   todo_dns "Log in at https://$(env_get COGETO_EXTERNAL_DOMAIN) and confirm the release works (version shows v${target} in the nav footer)"
   todo_now "Run 'sudo cogeto status' and confirm everything is green"
   print_checklist
