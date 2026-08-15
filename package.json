@@ -1,6 +1,6 @@
 {
   "name": "cogeto",
-  "version": "1.7.2",
+  "version": "1.7.3",
   "private": true,
   "description": "Verified institutional memory for your documents: verification before storage, contradiction findings, a signed findings report",
   "license": "AGPL-3.0-only",
