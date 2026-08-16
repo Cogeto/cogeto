@@ -76,16 +76,20 @@ updates:
   # ── Container images (audit 2.0 SEC-5) ──────────────────────────────────────
   # Every base image and every compose service image is pinned BY DIGEST, which
   # makes builds reproducible but also means a pin never moves on its own: the
-  # Zitadel pin sat on v2.65.1 (Nov 2024) with no mechanism to notice. Dependabot
-  # updates the digest in place and refreshes the trailing `# image:tag` comment
-  # — pinning is preserved, nothing starts floating.
+  # Zitadel pin sat on v2.65.1 (Nov 2024) with no mechanism to notice.
   #
-  # One multi-directory entry per ecosystem (2026-08 triage): a per-directory
+  # Shaped by the 2026-08 triage. Multi-directory entries: a per-directory
   # split meant a node bump arrived as four PRs that could never pass the
-  # dev/deploy digest-parity test individually. `directories` makes one PR
-  # cover every file the same image is pinned in. The pins carry their tag in
-  # the reference (`node:22-alpine@sha256:…`) so Dependabot proposes new
-  # digests of the INTENDED tag, never of `latest`.
+  # dev/deploy digest-parity test individually. A `groups` block on each
+  # entry: without one, `directories` still opens one PR per directory. The
+  # pins carry their tag in the reference (`node:22-alpine@sha256:…`) so
+  # Dependabot proposes new digests of the INTENDED tag, never of `latest`,
+  # and the tag can never go stale beside its digest. Majors this project
+  # takes deliberately are ignored below so they stop resurfacing weekly:
+  # Node (22 is the runtime until a planned move), Python (the redaction
+  # hash lock is compiled for 3.12), Zitadel (EOL v2 must step through v3,
+  # a planned migration), Qdrant (server and npm client move in lockstep,
+  # manually).
   - package-ecosystem: docker
     directories:
       - /project/infra/docker
@@ -96,6 +100,15 @@ updates:
     labels:
       - chore
       - dependencies
+    groups:
+      base-images:
+        patterns:
+          - '*'
+    ignore:
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
+      - dependency-name: python
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
   # The dev compose contract at the repo root plus the pull-only customer
   # stack; the parity test requires their shared images to move together.
   # NOTE: a deploy-compose change still needs `deploy-assets.sha256`
@@ -107,6 +120,17 @@ updates:
       - /project/infra/deploy
     schedule:
       interval: weekly
+    groups:
+      compose-images:
+        patterns:
+          - '*'
+    ignore:
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
+      - dependency-name: zitadel/zitadel
+        update-types: ['version-update:semver-major']
+      - dependency-name: qdrant/qdrant
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
     labels:
       - chore
       - dependencies

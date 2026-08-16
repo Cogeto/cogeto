@@ -5,10 +5,9 @@
 # authenticated HTTP endpoint. It NEVER sends (outbound disabled). No dependency
 # on the TypeScript workspace.
 #
-# Base image PINNED BY DIGEST; the tag is kept in the comment. Update
+# Base image PINNED BY DIGEST; the tag is kept in the reference. Update
 # procedure: docs/operations/image-pins.md.
-# node:22-alpine
-FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32
 
 ENV NODE_ENV=production
 

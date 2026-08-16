@@ -2,15 +2,18 @@
 
 All container base images are pinned **by digest** and the redaction sidecar's
 spaCy NER model is pinned **by exact version**, so builds are reproducible and
-cannot silently drift under a floating tag. The
-human-readable tag is kept in a comment next to each digest.
+cannot silently drift under a floating tag. The human-readable tag lives **in
+the image reference itself** (`image:tag@sha256:...`, 2026-08 triage): it
+cannot be omitted, cannot go stale beside its digest, and is what Dependabot
+tracks when proposing updates, so a proposed digest is always a build of the
+intended tag and never of `latest`.
 
 ## Where the pins live
 
 | File | Pinned artifacts |
 |---|---|
 | `project/infra/docker/Dockerfile` | `node:22-alpine` (deps/build/runtime), `caddy:2-alpine` (edge + consoles) |
-| `docker-compose.yml` | `postgres:17-alpine`, `qdrant/qdrant:v1.18.3`, `minio/minio:RELEASE.2025-09-07T16-13-09Z`, `minio/mc:RELEASE.2025-08-13T08-35-41Z`, `busybox:stable`, `ghcr.io/zitadel/zitadel:v2.65.1`, `searxng/searxng`, `node:22-alpine` (zitadel-init) |
+| `docker-compose.yml` | `postgres:17-alpine`, `qdrant/qdrant:v1.19.0`, `minio/minio:RELEASE.2025-09-07T16-13-09Z`, `minio/mc:RELEASE.2025-08-13T08-35-41Z`, `busybox:stable`, `ghcr.io/zitadel/zitadel:v2.65.1`, `searxng/searxng` (dated build tag), `node:22-alpine` (zitadel-init) |
 | `project/infra/deploy/docker-compose.deploy.yml` | the same upstream images as the dev stack, at the same digests. Cogeto's own four images resolve by release tag (`cogeto/cogeto`, `-edge`, `-mail`, `-redaction` at `${COGETO_VERSION}`) |
 | `project/services/mail/Dockerfile` | `node:22-alpine` |
 | `project/services/redaction/Dockerfile` | `python:3.12-slim`, `en_core_web_lg-3.8.0` (spaCy model wheel) |
@@ -21,9 +24,9 @@ we ship stops pinning its base by digest, if the spaCy model reverts to an
 unpinned download, or if a digest is commented with a `:latest` tag that names
 no release (audit 2.0 SEC-22/SEC-35).
 
-Recording the real tag matters: a digest pinned against `# minio/minio:latest`
-is unauditable, because the running version cannot be recovered and so no
-advisory can be matched to it. Recover it from the digest itself:
+Recording the real tag matters: a digest pinned as `latest` is unauditable,
+because the running version cannot be recovered and so no advisory can be
+matched to it. If a tag must be recovered from a digest:
 
 ```sh
 docker run --rm --entrypoint sh <image>@<digest> -c 'minio --version'
@@ -39,8 +42,11 @@ docker run --rm --entrypoint sh <image>@<digest> -c 'minio --version'
  docker inspect --format '{{index .RepoDigests 0}}' <image>:<tag>
  ```
 
-2. Replace the `@sha256:…` in the relevant file, keeping the `# <image>:<tag>`
- comment in sync so the next reader knows which tag the digest represents.
+2. Replace the tag and the `@sha256:…` in the image reference together. The
+ `deployment-hardening` spec fails a pin whose reference lacks a real tag.
+ A compose change on one side must be mirrored in the other compose file
+ (digest parity is tested), and a deploy-compose change needs
+ `node scripts/ci/deploy-assets-manifest.mjs --write` in the same commit.
 
 3. Rebuild and run the suite + a `docker compose up` smoke:
 

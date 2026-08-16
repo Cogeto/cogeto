@@ -283,13 +283,16 @@ export class MemoryVectorStore {
 
   async search(vector: number[], filter: GateFilter, limit: number): Promise<VectorHit[]> {
     await this.sync();
-    const results = await this.client.search(this.collection, {
-      vector,
+    // Client 1.19 removed the deprecated `search` in favour of the universal
+    // query API; `query: <vector>` is a nearest-neighbour query, same
+    // semantics and the same gate filter as before.
+    const results = await this.client.query(this.collection, {
+      query: vector,
       limit,
       filter,
       with_payload: false,
     });
-    return results.map((r) => ({ id: String(r.id), score: r.score }));
+    return results.points.map((r) => ({ id: String(r.id), score: r.score }));
   }
 
   /** Existing vectors by memory id — the reindex reuse path. */

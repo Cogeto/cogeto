@@ -14,7 +14,7 @@
     "@nestjs/common": "^11.1.29",
     "@nestjs/core": "^11.1.29",
     "@nestjs/platform-express": "^11.1.29",
-    "@qdrant/js-client-rest": "1.18.0",
+    "@qdrant/js-client-rest": "1.19.0",
     "chrono-node": "^2.10.1",
     "csv-parse": "^7.0.2",
     "dompurify": "^3.4.13",

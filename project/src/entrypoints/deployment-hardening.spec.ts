@@ -95,10 +95,12 @@ describe('deployment hardening', () => {
   it('every digest pin records the real tag it resolves to (SEC-35, tightened by issue #568)', () => {
     // A digest is unauditable on its own: without the tag it resolves to, the
     // running version cannot be recovered, so no advisory can be matched to
-    // it. This check used to reject exactly one bad shape — a
-    // `# something:latest` comment, which names no release — and let the WORSE
-    // case through: no comment at all. The SearXNG pin had none in either
-    // compose file and passed CI for its whole life. Both now fail.
+    // it. The tag used to live in a comment above the pin, which had two
+    // failure modes this check has already caught in the wild: no comment at
+    // all (the SearXNG pin, issue #568), and a comment that silently went
+    // stale when the digest moved (the 2026-08 Dependabot wave). The tag now
+    // lives IN the reference (`image:tag@sha256:…`), so it cannot be omitted,
+    // cannot drift separately from the digest, and is what Dependabot tracks.
     // Both composes plus EVERY Dockerfile in the repository, DISCOVERED rather
     // than listed (issue #592): a hardcoded list covers the files that existed
     // when it was written, and the finding this check exists for was an image
@@ -112,18 +114,10 @@ describe('deployment hardening', () => {
     // find fewer than the files this repository is known to have.
     expect(pinFiles.length).toBeGreaterThanOrEqual(5);
 
-    for (const [name, text] of pinFiles) {
-      const floating = text
-        .split('\n')
-        .filter((l) => l.trim().startsWith('#') && /\b[\w./-]+:latest\b/.test(l));
-      expect(floating, `${name} pins a digest against a :latest comment`).toEqual([]);
-    }
-
-    // A `name:tag` token in the contiguous comment block directly above the
-    // pin. Every digest in this repository is introduced by such a block, so
-    // that is both where the tag belongs and where a reader looks. `:latest`
-    // is already rejected above, so any token found here names a real release.
-    const TAG_TOKEN = /(?:^|\s)[\w][\w./-]*:[\w][\w.+-]*(?:\s|$)/;
+    // `name:tag@sha256:<digest>` with a real tag: `latest` names no release,
+    // so it is not a recorded tag, and a bare `name@sha256:` hides the
+    // version entirely.
+    const TAGGED_PIN = /^[\w][\w./-]*:[\w][\w.+-]*@sha256:[0-9a-f]{64}$/;
     for (const [name, text] of pinFiles) {
       const lines = text.split('\n');
       let checked = 0;
@@ -134,19 +128,14 @@ describe('deployment hardening', () => {
           (trimmed.startsWith('image:') || trimmed.startsWith('FROM '));
         if (!isPin) continue;
         checked += 1;
-        let tagged = false;
-        for (let above = index - 1; above >= 0; above -= 1) {
-          const candidate = lines[above]!.trim();
-          if (!candidate.startsWith('#')) break;
-          if (TAG_TOKEN.test(candidate.replace(/^#+/, ''))) {
-            tagged = true;
-            break;
-          }
-        }
+        const ref = trimmed
+          .replace(/^image:\s*/, '')
+          .replace(/^FROM\s+/, '')
+          .replace(/\s+AS\s+.*$/i, '');
         expect(
-          tagged,
-          `${name}:${index + 1} pins a digest with no recorded tag comment above it: ${trimmed}. ` +
-            `Add a '# <image>:<tag>' line naming the release the digest resolves to ` +
+          TAGGED_PIN.test(ref) && !/:latest@/.test(ref),
+          `${name}:${index + 1} pins a digest without the tag in the reference: ${trimmed}. ` +
+            `Pin as '<image>:<tag>@sha256:<digest>' naming the release the digest resolves to ` +
             `(docs/operations/image-pins.md).`,
         ).toBe(true);
       }

@@ -31,7 +31,7 @@
 #     production Caddyfile (./Caddyfile) is mounted over the baked-in dev one.
 #
 # Infra images stay PINNED BY DIGEST, same digests as the dev stack;
-# the human-readable tag is kept in a comment (docs/operations/image-pins.md).
+# the human-readable tag is kept in the reference (docs/operations/image-pins.md).
 
 name: cogeto
 
@@ -501,8 +501,8 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
-    # postgres:17-alpine (same digest as the postgres service — used for psql)
-    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    # same digest as the postgres service, used for psql
+    image: postgres:17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73
     environment:
       PGHOST: postgres
       PGUSER: postgres
@@ -548,7 +548,6 @@ services:
     cap_add:
       - CHOWN
     read_only: true
-    # busybox:stable
     image: busybox:stable@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
     command: ['chown', '-R', '1000:1000', '/instance-keys', '/instance-pubkey']
     volumes:
@@ -581,11 +580,6 @@ services:
     tmpfs:
       - /tmp:size=64m,mode=1777
       - /root:size=16m,mode=0700
-    # minio/mc:RELEASE.2025-08-13T08-35-41Z
-    # (SEC-35: the comment used to read `latest`, which names no release, so no
-    # advisory could ever be matched to what actually runs. Resolved from the
-    # pinned digest itself with `docker run --rm --entrypoint sh <digest> -c
-    # 'mc --version'`. The digest is unchanged: this is a label, not a bump.)
     image: minio/mc:RELEASE.2025-08-13T08-35-41Z@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
     environment:
       COGETO_S3_ACCESS_KEY: ${COGETO_S3_ACCESS_KEY:-cogeto-app}
@@ -637,7 +631,6 @@ services:
     cap_add:
       - CHOWN
     read_only: true
-    # busybox:stable (pinned by digest —)
     image: busybox:stable@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
     command: ['chown', '-R', '1000:1000', '/machinekey']
     volumes:
@@ -665,8 +658,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
-    # node:22-alpine (pinned by digest —)
-    image: node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
+    image: node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32
     command: ['node', '/init/init.mjs']
     environment:
       ZITADEL_INTERNAL_URL: http://zitadel:8080
@@ -704,7 +696,7 @@ services:
     restart: 'no'
 
   # ── Infrastructure ──────────────────────────────────────────────────────────
-  # All infra images are PINNED BY DIGEST; the tag is kept in a comment.
+  # All infra images are PINNED BY DIGEST; the tag is kept in the reference.
   postgres:
     # Resource ceiling (audit 2.0 SEC-17) — see the note above `services:`.
     mem_limit: 2g
@@ -727,8 +719,7 @@ services:
       - FOWNER
       - SETGID
       - SETUID
-    # postgres:17-alpine
-    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    image: postgres:17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73
     environment:
       POSTGRES_DB: cogeto
       POSTGRES_USER: postgres
@@ -759,8 +750,7 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    # qdrant/qdrant:v1.18.3
-    image: qdrant/qdrant:v1.18.3@sha256:0bd98fa7977f1e75694779359ca4e212822e5a71334e28421182f72f209d5286
+    image: qdrant/qdrant:v1.19.0@sha256:057ee3a8da769fe7310dd3537b4dc7583bf87a95ce8ac43c0af5a46bc580d1fc
     # API-key auth is ALWAYS ON in the deploy stack — the app/worker
     # clients send COGETO_QDRANT_API_KEY automatically.
     environment:
@@ -789,10 +779,6 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
-    # minio/minio:RELEASE.2025-09-07T16-13-09Z
-    # (SEC-35: was `latest`, which names no release. Resolved from the pinned
-    # digest with `docker run --rm --entrypoint sh <digest> -c 'minio --version'`.
-    # The digest is unchanged: this is a label, not a bump.)
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
     # No console vhost is exposed on a customer instance (the consoles profile
     # is dev-only); the console listener stays internal.
@@ -829,7 +815,6 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
-    # ghcr.io/zitadel/zitadel:v2.65.1 (pinned by digest —)
     image: ghcr.io/zitadel/zitadel:v2.65.1@sha256:013d23b69aa681f03d36a7fd61e4837a7b049a7e22bd7215eb3e98e9dbf5543c
     #: masterkey via env, never on the command line.
     command: 'start-from-init --masterkeyFromEnv --tlsMode external'
@@ -916,12 +901,7 @@ services:
       - SETGID
       - SETUID
     profiles: ['research']
-    # searxng/searxng:2026.7.19-6da6eee26
-    # (SEC-35 / issue #568: this digest carried NO tag comment at all, so the
-    # running version could not be recovered and no advisory could be matched
-    # to it. Resolved from the digest itself via the Docker Hub tag API. The
-    # digest is unchanged: this is a label, not a bump.)
-    image: searxng/searxng:2026.7.19-6da6eee26@sha256:b8ca38ba06eea544d7555e88321e212ddc0d5c3c7de055419cfb2e5c6bf30812
+    image: searxng/searxng:2026.8.14-094c33d40@sha256:892cf809341915a4b7710d3c9045005b4c377d51335a089b6d4da0b28750788d
     environment:
       SEARXNG_BASE_URL: http://searxng:8080/
       # NOT the `${VAR:?}` form: compose interpolates the whole file before

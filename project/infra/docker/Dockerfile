@@ -2,13 +2,12 @@
 # Build context: the repo root. Targets: runtime (app/worker/migrate), caddy (edge + SPA).
 #
 # Base images are PINNED BY DIGEST so builds are reproducible and cannot
-# silently drift under a floating tag. The human-readable tag is kept in a
-# comment; to update, run `docker buildx imagetools inspect <image>:<tag>` and
+# silently drift under a floating tag. The tag lives in the image reference
+# itself; to update, run `docker buildx imagetools inspect <image>:<tag>` and
 # replace the digest (see docs/operations/image-pins.md).
 
 # ── Stage 1a: install all workspace dependencies ─────────────────────────────
-# node:22-alpine
-FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS deps
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS deps
 WORKDIR /repo
 COPY package.json package-lock.json ./
 COPY project/shared/package.json project/shared/package.json
@@ -27,8 +26,7 @@ COPY project/demo project/demo
 RUN npm run build
 
 # ── Stage 2: slim runtime — app, worker, and migrate run from this image ─────
-# node:22-alpine
-FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS runtime
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS runtime
 ENV NODE_ENV=production
 WORKDIR /repo
 # The reading ladder's local tiers (V2.1 item 4.1). Both are CPU-only and run
@@ -104,7 +102,6 @@ USER node
 CMD ["node", "project/src/dist/entrypoints/app.js"]
 
 # ── Edge: Caddy with the built SPA baked in ──────────────────────────────────
-# caddy:2-alpine
 FROM caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648 AS caddy
 COPY project/infra/docker/caddy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /repo/project/web/dist /srv
@@ -119,6 +116,5 @@ RUN chmod 0755 /usr/local/bin/cogeto-mail-tls-sync
 # ── Consoles edge (profile `consoles`): the infra dashboards (MinIO,
 # Qdrant) + the S3 presign origin, served ONLY here so they never answer on the
 # public 443 listener by Host header. Compose binds this to 127.0.0.1 only.
-# caddy:2-alpine
 FROM caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648 AS caddy-consoles
 COPY project/infra/docker/caddy/Caddyfile.consoles /etc/caddy/Caddyfile
