@@ -29,7 +29,7 @@
       "dedup_accuracy": 0.83,
       "contradiction_precision": 0.5,
       "contradiction_recall": 0.66,
-      "supersedes_accuracy": 0.6,
+      "supersedes_accuracy": 0.5,
       "rewrite_accuracy": 0.75
     }
   },

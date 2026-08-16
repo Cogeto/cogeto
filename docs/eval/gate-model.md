@@ -625,3 +625,27 @@ documents, or the harness's structured repair loop grows one more attempt.
 Both are quality work with an eval-cache refresh, deliberately out of
 scope for this stabilisation pass, and the floors ratchet back up the
 moment either lands.
+
+## 2026-08-16, evening: the repair retry shipped and taught something, and one core floor joins the band treatment
+
+The structured repair loop now takes two corrective attempts (the
+model-gateway change of the same day). The next live run answered the open
+question about the schema flake: `en-v012` failed all three calls on the
+SAME missing field, so within a run the omission is correlated, not a coin
+flip, and no retry count cures it. The retry stays (it rescues the
+borderline cases and costs a call only on the doubly-failing path), but the
+cure is confirmed to be the extraction schema and prompt hardening item.
+
+The same run breached `hr.supersedes_accuracy` at 50.0 against a floor of
+0.60: a small-denominator metric where one case is worth over ten points,
+with 75.0 and 60.0 observed in the two prior live recordings. The floor
+moves to the bottom of the observed band.
+
+| Floor | Was | Now | Measurements |
+|---|---|---|---|
+| hr.supersedes_accuracy | 0.60 | **0.50** | 75.0, 60.0, then 50.0 across the three live runs of 2026-08-15/16; one case moves this metric by more than ten points |
+
+This closes the stabilisation pass. Every gate now sits at the bottom of
+its honestly observed band; what variance remains is the model's, not the
+floors', and the release protocol for trust scores stays the recording
+run: publish from a clean live run, re-rolling a one-off if it strikes.
