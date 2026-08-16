@@ -13,7 +13,7 @@ intended tag and never of `latest`.
 | File | Pinned artifacts |
 |---|---|
 | `project/infra/docker/Dockerfile` | `node:24-alpine` (deps/build/runtime), `caddy:2-alpine` (edge + consoles) |
-| `docker-compose.yml` | `postgres:17-alpine`, `qdrant/qdrant:v1.19.0`, `minio/minio:RELEASE.2025-09-07T16-13-09Z`, `minio/mc:RELEASE.2025-08-13T08-35-41Z`, `busybox:stable`, `ghcr.io/zitadel/zitadel:v2.65.1`, `searxng/searxng` (dated build tag), `node:24-alpine` (zitadel-init) |
+| `docker-compose.yml` | `postgres:17-alpine`, `qdrant/qdrant:v1.19.0`, `minio/minio:RELEASE.2025-09-07T16-13-09Z`, `minio/mc:RELEASE.2025-08-13T08-35-41Z`, `busybox:stable`, `ghcr.io/zitadel/zitadel:v4.17.1`, `searxng/searxng` (dated build tag), `node:24-alpine` (zitadel-init) |
 | `project/infra/deploy/docker-compose.deploy.yml` | the same upstream images as the dev stack, at the same digests. Cogeto's own four images resolve by release tag (`cogeto/cogeto`, `-edge`, `-mail`, `-redaction` at `${COGETO_VERSION}`) |
 | `project/services/mail/Dockerfile` | `node:24-alpine` |
 | `project/services/redaction/Dockerfile` | `python:3.12-slim`, `en_core_web_lg-3.8.0` (spaCy model wheel) |

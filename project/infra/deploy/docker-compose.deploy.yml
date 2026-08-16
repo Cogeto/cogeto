@@ -815,7 +815,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
-    image: ghcr.io/zitadel/zitadel:v2.71.19@sha256:32834d46240c5ece9f86c5e5f706b167c2064fba76bbf9213e3494023c38ca5d
+    image: ghcr.io/zitadel/zitadel:v4.17.1@sha256:3ac6910685d48f32481f01f45e3e6215efe5a9df2c069591b481e9a101712db5
     #: masterkey via env, never on the command line.
     command: 'start-from-init --masterkeyFromEnv --tlsMode external'
     environment:
@@ -854,6 +854,12 @@ services:
       ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE: ${ZITADEL_BOOTSTRAP_PAT_EXPIRY:?}
       ZITADEL_FIRSTINSTANCE_PATPATH: /machinekey/pat.txt
       ZITADEL_DEFAULTINSTANCE_LABELPOLICY_DISABLEWATERMARK: 'true'
+      # Zitadel v4 defaults NEW instances to Login V2, a separate login
+      # container this stack does not run, so a fresh install would 404 at
+      # login. Pin new instances to the hosted V1 login (existing instances
+      # keep V1 across the upgrade regardless). Adopting Login V2 is its own
+      # deliberate piece of work.
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: 'false'
     volumes:
       - zitadel-machinekey:/machinekey
     healthcheck:
