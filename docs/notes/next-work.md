@@ -8,7 +8,22 @@ gates (`docs/eval/gate-model.md`, the four 2026-08-16 addenda). Master is green
 including the live model gates; what follows is the deliberate work that
 remains, in priority order.
 
-## 1. Zitadel staged migration: v2.71.19 to v3, then v4
+## 1. Zitadel staged migration: v2.71.19 to v3, then v4 (DONE 2026-08-16)
+
+Executed as planned on the `chore/zitadel-v3-v4` branch, two commits, one per
+stage (v3.4.15, then v4.17.1). Each stage was rehearsed first on a throwaway
+stack restored from a fresh dump of the real zitadel database, backed up
+before the real run (`~/coding_projects/zitadel-pre-v3.dump` and
+`zitadel-pre-v4.dump`; setup migrations are forward-only, the backup is the
+rollback), and verified end to end: setup migrations clean, OIDC discovery
+through the edge, a real login with roles resolving, app and worker healthy
+after restart. v3.4.15 activated OIDC web keys (advisory A-10017), which v4
+requires. One finding the rehearsal caught: v4 defaults NEW instances to
+Login V2, a separate container this stack does not run, so a fresh install
+would 404 at login; both composes now pin new instances to the hosted V1
+login via `ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: 'false'`.
+Existing users see no login-surface change. Adopting Login V2 is deliberate
+future work. The original constraints, kept for the record:
 
 The identity provider is on the final v2 release. v2 is EOL; v3 and v4 are the
 supported lines. Majors are not skippable: v2.71.19 to latest v3, verify, then
