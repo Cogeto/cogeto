@@ -89,7 +89,7 @@ describe('model-gateway seam — tier selection + structured validation', () => 
     expect(models).toEqual(['ANS', 'PIPE', 'PIPE', 'ANS']);
   });
 
-  it('rejects malformed structured output as fatal after one corrective retry', async () => {
+  it('rejects malformed structured output as fatal after two corrective retries', async () => {
     const g = new MistralModelGateway({ apiKey: 'k' });
     const spy = vi
       .spyOn(clientOf(g).chat, 'complete')
@@ -97,7 +97,7 @@ describe('model-gateway seam — tier selection + structured validation', () => 
     await expect(
       g.extractStructured(z.object({ needed: z.string() }), { system: 's', input: 'x' }),
     ).rejects.toMatchObject({ retryable: false });
-    expect(spy).toHaveBeenCalledTimes(2); // one corrective retry, then fatal
+    expect(spy).toHaveBeenCalledTimes(3); // two corrective retries, then fatal
   });
 
   it('rejects non-JSON output as fatal, no retry', async () => {

@@ -105,12 +105,12 @@ describe('adapter_contract_openai', () => {
     );
   });
 
-  it('twice-invalid output is a fatal typed failure', async () => {
+  it('persistently invalid output is a fatal typed failure after two repairs', async () => {
     const { calls } = stubFetch(openaiChat('{"wrong":1}'));
     await expect(
       gateway().extractStructured(z.object({ needed: z.string() }), { system: 's', input: 'x' }),
     ).rejects.toMatchObject({ retryable: false });
-    expect(calls).toHaveLength(2); // one corrective retry, then fatal
+    expect(calls).toHaveLength(3); // two corrective retries, then fatal
   });
 
   it('non-JSON output is fatal with no retry', async () => {
@@ -259,7 +259,7 @@ describe('ollama_adapter_contract — the local flavor of the OpenAI-compatible 
     expect(calls[0]!.body.model).toBe('gemma3:12b');
   });
 
-  it('structured output follows the one contract: JSON mode, repaired once, then fatal', async () => {
+  it('structured output follows the one contract: JSON mode, repaired on retry', async () => {
     const { calls } = stubFetch(openaiChat('{"wrong":1}'), openaiChat('{"needed":"da"}'));
     const out = await gateway().extractStructured(z.object({ needed: z.string() }), {
       system: 's',
@@ -374,12 +374,12 @@ describe('adapter_contract_anthropic', () => {
     expect(String(calls[0]!.body.system)).toMatch(/single valid JSON object only/);
   });
 
-  it('malformed output is repaired once, then fatal', async () => {
+  it('malformed output is repaired twice, then fatal', async () => {
     const { calls } = stubFetch(anthropicMessage('{"wrong":1}'));
     await expect(
       gateway().extractStructured(z.object({ needed: z.string() }), { system: 's', input: 'x' }),
     ).rejects.toMatchObject({ retryable: false });
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(3);
   });
 
   it('classifies a provider 4xx as fatal, no retry', async () => {

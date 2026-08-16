@@ -220,9 +220,14 @@ export function stripJsonFence(text: string): string {
 /**
  * The ONE structured-output contract: parse the
  * adapter's JSON text, validate against the Zod schema, and on a schema
- * violation retry EXACTLY once with the validation issues appended. Non-JSON
- * output and a second schema failure are fatal typed errors; provider errors
- * keep their callWithRetry classification.
+ * violation retry with the validation issues appended, up to two repair
+ * attempts (three calls total). Two repairs, not one, because a
+ * temperature-0 model still varies run to run and a single repair left an
+ * intermittent one-field omission (`source_span`, `hedged` on long
+ * documents) failing whole extraction cases (live eval, 2026-08-16); the
+ * extra attempt costs one model call only on the doubly-failing path.
+ * Non-JSON output and exhausting the repairs are fatal typed errors;
+ * provider errors keep their callWithRetry classification.
  */
 export async function structuredWithRepair<T>(
   schema: ZodType<T, unknown>,
@@ -238,28 +243,29 @@ export async function structuredWithRepair<T>(
     return schema.parse(parsed);
   };
 
-  try {
-    return parseAndValidate(await attempt());
-  } catch (error) {
-    if (error instanceof ZodError) {
-      const issues = error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
-      try {
-        return parseAndValidate(
-          await attempt(
-            `The previous JSON answer failed validation (${issues}). Answer again with JSON matching the required shape exactly.`,
-          ),
+  const REPAIRS = 2;
+  let issues = '';
+  for (let call = 0; call <= REPAIRS; call += 1) {
+    try {
+      return parseAndValidate(
+        call === 0
+          ? await attempt()
+          : await attempt(
+              `The previous JSON answer failed validation (${issues}). Answer again with JSON matching the required shape exactly.`,
+            ),
+      );
+    } catch (error) {
+      if (!(error instanceof ZodError)) throw error;
+      issues = error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
+      if (call === REPAIRS) {
+        throw new ModelGatewayError(
+          `structured output failed schema validation ${REPAIRS + 1} times: ${issues}`,
+          false,
+          error,
         );
-      } catch (secondError) {
-        if (secondError instanceof ZodError) {
-          throw new ModelGatewayError(
-            `structured output failed schema validation twice: ${issues}`,
-            false,
-            secondError,
-          );
-        }
-        throw secondError;
       }
     }
-    throw error;
   }
+  /* istanbul ignore next -- the loop always returns or throws */
+  throw new ModelGatewayError('structured repair loop exited impossibly', false);
 }
