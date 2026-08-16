@@ -34,6 +34,9 @@ export const NAMESPACES = [
   'settings',
   /** The operator System page: health, jobs, dead letters. */
   'system',
+  /** The operator Users page (issue #638): the directory, its honest limits,
+   * and erasing a departed person's private material. */
+  'users',
   /** Providers and model assignment (V2.4 item 7.1), plus the one model
    * choice a user makes for themselves. */
   'providers',

@@ -1,7 +1,12 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { SOURCE_TYPES } from '@cogeto/shared';
 import type { MemoryScope, Principal } from '@cogeto/shared';
-import { DRIZZLE, withTransactionalEnqueue, writeAudit } from '../infrastructure/index';
+import {
+  DRIZZLE,
+  readAuditEntries,
+  withTransactionalEnqueue,
+  writeAudit,
+} from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { DeletionSaga, SOURCE_DELETIONS } from './deletion-saga';
 import type { RetentionReason, SourceDeletion } from './deletion-saga';
@@ -284,6 +289,44 @@ export class OwnerErasureService {
       });
     });
     return plan;
+  }
+
+  /**
+   * The counts of the most recent completed run for a subject, read back off
+   * the `user.erased` audit entry the pass writes (issue #638).
+   *
+   * Read from the TRAIL rather than recounted, deliberately. A second count
+   * taken now would answer a different question ("what is left") and would
+   * drift from the record the moment anything else changed; the entry is what
+   * the erasure actually did, and it is what an administrator would be shown
+   * if they went looking in Audit. Null while no run has completed, which the
+   * caller renders as still running.
+   */
+  async lastRun(subjectUserId: string): Promise<{
+    erased: number;
+    receipts: number;
+    kept: number;
+    keptForSharedFact: number;
+    failed: number;
+  } | null> {
+    // Through infrastructure's public reader: `audit_log` is infrastructure's
+    // table and a domain module never queries it directly (spec §15 rule 2).
+    const rows = await readAuditEntries(this.db, {
+      actions: ['user.erased'],
+      entityType: 'user',
+      entityIds: [subjectUserId],
+      limit: 1,
+    });
+    const detail = rows[0]?.detail as Record<string, unknown> | undefined;
+    if (!detail) return null;
+    const n = (key: string): number => (typeof detail[key] === 'number' ? detail[key] : 0);
+    return {
+      erased: n('erased'),
+      receipts: n('receipts'),
+      kept: n('retained'),
+      keptForSharedFact: n('retainedSharedFact'),
+      failed: n('failed'),
+    };
   }
 
   /**

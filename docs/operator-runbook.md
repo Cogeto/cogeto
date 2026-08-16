@@ -475,52 +475,64 @@ deletion receipt per source; **shared material always stays**.
 
 **Before you start**
 
-- [ ] You have the departed user's **user id**, not their email. It is the
- Zitadel subject id, and it is what `actor` shows as `user:<id>` throughout
- the audit trail. The Console shows it on the user's page.
-- [ ] You hold the **admin** role. This is administrative only.
+- [ ] You hold the **admin** role. This is administrative only, and the section
+ is hidden from everyone else.
 - [ ] You have their **replacement's** agreement on what may go, if any of the
  material is work the team still needs. Anything shared is kept for you;
  anything private is not recoverable afterwards.
 - [ ] You are on a **backed-up** instance with a rehearsed restore (§5). This
  is irreversible.
 
-**Step 1: see what would happen.** Read-only, safe to repeat.
+**Do it from the interface: Users.**
 
-```sh
-curl -sS https://<domain>/api/admin/erasure/<user-id> \
- -H "Authorization: Bearer $TOKEN" | jq
-```
+Sign in as an administrator and open **Users** in the left rail. The page lists
+everyone this instance has seen, with how many private and shared sources each
+of them owns, and it opens with a warning naming its own limits: it lists only
+people who have **signed in at least once**, and it **only erases data**.
+Creating an account and switching one off are still Zitadel's job, and neither
+act implies the other.
 
-It answers with `toEraseCount`, `retainedSharedCount`, and a `byType`
-breakdown. Read the `note` it returns: the plan counts sources whose OWN scope
-is shared, and a private source is also retained when any fact derived from it
-is shared, which the plan cannot count without enumerating every derived
-memory. The completed run reports those separately.
+1. Press **Erase data** on their row. Your own row's button is disabled.
+2. Read what would go and what would stay, counted by kind. Shared sources are
+ never touched; a private source is ALSO kept when a colleague relies on a
+ fact that came out of it, and the page says so, because that case cannot be
+ counted before the run.
+3. Press **Continue**, then type their **email address** to confirm. The button
+ stays dead until it matches.
+4. The panel fills in when the worker settles: sources erased, signed receipts,
+ sources kept, and failures.
 
-**Step 2: request the erasure.** The confirmation must repeat the same user id;
-a mismatch is refused, and so is erasing yourself.
-
-```sh
-curl -sS -X POST https://<domain>/api/admin/erasure/<user-id> \
- -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
- -d '{"confirmUserId":"<user-id>"}' | jq
-```
-
-The request is audited (`user.erasure_requested`, naming you and the subject)
-and queued; the work runs in the worker, one saga transaction per source.
-
-**Step 3: confirm it completed.** In **Audit** (admin only), the
-`user.erased` entry carries the final counts: `erased`, `receipts`,
-`retained`, `retainedSharedSource`, `retainedSharedFact`, `failed`. In
-**Forgotten**, each erased source has its own signed receipt and the chain
-still verifies.
-
-- [ ] `failed` is 0. A non-zero count names sources that could not be erased,
- usually because something else removed them first; re-running the same
- request is safe and erases whatever is left.
-- [ ] The receipt chain verifies (Forgotten → chain status).
+- [ ] Failures are 0. A non-zero count means sources that could not be erased,
+ usually because something else removed them first; re-running is safe and
+ erases whatever is left.
+- [ ] The receipt chain verifies (**Forgotten** → chain status).
 - [ ] Record the erasure and its date in the customer's tracker.
+
+**The same thing over HTTP**, if you would rather script it. Both routes need
+the **admin** role and a bearer token; sign in as an administrator, then read
+`accessToken` from the browser's Session Storage under the key
+`cogeto.session`.
+
+```sh
+TOKEN='<the accessToken>'
+USER_ID='<their Zitadel subject id>'   # the page shows it; so does app_user
+
+# What would happen. Read-only, safe to repeat.
+curl -sS "https://<domain>/api/admin/erasure/$USER_ID" \
+ -H "Authorization: Bearer $TOKEN" | jq
+
+# Do it. The confirmation must repeat the same id; erasing yourself is refused.
+curl -sS -X POST "https://<domain>/api/admin/erasure/$USER_ID" \
+ -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+ -d "{\"confirmUserId\":\"$USER_ID\"}" | jq
+```
+
+Either way the request is audited (`user.erasure_requested`, naming you and the
+subject), the work runs in the worker one saga transaction per source, and the
+completed run leaves a `user.erased` entry in **Audit** carrying `erased`,
+`receipts`, `retained`, `retainedSharedSource`, `retainedSharedFact` and
+`failed`.
+
 
 **What it deliberately keeps, and what to do about it**
 

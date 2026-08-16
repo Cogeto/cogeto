@@ -1,0 +1,77 @@
+{
+  "heading": "Personnes ayant du contenu dans cette instance",
+  "loading": "Chargement des utilisateurs …",
+  "error": "La liste des utilisateurs n'a pas pu être chargée.",
+  "running": "Effacement en cours. Le travail se fait en arrière-plan et peut prendre un instant.",
+  "limits": {
+    "title": "À lire avant d'utiliser cette page",
+    "signedInOnly": "Cette liste ne montre que les personnes qui se sont connectées au moins une fois. Quelqu'un dont le compte vient d'être créé, mais qui ne s'est jamais connecté, n'y figurera pas.",
+    "erasesOnly": "Cette page efface uniquement des données. Elle ne peut pas créer de compte, ni en désactiver un.",
+    "accountsElsewhere": "Pour créer un compte, ou pour empêcher quelqu'un de se connecter, passez par la console Zitadel. Effacer ici ne ferme pas le compte, et fermer le compte là-bas n'efface pas les données. Ce sont deux opérations distinctes."
+  },
+  "column": {
+    "person": "Personne",
+    "lastSeen": "Dernière connexion",
+    "sources": "Sources",
+    "sourcesValue": "{{erasable}} privées, {{shared}} partagées"
+  },
+  "action": {
+    "erase": "Effacer les données …",
+    "notYourself": "Pour retirer votre propre contenu, utilisez la suppression de source habituelle."
+  },
+  "empty": {
+    "title": "Personne ne s'est encore connecté",
+    "body": "Les personnes apparaissent ici lors de leur première connexion."
+  },
+  "drawer": {
+    "title": "Effacer le contenu privé de {{name}}"
+  },
+  "preview": {
+    "loading": "Calcul de ce qui serait effacé …",
+    "error": "L'aperçu n'a pas pu être chargé.",
+    "willErase_one": "Effacée : {{count}} source",
+    "willErase_many": "Effacées : {{count}} sources",
+    "willErase_other": "Effacées : {{count}} sources",
+    "willKeep_one": "Conservée : {{count}} source",
+    "willKeep_many": "Conservées : {{count}} sources",
+    "willKeep_other": "Conservées : {{count}} sources",
+    "nothingToErase": "Rien de privé à effacer.",
+    "nothingKept": "Rien de partagé à conserver.",
+    "sharedRule": "Le contenu partagé n'est jamais effacé. Une source privée est également conservée lorsqu'un collègue s'appuie sur un fait qui en est issu ; ce qui est conservé pour cette raison est indiqué dans le résultat.",
+    "irreversible": "Cette action est irréversible.",
+    "continue": "Continuer"
+  },
+  "confirm": {
+    "label": "Saisissez {{phrase}} pour confirmer",
+    "erase": "Effacer",
+    "error": "L'effacement n'a pas pu être lancé."
+  },
+  "result": {
+    "title": "Le contenu privé de {{name}} est effacé",
+    "erased_one": "{{count}} source effacée",
+    "erased_many": "{{count}} sources effacées",
+    "erased_other": "{{count}} sources effacées",
+    "receipts_one": "{{count}} reçu signé",
+    "receipts_many": "{{count}} reçus signés",
+    "receipts_other": "{{count}} reçus signés",
+    "kept_one": "{{count}} source conservée, car elle est partagée",
+    "kept_many": "{{count}} sources conservées, car elles sont partagées",
+    "kept_other": "{{count}} sources conservées, car elles sont partagées",
+    "keptForSharedFact_one": "dont {{count}} conservée parce qu'un fait partagé en est issu",
+    "keptForSharedFact_many": "dont {{count}} conservées parce que des faits partagés en sont issus",
+    "keptForSharedFact_other": "dont {{count}} conservées parce que des faits partagés en sont issus",
+    "failed_one": "{{count}} échec",
+    "failed_many": "{{count}} échecs",
+    "failed_other": "{{count}} échecs",
+    "audited": "Consigné dans le journal d'audit à votre nom.",
+    "seeReceipts": "Voir les reçus dans Oubliés"
+  },
+  "sourceType": {
+    "user_note": "Notes",
+    "file": "Fichiers",
+    "email": "E-mails",
+    "web": "Pages web",
+    "chat": "Messages de discussion",
+    "chat_conversation": "Conversations"
+  }
+}

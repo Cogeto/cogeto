@@ -44,7 +44,8 @@
         "navigation": ["section.chat", "section.audit", "section.system"],
         "providers": ["form.label.label", "tier.embeddings", "tier.vision"],
         "sources": ["imports.s3.bucket", "imports.run.title", "origin.panel.version"],
-        "system": ["job.echo"]
+        "system": ["job.echo"],
+        "users": ["column.person"]
       },
       "server": {
         "report": ["scope.import", "coverage.column.detail"]
@@ -101,7 +102,8 @@
           "origin.panel.version"
         ],
         "system": ["health.check.migrations"],
-        "audit": ["filter.action"]
+        "audit": ["filter.action"],
+        "users": ["column.sources", "sourceType.user_note", "sourceType.chat_conversation"]
       },
       "server": {
         "report": [
