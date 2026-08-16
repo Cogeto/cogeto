@@ -532,6 +532,29 @@ confirmation says so in those words. Read
 [`docs/features/projects.md`](docs/features/projects.md) before changing
 anything near the lens, and do not migrate the assignment onto memories.
 
+The pre-launch review's remediation added one capability the product was
+missing, and it carries a rule you must not re-litigate. **Owner erasure**
+(issue #632) lets an administrator erase a DEPARTED user's private material:
+`memory/owner-erasure.service.ts` enumerates the subject's sources through a
+new `listForOwner` on the existing `SourceDeletion` port and runs the ORDINARY
+saga over each, so the cascades, the transaction, the receipt and the sweep are
+untouched and there is no second deletion mechanism. **Private material is
+erased; shared material always stays, without exception.** That rule is the
+owner's and is fixed. Two checks enforce it: a shared SOURCE is never
+attempted, and inside the saga's transaction a source is retained WHOLE if any
+fact derived from it is shared (the guard rolls the transaction back, because
+the ingestion guard has by then consumed the pipeline idempotency key). The
+receipt shape is **one per source**, because a data subject can verify each one
+independently and a partial failure cannot invalidate the rest. It works from
+the stored `owner_id` alone: nothing on the path resolves the subject against
+Zitadel, which is the point, since the state it exists for is the one where
+that lookup fails. Read
+[`docs/security/deletion-and-receipts.md`](docs/security/deletion-and-receipts.md)
+and [operator runbook §4d](docs/operator-runbook.md) before changing anything
+near it. In the same wave the **activity trail became administrative only**
+(issue #633): content was always owner-gated, but the actions were not, so any
+member could enumerate who did what to whose material by identifier.
+
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).
 Thinking is a CHANNEL, not content: `completeStream` yields channel-tagged
