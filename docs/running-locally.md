@@ -9,7 +9,7 @@ around that one command.
 - **Docker Engine + the compose plugin** (Docker Desktop is fine). The stack
  builds locally on first run; any recent machine with ~8 GB free RAM is
  comfortable.
-- **Node 22 + npm** only if you develop (tests, lint, builds): not needed to
+- **Node 24 + npm** only if you develop (tests, lint, builds): not needed to
  just run the stack.
 - Optional, for model features: an API key from a supported provider (e.g.
  Mistral, [console.mistral.ai](https://console.mistral.ai)), added **in the

@@ -7,7 +7,7 @@
 # replace the digest (see docs/operations/image-pins.md).
 
 # ── Stage 1a: install all workspace dependencies ─────────────────────────────
-FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS deps
+FROM node:24-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS deps
 WORKDIR /repo
 COPY package.json package-lock.json ./
 COPY project/shared/package.json project/shared/package.json
@@ -26,7 +26,7 @@ COPY project/demo project/demo
 RUN npm run build
 
 # ── Stage 2: slim runtime — app, worker, and migrate run from this image ─────
-FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS runtime
+FROM node:24-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS runtime
 ENV NODE_ENV=production
 WORKDIR /repo
 # The reading ladder's local tiers (V2.1 item 4.1). Both are CPU-only and run

@@ -74,7 +74,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - name: Install
         run: npm ci
@@ -96,7 +96,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - name: Install
         run: npm ci
@@ -110,7 +110,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - name: Install
         run: npm ci
@@ -130,7 +130,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - name: Install
         run: npm ci
@@ -174,7 +174,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - name: Install
         run: npm ci
@@ -269,7 +269,7 @@ jobs:
   #     archive, so `high` is the honest threshold, not a lowered one)
   #   • redaction lock      pip-audit                                → 1 finding, allowlisted below
   #   • runtime image       trivy CRITICAL,HIGH                      → 6 findings, ALL in the
-  #     npm CLI bundled inside node:22-alpine, none in application dependencies
+  #     npm CLI bundled inside node:24-alpine, none in application dependencies
   #
   # `--omit=dev` is deliberate and is NOT a weakened threshold: the dev tree
   # carries 10 known highs (testcontainers → archiver → minimatch, and ajv →
@@ -281,7 +281,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       # Production dependencies only — what actually ships.
@@ -375,7 +375,7 @@ jobs:
           exit-code: '1'
           ignore-unfixed: false
           # SCOPED EXCLUSION — reviewed 2026-07-30. This is the npm CLI that
-          # node:22-alpine bundles, not anything we install or execute: the
+          # node:24-alpine bundles, not anything we install or execute: the
           # containers run `node project/src/dist/entrypoints/<entrypoint>.js`
           # and never invoke npm. On 2026-07-30 it carried CVE-2026-59873 (tar,
           # CRITICAL), CVE-2026-59874 (tar), CVE-2026-13149 + CVE-2026-14257

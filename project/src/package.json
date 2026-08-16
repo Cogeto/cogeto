@@ -40,7 +40,7 @@
     "@types/jsdom": "30.0.0",
     "@types/mailparser": "^3.4.6",
     "@types/multer": "^2.2.0",
-    "@types/node": "^22.15.0",
+    "@types/node": "^24.13.0",
     "@types/pg": "^8.21.0",
     "ajv": "^8.20.0"
   }
