@@ -1,0 +1,77 @@
+{
+  "heading": "Osobe s materijalom u ovoj instanci",
+  "loading": "Učitavanje korisnika …",
+  "error": "Popis korisnika nije se mogao učitati.",
+  "running": "Briše se. Posao teče u pozadini i može potrajati trenutak.",
+  "limits": {
+    "title": "Pročitajte ovo prije nego što upotrijebite ovu stranicu",
+    "signedInOnly": "Ovaj popis prikazuje samo osobe koje su se barem jednom prijavile. Tko je tek dobio račun, a nikada se nije prijavio, ovdje se neće pojaviti.",
+    "erasesOnly": "Ova stranica isključivo briše podatke. Ne može otvoriti račun niti ga isključiti.",
+    "accountsElsewhere": "Račun se otvara, a prijava onemogućuje, u Zitadel konzoli. Brisanje ovdje ne zatvara račun, a zatvaranje računa ondje ne briše podatke. To su dva odvojena posla."
+  },
+  "column": {
+    "person": "Osoba",
+    "lastSeen": "Zadnja prijava",
+    "sources": "Izvori",
+    "sourcesValue": "{{erasable}} privatnih, {{shared}} dijeljenih"
+  },
+  "action": {
+    "erase": "Obriši podatke …",
+    "notYourself": "Vlastiti materijal uklonite uobičajenim brisanjem izvora."
+  },
+  "empty": {
+    "title": "Još se nitko nije prijavio",
+    "body": "Osobe se ovdje pojavljuju pri prvoj prijavi."
+  },
+  "drawer": {
+    "title": "Brisanje privatnog materijala osobe {{name}}"
+  },
+  "preview": {
+    "loading": "Utvrđuje se što bi nestalo …",
+    "error": "Pregled se nije mogao učitati.",
+    "willErase_one": "Briše se: {{count}} izvor",
+    "willErase_few": "Briše se: {{count}} izvora",
+    "willErase_other": "Briše se: {{count}} izvora",
+    "willKeep_one": "Ostaje: {{count}} izvor",
+    "willKeep_few": "Ostaje: {{count}} izvora",
+    "willKeep_other": "Ostaje: {{count}} izvora",
+    "nothingToErase": "Nema privatnog materijala za brisanje.",
+    "nothingKept": "Nema dijeljenog materijala za zadržati.",
+    "sharedRule": "Dijeljeni materijal nikada se ne briše. Privatni izvor također ostaje kada se kolega oslanja na činjenicu proizašlu iz njega; što je zadržano iz tog razloga navedeno je u rezultatu.",
+    "irreversible": "Ovo se ne može poništiti.",
+    "continue": "Nastavi"
+  },
+  "confirm": {
+    "label": "Za potvrdu upišite {{phrase}}",
+    "erase": "Obriši",
+    "error": "Brisanje se nije moglo pokrenuti."
+  },
+  "result": {
+    "title": "Privatni materijal osobe {{name}} je obrisan",
+    "erased_one": "{{count}} izvor obrisan",
+    "erased_few": "{{count}} izvora obrisana",
+    "erased_other": "{{count}} izvora obrisano",
+    "receipts_one": "{{count}} potpisana potvrda",
+    "receipts_few": "{{count}} potpisane potvrde",
+    "receipts_other": "{{count}} potpisanih potvrda",
+    "kept_one": "{{count}} izvor zadržan jer je dijeljen",
+    "kept_few": "{{count}} izvora zadržana jer su dijeljena",
+    "kept_other": "{{count}} izvora zadržano jer su dijeljena",
+    "keptForSharedFact_one": "od toga {{count}} zadržan jer je iz njega proizašla dijeljena činjenica",
+    "keptForSharedFact_few": "od toga {{count}} zadržana jer su iz njih proizašle dijeljene činjenice",
+    "keptForSharedFact_other": "od toga {{count}} zadržano jer su iz njih proizašle dijeljene činjenice",
+    "failed_one": "{{count}} neuspjelo",
+    "failed_few": "{{count}} neuspjela",
+    "failed_other": "{{count}} neuspjelih",
+    "audited": "Zabilježeno u tragu revizije pod vašim imenom.",
+    "seeReceipts": "Pogledajte potvrde u Zaboravljeno"
+  },
+  "sourceType": {
+    "user_note": "Bilješke",
+    "file": "Datoteke",
+    "email": "E-pošta",
+    "web": "Web stranice",
+    "chat": "Poruke razgovora",
+    "chat_conversation": "Razgovori"
+  }
+}

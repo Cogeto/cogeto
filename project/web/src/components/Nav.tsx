@@ -15,6 +15,7 @@ export type NavSection =
   | 'approvals'
   | 'forgotten'
   | 'audit'
+  | 'users'
   | 'providers'
   | 'models'
   | 'system'
@@ -45,6 +46,9 @@ const ENABLED: { key: NavSection; href: string }[] = [
   { key: 'approvals', href: '/approvals' },
   { key: 'forgotten', href: '/forgotten' },
   { key: 'audit', href: '/audit' },
+  // Erasing a departed person's material (issue #638). Operator surface, so
+  // it sits with the others and is hidden for everyone else.
+  { key: 'users', href: '/users' },
   // The two admin configuration surfaces (V2.4 item 7.1). Beside System, and
   // hidden for a non-admin exactly as System is; the server-side AdminGuard
   // stays the enforcement.
@@ -151,6 +155,16 @@ const ICONS: Record<NavSection, ReactNode> = {
       <path d="M7 7h6M7 10h6M7 13h4" opacity="0.75" />
     </svg>
   ),
+  // Two figures on the recurring node motif: the person, and the colleague
+  // behind them whose shared knowledge an erasure keeps.
+  users: (
+    <svg viewBox="0 0 20 20" {...G}>
+      <circle cx="8" cy="7" r="2.6" />
+      <path d="M3.4 16.2a4.6 4.6 0 0 1 9.2 0" />
+      <path d="M13.4 5.2a2.6 2.6 0 0 1 0 5" opacity="0.5" />
+      <path d="M14.6 12a4.6 4.6 0 0 1 2 3.6" opacity="0.5" />
+    </svg>
+  ),
   // The rack: endpoints you point at, stacked. Same family, same 1.6 stroke.
   providers: (
     <svg viewBox="0 0 20 20" {...G}>
@@ -236,7 +250,7 @@ export function Nav({
   // assignment (V2.4 item 7.1), and now the activity trail (issue #633) — it
   // is the organisation's trail, not the reader's own, so it is an operator
   // surface and the server's AdminGuard is the enforcement.
-  const adminOnly = new Set<NavSection>(['system', 'providers', 'models', 'audit']);
+  const adminOnly = new Set<NavSection>(['system', 'providers', 'models', 'audit', 'users']);
   const sections = ENABLED.filter((s) => !adminOnly.has(s.key) || showSystem);
   const demo = isDemoSession();
   return (

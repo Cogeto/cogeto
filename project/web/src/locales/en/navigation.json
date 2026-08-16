@@ -15,7 +15,8 @@
     "models": "Models",
     "system": "System",
     "settings": "Settings",
-    "reports": "Reports"
+    "reports": "Reports",
+    "users": "Users"
   },
   "badge": {
     "items": "items",

@@ -1,0 +1,70 @@
+{
+  "heading": "People with material in this instance",
+  "loading": "Loading users…",
+  "error": "The list of users could not be loaded.",
+  "running": "Erasing. This runs in the background and can take a moment.",
+  "limits": {
+    "title": "Read this before you use this page",
+    "signedInOnly": "This list shows only people who have signed in at least once. Someone whose account was just created, but who has never logged in, will not appear here.",
+    "erasesOnly": "This page only erases data. It cannot create an account, and it cannot switch one off.",
+    "accountsElsewhere": "To create an account, or to stop someone logging in, use the Zitadel console. Erasing here does not close their account, and closing their account there does not erase their data. They are two separate jobs."
+  },
+  "column": {
+    "person": "Person",
+    "lastSeen": "Last signed in",
+    "sources": "Sources",
+    "sourcesValue": "{{erasable}} private, {{shared}} shared"
+  },
+  "action": {
+    "erase": "Erase data…",
+    "notYourself": "Use the ordinary source deletion to remove your own material."
+  },
+  "empty": {
+    "title": "Nobody has signed in yet",
+    "body": "People appear here the first time they log in."
+  },
+  "drawer": {
+    "title": "Erase {{name}}'s private material"
+  },
+  "preview": {
+    "loading": "Working out what would go…",
+    "error": "The preview could not be loaded.",
+    "willErase_one": "Erased: {{count}} source",
+    "willErase_other": "Erased: {{count}} sources",
+    "willKeep_one": "Kept: {{count}} source",
+    "willKeep_other": "Kept: {{count}} sources",
+    "nothingToErase": "Nothing private to erase.",
+    "nothingKept": "Nothing shared to keep.",
+    "sharedRule": "Shared material is never erased. A private source is also kept when a colleague relies on a fact that came out of it; anything kept for that reason is named in the result.",
+    "irreversible": "This cannot be undone.",
+    "continue": "Continue"
+  },
+  "confirm": {
+    "label": "Type {{phrase}} to confirm",
+    "erase": "Erase",
+    "error": "The erasure could not be started."
+  },
+  "result": {
+    "title": "{{name}}'s private material is erased",
+    "erased_one": "{{count}} source erased",
+    "erased_other": "{{count}} sources erased",
+    "receipts_one": "{{count}} signed receipt",
+    "receipts_other": "{{count}} signed receipts",
+    "kept_one": "{{count}} source kept, because it is shared",
+    "kept_other": "{{count}} sources kept, because they are shared",
+    "keptForSharedFact_one": "{{count}} of those was kept because a shared fact came out of it",
+    "keptForSharedFact_other": "{{count}} of those were kept because a shared fact came out of them",
+    "failed_one": "{{count}} failed",
+    "failed_other": "{{count}} failed",
+    "audited": "Recorded in the audit trail against your name.",
+    "seeReceipts": "See the receipts in Forgotten"
+  },
+  "sourceType": {
+    "user_note": "Notes",
+    "file": "Files",
+    "email": "Emails",
+    "web": "Web pages",
+    "chat": "Chat messages",
+    "chat_conversation": "Conversations"
+  }
+}

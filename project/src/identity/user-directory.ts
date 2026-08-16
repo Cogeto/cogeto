@@ -1,9 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq, inArray } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 import type { Principal } from '@cogeto/shared';
 import { DRIZZLE } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
 import { appUser } from './persistence/tables';
+import type { AppUserRow } from './persistence/tables';
 
 /**
  * The user directory — the identity seam's local name book. Records each
@@ -92,6 +93,29 @@ export class UserDirectory {
           lastSeen: new Date(),
         },
       });
+  }
+
+  /**
+   * Everyone the directory knows in one organisation, oldest first (issue #638).
+   *
+   * The directory is populated on AUTHENTICATION, so this is the set of people
+   * who have signed in at least once and nobody else. An account created in
+   * Zitadel yesterday whose owner has never logged in is genuinely absent, not
+   * merely stale, and the Users page says so in as many words rather than
+   * presenting a partial list as a complete one. Making it complete would mean
+   * asking Zitadel, which needs a management credential this instance
+   * deliberately does not keep after install.
+   *
+   * Unbounded: an instance is one organisation and one team, so a page of them
+   * is the whole set. A cursor here would be machinery for a case that does
+   * not exist.
+   */
+  async listForOrg(orgId: string): Promise<AppUserRow[]> {
+    return this.db
+      .select()
+      .from(appUser)
+      .where(eq(appUser.orgId, orgId))
+      .orderBy(asc(appUser.firstSeen), asc(appUser.userId));
   }
 
   /** Owner-id → display name for the ids that are known; unknown ids are absent. */

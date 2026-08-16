@@ -96,5 +96,10 @@ private material through the ordinary deletion saga, with one signed receipt
 per source. It works from the stored owner id alone, so it still works after
 the account has been deactivated or deleted in Zitadel.
 
+It is a page: sign in as an administrator and open **Users** in the left rail.
+That page lists everyone the instance has seen, shows what an erasure would
+remove and what it would keep before you commit, and asks you to type the
+person's email address to confirm.
+
 The procedure, including what it deliberately keeps, is in the
 [operator runbook §4d](../operator-runbook.md#4d-erasing-a-departed-users-data).

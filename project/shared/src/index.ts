@@ -28,3 +28,4 @@ export * from './source-catalog';
 export * from './imports';
 export * from './projects';
 export * from './reports';
+export * from './users';

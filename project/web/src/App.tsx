@@ -27,6 +27,7 @@ import { Settings } from './pages/Settings';
 import { Skills } from './pages/Skills';
 import { System } from './pages/System';
 import { Timeline } from './pages/Timeline';
+import { Users } from './pages/Users';
 
 /** Tiny path switch — a router dependency is still not justified. */
 export function App() {
@@ -135,6 +136,8 @@ function renderPage(session: Session) {
       return <Forgotten session={session} />;
     case '/audit':
       return <Audit session={session} />;
+    case '/users':
+      return <Users session={session} />;
     case '/providers':
       return <Providers session={session} />;
     case '/models':

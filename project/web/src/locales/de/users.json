@@ -1,0 +1,70 @@
+{
+  "heading": "Personen mit Material in dieser Instanz",
+  "loading": "Benutzer werden geladen …",
+  "error": "Die Benutzerliste konnte nicht geladen werden.",
+  "running": "Wird gelöscht. Das läuft im Hintergrund und kann einen Moment dauern.",
+  "limits": {
+    "title": "Bitte lesen Sie das, bevor Sie diese Seite benutzen",
+    "signedInOnly": "Diese Liste zeigt nur Personen, die sich mindestens einmal angemeldet haben. Wer gerade erst ein Konto bekommen hat und sich noch nie angemeldet hat, erscheint hier nicht.",
+    "erasesOnly": "Diese Seite löscht ausschließlich Daten. Sie kann kein Konto anlegen und keines abschalten.",
+    "accountsElsewhere": "Ein Konto anlegen oder jemandem die Anmeldung entziehen: beides geschieht in der Zitadel-Konsole. Löschen Sie hier, bleibt das Konto bestehen; schließen Sie dort das Konto, bleiben die Daten bestehen. Das sind zwei getrennte Aufgaben."
+  },
+  "column": {
+    "person": "Person",
+    "lastSeen": "Zuletzt angemeldet",
+    "sources": "Quellen",
+    "sourcesValue": "{{erasable}} privat, {{shared}} geteilt"
+  },
+  "action": {
+    "erase": "Daten löschen …",
+    "notYourself": "Eigenes Material entfernen Sie über das normale Löschen einer Quelle."
+  },
+  "empty": {
+    "title": "Noch hat sich niemand angemeldet",
+    "body": "Personen erscheinen hier bei ihrer ersten Anmeldung."
+  },
+  "drawer": {
+    "title": "Privates Material von {{name}} löschen"
+  },
+  "preview": {
+    "loading": "Es wird ermittelt, was entfällt …",
+    "error": "Die Vorschau konnte nicht geladen werden.",
+    "willErase_one": "Gelöscht: {{count}} Quelle",
+    "willErase_other": "Gelöscht: {{count}} Quellen",
+    "willKeep_one": "Behalten: {{count}} Quelle",
+    "willKeep_other": "Behalten: {{count}} Quellen",
+    "nothingToErase": "Nichts Privates zu löschen.",
+    "nothingKept": "Nichts Geteiltes zu behalten.",
+    "sharedRule": "Geteiltes Material wird nie gelöscht. Eine private Quelle bleibt auch dann erhalten, wenn Kolleginnen und Kollegen sich auf eine daraus gewonnene Aussage stützen; was aus diesem Grund bleibt, wird im Ergebnis benannt.",
+    "irreversible": "Das lässt sich nicht rückgängig machen.",
+    "continue": "Weiter"
+  },
+  "confirm": {
+    "label": "Tippen Sie zur Bestätigung {{phrase}}",
+    "erase": "Löschen",
+    "error": "Die Löschung konnte nicht gestartet werden."
+  },
+  "result": {
+    "title": "Das private Material von {{name}} ist gelöscht",
+    "erased_one": "{{count}} Quelle gelöscht",
+    "erased_other": "{{count}} Quellen gelöscht",
+    "receipts_one": "{{count}} signierte Quittung",
+    "receipts_other": "{{count}} signierte Quittungen",
+    "kept_one": "{{count}} Quelle behalten, weil sie geteilt ist",
+    "kept_other": "{{count}} Quellen behalten, weil sie geteilt sind",
+    "keptForSharedFact_one": "{{count}} davon blieb erhalten, weil daraus eine geteilte Aussage stammt",
+    "keptForSharedFact_other": "{{count}} davon blieben erhalten, weil daraus geteilte Aussagen stammen",
+    "failed_one": "{{count}} fehlgeschlagen",
+    "failed_other": "{{count}} fehlgeschlagen",
+    "audited": "Im Prüfprotokoll unter Ihrem Namen festgehalten.",
+    "seeReceipts": "Die Quittungen unter Vergessen ansehen"
+  },
+  "sourceType": {
+    "user_note": "Notizen",
+    "file": "Dateien",
+    "email": "E-Mails",
+    "web": "Webseiten",
+    "chat": "Chatnachrichten",
+    "chat_conversation": "Unterhaltungen"
+  }
+}

@@ -4,8 +4,11 @@ import type {
   AttentionDismissDto,
   AttentionFeedDto,
   AttentionSeenDto,
+  AdminUsersDto,
   AuditPage,
   AuditQuery,
+  ErasurePreviewDto,
+  ErasureResultDto,
   DashboardStatsDto,
   UserSettingsDto,
   UserContextDto,
@@ -1238,3 +1241,25 @@ export const assignToProject = (
   projectId: string | null,
 ): Promise<{ projectId: string | null }> =>
   apiPost('/api/projects/assignments', { ...ref, projectId }, session);
+
+// ── The administrative Users surface (issue #638) ──────────────────────────
+// Admin-only on the server; the rail hides the section for everyone else.
+
+/** Everyone this instance has SEEN, with what an erasure would act on. */
+export const fetchAdminUsers = (session: Session): Promise<AdminUsersDto> =>
+  apiGet('/api/admin/users', session);
+
+/** What erasing this person would remove, and what it would keep. Read-only. */
+export const fetchErasurePreview = (session: Session, userId: string): Promise<ErasurePreviewDto> =>
+  apiGet(`/api/admin/erasure/${encodeURIComponent(userId)}`, session);
+
+/** Requests the erasure. The confirmation must repeat the subject's id. */
+export const requestErasure = (
+  session: Session,
+  userId: string,
+): Promise<ErasurePreviewDto & { accepted: true }> =>
+  apiPost(`/api/admin/erasure/${encodeURIComponent(userId)}`, { confirmUserId: userId }, session);
+
+/** How the run finished; `pending` until the worker records its completion. */
+export const fetchErasureResult = (session: Session, userId: string): Promise<ErasureResultDto> =>
+  apiGet(`/api/admin/erasure/${encodeURIComponent(userId)}/result`, session);

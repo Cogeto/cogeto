@@ -34,6 +34,7 @@ import { fileMetadata } from './persistence/tables';
 import { DELETION_JOB_TYPE, DeletionExecutor, DeletionSaga } from './deletion-saga';
 import { OwnerErasureService, unerasableSourceTypes } from './owner-erasure.service';
 import { OwnerErasureController } from './erasure.controller';
+import { UserDirectory } from '../identity/index';
 import { verifyChain } from './domain/receipt-chain';
 import type { ConfirmedReceipt } from './domain/receipt-chain';
 
@@ -76,6 +77,7 @@ describe('owner_erasure (integration: real Postgres + Qdrant + MinIO)', () => {
   let executor: DeletionExecutor;
   let erasure: OwnerErasureService;
   let controller: OwnerErasureController;
+  let directory: UserDirectory;
 
   beforeAll(async () => {
     [tdb, qdrant, minio] = await Promise.all([
@@ -110,7 +112,8 @@ describe('owner_erasure (integration: real Postgres + Qdrant + MinIO)', () => {
     saga = new DeletionSaga(tdb.db, { adapters });
     executor = new DeletionExecutor(vectors, objects, keyDir);
     erasure = new OwnerErasureService(tdb.db, saga, adapters);
-    controller = new OwnerErasureController(erasure);
+    directory = new UserDirectory(tdb.db);
+    controller = new OwnerErasureController(erasure, directory);
   }, 180_000);
 
   afterAll(async () => {
@@ -185,7 +188,8 @@ describe('owner_erasure (integration: real Postgres + Qdrant + MinIO)', () => {
   };
   const auditRows = async (action: string, entityId: string) => {
     const { rows } = await tdb.pool.query(
-      'SELECT actor, owner_id, detail_json FROM audit_log WHERE action = $1 AND entity_id = $2',
+      `SELECT actor, owner_id, detail_json FROM audit_log
+        WHERE action = $1 AND entity_id = $2 ORDER BY created_at DESC, id DESC`,
       [action, entityId],
     );
     return rows as { actor: string; owner_id: string | null; detail_json: unknown }[];
@@ -242,7 +246,7 @@ describe('owner_erasure (integration: real Postgres + Qdrant + MinIO)', () => {
   it('the audit trail names BOTH the administrator and the subject', async () => {
     const entries = await auditRows('user.erased', 'user-leaver');
     expect(entries.length).toBeGreaterThan(0);
-    const latest = entries[entries.length - 1]!;
+    const latest = entries[0]!; // newest first
     expect(latest.actor).toBe('user:user-admin');
     expect(latest.owner_id).toBe('user-leaver');
     expect((latest.detail_json as { subject: string }).subject).toBe('user-leaver');
@@ -438,13 +442,90 @@ describe('owner_erasure (integration: real Postgres + Qdrant + MinIO)', () => {
       expect(answer.accepted).toBe(true);
       expect(answer.subjectUserId).toBe('user-peer');
       // The peer has one private and one shared note from an earlier case.
-      expect(answer.toEraseCount).toBeGreaterThan(0);
-      expect(answer.retainedSharedCount).toBeGreaterThan(0);
+      expect(answer.toEraseTotal).toBeGreaterThan(0);
+      expect(answer.keptTotal).toBeGreaterThan(0);
 
       const requested = await auditRows('user.erasure_requested', 'user-peer');
       expect(requested).toHaveLength(1);
       expect(requested[0]!.actor).toBe('user:user-admin');
       expect(requested[0]!.owner_id).toBe('user-peer');
+    });
+  });
+
+  // ── The Users surface (issue #638) ─────────────────────────────────────────
+
+  describe('the users list', () => {
+    const req = (principal: Principal) => ({ principal }) as unknown as AuthenticatedRequest;
+
+    beforeAll(async () => {
+      // The directory is written on AUTHENTICATION; these stand in for people
+      // having signed in at least once, which is exactly what the page lists.
+      for (const person of [leaver, peer, admin]) await directory.record(person);
+    });
+
+    it('lists the directory with counts that match what an erasure would act on', async () => {
+      const { users } = await controller.users(req(admin));
+      const byId = new Map(users.map((u) => [u.userId, u]));
+      expect([...byId.keys()].sort()).toEqual(['user-admin', 'user-leaver', 'user-peer']);
+
+      // The count is not a second opinion: it is the plan the erasure runs.
+      for (const [userId, row] of byId) {
+        const plan = await erasure.plan(userId);
+        expect(row.erasableSources, userId).toBe(plan.toErase.length);
+        expect(row.sharedSources, userId).toBe(plan.retainedShared.length);
+      }
+    });
+
+    it('marks the caller’s own row, so the page can refuse to erase them', async () => {
+      const { users } = await controller.users(req(admin));
+      expect(users.find((u) => u.userId === 'user-admin')?.isSelf).toBe(true);
+      expect(users.find((u) => u.userId === 'user-leaver')?.isSelf).toBe(false);
+    });
+
+    it('never shows another organisation’s people', async () => {
+      await directory.record({ ...leaver, userId: 'other-org-user', orgId: 'org-elsewhere' });
+      const { users } = await controller.users(req(admin));
+      expect(users.some((u) => u.userId === 'other-org-user')).toBe(false);
+    });
+
+    it('is administrative only, like the rest of this controller', () => {
+      const guards = (Reflect.getMetadata('__guards__', OwnerErasureController) ?? []) as unknown[];
+      expect(guards).toContain(AdminGuard);
+    });
+
+    it('the preview counts by kind and never names a source', async () => {
+      // Titles are content: a note's name is its first line and a
+      // conversation's is written from what the person typed. The page shows
+      // how much and what kind, never whose note said what.
+      const note = await notes.createNote(peer, 'Peer private, for the preview shape.', 'private');
+      await store.createFromFact(peer, {
+        content: 'a fact',
+        scope: 'private',
+        sourceType: 'user_note' as const,
+        sourceId: note.id,
+      });
+      const preview = await controller.preview('user-peer');
+      expect(preview.toEraseTotal).toBeGreaterThan(0);
+      expect(preview.toErase.every((c) => typeof c.count === 'number')).toBe(true);
+      const serialized = JSON.stringify(preview);
+      expect(serialized).not.toContain('Peer private, for the preview shape.');
+      expect(serialized).not.toContain(note.id);
+    });
+
+    it('reports the last run’s numbers from the audit entry, not a recount', async () => {
+      const before = await controller.result('user-nobody-ran');
+      expect(before.pending).toBe(true);
+
+      await erasure.run('user-leaver', 'user:user-admin', ORG);
+      const after = await controller.result('user-leaver');
+      expect(after.pending).toBe(false);
+      // Whatever the run recorded is what the panel shows; a recount now would
+      // answer "what is left", which is a different question.
+      const [entry] = await auditRows('user.erased', 'user-leaver');
+      const detail = entry!.detail_json as Record<string, number>;
+      expect(after.erased).toBe(detail['erased']);
+      expect(after.kept).toBe(detail['retained']);
+      expect(after.failed).toBe(detail['failed']);
     });
   });
 
