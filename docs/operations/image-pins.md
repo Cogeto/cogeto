@@ -13,7 +13,7 @@ intended tag and never of `latest`.
 | File | Pinned artifacts |
 |---|---|
 | `project/infra/docker/Dockerfile` | `node:24-alpine` (deps/build/runtime), `caddy:2-alpine` (edge + consoles) |
-| `docker-compose.yml` | `postgres:17-alpine`, `qdrant/qdrant:v1.19.0`, `minio/minio:RELEASE.2025-09-07T16-13-09Z`, `minio/mc:RELEASE.2025-08-13T08-35-41Z`, `busybox:stable`, `ghcr.io/zitadel/zitadel:v4.17.1`, `searxng/searxng` (dated build tag), `node:24-alpine` (zitadel-init) |
+| `docker-compose.yml` | `postgres:17-alpine`, `qdrant/qdrant:v1.19.0`, `cogeto/silo:RELEASE.2026-08-06T00-00-00Z` (the audited MinIO fork under Cogeto custody), `minio/mc:RELEASE.2025-08-13T08-35-41Z`, `busybox:stable`, `ghcr.io/zitadel/zitadel:v4.17.1`, `searxng/searxng` (dated build tag), `node:24-alpine` (zitadel-init) |
 | `project/infra/deploy/docker-compose.deploy.yml` | the same upstream images as the dev stack, at the same digests. Cogeto's own four images resolve by release tag (`cogeto/cogeto`, `-edge`, `-mail`, `-redaction` at `${COGETO_VERSION}`) |
 | `project/services/mail/Dockerfile` | `node:24-alpine` |
 | `project/services/redaction/Dockerfile` | `python:3.12-slim`, `en_core_web_lg-3.8.0` (spaCy model wheel) |
@@ -29,7 +29,7 @@ because the running version cannot be recovered and so no advisory can be
 matched to it. If a tag must be recovered from a digest:
 
 ```sh
-docker run --rm --entrypoint sh <image>@<digest> -c 'minio --version'
+docker run --rm --entrypoint sh <image>@<digest> -c 'silo --version'
 ```
 
 ## Updating an image pin
@@ -55,6 +55,23 @@ docker run --rm --entrypoint sh <image>@<digest> -c 'minio --version'
  docker compose build && docker compose up # reaches login
  ```
 
+## Zitadel: Login V1 pinned, Login V2 deferred
+
+Both composes pin new instances to the built-in V1 login
+(`ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: 'false'`); Login V2 is a
+separate container (`ghcr.io/zitadel/zitadel-login`, versioned in lockstep
+with the core) this stack does not run, and without the pin a fresh install
+would 404 at login. V1 is supported for the whole v4 line, so nothing is
+urgent; adopt V2 as its own deliberate change **before any Zitadel v5 bump**
+(v5 is expected to drop V1). The work, roughly a focused day plus the usual
+rehearsal: the login container in both composes, a Caddy route for
+`/ui/v2/login`, the core LoginV2/OIDC URL environment (the official Zitadel
+compose in `zitadel/zitadel` `deploy/compose/` has the exact lines), and
+`zitadel-init` provisioning the permanent `login-client` machine user + PAT
+(role `IAM_LOGIN_CLIENT`) for existing instances. Verify hr/de/fr login
+translations and that no watermark reappears, and script the Cogeto branding
+(logo + colors, from `assets/brand/`) into init in the same change.
+
 ## Updating the spaCy model
 
 The model wheel is installed from a pinned GitHub release URL in
@@ -65,13 +82,13 @@ pip install --no-deps https://github.com/explosion/spacy-models/releases/downloa
 ```
 
 To move to a new model version, pick a release compatible with the pinned
-`spacy` version in `requirements.txt` (currently `spacy==3.8.13`, so model
+`spacy` version in `requirements.txt` (currently `spacy==3.8.15`, so model
 3.8.x), update the URL, and rebuild the `redaction` profile. To trade accuracy
 for ~half the RSS, pin `en_core_web_md-3.8.0` instead and set
 `SPACY_MODEL=en_core_web_md`.
 
-Note: `presidio-analyzer` 2.2.363 pins `spacy != 3.8.14`, which is why the
-requirement is 3.8.13 and not simply the latest 3.8.x.
+Note: `presidio-analyzer` pins `spacy != 3.8.14`, so a spacy bump must skip
+exactly that version (3.8.15 satisfies it).
 
 ## Regenerating the redaction sidecar dependency lock (SEC-12)
 
@@ -99,9 +116,8 @@ docker run --rm -v "$PWD/requirements.lock:/work/requirements.lock:ro" -w /work 
  python:3.12-slim pip install --require-hashes --dry-run -r /work/requirements.lock
 ```
 
-## Note on remaining `npm audit` advisories
+## Note on `npm audit`
 
-`multer` is pinned to the patched `2.2.0` line via a root `overrides`
-entry. The remaining `npm audit` items (`undici`, `drizzle-orm`, `uuid`) were
-assessed low-reachability in the audit and require breaking major bumps; they
-are tracked separately and out of scope for FIX-2.
+`npm audit` is clean in all three workspaces (2026-08 triage). Two root
+`overrides` entries are deliberate and stay: `multer` on the patched `2.2.0`
+line, and `uuid` at `^11` inside `exceljs`.
