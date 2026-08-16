@@ -6,6 +6,31 @@ verification, onboarding, backups with a rehearsed restore, upgrades, and
 troubleshooting, all checklist-driven. This page states the deployment *model*
 and the commands you'll want at hand.
 
+## First, the thing people get wrong
+
+**There are two compose files in this repository and only one of them is a
+deployment.**
+
+`docker-compose.yml` at the repository root is the **development stack**. It
+exists so a clone runs with zero configuration on `localhost`: it BUILDS images
+from the working tree, and every secret it needs has a committed default, from
+the Postgres password to the `admin@cogeto.localhost / DevPassword1!` bootstrap
+login. Those values are public, so a copy of that stack reachable from the
+internet is a copy anyone can sign into. A secret preflight refuses to boot
+with a known dev secret once the configured domain is not localhost, but do not
+lean on that: it reads a configuration value, not the network.
+
+`project/infra/deploy/docker-compose.deploy.yml` is the **deployment stack**. It
+never builds, it requires every secret (`${VAR:?}`, so a missing one refuses to
+start), and it is not meant to be run by hand. **You do not deploy Cogeto by
+running a compose file.** You run `cogeto install`, which fetches that compose
+file at the matching release tag, generates the secrets, verifies the image
+signatures and starts the stack for you.
+
+So: **`docker compose up` is how you evaluate Cogeto on your own machine.
+`cogeto install` is how you run one.** Nothing in this document describes a
+supported path where the first becomes the second.
+
 ## The model: pull-only, signed, single-tenant
 
 - **One instance = one customer.** Isolation is a deployment boundary, not a row filter. There is no multi-tenant mode.

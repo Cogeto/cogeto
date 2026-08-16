@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Req, UseGuards } from '@nestjs/common';
 import type { EmailSourceDto } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
@@ -19,7 +19,7 @@ export class EmailSourceController {
   @Get(':id/source')
   async source(
     @Req() request: AuthenticatedRequest,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
   ): Promise<EmailSourceDto> {
     const view = await this.emails.getSourceForOwner(request.principal, id);
     if (!view) throw userError.notFound('email.notFound', 'email {{id}} not found', { id });

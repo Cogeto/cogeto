@@ -1,10 +1,13 @@
 import * as path from 'node:path';
+import { ForbiddenException } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Principal } from '@cogeto/shared';
 import { startTestDatabase } from '../testing/index';
 import type { TestDatabase } from '../testing/index';
 import { applyMigrations, writeAudit } from '../infrastructure/index';
 import { AuditController } from './audit.controller';
+import { AdminGuard, BearerAuthGuard } from '../identity/index';
 import type { AuthenticatedRequest } from '../identity/index';
 
 const userA: Principal = {
@@ -156,5 +159,65 @@ describe('audit_read_scoped (integration: real Postgres)', () => {
     // 'thing.did' matches the 5 org-1 rows but not the null-org 'sys.thing'.
     const byAction = await controller.list(req(userA), { action: 'thing.did' });
     expect(byAction.total).toBe(5); // org-1's 5 (org-2's excluded by scope)
+  });
+
+  // ── The trail is administrative only (issue #633) ──────────────────────────
+
+  describe('audit_admin_only', () => {
+    /** An execution context shaped like the one Nest hands a route guard. */
+    const contextFor = (principal: Principal): ExecutionContext =>
+      ({
+        switchToHttp: () => ({ getRequest: () => ({ principal }) }),
+      }) as unknown as ExecutionContext;
+
+    const admin: Principal = { ...userA, userId: 'user-admin', roles: ['member', 'admin'] };
+    const member: Principal = { ...userA, userId: 'user-member', roles: ['member'] };
+
+    it('the controller declares AdminGuard, so the role is enforced by the route itself', () => {
+      // Structural, not behavioural: the guard list is what Nest applies, and
+      // an integration test that only calls `controller.list()` directly would
+      // keep passing if someone removed the decorator. Reading the metadata is
+      // the assertion that the restriction is actually wired.
+      const guards = (Reflect.getMetadata('__guards__', AuditController) ?? []) as unknown[];
+      expect(guards).toContain(BearerAuthGuard);
+      expect(guards).toContain(AdminGuard);
+    });
+
+    it('refuses a member without the administrative role', () => {
+      const guard = new AdminGuard({ adminRole: 'admin' } as never);
+      expect(() => guard.canActivate(contextFor(member))).toThrow(ForbiddenException);
+    });
+
+    it('admits an administrator, who then reads their own org and nobody else’s', async () => {
+      const guard = new AdminGuard({ adminRole: 'admin' } as never);
+      expect(guard.canActivate(contextFor(admin))).toBe(true);
+
+      // The role opens the route; the org gate below it is unchanged, so an
+      // administrator of org-1 still never sees org-2's entries. (Asserted as
+      // an exclusion, not a total: earlier cases in this file add org-1 rows.)
+      const page = await controller.list(req(admin), { entityType: 'memory' });
+      expect(page.items.some((e) => e.entityId.startsWith('a-'))).toBe(true);
+      expect(page.items.some((e) => e.entityId.startsWith('b-'))).toBe(false);
+    });
+
+    it('an administrator still does not acquire another user’s detail', async () => {
+      // The role answers "may you see the trail", never "whose detail may you
+      // read". An operator can see THAT something happened to someone else's
+      // material; the per-row owner gate still withholds what.
+      await writeAudit(tdb.db, {
+        actor: 'user:peer-detail',
+        action: 'memory.status_transition',
+        entityType: 'memory',
+        entityId: 'owned-by-peer-detail',
+        detail: { from: 'active', to: 'outdated' },
+        orgId: 'org-1',
+        ownerId: 'peer-detail',
+      });
+      const page = await controller.list(req(admin), { entityType: 'memory' });
+      const row = page.items.find((e) => e.entityId === 'owned-by-peer-detail');
+      expect(row).toBeDefined();
+      expect(row?.detail).toBeNull();
+      expect(row?.detailWithheld).toBe(true);
+    });
   });
 });

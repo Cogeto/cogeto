@@ -46,7 +46,29 @@ PII never leaves your machine.
   provenance, and your receipts, as a signed archive in a
   [published open format](docs/passport-schema/) that verifies outside Cogeto.
 
-## Quickstart
+## Two ways to run it, and they are not interchangeable
+
+|  | **Try it / develop on it** | **Run a real instance** |
+| --- | --- | --- |
+| How | `docker compose up` in a clone | `sudo ./cogeto install` on a server |
+| Where | **your own machine only** | a server you control |
+| Secrets | committed dev defaults, published in this repository | generated per instance at install |
+| Images | built from your working tree | prebuilt, cosign-verified per release |
+| Data | throwaway | the real thing, with backups and upgrades |
+
+**The compose stack is for local evaluation and development. It is not a
+deployment method and never becomes one.** Its passwords are in this
+repository, so anyone who reads it can sign into a copy of it. Bringing it up
+on a server is not a supported path and not a shortcut to one, whatever hostname
+you point at it.
+
+A server instance is installed and operated with the **operator script**, which
+generates every secret locally, pulls signed images, and ends each run by
+printing exactly what you must still do yourself. See
+[deployment](docs/deployment.md) and the
+[operator runbook](docs/operator-runbook.md).
+
+### Quickstart: on your own machine
 
 One command on a fresh clone is the contract:
 
@@ -58,13 +80,31 @@ docker compose up
 
 Wait for the stack to become healthy, then open **https://localhost** (the dev edge
 uses a self-signed certificate, so accept the warning) and sign in with the dev
-bootstrap admin, `admin@cogeto.localhost` / `DevPassword1!`. Zero configuration
-required; every default can be overridden via `.env` (see
-[`.env.example`](.env.example)). Model providers are configured in the interface
-after login and stored encrypted in the instance database; without one the stack
-still runs, and the interface says plainly what to do.
+bootstrap admin, `admin@cogeto.localhost` / `DevPassword1!`. Those credentials are
+the same on every clone in the world, which is the point and also the reason this
+stack belongs on `localhost` and nowhere else. Zero configuration required; every
+default can be overridden via `.env` (see [`.env.example`](.env.example)). Model
+providers are configured in the interface after login and stored encrypted in the
+instance database; without one the stack still runs, and the interface says plainly
+what to do.
 
 Details, layout, and common issues: [`docs/running-locally.md`](docs/running-locally.md).
+
+### Installing a server instance
+
+```sh
+# On a fresh Ubuntu 22.04/24.04 host you control:
+curl -fsSL https://raw.githubusercontent.com/Cogeto/cogeto/main/scripts/operator/cogeto -o cogeto
+chmod +x cogeto
+sudo ./cogeto install --check --domain <your.domain> --acme-email <you>  # dry run first
+sudo ./cogeto install --domain <your.domain> --acme-email <you>
+```
+
+It installs Docker and cosign, verifies the release signatures, generates every
+per-instance secret into a `600` `.env`, brings the stack up, and prints the DNS
+records, backup settings and verification steps it cannot do for you. Full
+procedure, including backups and upgrades:
+[docs/deployment.md](docs/deployment.md).
 
 ### The Ana sandbox
 

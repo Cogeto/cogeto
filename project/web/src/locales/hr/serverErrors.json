@@ -53,6 +53,10 @@
     "invalidDomain": "nije valjana domena (npr. adriatic-foods.hr)",
     "notFound": "e-poruka {{id}} nije pronađena"
   },
+  "erasure": {
+    "confirmationMismatch": "Potvrda mora ponoviti identifikator korisnika koji se briše",
+    "notYourself": "Za uklanjanje vlastitog materijala upotrijebite uobičajeno brisanje izvora"
+  },
   "extractionGate": {
     "notGateable": "'{{sourceType}}' nije vrsta izvora iz koje se izdvaja; filtar upravlja ovima: {{gateable}}",
     "ruleNotFound": "nema takvog pravila"

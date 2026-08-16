@@ -76,21 +76,46 @@ every CI build. The security-relevant ones:
 
 | Area | Test |
 |---|---|
-| Inbound-mail intake and SPF gate | `project/src/connectors/email-intake.integration.spec.ts` |
-| Allowlist routing | `project/src/connectors/email-allowlist.integration.spec.ts` |
-| Intake endpoint auth guard | `project/src/connectors/mail-intake.guard.spec.ts` |
+| Inbound-mail intake and SPF gate | `project/src/email/email-intake.integration.spec.ts` |
+| Allowlist routing | `project/src/email/email-allowlist.integration.spec.ts` |
+| Intake endpoint auth guard | `project/src/email/mail-intake.guard.spec.ts` |
 | Deletion cascade and receipts | `project/src/memory/deletion.integration.spec.ts`, `email-deletion-cascade.integration.spec.ts`, `web-deletion-cascade.integration.spec.ts` |
 | Forgotten sweep | `project/src/memory/sweep-arms.integration.spec.ts` |
 | PII redaction at the model seam | `project/src/model-gateway/redaction.spec.ts` |
 | Extraction guard | `project/src/ingestion/pipeline/extract-guard.spec.ts` |
-| Web fetcher SSRF/robots/caps + internal-only discovery | `project/src/connectors/web-fetch.spec.ts`, `web-discovery.spec.ts` (+ `searx_internal_only` in `deployment-hardening.spec.ts`) |
-| Research gate: no query without approval, sent-query record | `project/src/connectors/research-gate.integration.spec.ts`, `research-flow.integration.spec.ts` |
+| Web fetcher SSRF/robots/caps + internal-only discovery | `project/src/research/web-fetch.spec.ts`, `web-discovery.spec.ts` (+ `searx_internal_only` in `deployment-hardening.spec.ts`) |
+| Research gate: no query without approval, sent-query record | `project/src/research/research-gate.integration.spec.ts`, `research-flow.integration.spec.ts` |
 | Deployment hardening / secret preflight | `project/src/entrypoints/deployment-hardening.spec.ts`, `secret-preflight.spec.ts` |
-| Audit-log integrity | `project/src/entrypoints/audit.integration.spec.ts` |
+| Audit-log integrity | `project/src/operations/audit.integration.spec.ts` |
 
 The invariant tests named in the definition of done (scope-leak, deletion-cascade,
 approval-gate, golden-set eval gate) are required checks, nothing merges without
 them green.
+
+## A note on the `SEC-N` identifiers in the code and these documents
+
+Comments and documents across this repository cite findings as `SEC-1`,
+`SEC-26`, `SEC-34` and similar. Those are identifiers from **internal security
+audits**, and the reports they came from are **not published**: audit reports
+are conducted internally and removed once their findings are remediated, so
+there is no document anywhere to look them up in. Nothing is being withheld
+selectively; there is simply no artifact.
+
+What that means for a reader: **the code a `SEC-N` annotates is the record of
+what was done.** Each of those citations sits on the change that closed the
+finding, next to the test or invariant that keeps it closed, so the fix is
+readable and re-provable even though the report is not. Read the comment and
+the test beside it; that pair is complete on its own. Where a finding was
+consciously accepted rather than fixed, the acceptance is written into the
+residual-limits section of the mechanism document it belongs to, not left
+implicit in a citation.
+
+The identifiers are kept rather than stripped because they still do useful
+work: they group related changes that landed across different files and
+releases, and removing them would leave the comments claiming a reason with no
+handle at all. They are deliberately NOT reconstructed into descriptions after
+the fact, because an invented account of what a finding said would be worse
+than none.
 
 ## Supply chain and instance hardening
 

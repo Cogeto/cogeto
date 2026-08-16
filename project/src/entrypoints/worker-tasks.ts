@@ -29,6 +29,7 @@ import {
   DELETION_JOB_TYPE,
   EMBEDDING_REBUILD_JOB_TYPE,
   MEMORY_EMBED_JOB_TYPE,
+  OWNER_ERASURE_JOB_TYPE,
   runMemoryEmbedJob,
   SWEEP_JOB_TYPE,
 } from '../memory/index';
@@ -38,6 +39,7 @@ import type {
   IntegritySweep,
   MemoryObjectStore,
   MemoryStore,
+  OwnerErasureService,
 } from '../memory/index';
 import { APPROVAL_EXECUTE_JOB_TYPE, APPROVAL_EXPIRY_JOB_TYPE } from '../agents/index';
 import type { ApprovalExecutor, ApprovalService } from '../agents/index';
@@ -72,6 +74,8 @@ export interface WorkerTaskDeps {
   pipeline: IngestionPipeline;
   memoryStore: MemoryStore;
   deletionExecutor: DeletionExecutor;
+  /** Owner erasure's pass (issue #632). */
+  ownerErasure: OwnerErasureService;
   integritySweep: IntegritySweep;
   dreaming: DreamingService;
   reconcileRepair: ReconcileRepair;
@@ -448,6 +452,34 @@ export function buildTaskList(db: Db, deps: WorkerTaskDeps): TaskList {
         );
       },
     ),
+
+    // Owner erasure (issue #632): a PLAIN, re-runnable pass, one saga
+    // transaction per source. NOT idempotentTask — that wrapper would run the
+    // whole corpus inside one transaction and collapse the per-source
+    // all-or-nothing guarantee. The administrator and their org travel on the
+    // payload, because the worker has no Principal and the trail must name who
+    // asked rather than the saga itself.
+    [OWNER_ERASURE_JOB_TYPE]: async (rawPayload) => {
+      const payload = rawPayload as {
+        source_id?: unknown;
+        actor?: unknown;
+        org_id?: unknown;
+      };
+      const subjectUserId = payload.source_id;
+      if (typeof subjectUserId !== 'string' || !subjectUserId) return;
+      const actor = typeof payload.actor === 'string' ? payload.actor : 'owner_erasure';
+      const orgId = typeof payload.org_id === 'string' ? payload.org_id : '';
+      const result = await deps.ownerErasure.run(subjectUserId, actor, orgId);
+      deps.log(
+        {
+          source_id: subjectUserId,
+          erased: result.erased.length,
+          retained: result.retained.length,
+          failed: result.failed.length,
+        },
+        'owner erasure pass completed',
+      );
+    },
 
     // The bulk-import coordinator (V2.2 item 5.3): a PLAIN, re-runnable pass
     // (the research-conclude shape) under a per-run single-flight lock; it

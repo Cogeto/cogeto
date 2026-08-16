@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { eq, inArray, or } from 'drizzle-orm';
+import { asc, eq, inArray, or } from 'drizzle-orm';
 import type { DbOrTx, Tx } from '../infrastructure/index';
-import type { SourceCascade, SourceDeletion } from '../memory/index';
+import type { OwnedSourceRef, SourceCascade, SourceDeletion } from '../memory/index';
 import { emailAttachment, emailMessage } from './persistence/tables';
 
 /**
@@ -35,6 +35,18 @@ export class EmailSourceDeletion implements SourceDeletion {
   async deleteSource(tx: Tx, sourceId: string): Promise<void> {
     // email_attachment rows cascade via their FK (ON DELETE CASCADE).
     await tx.delete(emailMessage).where(eq(emailMessage.id, sourceId));
+  }
+
+  /** Owner erasure's enumeration (issue #632). The message row carries the
+   * scope it was captured under; its attachments are cascade members of this
+   * source and are never listed separately, so an attachment can neither be
+   * missed nor enumerated twice. */
+  async listForOwner(db: DbOrTx, ownerId: string): Promise<OwnedSourceRef[]> {
+    return db
+      .select({ sourceId: emailMessage.id, scope: emailMessage.scope })
+      .from(emailMessage)
+      .where(eq(emailMessage.ownerId, ownerId))
+      .orderBy(asc(emailMessage.id));
   }
 
   async enumerateCascade(tx: Tx, sourceId: string): Promise<SourceCascade> {

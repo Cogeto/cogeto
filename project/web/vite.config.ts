@@ -27,6 +27,16 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    // No source maps in the shipped artifact (issue #636), the same rule the
+    // server build has carried since SEC-32. `npm run build` IS the production
+    // build: its output is what the caddy stage bakes into the edge image, so
+    // the maps were served from the public origin — about 2.4 MB of them,
+    // handing anyone the original TypeScript layout of every page. The code is
+    // AGPL and readable in the repository, so this is weight and needless
+    // surface rather than a disclosure, but neither belongs on the edge.
+    //
+    // `vite build --sourcemap` still produces them on demand for a local
+    // debugging build, which is the only place they were ever useful.
+    sourcemap: false,
   },
 });

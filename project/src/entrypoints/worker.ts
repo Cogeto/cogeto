@@ -30,6 +30,7 @@ import {
 } from '../ingestion/index';
 import {
   DeletionExecutor,
+  OwnerErasureService,
   EmbeddingRebuildService,
   IntegritySweep,
   MemoryObjectStore,
@@ -204,6 +205,7 @@ async function main(): Promise<void> {
     pipeline,
     memoryStore: context.get(MemoryStore),
     deletionExecutor: context.get(DeletionExecutor),
+    ownerErasure: context.get(OwnerErasureService),
     integritySweep: context.get(IntegritySweep),
     dreaming: context.get(DreamingService),
     reconcileRepair: context.get(ReconcileRepair),

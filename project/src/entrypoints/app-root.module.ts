@@ -209,6 +209,9 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
     // Who may read the INSTANCE-WIDE receipt-chain report (V2.0 item 3.7);
     // every other caller gets the verdict over their own receipts.
     adminRole: config.adminRole,
+    // Owner erasure's administrative route (issue #632). The app serves it;
+    // the worker runs the pass and registers no controller.
+    erasureRoute: true,
   });
   // The instance's model and provider configuration (V2.4 item 7.1). One
   // instance, threaded into the root AND into chat, whose answer path asks it

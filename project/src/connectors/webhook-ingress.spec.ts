@@ -65,17 +65,37 @@ describe('connector_webhook_ingress', () => {
     ).rejects.toMatchObject({ status: 413 });
   });
 
-  it('answers_404_for_unknown_and_inactive_connectors_before_any_crypto', async () => {
+  it('no_existence_oracle: an unknown connector is indistinguishable from a bad signature', async () => {
+    // Issue #636. These answered 404 while a bad signature answered 403, so an
+    // unauthenticated caller holding no secret could walk identifiers and read
+    // which connectors an instance has, and which of them are live, straight
+    // off the status code. Every pre-verification refusal is now the same 403
+    // with the same body; only the log distinguishes them.
     const delivery = upstream.signDelivery(secret, 'evt-x', []);
-    await expect(
-      controller.receive('not-a-uuid', request(delivery.body, delivery.headers)),
-    ).rejects.toMatchObject({ status: 404 });
-    await expect(
-      controller.receive(
-        '00000000-0000-4000-8000-000000000000',
-        request(delivery.body, delivery.headers),
+    const malformed = controller.receive('not-a-uuid', request(delivery.body, delivery.headers));
+    const unknown = controller.receive(
+      '00000000-0000-4000-8000-000000000000',
+      request(delivery.body, delivery.headers),
+    );
+    // A real connector with a wrong signature: the response an attacker is
+    // trying to tell the two above apart from.
+    const wrongKey = upstream.signDelivery('not-the-secret', 'evt-x2', []);
+    const badSignature = controller.receive(row.id, request(wrongKey.body, wrongKey.headers));
+
+    const responses = await Promise.all(
+      [malformed, unknown, badSignature].map((p) =>
+        p.then(
+          () => ({ status: 0, message: 'unexpectedly accepted' }),
+          (error: { status?: number; message?: string }) => ({
+            status: error.status,
+            message: error.message,
+          }),
+        ),
       ),
-    ).rejects.toMatchObject({ status: 404 });
+    );
+    expect(responses[0]).toEqual(responses[1]);
+    expect(responses[1]).toEqual(responses[2]);
+    expect(responses[0]?.status).toBe(403);
   });
 
   it('refuses_unsigned_and_badly_signed_payloads_before_parsing', async () => {

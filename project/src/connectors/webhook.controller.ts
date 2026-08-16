@@ -13,6 +13,7 @@ import {
 import type { Request } from 'express';
 import {
   DRIZZLE,
+  InMemoryRateLimitStore,
   RateLimitStore,
   untranslatedError,
   withTransactionalEnqueue,
@@ -54,14 +55,29 @@ import { SYNCABLE_STATES } from './domain/lifecycle';
 @Controller('connectors/webhooks')
 export class ConnectorWebhookController {
   private readonly logger = new Logger(ConnectorWebhookController.name);
+  /**
+   * Never absent (issue #636). It used to be an optional field the request
+   * path skipped entirely when unbound, which made the ONE unauthenticated
+   * endpoint in the product the only rate-limited surface whose limiter could
+   * silently not be there. `LimitsModule` is global and binds a durable store
+   * in both composition roots, so the gap was latent rather than live — but an
+   * unauthenticated endpoint is the wrong one to leave conditional, and the
+   * other two limiter call sites (`RateLimitGuard`, the mail intake) already
+   * fall back to an in-process store rather than to nothing. This does the
+   * same: a bare construction gets a working limiter with a per-process
+   * window, which is the pre-durable behaviour, not an open door.
+   */
+  private readonly limiter: RateLimitStore;
 
   constructor(
     @Inject(DRIZZLE) private readonly db: Db,
     @Inject(CONNECTORS_OPTIONS) private readonly options: ConnectorsOptions,
     private readonly registry: ConnectorRegistry,
     private readonly store: ConnectorStore,
-    @Optional() private readonly limiter?: RateLimitStore,
-  ) {}
+    @Optional() limiter?: RateLimitStore,
+  ) {
+    this.limiter = limiter ?? new InMemoryRateLimitStore();
+  }
 
   @Post(':connectorId')
   @HttpCode(HttpStatus.OK)
@@ -78,42 +94,58 @@ export class ConnectorWebhookController {
       throw untranslatedError.tooLarge('refused');
     }
 
-    // Cheap refusals first: unknown connector ids and inactive connectors
-    // answer 404 before any crypto or rate bookkeeping.
-    if (!/^[0-9a-f-]{36}$/i.test(connectorId)) {
-      throw untranslatedError.notFound('unknown');
-    }
-    const connector = await this.store.byId(connectorId);
-    if (!connector || !SYNCABLE_STATES.includes(connector.state)) {
-      throw untranslatedError.notFound('unknown');
-    }
-    const descriptor = this.registry.get(connector.kind);
-    if (!descriptor?.webhook) throw untranslatedError.notFound('unknown');
+    // ONE refusal for every pre-verification failure (issue #636).
+    //
+    // These used to answer 404 for an unknown, inactive or non-webhook
+    // connector and 403 for a bad signature, which made the endpoint an
+    // EXISTENCE ORACLE: an unauthenticated caller with no secret could walk
+    // identifiers and read the difference between the two responses to learn
+    // which connectors an instance has and which of them are live. The
+    // identifier is a uuid so the walk is not cheap, but the endpoint is the
+    // hostile-facing one and it should not answer questions at all.
+    //
+    // Every branch below now answers the same 403 with the same body. The
+    // caller cannot distinguish "no such connector" from "wrong signature",
+    // and the log keeps the real reason with the identifier for the operator.
+    // A response-time difference remains (an unknown id skips the HMAC), which
+    // is a far weaker signal than a status code and not worth contorting the
+    // order of operations to hide.
+    const refused = (reason: string): Error => {
+      this.logger.warn(`webhook refused (${reason}) for connector ${connectorId}`);
+      return untranslatedError.forbidden('refused');
+    };
 
-    // Durable per-connector rate limit (the email-intake precedent).
-    if (this.limiter) {
-      const max = this.options.webhookMaxPerWindow ?? WEBHOOK_MAX_PER_WINDOW_DEFAULT;
-      const windowMs =
-        (this.options.webhookRateWindowSeconds ?? WEBHOOK_RATE_WINDOW_SECONDS_DEFAULT) * 1000;
-      const { count } = await this.limiter.hit(
-        connectorId,
-        'connector_webhook',
-        windowMs,
-        Date.now(),
-      );
-      if (count > max) throw untranslatedError.tooManyRequests('slow down');
-    }
+    if (!/^[0-9a-f-]{36}$/i.test(connectorId)) throw refused('malformed_id');
+    const connector = await this.store.byId(connectorId);
+    if (!connector) throw refused('unknown_connector');
+    if (!SYNCABLE_STATES.includes(connector.state)) throw refused('connector_not_syncable');
+    const descriptor = this.registry.get(connector.kind);
+    if (!descriptor?.webhook) throw refused('kind_has_no_webhook');
+
+    // Durable per-connector rate limit (the email-intake precedent). The one
+    // refusal that is deliberately NOT uniform: 429 is the answer an honest
+    // upstream must be able to read, and it is reached only for an identifier
+    // the lookup above already accepted.
+    const max = this.options.webhookMaxPerWindow ?? WEBHOOK_MAX_PER_WINDOW_DEFAULT;
+    const windowMs =
+      (this.options.webhookRateWindowSeconds ?? WEBHOOK_RATE_WINDOW_SECONDS_DEFAULT) * 1000;
+    const { count } = await this.limiter.hit(
+      connectorId,
+      'connector_webhook',
+      windowMs,
+      Date.now(),
+    );
+    if (count > max) throw untranslatedError.tooManyRequests('slow down');
 
     // Signature over the raw bytes, before anything is parsed.
     const secret = await this.store.openWebhookSecret(connectorId);
-    if (!secret) throw untranslatedError.forbidden('refused');
+    // Named WITHOUT the column's own identifier: `webhook-secret-confinement`
+    // asserts that name appears in exactly one file, and a log string that
+    // happened to contain it would quietly spend that guard's meaning.
+    if (!secret) throw refused('secret_unavailable');
     const headers = lowercaseHeaders(request);
     const verdict = verifyWebhookSignature(descriptor.webhook, secret, raw, headers, new Date());
-    if (!verdict.ok) {
-      // Refusal detail goes to the log (identifiers only), never the caller.
-      this.logger.warn(`webhook refused (${verdict.refusal}) for connector ${connectorId}`);
-      throw untranslatedError.forbidden('refused');
-    }
+    if (!verdict.ok) throw refused(verdict.refusal);
 
     // Only now is the body parsed, and only identifiers leave the parse.
     let payload: unknown;

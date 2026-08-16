@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import type { Tx } from '../infrastructure/index';
-import type { SourceDeletion } from '../memory/index';
+import type { OwnedSourceRef, SourceDeletion } from '../memory/index';
 import { chatMessage } from './persistence/tables';
 
 /**
@@ -27,5 +27,20 @@ export class ChatSourceDeletion implements SourceDeletion {
 
   async deleteSource(tx: Tx, sourceId: string): Promise<void> {
     await tx.delete(chatMessage).where(eq(chatMessage.id, sourceId));
+  }
+
+  /**
+   * Deliberately EMPTY for owner erasure (issue #632), and implemented rather
+   * than omitted so that this is a declaration and not an oversight.
+   *
+   * A message is a member of its conversation: `ConversationSourceDeletion`
+   * enumerates it as a cascade sub-source, so every chat message an owner has
+   * is already reached through its container. Listing messages here as well
+   * would enumerate the same content twice — and worse, would let a single
+   * message be erased out from under a conversation the shared-fact guard had
+   * decided to retain.
+   */
+  async listForOwner(): Promise<OwnedSourceRef[]> {
+    return [];
   }
 }

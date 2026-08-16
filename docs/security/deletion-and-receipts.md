@@ -46,6 +46,48 @@ The saga runs in two parts:
 Authorization is owner-only, checked against the source row *and* every derived
 memory row; a mismatch returns `NotFound` so existence never leaks.
 
+## Erasing a departed user's material
+
+Owner-only authorization has one deliberate exception, added because its
+absence was a hole in exactly the guarantee this document is about. When
+someone leaves and their account is deactivated, nobody could read their
+private material and nobody could delete it either, so an erasure request
+could only be satisfied by editing Postgres, Qdrant and MinIO by hand, which
+produces no receipt and leaves no trace.
+
+**Owner erasure** is an administrative action (the operator role, a typed
+confirmation naming the subject, audited with both the actor and the subject)
+that runs **the saga above, unchanged**, once per source the departed user
+owned. Not a second deletion mechanism: same enumeration, same cascades, same
+all-or-nothing transaction, same signed and chained receipt, same nightly
+sweep. What is new is who may invoke it and over what set.
+
+It works from the stored `owner_id` alone. Nothing in the path resolves the
+subject against the identity provider, because the state it exists for is
+precisely the one where that lookup fails.
+
+**The scope rule: private material is erased, shared material always stays,
+without exception.** Two checks enforce it. A source whose own row records
+`shared` is never attempted; and inside the saga's transaction, over the
+complete enumeration including cascade members, a source is retained whole if
+ANY fact derived from it is shared. The second check is the one that matters:
+scope is stamped from the source at ingestion but a user can re-scope a single
+memory afterwards, so a private source can hold a shared fact, and the saga
+deletes by provenance. Retaining more than strictly necessary is the direction
+the rule requires, and every retention is reported with its reason rather than
+being a silent skip.
+
+**The receipt shape is one per source, not one per erasure.** That is the shape
+a data subject can actually use: each receipt verifies on its own against the
+published public key and names exactly what it removed, so any single claim in
+the set can be checked. One aggregate receipt would verify as a whole or not at
+all, and a partial failure would leave the entire attestation `pending`. The
+set is bracketed in the audit trail by `user.erasure_requested` and
+`user.erased`, so the evidence is one audited run plus N individually
+verifiable receipts, each already linked into the instance's one chain.
+
+The operator procedure is [runbook §4d](../operator-runbook.md#4d-erasing-a-departed-users-data).
+
 ## The receipt and its chain
 
 Each confirmed receipt is signed with the instance's own **ed25519 key**,

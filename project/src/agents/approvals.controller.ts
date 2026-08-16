@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import type { ApprovalDto, EmailReplyDraftView } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
@@ -47,7 +47,10 @@ export class ApprovalsController {
   }
 
   @Get(':id')
-  async get(@Req() request: AuthenticatedRequest, @Param('id') id: string): Promise<ApprovalDto> {
+  async get(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ApprovalDto> {
     return this.approvals.get(request.principal, id);
   }
 
@@ -59,7 +62,7 @@ export class ApprovalsController {
   @Get(':id/email-draft')
   async emailDraft(
     @Req() request: AuthenticatedRequest,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
   ): Promise<EmailReplyDraftView> {
     return this.approvals.getEmailDraft(request.principal, id);
   }
@@ -68,7 +71,7 @@ export class ApprovalsController {
   @Post(':id')
   async confirm(
     @Req() request: AuthenticatedRequest,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
   ): Promise<ApprovalDto> {
     const parsed = confirmSchema.safeParse(body);

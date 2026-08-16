@@ -153,7 +153,7 @@ well-defined.
 
 ## 3. Job-type contracts
 
-Twenty-five job types. Each is declared **once**, as an exported constant, in the
+Twenty-six job types. Each is declared **once**, as an exported constant, in the
 module that owns the payload contract and writes the handler body. The worker
 composition root is the only place that maps a job type to a handler, and it
 imports every constant rather than spelling any of them.
@@ -168,6 +168,7 @@ imports every constant rather than spelling any of them.
 | `memory.reindex_advance` | `memory` | `EMBEDDING_REBUILD_JOB_TYPE` | per-source (plain, re-runnable: one rebuild advances many times under the instance-wide single-flight lock, the `import.advance` shape; the pass embeds a bounded slice into the target collection, records progress on `embedding_index_state`, re-enqueues itself, and performs the one-transaction switch when a full sweep proves the target complete) |
 | `deletion.execute` | `memory` | `DELETION_JOB_TYPE` | per-source |
 | `deletion_sweep` | `memory` | `SWEEP_JOB_TYPE` | recurring |
+| `memory.erase_owner` | `memory` | `OWNER_ERASURE_JOB_TYPE` | per-subject (plain, re-runnable: owner erasure runs the ordinary saga once per source, so it must NOT use `idempotentTask`, whose single transaction would collapse the per-source all-or-nothing guarantee into one transaction over the whole corpus; re-running erases what is left and retains what it retained) |
 | `approval.execute` | `agents` | `APPROVAL_EXECUTE_JOB_TYPE` | per-source |
 | `approval_expiry` | `agents` | `APPROVAL_EXPIRY_JOB_TYPE` | recurring |
 | `research.conclude` | `research` | `RESEARCH_CONCLUDE_JOB_TYPE` | per-source |

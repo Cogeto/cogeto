@@ -70,11 +70,33 @@ routes.
 
 ## The audit trail
 
-`GET /api/audit` is an org-scoped, read-only trail. Within the single org, members
-share one organization, so the trail legitimately shows all members' actions, but
-it records **ids, statuses, reasons, and counts only, never memory or note
-content**. Deletion receipts are visible to the actor who performed the deletion
-(the owner).
+`GET /api/audit` is a read-only trail, and since issue #633 it is
+**administrative only**: it requires the operator role, exactly like the queue,
+provider, model and integrity surfaces, and the interface hides the section for
+anyone else.
+
+It was previously readable by any authenticated member, on the reasoning that a
+single-tenant instance is one organisation and the trail carries no content.
+The first half is still true and the second half was always enforced (entries
+are **ids, statuses, transition names and counts, never memory or note
+content**), but the conclusion was wrong. Actor, action, entity type and entity
+id together let any member enumerate who uploaded, deleted, exported or
+captured what, by identifier, across everyone's private material. That is
+activity metadata about colleagues, and "single tenant, private scope by
+default" primes a user to expect the opposite. Sharing a deployment is not
+consenting to have your working day readable.
+
+Two gates below the role are unchanged and are not made redundant by it:
+
+- **The org gate** (spec §4.2): a caller only ever sees their own
+  organisation's entries plus system/global ones, never another org's.
+- **The per-row owner gate**: `detail_json` is returned only to the user whose
+  artifact the entry concerns. An administrator can see THAT something happened
+  to someone else's material, which is the operator's job; they do not thereby
+  acquire its detail.
+
+Deletion receipts are visible to the actor who performed the deletion (the
+owner).
 
 **Chain verification is instance-wide; its numbers are not** (V2.0 item 3.7). The
 ledger is one hash chain, and a per-user subset of a hash chain verifies nothing, so

@@ -173,6 +173,43 @@ describe('deployment hardening', () => {
     // Source maps go with them (SEC-32): the production build turns them off,
     // and this is the assertion that keeps that config from drifting back.
     expect(read('project/src/tsconfig.build.json')).toMatch(/"sourceMap":\s*false/);
+    // The SPA half of the same rule (issue #636): `npm run build` is the
+    // production build and its output is baked into the edge image, so the
+    // maps were served from the public origin until now.
+    expect(read('project/web/vite.config.ts')).toMatch(/sourcemap:\s*false/);
+  });
+
+  it('production_image_carries_no_test_double: every module-local testing/ directory is excluded', () => {
+    // Issue #636. The build config excluded `testing`, which TypeScript
+    // resolves against the tsconfig's own directory — so it matched
+    // project/src/testing and NOTHING else. Two test doubles that live inside
+    // their module compiled straight into the runtime image:
+    // connectors/testing/reference-connector.ts (the platform conformance
+    // harness, complete with its fake upstream) and confluence/testing/
+    // fake-site.ts. Nothing registers either, so they were dead weight rather
+    // than a reachable path — but the check above exists precisely so test
+    // scaffolding cannot reach a customer box, and this one closes the half of
+    // that rule the entrypoint scan never covered.
+    //
+    // Derived from the source tree like its sibling: every `testing/`
+    // directory under project/src must be covered by the exclude glob, so a
+    // third one added tomorrow is excluded by construction rather than by
+    // someone remembering to extend a list.
+    const testingDirs = readdirSync(path.join(REPO, 'project/src'), {
+      recursive: true,
+      withFileTypes: true,
+    })
+      .filter((entry) => entry.isDirectory() && entry.name === 'testing')
+      .map((entry) => entry.name);
+    expect(testingDirs.length).toBeGreaterThan(1); // the root one plus module-local ones
+
+    const buildConfig = JSON.parse(
+      read('project/src/tsconfig.build.json').replace(/^\s*\/\/.*$/gm, ''),
+    ) as { exclude: string[] };
+    expect(
+      buildConfig.exclude,
+      'tsconfig.build.json must exclude a testing/ directory at ANY depth, not just the root one',
+    ).toContain('**/testing/**');
   });
 
   it('the main Caddyfile no longer serves the console vhosts; they live in the consoles profile', () => {

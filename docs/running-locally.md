@@ -4,6 +4,13 @@ The standing contract (the specification): **`docker compose up` on a fresh clon
 reaches a usable login**: zero configuration. Everything below is detail
 around that one command.
 
+> **This stack is for your own machine.** Zero configuration is bought with
+> committed development secrets, including the `admin@cogeto.localhost /
+> DevPassword1!` bootstrap login, which is identical on every clone. Running
+> it anywhere reachable from the internet publishes an instance with public
+> credentials. To run a real instance, use the operator script:
+> [deployment](deployment.md) and the [operator runbook](operator-runbook.md).
+
 ## Prerequisites
 
 - **Docker Engine + the compose plugin** (Docker Desktop is fine). The stack

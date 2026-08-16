@@ -44,7 +44,15 @@ inspectable artifact. EU hosted, self hosted, or fully offline.
 
 ## Current state
 
-v1.6.0 is the current release line. The task subsystem and reminders were **removed**
+**v1.7.3 is the current release line** (`package.json` and the git tag are the two
+sources of truth and must agree: `npm run verify:version`). Migrations run to
+**0059**; the three most recent are outside the V2 item narrative below and are
+small, self-contained changes with their reasoning in the files themselves:
+0057 full-text search over conversations, 0058 a `stopped` flag so an
+interrupted answer says so, 0059 an index making the duplicate-upload checksum
+lookup cheap.
+
+The task subsystem and reminders were **removed**
 in V2.0 items 3.1 and 3.2: Cogeto has no tasks, no to-dos, and no reminders. What
 survives is **open loops**, `commitment` and `open_loop` memories read straight from
 the memory table, due-dated by `valid_until`, surfaced in chat and on the attention
@@ -73,9 +81,14 @@ chat suite is deliberately not cached (retrieval returns equally scored facts in
 different order every run, so the answer prompt is not reproducible) and still runs
 live post-merge.
 
-The 2.0 security audit ([`docs/audits/`](docs/audits/)) is closed out across five
-remediation waves: every finding is fixed or consciously accepted with a written
-rationale, and the audit and its independent verification are both published there.
+The 2.0 security audit is closed out across five remediation waves: every finding
+is fixed or consciously accepted with a written rationale. The audit reports
+themselves are internal and are **not published** (a report is a live list of
+unfixed weaknesses); what is public is the remediation, as the code plus the test
+that keeps it fixed. The `SEC-N` identifiers throughout this codebase refer to
+those findings and cannot be looked up anywhere: the code they annotate is the
+record. See the note in
+[`docs/security/README.md`](docs/security/README.md).
 Two operator-visible consequences worth knowing before changing anything nearby:
 inbound email is now behind the `mail` compose profile and is **off by default**, and
 the five deployment assets are checksum-verified by the installer, so editing one

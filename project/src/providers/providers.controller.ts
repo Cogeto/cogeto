@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Put,
@@ -93,7 +94,7 @@ export class ProvidersController {
   @Patch('providers/:id')
   async update(
     @Req() request: AuthenticatedRequest,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
   ): Promise<ProviderDto> {
     const parsed = parseOrBadRequest(updateSchema, body);
@@ -103,17 +104,20 @@ export class ProvidersController {
   }
 
   @Delete('providers/:id')
-  async remove(@Req() request: AuthenticatedRequest, @Param('id') id: string): Promise<void> {
+  async remove(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<void> {
     await this.providers.deleteProvider(request.principal, id);
   }
 
   @Post('providers/:id/probe')
-  probe(@Param('id') id: string): Promise<ProviderProbeDto> {
+  probe(@Param('id', ParseUUIDPipe) id: string): Promise<ProviderProbeDto> {
     return this.providers.probeProvider(id);
   }
 
   @Get('providers/:id/models')
-  models(@Param('id') id: string): Promise<ProviderModelsDto> {
+  models(@Param('id', ParseUUIDPipe) id: string): Promise<ProviderModelsDto> {
     return this.providers.listModels(id);
   }
 
@@ -180,7 +184,7 @@ export class ProvidersController {
   @Delete('model-configuration/answer-options/:id')
   removeAnswerOption(
     @Req() request: AuthenticatedRequest,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ModelConfigurationDto> {
     return this.providers.removeAnswerOption(request.principal, id);
   }

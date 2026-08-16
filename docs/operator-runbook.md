@@ -463,6 +463,79 @@ seconds (20 s registry cache + the panel's 10 s poll). The two nightly jobs
 (dreaming 03:30, sweep 03:00 UTC) report last run and go **overdue** after 26
 hours without a successful run (`COGETO_JOBS_OVERDUE_HOURS`).
 
+### 4d. Erasing a departed user's data
+
+When someone leaves, deactivating them in the Zitadel console ends their access
+and **deletes nothing**. That is deliberate. Deciding what happens to their
+material is a separate act, and this is how you carry it out.
+
+**What it does, in one sentence:** erases every source the departed user owned
+**privately**, through the ordinary deletion saga, producing one signed
+deletion receipt per source; **shared material always stays**.
+
+**Before you start**
+
+- [ ] You have the departed user's **user id**, not their email. It is the
+ Zitadel subject id, and it is what `actor` shows as `user:<id>` throughout
+ the audit trail. The Console shows it on the user's page.
+- [ ] You hold the **admin** role. This is administrative only.
+- [ ] You have their **replacement's** agreement on what may go, if any of the
+ material is work the team still needs. Anything shared is kept for you;
+ anything private is not recoverable afterwards.
+- [ ] You are on a **backed-up** instance with a rehearsed restore (§5). This
+ is irreversible.
+
+**Step 1: see what would happen.** Read-only, safe to repeat.
+
+```sh
+curl -sS https://<domain>/api/admin/erasure/<user-id> \
+ -H "Authorization: Bearer $TOKEN" | jq
+```
+
+It answers with `toEraseCount`, `retainedSharedCount`, and a `byType`
+breakdown. Read the `note` it returns: the plan counts sources whose OWN scope
+is shared, and a private source is also retained when any fact derived from it
+is shared, which the plan cannot count without enumerating every derived
+memory. The completed run reports those separately.
+
+**Step 2: request the erasure.** The confirmation must repeat the same user id;
+a mismatch is refused, and so is erasing yourself.
+
+```sh
+curl -sS -X POST https://<domain>/api/admin/erasure/<user-id> \
+ -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+ -d '{"confirmUserId":"<user-id>"}' | jq
+```
+
+The request is audited (`user.erasure_requested`, naming you and the subject)
+and queued; the work runs in the worker, one saga transaction per source.
+
+**Step 3: confirm it completed.** In **Audit** (admin only), the
+`user.erased` entry carries the final counts: `erased`, `receipts`,
+`retained`, `retainedSharedSource`, `retainedSharedFact`, `failed`. In
+**Forgotten**, each erased source has its own signed receipt and the chain
+still verifies.
+
+- [ ] `failed` is 0. A non-zero count names sources that could not be erased,
+ usually because something else removed them first; re-running the same
+ request is safe and erases whatever is left.
+- [ ] The receipt chain verifies (Forgotten → chain status).
+- [ ] Record the erasure and its date in the customer's tracker.
+
+**What it deliberately keeps, and what to do about it**
+
+- **Shared sources.** Reported as `shared_source`. Kept by the rule: a
+ colleague's shared knowledge does not disappear because that colleague left.
+- **A private source holding at least one shared fact.** Reported as
+ `shared_derived_fact`. The saga deletes by provenance, so erasing that source
+ would take the shared fact with it; the whole source is kept instead. This
+ means some of the departed user's private text can survive inside a retained
+ source. If a specific one must go, the administrator decides that
+ individually: change the shared fact's scope or delete it, then re-run the
+ erasure, which will then take the source.
+
+Re-running is always safe: it erases what is left and keeps what it kept.
+
 ---
 
 ## 5. Backups and restore
@@ -738,4 +811,5 @@ rehearsed, versions falling behind.
 provision VM (§1) → install + DNS + vault (§2) → acceptance checklist (§3)
 → onboard customer (§4) → enable backup + rehearse restore (§5)
 → steady state: upgrades (§6), status checks (§7), tracker reviews (§8)
+→ on departure: erase the leaver's private material (§4d)
 ```

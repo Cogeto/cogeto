@@ -53,6 +53,10 @@
     "invalidDomain": "domaine invalide (par exemple adriatic-foods.hr)",
     "notFound": "courriel {{id}} introuvable"
   },
+  "erasure": {
+    "confirmationMismatch": "La confirmation doit répéter l'identifiant de l'utilisateur à effacer",
+    "notYourself": "Utilisez la suppression de source habituelle pour retirer votre propre contenu"
+  },
   "extractionGate": {
     "notGateable": "'{{sourceType}}' n'est pas un type de source dont on extrait ; le filtre contrôle : {{gateable}}",
     "ruleNotFound": "aucune règle de ce type"

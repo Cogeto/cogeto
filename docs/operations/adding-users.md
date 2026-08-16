@@ -76,8 +76,25 @@ automatically (for owner-name display). You only create the user in Zitadel.
 ## Removing / disabling a user
 
 Deactivate or delete the user in the Console (**Users → the user → Deactivate**).
-Their **private** memory remains in the instance (owned data is not auto-purged);
-use the in-app deletion saga to remove specific sources if required. Their
-**shared** memory stays visible to the org (it was contributed to the shared
-pool). True erasure of a departed user's data is an operator action via the
-deletion surface, tracked by signed receipts (spec §11.1).
+Nothing they own is deleted by that: deactivation ends their access, and their
+material stays exactly where it was.
+
+Deciding what happens to it is a separate, deliberate act:
+
+- **Their shared memory stays**, always. It was contributed to the shared pool
+  and the org still relies on it; a colleague leaving does not take the team's
+  knowledge with them.
+- **Their private memory stays too, until an administrator erases it.** It is
+  not readable by anyone (the scope gate holds after deactivation exactly as it
+  did before), and it is not silently purged either, because deleting a
+  person's work the moment their account closes is the wrong default for a
+  memory product.
+
+When you do need it gone, for a departure policy or an erasure request, run
+**owner erasure**: an administrative action that erases the departed user's
+private material through the ordinary deletion saga, with one signed receipt
+per source. It works from the stored owner id alone, so it still works after
+the account has been deactivated or deleted in Zitadel.
+
+The procedure, including what it deliberately keeps, is in the
+[operator runbook §4d](../operator-runbook.md#4d-erasing-a-departed-users-data).

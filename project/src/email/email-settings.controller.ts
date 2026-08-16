@@ -6,6 +6,7 @@ import {
   HttpCode,
   Inject,
   Param,
+  ParseUUIDPipe,
   Post,
   Req,
   UseGuards,
@@ -65,7 +66,10 @@ export class EmailSettingsController {
 
   @Delete('allowlist/:id')
   @HttpCode(204)
-  async removeEntry(@Req() request: AuthenticatedRequest, @Param('id') id: string): Promise<void> {
+  async removeEntry(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<void> {
     const removed = await this.allowlist.removeEntry(request.principal, id);
     if (!removed)
       throw userError.notFound('email.allowlistEntryNotFound', 'allowlist entry not found');

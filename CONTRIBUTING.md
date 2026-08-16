@@ -128,3 +128,11 @@ contact listed there.
 
 Never open a public issue for a vulnerability. See [`SECURITY.md`](SECURITY.md)
 for private reporting.
+
+You will run into comments citing findings as `SEC-1`, `SEC-26` and similar.
+Those come from internal security audits whose reports are not published, so
+there is nothing to look them up in: **the code they annotate, with the test
+beside it, is the record of what was done.** The full explanation is in
+[`docs/security/README.md`](docs/security/README.md). Do not reconstruct what a
+finding said, and do not strip the identifiers; they group changes that landed
+across several files and releases.

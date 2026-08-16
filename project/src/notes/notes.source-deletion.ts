@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
-import type { Tx } from '../infrastructure/index';
-import type { SourceDeletion } from '../memory/index';
+import { asc, eq } from 'drizzle-orm';
+import type { DbOrTx, Tx } from '../infrastructure/index';
+import type { OwnedSourceRef, SourceDeletion } from '../memory/index';
 import { note } from './persistence/tables';
 
 /**
@@ -27,5 +27,15 @@ export class NotesSourceDeletion implements SourceDeletion {
 
   async deleteSource(tx: Tx, sourceId: string): Promise<void> {
     await tx.delete(note).where(eq(note.id, sourceId));
+  }
+
+  /** Owner erasure's enumeration (issue #632). A note carries its capture-time
+   * scope on the row (migration 0018), which is the scope reported here. */
+  async listForOwner(db: DbOrTx, ownerId: string): Promise<OwnedSourceRef[]> {
+    return db
+      .select({ sourceId: note.id, scope: note.scope })
+      .from(note)
+      .where(eq(note.ownerId, ownerId))
+      .orderBy(asc(note.createdAt), asc(note.id));
   }
 }

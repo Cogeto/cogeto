@@ -24,8 +24,14 @@ import { NotesService, NotesSourceDeletion } from '../notes/index';
 import { MemoryStore } from './memory.store';
 import { MemoryVectorStore } from './persistence/vector-store';
 import { MemoryObjectStore } from './persistence/object-store';
-import { DELETION_JOB_TYPE, DeletionExecutor, DeletionSaga } from './deletion-saga';
-import type { SourceDeletion } from './deletion-saga';
+import {
+  DELETION_JOB_TYPE,
+  DeletionExecutor,
+  DeletionSaga,
+  countedRemovals,
+  parseReceiptCounts,
+} from './deletion-saga';
+import type { DerivedCascade, SourceDeletion } from './deletion-saga';
 import { IntegritySweep } from './integrity-sweep';
 import { ReceiptsController } from './receipts.controller';
 import { seedObjectFixture, seedOrphanPoint } from './dev-seed';
@@ -598,5 +604,94 @@ describe('deletion saga (integration: real Postgres + Qdrant + MinIO)', () => {
     // And the chain still verifies end to end across the change.
     const publicKeyPem = await loadInstancePublicKey(keyDir);
     expect(verifyChain(after, publicKeyPem).ok).toBe(true);
+  });
+
+  // ── Receipt completeness (issue #635) ──────────────────────────────────────
+
+  it('receipt_counts_every_cascade: each newly counted class appears in the signed payload', async () => {
+    // Six cascades ran inside the signed transaction and appeared nowhere in
+    // the artifact that attests to it. The saga's own accumulation is what
+    // changed, so this exercises it directly: one stub per artifact name,
+    // reporting one removal each through the real `cascadeForSource` port.
+    const counting = (artifact: string): DerivedCascade => ({
+      artifact,
+      cascadeForMemories: async () => 0,
+      cascadeForSource: async () => 1,
+    });
+    const countingSaga = new DeletionSaga(tdb.db, {
+      adapters: [new NotesSourceDeletion()],
+      derivedCascades: [
+        counting('source_contexts'),
+        counting('confluence_pages'),
+        counting('source_revisions'),
+        counting('extraction_refusals'),
+        counting('ingestion_progress'),
+        counting('project_assignments_released'),
+        counting('file_read_reports'),
+        counting('chat_attachments'),
+        counting('connector_items'),
+      ],
+    });
+
+    const note = await notes.createNote(userA, 'A note whose whole cascade is now counted.');
+    const { receiptId } = await countingSaga.requestSourceDeletion(userA, 'user_note', note.id);
+    expect(receiptId).not.toBeNull();
+
+    const counts = parseReceiptCounts((await getReceipt(receiptId!))!.counts_json);
+    // The two content-bearing ones, which are the reason this was worth fixing:
+    // anchoring subjects and Confluence titles are the documents' own words.
+    expect(counts.source_contexts_removed).toBe(1);
+    expect(counts.confluence_pages_removed).toBe(1);
+    // The structural legs, counted so the receipt accounts for the whole act.
+    expect(counts.source_revisions_removed).toBe(1);
+    expect(counts.extraction_refusals_removed).toBe(1);
+    expect(counts.ingestion_progress_removed).toBe(1);
+    expect(counts.project_assignments_released).toBe(1);
+    // And the three that were accumulated but left out of the SEC-30 guard.
+    expect(counts.file_read_reports_removed).toBe(1);
+    expect(counts.chat_attachments_removed).toBe(1);
+    expect(counts.connector_items_erased).toBe(1);
+
+    await runWorker();
+    expect((await getReceipt(receiptId!))?.status).toBe('confirmed');
+    // The widened payload signs and chains exactly like every receipt before it.
+    expect(verifyChain(await confirmedReceipts(), await loadInstancePublicKey(keyDir)).ok).toBe(
+      true,
+    );
+  });
+
+  it('receipt_written_when_only_an_uncounted_class_was_erased (SEC-30 guard, issue #635)', async () => {
+    // The old guard named nine of the sixteen cascades. A deletion whose only
+    // effect was one of the other seven reported "nothing erasable derived from
+    // this source", wrote `source.deleted_empty` to the audit trail, and
+    // returned no receipt: the erasure happened and the proof did not.
+    //
+    // Reaching that state through the public method needs a source with no row
+    // and no memories, which `enumerateAndAuthorize` refuses first — so the
+    // guard is defence in depth rather than a live path, and is proved here at
+    // the level it actually operates: the saga's own counting, over a real
+    // deletion, with every other signal deliberately zero.
+    const note = await notes.createNote(userA, 'Only a read report survives this one.');
+    const onlyReadReport = new DeletionSaga(tdb.db, {
+      adapters: [new NotesSourceDeletion()],
+      derivedCascades: [
+        {
+          artifact: 'file_read_reports',
+          cascadeForMemories: async () => 0,
+          cascadeForSource: async () => 2,
+        },
+      ],
+    });
+    const { receiptId } = await onlyReadReport.requestSourceDeletion(userA, 'user_note', note.id);
+    expect(receiptId).not.toBeNull();
+
+    const counts = parseReceiptCounts((await getReceipt(receiptId!))!.counts_json);
+    expect(counts.memory_count).toBe(0);
+    expect(counts.object_keys).toEqual([]);
+    expect(counts.file_read_reports_removed).toBe(2);
+    // countedRemovals sees it, so the receipt exists rather than a
+    // `deleted_empty` audit entry standing in for one.
+    expect(countedRemovals(counts)).toBeGreaterThan(0);
+    expect(await auditCount('source.deleted_empty', note.id)).toBe(0);
   });
 });
