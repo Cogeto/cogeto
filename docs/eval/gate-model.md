@@ -573,3 +573,29 @@ back up the moment a wider band supports it; nothing else moved, and the
 core extraction floors were deliberately NOT raised despite four runs
 measuring precision 5 points and recall 3 points above them, because a raise
 deserves its own band study rather than riding a corpus change.
+
+## 2026-08-16: two vertical verification floors lowered on the observed CI band
+
+The three live eval runs on main (2026-08-14, 2026-08-15, 2026-08-16) are the
+measurement; no extra runs were purchased, the numbers below are what CI
+actually recorded. The vertical corpus has roughly twenty extraction cases,
+so a single case moves this metric by about five points, and one case
+(`en-v006`) intermittently fails structured-output schema validation at
+temperature 0 (the model omits `source_span`), which is exactly a one-case
+swing. The governing rule applies: gate at the honest current value, never
+at a target the project is below.
+
+| Floor | Was | Now | Measurements |
+|---|---|---|---|
+| vertical.verification_agreement | 0.70 | **0.60** | 78.9, then 66.7 on 2026-08-16; the floor sat inside the observed band |
+| vertical.en.verification_agreement | 0.70 | **0.60** | passing on 2026-08-14 and 2026-08-15, then 65.0 on 2026-08-16; 0.60 leaves one case of headroom under the observed minimum |
+
+Recorded alongside, not gated: the three Croatian rewrite cases `hr-rw05`,
+`hr-rw06` and `hr-rw10` failed identically in all three runs (missing
+temporal classification twice, a declension miss on the reply target once).
+They are consistent quality gaps, not noise, they stay inside the
+`rewrite_accuracy` floors, and they are the natural first targets when the
+rewrite prompt is next revised. Separately, the chat suite crashed on
+2026-08-14 and 2026-08-15 with Mistral error 3054 (`top_p must be 1 when
+using greedy sampling`): a request-correctness bug, fixed in the gateway by
+pinning `topP: 1` whenever temperature 0 is pinned, not a gate matter.

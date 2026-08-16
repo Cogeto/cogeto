@@ -111,7 +111,13 @@ export class MistralModelGateway extends ModelGateway {
           model,
           maxTokens: this.capFor(model, request.maxTokens),
           ...this.reasoningEffortField(model, request.thinking),
-          ...(this.temperature !== undefined ? { temperature: this.temperature } : {}),
+          ...(this.temperature !== undefined
+            ? // Mistral applies a per-model server-side top_p default and then
+              // REJECTS its own combination when temperature is 0 (error 3054,
+              // "top_p must be 1 when using greedy sampling"), so greedy
+              // requests pin topP explicitly.
+              { temperature: this.temperature, ...(this.temperature === 0 ? { topP: 1 } : {}) }
+            : {}),
           messages: [
             ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
             { role: 'user' as const, content: request.input },
@@ -141,7 +147,13 @@ export class MistralModelGateway extends ModelGateway {
             model: streamModel,
             maxTokens: this.capFor(streamModel, request.maxTokens),
             ...this.reasoningEffortField(streamModel, request.thinking),
-            ...(this.temperature !== undefined ? { temperature: this.temperature } : {}),
+            ...(this.temperature !== undefined
+            ? // Mistral applies a per-model server-side top_p default and then
+              // REJECTS its own combination when temperature is 0 (error 3054,
+              // "top_p must be 1 when using greedy sampling"), so greedy
+              // requests pin topP explicitly.
+              { temperature: this.temperature, ...(this.temperature === 0 ? { topP: 1 } : {}) }
+            : {}),
             messages: [
               ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
               { role: 'user' as const, content: request.input },
@@ -183,6 +195,7 @@ export class MistralModelGateway extends ModelGateway {
           // ALWAYS deterministic sampling: structured
           // extraction decides what Cogeto remembers — never a dice roll.
           temperature: 0,
+          topP: 1,
           responseFormat: { type: 'json_object' },
           messages: [
             { role: 'system' as const, content: request.system },
@@ -229,6 +242,7 @@ export class MistralModelGateway extends ModelGateway {
           // Reading a page is transcription, not generation: deterministic,
           // like structured extraction and unlike chat.
           temperature: 0,
+          topP: 1,
           messages: [
             ...(request.system ? [{ role: 'system' as const, content: request.system }] : []),
             {

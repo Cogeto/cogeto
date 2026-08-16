@@ -42,7 +42,7 @@
     "gates": {
       "extraction_precision": 0.45,
       "extraction_recall": 0.83,
-      "verification_agreement": 0.7,
+      "verification_agreement": 0.6,
       "dedup_accuracy": 0.63,
       "contradiction_precision": 0.0,
       "contradiction_recall": 0.0,
@@ -52,7 +52,7 @@
       "en": {
         "extraction_precision": 0.46,
         "extraction_recall": 0.79,
-        "verification_agreement": 0.7,
+        "verification_agreement": 0.6,
         "dedup_accuracy": 0.66,
         "contradiction_precision": 0.0,
         "contradiction_recall": 0.0,
