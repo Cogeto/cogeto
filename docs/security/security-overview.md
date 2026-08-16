@@ -122,14 +122,18 @@ The authoritative scope for **vulnerability reports** is the repository-root
 
 ## The disciplines behind the claims
 
-- **Audited, and remediated in the open.** The codebase is audited against this
- document rather than assumed to match it. Findings are tracked as issues,
- fixed through the normal required-checks loop, and the fix lands with the test
- or invariant that keeps it fixed, so the history of what was wrong and what
- closed it is readable in the repository. The audit reports and their
- independent verification are published in [`docs/audits/`](../audits/),
- including the findings that are still open and the risks that were consciously
- accepted.
+- **Audited internally, and remediated in the open.** The codebase is audited
+ against this document rather than assumed to match it. The audits are
+ conducted internally and the reports themselves are **not published**: a
+ report is a live list of unfixed weaknesses in a specific deployment, which is
+ the one document that should not be public while any of it is still true. What
+ *is* public is the remediation, and it is public in the form that can be
+ checked. Findings are tracked as issues, fixed through the normal
+ required-checks loop, and each fix lands with the test or invariant that keeps
+ it fixed, so what was wrong and what closed it is readable in the repository
+ history and re-provable by running the suite. Where a risk was consciously
+ accepted rather than fixed, it is stated in the residual-limits section of the
+ mechanism doc it belongs to, not left in a report nobody outside can read.
 - **Enforced invariants.** Scope-leak, deletion-cascade, approval-gate, and the
  golden-set eval gate are required CI checks; nothing merges without them green.
 - **Honest residual limits.** Each mechanism doc states what it does *not* cover.

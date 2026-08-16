@@ -191,6 +191,9 @@ const JOB_TYPE_OWNERS: Readonly<Record<string, string>> = {
   'memory.reindex_advance': 'memory',
   'deletion.execute': 'memory',
   deletion_sweep: 'memory',
+  // Owner erasure (issue #632): the administrative pass that runs the
+  // ordinary saga over one departed user's private sources.
+  'memory.erase_owner': 'memory',
   'approval.execute': 'agents',
   approval_expiry: 'agents',
   'research.conclude': 'research',

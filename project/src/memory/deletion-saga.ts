@@ -2,7 +2,7 @@ import { Inject, Injectable, Optional } from '@nestjs/common';
 import { and, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { isRegisteredSourceType, SOURCE_TYPES } from '@cogeto/shared';
-import type { Principal } from '@cogeto/shared';
+import type { MemoryScope, Principal } from '@cogeto/shared';
 import {
   DRIZZLE,
   loadInstanceSigner,
@@ -59,6 +59,21 @@ export const DELETION_JOB_TYPE = 'deletion.execute';
 export const DELETION_JOB_SOURCE_TYPE = 'deletion_receipt';
 
 /**
+ * One source a departed user owns, as owner erasure enumerates it (issue #632).
+ *
+ * `scope` is the scope recorded on the SOURCE ROW, which is the only scope a
+ * source has: a source type whose table carries no scope column reports
+ * `private`, and its adapter says why in a comment rather than guessing.
+ * Erasure never acts on this value alone — the saga re-checks the DERIVED facts
+ * inside its own transaction, which is where a fact whose scope diverged from
+ * its source is caught.
+ */
+export interface OwnedSourceRef {
+  sourceId: string;
+  scope: MemoryScope;
+}
+
+/**
  * Port for deleting a source row that lives in another module's table (the
  * exact mirror of ingestion's SourceReader port): the memory module defines
  * it, connector modules implement it, the composition root binds the two —
@@ -72,6 +87,21 @@ export interface SourceDeletion {
   ownerOf(tx: Tx, sourceId: string): Promise<string | null>;
   /** Deletes the source row inside the saga's enumeration transaction. */
   deleteSource(tx: Tx, sourceId: string): Promise<void>;
+  /**
+   * EVERY source of this type owned by `ownerId`, with the scope its row
+   * records. Used only by owner erasure (issue #632), which needs the complete
+   * set and not a page of it: a source left behind is a source the erasure did
+   * not erase, and the catalog's listing functions are cursor-paged for a
+   * screen rather than exhaustive.
+   *
+   * Unpaginated on purpose. This runs in the worker, once, over one departed
+   * user's corpus, and any bound on it would be a silent partial erasure.
+   *
+   * OPTIONAL: an adapter that returns nothing is not skipped by accident but
+   * by declaration. `chat` is the case — a message is erased with its
+   * conversation, so listing both would enumerate the same content twice.
+   */
+  listForOwner?(db: DbOrTx, ownerId: string): Promise<OwnedSourceRef[]>;
   /**
    * Extra artifacts that must be enumerated and removed WITH this source, when a
    * source owns more than its own row + body memories. An
@@ -117,6 +147,34 @@ export interface SourceCascade {
 }
 
 export const SOURCE_DELETIONS = Symbol('SOURCE_DELETIONS');
+
+/**
+ * Why owner erasure left a source alone (issue #632). The two halves of the
+ * one rule the owner fixed: shared material always stays, without exception.
+ *
+ * - `shared_source` — the source row itself records `scope: 'shared'`. Decided
+ *   before the transaction, from the enumeration.
+ * - `shared_derived_fact` — the source is private but at least one fact
+ *   derived from it is shared, which happens when a user re-scopes a single
+ *   memory after ingestion. Decided INSIDE the transaction, over the complete
+ *   enumeration including cascade members, because that is the only place the
+ *   full set is known.
+ */
+export type RetentionReason = 'shared_source' | 'shared_derived_fact';
+
+/**
+ * Control flow, never a failure: thrown inside the enumeration transaction to
+ * roll it back when the erasure guard retains a source. It has to be a throw
+ * rather than an early return because the ingestion guard has already consumed
+ * the source's pipeline idempotency key by that point, and a source we are
+ * KEEPING must not come out of this with its pending ingestion cancelled.
+ */
+class SourceRetainedError extends Error {
+  constructor(readonly reason: RetentionReason) {
+    super(`source retained: ${reason}`);
+    this.name = 'SourceRetainedError';
+  }
+}
 
 /**
  * Port for cascading DERIVED artifacts (chat answers, reply drafts, future
@@ -289,6 +347,53 @@ const countsSchema = z.object({
    * ADDITIVE and OPTIONAL: earlier receipts parse and hash unchanged.
    */
   connector_items_erased: z.int().optional(),
+  /**
+   * ── The rest of the cascade (issue #635) ────────────────────────────────
+   *
+   * The saga registers sixteen `DerivedCascade` implementations and the nine
+   * counts above named nine of them, so several classes were erased inside
+   * the signed transaction without appearing in the artifact that attests to
+   * it. Deletion was complete; the PROOF was partial, which for a receipt is
+   * the same kind of defect as an incomplete erasure.
+   *
+   * Every field here is ADDITIVE and OPTIONAL on the established terms: a
+   * receipt written before this change parses unchanged and, because the
+   * chain hashes the STORED `counts_json` verbatim, hashes to exactly the
+   * value it always did. Each is written only when non-zero, which is why a
+   * deletion that touches none of them produces a payload byte-identical to
+   * the pre-change one.
+   *
+   * Two of them are CONTENT-BEARING and are the reason this was worth fixing;
+   * the rest are structural rows whose removal is still part of the act the
+   * receipt attests to, and are counted so the artifact accounts for the
+   * whole of it rather than for a chosen subset.
+   */
+  /**
+   * CONTENT-BEARING. The anchoring context erased with this source (V2.1 item
+   * 4.2): its subjects, document class and revision are the document's own
+   * words, read out of its opening pages.
+   */
+  source_contexts_removed: z.int().optional(),
+  /**
+   * CONTENT-BEARING. Confluence provenance rows erased with this source
+   * (V2.5 item 8.2): the page title and space name are the document's own
+   * words.
+   */
+  confluence_pages_removed: z.int().optional(),
+  /** Revision links naming the erased source on either side (V2.2 item 5.3). */
+  source_revisions_removed: z.int().optional(),
+  /** Extraction-gate refusal ledger rows for the erased source (V2.1 item 4.3). */
+  extraction_refusals_removed: z.int().optional(),
+  /** Pipeline-progress rows for the erased source (V2.2 item 5.1). */
+  ingestion_progress_removed: z.int().optional(),
+  /** Project assignments released because their container is gone (V2.5 item 8.3). */
+  project_assignments_released: z.int().optional(),
+  /**
+   * `import_items` is deliberately ABSENT and is not an omission: its cascade
+   * TOMBSTONES the row (clears the name, keeps the arithmetic) and returns 0
+   * by construction, and receipts count removals. Naming it here would put a
+   * permanent zero in every payload.
+   */
   /** Qdrant point id = memory id (spec §4.2); duplicated for receipt readability. */
   point_ids: z.array(z.string()),
   object_keys: z.array(z.string()),
@@ -301,6 +406,29 @@ export type ReceiptCounts = z.infer<typeof countsSchema>;
 /** Parses a stored counts_json — how the sweep re-derives what to verify absent. */
 export function parseReceiptCounts(value: unknown): ReceiptCounts {
   return countsSchema.parse(value);
+}
+
+/**
+ * Everything the counts payload says was removed, added up (issue #635).
+ *
+ * The SEC-30 guard below used to ask this question with a hand-written
+ * disjunction naming nine of the sixteen cascades, which meant a deletion
+ * removing only an uncounted class reported "nothing erasable" and wrote no
+ * receipt: the erasure happened and the proof did not. Reading it back off the
+ * payload instead means the guard cannot drift from the schema — a class is
+ * covered the moment it is counted, and adding a count is the only thing
+ * anyone has to remember.
+ *
+ * Every numeric field in the payload is a non-negative count of something the
+ * transaction removed, redacted or expired. `memory_count` is one of them and
+ * is deliberately included: it is zero exactly when there were no memories,
+ * so it can only agree with the caller's own `memory_ids.length` test.
+ */
+export function countedRemovals(counts: ReceiptCounts): number {
+  return Object.values(counts).reduce<number>(
+    (total, value) => (typeof value === 'number' ? total + value : total),
+    0,
+  );
 }
 
 export interface DeletionPreview {
@@ -443,79 +571,93 @@ export class DeletionSaga {
     rawSourceType: string,
     sourceId: string,
   ): Promise<{ receiptId: string | null }> {
+    return this.deleteSourceForSubject(
+      { userId: principal.userId, orgId: principal.orgId },
+      `user:${principal.userId}`,
+      rawSourceType,
+      sourceId,
+      { retainShared: false },
+    );
+  }
+
+  /**
+   * Owner erasure's per-source call (issue #632): the same saga, acting for a
+   * SUBJECT who cannot authenticate, invoked by an ADMINISTRATOR who is what
+   * the audit trail records.
+   *
+   * `retainShared` is always on here, and that is the whole difference in
+   * behaviour. Nothing else about the deletion changes: same cascades, same
+   * single transaction, same receipt, same chain, same sweep coverage.
+   *
+   * Returns `retained` instead of a receipt when the guard kept the source,
+   * with the reason, so the caller can report honestly rather than counting a
+   * retention as a failure.
+   */
+  async eraseOwnedSource(
+    subject: { userId: string; orgId: string },
+    actor: string,
+    sourceType: string,
+    sourceId: string,
+  ): Promise<{ receiptId: string | null; retained?: RetentionReason }> {
+    return this.deleteSourceForSubject(subject, actor, sourceType, sourceId, {
+      retainShared: true,
+    });
+  }
+
+  /**
+   * The same enumeration transaction, with WHO it acts for separated from WHO
+   * asked (issue #632).
+   *
+   * Owner erasure needs to delete a departed user's sources: the ownership
+   * check, the receipt's `requested_by`, and every owner-keyed cascade must key
+   * on the SUBJECT, while the audit trail must record the ADMINISTRATOR who
+   * invoked it. Every other property of the saga — the cascades, the
+   * all-or-nothing transaction, the receipt, the chain, the sweep — is
+   * unchanged, because this IS that method; `requestSourceDeletion` is now a
+   * thin call into it with subject and actor being the same person, which is
+   * what they have always been.
+   *
+   * `subject` is a plain `{ userId, orgId }` and never a Principal, because the
+   * subject of an erasure CANNOT authenticate: their account is deactivated or
+   * gone from the identity provider, which is the state the feature exists for.
+   * The org comes from the administrator, which in a single-tenant instance is
+   * the same org, and is used only for audit stamping.
+   *
+   * `retainShared` is the erasure guard. See the check at the enumeration site.
+   */
+  private async deleteSourceForSubject(
+    subject: { userId: string; orgId: string },
+    actor: string,
+    rawSourceType: string,
+    sourceId: string,
+    options: { retainShared: boolean },
+  ): Promise<{ receiptId: string | null; retained?: RetentionReason }> {
     const sourceType = assertSourceType(rawSourceType);
     if (!sourceId.trim()) throw untranslatedError.badRequest('source id must not be blank');
+    // Everything below keys on the SUBJECT. `roles` and the display fields are
+    // never read on this path (the role check happened at the controller), so
+    // the subject is representable without an identity-provider lookup — which
+    // is the requirement, since a departed user may no longer exist there.
+    const principal = { userId: subject.userId, orgId: subject.orgId } as Principal;
+    // Recorded in the audit detail only when someone else acted: an ordinary
+    // deletion's entry is unchanged, byte for byte.
+    const onBehalfOf =
+      actor === `user:${subject.userId}` ? {} : { onBehalfOf: subject.userId, erasure: true };
 
-    return this.db.transaction(async (tx) => {
-      // Lock order: source row FIRST, then the ingestion
-      // guard, then the memory rows — the same source-before-memories order the
-      // pipeline uses, so the two transactions can never deadlock on it.
-      const { fileRow, adapter, sourceOwner } = await this.resolveSource(tx, sourceType, sourceId, {
-        lock: true,
-      });
-      if (sourceOwner !== null && sourceOwner !== principal.userId) {
-        throw userError.notFound(
-          'source.notFound',
-          'source {{sourceType}}/{{sourceId}} not found',
+    try {
+      return await this.db.transaction(async (tx) => {
+        // Lock order: source row FIRST, then the ingestion
+        // guard, then the memory rows — the same source-before-memories order the
+        // pipeline uses, so the two transactions can never deadlock on it.
+        const { fileRow, adapter, sourceOwner } = await this.resolveSource(
+          tx,
+          sourceType,
+          sourceId,
           {
-            sourceType,
-            sourceId,
+            lock: true,
           },
         );
-      }
-
-      // Cancel pending ingestion BEFORE enumerating: a queued pipeline
-      // job finds its idempotency key consumed and no-ops; an in-flight run is
-      // reported and left to its own admission checkpoint, which serializes
-      // against the source-row lock held above. Discard-mode file sources have
-      // no row to serialize on, so for them the guard WAITS the run out — the
-      // enumeration below then sees whatever that run committed.
-      const ingestion = this.ingestionGuard
-        ? await this.ingestionGuard.cancelPending(tx, sourceType, sourceId, {
-            // Discard-mode object-backed sources have no durable row to
-            // serialize on, so the guard waits an in-flight run out.
-            waitForRun: SOURCE_TYPES[sourceType].objectBacked && !fileRow,
-          })
-        : null;
-
-      const rows = await this.enumerateAndAuthorize(tx, principal, sourceType, sourceId, {
-        lock: true,
-        sourceOwner,
-      });
-
-      // Cascade members: fold the source's extra objects and
-      // its attachment `file` sub-sources into THIS enumeration transaction, so
-      // they share the one receipt and the all-or-nothing guarantee. The
-      // sub-sources' memories join `rows`; their objects join `cascadeObjectKeys`.
-      const cascade = adapter?.enumerateCascade
-        ? await adapter.enumerateCascade(tx, sourceId)
-        : null;
-      const cascadeObjectKeys: string[] = cascade ? [...cascade.objectKeys] : [];
-      if (cascade) {
-        for (const fileKey of cascade.fileSubSourceKeys) {
-          const removedKey = await this.cascadeFileSubSource(tx, principal, fileKey, rows);
-          if (removedKey) cascadeObjectKeys.push(removedKey);
-        }
-      }
-      // Conversation members: every message's chat-derived memories join
-      // the SAME enumeration and receipt. Pending per-message captures are
-      // cancelled first; the message rows themselves go with the
-      // adapter's deleteSource below.
-      const chatMessagesRemoved = cascade?.chatSubSourceIds?.length ?? null;
-      if (cascade?.chatSubSourceIds && cascade.chatSubSourceIds.length > 0) {
-        if (this.ingestionGuard) {
-          for (const messageId of cascade.chatSubSourceIds) {
-            await this.ingestionGuard.cancelPending(tx, 'chat', messageId, { waitForRun: false });
-          }
-        }
-        const subRows = await tx
-          .select()
-          .from(memory)
-          .where(
-            and(eq(memory.sourceType, 'chat'), inArray(memory.sourceId, cascade.chatSubSourceIds)),
-          )
-          .for('update');
-        if (subRows.some((r) => r.ownerId !== principal.userId)) {
+        if (sourceOwner !== null && sourceOwner !== principal.userId) {
           throw userError.notFound(
             'source.notFound',
             'source {{sourceType}}/{{sourceId}} not found',
@@ -525,227 +667,387 @@ export class DeletionSaga {
             },
           );
         }
-        rows.push(...subRows);
-      }
 
-      const memoryIds = rows.map((r) => r.id);
+        // Cancel pending ingestion BEFORE enumerating: a queued pipeline
+        // job finds its idempotency key consumed and no-ops; an in-flight run is
+        // reported and left to its own admission checkpoint, which serializes
+        // against the source-row lock held above. Discard-mode file sources have
+        // no row to serialize on, so for them the guard WAITS the run out — the
+        // enumeration below then sees whatever that run committed.
+        const ingestion = this.ingestionGuard
+          ? await this.ingestionGuard.cancelPending(tx, sourceType, sourceId, {
+              // Discard-mode object-backed sources have no durable row to
+              // serialize on, so the guard waits an in-flight run out.
+              waitForRun: SOURCE_TYPES[sourceType].objectBacked && !fileRow,
+            })
+          : null;
 
-      // Contradiction lift: surviving partners of
-      // unresolved relations touching a doomed row are restored to their
-      // recorded prior status — an accusation whose evidence is being erased
-      // does not stick. The relation rows go with the memories (FK CASCADE).
-      const liftedPartners = await liftContradictionsBeforeDeletion(
-        tx,
-        memoryIds,
-        this.vectors,
-        principal.orgId,
-      );
+        const rows = await this.enumerateAndAuthorize(tx, principal, sourceType, sourceId, {
+          lock: true,
+          sourceOwner,
+        });
 
-      // Derived-artifact cascades (0013 ruling 6): counted deletes inside the
-      // enumeration transaction, before the memory rows go (the FK CASCADE
-      // stays as the safety net).
-      let chatMessagesRedacted = 0;
-      let replyDraftsRedacted = 0;
-      let passportExportsExpired = 0;
-      let findingsReportsExpired = 0;
-      let suppressedFactsRemoved = 0;
-      let fileReadReportsRemoved = 0;
-      let chatAttachmentsRemoved = 0;
-      let connectorItemsErased = 0;
-      const ownerExpiredObjectKeys: string[] = [];
-      // Every source this deletion erases, not just the one it was asked for:
-      // the primary source plus its cascaded members. Source-keyed artifacts
-      // that can exist without a memory row — the suppressed-fact log's withheld
-      // entries — are only reachable through the full list.
-      const enumeratedSources: { sourceType: string; sourceId: string }[] = [
-        { sourceType, sourceId },
-        ...(cascade?.fileSubSourceKeys ?? []).map((key) => ({
-          sourceType: 'file',
-          sourceId: key,
-        })),
-        ...(cascade?.chatSubSourceIds ?? []).map((id) => ({ sourceType: 'chat', sourceId: id })),
-      ];
-      for (const cascade of this.derivedCascades) {
-        const removed = await cascade.cascadeForMemories(tx, memoryIds);
-        // assistant answers that cited erased memories
-        // are redacted to a deletion marker by the chat cascade; the receipt
-        // counts them so the erasure claim is complete, not just row-deep.
-        if (cascade.artifact === 'chat_messages') chatMessagesRedacted += removed;
-        // suppressed-fact entries whose memory is erased through a
-        // supersession chain that crossed sources — the by-source leg below is
-        // the complete enumeration, this closes the cross-source gap.
-        if (cascade.artifact === 'suppressed_facts') suppressedFactsRemoved += removed;
-        // reply-draft approvals derived from THIS source (by source id,
-        // not memory id) — their drafted body is redacted so a "provably
-        // deleted" receipt no longer over-claims while the draft survives.
-        if (cascade.cascadeForSource) {
-          for (const ref of enumeratedSources) {
-            const redacted = await cascade.cascadeForSource(tx, ref.sourceType, ref.sourceId);
-            if (cascade.artifact === 'reply_drafts') replyDraftsRedacted += redacted;
-            if (cascade.artifact === 'suppressed_facts') suppressedFactsRemoved += redacted;
-            // What the reading layer made of an erased file: sheet names are
-            // content, and the report can exist with no memory at all (a file
-            // that yielded nothing readable), so only this leg reaches it.
-            if (cascade.artifact === 'file_read_reports') fileReadReportsRemoved += redacted;
-            // Conversation attachments (V2.2 item 5.1): a transient row holds
-            // the file's extracted text, so it goes with its conversation; the
-            // file leg of the same cascade only CLEARS a durable link's name
-            // and returns 0, so this count is real removals only.
-            if (cascade.artifact === 'chat_attachments') chatAttachmentsRemoved += redacted;
-            // Connector items (V2.5 item 8.1): the natural-key ledger row
-            // pointing at an erased source has its source reference cleared
-            // and reads 'erased' thereafter, so a later sync can never
-            // resurrect the deleted memory. Arithmetic survives; nothing
-            // content-bearing lives there.
-            if (cascade.artifact === 'connector_items') connectorItemsErased += redacted;
+        // Cascade members: fold the source's extra objects and
+        // its attachment `file` sub-sources into THIS enumeration transaction, so
+        // they share the one receipt and the all-or-nothing guarantee. The
+        // sub-sources' memories join `rows`; their objects join `cascadeObjectKeys`.
+        const cascade = adapter?.enumerateCascade
+          ? await adapter.enumerateCascade(tx, sourceId)
+          : null;
+        const cascadeObjectKeys: string[] = cascade ? [...cascade.objectKeys] : [];
+        if (cascade) {
+          for (const fileKey of cascade.fileSubSourceKeys) {
+            const removedKey = await this.cascadeFileSubSource(tx, principal, fileKey, rows);
+            if (removedKey) cascadeObjectKeys.push(removedKey);
           }
         }
-        // SEC-8: owner-scoped artifacts that would outlive the deletion. Their
-        // objects join `objectKeys` below, so the worker leg erases them and
-        // the sweep verifies them absent, exactly like a file or an email body.
-        if (cascade.expireForOwner) {
-          const expired = await cascade.expireForOwner(tx, principal.userId);
-          if (cascade.artifact === 'passport_exports') {
-            passportExportsExpired += expired.count;
+        // Conversation members: every message's chat-derived memories join
+        // the SAME enumeration and receipt. Pending per-message captures are
+        // cancelled first; the message rows themselves go with the
+        // adapter's deleteSource below.
+        const chatMessagesRemoved = cascade?.chatSubSourceIds?.length ?? null;
+        if (cascade?.chatSubSourceIds && cascade.chatSubSourceIds.length > 0) {
+          if (this.ingestionGuard) {
+            for (const messageId of cascade.chatSubSourceIds) {
+              await this.ingestionGuard.cancelPending(tx, 'chat', messageId, { waitForRun: false });
+            }
           }
-          // V2.3 item 6.2: findings reports quote verbatim spans, so they are
-          // the second artifact under the same rule.
-          if (cascade.artifact === 'findings_reports') {
-            findingsReportsExpired += expired.count;
+          const subRows = await tx
+            .select()
+            .from(memory)
+            .where(
+              and(
+                eq(memory.sourceType, 'chat'),
+                inArray(memory.sourceId, cascade.chatSubSourceIds),
+              ),
+            )
+            .for('update');
+          if (subRows.some((r) => r.ownerId !== principal.userId)) {
+            throw userError.notFound(
+              'source.notFound',
+              'source {{sourceType}}/{{sourceId}} not found',
+              {
+                sourceType,
+                sourceId,
+              },
+            );
           }
-          ownerExpiredObjectKeys.push(...expired.objectKeys);
+          rows.push(...subRows);
         }
-      }
 
-      // Cross-source chain handling (see header): surviving rows pointing at a
-      // deleted row get the pointer nulled — recorded in the receipt. Doing it
-      // before the DELETE also satisfies the superseded_by FK.
-      let nulledPointers: string[] = [];
-      if (memoryIds.length > 0) {
-        const nulled = await tx
-          .update(memory)
-          .set({ supersededBy: null, updatedAt: new Date() })
-          .where(and(inArray(memory.supersededBy, memoryIds), notInArray(memory.id, memoryIds)))
-          .returning({ id: memory.id });
-        nulledPointers = nulled.map((r) => r.id);
-        await tx.delete(memory).where(inArray(memory.id, memoryIds));
-      }
+        // ── The erasure guard: shared material always stays (issue #632) ───────
+        //
+        // `rows` is now the COMPLETE enumeration — the source's own memories plus
+        // every cascade member's (an email's attachments, a conversation's
+        // messages). That completeness is the point: this is the only place in
+        // the codebase that knows the full set a single deletion would remove,
+        // so it is the only honest place to ask whether any of it is shared.
+        //
+        // A source is private and yet can hold a SHARED derived fact: scope is
+        // stamped from the source at ingestion, and a user can change a single
+        // memory's scope afterwards from the drawer. The saga deletes by
+        // provenance, so erasing that source would take the shared fact with it.
+        // The rule the owner fixed is that shared material always stays, without
+        // exception, so when any enumerated fact is shared the WHOLE source is
+        // retained and nothing here is touched.
+        //
+        // Retaining more than strictly necessary is the deliberate direction: the
+        // alternative — erasing the private facts and keeping the shared one —
+        // would leave a shared claim whose source is gone, which is an orphan
+        // this product's provenance rules do not permit, and would make the
+        // remaining fact unverifiable against the span it came from.
+        //
+        // It throws rather than returns so the transaction ROLLS BACK: by this
+        // point the ingestion guard has already consumed the source's pipeline
+        // idempotency key, and a retained source must not come out of this with
+        // its pending ingestion silently cancelled.
+        if (options.retainShared && rows.some((row) => row.scope === 'shared')) {
+          throw new SourceRetainedError('shared_derived_fact');
+        }
 
-      const objectKeys: string[] = [];
-      if (SOURCE_TYPES[sourceType].objectBacked && fileRow) {
-        await tx.delete(fileMetadata).where(eq(fileMetadata.objectKey, sourceId));
-        objectKeys.push(sourceId);
-      }
-      // The source's cascaded objects (email raw + HTML + attachment objects),
-      // deduped so a key can never be double-listed in the receipt.
-      for (const key of cascadeObjectKeys) if (!objectKeys.includes(key)) objectKeys.push(key);
-      // SEC-8: expired passport export artifacts, deduped the same way.
-      for (const key of ownerExpiredObjectKeys) if (!objectKeys.includes(key)) objectKeys.push(key);
-      if (adapter) await adapter.deleteSource(tx, sourceId);
+        const memoryIds = rows.map((r) => r.id);
 
-      const counts: ReceiptCounts = {
-        source: { type: sourceType, id: sourceId },
-        requested_by: principal.userId,
-        memory_ids: memoryIds,
-        memory_count: memoryIds.length,
-        // `tasks_removed` is deliberately ABSENT from new receipts  and stays optional in the schema forever, so the historical
-        // ones that carry it still parse and still verify.
-        chat_messages_redacted: chatMessagesRedacted,
-        reply_drafts_redacted: replyDraftsRedacted,
-        ...(passportExportsExpired > 0 ? { passport_exports_expired: passportExportsExpired } : {}),
-        ...(findingsReportsExpired > 0 ? { findings_reports_expired: findingsReportsExpired } : {}),
-        ...(chatMessagesRemoved === null ? {} : { chat_messages_removed: chatMessagesRemoved }),
-        ...(suppressedFactsRemoved > 0 ? { suppressed_facts_removed: suppressedFactsRemoved } : {}),
-        ...(fileReadReportsRemoved > 0
-          ? { file_read_reports_removed: fileReadReportsRemoved }
-          : {}),
-        ...(chatAttachmentsRemoved > 0 ? { chat_attachments_removed: chatAttachmentsRemoved } : {}),
-        ...(connectorItemsErased > 0 ? { connector_items_erased: connectorItemsErased } : {}),
-        point_ids: memoryIds,
-        object_keys: objectKeys,
-        superseded_by_nulled: nulledPointers,
-        enumerated_at: new Date().toISOString(),
-      };
-      // SEC-30: a receipt attests ERASURE, so it is only written when something
-      // was actually erased. Removing the SOURCE ROW counts: deleting a
-      // just-captured note whose pipeline has not run yet erases the note and
-      // consumes the pipeline's idempotency key so the content can never
-      // resurrect, and a receipt reading "0 memories, 0 objects" is the honest
-      // record of exactly that, not noise.
-      //
-      // Which leaves this guard covering the genuinely vacuous case: no source
-      // row, no memories, no objects, no derived artifacts. In practice
-      // `enumerateAndAuthorize` already 404s there (`sourceOwner === null &&
-      // rows.length === 0`), so this is defence in depth rather than a path the
-      // API reaches today. It is kept because the alternative is trusting that
-      // invariant to hold through every future source type: a signed, chained
-      // attestation that nothing happened is the one thing the ledger must never
-      // contain.
-      const sourceRowRemoved = sourceOwner !== null || fileRow !== null;
-      const erasedSomething =
-        sourceRowRemoved ||
-        memoryIds.length > 0 ||
-        objectKeys.length > 0 ||
-        chatMessagesRedacted > 0 ||
-        replyDraftsRedacted > 0 ||
-        passportExportsExpired > 0 ||
-        findingsReportsExpired > 0 ||
-        suppressedFactsRemoved > 0 ||
-        (chatMessagesRemoved ?? 0) > 0;
-      if (!erasedSomething) {
+        // Contradiction lift: surviving partners of
+        // unresolved relations touching a doomed row are restored to their
+        // recorded prior status — an accusation whose evidence is being erased
+        // does not stick. The relation rows go with the memories (FK CASCADE).
+        const liftedPartners = await liftContradictionsBeforeDeletion(
+          tx,
+          memoryIds,
+          this.vectors,
+          principal.orgId,
+        );
+
+        // Derived-artifact cascades (0013 ruling 6): counted deletes inside the
+        // enumeration transaction, before the memory rows go (the FK CASCADE
+        // stays as the safety net).
+        let chatMessagesRedacted = 0;
+        let replyDraftsRedacted = 0;
+        let passportExportsExpired = 0;
+        let findingsReportsExpired = 0;
+        let suppressedFactsRemoved = 0;
+        let fileReadReportsRemoved = 0;
+        let chatAttachmentsRemoved = 0;
+        let connectorItemsErased = 0;
+        // The rest of the cascade (issue #635): counted so the receipt accounts
+        // for the whole act, not a subset of it.
+        let sourceContextsRemoved = 0;
+        let confluencePagesRemoved = 0;
+        let sourceRevisionsRemoved = 0;
+        let extractionRefusalsRemoved = 0;
+        let ingestionProgressRemoved = 0;
+        let projectAssignmentsReleased = 0;
+        const ownerExpiredObjectKeys: string[] = [];
+        // Every source this deletion erases, not just the one it was asked for:
+        // the primary source plus its cascaded members. Source-keyed artifacts
+        // that can exist without a memory row — the suppressed-fact log's withheld
+        // entries — are only reachable through the full list.
+        const enumeratedSources: { sourceType: string; sourceId: string }[] = [
+          { sourceType, sourceId },
+          ...(cascade?.fileSubSourceKeys ?? []).map((key) => ({
+            sourceType: 'file',
+            sourceId: key,
+          })),
+          ...(cascade?.chatSubSourceIds ?? []).map((id) => ({ sourceType: 'chat', sourceId: id })),
+        ];
+        for (const cascade of this.derivedCascades) {
+          const removed = await cascade.cascadeForMemories(tx, memoryIds);
+          // assistant answers that cited erased memories
+          // are redacted to a deletion marker by the chat cascade; the receipt
+          // counts them so the erasure claim is complete, not just row-deep.
+          if (cascade.artifact === 'chat_messages') chatMessagesRedacted += removed;
+          // suppressed-fact entries whose memory is erased through a
+          // supersession chain that crossed sources — the by-source leg below is
+          // the complete enumeration, this closes the cross-source gap.
+          if (cascade.artifact === 'suppressed_facts') suppressedFactsRemoved += removed;
+          // reply-draft approvals derived from THIS source (by source id,
+          // not memory id) — their drafted body is redacted so a "provably
+          // deleted" receipt no longer over-claims while the draft survives.
+          if (cascade.cascadeForSource) {
+            for (const ref of enumeratedSources) {
+              const redacted = await cascade.cascadeForSource(tx, ref.sourceType, ref.sourceId);
+              if (cascade.artifact === 'reply_drafts') replyDraftsRedacted += redacted;
+              if (cascade.artifact === 'suppressed_facts') suppressedFactsRemoved += redacted;
+              // What the reading layer made of an erased file: sheet names are
+              // content, and the report can exist with no memory at all (a file
+              // that yielded nothing readable), so only this leg reaches it.
+              if (cascade.artifact === 'file_read_reports') fileReadReportsRemoved += redacted;
+              // Conversation attachments (V2.2 item 5.1): a transient row holds
+              // the file's extracted text, so it goes with its conversation; the
+              // file leg of the same cascade only CLEARS a durable link's name
+              // and returns 0, so this count is real removals only.
+              if (cascade.artifact === 'chat_attachments') chatAttachmentsRemoved += redacted;
+              // Connector items (V2.5 item 8.1): the natural-key ledger row
+              // pointing at an erased source has its source reference cleared
+              // and reads 'erased' thereafter, so a later sync can never
+              // resurrect the deleted memory. Arithmetic survives; nothing
+              // content-bearing lives there.
+              if (cascade.artifact === 'connector_items') connectorItemsErased += redacted;
+              // The anchoring context: subjects, class and revision read out of
+              // the document's own opening. Content, and the receipt now says so.
+              if (cascade.artifact === 'source_contexts') sourceContextsRemoved += redacted;
+              // Confluence provenance: the page title and space name are the
+              // document's own words, so this row is erased, not merely cleared.
+              if (cascade.artifact === 'confluence_pages') confluencePagesRemoved += redacted;
+              // The remaining structural legs. Not content, but still removals
+              // performed inside the signed transaction.
+              if (cascade.artifact === 'source_revisions') sourceRevisionsRemoved += redacted;
+              if (cascade.artifact === 'extraction_refusals') extractionRefusalsRemoved += redacted;
+              if (cascade.artifact === 'ingestion_progress') ingestionProgressRemoved += redacted;
+              if (cascade.artifact === 'project_assignments_released') {
+                projectAssignmentsReleased += redacted;
+              }
+            }
+          }
+          // SEC-8: owner-scoped artifacts that would outlive the deletion. Their
+          // objects join `objectKeys` below, so the worker leg erases them and
+          // the sweep verifies them absent, exactly like a file or an email body.
+          if (cascade.expireForOwner) {
+            const expired = await cascade.expireForOwner(tx, principal.userId);
+            if (cascade.artifact === 'passport_exports') {
+              passportExportsExpired += expired.count;
+            }
+            // V2.3 item 6.2: findings reports quote verbatim spans, so they are
+            // the second artifact under the same rule.
+            if (cascade.artifact === 'findings_reports') {
+              findingsReportsExpired += expired.count;
+            }
+            ownerExpiredObjectKeys.push(...expired.objectKeys);
+          }
+        }
+
+        // Cross-source chain handling (see header): surviving rows pointing at a
+        // deleted row get the pointer nulled — recorded in the receipt. Doing it
+        // before the DELETE also satisfies the superseded_by FK.
+        let nulledPointers: string[] = [];
+        if (memoryIds.length > 0) {
+          const nulled = await tx
+            .update(memory)
+            .set({ supersededBy: null, updatedAt: new Date() })
+            .where(and(inArray(memory.supersededBy, memoryIds), notInArray(memory.id, memoryIds)))
+            .returning({ id: memory.id });
+          nulledPointers = nulled.map((r) => r.id);
+          await tx.delete(memory).where(inArray(memory.id, memoryIds));
+        }
+
+        const objectKeys: string[] = [];
+        if (SOURCE_TYPES[sourceType].objectBacked && fileRow) {
+          await tx.delete(fileMetadata).where(eq(fileMetadata.objectKey, sourceId));
+          objectKeys.push(sourceId);
+        }
+        // The source's cascaded objects (email raw + HTML + attachment objects),
+        // deduped so a key can never be double-listed in the receipt.
+        for (const key of cascadeObjectKeys) if (!objectKeys.includes(key)) objectKeys.push(key);
+        // SEC-8: expired passport export artifacts, deduped the same way.
+        for (const key of ownerExpiredObjectKeys)
+          if (!objectKeys.includes(key)) objectKeys.push(key);
+        if (adapter) await adapter.deleteSource(tx, sourceId);
+
+        const counts: ReceiptCounts = {
+          source: { type: sourceType, id: sourceId },
+          requested_by: principal.userId,
+          memory_ids: memoryIds,
+          memory_count: memoryIds.length,
+          // `tasks_removed` is deliberately ABSENT from new receipts  and stays optional in the schema forever, so the historical
+          // ones that carry it still parse and still verify.
+          chat_messages_redacted: chatMessagesRedacted,
+          reply_drafts_redacted: replyDraftsRedacted,
+          ...(passportExportsExpired > 0
+            ? { passport_exports_expired: passportExportsExpired }
+            : {}),
+          ...(findingsReportsExpired > 0
+            ? { findings_reports_expired: findingsReportsExpired }
+            : {}),
+          ...(chatMessagesRemoved === null ? {} : { chat_messages_removed: chatMessagesRemoved }),
+          ...(suppressedFactsRemoved > 0
+            ? { suppressed_facts_removed: suppressedFactsRemoved }
+            : {}),
+          ...(fileReadReportsRemoved > 0
+            ? { file_read_reports_removed: fileReadReportsRemoved }
+            : {}),
+          ...(chatAttachmentsRemoved > 0
+            ? { chat_attachments_removed: chatAttachmentsRemoved }
+            : {}),
+          ...(connectorItemsErased > 0 ? { connector_items_erased: connectorItemsErased } : {}),
+          // Written only when non-zero, so a deletion touching none of these
+          // produces a payload byte-identical to the pre-change one (issue #635).
+          ...(sourceContextsRemoved > 0 ? { source_contexts_removed: sourceContextsRemoved } : {}),
+          ...(confluencePagesRemoved > 0
+            ? { confluence_pages_removed: confluencePagesRemoved }
+            : {}),
+          ...(sourceRevisionsRemoved > 0
+            ? { source_revisions_removed: sourceRevisionsRemoved }
+            : {}),
+          ...(extractionRefusalsRemoved > 0
+            ? { extraction_refusals_removed: extractionRefusalsRemoved }
+            : {}),
+          ...(ingestionProgressRemoved > 0
+            ? { ingestion_progress_removed: ingestionProgressRemoved }
+            : {}),
+          ...(projectAssignmentsReleased > 0
+            ? { project_assignments_released: projectAssignmentsReleased }
+            : {}),
+          point_ids: memoryIds,
+          object_keys: objectKeys,
+          superseded_by_nulled: nulledPointers,
+          enumerated_at: new Date().toISOString(),
+        };
+        // SEC-30: a receipt attests ERASURE, so it is only written when something
+        // was actually erased. Removing the SOURCE ROW counts: deleting a
+        // just-captured note whose pipeline has not run yet erases the note and
+        // consumes the pipeline's idempotency key so the content can never
+        // resurrect, and a receipt reading "0 memories, 0 objects" is the honest
+        // record of exactly that, not noise.
+        //
+        // Which leaves this guard covering the genuinely vacuous case: no source
+        // row, no memories, no objects, no derived artifacts. In practice
+        // `enumerateAndAuthorize` already 404s there (`sourceOwner === null &&
+        // rows.length === 0`), so this is defence in depth rather than a path the
+        // API reaches today. It is kept because the alternative is trusting that
+        // invariant to hold through every future source type: a signed, chained
+        // attestation that nothing happened is the one thing the ledger must never
+        // contain.
+        const sourceRowRemoved = sourceOwner !== null || fileRow !== null;
+        // Derived from `counts` rather than from a hand-kept disjunction
+        // (issue #635) — see countedRemovals for why.
+        const erasedSomething =
+          sourceRowRemoved ||
+          memoryIds.length > 0 ||
+          objectKeys.length > 0 ||
+          countedRemovals(counts) > 0;
+        if (!erasedSomething) {
+          await writeAudit(tx, {
+            // The ACTOR, which is the subject themselves for an ordinary
+            // deletion and the administrator for an owner erasure (issue #632).
+            actor,
+            action: 'source.deleted_empty',
+            entityType: 'source',
+            entityId: sourceId,
+            detail: {
+              sourceType,
+              reason: 'nothing erasable derived from this source',
+              ...onBehalfOf,
+            },
+            orgId: principal.orgId,
+            // The SUBJECT: the detail gate serves the person whose material it
+            // was, which is the point of recording it.
+            ownerId: principal.userId,
+          });
+          return { receiptId: null };
+        }
+
+        const [receipt] = await tx
+          .insert(deletionReceipt)
+          .values({ sourceType, sourceId, countsJson: counts, status: 'pending' })
+          .returning({ id: deletionReceipt.id });
+        const receiptId = receipt!.id;
+
+        await withTransactionalEnqueue(
+          tx,
+          {
+            type: 'source.deletion_requested',
+            payload: { source_type: sourceType, source_id: sourceId, receipt_id: receiptId },
+          },
+          {
+            type: DELETION_JOB_TYPE,
+            payload: { source_type: DELETION_JOB_SOURCE_TYPE, source_id: receiptId },
+          },
+        );
         await writeAudit(tx, {
-          actor: `user:${principal.userId}`,
-          action: 'source.deleted_empty',
-          entityType: 'source',
-          entityId: sourceId,
-          detail: { sourceType, reason: 'nothing erasable derived from this source' },
+          actor,
+          action: 'source.deletion_requested',
+          entityType: 'deletion_receipt',
+          entityId: receiptId,
+          detail: {
+            sourceType,
+            sourceId,
+            memoryCount: memoryIds.length,
+            objectCount: objectKeys.length,
+            supersededByNulled: nulledPointers.length,
+            contradictionsLifted: liftedPartners,
+            chatMessagesRedacted,
+            replyDraftsRedacted,
+            chatMessagesRemoved,
+            suppressedFactsRemoved,
+            // The cancellation trace: how pending ingestion was resolved.
+            ingestionCancellation: ingestion,
+            // Present only when actor and subject differ (issue #632), so an
+            // ordinary deletion's entry is byte-identical to before.
+            ...onBehalfOf,
+          },
           orgId: principal.orgId,
           ownerId: principal.userId,
         });
-        return { receiptId: null };
-      }
-
-      const [receipt] = await tx
-        .insert(deletionReceipt)
-        .values({ sourceType, sourceId, countsJson: counts, status: 'pending' })
-        .returning({ id: deletionReceipt.id });
-      const receiptId = receipt!.id;
-
-      await withTransactionalEnqueue(
-        tx,
-        {
-          type: 'source.deletion_requested',
-          payload: { source_type: sourceType, source_id: sourceId, receipt_id: receiptId },
-        },
-        {
-          type: DELETION_JOB_TYPE,
-          payload: { source_type: DELETION_JOB_SOURCE_TYPE, source_id: receiptId },
-        },
-      );
-      await writeAudit(tx, {
-        actor: `user:${principal.userId}`,
-        action: 'source.deletion_requested',
-        entityType: 'deletion_receipt',
-        entityId: receiptId,
-        detail: {
-          sourceType,
-          sourceId,
-          memoryCount: memoryIds.length,
-          objectCount: objectKeys.length,
-          supersededByNulled: nulledPointers.length,
-          contradictionsLifted: liftedPartners,
-          chatMessagesRedacted,
-          replyDraftsRedacted,
-          chatMessagesRemoved,
-          suppressedFactsRemoved,
-          // The cancellation trace: how pending ingestion was resolved.
-          ingestionCancellation: ingestion,
-        },
-        orgId: principal.orgId,
-        ownerId: principal.userId,
+        return { receiptId };
       });
-      return { receiptId };
-    });
+    } catch (error) {
+      // The erasure guard rolled the transaction back. Not a failure: the
+      // source is deliberately kept, and the caller records why.
+      if (error instanceof SourceRetainedError) {
+        return { receiptId: null, retained: error.reason };
+      }
+      throw error;
+    }
   }
 
   /**

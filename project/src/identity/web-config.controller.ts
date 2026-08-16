@@ -1,18 +1,35 @@
-import { Body, Controller, Get, Inject, Post } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Optional, Post, Req } from '@nestjs/common';
 import { readFile } from 'node:fs/promises';
 import { timingSafeEqual } from 'node:crypto';
+import type { Request } from 'express';
 import { z } from 'zod';
 import type { WebConfig } from '@cogeto/shared';
 import { Public } from './public.decorator';
 import { WEB_CONFIG_OPTIONS } from './identity-options';
 import type { WebConfigOptions } from './identity-options';
 import { readDemoLogin } from './demo-login';
-import { userError } from '../infrastructure/index';
+import { InMemoryRateLimitStore, RateLimitStore, userError } from '../infrastructure/index';
 
 const demoLoginSchema = z.object({
   username: z.string().min(1),
   password: z.string().min(1),
 });
+
+/**
+ * The demo-login wall (issue #636): attempts per client per window.
+ *
+ * Fixed constants rather than plumbed configuration. This gates ONE credential
+ * pair on a disposable sandbox instance, so there is nothing an operator would
+ * ever want to tune, and a knob in `.env` for it would be a variable to
+ * explain in a file whose whole point is that an operator owns about six of
+ * them.
+ *
+ * Ten in five minutes is far above what a person fumbling a pasted password
+ * needs and far below what makes an online guess worth attempting against a
+ * generated secret.
+ */
+const DEMO_LOGIN_MAX_PER_WINDOW = 10;
+const DEMO_LOGIN_WINDOW_MS = 5 * 60 * 1000;
 
 /**
  * GET /api/config — OIDC parameters for the SPA (unauthenticated by design — the
@@ -28,7 +45,16 @@ const demoLoginSchema = z.object({
 @Public()
 @Controller('config')
 export class WebConfigController {
-  constructor(@Inject(WEB_CONFIG_OPTIONS) private readonly config: WebConfigOptions) {}
+  private readonly limiter: RateLimitStore;
+
+  constructor(
+    @Inject(WEB_CONFIG_OPTIONS) private readonly config: WebConfigOptions,
+    // Falls back to an in-process window for bare constructions (tests, the
+    // worker root's own wiring), the pattern every other limiter site uses.
+    @Optional() limiter?: RateLimitStore,
+  ) {
+    this.limiter = limiter ?? new InMemoryRateLimitStore();
+  }
 
   @Get()
   async webConfig(): Promise<WebConfig> {
@@ -45,13 +71,39 @@ export class WebConfigController {
   }
 
   @Post('demo-login')
-  async demoLogin(@Body() body: unknown): Promise<{ accessToken: string }> {
+  async demoLogin(
+    @Body() body: unknown,
+    @Req() request: Request,
+  ): Promise<{ accessToken: string }> {
     // Only a demo, non-production instance can exchange credentials for a
     // session — mirror the GET fail-closed gate so a customer/production
     // instance exposes nothing (existence is not leaked: same 401 either way).
     if (this.config.production || !this.config.demoMode) {
       throw userError.unauthorized('auth.demoUnavailable', 'demo login is not available');
     }
+
+    // The wall (issue #636). This is the only public credential exchange in
+    // the product and it had no limit at all: the generated password is long
+    // and random, so an online guess was never the likely way in, but "the
+    // secret is strong" is a property of today's generator and not a control.
+    // Counted BEFORE the comparison, so a wrong password costs the same as a
+    // right one and the count cannot be avoided by any input.
+    const { count, resetAt } = await this.limiter.hit(
+      clientKey(request),
+      'demo_login',
+      DEMO_LOGIN_WINDOW_MS,
+      Date.now(),
+    );
+    if (count > DEMO_LOGIN_MAX_PER_WINDOW) {
+      const retryAfter = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000));
+      throw userError.tooManyRequests(
+        'limit.rateLimited',
+        'rate limit reached for {{bucket}}, retry in {{seconds}}s',
+        { bucket: 'demo_login', seconds: retryAfter },
+        { retryAfterSeconds: retryAfter },
+      );
+    }
+
     const parsed = demoLoginSchema.safeParse(body);
     if (!parsed.success)
       throw userError.unauthorized('auth.invalidCredentials', 'invalid username or password');
@@ -102,6 +154,32 @@ export class WebConfigController {
       return null;
     }
   }
+}
+
+/**
+ * The rate-limit key for an unauthenticated caller (issue #636).
+ *
+ * The app never faces the internet directly: Caddy is the only thing in front
+ * of it, so the socket's peer address is always Caddy's compose-bridge IP and
+ * keying on it would put every visitor in one bucket — a wall an attacker
+ * could use to lock the sandbox's real users out.
+ *
+ * `X-Forwarded-For` is set by Caddy's `reverse_proxy`, which APPENDS the peer
+ * it observed to whatever the client sent. So the LAST element is Caddy's own
+ * observation and is trustworthy; every earlier element is client-supplied and
+ * forgeable, which is why this reads the last and never the first. With no
+ * header at all (a direct call inside the compose network) it falls back to
+ * the socket address, which is the shared bucket and the safe direction.
+ */
+function clientKey(request: Request): string {
+  const header = request.headers['x-forwarded-for'];
+  const raw = Array.isArray(header) ? header[header.length - 1] : header;
+  const hops = (raw ?? '')
+    .split(',')
+    .map((hop) => hop.trim())
+    .filter(Boolean);
+  const observed = hops[hops.length - 1];
+  return observed ?? request.socket?.remoteAddress ?? 'unknown';
 }
 
 /** Length-guarded constant-time string compare. */

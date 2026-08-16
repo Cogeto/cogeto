@@ -22,8 +22,15 @@ export type {
   DerivedCascade,
   IngestionGuard,
   IngestionCancellation,
+  OwnedSourceRef,
+  RetentionReason,
+  ReceiptCounts,
 } from './deletion-saga';
-export { parseReceiptCounts } from './deletion-saga';
+export { parseReceiptCounts, countedRemovals } from './deletion-saga';
+/** Owner erasure (issue #632): the administrative path that erases a departed
+ * user's private material through the ordinary saga. */
+export { OwnerErasureService, OWNER_ERASURE_JOB_TYPE } from './owner-erasure.service';
+export type { OwnerErasurePlan, OwnerErasureResult } from './owner-erasure.service';
 export { verifyChain, canonicalize, GENESIS_HASH } from './domain/receipt-chain';
 export type { ConfirmedReceipt } from './domain/receipt-chain';
 export { IntegritySweep, SWEEP_JOB_TYPE, SWEEP_CRONTAB, SWEEP_OPTIONS } from './integrity-sweep';

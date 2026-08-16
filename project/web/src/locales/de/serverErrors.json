@@ -52,6 +52,10 @@
     "invalidDomain": "keine gültige Domain (z. B. adriatic-foods.hr)",
     "notFound": "E-Mail {{id}} nicht gefunden"
   },
+  "erasure": {
+    "confirmationMismatch": "Die Bestätigung muss die Benutzerkennung wiederholen, die gelöscht wird",
+    "notYourself": "Nutzen Sie zum Entfernen eigenen Materials den normalen Weg zum Löschen einer Quelle"
+  },
   "extractionGate": {
     "notGateable": "'{{sourceType}}' ist keine extrahierbare Quellenart; der Filter steuert: {{gateable}}",
     "ruleNotFound": "keine solche Regel"

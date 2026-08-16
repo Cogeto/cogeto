@@ -9,6 +9,8 @@ import {
   ReceiptsController,
 } from './receipts.controller';
 import { InstanceController } from './instance.controller';
+import { OwnerErasureController } from './erasure.controller';
+import { OwnerErasureService } from './owner-erasure.service';
 import { TimelineController } from './timeline.controller';
 import { IntegritySweep } from './integrity-sweep';
 import { MemoryStore } from './memory.store';
@@ -105,6 +107,14 @@ export interface MemoryModuleOptions {
    * trimmed answer is the safe direction.
    */
   adminRole?: string;
+  /**
+   * Serve the administrative owner-erasure route (issue #632). **App root
+   * only**, the `systemReads` pattern in the other direction: the worker needs
+   * the SERVICE (it runs the pass) but must register no controller, and the
+   * route is administrative, so it exists exactly where a request can reach
+   * it and nowhere else.
+   */
+  erasureRoute?: boolean;
 }
 
 /**
@@ -143,6 +153,8 @@ export class MemoryModule {
         TimelineController,
         // The receipts' verification key (V2.0 item 3.6 part 2).
         InstanceController,
+        // Owner erasure (issue #632), administrative and app-root only.
+        ...(options.erasureRoute ? [OwnerErasureController] : []),
       ],
       providers: [
         {
@@ -208,6 +220,10 @@ export class MemoryModule {
         IntegritySweep,
         MemoryFileStore,
         EmbeddingRebuildService,
+        // Owner erasure (issue #632). Provided in BOTH roots: the app plans
+        // and enqueues, the worker runs the pass. It holds no state and reads
+        // only through the saga and the ports it already binds.
+        OwnerErasureService,
         // The unscoped machine-read surface exists ONLY where a root asked for
         // it (V2.0 item 3.7). In the app process this provider is absent, so an
         // ungated corpus read is not something a request-path service can
@@ -224,6 +240,7 @@ export class MemoryModule {
         MemoryObjectStore,
         MemoryFileStore,
         EmbeddingRebuildService,
+        OwnerErasureService,
         ...(options.systemReads ? [MemorySystemStore] : []),
       ],
     };

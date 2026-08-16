@@ -13,5 +13,14 @@
     // dead_letter.error stores that same one-line form.
     "sourceMap": false
   },
-  "exclude": ["dist", "node_modules", "**/*.spec.ts", "testing", "vitest.config.ts"]
+  // `testing` matched ONLY project/src/testing, so the two test doubles that
+  // live inside a module — connectors/testing/reference-connector.ts (the
+  // platform's conformance harness) and confluence/testing/fake-site.ts (a
+  // fake upstream) — compiled into the runtime image (issue #636). Nothing
+  // registers them, so they were dead weight rather than a live path, but the
+  // Dockerfile has an explicit ritual for keeping test scaffolding out of the
+  // shipped artifact and these slipped past it because that ritual only
+  // derives the ENTRYPOINT list. The glob now matches a `testing` directory at
+  // any depth; `deployment-hardening.spec.ts` fails the build if one reappears.
+  "exclude": ["dist", "node_modules", "**/*.spec.ts", "**/testing/**", "vitest.config.ts"]
 }

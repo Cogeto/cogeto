@@ -67,7 +67,7 @@ The operator script generates every secret **locally at install** into a
 credentials, the identity-provider admin credentials, the MinIO encryption master
 key, and the instance signing key.
 
-Two secrets are load-bearing for the verifiable-memory guarantees and are
+Three secrets are load-bearing for the verifiable-memory guarantees and are
 generated per instance, never shipped in the repo or image:
 
 - **The MinIO encryption master key** (`MINIO_KMS_SECRET_KEY`) enables SSE-S3
@@ -79,10 +79,56 @@ generated per instance, never shipped in the repo or image:
  every deletion receipt; the public half is served unauthenticated at
  `GET /api/instance/public-key` so receipts verify independently. See
  [deletion-and-receipts](deletion-and-receipts.md).
+- **The instance master key** (`COGETO_MASTER_KEY`) encrypts every provider API
+ key and every connector credential at rest, AES-256-GCM, in the database. Its
+ lifecycle is stated below because it is a boundary rather than a mechanism.
 
 A **secret preflight** refuses to start a non-localhost deployment that is still
 using a known development secret value, so a stack cannot accidentally go live with
 a demo password or the compose file's clearly-marked dev-only defaults.
+
+### The instance master key: generated once, never rotated
+
+This is a stated limit, not an omission, and it is written here so nobody has
+to discover it during an incident.
+
+**What it is.** `COGETO_MASTER_KEY` lives in the environment and nothing else;
+what it protects lives in the database and nothing else. That split is the
+whole design: a database dump, a backup, a replica or a support export contains
+ciphertext, and the one thing that opens it is not in there with it. Every
+sealed column is opened in exactly one function, and a confinement test asserts
+that structurally rather than by review.
+
+**It is generated once and does not rotate.** The operator script writes it at
+install and never regenerates it; `cogeto configure --regenerate` rotates the
+database and object-store credentials and deliberately leaves this one alone.
+There is no re-sealing tool and none is planned: rotating the key means
+re-encrypting every sealed value under the new one, and the honest alternative
+is available and cheap, which is to re-enter the provider keys.
+
+**What a compromise means, plainly.** If the master key leaks, every provider
+API key and connector credential the instance holds must be treated as
+disclosed. The response is to **reissue those credentials at the provider**
+(revoke the API keys in the Mistral, OpenAI, Anthropic or Atlassian console,
+issue new ones) and to **rebuild the instance** with a fresh key, re-entering
+the new credentials through the Providers and Connections pages. The memory
+corpus itself is not encrypted under this key and is unaffected; what is lost
+is the confidentiality of the rented-model credentials, not of the knowledge.
+
+**What a stolen worker credential reaches.** The worker process holds the
+master key AND the receipt-signing private key. An attacker with code
+execution in the worker container therefore has every provider credential in
+the clear, and the ability to mint deletion receipts that verify against the
+published public key. That is the worst position in this system and it is
+stated rather than implied.
+
+**The application process is deliberately kept away from both.** The app
+container mounts only the PUBLIC half of the signing keypair (`instance-pubkey`,
+read-only) and cannot sign anything; the identity seam registers the decrypting
+credential opener only when a composition root asks for it, and only the worker
+root does, so a request-path service that tried to read a credential would fail
+at boot rather than succeed at runtime. The app is the process exposed to the
+internet; the split means compromising it does not yield either key.
 
 ## Encryption in transit
 

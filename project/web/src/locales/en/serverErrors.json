@@ -52,6 +52,10 @@
     "invalidDomain": "not a valid domain (e.g. adriatic-foods.hr)",
     "notFound": "email {{id}} not found"
   },
+  "erasure": {
+    "confirmationMismatch": "the confirmation must repeat the user id being erased",
+    "notYourself": "use the ordinary source deletion path to remove your own material"
+  },
   "extractionGate": {
     "notGateable": "'{{sourceType}}' is not an extraction-capable source type; the gate controls: {{gateable}}",
     "ruleNotFound": "no such rule"

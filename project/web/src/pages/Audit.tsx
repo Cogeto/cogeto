@@ -7,6 +7,7 @@ import type { Session } from '../auth/oidc';
 import { Shell } from '../components/Shell';
 import { Card, EmptyState, ErrorState, SectionTitle, SkeletonRows } from '../components/ui';
 import { timeAgo } from '../components/status';
+import { useApiErrorMessage } from '../i18n/api-error';
 
 const PAGE_SIZE = 50;
 
@@ -91,10 +92,17 @@ export function Audit({ session }: { session: Session }) {
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
   };
-  const { data, isPending, isError } = useQuery({
+  const { data, isPending, isError, error } = useQuery({
     queryKey: ['audit', params],
     queryFn: () => fetchAudit(session, params),
+    // A non-administrator gets 403 here and retrying cannot change that
+    // (issue #633). The rail hides the section for them, so this is the
+    // typed-the-URL case: say why once, in their own language.
+    retry: false,
   });
+  // Renders the server's own `auth.roleRequired` code as translated copy
+  // rather than the page's generic "could not load" line.
+  const errorMessage = useApiErrorMessage(t);
   const pages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
   const reset = () => setPage(0);
 
@@ -164,7 +172,7 @@ export function Audit({ session }: { session: Session }) {
         </div>
 
         {isPending && <SkeletonRows rows={5} label={t('loading')} />}
-        {isError && <ErrorState>{t('error')}</ErrorState>}
+        {isError && <ErrorState>{errorMessage(error, 'error')}</ErrorState>}
         {data && data.items.length === 0 && (
           <EmptyState icon="🗒" title={t('empty.title')}>
             {t('empty.body')}

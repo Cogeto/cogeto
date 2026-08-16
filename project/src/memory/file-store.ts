@@ -124,6 +124,28 @@ export async function listFileSourceRefs(
   return rows.map((row) => ({ objectKey: row.objectKey, at: row.uploadDate }));
 }
 
+/**
+ * EVERY file source an owner has, with the scope its row records (issue #632).
+ *
+ * `file` is the one source type with no `SourceDeletion` adapter — its source
+ * row IS `file_metadata`, which memory owns — so owner erasure enumerates it
+ * here rather than through the port.
+ *
+ * Unpaginated, unlike `listFileSourceRefs` above, and the difference is the
+ * point: that one serves a screen and is cursor-paged for it; this one serves
+ * an erasure, where a bound would mean quietly leaving material behind.
+ */
+export async function listAllFileSourcesForOwner(
+  db: DbOrTx,
+  ownerId: string,
+): Promise<{ sourceId: string; scope: MemoryScope }[]> {
+  return db
+    .select({ sourceId: fileMetadata.objectKey, scope: fileMetadata.scope })
+    .from(fileMetadata)
+    .where(eq(fileMetadata.ownerId, ownerId))
+    .orderBy(asc(fileMetadata.uploadDate), asc(fileMetadata.objectKey));
+}
+
 export async function hydrateFileSourceRefs(
   db: DbOrTx,
   ownerId: string,

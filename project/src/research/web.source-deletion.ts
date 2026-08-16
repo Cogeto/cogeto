@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { eq, inArray } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 import type { DbOrTx, Tx } from '../infrastructure/index';
-import type { SourceCascade, SourceDeletion } from '../memory/index';
+import type { OwnedSourceRef, SourceCascade, SourceDeletion } from '../memory/index';
 import { webPage } from './persistence/tables';
 
 /**
@@ -27,6 +27,16 @@ export class WebSourceDeletion implements SourceDeletion {
 
   async deleteSource(tx: Tx, sourceId: string): Promise<void> {
     await tx.delete(webPage).where(eq(webPage.id, sourceId));
+  }
+
+  /** Owner erasure's enumeration (issue #632). A captured page carries the
+   * scope it was captured under on its own row. */
+  async listForOwner(db: DbOrTx, ownerId: string): Promise<OwnedSourceRef[]> {
+    return db
+      .select({ sourceId: webPage.id, scope: webPage.scope })
+      .from(webPage)
+      .where(eq(webPage.ownerId, ownerId))
+      .orderBy(asc(webPage.id));
   }
 
   async enumerateCascade(tx: Tx, sourceId: string): Promise<SourceCascade> {

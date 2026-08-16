@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import type { ApprovalDto } from '@cogeto/shared';
 import { BearerAuthGuard } from '../identity/index';
@@ -26,7 +26,7 @@ export class EmailReplyController {
   @Post(':id/reply-draft')
   async draftReply(
     @Req() request: AuthenticatedRequest,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
   ): Promise<ApprovalDto> {
     const parsed = bodySchema.safeParse(body ?? {});

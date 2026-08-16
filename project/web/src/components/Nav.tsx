@@ -232,9 +232,11 @@ export function Nav({
     review: reviewCount ?? 0,
     approvals: approvalsCount ?? 0,
   };
-  // The three operator surfaces share one gate: System, Providers and Model
-  // assignment are all admin-only (V2.4 item 7.1).
-  const adminOnly = new Set<NavSection>(['system', 'providers', 'models']);
+  // The operator surfaces share one gate: System, Providers and Model
+  // assignment (V2.4 item 7.1), and now the activity trail (issue #633) — it
+  // is the organisation's trail, not the reader's own, so it is an operator
+  // surface and the server's AdminGuard is the enforcement.
+  const adminOnly = new Set<NavSection>(['system', 'providers', 'models', 'audit']);
   const sections = ENABLED.filter((s) => !adminOnly.has(s.key) || showSystem);
   const demo = isDemoSession();
   return (

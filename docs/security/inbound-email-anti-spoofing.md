@@ -29,7 +29,7 @@ envelope actually was.
 ## The gates, in order
 
 An inbound message passes through these checks (see
-`project/src/connectors/email-intake.service.ts`):
+`project/src/email/email-intake.service.ts`):
 
 1. **Size cap**: oversized messages are refused before parsing.
 2. **Hard SPF failure**: if SPF for the envelope sender is `fail` **or**
@@ -142,12 +142,12 @@ still be handed markup with nothing executable in it.
 
 ## Where this lives in the code
 
-- Body sanitizer: `project/src/connectors/email-parse.ts` (`sanitizeHtml`),
+- Body sanitizer: `project/src/email/email-parse.ts` (`sanitizeHtml`),
  tests in `email-parse.spec.ts` (both demonstrated bypasses plus a hostile corpus)
 - Sandboxed rendering: `project/web/src/components/email-body.ts`, tests in
  `email-body.spec.ts`
-- Intake gate and routing: `project/src/connectors/email-intake.service.ts`
-- Envelope vs header resolution: `project/src/connectors/email-parse.ts`
+- Intake gate and routing: `project/src/email/email-intake.service.ts`
+- Envelope vs header resolution: `project/src/email/email-parse.ts`
 - SPF evaluation + forwarding: `project/services/mail/haraka/` (`config/plugins`,
  `plugins/cogeto_deliver.js`)
 - Intake endpoint (reads the SPF verdict): `email-intake.controller.ts`

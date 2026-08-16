@@ -44,7 +44,15 @@ inspectable artifact. EU hosted, self hosted, or fully offline.
 
 ## Current state
 
-v1.6.0 is the current release line. The task subsystem and reminders were **removed**
+**v1.7.3 is the current release line** (`package.json` and the git tag are the two
+sources of truth and must agree: `npm run verify:version`). Migrations run to
+**0059**; the three most recent are outside the V2 item narrative below and are
+small, self-contained changes with their reasoning in the files themselves:
+0057 full-text search over conversations, 0058 a `stopped` flag so an
+interrupted answer says so, 0059 an index making the duplicate-upload checksum
+lookup cheap.
+
+The task subsystem and reminders were **removed**
 in V2.0 items 3.1 and 3.2: Cogeto has no tasks, no to-dos, and no reminders. What
 survives is **open loops**, `commitment` and `open_loop` memories read straight from
 the memory table, due-dated by `valid_until`, surfaced in chat and on the attention
@@ -73,9 +81,14 @@ chat suite is deliberately not cached (retrieval returns equally scored facts in
 different order every run, so the answer prompt is not reproducible) and still runs
 live post-merge.
 
-The 2.0 security audit ([`docs/audits/`](docs/audits/)) is closed out across five
-remediation waves: every finding is fixed or consciously accepted with a written
-rationale, and the audit and its independent verification are both published there.
+The 2.0 security audit is closed out across five remediation waves: every finding
+is fixed or consciously accepted with a written rationale. The audit reports
+themselves are internal and are **not published** (a report is a live list of
+unfixed weaknesses); what is public is the remediation, as the code plus the test
+that keeps it fixed. The `SEC-N` identifiers throughout this codebase refer to
+those findings and cannot be looked up anywhere: the code they annotate is the
+record. See the note in
+[`docs/security/README.md`](docs/security/README.md).
 Two operator-visible consequences worth knowing before changing anything nearby:
 inbound email is now behind the `mail` compose profile and is **off by default**, and
 the five deployment assets are checksum-verified by the installer, so editing one
@@ -518,6 +531,29 @@ deletion saga has nothing to erase and only an assignment to release, and the
 confirmation says so in those words. Read
 [`docs/features/projects.md`](docs/features/projects.md) before changing
 anything near the lens, and do not migrate the assignment onto memories.
+
+The pre-launch review's remediation added one capability the product was
+missing, and it carries a rule you must not re-litigate. **Owner erasure**
+(issue #632) lets an administrator erase a DEPARTED user's private material:
+`memory/owner-erasure.service.ts` enumerates the subject's sources through a
+new `listForOwner` on the existing `SourceDeletion` port and runs the ORDINARY
+saga over each, so the cascades, the transaction, the receipt and the sweep are
+untouched and there is no second deletion mechanism. **Private material is
+erased; shared material always stays, without exception.** That rule is the
+owner's and is fixed. Two checks enforce it: a shared SOURCE is never
+attempted, and inside the saga's transaction a source is retained WHOLE if any
+fact derived from it is shared (the guard rolls the transaction back, because
+the ingestion guard has by then consumed the pipeline idempotency key). The
+receipt shape is **one per source**, because a data subject can verify each one
+independently and a partial failure cannot invalidate the rest. It works from
+the stored `owner_id` alone: nothing on the path resolves the subject against
+Zitadel, which is the point, since the state it exists for is the one where
+that lookup fails. Read
+[`docs/security/deletion-and-receipts.md`](docs/security/deletion-and-receipts.md)
+and [operator runbook §4d](docs/operator-runbook.md) before changing anything
+near it. In the same wave the **activity trail became administrative only**
+(issue #633): content was always owner-gated, but the actions were not, so any
+member could enumerate who did what to whose material by identifier.
 
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).

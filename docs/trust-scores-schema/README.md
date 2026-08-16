@@ -65,6 +65,41 @@ partial file, and pass it as an additional `--partial`
 (see [`docs/features/models.md`](../features/models.md); provider
 keys are never CI secrets).
 
+## Why the latest published file can lag the latest release
+
+**It does today, and this section is here so the gap is explained rather than
+merely visible.** The newest artifact in [`eval/trust-scores/`](../../eval/trust-scores/)
+is **v1.7.1**; the shipping release is **v1.7.3**.
+
+The reason is the publication flow, not a hidden number. Publishing is an
+**owner-run step after a release**: the live post-merge gate on `main` is what
+produces the partials, and a human then runs the publisher and opens a pull
+request with the result (the last one was "chore: publish trust scores for
+v1.7.1"). Nothing publishes itself, deliberately, because the artifact is a
+claim and a claim gets a person's name on it. A release can therefore ship
+before its measurement does, and v1.7.2 and v1.7.3 are in exactly that state.
+
+**What that does and does not mean for a reader:**
+
+- The artifact is keyed by **configuration id**, not by release. It answers
+  "what does this model configuration score on this corpus", and the Models
+  page looks it up by that id.
+- Between v1.7.1 and v1.7.3 the **prompts, the corpus and the gate floors did
+  not change** (`git diff v1.7.1 v1.7.3 -- project/prompts project/eval` is
+  empty), so no measured behaviour moved and the v1.7.1 numbers remain the
+  honest figure for that configuration. The releases in between changed the
+  interface, the operator tooling, translations and container hardening.
+- It is still a lag and not a nothing: a release that DID change a prompt or
+  the pipeline must not ship without its measurement, and the fix is to run
+  the publish step, never to reason that the numbers probably held.
+
+**A missing measurement is never approximated.** No file is written from an
+older run's numbers, no release inherits its predecessor's score, and the
+Models page says **"not evaluated"** for a configuration with no artifact
+rather than showing the nearest one. Publishing a number that was not measured
+for the thing it is attached to would be the one failure this whole artifact
+exists to prevent.
+
 ## Versions
 
 | Version | Change |
