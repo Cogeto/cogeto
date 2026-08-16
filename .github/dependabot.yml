@@ -48,7 +48,7 @@ updates:
       # major.minor tracks the server - docs/operations/image-pins.md).
       # Upgraded manually in lockstep with the server, never alone.
       - dependency-name: '@qdrant/js-client-rest'
-      # Type stubs track the runtime Node major (22, engines + node:22-alpine
+      # Type stubs track the runtime Node major (24, engines + node:24-alpine
       # images); newer stubs would describe APIs the runtime does not have.
       # Bump together with a Node runtime move, never alone.
       - dependency-name: '@types/node'
@@ -82,11 +82,11 @@ updates:
   # split meant a node bump arrived as four PRs that could never pass the
   # dev/deploy digest-parity test individually. A `groups` block on each
   # entry: without one, `directories` still opens one PR per directory. The
-  # pins carry their tag in the reference (`node:22-alpine@sha256:…`) so
+  # pins carry their tag in the reference (`node:24-alpine@sha256:…`) so
   # Dependabot proposes new digests of the INTENDED tag, never of `latest`,
   # and the tag can never go stale beside its digest. Majors this project
   # takes deliberately are ignored below so they stop resurfacing weekly:
-  # Node (22 is the runtime until a planned move), Python (the redaction
+  # Node (24 is the runtime until a planned move), Python (the redaction
   # hash lock is compiled for 3.12), Zitadel (EOL v2 must step through v3,
   # a planned migration), Qdrant (server and npm client move in lockstep,
   # manually).

@@ -36,7 +36,7 @@ pipeline change).
 
 ## Running the checks locally
 
-Prereqs: Node 22, Docker (integration tests start real Postgres/Qdrant/MinIO
+Prereqs: Node 24, Docker (integration tests start real Postgres/Qdrant/MinIO
 via Testcontainers).
 
 ```sh

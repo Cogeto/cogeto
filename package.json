@@ -5,7 +5,7 @@
   "description": "Verified institutional memory for your documents: verification before storage, contradiction findings, a signed findings report",
   "license": "AGPL-3.0-only",
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "workspaces": [
     "project/shared",

@@ -11,7 +11,7 @@ TypeScript workspace.
 
 ```
 package.json Haraka + haraka-constants (pinned)
-Dockerfile node:22-alpine (pinned by digest), non-root, listens on 2525
+Dockerfile node:24-alpine (pinned by digest), non-root, listens on 2525
 docker-entrypoint.sh derives host_list/me/databytes from env, starts Haraka
 haraka/config/plugins limit → cogeto_rcpt → cogeto_deliver (no outbound)
 haraka/config/smtp.ini listen :2525, SIZE, outbound disabled
