@@ -81,23 +81,6 @@ inbound email is now behind the `mail` compose profile and is **off by default**
 the five deployment assets are checksum-verified by the installer, so editing one
 means regenerating `project/infra/deploy/deploy-assets.sha256` in the same change.
 
-The **deployment-readiness audit** ([`docs/audits/deployment-readiness.md`](docs/audits/deployment-readiness.md))
-is closed out across five waves of its own; only the two owner-scoped copy
-findings remain. Three consequences bind new work. **Every service in both
-compose files drops all capabilities and sets `no-new-privileges`**, and eleven
-of them, including the app and the worker, run on a **read-only root** with a
-tmpfs `/tmp`: a service that needs a capability or a writable path must state
-which and why in the file, and `deployment-hardening.spec.ts` pins the exact
-grant list. Practically, this means you cannot write a scratch script into
-`/repo` inside a running container: use `/tmp`, or
-`docker compose exec -T app node < script.js`. Second, an **active compose
-profile whose required secret is empty is refused at boot** (the preflight and
-the service's own healthcheck), so a hand-edited `COMPOSE_PROFILES` fails loudly
-instead of running unsigned. Third, the operator script is exercised in CI by
-`scripts/ci/operator-smoke.sh` against a real stack: **anything it prints must
-be performable and anything it reports must be observed**, and the test fails on
-a printed instruction naming a retired mechanism.
-
 V2.0 item 3.5 made the product translatable. Every user-visible string in the
 SPA is a key in `project/web/src/locales/<locale>/<namespace>.json` (one
 namespace per surface; the current list is `namespaces.ts`), the copy Cogeto writes on its own lives in
