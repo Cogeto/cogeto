@@ -99,9 +99,10 @@ export function browserLocale(): PreferredLanguage {
 }
 
 /**
- * Initialise i18next. Synchronous by construction (`initImmediate: false` with
- * inline resources) so the first render already has English in hand and no
- * surface ever paints a raw key.
+ * Initialise i18next. Synchronous by construction (`initAsync: false` with
+ * inline resources; the option was `initImmediate` before i18next 26, which
+ * removed the old name rather than mapping it) so the first render already
+ * has English in hand and no surface ever paints a raw key.
  *
  * Idempotent, and invoked once at the bottom of this module: importing the i18n
  * runtime anywhere (a component, a pure model, a spec) is enough to get a ready
@@ -126,7 +127,7 @@ export function initI18n(language: PreferredLanguage = 'en'): I18nInstance {
     // Named variables only: `{{count}}`, never `{0}`. Nesting stays on so a
     // shared word (a product name, a status label) can be reused inside a
     // sentence without assembling it from fragments at the call site.
-    initImmediate: false,
+    initAsync: false,
     returnNull: false,
     // Loud missing keys in development (Issue B): the key renders wrapped in
     // guillemets so a gap is impossible to mistake for copy.

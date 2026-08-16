@@ -13,10 +13,10 @@
   "dependencies": {
     "@cogeto/shared": "*",
     "@tanstack/react-query": "^5.101.4",
-    "i18next": "^25.10.10",
+    "i18next": "^26.3.6",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-i18next": "^16.6.6"
+    "react-i18next": "^17.0.11"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
