@@ -494,7 +494,7 @@ async function main(): Promise<void> {
 
   console.log('starting Postgres + Qdrant test containers…');
   const pg = await new PostgreSqlContainer('postgres:17-alpine').start();
-  const qdrant = await new GenericContainer('qdrant/qdrant:v1.14.0')
+  const qdrant = await new GenericContainer('qdrant/qdrant:v1.19.0')
     .withExposedPorts(6333)
     .withWaitStrategy(Wait.forHttp('/readyz', 6333))
     .start();
