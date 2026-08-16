@@ -268,3 +268,19 @@ a backstop). Four logical commits, each verified locally before the next:
 
 Final gauntlet before push: lint, boundaries, full server suite, compose
 smoke, and a browser walk in Croatian for the i18n pair.
+
+## Zitadel step 1 and uvicorn, 2026-08-16
+
+The grouped config's first real PR (#625) proposed exactly the right thing:
+Zitadel v2.71.19, the final v2 release, carrying the v2 backports of the
+post-2.65.1 security fixes (Admin API IDOR, session fixation MFA bypass,
+auth-factor brute force). Taken over manually with the manifest regen.
+Verification on the live dev stack: Postgres backup of the zitadel database
+first (kept outside the repo), stepwise setup migrations ran clean, zero
+error lines, OIDC discovery serves the right issuer with all endpoints
+through the edge, login surface responds, app and worker restarted healthy.
+License note: v2 stays Apache-2.0; the AGPL change arrives with v3 and was
+reviewed with the owner (no obstacle for cogeto.eu: Zitadel runs unmodified
+as a separate service). uvicorn 0.52.2 (#624) rode along with a lock regen
+and the sidecar's 8 tests in the rebuilt image. Remaining Zitadel work is
+the staged v3 then v4 migration, planned separately.
