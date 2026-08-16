@@ -284,3 +284,31 @@ reviewed with the owner (no obstacle for cogeto.eu: Zitadel runs unmodified
 as a separate service). uvicorn 0.52.2 (#624) rode along with a lock regen
 and the sidecar's 8 tests in the rebuilt image. Remaining Zitadel work is
 the staged v3 then v4 migration, planned separately.
+
+## MinIO replaced by Silo, 2026-08-16
+
+Community MinIO is archived with its remaining fixes proprietary, so the
+object store moved to the Silo fork (pgsty), adopted with custody: the
+source is forked to github.com/Cogeto/silo and the image is mirrored
+digest-identical to cogeto/silo on Docker Hub, which is the ONLY reference
+the composes carry, so nothing upstream can change or remove what customers
+pull. Before adoption the full source delta against archived upstream was
+reviewed (106 commits, ~2k lines of real server change): every security
+backport does what its advisory says, the upstream phone-home update check
+is REMOVED rather than redirected, no new outbound destinations, no auth
+weakening (the single compatibility toggle is off by default and monotone).
+Residual caveats recorded: the embedded console and mc are unreviewed
+sub-forks (the console is reachable only via the localhost-bound consoles
+profile), and the fork is effectively one maintainer, so each future
+adoption repeats the diff review and Garage remains the pre-scouted exit.
+
+Verified: the Testcontainers harness now runs cogeto/silo (283 storage
+tests: object store, deletion cascade, presigned flows, passport, reports),
+the dev stack swapped in place on the same volume with minio-init's mc
+routine passing ("object access verified, admin API refused") and app
+health ok, and licensing is unchanged AGPL (the archival froze development,
+not the license). Defence in depth: the s3 consoles vhost now rejects the
+CVE-2026-41145 unsigned-trailer header at the edge, which the app's own
+client never sends. Update loop: new Silo releases are reviewed as a diff,
+mirrored with one imagetools command, and bumped like any pin, as part of
+routine dependency triage.

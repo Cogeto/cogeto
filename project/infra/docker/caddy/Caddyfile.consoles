@@ -14,6 +14,14 @@
 # MinIO S3 API — also the browser-reachable origin for O1 presigned downloads.
 # Caddy preserves the incoming Host header, which MinIO's SigV4 presign check needs.
 s3.localhost {
+	# Defence in depth against the unsigned-trailer signature bypass
+	# (CVE-2026-41145): an unauthenticated write needs only a valid access-key
+	# id when the payload is declared as a streaming unsigned trailer. The
+	# object store itself is patched (Silo), and the app's own S3 client never
+	# sends this header, so rejecting it at the edge costs nothing and also
+	# covers an instance that lags behind on the image.
+	@unsignedTrailer header x-amz-content-sha256 STREAMING-UNSIGNED-PAYLOAD-TRAILER
+	respond @unsignedTrailer 403
 	reverse_proxy minio:9000
 }
 

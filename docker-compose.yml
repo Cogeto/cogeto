@@ -813,7 +813,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    image: cogeto/silo:RELEASE.2026-08-06T00-00-00Z@sha256:29a498b24669cae1fed11c1a2fb2b3d73c68829a0a9c0b14e71b386671d38fac
     # Console on :9001 (S3 API stays on :9000). Fronted by the localhost-only
     # `caddy-consoles` service under the `consoles` profile — no host
     # ports published here (single-ingress).

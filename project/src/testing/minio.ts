@@ -17,7 +17,7 @@ export interface TestMinio {
 export async function startTestMinio(): Promise<TestMinio> {
   const accessKey = 'cogeto';
   const secretKey = 'cogeto-dev-password';
-  const container = await new GenericContainer('minio/minio:latest')
+  const container = await new GenericContainer('cogeto/silo:RELEASE.2026-08-06T00-00-00Z')
     .withEnvironment({
       MINIO_ROOT_USER: accessKey,
       MINIO_ROOT_PASSWORD: secretKey,
