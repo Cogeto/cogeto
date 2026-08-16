@@ -1586,11 +1586,17 @@ cmd_status() {
 # ── features (P6.7) ────────────────────────────────────────────
 
 # Whether SERVICE exists in the instance's compose file under PROFILE. Returns
-# 0 = present, 1 = absent, 2 = cannot tell (no docker; --check on a dev box).
+# 0 = present, 1 = absent, 2 = cannot tell (no docker; --check on a dev box),
+# 3 = `compose config` itself failed (a transient daemon hiccup, a bad .env).
+# 1 and 3 MUST stay distinct: a successful read that lacks the service means
+# the instance is genuinely behind, but a failed read means nothing about the
+# instance, and telling an operator to upgrade over a two-second transient is
+# a false alarm (observed in CI, 2026-08-16).
 compose_has_service() {  # compose_has_service SERVICE PROFILE
   if ! command -v docker >/dev/null 2>&1; then return 2; fi
   if [ ! -f "$COGETO_ROOT/docker-compose.yml" ]; then return 2; fi
-  if compose --profile "$2" config --services 2>/dev/null | grep -qx "$1"; then
+  chs_services="$(compose --profile "$2" config --services 2>/dev/null)" || return 3
+  if printf '%s\n' "$chs_services" | grep -qx "$1"; then
     return 0
   fi
   return 1
@@ -1601,10 +1607,17 @@ require_feature_service() {  # require_feature_service ID SERVICE PROFILE WHY_AB
   compose_has_service "$2" "$3" || rfs_result="$?"
   case "$rfs_result" in
     0) : ;;
-    *)
-      if [ "$rfs_result" = "1" ] && [ "$CHECK" -eq 0 ]; then
+    1)
+      if [ "$CHECK" -eq 0 ]; then
         die "cannot enable ${1}: the '${2}' service is not in this instance's compose file. ${4}"
       fi
+      warn "cannot verify the '${2}' service exists in the compose file (check mode continues; a real run refuses when it is absent)" ;;
+    3)
+      if [ "$CHECK" -eq 0 ]; then
+        die "cannot enable ${1}: could not read the compose file just now (docker compose config failed). Nothing was changed — try again, and if this persists run 'docker compose config' in ${COGETO_ROOT} to see why."
+      fi
+      warn "could not read the compose file just now (check mode continues; a real run stops and asks you to retry)" ;;
+    *)
       warn "cannot verify the '${2}' service exists in the compose file (check mode continues; a real run refuses when it is absent)" ;;
   esac
 }

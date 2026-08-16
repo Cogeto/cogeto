@@ -341,6 +341,53 @@ describe('operator script — pure helpers', () => {
   });
 });
 
+describe('operator script — a transient compose failure is never an upgrade accusation', () => {
+  // compose_has_service used to conflate "the compose file lacks the service"
+  // with "docker compose config failed", so a two-second daemon hiccup told
+  // the operator their instance needed an upgrade (observed in CI,
+  // 2026-08-16). The two must produce different messages, and only the
+  // genuine absence may point at upgrading.
+  const setup = 'd="$(mktemp -d)"; touch "$d/docker-compose.yml"; COGETO_ROOT="$d"; CHECK=0; ';
+
+  it('a successful read that lacks the service refuses with the upgrade pointer', () => {
+    const { status, out } = helper(
+      setup +
+        'compose() { echo minio; }; require_feature_service research searxng research "Upgrade first." 2>&1',
+    );
+    expect(status).toBe(1);
+    expect(out).toContain("not in this instance's compose file");
+  });
+
+  it('a failed read dies with retry wording, never the upgrade accusation', () => {
+    const { status, out } = helper(
+      setup +
+        'compose() { return 1; }; require_feature_service research searxng research "Upgrade first." 2>&1',
+    );
+    expect(status).toBe(1);
+    expect(out).toContain('could not read the compose file just now');
+    expect(out).not.toContain("not in this instance's compose file");
+  });
+
+  it('in check mode a failed read warns and continues instead of dying', () => {
+    const { status, out } = helper(
+      setup +
+        'CHECK=1; compose() { return 1; }; require_feature_service research searxng research "Upgrade first." 2>&1; echo continued',
+    );
+    expect(status).toBe(0);
+    expect(out).toContain('could not read the compose file just now');
+    expect(out).toContain('continued');
+  });
+
+  it('a present service passes silently', () => {
+    const { status, out } = helper(
+      setup +
+        'compose() { printf "searxng\\nminio\\n"; }; require_feature_service research searxng research "Upgrade first." && echo ok',
+    );
+    expect(status).toBe(0);
+    expect(out).toBe('ok');
+  });
+});
+
 describe('operator script — the script knows nothing about models', () => {
   it('install and configure refuse --mistral-key with the pointer at the interface', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'cogeto-operator-nomodel-'));
