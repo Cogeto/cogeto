@@ -80,10 +80,11 @@ describe('error_scrub: model output never reaches a log line', () => {
       expect(describeError(error).type).toBe('Error');
     });
 
-    it('caps_a_long_error_message_at_400_chars, even when redaction made it shorter', () => {
-      // 300 chars either side of the fragment: still well over the cap after
-      // the redaction, so the slice is doing real work and the redaction
-      // survives inside the capped message.
+    it('caps_a_long_error_message_at_400_chars, whatever the redaction did to its length', () => {
+      // 300 chars either side of the fragment keeps the message well over the
+      // cap after the redaction (which can lengthen or shorten the text), so
+      // the slice is what enforces the cap and the redaction marker survives
+      // inside the capped message.
       const message = `${'a'.repeat(300)} received 'z' ${'b'.repeat(300)}`;
       const { message: scrubbed } = describeError(new Error(message));
       expect(scrubbed).toHaveLength(400);
