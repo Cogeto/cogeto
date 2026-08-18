@@ -62,6 +62,10 @@ preflight container refuses known dev secrets on any non-localhost domain.
 
 ## Developing
 
+Prereqs for development: **Node 24 + npm** (the [`.nvmrc`](../.nvmrc) at the
+repo root pins the major) and **Docker** for the integration suites and the
+dev stack.
+
 ```sh
 npm ci
 npm run lint # ESLint + Prettier
@@ -74,6 +78,52 @@ Run Vitest from `project/src` (or via `npm run test` at the root), not with a
 bare `vitest` from the repo root, which breaks the prompt-artifact paths. The
 eval harness needs a model key: `COGETO_MISTRAL_API_KEY=... npm run eval`
 (harness-only: it runs against no instance database).
+
+### Running one spec file
+
+`npm run test` fans out over three workspaces and runs the backend suites
+serially (`fileParallelism: false` in `project/src/vitest.config.ts`), so the
+loop for a single change is to run one file from the workspace that owns it:
+
+```sh
+cd project/src
+npx vitest run infrastructure/error-scrub.spec.ts
+
+cd project/web
+npx vitest run src/components/nav.spec.tsx
+```
+
+Two things to know:
+
+- **Which suites need Docker:** the `*.integration.spec.ts` files start real
+  Postgres / Qdrant / MinIO containers via Testcontainers; plain `*.spec.ts`
+  files are pure unit suites and run anywhere.
+- **Frontend specs need the jsdom environment:** `project/web` has no vitest
+  config, so a spec that touches the DOM must opt in per file with
+  `// @vitest-environment jsdom` as its first line (see
+  `project/web/src/components/nav.spec.tsx`). A component test without it
+  fails with an opaque "document is not defined".
+
+### The frontend dev server
+
+The SPA, the API and Zitadel share one origin by design: Caddy serves all
+three at `https://localhost` (see the [compose stack](../docker-compose.yml)
+and `project/infra/docker/caddy/Caddyfile`). The Vite dev server gives you hot
+module replacement for the SPA on top of that:
+
+```sh
+docker compose up   # the backend first
+npm run dev -w @cogeto/web
+```
+
+`npm run dev -w @cogeto/web` starts Vite (`http://localhost:5173` by default).
+Because the SPA calls the API and starts its OIDC login on its own origin
+(relative `/api` paths, and a redirect URI built from
+`window.location.origin`), the dev server has to reach the backend on the
+Caddy origin: the API lives at `https://localhost`, not on Vite's port.
+`vite.config.ts` resolves `@cogeto/shared` from its TypeScript source, so
+shared-workspace changes are picked up without a build step. More in
+[`project/web/README.md`](../project/web/README.md).
 
 ## Common issues
 
