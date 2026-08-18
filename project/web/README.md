@@ -14,9 +14,9 @@ May depend on: the app API. Nothing in `src/` depends on it.
 
 ## Developing
 
-The SPA, the API and Zitadel share one origin by design (`https://localhost`
-via Caddy), and the frontend dev loop is the Vite dev server on top of the
-compose stack:
+The SPA, the API and Zitadel share one origin by design: Caddy serves all
+three at `https://localhost` in the compose stack. The Vite dev server adds
+hot module replacement for UI work:
 
 ```bash
 # Backend first: API + Zitadel at https://localhost.
@@ -26,15 +26,18 @@ docker compose up
 npm run dev -w @cogeto/web
 ```
 
-Two things the loop depends on:
+**The dev server is not wired to the backend by default**: this workspace
+ships no `server.proxy` in `vite.config.ts`, and Caddy has no route to the
+dev server. The SPA calls the API and starts its OIDC login on its own origin
+(relative `/api` paths, redirect URI from `window.location.origin`), so the
+backend must be reachable on the dev origin for the loop to work; the API
+lives at `https://localhost`, not on Vite's port. A local, uncommitted
+`server.proxy` override forwarding `/api` and the Zitadel paths to
+`https://localhost` is the usual wiring. Full context:
+[`../../docs/running-locally.md`](../../docs/running-locally.md).
 
-- The SPA calls the API and starts its OIDC login on its own origin (relative
-  `/api` paths, redirect URI from `window.location.origin`), so the dev server
-  must reach the compose backend on the Caddy origin; the API lives at
-  `https://localhost`, not on Vite's port. See
-  [`../../docs/running-locally.md`](../../docs/running-locally.md).
-- `vite.config.ts` aliases `@cogeto/shared` to its TypeScript source, so a
-  change in the shared workspace is picked up without a build step first.
+`vite.config.ts` aliases `@cogeto/shared` to its TypeScript source, so a
+change in the shared workspace is picked up without a build step first.
 
 ### Tests
 

@@ -87,7 +87,7 @@ loop for a single change is to run one file from the workspace that owns it:
 
 ```sh
 cd project/src
-npx vitest run infrastructure/error-scrub.spec.ts
+npx vitest run infrastructure/api-error.spec.ts
 
 cd project/web
 npx vitest run src/components/nav.spec.tsx
@@ -117,13 +117,20 @@ npm run dev -w @cogeto/web
 ```
 
 `npm run dev -w @cogeto/web` starts Vite (`http://localhost:5173` by default).
-Because the SPA calls the API and starts its OIDC login on its own origin
-(relative `/api` paths, and a redirect URI built from
-`window.location.origin`), the dev server has to reach the backend on the
-Caddy origin: the API lives at `https://localhost`, not on Vite's port.
-`vite.config.ts` resolves `@cogeto/shared` from its TypeScript source, so
-shared-workspace changes are picked up without a build step. More in
-[`project/web/README.md`](../project/web/README.md).
+Two things to know before relying on it:
+
+- **It is not wired to the backend by default.** The committed
+  `project/web/vite.config.ts` ships no `server.proxy`, and Caddy has no route
+  to the dev server. The SPA calls the API and starts its OIDC login on its
+  own origin (relative `/api` paths, and a redirect URI built from
+  `window.location.origin`), so the API must be reachable on the dev origin;
+  the backend lives at `https://localhost`, not on Vite's port. A local,
+  uncommitted `server.proxy` override forwarding `/api` and the Zitadel paths
+  to `https://localhost` is the usual wiring.
+- **`@cogeto/shared` resolves from its TypeScript source**, so
+  shared-workspace changes are picked up without a build step.
+
+More in [`project/web/README.md`](../project/web/README.md).
 
 ## Common issues
 
