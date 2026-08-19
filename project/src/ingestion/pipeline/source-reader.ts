@@ -14,6 +14,14 @@ export interface SourceItem {
   sourceType: SourceType;
   sourceId: string;
   ownerId: string;
+  /**
+   * The space the SOURCE ROW carries (docs/features/spaces.md), reported by
+   * each reader from its own table: the authoritative stamp every derived
+   * fact inherits. Readers whose row predates the column report it all the
+   * same (the column is NOT NULL); omitted only by legacy test doubles,
+   * where admission falls to the schema-level default space.
+   */
+  spaceId?: string;
   content: string;
   /** The source timestamp: relative temporal expressions resolve against it. */
   createdAt: Date;

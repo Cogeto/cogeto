@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { resolveSpaceId } from '@cogeto/shared';
 import type { Principal, SkillRunStatus, SkillStepLinks, SkillStepStatus } from '@cogeto/shared';
 import { DRIZZLE, userError, writeAudit } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
@@ -34,6 +35,9 @@ export class SkillRunService {
         .values({
           ownerId: principal.userId,
           orgId: principal.orgId,
+          // The caller's current space (docs/features/spaces.md): the worker
+          // re-derives its principal from this row.
+          spaceId: resolveSpaceId(principal),
           skillId: skill.id,
           skillVersion: skill.version,
           subject,
@@ -55,6 +59,7 @@ export class SkillRunService {
         detail: { skill_id: skill.id, skill_version: skill.version },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: row!.spaceId,
       });
       return row!;
     });
@@ -77,12 +82,20 @@ export class SkillRunService {
   }
 
   async listRuns(principal: Principal, limit = 50): Promise<SkillRunRow[]> {
-    return this.db
-      .select()
-      .from(skillRun)
-      .where(eq(skillRun.ownerId, principal.userId))
-      .orderBy(desc(skillRun.createdAt))
-      .limit(limit);
+    return (
+      this.db
+        .select()
+        .from(skillRun)
+        // One space's runs, never across the wall (docs/features/spaces.md).
+        .where(
+          and(
+            eq(skillRun.ownerId, principal.userId),
+            eq(skillRun.spaceId, resolveSpaceId(principal)),
+          ),
+        )
+        .orderBy(desc(skillRun.createdAt))
+        .limit(limit)
+    );
   }
 
   async steps(runId: string): Promise<SkillRunStepRow[]> {
@@ -206,7 +219,7 @@ export class SkillRunService {
   async auditRun(
     actor: string,
     action: string,
-    run: Pick<SkillRunRow, 'id' | 'ownerId'>,
+    run: Pick<SkillRunRow, 'id' | 'ownerId' | 'spaceId'>,
     detail: Record<string, unknown> = {},
     orgId?: string,
   ): Promise<void> {
@@ -218,6 +231,7 @@ export class SkillRunService {
       detail,
       ...(orgId ? { orgId } : {}),
       ownerId: run.ownerId,
+      spaceId: run.spaceId,
     });
   }
 

@@ -10,6 +10,9 @@ const querySchema = z.object({
   actor: z.string().min(1).optional(),
   action: z.string().min(1).optional(),
   entityType: z.string().min(1).optional(),
+  /** Only entries stamped with this space (docs/features/spaces.md): the
+   * attribute filter the record's section 4 promises the administrator. */
+  spaceId: z.uuid().optional(),
   from: z.iso.datetime().optional(),
   to: z.iso.datetime().optional(),
   limit: z.coerce.number().int().min(1).max(200).prefault(50),
@@ -63,6 +66,7 @@ export class AuditController {
       ...(q.actor ? { actor: q.actor } : {}),
       ...(q.action ? { action: q.action } : {}),
       ...(q.entityType ? { entityType: q.entityType } : {}),
+      ...(q.spaceId ? { spaceId: q.spaceId } : {}),
       ...(q.from ? { from: new Date(q.from) } : {}),
       ...(q.to ? { to: new Date(q.to) } : {}),
       limit: q.limit,

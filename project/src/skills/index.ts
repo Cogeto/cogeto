@@ -10,3 +10,5 @@ export { SkillRunService, SKILL_ADVANCE_JOB_TYPE } from './skill-run.service';
 export { SkillEngine, SKILL_ENGINE_OPTIONS, SKILL_BRIEF_PROMPT } from './skill-engine';
 export { SkillPlanner, SKILL_PLAN_PROMPT } from './skill-planner';
 export { ChatSkillResolver } from './chat-skill-resolver';
+// Space deletion's skills leg (docs/features/spaces.md section 5).
+export { SkillSpaceCleanup, SkillSpaceCleanupModule } from './skill-space-cleanup';

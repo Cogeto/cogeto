@@ -9,6 +9,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 
 /**
  * Tables owned by the connectors module (migration 0034): the named-skill
@@ -50,6 +51,10 @@ export const skillRun = pgTable(
     /** The owner's org, captured at propose time — the worker executes as the
      * owner and object keys need the real org segment there. */
     orgId: text('org_id').notNull().default(''),
+    /** The caller's space at propose time (docs/features/spaces.md, migration
+     * 0060): the worker's gated reads and everything the run produces stay
+     * inside it. Steps inherit through the run. */
+    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
     skillId: text('skill_id').notNull(),
     skillVersion: text('skill_version').notNull(),
     subject: text('subject').notNull(),

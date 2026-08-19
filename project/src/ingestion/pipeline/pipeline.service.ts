@@ -216,6 +216,7 @@ export class IngestionPipeline {
         summary.skipped = 'gate_refused';
         await this.gate.recordRefusal(tx, {
           ownerId: source.ownerId,
+          spaceId: source.spaceId,
           sourceType: payload.source_type,
           sourceId: payload.source_id,
           reason: decision.reason,
@@ -245,6 +246,7 @@ export class IngestionPipeline {
         summary.skipped = 'gate_refused';
         await this.gate?.recordRefusal(tx, {
           ownerId: source.ownerId,
+          spaceId: source.spaceId,
           sourceType: payload.source_type,
           sourceId: payload.source_id,
           reason: 'project_disabled',
@@ -381,6 +383,7 @@ export class IngestionPipeline {
           // readable from every org.
           orgId: (await this.directory?.orgOf(source.ownerId)) ?? undefined,
           ownerId: source.ownerId,
+          spaceId: source.spaceId,
         });
         log({ stage: 'admission', ...ref, skipped: true }, 'source deleted mid-flight; aborting');
         return summary;

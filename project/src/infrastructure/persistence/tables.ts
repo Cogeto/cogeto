@@ -33,6 +33,11 @@ export const auditLog = pgTable('audit_log', {
   /** Whose artifact the entry concerns (migration 0020): the
    * reader returns detail_json only to this owner; NULL = system entry. */
   ownerId: text('owner_id'),
+  /** The space the audited action happened in (docs/features/spaces.md,
+   * migration 0061): an ATTRIBUTE for filtering, never a gate, and never a
+   * foreign key, because an audit entry outlives every space, deleted ones
+   * included. NULL = a genuinely instance-level action, never "unknown". */
+  spaceId: uuid('space_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

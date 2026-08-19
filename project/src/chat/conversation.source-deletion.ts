@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { asc, eq } from 'drizzle-orm';
 import type { DbOrTx, Tx } from '../infrastructure/index';
-import type { OwnedSourceRef, SourceCascade, SourceDeletion } from '../memory/index';
+import type {
+  OwnedSourceRef,
+  SpaceSourceRef,
+  SourceCascade,
+  SourceDeletion,
+} from '../memory/index';
 import { chatMessage, conversation } from './persistence/tables';
 
 /**
@@ -25,6 +30,16 @@ export class ConversationSourceDeletion implements SourceDeletion {
       .where(eq(conversation.id, sourceId))
       .for('update');
     return rows[0]?.ownerId ?? null;
+  }
+
+  /** The space the conversation row carries (docs/features/spaces.md):
+   * stamps the deletion receipt onto its space's chain. */
+  async spaceOf(tx: Tx, sourceId: string): Promise<string | null> {
+    const rows = await tx
+      .select({ spaceId: conversation.spaceId })
+      .from(conversation)
+      .where(eq(conversation.id, sourceId));
+    return rows[0]?.spaceId ?? null;
   }
 
   /** Every message in the thread — the saga folds their chat-derived
@@ -69,5 +84,15 @@ export class ConversationSourceDeletion implements SourceDeletion {
       .where(eq(conversation.ownerId, ownerId))
       .orderBy(asc(conversation.id));
     return rows.map((row) => ({ ...row, scope: 'private' as const }));
+  }
+
+  /** Space deletion's enumeration (docs/features/spaces.md section 5): the
+   * CONTAINERS, whose messages ride each receipt as cascade members. */
+  async listForSpace(db: DbOrTx, spaceId: string): Promise<SpaceSourceRef[]> {
+    return db
+      .select({ sourceId: conversation.id, ownerId: conversation.ownerId })
+      .from(conversation)
+      .where(eq(conversation.spaceId, spaceId))
+      .orderBy(asc(conversation.id));
   }
 }

@@ -10,17 +10,23 @@
 /**
  * The published format version. Bump on any breaking schema change.
  *
+ * 2.1 made the Passport PER SPACE (docs/features/spaces.md section 5 as
+ * amended): a passport exports one space, the manifest names that space in a
+ * new required `space` field, and `receipts.json` carries that space's
+ * receipts, which verify standalone because the receipt chain is per space.
+ *
  * 2.0 removed `tasks.json` and the manifest's required `tasks`
  * count when the task subsystem went — a breaking change under
  * ruling 2, so the version bumped and `docs/passport-schema/` publishes the new
  * schema alongside the 1.0 one. Archives stamped `1.0` stay readable and
- * verifiable forever against the 1.0 schema; new exports are always 2.0.
+ * verifiable forever against the 1.0 schema; new exports are always the
+ * current version.
  */
-export const PASSPORT_VERSION = '2.0';
+export const PASSPORT_VERSION = '2.1';
 
 /** Every version this codebase has ever published, newest first — the docs
- * keep a schema for each, and `1.0` archives remain valid artifacts. */
-export const PASSPORT_VERSIONS_PUBLISHED = ['2.0', '1.0'] as const;
+ * keep a schema for each, and older archives remain valid artifacts. */
+export const PASSPORT_VERSIONS_PUBLISHED = ['2.1', '2.0', '1.0'] as const;
 
 /**
  * Export lifecycle: `pending` while the worker assembles it, `ready` when the

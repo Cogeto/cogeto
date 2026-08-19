@@ -184,6 +184,7 @@ export class SkillEngine {
         },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: row.spaceId,
       });
       await withTransactionalEnqueue(
         tx,
@@ -556,7 +557,17 @@ export class SkillEngine {
 /** The worker acts as the run's owner (the research-conclusion precedent) —
  * with the REAL org captured at propose time, so object keys hold. */
 function ownerPrincipal(run: SkillRunRow): Principal {
-  return { userId: run.ownerId, name: '', email: null, orgId: run.orgId, orgName: '', roles: [] };
+  // The RUN's space rides the fabricated principal (docs/features/spaces.md):
+  // a worker acting on a row acts in that row's space.
+  return {
+    userId: run.ownerId,
+    name: '',
+    email: null,
+    orgId: run.orgId,
+    orgName: '',
+    roles: [],
+    spaceId: run.spaceId,
+  };
 }
 
 function isDailyBudget(error: unknown): boolean {

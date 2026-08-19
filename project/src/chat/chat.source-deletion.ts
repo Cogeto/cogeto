@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import type { Tx } from '../infrastructure/index';
-import type { OwnedSourceRef, SourceDeletion } from '../memory/index';
-import { chatMessage } from './persistence/tables';
+import type { OwnedSourceRef, SpaceSourceRef, SourceDeletion } from '../memory/index';
+import { chatMessage, conversation } from './persistence/tables';
 
 /**
  * The deletion saga's source port for source_type 'chat' (spec §11.1;
@@ -25,6 +25,17 @@ export class ChatSourceDeletion implements SourceDeletion {
     return rows[0]?.ownerId ?? null;
   }
 
+  /** A message's space is its CONVERSATION's space (docs/features/spaces.md):
+   * the container carries the dimension. */
+  async spaceOf(tx: Tx, sourceId: string): Promise<string | null> {
+    const rows = await tx
+      .select({ spaceId: conversation.spaceId })
+      .from(chatMessage)
+      .innerJoin(conversation, eq(conversation.id, chatMessage.conversationId))
+      .where(eq(chatMessage.id, sourceId));
+    return rows[0]?.spaceId ?? null;
+  }
+
   async deleteSource(tx: Tx, sourceId: string): Promise<void> {
     await tx.delete(chatMessage).where(eq(chatMessage.id, sourceId));
   }
@@ -41,6 +52,12 @@ export class ChatSourceDeletion implements SourceDeletion {
    * decided to retain.
    */
   async listForOwner(): Promise<OwnedSourceRef[]> {
+    return [];
+  }
+
+  /** Empty by the SAME declaration (docs/features/spaces.md section 5): a
+   * space's messages are reached exactly once, through its conversations. */
+  async listForSpace(): Promise<SpaceSourceRef[]> {
     return [];
   }
 }

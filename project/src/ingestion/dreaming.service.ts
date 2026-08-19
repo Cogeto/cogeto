@@ -93,26 +93,43 @@ export class DreamingService {
       flagsCleared: 0,
     };
 
-    // ── Passes 1–3: batch reconciliation per owner ──────────────────────────
+    // ── Passes 1–3: batch reconciliation per owner PER SPACE ────────────────
+    //
+    // ONE nightly job iterating (owner, space) groups, not one job per space
+    // (docs/features/spaces.md, session 2 decision). The job stays a single
+    // crontab entry because partitioning is a grouping concern, not a
+    // scheduling one: per-space jobs would need a space enumeration at
+    // enqueue time and would leave a deleted space's job dangling. What the
+    // grouping buys is real: each group runs in its own transaction under its
+    // own per-fact check budgets, so a busy space can neither starve a quiet
+    // one's budget nor roll back its work, and the engine's per-fact space
+    // (the fabricated principal) is uniform across the batch by construction.
     const touched = await this.systemMemories.listTouchedBetween(scopeFrom, now);
-    const byOwner = new Map<string, MemoryRow[]>();
+    const byOwnerSpace = new Map<string, MemoryRow[]>();
     for (const row of touched) {
-      byOwner.set(row.ownerId, [...(byOwner.get(row.ownerId) ?? []), row]);
+      const key = `${row.ownerId}:${row.spaceId}`;
+      byOwnerSpace.set(key, [...(byOwnerSpace.get(key) ?? []), row]);
     }
-    for (const [ownerId, rows] of byOwner) {
+    const ownersProcessed = new Set<string>();
+    for (const rows of byOwnerSpace.values()) {
+      const ownerId = rows[0]!.ownerId;
+      const spaceId = rows[0]!.spaceId;
       const embeddings = await this.systemMemories.retrieveEmbeddings(rows.map((r) => r.id));
       const items: ReconcileInput[] = rows
         .filter((row) => embeddings.has(row.id))
         .map((row) => ({ row, embedding: embeddings.get(row.id)! }));
       if (items.length === 0) continue;
-      report.ownersProcessed += 1;
+      // Still a count of OWNERS: the report's shape predates spaces and an
+      // owner active in two spaces is one owner, processed as two groups.
+      ownersProcessed.add(ownerId);
+      report.ownersProcessed = ownersProcessed.size;
       // SEC-10: the reconcile pass is model work done ON BEHALF OF this owner,
       // so it runs inside that owner's usage scope and is charged to them. The
       // rest of the cycle (staleness, dormant flags, the digest) is
       // deterministic and instance-wide, so it stays unattributed.
       const summary = await runWithUsageContext(
         async () => {
-          setUsageUser(ownerId);
+          setUsageUser(ownerId, undefined, spaceId);
           return this.db.transaction(async (tx) => {
             // Dreaming re-examines the corpus, so its batch IS what must be
             // compared; the exclusion it needs is the source one it has always
@@ -133,8 +150,8 @@ export class DreamingService {
       report.contradictions += summary.contradictions;
       report.superseded += summary.superseded;
       log(
-        { stage: 'dream', owner: ownerId, ...{ ...summary, actions: undefined } },
-        'dreaming: owner batch reconciled',
+        { stage: 'dream', owner: ownerId, space: spaceId, ...{ ...summary, actions: undefined } },
+        'dreaming: owner space batch reconciled',
       );
     }
 

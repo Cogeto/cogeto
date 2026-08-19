@@ -5,6 +5,8 @@ import { DatabaseModule, LimitsModule, UserContextModule } from '../infrastructu
 import { BearerAuthGuard, IdentityModule } from '../identity/index';
 import { ModelBudgetExceptionFilter } from './model-budget.filter';
 import {
+  EntityAliasSpaceCleanup,
+  EntityAliasSpaceCleanupModule,
   ExtractionRefusalCascade,
   ExtractionRefusalCascadeModule,
   IngestionModule,
@@ -21,7 +23,12 @@ import {
 } from '../ingestion/index';
 import { MemoryModule } from '../memory/index';
 import { RetrievalModule } from '../retrieval/index';
-import { ImportItemCascade, ImportItemCascadeModule } from '../imports/index';
+import {
+  ImportItemCascade,
+  ImportItemCascadeModule,
+  ImportSpaceCleanup,
+  ImportSpaceCleanupModule,
+} from '../imports/index';
 import {
   ChatAnswerCascade,
   ChatAttachmentCascade,
@@ -36,9 +43,17 @@ import {
   ResearchChatModule,
   ResearchModule,
   ResearchSourcePortsModule,
+  ResearchSpaceCleanup,
+  ResearchSpaceCleanupModule,
   WebSourceDeletion,
 } from '../research/index';
-import { SKILL_ADVANCE_JOB_TYPE, SkillsChatModule, SkillsModule } from '../skills/index';
+import {
+  SKILL_ADVANCE_JOB_TYPE,
+  SkillsChatModule,
+  SkillsModule,
+  SkillSpaceCleanup,
+  SkillSpaceCleanupModule,
+} from '../skills/index';
 import {
   EmailModule,
   EmailReplyModule,
@@ -52,6 +67,8 @@ import {
   PassportCascadeModule,
   PassportExportCascade,
   PassportModule,
+  PassportSpaceCleanup,
+  PassportSpaceCleanupModule,
   PASSPORT_EXPORT_RETENTION_HOURS,
 } from '../passport/index';
 import { ModelGatewayModule } from '../model-gateway/index';
@@ -64,18 +81,25 @@ import {
   FindingsReportCascade,
   FindingsReportCascadeModule,
   ReportsModule,
+  ReportSpaceCleanup,
+  ReportSpaceCleanupModule,
 } from '../reports/index';
 import {
   ProjectAssignmentCascade,
   ProjectAssignmentCascadeModule,
   ProjectsModule,
+  ProjectSpaceCleanup,
+  ProjectSpaceCleanupModule,
 } from '../projects/index';
+import { SpaceNameModule, SpaceNameSource, SpacesModule } from '../spaces/index';
 import { CONNECTOR_HEALTH, OperationsModule } from '../operations/index';
 import {
   ConnectorHealthSource,
   ConnectorItemCascade,
   ConnectorItemCascadeModule,
   ConnectorsModule,
+  ConnectorSpaceCleanup,
+  ConnectorSpaceCleanupModule,
 } from '../connectors/index';
 import {
   ConfluenceModule,
@@ -392,7 +416,9 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
         instanceKeyDir: config.instanceKeyDir,
         downloadUrlTtlSeconds: config.downloadUrlTtlSeconds,
         exportRetentionHours: PASSPORT_EXPORT_RETENTION_HOURS,
-        imports: [memoryModule],
+        imports: [memoryModule, SpaceNameModule],
+        // The per-space manifest names the space it exports.
+        spaceNames: SpaceNameSource,
       }),
       // The "what needs my attention" feed + the dashboard statistics. Its own
       // context (V2.0 item 3.6 part 2): the surface composes memory, retrieval,
@@ -422,6 +448,34 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
       importsModule,
       // Projects as workspaces (V2.5 item 8.3): the folder surface.
       projectsModule,
+      // Spaces (docs/features/spaces.md): the sealed-partition records, the
+      // data-and-API surface, and space deletion (session 2): the plan and
+      // request endpoints live here; the erasure pass runs in the worker.
+      SpacesModule.register({
+        imports: [memoryModule],
+        cleanups: {
+          imports: [
+            ProjectSpaceCleanupModule,
+            EntityAliasSpaceCleanupModule,
+            ImportSpaceCleanupModule,
+            ResearchSpaceCleanupModule,
+            SkillSpaceCleanupModule,
+            ReportSpaceCleanupModule,
+            PassportSpaceCleanupModule,
+            ConnectorSpaceCleanupModule,
+          ],
+          adapters: [
+            ProjectSpaceCleanup,
+            EntityAliasSpaceCleanup,
+            ImportSpaceCleanup,
+            ResearchSpaceCleanup,
+            SkillSpaceCleanup,
+            ReportSpaceCleanup,
+            PassportSpaceCleanup,
+            ConnectorSpaceCleanup,
+          ],
+        },
+      }),
       // The connector platform (V2.5 item 8.1): owner API + webhook ingress.
       connectorsModule,
       // The first real connector (V2.5 item 8.2).

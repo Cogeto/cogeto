@@ -6,7 +6,7 @@ import type {
   EmailReplyDraftView,
   Principal,
 } from '@cogeto/shared';
-import { EMAIL_REPLY_DRAFT_ACTION } from '@cogeto/shared';
+import { EMAIL_REPLY_DRAFT_ACTION, resolveSpaceId } from '@cogeto/shared';
 import {
   DRIZZLE,
   readAuditEntries,
@@ -59,6 +59,10 @@ export class ApprovalService {
           payloadJson: payload as Record<string, unknown>,
           status: def.initialStatus,
           orgId: principal.orgId,
+          // The space whose content the action is over, stamped at creation
+          // from the requester's current space (docs/features/spaces.md):
+          // the approvals queue is a space-scoped sidebar surface.
+          spaceId: resolveSpaceId(principal),
           requestedBy: principal.userId,
           expiresAt,
         })
@@ -72,6 +76,7 @@ export class ApprovalService {
         detail: { actionType, status: created.status },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: created.spaceId,
       });
       return created;
     });
@@ -126,6 +131,7 @@ export class ApprovalService {
         detail: { actionType: current.actionType, from: current.status, to },
         ownerId: principal.userId,
         orgId: principal.orgId,
+        spaceId: current.spaceId,
       });
       // Execution is a worker job — the confirm endpoint does nothing else.
       if (decision === 'approve') {
@@ -158,6 +164,7 @@ export class ApprovalService {
           id: approval.id,
           actionType: approval.actionType,
           orgId: approval.orgId,
+          spaceId: approval.spaceId,
           requestedBy: approval.requestedBy,
         })
         .from(approval)
@@ -175,17 +182,27 @@ export class ApprovalService {
           detail: { actionType: r.actionType, from: 'pending_approval', to: 'expired' },
           orgId: r.orgId ?? undefined,
           ownerId: r.requestedBy ?? undefined,
+          spaceId: r.spaceId,
         });
       }
       return stale.length;
     });
   }
 
+  /** The caller's current space only (docs/features/spaces.md): an approval
+   * raised over space A's content must never surface its summary, or be
+   * counted, in space B's queue, feed or dashboard. */
   async listPending(principal: Principal): Promise<ApprovalDto[]> {
     const rows = await this.db
       .select()
       .from(approval)
-      .where(and(eq(approval.orgId, principal.orgId), eq(approval.status, 'pending_approval')))
+      .where(
+        and(
+          eq(approval.orgId, principal.orgId),
+          eq(approval.spaceId, resolveSpaceId(principal)),
+          eq(approval.status, 'pending_approval'),
+        ),
+      )
       .orderBy(desc(approval.createdAt))
       .limit(200);
     return this.toDtos(rows as ApprovalRow[], principal.userId);
@@ -196,7 +213,11 @@ export class ApprovalService {
       .select()
       .from(approval)
       .where(
-        and(eq(approval.orgId, principal.orgId), inArray(approval.status, [...HISTORY_STATUSES])),
+        and(
+          eq(approval.orgId, principal.orgId),
+          eq(approval.spaceId, resolveSpaceId(principal)),
+          inArray(approval.status, [...HISTORY_STATUSES]),
+        ),
       )
       .orderBy(desc(approval.decidedAt))
       .limit(200);
@@ -206,7 +227,9 @@ export class ApprovalService {
   async get(principal: Principal, id: string): Promise<ApprovalDto> {
     const rows = await this.db.select().from(approval).where(eq(approval.id, id)).limit(1);
     const row = rows[0];
-    if (!row || row.orgId !== principal.orgId)
+    // An approval reached by id from another space reads as not found, the
+    // same sealing every by-id read follows (docs/features/spaces.md).
+    if (!row || row.orgId !== principal.orgId || row.spaceId !== resolveSpaceId(principal))
       throw userError.notFound('approval.notFound', 'approval {{id}} not found', { id });
     return (await this.toDtos([row as ApprovalRow], principal.userId))[0]!;
   }
@@ -224,6 +247,7 @@ export class ApprovalService {
     if (
       !row ||
       row.orgId !== principal.orgId ||
+      row.spaceId !== resolveSpaceId(principal) ||
       row.requestedBy !== principal.userId ||
       row.actionType !== EMAIL_REPLY_DRAFT_ACTION
     ) {
@@ -258,7 +282,9 @@ export class ApprovalService {
     const rows = await tx.select().from(approval).where(eq(approval.id, id)).for('update');
     const row = rows[0];
     // Existence must not leak across orgs — a foreign approval is "not found".
-    if (!row || row.orgId !== principal.orgId) {
+    // The same holds across spaces: deciding happens from the queue of the
+    // space the approval was raised in (docs/features/spaces.md).
+    if (!row || row.orgId !== principal.orgId || row.spaceId !== resolveSpaceId(principal)) {
       throw userError.notFound('approval.notFound', 'approval {{id}} not found', { id });
     }
     return row as ApprovalRow;

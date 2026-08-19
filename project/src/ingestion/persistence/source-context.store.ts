@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, or, sql } from 'drizzle-orm';
+import { resolveSpaceId } from '@cogeto/shared';
 import type { Principal } from '@cogeto/shared';
 import { DRIZZLE, writeAudit } from '../../infrastructure/index';
 import type { Db, DbOrTx, Tx } from '../../infrastructure/index';
@@ -46,6 +47,9 @@ export class SourceContextStore {
     tx: Tx,
     entry: {
       ownerId: string;
+      /** The source row's space (docs/features/spaces.md), stamped with the
+       * row; absent (legacy harnesses) falls to the schema-level default. */
+      spaceId?: string;
       sourceType: string;
       sourceId: string;
       context: SourceContextValue;
@@ -71,6 +75,7 @@ export class SourceContextStore {
     }
     await tx.insert(sourceContext).values({
       ownerId: entry.ownerId,
+      ...(entry.spaceId ? { spaceId: entry.spaceId } : {}),
       sourceType: entry.sourceType,
       sourceId: entry.sourceId,
       subjects: entry.context.subjects,
@@ -142,7 +147,13 @@ export class SourceContextStore {
         : (
             await tx
               .insert(sourceContext)
-              .values({ ownerId: principal.userId, sourceType, sourceId, ...values })
+              .values({
+                ownerId: principal.userId,
+                spaceId: resolveSpaceId(principal),
+                sourceType,
+                sourceId,
+                ...values,
+              })
               .returning()
           )[0]!;
       await writeAudit(tx, {
@@ -158,6 +169,7 @@ export class SourceContextStore {
         },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: resolveSpaceId(principal),
       });
       return row;
     });

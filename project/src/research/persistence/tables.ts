@@ -1,5 +1,5 @@
 import { boolean, index, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { MEMORY_SCOPES } from '@cogeto/shared';
+import { DEFAULT_SPACE_ID, MEMORY_SCOPES } from '@cogeto/shared';
 
 /**
  * Tables owned by the research module (migrations 0027 + 0028; split from the
@@ -23,6 +23,10 @@ export const webPage = pgTable(
     ownerId: text('owner_id').notNull(),
     scope: scopeEnum('scope').notNull().default('private'),
     sensitive: boolean('sensitive').notNull().default(false),
+    // The space the page was captured into (docs/features/spaces.md,
+    // migration 0060): the run's space, stamped in the same transaction that
+    // creates the source.
+    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
     requestedUrl: text('requested_url').notNull(),
     finalUrl: text('final_url').notNull(),
     title: text('title'),
@@ -70,6 +74,9 @@ export const researchRun = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     ownerId: text('owner_id').notNull(),
+    // The space the run was started in (docs/features/spaces.md, migration
+    // 0060): every page it captures inherits it.
+    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
     intent: text('intent').notNull(),
     proposedQuery: text('proposed_query').notNull(),
     minimisedQuery: text('minimised_query').notNull(),

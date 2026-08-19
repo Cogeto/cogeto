@@ -135,6 +135,14 @@ const TABLE_OWNERS: Readonly<Record<string, string>> = {
   project: 'projects',
   project_assignment: 'projects',
 
+  // Spaces (migration 0060, docs/features/spaces.md): the sealed-partition
+  // record and the per-user last-used pointer. The wall itself is the
+  // `space_id` gate dimension on the content-bearing roots, owned by their
+  // modules; these two rows are the partition's NAME and the login-time
+  // resolution, nothing more.
+  space: 'spaces',
+  user_space_state: 'spaces',
+
   app_user: 'identity',
   // Connector credential material, sealed under the instance master key
   // (V2.5 item 8.1): the plan places credential storage inside the identity
@@ -194,6 +202,10 @@ const JOB_TYPE_OWNERS: Readonly<Record<string, string>> = {
   // Owner erasure (issue #632): the administrative pass that runs the
   // ordinary saga over one departed user's private sources.
   'memory.erase_owner': 'memory',
+  // Space deletion (docs/features/spaces.md section 5): the administrative
+  // pass that runs the ordinary saga over one space's sources, then removes
+  // its containers and the space row.
+  'space.erase': 'spaces',
   'approval.execute': 'agents',
   approval_expiry: 'agents',
   'research.conclude': 'research',
@@ -273,6 +285,13 @@ const TOKEN_OWNERS: Readonly<Record<string, string>> = {
   MEMORY_ELIGIBILITY_HOOK: 'memory',
 
   SOURCE_READERS: 'ingestion',
+  // The per-space passport manifest's space-name lookup (V3 spaces session
+  // 1): passport defines the port, spaces implements it, the roots bind it.
+  SPACE_NAME_RESOLVER: 'passport',
+  // Space deletion's container cleanups (V3 spaces session 2): spaces
+  // defines the port, each container-owning module implements it over its
+  // own tables, the roots bind the array — the DerivedCascade pattern.
+  SPACE_CLEANUPS: 'spaces',
   // The generation binding the checked-pair ledger records (V2.3 item 6.1),
   // handed in by the root: the module names what it needs, never reads env.
   RECONCILE_MODEL_CONFIG: 'ingestion',

@@ -23,7 +23,9 @@ const STALE_RUN_MS = 2 * 3_600_000;
 export class ReportStore {
   constructor(@Inject(DRIZZLE) private readonly db: Db) {}
 
-  /** Create a pending run inside the caller's transaction (with the enqueue). */
+  /** Create a pending run inside the caller's transaction (with the enqueue).
+   * `spaceId` is the space the run enumerates within
+   * (docs/features/spaces.md), stamped so the worker reconstructs it. */
   async createInTx(
     tx: Tx,
     userId: string,
@@ -31,12 +33,14 @@ export class ReportStore {
     scope: ReportScopeDto,
     scopeKey: string,
     locale: string,
+    spaceId: string,
   ): Promise<FindingsReportRow> {
     const [row] = await tx
       .insert(findingsReport)
       .values({
         userId,
         orgId: orgId ?? null,
+        spaceId,
         reportVersion: FINDINGS_REPORT_VERSION,
         locale,
         scopeJson: scope,
@@ -66,11 +70,17 @@ export class ReportStore {
     return rows[0] ?? null;
   }
 
-  async listForOwner(userId: string): Promise<FindingsReportRow[]> {
+  /** The owner's runs, optionally narrowed to one space (the surface shows
+   * the caller's current space). */
+  async listForOwner(userId: string, spaceId?: string): Promise<FindingsReportRow[]> {
     return this.db
       .select()
       .from(findingsReport)
-      .where(eq(findingsReport.userId, userId))
+      .where(
+        spaceId
+          ? and(eq(findingsReport.userId, userId), eq(findingsReport.spaceId, spaceId))
+          : eq(findingsReport.userId, userId),
+      )
       .orderBy(desc(findingsReport.createdAt))
       .limit(50);
   }

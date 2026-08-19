@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import { resolveSpaceId } from '@cogeto/shared';
 import type { Principal } from '@cogeto/shared';
 import { DRIZZLE, userError, writeAudit } from '../../infrastructure/index';
 import type { Db, DbOrTx, Tx } from '../../infrastructure/index';
@@ -37,6 +38,11 @@ export class SourceRevisionStore {
     db: DbOrTx,
     entry: {
       ownerId: string;
+      /** The space both endpoints live in (docs/features/spaces.md): callers
+       * nominate candidates within one container, which lives in one space,
+       * so a link can only ever join same-space sources. Absent (legacy
+       * harnesses) falls to the schema-level default space. */
+      spaceId?: string;
       successor: RevisionRef;
       predecessor: RevisionRef;
       status: 'auto' | 'proposed';
@@ -47,6 +53,7 @@ export class SourceRevisionStore {
       .insert(sourceRevision)
       .values({
         ownerId: entry.ownerId,
+        ...(entry.spaceId ? { spaceId: entry.spaceId } : {}),
         successorType: entry.successor.sourceType,
         successorId: entry.successor.sourceId,
         predecessorType: entry.predecessor.sourceType,
@@ -70,7 +77,15 @@ export class SourceRevisionStore {
       const rows = await tx
         .select()
         .from(sourceRevision)
-        .where(and(eq(sourceRevision.id, revisionId), eq(sourceRevision.ownerId, principal.userId)))
+        .where(
+          and(
+            eq(sourceRevision.id, revisionId),
+            eq(sourceRevision.ownerId, principal.userId),
+            // A link reached by id from another space reads as not found,
+            // like every by-id read (docs/features/spaces.md).
+            eq(sourceRevision.spaceId, resolveSpaceId(principal)),
+          ),
+        )
         .for('update');
       const row = rows[0];
       if (!row)
@@ -94,6 +109,7 @@ export class SourceRevisionStore {
         },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: row.spaceId,
       });
       return updated!;
     });
@@ -116,6 +132,7 @@ export class SourceRevisionStore {
         .insert(sourceRevision)
         .values({
           ownerId: principal.userId,
+          spaceId: resolveSpaceId(principal),
           successorType: successor.sourceType,
           successorId: successor.sourceId,
           predecessorType: predecessor.sourceType,
@@ -156,12 +173,16 @@ export class SourceRevisionStore {
         },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: resolveSpaceId(principal),
       });
       return inserted[0]!;
     });
   }
 
-  /** The links touching one source, either side, newest first. Owner-only. */
+  /** The links touching one source, either side, newest first. Owner-only,
+   * and space-scoped like every other read of a space-carrying table: the
+   * endpoint ref is already space-gated by the caller, so this condition is
+   * the row's own seal, not the primary gate. */
   async forSource(principal: Principal, ref: RevisionRef): Promise<SourceRevisionRow[]> {
     return this.db
       .select()
@@ -169,6 +190,7 @@ export class SourceRevisionStore {
       .where(
         and(
           eq(sourceRevision.ownerId, principal.userId),
+          eq(sourceRevision.spaceId, resolveSpaceId(principal)),
           or(
             and(
               eq(sourceRevision.successorType, ref.sourceType),

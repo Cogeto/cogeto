@@ -199,6 +199,15 @@ export async function truncateDomainTables(pool: Pool): Promise<string[]> {
     'model_answer_option',
     'model_configuration_change',
     'model_config_state',
+    // The partition records are instance state, not demo data
+    // (docs/features/spaces.md): every content-bearing table FK-references
+    // the space rows and every fresh insert lands in the DEFAULT space, so a
+    // wipe here would strand the whole re-seed on a missing foreign key. The
+    // preserved deletion_receipt rows also chain per space, so the spaces
+    // those receipts name must outlive the reset for the chains to keep
+    // verifying. The user's last-used pointer (user_space_state) is demo
+    // data and wipes with the world, falling back to the default space.
+    'space',
   ]);
   const { rows } = await pool.query<{ tablename: string }>(
     `SELECT tablename FROM pg_tables WHERE schemaname = 'public'`,

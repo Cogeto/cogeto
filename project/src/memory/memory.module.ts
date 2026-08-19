@@ -241,6 +241,10 @@ export class MemoryModule {
         MemoryFileStore,
         EmbeddingRebuildService,
         OwnerErasureService,
+        // Space deletion (docs/features/spaces.md section 5) enumerates the
+        // space's sources through the same adapters the saga deletes with;
+        // exporting the token is what lets the spaces module ask them.
+        SOURCE_DELETIONS,
         ...(options.systemReads ? [MemorySystemStore] : []),
       ],
     };

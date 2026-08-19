@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { and, desc, eq } from 'drizzle-orm';
+import { resolveSpaceId } from '@cogeto/shared';
 import type { MemoryScope, Principal, WebProcessingState } from '@cogeto/shared';
 import {
   DailyCounters,
@@ -92,6 +93,9 @@ export class ResearchService {
         .insert(researchRun)
         .values({
           ownerId: principal.userId,
+          // The caller's current space (docs/features/spaces.md); every page
+          // this run captures inherits it.
+          spaceId: resolveSpaceId(principal),
           intent,
           proposedQuery,
           minimisedQuery: minimised.minimised,
@@ -110,6 +114,7 @@ export class ResearchService {
         entityId: row!.id,
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: row!.spaceId,
       });
       return row!;
     });
@@ -132,6 +137,7 @@ export class ResearchService {
         .insert(researchRun)
         .values({
           ownerId: principal.userId,
+          spaceId: resolveSpaceId(principal),
           intent: proposal.intent,
           proposedQuery: proposal.query,
           minimisedQuery: proposal.query,
@@ -147,6 +153,7 @@ export class ResearchService {
         detail: { skill_run_id: skillRunId },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: row!.spaceId,
       });
       return row!;
     });
@@ -225,6 +232,7 @@ export class ResearchService {
         detail: { edited: sentQuery !== row.minimisedQuery },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: row.spaceId,
       });
       return updated!;
     });
@@ -280,6 +288,7 @@ export class ResearchService {
         entityId: runId,
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: row.spaceId,
       });
       return updated!;
     });
@@ -289,7 +298,15 @@ export class ResearchService {
     const rows = await this.db
       .select()
       .from(researchRun)
-      .where(and(eq(researchRun.id, runId), eq(researchRun.ownerId, principal.userId)))
+      .where(
+        and(
+          eq(researchRun.id, runId),
+          eq(researchRun.ownerId, principal.userId),
+          // Space-scoped like every read (docs/features/spaces.md): a run in
+          // another space is not found, even for its owner.
+          eq(researchRun.spaceId, resolveSpaceId(principal)),
+        ),
+      )
       .limit(1);
     return rows[0] ?? null;
   }
@@ -305,7 +322,14 @@ export class ResearchService {
     return this.db
       .select()
       .from(researchRun)
-      .where(eq(researchRun.ownerId, principal.userId))
+      .where(
+        and(
+          eq(researchRun.ownerId, principal.userId),
+          // The Research page lists the caller's current space only
+          // (docs/features/spaces.md).
+          eq(researchRun.spaceId, resolveSpaceId(principal)),
+        ),
+      )
       .orderBy(desc(researchRun.createdAt))
       .limit(limit);
   }
@@ -463,6 +487,10 @@ export class ResearchService {
             id,
             ownerId: principal.userId,
             scope,
+            // The RUN's space when the capture belongs to a run, else the
+            // caller's current space (docs/features/spaces.md): stamped in
+            // the same transaction that creates the source.
+            spaceId: run?.spaceId ?? resolveSpaceId(principal),
             requestedUrl: page.requestedUrl,
             finalUrl: page.finalUrl,
             title: page.title,

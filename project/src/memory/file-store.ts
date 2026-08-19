@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, asc, desc, eq, gt, inArray, lt, sql } from 'drizzle-orm';
+import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import { DRIZZLE } from '../infrastructure/index';
 import type { Db, DbOrTx, Tx } from '../infrastructure/index';
 import { fileMetadata } from './persistence/tables';
@@ -14,10 +15,11 @@ import type { MemoryScope } from '@cogeto/shared';
  * table directly (spec §15 rule 2). The deletion saga still deletes `file_metadata`
  * internally; this port adds no new deletion path.
  *
- * The row shape is frozen (F1 handoff, migration 0001): object_key, owner_id,
- * scope, sensitive, upload_date, checksum, size_bytes — no new columns. The
- * original filename and content type live on the MinIO object's metadata, so
- * they are erased with the bytes and need no schema of their own.
+ * The row shape (F1 handoff, migration 0001; space_id added by migration
+ * 0060): object_key, owner_id, scope, sensitive, space_id, upload_date,
+ * checksum, size_bytes. The original filename and content type live on the
+ * MinIO object's metadata, so they are erased with the bytes and need no
+ * schema of their own.
  */
 
 export interface FileMetadataInsert {
@@ -25,6 +27,10 @@ export interface FileMetadataInsert {
   ownerId: string;
   scope: MemoryScope;
   sensitive: boolean;
+  /** The caller's current space (docs/features/spaces.md), stamped by the
+   * upload path inside the transaction that creates the source. Omitted
+   * (legacy harnesses) falls to the schema-level default space. */
+  spaceId?: string;
   checksum: string;
   sizeBytes: number;
 }
@@ -43,8 +49,9 @@ export class MemoryFileStore {
   async findDuplicate(
     ownerId: string,
     checksum: string,
+    spaceId?: string,
   ): Promise<{ objectKey: string; scope: MemoryScope; sensitive: boolean } | null> {
-    return findStoredDuplicate(this.db, ownerId, checksum);
+    return findStoredDuplicate(this.db, ownerId, checksum, spaceId);
   }
 
   /** Insert the metadata row inside the caller's transaction (upload path). */
@@ -54,6 +61,7 @@ export class MemoryFileStore {
       ownerId: row.ownerId,
       scope: row.scope,
       sensitive: row.sensitive,
+      ...(row.spaceId ? { spaceId: row.spaceId } : {}),
       checksum: row.checksum,
       sizeBytes: row.sizeBytes,
     });
@@ -101,9 +109,15 @@ export interface FileSourceRefRow {
 export async function listFileSourceRefs(
   db: DbOrTx,
   ownerId: string,
-  options: { cursor?: Date; order?: 'asc' | 'desc'; limit?: number } = {},
+  options: { cursor?: Date; order?: 'asc' | 'desc'; limit?: number; spaceId?: string } = {},
 ): Promise<FileSourceRefRow[]> {
-  const clauses = [eq(fileMetadata.ownerId, ownerId)];
+  // The caller's current space (docs/features/spaces.md): a catalog listing
+  // enumerates one space, never across the wall. Absent resolves to the
+  // default space, which is where every pre-spaces row lives.
+  const clauses = [
+    eq(fileMetadata.ownerId, ownerId),
+    eq(fileMetadata.spaceId, options.spaceId ?? DEFAULT_SPACE_ID),
+  ];
   const order = options.order ?? 'desc';
   if (options.cursor) {
     clauses.push(
@@ -122,6 +136,27 @@ export async function listFileSourceRefs(
     )
     .limit(Math.min(options.limit ?? 50, 200));
   return rows.map((row) => ({ objectKey: row.objectKey, at: row.uploadDate }));
+}
+
+/**
+ * The space each of these object keys' stored metadata row carries
+ * (docs/features/spaces.md): the catalog's belt for file refs that arrived
+ * from an owner-keyed ledger with no space column of its own. One query over
+ * the page's keys, never a query per row; a key absent from the map has no
+ * metadata row (discard mode) and is resolved by the caller through the
+ * gated describeSource read instead.
+ */
+export async function fileKeySpaces(
+  db: DbOrTx,
+  ownerId: string,
+  keys: readonly string[],
+): Promise<Map<string, string>> {
+  if (keys.length === 0) return new Map();
+  const rows = await db
+    .select({ objectKey: fileMetadata.objectKey, spaceId: fileMetadata.spaceId })
+    .from(fileMetadata)
+    .where(and(eq(fileMetadata.ownerId, ownerId), inArray(fileMetadata.objectKey, [...keys])));
+  return new Map(rows.map((row) => [row.objectKey, row.spaceId]));
 }
 
 /**
@@ -146,6 +181,22 @@ export async function listAllFileSourcesForOwner(
     .orderBy(asc(fileMetadata.uploadDate), asc(fileMetadata.objectKey));
 }
 
+/**
+ * EVERY file source inside one space, with its owner — space deletion's
+ * enumeration (docs/features/spaces.md section 5), the exact space twin of
+ * the owner listing above and unpaginated for the same reason.
+ */
+export async function listAllFileSourcesForSpace(
+  db: DbOrTx,
+  spaceId: string,
+): Promise<{ sourceId: string; ownerId: string }[]> {
+  return db
+    .select({ sourceId: fileMetadata.objectKey, ownerId: fileMetadata.ownerId })
+    .from(fileMetadata)
+    .where(eq(fileMetadata.spaceId, spaceId))
+    .orderBy(asc(fileMetadata.uploadDate), asc(fileMetadata.objectKey));
+}
+
 export async function hydrateFileSourceRefs(
   db: DbOrTx,
   ownerId: string,
@@ -161,11 +212,17 @@ export async function hydrateFileSourceRefs(
   );
 }
 
-export async function countFileSourceRefs(db: DbOrTx, ownerId: string): Promise<number> {
+export async function countFileSourceRefs(
+  db: DbOrTx,
+  ownerId: string,
+  spaceId?: string,
+): Promise<number> {
   const rows = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(fileMetadata)
-    .where(eq(fileMetadata.ownerId, ownerId));
+    .where(
+      and(eq(fileMetadata.ownerId, ownerId), eq(fileMetadata.spaceId, spaceId ?? DEFAULT_SPACE_ID)),
+    );
   return rows[0]?.n ?? 0;
 }
 
@@ -189,6 +246,7 @@ export async function findStoredDuplicate(
   db: DbOrTx,
   ownerId: string,
   checksum: string,
+  spaceId?: string,
 ): Promise<{ objectKey: string; scope: MemoryScope; sensitive: boolean } | null> {
   const rows = await db
     .select({
@@ -197,23 +255,40 @@ export async function findStoredDuplicate(
       sensitive: fileMetadata.sensitive,
     })
     .from(fileMetadata)
-    .where(and(eq(fileMetadata.ownerId, ownerId), eq(fileMetadata.checksum, checksum)))
+    .where(
+      and(
+        eq(fileMetadata.ownerId, ownerId),
+        // Dedup is PER SPACE by design (docs/features/spaces.md section 5):
+        // the same file uploaded into two spaces is two independent sources,
+        // because nothing may relate two spaces, not even a checksum.
+        eq(fileMetadata.spaceId, spaceId ?? DEFAULT_SPACE_ID),
+        eq(fileMetadata.checksum, checksum),
+      ),
+    )
     .orderBy(asc(fileMetadata.uploadDate), asc(fileMetadata.objectKey))
     .limit(1);
   return rows[0] ?? null;
 }
 
 /** Which of these content hashes already exist as stored uploads for this
- * owner (V2.2 item 5.3): the bulk manifest's duplicate detection. */
+ * owner (V2.2 item 5.3): the bulk manifest's duplicate detection. Per space,
+ * like the per-upload twin above. */
 export async function checksumsKnownForOwner(
   db: DbOrTx,
   ownerId: string,
   checksums: readonly string[],
+  spaceId?: string,
 ): Promise<Set<string>> {
   if (checksums.length === 0) return new Set();
   const rows = await db
     .select({ checksum: fileMetadata.checksum })
     .from(fileMetadata)
-    .where(and(eq(fileMetadata.ownerId, ownerId), inArray(fileMetadata.checksum, [...checksums])));
+    .where(
+      and(
+        eq(fileMetadata.ownerId, ownerId),
+        eq(fileMetadata.spaceId, spaceId ?? DEFAULT_SPACE_ID),
+        inArray(fileMetadata.checksum, [...checksums]),
+      ),
+    );
   return new Set(rows.map((row) => row.checksum).filter((c): c is string => c !== null));
 }

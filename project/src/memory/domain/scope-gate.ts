@@ -1,13 +1,16 @@
 import { and, eq, or } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { SQL } from 'drizzle-orm';
+import { resolveSpaceId } from '@cogeto/shared';
 import type { Principal } from '@cogeto/shared';
 
-/** The three columns any gated row carries (spec §1, §4.2). */
+/** The four columns any gated row carries (spec §1, §4.2;
+ * docs/features/spaces.md added the space dimension). */
 export interface ScopeGateColumns {
   ownerId: AnyPgColumn;
   scope: AnyPgColumn;
   sensitive: AnyPgColumn;
+  spaceId: AnyPgColumn;
 }
 
 export interface ScopeGateOptions {
@@ -54,5 +57,10 @@ export function visibleToPrincipal(
   const sensitiveGate = options.includeSensitive
     ? or(eq(columns.sensitive, false), own)!
     : eq(columns.sensitive, false);
-  return and(scopeGate, sensitiveGate)!;
+  // The space gate (docs/features/spaces.md): the caller's current space,
+  // resolved through the one shared fallback so absence can never mean "all
+  // spaces". An equality like the owner arm, never an option: no flag
+  // weakens it and no caller can decline it.
+  const spaceGate = eq(columns.spaceId, resolveSpaceId(principal));
+  return and(scopeGate, sensitiveGate, spaceGate)!;
 }

@@ -1,4 +1,5 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
+import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type { DbOrTx } from '../infrastructure/index';
 import { chatMessage, conversation } from './persistence/tables';
 
@@ -23,12 +24,21 @@ export async function hydrateChatSources(
   db: DbOrTx,
   ownerId: string,
   ids: readonly string[],
+  spaceId?: string,
 ): Promise<Map<string, SourceListingRow>> {
   if (ids.length === 0) return new Map();
   const rows = await db
     .select({ id: chatMessage.id, content: chatMessage.content, createdAt: chatMessage.createdAt })
     .from(chatMessage)
-    .where(and(eq(chatMessage.ownerId, ownerId), inArray(chatMessage.id, [...ids])));
+    // A message's space is its conversation's (docs/features/spaces.md).
+    .innerJoin(conversation, eq(conversation.id, chatMessage.conversationId))
+    .where(
+      and(
+        eq(chatMessage.ownerId, ownerId),
+        eq(conversation.spaceId, spaceId ?? DEFAULT_SPACE_ID),
+        inArray(chatMessage.id, [...ids]),
+      ),
+    );
   return new Map(
     rows.map((row) => [
       row.id,
@@ -61,7 +71,7 @@ export async function answersCiting(
   db: DbOrTx,
   ownerId: string,
   memoryId: string,
-  options: { limit?: number } = {},
+  options: { limit?: number; spaceId?: string } = {},
 ): Promise<CitingAnswerRow[]> {
   const token = `{{cite:${memoryId}}}`;
   const rows = await db
@@ -76,6 +86,9 @@ export async function answersCiting(
     .where(
       and(
         eq(chatMessage.ownerId, ownerId),
+        // A cited answer surfaces only in its conversation's space
+        // (docs/features/spaces.md).
+        eq(conversation.spaceId, options.spaceId ?? DEFAULT_SPACE_ID),
         eq(chatMessage.role, 'assistant'),
         sql`position(${token} in ${chatMessage.content}) > 0`,
       ),

@@ -62,6 +62,8 @@ export class EmailSourceReader implements SourceReader {
       createdAt: row.sentAt ?? row.receivedAt,
       scope: row.scope,
       sensitive: row.sensitive,
+      // The routed-in space (docs/features/spaces.md); derived facts inherit it.
+      spaceId: row.spaceId,
       authoredByUser,
     };
   }

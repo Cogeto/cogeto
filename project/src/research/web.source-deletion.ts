@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { asc, eq, inArray } from 'drizzle-orm';
 import type { DbOrTx, Tx } from '../infrastructure/index';
-import type { OwnedSourceRef, SourceCascade, SourceDeletion } from '../memory/index';
+import type {
+  OwnedSourceRef,
+  SpaceSourceRef,
+  SourceCascade,
+  SourceDeletion,
+} from '../memory/index';
 import { webPage } from './persistence/tables';
 
 /**
@@ -25,6 +30,16 @@ export class WebSourceDeletion implements SourceDeletion {
     return rows[0]?.ownerId ?? null;
   }
 
+  /** The space the page row carries (docs/features/spaces.md): stamps the
+   * deletion receipt onto its space's chain. */
+  async spaceOf(tx: Tx, sourceId: string): Promise<string | null> {
+    const rows = await tx
+      .select({ spaceId: webPage.spaceId })
+      .from(webPage)
+      .where(eq(webPage.id, sourceId));
+    return rows[0]?.spaceId ?? null;
+  }
+
   async deleteSource(tx: Tx, sourceId: string): Promise<void> {
     await tx.delete(webPage).where(eq(webPage.id, sourceId));
   }
@@ -36,6 +51,15 @@ export class WebSourceDeletion implements SourceDeletion {
       .select({ sourceId: webPage.id, scope: webPage.scope })
       .from(webPage)
       .where(eq(webPage.ownerId, ownerId))
+      .orderBy(asc(webPage.id));
+  }
+
+  /** Space deletion's enumeration (docs/features/spaces.md section 5). */
+  async listForSpace(db: DbOrTx, spaceId: string): Promise<SpaceSourceRef[]> {
+    return db
+      .select({ sourceId: webPage.id, ownerId: webPage.ownerId })
+      .from(webPage)
+      .where(eq(webPage.spaceId, spaceId))
       .orderBy(asc(webPage.id));
   }
 

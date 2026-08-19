@@ -1,6 +1,8 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { sourceTypeDescriptor } from '@cogeto/shared';
 import type { Principal } from '@cogeto/shared';
+import { SPACE_NAME_RESOLVER } from './space-name.port';
+import type { SpaceNameResolver } from './space-name.port';
 import { DRIZZLE, loadInstanceSigner, writeAudit } from '../infrastructure/index';
 import type { Db, InstanceSigner } from '../infrastructure/index';
 import { MemoryFileStore, MemoryObjectStore, MemoryStore, type MemoryRow } from '../memory/index';
@@ -15,9 +17,11 @@ import type { PassportOptions } from './passport.options';
 
 /** Owner principal reconstructed from the export row — the export re-reads
  * through the SAME gated interfaces, so it can only ever include what this user
- * may see (the passport_gating contract). Only fields the gated reads use. */
-function ownerPrincipal(userId: string, orgId: string | null): Principal {
-  return { userId, name: '', email: null, orgId: orgId ?? '', orgName: '', roles: [] };
+ * may see (the passport_gating contract). Only fields the gated reads use.
+ * The row's space rides the principal (docs/features/spaces.md): the export
+ * covers exactly the ONE space the request was made in. */
+function ownerPrincipal(userId: string, orgId: string | null, spaceId: string): Principal {
+  return { userId, name: '', email: null, orgId: orgId ?? '', orgName: '', roles: [], spaceId };
 }
 
 /**
@@ -43,6 +47,12 @@ export class PassportExportExecutor {
     // Appended LAST on purpose: every other constructor argument keeps its
     // position, so no existing wiring or test double shifts.
     @Inject(DRIZZLE) private readonly db: Db,
+    /** Space display-name resolution, bound by the composition root from the
+     * spaces module (docs/features/spaces.md). Optional: a harness without
+     * the binding exports `name: null` and the space id stays the identity. */
+    @Optional()
+    @Inject(SPACE_NAME_RESOLVER)
+    private readonly spaceNames?: SpaceNameResolver,
   ) {}
 
   /** Assemble and store the artifact for one export request. Idempotent: a
@@ -53,12 +63,14 @@ export class PassportExportExecutor {
   ): Promise<{ objectKey: string; sizeBytes: number; published: boolean }> {
     const request = await this.store.getById(exportId);
     if (!request) throw new Error(`passport export ${exportId} not found`);
-    const principal = ownerPrincipal(request.userId, request.orgId);
+    const principal = ownerPrincipal(request.userId, request.orgId, request.spaceId);
 
-    // Gated reads — the export is exactly what this principal may see.
+    // Gated reads — the export is exactly what this principal may see in the
+    // request's space; the receipts are that space's chain members, which is
+    // what makes the exported receipts verifiable standalone.
     const [memoryRows, receipts] = await Promise.all([
       this.memory.listAllForPrincipal(principal, { includeSensitive: true }),
-      this.memory.confirmedReceiptsForOwner(principal.userId),
+      this.memory.confirmedReceiptsForOwner(principal.userId, request.spaceId),
     ]);
 
     // Resolve file provenance + (optionally) original bytes for the user's OWN
@@ -95,9 +107,11 @@ export class PassportExportExecutor {
 
     const displayName =
       (await this.directory.displayNames([principal.userId])).get(principal.userId) ?? null;
+    const spaceName = (await this.spaceNames?.nameOf(request.spaceId)) ?? null;
     const signer = await this.getSigner();
     const { zip, sizeBytes } = assemblePassport({
       subject: { userId: principal.userId, displayName },
+      space: { id: request.spaceId, name: spaceName },
       memories,
       receipts,
       attachments,
@@ -135,6 +149,7 @@ export class PassportExportExecutor {
       // Principal, and an entry with no org is readable from every org.
       orgId: (await this.directory.orgOf(request.userId)) ?? undefined,
       ownerId: request.userId,
+      spaceId: request.spaceId,
     });
     this.logger.log(
       `passport export ${exportId} ready: ${memories.length} memories, ` +

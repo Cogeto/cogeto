@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { z } from 'zod';
+import { resolveSpaceId } from '@cogeto/shared';
 import {
   DRIZZLE,
   parseOrBadRequest,
@@ -93,6 +94,11 @@ export class ConfluenceController {
     const row = await this.connectors.create({
       ownerId: request.principal.userId,
       orgId: request.principal.orgId,
+      // The caller's space (docs/features/spaces.md): a connector belongs to
+      // exactly one space, and every page it materializes lands there. This
+      // path used to omit it, so a connector made from another space fell to
+      // the default space and its own reconnect read as not found.
+      spaceId: resolveSpaceId(request.principal),
       kind: CONFLUENCE_KIND,
       name: parsed.name,
     });
@@ -101,6 +107,7 @@ export class ConfluenceController {
         ownerId: row.ownerId,
         orgId: row.orgId,
         connectorId: row.id,
+        spaceId: row.spaceId,
         material: {
           accessToken: parsed.apiToken,
           extras: { siteUrl: validated.siteUrl, email: parsed.email },
@@ -132,7 +139,11 @@ export class ConfluenceController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
   ) {
-    const row = await this.connectors.byIdForOwner(id, request.principal.userId);
+    const row = await this.connectors.byIdForOwner(
+      id,
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     if (row.kind !== CONFLUENCE_KIND) {
       throw userError.badRequest('confluence.notConfluenceConnector', 'not a Confluence connector');
     }
@@ -144,6 +155,7 @@ export class ConfluenceController {
         ownerId: row.ownerId,
         orgId: row.orgId,
         connectorId: row.id,
+        spaceId: row.spaceId,
         material: {
           accessToken: parsed.apiToken,
           extras: { siteUrl: validated.siteUrl, email: parsed.email },
@@ -165,7 +177,11 @@ export class ConfluenceController {
    * and the credential opens only in the worker. */
   @Post(':id/estimate')
   async estimate(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string) {
-    const row = await this.connectors.byIdForOwner(id, request.principal.userId);
+    const row = await this.connectors.byIdForOwner(
+      id,
+      request.principal.userId,
+      resolveSpaceId(request.principal),
+    );
     if (row.kind !== CONFLUENCE_KIND) {
       throw userError.badRequest('confluence.notConfluenceConnector', 'not a Confluence connector');
     }

@@ -12,7 +12,7 @@ import type {
   NoteProcessingState,
   Principal,
 } from '@cogeto/shared';
-import { CONVERSATION_REF_TYPE } from '@cogeto/shared';
+import { CONVERSATION_REF_TYPE, resolveSpaceId } from '@cogeto/shared';
 import {
   buildContextBlock,
   DEFAULT_INSTANCE_TIMEZONE,
@@ -244,7 +244,15 @@ export class ChatService {
     const rows = await this.db
       .select()
       .from(conversation)
-      .where(eq(conversation.ownerId, principal.userId))
+      .where(
+        and(
+          eq(conversation.ownerId, principal.userId),
+          // The rail shows the caller's current SPACE only
+          // (docs/features/spaces.md): a thread in another space is invisible,
+          // even to its owner.
+          eq(conversation.spaceId, resolveSpaceId(principal)),
+        ),
+      )
       .orderBy(desc(conversation.updatedAt), desc(conversation.id));
     // Last message per conversation in one pass (DISTINCT ON) — the preview.
     const previews = await this.db.execute(sql`
@@ -289,13 +297,21 @@ export class ChatService {
     principal: Principal,
     query: string,
   ): Promise<ConversationSearchHitDto[]> {
-    const hits = await searchConversationRows(this.db, principal.userId, query);
+    const hits = await searchConversationRows(this.db, principal.userId, query, {
+      spaceId: resolveSpaceId(principal),
+    });
     if (hits.length === 0) return [];
     const ids = hits.map((hit) => hit.conversationId);
     const rows = await this.db
       .select()
       .from(conversation)
-      .where(and(eq(conversation.ownerId, principal.userId), inArray(conversation.id, ids)));
+      .where(
+        and(
+          eq(conversation.ownerId, principal.userId),
+          eq(conversation.spaceId, resolveSpaceId(principal)),
+          inArray(conversation.id, ids),
+        ),
+      );
     const byId = new Map(rows.map((row) => [row.id, row]));
     const projects =
       (await this.projects?.projectIdsForRefs(principal.userId, CONVERSATION_REF_TYPE, ids)) ??
@@ -332,10 +348,20 @@ export class ChatService {
     // project is a 404 before any row exists, so a rejected create leaves no
     // orphan conversation behind.
     if (projectId && this.projects) await this.projects.get(principal, projectId);
+    // Per space (docs/features/spaces.md): every other conversation read in
+    // this file narrows to the caller's space, and a thread in space A must
+    // not consume space B's budget. Not spend protection (no model call is
+    // bounded by it), so the instance-wide-caps rule does not apply.
     const active = await this.db
       .select({ count: sql<number>`count(*)::int` })
       .from(conversation)
-      .where(and(eq(conversation.ownerId, principal.userId), eq(conversation.archived, false)));
+      .where(
+        and(
+          eq(conversation.ownerId, principal.userId),
+          eq(conversation.spaceId, resolveSpaceId(principal)),
+          eq(conversation.archived, false),
+        ),
+      );
     if ((active[0]?.count ?? 0) >= MAX_ACTIVE_CONVERSATIONS) {
       throw userError.badRequest(
         'chat.tooManyConversations',
@@ -348,7 +374,10 @@ export class ChatService {
     }
     const [row] = await this.db
       .insert(conversation)
-      .values({ ownerId: principal.userId })
+      // The caller's current space, stamped at creation
+      // (docs/features/spaces.md): every message and attachment inherits it
+      // through the conversation.
+      .values({ ownerId: principal.userId, spaceId: resolveSpaceId(principal) })
       .returning();
     if (projectId && this.projects) {
       await this.projects.assign(
@@ -878,7 +907,15 @@ export class ChatService {
     const rows = await this.db
       .select()
       .from(conversation)
-      .where(and(eq(conversation.id, conversationId), eq(conversation.ownerId, principal.userId)))
+      .where(
+        and(
+          eq(conversation.id, conversationId),
+          eq(conversation.ownerId, principal.userId),
+          // Space-scoped like every read (docs/features/spaces.md): a thread
+          // in another space is not found, even for its owner.
+          eq(conversation.spaceId, resolveSpaceId(principal)),
+        ),
+      )
       .limit(1);
     const row = rows[0];
     if (!row)

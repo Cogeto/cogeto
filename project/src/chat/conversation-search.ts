@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { CITATION_STRIP_SQL_PATTERN } from '@cogeto/shared';
+import { CITATION_STRIP_SQL_PATTERN, DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type { Db } from '../infrastructure/index';
 
 /**
@@ -22,6 +22,13 @@ import type { Db } from '../infrastructure/index';
  * Owner scoping is the WHERE clause in both arms, exactly like every other
  * chat read. There is no scope or sensitivity gate to apply: a conversation
  * is its owner's alone.
+ *
+ * Space scoping is ALSO the WHERE clause in both arms
+ * (docs/features/spaces.md, session 2): the pool is ranked and truncated to
+ * SEARCH_LIMIT before it is returned, so a post-filter at the caller would
+ * let another space's threads consume the window and silently drop in-space
+ * hits. A message carries no space of its own, so the message arm joins its
+ * conversation, which does.
  */
 
 /** Bounds the result set; searching is for finding one thread, not browsing. */
@@ -61,8 +68,12 @@ export async function searchConversations(
   db: Db,
   ownerId: string,
   query: string,
-  limit: number = SEARCH_LIMIT,
+  options: { spaceId?: string; limit?: number } = {},
 ): Promise<ConversationSearchRow[]> {
+  // Absence means the DEFAULT space, which is a real space, never "all
+  // spaces" — the same resolution rule every gated read follows.
+  const spaceId = options.spaceId ?? DEFAULT_SPACE_ID;
+  const limit = options.limit ?? SEARCH_LIMIT;
   const trimmed = query.trim();
   if (!trimmed) return [];
   const tsQuery = sql`websearch_to_tsquery('simple', cogeto_unaccent(${trimmed}))`;
@@ -92,7 +103,11 @@ export async function searchConversations(
         ', MaxWords=28, MinWords=12, ShortWord=2, MaxFragments=1'
       ) AS snippet
     FROM chat_message
-    WHERE owner_id = ${ownerId} AND content_tsv @@ ${tsQuery}
+    WHERE owner_id = ${ownerId}
+      AND content_tsv @@ ${tsQuery}
+      AND conversation_id IN (
+        SELECT id FROM conversation WHERE owner_id = ${ownerId} AND space_id = ${spaceId}
+      )
     ORDER BY conversation_id, score DESC, created_at DESC, id DESC
   `);
 
@@ -100,6 +115,7 @@ export async function searchConversations(
     SELECT id AS conversation_id
     FROM conversation
     WHERE owner_id = ${ownerId}
+      AND space_id = ${spaceId}
       AND title IS NOT NULL
       AND to_tsvector('simple', cogeto_unaccent(title)) @@ ${tsQuery}
   `);

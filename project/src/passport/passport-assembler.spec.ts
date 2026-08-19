@@ -85,6 +85,8 @@ function signedReceipt(): ConfirmedReceipt {
 function assemble(over: Partial<PassportInput> = {}) {
   const input: PassportInput = {
     subject: { userId: 'ana', displayName: 'Ana Kovač' },
+    // Format 2.1: a passport exports ONE space and the manifest names it.
+    space: { id: '00000000-0000-4000-8000-000000000001', name: 'Default' },
     memories: [
       memory({ id: 'm1' }),
       memory({ id: 'm2', status: 'user_approved', superseded_by: null, valid_until: null }),
@@ -125,7 +127,7 @@ describe('passport assembler (pure)', () => {
     // promise forbids. Validate each generated document against its own schema.
     const schemaDir = resolve(
       dirname(fileURLToPath(import.meta.url)),
-      '../../../docs/passport-schema/2.0',
+      '../../../docs/passport-schema/2.1',
     );
     const load = (name: string): object =>
       JSON.parse(readFileSync(resolve(schemaDir, name), 'utf8')) as object;

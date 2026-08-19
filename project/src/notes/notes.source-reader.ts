@@ -27,6 +27,9 @@ export class NotesSourceReader implements SourceReader {
       content: row.content,
       // The capture-time scope; memories inherit it in embed-store.
       scope: row.scope,
+      // The capture-time space (docs/features/spaces.md); derived facts
+      // inherit it the same way.
+      spaceId: row.spaceId,
       // A note is the user typing in their own voice, so its obligations are
       // their own. This is what lets a note's commitment become an open loop.
       authoredByUser: true,

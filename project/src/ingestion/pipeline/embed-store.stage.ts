@@ -118,6 +118,10 @@ export class EmbedStoreStage {
         // scope selector and sensitive checkbox (F1 handoff). The source item
         // carries both — absent means the note default.
         scope: source.scope ?? 'private',
+        // The source row's space (docs/features/spaces.md): every derived
+        // fact lives in the space its source lives in, stamped here inside
+        // the same transaction that admits it.
+        spaceId: source.spaceId,
         sourceType: source.sourceType,
         sourceId: source.sourceId,
         entities: flattenEntities(fact),
@@ -163,6 +167,7 @@ export class EmbedStoreStage {
           ownerId: source.ownerId,
           scope: source.scope ?? 'private',
           sensitive: source.sensitive ?? false,
+          spaceId: source.spaceId,
           sourceType: source.sourceType,
           sourceId: source.sourceId,
           factContent: fact.claim,

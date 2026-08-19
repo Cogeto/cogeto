@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, inArray, lt, sql } from 'drizzle-orm';
+import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import { DRIZZLE, openSecret, sealSecret, userError, writeAudit } from '../../infrastructure/index';
 import type { Db, DbOrTx } from '../../infrastructure/index';
 import { transition } from '../domain/lifecycle';
@@ -45,12 +46,17 @@ export class ConnectorStore {
     orgId: string;
     kind: string;
     name: string;
+    /** The caller's current space (docs/features/spaces.md): a connector
+     * belongs to one space for its whole life. Omitted (legacy harnesses)
+     * falls to the schema-level default space. */
+    spaceId?: string;
   }): Promise<ConnectorRow> {
     const rows = await this.db
       .insert(connector)
       .values({
         ownerId: input.ownerId,
         orgId: input.orgId,
+        ...(input.spaceId ? { spaceId: input.spaceId } : {}),
         kind: input.kind,
         name: input.name,
       })
@@ -64,6 +70,7 @@ export class ConnectorStore {
       detail: { kind: input.kind },
       orgId: input.orgId,
       ownerId: input.ownerId,
+      spaceId: row.spaceId,
     });
     return row;
   }
@@ -74,24 +81,41 @@ export class ConnectorStore {
   }
 
   /** Owner-scoped read for the API; a foreign id is indistinguishable from
-   * an absent one. */
-  async byIdForOwner(id: string, ownerId: string): Promise<ConnectorRow> {
+   * an absent one, and so is a connector in another space
+   * (docs/features/spaces.md): visibility has three dimensions now. */
+  async byIdForOwner(id: string, ownerId: string, spaceId?: string): Promise<ConnectorRow> {
     const rows = await this.db
       .select()
       .from(connector)
-      .where(and(eq(connector.id, id), eq(connector.ownerId, ownerId)))
+      .where(
+        and(
+          eq(connector.id, id),
+          eq(connector.ownerId, ownerId),
+          eq(connector.spaceId, spaceId ?? DEFAULT_SPACE_ID),
+        ),
+      )
       .limit(1);
     const row = rows[0];
     if (!row) throw userError.notFound('connector.notFound', 'no such connector');
     return row;
   }
 
-  async listForOwner(ownerId: string): Promise<ConnectorRow[]> {
-    return this.db
-      .select()
-      .from(connector)
-      .where(and(eq(connector.ownerId, ownerId), sql`${connector.state} <> 'removed'`))
-      .orderBy(connector.createdAt);
+  async listForOwner(ownerId: string, spaceId?: string): Promise<ConnectorRow[]> {
+    return (
+      this.db
+        .select()
+        .from(connector)
+        // One space's connectors (docs/features/spaces.md); absent resolves to
+        // the default space, where every pre-spaces connector lives.
+        .where(
+          and(
+            eq(connector.ownerId, ownerId),
+            eq(connector.spaceId, spaceId ?? DEFAULT_SPACE_ID),
+            sql`${connector.state} <> 'removed'`,
+          ),
+        )
+        .orderBy(connector.createdAt)
+    );
   }
 
   /** Connectors the maintenance pass considers, instance-wide. */
@@ -105,7 +129,7 @@ export class ConnectorStore {
    */
   async transition(
     executor: DbOrTx,
-    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId' | 'state'>,
+    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId' | 'state' | 'spaceId'>,
     to: ConnectorState,
     opts: { actor: string; reason?: string | null } = { actor: 'connector_platform' },
   ): Promise<void> {
@@ -130,6 +154,7 @@ export class ConnectorStore {
       detail: { from: row.state, to },
       orgId: row.orgId,
       ownerId: row.ownerId,
+      spaceId: row.spaceId,
     });
   }
 
@@ -164,7 +189,7 @@ export class ConnectorStore {
    */
   async remove(
     tx: DbOrTx,
-    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId' | 'state'>,
+    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId' | 'state' | 'spaceId'>,
     actor: string,
   ): Promise<void> {
     const decision = transition(row.state, 'removed');
@@ -200,6 +225,7 @@ export class ConnectorStore {
       detail: { from: row.state, sourcesRetained: true },
       orgId: row.orgId,
       ownerId: row.ownerId,
+      spaceId: row.spaceId,
     });
   }
 
@@ -210,7 +236,9 @@ export class ConnectorStore {
 
   /** Generate and store a fresh signing secret; return it ONCE for the user
    * to configure upstream. It is never retrievable again. */
-  async rotateWebhookSecret(row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId'>): Promise<string> {
+  async rotateWebhookSecret(
+    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId' | 'spaceId'>,
+  ): Promise<string> {
     const secret = randomBytes(32).toString('hex');
     await this.db
       .update(connector)
@@ -227,6 +255,7 @@ export class ConnectorStore {
       detail: { rotated: true },
       orgId: row.orgId,
       ownerId: row.ownerId,
+      spaceId: row.spaceId,
     });
     return secret;
   }
@@ -306,7 +335,7 @@ export class ConnectorStore {
    * the next sync. Upsert, so re-adding an existing key just relabels it.
    */
   async addSubScope(
-    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId'>,
+    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId' | 'spaceId'>,
     key: string,
     label: string,
   ): Promise<void> {
@@ -325,6 +354,7 @@ export class ConnectorStore {
       detail: { custom: true },
       orgId: row.orgId,
       ownerId: row.ownerId,
+      spaceId: row.spaceId,
     });
   }
 
@@ -341,7 +371,7 @@ export class ConnectorStore {
   }
 
   async setSubScopeSelection(
-    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId'>,
+    row: Pick<ConnectorRow, 'id' | 'ownerId' | 'orgId' | 'spaceId'>,
     key: string,
     patch: {
       selected?: boolean;
@@ -367,6 +397,7 @@ export class ConnectorStore {
       },
       orgId: row.orgId,
       ownerId: row.ownerId,
+      spaceId: row.spaceId,
     });
   }
 

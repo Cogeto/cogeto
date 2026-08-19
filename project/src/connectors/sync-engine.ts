@@ -434,6 +434,10 @@ export class ConnectorSyncEngine {
           await this.revisions
             .recordDetected(this.db, {
               ownerId: row.ownerId,
+              // The connector's space (docs/features/spaces.md): both
+              // endpoints live in it, and an unstamped link fell to the
+              // default space.
+              spaceId: row.spaceId,
               successor: source,
               predecessor: {
                 sourceType: predecessor.sourceType,
@@ -505,6 +509,7 @@ export class ConnectorSyncEngine {
         id: row.id,
         ownerId: row.ownerId,
         orgId: row.orgId,
+        spaceId: row.spaceId,
       });
     } catch (error) {
       this.logger.warn(`connector annotate failed for one item: ${(error as Error).message}`);
@@ -751,7 +756,10 @@ export class ConnectorSyncEngine {
   }
 }
 
-/** The owner as a Principal for the upload path (the import precedent). */
+/** The owner as a Principal for the upload path (the import precedent).
+ * Carries the CONNECTOR's space (docs/features/spaces.md): a worker acting
+ * on a row acts in that row's space, so every source a sync materializes
+ * lands in the connector's space. */
 function principalFor(row: ConnectorRow): Principal {
   return {
     userId: row.ownerId,
@@ -760,5 +768,6 @@ function principalFor(row: ConnectorRow): Principal {
     orgId: row.orgId,
     orgName: '',
     roles: [],
+    spaceId: row.spaceId,
   };
 }

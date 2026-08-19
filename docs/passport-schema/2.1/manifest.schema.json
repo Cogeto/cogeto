@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cogeto.eu/passport-schema/2.1/manifest.schema.json",
+  "title": "Cogeto Memory Passport — manifest",
+  "description": "The signed index of a Memory Passport archive (passport_version 2.1). manifest.json.sig is a detached ed25519 signature (base64) over the exact bytes of this file. 2.1 makes the passport per space: the required space field names the one space this archive exports, and receipts.json carries that space's receipts, which form their own hash chain and therefore verify standalone.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "passport_version",
+    "generated_at",
+    "subject",
+    "space",
+    "instance",
+    "options",
+    "counts",
+    "documents"
+  ],
+  "properties": {
+    "passport_version": { "const": "2.1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["user_id", "display_name"],
+      "properties": {
+        "user_id": { "type": "string" },
+        "display_name": { "type": ["string", "null"] }
+      }
+    },
+    "space": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name"],
+      "description": "The one space this archive exports. A space is a fully sealed partition of a Cogeto instance; its receipts form their own chain, so nothing in this archive references material outside the space.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": {
+          "type": ["string", "null"],
+          "description": "The space's display name at export time; null when the exporting process could not resolve one. The id is the durable identity."
+        }
+      }
+    },
+    "instance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["public_key_pem", "signature_algorithm", "signature_file"],
+      "properties": {
+        "public_key_pem": {
+          "type": "string",
+          "description": "SPKI PEM of the instance ed25519 public key; also served at GET /api/instance/public-key."
+        },
+        "signature_algorithm": { "const": "ed25519" },
+        "signature_file": { "const": "manifest.json.sig" }
+      }
+    },
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["include_originals"],
+      "properties": { "include_originals": { "type": "boolean" } }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["memories", "receipts", "attachments"],
+      "properties": {
+        "memories": { "type": "integer", "minimum": 0 },
+        "receipts": { "type": "integer", "minimum": 0 },
+        "attachments": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "documents": {
+      "type": "array",
+      "description": "Every non-manifest document in the archive, each with a SHA-256 of its exact bytes.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256", "bytes"],
+        "properties": {
+          "path": { "type": "string" },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "bytes": { "type": "integer", "minimum": 0 }
+        }
+      }
+    }
+  }
+}

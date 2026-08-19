@@ -13,3 +13,5 @@ export {
 } from './import-jobs';
 export { zipEntries, zipExtract } from './zip';
 export type { ZipEntry } from './zip';
+// Space deletion's imports leg (docs/features/spaces.md section 5).
+export { ImportSpaceCleanup, ImportSpaceCleanupModule } from './import-space-cleanup';

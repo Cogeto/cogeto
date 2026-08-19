@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { asc, eq } from 'drizzle-orm';
 import type { DbOrTx, Tx } from '../infrastructure/index';
-import type { OwnedSourceRef, SourceDeletion } from '../memory/index';
+import type { OwnedSourceRef, SpaceSourceRef, SourceDeletion } from '../memory/index';
 import { note } from './persistence/tables';
 
 /**
@@ -25,6 +25,13 @@ export class NotesSourceDeletion implements SourceDeletion {
     return rows[0]?.ownerId ?? null;
   }
 
+  /** The space the note row carries (docs/features/spaces.md): stamps the
+   * deletion receipt onto its space's chain. */
+  async spaceOf(tx: Tx, sourceId: string): Promise<string | null> {
+    const rows = await tx.select({ spaceId: note.spaceId }).from(note).where(eq(note.id, sourceId));
+    return rows[0]?.spaceId ?? null;
+  }
+
   async deleteSource(tx: Tx, sourceId: string): Promise<void> {
     await tx.delete(note).where(eq(note.id, sourceId));
   }
@@ -36,6 +43,15 @@ export class NotesSourceDeletion implements SourceDeletion {
       .select({ sourceId: note.id, scope: note.scope })
       .from(note)
       .where(eq(note.ownerId, ownerId))
+      .orderBy(asc(note.createdAt), asc(note.id));
+  }
+
+  /** Space deletion's enumeration (docs/features/spaces.md section 5). */
+  async listForSpace(db: DbOrTx, spaceId: string): Promise<SpaceSourceRef[]> {
+    return db
+      .select({ sourceId: note.id, ownerId: note.ownerId })
+      .from(note)
+      .where(eq(note.spaceId, spaceId))
       .orderBy(asc(note.createdAt), asc(note.id));
   }
 }

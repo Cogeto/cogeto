@@ -555,6 +555,58 @@ near it. In the same wave the **activity trail became administrative only**
 (issue #633): content was always owner-gated, but the actions were not, so any
 member could enumerate who did what to whose material by identifier.
 
+**V3 spaces, session 1 of 4, delivered the foundation** (migration 0060, the
+new `spaces` module; decision record
+[`docs/features/spaces.md`](docs/features/spaces.md), frozen and amended
+before code). A space is a fully sealed partition: `space_id` is the **third
+hard dimension of the access gate** beside owner and scope, inside
+`visibleToPrincipal`, `buildGateFilter` and the Qdrant payload, so an
+un-spaced read is unrepresentable; every content-bearing root carries a
+non-null `space_id` with the default space as the schema-level DEFAULT, and a
+single-space instance is byte-identical to the product before the feature.
+The caller's space rides the Principal (the `x-cogeto-space` header, absent
+means the default space); a worker job's space is stamped on its subject row
+in the enqueue transaction and fabricated principals carry it. **The receipt
+chain is per space** (each space its own genesis, sequence and tip under one
+unchanged genesis constant; the pre-spaces chain is the default space's chain
+byte-identically) and **the passport exports one space** (manifest 2.1), so a
+space's receipts verify standalone, which is what the passport promises.
+Projects stay a lens and never a gate; the structural proof is
+`spaces/spaces-are-a-gate.spec.ts` beside the projects sibling. The switcher
+UI, settings split, email routing and space deletion are later sessions.
+
+**V3 spaces, session 2 of 4, delivered isolation in depth** (migration 0061;
+session decisions recorded in
+[`docs/features/spaces.md`](docs/features/spaces.md) section 6a). Nothing
+compares, pairs, links or aggregates across the wall: reconciliation's
+candidate generation is constrained INSIDE every gated query (the fact row's
+space rides the fabricated principal) and a row that crosses anyway stops the
+engine loudly; the pair actions refuse a cross-space pair at the aggregate's
+one lock; the checked-pair ledger carries the pair's one space; entity
+aliases stay per space in write, read and uniqueness; the nightly pass
+batches per (owner, space). Every limit-bounded pool filters the space inside
+the query (conversation search, the change feed's audit arm, both catalog
+badge ledgers), approvals became a space-scoped surface, the chat quota and
+the duplicate-cleanup CLI group per space, the retrieval lens now rides the
+widen arm too, and machine-recorded revision links and the Confluence connect
+stamp their space (both used to fall to the default). Audit gained the
+record's `space_id` attribute (nullable, no FK, filterable), stamped from the
+principal, the subject row, or the usage scope (model egress); budgets and
+caps stay instance-wide with the space recorded for attribution only. **Space
+lifecycle**: `DELETE /api/spaces/:id` (administrator-only) enumerates the
+space's sources through a new `listForSpace` on the existing SourceDeletion
+port and runs the ORDINARY saga per source in the worker (one receipt per
+source, each owner as its own subject, shared material included), then
+removes containers through the spaces-owned `SPACE_CLEANUPS` port (projects,
+aliases, runs, reports, exports, connectors including credentials and
+ledger), then the space row itself, whose NO ACTION FK graph makes the final
+delete the structural completeness proof. Receipts outlive their space (FK
+dropped, chain key kept, chains walked from receipts); the default space is
+never deletable; a deleted last-used space degrades to the default. The
+adversarial fixture (`spaces/space-isolation-depth.integration.spec.ts`)
+proves two spaces holding directly contradictory facts about the same subject
+yield zero cross-space findings through both the inline and nightly paths.
+
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).
 Thinking is a CHANNEL, not content: `completeStream` yields channel-tagged

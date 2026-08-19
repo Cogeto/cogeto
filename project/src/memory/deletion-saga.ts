@@ -1,7 +1,7 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { and, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { isRegisteredSourceType, SOURCE_TYPES } from '@cogeto/shared';
+import { DEFAULT_SPACE_ID, isRegisteredSourceType, SOURCE_TYPES } from '@cogeto/shared';
 import type { MemoryScope, Principal } from '@cogeto/shared';
 import {
   DRIZZLE,
@@ -74,6 +74,18 @@ export interface OwnedSourceRef {
 }
 
 /**
+ * One source inside a space, as space deletion enumerates it
+ * (docs/features/spaces.md section 5). `ownerId` rides along because the
+ * ordinary saga acts FOR a subject, and a space's sources belong to many
+ * owners: each per-source deletion runs as that source's owner, producing the
+ * receipt on that owner's behalf in the space's own chain.
+ */
+export interface SpaceSourceRef {
+  sourceId: string;
+  ownerId: string;
+}
+
+/**
  * Port for deleting a source row that lives in another module's table (the
  * exact mirror of ingestion's SourceReader port): the memory module defines
  * it, connector modules implement it, the composition root binds the two —
@@ -85,6 +97,15 @@ export interface SourceDeletion {
   readonly sourceType: SourceType;
   /** Owner of the source row (locked FOR UPDATE), or null when absent. */
   ownerOf(tx: Tx, sourceId: string): Promise<string | null>;
+  /**
+   * The space stamped on the source row (docs/features/spaces.md), or null
+   * when the row is absent. The saga stamps it on the deletion receipt so
+   * the receipt joins its SPACE'S chain; the derived memory rows carry the
+   * same space and are the fallback when the source row is already gone.
+   * Optional only for legacy test harnesses — every registered adapter
+   * implements it.
+   */
+  spaceOf?(tx: Tx, sourceId: string): Promise<string | null>;
   /** Deletes the source row inside the saga's enumeration transaction. */
   deleteSource(tx: Tx, sourceId: string): Promise<void>;
   /**
@@ -102,6 +123,18 @@ export interface SourceDeletion {
    * conversation, so listing both would enumerate the same content twice.
    */
   listForOwner?(db: DbOrTx, ownerId: string): Promise<OwnedSourceRef[]>;
+  /**
+   * EVERY source of this type inside `spaceId`, with its owner — space
+   * deletion's enumeration (docs/features/spaces.md section 5), the exact
+   * space twin of `listForOwner` and unpaginated for the same reason: a
+   * source left behind is a source the deletion did not erase, and the FK
+   * from the source table to `space` turns any miss into a loud refusal of
+   * the final space-row delete rather than a silent leftover.
+   *
+   * OPTIONAL by the same declaration rule as `listForOwner`: `chat` returns
+   * nothing because a message is erased with its conversation.
+   */
+  listForSpace?(db: DbOrTx, spaceId: string): Promise<SpaceSourceRef[]>;
   /**
    * Extra artifacts that must be enumerated and removed WITH this source, when a
    * source owns more than its own row + body memories. An
@@ -221,8 +254,18 @@ export interface DerivedCascade {
    * are deleted by the WORKER leg like every other object, so the all-or-nothing
    * guarantee and the retry semantics are the existing ones: this runs inside
    * the enumeration transaction and performs no external side effect itself.
+   *
+   * `spaceId` narrows the expiry to the DELETION'S space
+   * (docs/features/spaces.md): a passport or report covers one space, so a
+   * deletion in space A cannot have leaked into space B's artifact and must
+   * not expire it. The saga always passes it; absence (legacy harnesses)
+   * expires across spaces, the pre-spaces behaviour.
    */
-  expireForOwner?(tx: Tx, ownerId: string): Promise<{ count: number; objectKeys: string[] }>;
+  expireForOwner?(
+    tx: Tx,
+    ownerId: string,
+    spaceId?: string,
+  ): Promise<{ count: number; objectKeys: string[] }>;
 }
 
 export const DERIVED_CASCADES = Symbol('DERIVED_CASCADES');
@@ -605,6 +648,31 @@ export class DeletionSaga {
   }
 
   /**
+   * Space deletion's per-source call (docs/features/spaces.md section 5): the
+   * same saga, the same cascades, the same one receipt per source, invoked by
+   * an ADMINISTRATOR for each source's own owner as the subject. There is no
+   * second deletion mechanism anywhere; this method IS requestSourceDeletion
+   * with the subject and the actor separated, exactly like owner erasure.
+   *
+   * `retainShared` is OFF, and deliberately so: owner erasure removes one
+   * person's material from a living space, where a colleague's shared
+   * knowledge must survive; space deletion destroys the partition itself, and
+   * scope governs who sees a fact WITHIN a space, never whether the fact
+   * outlives its space. Nothing can remain, because the space row's FK graph
+   * refuses to release the space while anything does.
+   */
+  async eraseSpaceSource(
+    subject: { userId: string; orgId: string },
+    actor: string,
+    sourceType: string,
+    sourceId: string,
+  ): Promise<{ receiptId: string | null }> {
+    return this.deleteSourceForSubject(subject, actor, sourceType, sourceId, {
+      retainShared: false,
+    });
+  }
+
+  /**
    * The same enumeration transaction, with WHO it acts for separated from WHO
    * asked (issue #632).
    *
@@ -767,6 +835,19 @@ export class DeletionSaga {
 
         const memoryIds = rows.map((r) => r.id);
 
+        // Which space's chain this deletion's receipt joins
+        // (docs/features/spaces.md section 5 as amended). Resolved HERE,
+        // while the source row still exists: the source row's space, else
+        // the space its derived memories carry (stamped from the source, so
+        // the two can only agree), else the default space — reachable only
+        // by legacy harness adapters that predate spaceOf, since every real
+        // path has a row or a memory.
+        const spaceId =
+          fileRow?.spaceId ??
+          (adapter?.spaceOf ? await adapter.spaceOf(tx, sourceId) : null) ??
+          rows[0]?.spaceId ??
+          DEFAULT_SPACE_ID;
+
         // Contradiction lift: surviving partners of
         // unresolved relations touching a doomed row are restored to their
         // recorded prior status — an accusation whose evidence is being erased
@@ -863,7 +944,7 @@ export class DeletionSaga {
           // objects join `objectKeys` below, so the worker leg erases them and
           // the sweep verifies them absent, exactly like a file or an email body.
           if (cascade.expireForOwner) {
-            const expired = await cascade.expireForOwner(tx, principal.userId);
+            const expired = await cascade.expireForOwner(tx, principal.userId, spaceId);
             if (cascade.artifact === 'passport_exports') {
               passportExportsExpired += expired.count;
             }
@@ -992,13 +1073,14 @@ export class DeletionSaga {
             // The SUBJECT: the detail gate serves the person whose material it
             // was, which is the point of recording it.
             ownerId: principal.userId,
+            spaceId,
           });
           return { receiptId: null };
         }
 
         const [receipt] = await tx
           .insert(deletionReceipt)
-          .values({ sourceType, sourceId, countsJson: counts, status: 'pending' })
+          .values({ sourceType, sourceId, spaceId, countsJson: counts, status: 'pending' })
           .returning({ id: deletionReceipt.id });
         const receiptId = receipt!.id;
 
@@ -1037,6 +1119,7 @@ export class DeletionSaga {
           },
           orgId: principal.orgId,
           ownerId: principal.userId,
+          spaceId,
         });
         return { receiptId };
       });
@@ -1241,8 +1324,14 @@ export class DeletionExecutor {
     // Step three — confirmation with chain hash + signature. The advisory
     // lock serializes concurrent confirmations so the chain cannot fork;
     // linkage (not timestamps) defines chain order (see receipt-chain.ts).
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('cogeto_deletion_receipt_chain'))`);
-    const prevHash = await this.chainTip(tx);
+    // The lock and the tip are PER SPACE (docs/features/spaces.md section 5
+    // as amended): each space owns its own chain, so two spaces confirm
+    // concurrently and a receipt links only to the previous receipt within
+    // its space.
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtext(${'cogeto_deletion_receipt_chain:' + receipt.spaceId}))`,
+    );
+    const prevHash = await this.chainTip(tx, receipt.spaceId);
     const now = new Date();
     const iso = now.toISOString();
     const hash = hashReceiptPayload({
@@ -1275,6 +1364,7 @@ export class DeletionExecutor {
       // this leg runs in the worker with no Principal in scope.
       orgId: (await this.directory?.orgOf(counts.requested_by)) ?? undefined,
       ownerId: counts.requested_by,
+      spaceId: receipt.spaceId,
     });
     return {
       alreadyConfirmed: false,
@@ -1284,24 +1374,30 @@ export class DeletionExecutor {
   }
 
   /**
-   * The current chain tip: the confirmed receipt whose hash no other confirmed
-   * receipt links to; GENESIS when the chain is empty. More than one tip means
-   * a corrupted chain — refuse to extend it.
+   * The SPACE'S current chain tip: the confirmed receipt in this space whose
+   * hash no other confirmed receipt in this space links to; GENESIS when the
+   * space's chain is empty (every space starts at its own genesis, which is
+   * the same constant — chains are distinguished by the space column, never
+   * by the constant). More than one tip means a corrupted chain — refuse to
+   * extend it.
    */
-  private async chainTip(tx: Tx): Promise<string> {
+  private async chainTip(tx: Tx, spaceId: string): Promise<string> {
     const result = await tx.execute(sql`
       SELECT r.hash FROM deletion_receipt r
       WHERE r.status = 'confirmed'
+        AND r.space_id = ${spaceId}
         AND NOT EXISTS (
           SELECT 1 FROM deletion_receipt r2
-          WHERE r2.status = 'confirmed' AND r2.prev_hash = r.hash
+          WHERE r2.status = 'confirmed'
+            AND r2.space_id = ${spaceId}
+            AND r2.prev_hash = r.hash
         )
     `);
     const tips = result.rows as { hash: string }[];
     if (tips.length === 0) return GENESIS_HASH;
     if (tips.length > 1) {
       throw new Error(
-        `deletion receipt chain has ${tips.length} tips, refusing to extend a corrupted chain`,
+        `deletion receipt chain for space ${spaceId} has ${tips.length} tips, refusing to extend a corrupted chain`,
       );
     }
     return tips[0]!.hash;

@@ -1,10 +1,12 @@
-# Cogeto Memory Passport: open format (current: v2.0)
+# Cogeto Memory Passport: open format (current: v2.1)
 
-The **Memory Passport** is a complete, portable export of a user's data from
-Cogeto, in an **open, documented, versioned** format. You are not locked in: this
-directory is the whole specification. Anyone can read a Passport, and verify its
-integrity, with only these schemas and the public key inside the archive, no
-Cogeto code or service required.
+The **Memory Passport** is a complete, portable export of a user's data in one
+**space** of a Cogeto instance, in an **open, documented, versioned** format.
+You are not locked in: this directory is the whole specification. Anyone can
+read a Passport, and verify its integrity, with only these schemas and the
+public key inside the archive, no Cogeto code or service required. A space is
+a fully sealed partition of an instance; the manifest names the space the
+archive exports, and nothing in the archive references material outside it.
 
 Format and rationale: [`../features/memory-passport.md`](../features/memory-passport.md).
 
@@ -15,30 +17,32 @@ bytes are exactly what the manifest hashed):
 
 | Path | What it is |
 | ------------------- | -------------------------------------------------------------------------- |
-| `manifest.json` | Signed index: version, timestamp, instance public key, per-document SHA-256 |
+| `manifest.json` | Signed index: version, timestamp, the exported space, instance public key, per-document SHA-256 |
 | `manifest.json.sig` | Detached ed25519 signature (base64) over the exact bytes of `manifest.json` |
-| `memories.json` | Every memory, full validity/supersession history (not just current state) |
-| `receipts.json` | Deletion receipts, still independently verifiable against their chain |
+| `memories.json` | Every memory in the exported space, full validity/supersession history (not just current state) |
+| `receipts.json` | Deletion receipts of the exported space, independently verifiable against that space's own chain |
 | `README.txt` | A short human pointer (generated into each archive) |
 | `attachments/…` | Original file bytes: only if the user chose "include original files" |
 
 Every document is described by a JSON Schema (Draft 2020-12), published per
-version in a directory of its own: [`2.0/`](2.0/) is what new exports use,
-[`1.0/`](1.0/) stays published for archives made before the 2.0 release. Every
-document carries `passport_version`; a breaking change bumps it and publishes a
-new schema, and **old versions stay readable forever**: read an archive against
-the schema directory matching its own `passport_version`.
+version in a directory of its own: [`2.1/`](2.1/) is what new exports use,
+[`2.0/`](2.0/) and [`1.0/`](1.0/) stay published for archives made before the
+2.1 release. Every document carries `passport_version`; a breaking change
+bumps it and publishes a new schema, and **old versions stay readable
+forever**: read an archive against the schema directory matching its own
+`passport_version`.
 
 ## Versions
 
 | Version | Status | Documents | What changed |
 | --- | --- | --- | --- |
-| **2.0** | current | `manifest.json`, `memories.json`, `receipts.json` | Removed `tasks.json` and the manifest's required `tasks` count, when the task subsystem was removed from the product. Nothing else changed: memories, receipts, provenance, hashing and signing are byte-identical in shape to 1.0. |
+| **2.1** | current | `manifest.json`, `memories.json`, `receipts.json` | The passport became per space: the manifest gained a required `space` field naming the one space the archive exports, and `receipts.json` carries that space's receipts, which form their own hash chain (per-space chains) and therefore verify standalone from the genesis constant. Hashing, signing and the receipt canonicalization are byte-identical to 2.0. |
+| 2.0 | historical, still valid | `manifest.json`, `memories.json`, `receipts.json` | Removed `tasks.json` and the manifest's required `tasks` count, when the task subsystem was removed from the product. Nothing else changed: memories, receipts, provenance, hashing and signing are byte-identical in shape to 1.0. |
 | 1.0 | historical, still valid | `manifest.json`, `memories.json`, `tasks.json`, `receipts.json` | The original published format. A 1.0 archive remains a complete, verifiable artifact; verify it against [`1.0/`](1.0/) exactly as before. |
 
 A Cogeto instance writes exactly one version, the current one, and its
 validator accepts only that version for new exports. Reading is the open part:
-any 1.0 archive you already hold verifies unchanged, because verification uses
+any archive you already hold verifies unchanged, because verification uses
 the bytes and the key inside the archive, never the server.
 
 ## What's included (and what isn't)
@@ -73,7 +77,10 @@ the bytes and the key inside the archive, never the server.
 4. **Receipts.** For each receipt in `receipts.json`, recompute its `hash` from
  the canonical payload (see below) and verify its `signature` against
  `instance_public_key_pem`; walk the chain by `prev_hash` from the genesis
- constant `cogeto:deletion-receipt-chain:genesis`.
+ constant `cogeto:deletion-receipt-chain:genesis`. Since 2.1 the receipts are
+ one space's chain members (each space owns its own chain, under the same
+ genesis constant), so a receipt here never references a receipt outside the
+ exported space.
 
 Example (OpenSSL, manifest signature):
 
@@ -94,6 +101,6 @@ over the hex `hash` string.
 ## Sample
 
 Each version directory holds a small, **fictional** sample Passport (Ana, a demo
-persona) under `sample/`, [`2.0/sample/`](2.0/sample/) for the current format.
+persona) under `sample/`, [`2.1/sample/`](2.1/sample/) for the current format.
 It is illustrative: its hashes and signatures are placeholders, not real crypto:
 generate a real Passport from Settings → "Export my data" to see live values.

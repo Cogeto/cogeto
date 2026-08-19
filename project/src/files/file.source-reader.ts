@@ -89,6 +89,7 @@ export class FileSourceReader implements SourceReader {
   private async readAndRecord(
     sourceId: string,
     ownerId: string,
+    spaceId: string | undefined,
     bytes: Buffer,
     contentType: string | null,
     filename: string | null,
@@ -99,7 +100,10 @@ export class FileSourceReader implements SourceReader {
     const laddered = new LadderedDocumentReader(this.parseCaps, this.visionGateway, this.counters);
     try {
       const result = await laddered.read(ownerId, bytes, contentType, filename);
-      await this.reports?.record(sourceId, ownerId, result.report, this.logger);
+      await this.reports?.record(sourceId, ownerId, result.report, {
+        spaceId,
+        logger: this.logger,
+      });
       return result;
     } catch (error) {
       if (error instanceof PermanentExtractionError) {
@@ -110,7 +114,7 @@ export class FileSourceReader implements SourceReader {
             ...emptyReport(error.format, error.outcome),
             reasonCode: error.reasonCode,
           },
-          this.logger,
+          { spaceId, logger: this.logger },
         );
       }
       throw error;
@@ -145,6 +149,7 @@ export class FileSourceReader implements SourceReader {
     const { text, segments, report } = await this.readAndRecord(
       sourceId,
       metadata.ownerId,
+      metadata.spaceId,
       object.body,
       object.contentType,
       storedFilename,
@@ -160,6 +165,9 @@ export class FileSourceReader implements SourceReader {
       createdAt: metadata.uploadDate,
       scope: metadata.scope,
       sensitive: metadata.sensitive,
+      // The source row's space (docs/features/spaces.md): every derived fact
+      // inherits it at admission, exactly like scope and sensitive.
+      spaceId: metadata.spaceId,
       // A document is someone else's writing, even when the user uploaded it.
       // Its obligations are facts about the document, never the user's own
       // commitments, so they never become open loops.
@@ -193,6 +201,7 @@ export class FileSourceReader implements SourceReader {
     const { text, segments, report } = await this.readAndRecord(
       sourceId,
       md['owner-id'] ?? '',
+      md['space-id'] ?? undefined,
       object.body,
       object.contentType,
       discardFilename,
@@ -208,6 +217,9 @@ export class FileSourceReader implements SourceReader {
       createdAt: md['uploaded-at'] ? new Date(md['uploaded-at']!) : new Date(),
       scope: (md['scope'] as MemoryScope | undefined) ?? 'private',
       sensitive: md['sensitive'] === 'true',
+      // Discard mode has no row, so the space rides the staging object's
+      // metadata beside owner/scope/sensitive (docs/features/spaces.md).
+      spaceId: md['space-id'] ?? undefined,
       // Same rule as the durable path: a document is not the user's own voice.
       authoredByUser: false,
       // Same rule as the durable path: the sniffed format for the gate's

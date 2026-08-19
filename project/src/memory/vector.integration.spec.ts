@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type { Principal } from '@cogeto/shared';
 import { fakeEmbedding, startTestDatabase, startTestQdrant } from '../testing/index';
 import type { TestDatabase, TestQdrant } from '../testing/index';
@@ -84,7 +85,9 @@ describe('memory vector index (integration, real Postgres + real Qdrant)', () =>
 
   it('vector_search_gated: B private and sensitive points never reach A — native Qdrant filters', async () => {
     // The filter itself first: gates must be IN the query (spec §4.2), and the
-    // opt-in variant still restricts sensitive rows to the caller's own.
+    // opt-in variant still restricts sensitive rows to the caller's own. The
+    // space is the third hard condition (docs/features/spaces.md): a bare
+    // principal resolves to the default space, never to "all spaces".
     expect(buildGateFilter(userA, {})).toEqual({
       must: [
         {
@@ -94,6 +97,7 @@ describe('memory vector index (integration, real Postgres + real Qdrant)', () =>
           ],
         },
         { key: 'sensitive', match: { value: false } },
+        { key: 'space_id', match: { value: DEFAULT_SPACE_ID } },
       ],
     });
     expect(buildGateFilter(userA, { includeSensitive: true })).toEqual({
@@ -110,6 +114,7 @@ describe('memory vector index (integration, real Postgres + real Qdrant)', () =>
             { key: 'owner_id', match: { value: 'user-a' } },
           ],
         },
+        { key: 'space_id', match: { value: DEFAULT_SPACE_ID } },
       ],
     });
 

@@ -29,6 +29,9 @@ export async function recordConfluenceProvenance(
   input: {
     ownerId: string;
     orgId: string;
+    /** The COGETO space, inherited from the connector
+     * (docs/features/spaces.md); omitted falls to the default space. */
+    spaceId?: string;
     connectorId: string;
     sourceType: string;
     sourceId: string;
@@ -39,6 +42,7 @@ export async function recordConfluenceProvenance(
     .values({
       ownerId: input.ownerId,
       orgId: input.orgId,
+      ...(input.spaceId ? { spaceId: input.spaceId } : {}),
       connectorId: input.connectorId,
       sourceType: input.sourceType,
       sourceId: input.sourceId,

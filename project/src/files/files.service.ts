@@ -14,6 +14,7 @@ import {
   CSV_CONTENT_TYPE,
   MARKDOWN_CONTENT_TYPE,
   PLAIN_TEXT_CONTENT_TYPE,
+  resolveSpaceId,
 } from '@cogeto/shared';
 import {
   clearIdempotencyForReprocess,
@@ -265,7 +266,13 @@ export class FilesService {
     checksum: string,
     flags: UploadFlags,
   ): Promise<string | null> {
-    const existing = await this.files.findDuplicate(principal.userId, checksum);
+    // Per space by design (docs/features/spaces.md section 5): the same file
+    // uploaded into two spaces is two independent sources.
+    const existing = await this.files.findDuplicate(
+      principal.userId,
+      checksum,
+      resolveSpaceId(principal),
+    );
     if (!existing) return null;
     if (existing.scope !== flags.scope || existing.sensitive !== flags.sensitive) return null;
     return existing.objectKey;
@@ -360,6 +367,9 @@ export class FilesService {
           ownerId: principal.userId,
           scope: flags.scope,
           sensitive: flags.sensitive,
+          // The caller's current space, stamped inside the same transaction
+          // that creates the source (docs/features/spaces.md).
+          spaceId: resolveSpaceId(principal),
           checksum,
           sizeBytes: file.buffer.length,
         });
@@ -428,6 +438,9 @@ export class FilesService {
         'owner-id': principal.userId,
         scope: flags.scope,
         sensitive: String(flags.sensitive),
+        // No row to read it from, so the space rides the staging metadata
+        // beside owner/scope/sensitive (docs/features/spaces.md).
+        'space-id': resolveSpaceId(principal),
         'uploaded-at': new Date().toISOString(),
       },
     });
@@ -497,6 +510,10 @@ export class FilesService {
     const ownerId =
       metadata?.ownerId ?? (await this.memory.describeSource('file', objectKey))?.ownerId ?? null;
     if (!ownerId || ownerId !== principal.userId) return null;
+    // A stored source in another space is invisible here, same user included
+    // (docs/features/spaces.md). Discarded sources fall to the memory-derived
+    // check above, whose rows are gated by the same principal downstream.
+    if (metadata && metadata.spaceId !== resolveSpaceId(principal)) return null;
     // A discarded original has no bytes to re-read; saying so is better than
     // queueing a job that can only fail.
     if (!metadata && !(await this.objects.statObject(objectKey))) return { queued: false };
@@ -527,6 +544,7 @@ export class FilesService {
         detail: { reason: 'capability_available' },
         orgId: principal.orgId,
         ownerId: principal.userId,
+        spaceId: resolveSpaceId(principal),
       });
     });
     return { queued: true };
@@ -550,6 +568,9 @@ export class FilesService {
     const metadata = await this.files.get(objectKey);
     if (metadata) {
       if (metadata.ownerId !== principal.userId) return null;
+      // A source in another space reads as not found, same user included
+      // (docs/features/spaces.md): the wall has no owner exception.
+      if (metadata.spaceId !== resolveSpaceId(principal)) return null;
       const stat = await this.objects.statObject(objectKey);
       const rawFilename = stat?.metadata['original-filename'] ?? null;
       // Owner-gated above; the read report is as visible as its source.
@@ -609,6 +630,9 @@ export class FilesService {
   ): Promise<{ url: string; expiresInSeconds: number } | null> {
     const metadata = await this.files.get(objectKey);
     if (!metadata) return null;
+    // The space wall has no owner exception (docs/features/spaces.md): a
+    // file in another space is not downloadable from this one.
+    if (metadata.spaceId !== resolveSpaceId(principal)) return null;
 
     const isOwner = metadata.ownerId === principal.userId;
     const sameOrg = objectKey.split('/')[0] === principal.orgId;
@@ -637,6 +661,7 @@ export class FilesService {
       // The FILE's owner, not the caller: the detail gate serves the person
       // whose artifact left, which is the point of recording it.
       ownerId: metadata.ownerId,
+      spaceId: resolveSpaceId(principal),
     });
     return { url, expiresInSeconds: this.options.downloadUrlTtlSeconds };
   }

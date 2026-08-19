@@ -17,6 +17,13 @@ export interface PassportSubject {
 
 export interface PassportInput {
   subject: PassportSubject;
+  /**
+   * The ONE space this passport exports (docs/features/spaces.md section 5
+   * as amended). The executor read everything under this space's gate, and
+   * the receipts belong to this space's chain, so the archive verifies
+   * standalone.
+   */
+  space: { id: string; name: string | null };
   memories: MemoryExport[];
   receipts: ReceiptExport[];
   /** Original bytes to include under `attachments/`, when include_originals. */
@@ -37,16 +44,20 @@ export interface AssembledPassport {
 const README = `Cogeto Memory Passport
 ======================
 
-This is a complete, portable export of your data from Cogeto, in an open,
-documented, versioned format. You are not locked in.
+This is a complete, portable export of your data in ONE space of a Cogeto
+instance, in an open, documented, versioned format. You are not locked in.
+The space is named in manifest.json under "space"; a space's receipts form
+their own hash chain, so everything in this archive verifies standalone.
 
 Read it:
   manifest.json    index of every document with a SHA-256 hash of each, the
-                   instance public key, and how the manifest is signed
+                   instance public key, how the manifest is signed, and the
+                   space this archive exports
   manifest.json.sig  detached ed25519 signature over manifest.json
   memories.json    every fact, with status, scope, provenance and the full
                    validity/supersession history (not just the current state)
-  receipts.json    your deletion receipts, still independently verifiable
+  receipts.json    your deletion receipts in this space, still independently
+                   verifiable against the space's own chain
   attachments/     original files, if you chose to include them
 
 Verify it (using only this archive and the published schema):
@@ -97,6 +108,7 @@ export function assemblePassport(input: PassportInput): AssembledPassport {
     passport_version: PASSPORT_VERSION,
     generated_at: input.generatedAt.toISOString(),
     subject: { user_id: input.subject.userId, display_name: input.subject.displayName },
+    space: { id: input.space.id, name: input.space.name },
     instance: {
       public_key_pem: input.instancePublicKeyPem,
       signature_algorithm: 'ed25519',

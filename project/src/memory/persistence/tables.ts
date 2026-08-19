@@ -11,6 +11,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import {
+  DEFAULT_SPACE_ID,
   FACT_KINDS,
   MEMORY_SCOPES,
   MEMORY_STATUSES,
@@ -58,6 +59,15 @@ export const memory = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     ownerId: text('owner_id').notNull(),
     scope: scopeEnum('scope').notNull(),
+    /**
+     * The space this fact lives in (docs/features/spaces.md, migration 0060):
+     * the third hard dimension of the access gate, beside owner and scope,
+     * carried DIRECTLY on the gate table because a gate that requires a join
+     * is a gate that will eventually be bypassed. NOT NULL with the default
+     * space as the schema-level DEFAULT, so an un-spaced row is
+     * unrepresentable; write paths stamp the caller's current space.
+     */
+    spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
     sourceType: text('source_type').$type<SourceType>().notNull(),
     sourceId: text('source_id').notNull(),
     status: memoryStatusEnum('status').notNull().default('active'),
@@ -117,6 +127,7 @@ export const memory = pgTable(
     index('memory_owner_scope_idx').on(t.ownerId, t.scope),
     index('memory_status_idx').on(t.status),
     index('memory_source_idx').on(t.sourceType, t.sourceId),
+    index('memory_space_idx').on(t.spaceId),
   ],
 );
 
@@ -125,6 +136,7 @@ export const fileMetadata = pgTable('file_metadata', {
   ownerId: text('owner_id').notNull(),
   scope: scopeEnum('scope').notNull(),
   sensitive: boolean('sensitive').notNull().default(false),
+  spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
   uploadDate: timestamp('upload_date', { withTimezone: true }).notNull().defaultNow(),
   checksum: text('checksum'),
   sizeBytes: bigint('size_bytes', { mode: 'number' }),
@@ -134,6 +146,17 @@ export const deletionReceipt = pgTable('deletion_receipt', {
   id: uuid('id').primaryKey().defaultRandom(),
   sourceType: text('source_type').$type<SourceType>().notNull(),
   sourceId: text('source_id').notNull(),
+  /**
+   * Which space's chain this receipt belongs to (docs/features/spaces.md
+   * section 5 as amended, migration 0060). Each space owns its own chain:
+   * its own genesis, sequence and tip, so a receipt links only to the
+   * previous receipt WITHIN its space and a space's receipts verify
+   * standalone. The column sits BESIDE the hashed payload, never inside it:
+   * canonicalisation and the signature format are untouched, and every
+   * historical receipt (now the default space's chain) verifies
+   * byte-identically.
+   */
+  spaceId: uuid('space_id').notNull().default(DEFAULT_SPACE_ID),
   countsJson: jsonb('counts_json'),
   status: receiptStatusEnum('status').notNull().default('pending'),
   prevHash: text('prev_hash'),

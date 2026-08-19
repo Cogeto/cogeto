@@ -70,6 +70,7 @@ may name the table in a query, in Drizzle or in SQL.
 | `notes` | `note` |
 | `files` | `file_read_report` (V2.1 item 4.1: what the reading layer made of an uploaded file. NOT in `memory` beside `file_metadata`, because a discard-mode upload has no metadata row and is exactly the upload whose original is gone) |
 | `settings` | `user_settings` |
+| `spaces` | `space`, `user_space_state` (V3 spaces session 1, decision record [`docs/features/spaces.md`](features/spaces.md): the sealed partition record and the user's last used space. The partition DIMENSION lives as a `space_id` column on every content-bearing root and inside both gate constructions; this module owns only the partition records themselves, and the gates read the id as a value off the Principal, never by joining these tables) |
 | `imports` | `import_run`, `import_item` (V2.2 item 5.3: the first-class import record. Items carry filenames, so the deletion cascade TOMBSTONES an item when its ingested source is erased: name cleared, outcome kept as arithmetic, receipts unchanged because nothing content-bearing survives) |
 | `connectors` | `connector`, `connector_sub_scope`, `connector_item`, `connector_sync_run`, `connector_webhook_delivery`, `connector_rate_limit` (V2.5 item 8.1, the connector platform, decision record [`docs/features/connectors.md`](features/connectors.md): lifecycle, the email-allowlist-shaped sub-scope selection, the natural-key ledger that stands in front of every model call, sync summaries, webhook delivery dedup and durable outbound rate state. `connector_item` deliberately carries identifiers and arithmetic only, never content, so it survives source deletion as dedup state: the cascade clears the source reference and marks the row erased) |
 | `projects` | `project`, `project_assignment` (V2.5 item 8.3, projects as workspaces, decision record [`docs/features/projects.md`](features/projects.md): the folder and what it groups. NEITHER table is source-derived, which is the finding the deletion coverage rests on: a name and a description are the user's own words typed into a form, an assignment is identifiers and a kind. So the saga has nothing to ERASE here and only an assignment to RELEASE (`ProjectAssignmentCascade`, counted on the receipt), and deleting a project runs no saga at all. Owned here rather than spread across the five modules whose things it groups, because "which project is this in" must have exactly one answer path) |
@@ -153,7 +154,7 @@ well-defined.
 
 ## 3. Job-type contracts
 
-Twenty-six job types. Each is declared **once**, as an exported constant, in the
+Twenty-seven job types. Each is declared **once**, as an exported constant, in the
 module that owns the payload contract and writes the handler body. The worker
 composition root is the only place that maps a job type to a handler, and it
 imports every constant rather than spelling any of them.
@@ -169,6 +170,7 @@ imports every constant rather than spelling any of them.
 | `deletion.execute` | `memory` | `DELETION_JOB_TYPE` | per-source |
 | `deletion_sweep` | `memory` | `SWEEP_JOB_TYPE` | recurring |
 | `memory.erase_owner` | `memory` | `OWNER_ERASURE_JOB_TYPE` | per-subject (plain, re-runnable: owner erasure runs the ordinary saga once per source, so it must NOT use `idempotentTask`, whose single transaction would collapse the per-source all-or-nothing guarantee into one transaction over the whole corpus; re-running erases what is left and retains what it retained) |
+| `space.erase` | `spaces` | `SPACE_ERASE_JOB_TYPE` | per-space (V3 spaces session 2: the owner-erasure shape exactly, one ordinary saga transaction per source, then the container cleanups, then the space row, whose NO ACTION foreign keys make the final delete the completeness proof; re-running erases what is left, and a leftover fails the pass loudly instead of surviving) |
 | `approval.execute` | `agents` | `APPROVAL_EXECUTE_JOB_TYPE` | per-source |
 | `approval_expiry` | `agents` | `APPROVAL_EXPIRY_JOB_TYPE` | recurring |
 | `research.conclude` | `research` | `RESEARCH_CONCLUDE_JOB_TYPE` | per-source |
@@ -302,7 +304,8 @@ defined by the module that *consumes* the implementation) are marked.
 | `research` | `RESEARCH_OPTIONS`, `RESEARCH_SYNTHESIS_OPTIONS`, `RESEARCH_CONCLUDE_WIRING` |
 | `skills` | `SKILL_ENGINE_OPTIONS` |
 | `model-gateway` | `MODEL_CONFIG_VIEW` |
-| `passport` | `PASSPORT_OPTIONS` |
+| `passport` | `PASSPORT_OPTIONS`, `SPACE_NAME_RESOLVER` (port, V3 spaces session 1: the per-space manifest's space-name lookup; `spaces` implements it, the roots bind it) |
+| `spaces` | `SPACE_CLEANUPS` (port, V3 spaces session 2: space deletion's container cleanups. Spaces defines it, each container-owning module implements it over its own tables, the roots bind the array, the `DERIVED_CASCADES` shape one module over) |
 | `reports` | `REPORT_OPTIONS` (composition-root options: signing key dir, retention, the vendored font/brand/trust-score paths, and the model configuration in force) |
 | `operations` | `OPERATIONS_OPTIONS`, `CAPABILITY_JOB_SOURCES`, `CONNECTOR_HEALTH` (port, V2.5 item 8.1: the connector fleet's capability entry; the connectors platform implements it, the app root binds it through operations' registration options) |
 | `connectors` | `CONNECTORS_OPTIONS` (composition-root options: the instance master key for the sealed webhook signing secret, and the ingress bounds) |

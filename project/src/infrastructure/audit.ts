@@ -27,6 +27,15 @@ export interface AuditEntry {
    * structural metadata within the org.
    */
   ownerId?: string;
+  /**
+   * The space the audited action happened in (docs/features/spaces.md,
+   * session 2): request paths pass the principal's resolved space, worker
+   * paths the subject row's. An ATTRIBUTE for filtering, never a gate — the
+   * trail stays ONE instance-level, administrator-only surface (issue #633).
+   * Absent = a genuinely instance-level action (provider configuration, user
+   * erasure, sweeps, instance-wide passes), never "unknown".
+   */
+  spaceId?: string;
 }
 
 /**
@@ -42,6 +51,7 @@ export async function writeAudit(executor: DbOrTx, entry: AuditEntry): Promise<v
     detailJson: entry.detail ?? null,
     orgId: entry.orgId ?? null,
     ownerId: entry.ownerId ?? null,
+    spaceId: entry.spaceId ?? null,
   });
 }
 
@@ -55,6 +65,7 @@ export interface AuditRecord {
   detail: Record<string, unknown> | null;
   orgId: string | null;
   ownerId: string | null;
+  spaceId: string | null;
   createdAt: Date;
 }
 
@@ -82,6 +93,15 @@ export async function readAuditEntries(
     ownerId?: string;
     /** Inclusive lower bound on `created_at`. */
     since?: Date;
+    /**
+     * Restrict to entries stamped with this space, PLUS unstamped ones
+     * (docs/features/spaces.md, session 2). Unstamped rows ride along because
+     * a NULL space marks an instance-level entry or one written before the
+     * attribute existed, and a limit-bounded caller (the change feed) must
+     * not lose those to the filter while still keeping another space's
+     * entries from consuming its window.
+     */
+    spaceId?: string;
     limit?: number;
   },
 ): Promise<AuditRecord[]> {
@@ -93,6 +113,9 @@ export async function readAuditEntries(
     ...(filter.entityIds ? [inArray(auditLog.entityId, [...filter.entityIds])] : []),
     ...(filter.ownerId ? [eq(auditLog.ownerId, filter.ownerId)] : []),
     ...(filter.since ? [gte(auditLog.createdAt, filter.since)] : []),
+    ...(filter.spaceId
+      ? [or(eq(auditLog.spaceId, filter.spaceId), isNull(auditLog.spaceId))!]
+      : []),
   ];
   // Newest first, id as the tiebreak — the strongest of the orderings the call
   // sites used, so no caller's result set can change.
@@ -116,6 +139,7 @@ function toRecord(row: typeof auditLog.$inferSelect): AuditRecord {
     detail: (row.detailJson ?? null) as Record<string, unknown> | null,
     orgId: row.orgId,
     ownerId: row.ownerId,
+    spaceId: row.spaceId,
     createdAt: row.createdAt,
   };
 }
@@ -143,6 +167,10 @@ export async function readAuditPage(
     actor?: string;
     action?: string;
     entityType?: string;
+    /** Exact space filter (docs/features/spaces.md): only entries stamped
+     * with this space. Strict on purpose — the administrator asked for one
+     * space's actions, and an unstamped entry is instance-level by contract. */
+    spaceId?: string;
     /** Inclusive lower bound / exclusive upper bound on `created_at`. */
     from?: Date;
     to?: Date;
@@ -162,6 +190,7 @@ export async function readAuditPage(
   if (filter.action)
     clauses.push(sql`${auditLog.action} ILIKE ${`%${escapeLike(filter.action)}%`} ESCAPE '\\'`);
   if (filter.entityType) clauses.push(eq(auditLog.entityType, filter.entityType));
+  if (filter.spaceId) clauses.push(eq(auditLog.spaceId, filter.spaceId));
   if (filter.from) clauses.push(gte(auditLog.createdAt, filter.from));
   if (filter.to) clauses.push(lt(auditLog.createdAt, filter.to));
   const where = and(...clauses);

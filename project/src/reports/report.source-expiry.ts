@@ -37,13 +37,23 @@ export class FindingsReportCascade implements DerivedCascade {
     return 0;
   }
 
-  async expireForOwner(tx: Tx, ownerId: string): Promise<{ count: number; objectKeys: string[] }> {
+  async expireForOwner(
+    tx: Tx,
+    ownerId: string,
+    spaceId?: string,
+  ): Promise<{ count: number; objectKeys: string[] }> {
     const rows = await tx
       .select()
       .from(findingsReport)
       .where(
         and(
           eq(findingsReport.userId, ownerId),
+          // A findings report covers one space by construction (its run
+          // enumerates space-carrying sources), so only the deletion's
+          // space's reports can quote the doomed material
+          // (docs/features/spaces.md). Absent (legacy harnesses) expires
+          // across spaces as before.
+          ...(spaceId ? [eq(findingsReport.spaceId, spaceId)] : []),
           // 'failed' joins the list: a failed attempt may have recorded and
           // uploaded artifact keys before it failed, and those bytes must
           // ride the same receipt as everything else.
@@ -75,6 +85,7 @@ export class FindingsReportCascade implements DerivedCascade {
       detail: { count: rows.length, reason: 'source deletion' },
       orgId: (await this.directory?.orgOf(ownerId)) ?? undefined,
       ownerId,
+      spaceId,
     });
 
     return { count: rows.length, objectKeys };

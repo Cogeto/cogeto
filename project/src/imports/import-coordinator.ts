@@ -218,6 +218,9 @@ export class ImportCoordinator {
       if (!score) return;
       const recorded = await this.revisions.recordDetected(this.db, {
         ownerId: principal.userId,
+        // The run's space (docs/features/spaces.md): both endpoints live in
+        // it, and an unstamped link fell to the default space.
+        spaceId: principal.spaceId,
         successor: { sourceType: 'file', sourceId: successorKey },
         predecessor: { sourceType: 'file', sourceId: predecessorKey },
         status: score.decision,
@@ -352,7 +355,10 @@ export class ImportCoordinator {
 }
 
 /** The run owner as a Principal for the gated reads and the upload path.
- * The org id comes from any staged/final key's first segment. */
+ * The org id comes from any staged/final key's first segment. Carries the
+ * RUN's space (docs/features/spaces.md): a worker acting on a row acts in
+ * that row's space, so every document this run feeds through the one upload
+ * path is stamped into it. */
 function principalFor(run: ImportRunRow): Principal {
   return {
     userId: run.ownerId,
@@ -361,5 +367,6 @@ function principalFor(run: ImportRunRow): Principal {
     orgId: run.orgId,
     orgName: '',
     roles: [],
+    spaceId: run.spaceId,
   };
 }
