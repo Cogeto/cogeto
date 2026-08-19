@@ -18,8 +18,10 @@ regenerates the schema from it and compares, so drift fails the build.
 
 | File | What it is |
 |---|---|
-| `1.1/findings-report.schema.json` | **Current.** JSON Schema (draft 2020-12) for the whole artifact: `{ findings_report_version, payload, integrity }`. |
-| `1.1/sample/findings-report.json` | A complete, fictional, schema-valid example. |
+| `1.2/findings-report.schema.json` | **Current.** JSON Schema (draft 2020-12) for the whole artifact: `{ findings_report_version, payload, integrity }`. |
+| `1.2/sample/findings-report.json` | A complete, fictional, schema-valid example. |
+| `1.1/findings-report.schema.json` | The previous version. Still valid for every 1.1 artifact. |
+| `1.1/sample/findings-report.json` | Its sample. |
 | `1.0/findings-report.schema.json` | The first published version. Still valid for every 1.0 artifact. |
 | `1.0/sample/findings-report.json` | Its sample. |
 
@@ -29,6 +31,14 @@ regenerates the schema from it and compares, so drift fails the build.
 version list published here only ever grows; a change bumps the version and
 publishes a new directory, and old versions stay verifiable forever (the
 passport rule).
+
+**1.2** (V3 spaces session 4) is additive over 1.1: the `report.scope` block
+gained `space_id` (required) and `space_name` (nullable), because a report
+enumerates exactly one space, a fully sealed partition of the instance, and a
+report forwarded to an auditor must say which partition it describes
+(docs/features/spaces.md section 6c). Nothing about the integrity block, the
+canonicalization or the signing procedure changed, so 1.0 and 1.1 artifacts
+verify today by exactly the same procedure, against their own schemas.
 
 **1.1** (V2.5 item 8.3, projects as workspaces) is additive over 1.0: the
 `report.scope` block gained `project_id` and `project_name`, and its `kind`
@@ -62,7 +72,7 @@ Given a downloaded `report.json`:
 
 ```sh
 # 1. Schema: validate report.json against the schema directory whose name
-#    matches .findings_report_version (1.1 for reports generated today).
+#    matches .findings_report_version (1.2 for reports generated today).
 
 # 2. Canonicalize the payload and hash it.
 jq -cjS .payload report.json | shasum -a 256

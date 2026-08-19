@@ -28,7 +28,10 @@
     "domainPlaceholder": "adriatic-foods.hr",
     "note": "Notiz (optional)",
     "notePlaceholder": "z. B. Lieferant",
-    "addFailed": "Hinzufügen fehlgeschlagen. Prüfen Sie den Wert."
+    "addFailed": "Hinzufügen fehlgeschlagen. Prüfen Sie den Wert.",
+    "spaceField": "Landet im Space",
+    "spaceTarget": "in {{space}}",
+    "spaceTargetTitle": "Der Space, in dem die E-Mail dieses Absenders landet"
   },
   "refusals": {
     "heading": "Kürzlich abgewiesen",
@@ -41,7 +44,17 @@
     "no_owner": "kein Eigentümer für die Erfassung konfiguriert (ältere Ablehnung)",
     "wrong_recipient": "an einen anderen Empfänger adressiert",
     "message_too_large": "Nachricht überschritt die Größenbegrenzung",
-    "attachments_too_large": "Anhänge überschritten die Größenbegrenzung"
+    "attachments_too_large": "Anhänge überschritten die Größenbegrenzung",
+    "alias_not_recognized": "an einen Alias adressiert, den Sie nicht definiert haben"
   },
-  "spaceNote": "Eingehende E-Mails werden vorerst im Standard-Space erfasst; das Zuordnen einer Adresse zu einem Space folgt später."
+  "routingNote": "Jede Regel unten benennt den Space, in dem ihre E-Mail landet. E-Mail ohne passende Regel landet in {{defaultSpace}}; E-Mail an einen Alias, den Sie nicht definiert haben, wird abgewiesen und nie einem Space zugeraten.",
+  "aliases": {
+    "heading": "Adress-Aliasse",
+    "explainer": "Geben Sie einem Absender eine Adresse mit Plus-Zusatz wie {{example}}, und seine E-Mail landet im Space dieses Alias, egal wer sendet. Aliasse gehören Ihnen; andere Nutzer führen ihre eigenen.",
+    "exampleAlias": "kundex",
+    "aliasField": "Alias",
+    "aliasPlaceholder": "kundex",
+    "addFailed": "Alias konnte nicht angelegt werden. Nur Buchstaben, Ziffern, Punkt, Bindestrich und Unterstrich.",
+    "refuseNote": "E-Mail an einen Alias, den Sie nicht definiert haben, wird abgewiesen und erscheint unter den zuletzt abgewiesenen; nichts wird erfasst, bis der Alias existiert."
+  }
 }

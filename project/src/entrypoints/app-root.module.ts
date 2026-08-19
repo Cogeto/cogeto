@@ -59,6 +59,8 @@ import {
 import {
   EmailModule,
   EmailReplyModule,
+  EmailRoutingSpaceCleanup,
+  EmailRoutingSpaceCleanupModule,
   EmailSourceDeletion,
   EmailSourcePortsModule,
 } from '../email/index';
@@ -93,7 +95,13 @@ import {
   ProjectSpaceCleanup,
   ProjectSpaceCleanupModule,
 } from '../projects/index';
-import { SpaceNameModule, SpaceNameSource, SpacesModule } from '../spaces/index';
+import {
+  MachineBindingModule,
+  MachineBindingService,
+  SpaceNameModule,
+  SpaceNameSource,
+  SpacesModule,
+} from '../spaces/index';
 import { CONNECTOR_HEALTH, OperationsModule } from '../operations/index';
 import {
   ConnectorHealthSource,
@@ -373,6 +381,9 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
           production: config.production,
           demoMode: config.demoMode,
         },
+        // Machine callers' per-credential space bindings (section 6c): the
+        // spaces module implements the lookup; unbound machines are refused.
+        machineBindings: { imports: [MachineBindingModule], adapter: MachineBindingService },
       }),
       ModelGatewayModule.register({
         providers: config.modelProviders,
@@ -466,6 +477,7 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
             ReportSpaceCleanupModule,
             PassportSpaceCleanupModule,
             ConnectorSpaceCleanupModule,
+            EmailRoutingSpaceCleanupModule,
           ],
           adapters: [
             ProjectSpaceCleanup,
@@ -477,6 +489,7 @@ export function createAppRootModule(config: CogetoConfig, live: LiveModelConfigu
             ReportSpaceCleanup,
             PassportSpaceCleanup,
             ConnectorSpaceCleanup,
+            EmailRoutingSpaceCleanup,
           ],
         },
       }),

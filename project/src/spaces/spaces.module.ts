@@ -3,6 +3,7 @@ import type { DynamicModule, ModuleMetadata, Type } from '@nestjs/common';
 import { SpaceService } from './space.service';
 import { SpacesController } from './spaces.controller';
 import { SpaceErasureService } from './space-erasure.service';
+import { MachineBindingModule } from './machine-binding.service';
 import { SPACE_CLEANUPS } from './space-cleanup.port';
 import type { SpaceCleanup } from './space-cleanup.port';
 
@@ -32,7 +33,14 @@ export class SpacesModule {
   ): DynamicModule {
     return {
       module: SpacesModule,
-      imports: [...(options.imports ?? []), ...(options.cleanups?.imports ?? [])],
+      // MachineBindingModule: the machine-binding management routes
+      // (section 6c); the same static module instance also satisfies the
+      // identity seam's port, bound by the roots.
+      imports: [
+        MachineBindingModule,
+        ...(options.imports ?? []),
+        ...(options.cleanups?.imports ?? []),
+      ],
       controllers: [SpacesController],
       providers: [
         SpaceService,

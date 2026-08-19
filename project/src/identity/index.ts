@@ -12,6 +12,11 @@ export { DEMO_USERNAME, demoLoginFile, readDemoLogin } from './demo-login';
 export type { DemoCredentials } from './demo-login';
 export { Public } from './public.decorator';
 export { AdminGuard } from './admin.guard';
+// Machine callers' per-credential space binding port
+// (docs/features/spaces.md section 6c): identity defines the need, the
+// spaces module implements it, the roots bind the two.
+export { MACHINE_SPACE_BINDINGS } from './machine-space-bindings.port';
+export type { MachineSpaceBindings } from './machine-space-bindings.port';
 // Connector credential storage inside the identity seam (V2.5 item 8.1).
 // The store writes, describes and destroys; the OPENER decrypts and exists
 // only in roots registered with `credentialReads: true` (the worker).

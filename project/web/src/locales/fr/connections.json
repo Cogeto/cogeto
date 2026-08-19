@@ -1,6 +1,7 @@
 {
   "heading": "Connexions",
   "explainer": "Les systèmes externes dont Cogeto lit le contenu. Une connexion se contente toujours de lire ; chaque page synchronisée devient une source ordinaire que vous pouvez inspecter, auditer et supprimer.",
+  "spaceNote": "Une connexion appartient à cet espace: elle y a été créée, tout ce qu'elle ingère y arrive, et elle n'est visible depuis aucun autre espace. Connecter le même site dans un autre espace crée une connexion distincte et indépendante. L'identifiant de connexion est stocké une fois pour l'instance; ce qui est ingéré reste scellé par espace.",
   "list": {
     "error": "Impossible de charger vos connexions pour le moment.",
     "empty": "Rien n'est encore connecté.",

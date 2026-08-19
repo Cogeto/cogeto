@@ -46,7 +46,7 @@ inspectable artifact. EU hosted, self hosted, or fully offline.
 
 **v1.8.0 is the current release line** (`package.json` and the git tag are the two
 sources of truth and must agree: `npm run verify:version`). Migrations run to
-**0062**; 0060 through 0062 are the V3 spaces sessions described below, and
+**0063**; 0060 through 0063 are the V3 spaces sessions described below, and
 0057 through 0059 are small, self-contained changes with their reasoning in the
 files themselves: 0057 full-text search over conversations, 0058 a `stopped`
 flag so an interrupted answer says so, 0059 an index making the
@@ -642,6 +642,33 @@ default-space affair, stated on the surface, deferred to the email session.
 The spaces API errors became serverErrors codes; `hr`/`de`/`fr` are fully
 translated (German keeps *Space*, recorded in the glossary); a new space
 opens on a first-run state pointing at Chat and Sources.
+
+**V3 spaces, session 4 of 4, delivered the edges and the artifacts**
+(migration 0063; decisions recorded in
+[`docs/features/spaces.md`](docs/features/spaces.md) section 6c). The paths
+where content enters without a person standing in a space are now explicit
+and recorded: **inbound mail resolves to exactly one space before anything is
+stored** (per-owner alias rules over the plus-tagged inbound address, a space
+target on every sender allowlist rule with address outranking domain, the
+default space as the fallback; an undefined alias is REFUSED and recorded,
+never guessed, and a routing rule dies with its target space through the
+email cleanup leg); **machine callers carry a per-credential space binding**
+(a token without a human profile is a machine, refused until an administrator
+binds its user id via `PUT /api/spaces/machine-bindings/:userId`, a
+disagreeing header refused rather than honored; the `machine_space_binding`
+table is spaces-owned, the `MACHINE_SPACE_BINDINGS` port identity-owned, and
+there is no MCP server in the product, so the bearer API, mail routing and
+the connector-row-bound webhooks are the complete machine surface);
+**connectors were sealed** (the store's optional-space fallbacks became
+required parameters, immutability pinned structurally, the two-space
+independence proven behaviourally); and **the artifacts carry their space
+out** (findings report schema **1.2**, additive: scope block `space_id` +
+`space_name`, stated on the PDF cover and provenance; the delta baseline,
+single-flight dedupe and by-id report/passport reads sealed per space; the
+attention read state became per `(owner, space)` so opening the dashboard in
+one space no longer silences another's unread dot). Read
+[`docs/features/spaces.md`](docs/features/spaces.md) before changing anything
+near an intake path, a machine credential, or an exported artifact.
 
 Work proceeds through the V2 plan in order, with one owner-approved insertion,
 now complete: **reasoning-model support** (Parts A, B and C, 2026-08-04).

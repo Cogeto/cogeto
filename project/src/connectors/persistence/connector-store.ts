@@ -1,7 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, inArray, lt, sql } from 'drizzle-orm';
-import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import { DRIZZLE, openSecret, sealSecret, userError, writeAudit } from '../../infrastructure/index';
 import type { Db, DbOrTx } from '../../infrastructure/index';
 import { transition } from '../domain/lifecycle';
@@ -46,17 +45,20 @@ export class ConnectorStore {
     orgId: string;
     kind: string;
     name: string;
-    /** The caller's current space (docs/features/spaces.md): a connector
-     * belongs to one space for its whole life. Omitted (legacy harnesses)
-     * falls to the schema-level default space. */
-    spaceId?: string;
+    /** The caller's current space (docs/features/spaces.md section 6c): a
+     * connector belongs to one space for its whole life, chosen here and
+     * IMMUTABLE afterwards (no store method writes the column). REQUIRED so
+     * a new caller cannot forget the space and silently get the default
+     * partition; pre-spaces JS harnesses that omit it fall to the
+     * schema-level default, which is the default space. */
+    spaceId: string;
   }): Promise<ConnectorRow> {
     const rows = await this.db
       .insert(connector)
       .values({
         ownerId: input.ownerId,
         orgId: input.orgId,
-        ...(input.spaceId ? { spaceId: input.spaceId } : {}),
+        spaceId: input.spaceId,
         kind: input.kind,
         name: input.name,
       })
@@ -82,17 +84,15 @@ export class ConnectorStore {
 
   /** Owner-scoped read for the API; a foreign id is indistinguishable from
    * an absent one, and so is a connector in another space
-   * (docs/features/spaces.md): visibility has three dimensions now. */
-  async byIdForOwner(id: string, ownerId: string, spaceId?: string): Promise<ConnectorRow> {
+   * (docs/features/spaces.md): visibility has three dimensions now. The
+   * space is REQUIRED (section 6c): a caller cannot forget it and silently
+   * read the default partition. */
+  async byIdForOwner(id: string, ownerId: string, spaceId: string): Promise<ConnectorRow> {
     const rows = await this.db
       .select()
       .from(connector)
       .where(
-        and(
-          eq(connector.id, id),
-          eq(connector.ownerId, ownerId),
-          eq(connector.spaceId, spaceId ?? DEFAULT_SPACE_ID),
-        ),
+        and(eq(connector.id, id), eq(connector.ownerId, ownerId), eq(connector.spaceId, spaceId)),
       )
       .limit(1);
     const row = rows[0];
@@ -100,17 +100,17 @@ export class ConnectorStore {
     return row;
   }
 
-  async listForOwner(ownerId: string, spaceId?: string): Promise<ConnectorRow[]> {
+  async listForOwner(ownerId: string, spaceId: string): Promise<ConnectorRow[]> {
     return (
       this.db
         .select()
         .from(connector)
-        // One space's connectors (docs/features/spaces.md); absent resolves to
-        // the default space, where every pre-spaces connector lives.
+        // One space's connectors (docs/features/spaces.md); the space is
+        // required, so no caller can silently list the default partition.
         .where(
           and(
             eq(connector.ownerId, ownerId),
-            eq(connector.spaceId, spaceId ?? DEFAULT_SPACE_ID),
+            eq(connector.spaceId, spaceId),
             sql`${connector.state} <> 'removed'`,
           ),
         )

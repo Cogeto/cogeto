@@ -185,6 +185,16 @@ const scopeSchema = z.object({
    */
   project_id: z.string().nullable(),
   project_name: z.string().nullable(),
+  /**
+   * The SPACE the run enumerated (schema 1.2, additive,
+   * docs/features/spaces.md section 6c): every source in this report lives
+   * in this one sealed partition, and a report forwarded to an auditor must
+   * say which partition it describes. The id is the durable identity; the
+   * name is the display name at generation time, null when the generating
+   * process could not resolve one.
+   */
+  space_id: z.string(),
+  space_name: z.string().nullable(),
   from: isoDate.nullable(),
   to: isoDate.nullable(),
 });

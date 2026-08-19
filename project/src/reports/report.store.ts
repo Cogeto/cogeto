@@ -60,27 +60,37 @@ export class ReportStore {
     return rows[0] ?? null;
   }
 
-  /** Owner-gated read for the status/download endpoints. */
-  async getForOwner(userId: string, id: string): Promise<FindingsReportRow | null> {
+  /** Owner-gated read for the status/download endpoints, sealed to the
+   * caller's space (docs/features/spaces.md section 6c): a run in another
+   * space reads as absent, like every other by-id read. The space is
+   * optional only for legacy harnesses; the service always passes it. */
+  async getForOwner(
+    userId: string,
+    id: string,
+    spaceId?: string,
+  ): Promise<FindingsReportRow | null> {
     const rows = await this.db
       .select()
       .from(findingsReport)
-      .where(and(eq(findingsReport.id, id), eq(findingsReport.userId, userId)))
+      .where(
+        and(
+          eq(findingsReport.id, id),
+          eq(findingsReport.userId, userId),
+          ...(spaceId ? [eq(findingsReport.spaceId, spaceId)] : []),
+        ),
+      )
       .limit(1);
     return rows[0] ?? null;
   }
 
-  /** The owner's runs, optionally narrowed to one space (the surface shows
-   * the caller's current space). */
-  async listForOwner(userId: string, spaceId?: string): Promise<FindingsReportRow[]> {
+  /** The owner's runs in ONE space (the surface shows the caller's current
+   * space). Required (section 6c): a caller cannot forget the space and
+   * silently list across partitions. */
+  async listForOwner(userId: string, spaceId: string): Promise<FindingsReportRow[]> {
     return this.db
       .select()
       .from(findingsReport)
-      .where(
-        spaceId
-          ? and(eq(findingsReport.userId, userId), eq(findingsReport.spaceId, spaceId))
-          : eq(findingsReport.userId, userId),
-      )
+      .where(and(eq(findingsReport.userId, userId), eq(findingsReport.spaceId, spaceId)))
       .orderBy(desc(findingsReport.createdAt))
       .limit(50);
   }
@@ -95,6 +105,7 @@ export class ReportStore {
   async unfinishedForOwner(
     executor: Db | Tx,
     userId: string,
+    spaceId: string,
     now: Date,
   ): Promise<FindingsReportRow | null> {
     const staleBefore = new Date(now.getTime() - STALE_RUN_MS);
@@ -104,6 +115,9 @@ export class ReportStore {
       .where(
         and(
           eq(findingsReport.userId, userId),
+          // Single-flight is per space (section 6c): an in-flight run in one
+          // space must not block triggering in another.
+          eq(findingsReport.spaceId, spaceId),
           inArray(findingsReport.status, ['pending', 'running']),
           gt(findingsReport.createdAt, staleBefore),
         ),
@@ -115,10 +129,15 @@ export class ReportStore {
   /**
    * The latest READY run over the same scope before the given run — the delta
    * baseline. Matching is on scope_key, the canonical serialization, so key
-   * order in the stored jsonb can never split identical scopes.
+   * order in the stored jsonb can never split identical scopes, AND on the
+   * run's space (section 6c): two spaces legitimately hold identical scope
+   * keys (every corpus scope canonicalizes the same), and a delta computed
+   * across the wall would leak one partition's counts into another's
+   * artifact.
    */
   async previousReady(
     userId: string,
+    spaceId: string,
     scopeKey: string,
     before: Date,
     excludeId: string,
@@ -129,6 +148,7 @@ export class ReportStore {
       .where(
         and(
           eq(findingsReport.userId, userId),
+          eq(findingsReport.spaceId, spaceId),
           eq(findingsReport.scopeKey, scopeKey),
           inArray(findingsReport.status, ['ready', 'expired']),
           isNotNull(findingsReport.readyAt),

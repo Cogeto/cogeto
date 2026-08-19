@@ -330,9 +330,14 @@ export function scoreRevision(basis: Omit<RevisionBasis, 'confidence'>): {
 }
 
 /** Grouped revision outcomes for a set of successor keys (V2.2 item 5.3):
- * the import summary's linked/proposed numbers, table named only here. */
+ * the import summary's linked/proposed numbers, table named only here. The
+ * space condition rides INSIDE the query like every other read in this file
+ * (docs/features/spaces.md section 6c): successor ids are per-space material
+ * already, but an aggregate computed without the dimension is the class of
+ * read the isolation sessions exist to remove. */
 export async function revisionCountsForSuccessors(
   db: DbOrTx,
+  spaceId: string,
   successorKeys: readonly string[],
 ): Promise<{ linked: number; proposed: number }> {
   if (successorKeys.length === 0) return { linked: 0, proposed: 0 };
@@ -341,6 +346,7 @@ export async function revisionCountsForSuccessors(
     .from(sourceRevision)
     .where(
       and(
+        eq(sourceRevision.spaceId, spaceId),
         eq(sourceRevision.successorType, 'file'),
         inArray(sourceRevision.successorId, [...successorKeys]),
       ),

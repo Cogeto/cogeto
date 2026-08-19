@@ -401,3 +401,23 @@ stated in the interface because silently rewriting history is the surprising
 behaviour. Removing a connector releases its sub-scope assignments; the
 sources it already produced keep theirs, because they are still that client's
 documents.
+
+## A connector belongs to one space (V3 spaces session 4)
+
+A connector instance belongs to exactly ONE space, chosen at creation from
+the creator's current space and immutable afterwards; everything it
+materializes, its sub-scope cursors, its natural-key ledger, its sync runs
+and its machine revision links all inherit that space through the connector
+row, so the same upstream site connected into two spaces is two entirely
+independent connectors with no shared deduplication, by design.
+
+**Credentials stay instance-level in storage, space-bound in use**: the
+sealed credential lives in the identity seam with no space column, one
+credential per connector, and every use of it happens through the
+space-carrying connector row. Connecting the same site into two spaces is two
+authorisations into two sealed partitions, and the interface says so. A
+connector configured in one space is not listed, editable or syncable from
+another; space deletion removes the connector whole (credential, ledger and
+cascades included) through the connectors cleanup leg. The decisions are
+recorded in [`docs/features/spaces.md`](spaces.md) section 6c and proved by
+`connectors/connector-spaces.integration.spec.ts`.

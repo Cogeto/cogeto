@@ -37,6 +37,7 @@
   "cover": {
     "generatedAt": "Izrađeno",
     "reportId": "Identifikator izvještaja",
+    "space": "Prostor",
     "configuration": "Konfiguracija modela",
     "dateRange": "Pregledana građa",
     "instanceKey": "Ključ instance",
@@ -56,6 +57,7 @@
     "intro": "Ovaj je izvještaj izrađen automatski iz dokumenata navedenih u odjeljku o obuhvatu. Svaka tvrdnja u njemu vodi do pohranjenog, provjerljivog zapisa: svaki citirani odlomak imenuje svoj dokument i svoje mjesto, a brojke se računaju iz istih zapisa iz kojih dolaze citirani odlomci.",
     "reportId": "Identifikator izvještaja",
     "generatedAt": "Izrađeno",
+    "space": "Prostor",
     "scope": "Opseg",
     "previousRun": "Uspoređeno s",
     "previousRunValue": "Izvještaj {{id}} od {{date}}",

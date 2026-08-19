@@ -37,6 +37,7 @@
   "cover": {
     "generatedAt": "Generated",
     "reportId": "Report identifier",
+    "space": "Space",
     "configuration": "Model configuration",
     "dateRange": "Material examined",
     "instanceKey": "Instance key",
@@ -56,6 +57,7 @@
     "intro": "This report was produced automatically from the documents listed in the coverage section. Every claim in it traces to a stored, verifiable record: each quoted passage names its document and its location, and the counts are computed from the same records the quoted passages come from.",
     "reportId": "Report identifier",
     "generatedAt": "Generated",
+    "space": "Space",
     "scope": "Scope",
     "previousRun": "Compared against",
     "previousRunValue": "Report {{id}} of {{date}}",

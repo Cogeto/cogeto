@@ -48,10 +48,14 @@
   "daily_research_limit": "limite quotidienne de recherches atteinte ({{max}}), réessayez demain",
   "daily_upload_limit": "limite quotidienne de dépôts atteinte ({{max}}), réessayez demain",
   "email": {
+    "aliasExists": "un alias portant ce nom existe déjà; supprimez-le d'abord pour changer sa destination",
+    "aliasNotFound": "alias introuvable",
     "allowlistEntryNotFound": "entrée de liste d'autorisation introuvable",
     "invalidAddress": "adresse de courriel invalide",
+    "invalidAlias": "alias non valide (lettres, chiffres, point, tiret, tiret bas, 64 caractères au plus)",
     "invalidDomain": "domaine invalide (par exemple adriatic-foods.hr)",
-    "notFound": "courriel {{id}} introuvable"
+    "notFound": "courriel {{id}} introuvable",
+    "unknownSpace": "Cet espace n'existe plus"
   },
   "erasure": {
     "confirmationMismatch": "La confirmation doit répéter l'identifiant de l'utilisateur à effacer",
@@ -199,6 +203,7 @@
     "notFound": "aucun contexte pour cette source"
   },
   "spaces": {
+    "bindingNotFound": "aucune liaison pour cet utilisateur",
     "defaultUndeletable": "L'espace par défaut ne peut pas être supprimé",
     "nameRequired": "Un espace a besoin d'un nom",
     "nameTooLong": "Un nom d'espace fait au plus {{max}} caractères",

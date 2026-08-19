@@ -8,7 +8,13 @@ import {
   UserContextService,
 } from '../infrastructure/index';
 import { IdentityModule } from '../identity/index';
-import { SpaceNameModule, SpaceNameSource, SpacesModule } from '../spaces/index';
+import {
+  MachineBindingModule,
+  MachineBindingService,
+  SpaceNameModule,
+  SpaceNameSource,
+  SpacesModule,
+} from '../spaces/index';
 import { MemoryModule } from '../memory/index';
 import {
   EntityAliasSpaceCleanup,
@@ -47,6 +53,8 @@ import {
 } from '../research/index';
 import {
   EmailModule,
+  EmailRoutingSpaceCleanup,
+  EmailRoutingSpaceCleanupModule,
   EmailSourceDeletion,
   EmailSourcePortsModule,
   EmailSourceReader,
@@ -333,6 +341,9 @@ export function createWorkerRootModule(
         // root never passes it.
         masterKey: config.masterKey,
         credentialReads: true,
+        // Parity with the app root (section 6c): the worker serves no HTTP,
+        // but the guard must resolve identically wherever Nest inits it.
+        machineBindings: { imports: [MachineBindingModule], adapter: MachineBindingService },
       }),
       ModelGatewayModule.register({
         providers: config.modelProviders,
@@ -443,7 +454,9 @@ export function createWorkerRootModule(
         },
         // A project-scoped run enumerates the project's source assignments
         // and nothing else (V2.5 item 8.3 issue C2).
-        imports: [memoryModule, importsModule, projectsModule],
+        imports: [memoryModule, importsModule, projectsModule, SpaceNameModule],
+        // The scope block names its space (schema 1.2, section 6c).
+        spaceNames: SpaceNameSource,
       }),
       notesModule,
       settingsModule,
@@ -479,6 +492,7 @@ export function createWorkerRootModule(
             ReportSpaceCleanupModule,
             PassportSpaceCleanupModule,
             ConnectorSpaceCleanupModule,
+            EmailRoutingSpaceCleanupModule,
           ],
           adapters: [
             ProjectSpaceCleanup,
@@ -490,6 +504,7 @@ export function createWorkerRootModule(
             ReportSpaceCleanup,
             PassportSpaceCleanup,
             ConnectorSpaceCleanup,
+            EmailRoutingSpaceCleanup,
           ],
         },
       }),

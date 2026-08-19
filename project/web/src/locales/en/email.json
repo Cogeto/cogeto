@@ -28,7 +28,10 @@
     "domainPlaceholder": "adriatic-foods.hr",
     "note": "Note (optional)",
     "notePlaceholder": "e.g. supplier",
-    "addFailed": "Couldn't add. Check the value."
+    "addFailed": "Couldn't add. Check the value.",
+    "spaceField": "Lands in space",
+    "spaceTarget": "to {{space}}",
+    "spaceTargetTitle": "The space this sender's mail lands in"
   },
   "refusals": {
     "heading": "Recently refused",
@@ -41,7 +44,17 @@
     "no_owner": "no capture owner was configured (older refusal)",
     "wrong_recipient": "addressed to a different recipient",
     "message_too_large": "message exceeded the size cap",
-    "attachments_too_large": "attachments exceeded the size cap"
+    "attachments_too_large": "attachments exceeded the size cap",
+    "alias_not_recognized": "addressed to an alias you have not defined"
   },
-  "spaceNote": "Inbound email is captured into the default space for now; routing an address to a space is coming later."
+  "routingNote": "Each rule below names the space its mail lands in. Mail matching no rule lands in {{defaultSpace}}, and mail sent to an alias you have not defined is refused, never guessed into a space.",
+  "aliases": {
+    "heading": "Address aliases",
+    "explainer": "Give a sender a plus-tagged address such as {{example}} and its mail lands in the alias's space, whoever the sender is. Aliases are yours; other users keep their own.",
+    "exampleAlias": "clientx",
+    "aliasField": "Alias",
+    "aliasPlaceholder": "clientx",
+    "addFailed": "Couldn't add the alias. Letters, digits, dot, dash and underscore only.",
+    "refuseNote": "Mail sent to an alias you have not defined is refused and shows up under recently refused; nothing is captured for you until the alias exists."
+  }
 }

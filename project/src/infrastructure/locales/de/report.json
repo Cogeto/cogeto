@@ -37,6 +37,7 @@
   "cover": {
     "generatedAt": "Erstellt",
     "reportId": "Berichtskennung",
+    "space": "Space",
     "configuration": "Modellkonfiguration",
     "dateRange": "Geprüftes Material",
     "instanceKey": "Instanzschlüssel",
@@ -56,6 +57,7 @@
     "intro": "Dieser Bericht wurde automatisch aus den im Abschnitt zum Umfang aufgeführten Dokumenten erstellt. Jede Aussage darin führt auf einen gespeicherten, überprüfbaren Datensatz zurück: Jede zitierte Passage nennt ihr Dokument und ihre Fundstelle, und die Zahlen sind aus denselben Datensätzen berechnet, aus denen die Zitate stammen.",
     "reportId": "Berichtskennung",
     "generatedAt": "Erstellt",
+    "space": "Space",
     "scope": "Umfang",
     "previousRun": "Verglichen mit",
     "previousRunValue": "Bericht {{id}} vom {{date}}",

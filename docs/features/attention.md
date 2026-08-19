@@ -16,14 +16,21 @@ timestamped, and deep-linked, with a stable content-free key.
 
 ## The only materialized state is read-state
 
-Two tiny per-user tables, co-located with the audit log in `infrastructure` because
-the surface spans every bounded context and none owns it:
+Two tiny per-user tables, owned by the attention module:
 
-- `attention_state` (owner, `last_seen_at`)
-- `attention_dismissal` (owner, item key, dismissed at)
+- `attention_state` (owner, space, `last_seen_at`)
+- `attention_dismissal` (owner, space, item key, dismissed at)
 
 **Dismissal keys are content-free by construction** (`digest:<run_id>:<index>`, never
 memory text), so this durable row never stores content.
+
+**Both keys carry the SPACE since V3 spaces session 4** (migration 0063,
+docs/features/spaces.md section 6c): the unread indicator compares feed items
+against a last-seen timestamp, and keyed by owner alone, opening the dashboard
+in one space silenced another space's brand-new items. The space is a real
+column with a CASCADE foreign key (per-user read state about a space, never
+content), so a dismissal in one space can never suppress a line in another,
+whatever key string a client sends.
 
 ## Unread semantics
 

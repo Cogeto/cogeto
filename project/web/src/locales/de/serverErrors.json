@@ -47,10 +47,14 @@
   "daily_research_limit": "das tägliche Limit für Recherchesuchen ist erreicht ({{max}}), versuchen Sie es morgen erneut",
   "daily_upload_limit": "das tägliche Upload-Limit ist erreicht ({{max}}), versuchen Sie es morgen erneut",
   "email": {
+    "aliasExists": "ein Alias mit diesem Namen existiert bereits; entfernen Sie ihn zuerst, um das Ziel zu ändern",
+    "aliasNotFound": "Alias nicht gefunden",
     "allowlistEntryNotFound": "Eintrag in der Positivliste nicht gefunden",
     "invalidAddress": "keine gültige E-Mail-Adresse",
+    "invalidAlias": "kein gültiger Alias (Buchstaben, Ziffern, Punkt, Bindestrich, Unterstrich, höchstens 64 Zeichen)",
     "invalidDomain": "keine gültige Domain (z. B. adriatic-foods.hr)",
-    "notFound": "E-Mail {{id}} nicht gefunden"
+    "notFound": "E-Mail {{id}} nicht gefunden",
+    "unknownSpace": "Diesen Space gibt es nicht mehr"
   },
   "erasure": {
     "confirmationMismatch": "Die Bestätigung muss die Benutzerkennung wiederholen, die gelöscht wird",
@@ -195,6 +199,7 @@
     "notFound": "für diese Quelle gibt es keinen Kontext"
   },
   "spaces": {
+    "bindingNotFound": "keine Bindung für diesen Benutzer",
     "defaultUndeletable": "Der Standard-Space kann nicht gelöscht werden",
     "nameRequired": "Ein Space braucht einen Namen",
     "nameTooLong": "Ein Space-Name darf höchstens {{max}} Zeichen lang sein",

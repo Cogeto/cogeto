@@ -3,7 +3,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, gte, sql } from 'drizzle-orm';
 import { DRIZZLE } from '../../infrastructure/index';
 import type { Db, DbOrTx } from '../../infrastructure/index';
-import { connectorItem } from './tables';
+import { connector, connectorItem } from './tables';
 import type { ConnectorItemRow } from './tables';
 
 /**
@@ -183,9 +183,14 @@ export class ConnectorItemLedger {
   }
 
   /** The gone-upstream note for one materialized source, for the surfaces
-   * that must say "the upstream no longer lists this" (owner-gated reads). */
+   * that must say "the upstream no longer lists this" (owner-gated reads).
+   * The ledger has no space column (it inherits through its connector), so
+   * the CALLER's space is enforced by joining the connector row
+   * (docs/features/spaces.md section 6c): a foreign ref can never surface
+   * another space's upstream state. */
   async upstreamStateForSources(
     ownerId: string,
+    spaceId: string,
     refs: readonly { sourceType: string; sourceId: string }[],
   ): Promise<Map<string, { state: string; reason: string | null }>> {
     if (refs.length === 0) return new Map();
@@ -198,9 +203,11 @@ export class ConnectorItemLedger {
           sourceId: connectorItem.sourceId,
         })
         .from(connectorItem)
+        .innerJoin(connector, eq(connector.id, connectorItem.connectorId))
         .where(
           and(
             eq(connectorItem.ownerId, ownerId),
+            eq(connector.spaceId, spaceId),
             eq(connectorItem.sourceType, ref.sourceType),
             eq(connectorItem.sourceId, ref.sourceId),
           ),

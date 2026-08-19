@@ -65,7 +65,12 @@ export class ReportService {
       await tx.execute(
         sql`SELECT pg_advisory_xact_lock(hashtextextended(${'cogeto:report-trigger:' + principal.userId}, 0))`,
       );
-      const existing = await this.store.unfinishedForOwner(tx, principal.userId, new Date());
+      const existing = await this.store.unfinishedForOwner(
+        tx,
+        principal.userId,
+        resolveSpaceId(principal),
+        new Date(),
+      );
       if (existing) {
         if (existing.scopeKey === canonicalize(scope)) return existing;
         throw userError.conflict(
@@ -121,7 +126,7 @@ export class ReportService {
   }
 
   async get(principal: Principal, id: string): Promise<FindingsReportDto> {
-    const row = await this.store.getForOwner(principal.userId, id);
+    const row = await this.store.getForOwner(principal.userId, id, resolveSpaceId(principal));
     if (!row) throw userError.notFound('report.notFound', 'report {{id}} not found', { id });
     return toReportDto(row);
   }
@@ -132,7 +137,7 @@ export class ReportService {
     id: string,
     format: ReportDownloadFormat,
   ): Promise<ReportDownloadDto> {
-    const row = await this.store.getForOwner(principal.userId, id);
+    const row = await this.store.getForOwner(principal.userId, id, resolveSpaceId(principal));
     if (!row) throw userError.notFound('report.notFound', 'report {{id}} not found', { id });
     // A report expired by a source deletion must never mint another URL: its
     // bytes are erased by the same receipt that erased the source (the

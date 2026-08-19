@@ -273,6 +273,135 @@ Recorded with the session that implemented them, the way 6a's were:
   keeps *Space* (the word German-speaking professionals use, and both
   *Bereich* readings were already taken by scope and by Confluence spaces).
 
+## 6c. Session 4 decisions (the edges and the artifacts, 2026-08-19)
+
+Recorded with the session that implemented them, the way 6a's and 6b's were.
+This session covers the paths where content enters or leaves the instance
+without a person standing in a space, and the artifacts that carry a space
+out of the product. The overriding constraint: no machine and no external
+message may ever land in a space by accident. Where a human's current space
+is unavailable as context, the space is explicit and recorded, and an
+unresolvable space fails loudly rather than defaulting quietly.
+
+### Email intake routing
+
+- **Routing rules are owner-level configuration WITH a space target, never
+  per-space rule sets.** Which space's rules govern an inbound message is
+  exactly the unknown routing must resolve, so the rules cannot themselves
+  live behind it. Every sender allowlist entry now names its target space
+  (defaulting to the default space, which preserves prior behaviour
+  byte-identically), and a new per-owner **alias rule** maps a plus-addressed
+  recipient to a space: mail to `capture+clientx@instance` routes by the
+  owner's `clientx` alias rule. One inbound address, tagged, because the
+  instance has one mailbox and an alias is an address the sender can be
+  given.
+- **Resolution order, per recipient, before anything is stored or
+  extracted:** an alias in the recipient address wins (the sender named the
+  partition explicitly); else the matched sender rule's target, an address
+  rule outranking a domain rule (more specific wins, and the unique index
+  makes equal-specificity conflicts unrepresentable); else the recipient's
+  default space. **The recipient's default space IS the instance default
+  space.** The last-used pointer is a UI convenience, and routing mail by it
+  would file a client's message wherever the user last happened to browse,
+  which is the silent misplacement this session forbids.
+- **An alias the recipient has not defined is refused, never defaulted.**
+  The sender explicitly targeted a partition; landing that mail anywhere
+  else is misplacement. The refusal is recorded in the existing refusal
+  ledger (`alias_not_recognized`, owner-attributed, visible on the email
+  settings surface) and ingests nothing for that recipient. Recipients are
+  independent: one owner's alias rule routing does not depend on another
+  owner having one.
+- **A routing rule dies with its target space.** The email module's space
+  cleanup leg removes alias rules and re-points nothing; a sender rule whose
+  target space is erased is removed with it (falling back would put a
+  client's mail in the wrong partition, the one forbidden outcome). Mail
+  arriving afterwards refuses as `alias_not_recognized` or
+  `sender_not_recognized`, legibly and recorded. The rules' space foreign
+  keys are the loud mid-erasure backstop.
+- The routed space governs the whole copy: the copy's capture scope comes
+  from that space's own defaults, and attachment file sources stamp the same
+  routed space in the same transaction.
+
+### Connectors belong to a space
+
+- Already true since sessions 1 and 2 and now sealed: the space is chosen at
+  creation from the creator's current space and **immutable** (no store
+  method writes the column; pinned structurally). Child state (sub-scope
+  cursors, the natural-key ledger, sync runs, webhook deliveries, rate
+  state) inherits through the connector row, so the ledger's
+  `(connector_id, natural_key)` uniqueness needs no space column: a ledger
+  key that could straddle spaces would be the bug, not the fix.
+- **Credentials are instance-level in storage, space-bound in use.** The
+  sealed credential lives in the identity seam with no space column, one
+  credential per connector; the connector row carries the space, and every
+  use of the credential happens through that row. Connecting the same
+  upstream site into two spaces is two authorisations and two entirely
+  independent connectors, and the interface says so.
+- The store seams that took an OPTIONAL space and fell back to the default
+  became REQUIRED parameters: a caller cannot forget the space and silently
+  get the default partition.
+
+### Machine callers carry a space
+
+- **A machine principal is a token that resolves without a human profile
+  (no email claim).** Human users authenticate through the interface with
+  the email scope, so their tokens always carry one; Zitadel service users
+  carry none. The one product credential that is a PAT for a human (the
+  demo session) therefore stays human, which is correct: it drives the
+  interface, which binds the space per page load.
+- **Per-credential binding, not a per-request parameter.** A machine has no
+  current space and no "most recent" anything, so the space is a property
+  of the credential's identity: `machine_space_binding` (spaces-owned,
+  administrator-managed, keyed by the machine user id, CASCADE with its
+  space). The guard refuses an unbound machine with an error naming the
+  binding requirement and the endpoint that satisfies it; a space header
+  that disagrees with the binding is refused, never honored, and a header
+  that agrees is accepted as a redundant assertion. A deleted space
+  cascades the binding away, so the machine is refused loudly instead of
+  degrading anywhere.
+- **The binding narrows, never widens.** Within its bound space a machine
+  caller passes exactly the existing owner, scope and sensitivity gates,
+  unchanged.
+- **The demo sandbox's one principal is the interface user, not a machine
+  caller.** The demo Principal is by construction a Zitadel machine user
+  whose PAT the sandbox publishes as the browser session, so in demo mode,
+  and only there (the explicit `COGETO_DEMO_MODE=1`, never production), the
+  guard exempts exactly the principal the published session file names.
+  Every other machine user, the bootstrap PAT included, stays under the
+  binding rule even in the sandbox. Found by the rule itself refusing the
+  demo seed's own bootstrap, which is the machine wall working.
+- There is no MCP server in the product today; the machine-facing surfaces
+  are the bearer API (this binding), inbound mail (whose routing rules are
+  its binding, above), and connector webhooks (already bound through the
+  connector row since session 1). When an MCP server arrives it
+  authenticates as a service user and inherits this rule unchanged.
+- Humans keep the absent-header resolution to the default space (the
+  record's anchor rule, 6a), unchanged.
+
+### Space-scoped artifacts
+
+- **Findings report schema 1.2** (additive): the scope block gains
+  `space_id` (required) and `space_name` (nullable, the display name at
+  generation time), because a report forwarded to an auditor must say which
+  partition it describes. The PDF cover and the provenance table state the
+  space. The name resolves through a port the reports module defines and
+  the spaces module satisfies (the passport's resolver pattern).
+- **The report ledger's remaining cross-space reads are sealed:** the delta
+  baseline matches on scope within one space (a first run in a new space
+  says "first run" instead of computing a delta against another space's
+  run), the single-flight trigger dedupe is per space, and the by-id status
+  and download reads carry the caller's space.
+- **The attention read state is per (user, space):** `attention_state` keys
+  on `(owner_id, space_id)` (CASCADE, the `user_settings` precedent), so
+  opening the dashboard in one space no longer silences another space's
+  unread indicator, which section 6's "badges recompute on switch" always
+  meant. Dismissals gained the space column their key convention already
+  encoded; the default space keeps its historical keys byte-identically.
+- The passport was made per space in session 1 (format 2.1) and is verified
+  here behaviorally: an export contains nothing from another space and its
+  receipts verify standalone against the space's own chain using only the
+  archive and the instance public key.
+
 ## 7. Decisions and non-goals
 
 Decided by the owner, 2026-08-19:

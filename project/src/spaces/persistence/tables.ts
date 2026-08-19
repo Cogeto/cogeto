@@ -30,5 +30,23 @@ export const userSpaceState = pgTable('user_space_state', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * A machine caller's per-credential space binding (docs/features/spaces.md
+ * section 6c, migration 0063): administrator-managed, one binding per
+ * machine user, and the binding IS the machine's space; the guard refuses an
+ * unbound machine. CASCADE with the space (the user_space_state precedent:
+ * credential state about a space, never content), so a deleted space unbinds
+ * the machine and it is refused loudly instead of degrading anywhere.
+ */
+export const machineSpaceBinding = pgTable('machine_space_binding', {
+  userId: text('user_id').primaryKey(),
+  spaceId: uuid('space_id')
+    .notNull()
+    .references(() => space.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type SpaceRow = typeof space.$inferSelect;
 export type UserSpaceStateRow = typeof userSpaceState.$inferSelect;
+export type MachineSpaceBindingRow = typeof machineSpaceBinding.$inferSelect;

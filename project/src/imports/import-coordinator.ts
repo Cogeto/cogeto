@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { and, eq, inArray, sql } from 'drizzle-orm';
+import { resolveSpaceId } from '@cogeto/shared';
 import type { Principal } from '@cogeto/shared';
 import { DRIZZLE, enqueueDelayedJob, jobRunStates, runSingleFlight } from '../infrastructure/index';
 import type { Db } from '../infrastructure/index';
@@ -270,7 +271,7 @@ export class ImportCoordinator {
       this.reconciliation.openContradictionCountsForSources(principal, refs),
       readOutcomesForKeys(this.db, keys),
       refusalsForSources(this.db, refs),
-      revisionCountsForSuccessors(this.db, keys),
+      revisionCountsForSuccessors(this.db, resolveSpaceId(principal), keys),
     ]);
     let facts = 0;
     let superseded = 0;

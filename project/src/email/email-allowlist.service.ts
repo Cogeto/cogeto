@@ -1,16 +1,19 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, isNull, lt, or } from 'drizzle-orm';
+import { DEFAULT_SPACE_ID } from '@cogeto/shared';
 import type {
+  AddEmailAliasRequest,
   AddEmailAllowlistEntryRequest,
+  EmailAliasDto,
   EmailAllowlistEntryDto,
   EmailRefusalDto,
   Principal,
 } from '@cogeto/shared';
 import { DRIZZLE, userError, writeAudit } from '../infrastructure/index';
 import type { Db, DbOrTx } from '../infrastructure/index';
-import { emailAllowlist, emailRefusal } from './persistence/tables';
-import type { EmailAllowlistRow } from './persistence/tables';
-import { normalizeAllowlistValue, senderMatchesAllowlist } from './email-parse';
+import { emailAlias, emailAllowlist, emailRefusal } from './persistence/tables';
+import type { EmailAliasRow, EmailAllowlistRow } from './persistence/tables';
+import { normalizeAlias, normalizeAllowlistValue, senderMatchesAllowlist } from './email-parse';
 import type { AllowlistEntry } from './email-parse';
 
 /** How many recent refusals the Settings surface shows (one-click allowlisting). */
@@ -45,25 +48,42 @@ export class EmailAllowlistService {
    * unparsable sender (closed by default).
    */
   async ownersMatching(matchedSender: string | null): Promise<string[]> {
+    return (await this.routesMatching(matchedSender)).map((route) => route.ownerId);
+  }
+
+  /**
+   * Every matching owner WITH the matched rule's target space
+   * (docs/features/spaces.md section 6c). Per owner the most specific rule
+   * wins: an `address` entry outranks a `domain` entry, and the unique index
+   * on (owner, kind, value) makes an equal-specificity conflict
+   * unrepresentable, so routing is never ambiguous by construction.
+   */
+  async routesMatching(
+    matchedSender: string | null,
+  ): Promise<Array<{ ownerId: string; spaceId: string }>> {
     if (!matchedSender) return [];
     const rows = await this.db
       .select({
         ownerId: emailAllowlist.ownerId,
         kind: emailAllowlist.kind,
         value: emailAllowlist.value,
+        spaceId: emailAllowlist.spaceId,
       })
       .from(emailAllowlist);
-    const byOwner = new Map<string, AllowlistEntry[]>();
+    const byOwner = new Map<string, Array<AllowlistEntry & { spaceId: string }>>();
     for (const row of rows) {
       const list = byOwner.get(row.ownerId) ?? [];
-      list.push({ kind: row.kind, value: row.value });
+      list.push({ kind: row.kind, value: row.value, spaceId: row.spaceId });
       byOwner.set(row.ownerId, list);
     }
-    const owners: string[] = [];
+    const routes: Array<{ ownerId: string; spaceId: string }> = [];
     for (const [ownerId, entries] of byOwner) {
-      if (senderMatchesAllowlist(matchedSender, entries)) owners.push(ownerId);
+      if (!senderMatchesAllowlist(matchedSender, entries)) continue;
+      const matched = entries.filter((entry) => senderMatchesAllowlist(matchedSender, [entry]));
+      const winner = matched.find((entry) => entry.kind === 'address') ?? matched[0]!;
+      routes.push({ ownerId, spaceId: winner.spaceId });
     }
-    return owners.sort();
+    return routes.sort((a, b) => a.ownerId.localeCompare(b.ownerId));
   }
 
   /** The owner's entries for the management surface, newest first. */
@@ -94,17 +114,27 @@ export class EmailAllowlistService {
           );
     }
     const note = request.note?.trim() || null;
+    const spaceId = request.spaceId ?? DEFAULT_SPACE_ID;
 
     return this.db.transaction(async (tx) => {
       const [inserted] = await tx
         .insert(emailAllowlist)
-        .values({ ownerId: principal.userId, kind: request.kind, value, note })
+        .values({ ownerId: principal.userId, kind: request.kind, value, note, spaceId })
         .onConflictDoNothing({
           target: [emailAllowlist.ownerId, emailAllowlist.kind, emailAllowlist.value],
         })
-        .returning();
+        .returning()
+        .catch((error: unknown) => {
+          // The space foreign key is the loud backstop: a target that does
+          // not exist (deleted between the picker and the submit) is a
+          // legible refusal, never a silent fallback.
+          if (isForeignKeyViolation(error)) {
+            throw userError.badRequest('email.unknownSpace', 'that space no longer exists');
+          }
+          throw error;
+        });
 
-      const row =
+      let row =
         inserted ??
         (
           await tx
@@ -120,6 +150,34 @@ export class EmailAllowlistService {
             .limit(1)
         )[0]!;
 
+      // Re-adding an existing sender with a DIFFERENT target space is a
+      // deliberate retarget, never a silent no-op returning the old routing
+      // (docs/features/spaces.md section 6c: no silent misconfiguration).
+      if (!inserted && row.spaceId !== spaceId) {
+        const [updated] = await tx
+          .update(emailAllowlist)
+          .set({ spaceId })
+          .where(eq(emailAllowlist.id, row.id))
+          .returning()
+          .catch((error: unknown) => {
+            if (isForeignKeyViolation(error)) {
+              throw userError.badRequest('email.unknownSpace', 'that space no longer exists');
+            }
+            throw error;
+          });
+        row = updated!;
+        await writeAudit(tx, {
+          actor: `user:${principal.userId}`,
+          action: 'email_allowlist.retarget',
+          entityType: 'email_allowlist',
+          entityId: row.id,
+          detail: { kind: request.kind },
+          orgId: principal.orgId,
+          ownerId: principal.userId,
+          spaceId,
+        });
+      }
+
       if (inserted) {
         // Structural metadata only: kind + a boolean, never the value or
         // note (which can carry PII) — the audit trail is org-readable.
@@ -131,10 +189,105 @@ export class EmailAllowlistService {
           detail: { kind: request.kind, hasNote: note !== null },
           orgId: principal.orgId,
           ownerId: principal.userId,
+          spaceId,
         });
       }
       return toEntryDto(row);
     });
+  }
+
+  /** The owner's alias routing rules, newest first. */
+  async listAliasesForOwner(ownerId: string): Promise<EmailAliasDto[]> {
+    const rows = await this.db
+      .select()
+      .from(emailAlias)
+      .where(eq(emailAlias.ownerId, ownerId))
+      .orderBy(desc(emailAlias.createdAt));
+    return rows.map(toAliasDto);
+  }
+
+  /**
+   * Add an alias routing rule (docs/features/spaces.md section 6c): the tag
+   * after the plus in `capture+alias@instance`, mapped to exactly one space.
+   * The alias is normalized; a duplicate alias for the same owner is refused
+   * (retargeting an alias is remove-and-add, deliberate, never a silent
+   * overwrite of where a client's mail lands). Audited.
+   */
+  async addAlias(principal: Principal, request: AddEmailAliasRequest): Promise<EmailAliasDto> {
+    const alias = normalizeAlias(request.alias);
+    if (!alias) {
+      throw userError.badRequest(
+        'email.invalidAlias',
+        'not a valid alias (letters, digits, dot, dash, underscore, up to 64 characters)',
+      );
+    }
+    const note = request.note?.trim() || null;
+    return this.db.transaction(async (tx) => {
+      const [inserted] = await tx
+        .insert(emailAlias)
+        .values({ ownerId: principal.userId, alias, spaceId: request.spaceId, note })
+        .onConflictDoNothing({ target: [emailAlias.ownerId, emailAlias.alias] })
+        .returning()
+        .catch((error: unknown) => {
+          if (isForeignKeyViolation(error)) {
+            throw userError.badRequest('email.unknownSpace', 'that space no longer exists');
+          }
+          throw error;
+        });
+      if (!inserted) {
+        throw userError.conflict(
+          'email.aliasExists',
+          'an alias with this name already exists; remove it first to change where it routes',
+        );
+      }
+      await writeAudit(tx, {
+        actor: `user:${principal.userId}`,
+        action: 'email_alias.add',
+        entityType: 'email_alias',
+        entityId: inserted.id,
+        detail: { hasNote: note !== null },
+        orgId: principal.orgId,
+        ownerId: principal.userId,
+        spaceId: request.spaceId,
+      });
+      return toAliasDto(inserted);
+    });
+  }
+
+  /** Remove an alias rule the caller owns. Audited. False when not found. */
+  async removeAlias(principal: Principal, id: string): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const [deleted] = await tx
+        .delete(emailAlias)
+        .where(and(eq(emailAlias.id, id), eq(emailAlias.ownerId, principal.userId)))
+        .returning({ id: emailAlias.id, spaceId: emailAlias.spaceId });
+      if (!deleted) return false;
+      await writeAudit(tx, {
+        actor: `user:${principal.userId}`,
+        action: 'email_alias.remove',
+        entityType: 'email_alias',
+        entityId: deleted.id,
+        detail: {},
+        orgId: principal.orgId,
+        ownerId: principal.userId,
+        spaceId: deleted.spaceId,
+      });
+      return true;
+    });
+  }
+
+  /**
+   * The target space of one owner's alias rule, or null when the owner has
+   * not defined the alias — which the intake REFUSES rather than defaulting
+   * (docs/features/spaces.md section 6c).
+   */
+  async aliasRouteFor(ownerId: string, alias: string): Promise<string | null> {
+    const rows = await this.db
+      .select({ spaceId: emailAlias.spaceId })
+      .from(emailAlias)
+      .where(and(eq(emailAlias.ownerId, ownerId), eq(emailAlias.alias, alias)))
+      .limit(1);
+    return rows[0]?.spaceId ?? null;
   }
 
   /** Remove an entry the caller owns. Audited. Returns false when not found. */
@@ -222,6 +375,25 @@ function toEntryDto(row: EmailAllowlistRow): EmailAllowlistEntryDto {
     kind: row.kind,
     value: row.value,
     note: row.note,
+    spaceId: row.spaceId,
     createdAt: row.createdAt.toISOString(),
   };
+}
+
+function toAliasDto(row: EmailAliasRow): EmailAliasDto {
+  return {
+    id: row.id,
+    alias: row.alias,
+    spaceId: row.spaceId,
+    note: row.note,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+/** Postgres foreign-key violation (SQLSTATE 23503), however drizzle wraps it. */
+function isForeignKeyViolation(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const code = (error as { code?: unknown; cause?: { code?: unknown } }).code;
+  const causeCode = (error as { cause?: { code?: unknown } }).cause?.code;
+  return code === '23503' || causeCode === '23503';
 }

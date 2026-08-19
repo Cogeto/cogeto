@@ -28,7 +28,10 @@
     "domainPlaceholder": "adriatic-foods.hr",
     "note": "Napomena (neobavezno)",
     "notePlaceholder": "npr. dobavljač",
-    "addFailed": "Dodavanje nije uspjelo. Provjerite vrijednost."
+    "addFailed": "Dodavanje nije uspjelo. Provjerite vrijednost.",
+    "spaceField": "Slijeće u prostor",
+    "spaceTarget": "u {{space}}",
+    "spaceTargetTitle": "Prostor u koji slijeće pošta ovog pošiljatelja"
   },
   "refusals": {
     "heading": "Nedavno odbijeno",
@@ -41,7 +44,17 @@
     "no_owner": "vlasnik zaprimanja nije konfiguriran (starije odbijanje)",
     "wrong_recipient": "adresirano drugom primatelju",
     "message_too_large": "poruka je premašila ograničenje veličine",
-    "attachments_too_large": "privici su premašili ograničenje veličine"
+    "attachments_too_large": "privici su premašili ograničenje veličine",
+    "alias_not_recognized": "naslovljeno na alias koji niste definirali"
   },
-  "spaceNote": "Dolazna e-pošta zasad se sprema u zadani prostor; usmjeravanje adrese u prostor stiže kasnije."
+  "routingNote": "Svako pravilo u nastavku imenuje prostor u koji njegova pošta slijeće. Pošta koja ne odgovara nijednom pravilu slijeće u {{defaultSpace}}, a pošta poslana na alias koji niste definirali odbija se, nikad se ne smješta u prostor nagađanjem.",
+  "aliases": {
+    "heading": "Aliasi adrese",
+    "explainer": "Dajte pošiljatelju adresu s plus oznakom, npr. {{example}}, i njegova pošta slijeće u prostor tog aliasa, bez obzira tko šalje. Aliasi su vaši; drugi korisnici imaju svoje.",
+    "exampleAlias": "klijentx",
+    "aliasField": "Alias",
+    "aliasPlaceholder": "klijentx",
+    "addFailed": "Alias nije dodan. Dopuštena su samo slova, znamenke, točka, crtica i donja crta.",
+    "refuseNote": "Pošta poslana na alias koji niste definirali odbija se i pojavljuje se među nedavno odbijenima; ništa se ne pohranjuje dok alias ne postoji."
+  }
 }

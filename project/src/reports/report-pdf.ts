@@ -105,6 +105,10 @@ export function renderReportPdf(input: RenderPdfInput): Buffer {
     [
       [t('cover.generatedAt'), dt(payload.report.generated_at)],
       [t('cover.reportId'), payload.report.id],
+      // The sealed partition this report describes (schema 1.2, section 6c):
+      // a report forwarded to an auditor must say which space it is about.
+      // The id is the fallback when no display name resolved.
+      [t('cover.space'), payload.report.scope.space_name ?? payload.report.scope.space_id],
       [t('cover.configuration'), payload.configuration.id],
       [
         t('cover.dateRange'),
@@ -300,6 +304,7 @@ function renderProvenance(
   const rows: [string, string][] = [
     [t('provenance.reportId'), payload.report.id],
     [t('provenance.generatedAt'), dt(payload.report.generated_at)],
+    [t('provenance.space'), payload.report.scope.space_name ?? payload.report.scope.space_id],
     [t('provenance.scope'), scopeLabel(payload, t)],
     [
       t('provenance.previousRun'),

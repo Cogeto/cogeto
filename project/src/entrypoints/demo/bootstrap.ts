@@ -82,12 +82,17 @@ export async function establishDemoSession(config: CogetoConfig): Promise<DemoSe
     }
   }
 
-  const { token } = await provisionDemoPrincipal({
+  const { userId, token } = await provisionDemoPrincipal({
     internalUrl: config.oidc.internalUrl,
     externalDomain: config.oidc.externalDomain,
     patFile: config.zitadelPatFile,
   });
   const api = createDemoApi(config.demoAppUrl, token);
+  // Publish the session BEFORE the first probe: the demo Principal is a
+  // machine user, and the guard's machine-caller rule (docs/features/spaces.md
+  // section 6c) exempts exactly the principal this file names, so the probe
+  // below must find itself already published or it refuses its own bootstrap.
+  await writeSessionFile(config.demoSessionFile, token, userId);
   const principal = await api.me();
   await writeSessionFile(config.demoSessionFile, token, principal.userId);
   return withCredentials(config, api, principal, token);
